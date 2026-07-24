@@ -1,5 +1,5 @@
-import { Catalog, Category } from '@/types';
-import { getEntityId } from '@/lib/utils';
+import { Catalog, Category } from "@/types";
+import { getEntityId } from "@/lib/utils";
 
 export type CatalogCategoryGroup = {
   id: string;
@@ -19,7 +19,7 @@ function getCatalogFromCategory(
 
   if (!category.catalogId) return undefined;
 
-  if (typeof category.catalogId === 'object') {
+  if (typeof category.catalogId === "object") {
     return category.catalogId;
   }
 
@@ -27,9 +27,9 @@ function getCatalogFromCategory(
 }
 
 function getCatalogId(category: Category) {
-  if (!category.catalogId) return '';
+  if (!category.catalogId) return "";
 
-  if (typeof category.catalogId === 'object') {
+  if (typeof category.catalogId === "object") {
     return getEntityId(category.catalogId);
   }
 
@@ -37,14 +37,14 @@ function getCatalogId(category: Category) {
 }
 
 function getSortValue(value?: number) {
-  return typeof value === 'number' ? value : 0;
+  return typeof value === "number" ? value : 0;
 }
 
-function sortByOrderAndDate<T extends { sortOrder?: number; createdAt?: string }>(
-  first: T,
-  second: T,
-) {
-  const orderDifference = getSortValue(first.sortOrder) - getSortValue(second.sortOrder);
+function sortByOrderAndDate<
+  T extends { sortOrder?: number; createdAt?: string },
+>(first: T, second: T) {
+  const orderDifference =
+    getSortValue(first.sortOrder) - getSortValue(second.sortOrder);
 
   if (orderDifference !== 0) return orderDifference;
 
@@ -58,7 +58,9 @@ export function groupCategoriesByCatalog(
   categories: Category[],
   catalogs: Catalog[] = [],
 ): CatalogCategoryGroup[] {
-  const catalogsById = new Map(catalogs.map((catalog) => [getEntityId(catalog), catalog]));
+  const catalogsById = new Map(
+    catalogs.map((catalog) => [getEntityId(catalog), catalog]),
+  );
   const grouped = new Map<string, CatalogCategoryGroup>();
 
   categories
@@ -67,12 +69,12 @@ export function groupCategoriesByCatalog(
     .forEach((category) => {
       const catalog = getCatalogFromCategory(category, catalogsById);
       const catalogId = catalog ? getEntityId(catalog) : getCatalogId(category);
-      const groupId = catalogId || 'general';
+      const groupId = catalogId || "general";
 
       if (!grouped.has(groupId)) {
         grouped.set(groupId, {
           id: groupId,
-          title: catalog?.name?.ar || 'عام',
+          title: catalog?.name?.ar || "عام",
           description: catalog?.description?.ar,
           catalog,
           categories: [],
@@ -89,6 +91,6 @@ export function groupCategoriesByCatalog(
 
     if (first.catalog) return -1;
     if (second.catalog) return 1;
-    return first.title.localeCompare(second.title, 'ar');
+    return first.title.localeCompare(second.title, "ar");
   });
 }

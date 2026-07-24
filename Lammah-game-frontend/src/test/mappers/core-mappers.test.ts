@@ -53,10 +53,13 @@ describe("core response mappers", () => {
         supportedAssetTypes: ["text", "image"],
       },
       isActive: true,
+      audioPolicy: "optional",
+      gameplayMode: "TOP_10",
       sortOrder: 2,
     };
     expect(toCategoryModel(dto)).toMatchObject({
       id: "category-1",
+      gameplayMode: "TOP_10",
       catalog: { id: "catalog-1" },
       gameplayConfig: {
         gameModes: { trivia: 1 },

@@ -1,12 +1,11 @@
 import { AdminAiGeneratorController } from './admin-ai-generator.controller';
-import { AiAgentService } from './ai-agent.service';
 import { WigoloClient } from './infrastructure/wigolo/wigolo-client';
 
 describe('AdminAiGeneratorController Wigolo health', () => {
   const create = (readiness: jest.MockedFunction<WigoloClient['readiness']>) =>
     new AdminAiGeneratorController(
-      {} as AiAgentService,
       { readiness } as unknown as WigoloClient,
+      { get: () => 'false' } as never,
     );
 
   it('returns ready status with safe runtime fields', async () => {
@@ -93,5 +92,16 @@ describe('AdminAiGeneratorController Wigolo health', () => {
     await controller.wigoloHealth();
 
     expect(readiness).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns a structured 503 for the retired generation workflow', async () => {
+    const controller = new AdminAiGeneratorController(
+      {} as WigoloClient,
+      { get: () => 'false' } as never,
+    );
+
+    await expect(controller.generateReviewed({})).rejects.toThrow(
+      'AI question generation is currently disabled.',
+    );
   });
 });

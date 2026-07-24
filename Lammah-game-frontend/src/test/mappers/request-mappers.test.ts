@@ -1,12 +1,36 @@
 import { describe, expect, it } from "vitest";
-import { toLoginRequest, toRegisterRequest } from "@/features/auth/mappers/auth-request.mapper";
+import {
+  toLoginRequest,
+  toRegisterRequest,
+} from "@/features/auth/mappers/auth-request.mapper";
 import { toCreateGameRequest } from "@/features/games/mappers/game-request.mapper";
 import { toGenerateReviewedRequest } from "@/features/ai-generation/mappers/ai-generation-request.mapper";
 import { toMusicUploadRequest } from "@/features/music/mappers/music-request.mapper";
+import {
+  toCreateQuestionRequest,
+  toUpdateQuestionRequest,
+} from "@/features/questions/mappers/question-request.mapper";
+import { toCategoryRequest } from "@/features/categories/mappers/category-request.mapper";
+import type { Question } from "@/types";
 
 describe("request mappers", () => {
+  it("persists explicit category gameplay mode without inferring it from media", () => {
+    const request = toCategoryRequest({
+      name: "Top 10 صور",
+      gameplayMode: "TOP_10",
+      audioPolicy: "optional",
+    });
+    expect(JSON.parse(request.category)).toMatchObject({
+      name: "Top 10 صور",
+      gameplayMode: "TOP_10",
+      audioPolicy: "optional",
+    });
+  });
+
   it("maps auth values exactly", () => {
-    expect(toLoginRequest({ email: "a@example.invalid", password: "pw" })).toEqual({
+    expect(
+      toLoginRequest({ email: "a@example.invalid", password: "pw" }),
+    ).toEqual({
       email: "a@example.invalid",
       password: "pw",
     });
@@ -49,6 +73,8 @@ describe("request mappers", () => {
       count: 2,
       difficulty: "medium",
       language: "ar",
+      strategy: "source-curated",
+      allowGeneratedFallback: false,
     });
   });
 
@@ -72,5 +98,51 @@ describe("request mappers", () => {
       snippetStartSecond: 1,
       snippetDurationSeconds: 5,
     });
+  });
+
+  it("does not send client-owned rank or point values for Top 10 entries", () => {
+    const request = toCreateQuestionRequest({
+      rankedList: {
+        displayName: { ar: "توب 10", en: "Top 10" },
+        entries: [
+          {
+            id: "row-1",
+            clientId: "client-1",
+            rank: 99,
+            answer: { ar: "الإجابة" },
+            aliases: ["بديل"],
+            points: 999,
+          },
+        ],
+      },
+    } as Partial<Question>);
+    expect(request.rankedList?.entries[0]).toEqual({
+      id: "row-1",
+      clientId: "client-1",
+      answer: { ar: "الإجابة" },
+      aliases: ["بديل"],
+    });
+  });
+
+  it("keeps regular question updates content-only", () => {
+    const request = toUpdateQuestionRequest({
+      question: "سؤال محدّث",
+      primaryAsset: {
+        type: "image",
+        url: "/uploads/questions/images/current.webp",
+        source: "admin-upload",
+      },
+      mediaUrl: "/uploads/questions/images/current.webp",
+      mediaKey: "current.webp",
+      assetStatus: "READY",
+      assetFailureReason: "stale",
+    } as Partial<Question>);
+
+    expect(request).toMatchObject({ question: "سؤال محدّث" });
+    expect(request).not.toHaveProperty("primaryAsset");
+    expect(request).not.toHaveProperty("mediaUrl");
+    expect(request).not.toHaveProperty("mediaKey");
+    expect(request).not.toHaveProperty("assetStatus");
+    expect(request).not.toHaveProperty("assetFailureReason");
   });
 });

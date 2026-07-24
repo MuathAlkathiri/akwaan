@@ -3,6 +3,8 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsIn,
   IsInt,
+  IsArray,
+  IsBoolean,
   IsMongoId,
   IsOptional,
   IsString,
@@ -43,4 +45,24 @@ export class GenerateReviewedQuestionsDto {
   @IsOptional()
   @IsIn(['ar'])
   language?: 'ar';
+
+  @ApiPropertyOptional({ enum: ['source-curated'], default: 'source-curated' })
+  @IsOptional()
+  @IsIn(['source-curated'])
+  strategy?: 'source-curated';
+
+  @ApiPropertyOptional({ type: [String], example: ['open-trivia-db'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  sourceIds?: string[];
+
+  @ApiPropertyOptional({
+    default: false,
+    description:
+      'Reserved for future use. Generated fallback is currently disabled.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowGeneratedFallback?: boolean;
 }

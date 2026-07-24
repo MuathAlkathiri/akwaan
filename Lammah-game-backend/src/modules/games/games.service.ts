@@ -10,10 +10,8 @@ import {
   Game,
   GameStatus,
   CategoryBoard,
-  QuestionInGame,
   QuestionSelectionMode,
 } from './schemas/game.schema';
-import { QuestionPoints } from '../questions/schemas/question.schema';
 import {
   CreateGameDto,
   RevealAnswerDto,
@@ -27,19 +25,19 @@ import { UsersService } from '../users/users.service';
 import { SubscriptionAccessPolicy } from '../users/policies/subscription-access.policy';
 import { QuestionHistoryService } from '../question-history/question-history.service';
 import { GameRepository } from './persistence/game.repository';
-import { QuestionSelectorService } from './selectors/question-selector.service';
 import { GameActionPolicy } from './policies/game-action.policy';
 import { GameLifecyclePolicy } from './policies/game-lifecycle.policy';
 import { ScoringPolicy } from './policies/scoring.policy';
+import { CategoryGameAssembler } from './validation/category-game-validation';
 
 @Injectable()
 export class GamesService {
   constructor(
     private readonly games: GameRepository,
-    private readonly questionSelector: QuestionSelectorService,
     private readonly actions: GameActionPolicy,
     private readonly lifecycle: GameLifecyclePolicy,
     private readonly scoring: ScoringPolicy,
+    private readonly categoryGameAssembler: CategoryGameAssembler,
     private categoriesService: CategoriesService,
     private usersService: UsersService,
     private subscriptionAccess: SubscriptionAccessPolicy,
@@ -64,10 +62,12 @@ export class GamesService {
       throw new BadRequestException('At least 1 category is required');
     }
 
-    // Verify all categories exist
-    for (const categoryId of categoryIds) {
-      await this.categoriesService.findByIdForGameSelection(categoryId);
-    }
+    // Resolve the canonical category (and gameplayMode) exactly once.
+    const selectedCategories = await Promise.all(
+      categoryIds.map((categoryId) =>
+        this.categoriesService.findByIdForGameSelection(categoryId),
+      ),
+    );
 
     if (!isFreeGame && !this.subscriptionAccess.hasActiveSubscription(owner)) {
       throw new ForbiddenException(
@@ -85,65 +85,15 @@ export class GamesService {
     // Build the game board
     const board: CategoryBoard[] = [];
 
-    for (const categoryId of categoryIds) {
-      const questions200 = await this.questionSelector.select({
-        categoryId,
-        points: QuestionPoints.LOW,
+    for (const category of selectedCategories) {
+      const assembled = await this.categoryGameAssembler.assemble({
+        category,
         isFreeGame,
         seenQuestionIds,
       });
-
-      const questions400 = await this.questionSelector.select({
-        categoryId,
-        points: QuestionPoints.MEDIUM,
-        isFreeGame,
-        seenQuestionIds,
-      });
-
-      const questions600 = await this.questionSelector.select({
-        categoryId,
-        points: QuestionPoints.HIGH,
-        isFreeGame,
-        seenQuestionIds,
-      });
-
-      // Validate we have exactly 2 questions for each point value
-      if (
-        questions200.length !== 2 ||
-        questions400.length !== 2 ||
-        questions600.length !== 2
-      ) {
-        throw new BadRequestException(
-          `Category with ID "${categoryId}" does not have exactly 2 approved questions for each point value (200, 400, 600). ` +
-            `Found: 200pts=${questions200.length}, 400pts=${questions400.length}, 600pts=${questions600.length}`,
-        );
-      }
-
-      // Build questions for this category
-      const categoryQuestions: QuestionInGame[] = [
-        ...questions200.map((q) => ({
-          question: q._id,
-          points: 200 as const,
-          isAnswered: false,
-          isAnswerRevealed: false,
-        })),
-        ...questions400.map((q) => ({
-          question: q._id,
-          points: 400 as const,
-          isAnswered: false,
-          isAnswerRevealed: false,
-        })),
-        ...questions600.map((q) => ({
-          question: q._id,
-          points: 600 as const,
-          isAnswered: false,
-          isAnswerRevealed: false,
-        })),
-      ];
-
       board.push({
-        category: new Types.ObjectId(categoryId),
-        questions: categoryQuestions,
+        category: category._id,
+        questions: assembled.boardQuestions,
       });
     }
 
@@ -195,7 +145,7 @@ export class GamesService {
       throw new NotFoundException(`Game with ID "${id}" not found`);
     }
 
-    this.ensureCanAccessGame(game, user);
+    this.actions.assertCanAccess(game, user);
 
     return game;
   }
@@ -211,7 +161,7 @@ export class GamesService {
       throw new NotFoundException(`Game with ID "${id}" not found`);
     }
 
-    this.ensureCanAccessGame(game, user);
+    this.actions.assertCanAccess(game, user);
 
     const questionId = new Types.ObjectId(revealAnswerDto.questionId);
     const question = this.actions.findQuestion(game, questionId);
@@ -237,7 +187,7 @@ export class GamesService {
       throw new NotFoundException(`Game with ID "${id}" not found`);
     }
 
-    this.ensureCanAccessGame(game, user);
+    this.actions.assertCanAccess(game, user);
 
     const questionId = new Types.ObjectId(awardPointsDto.questionId);
     const question = this.actions.findQuestion(game, questionId);
@@ -268,7 +218,7 @@ export class GamesService {
       throw new NotFoundException(`Game with ID "${id}" not found`);
     }
 
-    this.ensureCanAccessGame(game, user);
+    this.actions.assertCanAccess(game, user);
 
     const questionId = new Types.ObjectId(skipQuestionDto.questionId);
     const question = this.actions.findQuestion(game, questionId);
@@ -301,21 +251,6 @@ export class GamesService {
         });
       }
       throw error;
-    }
-  }
-
-  private ensureCanAccessGame(game: Game, user: AuthenticatedUser): void {
-    if (user.role === UserRole.ADMIN) {
-      return;
-    }
-
-    const owner = game.owner as unknown;
-    const ownerId =
-      owner && typeof owner === 'object' && '_id' in owner
-        ? String(owner._id)
-        : String(owner);
-    if (ownerId !== user.id) {
-      throw new ForbiddenException('You do not have access to this game');
     }
   }
 }

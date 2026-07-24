@@ -4,6 +4,10 @@ import {
   CategoryGameplayConfigDto,
 } from './create-category.dto';
 import { CatalogLocalizedTextResponseDto } from '../../catalogs/dto/catalog-response.dto';
+import {
+  CategoryAudioPolicy,
+  CategoryGameplayMode,
+} from '../schemas/category.schema';
 
 export class CategoryCatalogResponseDto {
   @ApiProperty() _id!: string;
@@ -36,6 +40,18 @@ export class CategoryResponseDto {
   @ApiPropertyOptional({ type: CategoryGameplayConfigDto })
   gameplayConfig?: CategoryGameplayConfigDto;
   @ApiProperty() isActive!: boolean;
+  @ApiProperty({
+    enum: CategoryAudioPolicy,
+    enumName: 'CategoryAudioPolicy',
+    default: CategoryAudioPolicy.OPTIONAL,
+  })
+  audioPolicy!: CategoryAudioPolicy;
+  @ApiProperty({
+    enum: CategoryGameplayMode,
+    enumName: 'CategoryGameplayMode',
+    default: CategoryGameplayMode.STANDARD,
+  })
+  gameplayMode!: CategoryGameplayMode;
   @ApiProperty() sortOrder!: number;
   @ApiPropertyOptional() createdAt?: string;
   @ApiPropertyOptional() updatedAt?: string;

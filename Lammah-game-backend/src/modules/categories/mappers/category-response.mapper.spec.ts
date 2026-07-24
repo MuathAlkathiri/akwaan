@@ -19,6 +19,8 @@ describe('CategoryResponseMapper', () => {
       gameplayConfig: { maxAudioDuration: 6 },
       aiConfig: { knowledgeFile: 'sports/world-cup.md' },
       banner: { url: '/uploads/banner.webp' },
+      audioPolicy: 'optional',
+      gameplayMode: 'STANDARD',
     });
   });
 });

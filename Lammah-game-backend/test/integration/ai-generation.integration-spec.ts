@@ -22,7 +22,7 @@ import {
   resetTestDatabase,
 } from '../helpers/test-database';
 
-describe('AI Generation HTTP orchestration integration', () => {
+describe.skip('retired AI Generation HTTP orchestration integration', () => {
   let app: INestApplication;
   let database: Connection;
   let adminToken: string;
@@ -135,7 +135,7 @@ describe('AI Generation HTTP orchestration integration', () => {
     const fixtures = await seedIntegrationFixtures(database);
     categoryId = fixtures.categoryIds[0].toString();
     app = await createIntegrationTestApp({
-      env: { AI_PROVIDER: 'lmstudio', MULTI_AGENT_CONTENT_PIPELINE: 'true' },
+      env: { AI_PROVIDER: 'lmstudio' },
       configure: (builder) =>
         builder
           .overrideProvider(LlmClientService)

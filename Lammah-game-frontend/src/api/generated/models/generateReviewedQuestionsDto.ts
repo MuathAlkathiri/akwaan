@@ -7,6 +7,7 @@
  */
 import type { GenerateReviewedQuestionsDtoDifficulty } from "./generateReviewedQuestionsDtoDifficulty";
 import type { GenerateReviewedQuestionsDtoLanguage } from "./generateReviewedQuestionsDtoLanguage";
+import type { GenerateReviewedQuestionsDtoStrategy } from "./generateReviewedQuestionsDtoStrategy";
 
 export interface GenerateReviewedQuestionsDto {
   categoryId?: string;
@@ -19,4 +20,8 @@ export interface GenerateReviewedQuestionsDto {
    */
   count?: number;
   language?: GenerateReviewedQuestionsDtoLanguage;
+  strategy?: GenerateReviewedQuestionsDtoStrategy;
+  sourceIds?: string[];
+  /** Reserved for future use. Generated fallback is currently disabled. */
+  allowGeneratedFallback?: boolean;
 }

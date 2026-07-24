@@ -193,8 +193,8 @@ const assertions = [
     "Generated Music internals must remain inside the Music feature",
   ],
   [
-    questionsSource.includes('from "@/features/music"'),
-    "Question consumers must use the public Music feature API",
+    !questionsSource.includes('from "@/features/music"'),
+    "Generic Question consumers must not retain the retired Music-only workflow",
   ],
   [
     authSource.includes("@/api/generated/auth/auth") &&
@@ -261,8 +261,8 @@ const assertions = [
   ],
   [
     questionsSource.includes('from "@/features/categories"') &&
-      questionsSource.includes('from "@/features/music"'),
-    "Questions must integrate with Categories and Music through public APIs",
+      !questionsSource.includes('from "@/features/music"'),
+    "Questions must use the public Category API without Music-only coupling",
   ],
   [
     !routesSource.includes("@/api/generated/questions/") &&

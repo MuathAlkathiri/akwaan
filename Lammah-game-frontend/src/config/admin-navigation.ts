@@ -1,5 +1,4 @@
 import {
-  Bot,
   Boxes,
   ClipboardList,
   Gamepad2,
@@ -51,15 +50,6 @@ export const adminNavigation: AdminNavigationItem[] = [
     dashboardTitle: "Questions management",
     dashboardDescription: "مراجعة الأسئلة واعتماد المحتوى.",
   },
-  {
-    label: "AI",
-    href: "/admin/ai-generator",
-    icon: Bot,
-    showOnDashboard: true,
-    dashboardTitle: "AI question generation",
-    dashboardDescription: "توليد أسئلة كمسودات للمراجعة.",
-  },
-  { label: "AI Generated", href: "/admin/ai-generated", icon: Bot },
   {
     label: "المستخدمين",
     href: "/admin/subscriptions",

@@ -348,6 +348,13 @@ export function AiGeneratedReview() {
                         className="w-full"
                         src={getMediaUrl(primary)}
                       />
+                    ) : question.type === "video" ? (
+                      <video
+                        controls
+                        preload="metadata"
+                        className="max-h-64 w-full object-contain"
+                        src={getMediaUrl(primary)}
+                      />
                     ) : (
                       <Image
                         src={getMediaUrl(primary)}

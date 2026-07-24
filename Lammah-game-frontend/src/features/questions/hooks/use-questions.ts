@@ -3,6 +3,7 @@
 import type { AxiosError } from "axios";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  questionsCreate,
   useQuestionsCreate,
   useQuestionsDelete,
   useQuestionsUpdate,
@@ -14,8 +15,24 @@ import {
   useQuestionsListAiGenerated,
   useQuestionsRetryCoverImage,
   useQuestionsRetryPrimaryAsset,
+  useQuestionsRetryAudio,
+  useQuestionsApproveAudio,
+  useQuestionsRejectAudio,
+  useQuestionsUpdateAudioRequest,
+  useQuestionsUploadAudio,
+  useQuestionsListAudioCandidates,
+  useQuestionsSelectAudioCandidate,
+  useQuestionsPreviewMediaClip,
+  useQuestionsRemoveAudioAsset,
+  useQuestionsGenerateAcceptedAnswers,
+  useQuestionsGenerateRankedAcceptedAnswers,
+  useQuestionsUploadImage,
+  useQuestionsRemoveImage,
 } from "@/api/generated/admin-questions/admin-questions";
-import type { ErrorResponseDto } from "@/api/generated/models";
+import type {
+  ErrorResponseDto,
+  QuestionsCreateBodyOne,
+} from "@/api/generated/models";
 import type { Question } from "@/types";
 import {
   toQuestionFilters,
@@ -28,6 +45,31 @@ import {
 import { toQuestion, toQuestions } from "../mappers/question-response.mapper";
 
 type QuestionApiError = AxiosError<ErrorResponseDto>;
+const MEDIA_DETAIL_POLLING_STATUSES = new Set([
+  "pending",
+  "searching",
+  "processing",
+]);
+const MEDIA_CANDIDATE_POLLING_STATUSES = new Set([
+  "searching",
+  "processing",
+]);
+
+export const mediaDetailRefetchInterval = (response?: {
+  data?: { audioStatus?: string };
+}) =>
+  MEDIA_DETAIL_POLLING_STATUSES.has(response?.data?.audioStatus ?? "")
+    ? 1_000
+    : false;
+
+export const mediaCandidatesRefetchInterval = (
+  enabled: boolean,
+  audioStatus?: string,
+) =>
+  enabled && MEDIA_CANDIDATE_POLLING_STATUSES.has(audioStatus ?? "")
+    ? 2_000
+    : false;
+
 export const questionKeys = {
   all: ["questions"] as const,
   detail: (id: string) => ["questions", id] as const,
@@ -40,7 +82,12 @@ const useInvalidateQuestions = () => {
   return (id?: string) => {
     client.invalidateQueries({ queryKey: questionKeys.all });
     client.invalidateQueries({ queryKey: ["ai-generation"] });
-    if (id) client.invalidateQueries({ queryKey: questionKeys.detail(id) });
+    if (id) {
+      client.invalidateQueries({ queryKey: questionKeys.detail(id) });
+      client.invalidateQueries({
+        queryKey: [`/admin/questions/${id}/audio/candidates`],
+      });
+    }
   };
 };
 
@@ -54,6 +101,12 @@ export const useQuestion = (id: string) =>
       queryKey: questionKeys.detail(id),
       enabled: Boolean(id),
       select: (r) => toQuestion(r.data),
+      refetchInterval: (query) => {
+        const response = query.state.data as
+          | { data?: { audioStatus?: string } }
+          | undefined;
+        return mediaDetailRefetchInterval(response);
+      },
     },
   });
 export const useAiGeneratedQuestions = (filters: QuestionFilterState) =>
@@ -71,10 +124,24 @@ export function useCreateQuestion() {
   });
   return {
     ...mutation,
-    mutateAsync: (data: Partial<Question>) =>
-      mutation
-        .mutateAsync({ data: toCreateQuestionRequest(data) })
-        .then((r) => toQuestion(r.data)),
+    mutateAsync: async (data: Partial<Question>, image?: File | null) => {
+      if (!image) {
+        return mutation
+          .mutateAsync({ data: toCreateQuestionRequest(data) })
+          .then((r) => toQuestion(r.data));
+      }
+      const formData = new FormData();
+      formData.append(
+        "question",
+        JSON.stringify(toCreateQuestionRequest(data)),
+      );
+      formData.append("image", image);
+      const response = await questionsCreate(
+        formData as unknown as QuestionsCreateBodyOne,
+      );
+      invalidate();
+      return toQuestion(response.data);
+    },
   };
 }
 export function usePatchQuestion() {
@@ -92,13 +159,41 @@ export function usePatchQuestion() {
         { id: input.id, data: toUpdateQuestionRequest(input.data) },
         options,
       ),
-    mutateAsync: (input: { id: string; data: Partial<Question> }) =>
+    mutateAsync: async (input: {
+      id: string;
+      data: Partial<Question>;
+    }) =>
       mutation
         .mutateAsync({
           id: input.id,
           data: toUpdateQuestionRequest(input.data),
         })
         .then((r) => toQuestion(r.data)),
+  };
+}
+
+export function useQuestionImageActions() {
+  const invalidate = useInvalidateQuestions();
+  const upload = useQuestionsUploadImage<QuestionApiError>({
+    mutation: {
+      onSuccess: (_, variables) => invalidate(variables.id),
+    },
+  });
+  const remove = useQuestionsRemoveImage<QuestionApiError>({
+    mutation: {
+      onSuccess: (_, variables) => invalidate(variables.id),
+    },
+  });
+  return {
+    upload: async (input: { id: string; file: File }) =>
+      upload
+        .mutateAsync({ id: input.id, data: { file: input.file } })
+        .then((response) => toQuestion(response.data)),
+    remove: async (id: string) =>
+      remove.mutateAsync({ id }).then((response) => toQuestion(response.data)),
+    isUploading: upload.isPending,
+    isRemoving: remove.isPending,
+    error: upload.error ?? remove.error,
   };
 }
 export function useUpdateQuestion(id: string) {
@@ -108,6 +203,12 @@ export function useUpdateQuestion(id: string) {
     mutateAsync: (data: Partial<Question>) => patch.mutateAsync({ id, data }),
   };
 }
+
+export const useGenerateAcceptedAnswers = () =>
+  useQuestionsGenerateAcceptedAnswers<QuestionApiError>();
+
+export const useGenerateRankedAcceptedAnswers = () =>
+  useQuestionsGenerateRankedAcceptedAnswers<QuestionApiError>();
 export function useUpdateQuestionStatus() {
   const patch = usePatchQuestion();
   return {
@@ -179,4 +280,67 @@ export function useRetryQuestionAsset() {
         ).data,
       ),
   };
+}
+
+export function useQuestionAudioActions() {
+  const invalidate = useInvalidateQuestions();
+  const options = {
+    mutation: {
+      onSuccess: (_data: unknown, variables: { id: string }) =>
+        invalidate(variables.id),
+    },
+  };
+  const retry = useQuestionsRetryAudio<QuestionApiError>(options);
+  const approve = useQuestionsApproveAudio<QuestionApiError>(options);
+  const reject = useQuestionsRejectAudio<QuestionApiError>(options);
+  const updateRequest = useQuestionsUpdateAudioRequest<QuestionApiError>({
+    mutation: { onSuccess: (_, variables) => invalidate(variables.id) },
+  });
+  const upload = useQuestionsUploadAudio<QuestionApiError>({
+    mutation: { onSuccess: (_, variables) => invalidate(variables.id) },
+  });
+  const selectCandidate = useQuestionsSelectAudioCandidate<QuestionApiError>({
+    mutation: { onSuccess: (_, variables) => invalidate(variables.id) },
+  });
+  const preview = useQuestionsPreviewMediaClip<QuestionApiError>({
+    mutation: { onSuccess: (_, variables) => invalidate(variables.id) },
+  });
+  const remove = useQuestionsRemoveAudioAsset<QuestionApiError>({
+    mutation: { onSuccess: (_, variables) => invalidate(variables.id) },
+  });
+  return {
+    isPending:
+      retry.isPending ||
+      approve.isPending ||
+      reject.isPending ||
+      updateRequest.isPending ||
+      upload.isPending ||
+      selectCandidate.isPending ||
+      preview.isPending ||
+      remove.isPending,
+    retry: (id: string, mode: "research" | "retryProcessing") =>
+      retry.mutate({ id, data: { mode } }),
+    approve: (id: string) => approve.mutate({ id }),
+    reject: (id: string) => reject.mutate({ id }),
+    updateRequest: updateRequest.mutateAsync,
+    preview: preview.mutateAsync,
+    upload: (id: string, audio: File) => upload.mutate({ id, data: { audio } }),
+    remove: (id: string) => remove.mutate({ id }),
+    selectCandidate: (id: string, candidateId: string) =>
+      selectCandidate.mutate({ id, candidateId }),
+  };
+}
+
+export function useQuestionAudioCandidates(
+  id: string,
+  enabled: boolean,
+  audioStatus?: string,
+) {
+  return useQuestionsListAudioCandidates(id, {
+    query: {
+      enabled: Boolean(id && enabled),
+      refetchInterval: mediaCandidatesRefetchInterval(enabled, audioStatus),
+      select: (response) => response.data,
+    },
+  });
 }

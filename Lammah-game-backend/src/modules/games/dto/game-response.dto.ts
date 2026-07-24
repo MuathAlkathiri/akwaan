@@ -9,6 +9,29 @@ export class GameTeamResponseDto {
   @ApiProperty() score!: number;
 }
 
+export class GameQuestionPresentationResponseDto {
+  @ApiProperty({ enum: ['text', 'image', 'audio', 'video', 'gif'] })
+  preferredType!: 'text' | 'image' | 'audio' | 'video' | 'gif';
+  @ApiProperty({ enum: ['text', 'image', 'audio', 'video'] })
+  type!: 'text' | 'image' | 'audio' | 'video';
+  @ApiProperty() mediaAvailable!: boolean;
+  @ApiPropertyOptional() mediaUrl?: string;
+  @ApiPropertyOptional() mediaDuration?: number;
+  @ApiPropertyOptional({
+    enum: [
+      'NO_MEDIA',
+      'NOT_READY',
+      'PROCESSING',
+      'FAILED',
+      'REJECTED',
+      'STALE',
+      'MISSING_ASSET',
+      'INVALID_ASSET',
+    ],
+  })
+  fallbackReason?: string;
+}
+
 export class GameBoardQuestionResponseDto {
   @ApiPropertyOptional() _id?: string;
   @ApiProperty({ type: QuestionResponseDto })
@@ -18,6 +41,8 @@ export class GameBoardQuestionResponseDto {
   @ApiProperty() isAnswerRevealed!: boolean;
   @ApiPropertyOptional() answeredByTeamIndex?: number;
   @ApiPropertyOptional() awardedPoints?: number;
+  @ApiPropertyOptional({ type: GameQuestionPresentationResponseDto })
+  presentation?: GameQuestionPresentationResponseDto;
 }
 
 export class GameCategoryBoardResponseDto {
@@ -54,4 +79,39 @@ export class GameDetailResponseDto {
 
 export class GameMutationResponseDto extends GameDetailResponseDto {
   @ApiProperty() message!: string;
+}
+
+export class GameCreationValidationDetailDto {
+  @ApiProperty() code!: string;
+  @ApiProperty() message!: string;
+  @ApiProperty() categoryId!: string;
+  @ApiPropertyOptional() catalogId?: string;
+  @ApiProperty({ enum: ['STANDARD', 'TOP_10'] })
+  gameplayMode!: 'STANDARD' | 'TOP_10';
+  @ApiPropertyOptional() questionId?: string;
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: { type: 'number' },
+  })
+  requiredCounts?: Record<string, number>;
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: { type: 'number' },
+  })
+  actualCounts?: Record<string, number>;
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: { type: 'number' },
+  })
+  pointDistribution?: Record<string, number>;
+}
+
+export class GameCreationValidationErrorDto {
+  @ApiProperty({ example: 400 }) statusCode!: number;
+  @ApiProperty({ example: 'Bad Request' }) error!: string;
+  @ApiProperty({ example: 'STANDARD_MISSING_200_QUESTIONS' }) code!: string;
+  @ApiProperty() message!: string;
+  @ApiProperty({ type: [String] }) issueCodes!: string[];
+  @ApiProperty({ type: [GameCreationValidationDetailDto] })
+  details!: GameCreationValidationDetailDto[];
 }

@@ -11,6 +11,8 @@ export type LoadedKnowledge = {
   requestedFile: string;
   knowledgeFile: string;
   usedDefaultKnowledge: boolean;
+  localKnowledgeFound: boolean;
+  issueCode?: 'CATEGORY_LOCAL_KNOWLEDGE_NOT_FOUND';
   knowledge: ParsedKnowledge;
 };
 
@@ -19,20 +21,34 @@ export class KnowledgeLoaderService {
   private readonly cache = new Map<string, ParsedKnowledge>();
   private readonly defaultKnowledgeFile = 'default.md';
 
-  async load(knowledgeFile?: string | null): Promise<LoadedKnowledge> {
+  async load(
+    knowledgeFile?: string | null,
+    options: { allowDefault?: boolean } = {},
+  ): Promise<LoadedKnowledge> {
     const requestedFile = this.normalizeKnowledgeFile(
       knowledgeFile || this.defaultKnowledgeFile,
     );
-    const resolvedFile = (await this.exists(requestedFile))
+    const found = await this.exists(requestedFile);
+    const allowDefault = options.allowDefault === true;
+    const resolvedFile = found
       ? requestedFile
-      : this.defaultKnowledgeFile;
+      : allowDefault
+        ? this.defaultKnowledgeFile
+        : requestedFile;
     const usedDefaultKnowledge = resolvedFile === this.defaultKnowledgeFile;
 
     return {
       requestedFile,
       knowledgeFile: resolvedFile,
       usedDefaultKnowledge,
-      knowledge: await this.loadParsed(resolvedFile),
+      localKnowledgeFound: found || (allowDefault && usedDefaultKnowledge),
+      ...(!found && !allowDefault
+        ? { issueCode: 'CATEGORY_LOCAL_KNOWLEDGE_NOT_FOUND' as const }
+        : {}),
+      knowledge:
+        found || allowDefault
+          ? await this.loadParsed(resolvedFile)
+          : { raw: '', sections: {} },
     };
   }
 

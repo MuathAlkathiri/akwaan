@@ -1,66 +1,62 @@
-# AI generation architecture
+# Retired AI generation architecture
 
-Lammah’s reviewed AI generator is moving toward a configuration-driven pipeline:
+## Runtime status
+
+AI question generation is not part of the active product workflow. The legacy
+generation routes remain only as authenticated compatibility surfaces and return
+`AI_QUESTION_GENERATION_DISABLED` with HTTP 503. `AiAgentModule` does not register
+the planner, research, source-curation, writer, reviewer, repair, language, LLM,
+or generated-draft services.
+
+`AI_QUESTION_GENERATION_ENABLED` defaults to `false`. It is retained as an
+operational compatibility setting; enabling it does not restore the retired
+runtime graph. Recovery of the old implementation must be deliberate and use Git
+history rather than silently activating dormant services.
+
+## Dependency map
+
+The former generation path was:
 
 ```text
-Generation request
-→ category profile resolution
-→ global question policy
-→ reusable question pattern
-→ structured draft parsing/normalization
-→ deterministic pre-verification validation
-→ bounded repair/quality tagging
-→ Wigolo entity verification
-→ asset planning/provider search
-→ reviewed draft
+generation controllers
+  -> generation/source-curated pipeline
+     -> planner and category profiles
+     -> research router/providers and source adapters
+     -> writer/curator/reviewer/repair and LLM client
+     -> deterministic/language/source-fidelity validators
+     -> generation duplicate detector
+     -> asset service/providers
+     -> reviewed draft persistence
 ```
 
-The core orchestrator should coordinate stages. It should not learn every category’s trivia rules.
+The active manual path is:
 
-## Separation of responsibilities
+```text
+admin question CRUD
+  -> category-policy and deterministic DTO validation
+  -> QuestionDuplicateDetectionService
+  -> save draft
+  -> QuestionAudioJobService (when required)
+     -> QuestionAudioProcessingService
+        -> Wigolo bounded source discovery
+        -> shared AssetService/provider selection
+        -> yt-dlp + FFprobe/FFmpeg + LocalAudioStorageService
+  -> QuestionAudioReviewService
+  -> admin question approval
+```
 
-- Global policy: universal quality rules such as one objective answer, no vague/generic answers, no answer leakage, natural Arabic wording, and no unsupported claims.
-- Category profile: what this category allows: entity types, patterns, assets, forbidden answer classes, required fields, locale behavior, and verification policy.
-- Question pattern: reusable semantic shape such as `identifyCharacter`, `identifySong`, `identifyLocation`, `identifyWeapon`, `timelineEvent`, or `textTrivia`.
-- Knowledge content: factual category/domain material the model may use.
+## Retained reusable boundaries
 
-Do not collapse these into one giant markdown prompt.
+- `WigoloClient` remains available for bounded audio discovery and readiness.
+- `AssetService`, asset provider contracts, YouTube/yt-dlp integration, media
+  inspection/processing, and local audio storage remain shared infrastructure.
+- `QuestionDuplicateDetectionService` is standalone and has no generation-agent
+  dependency.
+- `AudioQuestionCatalogService` converts generic JSON entries and legacy song
+  entries to the same `QuestionAudioRequest` used by manual CRUD.
+- Existing generation implementation files remain unregistered for Git-history
+  continuity and isolated historical tests; they are not runtime dependencies.
 
-## Adding a normal category
-
-1. Choose a stable category key.
-2. Add or update one validated `CategoryGenerationProfile`.
-3. Reuse existing pattern IDs when possible.
-4. Define allowed entity types and required canonical fields.
-5. Add or link knowledge content only for factual grounding.
-6. Add profile contract tests.
-7. Run profile integrity validation.
-8. Do not edit the main orchestrator unless adding a genuinely reusable framework capability.
-
-## When custom code is justified
-
-Use a custom rule or strategy only when a reusable pattern/profile cannot express the requirement safely. Examples:
-
-- verified Gulf music pool selection
-- category-specific canonical alias normalization
-- specialized entity candidate planning
-
-Custom logic should be registered by rule/strategy ID and referenced from profiles. Do not put provider calls or category-specific branches inside the main orchestration flow.
-
-## Anti-patterns
-
-- Adding `if category === ...` chains for every new category.
-- Letting the LLM return only `question` and `correctAnswer` for entity-backed questions.
-- Sending vague entities like `Political Alliances`, `Power`, or `Adventure` to Wigolo.
-- Searching providers before verification permits it.
-- Exposing raw prompts, raw MCP payloads, local paths, or provider internals to the frontend.
-
-## Current built-in profiles
-
-- `general-text-trivia`
-- `gulf-music`
-- `anime`
-- `video-games`
-- `from-series`
-
-Video-games is the first broad category profile proving the architecture. It rejects generic/abstract answers and requires concrete game context such as `gameTitle` for game-specific entities.
+No generation code was destructively removed as part of this transition, so no
+cleanup tag was required. If physical deletion is done later, create a recovery
+tag first and re-run dependency, integration, OpenAPI, and media checks.

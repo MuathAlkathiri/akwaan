@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { ReactNode, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from './auth-provider';
+import { ReactNode, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "./auth-provider";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -10,11 +10,12 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace('/login');
+      router.replace("/login");
     }
   }, [isAuthenticated, isLoading, router]);
 
-  if (isLoading) return <div className="text-center py-10">جاري التحقق من الدخول...</div>;
+  if (isLoading)
+    return <div className="text-center py-10">جاري التحقق من الدخول...</div>;
   if (!isAuthenticated) return null;
 
   return <>{children}</>;

@@ -43,7 +43,6 @@ import { GameplayValidatorService } from './services/gameplay-validator.service'
 import { WrongAnswerRepairService } from './services/wrong-answer-repair.service';
 import { QuestionWordingService } from './services/question-wording.service';
 import { LlmClientService } from './infrastructure/ai/llm-client.service';
-import { ContentOrchestratorService } from './application/content-orchestrator.service';
 import { EntityVerificationService } from './application/entity-verification.service';
 import { entityVerificationPolicy } from './application/entity-verification.policy';
 import type {
@@ -64,6 +63,10 @@ import {
 } from './application/category-generation-profile.registry';
 import type { QuestionPatternId } from './application/generation-quality.types';
 import { preVerificationQualityValidator } from './application/pre-verification-quality.validator';
+import { ArabicSongCatalogService } from './services/arabic-song-catalog.service';
+import { AiGenerationPipelineService } from './application/ai-generation-pipeline.service';
+import { KnowledgePackRegistry } from './application/knowledge-pack.registry';
+import { createZeroDraftGenerationException } from './application/reviewed-generation-error.factory';
 
 const execFileAsync = promisify(execFile);
 
@@ -130,6 +133,8 @@ type ReviewedGenerationContext = {
   loadedKnowledge: LoadedKnowledge;
   gulfMusic: boolean;
   categoryProfileResolution: CategoryProfileResolution;
+  resolvedCategoryKey?: string;
+  resolvedCatalogKey?: string;
 };
 
 interface ChatCompletionResponse {
@@ -145,8 +150,9 @@ interface ChatCompletionResponse {
 
 @Injectable()
 export class AiAgentService {
+  private readonly knowledgePacks = new KnowledgePackRegistry();
   private static readonly DEFAULT_QUESTION_COUNT = 2;
-  private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 120000;
+  private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 300000;
   private static readonly DEFAULT_MAX_TOKENS = 4096;
   private static readonly DEFAULT_TTS_VOICE = 'Majed';
 
@@ -172,9 +178,10 @@ export class AiAgentService {
     private wrongAnswerRepair: WrongAnswerRepairService,
     private questionWording: QuestionWordingService,
     private llmClient: LlmClientService,
-    private contentOrchestrator: ContentOrchestratorService,
     private readonly questionRepository: QuestionRepository,
+    private readonly generationPipeline: AiGenerationPipelineService,
     @Optional() private readonly entityVerification?: EntityVerificationService,
+    private readonly arabicSongCatalog?: ArabicSongCatalogService,
   ) {
     this.aiProvider =
       this.configService.get<string>('AI_PROVIDER')?.toLowerCase() ??
@@ -250,194 +257,124 @@ export class AiAgentService {
   async generateQuestions(generateQuestionsDto: GenerateQuestionsDto) {
     const { categoryId, count = AiAgentService.DEFAULT_QUESTION_COUNT } =
       generateQuestionsDto;
-
-    // Verify category exists
-    const category =
-      await this.categoriesService.findByIdForGeneration(categoryId);
-
-    try {
-      if (this.isSongsCategory(category.name)) {
-        throw new BadRequestException(
-          'Music questions must be created from admin-uploaded audio via /admin/music-tracks/upload.',
-        );
-      }
-
-      const prompt = this.buildPrompt(category.name, count);
-      const aiResponse = await this.callAiProvider(prompt);
-      const parsedQuestions = this.parseAiResponse(aiResponse);
-      const validatedQuestions = this.normalizeQuestionsForCategory(
-        this.validateGeneratedQuestions(parsedQuestions, count),
-        category.name,
-      );
-
-      const generatedCount = validatedQuestions.length;
-      let rejectedCount = 0;
-      let rewrittenCount = 0;
-
-      const reviewedQuestions: DraftGeneratedQuestion[] = [];
-
-      for (const question of validatedQuestions) {
-        const review = this.reviewGeneratedQuestion(question);
-
-        if (this.aiEnableRewrite && review.shouldRewrite) {
-          rewrittenCount += 1;
-
-          try {
-            const rewritten = await this.rewriteQuestion(
-              question,
-              category.name,
-            );
-            const rewrittenValidated = this.validateGeneratedQuestions([
-              rewritten,
-            ]);
-            reviewedQuestions.push(rewrittenValidated[0]);
-          } catch (rewriteError) {
-            rejectedCount += 1;
-            console.log(
-              `Question rewrite rejected: ${question.question} - ${rewriteError instanceof Error ? rewriteError.message : String(rewriteError)}`,
-            );
-          }
-        } else {
-          reviewedQuestions.push(question);
-        }
-      }
-
-      const uniqueQuestions = await this.removeDuplicates(
-        reviewedQuestions,
-        categoryId,
-      );
-      rejectedCount += reviewedQuestions.length - uniqueQuestions.length;
-
-      if (uniqueQuestions.length === 0) {
-        throw new BadRequestException(
-          'No valid questions were generated or all generated questions are duplicates',
-        );
-      }
-
-      const savedQuestions = await this.saveDraftQuestions(
-        uniqueQuestions,
-        categoryId,
-      );
-
-      console.log(
-        `AI generation summary for category ${category.name}: generated=${generatedCount}, rewritten=${rewrittenCount}, rejected=${rejectedCount}, saved=${savedQuestions.length}`,
-      );
-
-      return {
-        message: 'Questions generated successfully',
-        count: savedQuestions.length,
-        data: savedQuestions,
-      };
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      if (error instanceof SyntaxError) {
-        throw new BadRequestException('Invalid JSON response from AI');
-      }
-
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      throw new InternalServerErrorException(
-        `Failed to generate questions: ${errorMessage}`,
-      );
-    }
+    const reviewed = await this.generateReviewedQuestions({
+      categoryId,
+      count,
+    });
+    const saved = await this.saveReviewedDrafts({
+      categoryId,
+      drafts: reviewed.data.questions,
+    });
+    return {
+      message: 'Questions generated successfully',
+      count: saved.savedQuestions.length,
+      data: saved.savedQuestions,
+    };
   }
 
   async generateReviewedQuestions(dto: GenerateReviewedQuestionsDto) {
     try {
+      if (dto.allowGeneratedFallback)
+        throw new BadRequestException(
+          'Generated fallback is disabled for source-curated generation',
+        );
       const context = await this.resolveReviewedGenerationContext(dto);
       const gameplayConfig = this.profileGameplayConfig(
         context.categoryProfileResolution.profile,
         context.gameplayConfig,
       );
-      const useMultiAgent =
-        this.configService
-          .get<string>('MULTI_AGENT_CONTENT_PIPELINE')
-          ?.toLowerCase() === 'true';
-      const songs = context.gulfMusic
-        ? gulfMusicQuestionPolicy.parseKnowledge(
-            context.loadedKnowledge.knowledge.raw,
-          )
-        : [];
       let questions: ReviewedQuestionDraft[];
+      let pipelineMeta: Record<string, unknown> = {};
+      let canonicalPipelineUsed = false;
       if (context.gulfMusic) {
+        const songs = await this.arabicSongCatalog?.load();
+        if (!songs?.length)
+          throw new BadRequestException('Arabic song catalog is empty');
         questions = this.buildGulfMusicDrafts(
           songs,
           context.difficulty,
-          songs.length,
+          context.count,
           gameplayConfig?.maxAudioDuration ?? 15,
         );
       } else {
-        const prompt = this.promptBuilder.buildReviewedQuestionsPrompt({
-          catalogName: context.catalogName,
-          categoryName: context.categoryName,
-          difficulty: context.difficulty,
+        canonicalPipelineUsed = true;
+        const persisted = dto.categoryId
+          ? await this.questionRepository.findQuestionTexts(dto.categoryId)
+          : [];
+        const pipeline = await this.generationPipeline.execute({
           count: context.count,
-          language: context.language,
+          difficulty: dto.difficulty,
+          categoryId: dto.categoryId,
+          categoryName: context.categoryName,
+          catalogName: context.catalogName,
+          requestedLanguage: context.language,
+          profile: context.categoryProfileResolution.profile,
+          gameplay: gameplayConfig,
           knowledgeFile: context.loadedKnowledge.knowledgeFile,
-          usedDefaultKnowledge: context.loadedKnowledge.usedDefaultKnowledge,
-          knowledge: context.loadedKnowledge.knowledge,
-          aiConfig: context.aiConfig,
-          gameplayConfig,
-          categoryProfile: context.categoryProfileResolution.profile,
+          knowledge: context.loadedKnowledge.knowledge.raw,
+          persisted,
+          sourceIds: dto.sourceIds,
+          strategy: dto.strategy ?? 'source-curated',
+          allowGeneratedFallback: false,
         });
-        let aiResponse: string;
-        if (useMultiAgent) {
-          try {
-            const orchestrated = await this.contentOrchestrator.execute(
-              prompt,
-              {
-                knowledgeFile: context.loadedKnowledge.knowledgeFile,
-                language: context.language,
-                difficulty: context.difficulty,
-                modelConfig: { temperature: context.aiConfig?.temperature },
-              },
-            );
-            aiResponse = JSON.stringify(orchestrated);
-          } catch {
-            aiResponse = await this.callAiProvider(
-              prompt,
-              context.aiConfig?.temperature,
-            );
-          }
-        } else {
-          aiResponse = await this.callAiProvider(
-            prompt,
-            context.aiConfig?.temperature,
-          );
-        }
-        questions = this.parseAndNormalizeReviewedResponse(
-          aiResponse,
-          context.difficulty,
-        ).slice(0, context.count);
+        questions = pipeline.drafts.map((draft, index) =>
+          this.normalizeReviewedQuestion(draft, context.difficulty, index),
+        );
+        pipelineMeta = {
+          pipelineVersion: '3.0',
+          generationRequestId: pipeline.generationRequestId,
+          plannedSlots: pipeline.slots.length,
+          createdSlots: pipeline.results.filter(
+            (result) => result.status === 'created',
+          ).length,
+          rejectedSlots: pipeline.results.filter(
+            (result) => result.status === 'rejected',
+          ).length,
+          failedSlots: pipeline.results.filter(
+            (result) => result.status === 'failed',
+          ).length,
+          slotDiagnostics: pipeline.results,
+          sourceDiagnostics:
+            'sourceDiagnostics' in pipeline ? pipeline.sourceDiagnostics : [],
+          candidateDiagnostics:
+            'candidateDiagnostics' in pipeline
+              ? pipeline.candidateDiagnostics
+              : [],
+          sourceSummary:
+            'sourceSummary' in pipeline ? pipeline.sourceSummary : undefined,
+        };
       }
-      const groundedQuestions = context.gulfMusic ? questions : questions;
+      const groundedQuestions = questions;
       const normalizedGameplayConfig =
         this.promptBuilder.normalizeGameplayConfig(gameplayConfig);
-      const gameplayValidatedQuestions = groundedQuestions.map((question) =>
-        this.gameplayValidator.normalize(
-          question,
-          normalizedGameplayConfig.maxAudioDuration,
-        ),
-      );
-      const wordingRepairedQuestions = await this.repairQuestionWording(
-        gameplayValidatedQuestions,
-      );
-      const repairedQuestions = await this.repairWrongAnswers(
-        wordingRepairedQuestions,
-        context.categoryName,
-      );
-      const qualityValidatedQuestions = repairedQuestions.map(
-        (question, index) =>
-          this.validateReviewedQuestionQuality(question, index),
-      );
-      const preVerificationValidatedQuestions =
-        this.applyPreVerificationQuality(
-          context.categoryProfileResolution.profile,
-          qualityValidatedQuestions,
-        );
+      const gameplayValidatedQuestions = canonicalPipelineUsed
+        ? groundedQuestions
+        : groundedQuestions.map((question) =>
+            this.gameplayValidator.normalize(
+              question,
+              normalizedGameplayConfig.maxAudioDuration,
+            ),
+          );
+      const wordingRepairedQuestions = canonicalPipelineUsed
+        ? gameplayValidatedQuestions
+        : await this.repairQuestionWording(gameplayValidatedQuestions);
+      const repairedQuestions = canonicalPipelineUsed
+        ? wordingRepairedQuestions
+        : await this.repairWrongAnswers(
+            wordingRepairedQuestions,
+            context.categoryName,
+          );
+      const qualityValidatedQuestions = canonicalPipelineUsed
+        ? repairedQuestions
+        : repairedQuestions.map((question, index) =>
+            this.validateReviewedQuestionQuality(question, index),
+          );
+      const preVerificationValidatedQuestions = canonicalPipelineUsed
+        ? qualityValidatedQuestions
+        : this.applyPreVerificationQuality(
+            context.categoryProfileResolution.profile,
+            qualityValidatedQuestions,
+          );
       let questionsWithAssets = await this.processDraftAssets(
         preVerificationValidatedQuestions,
         gameplayConfig,
@@ -450,7 +387,11 @@ export class AiAgentService {
       }
 
       if (questionsWithAssets.length === 0) {
-        throw new BadRequestException('AI did not return any question drafts');
+        if (context.gulfMusic)
+          throw new BadRequestException(
+            'No verified Arabic song produced a matching YouTube audio clip. The generated title/artist pairs were rejected by verification or media matching; please retry.',
+          );
+        throw createZeroDraftGenerationException(pipelineMeta);
       }
 
       return {
@@ -460,6 +401,8 @@ export class AiAgentService {
           knowledgeFile: context.loadedKnowledge.knowledgeFile,
           requestedKnowledgeFile: context.loadedKnowledge.requestedFile,
           usedDefaultKnowledge: context.loadedKnowledge.usedDefaultKnowledge,
+          localKnowledgeFound: context.loadedKnowledge.localKnowledgeFound,
+          localKnowledgeIssueCode: context.loadedKnowledge.issueCode,
           source: context.source,
           hasAiConfig: Boolean(context.aiConfig),
           hasGameplayConfig: Boolean(context.gameplayConfig),
@@ -467,7 +410,7 @@ export class AiAgentService {
           gameplayConfigUsed: true,
           gameModes: normalizedGameplayConfig.gameModes,
           gameplayValidatorUsed: true,
-          multiAgentContentPipeline: useMultiAgent,
+          multiAgentContentPipeline: false,
           categoryProfileId: context.categoryProfileResolution.profile.id,
           categoryProfileVersion:
             context.categoryProfileResolution.profile.version,
@@ -475,6 +418,17 @@ export class AiAgentService {
             context.categoryProfileResolution.fallbackUsed,
           categoryProfileIssueCodes:
             context.categoryProfileResolution.issues.map((issue) => issue.code),
+          resolvedKnowledgePackId: context.categoryProfileResolution.profile.id,
+          resolvedKnowledgePackVersion:
+            context.categoryProfileResolution.profile.version,
+          categoryMatchStrategy:
+            context.categoryProfileResolution.matchStrategy,
+          requestedCategoryId: dto.categoryId,
+          categoryName: context.categoryName,
+          resolvedCategoryKey: context.resolvedCategoryKey,
+          resolvedCatalogKey: context.resolvedCatalogKey,
+          requestedCount: dto.count ?? AiAgentService.DEFAULT_QUESTION_COUNT,
+          effectiveCount: context.count,
           providerSelection: 'assetService',
           gulfMusicWorkflow: context.gulfMusic,
           imageProviders: ['wikimedia'],
@@ -491,6 +445,7 @@ export class AiAgentService {
           wordingRepairUsed: wordingRepairedQuestions.some((question) =>
             question.issues.includes('QUESTION_WORDING_REPAIRED'),
           ),
+          ...pipelineMeta,
         },
         data: {
           questions: questionsWithAssets,
@@ -517,7 +472,7 @@ export class AiAgentService {
       dto.categoryId,
     );
     const normalizedExisting = new Set(
-      existing.map((item) => this.normalizeDuplicateText(item.question)),
+      existing.map((item) => this.reviewedDraftDuplicateKey(item)),
     );
     const savedQuestions: Question[] = [];
     const failures: Array<{ index: number; reason: string }> = [];
@@ -529,7 +484,11 @@ export class AiAgentService {
           this.readString(raw.correctAnswer) || this.readString(raw.answer);
         if (!question) throw new Error('Missing question');
         if (!correctAnswer) throw new Error('Missing correctAnswer');
-        const duplicateKey = this.normalizeDuplicateText(question);
+        const duplicateKey = this.reviewedDraftDuplicateKey({
+          ...raw,
+          question,
+          correctAnswer,
+        });
         if (normalizedExisting.has(duplicateKey))
           throw new Error('Duplicate question in this category');
         const difficulty = ['easy', 'medium', 'hard'].includes(
@@ -612,6 +571,26 @@ export class AiAgentService {
       .trim();
   }
 
+  private reviewedDraftDuplicateKey(raw: Record<string, unknown>) {
+    const question = this.readString(raw.question);
+    const gameMode = this.readString(raw.gameMode);
+    if (
+      ['identifySong', 'identifySinger', 'identifyMusicIntro'].includes(
+        gameMode,
+      )
+    ) {
+      const request = (raw.primaryAssetRequest ?? raw.assetRequest ?? {}) as
+        Record<string, unknown> | undefined;
+      const title =
+        this.readString(request?.title) ||
+        this.readString(raw.correctAnswer) ||
+        this.readString(raw.answer);
+      const artist = this.readString(request?.artist);
+      return `music:${this.normalizeDuplicateText(title)}::${this.normalizeDuplicateText(artist)}`;
+    }
+    return `question:${this.normalizeDuplicateText(question)}`;
+  }
+
   private resolveCatalogIdForDraft(category: unknown) {
     const record = category as { catalogId?: unknown; catalog?: unknown };
     const value = record.catalogId ?? record.catalog;
@@ -644,18 +623,40 @@ export class AiAgentService {
         );
       }
 
-      const inferredKnowledgeFile = this.knowledgeLoader.inferKnowledgeFile(
-        this.resolveCatalogSlugOrName(catalog, catalogName),
-        category.slug || categoryName,
-      );
-      const loadedKnowledge = await this.knowledgeLoader.load(
-        category.aiConfig?.knowledgeFile || inferredKnowledgeFile,
-      );
       const categoryProfileResolution = categoryProfileRegistry.resolve({
         catalogName,
         categoryName,
-        knowledgeFile: loadedKnowledge.knowledgeFile,
+        categoryKey: this.readString(
+          (category as unknown as Record<string, unknown>).key,
+        ),
+        categorySlug: category.slug,
+        catalogKey:
+          catalog && typeof catalog === 'object'
+            ? this.readString(
+                (catalog as unknown as Record<string, unknown>).key,
+              )
+            : undefined,
+        catalogSlug: this.resolveCatalogSlugOrName(catalog, catalogName),
       });
+      const pack = this.knowledgePacks.fromProfile(
+        categoryProfileResolution.profile,
+      );
+      const inferredKnowledgeFile =
+        pack.localKnowledgeFiles?.[0] ??
+        this.knowledgeLoader.inferKnowledgeFile(
+          this.resolveCatalogSlugOrName(catalog, catalogName),
+          category.slug || categoryName,
+        );
+      const loadedKnowledge = await this.knowledgeLoader.load(
+        category.aiConfig?.knowledgeFile || inferredKnowledgeFile,
+        {
+          allowDefault:
+            categoryProfileResolution.profile.id === 'general-text-trivia' &&
+            ['default', 'lammah', 'demo', 'system'].includes(
+              (category.slug || '').toLowerCase(),
+            ),
+        },
+      );
 
       return {
         catalogName,
@@ -668,6 +669,19 @@ export class AiAgentService {
         source: 'categoryId',
         loadedKnowledge,
         categoryProfileResolution,
+        resolvedCategoryKey:
+          this.readString(
+            (category as unknown as Record<string, unknown>).key,
+          ) || category.slug,
+        resolvedCatalogKey:
+          (catalog && typeof catalog === 'object'
+            ? this.readString(
+                (catalog as unknown as Record<string, unknown>).key,
+              ) ||
+              this.readString(
+                (catalog as unknown as Record<string, unknown>).slug,
+              )
+            : '') || catalogName,
         gulfMusic: gulfMusicQuestionPolicy.isGulfMusicCategory({
           catalogName,
           categoryName,
@@ -686,14 +700,17 @@ export class AiAgentService {
       dto.catalogName,
       dto.categoryName,
     );
-    const loadedKnowledge = await this.knowledgeLoader.load(
-      inferredKnowledgeFile,
-    );
     const categoryProfileResolution = categoryProfileRegistry.resolve({
       catalogName: dto.catalogName,
       categoryName: dto.categoryName,
-      knowledgeFile: loadedKnowledge.knowledgeFile,
     });
+    const pack = this.knowledgePacks.fromProfile(
+      categoryProfileResolution.profile,
+    );
+    const loadedKnowledge = await this.knowledgeLoader.load(
+      pack.localKnowledgeFiles?.[0] ?? inferredKnowledgeFile,
+      { allowDefault: false },
+    );
 
     return {
       catalogName: dto.catalogName,
@@ -796,7 +813,7 @@ export class AiAgentService {
         identifySinger: 0,
         identifyMusicIntro: 0,
       },
-      supportedAssetTypes: ['audio', 'image'],
+      supportedAssetTypes: ['audio', 'image', 'video'],
       maxAudioDuration: current?.maxAudioDuration ?? 15,
     };
   }
@@ -852,8 +869,12 @@ export class AiAgentService {
     duration: number,
   ): ReviewedQuestionDraft[] {
     const orderedSongs = [
-      ...songs.filter((song) => song.difficulty === difficulty),
-      ...songs.filter((song) => song.difficulty !== difficulty),
+      ...this.shuffleSongs(
+        songs.filter((song) => song.difficulty === difficulty),
+      ),
+      ...this.shuffleSongs(
+        songs.filter((song) => song.difficulty !== difficulty),
+      ),
     ];
     const selectedSongs = orderedSongs.slice(0, Math.min(count, songs.length));
     if (!selectedSongs.length) {
@@ -904,6 +925,18 @@ export class AiAgentService {
         },
       };
     });
+  }
+
+  private shuffleSongs(songs: GulfSong[]): GulfSong[] {
+    const shuffled = [...songs];
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [shuffled[index], shuffled[swapIndex]] = [
+        shuffled[swapIndex],
+        shuffled[index],
+      ];
+    }
+    return shuffled;
   }
 
   private selectReadyGulfMusicQuestions(
@@ -1086,6 +1119,11 @@ export class AiAgentService {
           coverResult.assetStatus === 'FAILED' ? coverResult : null;
         return {
           ...question,
+          ...(verificationDiagnostics?.canonicalSongTitle
+            ? {
+                correctAnswer: verificationDiagnostics.canonicalSongTitle,
+              }
+            : {}),
           primaryAssetRequest: primaryRequest,
           primaryAssetStatus: primaryResult.assetStatus,
           primaryAsset:
@@ -1224,7 +1262,7 @@ export class AiAgentService {
                 : 'image',
       context:
         this.readString(asset.searchContext ?? asset.context) || undefined,
-      locallyGrounded: Boolean(question.musicMetadata),
+      locallyGrounded: !song && Boolean(question.musicMetadata),
     };
   }
 
@@ -1233,18 +1271,23 @@ export class AiAgentService {
     verified: import('./application/entity-verification.types').VerifiedEntity,
     cover = false,
   ): AssetRequest {
-    const canonical =
-      cover && verified.franchise
-        ? verified.franchise
-        : verified.canonicalEntity;
+    const canonical = cover
+      ? verified.franchise || verified.canonicalEntity
+      : verified.song?.title || verified.canonicalEntity;
     return {
       ...asset,
       entity: canonical,
       canonicalEntity: canonical,
       searchEntity: canonical,
       query: undefined,
-      aliases:
-        cover && verified.franchise ? [verified.franchise] : verified.aliases,
+      title: verified.song?.title ?? asset.title,
+      aliases: cover
+        ? verified.franchise
+          ? [verified.franchise]
+          : verified.aliases
+        : verified.song?.titleAliases.length
+          ? verified.song.titleAliases
+          : verified.aliases,
       franchise: verified.franchise,
       artist: verified.song?.artist ?? asset.artist,
       artistAliases: verified.song?.artistAliases ?? asset.artistAliases,
@@ -1594,6 +1637,9 @@ export class AiAgentService {
       explanation,
       qualityScore,
       issues: Array.from(new Set(issues)),
+      ...(raw.aiMetadata && typeof raw.aiMetadata === 'object'
+        ? { aiMetadata: raw.aiMetadata as Record<string, unknown> }
+        : {}),
       ...(Array.isArray(raw.agentTrace)
         ? { agentTrace: raw.agentTrace as AgentTrace[] }
         : {}),
@@ -1960,7 +2006,10 @@ export class AiAgentService {
       issues.push('gameMode is missing');
     }
 
-    if (['audio', 'image'].includes(question.type) && !question.assetRequest) {
+    if (
+      ['audio', 'image', 'video'].includes(question.type) &&
+      !question.assetRequest
+    ) {
       issues.push('assetRequest is missing');
     }
 

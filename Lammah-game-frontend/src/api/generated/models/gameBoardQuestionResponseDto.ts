@@ -7,6 +7,7 @@
  */
 import type { QuestionResponseDto } from "./questionResponseDto";
 import type { GameBoardQuestionResponseDtoPoints } from "./gameBoardQuestionResponseDtoPoints";
+import type { GameQuestionPresentationResponseDto } from "./gameQuestionPresentationResponseDto";
 
 export interface GameBoardQuestionResponseDto {
   _id?: string;
@@ -16,4 +17,5 @@ export interface GameBoardQuestionResponseDto {
   isAnswerRevealed: boolean;
   answeredByTeamIndex?: number;
   awardedPoints?: number;
+  presentation?: GameQuestionPresentationResponseDto;
 }

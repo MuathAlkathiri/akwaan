@@ -16,6 +16,56 @@ export enum QuestionType {
   GIF = 'gif',
 }
 
+export enum QuestionGameplayType {
+  STANDARD = 'standard',
+  RANKED_LIST = 'ranked_list',
+}
+
+export interface LocalizedText {
+  ar: string;
+  en?: string;
+}
+
+export interface RankedListEntry {
+  id: string;
+  rank: number;
+  answer: LocalizedText;
+  aliases: string[];
+  points: number;
+}
+
+export interface RankedListDefinition {
+  displayName: LocalizedText;
+  entries: RankedListEntry[];
+}
+
+const LocalizedTextSchema = new MongooseSchema(
+  {
+    ar: { type: String, required: true, trim: true },
+    en: { type: String, trim: true },
+  },
+  { _id: false },
+);
+
+const RankedListEntrySchema = new MongooseSchema(
+  {
+    id: { type: String, required: true },
+    rank: { type: Number, required: true, min: 1 },
+    answer: { type: LocalizedTextSchema, required: true },
+    aliases: { type: [String], default: [] },
+    points: { type: Number, required: true, min: 1 },
+  },
+  { _id: false },
+);
+
+const RankedListDefinitionSchema = new MongooseSchema(
+  {
+    displayName: { type: LocalizedTextSchema, required: true },
+    entries: { type: [RankedListEntrySchema], required: true },
+  },
+  { _id: false },
+);
+
 export enum GameMode {
   TRIVIA = 'trivia',
   IDENTIFY_CHARACTER = 'identifyCharacter',
@@ -42,6 +92,109 @@ export enum AssetStatus {
   READY = 'READY',
   FAILED = 'FAILED',
 }
+
+export enum AudioQuestionKind {
+  IDENTIFY_SONG = 'identify_song',
+  IDENTIFY_ARTIST = 'identify_artist',
+  IDENTIFY_CHARACTER = 'identify_character',
+  IDENTIFY_VOICE = 'identify_voice',
+  IDENTIFY_GAME = 'identify_game',
+  IDENTIFY_MOVIE = 'identify_movie',
+  IDENTIFY_DIALOGUE_SOURCE = 'identify_dialogue_source',
+  IDENTIFY_SOUND_EFFECT = 'identify_sound_effect',
+  CUSTOM = 'custom',
+}
+
+export enum AudioAssetStatus {
+  NOT_REQUIRED = 'not_required',
+  PENDING = 'pending',
+  SEARCHING = 'searching',
+  PROCESSING = 'processing',
+  READY = 'ready',
+  FAILED = 'failed',
+  REJECTED = 'rejected',
+}
+
+export enum AudioReviewStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
+
+export class QuestionAudioRequest {
+  kind: AudioQuestionKind;
+  searchQuery: string;
+  targetName?: string;
+  sourceTitle?: string;
+  language?: string;
+  preferredStartSeconds?: number | null;
+  preferredDurationSeconds?: number;
+  provider?: string;
+  requestVersion?: number;
+  requestHash?: string;
+  requestedAt?: string;
+  selectedCandidateId?: string | null;
+  candidateSetVersion?: number | null;
+}
+
+const AudioRequestSchema = new MongooseSchema(
+  {
+    kind: { type: String, enum: AudioQuestionKind, required: true },
+    searchQuery: { type: String, required: true, trim: true },
+    targetName: { type: String, trim: true },
+    sourceTitle: { type: String, trim: true },
+    language: { type: String, trim: true },
+    preferredStartSeconds: { type: Number, min: 0 },
+    preferredDurationSeconds: { type: Number, min: 3, max: 20 },
+    provider: { type: String, trim: true },
+    requestVersion: { type: Number, min: 1, default: 1 },
+    requestHash: { type: String, trim: true },
+    requestedAt: String,
+    selectedCandidateId: { type: String, default: null },
+    candidateSetVersion: { type: Number, min: 1, default: null },
+  },
+  { _id: false },
+);
+
+export enum AudioCandidateStatus {
+  AVAILABLE = 'available',
+  SELECTED = 'selected',
+  REJECTED = 'rejected',
+  FAILED = 'failed',
+}
+
+export class QuestionAudioCandidate {
+  id: string;
+  title: string;
+  sourceUrl?: string;
+  provider: string;
+  durationSeconds?: number;
+  thumbnail?: string;
+  queryUsed: string;
+  rank: number;
+  status: AudioCandidateStatus;
+  rejectionReason?: string;
+  requestVersion: number;
+  requestHash: string;
+}
+
+const AudioCandidateSchema = new MongooseSchema(
+  {
+    id: { type: String, required: true },
+    title: { type: String, required: true },
+    sourceUrl: String,
+    provider: { type: String, required: true },
+    durationSeconds: Number,
+    thumbnail: String,
+    queryUsed: { type: String, required: true },
+    rank: { type: Number, required: true },
+    status: { type: String, enum: AudioCandidateStatus, required: true },
+    rejectionReason: String,
+    requestVersion: { type: Number, required: true },
+    requestHash: { type: String, required: true },
+  },
+  { _id: false },
+);
 
 export enum QuestionPoints {
   LOW = 200,
@@ -131,13 +284,38 @@ export class Question extends Document {
   @Prop({ required: true })
   question: string;
 
+  @Prop({
+    type: String,
+    enum: QuestionGameplayType,
+    default: QuestionGameplayType.STANDARD,
+  })
+  questionType: QuestionGameplayType;
+
+  @Prop({ type: LocalizedTextSchema })
+  text?: LocalizedText;
+
+  @Prop()
+  maxPoints?: number;
+
+  @Prop()
+  turnDurationSeconds?: number;
+
+  @Prop()
+  maxStrikesPerTeam?: number;
+
+  @Prop({ type: RankedListDefinitionSchema })
+  rankedList?: RankedListDefinition;
+
   @Prop()
   correctAnswer?: string;
 
   @Prop({ type: [String], default: undefined })
   wrongAnswers?: string[];
 
-  @Prop({ required: true })
+  @Prop({ type: [String], default: undefined })
+  acceptedAnswers?: string[];
+
+  @Prop()
   answer: string;
 
   @Prop()
@@ -180,6 +358,37 @@ export class Question extends Document {
   @Prop({ type: PrimaryAssetSchema, required: false })
   primaryAsset?: QuestionPrimaryAsset | null;
 
+  @Prop({ type: Boolean, default: false })
+  requiresAudio: boolean;
+
+  @Prop({ type: String, enum: AudioQuestionKind })
+  audioKind?: AudioQuestionKind;
+
+  @Prop({ type: AudioRequestSchema, required: false })
+  audioRequest?: QuestionAudioRequest | null;
+
+  @Prop({ type: [AudioCandidateSchema], default: undefined })
+  audioCandidates?: QuestionAudioCandidate[];
+
+  @Prop({
+    type: String,
+    enum: AudioAssetStatus,
+    default: AudioAssetStatus.NOT_REQUIRED,
+  })
+  audioStatus: AudioAssetStatus;
+
+  @Prop({ type: PrimaryAssetSchema, required: false })
+  audioAsset?: QuestionPrimaryAsset | null;
+
+  @Prop({ type: String, enum: AudioReviewStatus })
+  audioReviewStatus?: AudioReviewStatus | null;
+
+  @Prop({ type: MongooseSchema.Types.Mixed })
+  audioDiagnostics?: Record<string, unknown> | null;
+
+  @Prop({ default: false })
+  audioRequestStale?: boolean;
+
   @Prop({ type: CoverImageSchema, required: false })
   coverImage?: QuestionCoverImage | null;
 
@@ -206,6 +415,9 @@ export class Question extends Document {
 
   @Prop({ type: Object })
   metadata?: Record<string, unknown>;
+
+  @Prop({ type: MongooseSchema.Types.Mixed })
+  duplicateDiagnostics?: Record<string, unknown>;
 
   @Prop()
   qualityScore?: number;

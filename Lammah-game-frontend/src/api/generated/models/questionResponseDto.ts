@@ -5,13 +5,27 @@
  * Runtime HTTP contract for Lammah game administration, content, and gameplay.
  * OpenAPI spec version: 1.0.0
  */
+import type { QuestionGameplayType } from "./questionGameplayType";
+import type { LocalizedQuestionTextDto } from "./localizedQuestionTextDto";
+import type { RankedListDefinitionDto } from "./rankedListDefinitionDto";
 import type { DifficultyLevel } from "./difficultyLevel";
 import type { QuestionResponseDtoPoints } from "./questionResponseDtoPoints";
 import type { QuestionResponseDtoScore } from "./questionResponseDtoScore";
 import type { GameMode } from "./gameMode";
+import type { QuestionResponseDtoPreferredPresentationType } from "./questionResponseDtoPreferredPresentationType";
+import type { QuestionResponseDtoEffectivePresentationType } from "./questionResponseDtoEffectivePresentationType";
+import type { QuestionResponseDtoMediaFallbackReason } from "./questionResponseDtoMediaFallbackReason";
+import type { QuestionResponseDtoResolvedMedia } from "./questionResponseDtoResolvedMedia";
 import type { QuestionStatus } from "./questionStatus";
 import type { QuestionSource } from "./questionSource";
 import type { QuestionResponseDtoPrimaryAsset } from "./questionResponseDtoPrimaryAsset";
+import type { AudioQuestionKind } from "./audioQuestionKind";
+import type { QuestionResponseDtoAudioRequest } from "./questionResponseDtoAudioRequest";
+import type { QuestionAudioCandidateResponseDto } from "./questionAudioCandidateResponseDto";
+import type { AudioAssetStatus } from "./audioAssetStatus";
+import type { QuestionResponseDtoAudioAsset } from "./questionResponseDtoAudioAsset";
+import type { AudioReviewStatus } from "./audioReviewStatus";
+import type { QuestionResponseDtoAudioDiagnostics } from "./questionResponseDtoAudioDiagnostics";
 import type { QuestionResponseDtoCoverImage } from "./questionResponseDtoCoverImage";
 import type { QuestionResponseDtoPrimaryAssetRequest } from "./questionResponseDtoPrimaryAssetRequest";
 import type { QuestionResponseDtoCoverImageRequest } from "./questionResponseDtoCoverImageRequest";
@@ -27,19 +41,45 @@ export interface QuestionResponseDto {
   category?: string;
   categoryId?: string;
   question: string;
+  questionType: QuestionGameplayType;
+  text?: LocalizedQuestionTextDto;
+  maxPoints?: number;
+  turnDurationSeconds?: number;
+  maxStrikesPerTeam?: number;
+  rankedList?: RankedListDefinitionDto;
   answer?: string;
   correctAnswer?: string;
   wrongAnswers: string[];
+  acceptedAnswers?: string[];
   explanation?: string;
   difficulty: DifficultyLevel;
   points?: QuestionResponseDtoPoints;
   score?: QuestionResponseDtoScore;
   gameMode?: GameMode;
   type?: string;
+  preferredPresentationType?: QuestionResponseDtoPreferredPresentationType;
+  effectivePresentationType?: QuestionResponseDtoEffectivePresentationType;
+  mediaAvailable?: boolean;
+  /** @nullable */
+  mediaFallbackReason?: QuestionResponseDtoMediaFallbackReason;
+  /** @nullable */
+  resolvedMedia?: QuestionResponseDtoResolvedMedia;
   status: QuestionStatus;
   source: QuestionSource;
   /** @nullable */
   primaryAsset?: QuestionResponseDtoPrimaryAsset;
+  requiresAudio: boolean;
+  audioKind?: AudioQuestionKind;
+  /** @nullable */
+  audioRequest?: QuestionResponseDtoAudioRequest;
+  audioCandidates?: QuestionAudioCandidateResponseDto[];
+  audioStatus: AudioAssetStatus;
+  /** @nullable */
+  audioAsset?: QuestionResponseDtoAudioAsset;
+  audioReviewStatus?: AudioReviewStatus;
+  /** @nullable */
+  audioDiagnostics?: QuestionResponseDtoAudioDiagnostics;
+  audioRequestStale?: boolean;
   /** @nullable */
   coverImage?: QuestionResponseDtoCoverImage;
   /** @nullable */

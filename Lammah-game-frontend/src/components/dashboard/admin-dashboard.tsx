@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  Bot,
   Boxes,
   ClipboardList,
   Gamepad2,
@@ -34,9 +33,6 @@ function AdminDashboardContent() {
   const { data: questions } = useQuestions();
   const { data: users } = useUsers();
 
-  const aiQuestions = (questions || []).filter(
-    (question) => question.source === "ai",
-  ).length;
   const recentGames = (games || []).slice(0, 4);
 
   return (
@@ -56,12 +52,6 @@ function AdminDashboardContent() {
               لوحة عملية لإدارة الألعاب والفئات والأسئلة ومراجعة المحتوى المولد.
             </p>
           </div>
-          <Link
-            href="/admin/ai-generator"
-            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-black transition hover:border-primary/40 hover:text-primary"
-          >
-            AI question generation
-          </Link>
         </div>
       </section>
 
@@ -85,11 +75,6 @@ function AdminDashboardContent() {
           label="Total questions"
           value={questions?.length ?? 0}
           icon={ClipboardList}
-        />
-        <StatsCard
-          label="AI generated questions"
-          value={aiQuestions}
-          icon={Bot}
         />
         <StatsCard
           label="Users"

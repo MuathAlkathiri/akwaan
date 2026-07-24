@@ -18,6 +18,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let message = 'Internal server error';
     let errors: unknown = null;
     let code: string | undefined;
+    let errorLabel: string | undefined;
+    let structuredDetails: Record<string, unknown> = {};
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -37,6 +39,25 @@ export class AllExceptionsFilter implements ExceptionFilter {
         typeof exceptionResponse?.code === 'string'
           ? exceptionResponse.code
           : undefined;
+      errorLabel =
+        typeof exceptionResponse?.error === 'string'
+          ? exceptionResponse.error
+          : undefined;
+      if (exceptionResponse) {
+        const allowedFields = [
+          'issueCodes',
+          'meta',
+          'sourceDiagnostics',
+          'sourceSummary',
+          'candidateDiagnostics',
+          'details',
+        ] as const;
+        structuredDetails = Object.fromEntries(
+          allowedFields.flatMap((key) =>
+            key in exceptionResponse ? [[key, exceptionResponse[key]]] : [],
+          ),
+        );
+      }
     } else if (exception instanceof Error) {
       // Unexpected infrastructure errors may contain commands, credentials,
       // provider output, or local paths. Keep those details server-side.
@@ -45,7 +66,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     response.status(status).json({
       statusCode: status,
+      ...(errorLabel && { error: errorLabel }),
       message,
+      ...structuredDetails,
       timestamp: new Date().toISOString(),
       path: request.url,
       ...(code && { code }),

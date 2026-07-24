@@ -162,6 +162,44 @@ export class GenerateReviewedQuestionsResponseDto {
   data!: ReviewedQuestionsDataResponseDto;
 }
 
+export class CandidateValidationResultResponseDto {
+  @ApiProperty({ enum: ['PASS', 'FAIL', 'NOT_EVALUATED'] }) status!: string;
+  @ApiProperty({ type: [String] }) issueCodes!: string[];
+}
+
+export class SourceCandidateDiagnosticResponseDto {
+  @ApiProperty() sourceId!: string;
+  @ApiProperty() sourceQuestionId!: string;
+  @ApiProperty() sourceQuestion!: string;
+  @ApiProperty() sourceAnswer!: string;
+  @ApiProperty({ type: String, nullable: true }) curatedQuestion!:
+    string | null;
+  @ApiProperty({ type: String, nullable: true }) curatedAnswer!: string | null;
+  @ApiProperty() semanticFingerprint!: string;
+  @ApiProperty({ minimum: 0, maximum: 1 }) duplicateScore!: number;
+  @ApiProperty({ type: CandidateValidationResultResponseDto })
+  validationResult!: CandidateValidationResultResponseDto;
+  @ApiProperty({ enum: ['CREATED', 'REJECTED', 'FAILED', 'NOT_SELECTED'] })
+  outcome!: string;
+  @ApiProperty({ type: String, nullable: true }) rejectionReason!:
+    string | null;
+}
+
+export class GenerateReviewedQuestionsErrorResponseDto {
+  @ApiProperty({ example: 400 }) statusCode!: number;
+  @ApiProperty({ example: 'Bad Request' }) error!: string;
+  @ApiProperty({ example: 'AI pipeline produced no drafts' }) message!: string;
+  @ApiProperty({ type: [String] }) issueCodes!: string[];
+  @ApiProperty({ type: 'object', additionalProperties: true })
+  meta!: Record<string, unknown>;
+  @ApiProperty({ type: 'array', items: { type: 'object' } })
+  sourceDiagnostics!: Record<string, unknown>[];
+  @ApiProperty({ type: 'object', additionalProperties: true })
+  sourceSummary!: Record<string, unknown>;
+  @ApiProperty({ type: [SourceCandidateDiagnosticResponseDto] })
+  candidateDiagnostics!: SourceCandidateDiagnosticResponseDto[];
+}
+
 export class GenerateQuestionsResponseDto {
   @ApiProperty({ example: 200 }) statusCode!: number;
   @ApiProperty() message!: string;

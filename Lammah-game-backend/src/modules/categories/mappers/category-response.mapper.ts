@@ -1,3 +1,8 @@
+import {
+  CategoryAudioPolicy,
+  CategoryGameplayMode,
+} from '../schemas/category.schema';
+
 export class CategoryResponseMapper {
   static toResponse(value: unknown): Record<string, unknown> {
     const source = this.toPlain(value);
@@ -10,6 +15,10 @@ export class CategoryResponseMapper {
     return {
       ...safe,
       _id: String(safe._id ?? ''),
+      audioPolicy: safe.audioPolicy ?? CategoryAudioPolicy.OPTIONAL,
+      // Deployment compatibility only. Remove after the gameplay-mode backfill
+      // has been applied in every environment.
+      gameplayMode: safe.gameplayMode ?? CategoryGameplayMode.STANDARD,
       ...(banner ? { banner } : {}),
     };
   }

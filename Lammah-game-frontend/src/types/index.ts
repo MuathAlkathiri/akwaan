@@ -39,7 +39,7 @@ export interface CategoryBanner {
 
 export interface LocalizedText {
   ar: string;
-  en: string;
+  en?: string;
 }
 
 export interface Catalog {
@@ -75,7 +75,7 @@ export interface CategoryAiConfig {
 }
 
 export type GameplayQuestionType =
-  "text" | "image" | "audio" | "quote" | "emoji" | "timeline";
+  "text" | "image" | "audio" | "video" | "quote" | "emoji" | "timeline";
 export type GameMode =
   | "trivia"
   | "identifyCharacter"
@@ -117,6 +117,8 @@ export interface Category {
   banner?: CategoryBanner;
   aiConfig?: CategoryAiConfig;
   gameplayConfig?: CategoryGameplayConfig;
+  audioPolicy: CategoryAudioPolicy;
+  gameplayMode: CategoryGameplayMode;
   isActive: boolean;
   sortOrder?: number;
   createdAt: string;
@@ -132,19 +134,105 @@ export interface CategoryPayload {
   isActive?: boolean;
   aiConfig?: CategoryAiConfig;
   gameplayConfig?: CategoryGameplayConfig;
+  audioPolicy?: CategoryAudioPolicy;
+  gameplayMode?: CategoryGameplayMode;
+  confirmGameplayModeChange?: boolean;
   bannerFile?: File;
 }
 
+export type CategoryAudioPolicy = "disabled" | "optional" | "required";
+export type CategoryGameplayMode = "STANDARD" | "TOP_10";
+
 // Question types
 export type QuestionType = "text" | "image" | "audio" | "video" | "gif";
+export type QuestionGameplayType = "standard" | "ranked_list";
+export interface RankedListEntry {
+  id?: string;
+  clientId?: string;
+  rank: number;
+  answer: LocalizedText;
+  aliases: string[];
+  points: number;
+}
+export interface RankedListDefinition {
+  displayName: LocalizedText;
+  entries: RankedListEntry[];
+}
 export type DraftAssetType =
-  "text" | "image" | "audio" | "quote" | "emoji" | "timeline" | "gif";
+  "text" | "image" | "audio" | "video" | "quote" | "emoji" | "timeline" | "gif";
 export type PrimaryAssetType = "audio" | "image" | "video" | "gif";
 export type AssetStatus = "NOT_REQUIRED" | "PENDING" | "READY" | "FAILED";
 export type QuestionDifficulty = "easy" | "medium" | "hard";
 export type QuestionStatus =
   "draft" | "approved" | "published" | "archived" | "rejected";
 export type QuestionSource = "manual" | "ai" | "imported" | "music";
+export type AudioQuestionKind =
+  | "identify_song"
+  | "identify_artist"
+  | "identify_character"
+  | "identify_voice"
+  | "identify_game"
+  | "identify_movie"
+  | "identify_dialogue_source"
+  | "identify_sound_effect"
+  | "custom";
+export type AudioAssetStatus =
+  | "not_required"
+  | "pending"
+  | "searching"
+  | "processing"
+  | "ready"
+  | "failed"
+  | "rejected";
+export type AudioReviewStatus = "pending" | "approved" | "rejected";
+export type EffectivePresentationType = "text" | "image" | "audio" | "video";
+export type MediaFallbackReason =
+  | "NO_MEDIA"
+  | "NOT_READY"
+  | "PROCESSING"
+  | "FAILED"
+  | "REJECTED"
+  | "STALE"
+  | "MISSING_ASSET"
+  | "INVALID_ASSET";
+export interface ResolvedQuestionMedia {
+  type: Exclude<EffectivePresentationType, "text">;
+  url: string;
+  duration?: number;
+}
+export interface QuestionAudioRequest {
+  kind: AudioQuestionKind;
+  searchQuery: string;
+  targetName?: string;
+  sourceTitle?: string;
+  language?: string;
+  preferredStartSeconds?: number | null;
+  preferredDurationSeconds?: number;
+  provider?: string;
+  requestVersion?: number;
+  requestHash?: string;
+  requestedAt?: string;
+  selectedCandidateId?: string | null;
+  candidateSetVersion?: number | null;
+}
+
+export type AudioCandidateStatus =
+  "available" | "selected" | "rejected" | "failed";
+
+export interface QuestionAudioCandidate {
+  id: string;
+  title: string;
+  sourceUrl?: string;
+  provider: string;
+  durationSeconds?: number;
+  thumbnail?: string;
+  queryUsed: string;
+  rank: number;
+  status: AudioCandidateStatus;
+  rejectionReason?: string;
+  requestVersion: number;
+  requestHash: string;
+}
 
 export interface AssetRequest {
   type: DraftAssetType;
@@ -209,16 +297,37 @@ export interface Question {
   catalogId?: string | Catalog | null;
   category?: Category | string;
   question: string;
+  questionType?: QuestionGameplayType;
+  text?: LocalizedText;
+  maxPoints?: number;
+  turnDurationSeconds?: number;
+  maxStrikesPerTeam?: number;
+  rankedList?: RankedListDefinition;
   answer: string;
   correctAnswer?: string;
   wrongAnswers?: string[];
+  acceptedAnswers?: string[];
   explanation?: string;
   difficulty: QuestionDifficulty;
   points: number; // 200, 400, 600
   score?: number; // Future name for points
   gameMode?: GameMode;
   type: QuestionType;
+  preferredPresentationType?: QuestionType;
+  effectivePresentationType?: EffectivePresentationType;
+  mediaAvailable?: boolean;
+  mediaFallbackReason?: MediaFallbackReason | null;
+  resolvedMedia?: ResolvedQuestionMedia | null;
   primaryAsset?: QuestionPrimaryAsset | null;
+  requiresAudio?: boolean;
+  audioKind?: AudioQuestionKind;
+  audioRequest?: QuestionAudioRequest | null;
+  audioCandidates?: QuestionAudioCandidate[];
+  audioStatus?: AudioAssetStatus;
+  audioAsset?: QuestionPrimaryAsset | null;
+  audioReviewStatus?: AudioReviewStatus | null;
+  audioDiagnostics?: Record<string, unknown> | null;
+  audioRequestStale?: boolean;
   coverImage?: QuestionCoverImage | null;
   primaryAssetRequest?: AssetRequest | null;
   coverImageRequest?: AssetRequest | null;
@@ -263,6 +372,14 @@ export interface BoardQuestion {
   questionId?: string;
   question?: Question;
   category?: Category;
+  presentation?: {
+    preferredType: QuestionType;
+    type: EffectivePresentationType;
+    mediaAvailable: boolean;
+    mediaUrl?: string;
+    mediaDuration?: number;
+    fallbackReason?: MediaFallbackReason;
+  };
 }
 
 // Game types

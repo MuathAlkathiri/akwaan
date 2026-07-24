@@ -23,7 +23,7 @@ describe('PromptBuilderService reviewed difficulty guidance', () => {
     expect(build(difficulty)).toContain('Required count: 2');
   });
 
-  it('locks Gulf music generation to grounded song identification', () => {
+  it('asks the LLM for diverse Arabic songs that require Wigolo verification', () => {
     const prompt = builder.buildReviewedQuestionsPrompt({
       catalogName: 'Music',
       categoryName: 'اغاني',
@@ -33,6 +33,7 @@ describe('PromptBuilderService reviewed difficulty guidance', () => {
       knowledgeFile: 'music/gulf-music.md',
       usedDefaultKnowledge: false,
       knowledge: { raw: 'verified songs', sections: {} },
+      diversitySeed: 'seed-123',
     });
     expect(prompt).toContain(
       'Every question field must be exactly: "ما اسم هذه الأغنية؟"',
@@ -40,8 +41,10 @@ describe('PromptBuilderService reviewed difficulty guidance', () => {
     expect(prompt).toContain('gameMode="identifySong"');
     expect(prompt).toContain('duration=15');
     expect(prompt).toContain(
-      'Never create a song or artist outside the verified table',
+      'Wigolo will verify each pair before YouTube is searched',
     );
+    expect(prompt).toContain('Diversity seed: "seed-123"');
+    expect(prompt).toContain('not restricted to a local table');
   });
 
   it('pushes the model toward human host-style Arabic instead of robotic riddles', () => {

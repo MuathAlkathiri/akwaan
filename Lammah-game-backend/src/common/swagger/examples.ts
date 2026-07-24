@@ -46,6 +46,7 @@ export const catalogExample = {
 export const categoryExample = {
   _id: ids.category,
   name: 'Science',
+  gameplayMode: 'STANDARD',
   slug: 'science',
   description: 'Science and discovery questions',
   catalogId: ids.catalog,

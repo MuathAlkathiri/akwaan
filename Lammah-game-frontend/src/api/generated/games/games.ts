@@ -23,12 +23,21 @@ import type {
 
 import type {
   CreateGameDto,
+  ExpireRankedListTurnDto,
+  GameCreationValidationErrorDto,
   GameDetailResponseDto,
   GameListResponseDto,
   GameMutationResponseDto,
+  GameQuestionAnswerEnvelopeDto,
+  GameQuestionViewEnvelopeDto,
   GamesAwardPointsBody,
+  RankedListRoundActionEnvelopeDto,
+  RankedListRoundStateEnvelopeDto,
   RevealAnswerDto,
   SkipQuestionDto,
+  StartRankedListRoundDto,
+  SubmitGameQuestionResultDto,
+  SubmitRankedListAnswerDto,
 } from ".././models";
 
 import { orvalMutator } from "../../orval-mutator";
@@ -56,7 +65,7 @@ export const gamesCreate = (
 };
 
 export const getGamesCreateMutationOptions = <
-  TError = unknown | unknown,
+  TError = GameCreationValidationErrorDto | unknown,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -97,12 +106,15 @@ export type GamesCreateMutationResult = NonNullable<
   Awaited<ReturnType<typeof gamesCreate>>
 >;
 export type GamesCreateMutationBody = CreateGameDto;
-export type GamesCreateMutationError = unknown | unknown;
+export type GamesCreateMutationError = GameCreationValidationErrorDto | unknown;
 
 /**
  * @summary Create a new game with 2 teams
  */
-export const useGamesCreate = <TError = unknown | unknown, TContext = unknown>(
+export const useGamesCreate = <
+  TError = GameCreationValidationErrorDto | unknown,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof gamesCreate>>,
@@ -393,6 +405,544 @@ export function useGamesGetById<
 }
 
 /**
+ * @summary Get one immutable game-question snapshot without its answer
+ */
+export const gamesGetQuestionView = (
+  id: string,
+  gameQuestionId: string,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<GameQuestionViewEnvelopeDto>(
+    { url: `/games/${id}/questions/${gameQuestionId}`, method: "GET", signal },
+    options,
+  );
+};
+
+export const getGamesGetQuestionViewQueryKey = (
+  id?: string,
+  gameQuestionId?: string,
+) => {
+  return [`/games/${id}/questions/${gameQuestionId}`] as const;
+};
+
+export const getGamesGetQuestionViewQueryOptions = <
+  TData = Awaited<ReturnType<typeof gamesGetQuestionView>>,
+  TError = void,
+>(
+  id: string,
+  gameQuestionId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetQuestionView>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGamesGetQuestionViewQueryKey(id, gameQuestionId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof gamesGetQuestionView>>
+  > = ({ signal }) =>
+    gamesGetQuestionView(id, gameQuestionId, requestOptions, signal);
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(id && gameQuestionId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof gamesGetQuestionView>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData> };
+};
+
+export type GamesGetQuestionViewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof gamesGetQuestionView>>
+>;
+export type GamesGetQuestionViewQueryError = void;
+
+export function useGamesGetQuestionView<
+  TData = Awaited<ReturnType<typeof gamesGetQuestionView>>,
+  TError = void,
+>(
+  id: string,
+  gameQuestionId: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetQuestionView>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof gamesGetQuestionView>>,
+          TError,
+          Awaited<ReturnType<typeof gamesGetQuestionView>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData>;
+};
+export function useGamesGetQuestionView<
+  TData = Awaited<ReturnType<typeof gamesGetQuestionView>>,
+  TError = void,
+>(
+  id: string,
+  gameQuestionId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetQuestionView>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof gamesGetQuestionView>>,
+          TError,
+          Awaited<ReturnType<typeof gamesGetQuestionView>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> };
+export function useGamesGetQuestionView<
+  TData = Awaited<ReturnType<typeof gamesGetQuestionView>>,
+  TError = void,
+>(
+  id: string,
+  gameQuestionId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetQuestionView>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> };
+/**
+ * @summary Get one immutable game-question snapshot without its answer
+ */
+
+export function useGamesGetQuestionView<
+  TData = Awaited<ReturnType<typeof gamesGetQuestionView>>,
+  TError = void,
+>(
+  id: string,
+  gameQuestionId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetQuestionView>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> } {
+  const queryOptions = getGamesGetQuestionViewQueryOptions(
+    id,
+    gameQuestionId,
+    options,
+  );
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData> };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * @summary Reveal one game-question answer idempotently
+ */
+export const gamesRevealQuestionView = (
+  id: string,
+  gameQuestionId: string,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<GameQuestionAnswerEnvelopeDto>(
+    {
+      url: `/games/${id}/questions/${gameQuestionId}/reveal`,
+      method: "POST",
+      signal,
+    },
+    options,
+  );
+};
+
+export const getGamesRevealQuestionViewMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof gamesRevealQuestionView>>,
+    TError,
+    { id: string; gameQuestionId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof gamesRevealQuestionView>>,
+  TError,
+  { id: string; gameQuestionId: string },
+  TContext
+> => {
+  const mutationKey = ["gamesRevealQuestionView"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof gamesRevealQuestionView>>,
+    { id: string; gameQuestionId: string }
+  > = (props) => {
+    const { id, gameQuestionId } = props ?? {};
+
+    return gamesRevealQuestionView(id, gameQuestionId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GamesRevealQuestionViewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof gamesRevealQuestionView>>
+>;
+
+export type GamesRevealQuestionViewMutationError = unknown;
+
+/**
+ * @summary Reveal one game-question answer idempotently
+ */
+export const useGamesRevealQuestionView = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof gamesRevealQuestionView>>,
+      TError,
+      { id: string; gameQuestionId: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof gamesRevealQuestionView>>,
+  TError,
+  { id: string; gameQuestionId: string },
+  TContext
+> => {
+  const mutationOptions = getGamesRevealQuestionViewMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Get a previously revealed game-question answer
+ */
+export const gamesGetQuestionAnswerView = (
+  id: string,
+  gameQuestionId: string,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<GameQuestionAnswerEnvelopeDto>(
+    {
+      url: `/games/${id}/questions/${gameQuestionId}/answer`,
+      method: "GET",
+      signal,
+    },
+    options,
+  );
+};
+
+export const getGamesGetQuestionAnswerViewQueryKey = (
+  id?: string,
+  gameQuestionId?: string,
+) => {
+  return [`/games/${id}/questions/${gameQuestionId}/answer`] as const;
+};
+
+export const getGamesGetQuestionAnswerViewQueryOptions = <
+  TData = Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>,
+  TError = void,
+>(
+  id: string,
+  gameQuestionId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGamesGetQuestionAnswerViewQueryKey(id, gameQuestionId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>
+  > = ({ signal }) =>
+    gamesGetQuestionAnswerView(id, gameQuestionId, requestOptions, signal);
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(id && gameQuestionId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData> };
+};
+
+export type GamesGetQuestionAnswerViewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>
+>;
+export type GamesGetQuestionAnswerViewQueryError = void;
+
+export function useGamesGetQuestionAnswerView<
+  TData = Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>,
+  TError = void,
+>(
+  id: string,
+  gameQuestionId: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>,
+          TError,
+          Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData>;
+};
+export function useGamesGetQuestionAnswerView<
+  TData = Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>,
+  TError = void,
+>(
+  id: string,
+  gameQuestionId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>,
+          TError,
+          Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> };
+export function useGamesGetQuestionAnswerView<
+  TData = Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>,
+  TError = void,
+>(
+  id: string,
+  gameQuestionId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> };
+/**
+ * @summary Get a previously revealed game-question answer
+ */
+
+export function useGamesGetQuestionAnswerView<
+  TData = Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>,
+  TError = void,
+>(
+  id: string,
+  gameQuestionId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetQuestionAnswerView>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> } {
+  const queryOptions = getGamesGetQuestionAnswerViewQueryOptions(
+    id,
+    gameQuestionId,
+    options,
+  );
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData> };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * @summary Finalize a game question for a team or no one
+ */
+export const gamesSubmitQuestionResult = (
+  id: string,
+  gameQuestionId: string,
+  submitGameQuestionResultDto: SubmitGameQuestionResultDto,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<GameMutationResponseDto>(
+    {
+      url: `/games/${id}/questions/${gameQuestionId}/result`,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      data: submitGameQuestionResultDto,
+      signal,
+    },
+    options,
+  );
+};
+
+export const getGamesSubmitQuestionResultMutationOptions = <
+  TError = void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof gamesSubmitQuestionResult>>,
+    TError,
+    { id: string; gameQuestionId: string; data: SubmitGameQuestionResultDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof gamesSubmitQuestionResult>>,
+  TError,
+  { id: string; gameQuestionId: string; data: SubmitGameQuestionResultDto },
+  TContext
+> => {
+  const mutationKey = ["gamesSubmitQuestionResult"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof gamesSubmitQuestionResult>>,
+    { id: string; gameQuestionId: string; data: SubmitGameQuestionResultDto }
+  > = (props) => {
+    const { id, gameQuestionId, data } = props ?? {};
+
+    return gamesSubmitQuestionResult(id, gameQuestionId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GamesSubmitQuestionResultMutationResult = NonNullable<
+  Awaited<ReturnType<typeof gamesSubmitQuestionResult>>
+>;
+export type GamesSubmitQuestionResultMutationBody = SubmitGameQuestionResultDto;
+export type GamesSubmitQuestionResultMutationError = void;
+
+/**
+ * @summary Finalize a game question for a team or no one
+ */
+export const useGamesSubmitQuestionResult = <TError = void, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof gamesSubmitQuestionResult>>,
+      TError,
+      { id: string; gameQuestionId: string; data: SubmitGameQuestionResultDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof gamesSubmitQuestionResult>>,
+  TError,
+  { id: string; gameQuestionId: string; data: SubmitGameQuestionResultDto },
+  TContext
+> => {
+  const mutationOptions = getGamesSubmitQuestionResultMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
  * @summary Reveal the correct answer for a question
  */
 export const gamesRevealAnswer = (
@@ -665,6 +1215,557 @@ export const useGamesSkipQuestion = <
   TContext
 > => {
   const mutationOptions = getGamesSkipQuestionMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Start or resume a ranked-list round
+ */
+export const gamesStartRankedListRound = (
+  id: string,
+  startRankedListRoundDto: StartRankedListRoundDto,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<RankedListRoundActionEnvelopeDto>(
+    {
+      url: `/games/${id}/ranked-list-rounds/start`,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      data: startRankedListRoundDto,
+      signal,
+    },
+    options,
+  );
+};
+
+export const getGamesStartRankedListRoundMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof gamesStartRankedListRound>>,
+    TError,
+    { id: string; data: StartRankedListRoundDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof gamesStartRankedListRound>>,
+  TError,
+  { id: string; data: StartRankedListRoundDto },
+  TContext
+> => {
+  const mutationKey = ["gamesStartRankedListRound"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof gamesStartRankedListRound>>,
+    { id: string; data: StartRankedListRoundDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return gamesStartRankedListRound(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GamesStartRankedListRoundMutationResult = NonNullable<
+  Awaited<ReturnType<typeof gamesStartRankedListRound>>
+>;
+export type GamesStartRankedListRoundMutationBody = StartRankedListRoundDto;
+export type GamesStartRankedListRoundMutationError = unknown;
+
+/**
+ * @summary Start or resume a ranked-list round
+ */
+export const useGamesStartRankedListRound = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof gamesStartRankedListRound>>,
+      TError,
+      { id: string; data: StartRankedListRoundDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof gamesStartRankedListRound>>,
+  TError,
+  { id: string; data: StartRankedListRoundDto },
+  TContext
+> => {
+  const mutationOptions = getGamesStartRankedListRoundMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Get backend-authoritative ranked-list round state
+ */
+export const gamesGetRankedListRoundState = (
+  id: string,
+  questionId: string,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<RankedListRoundStateEnvelopeDto>(
+    {
+      url: `/games/${id}/ranked-list-rounds/${questionId}`,
+      method: "GET",
+      signal,
+    },
+    options,
+  );
+};
+
+export const getGamesGetRankedListRoundStateQueryKey = (
+  id?: string,
+  questionId?: string,
+) => {
+  return [`/games/${id}/ranked-list-rounds/${questionId}`] as const;
+};
+
+export const getGamesGetRankedListRoundStateQueryOptions = <
+  TData = Awaited<ReturnType<typeof gamesGetRankedListRoundState>>,
+  TError = unknown,
+>(
+  id: string,
+  questionId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetRankedListRoundState>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGamesGetRankedListRoundStateQueryKey(id, questionId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof gamesGetRankedListRoundState>>
+  > = ({ signal }) =>
+    gamesGetRankedListRoundState(id, questionId, requestOptions, signal);
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(id && questionId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof gamesGetRankedListRoundState>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData> };
+};
+
+export type GamesGetRankedListRoundStateQueryResult = NonNullable<
+  Awaited<ReturnType<typeof gamesGetRankedListRoundState>>
+>;
+export type GamesGetRankedListRoundStateQueryError = unknown;
+
+export function useGamesGetRankedListRoundState<
+  TData = Awaited<ReturnType<typeof gamesGetRankedListRoundState>>,
+  TError = unknown,
+>(
+  id: string,
+  questionId: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetRankedListRoundState>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof gamesGetRankedListRoundState>>,
+          TError,
+          Awaited<ReturnType<typeof gamesGetRankedListRoundState>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData>;
+};
+export function useGamesGetRankedListRoundState<
+  TData = Awaited<ReturnType<typeof gamesGetRankedListRoundState>>,
+  TError = unknown,
+>(
+  id: string,
+  questionId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetRankedListRoundState>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof gamesGetRankedListRoundState>>,
+          TError,
+          Awaited<ReturnType<typeof gamesGetRankedListRoundState>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> };
+export function useGamesGetRankedListRoundState<
+  TData = Awaited<ReturnType<typeof gamesGetRankedListRoundState>>,
+  TError = unknown,
+>(
+  id: string,
+  questionId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetRankedListRoundState>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> };
+/**
+ * @summary Get backend-authoritative ranked-list round state
+ */
+
+export function useGamesGetRankedListRoundState<
+  TData = Awaited<ReturnType<typeof gamesGetRankedListRoundState>>,
+  TError = unknown,
+>(
+  id: string,
+  questionId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof gamesGetRankedListRoundState>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> } {
+  const queryOptions = getGamesGetRankedListRoundStateQueryOptions(
+    id,
+    questionId,
+    options,
+  );
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData> };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * @summary Submit the active team ranked-list answer
+ */
+export const gamesSubmitRankedListAnswer = (
+  id: string,
+  questionId: string,
+  submitRankedListAnswerDto: SubmitRankedListAnswerDto,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<RankedListRoundActionEnvelopeDto>(
+    {
+      url: `/games/${id}/ranked-list-rounds/${questionId}/answers`,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      data: submitRankedListAnswerDto,
+      signal,
+    },
+    options,
+  );
+};
+
+export const getGamesSubmitRankedListAnswerMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof gamesSubmitRankedListAnswer>>,
+    TError,
+    { id: string; questionId: string; data: SubmitRankedListAnswerDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof gamesSubmitRankedListAnswer>>,
+  TError,
+  { id: string; questionId: string; data: SubmitRankedListAnswerDto },
+  TContext
+> => {
+  const mutationKey = ["gamesSubmitRankedListAnswer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof gamesSubmitRankedListAnswer>>,
+    { id: string; questionId: string; data: SubmitRankedListAnswerDto }
+  > = (props) => {
+    const { id, questionId, data } = props ?? {};
+
+    return gamesSubmitRankedListAnswer(id, questionId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GamesSubmitRankedListAnswerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof gamesSubmitRankedListAnswer>>
+>;
+export type GamesSubmitRankedListAnswerMutationBody = SubmitRankedListAnswerDto;
+export type GamesSubmitRankedListAnswerMutationError = unknown;
+
+/**
+ * @summary Submit the active team ranked-list answer
+ */
+export const useGamesSubmitRankedListAnswer = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof gamesSubmitRankedListAnswer>>,
+      TError,
+      { id: string; questionId: string; data: SubmitRankedListAnswerDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof gamesSubmitRankedListAnswer>>,
+  TError,
+  { id: string; questionId: string; data: SubmitRankedListAnswerDto },
+  TContext
+> => {
+  const mutationOptions =
+    getGamesSubmitRankedListAnswerMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Expire the current ranked-list turn idempotently
+ */
+export const gamesExpireRankedListTurn = (
+  id: string,
+  questionId: string,
+  expireRankedListTurnDto: ExpireRankedListTurnDto,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<RankedListRoundActionEnvelopeDto>(
+    {
+      url: `/games/${id}/ranked-list-rounds/${questionId}/expire`,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      data: expireRankedListTurnDto,
+      signal,
+    },
+    options,
+  );
+};
+
+export const getGamesExpireRankedListTurnMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof gamesExpireRankedListTurn>>,
+    TError,
+    { id: string; questionId: string; data: ExpireRankedListTurnDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof gamesExpireRankedListTurn>>,
+  TError,
+  { id: string; questionId: string; data: ExpireRankedListTurnDto },
+  TContext
+> => {
+  const mutationKey = ["gamesExpireRankedListTurn"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof gamesExpireRankedListTurn>>,
+    { id: string; questionId: string; data: ExpireRankedListTurnDto }
+  > = (props) => {
+    const { id, questionId, data } = props ?? {};
+
+    return gamesExpireRankedListTurn(id, questionId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GamesExpireRankedListTurnMutationResult = NonNullable<
+  Awaited<ReturnType<typeof gamesExpireRankedListTurn>>
+>;
+export type GamesExpireRankedListTurnMutationBody = ExpireRankedListTurnDto;
+export type GamesExpireRankedListTurnMutationError = unknown;
+
+/**
+ * @summary Expire the current ranked-list turn idempotently
+ */
+export const useGamesExpireRankedListTurn = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof gamesExpireRankedListTurn>>,
+      TError,
+      { id: string; questionId: string; data: ExpireRankedListTurnDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof gamesExpireRankedListTurn>>,
+  TError,
+  { id: string; questionId: string; data: ExpireRankedListTurnDto },
+  TContext
+> => {
+  const mutationOptions = getGamesExpireRankedListTurnMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Finalize a completed ranked-list round idempotently
+ */
+export const gamesFinalizeRankedListRound = (
+  id: string,
+  questionId: string,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<RankedListRoundActionEnvelopeDto>(
+    {
+      url: `/games/${id}/ranked-list-rounds/${questionId}/finalize`,
+      method: "POST",
+      signal,
+    },
+    options,
+  );
+};
+
+export const getGamesFinalizeRankedListRoundMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof gamesFinalizeRankedListRound>>,
+    TError,
+    { id: string; questionId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof gamesFinalizeRankedListRound>>,
+  TError,
+  { id: string; questionId: string },
+  TContext
+> => {
+  const mutationKey = ["gamesFinalizeRankedListRound"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof gamesFinalizeRankedListRound>>,
+    { id: string; questionId: string }
+  > = (props) => {
+    const { id, questionId } = props ?? {};
+
+    return gamesFinalizeRankedListRound(id, questionId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GamesFinalizeRankedListRoundMutationResult = NonNullable<
+  Awaited<ReturnType<typeof gamesFinalizeRankedListRound>>
+>;
+
+export type GamesFinalizeRankedListRoundMutationError = unknown;
+
+/**
+ * @summary Finalize a completed ranked-list round idempotently
+ */
+export const useGamesFinalizeRankedListRound = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof gamesFinalizeRankedListRound>>,
+      TError,
+      { id: string; questionId: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof gamesFinalizeRankedListRound>>,
+  TError,
+  { id: string; questionId: string },
+  TContext
+> => {
+  const mutationOptions =
+    getGamesFinalizeRankedListRoundMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

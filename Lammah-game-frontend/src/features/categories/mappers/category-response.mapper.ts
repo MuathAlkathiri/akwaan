@@ -122,6 +122,8 @@ export function toCategoryModel(dto: CategoryResponseDto): Category {
     banner: dto.banner,
     aiConfig: dto.aiConfig,
     gameplayConfig: toGameplayConfig(dto.gameplayConfig),
+    audioPolicy: dto.audioPolicy ?? "optional",
+    gameplayMode: dto.gameplayMode ?? "STANDARD",
     isActive: dto.isActive,
     sortOrder: dto.sortOrder,
     createdAt: dto.createdAt ?? "",

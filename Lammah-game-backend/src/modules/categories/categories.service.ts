@@ -1,10 +1,15 @@
 import {
   Injectable,
+  BadRequestException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
-import { Category, CategoryBanner } from './schemas/category.schema';
+import {
+  Category,
+  CategoryBanner,
+  CategoryGameplayMode,
+} from './schemas/category.schema';
 import {
   CreateCategoryDto,
   UpdateCategoryDto,
@@ -126,6 +131,24 @@ export class CategoriesService {
         : undefined;
     const categoryPayload = { ...updateCategoryDto };
     delete categoryPayload.catalogId;
+    delete categoryPayload.confirmGameplayModeChange;
+    const previousMode =
+      existingCategory.gameplayMode ?? CategoryGameplayMode.STANDARD;
+    const nextMode = updateCategoryDto.gameplayMode;
+    if (
+      nextMode &&
+      nextMode !== previousMode &&
+      updateCategoryDto.confirmGameplayModeChange !== true
+    ) {
+      throw new BadRequestException({
+        code: 'CATEGORY_GAMEPLAY_MODE_CHANGE_CONFIRMATION_REQUIRED',
+        message:
+          'Changing gameplay mode can make existing questions ineligible. Explicit confirmation is required.',
+        categoryId: id,
+        previousGameplayMode: previousMode,
+        nextGameplayMode: nextMode,
+      });
+    }
     let nextBanner: CategoryBanner | undefined;
 
     if (bannerFile) {

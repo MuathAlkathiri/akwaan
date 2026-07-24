@@ -9,6 +9,8 @@ import type { CategoryResponseDtoCatalog } from "./categoryResponseDtoCatalog";
 import type { CategoryBannerResponseDto } from "./categoryBannerResponseDto";
 import type { CategoryAiConfigDto } from "./categoryAiConfigDto";
 import type { CategoryGameplayConfigDto } from "./categoryGameplayConfigDto";
+import type { CategoryAudioPolicy } from "./categoryAudioPolicy";
+import type { CategoryGameplayMode } from "./categoryGameplayMode";
 
 export interface CategoryResponseDto {
   _id: string;
@@ -24,6 +26,8 @@ export interface CategoryResponseDto {
   aiConfig?: CategoryAiConfigDto;
   gameplayConfig?: CategoryGameplayConfigDto;
   isActive: boolean;
+  audioPolicy: CategoryAudioPolicy;
+  gameplayMode: CategoryGameplayMode;
   sortOrder: number;
   createdAt?: string;
   updatedAt?: string;

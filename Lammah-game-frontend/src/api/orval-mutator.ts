@@ -1,4 +1,8 @@
-import type { AxiosRequestConfig } from "axios";
+import {
+  AxiosHeaders,
+  type AxiosRequestConfig,
+  type RawAxiosHeaders,
+} from "axios";
 import apiClient from "@/lib/api/client";
 
 /**
@@ -9,13 +13,18 @@ export async function orvalMutator<T>(
   config: AxiosRequestConfig,
   options?: AxiosRequestConfig,
 ): Promise<T> {
+  const headers = AxiosHeaders.from({
+    ...config.headers,
+    ...options?.headers,
+  } as RawAxiosHeaders);
+  const data = options?.data ?? config.data;
+  if (typeof FormData !== "undefined" && data instanceof FormData) {
+    headers.delete("Content-Type");
+  }
   const response = await apiClient.request<T>({
     ...config,
     ...options,
-    headers: {
-      ...config.headers,
-      ...options?.headers,
-    },
+    headers,
   });
 
   return response.data;

@@ -2,6 +2,17 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { Catalog } from '../../catalogs/schemas/catalog.schema';
 
+export enum CategoryAudioPolicy {
+  DISABLED = 'disabled',
+  OPTIONAL = 'optional',
+  REQUIRED = 'required',
+}
+
+export enum CategoryGameplayMode {
+  STANDARD = 'STANDARD',
+  TOP_10 = 'TOP_10',
+}
+
 export class CategoryBanner {
   filename: string;
   path: string;
@@ -87,6 +98,21 @@ export class Category extends Document {
 
   @Prop({ default: true })
   isActive: boolean;
+
+  @Prop({
+    type: String,
+    enum: CategoryAudioPolicy,
+    default: CategoryAudioPolicy.OPTIONAL,
+  })
+  audioPolicy: CategoryAudioPolicy;
+
+  @Prop({
+    type: String,
+    enum: CategoryGameplayMode,
+    default: CategoryGameplayMode.STANDARD,
+    index: true,
+  })
+  gameplayMode: CategoryGameplayMode;
 
   @Prop({
     type: {

@@ -8,9 +8,26 @@ const toRequest = (data: Partial<Question>) => ({
   category: typeof data.category === "string" ? data.category : data.categoryId,
   categoryId: data.categoryId,
   question: data.question,
+  questionType: data.questionType,
+  text: data.text,
+  maxPoints: data.maxPoints,
+  turnDurationSeconds: data.turnDurationSeconds,
+  maxStrikesPerTeam: data.maxStrikesPerTeam,
+  rankedList: data.rankedList
+    ? {
+        displayName: data.rankedList.displayName,
+        entries: data.rankedList.entries.map((entry) => ({
+          id: entry.id,
+          clientId: entry.clientId,
+          answer: entry.answer,
+          aliases: entry.aliases,
+        })),
+      }
+    : undefined,
   answer: data.answer,
   correctAnswer: data.correctAnswer,
   wrongAnswers: data.wrongAnswers,
+  acceptedAnswers: data.acceptedAnswers,
   explanation: data.explanation,
   difficulty: data.difficulty,
   points: data.points,
@@ -18,6 +35,9 @@ const toRequest = (data: Partial<Question>) => ({
   gameMode: data.gameMode,
   type: data.type,
   primaryAsset: data.primaryAsset,
+  requiresAudio: data.requiresAudio,
+  audioKind: data.audioKind,
+  audioRequest: data.audioRequest,
   coverImage: data.coverImage,
   primaryAssetRequest: data.primaryAssetRequest,
   coverImageRequest: data.coverImageRequest,
@@ -40,7 +60,20 @@ const toRequest = (data: Partial<Question>) => ({
 
 export const toCreateQuestionRequest = (
   data: Partial<Question>,
-): CreateQuestionDto => toRequest(data);
+): CreateQuestionDto => toRequest(data) as CreateQuestionDto;
 export const toUpdateQuestionRequest = (
   data: Partial<Question>,
-): UpdateQuestionDto => toRequest(data);
+): UpdateQuestionDto => {
+  const request = toRequest(data);
+  const {
+    primaryAsset: _primaryAsset,
+    mediaUrl: _mediaUrl,
+    mediaKey: _mediaKey,
+    assetStatus: _assetStatus,
+    assetFailureReason: _assetFailureReason,
+    assetFailureStep: _assetFailureStep,
+    assetFailureDiagnostics: _assetFailureDiagnostics,
+    ...contentOnly
+  } = request;
+  return contentOnly as unknown as UpdateQuestionDto;
+};

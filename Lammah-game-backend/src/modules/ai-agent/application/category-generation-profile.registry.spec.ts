@@ -32,4 +32,19 @@ describe('CategoryProfileRegistry', () => {
       'CATEGORY_PROFILE_NOT_FOUND',
     );
   });
+
+  it('resolves the real persisted world-football category by stable slug', () => {
+    const result = categoryProfileRegistry.resolve({
+      catalogName: 'رياضة',
+      catalogSlug: 'رياضة',
+      categoryName: 'كرة قدم عالمية',
+      categorySlug: 'كرة-قدم-عالمية',
+    });
+    expect(result).toMatchObject({
+      profile: { id: 'football' },
+      fallbackUsed: false,
+      matchStrategy: 'category-slug',
+      issues: [],
+    });
+  });
 });

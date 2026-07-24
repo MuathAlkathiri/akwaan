@@ -1,0 +1,10 @@
+[
+  { "title": "الأماكن", "artist": "محمد عبده", "country": "Saudi Arabia", "difficulty": "easy", "titleAliases": ["الاماكن"], "artistAliases": ["Mohammed Abdu"], "releaseYear": 2005 },
+  { "title": "مذهلة", "artist": "محمد عبده", "country": "Saudi Arabia", "difficulty": "medium", "titleAliases": ["مذهله"], "artistAliases": ["Mohammed Abdu"], "releaseYear": 1992 },
+  { "title": "تناديك", "artist": "ماجد المهندس", "country": "Iraq", "difficulty": "easy", "titleAliases": [], "artistAliases": ["Majid Al Mohandis", "Majed Al Mohandis"], "releaseYear": 2018 },
+  { "title": "أنا حنيت", "artist": "عبدالله الرويشد", "country": "Kuwait", "difficulty": "medium", "titleAliases": ["انا حنيت"], "artistAliases": ["Abdullah Al Rowaished"], "releaseYear": 1992 },
+  { "title": "يا طيب القلب", "artist": "عبدالمجيد عبدالله", "country": "Saudi Arabia", "difficulty": "easy", "titleAliases": ["ياطيب القلب"], "artistAliases": ["Abdul Majeed Abdullah"] },
+  { "title": "تدري ليش", "artist": "أحلام", "country": "UAE", "difficulty": "medium", "titleAliases": [], "artistAliases": ["Ahlam"], "releaseYear": 1996 },
+  { "title": "مع السلامة", "artist": "حسين الجسمي", "country": "UAE", "difficulty": "hard", "titleAliases": ["مع السلامه"], "artistAliases": ["Hussain Al Jassmi"], "releaseYear": 2001 },
+  { "title": "نور العين", "artist": "عمرو دياب", "country": "Egypt", "difficulty": "easy", "titleAliases": ["حبيبي يا نور العين", "Nour El Ain"], "artistAliases": ["Amr Diab"], "releaseYear": 1996 }
+]

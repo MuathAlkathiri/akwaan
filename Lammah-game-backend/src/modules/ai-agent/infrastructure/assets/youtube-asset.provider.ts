@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { execFile } from 'child_process';
 import { randomUUID } from 'crypto';
-import { access, mkdir, rm } from 'fs/promises';
+import { access, mkdir, rm, stat } from 'fs/promises';
 import { join } from 'path';
 import { promisify } from 'util';
 import {
@@ -193,6 +193,7 @@ export class YouTubeAssetProvider implements AssetProvider {
       assetRequest.mediaIntent === 'music'
         ? undefined
         : this.buildVoiceSearchPlan(assetRequest);
+    const explicitCandidate = this.explicitSelectedCandidate(assetRequest);
     const searchCandidates =
       voicePlan?.queries ?? this.buildSearchCandidates(assetRequest);
     const duration = this.normalizeDuration(assetRequest.duration);
@@ -216,10 +217,13 @@ export class YouTubeAssetProvider implements AssetProvider {
           outputPath,
           mediaKey,
           tempBasePath,
+          explicitCandidate,
         );
       }
 
-      const selected = await this.search(searchCandidates, assetRequest);
+      const selected =
+        explicitCandidate ??
+        (await this.search(searchCandidates, assetRequest));
       const { sourceUrl, searchQuery } = selected;
       const sourcePattern = `${tempBasePath}.%(ext)s`;
       await this.runCommand(
@@ -244,6 +248,7 @@ export class YouTubeAssetProvider implements AssetProvider {
         sourceDuration,
         duration,
         tempBasePath,
+        this.optionalStart(assetRequest.preferredStartSeconds),
       );
       await this.runCommand('trim', this.ffmpegBinary, [
         '-y',
@@ -260,6 +265,7 @@ export class YouTubeAssetProvider implements AssetProvider {
 
       this.logger.log('Step 5: Store locally');
       await this.assertFileExists('store', outputPath);
+      const storedFile = await stat(outputPath);
       this.logger.log(`Step 5 complete: Store locally (${outputPath})`);
 
       return {
@@ -272,6 +278,7 @@ export class YouTubeAssetProvider implements AssetProvider {
         provider: 'youtube',
         type: 'audio',
         metadata: {
+          sourceId: this.youtubeSourceId(sourceUrl),
           title: selected.title,
           channel: selected.channel,
           sourceDurationSeconds: selected.durationSeconds,
@@ -287,6 +294,8 @@ export class YouTubeAssetProvider implements AssetProvider {
           selectedWindowStartSeconds: musicWindow.startSeconds,
           windowsScanned: musicWindow.windowsScanned,
           musicWindowScore: musicWindow.score,
+          mimetype: 'audio/mp4',
+          size: storedFile.size,
         },
       };
     } finally {
@@ -300,7 +309,7 @@ export class YouTubeAssetProvider implements AssetProvider {
     assetRequest: AssetRequest,
   ): Promise<AssetMetadata> {
     const searchCandidates = this.buildVideoSearchCandidates(assetRequest);
-    const duration = this.normalizeDuration(assetRequest.duration);
+    const duration = this.normalizeVideoDuration(assetRequest.duration);
     const mediaKey = `question-assets/video/${randomUUID()}.mp4`;
     const videoDirectory = join(this.uploadsRoot, 'question-assets', 'video');
     const outputPath = join(this.uploadsRoot, mediaKey);
@@ -311,7 +320,9 @@ export class YouTubeAssetProvider implements AssetProvider {
     try {
       this.ytDlpBinary = await this.resolveBinary('yt-dlp', '/usr/bin/yt-dlp');
       this.ffmpegBinary = await this.resolveBinary('ffmpeg', '/usr/bin/ffmpeg');
-      const selected = await this.search(searchCandidates, assetRequest);
+      const selected =
+        this.explicitSelectedCandidate(assetRequest) ??
+        (await this.search(searchCandidates, assetRequest));
       const sourcePattern = `${tempBasePath}.%(ext)s`;
       await this.runCommand(
         'download',
@@ -332,6 +343,7 @@ export class YouTubeAssetProvider implements AssetProvider {
       const startSeconds = this.selectVideoWindowStart(
         sourceDuration,
         duration,
+        assetRequest.preferredStartSeconds,
       );
       await this.runCommand('trim', this.ffmpegBinary, [
         '-y',
@@ -360,6 +372,7 @@ export class YouTubeAssetProvider implements AssetProvider {
 
       this.logger.log('Step 5: Store locally');
       await this.assertFileExists('store', outputPath);
+      const storedFile = await stat(outputPath);
       this.logger.log(`Step 5 complete: Store locally (${outputPath})`);
 
       return {
@@ -382,6 +395,9 @@ export class YouTubeAssetProvider implements AssetProvider {
           relevanceRejections: selected.relevanceRejections,
           selectedQuery: selected.searchQuery,
           selectedWindowStartSeconds: startSeconds,
+          mediaFingerprint: assetRequest.mediaFingerprint,
+          mimetype: 'video/mp4',
+          size: storedFile.size,
         },
       };
     } finally {
@@ -606,12 +622,19 @@ export class YouTubeAssetProvider implements AssetProvider {
     sourceDuration: number,
     clipDuration: number,
     tempBasePath: string,
+    preferredStartSeconds?: number,
   ) {
     const analyses: ReturnType<YouTubeAssetProvider['scoreMusicWindow']>[] = [];
-    for (const [index, start] of this.buildMusicWindowStarts(
-      sourceDuration,
-      clipDuration,
-    ).entries()) {
+    const starts =
+      preferredStartSeconds === undefined
+        ? this.buildMusicWindowStarts(sourceDuration, clipDuration)
+        : [
+            Math.min(
+              preferredStartSeconds,
+              Math.max(0, sourceDuration - clipDuration),
+            ),
+          ];
+    for (const [index, start] of starts.entries()) {
       const windowPath = `${tempBasePath}-music-window-${index}.m4a`;
       try {
         await this.runCommand(
@@ -731,11 +754,20 @@ export class YouTubeAssetProvider implements AssetProvider {
     outputPath: string,
     mediaKey: string,
     tempBasePath: string,
+    explicitCandidate?: RankedYouTubeCandidate,
   ): Promise<AssetMetadata> {
-    const { candidates, diagnostics } = await this.searchVoiceCandidates(
-      queries,
-      request,
-    );
+    const { candidates, diagnostics } = explicitCandidate
+      ? {
+          candidates: [explicitCandidate],
+          diagnostics: {
+            queryStrategyCount: 0,
+            rawSearchResultCount: 1,
+            deduplicatedVideoCount: 1,
+            metadataAcceptedCount: 1,
+            explicitCandidate: true,
+          },
+        }
+      : await this.searchVoiceCandidates(queries, request);
     let downloadedCandidateCount = 0;
     let windowsScanned = 0;
     let speechWindowsFound = 0;
@@ -765,10 +797,19 @@ export class YouTubeAssetProvider implements AssetProvider {
         const sourceDuration =
           selected.durationSeconds ?? (await this.probeDuration(sourcePath));
         const analyses: VoiceWindowAnalysis[] = [];
-        for (const [windowIndex, start] of this.buildVoiceWindowStarts(
-          sourceDuration,
-          duration,
-        ).entries()) {
+        const preferredStart = this.optionalStart(
+          request.preferredStartSeconds,
+        );
+        const starts =
+          preferredStart === undefined
+            ? this.buildVoiceWindowStarts(sourceDuration, duration)
+            : [
+                Math.min(
+                  preferredStart,
+                  Math.max(0, sourceDuration - duration),
+                ),
+              ];
+        for (const [windowIndex, start] of starts.entries()) {
           const windowPath = `${candidateBase}-window-${windowIndex}.m4a`;
           try {
             await this.runCommand(
@@ -846,6 +887,7 @@ export class YouTubeAssetProvider implements AssetProvider {
           outputPath,
         ]);
         await this.assertFileExists('store', outputPath);
+        const storedFile = await stat(outputPath);
         return {
           localPath: outputPath,
           url: `${this.appBaseUrl.replace(/\/+$/, '')}/uploads/${mediaKey}`,
@@ -856,6 +898,7 @@ export class YouTubeAssetProvider implements AssetProvider {
           provider: 'youtube',
           type: 'audio',
           metadata: {
+            sourceId: this.youtubeSourceId(selected.sourceUrl),
             title: this.safeTitle(selected.title),
             channel: selected.channel,
             sourceDurationSeconds: sourceDuration,
@@ -874,6 +917,8 @@ export class YouTubeAssetProvider implements AssetProvider {
             speechWindowsFound,
             silentWindowsRejected,
             musicDominantWindowsRejected,
+            mimetype: 'audio/mp4',
+            size: storedFile.size,
           },
         };
       } catch (error) {
@@ -904,6 +949,53 @@ export class YouTubeAssetProvider implements AssetProvider {
         candidateFailures,
       },
     );
+  }
+
+  private optionalStart(value: unknown): number | undefined {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+  }
+
+  private explicitSelectedCandidate(
+    request: AssetRequest,
+  ): RankedYouTubeCandidate | undefined {
+    const sourceUrl = this.readString(request.selectedSourceUrl);
+    if (!sourceUrl) return undefined;
+    const raw =
+      request.selectedCandidate && typeof request.selectedCandidate === 'object'
+        ? (request.selectedCandidate as Record<string, unknown>)
+        : {};
+    const durationSeconds = Number(raw.durationSeconds);
+    return {
+      sourceUrl,
+      title: this.safeTitle(this.readString(raw.title) || sourceUrl),
+      durationSeconds:
+        Number.isFinite(durationSeconds) && durationSeconds > 0
+          ? durationSeconds
+          : undefined,
+      searchQuery:
+        this.readString(raw.queryUsed) || this.readString(request.query),
+      relevanceScore: 100,
+      queryCount: 0,
+      candidateCount: 1,
+      relevanceRejections: {},
+      rawSearchResultCount: 1,
+      deduplicatedVideoCount: 1,
+      metadataAcceptedCount: 1,
+    };
+  }
+
+  private youtubeSourceId(sourceUrl: string): string {
+    try {
+      const url = new URL(sourceUrl);
+      return (
+        url.searchParams.get('v') ??
+        url.pathname.split('/').filter(Boolean).at(-1) ??
+        sourceUrl
+      );
+    } catch {
+      return sourceUrl;
+    }
   }
 
   private async searchVoiceCandidates(
@@ -1222,10 +1314,24 @@ export class YouTubeAssetProvider implements AssetProvider {
     };
   }
 
-  private selectVideoWindowStart(
+  selectVideoWindowStart(
     sourceDuration: number,
     clipDuration: number,
+    preferredStartSeconds?: unknown,
   ): number {
+    const requestedStart = Number(preferredStartSeconds);
+    if (
+      preferredStartSeconds !== undefined &&
+      preferredStartSeconds !== null &&
+      Number.isFinite(requestedStart) &&
+      requestedStart >= 0
+    )
+      return Number.isFinite(sourceDuration)
+        ? Math.min(
+            Math.trunc(requestedStart),
+            Math.max(0, Math.floor(sourceDuration - clipDuration)),
+          )
+        : Math.trunc(requestedStart);
     if (!Number.isFinite(sourceDuration) || sourceDuration <= clipDuration + 2)
       return 0;
     const lastStart = Math.max(0, sourceDuration - clipDuration - 2);
@@ -1452,5 +1558,11 @@ export class YouTubeAssetProvider implements AssetProvider {
     }
 
     return Math.min(20, Math.max(1, Math.round(parsed)));
+  }
+
+  private normalizeVideoDuration(duration: unknown): number {
+    const parsed = Number(duration);
+    if (!Number.isFinite(parsed) || parsed <= 0) return 8;
+    return Math.min(15, Math.max(5, Math.round(parsed)));
   }
 }

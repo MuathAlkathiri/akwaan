@@ -1,5 +1,5 @@
 import { InjectionToken, Module } from '@nestjs/common';
-import { AiAgentService } from '../src/modules/ai-agent/ai-agent.service';
+import { ConfigService } from '@nestjs/config';
 import { AdminAiGeneratorController } from '../src/modules/ai-agent/admin-ai-generator.controller';
 import { AiAgentController } from '../src/modules/ai-agent/ai-agent.controller';
 import { AuthController } from '../src/modules/auth/auth.controller';
@@ -31,6 +31,11 @@ import { SubscriptionsService } from '../src/modules/subscriptions/subscriptions
 import { UsersController } from '../src/modules/users/users.controller';
 import { UsersService } from '../src/modules/users/users.service';
 import { WigoloClient } from '../src/modules/ai-agent/infrastructure/wigolo/wigolo-client';
+import { QuestionDuplicateDetectionService } from '../src/modules/questions/application/question-duplicate-detection.service';
+import { QuestionAudioReviewService } from '../src/modules/questions/application/question-audio-review.service';
+import { RankedListRoundService } from '../src/modules/games/application/ranked-list-round.service';
+import { AcceptedAnswerExpansionService } from '../src/modules/questions/application/accepted-answer-expansion.service';
+import { GameQuestionFlowService } from '../src/modules/games/application/game-question-flow.service';
 
 const documentationOnlyProvider = (provide: InjectionToken) => ({
   provide,
@@ -70,9 +75,14 @@ const documentationOnlyProvider = (provide: InjectionToken) => ({
     QueryGameService,
     GameProgressService,
     GameScoringService,
+    RankedListRoundService,
+    GameQuestionFlowService,
+    AcceptedAnswerExpansionService,
     MusicService,
-    AiAgentService,
     WigoloClient,
+    ConfigService,
+    QuestionDuplicateDetectionService,
+    QuestionAudioReviewService,
     SubscriptionsService,
   ].map(documentationOnlyProvider),
 })

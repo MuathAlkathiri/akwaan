@@ -22,17 +22,306 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AcceptedAnswerGenerationResponseDto,
   BulkQuestionActionDto,
   BulkQuestionActionResponseDto,
+  CheckQuestionDuplicatesDto,
+  GenerateAcceptedAnswersDto,
+  GenerateRankedAcceptedAnswersDto,
+  PreviewQuestionMediaClipDto,
+  QuestionAudioCandidatesResponseDto,
   QuestionDetailResponseDto,
   QuestionListResponseDto,
   QuestionsListAiGeneratedParams,
+  QuestionsUploadAudioBody,
+  QuestionsUploadImageBody,
+  RankedAcceptedAnswerGenerationResponseDto,
+  RetryQuestionAudioDto,
+  UpdateQuestionAudioClipDto,
+  UpdateQuestionAudioRequestDto,
 } from ".././models";
 
 import { orvalMutator } from "../../orval-mutator";
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
+/**
+ * @summary Generate reviewable accepted-answer aliases during authoring
+ */
+export const questionsGenerateAcceptedAnswers = (
+  generateAcceptedAnswersDto: GenerateAcceptedAnswersDto,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<AcceptedAnswerGenerationResponseDto>(
+    {
+      url: `/admin/questions/accepted-answers/generate`,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      data: generateAcceptedAnswersDto,
+      signal,
+    },
+    options,
+  );
+};
+
+export const getQuestionsGenerateAcceptedAnswersMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsGenerateAcceptedAnswers>>,
+    TError,
+    { data: GenerateAcceptedAnswersDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsGenerateAcceptedAnswers>>,
+  TError,
+  { data: GenerateAcceptedAnswersDto },
+  TContext
+> => {
+  const mutationKey = ["questionsGenerateAcceptedAnswers"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsGenerateAcceptedAnswers>>,
+    { data: GenerateAcceptedAnswersDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return questionsGenerateAcceptedAnswers(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsGenerateAcceptedAnswersMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsGenerateAcceptedAnswers>>
+>;
+export type QuestionsGenerateAcceptedAnswersMutationBody =
+  GenerateAcceptedAnswersDto;
+export type QuestionsGenerateAcceptedAnswersMutationError = unknown;
+
+/**
+ * @summary Generate reviewable accepted-answer aliases during authoring
+ */
+export const useQuestionsGenerateAcceptedAnswers = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsGenerateAcceptedAnswers>>,
+      TError,
+      { data: GenerateAcceptedAnswersDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsGenerateAcceptedAnswers>>,
+  TError,
+  { data: GenerateAcceptedAnswersDto },
+  TContext
+> => {
+  const mutationOptions =
+    getQuestionsGenerateAcceptedAnswersMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Generate reviewable aliases for all ranked-list entries
+ */
+export const questionsGenerateRankedAcceptedAnswers = (
+  generateRankedAcceptedAnswersDto: GenerateRankedAcceptedAnswersDto,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<RankedAcceptedAnswerGenerationResponseDto>(
+    {
+      url: `/admin/questions/accepted-answers/generate-ranked-list`,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      data: generateRankedAcceptedAnswersDto,
+      signal,
+    },
+    options,
+  );
+};
+
+export const getQuestionsGenerateRankedAcceptedAnswersMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsGenerateRankedAcceptedAnswers>>,
+    TError,
+    { data: GenerateRankedAcceptedAnswersDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsGenerateRankedAcceptedAnswers>>,
+  TError,
+  { data: GenerateRankedAcceptedAnswersDto },
+  TContext
+> => {
+  const mutationKey = ["questionsGenerateRankedAcceptedAnswers"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsGenerateRankedAcceptedAnswers>>,
+    { data: GenerateRankedAcceptedAnswersDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return questionsGenerateRankedAcceptedAnswers(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsGenerateRankedAcceptedAnswersMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsGenerateRankedAcceptedAnswers>>
+>;
+export type QuestionsGenerateRankedAcceptedAnswersMutationBody =
+  GenerateRankedAcceptedAnswersDto;
+export type QuestionsGenerateRankedAcceptedAnswersMutationError = unknown;
+
+/**
+ * @summary Generate reviewable aliases for all ranked-list entries
+ */
+export const useQuestionsGenerateRankedAcceptedAnswers = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsGenerateRankedAcceptedAnswers>>,
+      TError,
+      { data: GenerateRankedAcceptedAnswersDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsGenerateRankedAcceptedAnswers>>,
+  TError,
+  { data: GenerateRankedAcceptedAnswersDto },
+  TContext
+> => {
+  const mutationOptions =
+    getQuestionsGenerateRankedAcceptedAnswersMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Check a manually-authored question for duplicates
+ */
+export const questionsCheckDuplicates = (
+  checkQuestionDuplicatesDto: CheckQuestionDuplicatesDto,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<unknown>(
+    {
+      url: `/admin/questions/check-duplicates`,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      data: checkQuestionDuplicatesDto,
+      signal,
+    },
+    options,
+  );
+};
+
+export const getQuestionsCheckDuplicatesMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsCheckDuplicates>>,
+    TError,
+    { data: CheckQuestionDuplicatesDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsCheckDuplicates>>,
+  TError,
+  { data: CheckQuestionDuplicatesDto },
+  TContext
+> => {
+  const mutationKey = ["questionsCheckDuplicates"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsCheckDuplicates>>,
+    { data: CheckQuestionDuplicatesDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return questionsCheckDuplicates(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsCheckDuplicatesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsCheckDuplicates>>
+>;
+export type QuestionsCheckDuplicatesMutationBody = CheckQuestionDuplicatesDto;
+export type QuestionsCheckDuplicatesMutationError = unknown;
+
+/**
+ * @summary Check a manually-authored question for duplicates
+ */
+export const useQuestionsCheckDuplicates = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsCheckDuplicates>>,
+      TError,
+      { data: CheckQuestionDuplicatesDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsCheckDuplicates>>,
+  TError,
+  { data: CheckQuestionDuplicatesDto },
+  TContext
+> => {
+  const mutationOptions = getQuestionsCheckDuplicatesMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
 /**
  * @summary Admin: get all questions including answers
  */
@@ -437,6 +726,179 @@ export const useQuestionsBulkAction = <TError = unknown, TContext = unknown>(
   return useMutation(mutationOptions, queryClient);
 };
 /**
+ * @summary Upload or replace the canonical optional question image
+ */
+export const questionsUploadImage = (
+  id: string,
+  questionsUploadImageBody: QuestionsUploadImageBody,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  const formData = new FormData();
+  formData.append(`file`, questionsUploadImageBody.file);
+
+  return orvalMutator<QuestionDetailResponseDto>(
+    {
+      url: `/admin/questions/${id}/media/image`,
+      method: "POST",
+      headers: { "Content-Type": "multipart/form-data" },
+      data: formData,
+      signal,
+    },
+    options,
+  );
+};
+
+export const getQuestionsUploadImageMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsUploadImage>>,
+    TError,
+    { id: string; data: QuestionsUploadImageBody },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsUploadImage>>,
+  TError,
+  { id: string; data: QuestionsUploadImageBody },
+  TContext
+> => {
+  const mutationKey = ["questionsUploadImage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsUploadImage>>,
+    { id: string; data: QuestionsUploadImageBody }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return questionsUploadImage(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsUploadImageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsUploadImage>>
+>;
+export type QuestionsUploadImageMutationBody = QuestionsUploadImageBody;
+export type QuestionsUploadImageMutationError = unknown;
+
+/**
+ * @summary Upload or replace the canonical optional question image
+ */
+export const useQuestionsUploadImage = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsUploadImage>>,
+      TError,
+      { id: string; data: QuestionsUploadImageBody },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsUploadImage>>,
+  TError,
+  { id: string; data: QuestionsUploadImageBody },
+  TContext
+> => {
+  const mutationOptions = getQuestionsUploadImageMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Explicitly remove the canonical optional question image
+ */
+export const questionsRemoveImage = (
+  id: string,
+  options?: SecondParameter<typeof orvalMutator>,
+) => {
+  return orvalMutator<QuestionDetailResponseDto>(
+    { url: `/admin/questions/${id}/media/image`, method: "DELETE" },
+    options,
+  );
+};
+
+export const getQuestionsRemoveImageMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsRemoveImage>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsRemoveImage>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["questionsRemoveImage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsRemoveImage>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return questionsRemoveImage(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsRemoveImageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsRemoveImage>>
+>;
+
+export type QuestionsRemoveImageMutationError = unknown;
+
+/**
+ * @summary Explicitly remove the canonical optional question image
+ */
+export const useQuestionsRemoveImage = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsRemoveImage>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsRemoveImage>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getQuestionsRemoveImageMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
  * @summary Retry primary asset resolution
  */
 export const questionsRetryPrimaryAsset = (
@@ -607,6 +1069,962 @@ export const useQuestionsRetryCoverImage = <
   TContext
 > => {
   const mutationOptions = getQuestionsRetryCoverImageMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Retry audio processing
+ */
+export const questionsRetryAudio = (
+  id: string,
+  retryQuestionAudioDto: RetryQuestionAudioDto,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<QuestionDetailResponseDto>(
+    {
+      url: `/admin/questions/${id}/audio/retry`,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      data: retryQuestionAudioDto,
+      signal,
+    },
+    options,
+  );
+};
+
+export const getQuestionsRetryAudioMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsRetryAudio>>,
+    TError,
+    { id: string; data: RetryQuestionAudioDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsRetryAudio>>,
+  TError,
+  { id: string; data: RetryQuestionAudioDto },
+  TContext
+> => {
+  const mutationKey = ["questionsRetryAudio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsRetryAudio>>,
+    { id: string; data: RetryQuestionAudioDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return questionsRetryAudio(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsRetryAudioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsRetryAudio>>
+>;
+export type QuestionsRetryAudioMutationBody = RetryQuestionAudioDto;
+export type QuestionsRetryAudioMutationError = unknown;
+
+/**
+ * @summary Retry audio processing
+ */
+export const useQuestionsRetryAudio = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsRetryAudio>>,
+      TError,
+      { id: string; data: RetryQuestionAudioDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsRetryAudio>>,
+  TError,
+  { id: string; data: RetryQuestionAudioDto },
+  TContext
+> => {
+  const mutationOptions = getQuestionsRetryAudioMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Update an audio request and enqueue fresh candidate research
+ */
+export const questionsUpdateAudioRequest = (
+  id: string,
+  updateQuestionAudioRequestDto: UpdateQuestionAudioRequestDto,
+  options?: SecondParameter<typeof orvalMutator>,
+) => {
+  return orvalMutator<QuestionDetailResponseDto>(
+    {
+      url: `/admin/questions/${id}/audio-request`,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      data: updateQuestionAudioRequestDto,
+    },
+    options,
+  );
+};
+
+export const getQuestionsUpdateAudioRequestMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsUpdateAudioRequest>>,
+    TError,
+    { id: string; data: UpdateQuestionAudioRequestDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsUpdateAudioRequest>>,
+  TError,
+  { id: string; data: UpdateQuestionAudioRequestDto },
+  TContext
+> => {
+  const mutationKey = ["questionsUpdateAudioRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsUpdateAudioRequest>>,
+    { id: string; data: UpdateQuestionAudioRequestDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return questionsUpdateAudioRequest(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsUpdateAudioRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsUpdateAudioRequest>>
+>;
+export type QuestionsUpdateAudioRequestMutationBody =
+  UpdateQuestionAudioRequestDto;
+export type QuestionsUpdateAudioRequestMutationError = unknown;
+
+/**
+ * @summary Update an audio request and enqueue fresh candidate research
+ */
+export const useQuestionsUpdateAudioRequest = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsUpdateAudioRequest>>,
+      TError,
+      { id: string; data: UpdateQuestionAudioRequestDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsUpdateAudioRequest>>,
+  TError,
+  { id: string; data: UpdateQuestionAudioRequestDto },
+  TContext
+> => {
+  const mutationOptions =
+    getQuestionsUpdateAudioRequestMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary List bounded candidates for the active audio request
+ */
+export const questionsListAudioCandidates = (
+  id: string,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<QuestionAudioCandidatesResponseDto>(
+    { url: `/admin/questions/${id}/audio/candidates`, method: "GET", signal },
+    options,
+  );
+};
+
+export const getQuestionsListAudioCandidatesQueryKey = (id?: string) => {
+  return [`/admin/questions/${id}/audio/candidates`] as const;
+};
+
+export const getQuestionsListAudioCandidatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof questionsListAudioCandidates>>,
+  TError = unknown,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof questionsListAudioCandidates>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getQuestionsListAudioCandidatesQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof questionsListAudioCandidates>>
+  > = ({ signal }) => questionsListAudioCandidates(id, requestOptions, signal);
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof questionsListAudioCandidates>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData> };
+};
+
+export type QuestionsListAudioCandidatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof questionsListAudioCandidates>>
+>;
+export type QuestionsListAudioCandidatesQueryError = unknown;
+
+export function useQuestionsListAudioCandidates<
+  TData = Awaited<ReturnType<typeof questionsListAudioCandidates>>,
+  TError = unknown,
+>(
+  id: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof questionsListAudioCandidates>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof questionsListAudioCandidates>>,
+          TError,
+          Awaited<ReturnType<typeof questionsListAudioCandidates>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData>;
+};
+export function useQuestionsListAudioCandidates<
+  TData = Awaited<ReturnType<typeof questionsListAudioCandidates>>,
+  TError = unknown,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof questionsListAudioCandidates>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof questionsListAudioCandidates>>,
+          TError,
+          Awaited<ReturnType<typeof questionsListAudioCandidates>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> };
+export function useQuestionsListAudioCandidates<
+  TData = Awaited<ReturnType<typeof questionsListAudioCandidates>>,
+  TError = unknown,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof questionsListAudioCandidates>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> };
+/**
+ * @summary List bounded candidates for the active audio request
+ */
+
+export function useQuestionsListAudioCandidates<
+  TData = Awaited<ReturnType<typeof questionsListAudioCandidates>>,
+  TError = unknown,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof questionsListAudioCandidates>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> } {
+  const queryOptions = getQuestionsListAudioCandidatesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData> };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * @summary Select and process one candidate from the active audio request
+ */
+export const questionsSelectAudioCandidate = (
+  id: string,
+  candidateId: string,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<QuestionDetailResponseDto>(
+    {
+      url: `/admin/questions/${id}/audio/candidates/${candidateId}/select`,
+      method: "POST",
+      signal,
+    },
+    options,
+  );
+};
+
+export const getQuestionsSelectAudioCandidateMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsSelectAudioCandidate>>,
+    TError,
+    { id: string; candidateId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsSelectAudioCandidate>>,
+  TError,
+  { id: string; candidateId: string },
+  TContext
+> => {
+  const mutationKey = ["questionsSelectAudioCandidate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsSelectAudioCandidate>>,
+    { id: string; candidateId: string }
+  > = (props) => {
+    const { id, candidateId } = props ?? {};
+
+    return questionsSelectAudioCandidate(id, candidateId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsSelectAudioCandidateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsSelectAudioCandidate>>
+>;
+
+export type QuestionsSelectAudioCandidateMutationError = unknown;
+
+/**
+ * @summary Select and process one candidate from the active audio request
+ */
+export const useQuestionsSelectAudioCandidate = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsSelectAudioCandidate>>,
+      TError,
+      { id: string; candidateId: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsSelectAudioCandidate>>,
+  TError,
+  { id: string; candidateId: string },
+  TContext
+> => {
+  const mutationOptions =
+    getQuestionsSelectAudioCandidateMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Update audio clip settings without starting processing
+ */
+export const questionsUpdateAudioClip = (
+  id: string,
+  updateQuestionAudioClipDto: UpdateQuestionAudioClipDto,
+  options?: SecondParameter<typeof orvalMutator>,
+) => {
+  return orvalMutator<QuestionDetailResponseDto>(
+    {
+      url: `/admin/questions/${id}/audio/clip`,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      data: updateQuestionAudioClipDto,
+    },
+    options,
+  );
+};
+
+export const getQuestionsUpdateAudioClipMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsUpdateAudioClip>>,
+    TError,
+    { id: string; data: UpdateQuestionAudioClipDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsUpdateAudioClip>>,
+  TError,
+  { id: string; data: UpdateQuestionAudioClipDto },
+  TContext
+> => {
+  const mutationKey = ["questionsUpdateAudioClip"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsUpdateAudioClip>>,
+    { id: string; data: UpdateQuestionAudioClipDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return questionsUpdateAudioClip(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsUpdateAudioClipMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsUpdateAudioClip>>
+>;
+export type QuestionsUpdateAudioClipMutationBody = UpdateQuestionAudioClipDto;
+export type QuestionsUpdateAudioClipMutationError = unknown;
+
+/**
+ * @summary Update audio clip settings without starting processing
+ */
+export const useQuestionsUpdateAudioClip = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsUpdateAudioClip>>,
+      TError,
+      { id: string; data: UpdateQuestionAudioClipDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsUpdateAudioClip>>,
+  TError,
+  { id: string; data: UpdateQuestionAudioClipDto },
+  TContext
+> => {
+  const mutationOptions = getQuestionsUpdateAudioClipMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Regenerate the selected audio or video candidate using current timing
+ */
+export const questionsPreviewMediaClip = (
+  id: string,
+  previewQuestionMediaClipDto: PreviewQuestionMediaClipDto,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<QuestionDetailResponseDto>(
+    {
+      url: `/admin/questions/${id}/audio/preview`,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      data: previewQuestionMediaClipDto,
+      signal,
+    },
+    options,
+  );
+};
+
+export const getQuestionsPreviewMediaClipMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsPreviewMediaClip>>,
+    TError,
+    { id: string; data: PreviewQuestionMediaClipDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsPreviewMediaClip>>,
+  TError,
+  { id: string; data: PreviewQuestionMediaClipDto },
+  TContext
+> => {
+  const mutationKey = ["questionsPreviewMediaClip"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsPreviewMediaClip>>,
+    { id: string; data: PreviewQuestionMediaClipDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return questionsPreviewMediaClip(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsPreviewMediaClipMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsPreviewMediaClip>>
+>;
+export type QuestionsPreviewMediaClipMutationBody = PreviewQuestionMediaClipDto;
+export type QuestionsPreviewMediaClipMutationError = unknown;
+
+/**
+ * @summary Regenerate the selected audio or video candidate using current timing
+ */
+export const useQuestionsPreviewMediaClip = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsPreviewMediaClip>>,
+      TError,
+      { id: string; data: PreviewQuestionMediaClipDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsPreviewMediaClip>>,
+  TError,
+  { id: string; data: PreviewQuestionMediaClipDto },
+  TContext
+> => {
+  const mutationOptions = getQuestionsPreviewMediaClipMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Approve a ready audio asset
+ */
+export const questionsApproveAudio = (
+  id: string,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<QuestionDetailResponseDto>(
+    { url: `/admin/questions/${id}/audio/approve`, method: "POST", signal },
+    options,
+  );
+};
+
+export const getQuestionsApproveAudioMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsApproveAudio>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsApproveAudio>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["questionsApproveAudio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsApproveAudio>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return questionsApproveAudio(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsApproveAudioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsApproveAudio>>
+>;
+
+export type QuestionsApproveAudioMutationError = unknown;
+
+/**
+ * @summary Approve a ready audio asset
+ */
+export const useQuestionsApproveAudio = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsApproveAudio>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsApproveAudio>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getQuestionsApproveAudioMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Reject an audio asset without deleting the question
+ */
+export const questionsRejectAudio = (
+  id: string,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<QuestionDetailResponseDto>(
+    { url: `/admin/questions/${id}/audio/reject`, method: "POST", signal },
+    options,
+  );
+};
+
+export const getQuestionsRejectAudioMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsRejectAudio>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsRejectAudio>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["questionsRejectAudio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsRejectAudio>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return questionsRejectAudio(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsRejectAudioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsRejectAudio>>
+>;
+
+export type QuestionsRejectAudioMutationError = unknown;
+
+/**
+ * @summary Reject an audio asset without deleting the question
+ */
+export const useQuestionsRejectAudio = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsRejectAudio>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsRejectAudio>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getQuestionsRejectAudioMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Upload replacement question audio or video
+ */
+export const questionsUploadAudio = (
+  id: string,
+  questionsUploadAudioBody: QuestionsUploadAudioBody,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  const formData = new FormData();
+  formData.append(`audio`, questionsUploadAudioBody.audio);
+
+  return orvalMutator<QuestionDetailResponseDto>(
+    {
+      url: `/admin/questions/${id}/audio/upload`,
+      method: "POST",
+      headers: { "Content-Type": "multipart/form-data" },
+      data: formData,
+      signal,
+    },
+    options,
+  );
+};
+
+export const getQuestionsUploadAudioMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsUploadAudio>>,
+    TError,
+    { id: string; data: QuestionsUploadAudioBody },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsUploadAudio>>,
+  TError,
+  { id: string; data: QuestionsUploadAudioBody },
+  TContext
+> => {
+  const mutationKey = ["questionsUploadAudio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsUploadAudio>>,
+    { id: string; data: QuestionsUploadAudioBody }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return questionsUploadAudio(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsUploadAudioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsUploadAudio>>
+>;
+export type QuestionsUploadAudioMutationBody = QuestionsUploadAudioBody;
+export type QuestionsUploadAudioMutationError = unknown;
+
+/**
+ * @summary Upload replacement question audio or video
+ */
+export const useQuestionsUploadAudio = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsUploadAudio>>,
+      TError,
+      { id: string; data: QuestionsUploadAudioBody },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsUploadAudio>>,
+  TError,
+  { id: string; data: QuestionsUploadAudioBody },
+  TContext
+> => {
+  const mutationOptions = getQuestionsUploadAudioMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Remove the current audio or video asset
+ */
+export const questionsRemoveAudioAsset = (
+  id: string,
+  options?: SecondParameter<typeof orvalMutator>,
+) => {
+  return orvalMutator<QuestionDetailResponseDto>(
+    { url: `/admin/questions/${id}/audio/asset`, method: "DELETE" },
+    options,
+  );
+};
+
+export const getQuestionsRemoveAudioAssetMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsRemoveAudioAsset>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsRemoveAudioAsset>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["questionsRemoveAudioAsset"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsRemoveAudioAsset>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return questionsRemoveAudioAsset(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsRemoveAudioAssetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsRemoveAudioAsset>>
+>;
+
+export type QuestionsRemoveAudioAssetMutationError = unknown;
+
+/**
+ * @summary Remove the current audio or video asset
+ */
+export const useQuestionsRemoveAudioAsset = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsRemoveAudioAsset>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsRemoveAudioAsset>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getQuestionsRemoveAudioAssetMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

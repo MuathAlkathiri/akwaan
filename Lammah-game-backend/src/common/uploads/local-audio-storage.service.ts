@@ -11,6 +11,8 @@ export interface UploadedAudioFile {
   buffer: Buffer;
 }
 
+export type QuestionMediaType = 'audio' | 'video';
+
 export interface StoredLocalAudio {
   filename: string;
   absolutePath: string;
@@ -30,9 +32,45 @@ export class LocalAudioStorageService {
     );
   }
 
+  async saveQuestionAudio(file: UploadedAudioFile): Promise<StoredLocalAudio> {
+    return this.saveQuestionMedia(file, 'audio');
+  }
+
+  async saveQuestionMedia(
+    file: UploadedAudioFile,
+    type: QuestionMediaType,
+  ): Promise<StoredLocalAudio> {
+    const extension =
+      extname(file.originalname).toLowerCase() ||
+      (type === 'video' ? '.mp4' : '.m4a');
+    return this.write(
+      `question-assets/${type}`,
+      `${randomUUID()}${extension}`,
+      file.buffer,
+    );
+  }
+
   async allocateSnippet(originalFilename: string): Promise<StoredLocalAudio> {
     const stem = originalFilename.replace(/\.[^.]+$/, '');
     return this.location('music/snippets', `${stem}-snippet.mp3`, true);
+  }
+
+  async allocateQuestionSnippet(
+    originalFilename: string,
+  ): Promise<StoredLocalAudio> {
+    return this.allocateQuestionMediaClip(originalFilename, 'audio');
+  }
+
+  async allocateQuestionMediaClip(
+    originalFilename: string,
+    type: QuestionMediaType,
+  ): Promise<StoredLocalAudio> {
+    const stem = originalFilename.replace(/\.[^.]+$/, '');
+    return this.location(
+      `question-assets/${type}`,
+      `${stem}-clip.${type === 'video' ? 'mp4' : 'mp3'}`,
+      true,
+    );
   }
 
   async delete(stored?: Pick<StoredLocalAudio, 'absolutePath'>): Promise<void> {

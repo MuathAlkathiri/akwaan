@@ -96,6 +96,7 @@ export function AIGenerator() {
   const [saved, setSaved] = useState<Set<number>>(new Set());
   const generationBackendMessage =
     generateQuestions.error?.response?.data.message;
+  const generationErrorPayload = generateQuestions.error?.response?.data;
   const generationErrorMessage = generateQuestions.error
     ? generateQuestions.error.code === "ECONNABORTED"
       ? "انتهت مهلة التوليد. تأكد من تشغيل LM Studio وتحميل النموذج، أو جرّب عددًا أقل."
@@ -218,6 +219,17 @@ export function AIGenerator() {
       );
     }
 
+    if (question.type === "video") {
+      return (
+        <video
+          controls
+          preload="metadata"
+          className="max-h-72 w-full rounded-2xl object-contain"
+          src={assetUrl}
+        />
+      );
+    }
+
     if (question.type === "image") {
       return (
         <Image
@@ -273,6 +285,35 @@ export function AIGenerator() {
           {verification.verifiedFranchise ? (
             <p>العمل: {String(verification.verifiedFranchise)}</p>
           ) : null}
+        </div>
+      </details>
+    );
+  };
+
+  const renderSourceProvenance = (question: ReviewedQuestionDraft) => {
+    if (question.aiMetadata?.strategy !== "SOURCE_CURATED") return null;
+    const source = question.aiMetadata.source as
+      Record<string, unknown> | undefined;
+    const curation = question.aiMetadata.curation as
+      Record<string, unknown> | undefined;
+    return (
+      <details className="rounded-2xl border p-3 text-sm">
+        <summary className="cursor-pointer font-semibold">
+          مصدر السؤال والتحرير
+        </summary>
+        <div className="mt-2 grid gap-1 text-muted-foreground sm:grid-cols-2">
+          <p>المصدر: {String(source?.sourceId ?? "-")}</p>
+          <p>معرّف السؤال: {String(source?.sourceQuestionId ?? "-")}</p>
+          <p>فئة المصدر: {String(source?.sourceCategory ?? "-")}</p>
+          <p>صعوبة المصدر: {String(source?.originalDifficulty ?? "-")}</p>
+          <p>بصمة المصدر: {String(source?.fingerprint ?? "-")}</p>
+          <p className="sm:col-span-2">
+            السؤال الأصلي: {String(source?.originalQuestion ?? "-")}
+          </p>
+          <p>الإجابة الأصلية: {String(source?.originalCorrectAnswer ?? "-")}</p>
+          <p>الإجابة المحررة: {question.correctAnswer}</p>
+          <p>تطابق المعنى: {curation?.sameMeaning ? "نعم" : "لا"}</p>
+          <p>ثبات الإجابة: {curation?.sameCorrectAnswer ? "نعم" : "لا"}</p>
         </div>
       </details>
     );
@@ -396,6 +437,26 @@ export function AIGenerator() {
               {generationErrorMessage}
             </p>
           )}
+          {generationErrorPayload?.candidateDiagnostics?.length ? (
+            <details className="rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
+              <summary className="cursor-pointer font-semibold text-destructive">
+                تشخيصات المرشحين المرفوضين
+              </summary>
+              <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">
+                {JSON.stringify(
+                  {
+                    issueCodes: generationErrorPayload.issueCodes,
+                    sourceSummary: generationErrorPayload.sourceSummary,
+                    sourceDiagnostics: generationErrorPayload.sourceDiagnostics,
+                    candidateDiagnostics:
+                      generationErrorPayload.candidateDiagnostics,
+                  },
+                  null,
+                  2,
+                )}
+              </pre>
+            </details>
+          ) : null}
 
           {saveErrorMessage && (
             <p className="rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
@@ -566,6 +627,7 @@ export function AIGenerator() {
                 </CardHeader>
                 <CardContent className="space-y-4 pt-0">
                   {renderVerification(question)}
+                  {renderSourceProvenance(question)}
                   {renderAsset(question)}
                   {question.coverImageFailureReason && (
                     <p className="text-xs text-muted-foreground">

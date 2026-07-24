@@ -4,8 +4,10 @@ import {
   Get,
   HttpStatus,
   Post,
+  ServiceUnavailableException,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -19,16 +21,15 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/schemas/user.schema';
-import { AiAgentService } from './ai-agent.service';
 import { GenerateReviewedQuestionsDto } from './dto/generate-reviewed-questions.dto';
 import { SaveReviewedDraftsDto } from './dto/save-reviewed-drafts.dto';
 import {
   AiToolDiagnosticsResponseDto,
   GenerateReviewedQuestionsResponseDto,
+  GenerateReviewedQuestionsErrorResponseDto,
   SaveReviewedDraftsResponseDto,
   WigoloHealthResponseDto,
 } from './dto/ai-response.dto';
-import { QuestionResponseMapper } from '../questions/mappers/question-response.mapper';
 import { WigoloClient } from './infrastructure/wigolo/wigolo-client';
 
 const execFileAsync = promisify(execFile);
@@ -45,8 +46,8 @@ export class AdminAiGeneratorController {
   };
 
   constructor(
-    private readonly aiAgentService: AiAgentService,
     private readonly wigoloClient: WigoloClient,
+    private readonly config: ConfigService,
   ) {}
 
   @Get('wigolo-health')
@@ -121,13 +122,26 @@ export class AdminAiGeneratorController {
     type: GenerateReviewedQuestionsResponseDto,
     description: 'Reviewed question drafts generated successfully',
   })
+  @ApiResponse({
+    status: 503,
+    description: 'AI question generation is disabled',
+    schema: {
+      example: {
+        statusCode: 503,
+        code: 'AI_QUESTION_GENERATION_DISABLED',
+        message: 'AI question generation is currently disabled.',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    type: GenerateReviewedQuestionsErrorResponseDto,
+    description:
+      'No reviewed drafts were approved; bounded source and candidate diagnostics are returned.',
+  })
   async generateReviewed(@Body() body: GenerateReviewedQuestionsDto) {
-    const result = await this.aiAgentService.generateReviewedQuestions(body);
-
-    return {
-      statusCode: HttpStatus.CREATED,
-      ...this.sanitizeResponse(result),
-    };
+    this.assertGenerationEnabled();
+    void body;
   }
 
   @Post('save-drafts')
@@ -137,13 +151,17 @@ export class AdminAiGeneratorController {
   })
   @ApiResponse({ status: 201, type: SaveReviewedDraftsResponseDto })
   async saveDrafts(@Body() body: SaveReviewedDraftsDto) {
-    const result = await this.aiAgentService.saveReviewedDrafts(body);
-    return {
-      ...result,
-      savedQuestions: QuestionResponseMapper.toResponseList(
-        result.savedQuestions,
-      ),
-    };
+    this.assertGenerationEnabled();
+    void body;
+  }
+
+  private assertGenerationEnabled(): void {
+    void this.config.get<string>('AI_QUESTION_GENERATION_ENABLED');
+    throw new ServiceUnavailableException({
+      statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+      code: 'AI_QUESTION_GENERATION_DISABLED',
+      message: 'AI question generation is currently disabled.',
+    });
   }
 
   private async runToolCommand(

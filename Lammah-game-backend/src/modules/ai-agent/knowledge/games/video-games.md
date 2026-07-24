@@ -141,6 +141,38 @@ Use concise metadata that helps the provider search correctly.
 
 ---
 
+# Curated Fact Bank
+
+The following are immutable source facts that may be used to create questions. Copy the relevant sentence verbatim into `excerpt` when selecting a fact.
+
+- في لعبة Portal، تستخدم Chell جهاز Aperture Science Handheld Portal Device لإنشاء بوابتين مترابطتين.
+- تدور أحداث لعبة BioShock الأولى في مدينة Rapture الغارقة تحت البحر.
+- في لعبة The Last of Us، يُسمّى المصابون الذين يعتمدون على تحديد الموقع بالصدى Clickers.
+- في Elden Ring، تُستخدم Runes عملةً ونقاط خبرة لتطوير الشخصية وشراء الأدوات.
+- السلاح المميز لجماعة الأساسنز في Assassin's Creed هو Hidden Blade المثبت في المعصم.
+- في Mario Kart، تستهدف Blue Shell عادةً المتسابق الموجود في المركز الأول.
+- في Halo، يحمل Master Chief الرقم العسكري Spartan-117.
+- في Overwatch، تستطيع شخصية Mercy إحياء زميل سقط باستخدام قدرة Resurrect.
+- في League of Legends، يمنح قتل Baron Nashor الفريق تعزيز Hand of Baron.
+- في Dark Souls، يعيد اللاعب تعبئة قوارير Estus عند الاستراحة قرب Bonfire.
+- في Resident Evil، تعمل أعشاب Green Herb على استعادة صحة الشخصية.
+- في Pokémon، تكون هجمات النوع المائي فعالة ضد Pokémon من النوع الناري.
+- في DOOM، يُعرف بطل السلسلة باسم Doom Slayer.
+- في Half-Life، يعمل Gordon Freeman عالماً في منشأة Black Mesa للأبحاث.
+- في Metal Gear Solid، يكون التخفي وتجنب اكتشاف الحراس محور أسلوب اللعب.
+- في Counter-Strike، يحتاج فريق مكافحة الإرهاب إلى Defuse Kit لتقليل زمن تفكيك القنبلة.
+- في Rocket League، يقود اللاعبون سيارات تعمل بالدفع الصاروخي لضرب كرة عملاقة نحو المرمى.
+- في Hades، يحاول Zagreus الهروب من العالم السفلي الذي يحكمه والده Hades.
+- في Hollow Knight، تدور المغامرة في مملكة Hallownest المهجورة.
+- في Sekiro: Shadows Die Twice، تسمح أداة Grappling Hook للبطل بالتنقل إلى نقاط مرتفعة.
+- في Red Dead Redemption 2، ينتمي Arthur Morgan إلى عصابة Van der Linde.
+- في Mass Effect، يقود Commander Shepard السفينة Normandy في مهماته عبر المجرة.
+- في Skyrim، تُسمّى قدرة البطل على استخدام الصيحات السحرية Thu'um.
+- في Fallout، يعرض جهاز Pip-Boy حالة الشخصية وخريطتها ومخزونها.
+- في Ghost of Tsushima، بطل القصة هو الساموراي Jin Sakai.
+
+---
+
 # Good Question Examples
 
 - وش الأداة اللي تستخدمها Chell للتنقل بين الجدران في Portal؟

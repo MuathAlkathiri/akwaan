@@ -21,11 +21,14 @@ import { CreateGameService } from './application/create-game.service';
 import { QueryGameService } from './application/query-game.service';
 import { GameProgressService } from './application/game-progress.service';
 import { GameScoringService } from './application/game-scoring.service';
+import { RankedListRoundService } from './application/ranked-list-round.service';
+import { GameQuestionFlowService } from './application/game-question-flow.service';
 import { GameResponseMapper } from './mappers/game-response.mapper';
 import {
   GameDetailResponseDto,
   GameListResponseDto,
   GameMutationResponseDto,
+  GameCreationValidationErrorDto,
 } from './dto/game-response.dto';
 import {
   CreateGameDto,
@@ -33,6 +36,18 @@ import {
   AwardPointsDto,
   SkipQuestionDto,
 } from './dto/create-game.dto';
+import {
+  ExpireRankedListTurnDto,
+  RankedListRoundActionEnvelopeDto,
+  RankedListRoundStateEnvelopeDto,
+  StartRankedListRoundDto,
+  SubmitRankedListAnswerDto,
+} from './dto/ranked-list-round.dto';
+import {
+  GameQuestionAnswerEnvelopeDto,
+  GameQuestionViewEnvelopeDto,
+  SubmitGameQuestionResultDto,
+} from './dto/game-question-flow.dto';
 import { Game } from './schemas/game.schema';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import {
@@ -55,6 +70,8 @@ export class GamesController {
     private readonly queryGames: QueryGameService,
     private readonly progress: GameProgressService,
     private readonly scoring: GameScoringService,
+    private readonly rankedListRounds: RankedListRoundService,
+    private readonly questionFlow: GameQuestionFlowService,
   ) {}
 
   @Post()
@@ -94,6 +111,7 @@ export class GamesController {
   @ApiResponse({
     status: 400,
     description: 'Bad request - validation error',
+    type: GameCreationValidationErrorDto,
     schema: {
       example: {
         statusCode: 400,
@@ -196,6 +214,91 @@ export class GamesController {
     return {
       statusCode: HttpStatus.OK,
       data: GameResponseMapper.toResponse(game) as unknown as Game,
+    };
+  }
+
+  @Get(':id/questions/:gameQuestionId')
+  @ApiOperation({
+    operationId: 'gamesGetQuestionView',
+    summary: 'Get one immutable game-question snapshot without its answer',
+  })
+  @ApiResponse({ status: 200, type: GameQuestionViewEnvelopeDto })
+  @ApiResponse({ status: 404, description: 'Game or question not found' })
+  async getQuestionView(
+    @Param('id') id: string,
+    @Param('gameQuestionId') gameQuestionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.questionFlow.question(id, gameQuestionId, user),
+    };
+  }
+
+  @Post(':id/questions/:gameQuestionId/reveal')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    operationId: 'gamesRevealQuestionView',
+    summary: 'Reveal one game-question answer idempotently',
+  })
+  @ApiResponse({ status: 200, type: GameQuestionAnswerEnvelopeDto })
+  async revealQuestionView(
+    @Param('id') id: string,
+    @Param('gameQuestionId') gameQuestionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.questionFlow.reveal(id, gameQuestionId, user),
+    };
+  }
+
+  @Get(':id/questions/:gameQuestionId/answer')
+  @ApiOperation({
+    operationId: 'gamesGetQuestionAnswerView',
+    summary: 'Get a previously revealed game-question answer',
+  })
+  @ApiResponse({ status: 200, type: GameQuestionAnswerEnvelopeDto })
+  @ApiResponse({ status: 400, description: 'Answer is not revealed' })
+  async getQuestionAnswerView(
+    @Param('id') id: string,
+    @Param('gameQuestionId') gameQuestionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.questionFlow.answer(id, gameQuestionId, user),
+    };
+  }
+
+  @Post(':id/questions/:gameQuestionId/result')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    operationId: 'gamesSubmitQuestionResult',
+    summary: 'Finalize a game question for a team or no one',
+  })
+  @ApiBody({ type: SubmitGameQuestionResultDto })
+  @ApiResponse({ status: 200, type: GameMutationResponseDto })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid team, unrevealed answer, or already answered',
+  })
+  async submitQuestionResult(
+    @Param('id') id: string,
+    @Param('gameQuestionId') gameQuestionId: string,
+    @Body() dto: SubmitGameQuestionResultDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const game = await this.questionFlow.submitResult(
+      id,
+      gameQuestionId,
+      dto.teamId,
+      user,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Question result submitted successfully',
+      data: GameResponseMapper.toResponse(game),
     };
   }
 
@@ -417,6 +520,97 @@ export class GamesController {
       statusCode: HttpStatus.OK,
       message: 'Question skipped successfully',
       data: GameResponseMapper.toResponse(game) as unknown as Game,
+    };
+  }
+
+  @Post(':id/ranked-list-rounds/start')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    operationId: 'gamesStartRankedListRound',
+    summary: 'Start or resume a ranked-list round',
+  })
+  @ApiResponse({ status: 200, type: RankedListRoundActionEnvelopeDto })
+  async startRankedListRound(
+    @Param('id') id: string,
+    @Body() dto: StartRankedListRoundDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.rankedListRounds.start(id, dto.questionId, user),
+    };
+  }
+
+  @Get(':id/ranked-list-rounds/:questionId')
+  @ApiOperation({
+    operationId: 'gamesGetRankedListRoundState',
+    summary: 'Get backend-authoritative ranked-list round state',
+  })
+  @ApiResponse({ status: 200, type: RankedListRoundStateEnvelopeDto })
+  async getRankedListRoundState(
+    @Param('id') id: string,
+    @Param('questionId') questionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.rankedListRounds.getState(id, questionId, user),
+    };
+  }
+
+  @Post(':id/ranked-list-rounds/:questionId/answers')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    operationId: 'gamesSubmitRankedListAnswer',
+    summary: 'Submit the active team ranked-list answer',
+  })
+  @ApiResponse({ status: 200, type: RankedListRoundActionEnvelopeDto })
+  async submitRankedListAnswer(
+    @Param('id') id: string,
+    @Param('questionId') questionId: string,
+    @Body() dto: SubmitRankedListAnswerDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.rankedListRounds.submit(id, questionId, dto, user),
+    };
+  }
+
+  @Post(':id/ranked-list-rounds/:questionId/expire')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    operationId: 'gamesExpireRankedListTurn',
+    summary: 'Expire the current ranked-list turn idempotently',
+  })
+  @ApiResponse({ status: 200, type: RankedListRoundActionEnvelopeDto })
+  async expireRankedListTurn(
+    @Param('id') id: string,
+    @Param('questionId') questionId: string,
+    @Body() dto: ExpireRankedListTurnDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.rankedListRounds.expire(id, questionId, dto, user),
+    };
+  }
+
+  @Post(':id/ranked-list-rounds/:questionId/finalize')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    operationId: 'gamesFinalizeRankedListRound',
+    summary: 'Finalize a completed ranked-list round idempotently',
+  })
+  @ApiResponse({ status: 200, type: RankedListRoundActionEnvelopeDto })
+  async finalizeRankedListRound(
+    @Param('id') id: string,
+    @Param('questionId') questionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.rankedListRounds.finalize(id, questionId, user),
     };
   }
 }

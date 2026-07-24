@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types, UpdateQuery } from 'mongoose';
-import { Question } from '../schemas/question.schema';
+import { Question, QuestionGameplayType } from '../schemas/question.schema';
 import { QueryQuestionsDto } from '../dto/query-questions.dto';
 import { QuestionPoints, QuestionStatus } from '../schemas/question.schema';
 
@@ -26,7 +26,10 @@ export class QuestionRepository {
 
   findAll(includeAnswers: boolean) {
     const query = this.model.find().populate('category');
-    if (!includeAnswers) query.select('-answer -correctAnswer');
+    if (!includeAnswers)
+      query.select(
+        '-answer -correctAnswer -rankedList.entries.answer -rankedList.entries.aliases',
+      );
     return query.exec();
   }
 
@@ -58,12 +61,27 @@ export class QuestionRepository {
 
   findById(id: string, includeAnswer = true) {
     const query = this.model.findById(id).populate('category');
-    if (!includeAnswer) query.select('-answer -correctAnswer');
+    if (!includeAnswer)
+      query.select(
+        '-answer -correctAnswer -rankedList.entries.answer -rankedList.entries.aliases',
+      );
     return query.exec();
   }
 
   findDocumentById(id: string) {
     return this.model.findById(id).exec();
+  }
+
+  findPendingMediaAssets(questionId?: string) {
+    const query: FilterQuery<Question> = {
+      requiresAudio: true,
+      audioStatus: { $in: ['pending', 'processing'] },
+      audioAsset: { $ne: null },
+      ...(questionId && Types.ObjectId.isValid(questionId)
+        ? { _id: new Types.ObjectId(questionId) }
+        : {}),
+    };
+    return this.model.find(query).limit(250).exec();
   }
 
   updateById(id: string, update: UpdateQuery<Question>) {
@@ -100,21 +118,44 @@ export class QuestionRepository {
   findQuestionTexts(categoryId: string) {
     return this.model
       .find({ category: new Types.ObjectId(categoryId) })
-      .select('question')
+      .select('question correctAnswer gameMode primaryAssetRequest')
+      .lean()
+      .exec();
+  }
+
+  findDuplicateCandidates(categoryId?: string, excludeId?: string) {
+    const query: FilterQuery<Question> = {};
+    if (categoryId && Types.ObjectId.isValid(categoryId))
+      query.category = new Types.ObjectId(categoryId);
+    if (excludeId && Types.ObjectId.isValid(excludeId))
+      query._id = { $ne: new Types.ObjectId(excludeId) };
+    return this.model
+      .find(query)
+      .select('_id question category')
+      .limit(250)
       .lean()
       .exec();
   }
 
   findEligibleForGame(options: {
     categoryId: string;
-    points: QuestionPoints;
+    points?: QuestionPoints;
     freeGameOnly: boolean;
+    questionType: QuestionGameplayType;
   }) {
     return this.model
       .find({
         category: new Types.ObjectId(options.categoryId),
-        points: options.points,
+        ...(options.points !== undefined ? { points: options.points } : {}),
         status: QuestionStatus.APPROVED,
+        ...(options.questionType === QuestionGameplayType.STANDARD
+          ? {
+              $or: [
+                { questionType: QuestionGameplayType.STANDARD },
+                { questionType: { $exists: false } },
+              ],
+            }
+          : { questionType: options.questionType }),
         ...(options.freeGameOnly ? { isFreeGameQuestion: true } : {}),
       })
       .sort(options.freeGameOnly ? { createdAt: 1, _id: 1 } : {})

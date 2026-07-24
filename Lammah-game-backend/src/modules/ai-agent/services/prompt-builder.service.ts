@@ -59,6 +59,7 @@ type BuildReviewedPromptInput = {
   aiConfig?: CategoryAiConfig;
   gameplayConfig?: CategoryGameplayConfig;
   categoryProfile?: CategoryGenerationProfile;
+  diversitySeed?: string;
 };
 
 @Injectable()
@@ -118,6 +119,7 @@ Request:
 - Difficulty: "${input.difficulty}"
 - Language: "${input.language}"
 - Required count: ${input.count}
+- Diversity seed: "${input.diversitySeed ?? 'default'}"
 - Knowledge file: "${input.knowledgeFile}"
 - Used default knowledge: ${input.usedDefaultKnowledge}
 
@@ -161,15 +163,17 @@ Return only the JSON object.`;
     difficulty: BuildReviewedPromptInput['difficulty'],
     count: number,
   ) {
-    return `Gulf Music Workflow (mandatory and overrides general examples):
-- Select exactly ${count} distinct verified rows marked ${difficulty} from the Knowledge File.
+    return `Arabic Music Workflow (mandatory and overrides general examples):
+- Generate exactly ${count} distinct real Arabic songs suitable for ${difficulty} difficulty. The songs are chosen by the LLM and are not restricted to a local table.
+- Use the diversity seed to vary artists, decades, countries, and titles between generation requests. Do not repeatedly default to the same famous songs.
 - Every question field must be exactly: "ما اسم هذه الأغنية؟"
 - correctAnswer must be the canonical song title; never ask for or answer with the artist.
 - gameMode="identifySong", type="audio", assetStatus="PENDING".
-- primaryAssetRequest and assetRequest must both contain: type="audio", assetType="audio", mediaIntent="music", sourceType="song", entityType="song", entity=<canonical title>, title=<canonical title>, artist=<canonical artist>, language="ar", region="gulf", duration=15.
-- Artist is mandatory search metadata. Never create a song or artist outside the verified table.
-- The audio asset must be a 15 second snippet from the same generated song; the player guesses the song title from the snippet.
-- Wrong answers must be three other real song titles from the verified table, never artist names.
+- primaryAssetRequest and assetRequest must both contain: type="audio", assetType="audio", mediaIntent="music", sourceType="song", entityType="song", entity=<canonical title>, canonicalEntity=<canonical title>, title=<canonical title>, artist=<canonical artist>, language="ar", region="arab", duration=15.
+- Artist is mandatory search and verification metadata. Only propose real released Arabic songs with an unambiguous title and artist pair; Wigolo will verify each pair before YouTube is searched.
+- Use the exact official song title, not a lyric, refrain, nickname, album name, translated title, or title you reconstructed from memory. Never invent or combine words in a title. If uncertain about the exact title/artist pair, choose a different well-known song you are certain exists.
+- The audio asset must be a 15–20 second snippet from the exact verified song; the player guesses the song title from the snippet.
+- Wrong answers must be three other real Arabic song titles, never artist names.
 - Do not generate trivia, voice, singer, image-identification, lyric-completion, album, year, or theme questions.
 - Cover is decorative and must not contain the song title or album artwork.`;
   }
@@ -303,7 +307,7 @@ Gameplay Mode Rules:
 
 Asset Rules:
 - Every question must include coverImageRequest with type="image" and purpose="decorative".
-- primaryAssetRequest is the gameplay clue. It is required for image/audio modes and must also be copied to assetRequest for backward compatibility.
+- primaryAssetRequest is the gameplay clue. It is required for image/audio/video modes and must also be copied to assetRequest for backward compatibility.
 - Cover images must be relevant without revealing an answer when that would trivialize the question.
 - For identifyCharacter/identifyImage use a broader franchise, location, or theme for the cover, not the answer entity.
 - For identifyVoice prefer a franchise/category cover. For completeQuote avoid the speaker when identity is asked. For timeline use a location, event, era, or franchise.

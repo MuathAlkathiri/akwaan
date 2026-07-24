@@ -111,7 +111,7 @@ export const categoryGenerationProfiles: CategoryGenerationProfile[] = [
       'اغاني الخليج',
     ],
     allowedGameModes: ['identifySong', 'identifySinger', 'identifyMusicIntro'],
-    supportedAssetTypes: ['audio', 'image'],
+    supportedAssetTypes: ['audio', 'image', 'video'],
     knowledgePolicy: 'required',
     verificationPolicy: 'required-for-entity',
     localePolicy: { language: 'ar', answerStyle: 'arabic-first' },
@@ -248,6 +248,81 @@ export const categoryGenerationProfiles: CategoryGenerationProfile[] = [
   },
   {
     version: 1,
+    id: 'football',
+    categoryKeys: [
+      'football',
+      'كرة قدم عالمية',
+      'كره قدم عالميه',
+      'كرة-قدم-عالمية',
+      'world-football',
+      'world cup',
+      'كرة القدم',
+      'كاس العالم',
+      'كأس العالم',
+      'champions league',
+    ],
+    objective:
+      'Generate grounded football questions about people, clubs, venues, seasons, trophies, matches, and timelines.',
+    allowedEntityTypes: [
+      'person',
+      'organization',
+      'location',
+      'event',
+      'object',
+    ],
+    allowedPatternIds: ['identifyLocation', 'timelineEvent', 'textTrivia'],
+    requiredFieldsByEntityType: {
+      person: ['canonicalName', 'verificationQuery'],
+      location: ['canonicalName', 'verificationQuery'],
+    },
+    forbiddenAnswerKinds: [],
+    forbiddenAnswerPhrases: genericForbiddenAnswers,
+    allowedGameModes: ['trivia', 'identifyImage', 'timeline'],
+    supportedAssetTypes: ['text', 'image', 'timeline'],
+    knowledgePolicy: 'required',
+    verificationPolicy: 'required-for-entity',
+    localePolicy: { language: 'ar', answerStyle: 'arabic-first' },
+  },
+  {
+    version: 1,
+    id: 'game-of-thrones',
+    categoryKeys: ['game of thrones', 'got', 'صراع العروش'],
+    objective:
+      'Generate grounded questions about characters, houses, episodes, relationships, locations, quotes, and events.',
+    allowedEntityTypes: [
+      'character',
+      'person',
+      'organization',
+      'location',
+      'event',
+      'object',
+    ],
+    allowedPatternIds: [
+      'identifyCharacter',
+      'identifyLocation',
+      'timelineEvent',
+      'textTrivia',
+    ],
+    requiredFieldsByEntityType: {
+      character: ['canonicalName', 'relatedWork', 'verificationQuery'],
+      person: ['canonicalName', 'relatedWork', 'verificationQuery'],
+    },
+    forbiddenAnswerKinds: [],
+    forbiddenAnswerPhrases: genericForbiddenAnswers,
+    allowedGameModes: [
+      'trivia',
+      'identifyCharacter',
+      'identifyImage',
+      'completeQuote',
+      'timeline',
+    ],
+    supportedAssetTypes: ['text', 'image', 'quote', 'timeline'],
+    knowledgePolicy: 'required',
+    verificationPolicy: 'required-for-entity',
+    localePolicy: { language: 'ar', answerStyle: 'arabic-first' },
+  },
+  {
+    version: 1,
     id: 'from-series',
     categoryKeys: ['from', 'فروم'],
     objective:
@@ -288,6 +363,7 @@ export type CategoryProfileResolution = {
   profile: CategoryGenerationProfile;
   fallbackUsed: boolean;
   issues: QualityIssue[];
+  matchStrategy: string;
 };
 
 export class CategoryProfileRegistry {
@@ -297,20 +373,49 @@ export class CategoryProfileRegistry {
     catalogName: string;
     categoryName: string;
     knowledgeFile?: string;
+    categoryKey?: string;
+    categorySlug?: string;
+    catalogKey?: string;
+    catalogSlug?: string;
   }): CategoryProfileResolution {
-    const haystack = this.normalize(
-      `${input.catalogName} ${input.categoryName} ${input.knowledgeFile ?? ''}`,
+    const stableValues = [
+      ['category-key', input.categoryKey],
+      ['category-slug', input.categorySlug],
+      ['catalog-key', input.catalogKey],
+      ['catalog-slug', input.catalogSlug],
+    ] as const;
+    const aliases = this.profiles.filter(
+      (candidate) => candidate.id !== 'general-text-trivia',
     );
-    const profile = this.profiles
-      .filter((candidate) => candidate.id !== 'general-text-trivia')
-      .find((candidate) =>
-        candidate.categoryKeys.some((key) =>
-          haystack.includes(this.normalize(key)),
+    let matchStrategy = 'none';
+    let profile: CategoryGenerationProfile | undefined;
+    for (const [strategy, value] of stableValues) {
+      if (!value) continue;
+      profile = aliases.find((candidate) =>
+        candidate.categoryKeys.some(
+          (key) => this.normalize(key) === this.normalize(value),
         ),
       );
+      if (profile) {
+        matchStrategy = strategy;
+        break;
+      }
+    }
+    if (!profile) {
+      const names = [input.categoryName, input.catalogName, input.knowledgeFile]
+        .filter((value): value is string => Boolean(value))
+        .map((value) => this.normalize(value));
+      profile = aliases.find((candidate) =>
+        candidate.categoryKeys.some((key) =>
+          names.some((value) => value.includes(this.normalize(key))),
+        ),
+      );
+      if (profile) matchStrategy = 'normalized-name-alias';
+    }
     return {
       profile: profile ?? this.byId('general-text-trivia'),
       fallbackUsed: !profile,
+      matchStrategy,
       issues: profile
         ? []
         : [

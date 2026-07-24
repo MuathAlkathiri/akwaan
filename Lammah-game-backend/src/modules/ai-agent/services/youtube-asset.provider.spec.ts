@@ -79,6 +79,12 @@ describe('YouTubeAssetProvider media intent', () => {
     ).toBe(true);
   });
 
+  it('uses an exact requested video start instead of the automatic window', () => {
+    expect(provider.selectVideoWindowStart(600, 10, 74)).toBe(74);
+    expect(provider.selectVideoWindowStart(600, 10, 120)).toBe(120);
+    expect(provider.selectVideoWindowStart(600, 10)).toBe(150);
+  });
+
   it('rejects missing media intent with a useful reason', () => {
     expect(
       provider.support({

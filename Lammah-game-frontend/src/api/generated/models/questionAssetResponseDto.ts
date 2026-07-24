@@ -7,6 +7,7 @@
  */
 import type { QuestionAssetType } from "./questionAssetType";
 import type { QuestionAssetResponseDtoMetadata } from "./questionAssetResponseDtoMetadata";
+import type { QuestionAssetResponseDtoDuplicateDiagnostics } from "./questionAssetResponseDtoDuplicateDiagnostics";
 
 export interface QuestionAssetResponseDto {
   type: QuestionAssetType;
@@ -17,4 +18,5 @@ export interface QuestionAssetResponseDto {
   provider?: string;
   duration?: number;
   metadata?: QuestionAssetResponseDtoMetadata;
+  duplicateDiagnostics?: QuestionAssetResponseDtoDuplicateDiagnostics;
 }

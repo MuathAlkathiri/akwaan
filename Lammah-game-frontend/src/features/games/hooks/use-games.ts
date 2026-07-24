@@ -6,11 +6,24 @@ import {
   useGamesAwardPoints,
   useGamesCreate,
   useGamesGetById,
+  useGamesGetQuestionAnswerView,
+  useGamesGetQuestionView,
+  useGamesGetRankedListRoundState,
+  useGamesStartRankedListRound,
+  useGamesSubmitRankedListAnswer,
+  useGamesExpireRankedListTurn,
+  useGamesFinalizeRankedListRound,
   useGamesList,
   useGamesRevealAnswer,
+  useGamesRevealQuestionView,
   useGamesSkipQuestion,
+  useGamesSubmitQuestionResult,
 } from "@/api/generated/games/games";
 import type { ErrorResponseDto } from "@/api/generated/models";
+import type {
+  RankedListRoundActionEnvelopeDto,
+  RankedListRoundStateResponseDto,
+} from "@/api/generated/models";
 import type { CreateGamePayload, Game } from "@/types";
 import { toCreateGameRequest } from "../mappers/game-request.mapper";
 import { toGame, toGames } from "../mappers/game-response.mapper";
@@ -21,6 +34,12 @@ type GameMutationOptions = { onSuccess?: (game: Game) => void };
 export const gameKeys = {
   all: ["games"] as const,
   detail: (id: string) => ["games", id] as const,
+  rankedList: (id: string, questionId: string) =>
+    ["games", id, "ranked-list", questionId] as const,
+  question: (id: string, gameQuestionId: string) =>
+    ["games", id, "questions", gameQuestionId] as const,
+  answer: (id: string, gameQuestionId: string) =>
+    ["games", id, "questions", gameQuestionId, "answer"] as const,
 };
 
 function useGameCache(gameId: string) {
@@ -56,6 +75,69 @@ export const useGame = (id: string) =>
       select: (response) => toGame(response.data),
     },
   });
+
+export const useGameQuestion = (gameId: string, gameQuestionId: string) =>
+  useGamesGetQuestionView(gameId, gameQuestionId, {
+    query: {
+      queryKey: gameKeys.question(gameId, gameQuestionId),
+      enabled: Boolean(gameId && gameQuestionId),
+      retry: false,
+      select: (response) => response.data,
+    },
+  });
+
+export const useGameQuestionAnswer = (gameId: string, gameQuestionId: string) =>
+  useGamesGetQuestionAnswerView(gameId, gameQuestionId, {
+    query: {
+      queryKey: gameKeys.answer(gameId, gameQuestionId),
+      enabled: Boolean(gameId && gameQuestionId),
+      retry: false,
+      select: (response) => response.data,
+    },
+  });
+
+export function useRevealGameQuestion(gameId: string, gameQuestionId: string) {
+  const client = useQueryClient();
+  const mutation = useGamesRevealQuestionView<GameApiError>();
+  return {
+    ...mutation,
+    mutateAsync: () =>
+      mutation.mutateAsync({ id: gameId, gameQuestionId }).then((response) => {
+        client.setQueryData(gameKeys.answer(gameId, gameQuestionId), response);
+        client.invalidateQueries({
+          queryKey: gameKeys.question(gameId, gameQuestionId),
+        });
+        return response.data;
+      }),
+  };
+}
+
+export function useSubmitGameQuestionResult(
+  gameId: string,
+  gameQuestionId: string,
+) {
+  const cache = useGameCache(gameId);
+  const client = useQueryClient();
+  const mutation = useGamesSubmitQuestionResult<GameApiError>({
+    mutation: { onSuccess: cache.write, onError: cache.refreshOnConflict },
+  });
+  return {
+    ...mutation,
+    mutateAsync: (teamId: string | null) =>
+      mutation
+        .mutateAsync({
+          id: gameId,
+          gameQuestionId,
+          data: { teamId },
+        })
+        .then((response) => {
+          client.invalidateQueries({
+            queryKey: gameKeys.answer(gameId, gameQuestionId),
+          });
+          return cache.write(response);
+        }),
+  };
+}
 
 export function useCreateGame() {
   const cache = useGameCache("");
@@ -134,5 +216,78 @@ export function useSkipQuestion(gameId: string) {
       mutation
         .mutateAsync({ id: gameId, data: { questionId } })
         .then((response) => toGame(response.data)),
+  };
+}
+
+export function useRankedListRound(
+  gameId: string,
+  questionId: string,
+  enabled = true,
+) {
+  const client = useQueryClient();
+  const queryKey = gameKeys.rankedList(gameId, questionId);
+  const refreshGame = () => {
+    client.invalidateQueries({ queryKey: gameKeys.detail(gameId) });
+    client.invalidateQueries({ queryKey: queryKey });
+  };
+  const query = useGamesGetRankedListRoundState(gameId, questionId, {
+    query: {
+      queryKey,
+      enabled: enabled && Boolean(gameId && questionId),
+      retry: false,
+      refetchInterval: 3_000,
+      select: (response) => response.data,
+    },
+  });
+  const writeAction = (response: RankedListRoundActionEnvelopeDto) => {
+    client.setQueryData<RankedListRoundStateResponseDto>(
+      queryKey,
+      response.data.state,
+    );
+    if (response.data.state.status === "completed") refreshGame();
+  };
+  const startMutation = useGamesStartRankedListRound<GameApiError>({
+    mutation: {
+      onSuccess: writeAction,
+      onError: (error) => {
+        if (error.response?.data.code === "CONCURRENT_GAME_UPDATE")
+          refreshGame();
+      },
+    },
+  });
+  const submitMutation = useGamesSubmitRankedListAnswer<GameApiError>({
+    mutation: { onSuccess: writeAction },
+  });
+  const expireMutation = useGamesExpireRankedListTurn<GameApiError>({
+    mutation: { onSuccess: writeAction },
+  });
+  const finalizeMutation = useGamesFinalizeRankedListRound<GameApiError>({
+    mutation: { onSuccess: writeAction },
+  });
+
+  return {
+    ...query,
+    start: () =>
+      startMutation.mutateAsync({
+        id: gameId,
+        data: { questionId },
+      }),
+    submit: (answer: string, turnSequence: number) =>
+      submitMutation.mutateAsync({
+        id: gameId,
+        questionId,
+        data: { answer, expectedTurnSequence: turnSequence },
+      }),
+    expire: (turnSequence: number) =>
+      expireMutation.mutateAsync({
+        id: gameId,
+        questionId,
+        data: { expectedTurnSequence: turnSequence },
+      }),
+    finalize: () => finalizeMutation.mutateAsync({ id: gameId, questionId }),
+    isStarting: startMutation.isPending,
+    isSubmitting: submitMutation.isPending,
+    isExpiring: expireMutation.isPending,
+    isFinalizing: finalizeMutation.isPending,
   };
 }

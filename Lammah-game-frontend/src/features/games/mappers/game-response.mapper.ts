@@ -10,6 +10,7 @@ import type {
   QuestionPrimaryAsset,
   Team,
 } from "@/types";
+import { TOP_10_POINTS } from "@/features/questions/models/ranked-list-form";
 
 type EmbeddedQuestion =
   GameResponseDto["board"][number]["questions"][number]["question"];
@@ -41,6 +42,7 @@ function toAssetRequest(value: unknown): AssetRequest | null | undefined {
     type !== "text" &&
     type !== "image" &&
     type !== "audio" &&
+    type !== "video" &&
     type !== "quote" &&
     type !== "emoji" &&
     type !== "timeline" &&
@@ -57,6 +59,23 @@ function toEmbeddedQuestion(dto: EmbeddedQuestion): Question {
     categoryId: dto.categoryId ?? dto.category ?? "",
     category: dto.category,
     question: dto.question,
+    questionType: dto.questionType,
+    text: dto.text,
+    maxPoints: dto.maxPoints,
+    turnDurationSeconds: dto.turnDurationSeconds,
+    maxStrikesPerTeam: dto.maxStrikesPerTeam,
+    rankedList: dto.rankedList
+      ? {
+          displayName: dto.rankedList.displayName,
+          entries: dto.rankedList.entries.map((entry, index) => ({
+            id: entry.id,
+            rank: entry.rank ?? index + 1,
+            answer: entry.answer,
+            aliases: entry.aliases,
+            points: entry.points ?? TOP_10_POINTS[index] ?? 0,
+          })),
+        }
+      : undefined,
     answer: dto.answer ?? dto.correctAnswer ?? "",
     correctAnswer: dto.correctAnswer ?? dto.answer,
     wrongAnswers: dto.wrongAnswers,
@@ -72,6 +91,27 @@ function toEmbeddedQuestion(dto: EmbeddedQuestion): Question {
       dto.type === "gif"
         ? dto.type
         : "text",
+    preferredPresentationType:
+      dto.preferredPresentationType === "image" ||
+      dto.preferredPresentationType === "audio" ||
+      dto.preferredPresentationType === "video" ||
+      dto.preferredPresentationType === "gif"
+        ? dto.preferredPresentationType
+        : "text",
+    effectivePresentationType:
+      dto.effectivePresentationType === "image" ||
+      dto.effectivePresentationType === "audio" ||
+      dto.effectivePresentationType === "video"
+        ? dto.effectivePresentationType
+        : "text",
+    mediaAvailable: dto.mediaAvailable,
+    mediaFallbackReason: dto.mediaFallbackReason,
+    resolvedMedia: dto.resolvedMedia
+      ? {
+          ...dto.resolvedMedia,
+          url: getMediaUrl(dto.resolvedMedia.url),
+        }
+      : dto.resolvedMedia,
     primaryAsset: toAsset(dto.primaryAsset),
     coverImage: toCover(dto.coverImage),
     primaryAssetRequest: toAssetRequest(dto.primaryAssetRequest),
@@ -120,6 +160,18 @@ export function toGame(dto: GameResponseDto): Game {
         answered: item.isAnswered,
         questionId: question.id,
         question,
+        presentation: item.presentation
+          ? {
+              preferredType: item.presentation.preferredType,
+              type: item.presentation.type,
+              mediaAvailable: item.presentation.mediaAvailable,
+              mediaUrl: item.presentation.mediaUrl
+                ? getMediaUrl(item.presentation.mediaUrl)
+                : undefined,
+              mediaDuration: item.presentation.mediaDuration,
+              fallbackReason: item.presentation.fallbackReason,
+            }
+          : undefined,
       };
     });
   });

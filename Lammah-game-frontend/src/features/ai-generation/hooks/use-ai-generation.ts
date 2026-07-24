@@ -6,7 +6,10 @@ import {
   useAiGenerateReviewed,
   useAiSaveReviewedDrafts,
 } from "@/api/generated/admin-ai-generator/admin-ai-generator";
-import type { ErrorResponseDto } from "@/api/generated/models";
+import type {
+  ErrorResponseDto,
+  GenerateReviewedQuestionsErrorResponseDto,
+} from "@/api/generated/models";
 import {
   questionKeys,
   useAiGeneratedQuestions,
@@ -26,6 +29,8 @@ import type {
   ReviewedQuestionDraft,
 } from "../types/ai-generation.types";
 
+type GenerateReviewedApiError =
+  AxiosError<GenerateReviewedQuestionsErrorResponseDto>;
 type AiGenerationApiError = AxiosError<ErrorResponseDto>;
 
 export const aiGenerationKeys = {
@@ -37,7 +42,7 @@ export const aiGenerationKeys = {
 const longRunningRequest = { timeout: 0 };
 
 export function useGenerateReviewedQuestions() {
-  const mutation = useAiGenerateReviewed<AiGenerationApiError>({
+  const mutation = useAiGenerateReviewed<GenerateReviewedApiError>({
     mutation: { retry: false },
     request: longRunningRequest,
   });

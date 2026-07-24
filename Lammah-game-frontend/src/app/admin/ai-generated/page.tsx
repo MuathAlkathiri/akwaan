@@ -1,5 +1,5 @@
-import { AiGeneratedReview } from "@/features/ai-generation";
+import { redirect } from "next/navigation";
 
 export default function AiGeneratedPage() {
-  return <AiGeneratedReview />;
+  redirect("/admin/questions");
 }

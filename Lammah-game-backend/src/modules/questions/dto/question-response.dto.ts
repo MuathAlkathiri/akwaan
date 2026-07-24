@@ -1,12 +1,22 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  AudioAssetStatus,
+  AudioQuestionKind,
+  AudioReviewStatus,
+  AudioCandidateStatus,
   AssetStatus,
   DifficultyLevel,
   GameMode,
   QuestionAssetType,
   QuestionSource,
   QuestionStatus,
+  QuestionGameplayType,
 } from '../schemas/question.schema';
+import {
+  QuestionAudioRequestDto,
+  LocalizedQuestionTextDto,
+  RankedListDefinitionDto,
+} from './create-question.dto';
 
 export class QuestionAssetResponseDto {
   @ApiProperty({ enum: QuestionAssetType, enumName: 'QuestionAssetType' })
@@ -19,6 +29,36 @@ export class QuestionAssetResponseDto {
   @ApiPropertyOptional() duration?: number;
   @ApiPropertyOptional({ type: 'object', additionalProperties: true })
   metadata?: Record<string, unknown>;
+  @ApiPropertyOptional({ type: 'object', additionalProperties: true })
+  duplicateDiagnostics?: Record<string, unknown>;
+}
+
+export class ResolvedQuestionMediaResponseDto {
+  @ApiProperty({ enum: ['image', 'audio', 'video'] })
+  type!: 'image' | 'audio' | 'video';
+  @ApiProperty() url!: string;
+  @ApiPropertyOptional() duration?: number;
+}
+
+export class QuestionAudioCandidateResponseDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() title!: string;
+  @ApiPropertyOptional() sourceUrl?: string;
+  @ApiProperty() provider!: string;
+  @ApiPropertyOptional() durationSeconds?: number;
+  @ApiPropertyOptional() thumbnail?: string;
+  @ApiProperty() queryUsed!: string;
+  @ApiProperty() rank!: number;
+  @ApiProperty({ enum: AudioCandidateStatus, enumName: 'AudioCandidateStatus' })
+  status!: AudioCandidateStatus;
+  @ApiPropertyOptional() rejectionReason?: string;
+  @ApiProperty() requestVersion!: number;
+  @ApiProperty() requestHash!: string;
+}
+
+export class QuestionAudioCandidatesResponseDto {
+  @ApiProperty({ type: [QuestionAudioCandidateResponseDto] })
+  data!: QuestionAudioCandidateResponseDto[];
 }
 
 export class QuestionResponseDto {
@@ -27,9 +67,22 @@ export class QuestionResponseDto {
   @ApiPropertyOptional() category?: string;
   @ApiPropertyOptional() categoryId?: string;
   @ApiProperty() question!: string;
+  @ApiProperty({
+    enum: QuestionGameplayType,
+    enumName: 'QuestionGameplayType',
+  })
+  questionType!: QuestionGameplayType;
+  @ApiPropertyOptional({ type: LocalizedQuestionTextDto })
+  text?: LocalizedQuestionTextDto;
+  @ApiPropertyOptional() maxPoints?: number;
+  @ApiPropertyOptional() turnDurationSeconds?: number;
+  @ApiPropertyOptional() maxStrikesPerTeam?: number;
+  @ApiPropertyOptional({ type: RankedListDefinitionDto })
+  rankedList?: RankedListDefinitionDto;
   @ApiPropertyOptional() answer?: string;
   @ApiPropertyOptional() correctAnswer?: string;
   @ApiProperty({ type: [String] }) wrongAnswers!: string[];
+  @ApiPropertyOptional({ type: [String] }) acceptedAnswers?: string[];
   @ApiPropertyOptional() explanation?: string;
   @ApiProperty({ enum: DifficultyLevel, enumName: 'DifficultyLevel' })
   difficulty!: DifficultyLevel;
@@ -38,12 +91,62 @@ export class QuestionResponseDto {
   @ApiPropertyOptional({ enum: GameMode, enumName: 'GameMode' })
   gameMode?: GameMode;
   @ApiPropertyOptional() type?: string;
+  @ApiPropertyOptional({ enum: ['text', 'image', 'audio', 'video', 'gif'] })
+  preferredPresentationType?: string;
+  @ApiPropertyOptional({ enum: ['text', 'image', 'audio', 'video'] })
+  effectivePresentationType?: 'text' | 'image' | 'audio' | 'video';
+  @ApiPropertyOptional() mediaAvailable?: boolean;
+  @ApiPropertyOptional({
+    enum: [
+      'NO_MEDIA',
+      'NOT_READY',
+      'PROCESSING',
+      'FAILED',
+      'REJECTED',
+      'STALE',
+      'MISSING_ASSET',
+      'INVALID_ASSET',
+    ],
+    nullable: true,
+  })
+  mediaFallbackReason?: string | null;
+  @ApiPropertyOptional({
+    type: ResolvedQuestionMediaResponseDto,
+    nullable: true,
+  })
+  resolvedMedia?: ResolvedQuestionMediaResponseDto | null;
   @ApiProperty({ enum: QuestionStatus, enumName: 'QuestionStatus' })
   status!: QuestionStatus;
   @ApiProperty({ enum: QuestionSource, enumName: 'QuestionSource' })
   source!: QuestionSource;
   @ApiPropertyOptional({ type: QuestionAssetResponseDto, nullable: true })
   primaryAsset?: QuestionAssetResponseDto | null;
+  @ApiProperty({ default: false }) requiresAudio!: boolean;
+  @ApiPropertyOptional({
+    enum: AudioQuestionKind,
+    enumName: 'AudioQuestionKind',
+  })
+  audioKind?: AudioQuestionKind;
+  @ApiPropertyOptional({ type: QuestionAudioRequestDto, nullable: true })
+  audioRequest?: QuestionAudioRequestDto | null;
+  @ApiPropertyOptional({ type: [QuestionAudioCandidateResponseDto] })
+  audioCandidates?: QuestionAudioCandidateResponseDto[];
+  @ApiProperty({ enum: AudioAssetStatus, enumName: 'AudioAssetStatus' })
+  audioStatus!: AudioAssetStatus;
+  @ApiPropertyOptional({ type: QuestionAssetResponseDto, nullable: true })
+  audioAsset?: QuestionAssetResponseDto | null;
+  @ApiPropertyOptional({
+    enum: AudioReviewStatus,
+    enumName: 'AudioReviewStatus',
+  })
+  audioReviewStatus?: AudioReviewStatus | null;
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: true,
+    nullable: true,
+  })
+  audioDiagnostics?: Record<string, unknown> | null;
+  @ApiPropertyOptional() audioRequestStale?: boolean;
   @ApiPropertyOptional({ type: QuestionAssetResponseDto, nullable: true })
   coverImage?: QuestionAssetResponseDto | null;
   @ApiPropertyOptional({

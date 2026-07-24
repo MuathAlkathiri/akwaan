@@ -20,12 +20,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Category } from "@/types";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { getEntityId } from "@/lib/utils";
+import axios from "axios";
 
 const categorySchema = z.object({
   name: z.string().min(1, "الاسم مطلوب"),
   description: z.string().optional(),
   catalogId: z.string().min(1, "الكتالوج مطلوب"),
   isActive: z.boolean(),
+  audioPolicy: z.enum(["disabled", "optional", "required"]),
+  gameplayMode: z.enum(["STANDARD", "TOP_10"]),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -47,6 +50,7 @@ function createCategorySlug(name: string) {
 
 export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
   const [bannerFile, setBannerFile] = useState<File | undefined>();
+  const [submitError, setSubmitError] = useState("");
   const [bannerPreview, setBannerPreview] = useState<string | undefined>(
     category?.banner?.url ? getMediaUrl(category.banner.url) : undefined,
   );
@@ -69,6 +73,8 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
       description: category?.description ?? "",
       catalogId: selectedCatalogId,
       isActive: category?.isActive ?? true,
+      audioPolicy: category?.audioPolicy ?? "optional",
+      gameplayMode: category?.gameplayMode ?? "STANDARD",
     },
   });
 
@@ -92,12 +98,24 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
   }, [bannerFile, category?.banner?.url]);
 
   const onSubmit = async (data: CategoryFormData) => {
+    setSubmitError("");
     try {
+      const gameplayModeChanged =
+        Boolean(categoryId) &&
+        data.gameplayMode !== (category?.gameplayMode ?? "STANDARD");
+      if (
+        gameplayModeChanged &&
+        !window.confirm(
+          "تغيير نمط اللعب قد يجعل بعض الأسئلة الحالية غير صالحة لهذا النمط. هل تريد المتابعة دون تعديل الأسئلة؟",
+        )
+      )
+        return;
       const payload = {
         ...data,
         slug: createCategorySlug(data.name),
         sortOrder: category?.sortOrder ?? 0,
         bannerFile,
+        ...(gameplayModeChanged ? { confirmGameplayModeChange: true } : {}),
       };
 
       if (categoryId) {
@@ -108,6 +126,16 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
 
       onSuccess?.();
     } catch (error) {
+      const response = axios.isAxiosError(error) ? error.response?.data : null;
+      const code =
+        response && typeof response === "object" && "code" in response
+          ? response.code
+          : undefined;
+      setSubmitError(
+        code === "CATEGORY_GAMEPLAY_MODE_CHANGE_CONFIRMATION_REQUIRED"
+          ? "يجب تأكيد تغيير نمط اللعب لأن الأسئلة الحالية قد لا تكون صالحة للنمط الجديد."
+          : "تعذر حفظ الفئة. تحقق من البيانات وحاول مرة أخرى.",
+      );
       console.error("Failed to save category:", error);
     }
   };
@@ -199,9 +227,63 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
           />
           نشطة
         </label>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium">نمط اللعب</label>
+          <Select
+            defaultValue={category?.gameplayMode ?? "STANDARD"}
+            onValueChange={(value) =>
+              setValue(
+                "gameplayMode",
+                value as CategoryFormData["gameplayMode"],
+                { shouldValidate: true },
+              )
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="STANDARD">
+                Standard trivia — أسئلة قياسية
+              </SelectItem>
+              <SelectItem value="TOP_10">Top 10 — أفضل عشرة</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="mt-2 text-xs text-muted-foreground">
+            نمط اللعب يحدد قواعد اللعبة والتحقق. نوع السؤال يحدد طريقة العرض
+            فقط، مثل النص أو الصورة أو الصوت أو الفيديو.
+          </p>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium">سياسة الصوت</label>
+          <Select
+            defaultValue={category?.audioPolicy ?? "optional"}
+            onValueChange={(value) =>
+              setValue(
+                "audioPolicy",
+                value as CategoryFormData["audioPolicy"],
+                { shouldValidate: true },
+              )
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="disabled">الصوت معطّل</SelectItem>
+              <SelectItem value="optional">الصوت اختياري</SelectItem>
+              <SelectItem value="required">الصوت مطلوب</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="sticky bottom-0 -mx-1 border-t border-white/10 bg-card/95 px-1 pt-4 backdrop-blur">
+        {submitError && (
+          <p className="mb-3 text-sm text-destructive">{submitError}</p>
+        )}
         <Button type="submit" disabled={isPending} className="w-full">
           {isPending
             ? categoryId

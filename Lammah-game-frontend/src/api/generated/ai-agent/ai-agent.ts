@@ -44,7 +44,7 @@ export const aiGenerateQuestions = (
 };
 
 export const getAiGenerateQuestionsMutationOptions = <
-  TError = void | void,
+  TError = void | unknown,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -85,13 +85,13 @@ export type AiGenerateQuestionsMutationResult = NonNullable<
   Awaited<ReturnType<typeof aiGenerateQuestions>>
 >;
 export type AiGenerateQuestionsMutationBody = GenerateQuestionsDto;
-export type AiGenerateQuestionsMutationError = void | void;
+export type AiGenerateQuestionsMutationError = void | unknown;
 
 /**
  * @summary Generate questions for a category using the configured AI provider
  */
 export const useAiGenerateQuestions = <
-  TError = void | void,
+  TError = void | unknown,
   TContext = unknown,
 >(
   options?: {

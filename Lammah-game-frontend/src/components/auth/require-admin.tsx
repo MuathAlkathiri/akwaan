@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { ReactNode, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from './auth-provider';
+import { ReactNode, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "./auth-provider";
 
 export function RequireAdmin({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -11,13 +11,14 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated) {
-      router.replace('/login');
+      router.replace("/login");
     } else if (!isAdmin) {
-      router.replace('/games');
+      router.replace("/games");
     }
   }, [isAdmin, isAuthenticated, isLoading, router]);
 
-  if (isLoading) return <div className="text-center py-10">جاري التحقق من الصلاحيات...</div>;
+  if (isLoading)
+    return <div className="text-center py-10">جاري التحقق من الصلاحيات...</div>;
   if (!isAuthenticated || !isAdmin) return null;
 
   return <>{children}</>;

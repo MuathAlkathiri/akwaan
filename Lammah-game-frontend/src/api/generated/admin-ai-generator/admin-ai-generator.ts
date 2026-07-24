@@ -24,6 +24,7 @@ import type {
 import type {
   AiToolDiagnosticsResponseDto,
   GenerateReviewedQuestionsDto,
+  GenerateReviewedQuestionsErrorResponseDto,
   GenerateReviewedQuestionsResponseDto,
   SaveReviewedDraftsDto,
   SaveReviewedDraftsResponseDto,
@@ -314,7 +315,7 @@ export const aiGenerateReviewed = (
 };
 
 export const getAiGenerateReviewedMutationOptions = <
-  TError = unknown,
+  TError = GenerateReviewedQuestionsErrorResponseDto | unknown,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -355,12 +356,16 @@ export type AiGenerateReviewedMutationResult = NonNullable<
   Awaited<ReturnType<typeof aiGenerateReviewed>>
 >;
 export type AiGenerateReviewedMutationBody = GenerateReviewedQuestionsDto;
-export type AiGenerateReviewedMutationError = unknown;
+export type AiGenerateReviewedMutationError =
+  GenerateReviewedQuestionsErrorResponseDto | unknown;
 
 /**
  * @summary Generate reviewed AI question drafts without saving them
  */
-export const useAiGenerateReviewed = <TError = unknown, TContext = unknown>(
+export const useAiGenerateReviewed = <
+  TError = GenerateReviewedQuestionsErrorResponseDto | unknown,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof aiGenerateReviewed>>,

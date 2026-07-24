@@ -202,7 +202,6 @@ describe('AiAgentService Wigolo verification integration', () => {
 
     expect(result).toHaveLength(3);
     expect(result[0]).toMatchObject({
-      question: 'ما اسم هذه الأغنية؟',
       gameMode: 'identifySong',
       type: 'audio',
       assetStatus: 'PENDING',
@@ -212,10 +211,11 @@ describe('AiAgentService Wigolo verification integration', () => {
         provider: 'youtube',
         mediaIntent: 'music',
         duration: 15,
-        title: 'الأماكن',
-        artist: 'محمد عبده',
       },
     });
+    expect(
+      result.every((draft) => draft.question === 'ما اسم هذه الأغنية؟'),
+    ).toBe(true);
   });
 
   it('verifies Gulf song identity before YouTube and sends only canonical title and artist', async () => {
@@ -310,7 +310,7 @@ describe('AiAgentService Wigolo verification integration', () => {
     );
   });
 
-  it('bypasses Wigolo safely for locally grounded Gulf music knowledge', async () => {
+  it('requires Wigolo verification for hardcoded catalog songs', async () => {
     const { service, verificationCalls, assetCalls } = createService(
       baseVerified({
         canonicalEntity: 'الأماكن',
@@ -340,10 +340,8 @@ describe('AiAgentService Wigolo verification integration', () => {
 
     const [result] = await service['processDraftAssets']([locallyGrounded]);
 
-    expect(verificationCalls[0].locallyGrounded).toBe(true);
-    expect(result.verificationDiagnostics?.verificationProvider).toBe(
-      'local-knowledge',
-    );
+    expect(verificationCalls[0].locallyGrounded).toBe(false);
+    expect(result.verificationDiagnostics?.verificationProvider).toBe('wigolo');
     expect(assetCalls[0].entity).toBe('الأماكن');
   });
 

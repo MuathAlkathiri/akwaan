@@ -10,6 +10,10 @@
       {
         "include": "modules/ai-agent/knowledge/**/*.md",
         "outDir": "dist"
+      },
+      {
+        "include": "modules/ai-agent/knowledge/**/*.json",
+        "outDir": "dist"
       }
     ]
   }

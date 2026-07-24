@@ -1,16 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   useDeleteQuestion,
   usePatchQuestion,
@@ -23,23 +16,61 @@ import {
   getEntityId,
   getQuestionTypeLabel,
 } from "@/lib/utils";
-import { Question } from "@/types";
-import { getMediaUrl } from "@/lib/api/media-url";
+import type { Question } from "@/types";
+
 interface QuestionsListProps {
   canPreview?: boolean;
   categoryId?: string;
   emptyMessage?: string;
 }
 
+export function getAudioStateLabel(
+  question: Pick<
+    Question,
+    "requiresAudio" | "audioStatus" | "audioReviewStatus"
+  >,
+) {
+  if (!question.requiresAudio) return "لا يحتاج صوتاً";
+  if (
+    question.audioStatus === "ready" &&
+    question.audioReviewStatus === "approved"
+  )
+    return "الصوت معتمد";
+  const labels = {
+    pending: "بانتظار البدء",
+    searching: "جاري البحث",
+    processing: "جاري المعالجة",
+    ready: "جاهز للمراجعة",
+    failed: "فشل التجهيز",
+    rejected: "مرفوض",
+    not_required: "لا يحتاج صوتاً",
+  } as const;
+  return labels[question.audioStatus ?? "pending"];
+}
+
+export function getCurrentQuestionMediaUrl(
+  question: Pick<
+    Question,
+    "type" | "audioRequestStale" | "audioAsset" | "mediaUrl" | "asset"
+  >,
+) {
+  if (["audio", "video"].includes(question.type) && question.audioRequestStale)
+    return undefined;
+  return question.audioAsset?.url || question.mediaUrl || question.asset?.url;
+}
+
+export function getAudioRetryModes(
+  question: Pick<Question, "audioRequest">,
+): Array<"research" | "retryProcessing"> {
+  return question.audioRequest?.selectedCandidateId
+    ? ["research", "retryProcessing"]
+    : ["research"];
+}
+
 function getQuestionCategoryId(question: Question) {
-  if (question.category && typeof question.category === "object") {
+  if (question.category && typeof question.category === "object")
     return getEntityId(question.category);
-  }
-
-  if (typeof question.category === "string") {
-    return question.category;
-  }
-
+  if (typeof question.category === "string") return question.category;
   return question.categoryId;
 }
 
@@ -52,119 +83,43 @@ export function QuestionsList({
   const updateQuestionStatus = useUpdateQuestionStatus();
   const patchQuestion = usePatchQuestion();
   const deleteQuestion = useDeleteQuestion();
-  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(
-    null,
-  );
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const questions = categoryId
     ? (data || []).filter(
         (question) => getQuestionCategoryId(question) === categoryId,
       )
     : data || [];
 
-  useEffect(() => {
-    if (selectedQuestion?.type !== "audio") return;
-
-    audioRef.current?.play().catch(() => {
-      // Some browsers block autoplay; controls remain visible for manual playback.
-    });
-  }, [selectedQuestion]);
-
-  const renderQuestionMedia = (question: Question) => {
-    if (question.type === "text") return null;
-
-    const mediaUrl = getMediaUrl(question.mediaUrl || question.asset?.url);
-
-    if (!mediaUrl) {
-      if (question.assetStatus === "PENDING") {
-        return (
-          <div className="rounded-2xl border border-dashed border-primary/25 bg-primary/10 p-4 text-center text-sm">
-            جاري تجهيز الملف...
-          </div>
-        );
-      }
-
-      if (question.assetStatus === "FAILED") {
-        return (
-          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-center text-sm text-destructive">
-            <p className="font-semibold">فشل تجهيز الملف</p>
-            <p className="mt-1 break-words">
-              {question.assetFailureReason || "لم يتم إرجاع سبب الفشل."}
-            </p>
-          </div>
-        );
-      }
-
-      return (
-        <div className="rounded-2xl border border-dashed border-white/15 p-4 text-center text-sm text-muted-foreground">
-          لا يوجد ملف مرفق لهذا السؤال.
-          {question.assetStatus && (
-            <span className="mt-1 block">
-              حالة الملف: {question.assetStatus}
-            </span>
-          )}
-        </div>
-      );
-    }
-
-    if (question.type === "image") {
-      return (
-        <Image
-          src={mediaUrl}
-          alt="Question media"
-          width={960}
-          height={540}
-          unoptimized
-          className="max-h-[55vh] w-full rounded-2xl object-contain"
-        />
-      );
-    }
-
-    if (question.type === "audio") {
-      return (
-        <audio ref={audioRef} controls autoPlay className="w-full">
-          <source src={mediaUrl} />
-        </audio>
-      );
-    }
-
-    if (question.type === "video") {
-      return (
-        <video controls className="max-h-[55vh] w-full rounded-2xl">
-          <source src={mediaUrl} />
-        </video>
-      );
-    }
-
-    return null;
-  };
-
-  if (isLoading) return <div className="text-center py-8">جاري التحميل...</div>;
+  if (isLoading) return <div className="py-8 text-center">جاري التحميل...</div>;
   if (error)
-    return <div className="text-center py-8 text-destructive">حدث خطأ</div>;
+    return <div className="py-8 text-center text-destructive">حدث خطأ</div>;
   if (!questions.length)
-    return <div className="text-center py-8">{emptyMessage}</div>;
+    return <div className="py-8 text-center">{emptyMessage}</div>;
 
   return (
-    <>
-      <div className="grid gap-5 lg:grid-cols-2">
-        {questions.map((question) => (
-          <Card key={getEntityId(question)}>
+    <div className="grid gap-5 lg:grid-cols-2">
+      {questions.map((question) => {
+        const id = getEntityId(question);
+        return (
+          <Card key={id}>
             <CardHeader className="pb-3">
               <div className="flex flex-col gap-4">
                 <div className="flex-1">
                   <CardTitle className="text-xl font-black leading-snug">
                     {question.question}
                   </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    الإجابة:{" "}
-                    <span className="font-semibold">{question.answer}</span>
-                  </p>
+                  {question.questionType !== "ranked_list" && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      الإجابة:{" "}
+                      <span className="font-semibold">{question.answer}</span>
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="secondary">{question.points}</Badge>
                   <Badge variant="outline">
-                    {getDifficultyLabel(question.difficulty)}
+                    {question.questionType === "ranked_list"
+                      ? "Top 10"
+                      : getDifficultyLabel(question.difficulty)}
                   </Badge>
                   <Badge variant="outline">
                     {getQuestionTypeLabel(question.type)}
@@ -177,23 +132,21 @@ export function QuestionsList({
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex flex-wrap gap-2">
                 {canPreview && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setSelectedQuestion(question)}
-                  >
-                    فتح السؤال
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href={`/admin/questions/${id}/edit`}>
+                      تحرير السؤال
+                    </Link>
                   </Button>
                 )}
-                {question.status === "draft" && question.source === "ai" && (
+                {question.status === "draft" && (
                   <>
                     <Button
                       size="sm"
                       onClick={() =>
                         updateQuestionStatus.mutate({
-                          id: getEntityId(question),
+                          id,
                           status: "approved",
                         })
                       }
@@ -206,7 +159,7 @@ export function QuestionsList({
                       variant="destructive"
                       onClick={() =>
                         updateQuestionStatus.mutate({
-                          id: getEntityId(question),
+                          id,
                           status: "rejected",
                         })
                       }
@@ -221,7 +174,7 @@ export function QuestionsList({
                   variant="outline"
                   onClick={() =>
                     patchQuestion.mutate({
-                      id: getEntityId(question),
+                      id,
                       data: {
                         isFreeGameQuestion: !question.isFreeGameQuestion,
                       },
@@ -236,7 +189,7 @@ export function QuestionsList({
                 <Button
                   size="sm"
                   variant="destructive"
-                  onClick={() => deleteQuestion.mutate(getEntityId(question))}
+                  onClick={() => deleteQuestion.mutate(id)}
                   disabled={deleteQuestion.isPending}
                 >
                   حذف
@@ -244,48 +197,16 @@ export function QuestionsList({
                 <Badge variant="outline">
                   {getStatusLabel(question.status)}
                 </Badge>
+                {question.requiresAudio && (
+                  <Badge variant="outline">
+                    {getAudioStateLabel(question)}
+                  </Badge>
+                )}
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
-
-      <Dialog
-        open={!!selectedQuestion}
-        onOpenChange={(open) => !open && setSelectedQuestion(null)}
-      >
-        <DialogContent className="max-w-3xl rounded-[2rem] border-primary/20 bg-[#160829]/95 p-5 shadow-2xl shadow-primary/20 backdrop-blur-xl md:p-8">
-          {selectedQuestion && (
-            <div className="space-y-5">
-              <DialogHeader>
-                <DialogTitle className="text-center text-2xl font-black leading-tight md:text-4xl">
-                  {selectedQuestion.question}
-                </DialogTitle>
-              </DialogHeader>
-
-              {renderQuestionMedia(selectedQuestion)}
-
-              <div className="rounded-3xl border border-primary/25 bg-primary/10 p-5 text-center">
-                <p className="text-sm font-semibold text-muted-foreground">
-                  الإجابة:
-                </p>
-                <p className="mt-2 text-2xl font-black text-primary">
-                  {selectedQuestion.answer}
-                </p>
-              </div>
-
-              {selectedQuestion.explanation && (
-                <div className="rounded-3xl bg-white/5 p-5">
-                  <p className="text-sm font-semibold text-muted-foreground">
-                    الشرح:
-                  </p>
-                  <p className="mt-1 text-lg">{selectedQuestion.explanation}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+        );
+      })}
+    </div>
   );
 }

@@ -5,7 +5,71 @@
  * Runtime HTTP contract for Lammah game administration, content, and gameplay.
  * OpenAPI spec version: 1.0.0
  */
+import type { QuestionGameplayType } from "./questionGameplayType";
+import type { LocalizedQuestionTextDto } from "./localizedQuestionTextDto";
+import type { UpdateQuestionDtoMaxPoints } from "./updateQuestionDtoMaxPoints";
+import type { RankedListDefinitionDto } from "./rankedListDefinitionDto";
+import type { DifficultyLevel } from "./difficultyLevel";
+import type { QuestionPoints } from "./questionPoints";
+import type { GameMode } from "./gameMode";
+import type { QuestionType } from "./questionType";
+import type { AudioQuestionKind } from "./audioQuestionKind";
+import type { UpdateQuestionDtoAudioRequest } from "./updateQuestionDtoAudioRequest";
+import type { UpdateQuestionDtoCoverImage } from "./updateQuestionDtoCoverImage";
+import type { UpdateQuestionDtoPrimaryAssetRequest } from "./updateQuestionDtoPrimaryAssetRequest";
+import type { UpdateQuestionDtoCoverImageRequest } from "./updateQuestionDtoCoverImageRequest";
+import type { AssetStatus } from "./assetStatus";
+import type { QuestionStatus } from "./questionStatus";
+import type { QuestionSource } from "./questionSource";
+import type { UpdateQuestionDtoGameplayMetadata } from "./updateQuestionDtoGameplayMetadata";
+import type { UpdateQuestionDtoAiMetadata } from "./updateQuestionDtoAiMetadata";
 
 export interface UpdateQuestionDto {
-  [key: string]: unknown;
+  category?: string;
+  categoryId?: string;
+  question?: string;
+  questionType?: QuestionGameplayType;
+  text?: LocalizedQuestionTextDto;
+  maxPoints?: UpdateQuestionDtoMaxPoints;
+  /**
+   * @minimum 1
+   * @maximum 120
+   */
+  turnDurationSeconds?: number;
+  /**
+   * @minimum 1
+   * @maximum 10
+   */
+  maxStrikesPerTeam?: number;
+  rankedList?: RankedListDefinitionDto;
+  answer?: string;
+  correctAnswer?: string;
+  wrongAnswers?: string[];
+  acceptedAnswers?: string[];
+  explanation?: string;
+  difficulty?: DifficultyLevel;
+  points?: QuestionPoints;
+  score?: QuestionPoints;
+  gameMode?: GameMode;
+  type?: QuestionType;
+  requiresAudio?: boolean;
+  audioKind?: AudioQuestionKind;
+  /** @nullable */
+  audioRequest?: UpdateQuestionDtoAudioRequest;
+  /** @nullable */
+  coverImage?: UpdateQuestionDtoCoverImage;
+  /** @nullable */
+  primaryAssetRequest?: UpdateQuestionDtoPrimaryAssetRequest;
+  /** @nullable */
+  coverImageRequest?: UpdateQuestionDtoCoverImageRequest;
+  coverImageStatus?: AssetStatus;
+  coverImageFailureReason?: string;
+  status?: QuestionStatus;
+  source?: QuestionSource;
+  qualityScore?: number;
+  issues?: string[];
+  gameplayMetadata?: UpdateQuestionDtoGameplayMetadata;
+  aiMetadata?: UpdateQuestionDtoAiMetadata;
+  createdBy?: string;
+  isFreeGameQuestion?: boolean;
 }

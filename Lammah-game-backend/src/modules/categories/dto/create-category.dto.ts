@@ -13,7 +13,12 @@ import {
   ValidateNested,
   IsObject,
   IsIn,
+  IsEnum,
 } from 'class-validator';
+import {
+  CategoryAudioPolicy,
+  CategoryGameplayMode,
+} from '../schemas/category.schema';
 
 export class CategoryAiConfigDto {
   @ApiPropertyOptional({ example: 'sports/world-cup.md' })
@@ -195,6 +200,25 @@ export class CreateCategoryDto {
   @IsBoolean()
   isActive?: boolean;
 
+  @ApiPropertyOptional({
+    enum: CategoryAudioPolicy,
+    enumName: 'CategoryAudioPolicy',
+    default: CategoryAudioPolicy.OPTIONAL,
+  })
+  @IsOptional()
+  @IsEnum(CategoryAudioPolicy)
+  audioPolicy?: CategoryAudioPolicy;
+
+  @ApiPropertyOptional({
+    enum: CategoryGameplayMode,
+    enumName: 'CategoryGameplayMode',
+    default: CategoryGameplayMode.STANDARD,
+    description: 'Canonical gameplay rules for this category.',
+  })
+  @IsOptional()
+  @IsEnum(CategoryGameplayMode)
+  gameplayMode?: CategoryGameplayMode;
+
   @ApiPropertyOptional({ type: CategoryAiConfigDto })
   @IsOptional()
   @ValidateNested()
@@ -246,6 +270,30 @@ export class UpdateCategoryDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({
+    enum: CategoryAudioPolicy,
+    enumName: 'CategoryAudioPolicy',
+  })
+  @IsOptional()
+  @IsEnum(CategoryAudioPolicy)
+  audioPolicy?: CategoryAudioPolicy;
+
+  @ApiPropertyOptional({
+    enum: CategoryGameplayMode,
+    enumName: 'CategoryGameplayMode',
+  })
+  @IsOptional()
+  @IsEnum(CategoryGameplayMode)
+  gameplayMode?: CategoryGameplayMode;
+
+  @ApiPropertyOptional({
+    description:
+      'Explicit confirmation required when changing gameplayMode on an existing category.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  confirmGameplayModeChange?: boolean;
 
   @ApiPropertyOptional({ type: CategoryAiConfigDto })
   @IsOptional()

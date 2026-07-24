@@ -22,6 +22,9 @@ export function toGenerateReviewedRequest(
     count: input.count ?? AI_GENERATION_DEFAULTS.count,
     difficulty: input.difficulty ?? AI_GENERATION_DEFAULTS.difficulty,
     language: input.language ?? "ar",
+    strategy: input.strategy ?? "source-curated",
+    ...(input.sourceIds?.length ? { sourceIds: input.sourceIds } : {}),
+    allowGeneratedFallback: false,
   };
 }
 

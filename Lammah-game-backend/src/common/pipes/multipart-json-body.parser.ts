@@ -13,9 +13,14 @@ export function parseMultipartJsonBody<T extends object>(
     if (typeof raw !== 'string')
       throw new BadRequestException(`${field} must be a JSON string`);
     try {
-      payload = JSON.parse(raw);
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
+        payload = parsed;
     } catch {
-      throw new BadRequestException(`${field} must be valid JSON`);
+      // A normal application/json DTO may legitimately contain a string whose
+      // name matches the multipart envelope field (for example "question").
+      if (Object.keys(body).length === 1)
+        throw new BadRequestException(`${field} must be valid JSON`);
     }
   }
   if (!payload || typeof payload !== 'object' || Array.isArray(payload))

@@ -15,6 +15,9 @@ export type GenerateReviewedInput = {
   count?: number;
   difficulty?: QuestionDifficulty;
   language?: "ar";
+  strategy?: "source-curated";
+  sourceIds?: string[];
+  allowGeneratedFallback?: boolean;
 };
 
 export type AgentTrace = {

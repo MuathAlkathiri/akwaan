@@ -16,6 +16,15 @@ import { CreateGameService } from './application/create-game.service';
 import { QueryGameService } from './application/query-game.service';
 import { GameProgressService } from './application/game-progress.service';
 import { GameScoringService } from './application/game-scoring.service';
+import { RankedListRoundService } from './application/ranked-list-round.service';
+import { GameQuestionFlowService } from './application/game-question-flow.service';
+import {
+  CategoryGameAssembler,
+  CategoryGameValidationRegistry,
+  GameQuestionMediaValidation,
+  StandardCategoryGameValidation,
+  Top10CategoryGameValidation,
+} from './validation/category-game-validation';
 
 @Module({
   imports: [
@@ -36,6 +45,13 @@ import { GameScoringService } from './application/game-scoring.service';
     QueryGameService,
     GameProgressService,
     GameScoringService,
+    RankedListRoundService,
+    GameQuestionFlowService,
+    StandardCategoryGameValidation,
+    Top10CategoryGameValidation,
+    CategoryGameValidationRegistry,
+    GameQuestionMediaValidation,
+    CategoryGameAssembler,
   ],
   controllers: [GamesController],
   exports: [GamesService],

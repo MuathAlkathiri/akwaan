@@ -12,11 +12,14 @@ const category: CategoryResponseDto = {
   name: "اختبار",
   slug: "test",
   isActive: true,
+  audioPolicy: "optional",
+  gameplayMode: "STANDARD",
   sortOrder: 0,
 };
 
 const question: QuestionResponseDto = {
   _id: "question-1",
+  questionType: "standard",
   category: "category-1",
   question: "سؤال اختباري؟",
   correctAnswer: "إجابة",
@@ -25,6 +28,8 @@ const question: QuestionResponseDto = {
   points: 200,
   status: "approved",
   source: "manual",
+  requiresAudio: false,
+  audioStatus: "not_required",
   primaryAsset: {
     type: "image",
     url: "/uploads/test.png",

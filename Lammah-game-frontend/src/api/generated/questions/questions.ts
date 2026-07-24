@@ -22,10 +22,11 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
-  CreateQuestionDto,
   QuestionDetailResponseDto,
   QuestionListResponseDto,
   QuestionMutationResponseDto,
+  QuestionsCreateBodyOne,
+  QuestionsCreateBodyTwo,
   UpdateQuestionDto,
 } from ".././models";
 
@@ -37,18 +38,12 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
  * @summary Create a new question
  */
 export const questionsCreate = (
-  createQuestionDto: CreateQuestionDto,
+  questionsCreateBody: QuestionsCreateBodyOne | QuestionsCreateBodyTwo,
   options?: SecondParameter<typeof orvalMutator>,
   signal?: AbortSignal,
 ) => {
   return orvalMutator<QuestionMutationResponseDto>(
-    {
-      url: `/questions`,
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      data: createQuestionDto,
-      signal,
-    },
+    { url: `/questions`, method: "POST", data: questionsCreateBody, signal },
     options,
   );
 };
@@ -60,14 +55,14 @@ export const getQuestionsCreateMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof questionsCreate>>,
     TError,
-    { data: CreateQuestionDto },
+    { data: QuestionsCreateBodyOne | QuestionsCreateBodyTwo },
     TContext
   >;
   request?: SecondParameter<typeof orvalMutator>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof questionsCreate>>,
   TError,
-  { data: CreateQuestionDto },
+  { data: QuestionsCreateBodyOne | QuestionsCreateBodyTwo },
   TContext
 > => {
   const mutationKey = ["questionsCreate"];
@@ -81,7 +76,7 @@ export const getQuestionsCreateMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof questionsCreate>>,
-    { data: CreateQuestionDto }
+    { data: QuestionsCreateBodyOne | QuestionsCreateBodyTwo }
   > = (props) => {
     const { data } = props ?? {};
 
@@ -94,7 +89,8 @@ export const getQuestionsCreateMutationOptions = <
 export type QuestionsCreateMutationResult = NonNullable<
   Awaited<ReturnType<typeof questionsCreate>>
 >;
-export type QuestionsCreateMutationBody = CreateQuestionDto;
+export type QuestionsCreateMutationBody =
+  QuestionsCreateBodyOne | QuestionsCreateBodyTwo;
 export type QuestionsCreateMutationError = void;
 
 /**
@@ -105,7 +101,7 @@ export const useQuestionsCreate = <TError = void, TContext = unknown>(
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof questionsCreate>>,
       TError,
-      { data: CreateQuestionDto },
+      { data: QuestionsCreateBodyOne | QuestionsCreateBodyTwo },
       TContext
     >;
     request?: SecondParameter<typeof orvalMutator>;
@@ -114,7 +110,7 @@ export const useQuestionsCreate = <TError = void, TContext = unknown>(
 ): UseMutationResult<
   Awaited<ReturnType<typeof questionsCreate>>,
   TError,
-  { data: CreateQuestionDto },
+  { data: QuestionsCreateBodyOne | QuestionsCreateBodyTwo },
   TContext
 > => {
   const mutationOptions = getQuestionsCreateMutationOptions(options);

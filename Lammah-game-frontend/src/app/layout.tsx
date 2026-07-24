@@ -1,11 +1,11 @@
-import type { Metadata } from 'next';
-import { Providers } from './providers';
-import { Layout } from '@/components/layout';
-import './globals.css';
+import type { Metadata } from "next";
+import { Providers } from "./providers";
+import { Layout } from "@/components/layout";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'Lammah Quiz Game',
-  description: 'A quiz party game built with Next.js',
+  title: "Lammah Quiz Game",
+  description: "A quiz party game built with Next.js",
 };
 
 export default function RootLayout({
@@ -17,9 +17,7 @@ export default function RootLayout({
     <html lang="ar" dir="rtl">
       <body>
         <Providers>
-          <Layout>
-            {children}
-          </Layout>
+          <Layout>{children}</Layout>
         </Providers>
       </body>
     </html>

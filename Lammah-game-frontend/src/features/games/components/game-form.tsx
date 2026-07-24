@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { getEntityId } from "@/lib/utils";
 import { Category } from "@/types";
+import { gameValidationMessageAr } from "../game-validation-errors";
 
 const gameSchema = z.object({
   name: z.string().min(1, "اسم اللعبة مطلوب"),
@@ -80,8 +81,12 @@ export function GameForm() {
       const backendMessage = axios.isAxiosError(error)
         ? error.response?.data?.message || error.response?.data?.error
         : null;
+      const backendCode = axios.isAxiosError(error)
+        ? error.response?.data?.code
+        : undefined;
       setSubmitError(
-        backendMessage ||
+        gameValidationMessageAr(backendCode) ||
+          backendMessage ||
           "تعذر إنشاء اللعبة. إذا كنت استخدمت لعبتك المجانية، تحتاج اشتراك عشان تنشئ لعبة جديدة.",
       );
       console.error("Failed to create game:", error);

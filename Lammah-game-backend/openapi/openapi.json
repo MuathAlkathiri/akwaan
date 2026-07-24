@@ -622,9 +622,57 @@
         "requestBody": {
           "required": true,
           "content": {
+            "multipart/form-data": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/CreateQuestionDto"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "image": {
+                        "type": "string",
+                        "format": "binary"
+                      }
+                    }
+                  }
+                ]
+              },
+              "examples": {
+                "default": {
+                  "summary": "Create approved free-game question",
+                  "value": {
+                    "category": "66b8f5f2c9d7a8b1e3f00222",
+                    "question": "What planet is known as the Red Planet?",
+                    "answer": "Mars",
+                    "explanation": "Mars appears red because of iron oxide on its surface.",
+                    "difficulty": "easy",
+                    "points": 200,
+                    "type": "text",
+                    "status": "approved",
+                    "source": "manual",
+                    "isFreeGameQuestion": true
+                  }
+                }
+              }
+            },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateQuestionDto"
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/CreateQuestionDto"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "image": {
+                        "type": "string",
+                        "format": "binary"
+                      }
+                    }
+                  }
+                ]
               },
               "examples": {
                 "default": {
@@ -828,6 +876,121 @@
         ]
       }
     },
+    "/admin/questions/accepted-answers/generate": {
+      "post": {
+        "operationId": "questionsGenerateAcceptedAnswers",
+        "summary": "Generate reviewable accepted-answer aliases during authoring",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateAcceptedAnswersDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedAnswerGenerationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/admin/questions/accepted-answers/generate-ranked-list": {
+      "post": {
+        "operationId": "questionsGenerateRankedAcceptedAnswers",
+        "summary": "Generate reviewable aliases for all ranked-list entries",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateRankedAcceptedAnswersDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankedAcceptedAnswerGenerationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/admin/questions/check-duplicates": {
+      "post": {
+        "operationId": "questionsCheckDuplicates",
+        "summary": "Check a manually-authored question for duplicates",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckQuestionDuplicatesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "exactMatch": false,
+                    "highestSimilarity": 0.88,
+                    "matches": []
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/admin/questions": {
       "get": {
         "operationId": "adminQuestionsList",
@@ -984,6 +1147,96 @@
         ]
       }
     },
+    "/admin/questions/{id}/media/image": {
+      "post": {
+        "operationId": "questionsUploadImage",
+        "summary": "Upload or replace the canonical optional question image",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "JPEG, PNG, or WebP image up to 5MB."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "questionsRemoveImage",
+        "summary": "Explicitly remove the canonical optional question image",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/admin/questions/{id}/retry-primary-asset": {
       "post": {
         "operationId": "questionsRetryPrimaryAsset",
@@ -1036,6 +1289,434 @@
         ],
         "responses": {
           "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/admin/questions/{id}/audio/retry": {
+      "post": {
+        "operationId": "questionsRetryAudio",
+        "summary": "Retry audio processing",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetryQuestionAudioDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/admin/questions/{id}/audio-request": {
+      "patch": {
+        "operationId": "questionsUpdateAudioRequest",
+        "summary": "Update an audio request and enqueue fresh candidate research",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQuestionAudioRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/admin/questions/{id}/audio/candidates": {
+      "get": {
+        "operationId": "questionsListAudioCandidates",
+        "summary": "List bounded candidates for the active audio request",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionAudioCandidatesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/admin/questions/{id}/audio/candidates/{candidateId}/select": {
+      "post": {
+        "operationId": "questionsSelectAudioCandidate",
+        "summary": "Select and process one candidate from the active audio request",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "candidateId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/admin/questions/{id}/audio/clip": {
+      "patch": {
+        "operationId": "questionsUpdateAudioClip",
+        "summary": "Update audio clip settings without starting processing",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQuestionAudioClipDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/admin/questions/{id}/audio/preview": {
+      "post": {
+        "operationId": "questionsPreviewMediaClip",
+        "summary": "Regenerate the selected audio or video candidate using current timing",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewQuestionMediaClipDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/admin/questions/{id}/audio/approve": {
+      "post": {
+        "operationId": "questionsApproveAudio",
+        "summary": "Approve a ready audio asset",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/admin/questions/{id}/audio/reject": {
+      "post": {
+        "operationId": "questionsRejectAudio",
+        "summary": "Reject an audio asset without deleting the question",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/admin/questions/{id}/audio/upload": {
+      "post": {
+        "operationId": "questionsUploadAudio",
+        "summary": "Upload replacement question audio or video",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "audio"
+                ],
+                "properties": {
+                  "audio": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Audio file, or an MP4 file when the question type is video."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/admin/questions/{id}/audio/asset": {
+      "delete": {
+        "operationId": "questionsRemoveAudioAsset",
+        "summary": "Remove the current audio or video asset",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
             "description": "",
             "content": {
               "application/json": {
@@ -1133,8 +1814,19 @@
           "400": {
             "description": "Bad request - category not found or validation error"
           },
-          "500": {
-            "description": "Internal server error - AI provider API error or other issues"
+          "503": {
+            "description": "AI question generation is disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 503,
+                    "code": "AI_QUESTION_GENERATION_DISABLED",
+                    "message": "AI question generation is currently disabled."
+                  }
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -1237,6 +1929,30 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GenerateReviewedQuestionsResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No reviewed drafts were approved; bounded source and candidate diagnostics are returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateReviewedQuestionsErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AI question generation is disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 503,
+                    "code": "AI_QUESTION_GENERATION_DISABLED",
+                    "message": "AI question generation is currently disabled."
+                  }
                 }
               }
             }
@@ -1612,11 +2328,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "example": {
-                    "statusCode": 400,
-                    "message": "Exactly 2 teams are required",
-                    "error": "Bad Request"
-                  }
+                  "$ref": "#/components/schemas/GameCreationValidationErrorDto"
                 }
               }
             }
@@ -1711,6 +2423,201 @@
                 }
               }
             }
+          }
+        },
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/games/{id}/questions/{gameQuestionId}": {
+      "get": {
+        "operationId": "gamesGetQuestionView",
+        "summary": "Get one immutable game-question snapshot without its answer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "gameQuestionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameQuestionViewEnvelopeDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Game or question not found"
+          }
+        },
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/games/{id}/questions/{gameQuestionId}/reveal": {
+      "post": {
+        "operationId": "gamesRevealQuestionView",
+        "summary": "Reveal one game-question answer idempotently",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "gameQuestionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameQuestionAnswerEnvelopeDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/games/{id}/questions/{gameQuestionId}/answer": {
+      "get": {
+        "operationId": "gamesGetQuestionAnswerView",
+        "summary": "Get a previously revealed game-question answer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "gameQuestionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameQuestionAnswerEnvelopeDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Answer is not revealed"
+          }
+        },
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/games/{id}/questions/{gameQuestionId}/result": {
+      "post": {
+        "operationId": "gamesSubmitQuestionResult",
+        "summary": "Finalize a game question for a team or no one",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "gameQuestionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitGameQuestionResultDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameMutationResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid team, unrevealed answer, or already answered"
           }
         },
         "tags": [
@@ -1945,6 +2852,248 @@
           },
           "404": {
             "description": "Game not found"
+          }
+        },
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/games/{id}/ranked-list-rounds/start": {
+      "post": {
+        "operationId": "gamesStartRankedListRound",
+        "summary": "Start or resume a ranked-list round",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartRankedListRoundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankedListRoundActionEnvelopeDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/games/{id}/ranked-list-rounds/{questionId}": {
+      "get": {
+        "operationId": "gamesGetRankedListRoundState",
+        "summary": "Get backend-authoritative ranked-list round state",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankedListRoundStateEnvelopeDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/games/{id}/ranked-list-rounds/{questionId}/answers": {
+      "post": {
+        "operationId": "gamesSubmitRankedListAnswer",
+        "summary": "Submit the active team ranked-list answer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitRankedListAnswerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankedListRoundActionEnvelopeDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/games/{id}/ranked-list-rounds/{questionId}/expire": {
+      "post": {
+        "operationId": "gamesExpireRankedListTurn",
+        "summary": "Expire the current ranked-list turn idempotently",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpireRankedListTurnDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankedListRoundActionEnvelopeDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/games/{id}/ranked-list-rounds/{questionId}/finalize": {
+      "post": {
+        "operationId": "gamesFinalizeRankedListRound",
+        "summary": "Finalize a completed ranked-list round idempotently",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankedListRoundActionEnvelopeDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2442,7 +3591,8 @@
             "example": {
               "text": 20,
               "image": 35,
-              "audio": 25,
+              "audio": 20,
+              "video": 5,
               "quote": 10,
               "emoji": 5,
               "timeline": 5
@@ -2453,6 +3603,7 @@
               "text",
               "image",
               "audio",
+              "video",
               "quote",
               "emoji",
               "timeline"
@@ -2499,6 +3650,23 @@
           }
         }
       },
+      "CategoryAudioPolicy": {
+        "type": "string",
+        "default": "optional",
+        "enum": [
+          "disabled",
+          "optional",
+          "required"
+        ]
+      },
+      "CategoryGameplayMode": {
+        "type": "string",
+        "default": "STANDARD",
+        "enum": [
+          "STANDARD",
+          "TOP_10"
+        ]
+      },
       "CategoryResponseDto": {
         "type": "object",
         "properties": {
@@ -2541,6 +3709,12 @@
           "isActive": {
             "type": "boolean"
           },
+          "audioPolicy": {
+            "$ref": "#/components/schemas/CategoryAudioPolicy"
+          },
+          "gameplayMode": {
+            "$ref": "#/components/schemas/CategoryGameplayMode"
+          },
           "sortOrder": {
             "type": "number"
           },
@@ -2556,6 +3730,8 @@
           "name",
           "slug",
           "isActive",
+          "audioPolicy",
+          "gameplayMode",
           "sortOrder"
         ]
       },
@@ -2614,9 +3790,86 @@
           "data"
         ]
       },
-      "CreateQuestionDto": {
+      "QuestionGameplayType": {
+        "type": "string",
+        "default": "standard",
+        "enum": [
+          "standard",
+          "ranked_list"
+        ]
+      },
+      "LocalizedQuestionTextDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "ar": {
+            "type": "string"
+          },
+          "en": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ar"
+        ]
+      },
+      "RankedListEntryDto": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "description": "Authoring-only stable identifier used to map structured validation errors."
+          },
+          "id": {
+            "type": "string",
+            "readOnly": true
+          },
+          "rank": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10,
+            "deprecated": true,
+            "description": "Ignored. The backend derives rank from array order."
+          },
+          "answer": {
+            "$ref": "#/components/schemas/LocalizedQuestionTextDto"
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "points": {
+            "type": "number",
+            "minimum": 1,
+            "deprecated": true,
+            "description": "Ignored. The backend applies the fixed Top 10 point preset."
+          }
+        },
+        "required": [
+          "answer",
+          "aliases"
+        ]
+      },
+      "RankedListDefinitionDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "$ref": "#/components/schemas/LocalizedQuestionTextDto"
+          },
+          "entries": {
+            "minItems": 10,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RankedListEntryDto"
+            }
+          }
+        },
+        "required": [
+          "displayName",
+          "entries"
+        ]
       },
       "DifficultyLevel": {
         "type": "string",
@@ -2624,6 +3877,14 @@
           "easy",
           "medium",
           "hard"
+        ]
+      },
+      "QuestionPoints": {
+        "type": "number",
+        "enum": [
+          200,
+          400,
+          600
         ]
       },
       "GameMode": {
@@ -2639,6 +3900,100 @@
           "identifySong",
           "identifySinger",
           "identifyMusicIntro"
+        ]
+      },
+      "QuestionType": {
+        "type": "string",
+        "enum": [
+          "text",
+          "image",
+          "audio",
+          "video",
+          "gif"
+        ]
+      },
+      "AudioQuestionKind": {
+        "type": "string",
+        "enum": [
+          "identify_song",
+          "identify_artist",
+          "identify_character",
+          "identify_voice",
+          "identify_game",
+          "identify_movie",
+          "identify_dialogue_source",
+          "identify_sound_effect",
+          "custom"
+        ]
+      },
+      "QuestionAudioRequestDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/AudioQuestionKind"
+          },
+          "searchQuery": {
+            "type": "string"
+          },
+          "targetName": {
+            "type": "string"
+          },
+          "sourceTitle": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "preferredStartSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "preferredDurationSeconds": {
+            "type": "number",
+            "minimum": 3,
+            "maximum": 20
+          },
+          "provider": {
+            "type": "string"
+          },
+          "requestVersion": {
+            "type": "number",
+            "minimum": 1,
+            "readOnly": true
+          },
+          "requestHash": {
+            "type": "string",
+            "readOnly": true
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "selectedCandidateId": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "candidateSetVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true,
+            "readOnly": true
+          }
+        },
+        "required": [
+          "kind",
+          "searchQuery"
+        ]
+      },
+      "AssetStatus": {
+        "type": "string",
+        "enum": [
+          "NOT_REQUIRED",
+          "PENDING",
+          "READY",
+          "FAILED"
         ]
       },
       "QuestionStatus": {
@@ -2658,6 +4013,336 @@
           "ai",
           "imported",
           "music"
+        ]
+      },
+      "CreateQuestionDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "questionType": {
+            "$ref": "#/components/schemas/QuestionGameplayType"
+          },
+          "text": {
+            "$ref": "#/components/schemas/LocalizedQuestionTextDto"
+          },
+          "maxPoints": {
+            "type": "number",
+            "enum": [
+              600
+            ]
+          },
+          "turnDurationSeconds": {
+            "type": "number",
+            "default": 15,
+            "minimum": 1,
+            "maximum": 120
+          },
+          "maxStrikesPerTeam": {
+            "type": "number",
+            "default": 3,
+            "minimum": 1,
+            "maximum": 10
+          },
+          "rankedList": {
+            "$ref": "#/components/schemas/RankedListDefinitionDto"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "correctAnswer": {
+            "type": "string"
+          },
+          "wrongAnswers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "acceptedAnswers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "explanation": {
+            "type": "string"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/DifficultyLevel"
+          },
+          "points": {
+            "$ref": "#/components/schemas/QuestionPoints"
+          },
+          "score": {
+            "$ref": "#/components/schemas/QuestionPoints"
+          },
+          "gameMode": {
+            "$ref": "#/components/schemas/GameMode"
+          },
+          "type": {
+            "$ref": "#/components/schemas/QuestionType"
+          },
+          "primaryAsset": {
+            "type": "object",
+            "nullable": true
+          },
+          "requiresAudio": {
+            "type": "boolean",
+            "default": false
+          },
+          "audioKind": {
+            "$ref": "#/components/schemas/AudioQuestionKind"
+          },
+          "audioRequest": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QuestionAudioRequestDto"
+              }
+            ]
+          },
+          "coverImage": {
+            "type": "object",
+            "nullable": true
+          },
+          "primaryAssetRequest": {
+            "type": "object",
+            "nullable": true
+          },
+          "coverImageRequest": {
+            "type": "object",
+            "nullable": true
+          },
+          "coverImageStatus": {
+            "$ref": "#/components/schemas/AssetStatus"
+          },
+          "coverImageFailureReason": {
+            "type": "string"
+          },
+          "mediaUrl": {
+            "type": "string"
+          },
+          "mediaKey": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/QuestionStatus"
+          },
+          "source": {
+            "$ref": "#/components/schemas/QuestionSource"
+          },
+          "qualityScore": {
+            "type": "number"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "assetStatus": {
+            "$ref": "#/components/schemas/AssetStatus"
+          },
+          "assetFailureReason": {
+            "type": "string"
+          },
+          "assetFailureStep": {
+            "type": "string"
+          },
+          "assetFailureDiagnostics": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "gameplayMetadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "aiMetadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "isFreeGameQuestion": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "question",
+          "difficulty"
+        ]
+      },
+      "UpdateQuestionDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "questionType": {
+            "$ref": "#/components/schemas/QuestionGameplayType"
+          },
+          "text": {
+            "$ref": "#/components/schemas/LocalizedQuestionTextDto"
+          },
+          "maxPoints": {
+            "type": "number",
+            "enum": [
+              600
+            ]
+          },
+          "turnDurationSeconds": {
+            "type": "number",
+            "default": 15,
+            "minimum": 1,
+            "maximum": 120
+          },
+          "maxStrikesPerTeam": {
+            "type": "number",
+            "default": 3,
+            "minimum": 1,
+            "maximum": 10
+          },
+          "rankedList": {
+            "$ref": "#/components/schemas/RankedListDefinitionDto"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "correctAnswer": {
+            "type": "string"
+          },
+          "wrongAnswers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "acceptedAnswers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "explanation": {
+            "type": "string"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/DifficultyLevel"
+          },
+          "points": {
+            "$ref": "#/components/schemas/QuestionPoints"
+          },
+          "score": {
+            "$ref": "#/components/schemas/QuestionPoints"
+          },
+          "gameMode": {
+            "$ref": "#/components/schemas/GameMode"
+          },
+          "type": {
+            "$ref": "#/components/schemas/QuestionType"
+          },
+          "requiresAudio": {
+            "type": "boolean",
+            "default": false
+          },
+          "audioKind": {
+            "$ref": "#/components/schemas/AudioQuestionKind"
+          },
+          "audioRequest": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QuestionAudioRequestDto"
+              }
+            ]
+          },
+          "coverImage": {
+            "type": "object",
+            "nullable": true
+          },
+          "primaryAssetRequest": {
+            "type": "object",
+            "nullable": true
+          },
+          "coverImageRequest": {
+            "type": "object",
+            "nullable": true
+          },
+          "coverImageStatus": {
+            "$ref": "#/components/schemas/AssetStatus"
+          },
+          "coverImageFailureReason": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/QuestionStatus"
+          },
+          "source": {
+            "$ref": "#/components/schemas/QuestionSource"
+          },
+          "qualityScore": {
+            "type": "number"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "gameplayMetadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "aiMetadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "isFreeGameQuestion": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "ResolvedQuestionMediaResponseDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "image",
+              "audio",
+              "video"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "type",
+          "url"
         ]
       },
       "QuestionAssetType": {
@@ -2696,6 +4381,10 @@
           "metadata": {
             "type": "object",
             "additionalProperties": true
+          },
+          "duplicateDiagnostics": {
+            "type": "object",
+            "additionalProperties": true
           }
         },
         "required": [
@@ -2704,13 +4393,84 @@
           "source"
         ]
       },
-      "AssetStatus": {
+      "AudioCandidateStatus": {
         "type": "string",
         "enum": [
-          "NOT_REQUIRED",
-          "PENDING",
-          "READY",
-          "FAILED"
+          "available",
+          "selected",
+          "rejected",
+          "failed"
+        ]
+      },
+      "QuestionAudioCandidateResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "durationSeconds": {
+            "type": "number"
+          },
+          "thumbnail": {
+            "type": "string"
+          },
+          "queryUsed": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AudioCandidateStatus"
+          },
+          "rejectionReason": {
+            "type": "string"
+          },
+          "requestVersion": {
+            "type": "number"
+          },
+          "requestHash": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "provider",
+          "queryUsed",
+          "rank",
+          "status",
+          "requestVersion",
+          "requestHash"
+        ]
+      },
+      "AudioAssetStatus": {
+        "type": "string",
+        "enum": [
+          "not_required",
+          "pending",
+          "searching",
+          "processing",
+          "ready",
+          "failed",
+          "rejected"
+        ]
+      },
+      "AudioReviewStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "approved",
+          "rejected"
         ]
       },
       "QuestionResponseDto": {
@@ -2731,6 +4491,24 @@
           "question": {
             "type": "string"
           },
+          "questionType": {
+            "$ref": "#/components/schemas/QuestionGameplayType"
+          },
+          "text": {
+            "$ref": "#/components/schemas/LocalizedQuestionTextDto"
+          },
+          "maxPoints": {
+            "type": "number"
+          },
+          "turnDurationSeconds": {
+            "type": "number"
+          },
+          "maxStrikesPerTeam": {
+            "type": "number"
+          },
+          "rankedList": {
+            "$ref": "#/components/schemas/RankedListDefinitionDto"
+          },
           "answer": {
             "type": "string"
           },
@@ -2738,6 +4516,12 @@
             "type": "string"
           },
           "wrongAnswers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "acceptedAnswers": {
             "type": "array",
             "items": {
               "type": "string"
@@ -2771,6 +4555,50 @@
           "type": {
             "type": "string"
           },
+          "preferredPresentationType": {
+            "type": "string",
+            "enum": [
+              "text",
+              "image",
+              "audio",
+              "video",
+              "gif"
+            ]
+          },
+          "effectivePresentationType": {
+            "type": "string",
+            "enum": [
+              "text",
+              "image",
+              "audio",
+              "video"
+            ]
+          },
+          "mediaAvailable": {
+            "type": "boolean"
+          },
+          "mediaFallbackReason": {
+            "type": "string",
+            "enum": [
+              "NO_MEDIA",
+              "NOT_READY",
+              "PROCESSING",
+              "FAILED",
+              "REJECTED",
+              "STALE",
+              "MISSING_ASSET",
+              "INVALID_ASSET"
+            ],
+            "nullable": true
+          },
+          "resolvedMedia": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResolvedQuestionMediaResponseDto"
+              }
+            ]
+          },
           "status": {
             "$ref": "#/components/schemas/QuestionStatus"
           },
@@ -2784,6 +4612,49 @@
                 "$ref": "#/components/schemas/QuestionAssetResponseDto"
               }
             ]
+          },
+          "requiresAudio": {
+            "type": "boolean",
+            "default": false
+          },
+          "audioKind": {
+            "$ref": "#/components/schemas/AudioQuestionKind"
+          },
+          "audioRequest": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QuestionAudioRequestDto"
+              }
+            ]
+          },
+          "audioCandidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionAudioCandidateResponseDto"
+            }
+          },
+          "audioStatus": {
+            "$ref": "#/components/schemas/AudioAssetStatus"
+          },
+          "audioAsset": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QuestionAssetResponseDto"
+              }
+            ]
+          },
+          "audioReviewStatus": {
+            "$ref": "#/components/schemas/AudioReviewStatus"
+          },
+          "audioDiagnostics": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "audioRequestStale": {
+            "type": "boolean"
           },
           "coverImage": {
             "nullable": true,
@@ -2864,10 +4735,13 @@
         "required": [
           "_id",
           "question",
+          "questionType",
           "wrongAnswers",
           "difficulty",
           "status",
-          "source"
+          "source",
+          "requiresAudio",
+          "audioStatus"
         ]
       },
       "QuestionMutationResponseDto": {
@@ -2925,9 +4799,213 @@
           "data"
         ]
       },
-      "UpdateQuestionDto": {
+      "GenerateAcceptedAnswersDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "questionText": {
+            "type": "string"
+          },
+          "canonicalAnswerAr": {
+            "type": "string"
+          },
+          "canonicalAnswerEn": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "siblingAnswers": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "ar",
+              "en",
+              "mixed"
+            ],
+            "default": "mixed"
+          }
+        },
+        "required": [
+          "questionText",
+          "canonicalAnswerAr"
+        ]
+      },
+      "AcceptedAnswerAliasSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "ar",
+              "en",
+              "other"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          }
+        },
+        "required": [
+          "value",
+          "language",
+          "reason",
+          "confidence"
+        ]
+      },
+      "AcceptedAnswerGenerationResponseDto": {
+        "type": "object",
+        "properties": {
+          "aliases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AcceptedAnswerAliasSuggestionDto"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "aliases",
+          "warnings"
+        ]
+      },
+      "RankedAcceptedAnswerEntryDto": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "canonicalAnswerAr": {
+            "type": "string"
+          },
+          "canonicalAnswerEn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "clientId",
+          "canonicalAnswerAr"
+        ]
+      },
+      "GenerateRankedAcceptedAnswersDto": {
+        "type": "object",
+        "properties": {
+          "questionText": {
+            "type": "string"
+          },
+          "entries": {
+            "minItems": 10,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RankedAcceptedAnswerEntryDto"
+            }
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "ar",
+              "en",
+              "mixed"
+            ],
+            "default": "mixed"
+          }
+        },
+        "required": [
+          "questionText",
+          "entries"
+        ]
+      },
+      "RankedAcceptedAnswerGenerationResultDto": {
+        "type": "object",
+        "properties": {
+          "aliases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AcceptedAnswerAliasSuggestionDto"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "clientId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "aliases",
+          "warnings",
+          "clientId"
+        ]
+      },
+      "RankedAcceptedAnswerGenerationResponseDto": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RankedAcceptedAnswerGenerationResultDto"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "entries",
+          "warnings"
+        ]
+      },
+      "CheckQuestionDuplicatesDto": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "global": {
+            "type": "boolean",
+            "default": false
+          },
+          "excludeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ]
       },
       "BulkQuestionActionDto": {
         "type": "object",
@@ -2962,6 +5040,78 @@
         "required": [
           "modifiedCount"
         ]
+      },
+      "AudioRetryMode": {
+        "type": "string",
+        "enum": [
+          "research",
+          "retryProcessing"
+        ]
+      },
+      "RetryQuestionAudioDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/AudioRetryMode"
+          }
+        }
+      },
+      "UpdateQuestionAudioRequestDto": {
+        "type": "object",
+        "properties": {
+          "audioRequest": {
+            "$ref": "#/components/schemas/QuestionAudioRequestDto"
+          }
+        },
+        "required": [
+          "audioRequest"
+        ]
+      },
+      "QuestionAudioCandidatesResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionAudioCandidateResponseDto"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "UpdateQuestionAudioClipDto": {
+        "type": "object",
+        "properties": {
+          "preferredStartSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "preferredDurationSeconds": {
+            "type": "number",
+            "minimum": 3,
+            "maximum": 20
+          }
+        }
+      },
+      "PreviewQuestionMediaClipDto": {
+        "type": "object",
+        "properties": {
+          "startTimeSeconds": {
+            "type": "number",
+            "description": "Exact clip start time in seconds. Omit to use the default.",
+            "minimum": 0,
+            "example": 74
+          },
+          "durationSeconds": {
+            "type": "number",
+            "description": "Exact clip duration in seconds. Omit to use the default.",
+            "minimum": 3,
+            "maximum": 20,
+            "example": 10
+          }
+        }
       },
       "GenerateQuestionsDto": {
         "type": "object",
@@ -3125,6 +5275,27 @@
             "enum": [
               "ar"
             ]
+          },
+          "strategy": {
+            "type": "string",
+            "enum": [
+              "source-curated"
+            ],
+            "default": "source-curated"
+          },
+          "sourceIds": {
+            "example": [
+              "open-trivia-db"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "allowGeneratedFallback": {
+            "type": "boolean",
+            "default": false,
+            "description": "Reserved for future use. Generated fallback is currently disabled."
           }
         }
       },
@@ -3621,6 +5792,144 @@
           "data"
         ]
       },
+      "CandidateValidationResultResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "PASS",
+              "FAIL",
+              "NOT_EVALUATED"
+            ]
+          },
+          "issueCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "issueCodes"
+        ]
+      },
+      "SourceCandidateDiagnosticResponseDto": {
+        "type": "object",
+        "properties": {
+          "sourceId": {
+            "type": "string"
+          },
+          "sourceQuestionId": {
+            "type": "string"
+          },
+          "sourceQuestion": {
+            "type": "string"
+          },
+          "sourceAnswer": {
+            "type": "string"
+          },
+          "curatedQuestion": {
+            "type": "string",
+            "nullable": true
+          },
+          "curatedAnswer": {
+            "type": "string",
+            "nullable": true
+          },
+          "semanticFingerprint": {
+            "type": "string"
+          },
+          "duplicateScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "validationResult": {
+            "$ref": "#/components/schemas/CandidateValidationResultResponseDto"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "CREATED",
+              "REJECTED",
+              "FAILED",
+              "NOT_SELECTED"
+            ]
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "sourceId",
+          "sourceQuestionId",
+          "sourceQuestion",
+          "sourceAnswer",
+          "curatedQuestion",
+          "curatedAnswer",
+          "semanticFingerprint",
+          "duplicateScore",
+          "validationResult",
+          "outcome",
+          "rejectionReason"
+        ]
+      },
+      "GenerateReviewedQuestionsErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 400
+          },
+          "error": {
+            "type": "string",
+            "example": "Bad Request"
+          },
+          "message": {
+            "type": "string",
+            "example": "AI pipeline produced no drafts"
+          },
+          "issueCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "sourceDiagnostics": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "sourceSummary": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "candidateDiagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceCandidateDiagnosticResponseDto"
+            }
+          }
+        },
+        "required": [
+          "statusCode",
+          "error",
+          "message",
+          "issueCodes",
+          "meta",
+          "sourceDiagnostics",
+          "sourceSummary",
+          "candidateDiagnostics"
+        ]
+      },
       "SaveReviewedDraftsDto": {
         "type": "object",
         "properties": {
@@ -3959,6 +6268,57 @@
           "score"
         ]
       },
+      "GameQuestionPresentationResponseDto": {
+        "type": "object",
+        "properties": {
+          "preferredType": {
+            "type": "string",
+            "enum": [
+              "text",
+              "image",
+              "audio",
+              "video",
+              "gif"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "image",
+              "audio",
+              "video"
+            ]
+          },
+          "mediaAvailable": {
+            "type": "boolean"
+          },
+          "mediaUrl": {
+            "type": "string"
+          },
+          "mediaDuration": {
+            "type": "number"
+          },
+          "fallbackReason": {
+            "type": "string",
+            "enum": [
+              "NO_MEDIA",
+              "NOT_READY",
+              "PROCESSING",
+              "FAILED",
+              "REJECTED",
+              "STALE",
+              "MISSING_ASSET",
+              "INVALID_ASSET"
+            ]
+          }
+        },
+        "required": [
+          "preferredType",
+          "type",
+          "mediaAvailable"
+        ]
+      },
       "GameBoardQuestionResponseDto": {
         "type": "object",
         "properties": {
@@ -3987,6 +6347,9 @@
           },
           "awardedPoints": {
             "type": "number"
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/GameQuestionPresentationResponseDto"
           }
         },
         "required": [
@@ -4092,6 +6455,97 @@
           "message"
         ]
       },
+      "GameCreationValidationDetailDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "catalogId": {
+            "type": "string"
+          },
+          "gameplayMode": {
+            "type": "string",
+            "enum": [
+              "STANDARD",
+              "TOP_10"
+            ]
+          },
+          "questionId": {
+            "type": "string"
+          },
+          "requiredCounts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "actualCounts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "pointDistribution": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "categoryId",
+          "gameplayMode"
+        ]
+      },
+      "GameCreationValidationErrorDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 400
+          },
+          "error": {
+            "type": "string",
+            "example": "Bad Request"
+          },
+          "code": {
+            "type": "string",
+            "example": "STANDARD_MISSING_200_QUESTIONS"
+          },
+          "message": {
+            "type": "string"
+          },
+          "issueCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GameCreationValidationDetailDto"
+            }
+          }
+        },
+        "required": [
+          "statusCode",
+          "error",
+          "code",
+          "message",
+          "issueCodes",
+          "details"
+        ]
+      },
       "GameListResponseDto": {
         "type": "object",
         "properties": {
@@ -4127,6 +6581,202 @@
           "data"
         ]
       },
+      "GameQuestionCategoryResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "GameQuestionViewResponseDto": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "gameQuestionId": {
+            "type": "string"
+          },
+          "sourceQuestionId": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/GameQuestionCategoryResponseDto"
+          },
+          "points": {
+            "type": "number",
+            "enum": [
+              200,
+              400,
+              600
+            ]
+          },
+          "question": {
+            "type": "string"
+          },
+          "questionType": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "ranked_list"
+            ]
+          },
+          "isAnswered": {
+            "type": "boolean"
+          },
+          "isAnswerRevealed": {
+            "type": "boolean"
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/GameQuestionPresentationResponseDto"
+          }
+        },
+        "required": [
+          "gameId",
+          "gameQuestionId",
+          "sourceQuestionId",
+          "category",
+          "points",
+          "question",
+          "questionType",
+          "isAnswered",
+          "isAnswerRevealed"
+        ]
+      },
+      "GameQuestionViewEnvelopeDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 200
+          },
+          "data": {
+            "$ref": "#/components/schemas/GameQuestionViewResponseDto"
+          }
+        },
+        "required": [
+          "statusCode",
+          "data"
+        ]
+      },
+      "GameQuestionAnswerResponseDto": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "gameQuestionId": {
+            "type": "string"
+          },
+          "sourceQuestionId": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/GameQuestionCategoryResponseDto"
+          },
+          "points": {
+            "type": "number",
+            "enum": [
+              200,
+              400,
+              600
+            ]
+          },
+          "question": {
+            "type": "string"
+          },
+          "questionType": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "ranked_list"
+            ]
+          },
+          "isAnswered": {
+            "type": "boolean"
+          },
+          "isAnswerRevealed": {
+            "type": "boolean"
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/GameQuestionPresentationResponseDto"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "acceptedAnswers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "explanation": {
+            "type": "string"
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GameTeamResponseDto"
+            }
+          },
+          "answeredByTeamId": {
+            "type": "string"
+          },
+          "awardedPoints": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "gameId",
+          "gameQuestionId",
+          "sourceQuestionId",
+          "category",
+          "points",
+          "question",
+          "questionType",
+          "isAnswered",
+          "isAnswerRevealed",
+          "answer",
+          "teams"
+        ]
+      },
+      "GameQuestionAnswerEnvelopeDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 200
+          },
+          "data": {
+            "$ref": "#/components/schemas/GameQuestionAnswerResponseDto"
+          }
+        },
+        "required": [
+          "statusCode",
+          "data"
+        ]
+      },
+      "SubmitGameQuestionResultDto": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Answering team ID, or null when no team answered."
+          }
+        },
+        "required": [
+          "teamId"
+        ]
+      },
       "RevealAnswerDto": {
         "type": "object",
         "properties": {
@@ -4147,6 +6797,294 @@
         },
         "required": [
           "questionId"
+        ]
+      },
+      "StartRankedListRoundDto": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId"
+        ]
+      },
+      "RankedListMatchedEntryResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "number"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "points": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "rank",
+          "answer",
+          "points"
+        ]
+      },
+      "RankedListRoundTeamResponseDto": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string"
+          },
+          "teamIndex": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "strikes": {
+            "type": "number"
+          },
+          "temporaryScore": {
+            "type": "number"
+          },
+          "eliminated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "teamId",
+          "teamIndex",
+          "name",
+          "strikes",
+          "temporaryScore",
+          "eliminated"
+        ]
+      },
+      "RankedListRoundEntryResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "number"
+          },
+          "points": {
+            "type": "number"
+          },
+          "revealed": {
+            "type": "boolean"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "answerEn": {
+            "type": "string"
+          },
+          "claimedByTeamId": {
+            "type": "string"
+          },
+          "submittedAnswer": {
+            "type": "string"
+          },
+          "revealedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "rank",
+          "points",
+          "revealed"
+        ]
+      },
+      "RankedListRoundOutcomeResponseDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "winner",
+              "tie"
+            ]
+          },
+          "winnerTeamId": {
+            "type": "string"
+          },
+          "awardedPointsByTeam": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "awardedPointsByTeam"
+        ]
+      },
+      "RankedListRoundStateResponseDto": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "completed"
+            ]
+          },
+          "activeTeamId": {
+            "type": "string"
+          },
+          "activeTeamIndex": {
+            "type": "number"
+          },
+          "turnStartedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "turnExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "turnSequence": {
+            "type": "number"
+          },
+          "turnDurationSeconds": {
+            "type": "number"
+          },
+          "maxStrikesPerTeam": {
+            "type": "number"
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RankedListRoundTeamResponseDto"
+            }
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RankedListRoundEntryResponseDto"
+            }
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/RankedListRoundOutcomeResponseDto"
+          }
+        },
+        "required": [
+          "questionId",
+          "status",
+          "activeTeamId",
+          "activeTeamIndex",
+          "turnStartedAt",
+          "turnExpiresAt",
+          "turnSequence",
+          "turnDurationSeconds",
+          "maxStrikesPerTeam",
+          "teams",
+          "entries"
+        ]
+      },
+      "RankedListRoundActionResponseDto": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "started",
+              "correct",
+              "incorrect",
+              "already_discovered",
+              "timeout",
+              "round_completed",
+              "stale_turn"
+            ]
+          },
+          "strikeApplied": {
+            "type": "boolean"
+          },
+          "matchedEntry": {
+            "$ref": "#/components/schemas/RankedListMatchedEntryResponseDto"
+          },
+          "state": {
+            "$ref": "#/components/schemas/RankedListRoundStateResponseDto"
+          },
+          "result": {
+            "$ref": "#/components/schemas/RankedListRoundOutcomeResponseDto"
+          }
+        },
+        "required": [
+          "outcome",
+          "state"
+        ]
+      },
+      "RankedListRoundActionEnvelopeDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 200
+          },
+          "data": {
+            "$ref": "#/components/schemas/RankedListRoundActionResponseDto"
+          }
+        },
+        "required": [
+          "statusCode",
+          "data"
+        ]
+      },
+      "RankedListRoundStateEnvelopeDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 200
+          },
+          "data": {
+            "$ref": "#/components/schemas/RankedListRoundStateResponseDto"
+          }
+        },
+        "required": [
+          "statusCode",
+          "data"
+        ]
+      },
+      "SubmitRankedListAnswerDto": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "expectedTurnSequence": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "answer",
+          "expectedTurnSequence"
+        ]
+      },
+      "ExpireRankedListTurnDto": {
+        "type": "object",
+        "properties": {
+          "expectedTurnSequence": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "expectedTurnSequence"
         ]
       },
       "UpdateUserSubscriptionDto": {
