@@ -55,4 +55,22 @@ describe('GenerationPlannerService', () => {
     ]);
     expect(new Set(plan.map((slot) => slot.entityCandidate)).size).toBe(2);
   });
+  it.each(['image', 'video', 'audio'] as const)(
+    'requires a source for %s slots',
+    (assetType) => {
+      expect(planner.isSourceRequired(profile, assetType)).toBe(true);
+    },
+  );
+  it('makes a standard text source optional unless the profile requires it', () => {
+    expect(planner.isSourceRequired(profile, 'text')).toBe(false);
+    expect(
+      planner.isSourceRequired(
+        {
+          ...categoryProfileRegistry.byId('gulf-music'),
+          sourceRequired: true,
+        },
+        'text',
+      ),
+    ).toBe(true);
+  });
 });

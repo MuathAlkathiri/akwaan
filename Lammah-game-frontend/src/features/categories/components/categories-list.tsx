@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useCategories, useDeleteCategory } from "../hooks/use-categories";
 import { getEntityId } from "@/lib/utils";
 import { getMediaUrl } from "@/lib/api/media-url";
+import { DeleteDialog, EmptyState, LoadingState } from "@/components/shared";
 
 export function CategoriesList() {
   const router = useRouter();
@@ -20,11 +21,11 @@ export function CategoriesList() {
   const categories = data || [];
   const deleteCategory = useDeleteCategory();
 
-  if (isLoading) return <div className="text-center py-8">جاري التحميل...</div>;
+  if (isLoading) return <LoadingState />;
   if (error)
-    return <div className="text-center py-8 text-destructive">حدث خطأ</div>;
+    return <EmptyState title="تعذر تحميل الفئات" />;
   if (!categories.length)
-    return <div className="text-center py-8">لا توجد فئات</div>;
+    return <EmptyState title="لا توجد فئات" />;
 
   return (
     <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -82,17 +83,20 @@ export function CategoriesList() {
                   <Badge variant={category.isActive ? "default" : "secondary"}>
                     {category.isActive ? "نشطة" : "غير نشطة"}
                   </Badge>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      deleteCategory.mutate(categoryId);
-                    }}
+                  <DeleteDialog
+                    itemName={category.name}
                     disabled={deleteCategory.isPending}
-                  >
-                    حذف
-                  </Button>
+                    onDelete={() => deleteCategory.mutate(categoryId)}
+                    trigger={
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        حذف
+                      </Button>
+                    }
+                  />
                 </div>
               </div>
             </CardHeader>

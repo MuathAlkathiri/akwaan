@@ -4,10 +4,8 @@ import {
   Get,
   HttpStatus,
   Post,
-  ServiceUnavailableException,
   UseGuards,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -31,6 +29,8 @@ import {
   WigoloHealthResponseDto,
 } from './dto/ai-response.dto';
 import { WigoloClient } from './infrastructure/wigolo/wigolo-client';
+import { AiAgentService } from './ai-agent.service';
+import { QuestionResponseMapper } from '../questions/mappers/question-response.mapper';
 
 const execFileAsync = promisify(execFile);
 
@@ -46,8 +46,8 @@ export class AdminAiGeneratorController {
   };
 
   constructor(
+    private readonly aiAgentService: AiAgentService,
     private readonly wigoloClient: WigoloClient,
-    private readonly config: ConfigService,
   ) {}
 
   @Get('wigolo-health')
@@ -123,25 +123,17 @@ export class AdminAiGeneratorController {
     description: 'Reviewed question drafts generated successfully',
   })
   @ApiResponse({
-    status: 503,
-    description: 'AI question generation is disabled',
-    schema: {
-      example: {
-        statusCode: 503,
-        code: 'AI_QUESTION_GENERATION_DISABLED',
-        message: 'AI question generation is currently disabled.',
-      },
-    },
-  })
-  @ApiResponse({
     status: 400,
     type: GenerateReviewedQuestionsErrorResponseDto,
     description:
       'No reviewed drafts were approved; bounded source and candidate diagnostics are returned.',
   })
   async generateReviewed(@Body() body: GenerateReviewedQuestionsDto) {
-    this.assertGenerationEnabled();
-    void body;
+    const result = await this.aiAgentService.generateReviewedQuestions(body);
+    return {
+      statusCode: HttpStatus.CREATED,
+      ...this.sanitizeResponse(result),
+    };
   }
 
   @Post('save-drafts')
@@ -151,17 +143,13 @@ export class AdminAiGeneratorController {
   })
   @ApiResponse({ status: 201, type: SaveReviewedDraftsResponseDto })
   async saveDrafts(@Body() body: SaveReviewedDraftsDto) {
-    this.assertGenerationEnabled();
-    void body;
-  }
-
-  private assertGenerationEnabled(): void {
-    void this.config.get<string>('AI_QUESTION_GENERATION_ENABLED');
-    throw new ServiceUnavailableException({
-      statusCode: HttpStatus.SERVICE_UNAVAILABLE,
-      code: 'AI_QUESTION_GENERATION_DISABLED',
-      message: 'AI question generation is currently disabled.',
-    });
+    const result = await this.aiAgentService.saveReviewedDrafts(body);
+    return {
+      ...result,
+      savedQuestions: QuestionResponseMapper.toResponseList(
+        result.savedQuestions,
+      ),
+    };
   }
 
   private async runToolCommand(

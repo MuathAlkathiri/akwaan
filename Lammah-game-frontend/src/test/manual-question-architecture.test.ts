@@ -7,8 +7,8 @@ import {
 } from "@/features/questions/components/questions-list";
 
 describe("manual question architecture", () => {
-  it("does not expose retired generation routes in admin navigation", () => {
-    expect(adminNavigation.map((item) => item.href)).not.toContain(
+  it("exposes reviewed generation but not the retired generated list", () => {
+    expect(adminNavigation.map((item) => item.href)).toContain(
       "/admin/ai-generator",
     );
     expect(adminNavigation.map((item) => item.href)).not.toContain(

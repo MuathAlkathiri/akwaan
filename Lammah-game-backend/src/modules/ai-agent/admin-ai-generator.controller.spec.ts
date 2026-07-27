@@ -1,11 +1,12 @@
 import { AdminAiGeneratorController } from './admin-ai-generator.controller';
 import { WigoloClient } from './infrastructure/wigolo/wigolo-client';
+import type { AiAgentService } from './ai-agent.service';
 
 describe('AdminAiGeneratorController Wigolo health', () => {
   const create = (readiness: jest.MockedFunction<WigoloClient['readiness']>) =>
     new AdminAiGeneratorController(
+      {} as AiAgentService,
       { readiness } as unknown as WigoloClient,
-      { get: () => 'false' } as never,
     );
 
   it('returns ready status with safe runtime fields', async () => {
@@ -94,14 +95,27 @@ describe('AdminAiGeneratorController Wigolo health', () => {
     expect(readiness).toHaveBeenCalledTimes(1);
   });
 
-  it('returns a structured 503 for the retired generation workflow', async () => {
+  it('returns reviewed drafts without invoking persistence', async () => {
+    const generateReviewedQuestions = jest.fn().mockResolvedValue({
+      message: 'Reviewed question drafts generated successfully',
+      count: 1,
+      data: { questions: [{ question: 'سؤال؟', answer: 'إجابة' }] },
+    });
+    const saveReviewedDrafts = jest.fn();
     const controller = new AdminAiGeneratorController(
+      {
+        generateReviewedQuestions,
+        saveReviewedDrafts,
+      } as unknown as AiAgentService,
       {} as WigoloClient,
-      { get: () => 'false' } as never,
     );
 
-    await expect(controller.generateReviewed({})).rejects.toThrow(
-      'AI question generation is currently disabled.',
-    );
+    await expect(controller.generateReviewed({})).resolves.toMatchObject({
+      statusCode: 201,
+      count: 1,
+      data: { questions: [{ question: 'سؤال؟', answer: 'إجابة' }] },
+    });
+    expect(generateReviewedQuestions).toHaveBeenCalledTimes(1);
+    expect(saveReviewedDrafts).not.toHaveBeenCalled();
   });
 });

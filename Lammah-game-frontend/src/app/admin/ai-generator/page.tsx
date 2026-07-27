@@ -1,4 +1,5 @@
-import { redirect } from "next/navigation";
+import { AiGeneratorAdminScreen } from "@/features/ai-generation";
+
 export default function AIGeneratorPage() {
-  redirect("/admin/questions");
+  return <AiGeneratorAdminScreen />;
 }

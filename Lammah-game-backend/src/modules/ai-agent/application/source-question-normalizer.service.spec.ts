@@ -17,6 +17,10 @@ describe('SourceQuestionNormalizerService', () => {
     expect(service.normalize(raw())?.originalQuestion).toBe('Who & where?'));
   it('decodes numeric entities', () =>
     expect(service.clean('A &#38; B &#x26; C')).toBe('A & B & C'));
+  it('decodes the named accented entities returned by Open Trivia DB', () => {
+    expect(service.clean('James Rodr&iacute;guez')).toBe('James Rodríguez');
+    expect(service.clean('Lothar Matth&auml;us')).toBe('Lothar Matthäus');
+  });
   it('normalizes unicode and whitespace', () =>
     expect(service.clean('  Ａ\n B  ')).toBe('A B'));
   it('strips markup', () =>

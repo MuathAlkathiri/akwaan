@@ -5,6 +5,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useCreateCatalog, useUpdateCatalog } from "../hooks/use-catalogs";
 import { getEntityId } from "@/lib/utils";
 import { Catalog } from "@/types";
@@ -26,11 +35,7 @@ export function CatalogForm({ catalog, onSuccess }: CatalogFormProps) {
   const createCatalog = useCreateCatalog();
   const updateCatalog = useUpdateCatalog(catalogId);
   const isPending = createCatalog.isPending || updateCatalog.isPending;
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<CatalogFormData>({
+  const form = useForm<CatalogFormData>({
     resolver: zodResolver(catalogSchema),
     defaultValues: {
       name: catalog?.name.ar ?? "",
@@ -58,27 +63,46 @@ export function CatalogForm({ catalog, onSuccess }: CatalogFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div>
-        <label className="mb-2 block text-sm font-medium">اسم الكتالوج</label>
-        <Input placeholder="مثال: رياضة" {...register("name")} />
-        {errors.name && (
-          <p className="text-sm text-destructive">{errors.name.message}</p>
-        )}
-      </div>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>اسم الكتالوج</FormLabel>
+              <FormControl>
+                <Input placeholder="مثال: رياضة" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" className="rounded" {...register("isActive")} />
-        نشط
-      </label>
+        <FormField
+          control={form.control}
+          name="isActive"
+          render={({ field }) => (
+            <FormItem className="flex items-center gap-2 space-y-0">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <FormLabel>نشط</FormLabel>
+            </FormItem>
+          )}
+        />
 
-      <Button type="submit" disabled={isPending}>
-        {isPending
-          ? "جاري الحفظ..."
-          : catalogId
-            ? "حفظ الكتالوج"
-            : "إنشاء كتالوج"}
-      </Button>
-    </form>
+        <Button type="submit" disabled={isPending}>
+          {isPending
+            ? "جاري الحفظ..."
+            : catalogId
+              ? "حفظ الكتالوج"
+              : "إنشاء كتالوج"}
+        </Button>
+      </form>
+    </Form>
   );
 }

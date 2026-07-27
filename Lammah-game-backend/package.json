@@ -35,6 +35,7 @@
     "verify:wigolo": "ts-node -r tsconfig-paths/register scripts/verify-wigolo.ts"
   },
   "dependencies": {
+    "@google/genai": "^1.52.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@nestjs/common": "^10.3.0",
     "@nestjs/config": "^4.0.4",
@@ -48,6 +49,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
     "dotenv": "^17.4.2",
+    "entities": "^4.5.0",
     "mongoose": "^8.0.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

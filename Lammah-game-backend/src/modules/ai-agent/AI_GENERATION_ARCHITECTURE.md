@@ -1,27 +1,27 @@
-# Retired AI generation architecture
+# Reviewed AI generation architecture
 
 ## Runtime status
 
-AI question generation is not part of the active product workflow. The legacy
-generation routes remain only as authenticated compatibility surfaces and return
-`AI_QUESTION_GENERATION_DISABLED` with HTTP 503. `AiAgentModule` does not register
-the planner, research, source-curation, writer, reviewer, repair, language, LLM,
-or generated-draft services.
+Only the authenticated reviewed-draft workflow is active:
 
-`AI_QUESTION_GENERATION_ENABLED` defaults to `false`. It is retained as an
-operational compatibility setting; enabling it does not restore the retired
-runtime graph. Recovery of the old implementation must be deliberate and use Git
-history rather than silently activating dormant services.
+- `POST /admin/ai-generator/generate-reviewed` generates and returns reviewed
+  drafts without persistence.
+- `POST /admin/ai-generator/save-drafts` remains the explicit persistence step.
+
+Text generation uses the provider-neutral `AiProvider` boundary. With
+`AI_PROVIDER=gemini`, writer, reviewer, and repair calls route through the Gemini
+provider. The legacy `/ai-agent/generate-questions` auto-save route remains
+disabled.
 
 ## Dependency map
 
 The former generation path was:
 
 ```text
-generation controllers
+reviewed generation controller
   -> generation/source-curated pipeline
      -> planner and category profiles
-     -> research router/providers and source adapters
+     -> source-curation adapter
      -> writer/curator/reviewer/repair and LLM client
      -> deterministic/language/source-fidelity validators
      -> generation duplicate detector

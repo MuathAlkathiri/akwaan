@@ -6,6 +6,7 @@ import { LanguageValidatorService } from './language-validator.service';
 import { SourceQuestionNormalizerService } from './source-question-normalizer.service';
 import { SourceCuratedQuestionValidatorService } from './source-curated-question-validator.service';
 import { categoryProfileRegistry } from './category-generation-profile.registry';
+import { DeterministicQuestionValidatorService } from './deterministic-question-validator.service';
 
 describe('source-curated pipeline', () => {
   const normalizer = new SourceQuestionNormalizerService();
@@ -47,16 +48,53 @@ describe('source-curated pipeline', () => {
     knowledgeFactIds: [],
     sourceIds: ['open-trivia-db'],
   };
+  const generated = {
+    ...arabic,
+    question: 'ما أكبر كوكب في المجموعة الشمسية؟',
+    answer: 'المشتري',
+    wrongAnswers: ['الأرض', 'المريخ', 'الزهرة'],
+    explanation: 'المشتري هو أكبر كواكب المجموعة الشمسية.',
+    knowledgeFactIds: [],
+    sourceIds: [],
+  };
   const make = (overrides: Record<string, unknown> = {}) => {
     const writer = {
+      standardPromptLength: jest.fn().mockReturnValue(500),
       curate: jest.fn().mockResolvedValue({
         value: arabic,
         provider: 'test',
         model: 'curator',
       }),
+      generateStandard: jest.fn().mockResolvedValue({
+        value: generated,
+        provider: 'gemini',
+        model: 'gemini-test',
+      }),
+      generateStandardBatch: jest.fn().mockImplementation(({ slots }) =>
+        Promise.resolve({
+          value: slots.map(
+            (slot: { slotId: string; difficulty: string }, index: number) => ({
+              slotId: slot.slotId,
+              candidate: {
+                ...generated,
+                question: `${generated.question} ${index + 1}`,
+                answer: `${generated.answer} ${index + 1}`,
+                difficulty: slot.difficulty,
+              },
+              review: { verdict: 'approved', score: 9, issues: [] },
+            }),
+          ),
+          provider: 'gemini',
+          model: 'gemini-test',
+          diagnostics: { usage: { promptTokens: 100, outputTokens: 200 } },
+          promptLength: 700,
+          requestCount: 1,
+        }),
+      ),
     };
     const repairer = {
       repairCuration: jest.fn().mockResolvedValue({ value: arabic }),
+      repairGenerated: jest.fn().mockResolvedValue({ value: generated }),
     };
     const reviewer = {
       reviewCuration: jest.fn().mockResolvedValue({
@@ -69,6 +107,9 @@ describe('source-curated pipeline', () => {
           noNewFacts: true,
           optionsFaithful: true,
         },
+      }),
+      reviewGenerated: jest.fn().mockResolvedValue({
+        value: { verdict: 'approved', score: 9, issues: [] },
       }),
     };
     Object.assign(writer, overrides.writer);
@@ -92,7 +133,7 @@ describe('source-curated pipeline', () => {
         writer as never,
         reviewer as never,
         repairer as never,
-        {} as never,
+        new DeterministicQuestionValidatorService(),
         new LanguageValidatorService(),
         new DuplicateDetectionService(),
         router as never,
@@ -140,6 +181,34 @@ describe('source-curated pipeline', () => {
         rejectionReason: null,
       }),
     ]);
+  });
+
+  it('uses one batch Gemini request for homogeneous text slots', async () => {
+    const { pipeline, writer } = make({
+      router: {
+        collect: jest.fn().mockResolvedValue({
+          candidates: [source, unselectedSource],
+          diagnostics: [],
+          sourcesAttempted: ['open-trivia-db'],
+          sourcesUsed: ['open-trivia-db'],
+          results: [],
+        }),
+      },
+    });
+
+    const result = await execute(pipeline, 15);
+
+    expect(writer.generateStandardBatch).toHaveBeenCalledTimes(1);
+    expect(writer.generateStandardBatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        slots: expect.arrayContaining([
+          expect.objectContaining({ gameMode: 'trivia' }),
+        ]),
+      }),
+    );
+    expect(writer.generateStandard).not.toHaveBeenCalled();
+    expect(writer.curate).not.toHaveBeenCalled();
+    expect(result.results).toHaveLength(15);
   });
   it('allows English source wrong answers because they are not displayed', async () => {
     const english = {
@@ -201,19 +270,25 @@ describe('source-curated pipeline', () => {
       },
     });
     const result = await execute(pipeline);
-    expect(result.drafts).toHaveLength(0);
-    expect(result.results[0].languageIssueCodes).toContain(
-      'OUTPUT_LANGUAGE_MISMATCH',
-    );
+    expect(result.drafts).toHaveLength(1);
+    expect(result.results[0].sourceStatus).toBe('optional_sources_exhausted');
+    expect(result.candidateDiagnostics[0]).toMatchObject({
+      outcome: 'REJECTED',
+      validationResult: {
+        issueCodes: expect.arrayContaining(['OUTPUT_LANGUAGE_MISMATCH']),
+      },
+      curator: { finalStatus: 'rejected' },
+    });
   });
-  it('returns partial results without inventing missing slots', async () => {
+  it('fills optional text slots without inventing a source candidate', async () => {
     const { pipeline } = make();
     const result = await execute(pipeline, 2);
     expect(result.slots).toHaveLength(2);
-    expect(result.drafts).toHaveLength(1);
+    expect(result.drafts).toHaveLength(2);
     expect(result.results[1]).toMatchObject({
-      status: 'failed',
-      blockingIssues: ['NO_SOURCE_CANDIDATE'],
+      status: 'created',
+      sourceStatus: 'not_required',
+      blockingIssues: [],
     });
   });
   it('bypasses reviewer and repair agents', async () => {
@@ -243,10 +318,13 @@ describe('source-curated pipeline', () => {
       },
     });
     const result = await execute(pipeline);
-    expect(result.drafts).toHaveLength(0);
-    expect(result.results[0].blockingIssues).toEqual([
-      'SOURCE_STRUCTURE_UNUSABLE',
-    ]);
+    expect(result.drafts).toHaveLength(1);
+    expect(result.results[0].sourceStatus).toBe('optional_sources_exhausted');
+    expect(result.candidateDiagnostics[0]).toMatchObject({
+      outcome: 'REJECTED',
+      validationResult: { issueCodes: ['SOURCE_STRUCTURE_UNUSABLE'] },
+      curator: { finalStatus: 'rejected' },
+    });
   });
 
   it('keeps existing duplicate detection', async () => {
@@ -254,8 +332,12 @@ describe('source-curated pipeline', () => {
     const result = await execute(pipeline, 1, [
       { question: arabic.question, correctAnswer: arabic.answer },
     ]);
-    expect(result.drafts).toHaveLength(0);
-    expect(result.results[0].blockingIssues).toContain('DUPLICATE_EXACT');
+    expect(result.drafts).toHaveLength(1);
+    expect(result.results[0].sourceStatus).toBe('optional_sources_exhausted');
+    expect(result.candidateDiagnostics[0]).toMatchObject({
+      outcome: 'REJECTED',
+      validationResult: { issueCodes: ['DUPLICATE_EXACT'] },
+    });
   });
 
   it('returns diagnostics for collected candidates not selected for a slot', async () => {
@@ -284,7 +366,7 @@ describe('source-curated pipeline', () => {
     });
     expect(
       'sourceSummary' in result ? result.sourceSummary : undefined,
-    ).toEqual({
+    ).toMatchObject({
       requested: 1,
       collected: 2,
       selected: 1,
@@ -337,15 +419,294 @@ describe('source-curated pipeline', () => {
     const result = await execute(pipeline, 2);
     expect(
       'sourceSummary' in result ? result.sourceSummary : undefined,
-    ).toEqual({
+    ).toMatchObject({
       requested: 2,
       collected: 6,
-      selected: 2,
-      approved: 2,
+      selected: 0,
+      approved: 0,
       rejected: 0,
       failed: 0,
-      notSelected: 4,
+      notSelected: 6,
       returned: 2,
+    });
+  });
+
+  it('reaches Gemini when an optional text category has no source adapter', async () => {
+    const { pipeline, writer, reviewer } = make({
+      router: {
+        collect: jest.fn().mockResolvedValue({
+          candidates: [],
+          diagnostics: [
+            { sourceId: 'router', code: 'SOURCE_CATEGORY_UNSUPPORTED' },
+          ],
+          sourcesAttempted: [],
+          sourcesUsed: [],
+          results: [],
+        }),
+      },
+    });
+    const result = await execute(pipeline);
+    expect(writer.generateStandard).toHaveBeenCalledTimes(1);
+    expect(reviewer.reviewGenerated).toHaveBeenCalledTimes(1);
+    expect(result.drafts).toHaveLength(1);
+    expect(result.results[0]).toMatchObject({
+      status: 'created',
+      sourceStatus: 'unavailable_optional',
+      blockingIssues: [],
+      warnings: ['OPTIONAL_SOURCE_UNAVAILABLE'],
+    });
+    expect(
+      'sourceSummary' in result ? result.sourceSummary : undefined,
+    ).toMatchObject({
+      failed: 0,
+      optionalSourceUnavailable: 1,
+      requiredSourceMissing: 0,
+    });
+  });
+
+  it('marks an optional source as not required when research was not attempted', async () => {
+    const { pipeline } = make({
+      router: {
+        collect: jest.fn().mockResolvedValue({
+          candidates: [],
+          diagnostics: [],
+          sourcesAttempted: [],
+          sourcesUsed: [],
+          results: [],
+        }),
+      },
+    });
+    const result = await execute(pipeline);
+    expect(result.results[0]).toMatchObject({
+      status: 'created',
+      sourceStatus: 'not_required',
+      warnings: ['SOURCE_NOT_REQUIRED'],
+    });
+  });
+
+  it('still rejects invalid optional-source output deterministically', async () => {
+    const { pipeline } = make({
+      router: {
+        collect: jest.fn().mockResolvedValue({
+          candidates: [],
+          diagnostics: [],
+          sourcesAttempted: [],
+          sourcesUsed: [],
+          results: [],
+        }),
+      },
+      writer: {
+        generateStandard: jest.fn().mockResolvedValue({
+          value: { ...generated, question: '' },
+          provider: 'gemini',
+          model: 'gemini-test',
+        }),
+      },
+      repairer: {
+        repairGenerated: jest.fn().mockResolvedValue({
+          value: { ...generated, question: '' },
+        }),
+      },
+    });
+    const result = await execute(pipeline);
+    expect(result.drafts).toHaveLength(0);
+    expect(result.results[0].blockingIssues).toContain('QUESTION_REQUIRED');
+  });
+
+  it('still rejects duplicates generated without an external source', async () => {
+    const { pipeline } = make({
+      router: {
+        collect: jest.fn().mockResolvedValue({
+          candidates: [],
+          diagnostics: [],
+          sourcesAttempted: [],
+          sourcesUsed: [],
+          results: [],
+        }),
+      },
+    });
+    const result = await execute(pipeline, 1, [
+      { question: generated.question, correctAnswer: generated.answer },
+    ]);
+    expect(result.drafts).toHaveLength(0);
+    expect(result.results[0].blockingIssues).toContain('DUPLICATE_EXACT');
+  });
+
+  it('keeps missing sources fatal for explicitly source-required profiles', async () => {
+    const { pipeline, writer } = make({
+      router: {
+        collect: jest.fn().mockResolvedValue({
+          candidates: [],
+          diagnostics: [
+            { sourceId: 'router', code: 'SOURCE_CATEGORY_UNSUPPORTED' },
+          ],
+          sourcesAttempted: [],
+          sourcesUsed: [],
+          results: [],
+        }),
+      },
+    });
+    const result = await pipeline.execute({
+      count: 1,
+      difficulty: 'easy',
+      categoryName: 'أغاني الخليج',
+      requestedLanguage: 'ar',
+      profile: {
+        ...categoryProfileRegistry.byId('gulf-music'),
+        sourceRequired: true,
+      },
+      knowledgeFile: '',
+      knowledge: '',
+      persisted: [],
+    });
+    expect(writer.generateStandard).not.toHaveBeenCalled();
+    expect(result.results[0]).toMatchObject({
+      status: 'failed',
+      sourceStatus: 'required_missing',
+      blockingIssues: ['NO_SOURCE_CANDIDATE'],
+    });
+    expect(
+      'sourceSummary' in result ? result.sourceSummary : undefined,
+    ).toMatchObject({
+      requiredSourceMissing: 1,
+      optionalSourceUnavailable: 0,
+    });
+  });
+
+  it('returns the original provider failure in slot diagnostics', async () => {
+    const providerFailure = Object.assign(
+      new Error('Gemini rate limit or quota was exceeded'),
+      {
+        name: 'LlmClientError',
+        code: 'LLM_HTTP_ERROR',
+        diagnostics: {
+          provider: 'gemini',
+          model: 'gemini-test',
+          stage: 'request',
+          errorType: 'AI_PROVIDER_RATE_LIMITED',
+          providerDetails: { status: 429, errorCode: '429' },
+        },
+      },
+    );
+    const { pipeline } = make({
+      router: {
+        collect: jest.fn().mockResolvedValue({
+          candidates: [],
+          diagnostics: [
+            { sourceId: 'router', code: 'SOURCE_CATEGORY_UNSUPPORTED' },
+          ],
+          sourcesAttempted: [],
+          sourcesUsed: [],
+          results: [],
+        }),
+      },
+      writer: {
+        generateStandard: jest.fn().mockRejectedValue(providerFailure),
+      },
+    });
+    const result = await execute(pipeline);
+    expect(result.results[0]).toMatchObject({
+      status: 'failed',
+      blockingIssues: ['AI_PROVIDER_RATE_LIMITED'],
+      diagnostics: [
+        { code: 'OPTIONAL_SOURCE_UNAVAILABLE' },
+        {
+          code: 'AI_PROVIDER_RATE_LIMITED',
+          stage: 'request',
+          message: 'Gemini rate limit or quota was exceeded',
+          details: {
+            errorType: 'LlmClientError',
+            provider: 'gemini',
+            model: 'gemini-test',
+            providerDetails: { status: 429, errorCode: '429' },
+          },
+        },
+      ],
+    });
+    expect(result.results[0].trace).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ stage: 'writer', event: 'entered' }),
+        expect.objectContaining({ stage: 'gemini', event: 'request_started' }),
+        expect.objectContaining({
+          stage: 'slot',
+          event: 'final_result',
+          details: expect.objectContaining({
+            status: 'failed',
+            error: expect.objectContaining({
+              code: 'AI_PROVIDER_RATE_LIMITED',
+            }),
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it('falls back to the Gemini writer when optional source curation fails', async () => {
+    const curatorFailure = Object.assign(new Error('Gemini quota exceeded'), {
+      name: 'LlmClientError',
+      code: 'LLM_HTTP_ERROR',
+      diagnostics: {
+        provider: 'gemini',
+        model: 'gemini-test',
+        stage: 'request',
+        errorType: 'AI_PROVIDER_RATE_LIMITED',
+      },
+    });
+    const { pipeline, writer } = make({
+      writer: {
+        curate: jest.fn().mockRejectedValue(curatorFailure),
+      },
+    });
+    const result = await execute(pipeline);
+    expect(writer.generateStandard).toHaveBeenCalledTimes(1);
+    expect(result.drafts).toHaveLength(1);
+    expect(result.results[0]).toMatchObject({
+      status: 'created',
+      sourceStatus: 'optional_curator_unavailable',
+    });
+    expect(result.candidateDiagnostics[0]).toMatchObject({
+      outcome: 'FAILED',
+      curator: {
+        finalStatus: 'failed',
+        errorCode: 'AI_PROVIDER_RATE_LIMITED',
+        provider: 'gemini',
+        model: 'gemini-test',
+      },
+    });
+    expect(
+      'sourceSummary' in result ? result.sourceSummary : undefined,
+    ).toMatchObject({
+      curatorFailed: 1,
+      sourceFallbackUsed: 1,
+      generationFailed: 0,
+      returned: 1,
+    });
+  });
+
+  it('does not fall back when a source-required profile curator fails', async () => {
+    const { pipeline, writer } = make({
+      writer: {
+        curate: jest.fn().mockRejectedValue(new Error('curator crashed')),
+      },
+    });
+    const result = await pipeline.execute({
+      count: 1,
+      difficulty: 'easy',
+      categoryName: 'أغاني الخليج',
+      requestedLanguage: 'ar',
+      profile: {
+        ...categoryProfileRegistry.byId('gulf-music'),
+        sourceRequired: true,
+      },
+      knowledgeFile: '',
+      knowledge: '',
+      persisted: [],
+    });
+    expect(writer.generateStandard).not.toHaveBeenCalled();
+    expect(result.results[0].status).toBe('failed');
+    expect(result.candidateDiagnostics[0]).toMatchObject({
+      outcome: 'FAILED',
+      curator: { finalStatus: 'failed' },
     });
   });
 });

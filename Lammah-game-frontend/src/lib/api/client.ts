@@ -20,6 +20,13 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
+
+    // For FormData requests, remove the default JSON Content-Type header
+    // and let the browser/Axios add the correct multipart boundary
+    if (config.data instanceof FormData) {
+      config.headers.delete("Content-Type");
+    }
+
     return config;
   },
   (error) => {

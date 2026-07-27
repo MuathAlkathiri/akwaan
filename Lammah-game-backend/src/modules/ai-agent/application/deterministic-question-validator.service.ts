@@ -9,6 +9,51 @@ import type {
 
 @Injectable()
 export class DeterministicQuestionValidatorService {
+  validateGenerated(
+    candidate: PipelineQuestionCandidate,
+    slot: GenerationPlanSlot,
+    profile: CategoryGenerationProfile,
+  ): GenerationDiagnostic[] {
+    const placeholderFact: FactCandidate = {
+      id: 'optional-source',
+      fact: candidate.explanation,
+      canonicalAnswer: candidate.answer,
+      acceptedAnswerHints: candidate.acceptedAnswers,
+      entities: [candidate.answer],
+      source: {
+        title: 'optional-source',
+        url: 'internal://optional-source',
+        excerpt: candidate.explanation,
+      },
+      sources: [
+        {
+          sourceId: 'optional-source',
+          title: 'optional-source',
+          url: 'internal://optional-source',
+          excerpt: candidate.explanation,
+        },
+      ],
+      confidence: 0,
+    };
+    return this.validate(
+      {
+        ...candidate,
+        knowledgeFactIds: ['optional-source'],
+        sourceIds: ['optional-source'],
+      },
+      placeholderFact,
+      slot,
+      profile,
+    ).filter(
+      (issue) =>
+        ![
+          'SOURCE_METADATA_REQUIRED',
+          'UNKNOWN_KNOWLEDGE_FACT_ID',
+          'UNKNOWN_SOURCE_ID',
+        ].includes(issue.code),
+    );
+  }
+
   validate(
     candidate: PipelineQuestionCandidate,
     fact: FactCandidate,

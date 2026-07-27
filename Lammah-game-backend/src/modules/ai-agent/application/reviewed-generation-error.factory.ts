@@ -12,6 +12,7 @@ type CandidateDiagnostic = {
   validationResult?: unknown;
   outcome?: unknown;
   rejectionReason?: unknown;
+  curator?: unknown;
 };
 
 const boundedText = (value: unknown, limit = 2_000) =>
@@ -25,6 +26,40 @@ const boundedText = (value: unknown, limit = 2_000) =>
         .replace(/\/(?:Users|home|app)\/[^\s]+/g, '[redacted path]')
         .slice(0, limit)
     : null;
+
+const safeDetails = (
+  value: unknown,
+  depth = 0,
+): Record<string, unknown> | null => {
+  if (!value || typeof value !== 'object' || depth > 3) return null;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .slice(0, 40)
+      .map(([key, item]) => {
+        if (typeof item === 'string') return [key, boundedText(item, 8_000)];
+        if (
+          typeof item === 'number' ||
+          typeof item === 'boolean' ||
+          item == null
+        )
+          return [key, item];
+        if (Array.isArray(item))
+          return [
+            key,
+            item
+              .slice(0, 30)
+              .map((entry) =>
+                typeof entry === 'object'
+                  ? safeDetails(entry, depth + 1)
+                  : typeof entry === 'string'
+                    ? boundedText(entry, 2_000)
+                    : entry,
+              ),
+          ];
+        return [key, safeDetails(item, depth + 1)];
+      }),
+  );
+};
 
 const safeCandidate = (value: CandidateDiagnostic) => ({
   sourceId: boundedText(value.sourceId, 100),
@@ -59,11 +94,17 @@ const safeCandidate = (value: CandidateDiagnostic) => ({
       : { status: 'NOT_EVALUATED', issueCodes: [] },
   outcome: boundedText(value.outcome, 30),
   rejectionReason: boundedText(value.rejectionReason),
+  curator: safeDetails(value.curator),
 });
 
 export function createZeroDraftGenerationException(
   pipelineMeta: Record<string, unknown>,
 ): BadRequestException {
+  const rawSourceSummary =
+    pipelineMeta.sourceSummary && typeof pipelineMeta.sourceSummary === 'object'
+      ? (pipelineMeta.sourceSummary as Record<string, unknown>)
+      : {};
+  const sourceRequired = rawSourceSummary.sourceRequired === true;
   const sourceDiagnostics = Array.isArray(pipelineMeta.sourceDiagnostics)
     ? pipelineMeta.sourceDiagnostics.slice(0, 50).map((item) => {
         const record =
@@ -97,13 +138,31 @@ export function createZeroDraftGenerationException(
               return {
                 code: boundedText(diagnostic.code, 100),
                 stage: boundedText(diagnostic.stage, 100),
+                message: boundedText(diagnostic.message, 8_000),
+                details: safeDetails(diagnostic.details),
+              };
+            })
+          : [];
+        const trace = Array.isArray(slot.trace)
+          ? slot.trace.slice(0, 100).map((entry) => {
+              const event =
+                entry && typeof entry === 'object'
+                  ? (entry as Record<string, unknown>)
+                  : {};
+              return {
+                stage: boundedText(event.stage, 100),
+                event: boundedText(event.event, 100),
+                timestamp: boundedText(event.timestamp, 100),
+                details: safeDetails(event.details),
               };
             })
           : [];
         return {
           slotId: boundedText(slot.slotId, 100),
           status: boundedText(slot.status, 30),
+          sourceStatus: boundedText(slot.sourceStatus, 100),
           diagnostics,
+          trace,
           blockingIssues: Array.isArray(slot.blockingIssues)
             ? slot.blockingIssues
                 .map((code) => boundedText(code, 100))
@@ -118,21 +177,20 @@ export function createZeroDraftGenerationException(
       ...slot.diagnostics.map((item) => item.code),
       ...slot.blockingIssues,
     ]),
-    ...candidateDiagnostics
-      .filter(
-        (candidate) =>
-          candidate.outcome === 'REJECTED' || candidate.outcome === 'FAILED',
-      )
-      .flatMap((candidate) => [
-        ...candidate.validationResult.issueCodes,
-        candidate.rejectionReason?.split(/[:,]/, 1)[0] ?? null,
-      ]),
+    ...(sourceRequired
+      ? candidateDiagnostics
+          .filter(
+            (candidate) =>
+              candidate.outcome === 'REJECTED' ||
+              candidate.outcome === 'FAILED',
+          )
+          .flatMap((candidate) => [
+            ...candidate.validationResult.issueCodes,
+            candidate.rejectionReason?.split(/[:,]/, 1)[0] ?? null,
+          ])
+      : []),
     ...sourceDiagnostics.map((item) => item.code),
   ].filter((code): code is string => Boolean(code));
-  const rawSourceSummary =
-    pipelineMeta.sourceSummary && typeof pipelineMeta.sourceSummary === 'object'
-      ? (pipelineMeta.sourceSummary as Record<string, unknown>)
-      : {};
   const sourceSummary = Object.fromEntries(
     [
       'requested',
@@ -143,8 +201,18 @@ export function createZeroDraftGenerationException(
       'failed',
       'notSelected',
       'returned',
+      'optionalSourceUnavailable',
+      'requiredSourceMissing',
+      'curatorFailed',
+      'curatorRejected',
+      'sourceFallbackUsed',
+      'generationFailed',
+      'generationRejected',
     ].map((key) => [key, Number(rawSourceSummary[key]) || 0]),
   );
+  Object.assign(sourceSummary, {
+    sourceRequired,
+  });
   const meta = {
     pipelineVersion: boundedText(pipelineMeta.pipelineVersion, 30),
     generationRequestId: boundedText(pipelineMeta.generationRequestId, 100),

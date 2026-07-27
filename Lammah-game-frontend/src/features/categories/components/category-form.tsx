@@ -21,6 +21,7 @@ import { Category } from "@/types";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { getEntityId } from "@/lib/utils";
 import axios from "axios";
+import { ConfirmationDialog } from "@/components/shared";
 
 const categorySchema = z.object({
   name: z.string().min(1, "الاسم مطلوب"),
@@ -51,6 +52,8 @@ function createCategorySlug(name: string) {
 export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
   const [bannerFile, setBannerFile] = useState<File | undefined>();
   const [submitError, setSubmitError] = useState("");
+  const [pendingGameplayModeChange, setPendingGameplayModeChange] =
+    useState<CategoryFormData | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | undefined>(
     category?.banner?.url ? getMediaUrl(category.banner.url) : undefined,
   );
@@ -97,19 +100,12 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
     return () => URL.revokeObjectURL(previewUrl);
   }, [bannerFile, category?.banner?.url]);
 
-  const onSubmit = async (data: CategoryFormData) => {
+  const saveCategory = async (
+    data: CategoryFormData,
+    gameplayModeChanged: boolean,
+  ) => {
     setSubmitError("");
     try {
-      const gameplayModeChanged =
-        Boolean(categoryId) &&
-        data.gameplayMode !== (category?.gameplayMode ?? "STANDARD");
-      if (
-        gameplayModeChanged &&
-        !window.confirm(
-          "تغيير نمط اللعب قد يجعل بعض الأسئلة الحالية غير صالحة لهذا النمط. هل تريد المتابعة دون تعديل الأسئلة؟",
-        )
-      )
-        return;
       const payload = {
         ...data,
         slug: createCategorySlug(data.name),
@@ -140,21 +136,35 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
     }
   };
 
+  const onSubmit = async (data: CategoryFormData) => {
+    const gameplayModeChanged =
+      Boolean(categoryId) &&
+      data.gameplayMode !== (category?.gameplayMode ?? "STANDARD");
+
+    if (gameplayModeChanged) {
+      setPendingGameplayModeChange(data);
+      return;
+    }
+
+    await saveCategory(data, false);
+  };
+
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="flex max-h-[calc(100dvh-9rem)] min-h-0 flex-col"
-    >
+    <>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex max-h-[calc(100dvh-9rem)] min-h-0 flex-col"
+      >
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-1 pb-4">
         <div>
           <label className="block text-sm font-medium mb-2">الكتالوج</label>
           <Select
             defaultValue={selectedCatalogId}
-            onValueChange={(value) => {
+            onValueChange={(value: string) => {
               setValue("catalogId", value, { shouldValidate: true });
             }}
           >
-            <SelectTrigger>
+            <SelectTrigger aria-label="الكتالوج">
               <SelectValue
                 placeholder={
                   catalogsLoading ? "جاري تحميل الكتالوجات..." : "اختر الكتالوج"
@@ -232,7 +242,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
           <label className="mb-2 block text-sm font-medium">نمط اللعب</label>
           <Select
             defaultValue={category?.gameplayMode ?? "STANDARD"}
-            onValueChange={(value) =>
+            onValueChange={(value: string) =>
               setValue(
                 "gameplayMode",
                 value as CategoryFormData["gameplayMode"],
@@ -240,7 +250,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
               )
             }
           >
-            <SelectTrigger>
+            <SelectTrigger aria-label="نمط اللعب">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -260,7 +270,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
           <label className="mb-2 block text-sm font-medium">سياسة الصوت</label>
           <Select
             defaultValue={category?.audioPolicy ?? "optional"}
-            onValueChange={(value) =>
+            onValueChange={(value: string) =>
               setValue(
                 "audioPolicy",
                 value as CategoryFormData["audioPolicy"],
@@ -268,7 +278,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
               )
             }
           >
-            <SelectTrigger>
+            <SelectTrigger aria-label="سياسة الصوت">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -294,6 +304,24 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
               : "إنشاء فئة"}
         </Button>
       </div>
-    </form>
+      </form>
+
+      <ConfirmationDialog
+        open={Boolean(pendingGameplayModeChange)}
+        onOpenChange={(open) => {
+          if (!open) setPendingGameplayModeChange(null);
+        }}
+        title="تأكيد تغيير نمط اللعب"
+        description="تغيير نمط اللعب قد يجعل بعض الأسئلة الحالية غير صالحة لهذا النمط. هل تريد المتابعة دون تعديل الأسئلة؟"
+        confirmLabel="متابعة التغيير"
+        disabled={isPending}
+        onConfirm={() => {
+          if (!pendingGameplayModeChange) return;
+          const pendingData = pendingGameplayModeChange;
+          setPendingGameplayModeChange(null);
+          void saveCategory(pendingData, true);
+        }}
+      />
+    </>
   );
 }

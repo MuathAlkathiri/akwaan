@@ -80,6 +80,35 @@ export class DuplicateDetectionService {
     return [];
   }
 
+  checkGenerated(
+    candidate: PipelineQuestionCandidate,
+    persisted: Array<{ question: string; correctAnswer?: string }>,
+  ): string[] {
+    const questionKey = `question:${this.norm(candidate.question)}`;
+    const answerKey = `answer:${this.norm(candidate.answer)}`;
+    if (this.batch.has(questionKey) || this.batch.has(answerKey))
+      return ['DUPLICATE_IN_BATCH'];
+    if (
+      persisted.some(
+        (item) =>
+          this.norm(item.question) === this.norm(candidate.question) ||
+          this.similarity(item.question, candidate.question) >= 0.82,
+      )
+    )
+      return ['DUPLICATE_EXACT'];
+    if (
+      persisted.some(
+        (item) =>
+          item.correctAnswer &&
+          this.norm(item.correctAnswer) === this.norm(candidate.answer),
+      )
+    )
+      return ['DUPLICATE_SEMANTIC'];
+    this.batch.add(questionKey);
+    this.batch.add(answerKey);
+    return [];
+  }
+
   scoreSource(
     candidate: Pick<PipelineQuestionCandidate, 'question' | 'answer'> | null,
     source: SourceQuestionCandidate,

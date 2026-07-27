@@ -99,7 +99,7 @@ export function AIGenerator() {
   const generationErrorPayload = generateQuestions.error?.response?.data;
   const generationErrorMessage = generateQuestions.error
     ? generateQuestions.error.code === "ECONNABORTED"
-      ? "انتهت مهلة التوليد. تأكد من تشغيل LM Studio وتحميل النموذج، أو جرّب عددًا أقل."
+      ? "انتهت مهلة التوليد عبر Gemini. جرّب عددًا أقل من الأسئلة."
       : Array.isArray(generationBackendMessage)
         ? generationBackendMessage.join("، ")
         : generationBackendMessage ||
@@ -393,7 +393,7 @@ export function AIGenerator() {
                 </label>
                 <Select
                   value={settings.difficulty}
-                  onValueChange={(difficulty) =>
+                  onValueChange={(difficulty: string) =>
                     setSettings((current) => ({
                       ...current,
                       difficulty:

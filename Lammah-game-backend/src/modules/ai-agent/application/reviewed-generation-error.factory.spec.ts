@@ -11,6 +11,7 @@ describe('createZeroDraftGenerationException', () => {
     failedSlots: 0,
     sourceSummary: {
       requested: 1,
+      sourceRequired: true,
       collected: 1,
       selected: 1,
       approved: 0,
@@ -117,5 +118,55 @@ describe('createZeroDraftGenerationException', () => {
     expect(
       (exception.getResponse() as { issueCodes: string[] }).issueCodes,
     ).not.toContain('NOT_SELECTED_FOR_REQUEST');
+  });
+
+  it('retains optional curator diagnostics without making them blocking issues', () => {
+    const exception = createZeroDraftGenerationException({
+      ...pipelineMeta,
+      sourceSummary: {
+        ...pipelineMeta.sourceSummary,
+        sourceRequired: false,
+        curatorFailed: 1,
+        sourceFallbackUsed: 1,
+        generationFailed: 1,
+      },
+      candidateDiagnostics: [
+        {
+          ...pipelineMeta.candidateDiagnostics[0],
+          outcome: 'FAILED',
+          validationResult: {
+            status: 'FAIL',
+            issueCodes: ['SOURCE_CURATOR_FAILED', 'AI_PROVIDER_RATE_LIMITED'],
+          },
+          curator: {
+            stageEntered: true,
+            implementation: 'QuestionWriterAgentService.curate',
+            callsLlm: true,
+            provider: 'gemini',
+            model: 'gemini-2.5-flash',
+            errorCode: 'AI_PROVIDER_RATE_LIMITED',
+            errorMessage: 'Provider request could not be completed',
+            finalStatus: 'failed',
+          },
+        },
+      ],
+    });
+
+    const response = exception.getResponse() as {
+      issueCodes: string[];
+      candidateDiagnostics: Array<{
+        validationResult: { issueCodes: string[] };
+      }>;
+    };
+    expect(response.issueCodes).not.toContain('SOURCE_CURATOR_FAILED');
+    expect(response.issueCodes).not.toContain('AI_PROVIDER_RATE_LIMITED');
+    expect(
+      response.candidateDiagnostics[0].validationResult.issueCodes,
+    ).toEqual(
+      expect.arrayContaining([
+        'SOURCE_CURATOR_FAILED',
+        'AI_PROVIDER_RATE_LIMITED',
+      ]),
+    );
   });
 });

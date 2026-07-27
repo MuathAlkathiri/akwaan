@@ -436,15 +436,12 @@ describe('QuestionsService manual audio policy', () => {
       audioPolicy: CategoryAudioPolicy.OPTIONAL,
     });
 
-    const result = await service.update(
-      '507f1f77bcf86cd799439012',
-      {
-        question: 'ما اسم هذه الشخصية بعد التحديث؟',
-        primaryAsset: null,
-        mediaUrl: '',
-        assetStatus: AssetStatus.NOT_REQUIRED,
-      } as never,
-    );
+    const result = await service.update('507f1f77bcf86cd799439012', {
+      question: 'ما اسم هذه الشخصية بعد التحديث؟',
+      primaryAsset: null,
+      mediaUrl: '',
+      assetStatus: AssetStatus.NOT_REQUIRED,
+    } as never);
 
     expect(result).not.toHaveProperty('primaryAsset');
     expect(result).not.toHaveProperty('mediaUrl');

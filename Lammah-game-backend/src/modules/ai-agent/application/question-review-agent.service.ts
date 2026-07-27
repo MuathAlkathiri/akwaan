@@ -12,6 +12,40 @@ import type { SourceQuestionCandidate } from '../domain/question-source.types';
 @Injectable()
 export class QuestionReviewAgentService {
   constructor(private readonly llm: LlmClientService) {}
+
+  async reviewGenerated(
+    context: { categoryName: string; difficulty: string },
+    candidate: PipelineQuestionCandidate,
+    requestedLanguage: 'ar' = 'ar',
+  ) {
+    const result = await this.llm.generateStructured<QuestionReviewResult>({
+      purpose: 'question-review',
+      systemPrompt:
+        'Independently review an unsourced standard trivia draft. Use your own knowledge to reject a factually incorrect, genuinely unverifiable, time-sensitive, vague, subjective, ambiguous, duplicate-looking, answer-leaking, or unfair question. Confirm the answer directly answers the question and difficulty is appropriate. External research is optional for this text-only slot: do not penalize or lower the score merely because the candidate has no citation or source metadata. A well-established fact you can confidently verify from your own knowledge is verifiable and, when otherwise sound, should be approved with a score of at least 7. Mark fixable wording or language defects repairable. Do not approve merely because the writer supplied an explanation.',
+      userPrompt: JSON.stringify({
+        ...context,
+        candidate,
+        requestedLanguage,
+      }),
+      schema: {
+        verdict: ['approved', 'repairable', 'rejected'],
+        score: 'number 0-10',
+        issues: [{ code: 'string', message: 'string' }],
+      },
+      temperature: 0.1,
+    });
+    const verdict = String(result.value.verdict).toLowerCase();
+    return {
+      ...result,
+      value: {
+        verdict: ['approved', 'repairable', 'rejected'].includes(verdict)
+          ? (verdict as QuestionReviewResult['verdict'])
+          : ('rejected' as const),
+        score: Math.max(0, Math.min(10, Number(result.value.score) || 0)),
+        issues: Array.isArray(result.value.issues) ? result.value.issues : [],
+      },
+    };
+  }
   async reviewCuration(
     source: SourceQuestionCandidate,
     candidate: CuratedQuestionCandidate,

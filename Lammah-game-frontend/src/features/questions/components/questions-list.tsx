@@ -17,6 +17,7 @@ import {
   getQuestionTypeLabel,
 } from "@/lib/utils";
 import type { Question } from "@/types";
+import { DeleteDialog, EmptyState, LoadingState, StatusBadge } from "@/components/shared";
 
 interface QuestionsListProps {
   canPreview?: boolean;
@@ -89,11 +90,11 @@ export function QuestionsList({
       )
     : data || [];
 
-  if (isLoading) return <div className="py-8 text-center">جاري التحميل...</div>;
+  if (isLoading) return <LoadingState count={4} />;
   if (error)
-    return <div className="py-8 text-center text-destructive">حدث خطأ</div>;
+    return <EmptyState title="تعذر تحميل الأسئلة" />;
   if (!questions.length)
-    return <div className="py-8 text-center">{emptyMessage}</div>;
+    return <EmptyState title={emptyMessage} />;
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
@@ -186,17 +187,15 @@ export function QuestionsList({
                     ? "إلغاء المجانية"
                     : "اجعله مجاني"}
                 </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => deleteQuestion.mutate(id)}
+                <DeleteDialog
+                  itemName="السؤال"
                   disabled={deleteQuestion.isPending}
-                >
-                  حذف
-                </Button>
-                <Badge variant="outline">
+                  onDelete={() => deleteQuestion.mutate(id)}
+                  trigger={<Button size="sm" variant="destructive">حذف</Button>}
+                />
+                <StatusBadge>
                   {getStatusLabel(question.status)}
-                </Badge>
+                </StatusBadge>
                 {question.requiresAudio && (
                   <Badge variant="outline">
                     {getAudioStateLabel(question)}

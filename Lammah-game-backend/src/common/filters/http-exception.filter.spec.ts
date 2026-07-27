@@ -14,7 +14,7 @@ describe('AllExceptionsFilter structured generation errors', () => {
       }),
     } as unknown as ArgumentsHost;
     const exception = createZeroDraftGenerationException({
-      sourceSummary: { requested: 1, returned: 0 },
+      sourceSummary: { requested: 1, returned: 0, sourceRequired: true },
       sourceDiagnostics: [{ code: 'SOURCE_TIMEOUT', sourceId: 'source' }],
       candidateDiagnostics: [
         {

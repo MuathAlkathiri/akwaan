@@ -148,51 +148,82 @@ export class GameQuestionFlowService {
     game: Game,
     located: LocatedQuestion,
   ): Promise<GameQuestionSnapshot> {
-    if (located.boardQuestion.snapshot) return located.boardQuestion.snapshot;
+    if (located.boardQuestion.snapshot) {
+      return located.boardQuestion.snapshot;
+    }
 
     // Compatibility for games created before immutable question snapshots.
     await this.games.populate(game, true);
+
     const refreshed = this.locate(
       game,
       String(located.boardQuestion._id ?? located.boardQuestion.question),
     );
+
     const populated = refreshed.boardQuestion.question as unknown as Question;
-    if (!populated || typeof populated !== 'object' || !populated.question)
+
+    if (!populated || typeof populated !== 'object' || !populated.question) {
       throw new NotFoundException('Question not found in this game');
+    }
+
     const category = refreshed.category as {
       _id?: Types.ObjectId;
       name?: string;
     };
-    return {
+
+    const baseSnapshot = {
       sourceQuestionId: populated._id,
       categoryId:
         category?._id ?? (populated.category as unknown as Types.ObjectId),
       categoryName: category?.name ?? '',
       question: populated.question,
-      answer: populated.answer,
-      acceptedAnswers: [...(populated.acceptedAnswers ?? [])],
       ...(populated.explanation ? { explanation: populated.explanation } : {}),
-      questionType: populated.questionType,
-      ...(populated.turnDurationSeconds
-        ? { turnDurationSeconds: populated.turnDurationSeconds }
-        : {}),
-      ...(populated.maxStrikesPerTeam
-        ? { maxStrikesPerTeam: populated.maxStrikesPerTeam }
-        : {}),
-      ...(populated.rankedList
-        ? {
-            rankedList: {
-              displayName: { ...populated.rankedList.displayName },
-              entries: populated.rankedList.entries.map((entry) => ({
-                id: entry.id,
-                rank: entry.rank,
-                answer: { ...entry.answer },
-                aliases: [...entry.aliases],
-                points: entry.points,
-              })),
+    };
+
+    if (populated.questionType === 'ranked_list') {
+      if (!populated.rankedList) {
+        throw new NotFoundException(
+          'Ranked-list data not found for this question',
+        );
+      }
+
+      return {
+        ...baseSnapshot,
+        questionType: 'ranked_list',
+        ...(populated.turnDurationSeconds
+          ? { turnDurationSeconds: populated.turnDurationSeconds }
+          : {}),
+        ...(populated.maxStrikesPerTeam
+          ? { maxStrikesPerTeam: populated.maxStrikesPerTeam }
+          : {}),
+        rankedList: {
+          displayName: {
+            ...populated.rankedList.displayName,
+          },
+          entries: populated.rankedList.entries.map((entry) => ({
+            id: entry.id,
+            rank: entry.rank,
+            answer: {
+              ...entry.answer,
             },
-          }
-        : {}),
+            aliases: [...entry.aliases],
+            points: entry.points,
+          })),
+        },
+      };
+    }
+
+    const answer = populated.answer?.trim();
+
+    if (!answer) {
+      throw new NotFoundException('Answer not found for this question');
+    }
+
+    return {
+      ...baseSnapshot,
+      questionType: 'standard',
+      answer,
+      acceptedAnswers: [...(populated.acceptedAnswers ?? [])],
     };
   }
 
@@ -229,12 +260,9 @@ export class GameQuestionFlowService {
       boardQuestion.answeredByTeamIndex === undefined
         ? undefined
         : game.teams[boardQuestion.answeredByTeamIndex];
-    return {
+
+    const baseView = {
       ...this.questionView(game, boardQuestion, snapshot),
-      answer: snapshot.answer,
-      ...(snapshot.acceptedAnswers.length
-        ? { acceptedAnswers: snapshot.acceptedAnswers }
-        : {}),
       ...(snapshot.explanation ? { explanation: snapshot.explanation } : {}),
       teams: game.teams.map((team) => ({
         _id: String(team._id),
@@ -245,6 +273,21 @@ export class GameQuestionFlowService {
       ...(answeredTeam ? { answeredByTeamId: String(answeredTeam._id) } : {}),
       ...(boardQuestion.awardedPoints !== undefined
         ? { awardedPoints: boardQuestion.awardedPoints }
+        : {}),
+    };
+
+    if (snapshot.questionType === 'ranked_list') {
+      return {
+        ...baseView,
+        rankedList: snapshot.rankedList,
+      };
+    }
+
+    return {
+      ...baseView,
+      answer: snapshot.answer,
+      ...(snapshot.acceptedAnswers.length
+        ? { acceptedAnswers: snapshot.acceptedAnswers }
         : {}),
     };
   }

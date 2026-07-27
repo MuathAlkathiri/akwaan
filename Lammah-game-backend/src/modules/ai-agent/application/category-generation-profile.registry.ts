@@ -29,6 +29,7 @@ export type CategoryGenerationProfile = {
   allowedGameModes: GameMode[];
   supportedAssetTypes: QuestionAssetType[];
   knowledgePolicy: 'required' | 'preferred' | 'optional';
+  sourceRequired?: boolean;
   verificationPolicy: 'required-for-entity' | 'local-allowed' | 'none';
   localePolicy: {
     language: 'ar';

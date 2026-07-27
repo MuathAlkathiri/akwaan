@@ -137,33 +137,12 @@ type ReviewedGenerationContext = {
   resolvedCatalogKey?: string;
 };
 
-interface ChatCompletionResponse {
-  choices?: {
-    message?: {
-      content?: string;
-    };
-  }[];
-  error?: {
-    message?: string;
-  };
-}
-
 @Injectable()
 export class AiAgentService {
   private readonly knowledgePacks = new KnowledgePackRegistry();
   private static readonly DEFAULT_QUESTION_COUNT = 2;
-  private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 300000;
-  private static readonly DEFAULT_MAX_TOKENS = 4096;
   private static readonly DEFAULT_TTS_VOICE = 'Majed';
 
-  private readonly aiProvider: string;
-  private readonly openRouterApiKey: string;
-  private readonly openRouterModel: string;
-  private readonly lmStudioBaseUrl: string;
-  private readonly lmStudioModel: string;
-  private readonly lmStudioApiKey: string;
-  private readonly aiRequestTimeoutMs: number;
-  private readonly aiMaxTokens: number;
   private readonly aiEnableRewrite: boolean;
   private readonly appBaseUrl: string;
   private readonly aiAudioVoice: string;
@@ -183,65 +162,12 @@ export class AiAgentService {
     @Optional() private readonly entityVerification?: EntityVerificationService,
     private readonly arabicSongCatalog?: ArabicSongCatalogService,
   ) {
-    this.aiProvider =
-      this.configService.get<string>('AI_PROVIDER')?.toLowerCase() ??
-      'openrouter';
-
-    if (!['openrouter', 'lmstudio'].includes(this.aiProvider)) {
-      throw new Error(
-        `Invalid AI_PROVIDER "${this.aiProvider}". Supported providers: openrouter, lmstudio`,
-      );
-    }
-
-    this.openRouterApiKey =
-      this.configService.get<string>('OPENROUTER_API_KEY') ?? '';
-    this.openRouterModel =
-      this.configService.get<string>('OPENROUTER_MODEL') ??
-      'google/gemini-2.5-flash';
-    this.lmStudioBaseUrl =
-      this.configService.get<string>('LMSTUDIO_BASE_URL') ??
-      'http://localhost:1234/v1';
-    this.lmStudioModel =
-      this.configService.get<string>('LMSTUDIO_MODEL') ?? 'gemma4';
-    this.lmStudioApiKey =
-      this.configService.get<string>('LMSTUDIO_API_KEY') ?? 'dummy';
-    this.aiRequestTimeoutMs = this.getPositiveNumberConfig(
-      'AI_REQUEST_TIMEOUT_MS',
-      AiAgentService.DEFAULT_REQUEST_TIMEOUT_MS,
-    );
-    this.aiMaxTokens = this.getPositiveNumberConfig(
-      'AI_MAX_TOKENS',
-      AiAgentService.DEFAULT_MAX_TOKENS,
-    );
-    this.aiEnableRewrite = this.getBooleanConfig(
-      'AI_ENABLE_REWRITE',
-      this.aiProvider !== 'lmstudio',
-    );
+    this.aiEnableRewrite = this.getBooleanConfig('AI_ENABLE_REWRITE', false);
     this.appBaseUrl =
       this.configService.get<string>('APP_BASE_URL') ?? 'http://localhost:3000';
     this.aiAudioVoice =
       this.configService.get<string>('AI_AUDIO_VOICE') ??
       AiAgentService.DEFAULT_TTS_VOICE;
-
-    if (this.aiProvider === 'openrouter' && !this.openRouterApiKey) {
-      throw new Error('OPENROUTER_API_KEY environment variable is not set');
-    }
-  }
-
-  private getPositiveNumberConfig(key: string, defaultValue: number): number {
-    const value = this.configService.get<string>(key);
-
-    if (!value) {
-      return defaultValue;
-    }
-
-    const parsed = Number(value);
-
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      throw new Error(`${key} must be a positive number`);
-    }
-
-    return parsed;
   }
 
   private getBooleanConfig(key: string, defaultValue: boolean): boolean {
@@ -2200,158 +2126,7 @@ Songs category special rules:
     prompt: string,
     temperature = 0.8,
   ): Promise<string> {
-    switch (this.aiProvider) {
-      case 'openrouter':
-        return this.callOpenRouter(prompt, temperature);
-      case 'lmstudio':
-        return this.callLmStudio(prompt, temperature);
-      default:
-        throw new BadRequestException(
-          `Invalid AI_PROVIDER "${this.aiProvider}". Supported providers: openrouter, lmstudio`,
-        );
-    }
-  }
-
-  private async callOpenRouter(
-    prompt: string,
-    temperature: number,
-  ): Promise<string> {
-    try {
-      const response = await this.fetchWithTimeout(
-        'https://openrouter.ai/api/v1/chat/completions',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${this.openRouterApiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'http://localhost:3000',
-            'X-Title': 'Lammah Quiz Backend',
-          },
-          body: JSON.stringify({
-            model: this.openRouterModel,
-            messages: [
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature,
-            max_tokens: this.aiMaxTokens,
-          }),
-        },
-      );
-
-      const data = (await response.json()) as ChatCompletionResponse;
-
-      if (!response.ok) {
-        throw new Error(
-          data.error?.message ?? `OpenRouter returned ${response.status}`,
-        );
-      }
-
-      const content = data.choices?.[0]?.message?.content;
-
-      if (!content) {
-        throw new Error('OpenRouter response did not include message content');
-      }
-
-      return content;
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      throw new InternalServerErrorException(
-        `OpenRouter API call failed: ${errorMessage}`,
-      );
-    }
-  }
-
-  private async callLmStudio(
-    prompt: string,
-    temperature: number,
-  ): Promise<string> {
-    const baseUrl = this.lmStudioBaseUrl.replace(/\/+$/, '');
-
-    try {
-      const response = await this.fetchWithTimeout(
-        `${baseUrl}/chat/completions`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${this.lmStudioApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: this.lmStudioModel,
-            messages: [
-              {
-                role: 'system',
-                content: 'You are an Arabic party-game question generator.',
-              },
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature,
-            max_tokens: this.aiMaxTokens,
-          }),
-        },
-      );
-
-      const data = (await response.json()) as ChatCompletionResponse;
-
-      if (!response.ok) {
-        throw new Error(
-          data.error?.message ?? `LM Studio returned ${response.status}`,
-        );
-      }
-
-      const content = data.choices?.[0]?.message?.content;
-
-      if (!content) {
-        throw new Error('LM Studio response did not include message content');
-      }
-
-      return content;
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      const isConnectionError =
-        error instanceof TypeError ||
-        /ECONNREFUSED|fetch failed|Failed to fetch/i.test(errorMessage);
-      const isTimeoutError =
-        error instanceof DOMException
-          ? error.name === 'AbortError'
-          : /AbortError|aborted/i.test(errorMessage);
-
-      throw new InternalServerErrorException(
-        isTimeoutError
-          ? `LM Studio request timed out after ${this.aiRequestTimeoutMs}ms. Make sure the LM Studio server is running, the model "${this.lmStudioModel}" is loaded, and try a smaller count if generation is too slow.`
-          : isConnectionError
-            ? `LM Studio server is not running or unreachable at ${baseUrl}. Start the LM Studio local server and try again. Details: ${errorMessage}`
-            : `LM Studio API call failed: ${errorMessage}`,
-      );
-    }
-  }
-
-  private async fetchWithTimeout(
-    input: string | URL,
-    init: RequestInit,
-  ): Promise<Response> {
-    const controller = new AbortController();
-    const timeout = setTimeout(
-      () => controller.abort(),
-      this.aiRequestTimeoutMs,
-    );
-
-    try {
-      return await fetch(input, {
-        ...init,
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
+    return this.llmClient.complete(prompt, temperature);
   }
 
   private parseAiResponse(response: string): unknown[] {

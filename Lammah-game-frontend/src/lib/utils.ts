@@ -1,18 +1,18 @@
-import { type ClassValue, clsx } from "clsx";
-import axios from "axios";
-import { twMerge } from "tailwind-merge";
+import { clsx, type ClassValue } from "clsx"
+import axios from "axios"
+import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+  return twMerge(clsx(inputs))
 }
 
 export function formatDate(date: string | Date): string {
-  const d = new Date(date);
+  const d = new Date(date)
   return d.toLocaleDateString("ar-SA", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  });
+  })
 }
 
 export function getDifficultyLabel(difficulty: string): string {
@@ -20,8 +20,8 @@ export function getDifficultyLabel(difficulty: string): string {
     easy: "سهل",
     medium: "متوسط",
     hard: "صعب",
-  };
-  return labels[difficulty] || difficulty;
+  }
+  return labels[difficulty] || difficulty
 }
 
 export function getStatusLabel(status: string): string {
@@ -32,8 +32,8 @@ export function getStatusLabel(status: string): string {
     setup: "إعداد",
     in_progress: "جاري",
     finished: "مكتمل",
-  };
-  return labels[status] || status;
+  }
+  return labels[status] || status
 }
 
 export function getQuestionTypeLabel(type: string): string {
@@ -42,26 +42,26 @@ export function getQuestionTypeLabel(type: string): string {
     image: "صورة",
     audio: "صوت",
     video: "فيديو",
-  };
-  return labels[type] || type;
+  }
+  return labels[type] || type
 }
 
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (!axios.isAxiosError(error)) {
-    return error instanceof Error ? error.message : fallback;
+    return error instanceof Error ? error.message : fallback
   }
 
-  const responseData = error.response?.data;
-  if (!responseData) return fallback;
-  if (typeof responseData === "string") return responseData;
+  const responseData = error.response?.data
+  if (!responseData) return fallback
+  if (typeof responseData === "string") return responseData
 
-  const message = responseData.message || responseData.error;
-  if (Array.isArray(message)) return message.join("، ");
-  if (typeof message === "string") return message;
+  const message = responseData.message || responseData.error
+  if (Array.isArray(message)) return message.join("، ")
+  if (typeof message === "string") return message
 
-  return fallback;
+  return fallback
 }
 
 export function getEntityId(entity: { id?: string; _id?: string }): string {
-  return entity.id || entity._id || "";
+  return entity.id || entity._id || ""
 }

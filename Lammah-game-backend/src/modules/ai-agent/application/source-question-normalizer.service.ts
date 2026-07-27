@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { createHash } from 'crypto';
+import { decodeHTML } from 'entities';
 import type { SourceQuestionCandidate } from '../domain/question-source.types';
 
 export type RawSourceQuestion = {
@@ -77,28 +78,6 @@ export class SourceQuestionNormalizerService {
   }
 
   private decodeHtml(value: string) {
-    const named: Record<string, string> = {
-      amp: '&',
-      lt: '<',
-      gt: '>',
-      quot: '"',
-      apos: "'",
-      nbsp: ' ',
-      '#039': "'",
-      ldquo: '“',
-      rdquo: '”',
-      lsquo: '‘',
-      rsquo: '’',
-    };
-    return value.replace(
-      /&(#x[0-9a-f]+|#\d+|[a-z]+);/gi,
-      (match, entity: string) => {
-        if (entity.toLowerCase().startsWith('#x'))
-          return String.fromCodePoint(Number.parseInt(entity.slice(2), 16));
-        if (entity.startsWith('#'))
-          return String.fromCodePoint(Number.parseInt(entity.slice(1), 10));
-        return named[entity.toLowerCase()] ?? match;
-      },
-    );
+    return decodeHTML(value);
   }
 }

@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { RequireAdmin } from "@/components/auth/require-admin";
 import { CategoryForm, CategoriesList } from "@/features/categories";
+import { PageHeader } from "@/components/shared";
 
 export default function CategoriesPage() {
   const [open, setOpen] = useState(false);
@@ -18,8 +19,10 @@ export default function CategoriesPage() {
   return (
     <RequireAdmin>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">الفئات</h1>
+        <PageHeader
+          title="الفئات"
+          description="إدارة فئات الأسئلة وإعداداتها."
+          actions={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>إضافة فئة جديدة</Button>
@@ -31,7 +34,8 @@ export default function CategoriesPage() {
               <CategoryForm onSuccess={() => setOpen(false)} />
             </DialogContent>
           </Dialog>
-        </div>
+          }
+        />
 
         <CategoriesList />
       </div>

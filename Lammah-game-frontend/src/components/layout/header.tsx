@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/components/auth/auth-provider";
 import {
   adminNavigation,
@@ -26,10 +27,10 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-full px-4 py-4">
-      <div className="container flex min-h-16 items-center justify-between gap-4 rounded-[1.35rem] border border-white/[0.09] bg-[#21163f]/72 px-4 shadow-[0_16px_48px_rgba(0,0,0,0.22)] backdrop-blur-xl md:px-6">
+      <div className="container flex min-h-16 items-center justify-between gap-4 rounded-lg border bg-card/95 px-4 shadow-sm backdrop-blur-xl md:px-6">
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[0.06] text-xl">
+            <span className="grid h-9 w-9 place-items-center rounded-lg bg-muted text-xl">
               🍉
             </span>
             <span className="hidden text-lg font-black tracking-wide sm:block">
@@ -55,7 +56,7 @@ export function Header() {
                   key={`${item.label}-${item.href}`}
                   href={item.href}
                   className={cn(
-                    "rounded-full px-4 py-2 text-sm font-bold transition-all hover:bg-white/10 hover:text-primary",
+                    "rounded-lg px-4 py-2 text-sm font-bold transition-colors hover:bg-muted hover:text-primary",
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground",
@@ -71,10 +72,12 @@ export function Header() {
         <div className="flex items-center gap-3">
           {isAuthenticated ? (
             <>
-              <div className="hidden items-center gap-3 rounded-[1.15rem] border border-white/[0.08] bg-white/[0.045] px-3 py-2 sm:flex">
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-[#22C55E] text-base font-black text-[#101827]">
-                  {initial}
-                </span>
+              <div className="hidden items-center gap-3 rounded-lg border bg-muted/50 px-3 py-2 sm:flex">
+                <Avatar>
+                  <AvatarFallback className="bg-accent text-accent-foreground">
+                    {initial}
+                  </AvatarFallback>
+                </Avatar>
                 <span className="leading-tight">
                   <span className="block text-sm font-black">
                     {displayName}

@@ -10,6 +10,53 @@ import type { SourceQuestionCandidate } from '../domain/question-source.types';
 @Injectable()
 export class QuestionRepairAgentService {
   constructor(private readonly llm: LlmClientService) {}
+
+  async repairGenerated(
+    context: { categoryName: string; difficulty: string },
+    candidate: PipelineQuestionCandidate,
+    issueCodes: string[],
+    requestedLanguage: 'ar' = 'ar',
+  ) {
+    const result = await this.llm.generateStructured<PipelineQuestionCandidate>(
+      {
+        purpose: 'question-repair',
+        systemPrompt:
+          'Repair only the listed defects in this unsourced standard trivia draft. Keep it text-only, factual, objective, specific, fair, and in natural Arabic. Do not invent citations. If factual correctness cannot be retained confidently, return a conservative well-established fact in the same category. Ensure the answer directly answers the question and is not leaked.',
+        userPrompt: JSON.stringify({
+          ...context,
+          candidate,
+          issueCodes,
+          requestedLanguage,
+        }),
+        schema: {
+          question: 'string',
+          answer: 'string',
+          acceptedAnswers: ['string'],
+          wrongAnswers: ['string'],
+          difficulty: candidate.difficulty,
+          gameMode: 'trivia',
+          type: 'text',
+          explanation: 'string',
+          assetRequest: 'object|null',
+          knowledgeFactIds: ['string'],
+          sourceIds: ['string'],
+        },
+        temperature: 0.2,
+      },
+    );
+    return {
+      ...result,
+      value: {
+        ...result.value,
+        difficulty: candidate.difficulty,
+        gameMode: 'trivia' as const,
+        type: 'text' as const,
+        assetRequest: null,
+        knowledgeFactIds: [],
+        sourceIds: [],
+      },
+    };
+  }
   async repairCuration(
     source: SourceQuestionCandidate,
     candidate: CuratedQuestionCandidate,

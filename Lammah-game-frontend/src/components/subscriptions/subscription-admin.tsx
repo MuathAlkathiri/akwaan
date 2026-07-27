@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AdminTable, StatusBadge } from "@/components/shared";
 
 const schema = z.object({
   userId: z.string().min(1, "معرّف المستخدم مطلوب"),
@@ -82,7 +83,7 @@ export function SubscriptionAdmin() {
               </label>
               <Select
                 value={status}
-                onValueChange={(value) =>
+                onValueChange={(value: string) =>
                   setValue(
                     "subscriptionStatus",
                     value as SubscriptionFormData["subscriptionStatus"],
@@ -133,25 +134,37 @@ export function SubscriptionAdmin() {
             </p>
           )}
           {!!users.length && (
-            <div className="space-y-3">
-              {users.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-center justify-between border border-border rounded-md p-3"
-                >
-                  <div>
-                    <p className="font-medium">{user.fullName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {user.email}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{user.id}</p>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {user.subscriptionStatus}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <AdminTable
+              rows={users}
+              getRowKey={(user) => user.id}
+              caption="قائمة المستخدمين وحالات اشتراكاتهم"
+              columns={[
+                {
+                  key: "user",
+                  header: "المستخدم",
+                  cell: (user) => (
+                    <div>
+                      <p className="font-medium">{user.fullName}</p>
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                    </div>
+                  ),
+                },
+                {
+                  key: "id",
+                  header: "المعرّف",
+                  cell: (user) => (
+                    <span className="text-xs text-muted-foreground">{user.id}</span>
+                  ),
+                },
+                {
+                  key: "status",
+                  header: "الاشتراك",
+                  cell: (user) => (
+                    <StatusBadge>{user.subscriptionStatus}</StatusBadge>
+                  ),
+                },
+              ]}
+            />
           )}
         </CardContent>
       </Card>

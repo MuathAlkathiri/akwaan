@@ -1,5 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AiProviderFactory } from '../ai-provider.factory';
+import { AiProviderError } from '../providers/ai-provider.error';
+import {
+  AI_PROVIDER_TOKEN,
+  type AiProvider,
+} from '../../domain/ai-provider.interface';
 
 export type LlmPurpose =
   | 'research-normalization'
@@ -39,6 +45,7 @@ export class LlmClientError extends Error {
       stage: LlmFailureStage;
       httpStatus?: number;
       errorType?: string;
+      providerDetails?: Record<string, unknown>;
     },
   ) {
     super(message);
@@ -87,7 +94,17 @@ export function parseStructuredJson<T>(content: string, truncated = false): T {
 
 @Injectable()
 export class LlmClientService {
-  constructor(private readonly config: ConfigService) {}
+  private readonly logger = new Logger(LlmClientService.name);
+  private readonly providerFactory: AiProviderFactory;
+
+  constructor(
+    private readonly config: ConfigService,
+    @Optional()
+    @Inject(AI_PROVIDER_TOKEN)
+    private readonly provider?: AiProvider,
+  ) {
+    this.providerFactory = new AiProviderFactory(config);
+  }
 
   getRuntimeConfig(
     purpose: LlmPurpose,
@@ -97,6 +114,7 @@ export class LlmClientService {
       this.config.get<string>('AI_PROVIDER') ?? 'openrouter'
     ).toLowerCase();
     const isOpenRouter = provider === 'openrouter';
+    const isGemini = provider === 'gemini';
     const roleKey = {
       'research-normalization': 'AI_RESEARCH_MODEL',
       'question-writing': 'AI_WRITER_MODEL',
@@ -106,21 +124,29 @@ export class LlmClientService {
     }[purpose];
     const configuredRoleModel = this.config.get<string>(roleKey)?.trim();
     const configuredProviderModel = this.config
-      .get<string>(isOpenRouter ? 'OPENROUTER_MODEL' : 'LM_STUDIO_MODEL')
+      .get<string>(
+        isGemini
+          ? 'GEMINI_MODEL'
+          : isOpenRouter
+            ? 'OPENROUTER_MODEL'
+            : 'LM_STUDIO_MODEL',
+      )
       ?.trim();
     return {
       provider,
-      baseUrl: isOpenRouter
-        ? 'https://openrouter.ai/api/v1'
-        : (
-            this.config.get<string>('LM_STUDIO_BASE_URL') ??
-            'http://localhost:1234/v1'
-          ).replace(/\/+$/, ''),
+      baseUrl: isGemini
+        ? 'https://generativelanguage.googleapis.com'
+        : isOpenRouter
+          ? 'https://openrouter.ai/api/v1'
+          : (
+              this.config.get<string>('LM_STUDIO_BASE_URL') ??
+              'http://localhost:1234/v1'
+            ).replace(/\/+$/, ''),
       model:
         modelOverride?.trim() ||
         configuredRoleModel ||
         configuredProviderModel ||
-        'local-model',
+        (isGemini ? 'gemini-2.5-flash' : 'local-model'),
     };
   }
 
@@ -128,6 +154,16 @@ export class LlmClientService {
     const provider = (
       this.config.get<string>('AI_PROVIDER') ?? 'openrouter'
     ).toLowerCase();
+    if (provider === 'gemini') {
+      const result = await (
+        this.provider ?? this.providerFactory.create()
+      ).generateText({
+        prompt,
+        temperature,
+        maxOutputTokens: this.maxTokens(),
+      });
+      return result.text;
+    }
     const isOpenRouter = provider === 'openrouter';
     const base = isOpenRouter
       ? 'https://openrouter.ai/api/v1'
@@ -191,9 +227,90 @@ export class LlmClientService {
     maxTokens?: number;
     timeoutMs?: number;
     repairMalformed?: boolean;
-  }): Promise<{ value: T; provider: string; model: string }> {
+  }): Promise<{
+    value: T;
+    provider: string;
+    model: string;
+    diagnostics?: Record<string, unknown>;
+  }> {
     const runtime = this.getRuntimeConfig(input.purpose, input.model);
     const { provider, baseUrl: base, model } = runtime;
+    if (provider === 'gemini') {
+      try {
+        const result = await (
+          this.provider ?? this.providerFactory.create()
+        ).generateText({
+          systemInstruction: this.geminiSystemInstruction(input),
+          prompt: input.userPrompt,
+          temperature: input.temperature,
+          maxOutputTokens: input.maxTokens,
+          timeoutMs: input.timeoutMs,
+          responseSchema: this.toJsonSchema(input.schema),
+        });
+        this.logger.log(
+          JSON.stringify({
+            event: 'structured_json.parse.started',
+            purpose: input.purpose,
+            provider: result.provider,
+            model: result.model,
+            textLength: result.text.length,
+          }),
+        );
+        let value: T;
+        try {
+          value = parseStructuredJson<T>(result.text);
+        } catch (error) {
+          this.logger.error(
+            JSON.stringify({
+              event: 'structured_json.parse.failed',
+              purpose: input.purpose,
+              provider: result.provider,
+              model: result.model,
+              textLength: result.text.length,
+              errorType:
+                error instanceof Error ? error.constructor.name : typeof error,
+              errorCode:
+                error instanceof StructuredOutputError ? error.code : null,
+              message: this.safeMessage(error),
+            }),
+          );
+          throw error;
+        }
+        this.logger.log(
+          JSON.stringify({
+            event: 'structured_json.parse.succeeded',
+            purpose: input.purpose,
+            provider: result.provider,
+            model: result.model,
+            textLength: result.text.length,
+          }),
+        );
+        return {
+          value,
+          provider: result.provider,
+          model: result.model,
+          diagnostics: {
+            ...(result.diagnostics ?? {}),
+            jsonParse: 'succeeded',
+            schemaValidation: 'succeeded',
+          },
+        };
+      } catch (error) {
+        if (error instanceof StructuredOutputError)
+          throw new LlmClientError(
+            'LLM_RESPONSE_INVALID',
+            'Gemini returned invalid structured JSON',
+            {
+              ...runtime,
+              stage: 'structured-parse',
+              errorType: error.code,
+            },
+          );
+        if (error instanceof AiProviderError)
+          throw this.fromProviderError(error, runtime);
+        throw error;
+      }
+    }
     const isOpenRouter = provider === 'openrouter';
     const key = isOpenRouter
       ? this.config.get<string>('OPENROUTER_API_KEY')
@@ -448,5 +565,66 @@ export class LlmClientService {
       256,
       Math.min(16_384, Number(this.config.get('AI_MAX_TOKENS')) || 4096),
     );
+  }
+
+  private fromProviderError(
+    error: AiProviderError,
+    runtime: LlmRuntimeConfig,
+  ): LlmClientError {
+    const code: LlmClientFailureCode =
+      error.code === 'AI_PROVIDER_TIMEOUT'
+        ? 'LLM_REQUEST_TIMEOUT'
+        : error.code === 'AI_PROVIDER_AUTHENTICATION_FAILED'
+          ? 'LLM_PROVIDER_NOT_CONFIGURED'
+          : error.code === 'AI_PROVIDER_EMPTY_RESPONSE' ||
+              error.code === 'AI_PROVIDER_INVALID_RESPONSE'
+            ? 'LLM_RESPONSE_INVALID'
+            : 'LLM_HTTP_ERROR';
+    return new LlmClientError(code, error.message, {
+      ...runtime,
+      stage: code === 'LLM_RESPONSE_INVALID' ? 'response-content' : 'request',
+      errorType: error.code,
+      providerDetails: error.details,
+    });
+  }
+
+  private toJsonSchema(schema: unknown): Record<string, unknown> {
+    if (typeof schema === 'string') {
+      if (schema === 'boolean') return { type: 'boolean' };
+      if (schema.startsWith('number')) return { type: 'number' };
+      if (schema.endsWith('|null'))
+        return {
+          anyOf: [this.toJsonSchema(schema.slice(0, -5)), { type: 'null' }],
+        };
+      return { type: 'string' };
+    }
+    if (Array.isArray(schema)) {
+      if (schema.length === 0) return { type: 'array' };
+      if (schema.every((item) => typeof item === 'string'))
+        return { type: 'string', enum: schema };
+      return { type: 'array', items: this.toJsonSchema(schema[0]) };
+    }
+    if (!schema || typeof schema !== 'object') return {};
+    const properties = Object.fromEntries(
+      Object.entries(schema).map(([key, value]) => [
+        key,
+        this.toJsonSchema(value),
+      ]),
+    );
+    return {
+      type: 'object',
+      properties,
+      required: Object.keys(properties),
+      additionalProperties: false,
+    };
+  }
+
+  private geminiSystemInstruction(input: {
+    purpose: LlmPurpose;
+    systemPrompt: string;
+  }): string {
+    if (input.purpose !== 'question-writing') return input.systemPrompt;
+    return `${input.systemPrompt}
+Write primarily in clear, natural Arabic for a group party quiz. Answers must be factually specific. Do not create vague or subjective questions, and do not create questions with multiple equally valid answers unless every valid form is covered by acceptedAnswers. Avoid duplicate, near-duplicate, repetitive, or templated questions. Easy means widely known and directly answerable and maps to 200 points; medium requires some familiarity and maps to 400 points; hard is specific but fair and verifiable and maps to 600 points. Do not use Markdown or numbering inside question text. Never reveal the answer in the question. Return only data matching the supplied schema.`;
   }
 }

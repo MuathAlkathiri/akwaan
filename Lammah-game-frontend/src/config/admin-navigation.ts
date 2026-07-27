@@ -3,6 +3,7 @@ import {
   ClipboardList,
   Gamepad2,
   LayoutDashboard,
+  Sparkles,
   Users,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
@@ -49,6 +50,14 @@ export const adminNavigation: AdminNavigationItem[] = [
     showOnDashboard: true,
     dashboardTitle: "Questions management",
     dashboardDescription: "مراجعة الأسئلة واعتماد المحتوى.",
+  },
+  {
+    label: "توليد الأسئلة",
+    href: "/admin/ai-generator",
+    icon: Sparkles,
+    showOnDashboard: true,
+    dashboardTitle: "Generate Questions",
+    dashboardDescription: "توليد أسئلة كمسودات للمراجعة قبل الحفظ.",
   },
   {
     label: "المستخدمين",

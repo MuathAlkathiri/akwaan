@@ -19,6 +19,7 @@ export class GenerationPlannerService {
     requestedDifficulty?: PipelineDifficulty;
     profile: CategoryGenerationProfile;
     candidates: SourceQuestionCandidate[];
+    sourceRequired?: boolean;
   }): GenerationPlanSlot[] {
     return Array.from({ length: input.count }, (_, index) => {
       const candidate = input.candidates[index];
@@ -33,6 +34,7 @@ export class GenerationPlannerService {
         candidateSource: candidate?.sourceId,
         requestedAssetType: 'text',
         sourceCandidate: candidate,
+        sourceRequired: input.sourceRequired ?? false,
       };
     });
   }
@@ -80,6 +82,7 @@ export class GenerationPlannerService {
         .slice(0, index)
         .filter((intent) => intent === topicIntent).length;
       const selected = pool[intentOccurrence % Math.max(1, pool.length)];
+      const requestedAssetType = this.assetType(gameMode);
       return {
         slotId: `slot-${index + 1}`,
         difficulty: difficulties[index],
@@ -93,9 +96,23 @@ export class GenerationPlannerService {
               candidateAliasUsed: selected.aliases[0],
             }
           : {}),
-        requestedAssetType: this.assetType(gameMode),
+        requestedAssetType,
+        sourceRequired: this.isSourceRequired(
+          input.profile,
+          requestedAssetType,
+        ),
       };
     });
+  }
+
+  isSourceRequired(
+    profile: CategoryGenerationProfile,
+    assetType: QuestionAssetType,
+  ): boolean {
+    return (
+      ['image', 'video', 'audio'].includes(assetType) ||
+      profile.sourceRequired === true
+    );
   }
 
   private allocate<T extends string>(

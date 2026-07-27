@@ -17,7 +17,10 @@ import {
   QuestionMediaAvailabilityPolicy,
   type QuestionMediaAvailability,
 } from '../../questions/application/question-media-availability.policy';
-import { QuestionInGame } from '../schemas/game.schema';
+import {
+  type GameQuestionSnapshot,
+  QuestionInGame,
+} from '../schemas/game.schema';
 import { QuestionSelectorService } from '../selectors/question-selector.service';
 
 export type CategoryGameValidationIssue = {
@@ -366,36 +369,63 @@ export class CategoryGameAssembler {
         (candidate) => String(candidate._id) === String(boardQuestion.question),
       );
       if (!question) return boardQuestion;
-      const snapshot = {
+      const baseSnapshot = {
         sourceQuestionId: question._id,
         categoryId: context.category._id,
         categoryName: context.category.name,
         question: question.question,
-        answer: question.answer,
-        acceptedAnswers: [...(question.acceptedAnswers ?? [])],
         ...(question.explanation ? { explanation: question.explanation } : {}),
-        questionType: question.questionType,
-        ...(question.turnDurationSeconds
-          ? { turnDurationSeconds: question.turnDurationSeconds }
-          : {}),
-        ...(question.maxStrikesPerTeam
-          ? { maxStrikesPerTeam: question.maxStrikesPerTeam }
-          : {}),
-        ...(question.rankedList
-          ? {
-              rankedList: {
-                displayName: { ...question.rankedList.displayName },
-                entries: question.rankedList.entries.map((entry) => ({
-                  id: entry.id,
-                  rank: entry.rank,
-                  answer: { ...entry.answer },
-                  aliases: [...entry.aliases],
-                  points: entry.points,
-                })),
-              },
-            }
-          : {}),
       };
+
+      let snapshot: GameQuestionSnapshot;
+
+      if (question.questionType === 'ranked_list') {
+        if (!question.rankedList) {
+          throw new BadRequestException({
+            code: 'RANKED_LIST_DATA_MISSING',
+            message: 'Ranked-list question is missing ranked-list data.',
+            questionId: String(question._id),
+          });
+        }
+
+        snapshot = {
+          ...baseSnapshot,
+          questionType: 'ranked_list',
+          ...(question.turnDurationSeconds
+            ? { turnDurationSeconds: question.turnDurationSeconds }
+            : {}),
+          ...(question.maxStrikesPerTeam
+            ? { maxStrikesPerTeam: question.maxStrikesPerTeam }
+            : {}),
+          rankedList: {
+            displayName: { ...question.rankedList.displayName },
+            entries: question.rankedList.entries.map((entry) => ({
+              id: entry.id,
+              rank: entry.rank,
+              answer: { ...entry.answer },
+              aliases: [...entry.aliases],
+              points: entry.points,
+            })),
+          },
+        };
+      } else {
+        const answer = question.answer?.trim();
+
+        if (!answer) {
+          throw new BadRequestException({
+            code: 'QUESTION_ANSWER_MISSING',
+            message: 'Standard question is missing its answer.',
+            questionId: String(question._id),
+          });
+        }
+
+        snapshot = {
+          ...baseSnapshot,
+          questionType: 'standard',
+          answer,
+          acceptedAnswers: [...(question.acceptedAnswers ?? [])],
+        };
+      }
       if (!presentation) return { ...boardQuestion, snapshot };
       if (!presentation.mediaAvailable)
         this.logger.log(

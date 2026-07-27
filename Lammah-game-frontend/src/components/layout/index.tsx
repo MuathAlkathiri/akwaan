@@ -1,5 +1,5 @@
 import { Header } from "./header";
-import { ToastViewport } from "@/components/ui/toast";
+import { Toaster } from "@/components/ui/sonner";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -8,7 +8,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <main className="min-h-screen">
         <div className="container py-8 md:py-12">{children}</div>
       </main>
-      <ToastViewport />
+      <Toaster position="bottom-center" />
     </>
   );
 }

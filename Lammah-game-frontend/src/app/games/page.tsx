@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RequireAuth } from "@/components/auth/require-auth";
 import { useAuth } from "@/components/auth/auth-provider";
 import { GamesList } from "@/features/games";
+import { PageHeader } from "@/components/shared";
 
 export default function GamesPage() {
   const { user } = useAuth();
@@ -15,17 +16,17 @@ export default function GamesPage() {
   return (
     <RequireAuth>
       <div className="space-y-8">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-          <div>
-            <p className="text-sm font-black text-primary">جاهز للتحدي؟</p>
-            <h1 className="text-5xl font-black">ألعابي</h1>
-          </div>
-          <Link href="/games/new">
-            <Button size="lg">لعبة جديدة</Button>
-          </Link>
-        </div>
+        <PageHeader
+          title="ألعابي"
+          description="جاهز للتحدي؟ تابع ألعابك أو ابدأ لعبة جديدة."
+          actions={
+            <Button asChild size="lg">
+              <Link href="/games/new">لعبة جديدة</Link>
+            </Button>
+          }
+        />
 
-        <Card className="bg-gradient-to-br from-primary/10 to-white/[0.06]">
+        <Card>
           <CardContent className="pt-6 space-y-2">
             <p className="text-sm text-muted-foreground">
               الألعاب المجانية المستخدمة: {user?.freeGamesUsed ?? 0}

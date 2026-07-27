@@ -4,13 +4,205 @@ import type {
   FactCandidate,
   GenerationPlanSlot,
   PipelineQuestionCandidate,
+  QuestionReviewResult,
 } from './ai-generation-pipeline.types';
 import type { SourceQuestionCandidate } from '../domain/question-source.types';
 import type { CategoryGenerationProfile } from './category-generation-profile.registry';
 
+export type StandardQuestionGenerationInput = {
+  categoryName: string;
+  catalogName?: string;
+  categoryDescription?: string;
+  slot: GenerationPlanSlot;
+  profile: CategoryGenerationProfile;
+  requestedLanguage?: 'ar';
+  excludedQuestions: string[];
+  noveltyAttempt: number;
+};
+
+export type BatchedStandardQuestion = {
+  slotId: string;
+  candidate: PipelineQuestionCandidate;
+  review: QuestionReviewResult;
+};
+
 @Injectable()
 export class QuestionWriterAgentService {
   constructor(private readonly llm: LlmClientService) {}
+
+  standardPromptLength(input: StandardQuestionGenerationInput): number {
+    const prompts = this.standardPrompts(input);
+    return prompts.systemPrompt.length + prompts.userPrompt.length;
+  }
+
+  async generateStandard(input: StandardQuestionGenerationInput) {
+    const { slot } = input;
+    const { systemPrompt, userPrompt } = this.standardPrompts(input);
+    const result = await this.llm.generateStructured<PipelineQuestionCandidate>(
+      {
+        purpose: 'question-writing',
+        systemPrompt,
+        userPrompt,
+        schema: {
+          question: 'string',
+          answer: 'string',
+          acceptedAnswers: ['string'],
+          wrongAnswers: ['string'],
+          difficulty: slot.difficulty,
+          gameMode: 'trivia',
+          type: 'text',
+          explanation: 'string',
+          assetRequest: 'object|null',
+          knowledgeFactIds: ['string'],
+          sourceIds: ['string'],
+        },
+        temperature: 0.55,
+        repairMalformed: false,
+      },
+    );
+    return {
+      ...result,
+      promptLength: systemPrompt.length + userPrompt.length,
+      value: {
+        ...result.value,
+        difficulty: slot.difficulty,
+        gameMode: 'trivia' as const,
+        type: 'text' as const,
+        assetRequest: null,
+        knowledgeFactIds: [],
+        sourceIds: [],
+        acceptedAnswers: Array.isArray(result.value.acceptedAnswers)
+          ? result.value.acceptedAnswers
+          : [],
+        wrongAnswers: Array.isArray(result.value.wrongAnswers)
+          ? result.value.wrongAnswers
+          : [],
+      },
+    };
+  }
+
+  async generateStandardBatch(input: {
+    categoryName: string;
+    catalogName?: string;
+    categoryDescription?: string;
+    slots: GenerationPlanSlot[];
+    profile: CategoryGenerationProfile;
+    requestedLanguage?: 'ar';
+    excludedQuestions: string[];
+  }) {
+    const systemPrompt =
+      'Generate the requested batch of factual, objective, text-only standard trivia questions for an Arabic party game. Return exactly one item for every supplied slotId and no additional items. Questions must be diverse and must not duplicate each other or any excluded question. Answers must be specific and directly answer their questions. Do not invent citations. Avoid ambiguity, opinions, time-sensitive claims, answer leakage, and multiple-choice wording. For each item, critically review the draft for factual correctness, clarity, fairness, answer fit, difficulty, language, and duplication. Use verdict approved only when it is ready for deterministic application validation; use repairable or rejected otherwise. Return Arabic user-facing text and only the schema.';
+    const userPrompt = JSON.stringify({
+      categoryName: input.categoryName,
+      catalogName: input.catalogName,
+      categoryDescription: input.categoryDescription,
+      categoryObjective: input.profile.objective,
+      categoryGuidance: input.profile.promptFragments?.guidance,
+      requestedLanguage: input.requestedLanguage ?? 'ar',
+      generationSettings: {
+        gameMode: 'trivia',
+        questionType: 'text',
+      },
+      slots: input.slots.map((slot) => ({
+        slotId: slot.slotId,
+        difficulty: slot.difficulty,
+        diversitySeed: slot.slotId,
+      })),
+      excludedQuestions: input.excludedQuestions.slice(-100),
+    });
+    const result = await this.llm.generateStructured<{
+      items: BatchedStandardQuestion[];
+    }>({
+      purpose: 'question-writing',
+      systemPrompt,
+      userPrompt,
+      schema: {
+        items: input.slots.map((slot) => ({
+          slotId: slot.slotId,
+          candidate: {
+            question: 'string',
+            answer: 'string',
+            acceptedAnswers: ['string'],
+            wrongAnswers: ['string'],
+            difficulty: slot.difficulty,
+            gameMode: 'trivia',
+            type: 'text',
+            explanation: 'string',
+            assetRequest: null,
+            knowledgeFactIds: [],
+            sourceIds: [],
+          },
+          review: {
+            verdict: ['approved', 'repairable', 'rejected'],
+            score: 'number 0-10',
+            issues: [{ code: 'string', message: 'string' }],
+          },
+        })),
+      },
+      temperature: 0.5,
+      maxTokens: Math.min(32_768, Math.max(4_096, input.slots.length * 1_200)),
+      repairMalformed: false,
+    });
+    const items = Array.isArray(result.value?.items) ? result.value.items : [];
+    const bySlot = new Map(items.map((item) => [item.slotId, item]));
+    const normalized = input.slots.map((slot) => {
+      const item = bySlot.get(slot.slotId);
+      if (!item?.candidate)
+        throw new Error(`BATCH_OUTPUT_MISSING_SLOT: ${slot.slotId}`);
+      const verdict = String(item.review?.verdict ?? '').toLowerCase();
+      return {
+        slotId: slot.slotId,
+        candidate: {
+          ...item.candidate,
+          difficulty: slot.difficulty,
+          gameMode: 'trivia' as const,
+          type: 'text' as const,
+          assetRequest: null,
+          knowledgeFactIds: [],
+          sourceIds: [],
+          acceptedAnswers: Array.isArray(item.candidate.acceptedAnswers)
+            ? item.candidate.acceptedAnswers
+            : [],
+          wrongAnswers: Array.isArray(item.candidate.wrongAnswers)
+            ? item.candidate.wrongAnswers
+            : [],
+        },
+        review: {
+          verdict: ['approved', 'repairable', 'rejected'].includes(verdict)
+            ? (verdict as QuestionReviewResult['verdict'])
+            : ('rejected' as const),
+          score: Math.max(0, Math.min(10, Number(item.review?.score) || 0)),
+          issues: Array.isArray(item.review?.issues) ? item.review.issues : [],
+        },
+      };
+    });
+    return {
+      ...result,
+      value: normalized,
+      promptLength: systemPrompt.length + userPrompt.length,
+      requestCount: 1,
+    };
+  }
+
+  private standardPrompts(input: StandardQuestionGenerationInput) {
+    return {
+      systemPrompt:
+        'Generate one factual, objective, text-only standard trivia question for an Arabic party game. Use established general knowledge. The answer must be specific and directly answer the question. Do not invent citations or claim an external source. Avoid ambiguity, opinions, time-sensitive claims, answer leakage, multiple-choice wording, and every excluded or near-duplicate question. The explanation must briefly state the supporting fact. Return Arabic user-facing text and only the schema.',
+      userPrompt: JSON.stringify({
+        categoryName: input.categoryName,
+        catalogName: input.catalogName,
+        categoryDescription: input.categoryDescription,
+        categoryObjective: input.profile.objective,
+        categoryGuidance: input.profile.promptFragments?.guidance,
+        difficulty: input.slot.difficulty,
+        gameMode: 'trivia',
+        questionType: 'text',
+        excludedQuestions: input.excludedQuestions.slice(-100),
+        diversitySeed: `${input.slot.slotId}-${input.noveltyAttempt}`,
+        requestedLanguage: input.requestedLanguage ?? 'ar',
+      }),
+    };
+  }
   async curate(
     source: SourceQuestionCandidate,
     slot: GenerationPlanSlot,

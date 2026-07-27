@@ -9,6 +9,14 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { getApiErrorMessage } from "@/lib/utils";
 import { useAuth } from "../providers/auth-provider";
 
@@ -22,11 +30,8 @@ export function LoginForm() {
   const router = useRouter();
   const { login } = useAuth();
   const [error, setError] = useState("");
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  const form = useForm<FormValues>({ resolver: zodResolver(schema) });
+  const { handleSubmit, formState: { isSubmitting } } = form;
   const onSubmit = async (data: FormValues) => {
     setError("");
     try {
@@ -48,29 +53,30 @@ export function LoginForm() {
           <CardTitle>تسجيل الدخول</CardTitle>
         </CardHeader>
         <CardContent>
+          <Form {...form}>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                البريد الإلكتروني
-              </label>
-              <Input type="email" {...register("email")} />
-              {errors.email && (
-                <p className="text-sm text-destructive mt-1">
-                  {errors.email.message}
-                </p>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>البريد الإلكتروني</FormLabel>
+                  <FormControl><Input type="email" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                كلمة المرور
-              </label>
-              <PasswordInput {...register("password")} />
-              {errors.password && (
-                <p className="text-sm text-destructive mt-1">
-                  {errors.password.message}
-                </p>
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>كلمة المرور</FormLabel>
+                  <FormControl><PasswordInput {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </div>
+            />
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? "جاري الدخول..." : "دخول"}
@@ -82,6 +88,7 @@ export function LoginForm() {
               </Link>
             </p>
           </form>
+          </Form>
         </CardContent>
       </Card>
     </div>

@@ -10,6 +10,13 @@ export type GenerationDiagnostic = {
   code: string;
   stage: string;
   message?: string;
+  details?: Record<string, unknown>;
+};
+export type PipelineTraceEvent = {
+  stage: string;
+  event: string;
+  timestamp: string;
+  details?: Record<string, unknown>;
 };
 export type GenerationPlanSlot = {
   slotId: string;
@@ -22,6 +29,7 @@ export type GenerationPlanSlot = {
   candidateAliasUsed?: string;
   requestedAssetType?: QuestionAssetType;
   sourceCandidate?: SourceQuestionCandidate;
+  sourceRequired?: boolean;
 };
 export type CuratedQuestionCandidate = PipelineQuestionCandidate & {
   curationStatus?: 'APPROVE' | 'REJECT';
@@ -97,6 +105,14 @@ export type PipelineSlotResult = {
   languageRepairAttempted?: boolean;
   languageRepairSucceeded?: boolean;
   languageIssueCodes?: string[];
+  sourceStatus?:
+    | 'used'
+    | 'not_required'
+    | 'unavailable_optional'
+    | 'optional_curator_unavailable'
+    | 'optional_sources_exhausted'
+    | 'required_missing';
+  trace?: PipelineTraceEvent[];
 };
 
 export type SourceCandidatePipelineDiagnostic = {
@@ -114,4 +130,23 @@ export type SourceCandidatePipelineDiagnostic = {
   };
   outcome: 'CREATED' | 'REJECTED' | 'FAILED' | 'NOT_SELECTED';
   rejectionReason: string | null;
+  curator?: {
+    sourceId: string;
+    sourceQuestionId: string;
+    slotId: string;
+    category: string;
+    requestedDifficulty: PipelineDifficulty;
+    stageEntered: boolean;
+    implementation: string;
+    callsLlm: boolean;
+    provider: string | null;
+    model: string | null;
+    inputShapeKeys: string[];
+    outputTextLength: number | null;
+    parseStatus: 'not_started' | 'succeeded' | 'failed';
+    schemaValidationStatus: 'not_started' | 'succeeded' | 'failed';
+    errorCode: string | null;
+    errorMessage: string | null;
+    finalStatus: 'approved' | 'rejected' | 'failed';
+  };
 };

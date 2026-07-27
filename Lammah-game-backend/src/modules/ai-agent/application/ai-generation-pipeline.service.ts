@@ -6,6 +6,7 @@ import type { CategoryGenerationProfile } from './category-generation-profile.re
 import { GenerationPlannerService } from './generation-planner.service';
 import { ResearchAgentService } from './research-agent.service';
 import { QuestionWriterAgentService } from './question-writer-agent.service';
+import type { BatchedStandardQuestion } from './question-writer-agent.service';
 import { QuestionReviewAgentService } from './question-review-agent.service';
 import { QuestionRepairAgentService } from './question-repair-agent.service';
 import { DeterministicQuestionValidatorService } from './deterministic-question-validator.service';
@@ -131,12 +132,33 @@ export class AiGenerationPipelineService {
       difficulty: input.difficulty,
       sourceIds: input.sourceIds,
     });
-    const slots = this.planner.planSourceCandidates({
+    const sourceRequired = this.planner.isSourceRequired(input.profile, 'text');
+    const plannedSlots = this.planner.planSourceCandidates({
       count: input.count,
       requestedDifficulty: input.difficulty,
       profile: input.profile,
       candidates: collection.candidates,
+      sourceRequired,
     });
+    const canBatchStandard =
+      plannedSlots.length > 1 &&
+      plannedSlots.every(
+        (slot) =>
+          !slot.sourceRequired &&
+          slot.gameMode === plannedSlots[0].gameMode &&
+          slot.requestedAssetType === plannedSlots[0].requestedAssetType &&
+          slot.difficulty === plannedSlots[0].difficulty,
+      ) &&
+      plannedSlots[0].gameMode === 'trivia' &&
+      (plannedSlots[0].requestedAssetType ?? 'text') === 'text';
+    // Optional research candidates do not make otherwise-identical text slots
+    // heterogeneous. The batch writer may proceed without them.
+    const slots = canBatchStandard
+      ? plannedSlots.map((slot) => ({
+          ...slot,
+          sourceCandidate: undefined,
+        }))
+      : plannedSlots;
     const candidateDiagnostics = new Map<
       string,
       SourceCandidatePipelineDiagnostic
@@ -168,18 +190,111 @@ export class AiGenerationPipelineService {
     );
     const batches = [slots.map((slot) => slot.slotId)];
     const results: PipelineSlotResult[] = [];
-    for (const slot of slots)
-      results.push(
-        await this.processSourceSlot(
+    let batch:
+      | Awaited<ReturnType<QuestionWriterAgentService['generateStandardBatch']>>
+      | undefined;
+    let batchError: unknown;
+    if (canBatchStandard) {
+      try {
+        this.logger.log(
+          JSON.stringify({
+            event: 'generation.batch_started',
+            requestId: generationRequestId,
+            slotCount: slots.length,
+            llmRequestCount: 1,
+          }),
+        );
+        batch = await this.writer.generateStandardBatch({
+          categoryName: input.categoryName,
+          catalogName: input.catalogName,
+          slots,
+          profile: input.profile,
+          requestedLanguage: input.requestedLanguage ?? 'ar',
+          excludedQuestions: input.persisted.map((item) => item.question),
+        });
+        this.logger.log(
+          JSON.stringify({
+            event: 'generation.batch_completed',
+            requestId: generationRequestId,
+            slotCount: slots.length,
+            llmRequestCount: 1,
+            provider: batch.provider,
+            model: batch.model,
+            promptLength: batch.promptLength,
+            diagnostics: batch.diagnostics,
+          }),
+        );
+      } catch (error) {
+        batchError = error;
+      }
+    }
+    for (const slot of slots) {
+      if (canBatchStandard) {
+        const prepared = batch?.value.find(
+          (item) => item.slotId === slot.slotId,
+        );
+        results.push(
+          await this.processOptionalSourceSlot(
+            slot,
+            input,
+            generationRequestId,
+            collection,
+            'not_required',
+            prepared && batch
+              ? {
+                  item: prepared,
+                  provider: batch.provider,
+                  model: batch.model,
+                  diagnostics: batch.diagnostics,
+                  promptLength: batch.promptLength,
+                }
+              : undefined,
+            batchError,
+          ),
+        );
+        continue;
+      }
+      if (slot.sourceCandidate) {
+        const sourceResult = await this.processSourceSlot(
           slot,
           input,
           generationRequestId,
           collection,
-          slot.sourceCandidate
-            ? candidateDiagnostics.get(slot.sourceCandidate.fingerprint)
-            : undefined,
-        ),
-      );
+          candidateDiagnostics.get(slot.sourceCandidate.fingerprint),
+        );
+        if (sourceResult.status === 'created' || slot.sourceRequired)
+          results.push(sourceResult);
+        else
+          results.push(
+            await this.processOptionalSourceSlot(
+              slot,
+              input,
+              generationRequestId,
+              collection,
+              sourceResult.status === 'failed'
+                ? 'optional_curator_unavailable'
+                : 'optional_sources_exhausted',
+            ),
+          );
+      } else if (slot.sourceRequired)
+        results.push(
+          await this.processSourceSlot(
+            slot,
+            input,
+            generationRequestId,
+            collection,
+          ),
+        );
+      else
+        results.push(
+          await this.processOptionalSourceSlot(
+            slot,
+            input,
+            generationRequestId,
+            collection,
+          ),
+        );
+    }
     for (const diagnostic of candidateDiagnostics.values())
       this.logger.log(
         JSON.stringify({
@@ -200,11 +315,30 @@ export class AiGenerationPipelineService {
         requested: input.count,
         collected: collection.candidates.length,
         selected: slots.filter((slot) => Boolean(slot.sourceCandidate)).length,
-        approved: results.filter((result) => result.status === 'created')
-          .length,
-        rejected: results.filter((result) => result.status === 'rejected')
-          .length,
+        approved: [...candidateDiagnostics.values()].filter(
+          (diagnostic) => diagnostic.outcome === 'CREATED',
+        ).length,
+        rejected: [...candidateDiagnostics.values()].filter(
+          (diagnostic) => diagnostic.outcome === 'REJECTED',
+        ).length,
         failed: results.filter((result) => result.status === 'failed').length,
+        curatorFailed: [...candidateDiagnostics.values()].filter(
+          (diagnostic) => diagnostic.outcome === 'FAILED',
+        ).length,
+        curatorRejected: [...candidateDiagnostics.values()].filter(
+          (diagnostic) => diagnostic.outcome === 'REJECTED',
+        ).length,
+        sourceFallbackUsed: results.filter((result) =>
+          [
+            'optional_curator_unavailable',
+            'optional_sources_exhausted',
+          ].includes(result.sourceStatus ?? ''),
+        ).length,
+        generationFailed: results.filter((result) => result.status === 'failed')
+          .length,
+        generationRejected: results.filter(
+          (result) => result.status === 'rejected',
+        ).length,
         notSelected: Math.max(
           0,
           collection.candidates.length -
@@ -212,7 +346,28 @@ export class AiGenerationPipelineService {
         ),
         returned: results.filter((result) => result.status === 'created')
           .length,
+        sourceRequired,
+        optionalSourceUnavailable: results.filter(
+          (result) => result.sourceStatus === 'unavailable_optional',
+        ).length,
+        requiredSourceMissing: results.filter(
+          (result) => result.sourceStatus === 'required_missing',
+        ).length,
       },
+      llmBatch: canBatchStandard
+        ? {
+            enabled: true,
+            requestCount: 1,
+            slotCount: slots.length,
+            provider: batch?.provider ?? null,
+            model: batch?.model ?? null,
+            tokenUsage: batch?.diagnostics?.usage ?? null,
+          }
+        : {
+            enabled: false,
+            requestCount: results.length,
+            slotCount: slots.length,
+          },
       drafts: results.flatMap((result) =>
         result.status === 'created' && result.draft ? [result.draft] : [],
       ),
@@ -244,6 +399,33 @@ export class AiGenerationPipelineService {
         blockingIssues: ['NO_SOURCE_CANDIDATE'],
         canonicalFinalDecision: 'failed',
         totalTimingMs: Date.now() - started,
+        sourceStatus: 'required_missing',
+      };
+    if (sourceCandidateDiagnostic)
+      sourceCandidateDiagnostic.curator = {
+        sourceId: source.sourceId,
+        sourceQuestionId: source.sourceQuestionId,
+        slotId: slot.slotId,
+        category: source.sourceCategory,
+        requestedDifficulty: slot.difficulty,
+        stageEntered: true,
+        implementation: 'QuestionWriterAgentService.curate',
+        callsLlm: true,
+        provider: null,
+        model: null,
+        inputShapeKeys: [
+          'sourceQuestion',
+          'sourceAnswer',
+          'sourceType',
+          'sourceCategory',
+          'requestedLanguage',
+        ],
+        outputTextLength: null,
+        parseStatus: 'not_started',
+        schemaValidationStatus: 'not_started',
+        errorCode: null,
+        errorMessage: null,
+        finalStatus: 'failed',
       };
     try {
       this.logger.log(
@@ -264,6 +446,16 @@ export class AiGenerationPipelineService {
       );
       const candidate = written.value as CuratedQuestionCandidate;
       if (sourceCandidateDiagnostic) {
+        Object.assign(sourceCandidateDiagnostic.curator!, {
+          provider: written.provider,
+          model: written.model,
+          outputTextLength:
+            typeof written.diagnostics?.textLength === 'number'
+              ? written.diagnostics.textLength
+              : null,
+          parseStatus: 'succeeded',
+          schemaValidationStatus: 'succeeded',
+        });
         sourceCandidateDiagnostic.curatedQuestion = candidate.question;
         sourceCandidateDiagnostic.curatedAnswer = candidate.answer;
         sourceCandidateDiagnostic.duplicateScore = this.duplicates.scoreSource(
@@ -287,6 +479,7 @@ export class AiGenerationPipelineService {
       }
       if (diagnostics.length) {
         if (sourceCandidateDiagnostic) {
+          sourceCandidateDiagnostic.curator!.finalStatus = 'rejected';
           sourceCandidateDiagnostic.outcome = 'REJECTED';
           sourceCandidateDiagnostic.rejectionReason = diagnostics.length
             ? diagnostics.map((item) => item.code).join(',')
@@ -318,6 +511,7 @@ export class AiGenerationPipelineService {
       );
       if (duplicateCodes.length) {
         if (sourceCandidateDiagnostic) {
+          sourceCandidateDiagnostic.curator!.finalStatus = 'rejected';
           sourceCandidateDiagnostic.validationResult = {
             status: 'FAIL',
             issueCodes: duplicateCodes,
@@ -380,6 +574,7 @@ export class AiGenerationPipelineService {
         },
       };
       if (sourceCandidateDiagnostic) {
+        sourceCandidateDiagnostic.curator!.finalStatus = 'approved';
         sourceCandidateDiagnostic.validationResult = {
           status: 'PASS',
           issueCodes: [],
@@ -405,13 +600,33 @@ export class AiGenerationPipelineService {
         languageRepairAttempted: false,
         languageRepairSucceeded: false,
         languageIssueCodes: [],
+        sourceStatus: 'used',
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const described = this.describeError(error);
+      const message = described.message;
       if (sourceCandidateDiagnostic) {
+        Object.assign(sourceCandidateDiagnostic.curator!, {
+          provider:
+            typeof described.provider === 'string' ? described.provider : null,
+          model: typeof described.model === 'string' ? described.model : null,
+          parseStatus:
+            described.stage === 'structured-parse' ? 'failed' : 'not_started',
+          schemaValidationStatus:
+            described.stage === 'structured-parse' ||
+            described.stage === 'response-content'
+              ? 'failed'
+              : 'not_started',
+          errorCode: described.code,
+          errorMessage: described.message,
+          finalStatus: 'failed',
+        });
         sourceCandidateDiagnostic.validationResult = {
           status: 'FAIL',
-          issueCodes: ['SOURCE_CURATOR_FAILED'],
+          issueCodes: [
+            'SOURCE_CURATOR_FAILED',
+            ...(described.code ? [described.code] : []),
+          ],
         };
         sourceCandidateDiagnostic.outcome = 'FAILED';
         sourceCandidateDiagnostic.rejectionReason = `SOURCE_CURATOR_FAILED: ${message}`;
@@ -420,14 +635,452 @@ export class AiGenerationPipelineService {
         slotId: slot.slotId,
         status: 'failed',
         diagnostics: [
-          { code: 'SOURCE_CURATOR_FAILED', stage: 'curation', message },
+          {
+            code: described.code ?? 'SOURCE_CURATOR_FAILED',
+            stage: described.stage,
+            message,
+            details: described,
+          },
         ],
         candidateSource: source.sourceId,
-        blockingIssues: ['SOURCE_CURATOR_FAILED'],
+        blockingIssues: [described.code ?? 'SOURCE_CURATOR_FAILED'],
         canonicalFinalDecision: 'failed',
         totalTimingMs: Date.now() - started,
       };
     }
+  }
+
+  private async processOptionalSourceSlot(
+    slot: GenerationPlanSlot,
+    input: Parameters<AiGenerationPipelineService['execute']>[0],
+    requestId: string,
+    collection: Awaited<ReturnType<QuestionSourceRouterService['collect']>>,
+    fallbackSourceStatus?:
+      | 'not_required'
+      | 'optional_curator_unavailable'
+      | 'optional_sources_exhausted',
+    batched?: {
+      item: BatchedStandardQuestion;
+      provider: string;
+      model: string;
+      diagnostics?: Record<string, unknown>;
+      promptLength: number;
+    },
+    batchError?: unknown,
+  ): Promise<PipelineSlotResult> {
+    const started = Date.now();
+    const requestedLanguage = input.requestedLanguage ?? 'ar';
+    const trace: NonNullable<PipelineSlotResult['trace']> = [];
+    const record = (
+      stage: string,
+      event: string,
+      details?: Record<string, unknown>,
+    ) => {
+      const entry = {
+        stage,
+        event,
+        timestamp: new Date().toISOString(),
+        ...(details ? { details } : {}),
+      };
+      trace.push(entry);
+      this.logger.log(
+        JSON.stringify({
+          logEvent: 'optional_generation.trace',
+          requestId,
+          slotId: slot.slotId,
+          ...entry,
+        }),
+      );
+    };
+    record('planner', 'started');
+    record('planner', 'finished', {
+      difficulty: slot.difficulty,
+      gameMode: slot.gameMode,
+      requestedAssetType: slot.requestedAssetType,
+      sourceRequired: slot.sourceRequired ?? false,
+    });
+    record('source', 'entered');
+    const sourceStatus =
+      fallbackSourceStatus ??
+      (collection.sourcesAttempted.length
+        ? ('unavailable_optional' as const)
+        : collection.diagnostics.some(
+              (item) => item.code === 'SOURCE_CATEGORY_UNSUPPORTED',
+            )
+          ? ('unavailable_optional' as const)
+          : ('not_required' as const));
+    const optionalDiagnostic = {
+      code:
+        sourceStatus === 'not_required'
+          ? 'SOURCE_NOT_REQUIRED'
+          : sourceStatus === 'optional_curator_unavailable'
+            ? 'OPTIONAL_SOURCE_CURATOR_UNAVAILABLE'
+            : sourceStatus === 'optional_sources_exhausted'
+              ? 'OPTIONAL_SOURCES_EXHAUSTED'
+              : 'OPTIONAL_SOURCE_UNAVAILABLE',
+      stage: 'source-policy',
+    };
+    record('source', 'skipped_optional', { sourceStatus });
+    record('source', 'result', {
+      sourceStatus,
+      candidates: collection.candidates.length,
+      sourcesAttempted: collection.sourcesAttempted,
+      diagnosticCodes: collection.diagnostics.map((item) => item.code),
+    });
+    const languageFact = (candidate: PipelineQuestionCandidate) => ({
+      id: 'optional-source',
+      fact: candidate.explanation,
+      canonicalAnswer: candidate.answer,
+      acceptedAnswerHints: candidate.acceptedAnswers,
+      entities: [candidate.answer],
+      source: {
+        title: 'Optional source unavailable',
+        url: 'internal://optional-source',
+        excerpt: candidate.explanation,
+      },
+      confidence: 0,
+    });
+    try {
+      const writerInput = {
+        categoryName: input.categoryName,
+        catalogName: input.catalogName,
+        slot,
+        profile: input.profile,
+        requestedLanguage,
+        excludedQuestions: input.persisted.map((item) => item.question),
+        noveltyAttempt: 0,
+      };
+      const promptLength =
+        batched?.promptLength ?? this.writer.standardPromptLength(writerInput);
+      record('writer', 'entered', {
+        promptLength,
+        mode: batched || batchError ? 'batch' : 'single',
+      });
+      record(
+        'gemini',
+        batched || batchError ? 'batch_request_reused' : 'request_started',
+        {
+          provider: this.config.get('AI_PROVIDER') ?? null,
+          model: this.config.get('GEMINI_MODEL') ?? null,
+          promptLength,
+          sharedBatchRequest: Boolean(batched || batchError),
+        },
+      );
+      if (batchError) throw batchError;
+      const written = batched
+        ? {
+            value: batched.item.candidate,
+            provider: batched.provider,
+            model: batched.model,
+            diagnostics: batched.diagnostics,
+            promptLength: batched.promptLength,
+          }
+        : await this.writer.generateStandard(writerInput);
+      record('writer', 'completed', {
+        promptLength: written.promptLength,
+        provider: written.provider,
+        model: written.model,
+      });
+      record('gemini', 'request_completed', written.diagnostics);
+      record('json-parse', 'started');
+      record('json-parse', 'succeeded');
+      record('schema-validation', 'succeeded');
+      let candidate = written.value;
+      let validation = this.validator.validateGenerated(
+        candidate,
+        slot,
+        input.profile,
+      );
+      let language = this.languageValidator.validate(
+        candidate,
+        languageFact(candidate),
+        requestedLanguage,
+      );
+      record('reviewer', 'entered');
+      let review =
+        batched?.item.review ??
+        (
+          await this.reviewer.reviewGenerated(
+            {
+              categoryName: input.categoryName,
+              difficulty: slot.difficulty,
+            },
+            candidate,
+            requestedLanguage,
+          )
+        ).value;
+      let repairAttempts = 0;
+      const maxRepairs = Math.max(
+        0,
+        Math.min(2, Number(this.config.get('AI_MAX_REPAIR_ATTEMPTS')) || 2),
+      );
+      while (
+        (review.verdict === 'repairable' ||
+          validation.length > 0 ||
+          language.status !== 'PASS') &&
+        repairAttempts < maxRepairs
+      ) {
+        repairAttempts += 1;
+        record('repair', 'entered', { attempt: repairAttempts });
+        candidate = (
+          await this.repairer.repairGenerated(
+            {
+              categoryName: input.categoryName,
+              difficulty: slot.difficulty,
+            },
+            candidate,
+            [
+              ...review.issues.map((issue) => issue.code),
+              ...validation.map((issue) => issue.code),
+              ...language.issueCodes,
+            ],
+            requestedLanguage,
+          )
+        ).value;
+        validation = this.validator.validateGenerated(
+          candidate,
+          slot,
+          input.profile,
+        );
+        language = this.languageValidator.validate(
+          candidate,
+          languageFact(candidate),
+          requestedLanguage,
+        );
+        record('reviewer', 'entered', { afterRepair: repairAttempts });
+        review = (
+          await this.reviewer.reviewGenerated(
+            {
+              categoryName: input.categoryName,
+              difficulty: slot.difficulty,
+            },
+            candidate,
+            requestedLanguage,
+          )
+        ).value;
+      }
+      const minimumQualityScore = 7;
+      const diagnostics = [
+        ...validation,
+        ...language.issueCodes.map((code) => ({
+          code,
+          stage: 'language',
+        })),
+        ...review.issues.map((issue) => ({ ...issue, stage: 'review' })),
+        ...(review.score < minimumQualityScore
+          ? [
+              {
+                code: 'QUALITY_SCORE_BELOW_THRESHOLD',
+                stage: 'review',
+              },
+            ]
+          : []),
+      ];
+      if (
+        review.verdict !== 'approved' ||
+        review.score < minimumQualityScore ||
+        validation.length ||
+        language.status !== 'PASS'
+      ) {
+        record('slot', 'final_result', {
+          status: 'rejected',
+          blockingIssues: diagnostics.map((item) => item.code),
+        });
+        return {
+          slotId: slot.slotId,
+          status: 'rejected',
+          diagnostics: [optionalDiagnostic, ...diagnostics],
+          blockingIssues: diagnostics.map((item) => item.code),
+          reviewerScore: review.score,
+          repairAttempts,
+          canonicalFinalDecision: 'rejected',
+          totalTimingMs: Date.now() - started,
+          sourceStatus,
+          trace,
+        };
+      }
+      record('duplicate-detector', 'entered');
+      const duplicateCodes = this.duplicates.checkGenerated(
+        candidate,
+        input.persisted,
+      );
+      if (duplicateCodes.length) {
+        record('slot', 'final_result', {
+          status: 'rejected',
+          blockingIssues: duplicateCodes,
+        });
+        return {
+          slotId: slot.slotId,
+          status: 'rejected',
+          diagnostics: [
+            optionalDiagnostic,
+            ...duplicateCodes.map((code) => ({
+              code,
+              stage: 'duplicate',
+            })),
+          ],
+          blockingIssues: duplicateCodes,
+          reviewerScore: review.score,
+          repairAttempts,
+          canonicalFinalDecision: 'rejected',
+          totalTimingMs: Date.now() - started,
+          sourceStatus,
+          trace,
+        };
+      }
+      record('slot', 'final_result', { status: 'created' });
+      return {
+        slotId: slot.slotId,
+        status: 'created',
+        draft: {
+          ...candidate,
+          qualityScore: review.score,
+          issues: [],
+          aiMetadata: {
+            pipelineVersion: '4.1',
+            generationRequestId: requestId,
+            slotId: slot.slotId,
+            provider: written.provider,
+            models: {
+              writer: written.model,
+              reviewer: 'provider-review',
+            },
+            sourceStatus,
+            sourceRequired: false,
+            batching: {
+              enabled: Boolean(batched),
+              sharedRequest: Boolean(batched),
+            },
+            verificationStatus: 'model-reviewed-no-external-source',
+            review: {
+              score: review.score,
+              verdict: review.verdict,
+              issueCodes: [],
+            },
+            validationIssueCodes: [],
+            repairAttempts,
+            finalStage: 'approved',
+            canonicalFinalDecision: 'created',
+          },
+        },
+        diagnostics: [optionalDiagnostic],
+        blockingIssues: [],
+        warnings: [optionalDiagnostic.code],
+        reviewerScore: review.score,
+        repairAttempts,
+        canonicalFinalDecision: 'created',
+        totalTimingMs: Date.now() - started,
+        requestedLanguage,
+        detectedLanguage: language.detectedLanguage,
+        languageIssueCodes: [],
+        sourceStatus,
+        trace,
+      };
+    } catch (error) {
+      const providerError = this.describeError(error);
+      record('slot', 'final_result', {
+        status: 'failed',
+        error: providerError,
+      });
+      this.logger.error(
+        JSON.stringify({
+          event: 'optional_generation.provider_error',
+          requestId,
+          slotId: slot.slotId,
+          ...providerError,
+        }),
+      );
+      return {
+        slotId: slot.slotId,
+        status: 'failed',
+        diagnostics: [
+          optionalDiagnostic,
+          {
+            code: providerError.code ?? 'OPTIONAL_GENERATION_FAILED',
+            stage: providerError.stage ?? 'pipeline',
+            message: providerError.message,
+            details: providerError,
+          },
+        ],
+        blockingIssues: [providerError.code ?? 'OPTIONAL_GENERATION_FAILED'],
+        canonicalFinalDecision: 'failed',
+        totalTimingMs: Date.now() - started,
+        sourceStatus,
+        trace,
+      };
+    }
+  }
+
+  private describeError(error: unknown): {
+    errorType: string;
+    code: string | null;
+    message: string;
+    stage: string;
+    provider: unknown;
+    model: unknown;
+    providerDetails: unknown;
+    stack: string | null;
+  } {
+    const value =
+      error && typeof error === 'object'
+        ? (error as {
+            name?: unknown;
+            code?: unknown;
+            message?: unknown;
+            stack?: unknown;
+            diagnostics?: unknown;
+            cause?: unknown;
+          })
+        : {};
+    const diagnostics =
+      value.diagnostics && typeof value.diagnostics === 'object'
+        ? (value.diagnostics as Record<string, unknown>)
+        : {};
+    const cause =
+      value.cause && typeof value.cause === 'object'
+        ? (value.cause as {
+            name?: unknown;
+            code?: unknown;
+            message?: unknown;
+            stack?: unknown;
+            details?: unknown;
+          })
+        : {};
+    return {
+      errorType: String(value.name ?? cause.name ?? typeof error),
+      code:
+        typeof diagnostics.errorType === 'string' &&
+        diagnostics.errorType.startsWith('AI_PROVIDER_')
+          ? diagnostics.errorType
+          : typeof value.code === 'string'
+            ? value.code
+            : typeof cause.code === 'string'
+              ? cause.code
+              : typeof diagnostics.errorType === 'string'
+                ? diagnostics.errorType
+                : null,
+      message:
+        typeof value.message === 'string'
+          ? value.message
+          : typeof cause.message === 'string'
+            ? cause.message
+            : String(error),
+      stage:
+        typeof diagnostics.stage === 'string' ? diagnostics.stage : 'pipeline',
+      provider: diagnostics.provider ?? null,
+      model: diagnostics.model ?? null,
+      providerDetails:
+        diagnostics.providerDetails ??
+        (cause.details && typeof cause.details === 'object'
+          ? cause.details
+          : null),
+      stack:
+        typeof value.stack === 'string'
+          ? value.stack.slice(0, 8_000)
+          : typeof cause.stack === 'string'
+            ? cause.stack.slice(0, 8_000)
+            : null,
+    };
   }
 
   private async processSlot(

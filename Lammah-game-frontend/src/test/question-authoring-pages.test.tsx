@@ -2,10 +2,9 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { QuestionAdminScreen } from "@/features/questions/components/question-admin-screen";
 import { QuestionsList } from "@/features/questions/components/questions-list";
-import {
-  mediaRequestFingerprint,
-  QuestionForm,
-} from "@/features/questions/components/question-form";
+import { QuestionForm } from "@/features/questions/components/question-form";
+
+import { mediaRequestFingerprint } from "@/features/questions/hooks/use-question-form";
 import { RankedListEditor } from "@/features/questions/components/ranked-list-editor";
 import { mergeAcceptedAnswers } from "@/features/questions/components/accepted-answers-editor";
 import {
@@ -197,7 +196,7 @@ describe("full-page question authoring", () => {
       target: { files: [file] },
     });
     expect(screen.getByText("معاينة قبل الرفع")).toBeInTheDocument();
-    expect(screen.getByText("لم يتم رفع الصورة بعد")).toBeInTheDocument();
+    expect(screen.getByText("لم يتم رفع الصورة بعد.")).toBeInTheDocument();
     expect(screen.getByText(/replacement\.webp/)).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -231,7 +230,7 @@ describe("full-page question authoring", () => {
     );
     expect(screen.getByRole("button", { name: "رفع الصورة" })).toBeDisabled();
     expect(screen.getByText("الصورة الحالية")).toBeInTheDocument();
-    expect(screen.getByAltText("الصورة الحالية")).toHaveAttribute(
+    expect(screen.getByAltText("الصورة الحالية للسؤال")).toHaveAttribute(
       "src",
       "/uploads/questions/images/current.webp",
     );
@@ -245,7 +244,9 @@ describe("full-page question authoring", () => {
     imageUploading = true;
     render(<QuestionForm question={{ ...question, type: "image" }} />);
     expect(screen.getByLabelText("اختيار صورة السؤال")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "جاري الرفع..." })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "جاري رفع الصورة..." }),
+    ).toBeDisabled();
   });
 
   it("keeps the stored image and selected file after an upload failure", async () => {
@@ -270,7 +271,7 @@ describe("full-page question authoring", () => {
     fireEvent.click(screen.getByRole("button", { name: "رفع الصورة" }));
 
     await waitFor(() => expect(uploadImage).toHaveBeenCalled());
-    expect(screen.getByAltText("الصورة الحالية")).toHaveAttribute(
+    expect(screen.getByAltText("الصورة الحالية للسؤال")).toHaveAttribute(
       "src",
       "/uploads/questions/images/current.webp",
     );

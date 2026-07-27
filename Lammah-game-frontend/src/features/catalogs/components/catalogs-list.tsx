@@ -18,6 +18,7 @@ import { useCategories } from "@/features/categories";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { getEntityId } from "@/lib/utils";
 import { Catalog } from "@/types";
+import { DeleteDialog, EmptyState, LoadingState } from "@/components/shared";
 
 export function CatalogsList() {
   const [editingCatalog, setEditingCatalog] = useState<Catalog | null>(null);
@@ -26,11 +27,11 @@ export function CatalogsList() {
   const { data: categories } = useCategories();
   const deleteCatalog = useDeleteCatalog();
 
-  if (isLoading) return <div className="py-8 text-center">جاري التحميل...</div>;
+  if (isLoading) return <LoadingState />;
   if (error)
-    return <div className="py-8 text-center text-destructive">حدث خطأ</div>;
+    return <EmptyState title="تعذر تحميل الكتالوجات" />;
   if (!catalogs?.length)
-    return <div className="py-8 text-center">لا توجد كتالوجات</div>;
+    return <EmptyState title="لا توجد كتالوجات" />;
 
   const getLinkedCategoryCount = (catalogId: string) =>
     (categories || []).filter((category) => {
@@ -108,14 +109,12 @@ export function CatalogsList() {
                     >
                       تعديل
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDelete(catalogId)}
+                    <DeleteDialog
+                      itemName={catalog.name.ar}
                       disabled={deleteCatalog.isPending}
-                    >
-                      حذف
-                    </Button>
+                      onDelete={() => void handleDelete(catalogId)}
+                      trigger={<Button size="sm" variant="destructive">حذف</Button>}
+                    />
                   </div>
                 </div>
               </CardHeader>
@@ -126,7 +125,7 @@ export function CatalogsList() {
 
       <Dialog
         open={!!editingCatalog}
-        onOpenChange={(open) => !open && setEditingCatalog(null)}
+        onOpenChange={(open: boolean) => !open && setEditingCatalog(null)}
       >
         <DialogContent>
           <DialogHeader>
