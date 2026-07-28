@@ -24,6 +24,7 @@ const toRequest = (data: Partial<Question>) => ({
         })),
       }
     : undefined,
+  bombContent: data.bombContent,
   answer: data.answer,
   correctAnswer: data.correctAnswer,
   wrongAnswers: data.wrongAnswers,

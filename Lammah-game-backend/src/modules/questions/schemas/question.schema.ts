@@ -19,6 +19,27 @@ export enum QuestionType {
 export enum QuestionGameplayType {
   STANDARD = 'standard',
   RANKED_LIST = 'ranked_list',
+  BOMB_SEQUENCE = 'bomb_sequence',
+}
+
+export interface BombItemImage {
+  url: string;
+  storageKey: string;
+  mimetype: string;
+  size: number;
+}
+
+export interface BombQuestionItem {
+  id: string;
+  order: number;
+  image: BombItemImage;
+  acceptedAnswers: string[];
+  altText?: string;
+  note?: string;
+}
+
+export interface BombQuestionContent {
+  items: BombQuestionItem[];
 }
 
 export interface LocalizedText {
@@ -62,6 +83,30 @@ const RankedListDefinitionSchema = new MongooseSchema(
   {
     displayName: { type: LocalizedTextSchema, required: true },
     entries: { type: [RankedListEntrySchema], required: true },
+  },
+  { _id: false },
+);
+
+const BombQuestionItemSchema = new MongooseSchema(
+  {
+    id: { type: String, required: true },
+    order: { type: Number, required: true, min: 0 },
+    image: {
+      url: { type: String, required: true },
+      storageKey: { type: String, required: true },
+      mimetype: { type: String, required: true },
+      size: { type: Number, required: true, min: 1 },
+    },
+    acceptedAnswers: { type: [String], required: true },
+    altText: { type: String, trim: true },
+    note: { type: String, trim: true },
+  },
+  { _id: false },
+);
+
+const BombQuestionContentSchema = new MongooseSchema(
+  {
+    items: { type: [BombQuestionItemSchema], required: true },
   },
   { _id: false },
 );
@@ -306,6 +351,9 @@ export class Question extends Document {
   @Prop({ type: RankedListDefinitionSchema })
   rankedList?: RankedListDefinition;
 
+  @Prop({ type: BombQuestionContentSchema })
+  bombContent?: BombQuestionContent;
+
   @Prop()
   correctAnswer?: string;
 
@@ -493,6 +541,12 @@ export class Question extends Document {
 }
 
 export const QuestionSchema = SchemaFactory.createForClass(Question);
+QuestionSchema.index({
+  category: 1,
+  difficulty: 1,
+  status: 1,
+  questionType: 1,
+});
 
 function inferPrimaryAssetFromLegacyMedia(ret: Record<string, unknown>) {
   if (ret.primaryAsset || !ret.mediaUrl || ret.type === QuestionType.TEXT) {

@@ -14,6 +14,7 @@ import {
 } from './schemas/question.schema';
 import { AudioRequestIdentityService } from './application/audio-request-identity.service';
 import { RankedListQuestionPolicy } from './application/ranked-list-question.policy';
+import { BombQuestionPolicy } from './application/bomb-question.policy';
 import { resolveQuestionMediaAvailability } from './application/question-media-availability.policy';
 
 describe('QuestionsService manual audio policy', () => {
@@ -37,6 +38,7 @@ describe('QuestionsService manual audio policy', () => {
     jobs as never,
     new AudioRequestIdentityService(),
     new RankedListQuestionPolicy(),
+    new BombQuestionPolicy(),
   );
   const base = {
     category: '507f1f77bcf86cd799439011',

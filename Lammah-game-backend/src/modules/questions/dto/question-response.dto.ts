@@ -16,6 +16,7 @@ import {
   QuestionAudioRequestDto,
   LocalizedQuestionTextDto,
   RankedListDefinitionDto,
+  BombQuestionContentDto,
 } from './create-question.dto';
 
 export class QuestionAssetResponseDto {
@@ -79,6 +80,8 @@ export class QuestionResponseDto {
   @ApiPropertyOptional() maxStrikesPerTeam?: number;
   @ApiPropertyOptional({ type: RankedListDefinitionDto })
   rankedList?: RankedListDefinitionDto;
+  @ApiPropertyOptional({ type: BombQuestionContentDto })
+  bombContent?: BombQuestionContentDto;
   @ApiPropertyOptional() answer?: string;
   @ApiPropertyOptional() correctAnswer?: string;
   @ApiProperty({ type: [String] }) wrongAnswers!: string[];
@@ -201,4 +204,30 @@ export class QuestionMutationResponseDto extends QuestionDetailResponseDto {
 
 export class BulkQuestionActionResponseDto {
   @ApiProperty() modifiedCount!: number;
+}
+
+export class BombItemImageResponseDto {
+  @ApiProperty() url!: string;
+  @ApiProperty() storageKey!: string;
+  @ApiProperty() mimetype!: string;
+  @ApiProperty() size!: number;
+}
+
+export class BombItemImageMutationResponseDto {
+  @ApiProperty({ type: BombItemImageResponseDto })
+  data!: BombItemImageResponseDto;
+}
+
+export class BombCategoryReadinessResponseDto {
+  @ApiProperty() easy!: number;
+  @ApiProperty() medium!: number;
+  @ApiProperty() hard!: number;
+  @ApiProperty() total!: number;
+  @ApiProperty() invalidQuestionCount!: number;
+  @ApiProperty() isComplete!: boolean;
+}
+
+export class BombCategoryReadinessEnvelopeDto {
+  @ApiProperty({ type: BombCategoryReadinessResponseDto })
+  data!: BombCategoryReadinessResponseDto;
 }

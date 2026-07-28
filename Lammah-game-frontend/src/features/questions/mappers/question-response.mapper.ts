@@ -98,6 +98,17 @@ export function toQuestion(dto: QuestionResponseDto): Question {
           })),
         }
       : undefined,
+    bombContent: dto.bombContent
+      ? {
+          items: dto.bombContent.items.map((item) => ({
+            ...item,
+            // Bomb image metadata is authored and persisted as a managed
+            // backend-relative path. Resolve it only in the rendering layer so
+            // a later PATCH cannot send an absolute browser URL back.
+            image: { ...item.image },
+          })),
+        }
+      : undefined,
     answer: dto.answer || dto.correctAnswer || "",
     correctAnswer: dto.correctAnswer || dto.answer,
     wrongAnswers: dto.wrongAnswers,

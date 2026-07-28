@@ -15,6 +15,8 @@ import {
   Min,
   Max,
   ValidateNested,
+  MaxLength,
+  IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -186,6 +188,76 @@ export class QuestionAudioRequestDto {
   candidateSetVersion?: number | null;
 }
 
+export class BombItemImageDto {
+  @ApiProperty({ example: '/uploads/questions/bomb-items/item.webp' })
+  @IsString()
+  @MaxLength(500)
+  url!: string;
+
+  @ApiProperty({ example: 'uploads/questions/bomb-items/item.webp' })
+  @IsString()
+  @MaxLength(500)
+  storageKey!: string;
+
+  @ApiProperty({ example: 'image/webp' })
+  @IsString()
+  @MaxLength(80)
+  mimetype!: string;
+
+  @ApiProperty({ example: 124000 })
+  @IsInt()
+  @Min(1)
+  @Max(5 * 1024 * 1024)
+  size!: number;
+}
+
+export class BombQuestionItemDto {
+  @ApiProperty({ format: 'uuid' })
+  @IsUUID()
+  id!: string;
+
+  @ApiProperty({ minimum: 0, maximum: 14 })
+  @IsInt()
+  @Min(0)
+  @Max(14)
+  order!: number;
+
+  @ApiProperty({ type: BombItemImageDto })
+  @ValidateNested()
+  @Type(() => BombItemImageDto)
+  image!: BombItemImageDto;
+
+  @ApiProperty({ type: [String], minItems: 1, maxItems: 10 })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @MaxLength(120, { each: true })
+  acceptedAnswers!: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  altText?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+export class BombQuestionContentDto {
+  @ApiProperty({ type: [BombQuestionItemDto], minItems: 10, maxItems: 15 })
+  @IsArray()
+  @ArrayMinSize(10)
+  @ArrayMaxSize(15)
+  @ValidateNested({ each: true })
+  @Type(() => BombQuestionItemDto)
+  items!: BombQuestionItemDto[];
+}
+
 export class CreateQuestionDto {
   @ApiPropertyOptional()
   @IsOptional()
@@ -241,6 +313,12 @@ export class CreateQuestionDto {
   @ValidateNested()
   @Type(() => RankedListDefinitionDto)
   rankedList?: RankedListDefinitionDto;
+
+  @ApiPropertyOptional({ type: () => BombQuestionContentDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BombQuestionContentDto)
+  bombContent?: BombQuestionContentDto;
 
   @ApiPropertyOptional()
   @IsOptional()

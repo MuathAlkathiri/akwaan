@@ -141,11 +141,31 @@ export interface CategoryPayload {
 }
 
 export type CategoryAudioPolicy = "disabled" | "optional" | "required";
-export type CategoryGameplayMode = "STANDARD" | "TOP_10";
+export type CategoryGameplayMode = "STANDARD" | "TOP_10" | "BOMB";
 
 // Question types
 export type QuestionType = "text" | "image" | "audio" | "video" | "gif";
-export type QuestionGameplayType = "standard" | "ranked_list";
+export type QuestionGameplayType =
+  | "standard"
+  | "ranked_list"
+  | "bomb_sequence";
+export interface BombItemImage {
+  url: string;
+  storageKey: string;
+  mimetype: string;
+  size: number;
+}
+export interface BombQuestionItem {
+  id: string;
+  order: number;
+  image?: BombItemImage;
+  acceptedAnswers: string[];
+  altText?: string;
+  note?: string;
+}
+export interface BombQuestionContent {
+  items: BombQuestionItem[];
+}
 export interface RankedListEntry {
   id?: string;
   clientId?: string;
@@ -303,6 +323,7 @@ export interface Question {
   turnDurationSeconds?: number;
   maxStrikesPerTeam?: number;
   rankedList?: RankedListDefinition;
+  bombContent?: BombQuestionContent;
   answer: string;
   correctAnswer?: string;
   wrongAnswers?: string[];

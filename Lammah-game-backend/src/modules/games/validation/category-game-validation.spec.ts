@@ -271,7 +271,11 @@ describe('category gameplay validation', () => {
       {} as never,
       new RankedListQuestionPolicy(),
     );
-    const registry = new CategoryGameValidationRegistry(standard, top10);
+    const registry = new CategoryGameValidationRegistry(
+      standard,
+      top10,
+      {} as never,
+    );
     expect(registry.resolve(CategoryGameplayMode.STANDARD)).toBe(standard);
     expect(registry.resolve(CategoryGameplayMode.TOP_10)).toBe(top10);
   });

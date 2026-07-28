@@ -23,6 +23,10 @@ export class MutateQuestionService {
   uploadImage(id: string, file: UploadedImageFile) {
     return this.questions.uploadImage(id, file);
   }
+
+  uploadBombItemImage(file: UploadedImageFile) {
+    return this.questions.uploadBombItemImage(file);
+  }
   removeImage(id: string) {
     return this.questions.removeImage(id);
   }

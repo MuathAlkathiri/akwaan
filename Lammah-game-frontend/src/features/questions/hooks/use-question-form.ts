@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCategories } from "@/features/categories";
 import { showToast } from "@/components/ui/toast";
 import { getApiErrorMessage, getEntityId } from "@/lib/utils";
-import type { Question, RankedListEntry } from "@/types";
+import type { BombQuestionItem, Question, RankedListEntry } from "@/types";
 
 import {
   useCreateQuestion,
@@ -15,6 +15,7 @@ import {
   useQuestionAudioActions,
   useQuestionAudioCandidates,
   useQuestionImageActions,
+  useBombItemImageUpload,
 } from "./use-questions";
 
 import {
@@ -99,6 +100,7 @@ export function useQuestionForm({
   const patchQuestion = usePatchQuestion();
 
   const imageActions = useQuestionImageActions();
+  const bombImageUpload = useBombItemImageUpload();
 
   const audioActions = useQuestionAudioActions();
 
@@ -116,6 +118,9 @@ export function useQuestionForm({
 
   const [rankedEntries, setRankedEntries] = useState<RankedListEntry[]>(
     question?.rankedList?.entries ?? createDefaultRankedListEntries(),
+  );
+  const [bombItems, setBombItems] = useState<BombQuestionItem[]>(
+    question?.bombContent?.items ?? [],
   );
 
   const [rowWarnings, setRowWarnings] = useState<Record<number, string[]>>({});
@@ -140,6 +145,7 @@ export function useQuestionForm({
   const values = watch();
 
   const isTop10 = values.authoringType === "top10";
+  const isBomb = values.authoringType === "bomb";
 
   const isAudio = values.authoringType === "audio";
 
@@ -184,6 +190,14 @@ export function useQuestionForm({
   }, [isTop10, setValue]);
 
   useEffect(() => {
+    if (selectedCategory?.gameplayMode === "BOMB") {
+      setValue("authoringType", "bomb");
+    } else if (values.authoringType === "bomb") {
+      setValue("authoringType", "text");
+    }
+  }, [selectedCategory?.gameplayMode, setValue, values.authoringType]);
+
+  useEffect(() => {
     setStoredImageUrl(getCanonicalImageUrl(question));
   }, [question, questionId]);
 
@@ -198,6 +212,12 @@ export function useQuestionForm({
 
     setRowWarnings(getRankedListConflictRows(entries));
 
+    setLocalDirty(true);
+    setSaved(false);
+  };
+
+  const updateBombItems = (items: BombQuestionItem[]) => {
+    setBombItems(items.map((item, order) => ({ ...item, order })));
     setLocalDirty(true);
     setSaved(false);
   };
@@ -256,12 +276,35 @@ export function useQuestionForm({
 
         return;
       }
+      if (
+        isBomb &&
+        (bombItems.length < 10 ||
+          bombItems.length > 15 ||
+          bombItems.some(
+            (item) =>
+              !item.image ||
+              item.acceptedAnswers.length < 1 ||
+              new Set(
+                item.acceptedAnswers.map((answer) =>
+                  answer.trim().replace(/\s+/g, " ").toLocaleLowerCase(),
+                ),
+              ).size !== item.acceptedAnswers.length,
+          ))
+      ) {
+        showToast({
+          type: "error",
+          message:
+            "أسئلة القنبلة تحتاج 10–15 عناصر، ولكل عنصر صورة وإجابة فريدة واحدة على الأقل.",
+        });
+        return;
+      }
 
       const payload = buildQuestionPayload({
         data,
         question,
         acceptedAnswers,
         rankedEntries,
+        bombItems,
         forcedStatus,
       });
 
@@ -412,7 +455,8 @@ export function useQuestionForm({
     patchQuestion.isPending ||
     audioActions.isPending ||
     imageActions.isUploading ||
-    imageActions.isRemoving;
+    imageActions.isRemoving ||
+    bombImageUpload.isPending;
 
   return {
     form: {
@@ -429,6 +473,7 @@ export function useQuestionForm({
       questionId,
 
       isTop10,
+      isBomb,
       isAudio,
       isVideo,
       isImage,
@@ -438,6 +483,7 @@ export function useQuestionForm({
 
       acceptedAnswers,
       rankedEntries,
+      bombItems,
       rowWarnings,
 
       generationWarning: aliasGeneration.warning,
@@ -471,11 +517,13 @@ export function useQuestionForm({
 
       updateAcceptedAnswers,
       updateRankedEntries,
+      updateBombItems,
 
       generateStandardAliases,
       generateRankedAliases,
 
       uploadImage,
+      uploadBombItemImage: bombImageUpload.upload,
       removeImage,
 
       previewCurrentClip,

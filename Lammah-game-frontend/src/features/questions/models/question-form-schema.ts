@@ -3,7 +3,14 @@ import { parseTimeToSeconds } from "./media-time";
 
 export const questionFormSchema = z
   .object({
-    authoringType: z.enum(["text", "image", "audio", "video", "top10"]),
+    authoringType: z.enum([
+      "text",
+      "image",
+      "audio",
+      "video",
+      "top10",
+      "bomb",
+    ]),
     categoryId: z.string().min(1, "الفئة مطلوبة"),
     question: z.string().min(1, "السؤال مطلوب"),
     questionEn: z.string().optional(),
@@ -32,7 +39,10 @@ export const questionFormSchema = z
     clipStartTime: z.string().optional(),
   })
   .superRefine((value, context) => {
-    if (value.authoringType !== "top10" && !value.answer?.trim()) {
+    if (
+      !["top10", "bomb"].includes(value.authoringType) &&
+      !value.answer?.trim()
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["answer"],

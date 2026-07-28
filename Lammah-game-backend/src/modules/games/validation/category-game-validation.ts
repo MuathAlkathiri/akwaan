@@ -6,7 +6,9 @@ import {
   CategoryGameplayMode,
 } from '../../categories/schemas/category.schema';
 import {
+  DifficultyLevel,
   Question,
+  QuestionGameplayType,
   QuestionPoints,
 } from '../../questions/schemas/question.schema';
 import {
@@ -22,6 +24,8 @@ import {
   QuestionInGame,
 } from '../schemas/game.schema';
 import { QuestionSelectorService } from '../selectors/question-selector.service';
+import { BombQuestionPolicy } from '../../questions/application/bomb-question.policy';
+import { QuestionsService } from '../../questions/questions.service';
 
 export type CategoryGameValidationIssue = {
   code: string;
@@ -270,6 +274,96 @@ export class Top10CategoryGameValidation implements CategoryGameValidationStrate
 }
 
 @Injectable()
+export class BombCategoryGameValidation implements CategoryGameValidationStrategy {
+  readonly gameplayMode = CategoryGameplayMode.BOMB;
+
+  constructor(
+    private readonly selector: QuestionSelectorService,
+    private readonly bombQuestions: BombQuestionPolicy,
+    private readonly questionsService: QuestionsService,
+  ) {}
+
+  async validate(
+    context: CategoryGameValidationContext,
+  ): Promise<CategoryGameValidationResult> {
+    const readiness = await this.questionsService.bombReadiness(
+      String(context.category._id),
+    );
+    if (!readiness.isComplete) {
+      return failed(this.gameplayMode, {
+        code: 'BOMB_CATEGORY_NOT_READY',
+        message:
+          'Bomb category must pass readiness before it can be added to a game.',
+        ...categoryDetails(context.category),
+        gameplayMode: this.gameplayMode,
+        requiredCounts: { easy: 2, medium: 2, hard: 2 },
+        actualCounts: {
+          easy: readiness.easy,
+          medium: readiness.medium,
+          hard: readiness.hard,
+          invalid: readiness.invalidQuestionCount,
+        },
+      });
+    }
+    const distributions = await Promise.all(
+      [
+        [DifficultyLevel.EASY, QuestionPoints.LOW],
+        [DifficultyLevel.MEDIUM, QuestionPoints.MEDIUM],
+        [DifficultyLevel.HARD, QuestionPoints.HIGH],
+      ].map(async ([difficulty, points]) => ({
+        difficulty: difficulty as DifficultyLevel,
+        points: points as QuestionPoints,
+        questions: await this.selector.selectBomb({
+          categoryId: String(context.category._id),
+          difficulty: difficulty as DifficultyLevel,
+          seenQuestionIds: context.seenQuestionIds,
+        }),
+      })),
+    );
+    const counts = Object.fromEntries(
+      distributions.map(({ difficulty, questions }) => [
+        difficulty,
+        questions.length,
+      ]),
+    );
+    const invalid = distributions
+      .flatMap(({ questions }) => questions)
+      .find((question) => !this.bombQuestions.isValid(question.bombContent));
+    const missing = distributions.find(
+      ({ questions }) => questions.length !== 2,
+    );
+    if (missing || invalid) {
+      return failed(this.gameplayMode, {
+        code: invalid ? 'BOMB_INVALID_QUESTION' : 'BOMB_CATEGORY_NOT_READY',
+        message: invalid
+          ? 'Bomb category contains an invalid approved Bomb question.'
+          : 'Bomb category requires at least two valid approved questions for each difficulty.',
+        ...categoryDetails(context.category),
+        gameplayMode: this.gameplayMode,
+        ...(invalid ? { questionId: String(invalid._id) } : {}),
+        requiredCounts: { easy: 2, medium: 2, hard: 2 },
+        actualCounts: counts,
+      });
+    }
+    const questions = distributions.flatMap(({ questions }) => questions);
+    return {
+      status: 'PASS',
+      gameplayMode: this.gameplayMode,
+      questions,
+      boardQuestions: distributions.flatMap(({ points, questions }) =>
+        questions.map((question) => ({
+          question: question._id,
+          points: points as 200 | 400 | 600,
+          isAnswered: false,
+          isAnswerRevealed: false,
+        })),
+      ),
+      issues: [],
+    };
+  }
+}
+
+@Injectable()
 export class CategoryGameValidationRegistry {
   private readonly strategies: Map<
     CategoryGameplayMode,
@@ -279,6 +373,7 @@ export class CategoryGameValidationRegistry {
   constructor(
     standard: StandardCategoryGameValidation,
     top10: Top10CategoryGameValidation,
+    bomb: BombCategoryGameValidation,
   ) {
     this.strategies = new Map<
       CategoryGameplayMode,
@@ -286,6 +381,7 @@ export class CategoryGameValidationRegistry {
     >([
       [standard.gameplayMode, standard],
       [top10.gameplayMode, top10],
+      [bomb.gameplayMode, bomb],
     ]);
   }
 
@@ -379,7 +475,7 @@ export class CategoryGameAssembler {
 
       let snapshot: GameQuestionSnapshot;
 
-      if (question.questionType === 'ranked_list') {
+      if (question.questionType === QuestionGameplayType.RANKED_LIST) {
         if (!question.rankedList) {
           throw new BadRequestException({
             code: 'RANKED_LIST_DATA_MISSING',
@@ -405,6 +501,26 @@ export class CategoryGameAssembler {
               answer: { ...entry.answer },
               aliases: [...entry.aliases],
               points: entry.points,
+            })),
+          },
+        };
+      } else if (question.questionType === QuestionGameplayType.BOMB_SEQUENCE) {
+        if (!this.bombContentValid(question)) {
+          throw new BadRequestException({
+            code: 'BOMB_CONTENT_MISSING',
+            message: 'Bomb question is missing valid ordered item content.',
+            questionId: String(question._id),
+          });
+        }
+        snapshot = {
+          ...baseSnapshot,
+          questionType: 'bomb_sequence',
+          bombContent: {
+            items: question.bombContent!.items.map((item, order) => ({
+              ...item,
+              order,
+              image: { ...item.image },
+              acceptedAnswers: [...item.acceptedAnswers],
             })),
           },
         };
@@ -455,5 +571,14 @@ export class CategoryGameAssembler {
       };
     });
     return { ...result, boardQuestions };
+  }
+
+  private bombContentValid(question: Question): boolean {
+    return (
+      question.questionType === QuestionGameplayType.BOMB_SEQUENCE &&
+      Array.isArray(question.bombContent?.items) &&
+      question.bombContent.items.length >= 10 &&
+      question.bombContent.items.length <= 15
+    );
   }
 }

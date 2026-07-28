@@ -29,7 +29,7 @@ const categorySchema = z.object({
   catalogId: z.string().min(1, "الكتالوج مطلوب"),
   isActive: z.boolean(),
   audioPolicy: z.enum(["disabled", "optional", "required"]),
-  gameplayMode: z.enum(["STANDARD", "TOP_10"]),
+  gameplayMode: z.enum(["STANDARD", "TOP_10", "BOMB"]),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -258,6 +258,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
                 Standard trivia — أسئلة قياسية
               </SelectItem>
               <SelectItem value="TOP_10">Top 10 — أفضل عشرة</SelectItem>
+              <SelectItem value="BOMB">Bomb — القنبلة</SelectItem>
             </SelectContent>
           </Select>
           <p className="mt-2 text-xs text-muted-foreground">

@@ -108,7 +108,7 @@ export function QuestionsList({
                   <CardTitle className="text-xl font-black leading-snug">
                     {question.question}
                   </CardTitle>
-                  {question.questionType !== "ranked_list" && (
+                  {question.questionType === "standard" && (
                     <p className="mt-1 text-sm text-muted-foreground">
                       الإجابة:{" "}
                       <span className="font-semibold">{question.answer}</span>
@@ -122,6 +122,9 @@ export function QuestionsList({
                       ? "Top 10"
                       : getDifficultyLabel(question.difficulty)}
                   </Badge>
+                  {question.questionType === "bomb_sequence" && (
+                    <Badge>Bomb · {question.bombContent?.items.length ?? 0} عناصر</Badge>
+                  )}
                   <Badge variant="outline">
                     {getQuestionTypeLabel(question.type)}
                   </Badge>

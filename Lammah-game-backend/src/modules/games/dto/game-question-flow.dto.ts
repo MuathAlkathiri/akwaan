@@ -18,8 +18,8 @@ export class GameQuestionViewResponseDto {
   category!: GameQuestionCategoryResponseDto;
   @ApiProperty({ enum: [200, 400, 600] }) points!: 200 | 400 | 600;
   @ApiProperty() question!: string;
-  @ApiProperty({ enum: ['standard', 'ranked_list'] })
-  questionType!: 'standard' | 'ranked_list';
+  @ApiProperty({ enum: ['standard', 'ranked_list', 'bomb_sequence'] })
+  questionType!: 'standard' | 'ranked_list' | 'bomb_sequence';
   @ApiProperty() isAnswered!: boolean;
   @ApiProperty() isAnswerRevealed!: boolean;
   @ApiPropertyOptional({ type: GameQuestionPresentationResponseDto })

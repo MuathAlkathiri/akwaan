@@ -25,6 +25,7 @@ interface QuestionContentSectionProps {
   register: UseFormRegister<QuestionFormData>;
   errors: FieldErrors<QuestionFormData>;
   isTop10: boolean;
+  isBomb: boolean;
 
   acceptedAnswers: string[];
   onAcceptedAnswersChange: (answers: string[]) => void;
@@ -38,6 +39,7 @@ export function QuestionContentSection({
   register,
   errors,
   isTop10,
+  isBomb,
   acceptedAnswers,
   onAcceptedAnswersChange,
   onGenerateAliases,
@@ -80,7 +82,7 @@ export function QuestionContentSection({
           </div>
         )}
 
-        {!isTop10 && (
+        {!isTop10 && !isBomb && (
           <>
             <div>
               <label className="mb-2 block text-sm font-medium">

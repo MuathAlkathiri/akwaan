@@ -2,6 +2,15 @@ import axios, { AxiosInstance, AxiosError } from "axios";
 import { runtimeConfig } from "@/config/runtime-config";
 import { authStorage } from "@/features/auth/storage/auth-storage";
 
+declare module "axios" {
+  export interface AxiosRequestConfig {
+    skipAuthRedirect?: boolean;
+  }
+  export interface InternalAxiosRequestConfig {
+    skipAuthRedirect?: boolean;
+  }
+}
+
 let redirectingToLogin = false;
 
 const apiClient: AxiosInstance = axios.create({
@@ -16,7 +25,7 @@ apiClient.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
       const token = authStorage.getToken();
-      if (token) {
+      if (token && !config.headers.Authorization) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
@@ -40,7 +49,11 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
-    if (error.response?.status === 401 && typeof window !== "undefined") {
+    if (
+      error.response?.status === 401 &&
+      !error.config?.skipAuthRedirect &&
+      typeof window !== "undefined"
+    ) {
       authStorage.clear();
       if (window.location.pathname !== "/login" && !redirectingToLogin) {
         redirectingToLogin = true;

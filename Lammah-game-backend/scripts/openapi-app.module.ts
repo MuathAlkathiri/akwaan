@@ -36,6 +36,7 @@ import { QuestionAudioReviewService } from '../src/modules/questions/application
 import { RankedListRoundService } from '../src/modules/games/application/ranked-list-round.service';
 import { AcceptedAnswerExpansionService } from '../src/modules/questions/application/accepted-answer-expansion.service';
 import { GameQuestionFlowService } from '../src/modules/games/application/game-question-flow.service';
+import { AiAgentService } from '../src/modules/ai-agent/ai-agent.service';
 
 const documentationOnlyProvider = (provide: InjectionToken) => ({
   provide,
@@ -83,6 +84,7 @@ const documentationOnlyProvider = (provide: InjectionToken) => ({
     ConfigService,
     QuestionDuplicateDetectionService,
     QuestionAudioReviewService,
+    AiAgentService,
     SubscriptionsService,
   ].map(documentationOnlyProvider),
 })

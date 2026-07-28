@@ -42,5 +42,8 @@
     "api:migration:check": "npm run api:migration:check --workspace Lammah-game-frontend",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run api:check && npm run api:generate:check && npm run api:migration:check && npm run build",
     "verify:full": "npm run verify && npm run test:backend:integration:docker && npm run test:media:integration:docker && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@nestjs/platform-express": "10.4.22"
   }
 }

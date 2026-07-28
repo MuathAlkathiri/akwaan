@@ -315,7 +315,7 @@ export const aiGenerateReviewed = (
 };
 
 export const getAiGenerateReviewedMutationOptions = <
-  TError = GenerateReviewedQuestionsErrorResponseDto | unknown,
+  TError = GenerateReviewedQuestionsErrorResponseDto,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -357,13 +357,13 @@ export type AiGenerateReviewedMutationResult = NonNullable<
 >;
 export type AiGenerateReviewedMutationBody = GenerateReviewedQuestionsDto;
 export type AiGenerateReviewedMutationError =
-  GenerateReviewedQuestionsErrorResponseDto | unknown;
+  GenerateReviewedQuestionsErrorResponseDto;
 
 /**
  * @summary Generate reviewed AI question drafts without saving them
  */
 export const useAiGenerateReviewed = <
-  TError = GenerateReviewedQuestionsErrorResponseDto | unknown,
+  TError = GenerateReviewedQuestionsErrorResponseDto,
   TContext = unknown,
 >(
   options?: {

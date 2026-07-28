@@ -26,6 +26,7 @@ import { MediaInfrastructureModule } from '../../infrastructure/media/media-infr
 import { AudioRequestIdentityService } from './application/audio-request-identity.service';
 import { AudioSearchQueryBuilder } from './application/audio-search-query-builder.service';
 import { RankedListQuestionPolicy } from './application/ranked-list-question.policy';
+import { BombQuestionPolicy } from './application/bomb-question.policy';
 import { LlmClientService } from '../ai-agent/infrastructure/ai/llm-client.service';
 import { AcceptedAnswerExpansionService } from './application/accepted-answer-expansion.service';
 import { QuestionMediaRepairService } from './application/question-media-repair.service';
@@ -59,6 +60,7 @@ import { QuestionMediaAvailabilityPolicy } from './application/question-media-av
     AudioRequestIdentityService,
     AudioSearchQueryBuilder,
     RankedListQuestionPolicy,
+    BombQuestionPolicy,
     LlmClientService,
     AcceptedAnswerExpansionService,
     QuestionMediaRepairService,
@@ -70,6 +72,7 @@ import { QuestionMediaAvailabilityPolicy } from './application/question-media-av
     QuestionRepository,
     AudioQuestionCatalogService,
     RankedListQuestionPolicy,
+    BombQuestionPolicy,
     QuestionMediaRepairService,
     QuestionMediaAvailabilityPolicy,
   ],

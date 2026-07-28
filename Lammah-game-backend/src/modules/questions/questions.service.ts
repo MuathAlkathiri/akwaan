@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { Question } from './schemas/question.schema';
@@ -29,6 +30,7 @@ import {
   QuestionStatus,
   QuestionType,
   QuestionGameplayType,
+  BombQuestionItem,
 } from './schemas/question.schema';
 import {
   LocalImageStorageService,
@@ -41,6 +43,8 @@ import { AudioRequestIdentityService } from './application/audio-request-identit
 import { AudioRetryMode } from './application/question-audio-job.types';
 import { RankedListQuestionPolicy } from './application/ranked-list-question.policy';
 import { normalizeAnswer } from '../../common/utils/answer-normalization.util';
+import { BombQuestionPolicy } from './application/bomb-question.policy';
+import { CategoryGameplayMode } from '../categories/schemas/category.schema';
 
 export function sanitizeStandardAcceptedAnswers(
   values: string[] | undefined,
@@ -66,6 +70,8 @@ export function sanitizeStandardAcceptedAnswers(
 
 @Injectable()
 export class QuestionsService {
+  private readonly logger = new Logger(QuestionsService.name);
+
   constructor(
     private readonly questions: QuestionRepository,
     private categoriesService: CategoriesService,
@@ -76,6 +82,7 @@ export class QuestionsService {
     private readonly audioJobs: QuestionAudioJobService,
     private readonly audioIdentities: AudioRequestIdentityService,
     private readonly rankedLists: RankedListQuestionPolicy,
+    private readonly bombQuestions: BombQuestionPolicy,
   ) {}
 
   async create(
@@ -161,6 +168,56 @@ export class QuestionsService {
 
   async findAllWithAnswers(): Promise<Question[]> {
     return this.questions.findAll(true);
+  }
+
+  async uploadBombItemImage(file: UploadedImageFile) {
+    const stored = await this.imageStorage.save(file, {
+      directory: ['questions', 'bomb-items'],
+      filenamePrefix: 'bomb-item',
+    });
+    return {
+      url: stored.url,
+      storageKey: stored.path,
+      mimetype: stored.mimetype,
+      size: stored.size,
+    };
+  }
+
+  async bombReadiness(categoryId: string) {
+    const category =
+      await this.categoriesService.findByIdForQuestionAuthoring(categoryId);
+    if (
+      (category.gameplayMode ?? CategoryGameplayMode.STANDARD) !==
+      CategoryGameplayMode.BOMB
+    ) {
+      throw new BadRequestException({
+        code: 'CATEGORY_NOT_BOMB',
+        message: 'Bomb readiness is available only for Bomb categories.',
+      });
+    }
+    const questions =
+      await this.questions.findBombReadinessQuestions(categoryId);
+    const counts = { easy: 0, medium: 0, hard: 0 };
+    let invalidQuestionCount = 0;
+    for (const question of questions) {
+      if (
+        question.questionType !== QuestionGameplayType.BOMB_SEQUENCE ||
+        !this.bombQuestions.isValid(question.bombContent)
+      ) {
+        invalidQuestionCount += 1;
+        continue;
+      }
+      if (question.status === QuestionStatus.APPROVED) {
+        counts[question.difficulty] += 1;
+      }
+    }
+    const total = counts.easy + counts.medium + counts.hard;
+    return {
+      ...counts,
+      total,
+      invalidQuestionCount,
+      isComplete: counts.easy >= 2 && counts.medium >= 2 && counts.hard >= 2,
+    };
   }
 
   async findAiGenerated(filters: QueryQuestionsDto) {
@@ -324,6 +381,7 @@ export class QuestionsService {
       throw new NotFoundException(`Question with ID "${id}" not found`);
     }
 
+    await this.deleteUnusedBombImages(existingQuestion, question);
     return question;
   }
 
@@ -430,6 +488,7 @@ export class QuestionsService {
       await this.audioStorage.delete({
         absolutePath: existing.audioAsset.localPath,
       });
+    await this.deleteBombImages(existing?.bombContent?.items);
   }
 
   async findByIdAndPoints(
@@ -463,6 +522,20 @@ export class QuestionsService {
     const catalogId = this.resolveCatalogObjectId(category);
     const policy = category?.audioPolicy ?? CategoryAudioPolicy.OPTIONAL;
     const rankedListFields = this.rankedLists.normalize(dto, existing);
+    const categoryMode =
+      category?.gameplayMode ?? CategoryGameplayMode.STANDARD;
+    const questionType =
+      dto.questionType ??
+      existing?.questionType ??
+      (categoryMode === CategoryGameplayMode.BOMB
+        ? QuestionGameplayType.BOMB_SEQUENCE
+        : QuestionGameplayType.STANDARD);
+    const bombContent = this.bombQuestions.normalize({
+      categoryMode,
+      questionType,
+      bombContent: dto.bombContent,
+      existing,
+    });
     const acceptedAnswers = sanitizeStandardAcceptedAnswers(
       dto.acceptedAnswers,
       answer ?? existing?.answer,
@@ -499,7 +572,8 @@ export class QuestionsService {
     const isRankedList =
       (dto.questionType ?? existing?.questionType) ===
       QuestionGameplayType.RANKED_LIST;
-    if (requireCoreFields && !answer && !isRankedList) {
+    const isBomb = questionType === QuestionGameplayType.BOMB_SEQUENCE;
+    if (requireCoreFields && !answer && !isRankedList && !isBomb) {
       throw new BadRequestException('Answer or correctAnswer is required');
     }
 
@@ -509,6 +583,8 @@ export class QuestionsService {
 
     return {
       ...payload,
+      questionType,
+      ...(bombContent ? { bombContent } : {}),
       ...(answer ? { answer } : {}),
       ...(correctAnswer ? { correctAnswer } : {}),
       ...(points ? { points } : {}),
@@ -552,6 +628,39 @@ export class QuestionsService {
     delete content.assetFailureStep;
     delete content.assetFailureDiagnostics;
     return content as UpdateQuestionDto;
+  }
+
+  private async deleteUnusedBombImages(
+    previous: Pick<Question, 'bombContent'>,
+    next: Pick<Question, 'bombContent'>,
+  ): Promise<void> {
+    const retainedKeys = new Set(
+      (next.bombContent?.items ?? []).map((item) => item.image.storageKey),
+    );
+    await this.deleteBombImages(
+      (previous.bombContent?.items ?? []).filter(
+        (item) => !retainedKeys.has(item.image.storageKey),
+      ),
+    );
+  }
+
+  private async deleteBombImages(
+    items: BombQuestionItem[] | undefined,
+  ): Promise<void> {
+    if (!items) return;
+    const imageItems = Array.from(items);
+    const results = await Promise.allSettled(
+      imageItems.map((item) =>
+        this.imageStorage.delete({ path: item.image.storageKey }),
+      ),
+    );
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        this.logger.warn(
+          `Failed to remove Bomb item image ${imageItems[index].image.storageKey}: ${String(result.reason)}`,
+        );
+      }
+    });
   }
 
   private resolveCatalogObjectId(

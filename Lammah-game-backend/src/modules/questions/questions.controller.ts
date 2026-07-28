@@ -39,6 +39,8 @@ import {
   QuestionListResponseDto,
   QuestionMutationResponseDto,
   QuestionAudioCandidatesResponseDto,
+  BombItemImageMutationResponseDto,
+  BombCategoryReadinessEnvelopeDto,
 } from './dto/question-response.dto';
 import {
   CreateQuestionDto,
@@ -371,6 +373,45 @@ export class AdminQuestionsController {
     private readonly acceptedAnswers: AcceptedAnswerExpansionService,
     private readonly mutations: MutateQuestionService,
   ) {}
+
+  @Post('bomb-item-images')
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(questionMediaImageUploadInterceptor)
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiOperation({
+    operationId: 'questionsUploadBombItemImage',
+    summary: 'Upload a managed image for a Bomb sequence item',
+  })
+  @ApiResponse({ status: 201, type: BombItemImageMutationResponseDto })
+  async uploadBombItemImage(@UploadedFile() file?: UploadedImageFile) {
+    if (!file)
+      throw new BadRequestException({
+        code: 'BOMB_ITEM_IMAGE_FILE_REQUIRED',
+        message: 'A Bomb item image is required.',
+      });
+    return {
+      data: await this.mutations.uploadBombItemImage(file),
+    };
+  }
+
+  @Get('bomb-readiness/:categoryId')
+  @ApiOperation({
+    operationId: 'questionsGetBombReadiness',
+    summary: 'Get authoritative Bomb category authoring readiness',
+  })
+  @ApiResponse({ status: 200, type: BombCategoryReadinessEnvelopeDto })
+  async bombReadiness(@Param('categoryId') categoryId: string) {
+    return { data: await this.queries.bombReadiness(categoryId) };
+  }
 
   @Post('accepted-answers/generate')
   @ApiOperation({

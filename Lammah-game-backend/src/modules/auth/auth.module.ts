@@ -42,6 +42,6 @@ import { PasswordHasherService } from './infrastructure/password-hasher.service'
     JwtTokenProvider,
     PasswordHasherService,
   ],
-  exports: [AuthService],
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

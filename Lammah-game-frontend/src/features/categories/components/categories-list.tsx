@@ -14,6 +14,7 @@ import { useCategories, useDeleteCategory } from "../hooks/use-categories";
 import { getEntityId } from "@/lib/utils";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { DeleteDialog, EmptyState, LoadingState } from "@/components/shared";
+import { BombCategoryReadiness } from "./bomb-category-readiness";
 
 export function CategoriesList() {
   const router = useRouter();
@@ -77,6 +78,9 @@ export function CategoriesList() {
                     <Badge variant="outline" className="mt-3">
                       {catalogName}
                     </Badge>
+                  )}
+                  {category.gameplayMode === "BOMB" && (
+                    <BombCategoryReadiness categoryId={categoryId} />
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-2">

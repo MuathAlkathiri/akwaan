@@ -2,6 +2,7 @@ import type {
   AudioQuestionKind,
   Question,
   RankedListEntry,
+  BombQuestionItem,
 } from "@/types";
 
 import { mediaTimingPayload } from "./media-time";
@@ -12,6 +13,7 @@ interface BuildQuestionPayloadParams {
   question?: Question;
   acceptedAnswers: string[];
   rankedEntries: RankedListEntry[];
+  bombItems: BombQuestionItem[];
   forcedStatus?: "draft";
 }
 
@@ -20,13 +22,16 @@ export function buildQuestionPayload({
   question,
   acceptedAnswers,
   rankedEntries,
+  bombItems,
   forcedStatus,
 }: BuildQuestionPayloadParams): Partial<Question> {
   const isTop10 = data.authoringType === "top10";
+  const isBomb = data.authoringType === "bomb";
   const isAudio = data.authoringType === "audio";
   const isVideo = data.authoringType === "video";
   const isImage = data.authoringType === "image";
   const isMedia = isAudio || isVideo;
+  const usesStructuredAnswers = isTop10 || isBomb;
 
   const timing = mediaTimingPayload(data);
 
@@ -54,7 +59,9 @@ export function buildQuestionPayload({
 
     questionType: isTop10
       ? "ranked_list"
-      : "standard",
+      : isBomb
+        ? "bomb_sequence"
+        : "standard",
 
     text: isTop10
       ? {
@@ -63,13 +70,12 @@ export function buildQuestionPayload({
         }
       : undefined,
 
-    answer: isTop10
-      ? undefined
-      : data.answer?.trim(),
-
-    acceptedAnswers: isTop10
-      ? undefined
-      : acceptedAnswers,
+    ...(!usesStructuredAnswers
+      ? {
+          answer: data.answer?.trim(),
+          acceptedAnswers,
+        }
+      : {}),
 
     explanation:
       data.explanation?.trim() || undefined,
@@ -103,6 +109,20 @@ export function buildQuestionPayload({
           ),
         }
       : undefined,
+    bombContent: isBomb
+      ? {
+          items: bombItems.map((item, order) => ({
+            ...item,
+            order,
+            image: item.image
+              ? {
+                  ...item.image,
+                  url: `/${item.image.storageKey.replace(/^\/+/, "")}`,
+                }
+              : item.image!,
+          })),
+        }
+      : undefined,
 
     type: isVideo
       ? "video"
@@ -110,7 +130,9 @@ export function buildQuestionPayload({
         ? "audio"
         : isImage
           ? "image"
-          : "text",
+          : isBomb
+            ? "image"
+            : "text",
 
     status: forcedStatus ?? data.status,
     source: question?.source ?? "manual",

@@ -28,6 +28,8 @@ import {
   useQuestionsGenerateRankedAcceptedAnswers,
   useQuestionsUploadImage,
   useQuestionsRemoveImage,
+  useQuestionsUploadBombItemImage,
+  useQuestionsGetBombReadiness,
 } from "@/api/generated/admin-questions/admin-questions";
 import type {
   ErrorResponseDto,
@@ -196,6 +198,23 @@ export function useQuestionImageActions() {
     error: upload.error ?? remove.error,
   };
 }
+
+export function useBombItemImageUpload() {
+  const mutation = useQuestionsUploadBombItemImage<QuestionApiError>();
+  return {
+    upload: async (file: File) => {
+      const response = await mutation.mutateAsync({ data: { file } });
+      return response.data;
+    },
+    isPending: mutation.isPending,
+    error: mutation.error,
+  };
+}
+
+export const useBombReadiness = (categoryId: string, enabled = true) =>
+  useQuestionsGetBombReadiness(categoryId, {
+    query: { enabled: Boolean(categoryId && enabled) },
+  });
 export function useUpdateQuestion(id: string) {
   const patch = usePatchQuestion();
   return {

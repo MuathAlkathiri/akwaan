@@ -13,4 +13,5 @@ export type GameQuestionViewResponseDtoQuestionType =
 export const GameQuestionViewResponseDtoQuestionType = {
   standard: "standard",
   ranked_list: "ranked_list",
+  bomb_sequence: "bomb_sequence",
 } as const;

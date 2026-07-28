@@ -13,4 +13,5 @@ export type QuestionGameplayType =
 export const QuestionGameplayType = {
   standard: "standard",
   ranked_list: "ranked_list",
+  bomb_sequence: "bomb_sequence",
 } as const;

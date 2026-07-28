@@ -8,6 +8,7 @@
 import type { QuestionGameplayType } from "./questionGameplayType";
 import type { LocalizedQuestionTextDto } from "./localizedQuestionTextDto";
 import type { RankedListDefinitionDto } from "./rankedListDefinitionDto";
+import type { BombQuestionContentDto } from "./bombQuestionContentDto";
 import type { DifficultyLevel } from "./difficultyLevel";
 import type { QuestionResponseDtoPoints } from "./questionResponseDtoPoints";
 import type { QuestionResponseDtoScore } from "./questionResponseDtoScore";
@@ -47,6 +48,7 @@ export interface QuestionResponseDto {
   turnDurationSeconds?: number;
   maxStrikesPerTeam?: number;
   rankedList?: RankedListDefinitionDto;
+  bombContent?: BombQuestionContentDto;
   answer?: string;
   correctAnswer?: string;
   wrongAnswers: string[];

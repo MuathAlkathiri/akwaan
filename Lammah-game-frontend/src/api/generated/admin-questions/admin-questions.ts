@@ -23,6 +23,8 @@ import type {
 
 import type {
   AcceptedAnswerGenerationResponseDto,
+  BombCategoryReadinessEnvelopeDto,
+  BombItemImageMutationResponseDto,
   BulkQuestionActionDto,
   BulkQuestionActionResponseDto,
   CheckQuestionDuplicatesDto,
@@ -34,6 +36,7 @@ import type {
   QuestionListResponseDto,
   QuestionsListAiGeneratedParams,
   QuestionsUploadAudioBody,
+  QuestionsUploadBombItemImageBody,
   QuestionsUploadImageBody,
   RankedAcceptedAnswerGenerationResponseDto,
   RetryQuestionAudioDto,
@@ -44,6 +47,272 @@ import type {
 import { orvalMutator } from "../../orval-mutator";
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Upload a managed image for a Bomb sequence item
+ */
+export const questionsUploadBombItemImage = (
+  questionsUploadBombItemImageBody: QuestionsUploadBombItemImageBody,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  const formData = new FormData();
+  formData.append(`file`, questionsUploadBombItemImageBody.file);
+
+  return orvalMutator<BombItemImageMutationResponseDto>(
+    {
+      url: `/admin/questions/bomb-item-images`,
+      method: "POST",
+      headers: { "Content-Type": "multipart/form-data" },
+      data: formData,
+      signal,
+    },
+    options,
+  );
+};
+
+export const getQuestionsUploadBombItemImageMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof questionsUploadBombItemImage>>,
+    TError,
+    { data: QuestionsUploadBombItemImageBody },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof questionsUploadBombItemImage>>,
+  TError,
+  { data: QuestionsUploadBombItemImageBody },
+  TContext
+> => {
+  const mutationKey = ["questionsUploadBombItemImage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof questionsUploadBombItemImage>>,
+    { data: QuestionsUploadBombItemImageBody }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return questionsUploadBombItemImage(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuestionsUploadBombItemImageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof questionsUploadBombItemImage>>
+>;
+export type QuestionsUploadBombItemImageMutationBody =
+  QuestionsUploadBombItemImageBody;
+export type QuestionsUploadBombItemImageMutationError = unknown;
+
+/**
+ * @summary Upload a managed image for a Bomb sequence item
+ */
+export const useQuestionsUploadBombItemImage = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof questionsUploadBombItemImage>>,
+      TError,
+      { data: QuestionsUploadBombItemImageBody },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof questionsUploadBombItemImage>>,
+  TError,
+  { data: QuestionsUploadBombItemImageBody },
+  TContext
+> => {
+  const mutationOptions =
+    getQuestionsUploadBombItemImageMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Get authoritative Bomb category authoring readiness
+ */
+export const questionsGetBombReadiness = (
+  categoryId: string,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<BombCategoryReadinessEnvelopeDto>(
+    {
+      url: `/admin/questions/bomb-readiness/${categoryId}`,
+      method: "GET",
+      signal,
+    },
+    options,
+  );
+};
+
+export const getQuestionsGetBombReadinessQueryKey = (categoryId?: string) => {
+  return [`/admin/questions/bomb-readiness/${categoryId}`] as const;
+};
+
+export const getQuestionsGetBombReadinessQueryOptions = <
+  TData = Awaited<ReturnType<typeof questionsGetBombReadiness>>,
+  TError = unknown,
+>(
+  categoryId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof questionsGetBombReadiness>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getQuestionsGetBombReadinessQueryKey(categoryId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof questionsGetBombReadiness>>
+  > = ({ signal }) =>
+    questionsGetBombReadiness(categoryId, requestOptions, signal);
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!categoryId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof questionsGetBombReadiness>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData> };
+};
+
+export type QuestionsGetBombReadinessQueryResult = NonNullable<
+  Awaited<ReturnType<typeof questionsGetBombReadiness>>
+>;
+export type QuestionsGetBombReadinessQueryError = unknown;
+
+export function useQuestionsGetBombReadiness<
+  TData = Awaited<ReturnType<typeof questionsGetBombReadiness>>,
+  TError = unknown,
+>(
+  categoryId: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof questionsGetBombReadiness>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof questionsGetBombReadiness>>,
+          TError,
+          Awaited<ReturnType<typeof questionsGetBombReadiness>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData>;
+};
+export function useQuestionsGetBombReadiness<
+  TData = Awaited<ReturnType<typeof questionsGetBombReadiness>>,
+  TError = unknown,
+>(
+  categoryId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof questionsGetBombReadiness>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof questionsGetBombReadiness>>,
+          TError,
+          Awaited<ReturnType<typeof questionsGetBombReadiness>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> };
+export function useQuestionsGetBombReadiness<
+  TData = Awaited<ReturnType<typeof questionsGetBombReadiness>>,
+  TError = unknown,
+>(
+  categoryId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof questionsGetBombReadiness>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> };
+/**
+ * @summary Get authoritative Bomb category authoring readiness
+ */
+
+export function useQuestionsGetBombReadiness<
+  TData = Awaited<ReturnType<typeof questionsGetBombReadiness>>,
+  TError = unknown,
+>(
+  categoryId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof questionsGetBombReadiness>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> } {
+  const queryOptions = getQuestionsGetBombReadinessQueryOptions(
+    categoryId,
+    options,
+  );
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData> };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
 
 /**
  * @summary Generate reviewable accepted-answer aliases during authoring

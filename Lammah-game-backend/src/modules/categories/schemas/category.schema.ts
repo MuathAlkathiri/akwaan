@@ -11,6 +11,7 @@ export enum CategoryAudioPolicy {
 export enum CategoryGameplayMode {
   STANDARD = 'STANDARD',
   TOP_10 = 'TOP_10',
+  BOMB = 'BOMB',
 }
 
 export class CategoryBanner {

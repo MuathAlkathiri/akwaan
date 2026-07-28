@@ -24,6 +24,7 @@ import {
   GameQuestionMediaValidation,
   StandardCategoryGameValidation,
   Top10CategoryGameValidation,
+  BombCategoryGameValidation,
 } from './validation/category-game-validation';
 
 @Module({
@@ -49,6 +50,7 @@ import {
     GameQuestionFlowService,
     StandardCategoryGameValidation,
     Top10CategoryGameValidation,
+    BombCategoryGameValidation,
     CategoryGameValidationRegistry,
     GameQuestionMediaValidation,
     CategoryGameAssembler,

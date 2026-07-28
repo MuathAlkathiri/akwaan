@@ -1,11 +1,15 @@
 services:
   mongodb-test:
     image: mongo:7
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports: ["127.0.0.1:27018:27017"]
     tmpfs: [/data/db]
     healthcheck:
       test:
-        ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --eval \"try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb-test:27017'}]}).ok }\" mongodb://127.0.0.1:27017/admin | grep 1",
+        ]
       interval: 2s
       timeout: 2s
       retries: 20
@@ -16,8 +20,8 @@ services:
     volumes: [".:/workspace"]
     environment:
       NODE_ENV: test
-      TEST_MONGODB_URI: mongodb://mongodb-test:27017/lammah_integration_test
-      MONGODB_URI: mongodb://mongodb-test:27017/lammah_integration_test
+      TEST_MONGODB_URI: mongodb://mongodb-test:27017/lammah_integration_test?replicaSet=rs0
+      MONGODB_URI: mongodb://mongodb-test:27017/lammah_integration_test?replicaSet=rs0
       JWT_SECRET: docker-integration-only-secret
       EXTERNAL_INTEGRATIONS_DISABLED: "true"
       NODE_PATH: /workspace/Lammah-game-backend/node_modules:/workspace/node_modules
@@ -43,8 +47,8 @@ services:
     working_dir: /app
     environment:
       NODE_ENV: test
-      TEST_MONGODB_URI: mongodb://mongodb-test:27017/lammah_e2e_test
-      MONGODB_URI: mongodb://mongodb-test:27017/lammah_e2e_test
+      TEST_MONGODB_URI: mongodb://mongodb-test:27017/lammah_e2e_test?replicaSet=rs0
+      MONGODB_URI: mongodb://mongodb-test:27017/lammah_e2e_test?replicaSet=rs0
       JWT_SECRET: docker-e2e-only-secret
       EXTERNAL_INTEGRATIONS_DISABLED: "true"
       PORT: 3000

@@ -12,6 +12,10 @@ export class QueryQuestionsService {
   listAdmin() {
     return this.questions.findAllWithAnswers();
   }
+
+  bombReadiness(categoryId: string) {
+    return this.questions.bombReadiness(categoryId);
+  }
   listAiGenerated(filters: QueryQuestionsDto) {
     return this.questions.findAiGenerated(filters);
   }

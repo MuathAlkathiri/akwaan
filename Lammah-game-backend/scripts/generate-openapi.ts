@@ -8,7 +8,9 @@ import {
 
 async function generate(): Promise<void> {
   const { OpenApiAppModule } = await import('./openapi-app.module');
-  const app = await NestFactory.create(OpenApiAppModule, { logger: false });
+  const app = await NestFactory.create(OpenApiAppModule, {
+    logger: ['error'],
+  });
   try {
     configureApiApplication(app);
     await app.init();

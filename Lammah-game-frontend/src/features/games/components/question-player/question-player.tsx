@@ -6,6 +6,7 @@ import { useGameQuestion, useRevealGameQuestion } from "../../hooks/use-games";
 import { RankedListRound } from "../ranked-list-round";
 import { QuestionHeader } from "./question-header";
 import { QuestionMedia } from "./question-media";
+import { BombQuestionLaunch } from "./bomb-question-launch";
 
 export function QuestionPlayer({
   gameId,
@@ -30,6 +31,16 @@ export function QuestionPlayer({
     );
 
   const data = question.data;
+  if (data.questionType === "bomb_sequence")
+    return (
+      <BombQuestionLaunch
+        gameId={gameId}
+        gameQuestionId={gameQuestionId}
+        categoryName={data.category.name}
+        points={data.points}
+      />
+    );
+
   if (data.isAnswered)
     return (
       <GameScreenMessage

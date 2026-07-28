@@ -8,6 +8,7 @@ import { GamesModule } from './modules/games/games.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { LiveGameSessionsModule } from './modules/live-game-sessions/live-game-sessions.module';
 import { QuestionHistoryModule } from './modules/question-history/question-history.module';
 import { MusicModule } from './modules/music/music.module';
 import { CatalogsModule } from './modules/catalogs/catalogs.module';
@@ -29,6 +30,7 @@ import { CatalogsModule } from './modules/catalogs/catalogs.module';
     MusicModule,
     GamesModule,
     SubscriptionsModule,
+    LiveGameSessionsModule,
   ],
 })
 export class AppModule {}

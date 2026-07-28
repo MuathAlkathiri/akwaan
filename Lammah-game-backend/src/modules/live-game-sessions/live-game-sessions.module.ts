@@ -1,0 +1,242 @@
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { AuthModule } from '../auth/auth.module';
+import { UsersModule } from '../users/users.module';
+import { GamesModule } from '../games/games.module';
+import { CreateLiveGameSession } from './application/create-live-game-session.use-case';
+import { GetLiveGameSession } from './application/get-live-game-session.use-case';
+import { LiveSessionCommandExecutor } from './application/live-session-command.base';
+import {
+  CancelLiveGameSession,
+  FinishLiveGameSession,
+  MarkSessionReady,
+  PauseLiveGameSession,
+  ResumeLiveGameSession,
+  StartLiveGameSession,
+} from './application/live-session-lifecycle.use-cases';
+import {
+  EndActiveTurn,
+  PauseActiveTurn,
+  ResumeActiveTurn,
+  StartTeamTurn,
+  SwitchActiveTeam,
+} from './application/live-session-turn.use-cases';
+import { ReconnectParticipant } from './application/reconnect-participant.use-case';
+import {
+  LIVE_SESSION_CLOCK,
+  SystemLiveSessionClock,
+} from './application/live-session-clock';
+import { LiveGameSessionSnapshotMapper } from './application/live-game-session.snapshot';
+import { LIVE_SESSION_TRANSITION_PUBLISHER } from './application/live-session-transition.publisher';
+import { PARENT_GAME_ACCESS } from './application/parent-game-access.port';
+import { PARTICIPANT_PRESENCE } from './application/participant-presence.port';
+import { UpdateParticipantPresence } from './application/update-participant-presence.use-case';
+import {
+  CreateSessionJoinAccess,
+  GetSessionJoinAccess,
+  RegenerateSessionJoinAccess,
+  ResolveJoinCode,
+  RevokeSessionJoinAccess,
+} from './application/live-session-join-access.use-cases';
+import {
+  AssignParticipantTeam,
+  JoinLiveSession,
+  ReconnectLiveParticipant,
+  RemoveLiveParticipant,
+  RevokeParticipantCredential,
+  SetParticipantReadiness,
+} from './application/live-participant.use-cases';
+import { ParticipantCredentialService } from './application/participant-credential.service';
+import { LiveGameModeRegistry } from './domain/live-game-mode.registry';
+import { LIVE_GAME_SESSION_REPOSITORY } from './domain/live-game-session.repository';
+import {
+  LiveGameSessionDocument,
+  LiveGameSessionSchema,
+} from './infrastructure/live-game-session.schema';
+import { MongooseLiveGameSessionRepository } from './infrastructure/mongoose-live-game-session.repository';
+import { SocketLiveSessionPublisher } from './infrastructure/socket-live-session.publisher';
+import { ClassicGameAccessAdapter } from './infrastructure/classic-game-access.adapter';
+import {
+  LiveSessionJoinAccessDocument,
+  LiveSessionJoinAccessSchema,
+} from './infrastructure/live-session-join-access.schema';
+import { MongooseLiveSessionJoinAccessRepository } from './infrastructure/mongoose-live-session-join-access.repository';
+import { LIVE_SESSION_JOIN_ACCESS_REPOSITORY } from './domain/live-session-join-access.repository';
+import { PublicJoinRateLimiter } from './infrastructure/public-join-rate-limiter';
+import { LiveGameSessionsController } from './presentation/live-game-sessions.controller';
+import { LiveGameSessionsGateway } from './presentation/live-game-sessions.gateway';
+import {
+  LiveGameParticipantsController,
+  LiveGameSessionJoinController,
+} from './presentation/live-game-session-join.controller';
+import { ParticipantCredentialGuard } from './presentation/participant-auth';
+import { GameplayModeRegistry } from './domain/gameplay-mode.registry';
+import {
+  GameplayRuntimeDocument,
+  GameplayRuntimeSchema,
+} from './infrastructure/gameplay-runtime.schema';
+import { MongooseGameplayRuntimeRepository } from './infrastructure/mongoose-gameplay-runtime.repository';
+import { GAMEPLAY_RUNTIME_REPOSITORY } from './domain/gameplay-runtime.repository';
+import { GameplayAuthorization } from './application/gameplay-authorization';
+import { GameplayRuntimeSnapshotMapper } from './application/gameplay-runtime.snapshot';
+import { GameplayRuntimeExecutor } from './application/gameplay-runtime.executor';
+import {
+  CreateGameplayRuntime,
+  GetGameplayRuntime,
+} from './application/gameplay-runtime.queries';
+import {
+  CancelGameplayRound,
+  CancelGameplayRuntime,
+  CompleteGameplayRound,
+  CompleteGameplayRuntime,
+  CreateGameplayRound,
+  PauseGameplayRound,
+  ResumeGameplayRound,
+  StartGameplayRound,
+  StartGameplayRuntime,
+} from './application/gameplay-runtime.lifecycle';
+import { SubmitGameplayCommand } from './application/submit-gameplay-command.use-case';
+import { GameplayRuntimeSocketFacade } from './application/gameplay-runtime.socket-facade';
+import { GameplayRuntimeController } from './presentation/gameplay-runtime.controller';
+import { GameplayInteractionUseCases } from './application/gameplay-interaction.use-cases';
+import { GAMEPLAY_TRANSACTION_UNIT_OF_WORK } from './application/gameplay-transaction.unit-of-work';
+import { MongooseGameplayTransactionUnitOfWork } from './infrastructure/mongoose-gameplay-transaction.unit-of-work';
+import {
+  GameplayInteractionController,
+  GameplayParticipantInteractionController,
+} from './presentation/gameplay-interaction.controller';
+import { StartBombGameplay } from './application/start-bomb-gameplay.use-case';
+import { BombExpirationScheduler } from './application/bomb-expiration.scheduler';
+import { BombCountdownScheduler } from './application/bomb-countdown.scheduler';
+import { LiveSessionSnapshotComposer } from './application/live-session-snapshot.composer';
+
+const applicationProviders = [
+  CreateLiveGameSession,
+  GetLiveGameSession,
+  LiveSessionSnapshotComposer,
+  ReconnectParticipant,
+  LiveSessionCommandExecutor,
+  MarkSessionReady,
+  StartLiveGameSession,
+  PauseLiveGameSession,
+  ResumeLiveGameSession,
+  StartTeamTurn,
+  PauseActiveTurn,
+  ResumeActiveTurn,
+  EndActiveTurn,
+  SwitchActiveTeam,
+  FinishLiveGameSession,
+  CancelLiveGameSession,
+  UpdateParticipantPresence,
+  CreateSessionJoinAccess,
+  GetSessionJoinAccess,
+  RegenerateSessionJoinAccess,
+  RevokeSessionJoinAccess,
+  ResolveJoinCode,
+  JoinLiveSession,
+  ReconnectLiveParticipant,
+  SetParticipantReadiness,
+  AssignParticipantTeam,
+  RemoveLiveParticipant,
+  RevokeParticipantCredential,
+  ParticipantCredentialService,
+  GameplayRuntimeExecutor,
+  CreateGameplayRuntime,
+  GetGameplayRuntime,
+  StartGameplayRuntime,
+  CreateGameplayRound,
+  StartGameplayRound,
+  PauseGameplayRound,
+  ResumeGameplayRound,
+  CompleteGameplayRound,
+  CancelGameplayRound,
+  SubmitGameplayCommand,
+  CompleteGameplayRuntime,
+  CancelGameplayRuntime,
+  GameplayRuntimeSocketFacade,
+  GameplayInteractionUseCases,
+  StartBombGameplay,
+  BombExpirationScheduler,
+  BombCountdownScheduler,
+];
+
+@Module({
+  imports: [
+    AuthModule,
+    UsersModule,
+    GamesModule,
+    MongooseModule.forFeature([
+      {
+        name: LiveGameSessionDocument.name,
+        schema: LiveGameSessionSchema,
+      },
+      {
+        name: LiveSessionJoinAccessDocument.name,
+        schema: LiveSessionJoinAccessSchema,
+      },
+      {
+        name: GameplayRuntimeDocument.name,
+        schema: GameplayRuntimeSchema,
+      },
+    ]),
+  ],
+  controllers: [
+    LiveGameSessionsController,
+    LiveGameSessionJoinController,
+    LiveGameParticipantsController,
+    GameplayRuntimeController,
+    GameplayInteractionController,
+    GameplayParticipantInteractionController,
+  ],
+  providers: [
+    LiveGameModeRegistry,
+    LiveGameSessionSnapshotMapper,
+    GameplayModeRegistry,
+    GameplayAuthorization,
+    GameplayRuntimeSnapshotMapper,
+    SystemLiveSessionClock,
+    {
+      provide: LIVE_SESSION_CLOCK,
+      useExisting: SystemLiveSessionClock,
+    },
+    MongooseLiveGameSessionRepository,
+    MongooseLiveSessionJoinAccessRepository,
+    MongooseGameplayRuntimeRepository,
+    MongooseGameplayTransactionUnitOfWork,
+    {
+      provide: LIVE_GAME_SESSION_REPOSITORY,
+      useExisting: MongooseLiveGameSessionRepository,
+    },
+    {
+      provide: LIVE_SESSION_JOIN_ACCESS_REPOSITORY,
+      useExisting: MongooseLiveSessionJoinAccessRepository,
+    },
+    {
+      provide: GAMEPLAY_RUNTIME_REPOSITORY,
+      useExisting: MongooseGameplayRuntimeRepository,
+    },
+    {
+      provide: GAMEPLAY_TRANSACTION_UNIT_OF_WORK,
+      useExisting: MongooseGameplayTransactionUnitOfWork,
+    },
+    {
+      provide: PARTICIPANT_PRESENCE,
+      useExisting: MongooseLiveGameSessionRepository,
+    },
+    ClassicGameAccessAdapter,
+    {
+      provide: PARENT_GAME_ACCESS,
+      useExisting: ClassicGameAccessAdapter,
+    },
+    SocketLiveSessionPublisher,
+    PublicJoinRateLimiter,
+    ParticipantCredentialGuard,
+    {
+      provide: LIVE_SESSION_TRANSITION_PUBLISHER,
+      useExisting: SocketLiveSessionPublisher,
+    },
+    ...applicationProviders,
+    LiveGameSessionsGateway,
+  ],
+})
+export class LiveGameSessionsModule {}

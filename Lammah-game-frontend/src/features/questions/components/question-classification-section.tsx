@@ -62,6 +62,7 @@ export function QuestionClassificationSection({
               <SelectItem value="audio">صوت</SelectItem>
               <SelectItem value="video">فيديو</SelectItem>
               <SelectItem value="top10">Top 10</SelectItem>
+              <SelectItem value="bomb">Bomb sequence</SelectItem>
             </SelectContent>
           </Select>
         </div>

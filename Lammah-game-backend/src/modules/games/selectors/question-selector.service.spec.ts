@@ -8,6 +8,7 @@ import {
   QuestionType,
 } from '../../questions/schemas/question.schema';
 import { QuestionMediaAvailabilityPolicy } from '../../questions/application/question-media-availability.policy';
+import { BombQuestionPolicy } from '../../questions/application/bomb-question.policy';
 import { QuestionSelectorService } from './question-selector.service';
 
 describe('QuestionSelectorService', () => {
@@ -16,6 +17,7 @@ describe('QuestionSelectorService', () => {
     new QuestionSelectorService(
       repository,
       new QuestionMediaAvailabilityPolicy(),
+      new BombQuestionPolicy(),
     );
 
   it('excludes seen questions when two unseen candidates are available', async () => {

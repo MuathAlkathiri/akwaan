@@ -95,36 +95,36 @@ describe('GameQuestionFlowService', () => {
   });
 
   it('reveals the answer once and persists the reveal state', async () => {
-  const { service, game } = setup();
+    const { service, game } = setup();
 
-  const first = await service.reveal(
-    String(gameId),
-    String(gameQuestionId),
-    user,
-  );
+    const first = await service.reveal(
+      String(gameId),
+      String(gameQuestionId),
+      user,
+    );
 
-  const second = await service.reveal(
-    String(gameId),
-    String(gameQuestionId),
-    user,
-  );
+    const second = await service.reveal(
+      String(gameId),
+      String(gameQuestionId),
+      user,
+    );
 
-  expect(first).toMatchObject({
-    answer: 'Snapshot answer',
-    acceptedAnswers: ['Alias'],
+    expect(first).toMatchObject({
+      answer: 'Snapshot answer',
+      acceptedAnswers: ['Alias'],
+    });
+
+    expect(game.board[0].questions[0].isAnswerRevealed).toBe(true);
+    expect(game.save).toHaveBeenCalledTimes(1);
+
+    const standard = second as {
+      answer: string;
+      acceptedAnswers: string[];
+    };
+
+    expect(standard.answer).toBe('Snapshot answer');
+    expect(standard.acceptedAnswers).toEqual(['Alias']);
   });
-
-  expect(game.board[0].questions[0].isAnswerRevealed).toBe(true);
-  expect(game.save).toHaveBeenCalledTimes(1);
-
-  const standard = second as {
-    answer: string;
-    acceptedAnswers: string[];
-  };
-
-  expect(standard.answer).toBe('Snapshot answer');
-  expect(standard.acceptedAnswers).toEqual(['Alias']);
-});
 
   it('derives awarded points from the game snapshot board value', async () => {
     const { service, game } = setup();

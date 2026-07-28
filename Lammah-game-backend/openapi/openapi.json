@@ -876,6 +876,88 @@
         ]
       }
     },
+    "/admin/questions/bomb-item-images": {
+      "post": {
+        "operationId": "questionsUploadBombItemImage",
+        "summary": "Upload a managed image for a Bomb sequence item",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BombItemImageMutationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/admin/questions/bomb-readiness/{categoryId}": {
+      "get": {
+        "operationId": "questionsGetBombReadiness",
+        "summary": "Get authoritative Bomb category authoring readiness",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BombCategoryReadinessEnvelopeDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin Questions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/admin/questions/accepted-answers/generate": {
       "post": {
         "operationId": "questionsGenerateAcceptedAnswers",
@@ -1939,20 +2021,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GenerateReviewedQuestionsErrorResponseDto"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "AI question generation is disabled",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "example": {
-                    "statusCode": 503,
-                    "code": "AI_QUESTION_GENERATION_DISABLED",
-                    "message": "AI question generation is currently disabled."
-                  }
                 }
               }
             }
@@ -3664,7 +3732,8 @@
         "default": "STANDARD",
         "enum": [
           "STANDARD",
-          "TOP_10"
+          "TOP_10",
+          "BOMB"
         ]
       },
       "CategoryResponseDto": {
@@ -3795,7 +3864,8 @@
         "default": "standard",
         "enum": [
           "standard",
-          "ranked_list"
+          "ranked_list",
+          "bomb_sequence"
         ]
       },
       "LocalizedQuestionTextDto": {
@@ -3869,6 +3939,86 @@
         "required": [
           "displayName",
           "entries"
+        ]
+      },
+      "BombItemImageDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "example": "/uploads/questions/bomb-items/item.webp"
+          },
+          "storageKey": {
+            "type": "string",
+            "example": "uploads/questions/bomb-items/item.webp"
+          },
+          "mimetype": {
+            "type": "string",
+            "example": "image/webp"
+          },
+          "size": {
+            "type": "number",
+            "example": 124000
+          }
+        },
+        "required": [
+          "url",
+          "storageKey",
+          "mimetype",
+          "size"
+        ]
+      },
+      "BombQuestionItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "order": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 14
+          },
+          "image": {
+            "$ref": "#/components/schemas/BombItemImageDto"
+          },
+          "acceptedAnswers": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "altText": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "order",
+          "image",
+          "acceptedAnswers"
+        ]
+      },
+      "BombQuestionContentDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "minItems": 10,
+            "maxItems": 15,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BombQuestionItemDto"
+            }
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "DifficultyLevel": {
@@ -4054,6 +4204,9 @@
           "rankedList": {
             "$ref": "#/components/schemas/RankedListDefinitionDto"
           },
+          "bombContent": {
+            "$ref": "#/components/schemas/BombQuestionContentDto"
+          },
           "answer": {
             "type": "string"
           },
@@ -4220,6 +4373,9 @@
           },
           "rankedList": {
             "$ref": "#/components/schemas/RankedListDefinitionDto"
+          },
+          "bombContent": {
+            "$ref": "#/components/schemas/BombQuestionContentDto"
           },
           "answer": {
             "type": "string"
@@ -4509,6 +4665,9 @@
           "rankedList": {
             "$ref": "#/components/schemas/RankedListDefinitionDto"
           },
+          "bombContent": {
+            "$ref": "#/components/schemas/BombQuestionContentDto"
+          },
           "answer": {
             "type": "string"
           },
@@ -4796,6 +4955,82 @@
         },
         "required": [
           "statusCode",
+          "data"
+        ]
+      },
+      "BombItemImageResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "storageKey": {
+            "type": "string"
+          },
+          "mimetype": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "url",
+          "storageKey",
+          "mimetype",
+          "size"
+        ]
+      },
+      "BombItemImageMutationResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BombItemImageResponseDto"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "BombCategoryReadinessResponseDto": {
+        "type": "object",
+        "properties": {
+          "easy": {
+            "type": "number"
+          },
+          "medium": {
+            "type": "number"
+          },
+          "hard": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "invalidQuestionCount": {
+            "type": "number"
+          },
+          "isComplete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "easy",
+          "medium",
+          "hard",
+          "total",
+          "invalidQuestionCount",
+          "isComplete"
+        ]
+      },
+      "BombCategoryReadinessEnvelopeDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BombCategoryReadinessResponseDto"
+          }
+        },
+        "required": [
           "data"
         ]
       },

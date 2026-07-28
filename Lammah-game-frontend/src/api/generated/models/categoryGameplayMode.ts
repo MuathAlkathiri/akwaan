@@ -13,4 +13,5 @@ export type CategoryGameplayMode =
 export const CategoryGameplayMode = {
   STANDARD: "STANDARD",
   TOP_10: "TOP_10",
+  BOMB: "BOMB",
 } as const;

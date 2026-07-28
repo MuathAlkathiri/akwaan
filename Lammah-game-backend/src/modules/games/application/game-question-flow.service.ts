@@ -283,6 +283,20 @@ export class GameQuestionFlowService {
       };
     }
 
+    if (snapshot.questionType === 'bomb_sequence') {
+      return {
+        ...baseView,
+        bombContent: {
+          items: snapshot.bombContent.items.map((item) => ({
+            id: item.id,
+            order: item.order,
+            image: item.image,
+            altText: item.altText,
+          })),
+        },
+      };
+    }
+
     return {
       ...baseView,
       answer: snapshot.answer,

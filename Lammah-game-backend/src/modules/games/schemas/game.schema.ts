@@ -269,8 +269,32 @@ export interface RankedListGameQuestionSnapshot extends GameQuestionSnapshotBase
   acceptedAnswers?: never;
 }
 
+export interface BombGameQuestionSnapshot extends GameQuestionSnapshotBase {
+  questionType: 'bomb_sequence';
+  bombContent: {
+    items: Array<{
+      id: string;
+      order: number;
+      image: {
+        url: string;
+        storageKey: string;
+        mimetype: string;
+        size: number;
+      };
+      acceptedAnswers: string[];
+      altText?: string;
+      note?: string;
+    }>;
+  };
+  answer?: never;
+  acceptedAnswers?: never;
+  rankedList?: never;
+}
+
 export type GameQuestionSnapshot =
-  StandardGameQuestionSnapshot | RankedListGameQuestionSnapshot;
+  | StandardGameQuestionSnapshot
+  | RankedListGameQuestionSnapshot
+  | BombGameQuestionSnapshot;
 
 export interface QuestionInGame {
   _id?: Types.ObjectId;
@@ -392,8 +416,25 @@ const RankedListSnapshotSchema = new MongooseSchema(
 );
 
 interface GameQuestionSnapshotSchemaContext {
-  questionType?: 'standard' | 'ranked_list';
+  questionType?: 'standard' | 'ranked_list' | 'bomb_sequence';
 }
+
+const BombSnapshotItemSchema = new MongooseSchema(
+  {
+    id: { type: String, required: true },
+    order: { type: Number, required: true },
+    image: {
+      url: { type: String, required: true },
+      storageKey: { type: String, required: true },
+      mimetype: { type: String, required: true },
+      size: { type: Number, required: true },
+    },
+    acceptedAnswers: { type: [String], required: true },
+    altText: { type: String, required: false },
+    note: { type: String, required: false },
+  },
+  { _id: false },
+);
 
 const GameQuestionSnapshotSchema = new MongooseSchema(
   {
@@ -432,7 +473,7 @@ const GameQuestionSnapshotSchema = new MongooseSchema(
     },
     questionType: {
       type: String,
-      enum: ['standard', 'ranked_list'],
+      enum: ['standard', 'ranked_list', 'bomb_sequence'],
       required: true,
     },
     turnDurationSeconds: {
@@ -447,6 +488,20 @@ const GameQuestionSnapshotSchema = new MongooseSchema(
       type: RankedListSnapshotSchema,
       required: function (this: GameQuestionSnapshotSchemaContext): boolean {
         return this.questionType === 'ranked_list';
+      },
+    },
+    bombContent: {
+      type: new MongooseSchema(
+        {
+          items: {
+            type: [BombSnapshotItemSchema],
+            required: true,
+          },
+        },
+        { _id: false },
+      ),
+      required: function (this: GameQuestionSnapshotSchemaContext): boolean {
+        return this.questionType === 'bomb_sequence';
       },
     },
   },

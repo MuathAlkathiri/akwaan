@@ -12,6 +12,7 @@ import { QuestionFreeGameField } from "./question-free-game-field";
 import { QuestionImageSection } from "./question-image-section";
 import { QuestionSettingsSection } from "./question-settings-section";
 import { QuestionTop10Section } from "./question-top10-section";
+import { BombQuestionEditor } from "./bomb-question-editor";
 
 interface QuestionFormProps {
   question?: Question;
@@ -60,6 +61,7 @@ export function QuestionForm({
         register={form.register}
         errors={form.errors}
         isTop10={state.isTop10}
+        isBomb={state.isBomb}
         acceptedAnswers={state.acceptedAnswers}
         onAcceptedAnswersChange={actions.updateAcceptedAnswers}
         onGenerateAliases={actions.generateStandardAliases}
@@ -73,6 +75,14 @@ export function QuestionForm({
           isGeneratingAliases={state.rankedAliasPending}
           onEntriesChange={actions.updateRankedEntries}
           onGenerateAliases={actions.generateRankedAliases}
+        />
+      )}
+
+      {state.isBomb && (
+        <BombQuestionEditor
+          items={state.bombItems}
+          onChange={actions.updateBombItems}
+          onUpload={actions.uploadBombItemImage}
         />
       )}
 

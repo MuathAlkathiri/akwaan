@@ -2,17 +2,21 @@ import { Injectable } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { QuestionRepository } from '../../questions/persistence/question.repository';
 import {
+  DifficultyLevel,
   Question,
   QuestionGameplayType,
   QuestionPoints,
+  QuestionStatus,
 } from '../../questions/schemas/question.schema';
 import { QuestionMediaAvailabilityPolicy } from '../../questions/application/question-media-availability.policy';
+import { BombQuestionPolicy } from '../../questions/application/bomb-question.policy';
 
 @Injectable()
 export class QuestionSelectorService {
   constructor(
     private readonly questions: QuestionRepository,
     private readonly mediaAvailability: QuestionMediaAvailabilityPolicy,
+    private readonly bombQuestions: BombQuestionPolicy,
   ) {}
 
   async select(options: {
@@ -55,6 +59,27 @@ export class QuestionSelectorService {
     );
     const source = unseen.length ? unseen : candidates;
     return this.shuffle(source).slice(0, 1);
+  }
+
+  async selectBomb(options: {
+    categoryId: string;
+    difficulty: DifficultyLevel;
+    seenQuestionIds: Types.ObjectId[];
+  }): Promise<Question[]> {
+    const candidates = (
+      await this.questions.findBombReadinessQuestions(options.categoryId)
+    ).filter(
+      (question) =>
+        question.status === QuestionStatus.APPROVED &&
+        question.questionType === QuestionGameplayType.BOMB_SEQUENCE &&
+        question.difficulty === options.difficulty &&
+        this.bombQuestions.isValid(question.bombContent),
+    );
+    const seen = new Set(options.seenQuestionIds.map(String));
+    const unseen = candidates.filter(
+      (question) => !seen.has(String(question._id)),
+    );
+    return this.shuffle(unseen.length >= 2 ? unseen : candidates).slice(0, 2);
   }
 
   private shuffle<T>(items: T[]): T[] {

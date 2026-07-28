@@ -7,6 +7,7 @@ export function getQuestionAuthoringType(
   question?: Question,
 ): QuestionFormData["authoringType"] {
   if (question?.questionType === "ranked_list") return "top10";
+  if (question?.questionType === "bomb_sequence") return "bomb";
   if (question?.type === "video") return "video";
   if (question?.type === "audio" || question?.requiresAudio) return "audio";
   if (question?.type === "image") return "image";

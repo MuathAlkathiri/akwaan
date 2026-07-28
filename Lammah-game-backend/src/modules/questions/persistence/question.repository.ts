@@ -123,6 +123,13 @@ export class QuestionRepository {
       .exec();
   }
 
+  findBombReadinessQuestions(categoryId: string) {
+    return this.model
+      .find({ category: new Types.ObjectId(categoryId) })
+      .select('question questionType difficulty points status bombContent')
+      .exec();
+  }
+
   findDuplicateCandidates(categoryId?: string, excludeId?: string) {
     const query: FilterQuery<Question> = {};
     if (categoryId && Types.ObjectId.isValid(categoryId))

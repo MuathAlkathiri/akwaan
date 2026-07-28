@@ -8,7 +8,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      MONGODB_URI: ${BACKEND_MONGODB_URI:-mongodb://host.docker.internal:27017/lammah-quiz}
+      MONGODB_URI: ${BACKEND_MONGODB_URI:-mongodb://mongodb:27017/lammah-quiz?replicaSet=rs0}
       LMSTUDIO_BASE_URL: ${BACKEND_LMSTUDIO_BASE_URL:-http://host.docker.internal:1234/v1}
       LM_STUDIO_BASE_URL: ${BACKEND_LM_STUDIO_BASE_URL:-http://host.docker.internal:1234/v1}
       UPLOADS_DIR: /app/uploads
@@ -28,7 +28,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     volumes:
       - backend_uploads:/app/uploads
     restart: unless-stopped
@@ -51,10 +52,20 @@ services:
 
   mongodb:
     image: mongo:7
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --eval \"try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]}).ok }\" mongodb://127.0.0.1:27017/admin | grep 1",
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 30
     restart: unless-stopped
 
 volumes:

@@ -87,7 +87,7 @@ export class GameCreationValidationDetailDto {
   @ApiProperty() categoryId!: string;
   @ApiPropertyOptional() catalogId?: string;
   @ApiProperty({ enum: ['STANDARD', 'TOP_10'] })
-  gameplayMode!: 'STANDARD' | 'TOP_10';
+  gameplayMode!: 'STANDARD' | 'TOP_10' | 'BOMB';
   @ApiPropertyOptional() questionId?: string;
   @ApiPropertyOptional({
     type: 'object',

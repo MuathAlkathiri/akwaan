@@ -73,6 +73,10 @@ vi.mock("@/features/questions/hooks/use-questions", () => ({
     isUploading: imageUploading,
     isRemoving: false,
   }),
+  useBombItemImageUpload: () => ({
+    upload: vi.fn(),
+    isPending: false,
+  }),
   useGenerateAcceptedAnswers: () => mutation,
   useGenerateRankedAcceptedAnswers: () => mutation,
 }));
