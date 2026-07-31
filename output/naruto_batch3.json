@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "category": "naruto",
+    "difficulty": "easy",
+    "mediaType": "image",
+    "question": "ما اسم هذا التحول الذي يظهر فيه ناروتو؟",
+    "answer": "وضع الحكيم",
+    "acceptedAnswers": ["وضع الحكيم", "Sage Mode", "مود الحكيم", "سنين مودو", "وضع السيج", "وضع الحكيم الأعلى"],
+    "mediaDescription": "صورة لناروتو في وضع الحكيم مع العلامات البرتقالية حول العينين والعباءة الحمراء على أكتافه",
+    "mediaSource": "output/naruto_batch3/images/q1_sage_mode.png",
+    "rationale": "وضع الحكيم من أشهر تحولات ناروتو في شيبودن. أي متابع يتعرف على الشكل المميز مع العلامات البرتقالية حول العينين."
+  },
+  {
+    "id": 2,
+    "category": "naruto",
+    "difficulty": "easy",
+    "mediaType": "audio",
+    "question": "ما اسم هذه التقنية؟",
+    "answer": "تشيدوري",
+    "acceptedAnswers": ["تشيدوري", "Chidori", "تشيدوري رايكيري", "Raikiri", "تشيدوري ساسكي"],
+    "mediaDescription": "مقطع صوتي لصوت شحن تقنية تشيدوري مع صوت الطيور والكهرباء",
+    "mediaSource": "output/naruto_batch3/audio/q2_chidori.mp3",
+    "rationale": "تشيدوري من أيقونات ناروتو. الصوت المميز كصعق الطيور يعرفه كل من تابع الأنمي."
+  },
+  {
+    "id": 3,
+    "category": "naruto",
+    "difficulty": "easy",
+    "mediaType": "text",
+    "question": "ما اسم قرية ناروتو التي يحلم بأن يصبح هوكاجيها؟",
+    "answer": "قرية الورق",
+    "acceptedAnswers": ["قرية الورق", "كونوها", "كونوهاغاكوري", "Hidden Leaf Village", "قرية الورق المخفية"],
+    "mediaDescription": null,
+    "mediaSource": null,
+    "rationale": "كونوها هي القرية الرئيسية في ناروتو. أي متابع يعرف أن ناروتو يحلم بأن يصبح هوكاجي لهذه القرية."
+  },
+  {
+    "id": 4,
+    "category": "naruto",
+    "difficulty": "medium",
+    "mediaType": "image",
+    "question": "من هو الهوكاجي الرابع الظاهر في هذه الصورة؟",
+    "answer": "ميناتو ناميكازي",
+    "acceptedAnswers": ["ميناتو ناميكازي", "Minato Namikaze", "ميناتو", "الهوكاجي الرابع", "ناندايمي"],
+    "mediaDescription": "صورة لميناتو ناميكازي مرتدياً عباءة الهوكاجي البيضاء مع شعره الأشقر وعينيه الزرقاوين",
+    "mediaSource": "output/naruto_batch3/images/q4_minato.png",
+    "rationale": "ميناتو شخصية مميزة في ناروتو. المتابعون المنتظمون يتعرفون على والدة ناروتو وهوكاجي القرية الرابع."
+  },
+  {
+    "id": 5,
+    "category": "naruto",
+    "difficulty": "medium",
+    "mediaType": "video",
+    "question": "ما هو هذا الدرع العملاق الذي يظهر حول ساسكي ليحميه؟",
+    "answer": "سوسانو",
+    "acceptedAnswers": ["سوسانو", "Susanoo", "سوسانوو", "سوسانو أتشيها"],
+    "mediaDescription": "فيديو يظهر تشكل سوسانو حول ساسكي مع الهيكل العظمي المتطور إلى الدرع الكامل",
+    "mediaSource": "output/naruto_batch3/video/q5_susanoo.mp4",
+    "rationale": "سوسانو من أقوى قدرات المانغيكيو شيرينغان. المتابعون يتذكرون هذا المشهد الضخم من معارك ساسكي."
+  },
+  {
+    "id": 6,
+    "category": "naruto",
+    "difficulty": "medium",
+    "mediaType": "text",
+    "question": "من هو معلم ناروتو الأول الذي علمه تقنية الراسينغان واستدعاء الضفادع؟",
+    "answer": "جيرايا",
+    "acceptedAnswers": ["جيرايا", "Jiraiya", "جيرايا السام", "الحكيم جيرايا", "إرو سيني"],
+    "mediaDescription": null,
+    "mediaSource": null,
+    "rationale": "جيرايا شخصية محورية في حياة ناروتو. أي متابع للأنمي يعرف أن ناروتو تعلم الراسينغان واستدعاء الضفادع من جيرايا."
+  },
+  {
+    "id": 7,
+    "category": "naruto",
+    "difficulty": "medium",
+    "mediaType": "audio",
+    "question": "ما اسم أغنية الافتتاحية التي تسمعها؟",
+    "answer": "Silhouette",
+    "acceptedAnswers": ["Silhouette", "سيلويت", "Opening 16", "KANA-BOON", " silhouette"],
+    "mediaDescription": "مقطع من أغنية Silhouette لفرقة KANA-BOON وهي الافتتاحية السادسة عشرة لناروتو شيبودن",
+    "mediaSource": "output/naruto_batch3/audio/q7_silhouette.mp3",
+    "rationale": "Silhouette من أشهر افتتاحيات ناروتو شيبودن. المتابعون المنتظمون يتذكرون اللحن الحماسي لكن اسم الأغنية بالإنجليزية يتطلب معرفة أعمق."
+  },
+  {
+    "id": 8,
+    "category": "naruto",
+    "difficulty": "hard",
+    "mediaType": "image",
+    "question": "ما اسم هذا الدوجتسو النادر الذي يظهر في الصورة؟",
+    "answer": "الرينيقان",
+    "acceptedAnswers": ["الرينيقان", "رينيقان", "Rinnegan", "رينغان", "عين التناسخ"],
+    "mediaDescription": "صورة مقرّبة لعين الرينيقان ذات الحلقات المتعددة باللون الأرجواني",
+    "mediaSource": "output/naruto_batch3/images/q8_rinnegan.png",
+    "rationale": "الرينيقان أندر وأقوى دوجتسو في ناروتو. يظهر مع باين وساسكي ومادارا. المتابعون المخلصون يميزون نمط الحلقات الأرجوانية."
+  },
+  {
+    "id": 9,
+    "category": "naruto",
+    "difficulty": "hard",
+    "mediaType": "video",
+    "question": "ما اسم التقنية المدمرة التي استخدمها باين لتدمير قرية الورق بالكامل؟",
+    "answer": "شينرا تينسي",
+    "acceptedAnswers": ["شينرا تينسي", "Shinra Tensei", "Almighty Push", "الدفع الكلي", "شينرا", "شينرا تينسي باين"],
+    "mediaDescription": "فيديو يظهر باين وهو يرفع يديه ويستخدم شينرا تينسي ليدمر قرية الورق بالكامل بانفجار هائل",
+    "mediaSource": "output/naruto_batch3/video/q9_shinra_tensei.mp4",
+    "rationale": "هذا المشهد من أكثر المشاهد تدميراً في ناروتو. المتابعون المخلصون يتذكرون المشهد لكن اسم التقنية باليابانية يتطلب معرفة أعمق."
+  },
+  {
+    "id": 10,
+    "category": "naruto",
+    "difficulty": "hard",
+    "mediaType": "text",
+    "question": "أكمل المقولة الشهيرة لكاكاشي: 'الذين يتخلون عن أصدقائهم ...'",
+    "answer": "أسوأ من القمامة",
+    "acceptedAnswers": ["أسوأ من القمامة", "أقل من القمامة", "أشر من القمامة", "أسوأ من النينجا", "لا يستحقون لقب نينجا"],
+    "mediaDescription": null,
+    "mediaSource": null,
+    "rationale": "هذه المقولة من أعمق مقولات كاكاشي وأكثرها تأثيراً. المتابعون المخلصون يتذكرون المقولة كاملة لكن قد يختلفون في الصياغة الدقيقة."
+  }
+]
