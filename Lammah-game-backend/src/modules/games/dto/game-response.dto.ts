@@ -1,12 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CategoryResponseDto } from '../../categories/dto/category-response.dto';
 import { QuestionResponseDto } from '../../questions/dto/question-response.dto';
+import { TEAM_COLORS, TeamColorKey } from '../team-colors';
 
 export class GameTeamResponseDto {
   @ApiPropertyOptional() _id?: string;
   @ApiProperty() name!: string;
   @ApiProperty({ type: [String] }) members!: string[];
   @ApiProperty() score!: number;
+  @ApiProperty({ enum: TEAM_COLORS }) color!: TeamColorKey;
 }
 
 export class GameQuestionPresentationResponseDto {

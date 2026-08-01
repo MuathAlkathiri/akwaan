@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
+  useGame,
   useGameQuestionAnswer,
   useSubmitGameQuestionResult,
 } from "../../hooks/use-games";
+import { resolveCurrentGameTurn } from "../../utils/current-game-turn";
 import { QuestionHeader } from "../question-player/question-header";
 import { TeamAnswerButton } from "./team-answer-button";
 
@@ -22,7 +24,9 @@ export function AnswerPlayer({
   const boardHref = `/games/${gameId}`;
   const questionHref = `${boardHref}/questions/${gameQuestionId}`;
   const answer = useGameQuestionAnswer(gameId, gameQuestionId);
+  const game = useGame(gameId);
   const submit = useSubmitGameQuestionResult(gameId, gameQuestionId);
+  const currentTurn = resolveCurrentGameTurn(game.data);
   const submittingRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -68,6 +72,7 @@ export function AnswerPlayer({
         backLabel="العودة للسؤال"
         category={data.category.name}
         points={data.points}
+        currentTurn={currentTurn}
       />
       <section className="space-y-3 text-center">
         <p className="text-lg text-muted-foreground">{data.question}</p>
@@ -88,11 +93,13 @@ export function AnswerPlayer({
       <section className="space-y-4">
         <h2 className="text-center text-2xl font-black">من أجاب بشكل صحيح؟</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {data.teams.map((team) => (
+          {data.teams.map((team, teamIndex) => (
             <TeamAnswerButton
               key={team._id ?? team.name}
               name={team.name}
               score={team.score}
+              color={team.color}
+              teamIndex={teamIndex}
               disabled={selectionDisabled}
               onClick={() => submitResult(team._id ?? "")}
             />

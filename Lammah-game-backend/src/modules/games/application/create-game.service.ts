@@ -9,4 +9,8 @@ export class CreateGameService {
   execute(dto: CreateGameDto, user: AuthenticatedUser) {
     return this.games.create(dto, user);
   }
+
+  replay(id: string, user: AuthenticatedUser) {
+    return this.games.replay(id, user);
+  }
 }

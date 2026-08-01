@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { ImageIcon, Pencil } from "lucide-react";
 import {
   Card,
   CardDescription,
@@ -15,9 +17,18 @@ import { getEntityId } from "@/lib/utils";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { DeleteDialog, EmptyState, LoadingState } from "@/components/shared";
 import { BombCategoryReadiness } from "./bomb-category-readiness";
+import { CategoryForm } from "./category-form";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { Category } from "@/types";
 
 export function CategoriesList() {
   const router = useRouter();
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const { data, isLoading, error } = useCategories();
   const categories = data || [];
   const deleteCategory = useDeleteCategory();
@@ -29,6 +40,7 @@ export function CategoriesList() {
     return <EmptyState title="لا توجد فئات" />;
 
   return (
+    <>
     <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
       {categories.map((category) => {
         const categoryId = getEntityId(category);
@@ -53,7 +65,7 @@ export function CategoriesList() {
               }
             }}
           >
-            {bannerUrl && (
+            {bannerUrl ? (
               <div className="relative h-36 overflow-hidden border-b border-white/10">
                 <Image
                   src={bannerUrl}
@@ -62,6 +74,13 @@ export function CategoriesList() {
                   unoptimized
                   className="object-cover"
                 />
+              </div>
+            ) : (
+              <div className="grid h-36 place-items-center border-b border-dashed border-white/10 bg-white/[0.025] text-muted-foreground">
+                <div className="text-center">
+                  <ImageIcon className="mx-auto size-7" aria-hidden />
+                  <p className="mt-2 text-xs">لا توجد صورة للفئة</p>
+                </div>
               </div>
             )}
             <CardHeader>
@@ -87,6 +106,17 @@ export function CategoriesList() {
                   <Badge variant={category.isActive ? "default" : "secondary"}>
                     {category.isActive ? "نشطة" : "غير نشطة"}
                   </Badge>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setEditingCategory(category);
+                    }}
+                  >
+                    <Pencil className="ml-1.5 size-3.5" aria-hidden />
+                    {bannerUrl ? "تعديل" : "إضافة صورة"}
+                  </Button>
                   <DeleteDialog
                     itemName={category.name}
                     disabled={deleteCategory.isPending}
@@ -108,5 +138,27 @@ export function CategoriesList() {
         );
       })}
     </div>
+      <Dialog
+        open={Boolean(editingCategory)}
+        onOpenChange={(open: boolean) => {
+          if (!open) setEditingCategory(null);
+        }}
+      >
+        <DialogContent className="max-h-[calc(100dvh-3rem)] overflow-hidden sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              تعديل الفئة وإدارة الصورة
+            </DialogTitle>
+          </DialogHeader>
+          {editingCategory && (
+            <CategoryForm
+              key={getEntityId(editingCategory)}
+              category={editingCategory}
+              onSuccess={() => setEditingCategory(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

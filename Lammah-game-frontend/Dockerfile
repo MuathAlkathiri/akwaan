@@ -46,6 +46,7 @@ COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=prod-deps --chown=node:node /app/Lammah-game-frontend/package.json ./Lammah-game-frontend/package.json
 COPY --from=prod-deps --chown=node:node /app/Lammah-game-frontend/node_modules ./Lammah-game-frontend/node_modules
 COPY --from=build --chown=node:node /app/Lammah-game-frontend/.next ./Lammah-game-frontend/.next
+COPY --from=build --chown=node:node /app/Lammah-game-frontend/public ./Lammah-game-frontend/public
 COPY --from=build --chown=node:node /app/Lammah-game-frontend/next.config.js ./Lammah-game-frontend/next.config.js
 
 USER node

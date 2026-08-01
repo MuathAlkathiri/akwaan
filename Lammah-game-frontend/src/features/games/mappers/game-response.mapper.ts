@@ -136,12 +136,16 @@ function toEmbeddedQuestion(dto: EmbeddedQuestion): Question {
   };
 }
 
-const toTeam = (team: GameResponseDto["teams"][number]): Team => ({
+const toTeam = (
+  team: GameResponseDto["teams"][number],
+  index: number,
+): Team => ({
   id: team._id ?? "",
   _id: team._id,
   name: team.name,
   members: team.members,
   score: team.score,
+  color: team.color ?? (index === 1 ? "red" : "blue"),
 });
 
 export function toGame(dto: GameResponseDto): Game {

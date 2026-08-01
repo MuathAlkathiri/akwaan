@@ -113,6 +113,11 @@ const top10Question = (
     ...overrides,
   }) as unknown as Question;
 
+const sixTop10Questions = (first: Question) => [
+  first,
+  ...Array.from({ length: 5 }, () => top10Question(first.type)),
+];
+
 describe('category gameplay validation', () => {
   const context = (mode: CategoryGameplayMode) => ({
     category: category(mode),
@@ -199,14 +204,21 @@ describe('category gameplay validation', () => {
   ])('validates TOP_10 independently of %s presentation', async (type) => {
     const question = top10Question(type);
     const validator = new Top10CategoryGameValidation(
-      { selectTop10: jest.fn().mockResolvedValue([question]) } as never,
+      {
+        selectTop10: jest.fn().mockResolvedValue(sixTop10Questions(question)),
+      } as never,
       new RankedListQuestionPolicy(),
     );
     const result = await validator.validate(
       context(CategoryGameplayMode.TOP_10),
     );
     expect(result.status).toBe('PASS');
-    expect(result.boardQuestions).toHaveLength(1);
+    expect(result.boardQuestions).toHaveLength(6);
+    expect(
+      result.boardQuestions.every(
+        (boardQuestion) => boardQuestion.points === 600,
+      ),
+    ).toBe(true);
     mediaValidation().validate(
       context(CategoryGameplayMode.TOP_10).category,
       CategoryGameplayMode.TOP_10,
@@ -229,7 +241,9 @@ describe('category gameplay validation', () => {
     const question = top10Question();
     question.rankedList!.entries.pop();
     const result = await new Top10CategoryGameValidation(
-      { selectTop10: jest.fn().mockResolvedValue([question]) } as never,
+      {
+        selectTop10: jest.fn().mockResolvedValue(sixTop10Questions(question)),
+      } as never,
       new RankedListQuestionPolicy(),
     ).validate(context(CategoryGameplayMode.TOP_10));
     expect(result.issues[0].code).toBe('TOP10_INVALID_ANSWER_COUNT');
@@ -239,7 +253,9 @@ describe('category gameplay validation', () => {
     const question = top10Question();
     question.rankedList!.entries[0].points = 11;
     const result = await new Top10CategoryGameValidation(
-      { selectTop10: jest.fn().mockResolvedValue([question]) } as never,
+      {
+        selectTop10: jest.fn().mockResolvedValue(sixTop10Questions(question)),
+      } as never,
       new RankedListQuestionPolicy(),
     ).validate(context(CategoryGameplayMode.TOP_10));
     expect(result.issues[0].code).toBe('TOP10_INVALID_SCORE_SEQUENCE');
@@ -249,7 +265,9 @@ describe('category gameplay validation', () => {
     const question = top10Question();
     question.rankedList!.entries[1].answer.ar = 'الإِجابة 1';
     const result = await new Top10CategoryGameValidation(
-      { selectTop10: jest.fn().mockResolvedValue([question]) } as never,
+      {
+        selectTop10: jest.fn().mockResolvedValue(sixTop10Questions(question)),
+      } as never,
       new RankedListQuestionPolicy(),
     ).validate(context(CategoryGameplayMode.TOP_10));
     expect(result.issues[0].code).toBe('TOP10_DUPLICATE_ANSWER');
@@ -259,7 +277,9 @@ describe('category gameplay validation', () => {
     const question = top10Question();
     question.rankedList!.entries[1].rank = 1;
     const result = await new Top10CategoryGameValidation(
-      { selectTop10: jest.fn().mockResolvedValue([question]) } as never,
+      {
+        selectTop10: jest.fn().mockResolvedValue(sixTop10Questions(question)),
+      } as never,
       new RankedListQuestionPolicy(),
     ).validate(context(CategoryGameplayMode.TOP_10));
     expect(result.issues[0].code).toBe('TOP10_INVALID_RANKING');

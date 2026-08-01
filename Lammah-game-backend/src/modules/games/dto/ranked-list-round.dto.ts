@@ -65,6 +65,7 @@ export class RankedListRoundStateResponseDto {
   @ApiProperty() turnSequence!: number;
   @ApiProperty() turnDurationSeconds!: number;
   @ApiProperty() maxStrikesPerTeam!: number;
+  @ApiProperty({ minimum: 0, maximum: 600 }) collectedScore!: number;
   @ApiProperty({ type: [RankedListRoundTeamResponseDto] })
   teams!: RankedListRoundTeamResponseDto[];
   @ApiProperty({ type: [RankedListRoundEntryResponseDto] })

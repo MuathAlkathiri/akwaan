@@ -17,10 +17,10 @@ import {
   RevealAnswerDto,
   AwardPointsDto,
   SkipQuestionDto,
+  AdjustGameScoreDto,
 } from './dto/create-game.dto';
 import { CategoriesService } from '../categories/categories.service';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../users/schemas/user.schema';
 import { UsersService } from '../users/users.service';
 import { SubscriptionAccessPolicy } from '../users/policies/subscription-access.policy';
 import { QuestionHistoryService } from '../question-history/question-history.service';
@@ -29,6 +29,7 @@ import { GameActionPolicy } from './policies/game-action.policy';
 import { GameLifecyclePolicy } from './policies/game-lifecycle.policy';
 import { ScoringPolicy } from './policies/scoring.policy';
 import { CategoryGameAssembler } from './validation/category-game-validation';
+import { defaultTeamColor, isAllowedTeamColor } from './team-colors';
 
 @Injectable()
 export class GamesService {
@@ -82,6 +83,16 @@ export class GamesService {
       ? []
       : await this.questionHistoryService.findSeenQuestionIds(owner._id);
 
+    teams.forEach((team, teamIndex) => {
+      if (!isAllowedTeamColor(teamIndex, team.color)) {
+        throw new BadRequestException(
+          teamIndex === 0
+            ? 'اختر لونًا صالحًا للفريق أ'
+            : 'اختر لونًا صالحًا للفريق ب',
+        );
+      }
+    });
+
     // Build the game board
     const board: CategoryBoard[] = [];
 
@@ -107,6 +118,7 @@ export class GamesService {
         name: t.name,
         members: t.members || [],
         score: 0,
+        color: t.color,
       })),
       selectedCategories: categoryIds.map((id) => new Types.ObjectId(id)),
       board,
@@ -133,9 +145,46 @@ export class GamesService {
   }
 
   async findAll(user: AuthenticatedUser): Promise<Game[]> {
-    return this.games.findAll(
-      user.role === UserRole.ADMIN ? undefined : user.id,
-    );
+    return this.games.findAll(user.id);
+  }
+
+  async replay(id: string, user: AuthenticatedUser): Promise<Game> {
+    const original = await this.games.findById(id);
+    if (!original) {
+      throw new NotFoundException(`Game with ID "${id}" not found`);
+    }
+    this.actions.assertCanAccess(original, user);
+
+    const source = original.toObject();
+    const replay = await this.games.create({
+      name: `${source.name} - إعادة`,
+      owner: source.owner,
+      isFreeGame: source.isFreeGame,
+      questionSelectionMode: source.questionSelectionMode,
+      teams: source.teams.map((team, teamIndex) => ({
+        name: team.name,
+        members: team.members || [],
+        score: 0,
+        color: team.color || defaultTeamColor(teamIndex),
+      })),
+      selectedCategories: source.selectedCategories,
+      board: source.board.map((categoryBoard) => ({
+        category: categoryBoard.category,
+        questions: categoryBoard.questions.map((question) => ({
+          question: question.question,
+          snapshot: question.snapshot,
+          points: question.points,
+          isAnswered: false,
+          isAnswerRevealed: false,
+          presentation: question.presentation,
+        })),
+      })),
+      status: GameStatus.ACTIVE,
+      currentTurnTeamIndex: 0,
+      rankedListRounds: [],
+    });
+
+    return this.games.populate(replay);
   }
 
   async findById(id: string, user: AuthenticatedUser): Promise<Game> {
@@ -369,6 +418,36 @@ export class GamesService {
     game.updatedAt = new Date();
     await this.saveGame(game);
 
+    return this.games.populate(game, true);
+  }
+
+  async adjustScore(
+    id: string,
+    dto: AdjustGameScoreDto,
+    user: AuthenticatedUser,
+  ): Promise<Game> {
+    this.scoring.assertTeamIndex(dto.teamIndex);
+    const game = await this.games.findById(id);
+    if (!game) throw new NotFoundException(`Game with ID "${id}" not found`);
+    this.actions.assertCanAccess(game, user);
+
+    game.teams[dto.teamIndex].score = Math.max(
+      0,
+      game.teams[dto.teamIndex].score + dto.delta,
+    );
+    game.updatedAt = new Date();
+    await this.saveGame(game);
+    return this.games.populate(game, true);
+  }
+
+  async changeTurn(id: string, user: AuthenticatedUser): Promise<Game> {
+    const game = await this.games.findById(id);
+    if (!game) throw new NotFoundException(`Game with ID "${id}" not found`);
+    this.actions.assertCanAccess(game, user);
+
+    this.lifecycle.advanceTurn(game);
+    game.updatedAt = new Date();
+    await this.saveGame(game);
     return this.games.populate(game, true);
   }
 

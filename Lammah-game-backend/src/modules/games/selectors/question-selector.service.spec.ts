@@ -76,8 +76,8 @@ describe('QuestionSelectorService', () => {
     );
   });
 
-  it('selects TOP_10 only from ranked-list questions and keeps one record', async () => {
-    const ids = [new Types.ObjectId(), new Types.ObjectId()];
+  it('selects six distinct TOP_10 ranked-list questions', async () => {
+    const ids = Array.from({ length: 7 }, () => new Types.ObjectId());
     const repository = {
       findEligibleForGame: jest.fn().mockResolvedValue(ids.map(question)),
     } as unknown as QuestionRepository;
@@ -87,7 +87,8 @@ describe('QuestionSelectorService', () => {
       isFreeGame: true,
       seenQuestionIds: [],
     });
-    expect(selected).toHaveLength(1);
+    expect(selected).toHaveLength(6);
+    expect(new Set(selected.map((item) => String(item._id))).size).toBe(6);
     expect(repository.findEligibleForGame).toHaveBeenCalledWith(
       expect.objectContaining({
         questionType: QuestionGameplayType.RANKED_LIST,

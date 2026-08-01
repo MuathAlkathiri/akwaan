@@ -1,7 +1,7 @@
 "use client";
 
 import type { AxiosError } from "axios";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useGamesAwardPoints,
   useGamesCreate,
@@ -19,14 +19,16 @@ import {
   useGamesSkipQuestion,
   useGamesSubmitQuestionResult,
 } from "@/api/generated/games/games";
-import type { ErrorResponseDto } from "@/api/generated/models";
+import type { ErrorResponseDto, GameResponseDto } from "@/api/generated/models";
 import type {
   RankedListRoundActionEnvelopeDto,
-  RankedListRoundStateResponseDto,
+  RankedListRoundStateEnvelopeDto,
 } from "@/api/generated/models";
 import type { CreateGamePayload, Game } from "@/types";
 import { toCreateGameRequest } from "../mappers/game-request.mapper";
 import { toGame, toGames } from "../mappers/game-response.mapper";
+import { useAuth } from "@/components/auth/auth-provider";
+import apiClient from "@/lib/api/client";
 
 type GameApiError = AxiosError<ErrorResponseDto>;
 type GameMutationOptions = { onSuccess?: (game: Game) => void };
@@ -41,6 +43,16 @@ export const gameKeys = {
   answer: (id: string, gameQuestionId: string) =>
     ["games", id, "questions", gameQuestionId, "answer"] as const,
 };
+
+export function mergeRankedListRoundActionIntoCache(
+  current: RankedListRoundStateEnvelopeDto | undefined,
+  response: RankedListRoundActionEnvelopeDto,
+): RankedListRoundStateEnvelopeDto {
+  return {
+    statusCode: current?.statusCode ?? response.statusCode,
+    data: response.data.state,
+  };
+}
 
 function useGameCache(gameId: string) {
   const client = useQueryClient();
@@ -59,13 +71,16 @@ function useGameCache(gameId: string) {
   };
 }
 
-export const useGames = () =>
-  useGamesList({
+export const useGames = () => {
+  const { user } = useAuth();
+  return useGamesList({
     query: {
-      queryKey: gameKeys.all,
+      queryKey: [...gameKeys.all, user?.id ?? "anonymous"],
+      enabled: Boolean(user?.id),
       select: (response) => toGames(response.data),
     },
   });
+};
 
 export const useGame = (id: string) =>
   useGamesGetById(id, {
@@ -153,6 +168,49 @@ export function useCreateGame() {
   };
 }
 
+export function useReplayGame() {
+  const cache = useGameCache("");
+  return useMutation<Game, GameApiError, string>({
+    mutationFn: async (gameId) => {
+      const response = await apiClient.post<{ data: GameResponseDto }>(
+        `/games/${gameId}/replay`,
+      );
+      return cache.write(response.data);
+    },
+  });
+}
+
+export function useAdjustGameScore(gameId: string) {
+  const cache = useGameCache(gameId);
+  return useMutation<
+    Game,
+    GameApiError,
+    { teamIndex: 0 | 1; delta: -50 | 50 }
+  >({
+    mutationFn: async (input) => {
+      const response = await apiClient.post<{ data: GameResponseDto }>(
+        `/games/${gameId}/adjust-score`,
+        input,
+      );
+      return cache.write(response.data);
+    },
+    onError: cache.refreshOnConflict,
+  });
+}
+
+export function useChangeGameTurn(gameId: string) {
+  const cache = useGameCache(gameId);
+  return useMutation<Game, GameApiError>({
+    mutationFn: async () => {
+      const response = await apiClient.post<{ data: GameResponseDto }>(
+        `/games/${gameId}/change-turn`,
+      );
+      return cache.write(response.data);
+    },
+    onError: cache.refreshOnConflict,
+  });
+}
+
 export function useRevealAnswer(gameId: string) {
   const cache = useGameCache(gameId);
   const mutation = useGamesRevealAnswer<GameApiError>({
@@ -228,7 +286,6 @@ export function useRankedListRound(
   const queryKey = gameKeys.rankedList(gameId, questionId);
   const refreshGame = () => {
     client.invalidateQueries({ queryKey: gameKeys.detail(gameId) });
-    client.invalidateQueries({ queryKey: queryKey });
   };
   const query = useGamesGetRankedListRoundState(gameId, questionId, {
     query: {
@@ -240,9 +297,13 @@ export function useRankedListRound(
     },
   });
   const writeAction = (response: RankedListRoundActionEnvelopeDto) => {
-    client.setQueryData<RankedListRoundStateResponseDto>(
+    // The generated GET query caches the HTTP envelope and exposes its inner
+    // state through `select`. Preserve that cache shape so the selector never
+    // observes a transient `undefined` value between the mutation response and
+    // the next background reconciliation poll.
+    client.setQueryData<RankedListRoundStateEnvelopeDto>(
       queryKey,
-      response.data.state,
+      (current) => mergeRankedListRoundActionIntoCache(current, response),
     );
     if (response.data.state.status === "completed") refreshGame();
   };
@@ -256,13 +317,22 @@ export function useRankedListRound(
     },
   });
   const submitMutation = useGamesSubmitRankedListAnswer<GameApiError>({
-    mutation: { onSuccess: writeAction },
+    mutation: {
+      onMutate: () => client.cancelQueries({ queryKey }),
+      onSuccess: writeAction,
+    },
   });
   const expireMutation = useGamesExpireRankedListTurn<GameApiError>({
-    mutation: { onSuccess: writeAction },
+    mutation: {
+      onMutate: () => client.cancelQueries({ queryKey }),
+      onSuccess: writeAction,
+    },
   });
   const finalizeMutation = useGamesFinalizeRankedListRound<GameApiError>({
-    mutation: { onSuccess: writeAction },
+    mutation: {
+      onMutate: () => client.cancelQueries({ queryKey }),
+      onSuccess: writeAction,
+    },
   });
 
   return {

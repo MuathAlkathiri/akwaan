@@ -264,6 +264,88 @@ export function useGamesList<
 }
 
 /**
+ * @summary Replay a game using the same immutable question snapshots
+ */
+export const gamesReplay = (
+  id: string,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<GameMutationResponseDto>(
+    { url: `/games/${id}/replay`, method: "POST", signal },
+    options,
+  );
+};
+
+export const getGamesReplayMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof gamesReplay>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof gamesReplay>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["gamesReplay"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof gamesReplay>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return gamesReplay(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GamesReplayMutationResult = NonNullable<
+  Awaited<ReturnType<typeof gamesReplay>>
+>;
+
+export type GamesReplayMutationError = unknown;
+
+/**
+ * @summary Replay a game using the same immutable question snapshots
+ */
+export const useGamesReplay = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof gamesReplay>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof gamesReplay>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getGamesReplayMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
  * @summary Get a specific game by ID
  */
 export const gamesGetById = (

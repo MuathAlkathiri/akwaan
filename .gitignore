@@ -29,6 +29,8 @@ test-media/
 .env
 .env.local
 .env.*.local
+deployment/.env
+deployment/backups/
 
 # Logs
 *.log

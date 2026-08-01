@@ -52,13 +52,14 @@ export class QuestionSelectorService {
       freeGameOnly: options.isFreeGame,
       questionType: QuestionGameplayType.RANKED_LIST,
     });
-    if (options.isFreeGame) return candidates.slice(0, 1);
     const seen = new Set(options.seenQuestionIds.map(String));
     const unseen = candidates.filter(
       (question) => !seen.has(String(question._id)),
     );
-    const source = unseen.length ? unseen : candidates;
-    return this.shuffle(source).slice(0, 1);
+    const source = unseen.length >= 6 ? unseen : candidates;
+    return options.isFreeGame
+      ? source.slice(0, 6)
+      : this.shuffle(source).slice(0, 6);
   }
 
   async selectBomb(options: {

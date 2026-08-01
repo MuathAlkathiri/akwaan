@@ -20,6 +20,11 @@ export interface RankedListRoundStateResponseDto {
   turnSequence: number;
   turnDurationSeconds: number;
   maxStrikesPerTeam: number;
+  /**
+   * @minimum 0
+   * @maximum 600
+   */
+  collectedScore: number;
   teams: RankedListRoundTeamResponseDto[];
   entries: RankedListRoundEntryResponseDto[];
   outcome?: RankedListRoundOutcomeResponseDto;

@@ -102,13 +102,6 @@ export class QuestionsService {
       question: createQuestionDto.question,
       categoryId,
     });
-    if (duplicateResult.exactMatch) {
-      throw new BadRequestException({
-        code: 'EXACT_QUESTION_DUPLICATE',
-        message: 'An equivalent question already exists in this category.',
-        duplicateResult,
-      });
-    }
     const payload = this.normalizeQuestionPayload(
       createQuestionDto,
       category,
@@ -325,20 +318,6 @@ export class QuestionsService {
     if (categoryId) {
       category =
         await this.categoriesService.findByIdForQuestionAuthoring(categoryId);
-    }
-
-    if (contentUpdate.question) {
-      const duplicateResult = await this.duplicates.check({
-        question: contentUpdate.question,
-        categoryId: categoryId ?? String(existingQuestion.category),
-        excludeId: id,
-      });
-      if (duplicateResult.exactMatch)
-        throw new BadRequestException({
-          code: 'EXACT_QUESTION_DUPLICATE',
-          message: 'An equivalent question already exists in this category.',
-          duplicateResult,
-        });
     }
 
     const payload = this.normalizeQuestionPayload(

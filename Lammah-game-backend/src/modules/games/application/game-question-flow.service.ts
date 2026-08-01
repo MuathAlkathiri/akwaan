@@ -264,11 +264,12 @@ export class GameQuestionFlowService {
     const baseView = {
       ...this.questionView(game, boardQuestion, snapshot),
       ...(snapshot.explanation ? { explanation: snapshot.explanation } : {}),
-      teams: game.teams.map((team) => ({
+      teams: game.teams.map((team, teamIndex) => ({
         _id: String(team._id),
         name: team.name,
         members: team.members,
         score: team.score,
+        color: team.color || (teamIndex === 1 ? 'red' : 'blue'),
       })),
       ...(answeredTeam ? { answeredByTeamId: String(answeredTeam._id) } : {}),
       ...(boardQuestion.awardedPoints !== undefined

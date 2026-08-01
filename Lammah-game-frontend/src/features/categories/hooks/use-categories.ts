@@ -28,6 +28,7 @@ export function useCategories(params?: { catalogId?: string }) {
     query: {
       queryKey: categoryKeys.list(params?.catalogId),
       select: (response) => toCategoryModels(response.data),
+      refetchOnWindowFocus: "always",
     },
   });
 }

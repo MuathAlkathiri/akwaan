@@ -76,6 +76,27 @@ describe('QuestionsService manual audio policy', () => {
     expect(jobs.enqueue).not.toHaveBeenCalled();
   });
 
+  it('allows the same question text to be authored with a different answer', async () => {
+    categories.findByIdForQuestionAuthoring.mockResolvedValue({
+      audioPolicy: CategoryAudioPolicy.OPTIONAL,
+    });
+    duplicates.check.mockResolvedValue({
+      exactMatch: true,
+      highestSimilarity: 1,
+      matches: [{ questionId: 'existing-question', similarity: 1 }],
+    });
+
+    await expect(
+      service.create({ ...base, answer: 'إجابة بديلة' }),
+    ).resolves.toEqual(expect.objectContaining({ answer: 'إجابة بديلة' }));
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        answer: 'إجابة بديلة',
+        duplicateDiagnostics: expect.objectContaining({ exactMatch: true }),
+      }),
+    );
+  });
+
   it('forces required audio, persists a draft, and only enqueues background work', async () => {
     categories.findByIdForQuestionAuthoring.mockResolvedValue({
       audioPolicy: CategoryAudioPolicy.REQUIRED,

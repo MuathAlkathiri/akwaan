@@ -1,0 +1,129 @@
+name: lammah
+
+services:
+  mongodb:
+    image: mongo:7
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --eval \"try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]}).ok }\" mongodb://127.0.0.1:27017/admin | grep 1",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+    networks: [private]
+
+  backend:
+    build:
+      context: ..
+      dockerfile: Lammah-game-backend/Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      MONGODB_URI: mongodb://mongodb:27017/lammah-quiz?replicaSet=rs0
+      APP_BASE_URL: https://${API_HOST:?Set API_HOST in deployment/.env}
+      CORS_ORIGINS: https://${FRONTEND_HOST:?Set FRONTEND_HOST in deployment/.env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in deployment/.env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-Lammah Admin}
+      UPLOADS_DIR: /app/uploads
+      SWAGGER_ENABLED: "false"
+      AI_QUESTION_GENERATION_ENABLED: "false"
+      AUDIO_AUTO_SELECT_FIRST_CANDIDATE: "false"
+      ALLOW_YOUTUBE_ASSET_DOWNLOADS: "false"
+      AI_ALIAS_DIAGNOSTICS: "false"
+      JIKAN_PROVIDER_ENABLED: "true"
+      JIKAN_API_BASE_URL: https://api.jikan.moe/v4
+      WIGOLO_CACHE_FILE: /app/.cache/entity-verification.json
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_cache:/app/.cache
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+    networks: [private]
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: Lammah-game-frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://${API_HOST:?Set API_HOST in deployment/.env}
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      NEXT_PUBLIC_API_URL: https://${API_HOST:?Set API_HOST in deployment/.env}
+      NEXT_PUBLIC_LIVE_GAME_DEBUG: "false"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+    networks: [private]
+
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      FRONTEND_HOST: ${FRONTEND_HOST:?Set FRONTEND_HOST in deployment/.env}
+      API_HOST: ${API_HOST:?Set API_HOST in deployment/.env}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in deployment/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [private]
+
+networks:
+  private:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    name: lammah_mongodb_data
+  backend_uploads:
+    name: lammah_backend_uploads
+  backend_cache:
+    name: lammah_backend_cache
+  caddy_data:
+    name: lammah_caddy_data
+  caddy_config:
+    name: lammah_caddy_config

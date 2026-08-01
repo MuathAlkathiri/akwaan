@@ -1,11 +1,21 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
-import { Bomb, Send, SkipForward } from "lucide-react";
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { Bomb, Loader2, Mic, Send, SkipForward, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { useLiveSession } from "../hooks/live-session-context";
+import {
+  type BombVoiceState,
+  useBombVoiceInput,
+} from "../hooks/use-bomb-voice-input";
 import { useTeamClockDisplay } from "../hooks/use-team-clock-display";
 import type { GameplayRuntimeSnapshot } from "../model";
 
@@ -53,6 +63,18 @@ function BombItemImage({
   );
 }
 
+const VOICE_MESSAGES: Partial<Record<BombVoiceState, string>> = {
+  listening: "أستمع الآن… تكلّم بوضوح",
+  processing: "جارٍ التعرّف على الإجابة…",
+  recognized: "تم التعرّف على الإجابة وإرسالها",
+  "no-speech": "لم أسمع إجابة. اضغط الميكروفون وحاول مرة أخرى.",
+  "permission-denied":
+    "لم يتم السماح باستخدام الميكروفون. فعّل الإذن أو استخدم الكتابة.",
+  unsupported: "التعرّف الصوتي غير مدعوم في هذا المتصفح. استخدم الكتابة.",
+  reconnecting: "جارٍ إعادة الاتصال. سيتاح الميكروفون بعد الاتصال.",
+  error: "تعذر تشغيل الميكروفون. حاول مرة أخرى أو استخدم الكتابة.",
+};
+
 export function BombGameplayPanel({
   runtime,
 }: {
@@ -80,6 +102,9 @@ export function BombGameplayPanel({
     phase === "presenting" &&
     snapshot?.status === "active" &&
     !resolvingExpiration;
+  const roundId = round?.id ?? "";
+  const itemIndex =
+    runtime.currentItem?.index ?? Number(round?.modeState.itemIndex ?? 0);
 
   useEffect(() => {
     if (answerEnabled) {
@@ -113,9 +138,49 @@ export function BombGameplayPanel({
     round,
   ]);
 
+  const submitAnswer = useCallback(
+    (value: string) => {
+      const trimmed = value.trim();
+      if (!trimmed || !answerEnabled) return;
+      gameplayCommand("gameplay-command", {
+        roundId,
+        commandType: "submit-answer",
+        payload: { answer: trimmed },
+      });
+      setAnswer("");
+    },
+    [answerEnabled, gameplayCommand, roundId],
+  );
+
+  const skipItem = useCallback(() => {
+    if (!canSkip || connection !== "connected") return;
+    gameplayCommand("gameplay-command", {
+      roundId,
+      commandType: "skip",
+      payload: {},
+    });
+  }, [canSkip, connection, gameplayCommand, roundId]);
+
+  const voice = useBombVoiceInput({
+    enabled: answerEnabled,
+    connection,
+    lifecycleKey: `${roundId}:${activeTeamId ?? ""}:${itemIndex}:${phase}`,
+    onAnswer: submitAnswer,
+    onSkip: skipItem,
+  });
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    submitAnswer(answer);
+  }
+
+  function skip() {
+    voice.stop("idle");
+    skipItem();
+  }
+
   if (!round) return null;
   if (snapshot?.bombResult) return null;
-  const roundId = round.id;
   const prompt = runtime.prompt ?? String(round.modeState.prompt ?? "");
   const currentItemImage = {
     url: getMediaUrl(
@@ -127,23 +192,9 @@ export function BombGameplayPanel({
       String(round.modeState.altText ?? "").trim() ||
       prompt,
   };
-  const itemIndex =
-    runtime.currentItem?.index ?? Number(round.modeState.itemIndex ?? 0);
   const itemCount =
     runtime.currentItem?.totalItems ?? Number(round.modeState.itemCount ?? 0);
   const activeTeam = snapshot?.teams.find((team) => team.id === activeTeamId);
-
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    const value = answer.trim();
-    if (!value || !canSubmit) return;
-    gameplayCommand("gameplay-command", {
-      roundId,
-      commandType: "submit-answer",
-      payload: { answer: value },
-    });
-    setAnswer("");
-  }
 
   return (
     <section className="space-y-5 rounded-xl border bg-card p-5">
@@ -186,39 +237,94 @@ export function BombGameplayPanel({
         phase === "presenting" &&
         !resolvingExpiration &&
         snapshot?.status === "active" && (
-        <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row">
-          <Input
-            ref={answerInputRef}
-            value={answer}
-            onChange={(event) => setAnswer(event.target.value)}
-            placeholder="Type your answer"
-            aria-label="Bomb answer"
-            autoComplete="off"
-            disabled={!answerEnabled}
-          />
-          <Button
-            type="submit"
-            disabled={!canSubmit || !answer.trim() || connection !== "connected"}
-          >
-            <Send className="size-4" aria-hidden />
-            Submit
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!canSkip || connection !== "connected"}
-            onClick={() =>
-              gameplayCommand("gameplay-command", {
-                roundId: round.id,
-                commandType: "skip",
-                payload: {},
-              })
-            }
-          >
-            <SkipForward className="size-4" aria-hidden />
-            Skip (-5s)
-          </Button>
-        </form>
+          <div className="space-y-4">
+            <div className="flex flex-col items-center gap-3 rounded-xl bg-muted/60 p-4 text-center">
+              <Button
+                type="button"
+                size="lg"
+                className="size-20 rounded-full"
+                variant={voice.state === "listening" ? "destructive" : "default"}
+                disabled={
+                  !answerEnabled ||
+                  voice.state === "processing" ||
+                  voice.state === "unsupported"
+                }
+                onClick={() =>
+                  voice.state === "listening"
+                    ? voice.stop("idle")
+                    : voice.start()
+                }
+                aria-label={
+                  voice.state === "listening"
+                    ? "إيقاف الاستماع"
+                    : "الإجابة بالصوت"
+                }
+              >
+                {voice.state === "listening" ? (
+                  <Square className="size-8 fill-current" aria-hidden />
+                ) : voice.state === "processing" ? (
+                  <Loader2 className="size-9 animate-spin" aria-hidden />
+                ) : (
+                  <Mic className="size-9" aria-hidden />
+                )}
+              </Button>
+              {voice.state === "listening" && (
+                <span
+                  className="inline-flex items-center gap-2 font-medium text-destructive"
+                  role="status"
+                >
+                  <span className="size-3 animate-pulse rounded-full bg-destructive" />
+                  {VOICE_MESSAGES.listening}
+                </span>
+              )}
+              {voice.transcript && (
+                <p className="text-lg font-semibold" dir="rtl" aria-live="polite">
+                  «{voice.transcript}»
+                </p>
+              )}
+              {voice.state !== "idle" && voice.state !== "listening" && (
+                <p
+                  className={
+                    voice.state === "recognized"
+                      ? "text-sm text-primary"
+                      : "text-sm text-muted-foreground"
+                  }
+                  role="status"
+                >
+                  {VOICE_MESSAGES[voice.state]}
+                </p>
+              )}
+            </div>
+            <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row">
+              <Input
+                ref={answerInputRef}
+                value={answer}
+                onChange={(event) => setAnswer(event.target.value)}
+                placeholder="اكتب إجابتك"
+                aria-label="Bomb answer"
+                autoComplete="off"
+                disabled={!answerEnabled}
+              />
+              <Button
+                type="submit"
+                disabled={
+                  !canSubmit || !answer.trim() || connection !== "connected"
+                }
+              >
+                <Send className="size-4" aria-hidden />
+                Submit
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!canSkip || connection !== "connected"}
+                onClick={skip}
+              >
+                <SkipForward className="size-4" aria-hidden />
+                Skip (-5s)
+              </Button>
+            </form>
+          </div>
         )}
     </section>
   );

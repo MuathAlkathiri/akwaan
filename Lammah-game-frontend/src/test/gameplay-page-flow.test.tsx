@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   useGameQuestionAnswer: vi.fn(),
   reveal: vi.fn(),
   submit: vi.fn(),
+  adjustScore: vi.fn(),
+  changeTurn: vi.fn(),
   revealState: { isPending: false, isError: false },
   submitState: { isPending: false, isError: false },
 }));
@@ -33,6 +35,20 @@ vi.mock("@/features/games/hooks/use-games", () => ({
     ...mocks.submitState,
     mutateAsync: mocks.submit,
   }),
+  useAdjustGameScore: () => ({
+    isPending: false,
+    mutate: mocks.adjustScore,
+  }),
+  useChangeGameTurn: () => ({
+    isPending: false,
+    mutate: mocks.changeTurn,
+  }),
+}));
+
+vi.mock("@/features/games/components/ranked-list-round", () => ({
+  RankedListRound: ({ question }: { question: string }) => (
+    <div data-testid="ranked-list-round">{question}</div>
+  ),
 }));
 
 const questionView = {
@@ -63,11 +79,23 @@ const boardGame = {
   id: "game-1",
   name: "Game",
   teams: [
-    { id: "team-1", name: "الصقور", members: [], score: 0 },
-    { id: "team-2", name: "النجوم", members: [], score: 0 },
+    { id: "team-1", name: "الصقور", members: [], score: 0, color: "yellow" },
+    { id: "team-2", name: "النجوم", members: [], score: 0, color: "pink" },
   ],
-  teamA: { id: "team-1", name: "الصقور", members: [], score: 0 },
-  teamB: { id: "team-2", name: "النجوم", members: [], score: 0 },
+  teamA: {
+    id: "team-1",
+    name: "الصقور",
+    members: [],
+    score: 0,
+    color: "yellow",
+  },
+  teamB: {
+    id: "team-2",
+    name: "النجوم",
+    members: [],
+    score: 0,
+    color: "pink",
+  },
   categories: [{ id: "category-1", name: "كرة القدم" }],
   board: [
     [
@@ -111,6 +139,78 @@ beforeEach(() => {
 });
 
 describe("dedicated gameplay question routes", () => {
+  it("renders the board header RTL with the logo before the home action", () => {
+    render(<GameBoard gameId="game-1" />);
+    const header = screen.getByTestId("game-board-header");
+    const logo = screen.getByRole("link", { name: "لمة" });
+    const home = screen.getByRole("link", { name: "الرئيسية" });
+
+    expect(header).toHaveAttribute("dir", "rtl");
+    expect(
+      logo.compareDocumentPosition(home) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("matches the current-turn badge to the active team's exact color", () => {
+    const { rerender } = render(<GameBoard gameId="game-1" />);
+    expect(screen.getByTestId("current-turn")).toHaveClass(
+      "bg-amber-400",
+      "text-amber-950",
+      "border-amber-200/80",
+    );
+
+    mocks.useGame.mockReturnValue({
+      data: {
+        ...boardGame,
+        currentTeamTurn: "B",
+        currentTeamIndex: 1,
+      },
+      isLoading: false,
+      error: null,
+    });
+    rerender(<GameBoard gameId="game-1" />);
+    expect(screen.getByTestId("current-turn")).toHaveClass(
+      "bg-pink-600",
+      "text-pink-50",
+      "border-pink-300/70",
+    );
+  });
+
+  it("offers optional score correction and manual turn controls", () => {
+    mocks.useGame.mockReturnValue({
+      data: {
+        ...boardGame,
+        teams: [
+          { ...boardGame.teams[0], score: 200 },
+          boardGame.teams[1],
+        ],
+        teamA: { ...boardGame.teamA, score: 200 },
+      },
+      isLoading: false,
+      error: null,
+    });
+    render(<GameBoard gameId="game-1" />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "إضافة 50 نقطة إلى الصقور" }),
+    );
+    expect(mocks.adjustScore).toHaveBeenCalledWith({
+      teamIndex: 0,
+      delta: 50,
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "خصم 50 نقطة من الصقور" }),
+    );
+    expect(mocks.adjustScore).toHaveBeenCalledWith({
+      teamIndex: 0,
+      delta: -50,
+    });
+
+    fireEvent.click(screen.getByTestId("change-turn"));
+    expect(mocks.changeTurn).toHaveBeenCalledOnce();
+  });
+
   it("navigates from a board card without opening the old modal", () => {
     render(<GameBoard gameId="game-1" />);
     fireEvent.click(screen.getByTestId("board-question-game-question-1"));
@@ -133,6 +233,36 @@ describe("dedicated gameplay question routes", () => {
     expect(screen.getByTestId("board-question-game-question-1")).toBeDisabled();
   });
 
+  it("renders six independent 600-point Top 10 board entries", () => {
+    const top10Questions = Array.from({ length: 6 }, (_, index) => ({
+      id: `top10-${index + 1}`,
+      categoryId: "category-top10",
+      points: 600,
+      answered: index === 0,
+      question: { questionType: "ranked_list" as const },
+    }));
+    mocks.useGame.mockReturnValue({
+      data: {
+        ...boardGame,
+        categories: [{ id: "category-top10", name: "Top 10" }],
+        board: [top10Questions],
+      },
+      isLoading: false,
+      error: null,
+    });
+    render(<GameBoard gameId="game-1" />);
+    expect(screen.getAllByRole("button", { name: /Top 10 600/ })).toHaveLength(
+      6,
+    );
+    expect(screen.getAllByText("600")).toHaveLength(6);
+    expect(screen.getByTestId("board-question-top10-1")).toBeDisabled();
+    expect(screen.getByTestId("board-question-top10-2")).toBeEnabled();
+    fireEvent.click(screen.getByTestId("board-question-top10-2"));
+    expect(mocks.push).toHaveBeenCalledWith(
+      "/games/game-1/questions/top10-2",
+    );
+  });
+
   it("renders snapshot text without exposing the answer", () => {
     render(<QuestionPlayer gameId="game-1" gameQuestionId="game-question-1" />);
     expect(screen.getByTestId("game-question-text")).toHaveTextContent(
@@ -143,6 +273,50 @@ describe("dedicated gameplay question routes", () => {
       "href",
       "/games/game-1",
     );
+    expect(screen.getByTestId("question-current-turn")).toHaveTextContent(
+      /الصقور.*الدور الآن/,
+    );
+    expect(
+      screen.getByTestId("question-current-turn").querySelector("span"),
+    ).toHaveClass("bg-amber-400", "text-amber-950");
+  });
+
+  it("updates the question turn indicator to the other team's saved color", () => {
+    mocks.useGame.mockReturnValue({
+      data: { ...boardGame, currentTeamTurn: "B", currentTeamIndex: 1 },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<QuestionPlayer gameId="game-1" gameQuestionId="game-question-1" />);
+
+    expect(screen.getByTestId("question-current-turn")).toHaveTextContent(
+      /النجوم.*الدور الآن/,
+    );
+    expect(
+      screen.getByTestId("question-current-turn").querySelector("span"),
+    ).toHaveClass("bg-pink-600", "text-pink-50");
+  });
+
+  it("keeps an answered Top 10 question on its completed round screen", () => {
+    mocks.useGameQuestion.mockReturnValue({
+      data: {
+        ...questionView,
+        questionType: "ranked_list",
+        isAnswered: true,
+      },
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<QuestionPlayer gameId="game-1" gameQuestionId="game-question-1" />);
+
+    expect(screen.getByTestId("ranked-list-round")).toHaveTextContent(
+      questionView.question,
+    );
+    expect(
+      screen.queryByText("تم احتساب هذا السؤال مسبقًا."),
+    ).not.toBeInTheDocument();
   });
 
   it.each([
@@ -224,14 +398,19 @@ describe("dedicated answer and scoring route", () => {
       answerView.answer,
     );
     answerView.teams.forEach((team) =>
-      expect(screen.getByText(team.name)).toBeInTheDocument(),
+      expect(
+        screen.getByRole("button", { name: new RegExp(team.name) }),
+      ).toBeInTheDocument(),
     );
     expect(screen.getByText("لا أحد")).toBeInTheDocument();
+    expect(screen.getByTestId("question-current-turn")).toHaveTextContent(
+      /الصقور.*الدور الآن/,
+    );
   });
 
   it("submits one selected team and returns to the board", async () => {
     render(<AnswerPlayer gameId="game-1" gameQuestionId="game-question-1" />);
-    fireEvent.click(screen.getByText("النجوم"));
+    fireEvent.click(screen.getByRole("button", { name: /النجوم/ }));
     await waitFor(() => expect(mocks.submit).toHaveBeenCalledOnce());
     expect(mocks.submit).toHaveBeenCalledWith("team-2");
     expect(mocks.replace).toHaveBeenCalledWith("/games/game-1");
@@ -245,7 +424,7 @@ describe("dedicated answer and scoring route", () => {
       }),
     );
     render(<AnswerPlayer gameId="game-1" gameQuestionId="game-question-1" />);
-    const team = screen.getByText("الصقور");
+    const team = screen.getByRole("button", { name: /الصقور/ });
     fireEvent.click(team);
     fireEvent.click(team);
     expect(mocks.submit).toHaveBeenCalledTimes(1);
@@ -264,7 +443,9 @@ describe("dedicated answer and scoring route", () => {
     render(<AnswerPlayer gameId="game-1" gameQuestionId="game-question-1" />);
     expect(screen.getByText("لا أحد").closest("button")).toBeDisabled();
     answerView.teams.forEach((team) =>
-      expect(screen.getByText(team.name).closest("button")).toBeDisabled(),
+      expect(
+        screen.getByRole("button", { name: new RegExp(team.name) }),
+      ).toBeDisabled(),
     );
   });
 

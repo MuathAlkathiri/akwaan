@@ -1,8 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Clock3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useGameQuestion, useRevealGameQuestion } from "../../hooks/use-games";
+import {
+  useGame,
+  useGameQuestion,
+  useRevealGameQuestion,
+} from "../../hooks/use-games";
+import { resolveCurrentGameTurn } from "../../utils/current-game-turn";
 import { RankedListRound } from "../ranked-list-round";
 import { QuestionHeader } from "./question-header";
 import { QuestionMedia } from "./question-media";
@@ -19,7 +26,9 @@ export function QuestionPlayer({
   const boardHref = `/games/${gameId}`;
   const answerHref = `${boardHref}/questions/${gameQuestionId}/answer`;
   const question = useGameQuestion(gameId, gameQuestionId);
+  const game = useGame(gameId);
   const reveal = useRevealGameQuestion(gameId, gameQuestionId);
+  const currentTurn = resolveCurrentGameTurn(game.data);
 
   if (question.isLoading)
     return (
@@ -41,14 +50,6 @@ export function QuestionPlayer({
       />
     );
 
-  if (data.isAnswered)
-    return (
-      <GameScreenMessage
-        message="تم احتساب هذا السؤال مسبقًا."
-        href={boardHref}
-      />
-    );
-
   if (data.questionType === "ranked_list")
     return (
       <main
@@ -59,10 +60,8 @@ export function QuestionPlayer({
           backHref={boardHref}
           category={data.category.name}
           points={data.points}
+          currentTurn={currentTurn}
         />
-        <h1 className="text-center text-3xl font-black leading-tight md:text-5xl">
-          {data.question}
-        </h1>
         <RankedListRound
           gameId={gameId}
           questionId={data.sourceQuestionId}
@@ -70,6 +69,14 @@ export function QuestionPlayer({
           onComplete={() => router.replace(boardHref)}
         />
       </main>
+    );
+
+  if (data.isAnswered)
+    return (
+      <GameScreenMessage
+        message="تم احتساب هذا السؤال مسبقًا."
+        href={boardHref}
+      />
     );
 
   const showAnswer = async () => {
@@ -90,8 +97,10 @@ export function QuestionPlayer({
         backHref={boardHref}
         category={data.category.name}
         points={data.points}
+        currentTurn={currentTurn}
       />
       <section className="flex flex-1 flex-col justify-center gap-6">
+        <StandardQuestionElapsedTimer />
         <h1
           data-testid="game-question-text"
           className="text-center text-3xl font-black leading-tight sm:text-4xl md:text-6xl"
@@ -114,6 +123,36 @@ export function QuestionPlayer({
         {reveal.isPending ? "جاري إظهار الإجابة..." : "إظهار الإجابة"}
       </Button>
     </main>
+  );
+}
+
+function StandardQuestionElapsedTimer() {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    const startedAt = Date.now();
+    const interval = window.setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    }, 250);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const minutes = Math.floor(elapsedSeconds / 60);
+  const seconds = elapsedSeconds % 60;
+
+  return (
+    <div
+      role="timer"
+      aria-label={`الوقت المنقضي ${minutes} دقيقة و${seconds} ثانية`}
+      data-testid="standard-question-elapsed-timer"
+      className="mx-auto inline-flex items-center gap-2 rounded-full border border-violet-300/25 bg-violet-500/10 px-4 py-2 font-black text-violet-100 shadow-[0_8px_24px_rgba(76,29,149,.18)] backdrop-blur"
+    >
+      <Clock3 className="size-5 text-violet-300" aria-hidden="true" />
+      <span className="min-w-[4.5rem] text-center text-2xl tabular-nums" dir="ltr">
+        {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
+      </span>
+    </div>
   );
 }
 

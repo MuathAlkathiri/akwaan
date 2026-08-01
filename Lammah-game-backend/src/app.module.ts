@@ -12,6 +12,7 @@ import { LiveGameSessionsModule } from './modules/live-game-sessions/live-game-s
 import { QuestionHistoryModule } from './modules/question-history/question-history.module';
 import { MusicModule } from './modules/music/music.module';
 import { CatalogsModule } from './modules/catalogs/catalogs.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -32,5 +33,6 @@ import { CatalogsModule } from './modules/catalogs/catalogs.module';
     SubscriptionsModule,
     LiveGameSessionsModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}

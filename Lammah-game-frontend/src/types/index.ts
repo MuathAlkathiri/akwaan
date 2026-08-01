@@ -381,6 +381,7 @@ export interface Team {
   name: string;
   members: string[];
   score: number;
+  color?: import("@/features/games/config/team-colors").TeamColorKey;
 }
 
 // Board Question types
@@ -429,6 +430,7 @@ export interface CreateGamePayload {
   teams: Array<{
     name: string;
     members: string[];
+    color: import("@/features/games/config/team-colors").TeamColorKey;
   }>;
   categoryIds: string[];
 }

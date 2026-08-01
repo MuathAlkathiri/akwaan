@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,8 @@ interface GameCardProps {
   status: string;
   teamA: { name: string; score: number };
   teamB: { name: string; score: number };
+  replaying?: boolean;
+  onReplay: () => void;
 }
 
 export function GameCard({
@@ -24,6 +27,8 @@ export function GameCard({
   status,
   teamA,
   teamB,
+  replaying,
+  onReplay,
 }: GameCardProps) {
   return (
     <Card>
@@ -37,9 +42,22 @@ export function GameCard({
           <TeamBadge {...teamB} />
         </div>
       </CardHeader>
-      <CardContent>
-        <Button asChild className="w-full" size="lg">
+      <CardContent className="grid gap-2 sm:grid-cols-2">
+        <Button asChild size="lg">
           <Link href={`/games/${id}`}>متابعة اللعبة</Link>
+        </Button>
+        <Button
+          type="button"
+          size="lg"
+          variant="outline"
+          disabled={replaying}
+          onClick={onReplay}
+        >
+          <RotateCcw
+            className={`ml-2 size-4 ${replaying ? "animate-spin" : ""}`}
+            aria-hidden
+          />
+          {replaying ? "جاري تجهيز اللعبة..." : "العب مرة أخرى"}
         </Button>
       </CardContent>
     </Card>

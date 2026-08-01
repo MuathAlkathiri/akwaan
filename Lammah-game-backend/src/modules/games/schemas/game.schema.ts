@@ -222,6 +222,7 @@ export interface TeamData {
   name: string;
   members: string[];
   score: number;
+  color?: 'blue' | 'green' | 'yellow' | 'red' | 'orange' | 'pink';
 }
 
 interface GameQuestionSnapshotBase {
@@ -562,6 +563,10 @@ export class Game extends Document {
         score: {
           type: Number,
           default: 0,
+        },
+        color: {
+          type: String,
+          enum: ['blue', 'green', 'yellow', 'red', 'orange', 'pink'],
         },
       },
     ],

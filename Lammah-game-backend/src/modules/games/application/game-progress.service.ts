@@ -12,4 +12,7 @@ export class GameProgressService {
   skip(id: string, dto: SkipQuestionDto, user: AuthenticatedUser) {
     return this.games.skipQuestion(id, dto, user);
   }
+  changeTurn(id: string, user: AuthenticatedUser) {
+    return this.games.changeTurn(id, user);
+  }
 }

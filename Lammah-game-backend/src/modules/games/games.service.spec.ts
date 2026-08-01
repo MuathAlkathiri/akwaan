@@ -80,8 +80,8 @@ describe('GamesService category gameplay assembly', () => {
       {
         name: 'Mixed game',
         teams: [
-          { name: 'A', members: [] },
-          { name: 'B', members: [] },
+          { name: 'A', members: [], color: 'blue' },
+          { name: 'B', members: [], color: 'red' },
         ],
         categoryIds: [String(standardCategory._id), String(top10Category._id)],
       },

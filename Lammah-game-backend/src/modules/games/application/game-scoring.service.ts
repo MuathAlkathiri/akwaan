@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AuthenticatedUser } from '../../../common/decorators/current-user.decorator';
-import { AwardPointsDto } from '../dto/create-game.dto';
+import { AdjustGameScoreDto, AwardPointsDto } from '../dto/create-game.dto';
 import { GamesService } from '../games.service';
 
 @Injectable()
@@ -13,5 +13,8 @@ export class GameScoringService {
     user: AuthenticatedUser,
   ) {
     return this.games.awardPoints(id, dto, teamIndex, user);
+  }
+  adjust(id: string, dto: AdjustGameScoreDto, user: AuthenticatedUser) {
+    return this.games.adjustScore(id, dto, user);
   }
 }

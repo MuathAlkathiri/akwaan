@@ -93,6 +93,48 @@
   }
 }
 
+@keyframes top10-answer-reveal {
+  0% {
+    opacity: 0.65;
+    transform: scale(0.98);
+  }
+  55% {
+    transform: scale(1.015);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes top10-answer-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.top10-answer-reveal {
+  animation: top10-answer-reveal 220ms ease-out;
+}
+
+.top10-answer-shake {
+  animation: top10-answer-shake 240ms ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .top10-answer-reveal,
+  .top10-answer-shake {
+    animation: none;
+  }
+}
+
 @layer utilities {
   .surface-card {
     @apply rounded-lg border bg-card text-card-foreground shadow-sm;

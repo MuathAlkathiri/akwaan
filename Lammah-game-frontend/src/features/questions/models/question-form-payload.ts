@@ -87,7 +87,7 @@ export function buildQuestionPayload({
       : Number(data.points),
 
     maxPoints: isTop10 ? 600 : undefined,
-    turnDurationSeconds: isTop10 ? 15 : undefined,
+    turnDurationSeconds: isTop10 ? 20 : undefined,
     maxStrikesPerTeam: isTop10 ? 3 : undefined,
 
     rankedList: isTop10

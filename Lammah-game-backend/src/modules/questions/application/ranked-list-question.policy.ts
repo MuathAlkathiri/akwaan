@@ -11,7 +11,7 @@ export const TOP_10_ENTRY_POINTS = [
   10, 20, 30, 40, 50, 60, 70, 90, 100, 130,
 ] as const;
 export const TOP_10_MAX_POINTS = 600;
-export const TOP_10_TURN_SECONDS = 15;
+export const TOP_10_TURN_SECONDS = 20;
 export const TOP_10_MAX_STRIKES = 3;
 
 type RankedInput = {
@@ -110,10 +110,7 @@ export class RankedListQuestionPolicy {
       text,
       question: text.ar,
       maxPoints: TOP_10_MAX_POINTS,
-      turnDurationSeconds:
-        input.turnDurationSeconds ??
-        existing?.turnDurationSeconds ??
-        TOP_10_TURN_SECONDS,
+      turnDurationSeconds: TOP_10_TURN_SECONDS,
       maxStrikesPerTeam:
         input.maxStrikesPerTeam ??
         existing?.maxStrikesPerTeam ??

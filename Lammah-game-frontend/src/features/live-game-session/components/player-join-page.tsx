@@ -40,9 +40,8 @@ const formSchema = z.object({
   displayName: z
     .string()
     .trim()
-    .min(1, "Enter your display name")
     .max(40)
-    .regex(/^[\p{L}\p{N} _-]+$/u, "Use letters and numbers only"),
+    .regex(/^[\p{L}\p{N} _-]*$/u, "Use letters and numbers only"),
   requestedTeamId: z.string().optional(),
 });
 
@@ -69,16 +68,26 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
     onError: () => participantCredentialStorage.remove(joinCode),
   });
   const join = useMutation({
-    mutationFn: (values: JoinForm) =>
-      joinLiveSession(joinCode, {
-        ...values,
+    mutationFn: (values: JoinForm) => {
+      const selectedTeam = metadata.data?.teams.find(
+        (team) => team.id === values.requestedTeamId,
+      );
+      const teamOnlyJoin =
+        metadata.data?.mode.key === "bomb" &&
+        metadata.data.assignmentPolicy === "explicit";
+      return joinLiveSession(joinCode, {
+        requestedTeamId: values.requestedTeamId,
+        displayName: teamOnlyJoin
+          ? (selectedTeam?.name ?? "Team player")
+          : values.displayName,
         joinRequestId: crypto.randomUUID(),
         device: {
           label: "Web browser",
           platform:
             typeof navigator === "undefined" ? undefined : navigator.platform,
         },
-      }),
+      });
+    },
     onSuccess: (value) => {
       participantCredentialStorage.set(joinCode, value);
       setParticipant(value);
@@ -126,6 +135,7 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
     );
   }
   const requiresTeam = metadata.data.assignmentPolicy === "explicit";
+  const teamOnlyJoin = metadata.data.mode.key === "bomb" && requiresTeam;
   return (
     <Card className="mx-auto mt-10 max-w-lg">
       <CardHeader>
@@ -146,22 +156,30 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
                 });
                 return;
               }
+              if (!teamOnlyJoin && !values.displayName.trim()) {
+                form.setError("displayName", {
+                  message: "Enter your display name",
+                });
+                return;
+              }
               join.mutate(values);
             })}
           >
-            <FormField
-              control={form.control}
-              name="displayName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Display name</FormLabel>
-                  <FormControl>
-                    <Input autoComplete="nickname" maxLength={40} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {!teamOnlyJoin && (
+              <FormField
+                control={form.control}
+                name="displayName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Display name</FormLabel>
+                    <FormControl>
+                      <Input autoComplete="nickname" maxLength={40} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             {requiresTeam && (
               <FormField
                 control={form.control}

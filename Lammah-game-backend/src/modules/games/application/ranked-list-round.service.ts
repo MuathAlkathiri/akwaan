@@ -23,6 +23,10 @@ import {
   ExpireRankedListTurnDto,
   SubmitRankedListAnswerDto,
 } from '../dto/ranked-list-round.dto';
+import {
+  TOP_10_MAX_POINTS,
+  TOP_10_TURN_SECONDS,
+} from '../../questions/application/ranked-list-question.policy';
 
 export type RankedListActionOutcome =
   | 'started'
@@ -57,14 +61,22 @@ export class RankedListRoundService {
   ): Promise<RankedListActionResult> {
     const game = await this.requiredGame(gameId, user);
     const existing = this.findRound(game, questionId);
-    if (existing)
-      return this.action(
-        existing.status === RankedListRoundStatus.COMPLETED
-          ? 'round_completed'
-          : 'started',
-        game,
-        existing,
+    if (existing) {
+      if (existing.status === RankedListRoundStatus.COMPLETED)
+        return this.action('round_completed', game, existing);
+
+      // Opening the question starts a fresh timed turn. The browser owns no
+      // background timer while the host is on the board, so never carry an
+      // old expiry across navigation or refresh.
+      const now = new Date();
+      existing.turnStartedAt = now;
+      existing.turnExpiresAt = new Date(
+        now.getTime() + existing.turnDurationSeconds * 1000,
       );
+      existing.turnSequence += 1;
+      await this.save(game);
+      return this.action('started', game, existing);
+    }
     const boardQuestion = this.actions.findQuestion(
       game,
       new Types.ObjectId(questionId),
@@ -86,7 +98,7 @@ export class RankedListRoundService {
         message: 'The selected board question is not a ranked-list question.',
       });
     const now = new Date();
-    const duration = question.turnDurationSeconds ?? 15;
+    const duration = TOP_10_TURN_SECONDS;
     const round: RankedListRoundState = {
       questionId: new Types.ObjectId(questionId),
       status: RankedListRoundStatus.ACTIVE,
@@ -262,7 +274,11 @@ export class RankedListRoundService {
         : 1;
     const awarded = [0, 0];
     if (winnerTeamIndex !== undefined) {
-      awarded[winnerTeamIndex] = round.teams[winnerTeamIndex].temporaryScore;
+      const winnerCollectedScore = Math.min(
+        TOP_10_MAX_POINTS,
+        round.teams[winnerTeamIndex].temporaryScore,
+      );
+      awarded[winnerTeamIndex] = winnerCollectedScore;
       game.teams[winnerTeamIndex].score += awarded[winnerTeamIndex];
     }
     round.status = RankedListRoundStatus.COMPLETED;
@@ -318,6 +334,13 @@ export class RankedListRoundService {
       turnSequence: round.turnSequence,
       turnDurationSeconds: round.turnDurationSeconds,
       maxStrikesPerTeam: round.maxStrikesPerTeam,
+      collectedScore: Math.min(
+        TOP_10_MAX_POINTS,
+        round.revealedEntries.reduce(
+          (total, revealed) => total + revealed.points,
+          0,
+        ),
+      ),
       teams: round.teams.map((team) => ({
         teamId: teamId(team.teamIndex),
         teamIndex: team.teamIndex,
@@ -337,7 +360,10 @@ export class RankedListRoundService {
             id: entry.id,
             rank: entry.rank,
             points: entry.points,
-            revealed: Boolean(revealed),
+            // A completed Top 10 round reveals the full answer key. Entries
+            // discovered during play still retain their claiming team below;
+            // completion-only reveals intentionally have no claimant.
+            revealed: Boolean(revealed) || completed,
             ...(revealed || completed
               ? {
                   answer: entry.answer.ar,

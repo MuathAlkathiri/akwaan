@@ -52,16 +52,16 @@ describe("request mappers", () => {
       toCreateGameRequest({
         name: "Game",
         teams: [
-          { name: "A", members: [] },
-          { name: "B", members: [] },
+          { name: "A", members: [], color: "blue" },
+          { name: "B", members: [], color: "red" },
         ],
         categoryIds: ["c2", "c1"],
       }),
     ).toEqual({
       name: "Game",
       teams: [
-        { name: "A", members: [] },
-        { name: "B", members: [] },
+        { name: "A", members: [], color: "blue" },
+        { name: "B", members: [], color: "red" },
       ],
       categoryIds: ["c2", "c1"],
     });

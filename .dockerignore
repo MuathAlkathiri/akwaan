@@ -27,6 +27,7 @@ test-media
 **/test-storage
 **/test-uploads
 **/test-media
+deployment/backups
 
 *.tsbuildinfo
 

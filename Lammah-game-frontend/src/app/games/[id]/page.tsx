@@ -14,10 +14,7 @@ export default function GamePage() {
 
   return (
     <RequireAuth>
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold">اللعبة</h1>
-        <GameBoard gameId={id} />
-      </div>
+      <GameBoard gameId={id} />
     </RequireAuth>
   );
 }

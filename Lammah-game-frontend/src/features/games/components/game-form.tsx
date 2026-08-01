@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import * as z from "zod";
-import { Pencil } from "lucide-react";
+import { Check, Pencil } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCategories } from "@/features/categories";
 import { useCreateGame } from "../hooks/use-games";
@@ -17,15 +17,76 @@ import { getMediaUrl } from "@/lib/api/media-url";
 import { getEntityId } from "@/lib/utils";
 import { Category } from "@/types";
 import { gameValidationMessageAr } from "../game-validation-errors";
+import {
+  TEAM_A_COLOR_OPTIONS,
+  TEAM_B_COLOR_OPTIONS,
+  TeamColorDefinition,
+} from "../config/team-colors";
+import { cn } from "@/lib/utils";
 
 const gameSchema = z.object({
   name: z.string().min(1, "اسم اللعبة مطلوب"),
   teamAName: z.string().min(1, "اسم الفريق أ مطلوب"),
   teamBName: z.string().min(1, "اسم الفريق ب مطلوب"),
+  teamAColor: z.enum(["blue", "green", "yellow"], {
+    required_error: "اختر لون الفريق أ",
+  }),
+  teamBColor: z.enum(["red", "orange", "pink"], {
+    required_error: "اختر لون الفريق ب",
+  }),
   categoryIds: z.array(z.string()).length(6, "يجب اختيار 6 تصنيفات بالضبط"),
 });
 
 type GameFormData = z.infer<typeof gameSchema>;
+
+function TeamColorPicker({
+  label,
+  options,
+  value,
+  onChange,
+  error,
+}: {
+  label: string;
+  options: TeamColorDefinition[];
+  value?: string;
+  onChange: (value: TeamColorDefinition["key"]) => void;
+  error?: string;
+}) {
+  return (
+    <fieldset>
+      <legend className="mb-2 text-sm font-medium">{label}</legend>
+      <div className="flex gap-3">
+        {options.map((option) => {
+          const selected = value === option.key;
+          return (
+            <button
+              key={option.key}
+              type="button"
+              aria-label={option.labelAr}
+              aria-pressed={selected}
+              onClick={() => onChange(option.key)}
+              className={cn(
+                "relative h-12 w-12 rounded-full border-2 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                option.swatch,
+                selected
+                  ? "scale-105 border-white ring-2 ring-primary ring-offset-2"
+                  : "border-white/45 hover:scale-105 hover:border-white",
+              )}
+            >
+              {selected && (
+                <Check
+                  className="absolute inset-0 m-auto h-6 w-6 text-white drop-shadow"
+                  aria-hidden="true"
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+    </fieldset>
+  );
+}
 
 export function GameForm() {
   const searchParams = useSearchParams();
@@ -38,6 +99,7 @@ export function GameForm() {
     handleSubmit,
     formState: { errors },
     watch,
+    setValue,
   } = useForm<GameFormData>({
     resolver: zodResolver(gameSchema),
     defaultValues: {
@@ -66,10 +128,12 @@ export function GameForm() {
           {
             name: data.teamAName,
             members: [],
+            color: data.teamAColor,
           },
           {
             name: data.teamBName,
             members: [],
+            color: data.teamBColor,
           },
         ],
         categoryIds: data.categoryIds,
@@ -123,6 +187,31 @@ export function GameForm() {
             </p>
           )}
         </div>
+      </div>
+
+      <div className="grid gap-6 rounded-2xl border bg-muted/20 p-4 md:grid-cols-2">
+        <TeamColorPicker
+          label="لون الفريق أ"
+          options={TEAM_A_COLOR_OPTIONS}
+          value={watch("teamAColor")}
+          onChange={(color) =>
+            setValue("teamAColor", color as "blue" | "green" | "yellow", {
+              shouldValidate: true,
+            })
+          }
+          error={errors.teamAColor?.message}
+        />
+        <TeamColorPicker
+          label="لون الفريق ب"
+          options={TEAM_B_COLOR_OPTIONS}
+          value={watch("teamBColor")}
+          onChange={(color) =>
+            setValue("teamBColor", color as "red" | "orange" | "pink", {
+              shouldValidate: true,
+            })
+          }
+          error={errors.teamBColor?.message}
+        />
       </div>
 
       <div>

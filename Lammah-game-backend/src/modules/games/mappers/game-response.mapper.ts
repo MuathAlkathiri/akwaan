@@ -1,5 +1,6 @@
 import { GameResponseDto } from '../dto/game-response.dto';
 import { resolveQuestionMediaAvailability } from '../../questions/application/question-media-availability.policy';
+import { defaultTeamColor } from '../team-colors';
 
 export class GameResponseMapper {
   static toResponse(value: unknown): GameResponseDto {
@@ -19,7 +20,14 @@ export class GameResponseMapper {
       _id: String(safe._id ?? ''),
       name: String(safe.name ?? ''),
       status: String(safe.status ?? ''),
-      teams: Array.isArray(safe.teams) ? safe.teams : [],
+      teams: Array.isArray(safe.teams)
+        ? safe.teams.map((team, index) => ({
+            ...(team as Record<string, unknown>),
+            color:
+              (team as Record<string, unknown>).color ??
+              defaultTeamColor(index),
+          }))
+        : [],
       selectedCategories: Array.isArray(safe.selectedCategories)
         ? safe.selectedCategories
         : [],

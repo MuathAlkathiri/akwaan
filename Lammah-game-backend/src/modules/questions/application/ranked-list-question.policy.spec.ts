@@ -36,7 +36,7 @@ describe('RankedListQuestionPolicy', () => {
       questionType: 'ranked_list',
       maxPoints: 600,
       points: 600,
-      turnDurationSeconds: 15,
+      turnDurationSeconds: 20,
       maxStrikesPerTeam: 3,
     });
     expect(

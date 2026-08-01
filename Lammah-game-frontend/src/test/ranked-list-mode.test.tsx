@@ -1,10 +1,21 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { useEffect, useState } from "react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
-import type { RankedListRoundStateResponseDto } from "@/api/generated/models";
+import type {
+  RankedListRoundActionEnvelopeDto,
+  RankedListRoundStateResponseDto,
+} from "@/api/generated/models";
 import {
   getRankedListSecondsRemaining,
   RankedListRoundView,
 } from "@/features/games/components/ranked-list-round";
+import { mergeRankedListRoundActionIntoCache } from "@/features/games/hooks/use-games";
 import {
   createDefaultRankedListEntries,
   normalizeRankedListAnswer,
@@ -21,8 +32,9 @@ const createState = (
   turnStartedAt: "2026-07-23T00:00:00.000Z",
   turnExpiresAt: "2026-07-23T00:00:15.000Z",
   turnSequence: 1,
-  turnDurationSeconds: 15,
+  turnDurationSeconds: 20,
   maxStrikesPerTeam: 3,
+  collectedScore: status === "completed" ? 600 : 10,
   teams: [
     {
       teamId: "team-a",
@@ -71,7 +83,157 @@ const renderView = (state = createState()) =>
     />,
   );
 
+const stabilityQueryKey = ["top10-stability"] as const;
+
+function StableRoundHarness({ onMount }: { onMount: () => void }) {
+  const client = useQueryClient();
+  const [answer, setAnswer] = useState("");
+  const [feedback, setFeedback] = useState<string>();
+  const round = useQuery({
+    queryKey: stabilityQueryKey,
+    queryFn: async () => ({ statusCode: 200, data: createState() }),
+    select: (response) => response.data,
+    staleTime: Infinity,
+  });
+
+  useEffect(onMount, [onMount]);
+
+  if (!round.data)
+    return <div data-testid="question-intro">Question intro</div>;
+
+  const submit = () => {
+    const current = round.data;
+    const next = structuredClone(current);
+    let outcome: RankedListRoundActionEnvelopeDto["data"]["outcome"];
+
+    if (answer === "صحيح") {
+      outcome = "correct";
+      next.entries[1].revealed = true;
+      next.entries[1].answer = "الإجابة الجديدة";
+      next.collectedScore = 30;
+    } else if (answer === "مكرر") {
+      outcome = "already_discovered";
+    } else {
+      outcome = "incorrect";
+      next.teams[0].strikes += 1;
+    }
+
+    client.setQueryData(
+      stabilityQueryKey,
+      (currentEnvelope:
+        | { statusCode: number; data: RankedListRoundStateResponseDto }
+        | undefined) =>
+        mergeRankedListRoundActionIntoCache(currentEnvelope, {
+          statusCode: 200,
+          data: { outcome, state: next },
+        }),
+    );
+    setFeedback(outcome);
+    setAnswer("");
+  };
+
+  return (
+    <RankedListRoundView
+      question="اذكر أعلى عشرة"
+      state={round.data}
+      secondsRemaining={9}
+      answer={answer}
+      feedbackText={feedback}
+      feedbackSequence={round.data.turnSequence}
+      onAnswerChange={setAnswer}
+      onSubmit={submit}
+      onContinue={vi.fn()}
+    />
+  );
+}
+
 describe("Top 10 ranked-list mode", () => {
+  it("preserves the ranked-list query envelope after an answer mutation", () => {
+    const previousState = createState();
+    const nextState = createState();
+    nextState.turnSequence = 2;
+    nextState.entries[1] = {
+      ...nextState.entries[1],
+      revealed: true,
+      answer: "إجابة 2",
+    };
+    const response: RankedListRoundActionEnvelopeDto = {
+      statusCode: 200,
+      data: {
+        outcome: "correct",
+        matchedEntry: {
+          id: nextState.entries[1].id,
+          rank: nextState.entries[1].rank,
+          points: nextState.entries[1].points,
+          answer: "إجابة 2",
+        },
+        state: nextState,
+      },
+    };
+
+    const cached = mergeRankedListRoundActionIntoCache(
+      { statusCode: 200, data: previousState },
+      response,
+    );
+
+    // This is the same selector used by the generated GET query. Writing the
+    // inner state directly would make this expression undefined and unmount
+    // the gameplay panel until polling repaired the cache.
+    expect(cached.data).toBe(nextState);
+    expect(cached.data.entries[1]).toMatchObject({
+      revealed: true,
+      answer: "إجابة 2",
+    });
+  });
+
+  it("keeps the gameplay panel and input DOM mounted across correct, incorrect, and duplicate updates", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const onMount = vi.fn();
+    render(
+      <QueryClientProvider client={client}>
+        <StableRoundHarness onMount={onMount} />
+      </QueryClientProvider>,
+    );
+
+    const panel = await screen.findByTestId("ranked-list-round");
+    const input = screen.getByPlaceholderText("اكتب إجابة واحدة");
+    expect(screen.queryByTestId("question-intro")).not.toBeInTheDocument();
+    expect(screen.getByText("إجابة 1")).toBeVisible();
+
+    fireEvent.change(input, { target: { value: "صحيح" } });
+    fireEvent.submit(input.closest("form")!);
+    await screen.findByText("الإجابة الجديدة");
+    expect(screen.getByText("30 / 600")).toBeVisible();
+    expect(screen.getByTestId("ranked-list-round")).toBe(panel);
+    expect(screen.getByPlaceholderText("اكتب إجابة واحدة")).toBe(input);
+    expect(input).toHaveFocus();
+    expect(screen.getByText("إجابة 1")).toBeVisible();
+    expect(screen.queryByTestId("question-intro")).not.toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "خطأ" } });
+    fireEvent.submit(input.closest("form")!);
+    await waitFor(() =>
+      expect(screen.getByLabelText("2 أخطاء")).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("ranked-list-round")).toBe(panel);
+    expect(screen.getByPlaceholderText("اكتب إجابة واحدة")).toBe(input);
+    expect(screen.queryByTestId("question-intro")).not.toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "مكرر" } });
+    fireEvent.submit(input.closest("form")!);
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "already_discovered",
+      ),
+    );
+    expect(screen.getByTestId("ranked-list-round")).toBe(panel);
+    expect(screen.getByPlaceholderText("اكتب إجابة واحدة")).toBe(input);
+    expect(screen.queryByTestId("question-intro")).not.toBeInTheDocument();
+    expect(onMount).toHaveBeenCalledOnce();
+  });
+
   it("uses the exact normalization policy for Arabic and leading English articles", () => {
     expect(normalizeRankedListAnswer("  الإِجَابَة! ")).toBe("اجابه");
     expect(normalizeRankedListAnswer("The Lionel Messi")).toBe("lionel messi");
@@ -220,5 +382,67 @@ describe("Top 10 ranked-list mode", () => {
     renderView(state);
     expect(screen.getByText("تعادل — لا نقاط إضافية")).toBeInTheDocument();
     expect(screen.getAllByText(/\+0 إلى النتيجة/)).toHaveLength(2);
+  });
+
+  it("highlights only the newly revealed answer and keeps the input focused", () => {
+    const state = createState();
+    const { rerender } = render(
+      <RankedListRoundView
+        question="اذكر أعلى عشرة"
+        state={state}
+        secondsRemaining={8}
+        answer=""
+        feedbackKind="correct"
+        feedbackSequence={1}
+        highlightedEntryId="entry-0"
+        onAnswerChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onContinue={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("إجابة 1").closest("li")).toHaveClass(
+      "top10-answer-reveal",
+    );
+    expect(screen.getByPlaceholderText("اكتب إجابة واحدة")).toHaveFocus();
+
+    rerender(
+      <RankedListRoundView
+        question="اذكر أعلى عشرة"
+        state={state}
+        secondsRemaining={8}
+        answer=""
+        feedbackKind="correct"
+        feedbackSequence={2}
+        highlightedEntryId="entry-0"
+        onAnswerChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onContinue={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("إجابة 1").closest("li")).toHaveClass(
+      "top10-answer-reveal",
+    );
+  });
+
+  it("uses local incorrect feedback without replacing the answer board", () => {
+    render(
+      <RankedListRoundView
+        question="اذكر أعلى عشرة"
+        state={createState()}
+        secondsRemaining={8}
+        answer=""
+        feedbackText="إجابة غير صحيحة"
+        feedbackKind="incorrect"
+        feedbackSequence={1}
+        onAnswerChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onContinue={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByText("••••••••")).toHaveLength(9);
+    expect(
+      screen.getByPlaceholderText("اكتب إجابة واحدة").closest("form"),
+    ).toHaveClass("top10-answer-shake");
+    expect(screen.getByRole("status")).toHaveTextContent("غير صحيحة");
   });
 });

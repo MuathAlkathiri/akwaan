@@ -6,9 +6,12 @@ import {
   MinLength,
   ValidateNested,
   ArrayMaxSize,
+  IsIn,
+  IsInt,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { TEAM_COLORS, TeamColorKey } from '../team-colors';
 
 export class TeamDto {
   @ApiProperty()
@@ -20,6 +23,11 @@ export class TeamDto {
   @IsArray({ message: 'Members must be an array' })
   @ArrayMinSize(0, { message: 'Members can be empty' })
   members: string[];
+
+  @ApiProperty({ enum: TEAM_COLORS })
+  @IsString({ message: 'لون الفريق مطلوب' })
+  @IsIn(TEAM_COLORS, { message: 'لون الفريق غير صالح' })
+  color: TeamColorKey;
 }
 
 export class CreateGameDto {
@@ -62,4 +70,16 @@ export class SkipQuestionDto {
   @ApiProperty()
   @IsMongoId({ message: 'Question ID must be a valid MongoDB ID' })
   questionId: string;
+}
+
+export class AdjustGameScoreDto {
+  @ApiProperty({ minimum: 0, maximum: 1 })
+  @IsInt()
+  @IsIn([0, 1])
+  teamIndex: 0 | 1;
+
+  @ApiProperty({ enum: [-50, 50] })
+  @IsInt()
+  @IsIn([-50, 50])
+  delta: -50 | 50;
 }

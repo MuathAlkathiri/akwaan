@@ -8,6 +8,7 @@ export const toCreateGameRequest = (
   teams: payload.teams.map((team) => ({
     name: team.name,
     members: team.members,
+    color: team.color,
   })),
   categoryIds: payload.categoryIds,
 });

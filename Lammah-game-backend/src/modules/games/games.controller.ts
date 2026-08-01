@@ -35,6 +35,7 @@ import {
   RevealAnswerDto,
   AwardPointsDto,
   SkipQuestionDto,
+  AdjustGameScoreDto,
 } from './dto/create-game.dto';
 import {
   ExpireRankedListTurnDto,
@@ -88,8 +89,16 @@ export class GamesController {
         value: {
           name: 'Friday Family Game',
           teams: [
-            { name: 'Team Falcons', members: ['Muath', 'Sara'] },
-            { name: 'Team Stars', members: ['Noura', 'Fahad'] },
+            {
+              name: 'Team Falcons',
+              members: ['Muath', 'Sara'],
+              color: 'blue',
+            },
+            {
+              name: 'Team Stars',
+              members: ['Noura', 'Fahad'],
+              color: 'red',
+            },
           ],
           categoryIds: [ids.category, ids.categoryTwo],
         },
@@ -168,6 +177,33 @@ export class GamesController {
     return {
       statusCode: HttpStatus.OK,
       data: GameResponseMapper.toResponseList(games) as unknown as Game[],
+    };
+  }
+
+  @Post(':id/replay')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    operationId: 'gamesReplay',
+    summary: 'Replay a game using the same immutable question snapshots',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Game replay created successfully',
+    type: GameMutationResponseDto,
+  })
+  async replay(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: Game;
+  }> {
+    const game = await this.createGame.replay(id, user);
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Game replay created successfully',
+      data: GameResponseMapper.toResponse(game) as unknown as Game,
     };
   }
 
@@ -454,6 +490,46 @@ export class GamesController {
       statusCode: HttpStatus.OK,
       message: 'Points awarded successfully',
       data: GameResponseMapper.toResponse(game) as unknown as Game,
+    };
+  }
+
+  @Post(':id/adjust-score')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    operationId: 'gamesAdjustScore',
+    summary: 'Manually adjust one team score by 50 points',
+  })
+  @ApiBody({ type: AdjustGameScoreDto })
+  @ApiResponse({ status: 200, type: GameMutationResponseDto })
+  async adjustScore(
+    @Param('id') id: string,
+    @Body() dto: AdjustGameScoreDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const game = await this.scoring.adjust(id, dto, user);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Score adjusted successfully',
+      data: GameResponseMapper.toResponse(game),
+    };
+  }
+
+  @Post(':id/change-turn')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    operationId: 'gamesChangeTurn',
+    summary: 'Manually switch the active team',
+  })
+  @ApiResponse({ status: 200, type: GameMutationResponseDto })
+  async changeTurn(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const game = await this.progress.changeTurn(id, user);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Turn changed successfully',
+      data: GameResponseMapper.toResponse(game),
     };
   }
 

@@ -184,90 +184,89 @@ export class Top10CategoryGameValidation implements CategoryGameValidationStrate
       isFreeGame: context.isFreeGame,
       seenQuestionIds: context.seenQuestionIds,
     });
-    if (!questions.length)
+    if (questions.length < 6)
       return failed(this.gameplayMode, {
         code: 'TOP10_NO_APPROVED_QUESTIONS',
         message:
-          'Top 10 category requires at least one approved ranked-list question.',
+          'Top 10 category requires at least six approved ranked-list questions.',
         ...categoryDetails(context.category),
         gameplayMode: this.gameplayMode,
-        requiredCounts: { rankedListQuestions: 1 },
-        actualCounts: { rankedListQuestions: 0 },
+        requiredCounts: { rankedListQuestions: 6 },
+        actualCounts: { rankedListQuestions: questions.length },
       });
 
-    const question = questions[0];
-    const entries = question.rankedList?.entries ?? [];
-    const common = {
-      ...categoryDetails(context.category),
-      gameplayMode: this.gameplayMode,
-      questionId: String(question._id),
-    };
-    if (entries.length !== 10)
-      return failed(this.gameplayMode, {
-        code: 'TOP10_INVALID_ANSWER_COUNT',
-        message: 'Top 10 question must contain exactly ten ranked answers.',
-        ...common,
-        requiredCounts: { answers: 10 },
-        actualCounts: { answers: entries.length },
-      });
-    if (
-      entries.some((entry, index) => entry.rank !== index + 1) ||
-      new Set(entries.map((entry) => entry.rank)).size !== 10
-    )
-      return failed(this.gameplayMode, {
-        code: 'TOP10_INVALID_RANKING',
-        message: 'Top 10 ranks must be unique and ordered from 1 through 10.',
-        ...common,
-      });
-    if (
-      entries.some(
-        (entry, index) => entry.points !== TOP_10_ENTRY_POINTS[index],
+    for (const question of questions) {
+      const entries = question.rankedList?.entries ?? [];
+      const common = {
+        ...categoryDetails(context.category),
+        gameplayMode: this.gameplayMode,
+        questionId: String(question._id),
+      };
+      if (entries.length !== 10)
+        return failed(this.gameplayMode, {
+          code: 'TOP10_INVALID_ANSWER_COUNT',
+          message: 'Top 10 question must contain exactly ten ranked answers.',
+          ...common,
+          requiredCounts: { answers: 10 },
+          actualCounts: { answers: entries.length },
+        });
+      if (
+        entries.some((entry, index) => entry.rank !== index + 1) ||
+        new Set(entries.map((entry) => entry.rank)).size !== 10
       )
-    )
-      return failed(this.gameplayMode, {
-        code: 'TOP10_INVALID_SCORE_SEQUENCE',
-        message: 'Top 10 answer scores do not match the canonical sequence.',
-        ...common,
-      });
-    const normalizedAnswers = entries.map((entry) =>
-      normalizeAnswer(entry.answer.ar || entry.answer.en || ''),
-    );
-    if (
-      normalizedAnswers.some(
-        (answer, index) =>
-          !answer || normalizedAnswers.indexOf(answer) !== index,
+        return failed(this.gameplayMode, {
+          code: 'TOP10_INVALID_RANKING',
+          message: 'Top 10 ranks must be unique and ordered from 1 through 10.',
+          ...common,
+        });
+      if (
+        entries.some(
+          (entry, index) => entry.points !== TOP_10_ENTRY_POINTS[index],
+        )
       )
-    )
-      return failed(this.gameplayMode, {
-        code: 'TOP10_DUPLICATE_ANSWER',
-        message:
-          'Top 10 canonical answers must be unique after deterministic normalization.',
-        ...common,
-      });
-    try {
-      this.rankedListPolicy.validate(question.rankedList!);
-    } catch {
-      return failed(this.gameplayMode, {
-        code: 'TOP10_INVALID_ACCEPTED_ANSWERS',
-        message:
-          'Top 10 accepted-answer aliases violate the existing alias policy.',
-        ...common,
-      });
+        return failed(this.gameplayMode, {
+          code: 'TOP10_INVALID_SCORE_SEQUENCE',
+          message: 'Top 10 answer scores do not match the canonical sequence.',
+          ...common,
+        });
+      const normalizedAnswers = entries.map((entry) =>
+        normalizeAnswer(entry.answer.ar || entry.answer.en || ''),
+      );
+      if (
+        normalizedAnswers.some(
+          (answer, index) =>
+            !answer || normalizedAnswers.indexOf(answer) !== index,
+        )
+      )
+        return failed(this.gameplayMode, {
+          code: 'TOP10_DUPLICATE_ANSWER',
+          message:
+            'Top 10 canonical answers must be unique after deterministic normalization.',
+          ...common,
+        });
+      try {
+        this.rankedListPolicy.validate(question.rankedList!);
+      } catch {
+        return failed(this.gameplayMode, {
+          code: 'TOP10_INVALID_ACCEPTED_ANSWERS',
+          message:
+            'Top 10 accepted-answer aliases violate the existing alias policy.',
+          ...common,
+        });
+      }
     }
     return {
       status: 'PASS',
       gameplayMode: this.gameplayMode,
       questions,
-      boardQuestions: [
-        {
-          question: question._id,
-          // The ranked-list runtime owns its 10..130 scoring. The existing
-          // board value remains 600 only as the round's maximum value.
-          points: 600,
-          isAnswered: false,
-          isAnswerRevealed: false,
-        },
-      ],
+      boardQuestions: questions.map((question) => ({
+        question: question._id,
+        // The ranked-list runtime owns its 10..130 scoring. The existing
+        // board value remains 600 only as the round's maximum value.
+        points: 600,
+        isAnswered: false,
+        isAnswerRevealed: false,
+      })),
       issues: [],
     };
   }

@@ -5,10 +5,12 @@
  * Runtime HTTP contract for Lammah game administration, content, and gameplay.
  * OpenAPI spec version: 1.0.0
  */
+import type { GameTeamResponseDtoColor } from "./gameTeamResponseDtoColor";
 
 export interface GameTeamResponseDto {
   _id?: string;
   name: string;
   members: string[];
   score: number;
+  color: GameTeamResponseDtoColor;
 }

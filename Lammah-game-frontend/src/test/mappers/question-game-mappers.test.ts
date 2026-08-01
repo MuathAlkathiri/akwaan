@@ -55,8 +55,20 @@ describe("Question and Game response mappers", () => {
       name: "Fixture game",
       status: "active",
       teams: [
-        { _id: "team-a", name: "أ", members: [], score: 200 },
-        { _id: "team-b", name: "ب", members: [], score: 0 },
+        {
+          _id: "team-a",
+          name: "أ",
+          members: [],
+          score: 200,
+          color: "blue",
+        },
+        {
+          _id: "team-b",
+          name: "ب",
+          members: [],
+          score: 0,
+          color: "red",
+        },
       ],
       selectedCategories: [category],
       board: [

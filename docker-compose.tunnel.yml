@@ -1,0 +1,27 @@
+services:
+  backend:
+    environment:
+      APP_BASE_URL: ${TUNNEL_API_URL:-http://localhost:3000}
+      CORS_ORIGINS: ${TUNNEL_FRONTEND_URL:-http://localhost:3001}
+
+  frontend:
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: ${TUNNEL_API_URL:-http://localhost:3000}
+    environment:
+      NEXT_PUBLIC_API_URL: ${TUNNEL_API_URL:-http://localhost:3000}
+      NEXT_PUBLIC_LIVE_GAME_DEBUG: "false"
+
+  tunnel-api:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --url http://backend:3000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  tunnel-frontend:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --url http://frontend:3001
+    depends_on:
+      - frontend
+    restart: unless-stopped

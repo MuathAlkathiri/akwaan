@@ -14,6 +14,7 @@ import { RankedListRoundService } from './ranked-list-round.service';
 
 describe('RankedListRoundService', () => {
   const questionId = new Types.ObjectId();
+  const otherQuestionId = new Types.ObjectId();
   const user = {
     id: new Types.ObjectId().toString(),
     fullName: 'Admin',
@@ -48,6 +49,12 @@ describe('RankedListRoundService', () => {
               isAnswered: false,
               isAnswerRevealed: false,
             },
+            {
+              question: otherQuestionId,
+              points: 600,
+              isAnswered: false,
+              isAnswerRevealed: false,
+            },
           ],
         },
       ],
@@ -58,7 +65,7 @@ describe('RankedListRoundService', () => {
       _id: questionId,
       status: QuestionStatus.APPROVED,
       questionType: QuestionGameplayType.RANKED_LIST,
-      turnDurationSeconds: 15,
+      turnDurationSeconds: 20,
       maxStrikesPerTeam: 3,
       rankedList: {
         displayName: { ar: 'توب 10', en: 'Top 10' },
@@ -104,7 +111,20 @@ describe('RankedListRoundService', () => {
       expect.objectContaining({ strikes: 0, temporaryScore: 0 }),
       expect.objectContaining({ strikes: 0, temporaryScore: 0 }),
     ]);
-    expect(result.state.turnExpiresAt).toBe('2026-01-01T00:00:15.000Z');
+    expect(result.state.turnDurationSeconds).toBe(20);
+    expect(result.state.turnExpiresAt).toBe('2026-01-01T00:00:20.000Z');
+  });
+
+  it('restarts the active turn timer when the question is reopened', async () => {
+    await start();
+    jest.setSystemTime(new Date('2026-01-01T00:00:12.000Z'));
+
+    const reopened = await start();
+
+    expect(reopened.state.turnSequence).toBe(2);
+    expect(reopened.state.turnExpiresAt).toBe('2026-01-01T00:00:32.000Z');
+    expect(reopened.state.teams[0].strikes).toBe(0);
+    expect(save).toHaveBeenCalledTimes(2);
   });
 
   it('matches Arabic, English, and aliases exactly, scores temporarily, and switches turns', async () => {
@@ -119,7 +139,9 @@ describe('RankedListRoundService', () => {
       },
     });
     expect(game.teams[0].score).toBe(0);
-    expect((await submit('p2', 2)).outcome).toBe('correct');
+    const second = await submit('p2', 2);
+    expect(second.outcome).toBe('correct');
+    expect(second.state.collectedScore).toBe(30);
   });
 
   it('does not penalize, switch, or reset the timer for an already discovered entry', async () => {
@@ -149,11 +171,12 @@ describe('RankedListRoundService', () => {
       state: { activeTeamIndex: 1 },
     });
     expect(result.state.teams[0].strikes).toBe(1);
+    expect(result.state.collectedScore).toBe(0);
   });
 
   it('uses backend expiry, applies a strike, switches, and ignores stale expiry', async () => {
     await start();
-    jest.setSystemTime(new Date('2026-01-01T00:00:16.000Z'));
+    jest.setSystemTime(new Date('2026-01-01T00:00:21.000Z'));
     const expired = await service.expire(
       'game-1',
       String(questionId),
@@ -192,6 +215,8 @@ describe('RankedListRoundService', () => {
     const round = game.rankedListRounds[0];
     expect(round.status).toBe('completed');
     expect(game.board[0].questions[0].isAnswered).toBe(true);
+    expect(game.board[0].questions[1].isAnswered).toBe(false);
+    expect(game.rankedListRounds[0].revealedEntries).toHaveLength(10);
     expect(game.teams[1].score).toBe(340);
     expect(game.teams[0].score).toBe(0);
     const state = await service.getState('game-1', String(questionId), user);
@@ -201,6 +226,7 @@ describe('RankedListRoundService', () => {
       winnerTeamId: 'team-b',
       awardedPointsByTeam: { 'team-a': 0, 'team-b': 340 },
     });
+    expect(state.collectedScore).toBe(600);
     const again = await service.finalize('game-1', String(questionId), user);
     expect(again.outcome).toBe('round_completed');
     expect(game.teams[1].score).toBe(340);
@@ -218,6 +244,10 @@ describe('RankedListRoundService', () => {
     });
     expect(game.teams.map((team) => team.score)).toEqual([0, 0]);
     expect(result.entries.every((entry) => entry.answer)).toBe(true);
+    expect(result.entries.every((entry) => entry.revealed)).toBe(true);
+    expect(
+      result.entries.every((entry) => entry.claimedByTeamId === undefined),
+    ).toBe(true);
   });
 
   it('preserves state on refresh and prevents duplicate scoring', async () => {

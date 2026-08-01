@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -24,18 +25,37 @@ export function Header() {
   const visibleItems = isAdmin ? adminNavigation : userNavItems;
   const displayName = user?.fullName || "لاعب";
   const initial = displayName.trim().charAt(0) || "ل";
+  const isPlayerExperience = isAuthenticated && !isAdmin;
 
   return (
-    <header className="sticky top-0 z-40 w-full px-4 py-4">
-      <div className="container flex min-h-16 items-center justify-between gap-4 rounded-lg border bg-card/95 px-4 shadow-sm backdrop-blur-xl md:px-6">
+    <header
+      className={cn(
+        "sticky top-0 z-50 w-full px-4 py-3",
+        isPlayerExperience &&
+          "border-b border-white/[0.06] bg-[#110b25]/78 text-white shadow-[0_10px_28px_rgba(5,2,16,.2)] backdrop-blur-xl",
+      )}
+    >
+      <div
+        className={cn(
+          "container flex min-h-16 items-center justify-between gap-4 rounded-lg border bg-card/95 px-4 shadow-sm backdrop-blur-xl md:px-6",
+          isPlayerExperience &&
+            "border-white/10 bg-[#211a38]/88 shadow-[0_10px_28px_rgba(4,1,15,.22)] backdrop-blur-xl",
+        )}
+      >
         <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-lg bg-muted text-xl">
-              🍉
-            </span>
-            <span className="hidden text-lg font-black tracking-wide sm:block">
-              Lammah
-            </span>
+          <Link
+            href="/"
+            className="relative block h-12 w-36 shrink-0 sm:w-40"
+            aria-label="لمة - الرئيسية"
+          >
+            <Image
+              src="/brand/lammah-logo.png"
+              alt="لمة"
+              fill
+              priority
+              sizes="160px"
+              className="object-contain drop-shadow-[0_4px_10px_rgba(91,33,182,.2)]"
+            />
           </Link>
         </div>
 

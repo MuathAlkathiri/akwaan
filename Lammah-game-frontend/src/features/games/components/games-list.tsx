@@ -1,12 +1,15 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { GameCard } from "@/components/game";
 import { EmptyState, LoadingState } from "@/components/shared";
-import { useGames } from "../hooks/use-games";
+import { useGames, useReplayGame } from "../hooks/use-games";
 import { getEntityId, getStatusLabel } from "@/lib/utils";
 
 export function GamesList() {
+  const router = useRouter();
   const { data, isLoading, error } = useGames();
+  const replayGame = useReplayGame();
   const games = data || [];
 
   if (isLoading) return <LoadingState count={2} />;
@@ -30,6 +33,14 @@ export function GamesList() {
           teamB={{
             name: (game.teamB || game.teams?.[1])?.name || "الفريق ب",
             score: (game.teamB || game.teams?.[1])?.score ?? 0,
+          }}
+          replaying={
+            replayGame.isPending && replayGame.variables === getEntityId(game)
+          }
+          onReplay={() => {
+            replayGame
+              .mutateAsync(getEntityId(game))
+              .then((replay) => router.push(`/games/${getEntityId(replay)}`));
           }}
         />
       ))}

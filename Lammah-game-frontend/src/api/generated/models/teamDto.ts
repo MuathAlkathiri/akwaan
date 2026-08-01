@@ -5,8 +5,10 @@
  * Runtime HTTP contract for Lammah game administration, content, and gameplay.
  * OpenAPI spec version: 1.0.0
  */
+import type { TeamDtoColor } from "./teamDtoColor";
 
 export interface TeamDto {
   name: string;
   members: string[];
+  color: TeamDtoColor;
 }

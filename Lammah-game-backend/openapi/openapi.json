@@ -2360,14 +2360,16 @@
                         "members": [
                           "Muath",
                           "Sara"
-                        ]
+                        ],
+                        "color": "blue"
                       },
                       {
                         "name": "Team Stars",
                         "members": [
                           "Noura",
                           "Fahad"
-                        ]
+                        ],
+                        "color": "red"
                       }
                     ],
                     "categoryIds": [
@@ -2436,6 +2438,42 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GameListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/games/{id}/replay": {
+      "post": {
+        "operationId": "gamesReplay",
+        "summary": "Replay a game using the same immutable question snapshots",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Game replay created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameMutationResponseDto"
                 }
               }
             }
@@ -6443,11 +6481,23 @@
             "items": {
               "type": "string"
             }
+          },
+          "color": {
+            "type": "string",
+            "enum": [
+              "blue",
+              "green",
+              "yellow",
+              "red",
+              "orange",
+              "pink"
+            ]
           }
         },
         "required": [
           "name",
-          "members"
+          "members",
+          "color"
         ]
       },
       "CreateGameDto": {
@@ -6495,12 +6545,24 @@
           },
           "score": {
             "type": "number"
+          },
+          "color": {
+            "type": "string",
+            "enum": [
+              "blue",
+              "green",
+              "yellow",
+              "red",
+              "orange",
+              "pink"
+            ]
           }
         },
         "required": [
           "name",
           "members",
-          "score"
+          "score",
+          "color"
         ]
       },
       "GameQuestionPresentationResponseDto": {
@@ -6861,7 +6923,8 @@
             "type": "string",
             "enum": [
               "standard",
-              "ranked_list"
+              "ranked_list",
+              "bomb_sequence"
             ]
           },
           "isAnswered": {
@@ -6932,7 +6995,8 @@
             "type": "string",
             "enum": [
               "standard",
-              "ranked_list"
+              "ranked_list",
+              "bomb_sequence"
             ]
           },
           "isAnswered": {
@@ -7199,6 +7263,11 @@
           "maxStrikesPerTeam": {
             "type": "number"
           },
+          "collectedScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 600
+          },
           "teams": {
             "type": "array",
             "items": {
@@ -7225,6 +7294,7 @@
           "turnSequence",
           "turnDurationSeconds",
           "maxStrikesPerTeam",
+          "collectedScore",
           "teams",
           "entries"
         ]

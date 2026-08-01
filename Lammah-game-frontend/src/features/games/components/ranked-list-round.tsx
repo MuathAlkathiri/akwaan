@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   RankedListRoundActionResponseDtoOutcome,
   RankedListRoundStateResponseDto,
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getApiErrorMessage } from "@/lib/utils";
 import { useRankedListRound } from "../hooks/use-games";
+import { cn } from "@/lib/utils";
+import { useTop10FeedbackSound } from "../hooks/use-top10-feedback-sound";
 
 const feedback: Record<RankedListRoundActionResponseDtoOutcome, string> = {
   started: "بدأت الجولة",
@@ -38,6 +40,9 @@ interface RankedListRoundViewProps {
   feedbackText?: string;
   pending?: boolean;
   error?: string;
+  feedbackKind?: "correct" | "incorrect" | "duplicate";
+  feedbackSequence?: number;
+  highlightedEntryId?: string;
   onAnswerChange: (answer: string) => void;
   onSubmit: () => void;
   onContinue: () => void;
@@ -51,16 +56,33 @@ export function RankedListRoundView({
   feedbackText,
   pending,
   error,
+  feedbackKind,
+  feedbackSequence,
+  highlightedEntryId,
   onAnswerChange,
   onSubmit,
   onContinue,
 }: RankedListRoundViewProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const completed = state.status === "completed";
   const winner = state.outcome?.winnerTeamId
     ? state.teams.find(
         (team) => team.teamId === state.outcome?.winnerTeamId,
       )?.name
     : undefined;
+  const collectedScore = useMemo(
+    () =>
+      state.collectedScore ??
+      state.entries.reduce(
+        (total, entry) => total + (entry.revealed ? entry.points : 0),
+        0,
+      ),
+    [state.collectedScore, state.entries],
+  );
+
+  useEffect(() => {
+    if (!completed && !pending) inputRef.current?.focus();
+  }, [completed, feedbackSequence, pending, state.activeTeamIndex]);
 
   return (
     <div className="space-y-5" dir="rtl" data-testid="ranked-list-round">
@@ -97,6 +119,11 @@ export function RankedListRoundView({
         })}
       </div>
 
+      <p className="text-center text-lg font-black">
+        النقاط المجموعة:{" "}
+        <span className="text-primary">{collectedScore} / 600</span>
+      </p>
+
       {!completed && (
         <div className="text-center">
           <p className="text-sm text-muted-foreground">
@@ -118,11 +145,15 @@ export function RankedListRoundView({
           <li
             key={entry.id}
             data-testid={`ranked-entry-${entry.rank}`}
-            className={`flex min-h-14 items-center gap-3 rounded-xl border px-3 ${
+            className={cn(
+              "flex min-h-14 items-center gap-3 rounded-xl border px-3 transition-colors",
               entry.revealed
                 ? "border-primary/40 bg-primary/10"
-                : "border-white/10 bg-white/5"
-            }`}
+                : "border-white/10 bg-white/5",
+              highlightedEntryId === entry.id &&
+                feedbackKind === "correct" &&
+                "top10-answer-reveal border-emerald-300/70 bg-emerald-500/20",
+            )}
           >
             <span className="w-7 text-center text-lg font-black">
               {entry.rank}
@@ -168,7 +199,11 @@ export function RankedListRoundView({
         </section>
       ) : (
         <form
-          className="space-y-3"
+          className={cn(
+            "space-y-3 rounded-xl",
+            feedbackKind === "incorrect" &&
+              "top10-answer-shake ring-2 ring-red-400/55",
+          )}
           onSubmit={(event) => {
             event.preventDefault();
             onSubmit();
@@ -176,6 +211,7 @@ export function RankedListRoundView({
         >
           <div className="flex gap-2">
             <Input
+              ref={inputRef}
               autoFocus
               value={answer}
               onChange={(event) => onAnswerChange(event.target.value)}
@@ -226,22 +262,33 @@ export function RankedListRound({
 }) {
   const round = useRankedListRound(gameId, questionId);
   const [answer, setAnswer] = useState("");
-  const [secondsRemaining, setSecondsRemaining] = useState(15);
+  const [secondsRemaining, setSecondsRemaining] = useState(20);
+  const [lifecycleReady, setLifecycleReady] = useState(false);
   const [feedbackText, setFeedbackText] = useState<string>();
   const [error, setError] = useState<string>();
+  const [feedbackKind, setFeedbackKind] = useState<
+    "correct" | "incorrect" | "duplicate"
+  >();
+  const [feedbackSequence, setFeedbackSequence] = useState(0);
+  const [highlightedEntryId, setHighlightedEntryId] = useState<string>();
   const expiredSequence = useRef<number>();
+  const submissionSequence = useRef(0);
+  const sound = useTop10FeedbackSound();
 
   useEffect(() => {
-    round.start().catch((reason) => {
-      setError(getApiErrorMessage(reason, "تعذر بدء جولة Top 10."));
-    });
+    round
+      .start()
+      .then(() => setLifecycleReady(true))
+      .catch((reason) => {
+        setError(getApiErrorMessage(reason, "تعذر بدء جولة Top 10."));
+      });
     // Starting is idempotent; the question identity defines this lifecycle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId, questionId]);
 
   useEffect(() => {
     const state = round.data;
-    if (!state || state.status === "completed") return;
+    if (!lifecycleReady || !state || state.status === "completed") return;
     const update = () => {
       const remaining = getRankedListSecondsRemaining(state.turnExpiresAt);
       setSecondsRemaining(remaining);
@@ -264,7 +311,12 @@ export function RankedListRound({
     const interval = window.setInterval(update, 250);
     return () => window.clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [round.data?.turnExpiresAt, round.data?.turnSequence, round.data?.status]);
+  }, [
+    lifecycleReady,
+    round.data?.turnExpiresAt,
+    round.data?.turnSequence,
+    round.data?.status,
+  ]);
 
   if (!round.data)
     return (
@@ -280,21 +332,58 @@ export function RankedListRound({
       secondsRemaining={secondsRemaining}
       answer={answer}
       feedbackText={feedbackText}
+      feedbackKind={feedbackKind}
+      feedbackSequence={feedbackSequence}
+      highlightedEntryId={highlightedEntryId}
       pending={round.isSubmitting || round.isExpiring}
       error={error}
       onAnswerChange={setAnswer}
       onSubmit={() => {
         if (!answer.trim()) return;
+        sound.prime();
+        const requestSequence = ++submissionSequence.current;
         setError(undefined);
+        setFeedbackKind(undefined);
+        setHighlightedEntryId(undefined);
         round
           .submit(answer, round.data!.turnSequence)
           .then((response) => {
-            setFeedbackText(feedback[response.data.outcome]);
+            if (requestSequence !== submissionSequence.current) return;
+            const outcome = response.data.outcome;
+            setFeedbackText(feedback[outcome]);
+            setFeedbackKind(
+              outcome === "correct" ||
+                (outcome === "round_completed" &&
+                  Boolean(response.data.matchedEntry))
+                ? "correct"
+                : outcome === "already_discovered"
+                  ? "duplicate"
+                    : outcome === "incorrect" ||
+                        (outcome === "round_completed" &&
+                          response.data.strikeApplied)
+                    ? "incorrect"
+                    : undefined,
+            );
+            setHighlightedEntryId(response.data.matchedEntry?.id);
+            setFeedbackSequence((value) => value + 1);
+            if (
+              outcome === "correct" ||
+              (outcome === "round_completed" &&
+                Boolean(response.data.matchedEntry))
+            )
+              sound.play("correct");
+            else if (
+              outcome === "incorrect" ||
+              (outcome === "round_completed" &&
+                response.data.strikeApplied)
+            )
+              sound.play("incorrect");
             setAnswer("");
           })
-          .catch((reason) =>
-            setError(getApiErrorMessage(reason, "تعذر إرسال الإجابة.")),
-          );
+          .catch((reason) => {
+            if (requestSequence !== submissionSequence.current) return;
+            setError(getApiErrorMessage(reason, "تعذر إرسال الإجابة."));
+          });
       }}
       onContinue={onComplete}
     />
