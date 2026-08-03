@@ -1,0 +1,358 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { UploadedImageFile } from '../../../common/uploads/local-image-storage.service';
+import { ScoringRuleRegistry } from '../../scoring/application/scoring-rule.registry';
+import { ChallengeTypePolicy } from '../domain/challenge-type.policy';
+import {
+  ANSWER_MODE_COMPATIBLE_ITEM_MODES,
+  ChallengeAnswerMode,
+  ChallengeFamily,
+  ChallengeItemStructure,
+  FAMILY_ALLOWED_ANSWER_MODES,
+  FAMILY_DEFAULT_TIMER_SECONDS,
+  SLOT_KEY_TYPES,
+  WORLD_BOARD_SLOT_COUNT,
+  WORLD_BOARD_SLOT_KEYS,
+  WORLD_SLOT_ALLOWED_FAMILIES,
+  WorldChallengeSlotKey,
+  WorldChallengeSlotType,
+  WorldContentStatus,
+} from '../domain/world-content.constants';
+import {
+  assertNoIssues,
+  issue,
+  withUniqueConstraint,
+  WorldContentConflictError,
+} from '../domain/world-content.errors';
+import {
+  buildReadinessReport,
+  ChallengeTypeView,
+  ContentAssetRef,
+  normalizePresentation,
+  ReadinessReport,
+} from '../domain/world-content.types';
+import {
+  CreateChallengeTypeDto,
+  UpdateChallengeTypeDto,
+} from '../dto/challenge-type.dto';
+import { ChallengeTypeRepository } from '../persistence/challenge-type.repository';
+import { ContentItemRepository } from '../persistence/content-item.repository';
+import { ScopeRepository } from '../persistence/scope.repository';
+import { WorldChallengeConfigurationRepository } from '../persistence/world-challenge-configuration.repository';
+import { ChallengeType } from '../schemas/challenge-type.schema';
+import { WorldContentAssetMutator } from './world-content-asset.mutator';
+import { WorldContentReferenceRegistry } from './world-content-reference.registry';
+import { toChallengeTypeView } from './world-content.mapper';
+
+export interface ChallengeTypeSummary extends ChallengeTypeView {
+  description?: string;
+  icon?: ContentAssetRef;
+  sortOrder: number;
+  /** How many Worlds currently configure this mechanic. */
+  worldConfigurationCount: number;
+  contentItemCount: number;
+  readiness: ReadinessReport;
+}
+
+/**
+ * Every rule the admin UI needs in order to offer only valid choices, served from
+ * the same domain constants the policies enforce. Without this the frontend would
+ * keep its own copy of the slot, family, and compatibility tables and they would
+ * drift (roadmap 21).
+ */
+export interface WorldContentMetadata {
+  families: Array<{
+    value: ChallengeFamily;
+    allowedAnswerModes: ChallengeAnswerMode[];
+    mustBeExclusive: boolean;
+    /** The family's pacing budget, so no author has to invent a timer. */
+    defaultTimerSeconds: number | null;
+  }>;
+  itemStructures: ChallengeItemStructure[];
+  scoringRules: Array<{
+    id: string;
+    description: string;
+    perfectClearBonusEligible: boolean;
+    allowsNegativeDelta: boolean;
+    requiresMechanicBinding: boolean;
+  }>;
+  /** Board composition: which families each slot accepts and how many it needs. */
+  boardSlotCount: number;
+  /** The four board positions, in order. ryo_1 and ryo_2 are distinct. */
+  slots: Array<{
+    key: WorldChallengeSlotKey;
+    slotType: WorldChallengeSlotType;
+    allowedFamilies: ChallengeFamily[];
+  }>;
+  /** Which item answer payloads each challenge answer mode can consume. */
+  answerModeCompatibility: Array<{
+    challengeAnswerMode: ChallengeAnswerMode;
+    itemAnswerModes: ChallengeAnswerMode[];
+  }>;
+}
+
+@Injectable()
+export class ChallengeTypeService {
+  constructor(
+    private readonly challengeTypes: ChallengeTypeRepository,
+    private readonly configurations: WorldChallengeConfigurationRepository,
+    private readonly contentItems: ContentItemRepository,
+    private readonly scopes: ScopeRepository,
+    private readonly policy: ChallengeTypePolicy,
+    private readonly scoringRules: ScoringRuleRegistry,
+    private readonly assets: WorldContentAssetMutator,
+    private readonly references: WorldContentReferenceRegistry,
+  ) {}
+
+  metadata(): WorldContentMetadata {
+    return {
+      families: Object.values(ChallengeFamily).map((family) => ({
+        value: family,
+        allowedAnswerModes: [...FAMILY_ALLOWED_ANSWER_MODES[family]],
+        mustBeExclusive: family === ChallengeFamily.SIGNATURE,
+        defaultTimerSeconds: FAMILY_DEFAULT_TIMER_SECONDS[family],
+      })),
+      itemStructures: Object.values(ChallengeItemStructure),
+      scoringRules: this.scoringRules.list().map((rule) => ({ ...rule })),
+      boardSlotCount: WORLD_BOARD_SLOT_COUNT,
+      slots: WORLD_BOARD_SLOT_KEYS.map((key) => ({
+        key,
+        slotType: SLOT_KEY_TYPES[key],
+        allowedFamilies: [...WORLD_SLOT_ALLOWED_FAMILIES[SLOT_KEY_TYPES[key]]],
+      })),
+      answerModeCompatibility: Object.values(ChallengeAnswerMode).map(
+        (mode) => ({
+          challengeAnswerMode: mode,
+          itemAnswerModes: [...ANSWER_MODE_COMPATIBLE_ITEM_MODES[mode]],
+        }),
+      ),
+    };
+  }
+
+  async list(): Promise<ChallengeTypeSummary[]> {
+    const challengeTypes = await this.challengeTypes.list();
+    return Promise.all(
+      challengeTypes.map((challengeType) => this.summarize(challengeType)),
+    );
+  }
+
+  async findOne(id: string): Promise<ChallengeTypeSummary> {
+    return this.summarize(await this.require(id));
+  }
+
+  async readiness(id: string): Promise<ReadinessReport> {
+    return this.evaluate(await this.require(id));
+  }
+
+  async create(
+    dto: CreateChallengeTypeDto,
+    file?: UploadedImageFile,
+  ): Promise<ChallengeTypeSummary> {
+    await this.assertSlugAvailable(dto.slug);
+    const candidate = this.toCandidate(dto);
+    assertNoIssues(
+      this.policy.validate(candidate),
+      'Challenge type is invalid',
+    );
+    const created = await this.assets.withAsset({
+      kind: 'challenge-types',
+      field: 'icon',
+      data: {
+        ...this.toPersistable(candidate),
+        description: dto.description,
+        icon: dto.icon,
+        sortOrder: dto.sortOrder ?? 0,
+      },
+      file,
+      run: (payload) =>
+        withUniqueConstraint(
+          () => this.challengeTypes.create(payload as Partial<ChallengeType>),
+          this.slugConflict(candidate.slug),
+        ),
+    });
+    return this.summarize(created);
+  }
+
+  async update(
+    id: string,
+    dto: UpdateChallengeTypeDto,
+    file?: UploadedImageFile,
+  ): Promise<ChallengeTypeSummary> {
+    const existing = await this.require(id);
+    if (dto.slug && dto.slug !== existing.slug) {
+      await this.assertSlugAvailable(dto.slug, id);
+    }
+    const candidate = this.mergeCandidate(toChallengeTypeView(existing), dto);
+    assertNoIssues(
+      this.policy.validate(candidate),
+      'Challenge type is invalid',
+    );
+    const updated = await this.assets.withAsset({
+      kind: 'challenge-types',
+      field: 'icon',
+      data: {
+        ...this.toPersistable(candidate),
+        ...(dto.description === undefined
+          ? {}
+          : { description: dto.description }),
+        ...(dto.icon === undefined ? {} : { icon: dto.icon }),
+        ...(dto.sortOrder === undefined ? {} : { sortOrder: dto.sortOrder }),
+      },
+      file,
+      previous: existing.icon,
+      run: async (payload) => {
+        const value = await withUniqueConstraint(
+          () =>
+            this.challengeTypes.updateById(
+              id,
+              payload as Partial<ChallengeType>,
+            ),
+          this.slugConflict(candidate.slug),
+        );
+        if (!value) throw new NotFoundException('Challenge type not found');
+        return value;
+      },
+    });
+    return this.summarize(updated);
+  }
+
+  async remove(id: string): Promise<{ id: string }> {
+    const existing = await this.require(id);
+    const [configurationCount, contentItemCount, scopeExclusionCount] =
+      await Promise.all([
+        this.configurations.countByChallengeType(id),
+        this.contentItems.countByChallengeType(id),
+        this.scopes.countExcludingChallengeType(id),
+      ]);
+    if (configurationCount) {
+      throw new WorldContentConflictError(
+        'CHALLENGE_TYPE_IN_USE',
+        `This mechanic is configured in ${configurationCount} World(s); remove those configurations first`,
+      );
+    }
+    if (contentItemCount) {
+      throw new WorldContentConflictError(
+        'CHALLENGE_TYPE_IN_USE',
+        `${contentItemCount} content item(s) are tagged as compatible with this mechanic`,
+      );
+    }
+    await this.references.assertUnreferenced('challengeType', id);
+    // A dangling exclusion would fail Scope readiness, so it is cleaned up with
+    // the mechanic it referred to rather than left behind (roadmap 6).
+    if (scopeExclusionCount) {
+      await this.scopes.removeChallengeTypeFromExclusions(id);
+    }
+    await this.challengeTypes.deleteById(id);
+    await this.assets.discard(existing.icon);
+    return { id };
+  }
+
+  private toCandidate(
+    dto: CreateChallengeTypeDto,
+    id = 'new',
+  ): ChallengeTypeView {
+    return {
+      id,
+      name: dto.name,
+      slug: dto.slug,
+      family: dto.family,
+      // Exclusivity follows from the family; it is not a free choice (7).
+      isExclusive: dto.family === ChallengeFamily.SIGNATURE,
+      itemStructure:
+        dto.itemStructure ?? ChallengeItemStructure.DISCRETE_TRIPLE,
+      answerMode: dto.answerMode,
+      defaultPresentation: normalizePresentation(dto.defaultPresentation),
+      scoringRuleId: dto.scoringRuleId,
+      status: dto.status ?? WorldContentStatus.DRAFT,
+    };
+  }
+
+  private mergeCandidate(
+    existing: ChallengeTypeView,
+    dto: UpdateChallengeTypeDto,
+  ): ChallengeTypeView {
+    const family = dto.family ?? existing.family;
+    return {
+      id: existing.id,
+      name: dto.name ?? existing.name,
+      slug: dto.slug ?? existing.slug,
+      family,
+      isExclusive: family === ChallengeFamily.SIGNATURE,
+      itemStructure: dto.itemStructure ?? existing.itemStructure,
+      answerMode: dto.answerMode ?? existing.answerMode,
+      defaultPresentation: normalizePresentation(
+        dto.defaultPresentation ?? existing.defaultPresentation,
+      ),
+      scoringRuleId: dto.scoringRuleId ?? existing.scoringRuleId,
+      status: dto.status ?? existing.status,
+    };
+  }
+
+  private toPersistable(candidate: ChallengeTypeView): Record<string, unknown> {
+    return {
+      name: candidate.name,
+      slug: candidate.slug,
+      family: candidate.family,
+      isExclusive: candidate.isExclusive,
+      itemStructure: candidate.itemStructure,
+      answerMode: candidate.answerMode,
+      defaultPresentation: candidate.defaultPresentation,
+      scoringRuleId: candidate.scoringRuleId,
+      status: candidate.status,
+    };
+  }
+
+  private evaluate(challengeType: ChallengeType): ReadinessReport {
+    const view = toChallengeTypeView(challengeType);
+    return buildReadinessReport(
+      this.policy.validate(view),
+      this.policy.warnings(view),
+    );
+  }
+
+  private async summarize(
+    challengeType: ChallengeType,
+  ): Promise<ChallengeTypeSummary> {
+    const view = toChallengeTypeView(challengeType);
+    const [worldConfigurationCount, contentItemCount] = await Promise.all([
+      this.configurations.countByChallengeType(view.id),
+      this.contentItems.countByChallengeType(view.id),
+    ]);
+    return {
+      ...view,
+      description: challengeType.description,
+      icon: challengeType.icon,
+      sortOrder: challengeType.sortOrder ?? 0,
+      worldConfigurationCount,
+      contentItemCount,
+      readiness: this.evaluate(challengeType),
+    };
+  }
+
+  private async require(id: string): Promise<ChallengeType> {
+    const challengeType = await this.challengeTypes.findById(id);
+    if (!challengeType) throw new NotFoundException('Challenge type not found');
+    return challengeType;
+  }
+
+  private slugConflict(slug: string) {
+    return {
+      code: 'CHALLENGE_TYPE_SLUG_TAKEN',
+      message: `Mechanic identifier "${slug}" is already used; challenge type slugs are globally unique`,
+    };
+  }
+
+  private async assertSlugAvailable(
+    slug: string,
+    exceptId?: string,
+  ): Promise<void> {
+    if (await this.challengeTypes.slugTaken(slug, exceptId)) {
+      assertNoIssues([
+        issue(
+          'CHALLENGE_TYPE_SLUG_TAKEN',
+          `Mechanic identifier "${slug}" is already used; challenge type slugs are globally unique`,
+          { slug },
+        ),
+      ]);
+    }
+  }
+}

@@ -16,9 +16,11 @@ import type { Question } from "@/types";
 
 const mutateAsync = vi.fn();
 const removeMedia = vi.fn();
+const uploadMedia = vi.fn();
 const uploadImage = vi.fn();
 const removeImage = vi.fn();
 let imageUploading = false;
+let mediaUploading = false;
 const mutation = { mutate: vi.fn(), mutateAsync, isPending: false };
 const question = {
   id: "question-1",
@@ -37,6 +39,16 @@ const question = {
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 } as Question;
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock("@/features/world-management/hooks/use-world-content", () => ({
+  useWorlds: () => ({ data: [], isLoading: false }),
+  useScopes: () => ({ data: [], isLoading: false }),
+  useWorldBoard: () => ({ data: undefined, isLoading: false }),
+}));
 
 vi.mock("@/features/categories", () => ({
   useCategories: () => ({
@@ -62,6 +74,9 @@ vi.mock("@/features/questions/hooks/use-questions", () => ({
     updateRequest: mutateAsync,
     preview: mutateAsync,
     remove: removeMedia,
+    upload: uploadMedia,
+    isUploading: mediaUploading,
+    isRemoving: false,
   }),
   useQuestionAudioCandidates: () => ({
     data: [],
@@ -96,6 +111,7 @@ describe("full-page question authoring", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     imageUploading = false;
+    mediaUploading = false;
     removeImage.mockResolvedValue(question);
     uploadImage.mockResolvedValue({
       ...question,
@@ -103,6 +119,15 @@ describe("full-page question authoring", () => {
       primaryAsset: {
         type: "image",
         url: "/uploads/questions/images/new.webp",
+        source: "admin-upload",
+      },
+    });
+    uploadMedia.mockResolvedValue({
+      ...question,
+      type: "video",
+      audioAsset: {
+        type: "video",
+        url: "/uploads/question-assets/video/new.mp4",
         source: "admin-upload",
       },
     });
@@ -172,7 +197,7 @@ describe("full-page question authoring", () => {
   it("switches authoring sections without creating a new gameplay enum", () => {
     render(<QuestionForm question={question} />);
     expect(screen.queryByTestId("image-section")).toBeNull();
-    fireEvent.click(screen.getByRole("combobox", { name: "نوع التأليف" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "نوع السؤال" }));
     fireEvent.click(screen.getByRole("option", { name: "صورة" }));
     expect(screen.getByTestId("image-section")).toBeInTheDocument();
     expect(screen.queryByTestId("audio-section")).toBeNull();
@@ -288,9 +313,7 @@ describe("full-page question authoring", () => {
     );
     fireEvent.change(container.querySelector('input[type="file"]')!, {
       target: {
-        files: [
-          new File(["image"], "selected.webp", { type: "image/webp" }),
-        ],
+        files: [new File(["image"], "selected.webp", { type: "image/webp" })],
       },
     });
     fireEvent.click(screen.getByRole("button", { name: "تحديث السؤال" }));
@@ -347,7 +370,7 @@ describe("full-page question authoring", () => {
       />,
     );
     expect(screen.getByTestId("video-section")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("عبارة البحث")).toHaveValue(
+    expect(screen.getByLabelText("عبارة البحث")).toHaveValue(
       "Saudi landmark video",
     );
     expect(screen.getByLabelText("وقت بداية المقطع")).toHaveValue("03:18");
@@ -371,9 +394,72 @@ describe("full-page question authoring", () => {
       "src",
       "/uploads/question-assets/video/clip.mp4",
     );
-    expect(screen.getByText("رفع ملف فيديو بديل")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "اختيار ملف بديل" }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "إزالة الفيديو" }));
-    expect(removeMedia).toHaveBeenCalledWith("question-1");
+    await waitFor(() =>
+      expect(removeMedia).toHaveBeenCalledWith("question-1"),
+    );
+  });
+
+  it("previews a manually selected video before uploading it through the explicit action", async () => {
+    render(
+      <QuestionForm
+        question={{
+          ...question,
+          type: "video",
+          requiresAudio: true,
+          audioStatus: "ready",
+          audioReviewStatus: "pending",
+          audioRequest: { kind: "custom", searchQuery: "Saudi landmark video" },
+        }}
+      />,
+    );
+    const file = new File(["video"], "replacement.mp4", { type: "video/mp4" });
+    fireEvent.click(screen.getByRole("button", { name: "اختيار ملف" }));
+    const input = document.querySelector('input[type="file"]')!;
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(screen.getByText("معاينة قبل الرفع، لم يتم رفعها بعد.")).toBeInTheDocument();
+    expect(screen.getByText(/replacement\.mp4/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "رفع الفيديو" }));
+    await waitFor(() => expect(uploadMedia).toHaveBeenCalledWith("question-1", file));
+    expect(
+      screen.queryByText("معاينة قبل الرفع، لم يتم رفعها بعد."),
+    ).toBeNull();
+  });
+
+  it("keeps advanced audio search fields collapsed by default for a plain search sentence", () => {
+    render(
+      <QuestionForm
+        question={{
+          ...question,
+          type: "audio",
+          audioRequest: { kind: "custom", searchQuery: "بحث بسيط" },
+        }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "خيارات بحث متقدمة" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("الاسم المستهدف")).toBeNull();
+  });
+
+  it("auto-expands advanced audio search fields when a question already has them filled in", () => {
+    render(
+      <QuestionForm
+        question={{
+          ...question,
+          type: "audio",
+          audioRequest: {
+            kind: "custom",
+            searchQuery: "بحث بسيط",
+            targetName: "Youtube",
+          },
+        }}
+      />,
+    );
+    expect(screen.getByLabelText("الاسم المستهدف")).toHaveValue("Youtube");
   });
 
   it("shows optional media as a non-blocking warning on an approved question", () => {

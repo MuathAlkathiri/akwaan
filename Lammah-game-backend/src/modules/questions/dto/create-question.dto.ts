@@ -259,6 +259,21 @@ export class BombQuestionContentDto {
 }
 
 export class CreateQuestionDto {
+  @ApiPropertyOptional({ description: 'New content architecture world' })
+  @IsOptional()
+  @IsMongoId()
+  worldId?: string;
+
+  @ApiPropertyOptional({ description: 'New content architecture category' })
+  @IsOptional()
+  @IsMongoId()
+  contentCategoryId?: string;
+
+  @ApiPropertyOptional({ description: 'World-owned challenge type' })
+  @IsOptional()
+  @IsMongoId()
+  challengeTypeId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsMongoId({ message: 'Category ID must be a valid MongoDB ID' })
@@ -349,11 +364,16 @@ export class CreateQuestionDto {
   @IsString()
   explanation?: string;
 
-  @ApiProperty({ enum: DifficultyLevel, enumName: 'DifficultyLevel' })
+  @ApiPropertyOptional({
+    enum: DifficultyLevel,
+    enumName: 'DifficultyLevel',
+    deprecated: true,
+  })
+  @IsOptional()
   @IsEnum(DifficultyLevel, {
     message: 'Difficulty must be one of: easy, medium, hard',
   })
-  difficulty: DifficultyLevel;
+  difficulty?: DifficultyLevel;
 
   @ApiPropertyOptional({ enum: QuestionPoints, enumName: 'QuestionPoints' })
   @IsOptional()

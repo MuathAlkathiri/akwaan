@@ -56,7 +56,14 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (typeof responseData === "string") return responseData
 
   const message = responseData.message || responseData.error
-  if (Array.isArray(message)) return message.join("، ")
+  // Some endpoints return structured validation entries; only render text, never
+  // a stringified object.
+  if (Array.isArray(message)) {
+    const readable = message.filter(
+      (entry): entry is string => typeof entry === "string",
+    )
+    return readable.length ? readable.join("، ") : fallback
+  }
   if (typeof message === "string") return message
 
   return fallback

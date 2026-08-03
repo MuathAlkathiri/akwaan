@@ -1,0 +1,266 @@
+/**
+ * Transport types for the World Content admin API
+ * (World -> Scope -> ChallengeType -> ContentItem).
+ *
+ * Rules and vocabulary (families, answer modes, slots, board size, answer-mode
+ * compatibility, scoring rules) are fetched from the metadata endpoint rather
+ * than restated here, so the two sides cannot drift apart.
+ */
+
+export type WorldContentStatus = "draft" | "active" | "archived";
+export type ContentItemStatus = "draft" | "ready" | "archived";
+export type ContentReadiness = "ready" | "limited" | "not_ready";
+export type ChallengeFamily = "signature" | "ryo" | "coop" | "relational";
+export type WorldChallengeSlotType = "signature" | "ryo" | "flex";
+/** A board position. ryo_1 and ryo_2 are distinct positions, one mechanic. */
+export type WorldChallengeSlotKey = "signature" | "ryo_1" | "ryo_2" | "flex";
+export type ContentMediaType = "none" | "image" | "audio" | "video";
+export type ChallengeAnswerMode =
+  "ryo" | "multiple_choice" | "closest" | "match" | "vote" | "split" | "top_10";
+export type ChallengeItemStructure = "discrete_triple" | "continuous";
+export type VoteConsensusRule = "exact" | "majority" | "team_match";
+
+export interface ContentAsset {
+  url: string;
+  altText?: string;
+}
+
+export interface LocalizedText {
+  ar: string;
+  en?: string;
+}
+
+export interface WorldContentIssue {
+  code: string;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+export interface ReadinessReport {
+  readiness: ContentReadiness;
+  blockers: WorldContentIssue[];
+  warnings: WorldContentIssue[];
+}
+
+/** Owned by the mechanic. Media is absent here: it belongs to the ContentItem. */
+export interface ChallengePresentation {
+  inputType: string;
+  timerSeconds: number | null;
+  soundPack?: string | null;
+  revealStyle?: string | null;
+}
+
+export interface BoardSlot {
+  slotKey: WorldChallengeSlotKey;
+  slotType: WorldChallengeSlotType;
+  configurationId: string;
+  challengeTypeId: string;
+  challengeTypeSlug: string;
+  family: ChallengeFamily;
+  displayName: string;
+  answerMode: ChallengeAnswerMode;
+  itemStructure: ChallengeItemStructure;
+  scoringRuleId: string;
+  sortOrder: number;
+}
+
+export interface BoardDefinition {
+  worldId: string;
+  slots: BoardSlot[];
+  blockers: WorldContentIssue[];
+  warnings: WorldContentIssue[];
+}
+
+export interface ScopeCompatibility {
+  scopeId: string;
+  usableSlots: BoardSlot[];
+  excludedSlots: BoardSlot[];
+  blockers: WorldContentIssue[];
+  warnings: WorldContentIssue[];
+}
+
+export interface WorldReadinessReport extends ReadinessReport {
+  worldId: string;
+  board: BoardDefinition;
+  scopeCompatibility: ScopeCompatibility[];
+  boardReady: boolean;
+  hasRelationalFlexSlot: boolean;
+}
+
+export interface World {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: ContentAsset;
+  banner?: ContentAsset;
+  signatureMechanicId?: string;
+  soundPack?: string | null;
+  timerProfile?: string | null;
+  toneProfile?: string | null;
+  status: WorldContentStatus;
+  sortOrder: number;
+  scopeCount: number;
+  challengeConfigurationCount: number;
+  contentItemCount: number;
+  readiness: WorldReadinessReport;
+}
+
+export interface Scope {
+  id: string;
+  worldId: string;
+  name: string;
+  slug: string;
+  description?: string;
+  image?: ContentAsset;
+  excludedChallengeTypeIds: string[];
+  status: WorldContentStatus;
+  sortOrder: number;
+  contentItemCount: number;
+  readyContentItemCount: number;
+  compatibility: ScopeCompatibility;
+}
+
+export interface ChallengeType {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: ContentAsset;
+  family: ChallengeFamily;
+  isExclusive: boolean;
+  itemStructure: ChallengeItemStructure;
+  answerMode: ChallengeAnswerMode;
+  defaultPresentation: ChallengePresentation;
+  scoringRuleId: string;
+  status: WorldContentStatus;
+  sortOrder: number;
+  worldConfigurationCount: number;
+  contentItemCount: number;
+  readiness: ReadinessReport;
+}
+
+export interface WorldChallengeConfiguration {
+  id: string;
+  worldId: string;
+  challengeTypeId: string;
+  slotKey: WorldChallengeSlotKey;
+  slotType: WorldChallengeSlotType;
+  /** Optional World label; globally fixed mechanics never carry one. */
+  displayName?: string;
+  /** What players see: the label, or the mechanic's own name. */
+  effectiveName: string;
+  description?: string;
+  icon?: ContentAsset;
+  sortOrder: number;
+  isEnabled: boolean;
+  challengeType: Pick<
+    ChallengeType,
+    | "id"
+    | "name"
+    | "slug"
+    | "family"
+    | "isExclusive"
+    | "answerMode"
+    | "itemStructure"
+    | "scoringRuleId"
+    | "status"
+    | "defaultPresentation"
+  >;
+}
+
+export interface WorldBoard {
+  worldId: string;
+  configurations: WorldChallengeConfiguration[];
+  board: BoardDefinition;
+}
+
+export interface ContentAnswerOption {
+  id: string;
+  label: LocalizedText;
+}
+
+export interface ContentAnswerPayload {
+  mode: ChallengeAnswerMode;
+  options?: ContentAnswerOption[] | null;
+  correctOptionId?: string;
+  correctValue?: number;
+  acceptedTolerance?: number;
+  acceptedAnswers?: string[];
+  consensusRule?: VoteConsensusRule;
+  splitPayload?: { fragments: Array<{ seat: number; clue: LocalizedText }> };
+}
+
+export interface ContentItem {
+  id: string;
+  scopeId: string;
+  worldId: string;
+  prompt: LocalizedText;
+  compatibleChallengeTypeIds: string[];
+  media?: { type: ContentMediaType; assets: ContentAsset[] };
+  answerPayload: ContentAnswerPayload;
+  mechanicPayload?: Record<string, unknown>;
+  isReusableAcrossSessions: boolean;
+  status: ContentItemStatus;
+  metadata?: { source?: string; notes?: string; tags?: string[] };
+  readiness: ReadinessReport;
+  compatibleFamilies: ChallengeFamily[];
+  isSessionReuseExempt: boolean;
+}
+
+export type Top10Variant = "classic" | "poison-deck";
+
+export interface Top10PoisonDeckCandidate {
+  id: string;
+  label: string;
+  shortLabel?: string;
+  media?: ContentAsset;
+}
+
+export interface Top10PoisonDeckPayload {
+  variant: "poison-deck";
+  title: string;
+  instruction?: string;
+  rankingBasis: string;
+  sourceLabel: string;
+  asOfDate?: string;
+  candidates: Top10PoisonDeckCandidate[];
+  rankedAnswer: Array<{ candidateId: string; rank: number }>;
+  decoyCandidateIds: string[];
+  explanation?: string;
+}
+
+export interface ScoringRuleOption {
+  id: string;
+  description: string;
+  perfectClearBonusEligible: boolean;
+  allowsNegativeDelta: boolean;
+  requiresMechanicBinding: boolean;
+}
+
+/**
+ * Every rule the admin forms need in order to offer only valid choices, served by
+ * the backend from the same constants its policies enforce. Nothing in here is
+ * restated client-side (roadmap 21).
+ */
+export interface WorldContentMetadata {
+  families: Array<{
+    value: ChallengeFamily;
+    allowedAnswerModes: ChallengeAnswerMode[];
+    mustBeExclusive: boolean;
+    /** The family's per-item pacing budget, or null when the mechanic decides. */
+    defaultTimerSeconds: number | null;
+  }>;
+  itemStructures: ChallengeItemStructure[];
+  scoringRules: ScoringRuleOption[];
+  boardSlotCount: number;
+  slots: Array<{
+    key: WorldChallengeSlotKey;
+    slotType: WorldChallengeSlotType;
+    allowedFamilies: ChallengeFamily[];
+  }>;
+  answerModeCompatibility: Array<{
+    challengeAnswerMode: ChallengeAnswerMode;
+    itemAnswerModes: ChallengeAnswerMode[];
+  }>;
+}

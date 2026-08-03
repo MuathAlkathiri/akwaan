@@ -1,6 +1,29 @@
 import { BadRequestException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { validateSync } from 'class-validator';
+import { validateSync, ValidationError } from 'class-validator';
+
+/**
+ * Flattens class-validator errors into readable strings, the way Nest's own
+ * ValidationPipe does. Handing the raw error objects to BadRequestException made
+ * clients render "[object Object]" instead of the reason.
+ */
+function describeValidationErrors(
+  errors: ValidationError[],
+  parentPath = '',
+): string[] {
+  return errors.flatMap((error) => {
+    const path = parentPath
+      ? `${parentPath}.${error.property}`
+      : error.property;
+    const constraints = Object.values(error.constraints ?? {}).map(
+      (message) => `${path}: ${message}`,
+    );
+    return [
+      ...constraints,
+      ...describeValidationErrors(error.children ?? [], path),
+    ];
+  });
+}
 
 export function parseMultipartJsonBody<T extends object>(
   body: Record<string, unknown>,
@@ -30,6 +53,8 @@ export function parseMultipartJsonBody<T extends object>(
     whitelist: true,
     forbidNonWhitelisted: true,
   });
-  if (errors.length) throw new BadRequestException(errors);
+  if (errors.length) {
+    throw new BadRequestException(describeValidationErrors(errors));
+  }
   return dto;
 }

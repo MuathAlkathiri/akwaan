@@ -74,12 +74,28 @@ function toAudioRequest(
   };
 }
 
+// The world/content-scope/challenge-type taxonomy fields exist on the
+// backend response (Question schema + QuestionResponseMapper) but aren't
+// yet declared on the orval-generated QuestionResponseDto type, so they're
+// read here via an inline extension rather than waiting on a full API
+// client regeneration.
+type QuestionResponseDtoWithTaxonomy = QuestionResponseDto & {
+  worldId?: string;
+  contentCategoryId?: string;
+  challengeTypeId?: string;
+};
+
 export function toQuestion(dto: QuestionResponseDto): Question {
+  const { worldId, contentCategoryId, challengeTypeId } =
+    dto as QuestionResponseDtoWithTaxonomy;
   return {
     id: dto.id || dto._id,
     _id: dto._id,
     categoryId: dto.categoryId || dto.category || "",
     category: dto.category,
+    worldId,
+    contentCategoryId,
+    challengeTypeId,
     question: dto.question,
     questionType: dto.questionType,
     text: dto.text,

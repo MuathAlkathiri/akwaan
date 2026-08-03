@@ -41,6 +41,9 @@ export interface QuestionResponseDto {
   id?: string;
   category?: string;
   categoryId?: string;
+  worldId?: string;
+  contentCategoryId?: string;
+  challengeTypeId?: string;
   question: string;
   questionType: QuestionGameplayType;
   text?: LocalizedQuestionTextDto;

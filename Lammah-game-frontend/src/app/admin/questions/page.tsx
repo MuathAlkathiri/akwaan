@@ -1,4 +1,9 @@
+import { Suspense } from "react";
 import { QuestionAdminScreen } from "@/features/questions";
 export default function AdminQuestionsPage() {
-  return <QuestionAdminScreen />;
+  return (
+    <Suspense fallback={null}>
+      <QuestionAdminScreen />
+    </Suspense>
+  );
 }

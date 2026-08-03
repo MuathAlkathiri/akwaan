@@ -337,14 +337,20 @@ export function useQuestionAudioActions() {
       selectCandidate.isPending ||
       preview.isPending ||
       remove.isPending,
+    isUploading: upload.isPending,
+    isRemoving: remove.isPending,
     retry: (id: string, mode: "research" | "retryProcessing") =>
       retry.mutate({ id, data: { mode } }),
     approve: (id: string) => approve.mutate({ id }),
     reject: (id: string) => reject.mutate({ id }),
     updateRequest: updateRequest.mutateAsync,
     preview: preview.mutateAsync,
-    upload: (id: string, audio: File) => upload.mutate({ id, data: { audio } }),
-    remove: (id: string) => remove.mutate({ id }),
+    upload: async (id: string, audio: File) =>
+      upload
+        .mutateAsync({ id, data: { audio } })
+        .then((response) => toQuestion(response.data)),
+    remove: async (id: string) =>
+      remove.mutateAsync({ id }).then((response) => toQuestion(response.data)),
     selectCandidate: (id: string, candidateId: string) =>
       selectCandidate.mutate({ id, candidateId }),
   };

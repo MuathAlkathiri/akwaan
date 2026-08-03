@@ -124,6 +124,21 @@ describe("request mappers", () => {
     });
   });
 
+  it("forwards world/content-scope/challenge-type classification for new questions", () => {
+    const request = toCreateQuestionRequest({
+      question: "سؤال جديد",
+      worldId: "world-1",
+      contentCategoryId: "scope-1",
+      challengeTypeId: "challenge-1",
+    } as Partial<Question>);
+
+    expect(request).toMatchObject({
+      worldId: "world-1",
+      contentCategoryId: "scope-1",
+      challengeTypeId: "challenge-1",
+    });
+  });
+
   it("keeps regular question updates content-only", () => {
     const request = toUpdateQuestionRequest({
       question: "سؤال محدّث",

@@ -6,6 +6,36 @@ import { buildQuestionPayload } from "./question-form-payload";
 import { questionFormSchema } from "./question-form-schema";
 
 describe("buildQuestionPayload", () => {
+  it("uses the new hierarchy without legacy difficulty or point fields", () => {
+    const data = questionFormSchema.parse({
+      authoringType: "text",
+      worldId: "6a67bdeaf3dd6b97e0208201",
+      contentCategoryId: "6a67bdeaf3dd6b97e0208202",
+      challengeTypeId: "6a67bdeaf3dd6b97e0208203",
+      question: "من فاز بالبطولة؟",
+      answer: "الفريق الأول",
+      status: "draft",
+      isFreeGameQuestion: false,
+      audioKind: "custom",
+    });
+
+    const payload = buildQuestionPayload({
+      data,
+      acceptedAnswers: [],
+      rankedEntries: [],
+      bombItems: [],
+    });
+
+    expect(payload).toMatchObject({
+      worldId: data.worldId,
+      contentCategoryId: data.contentCategoryId,
+      challengeTypeId: data.challengeTypeId,
+    });
+    expect(payload).not.toHaveProperty("categoryId");
+    expect(payload).not.toHaveProperty("difficulty");
+    expect(payload).not.toHaveProperty("points");
+  });
+
   it("omits standard answer fields from Bomb question payloads", () => {
     const data = questionFormSchema.parse({
       authoringType: "bomb",

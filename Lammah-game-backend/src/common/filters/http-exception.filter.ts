@@ -46,6 +46,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (exceptionResponse) {
         const allowedFields = [
           'issueCodes',
+          // World Content validation returns every failing rule at once so the
+          // admin UI can show them together instead of one per round-trip.
+          'issues',
           'meta',
           'sourceDiagnostics',
           'sourceSummary',

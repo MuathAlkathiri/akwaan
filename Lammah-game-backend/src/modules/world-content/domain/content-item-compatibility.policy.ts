@@ -1,0 +1,712 @@
+import { Injectable } from '@nestjs/common';
+import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
+import { ScopeCompatibilityPolicy } from './scope-compatibility.policy';
+import {
+  ANSWER_MODE_COMPATIBLE_ITEM_MODES,
+  ChallengeAnswerMode,
+  ChallengeFamily,
+  ContentMediaType,
+  SESSION_REUSE_EXEMPT_FAMILIES,
+  VoteConsensusRule,
+  WorldContentStatus,
+} from './world-content.constants';
+import { issue } from './world-content.errors';
+import {
+  ContentAnswerOption,
+  ContentAnswerPayload,
+  ContentItemView,
+  ScopeView,
+  ChallengeTypeView,
+  WorldContentIssue,
+  buildReadinessReport,
+  ReadinessReport,
+} from './world-content.types';
+
+/**
+ * Fields the legacy question model carried that have no place in the new domain
+ * (roadmap 0.2, 17). Rejected explicitly so a legacy import cannot smuggle the
+ * old scoring vocabulary back in through a metadata bag.
+ */
+export const REJECTED_LEGACY_CONTENT_FIELDS = [
+  'points',
+  'score',
+  'maxPoints',
+  'difficulty',
+  'correctAnswer',
+  'wrongAnswers',
+  'hostDecision',
+  'approvedAnswer',
+  'manualCorrect',
+  'manualIncorrect',
+  'winningTeam',
+  'gameMode',
+  'questionType',
+] as const;
+
+export interface ContentItemCompatibilityInput {
+  item: ContentItemView;
+  scope?: ScopeView;
+  /** World status of the Scope's World, when known. */
+  worldStatus?: WorldContentStatus;
+  /** Every challenge type referenced by the item, keyed by id. */
+  challengeTypes: Map<string, ChallengeTypeView>;
+}
+
+/**
+ * The single source of truth for whether a Content Item can be played
+ * (roadmap 12, 13, 14). Controllers, DTOs, the migration, and the admin UI all
+ * defer to this; none of them re-implement it.
+ */
+@Injectable()
+export class ContentItemCompatibilityPolicy {
+  evaluate(input: ContentItemCompatibilityInput): ReadinessReport {
+    const blockers: WorldContentIssue[] = [];
+    const warnings: WorldContentIssue[] = [];
+
+    blockers.push(...this.validateScope(input));
+    blockers.push(...this.validatePrompt(input.item));
+    blockers.push(...this.validateAnswerPayload(input.item.answerPayload));
+
+    const referenced = this.resolveChallengeTypes(input, blockers);
+    blockers.push(...this.validateChallengeCompatibility(input, referenced));
+    blockers.push(...this.validateMedia(input.item));
+    blockers.push(...this.validateTop10Payload(input.item));
+    warnings.push(...this.reuseWarnings(input.item, referenced));
+
+    return buildReadinessReport(blockers, warnings);
+  }
+
+  private validateTop10Payload(item: ContentItemView): WorldContentIssue[] {
+    if (item.answerPayload?.mode !== ChallengeAnswerMode.TOP_10) return [];
+    const raw = item.mechanicPayload as
+      | (Partial<
+          Omit<
+            import('./world-content.types').Top10PoisonDeckPayload,
+            'variant'
+          >
+        > & { variant?: string })
+      | undefined;
+    // Missing variant is the preserved classic pattern. Its established
+    // Question-era contract remains validated by RankedListQuestionPolicy.
+    if (!raw || raw.variant === undefined || raw.variant === 'classic')
+      return [];
+    if (raw.variant !== 'poison-deck') {
+      return [
+        issue('TOP10_VARIANT_INVALID', 'Top 10 variant is not supported'),
+      ];
+    }
+    const issues: WorldContentIssue[] = [];
+    if (!raw.title?.trim())
+      issues.push(issue('TOP10_TITLE_REQUIRED', 'Top 10 title is required'));
+    if (!raw.rankingBasis?.trim())
+      issues.push(
+        issue(
+          'TOP10_RANKING_BASIS_REQUIRED',
+          'An objective ranking basis is required',
+        ),
+      );
+    if (!raw.sourceLabel?.trim())
+      issues.push(
+        issue('TOP10_SOURCE_REQUIRED', 'An authoritative source is required'),
+      );
+    if (!Array.isArray(raw.candidates) || raw.candidates.length !== 14)
+      issues.push(
+        issue(
+          'TOP10_CANDIDATE_COUNT_INVALID',
+          'Poison deck requires exactly 14 candidates',
+        ),
+      );
+    if (!Array.isArray(raw.rankedAnswer) || raw.rankedAnswer.length !== 10)
+      issues.push(
+        issue(
+          'TOP10_RANKED_COUNT_INVALID',
+          'Poison deck requires exactly 10 ranked candidates',
+        ),
+      );
+    if (
+      !Array.isArray(raw.decoyCandidateIds) ||
+      raw.decoyCandidateIds.length !== 4
+    )
+      issues.push(
+        issue(
+          'TOP10_DECOY_COUNT_INVALID',
+          'Poison deck requires exactly 4 decoys',
+        ),
+      );
+    const candidates = Array.isArray(raw.candidates) ? raw.candidates : [];
+    const ids = candidates
+      .map((candidate) => candidate.id?.trim())
+      .filter(Boolean);
+    if (new Set(ids).size !== ids.length || ids.length !== candidates.length)
+      issues.push(
+        issue('TOP10_DUPLICATE_CANDIDATE_ID', 'Candidate ids must be unique'),
+      );
+    const labels = candidates.map((candidate) =>
+      normalizeAnswer(candidate.label ?? ''),
+    );
+    if (
+      labels.some((label) => !label) ||
+      new Set(labels).size !== labels.length
+    )
+      issues.push(
+        issue(
+          'TOP10_DUPLICATE_CANDIDATE_LABEL',
+          'Candidate labels must be present and unique',
+        ),
+      );
+    const rankedIds = (raw.rankedAnswer ?? []).map(
+      (entry) => entry.candidateId,
+    );
+    const decoys = raw.decoyCandidateIds ?? [];
+    const ranks = (raw.rankedAnswer ?? [])
+      .map((entry) => entry.rank)
+      .sort((a, b) => a - b);
+    if (ranks.join(',') !== '1,2,3,4,5,6,7,8,9,10')
+      issues.push(
+        issue(
+          'TOP10_RANKS_INVALID',
+          'Ranks must be complete and unique from 1 through 10',
+        ),
+      );
+    if (rankedIds.some((id) => decoys.includes(id)))
+      issues.push(
+        issue(
+          'TOP10_CANDIDATE_OVERLAP',
+          'A candidate cannot be both ranked and a decoy',
+        ),
+      );
+    const classified = [...rankedIds, ...decoys];
+    if (
+      classified.length !== 14 ||
+      classified.some((id) => !ids.includes(id)) ||
+      new Set(classified).size !== 14
+    )
+      issues.push(
+        issue(
+          'TOP10_CLASSIFICATION_INCOMPLETE',
+          'Every candidate must be classified exactly once',
+        ),
+      );
+    return issues;
+  }
+
+  /**
+   * Roadmap 6.4: Relational prompts survive repeated sessions, everything else
+   * is consumed on use. The future rotation engine asks this, not a component.
+   */
+  isSessionReuseExempt(families: ChallengeFamily[]): boolean {
+    return (
+      families.length > 0 &&
+      families.every((family) => SESSION_REUSE_EXEMPT_FAMILIES.includes(family))
+    );
+  }
+
+  defaultReuseAcrossSessions(families: ChallengeFamily[]): boolean {
+    return this.isSessionReuseExempt(families);
+  }
+
+  /** Guards the boundary against legacy point/difficulty style fields. */
+  findLegacyFields(raw: Record<string, unknown>): WorldContentIssue[] {
+    return REJECTED_LEGACY_CONTENT_FIELDS.filter(
+      (field) => raw[field] !== undefined,
+    ).map((field) =>
+      issue(
+        'LEGACY_FIELD_NOT_SUPPORTED',
+        `"${field}" belongs to the legacy question model and is not part of the World Content domain`,
+        { field },
+      ),
+    );
+  }
+
+  private validateScope(
+    input: ContentItemCompatibilityInput,
+  ): WorldContentIssue[] {
+    if (!input.scope) {
+      return [
+        issue('CONTENT_SCOPE_MISSING', 'The referenced Scope does not exist', {
+          scopeId: input.item.scopeId,
+        }),
+      ];
+    }
+    const issues: WorldContentIssue[] = [];
+    if (input.scope.worldId !== input.item.worldId) {
+      issues.push(
+        issue(
+          'CONTENT_WORLD_SCOPE_MISMATCH',
+          "A Content Item's denormalized World must match its Scope's World",
+          {
+            scopeId: input.scope.id,
+            scopeWorldId: input.scope.worldId,
+            itemWorldId: input.item.worldId,
+          },
+        ),
+      );
+    }
+    if (input.scope.status === WorldContentStatus.ARCHIVED) {
+      issues.push(
+        issue(
+          'CONTENT_SCOPE_ARCHIVED',
+          'Content cannot be made ready inside an archived Scope',
+          { scopeId: input.scope.id },
+        ),
+      );
+    }
+    if (input.worldStatus === WorldContentStatus.ARCHIVED) {
+      issues.push(
+        issue(
+          'CONTENT_WORLD_ARCHIVED',
+          'Content cannot be made ready inside an archived World',
+          { worldId: input.item.worldId },
+        ),
+      );
+    }
+    return issues;
+  }
+
+  private validatePrompt(item: ContentItemView): WorldContentIssue[] {
+    if (item.prompt?.ar?.trim()) return [];
+    return [
+      issue('CONTENT_PROMPT_REQUIRED', 'An Arabic prompt is required', {
+        contentItemId: item.id,
+      }),
+    ];
+  }
+
+  private resolveChallengeTypes(
+    input: ContentItemCompatibilityInput,
+    blockers: WorldContentIssue[],
+  ): ChallengeTypeView[] {
+    const resolved: ChallengeTypeView[] = [];
+    const seen = new Set<string>();
+    for (const challengeTypeId of input.item.compatibleChallengeTypeIds) {
+      if (seen.has(challengeTypeId)) {
+        blockers.push(
+          issue(
+            'DUPLICATE_COMPATIBLE_CHALLENGE_TYPE',
+            'A challenge type is listed twice as compatible',
+            { challengeTypeId },
+          ),
+        );
+        continue;
+      }
+      seen.add(challengeTypeId);
+      const challengeType = input.challengeTypes.get(challengeTypeId);
+      if (!challengeType) {
+        blockers.push(
+          issue(
+            'COMPATIBLE_CHALLENGE_TYPE_MISSING',
+            'A compatible challenge type does not exist',
+            { challengeTypeId },
+          ),
+        );
+        continue;
+      }
+      resolved.push(challengeType);
+    }
+    if (!resolved.length) {
+      blockers.push(
+        issue(
+          'CONTENT_WITHOUT_COMPATIBLE_CHALLENGE_TYPE',
+          'A Content Item must be compatible with at least one challenge type',
+          { contentItemId: input.item.id },
+        ),
+      );
+    }
+    return resolved;
+  }
+
+  private validateChallengeCompatibility(
+    input: ContentItemCompatibilityInput,
+    referenced: ChallengeTypeView[],
+  ): WorldContentIssue[] {
+    const issues: WorldContentIssue[] = [];
+    const itemMode = input.item.answerPayload?.mode;
+    for (const challengeType of referenced) {
+      if (
+        input.scope &&
+        !ScopeCompatibilityPolicy.isChallengeTypeAllowed(
+          input.scope,
+          challengeType.id,
+        )
+      ) {
+        issues.push(
+          issue(
+            'CHALLENGE_TYPE_EXCLUDED_BY_SCOPE',
+            `"${challengeType.name}" is excluded by the Scope "${input.scope.name}"`,
+            { challengeTypeId: challengeType.id, scopeId: input.scope.id },
+          ),
+        );
+      }
+      if (challengeType.status === WorldContentStatus.ARCHIVED) {
+        issues.push(
+          issue(
+            'COMPATIBLE_CHALLENGE_TYPE_ARCHIVED',
+            `"${challengeType.name}" is archived and cannot consume new content`,
+            { challengeTypeId: challengeType.id },
+          ),
+        );
+      }
+      const supported =
+        ANSWER_MODE_COMPATIBLE_ITEM_MODES[challengeType.answerMode] ?? [];
+      if (itemMode && !supported.includes(itemMode)) {
+        issues.push(
+          issue(
+            'ANSWER_PAYLOAD_INCOMPATIBLE_WITH_CHALLENGE',
+            `"${challengeType.name}" resolves ${challengeType.answerMode} answers and cannot consume a ${itemMode} payload`,
+            {
+              challengeTypeId: challengeType.id,
+              challengeAnswerMode: challengeType.answerMode,
+              itemAnswerMode: itemMode,
+              supported,
+            },
+          ),
+        );
+      }
+    }
+    return issues;
+  }
+
+  private validateMedia(item: ContentItemView): WorldContentIssue[] {
+    const issues: WorldContentIssue[] = [];
+    const media = item.media;
+    if (media) {
+      if (!Object.values(ContentMediaType).includes(media.type)) {
+        issues.push(
+          issue('INVALID_CONTENT_MEDIA_TYPE', 'Media type is not supported', {
+            mediaType: media.type,
+          }),
+        );
+      }
+      if (media.type !== ContentMediaType.NONE && !media.assets?.length) {
+        issues.push(
+          issue(
+            'CONTENT_MEDIA_ASSETS_REQUIRED',
+            `Media type "${media.type}" requires at least one asset`,
+            { mediaType: media.type },
+          ),
+        );
+      }
+      if (media.assets?.some((asset) => !asset.url?.trim())) {
+        issues.push(
+          issue(
+            'CONTENT_MEDIA_ASSET_URL_REQUIRED',
+            'Every media asset needs a URL',
+          ),
+        );
+      }
+    }
+
+    // No challenge-side media requirement exists: media belongs to the
+    // ContentItem, so one mechanic plays text, image, audio, and video alike.
+    return issues;
+  }
+
+  private reuseWarnings(
+    item: ContentItemView,
+    referenced: ChallengeTypeView[],
+  ): WorldContentIssue[] {
+    if (!referenced.length) return [];
+    const families = referenced.map((challengeType) => challengeType.family);
+    const exempt = this.isSessionReuseExempt(families);
+    if (exempt && !item.isReusableAcrossSessions) {
+      return [
+        issue(
+          'RELATIONAL_CONTENT_SHOULD_BE_REUSABLE',
+          'Relational-only content is normally reusable across sessions',
+          { contentItemId: item.id },
+        ),
+      ];
+    }
+    if (!exempt && item.isReusableAcrossSessions) {
+      return [
+        issue(
+          'NON_RELATIONAL_CONTENT_MARKED_REUSABLE',
+          'Content that is not Relational-only is normally consumed after one session',
+          {
+            contentItemId: item.id,
+            families: [...new Set(families)],
+          },
+        ),
+      ];
+    }
+    return [];
+  }
+
+  private validateAnswerPayload(
+    payload: ContentAnswerPayload | undefined,
+  ): WorldContentIssue[] {
+    if (!payload || typeof payload !== 'object') {
+      return [
+        issue(
+          'ANSWER_PAYLOAD_REQUIRED',
+          'A Content Item requires an answer payload',
+        ),
+      ];
+    }
+    switch (payload.mode) {
+      case ChallengeAnswerMode.MULTIPLE_CHOICE:
+        return [
+          ...this.validateOptions(payload.options, 2),
+          ...this.validateCorrectOption(
+            payload.options,
+            payload.correctOptionId,
+          ),
+        ];
+      case ChallengeAnswerMode.CLOSEST:
+        return this.validateNumeric(
+          payload.correctValue,
+          payload.acceptedTolerance,
+        );
+      case ChallengeAnswerMode.MATCH:
+        return this.validateAcceptedAnswers(payload.acceptedAnswers);
+      case ChallengeAnswerMode.VOTE:
+        return [
+          ...(payload.options ? this.validateOptions(payload.options, 2) : []),
+          ...(Object.values(VoteConsensusRule).includes(payload.consensusRule)
+            ? []
+            : [
+                issue(
+                  'INVALID_VOTE_CONSENSUS_RULE',
+                  `Consensus rule must be one of: ${Object.values(VoteConsensusRule).join(', ')}`,
+                  { consensusRule: payload.consensusRule },
+                ),
+              ]),
+        ];
+      case ChallengeAnswerMode.SPLIT:
+        return [
+          ...this.validateSplitPayload(payload.splitPayload),
+          ...this.validateAcceptedAnswers(payload.acceptedAnswers),
+        ];
+      case ChallengeAnswerMode.RYO:
+        return this.validateRyoPayload(payload);
+      case ChallengeAnswerMode.TOP_10:
+        return [];
+      default:
+        return [
+          issue(
+            'UNKNOWN_ANSWER_PAYLOAD_MODE',
+            'Answer payload discriminator is not a supported answer mode',
+            { mode: (payload as { mode?: unknown }).mode },
+          ),
+        ];
+    }
+  }
+
+  private validateRyoPayload(
+    payload: Extract<ContentAnswerPayload, { mode: ChallengeAnswerMode.RYO }>,
+  ): WorldContentIssue[] {
+    // Roadmap 6.1: an RYO prompt is either multiple choice or numeric estimate,
+    // and never open free text.
+    if (payload.options && payload.options.length) {
+      return [
+        ...this.validateOptions(payload.options, 2),
+        ...this.validateCorrectOption(payload.options, payload.correctOptionId),
+      ];
+    }
+    if (payload.correctValue === undefined) {
+      return [
+        issue(
+          'RYO_PAYLOAD_INCOMPLETE',
+          'An RYO item needs either multiple-choice options or a numeric estimate target',
+        ),
+      ];
+    }
+    return this.validateNumeric(
+      payload.correctValue,
+      payload.acceptedTolerance,
+    );
+  }
+
+  private validateOptions(
+    options: ContentAnswerOption[] | undefined,
+    minimum: number,
+  ): WorldContentIssue[] {
+    if (!Array.isArray(options) || options.length < minimum) {
+      return [
+        issue(
+          'ANSWER_OPTIONS_REQUIRED',
+          `At least ${minimum} answer options are required`,
+          { provided: options?.length ?? 0 },
+        ),
+      ];
+    }
+    const issues: WorldContentIssue[] = [];
+    const ids = new Set<string>();
+    for (const option of options) {
+      if (!option?.id?.trim()) {
+        issues.push(
+          issue('ANSWER_OPTION_ID_REQUIRED', 'Every answer option needs an id'),
+        );
+        continue;
+      }
+      if (ids.has(option.id)) {
+        issues.push(
+          issue(
+            'DUPLICATE_ANSWER_OPTION_ID',
+            'Answer option ids must be unique',
+            { optionId: option.id },
+          ),
+        );
+      }
+      ids.add(option.id);
+      if (!option.label?.ar?.trim()) {
+        issues.push(
+          issue(
+            'ANSWER_OPTION_LABEL_REQUIRED',
+            'Every answer option needs an Arabic label',
+            { optionId: option.id },
+          ),
+        );
+      }
+    }
+    return issues;
+  }
+
+  private validateCorrectOption(
+    options: ContentAnswerOption[] | undefined,
+    correctOptionId: string | undefined,
+  ): WorldContentIssue[] {
+    if (!correctOptionId?.trim()) {
+      return [
+        issue(
+          'CORRECT_OPTION_REQUIRED',
+          'A multiple-choice item must name its correct option',
+        ),
+      ];
+    }
+    if ((options ?? []).some((option) => option.id === correctOptionId)) {
+      return [];
+    }
+    return [
+      issue(
+        'CORRECT_OPTION_NOT_IN_OPTIONS',
+        'The correct option must exist in the option list',
+        { correctOptionId },
+      ),
+    ];
+  }
+
+  private validateNumeric(
+    correctValue: unknown,
+    acceptedTolerance: unknown,
+  ): WorldContentIssue[] {
+    const issues: WorldContentIssue[] = [];
+    if (typeof correctValue !== 'number' || !Number.isFinite(correctValue)) {
+      issues.push(
+        issue(
+          'NUMERIC_ANSWER_REQUIRED',
+          'A closest-answer item needs a finite numeric target',
+          { correctValue },
+        ),
+      );
+    }
+    if (acceptedTolerance !== undefined) {
+      if (
+        typeof acceptedTolerance !== 'number' ||
+        !Number.isFinite(acceptedTolerance) ||
+        acceptedTolerance < 0
+      ) {
+        issues.push(
+          issue(
+            'INVALID_ANSWER_TOLERANCE',
+            'Accepted tolerance must be a finite number of zero or more',
+            { acceptedTolerance },
+          ),
+        );
+      }
+    }
+    return issues;
+  }
+
+  /**
+   * `match` answers are player-entered text resolved automatically against this
+   * list using the one shared Arabic normalizer (roadmap 6.5, 13). Normalizing
+   * here is what makes two visually different spellings a duplicate.
+   */
+  private validateAcceptedAnswers(
+    acceptedAnswers: string[] | undefined,
+  ): WorldContentIssue[] {
+    if (!Array.isArray(acceptedAnswers) || !acceptedAnswers.length) {
+      return [
+        issue(
+          'ACCEPTED_ANSWERS_REQUIRED',
+          'At least one accepted answer is required for automatic text matching',
+        ),
+      ];
+    }
+    const issues: WorldContentIssue[] = [];
+    const normalized = new Set<string>();
+    for (const answer of acceptedAnswers) {
+      const value = typeof answer === 'string' ? normalizeAnswer(answer) : '';
+      if (!value) {
+        issues.push(
+          issue(
+            'EMPTY_ACCEPTED_ANSWER',
+            'Accepted answers cannot be blank after normalization',
+            { answer },
+          ),
+        );
+        continue;
+      }
+      if (normalized.has(value)) {
+        issues.push(
+          issue(
+            'DUPLICATE_ACCEPTED_ANSWER',
+            'Two accepted answers normalize to the same value',
+            { answer, normalized: value },
+          ),
+        );
+      }
+      normalized.add(value);
+    }
+    return issues;
+  }
+
+  private validateSplitPayload(splitPayload: unknown): WorldContentIssue[] {
+    const fragments = (splitPayload as { fragments?: unknown })?.fragments;
+    if (!Array.isArray(fragments) || fragments.length < 2) {
+      return [
+        issue(
+          'SPLIT_PAYLOAD_REQUIRES_FRAGMENTS',
+          'Split content needs at least two fragments so no single player can answer alone',
+          { fragmentCount: Array.isArray(fragments) ? fragments.length : 0 },
+        ),
+      ];
+    }
+    const issues: WorldContentIssue[] = [];
+    const seats = new Set<number>();
+    for (const fragment of fragments as Array<Record<string, unknown>>) {
+      const seat = fragment?.seat;
+      const clue = fragment?.clue as { ar?: string } | undefined;
+      if (typeof seat !== 'number' || !Number.isInteger(seat) || seat < 1) {
+        issues.push(
+          issue(
+            'INVALID_SPLIT_FRAGMENT_SEAT',
+            'Every split fragment needs a whole seat number of one or more',
+            { seat },
+          ),
+        );
+      } else if (seats.has(seat)) {
+        issues.push(
+          issue(
+            'DUPLICATE_SPLIT_FRAGMENT_SEAT',
+            'Two split fragments target the same seat, so the information is not actually split',
+            { seat },
+          ),
+        );
+      } else {
+        seats.add(seat);
+      }
+      if (!clue?.ar?.trim()) {
+        issues.push(
+          issue(
+            'SPLIT_FRAGMENT_CLUE_REQUIRED',
+            'Every split fragment needs an Arabic clue',
+            { seat },
+          ),
+        );
+      }
+    }
+    return issues;
+  }
+}

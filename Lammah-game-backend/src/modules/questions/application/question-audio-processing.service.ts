@@ -486,7 +486,13 @@ export class QuestionAudioProcessingService {
     const item = value as Record<string, unknown>;
     const title = this.safeText(item.title, 160);
     const sourceUrl = this.safeUrl(item.url);
-    const provider = this.safeText(item.provider, 40) || 'wigolo';
+    // `wigolo` is a generic web-search tool, not a media provider — its
+    // results don't carry a meaningful `provider` field, so fall back to
+    // detecting the real host (only YouTube links can currently be
+    // auto-downloaded, see YouTubeAssetProvider) instead of naming the
+    // internal search tool as if it were the source.
+    const provider =
+      this.safeText(item.provider, 40) || this.inferProvider(sourceUrl);
     const providerReference = this.safeText(item.id, 180) || sourceUrl;
     if (!title || !providerReference) return undefined;
     const id = createHash('sha256')
@@ -622,6 +628,20 @@ export class QuestionAudioProcessingService {
         : undefined;
     } catch {
       return undefined;
+    }
+  }
+
+  private inferProvider(sourceUrl?: string): string {
+    if (!sourceUrl) return 'web';
+    try {
+      const hostname = new URL(sourceUrl).hostname
+        .replace(/^www\.|^m\./, '')
+        .toLowerCase();
+      if (hostname === 'youtube.com' || hostname === 'youtu.be')
+        return 'youtube';
+      return 'web';
+    } catch {
+      return 'web';
     }
   }
 

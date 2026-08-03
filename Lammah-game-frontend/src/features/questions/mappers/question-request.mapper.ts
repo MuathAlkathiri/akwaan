@@ -7,6 +7,9 @@ import type { Question } from "@/types";
 const toRequest = (data: Partial<Question>) => ({
   category: typeof data.category === "string" ? data.category : data.categoryId,
   categoryId: data.categoryId,
+  worldId: data.worldId,
+  contentCategoryId: data.contentCategoryId,
+  challengeTypeId: data.challengeTypeId,
   question: data.question,
   questionType: data.questionType,
   text: data.text,

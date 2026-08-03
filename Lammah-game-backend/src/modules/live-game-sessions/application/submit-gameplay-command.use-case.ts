@@ -33,6 +33,14 @@ import {
   ParentGameAccess,
 } from './parent-game-access.port';
 import { BombExpirationScheduler } from './bomb-expiration.scheduler';
+import { ScoringService } from '../../scoring/application/scoring.service';
+import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
+import {
+  TOP10_MODE_KEY,
+  Top10Assignment,
+  Top10Result,
+} from '../domain/top10-poison-deck.plugin';
+import { GameplayDeadlineScheduler } from './gameplay-deadline.scheduler';
 
 @Injectable()
 export class SubmitGameplayCommand {
@@ -52,6 +60,9 @@ export class SubmitGameplayCommand {
     private readonly parentGames: ParentGameAccess,
     @Inject(forwardRef(() => BombExpirationScheduler))
     private readonly expiration: BombExpirationScheduler,
+    private readonly scoring: ScoringService,
+    @Inject(forwardRef(() => GameplayDeadlineScheduler))
+    private readonly deadlines: GameplayDeadlineScheduler,
   ) {}
 
   async execute(
@@ -123,7 +134,7 @@ export class SubmitGameplayCommand {
       if (command.commandType === 'expire-team') {
         this.assertClockExpired(session.serialize(), now);
       }
-      const handled = plugin.handleCommand(
+      let handled = plugin.handleCommand(
         {
           sessionId: session.id,
           runtimeId: runtime.id,
@@ -131,6 +142,7 @@ export class SubmitGameplayCommand {
           activeTeamId: round.activeTeamId,
           activeParticipantId: round.activeParticipantId,
           runtimeState: runtimeState.runtimeState,
+          now,
         },
         {
           type: command.commandType,
@@ -139,6 +151,45 @@ export class SubmitGameplayCommand {
           roundState: round.modeState,
         },
       );
+      if (
+        runtime.modeKey === TOP10_MODE_KEY &&
+        handled.roundState.phase === 'completed' &&
+        !handled.runtimeState.scoreEventsJson
+      ) {
+        const top10Result = JSON.parse(
+          String(handled.runtimeState.resultJson),
+        ) as Top10Result;
+        const events = this.scoring.score(
+          SCORING_RULE_IDS.TOP10_POISON_DECK_RESULT,
+          {
+            teamIds: JSON.parse(String(handled.runtimeState.teamIdsJson)) as [
+              string,
+              string,
+            ],
+            internalScores: top10Result.internalScores,
+            validCards: top10Result.validCards,
+            decoys: top10Result.decoys,
+            contentItemId: String(handled.runtimeState.contentItemId),
+            startingTeamId: String(handled.runtimeState.startingTeamId),
+            assignments: JSON.parse(
+              String(handled.runtimeState.assignmentsJson),
+            ) as Top10Assignment[],
+            metrics: top10Result.metrics,
+          },
+          {
+            matchId: session.id,
+            challengeSessionId: runtime.id,
+            occurredAt: now,
+          },
+        );
+        handled = {
+          ...handled,
+          runtimeState: {
+            ...handled.runtimeState,
+            scoreEventsJson: JSON.stringify(events),
+          },
+        };
+      }
       const previousSessionRevision = session.revision;
       const sessionChanged = this.applyEffects(handled.effects, session, now);
       if (sessionChanged) session.completeCommand(command.commandId, now);
@@ -155,12 +206,9 @@ export class SubmitGameplayCommand {
         activeTeamId: session.serialize().activeTeamId,
         activeParticipantId: this.activeRepresentative(session.serialize()),
       });
-      const terminal = this.completeBombIfTerminal(
-        session,
-        runtime,
-        command,
-        now,
-      );
+      const terminal =
+        this.completeBombIfTerminal(session, runtime, command, now) ||
+        this.completeTop10IfTerminal(runtime, command, now);
       if (sessionChanged) {
         await context.saveSession(session, previousSessionRevision);
       }
@@ -212,6 +260,7 @@ export class SubmitGameplayCommand {
     );
     if (!result.terminal) {
       await this.expiration.schedule(command.sessionId);
+      await this.deadlines.schedule(command.sessionId);
     }
     this.logger.log({
       event: 'gameplay_command_accepted',
@@ -265,6 +314,34 @@ export class SubmitGameplayCommand {
         state.result?.reason === 'bomb-clock-expired'
           ? 'time_expired'
           : 'items_completed',
+      now,
+    });
+    runtime.complete(
+      `${command.commandId}:runtime-complete`,
+      command.actor.actorId,
+      now,
+    );
+    return true;
+  }
+
+  private completeTop10IfTerminal(
+    runtime: import('../domain/gameplay-runtime').GameplayRuntime,
+    command: GameplayRuntimeCommand,
+    now: Date,
+  ): boolean {
+    if (runtime.modeKey !== TOP10_MODE_KEY) return false;
+    const state = runtime.serialize();
+    const round = state.activeRound;
+    if (!round || round.modeState.phase !== 'completed') return false;
+    runtime.completeRound({
+      roundId: round.id,
+      commandId: `${command.commandId}:round-complete`,
+      actorId: command.actor.actorId,
+      reason: 'top10-poison-deck-completed',
+      result: {
+        resultJson: state.runtimeState.resultJson,
+        scoreEventsJson: state.runtimeState.scoreEventsJson,
+      },
       now,
     });
     runtime.complete(

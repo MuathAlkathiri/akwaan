@@ -36,6 +36,8 @@ export interface GameplayPluginContext {
   activeParticipantId?: string;
   initialState?: GameplayModeState;
   runtimeState?: GameplayModeState;
+  /** Server-owned command time; reducers must never consult the wall clock. */
+  now?: Date;
 }
 
 export interface GameplayCommandDefinition {

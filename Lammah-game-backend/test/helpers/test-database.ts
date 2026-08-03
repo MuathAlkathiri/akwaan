@@ -12,8 +12,26 @@ export function requireSafeTestDatabaseUri(): string {
   return uri;
 }
 
-export async function connectTestDatabase(): Promise<Connection> {
-  return createConnection(requireSafeTestDatabaseUri()).asPromise();
+/**
+ * A suite that drops the database mid-run must not share one with a suite that
+ * seeds in `beforeAll`, so it asks for its own isolated name. The `_test` guard
+ * still applies.
+ */
+export function isolatedTestDatabaseUri(suiteName: string): string {
+  const uri = new URL(requireSafeTestDatabaseUri());
+  const [database, query] = uri.pathname.replace(/^\//, '').split('?');
+  uri.pathname = `/${database.replace(/_test$/, '')}_${suiteName}_test`;
+  if (query) uri.search = `?${query}`;
+  return uri.toString();
+}
+
+export async function connectTestDatabase(
+  suiteName?: string,
+): Promise<Connection> {
+  const uri = suiteName
+    ? isolatedTestDatabaseUri(suiteName)
+    : requireSafeTestDatabaseUri();
+  return createConnection(uri).asPromise();
 }
 
 export async function resetTestDatabase(connection: Connection): Promise<void> {

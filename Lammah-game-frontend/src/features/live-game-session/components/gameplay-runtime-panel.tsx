@@ -9,6 +9,7 @@ import { createGameplayRuntime } from "../api/live-session-api";
 import { useLiveSession } from "../hooks/live-session-context";
 import { GameplayInteractionPanel } from "./gameplay-interaction-panel";
 import { BombGameplayPanel } from "./bomb-gameplay-panel";
+import { Top10PoisonDeckPanel } from "./top10-poison-deck-panel";
 
 const labels: Record<string, string> = {
   "runtime:start": "Start runtime",
@@ -31,8 +32,7 @@ function socketAction(action: string): string {
 export function GameplayRuntimePanel() {
   const { snapshot, connection, gameplayCommand } = useLiveSession();
   if (!snapshot) return null;
-  const debugEnabled =
-    process.env.NEXT_PUBLIC_LIVE_GAME_DEBUG === "true";
+  const debugEnabled = process.env.NEXT_PUBLIC_LIVE_GAME_DEBUG === "true";
   const runtime = snapshot.gameplay;
   if (!runtime) {
     if (snapshot.mode.key === "bomb" && !debugEnabled) {
@@ -49,6 +49,9 @@ export function GameplayRuntimePanel() {
   }
   if (runtime.mode.key === "bomb" && !debugEnabled) {
     return <BombGameplayPanel runtime={runtime} />;
+  }
+  if (runtime.mode.key === "top-10" && !debugEnabled) {
+    return <Top10PoisonDeckPanel runtime={runtime} />;
   }
   const round = runtime.activeRound;
   const activeTeam = snapshot.teams.find(
@@ -97,6 +100,8 @@ export function GameplayRuntimePanel() {
         </div>
         {runtime.mode.key === "bomb" ? (
           <BombGameplayPanel runtime={runtime} />
+        ) : runtime.mode.key === "top-10" ? (
+          <Top10PoisonDeckPanel runtime={runtime} />
         ) : (
           <GameplayInteractionPanel runtime={runtime} />
         )}
@@ -114,34 +119,34 @@ export function GameplayRuntimePanel() {
                     action === "mode:advance-phase"),
               )
               .map((action) => (
-              <Button
-                key={action}
-                variant={
-                  action.endsWith(":complete") || action.endsWith(":cancel")
-                    ? "outline"
-                    : "default"
-                }
-                disabled={connection !== "connected"}
-                onClick={() =>
-                  gameplayCommand(socketAction(action), {
-                    roundId: round?.id,
-                    activeTeamId:
-                      action === "round:create"
-                        ? (snapshot.activeTeamId ??
-                          snapshot.teams.find((team) => team.active)?.id)
-                        : undefined,
-                    reason:
-                      action === "round:complete" ? "completed" : undefined,
-                    commandType:
-                      action === "mode:advance-phase"
-                        ? "advance-phase"
-                        : undefined,
-                    payload: action === "mode:advance-phase" ? {} : undefined,
-                  })
-                }
-              >
-                {labels[action] ?? action}
-              </Button>
+                <Button
+                  key={action}
+                  variant={
+                    action.endsWith(":complete") || action.endsWith(":cancel")
+                      ? "outline"
+                      : "default"
+                  }
+                  disabled={connection !== "connected"}
+                  onClick={() =>
+                    gameplayCommand(socketAction(action), {
+                      roundId: round?.id,
+                      activeTeamId:
+                        action === "round:create"
+                          ? (snapshot.activeTeamId ??
+                            snapshot.teams.find((team) => team.active)?.id)
+                          : undefined,
+                      reason:
+                        action === "round:complete" ? "completed" : undefined,
+                      commandType:
+                        action === "mode:advance-phase"
+                          ? "advance-phase"
+                          : undefined,
+                      payload: action === "mode:advance-phase" ? {} : undefined,
+                    })
+                  }
+                >
+                  {labels[action] ?? action}
+                </Button>
               ))}
           </div>
         )}

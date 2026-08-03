@@ -9,8 +9,12 @@ import { useQuestion } from "../hooks/use-questions";
 
 export function QuestionAuthoringPage({
   questionId,
+  initialWorldId,
+  initialChallengeTypeId,
 }: {
   questionId?: string;
+  initialWorldId?: string;
+  initialChallengeTypeId?: string;
 }) {
   const router = useRouter();
   const query = useQuestion(questionId ?? "");
@@ -42,6 +46,8 @@ export function QuestionAuthoringPage({
       </header>
       <QuestionForm
         question={query.data}
+        initialWorldId={initialWorldId}
+        initialChallengeTypeId={initialChallengeTypeId}
         onSuccess={() => router.push("/admin/questions")}
         onCancel={() => router.push("/admin/questions")}
       />

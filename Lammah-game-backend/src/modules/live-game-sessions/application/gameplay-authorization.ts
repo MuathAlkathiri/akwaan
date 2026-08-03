@@ -99,6 +99,9 @@ export class GameplayAuthorization {
       'submit-answer',
       'skip',
       'expire-team',
+      'assign-card',
+      'timeout-card',
+      'reveal-next',
     ]) {
       const modeCommand = plugin.command(commandType);
       if (

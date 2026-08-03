@@ -13,6 +13,8 @@ import { QuestionHistoryModule } from './modules/question-history/question-histo
 import { MusicModule } from './modules/music/music.module';
 import { CatalogsModule } from './modules/catalogs/catalogs.module';
 import { HealthController } from './health.controller';
+import { WorldContentModule } from './modules/world-content/world-content.module';
+import { ScoringModule } from './modules/scoring/scoring.module';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { HealthController } from './health.controller';
     AuthModule,
     CatalogsModule,
     CategoriesModule,
+    ScoringModule,
+    WorldContentModule,
     QuestionsModule,
     QuestionHistoryModule,
     AiAgentModule,

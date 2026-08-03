@@ -126,6 +126,38 @@ describe('QuestionAudioProcessingService', () => {
     expect(assets.process).not.toHaveBeenCalled();
   });
 
+  it('labels candidates by their real host instead of the internal search tool name', async () => {
+    question.audioRequest.selectedCandidateId = null;
+    question.audioCandidates = [];
+    wigolo.callToolDetailed.mockResolvedValueOnce({
+      data: {
+        results: [
+          {
+            id: 'yt-result',
+            title: 'Naruto voice on YouTube',
+            url: 'https://www.youtube.com/watch?v=abc123',
+          },
+          {
+            id: 'blog-result',
+            title: 'Naruto voice on a fan blog',
+            url: 'https://example.com/naruto-voice-clip',
+          },
+        ],
+      },
+    });
+    await service.process({
+      questionId: 'question-1',
+      requestVersion: 2,
+      requestHash: 'hash-2',
+      mode: AudioRetryMode.RESEARCH,
+    });
+    const providers = question.audioCandidates.map(
+      (item: { provider: string }) => item.provider,
+    );
+    expect(providers).toEqual(['youtube', 'web']);
+    expect(providers).not.toContain('wigolo');
+  });
+
   it('processes only the explicitly selected candidate', async () => {
     assets.process.mockResolvedValue({
       assetStatus: 'READY',

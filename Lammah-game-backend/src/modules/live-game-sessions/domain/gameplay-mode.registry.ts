@@ -5,6 +5,8 @@ import {
 } from './gameplay-mode.plugin';
 import { LiveSessionDomainError } from './live-session.errors';
 import { BOMB_GAMEPLAY_PLUGIN } from './bomb-gameplay.plugin';
+import { RYO_GAMEPLAY_PLUGIN } from './ryo-gameplay.plugin';
+import { TOP10_POISON_DECK_PLUGIN } from './top10-poison-deck.plugin';
 
 @Injectable()
 export class GameplayModeRegistry {
@@ -19,6 +21,17 @@ export class GameplayModeRegistry {
     [
       this.registryKey(BOMB_GAMEPLAY_PLUGIN.key, BOMB_GAMEPLAY_PLUGIN.version),
       BOMB_GAMEPLAY_PLUGIN,
+    ],
+    [
+      this.registryKey(RYO_GAMEPLAY_PLUGIN.key, RYO_GAMEPLAY_PLUGIN.version),
+      RYO_GAMEPLAY_PLUGIN,
+    ],
+    [
+      this.registryKey(
+        TOP10_POISON_DECK_PLUGIN.key,
+        TOP10_POISON_DECK_PLUGIN.version,
+      ),
+      TOP10_POISON_DECK_PLUGIN,
     ],
   ]);
 

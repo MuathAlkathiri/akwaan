@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"\" http://localhost:3100/api)",
+      "Bash(break)",
+      "Bash(env MONGODB_URI=mongodb://localhost:27017/lammah-quiz node -e \"console.log\\('direct:', process.env.MONGODB_URI\\)\")",
+      "Bash(pkill -f \"dist/main\" 2>/dev/null; sleep 1 *)",
+      "Bash(curl -s -o /dev/null http://localhost:3101)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3101)",
+      "Bash(command -v chromium-cli)",
+      "Read(//usr/local/bin/**)",
+      "Bash(npx --no-install playwright --version)",
+      "Bash(node /private/tmp/claude-502/-Users-muath-Lammah-game/ef2e24c7-a5f6-417d-9130-5130c989e9cd/scratchpad/drive-content-page.js)",
+      "Bash(NODE_PATH=\"$\\(pwd\\)/node_modules\" node /private/tmp/claude-502/-Users-muath-Lammah-game/ef2e24c7-a5f6-417d-9130-5130c989e9cd/scratchpad/drive-content-page.js)",
+      "Bash(cp /private/tmp/claude-502/-Users-muath-Lammah-game/ef2e24c7-a5f6-417d-9130-5130c989e9cd/scratchpad/drive-content-page.js /Users/muath/Lammah-game/Lammah-game-frontend/drive-content-page.tmp.js)",
+      "Bash(node drive-content-page.tmp.js)",
+      "Bash(mongosh \"mongodb://localhost:27017/lammah-quiz?directConnection=true\" --quiet --eval \"db.users.find\\({role:'admin'},{email:1,role:1}\\).toArray\\(\\)\")",
+      "Bash(node -e ' *)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}

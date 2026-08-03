@@ -37,6 +37,7 @@ import {
 import {
   getQuestionAuthoringType,
   getQuestionFormDefaultValues,
+  type QuestionFormInitialClassification,
 } from "../models/question-form-defaults";
 
 import { buildQuestionPayload } from "../models/question-form-payload";
@@ -85,12 +86,14 @@ export const mediaRequestFingerprint = (
 
 interface UseQuestionFormParams {
   question?: Question;
+  initialClassification?: QuestionFormInitialClassification;
   onSuccess?: (question: Question) => void;
   onCancel?: () => void;
 }
 
 export function useQuestionForm({
   question,
+  initialClassification,
   onSuccess,
   onCancel,
 }: UseQuestionFormParams) {
@@ -110,6 +113,10 @@ export function useQuestionForm({
 
   const [storedImageUrl, setStoredImageUrl] = useState<string | undefined>(
     getCanonicalImageUrl(question),
+  );
+
+  const [storedMediaUrl, setStoredMediaUrl] = useState<string | undefined>(
+    question?.audioAsset?.url,
   );
 
   const [acceptedAnswers, setAcceptedAnswers] = useState<string[]>(
@@ -139,7 +146,7 @@ export function useQuestionForm({
   } = useForm<QuestionFormData>({
     resolver: zodResolver(questionFormSchema),
 
-    defaultValues: getQuestionFormDefaultValues(question),
+    defaultValues: getQuestionFormDefaultValues(question, initialClassification),
   });
 
   const values = watch();
@@ -192,13 +199,20 @@ export function useQuestionForm({
   useEffect(() => {
     if (selectedCategory?.gameplayMode === "BOMB") {
       setValue("authoringType", "bomb");
-    } else if (values.authoringType === "bomb") {
+    } else if (
+      selectedCategory?.gameplayMode &&
+      values.authoringType === "bomb"
+    ) {
       setValue("authoringType", "text");
     }
   }, [selectedCategory?.gameplayMode, setValue, values.authoringType]);
 
   useEffect(() => {
     setStoredImageUrl(getCanonicalImageUrl(question));
+  }, [question, questionId]);
+
+  useEffect(() => {
+    setStoredMediaUrl(question?.audioAsset?.url);
   }, [question, questionId]);
 
   const updateAcceptedAnswers = (answers: string[]) => {
@@ -447,6 +461,20 @@ export function useQuestionForm({
     setStoredImageUrl(undefined);
   };
 
+  const uploadMediaFile = async (file: File) => {
+    const updated = await audioActions.upload(questionId, file);
+
+    setStoredMediaUrl(updated.audioAsset?.url);
+
+    return updated;
+  };
+
+  const removeMediaFile = async () => {
+    await audioActions.remove(questionId);
+
+    setStoredMediaUrl(undefined);
+  };
+
   const candidates =
     audioCandidatesQuery.data ?? question?.audioCandidates ?? [];
 
@@ -507,6 +535,12 @@ export function useQuestionForm({
 
       imageRemoving: imageActions.isRemoving,
 
+      storedMediaUrl,
+
+      mediaUploading: audioActions.isUploading,
+
+      mediaRemoving: audioActions.isRemoving,
+
       audioPending: audioActions.isPending,
     },
 
@@ -537,9 +571,9 @@ export function useQuestionForm({
 
       rejectMedia: () => audioActions.reject(questionId),
 
-      removeMedia: () => audioActions.remove(questionId),
+      removeMedia: removeMediaFile,
 
-      uploadMedia: (file: File) => audioActions.upload(questionId, file),
+      uploadMedia: uploadMediaFile,
 
       selectMediaCandidate: (candidateId: string) =>
         audioActions.selectCandidate(questionId, candidateId),

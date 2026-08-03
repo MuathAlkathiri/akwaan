@@ -8,6 +8,8 @@ import {
   Min,
 } from 'class-validator';
 import { GameplayCommandPayload } from '../domain/gameplay-mode.plugin';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsEnum } from 'class-validator';
+import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.constants';
 
 export class CreateGameplayRuntimeDto {
   @IsUUID()
@@ -42,6 +44,26 @@ export class GameplayRuntimeMutationDto {
   @IsOptional()
   @IsString()
   clientTimestamp?: string;
+}
+
+export class StartRyoGameplayDto {
+  @IsUUID() worldId!: string;
+  @IsEnum(WorldChallengeSlotKey) slotKey!:
+    WorldChallengeSlotKey.RYO_1 | WorldChallengeSlotKey.RYO_2;
+  @IsArray()
+  @ArrayMinSize(3)
+  @ArrayMaxSize(3)
+  @IsUUID(undefined, { each: true })
+  contentItemIds!: string[];
+  @IsOptional() @IsUUID() startingTeamId?: string;
+}
+
+export class StartTop10PoisonDeckDto {
+  @IsUUID() worldId!: string;
+  @IsOptional() @IsUUID() boardConfigurationId?: string;
+  @IsOptional() @IsUUID() challengeTypeId?: string;
+  @IsUUID() contentItemId!: string;
+  @IsOptional() @IsUUID() startingTeamId?: string;
 }
 
 export class CreateGameplayRoundDto extends GameplayRuntimeMutationDto {

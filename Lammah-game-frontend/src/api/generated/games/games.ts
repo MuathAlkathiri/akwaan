@@ -22,6 +22,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AdjustGameScoreDto,
   CreateGameDto,
   ExpireRankedListTurnDto,
   GameCreationValidationErrorDto,
@@ -1205,6 +1206,177 @@ export const useGamesAwardPoints = <
   TContext
 > => {
   const mutationOptions = getGamesAwardPointsMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Manually adjust one team score by 50 points
+ */
+export const gamesAdjustScore = (
+  id: string,
+  adjustGameScoreDto: AdjustGameScoreDto,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<GameMutationResponseDto>(
+    {
+      url: `/games/${id}/adjust-score`,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      data: adjustGameScoreDto,
+      signal,
+    },
+    options,
+  );
+};
+
+export const getGamesAdjustScoreMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof gamesAdjustScore>>,
+    TError,
+    { id: string; data: AdjustGameScoreDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof gamesAdjustScore>>,
+  TError,
+  { id: string; data: AdjustGameScoreDto },
+  TContext
+> => {
+  const mutationKey = ["gamesAdjustScore"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof gamesAdjustScore>>,
+    { id: string; data: AdjustGameScoreDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return gamesAdjustScore(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GamesAdjustScoreMutationResult = NonNullable<
+  Awaited<ReturnType<typeof gamesAdjustScore>>
+>;
+export type GamesAdjustScoreMutationBody = AdjustGameScoreDto;
+export type GamesAdjustScoreMutationError = unknown;
+
+/**
+ * @summary Manually adjust one team score by 50 points
+ */
+export const useGamesAdjustScore = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof gamesAdjustScore>>,
+      TError,
+      { id: string; data: AdjustGameScoreDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof gamesAdjustScore>>,
+  TError,
+  { id: string; data: AdjustGameScoreDto },
+  TContext
+> => {
+  const mutationOptions = getGamesAdjustScoreMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Manually switch the active team
+ */
+export const gamesChangeTurn = (
+  id: string,
+  options?: SecondParameter<typeof orvalMutator>,
+  signal?: AbortSignal,
+) => {
+  return orvalMutator<GameMutationResponseDto>(
+    { url: `/games/${id}/change-turn`, method: "POST", signal },
+    options,
+  );
+};
+
+export const getGamesChangeTurnMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof gamesChangeTurn>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalMutator>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof gamesChangeTurn>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["gamesChangeTurn"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof gamesChangeTurn>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return gamesChangeTurn(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GamesChangeTurnMutationResult = NonNullable<
+  Awaited<ReturnType<typeof gamesChangeTurn>>
+>;
+
+export type GamesChangeTurnMutationError = unknown;
+
+/**
+ * @summary Manually switch the active team
+ */
+export const useGamesChangeTurn = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof gamesChangeTurn>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalMutator>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof gamesChangeTurn>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getGamesChangeTurnMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

@@ -53,6 +53,7 @@ export class CreateGameplayRuntime {
     expectedSessionRevision: number;
     modeKey?: string;
     modeVersion?: number;
+    initialState?: import('../domain/gameplay-mode.plugin').GameplayModeState;
   }) {
     const session = await this.sessions.findById(input.sessionId);
     if (!session) throw new LiveSessionNotFoundError(input.sessionId);
@@ -94,7 +95,7 @@ export class CreateGameplayRuntime {
         setup?.runtimeModeKey ?? input.modeKey ?? 'core-round-runtime',
         setup?.runtimeModeVersion ?? input.modeVersion ?? 1,
       ),
-      initialState: setup?.initialRuntimeState,
+      initialState: setup?.initialRuntimeState ?? input.initialState,
       commandId: input.commandId,
       actorId: input.actor.actorId,
       now,

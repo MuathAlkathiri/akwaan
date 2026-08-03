@@ -2897,6 +2897,88 @@
         ]
       }
     },
+    "/games/{id}/adjust-score": {
+      "post": {
+        "operationId": "gamesAdjustScore",
+        "summary": "Manually adjust one team score by 50 points",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustGameScoreDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameMutationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/games/{id}/change-turn": {
+      "post": {
+        "operationId": "gamesChangeTurn",
+        "summary": "Manually switch the active team",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameMutationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/games/{id}/skip-question": {
       "post": {
         "operationId": "gamesSkipQuestion",
@@ -4206,6 +4288,18 @@
       "CreateQuestionDto": {
         "type": "object",
         "properties": {
+          "worldId": {
+            "type": "string",
+            "description": "New content architecture world"
+          },
+          "contentCategoryId": {
+            "type": "string",
+            "description": "New content architecture category"
+          },
+          "challengeTypeId": {
+            "type": "string",
+            "description": "World-owned challenge type"
+          },
           "category": {
             "type": "string"
           },
@@ -4369,13 +4463,24 @@
           }
         },
         "required": [
-          "question",
-          "difficulty"
+          "question"
         ]
       },
       "UpdateQuestionDto": {
         "type": "object",
         "properties": {
+          "worldId": {
+            "type": "string",
+            "description": "New content architecture world"
+          },
+          "contentCategoryId": {
+            "type": "string",
+            "description": "New content architecture category"
+          },
+          "challengeTypeId": {
+            "type": "string",
+            "description": "World-owned challenge type"
+          },
           "category": {
             "type": "string"
           },
@@ -4680,6 +4785,15 @@
             "type": "string"
           },
           "categoryId": {
+            "type": "string"
+          },
+          "worldId": {
+            "type": "string"
+          },
+          "contentCategoryId": {
+            "type": "string"
+          },
+          "challengeTypeId": {
             "type": "string"
           },
           "question": {
@@ -7085,6 +7199,27 @@
         },
         "required": [
           "questionId"
+        ]
+      },
+      "AdjustGameScoreDto": {
+        "type": "object",
+        "properties": {
+          "teamIndex": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "delta": {
+            "type": "number",
+            "enum": [
+              -50,
+              50
+            ]
+          }
+        },
+        "required": [
+          "teamIndex",
+          "delta"
         ]
       },
       "SkipQuestionDto": {

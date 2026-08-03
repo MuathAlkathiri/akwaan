@@ -319,9 +319,18 @@ export class Question extends Document {
   @Prop({
     type: Types.ObjectId,
     ref: 'Category',
-    required: true,
+    required: false,
   })
-  category: Types.ObjectId;
+  category?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'World', index: true })
+  worldId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'ContentCategory', index: true })
+  contentCategoryId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'ChallengeType', index: true })
+  challengeTypeId?: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: Catalog.name })
   catalogId?: Types.ObjectId;
@@ -372,16 +381,16 @@ export class Question extends Document {
   @Prop({
     type: String,
     enum: DifficultyLevel,
-    required: true,
+    required: false,
   })
-  difficulty: DifficultyLevel;
+  difficulty?: DifficultyLevel;
 
   @Prop({
     type: Number,
     enum: QuestionPoints,
-    required: true,
+    required: false,
   })
-  points: QuestionPoints;
+  points?: QuestionPoints;
 
   @Prop({
     type: Number,
@@ -547,6 +556,7 @@ QuestionSchema.index({
   status: 1,
   questionType: 1,
 });
+QuestionSchema.index({ worldId: 1, contentCategoryId: 1, challengeTypeId: 1 });
 
 function inferPrimaryAssetFromLegacyMedia(ret: Record<string, unknown>) {
   if (ret.primaryAsset || !ret.mediaUrl || ret.type === QuestionType.TEXT) {

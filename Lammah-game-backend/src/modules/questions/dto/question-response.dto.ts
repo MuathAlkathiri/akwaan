@@ -67,6 +67,9 @@ export class QuestionResponseDto {
   @ApiPropertyOptional() id?: string;
   @ApiPropertyOptional() category?: string;
   @ApiPropertyOptional() categoryId?: string;
+  @ApiPropertyOptional() worldId?: string;
+  @ApiPropertyOptional() contentCategoryId?: string;
+  @ApiPropertyOptional() challengeTypeId?: string;
   @ApiProperty() question!: string;
   @ApiProperty({
     enum: QuestionGameplayType,

@@ -29,6 +29,15 @@ export interface GameplayInteractionPlugin {
   ): Omit<GameplayPromptState, 'id' | 'preparedAt'>;
   validatePrompt(prompt: GameplayPromptState): GameplayPromptState;
   validateSubmission(payload: GameplayCommandPayload): GameplayCommandPayload;
+  validateSubmissionForActor?(
+    payload: GameplayCommandPayload,
+    actor: InteractionActorProjection,
+    prompt: GameplayPromptState,
+  ): GameplayCommandPayload;
+  shouldAutoResolve?(
+    submissions: GameplaySubmissionState[],
+    prompt: GameplayPromptState,
+  ): boolean;
   projectPrompt(
     prompt: GameplayPromptState,
     actor: InteractionActorProjection,
@@ -40,6 +49,7 @@ export interface GameplayInteractionPlugin {
   createOutcome(
     submissions: GameplaySubmissionState[],
     now: Date,
+    prompt?: GameplayPromptState,
   ): { outcome: GameplayOutcomeState; effects: GameplaySessionEffect[] };
   validateOutcome(outcome: GameplayOutcomeState): GameplayOutcomeState;
   projectOutcome(

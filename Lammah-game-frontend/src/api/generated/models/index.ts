@@ -10,6 +10,8 @@ export * from "./acceptedAnswerAliasSuggestionDto";
 export * from "./acceptedAnswerAliasSuggestionDtoConfidence";
 export * from "./acceptedAnswerAliasSuggestionDtoLanguage";
 export * from "./acceptedAnswerGenerationResponseDto";
+export * from "./adjustGameScoreDto";
+export * from "./adjustGameScoreDtoDelta";
 export * from "./aiAgentTraceResponseDto";
 export * from "./aiAgentTraceResponseDtoStatus";
 export * from "./aiAssetRequestResponseDto";

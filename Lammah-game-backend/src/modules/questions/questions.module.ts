@@ -31,6 +31,8 @@ import { LlmClientService } from '../ai-agent/infrastructure/ai/llm-client.servi
 import { AcceptedAnswerExpansionService } from './application/accepted-answer-expansion.service';
 import { QuestionMediaRepairService } from './application/question-media-repair.service';
 import { QuestionMediaAvailabilityPolicy } from './application/question-media-availability.policy';
+import { WorldContentModule } from '../world-content/world-content.module';
+import { LegacyQuestionWorldReferenceGuard } from './application/legacy-question-world-reference.guard';
 
 @Module({
   imports: [
@@ -40,9 +42,11 @@ import { QuestionMediaAvailabilityPolicy } from './application/question-media-av
     CategoriesModule,
     AssetResolutionModule,
     MediaInfrastructureModule,
+    WorldContentModule,
   ],
   providers: [
     QuestionRepository,
+    LegacyQuestionWorldReferenceGuard,
     QuestionsService,
     QueryQuestionsService,
     MutateQuestionService,

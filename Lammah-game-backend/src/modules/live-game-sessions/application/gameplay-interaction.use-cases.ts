@@ -23,6 +23,13 @@ import {
 } from '../domain/live-session.errors';
 import { GameplayCommandPayload } from '../domain/gameplay-mode.plugin';
 import { LiveGameSessionSnapshotMapper } from './live-game-session.snapshot';
+import { ScoringService } from '../../scoring/application/scoring.service';
+import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
+import {
+  advanceRyoChallengeState,
+  RYO_MODE_KEY,
+  ryoAnsweringTeam,
+} from '../domain/ryo-gameplay.plugin';
 
 export interface InteractionMutationCommand {
   sessionId: string;
@@ -49,6 +56,7 @@ export class GameplayInteractionUseCases {
     private readonly gameplaySnapshots: GameplayRuntimeSnapshotMapper,
     @Inject(LIVE_SESSION_TRANSITION_PUBLISHER)
     private readonly publisher: LiveSessionTransitionPublisher,
+    private readonly scoring: ScoringService,
   ) {}
 
   prepare(
@@ -166,19 +174,181 @@ export class GameplayInteractionUseCases {
           .participants.find(
             (candidate) => candidate.id === participantActor.participantId,
           );
+        const actorProjection = {
+          controller: false,
+          participantId: participantActor.participantId,
+          teamId: participant?.teamId,
+          activeTeamId: state.activeRound?.activeTeamId,
+        };
+        const validatedPayload = plugin.validateSubmissionForActor
+          ? plugin.validateSubmissionForActor(
+              command.payload,
+              actorProjection,
+              interaction.prompt,
+            )
+          : plugin.validateSubmission(command.payload);
         runtime.submitInteraction({
           participantId: participantActor.participantId,
           teamId: participant?.teamId,
           type: 'development-signal',
           schemaVersion: 1,
-          payload: plugin.validateSubmission(command.payload),
+          payload: validatedPayload,
           clientTimestamp: command.clientTimestamp,
           requestId: command.commandId,
           resultVisibility: 'submitting-participant',
           now,
           actorId: participantActor.actorId,
         });
+        const updated = runtime.serialize().activeRound?.interaction;
+        if (
+          updated &&
+          plugin.shouldAutoResolve?.(updated.submissions, updated.prompt)
+        ) {
+          runtime.mutateInteraction(
+            `${command.commandId}:auto-close`,
+            'system',
+            now,
+            (value) => {
+              value.close(now);
+              for (const candidate of updated.submissions) {
+                if (candidate.status === 'pending-adjudication') {
+                  value.adjudicate(
+                    candidate.id,
+                    true,
+                    'auto-accepted',
+                    {},
+                    now,
+                  );
+                }
+              }
+            },
+            'interaction-auto-closed',
+          );
+          const adjudicated = runtime.serialize().activeRound?.interaction;
+          if (!adjudicated) throw this.interactionNotFound();
+          const result = plugin.createOutcome(
+            adjudicated.submissions,
+            now,
+            adjudicated.prompt,
+          );
+          runtime.resolveInteraction(
+            plugin.validateOutcome(result.outcome),
+            `${command.commandId}:auto-resolve`,
+            'system',
+            now,
+            session.revision,
+          );
+          this.applyRyoResolution(runtime, session, result.outcome, now);
+        }
       },
+    );
+  }
+
+  private applyRyoResolution(
+    runtime: GameplayRuntime,
+    session: LiveGameSession,
+    outcome: import('../domain/gameplay-interaction').GameplayOutcomeState,
+    now: Date,
+  ): void {
+    if (runtime.modeKey !== RYO_MODE_KEY) return;
+    const state = runtime.serialize();
+    const round = state.activeRound;
+    if (!round || typeof outcome.privatePayload.scoringInputJson !== 'string') {
+      throw new LiveSessionDomainError(
+        'INVALID_RYO_OUTCOME',
+        'RYO scoring facts are missing',
+      );
+    }
+    const scoringInput = JSON.parse(
+      outcome.privatePayload.scoringInputJson,
+    ) as Parameters<
+      import('../../scoring/application/ryo-payoff-matrix.rule').RyoPayoffMatrixRule['calculate']
+    >[0];
+    const events = this.scoring.score(
+      SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
+      scoringInput,
+      { matchId: session.id, challengeSessionId: runtime.id, occurredAt: now },
+    );
+    const runtimeState = advanceRyoChallengeState(
+      state.runtimeState,
+      events[0] as unknown as Record<string, unknown>,
+      outcome.publicPayload,
+    );
+    const nextIndex = Number(runtimeState.currentItemIndex);
+    runtime.applyModeState({
+      commandId: `${events[0].id}:state`,
+      actorId: 'system',
+      runtimeState,
+      roundState: {
+        ...round.modeState,
+        phase: nextIndex === 3 ? 'completed' : 'resolved',
+      },
+      eventType: 'ryo-item-resolved',
+      eventPayload: { itemIndex: nextIndex - 1 },
+      now,
+      sessionRevision: session.revision,
+    });
+    if (nextIndex === 3) {
+      runtime.completeRound({
+        roundId: round.id,
+        commandId: `${events[0].id}:round`,
+        actorId: 'system',
+        reason: 'ryo-three-items-completed',
+        result: {
+          scoreEventsJson: runtimeState.scoreEventsJson,
+          resultsJson: runtimeState.resultsJson,
+        },
+        now,
+      });
+      runtime.complete(`${events[0].id}:challenge`, 'system', now);
+      return;
+    }
+    const items = JSON.parse(String(runtimeState.itemsJson)) as Array<
+      Record<string, unknown>
+    >;
+    const teams = JSON.parse(String(runtimeState.teamIdsJson)) as string[];
+    const starting = String(runtimeState.startingTeamId);
+    const answeringTeamId = ryoAnsweringTeam(teams, starting, nextIndex);
+    const opposingTeamId = teams.find((id) => id !== answeringTeamId)!;
+    runtime.applyModeState({
+      commandId: `${events[0].id}:advance`,
+      actorId: 'system',
+      runtimeState: { ...runtimeState, phase: 'collecting' },
+      roundState: {
+        phase: 'collecting',
+        itemIndex: nextIndex,
+        answeringTeamId,
+        opposingTeamId,
+      },
+      eventType: 'ryo-item-advanced',
+      eventPayload: { itemIndex: nextIndex },
+      now,
+      sessionRevision: session.revision,
+      activeTeamId: answeringTeamId,
+    });
+    const plugin = this.requireInteractionPlugin(runtime);
+    const item = { ...items[nextIndex], itemIndex: nextIndex };
+    runtime.prepareInteraction(
+      plugin.preparePrompt(
+        {
+          sessionId: session.id,
+          runtimeId: runtime.id,
+          roundId: round.id,
+          activeTeamId: answeringTeamId,
+        },
+        { itemJson: JSON.stringify(item), opposingTeamId },
+        now,
+      ),
+      `${events[0].id}:prompt`,
+      'system',
+      now,
+    );
+    runtime.mutateInteraction(
+      `${events[0].id}:open`,
+      'system',
+      now,
+      (value) => value.open(now),
+      'interaction-opened',
     );
   }
 
@@ -241,7 +411,11 @@ export class GameplayInteractionUseCases {
         command.expectedInteractionRevision,
       );
       const plugin = this.requireInteractionPlugin(runtime);
-      const result = plugin.createOutcome(interaction.submissions, now);
+      const result = plugin.createOutcome(
+        interaction.submissions,
+        now,
+        interaction.prompt,
+      );
       const outcome = plugin.validateOutcome(result.outcome);
       const previousSessionRevision = session.revision;
       for (const effect of result.effects) {

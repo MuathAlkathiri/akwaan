@@ -109,6 +109,11 @@ import { StartBombGameplay } from './application/start-bomb-gameplay.use-case';
 import { BombExpirationScheduler } from './application/bomb-expiration.scheduler';
 import { BombCountdownScheduler } from './application/bomb-countdown.scheduler';
 import { LiveSessionSnapshotComposer } from './application/live-session-snapshot.composer';
+import { ScoringModule } from '../scoring/scoring.module';
+import { WorldContentModule } from '../world-content/world-content.module';
+import { StartRyoGameplay } from './application/start-ryo-gameplay.use-case';
+import { StartTop10PoisonDeck } from './application/start-top10-poison-deck.use-case';
+import { GameplayDeadlineScheduler } from './application/gameplay-deadline.scheduler';
 
 const applicationProviders = [
   CreateLiveGameSession,
@@ -158,6 +163,9 @@ const applicationProviders = [
   StartBombGameplay,
   BombExpirationScheduler,
   BombCountdownScheduler,
+  StartRyoGameplay,
+  StartTop10PoisonDeck,
+  GameplayDeadlineScheduler,
 ];
 
 @Module({
@@ -165,6 +173,8 @@ const applicationProviders = [
     AuthModule,
     UsersModule,
     GamesModule,
+    ScoringModule,
+    WorldContentModule,
     MongooseModule.forFeature([
       {
         name: LiveGameSessionDocument.name,

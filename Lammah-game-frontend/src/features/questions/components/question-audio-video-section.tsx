@@ -1,11 +1,13 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import type {
   FieldErrors,
   UseFormRegister,
   UseFormSetValue,
 } from "react-hook-form";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,6 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { showToast } from "@/components/ui/toast";
+import { getApiErrorMessage } from "@/lib/utils";
 import type {
   AudioQuestionKind,
   Question,
@@ -39,6 +43,9 @@ const audioKinds = [
   ["identify_sound_effect", "المؤثر الصوتي"],
   ["custom", "مخصص"],
 ] as const;
+
+const VIDEO_ACCEPT = "video/mp4";
+const AUDIO_ACCEPT = "audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm";
 
 type AudioCandidate =
   NonNullable<Question["audioCandidates"]>[number];
@@ -60,13 +67,17 @@ interface QuestionAudioVideoSectionProps {
   candidatesLoading: boolean;
   actionsPending: boolean;
 
+  storedMediaUrl?: string;
+  isUploading: boolean;
+  isRemoving: boolean;
+
   onRetryResearch: () => void;
   onRetryProcessing: () => void;
   onPreview: () => void;
   onApprove: () => void;
   onReject: () => void;
   onRemove: () => void;
-  onUpload: (file: File) => void;
+  onUpload: (file: File) => Promise<Question>;
   onSelectCandidate: (candidateId: string) => void;
 }
 
@@ -83,6 +94,9 @@ export function QuestionAudioVideoSection({
   candidates,
   candidatesLoading,
   actionsPending,
+  storedMediaUrl,
+  isUploading,
+  isRemoving,
   onRetryResearch,
   onRetryProcessing,
   onPreview,
@@ -92,13 +106,65 @@ export function QuestionAudioVideoSection({
   onUpload,
   onSelectCandidate,
 }: QuestionAudioVideoSectionProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>();
+  // Auto-expand when an existing question already has values in the
+  // advanced fields, so nothing already saved stays hidden by default.
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(
+    Boolean(values.targetName || values.sourceTitle || values.provider),
+  );
+
+  useEffect(() => {
+    if (!selectedFile) {
+      setPreviewUrl(undefined);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(selectedFile);
+    setPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [selectedFile]);
+
+  useEffect(() => {
+    setSelectedFile(null);
+    if (inputRef.current) inputRef.current.value = "";
+  }, [questionId]);
+
+  const clearSelectedFile = () => {
+    setSelectedFile(null);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const handleUpload = async () => {
+    if (!questionId || !selectedFile || isUploading) return;
+
+    try {
+      await onUpload(selectedFile);
+      clearSelectedFile();
+      showToast({
+        type: "success",
+        message: isVideo ? "تم رفع الفيديو بنجاح." : "تم رفع الصوت بنجاح.",
+      });
+    } catch (error) {
+      showToast({
+        type: "error",
+        message: getApiErrorMessage(
+          error,
+          isVideo ? "تعذر رفع الفيديو، حاول مرة أخرى." : "تعذر رفع الصوت، حاول مرة أخرى.",
+        ),
+      });
+    }
+  };
+
+  const mediaLabel = isVideo ? "الفيديو" : "الصوت";
+
   return (
     <Card
       data-testid={isVideo ? "video-section" : "audio-section"}
     >
       <CardHeader>
         <CardTitle>
-          إعدادات {isVideo ? "الفيديو" : "الصوت"}
+          إعدادات {mediaLabel}
         </CardTitle>
 
         <p className="text-sm text-muted-foreground">
@@ -141,22 +207,20 @@ export function QuestionAudioVideoSection({
           </SelectContent>
         </Select>
 
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium" htmlFor="audio-search-query">
+            عبارة البحث
+          </label>
           <Input
-            placeholder="الاسم المستهدف"
-            {...register("targetName")}
+            id="audio-search-query"
+            placeholder="مثال: مقطع صوتي لضحكة أوروتشيمارو المميزة"
+            {...register("searchQuery")}
           />
-
-          <Input
-            placeholder="المصدر أو السياق"
-            {...register("sourceTitle")}
-          />
+          <p className="text-xs text-muted-foreground">
+            صف المقطع المطلوب في جملة واحدة، وسيتم البحث عنه تلقائيًا. لا حاجة
+            لتعبئة أي حقول أخرى.
+          </p>
         </div>
-
-        <Input
-          placeholder="عبارة البحث"
-          {...register("searchQuery")}
-        />
 
         {errors.searchQuery && (
           <p className="text-sm text-destructive">
@@ -164,11 +228,80 @@ export function QuestionAudioVideoSection({
           </p>
         )}
 
+        <div>
+          <button
+            type="button"
+            className="text-xs text-muted-foreground underline underline-offset-2"
+            onClick={() => setShowAdvancedSearch((value) => !value)}
+          >
+            {showAdvancedSearch ? "إخفاء خيارات البحث المتقدمة" : "خيارات بحث متقدمة"}
+          </button>
+
+          {showAdvancedSearch && (
+            <div className="mt-3 space-y-3 rounded-xl border border-dashed p-3">
+              <p className="text-xs text-muted-foreground">
+                استخدم هذه الحقول فقط إذا لم تكفِ عبارة البحث للعثور على مقطع دقيق.
+              </p>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium" htmlFor="audio-target-name">
+                    الاسم المستهدف
+                  </label>
+                  <Input
+                    id="audio-target-name"
+                    placeholder="مثال: أوروتشيمارو"
+                    {...register("targetName")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    اسم الشخصية أو الأغنية أو الفنان المطلوب التعرّف عليه.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium" htmlFor="audio-source-title">
+                    المصدر أو السياق
+                  </label>
+                  <Input
+                    id="audio-source-title"
+                    placeholder="مثال: أنمي ناروتو"
+                    {...register("sourceTitle")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    العمل الذي ينتمي إليه الاسم المستهدف (مسلسل، فيلم، لعبة...).
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium" htmlFor="audio-provider">
+                  المزوّد المفضّل
+                </label>
+                <Input
+                  id="audio-provider"
+                  dir="ltr"
+                  placeholder="مثال: YouTube"
+                  {...register("provider")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  اختياري. حدّد مزوّد البحث المفضل بدلاً من كتابته في الاسم المستهدف.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="grid gap-3 md:grid-cols-3">
-          <Input
-            placeholder="اللغة"
-            {...register("audioLanguage")}
-          />
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium" htmlFor="audio-language">
+              اللغة
+            </label>
+            <Input
+              id="audio-language"
+              placeholder="اللغة"
+              {...register("audioLanguage")}
+            />
+          </div>
 
           <div className="space-y-2">
             <label
@@ -225,22 +358,22 @@ export function QuestionAudioVideoSection({
           </div>
         </div>
 
-        {question?.audioAsset?.url &&
-          (isVideo ? (
-            <video
-              controls
-              preload="metadata"
-              playsInline
-              className="max-h-80 w-full rounded-xl object-contain"
-              src={question.audioAsset.url}
-            />
-          ) : (
-            <audio
-              controls
-              className="w-full"
-              src={question.audioAsset.url}
-            />
-          ))}
+        {storedMediaUrl && (
+          <div>
+            <p className="mb-2 text-sm font-medium">الملف الحالي</p>
+            {isVideo ? (
+              <video
+                controls
+                preload="metadata"
+                playsInline
+                className="max-h-80 w-full rounded-xl object-contain"
+                src={storedMediaUrl}
+              />
+            ) : (
+              <audio controls className="w-full" src={storedMediaUrl} />
+            )}
+          </div>
+        )}
 
         {question?.status === "approved" &&
           !question.mediaAvailable && (
@@ -249,12 +382,97 @@ export function QuestionAudioVideoSection({
             </p>
           )}
 
+        {questionId && (
+          <div className="space-y-3 rounded-xl border border-dashed p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">
+                  {storedMediaUrl
+                    ? `استبدال ${mediaLabel} الحالي`
+                    : `رفع ${mediaLabel} يدويًا`}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {isVideo
+                    ? "الصيغة المدعومة: MP4."
+                    : "الصيغ المدعومة: MP3، M4A، WAV، OGG، WEBM."}
+                </p>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isUploading || isRemoving}
+                onClick={() => inputRef.current?.click()}
+              >
+                {storedMediaUrl ? "اختيار ملف بديل" : "اختيار ملف"}
+              </Button>
+            </div>
+
+            <input
+              ref={inputRef}
+              className="sr-only"
+              type="file"
+              disabled={isUploading || isRemoving}
+              accept={isVideo ? VIDEO_ACCEPT : AUDIO_ACCEPT}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) setSelectedFile(file);
+              }}
+            />
+
+            {previewUrl && (
+              <div className="space-y-2">
+                <p className="text-sm text-amber-300">
+                  معاينة قبل الرفع، لم يتم رفعها بعد.
+                </p>
+                {isVideo ? (
+                  <video
+                    controls
+                    preload="metadata"
+                    playsInline
+                    className="max-h-80 w-full rounded-xl object-contain"
+                    src={previewUrl}
+                  />
+                ) : (
+                  <audio controls className="w-full" src={previewUrl} />
+                )}
+                {selectedFile && (
+                  <p className="text-xs text-muted-foreground" dir="ltr">
+                    {selectedFile.name} ·{" "}
+                    {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleUpload}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? `جاري رفع ${mediaLabel}...` : `رفع ${mediaLabel}`}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isUploading}
+                    onClick={clearSelectedFile}
+                  >
+                    إلغاء الاختيار
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {question && questionId && (
           <section className="space-y-4 rounded-xl border border-white/10 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-semibold">
-                  مراجعة {isVideo ? "الفيديو" : "الصوت"}
+                  مراجعة {mediaLabel}
                 </h3>
 
                 <p className="text-sm text-muted-foreground">
@@ -302,7 +520,7 @@ export function QuestionAudioVideoSection({
                   disabled={actionsPending}
                   onClick={onApprove}
                 >
-                  اعتماد {isVideo ? "الفيديو" : "الصوت"}
+                  اعتماد {mediaLabel}
                 </Button>
 
                 <Button
@@ -311,45 +529,21 @@ export function QuestionAudioVideoSection({
                   disabled={actionsPending}
                   onClick={onReject}
                 >
-                  رفض {isVideo ? "الفيديو" : "الصوت"}
+                  رفض {mediaLabel}
                 </Button>
 
                 {question.audioAsset && (
                   <Button
                     type="button"
                     variant="destructive"
-                    disabled={actionsPending}
+                    disabled={actionsPending || isRemoving}
                     onClick={onRemove}
                   >
-                    إزالة {isVideo ? "الفيديو" : "الصوت"}
+                    {isRemoving ? `جاري إزالة ${mediaLabel}...` : `إزالة ${mediaLabel}`}
                   </Button>
                 )}
               </div>
             </div>
-
-            <label className="block cursor-pointer rounded-lg border border-dashed border-white/20 p-3 text-center text-sm">
-              رفع ملف {isVideo ? "فيديو" : "صوت"} بديل
-
-              <input
-                className="sr-only"
-                type="file"
-                disabled={actionsPending}
-                accept={
-                  isVideo
-                    ? "video/mp4"
-                    : "audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm"
-                }
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-
-                  if (file) {
-                    onUpload(file);
-                  }
-
-                  event.target.value = "";
-                }}
-              />
-            </label>
 
             <div className="space-y-2">
               <h4 className="text-sm font-medium">
@@ -362,23 +556,36 @@ export function QuestionAudioVideoSection({
                 </p>
               )}
 
-              {candidates.map((candidate) => (
+              {candidates.map((candidate) => {
+                const isYoutube = candidate.provider === "youtube";
+                return (
                 <div
                   key={candidate.id}
                   className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white/5 p-3"
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-medium">
-                      {candidate.title}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate font-medium">
+                        {candidate.title}
+                      </p>
+                      <Badge variant={isYoutube ? "default" : "outline"}>
+                        {isYoutube ? "YouTube" : "نتيجة بحث ويب"}
+                      </Badge>
+                    </div>
 
                     <p className="text-xs text-muted-foreground">
-                      {candidate.provider} · {candidate.status}
+                      {candidate.status}
 
                       {candidate.durationSeconds
                         ? ` · ${candidate.durationSeconds} ثانية`
                         : ""}
                     </p>
+
+                    {!isYoutube && (
+                      <p className="text-xs text-amber-300">
+                        هذه النتيجة ليست من يوتيوب، وقد لا يمكن تحميلها تلقائيًا عند اختيارها.
+                      </p>
+                    )}
                   </div>
 
                   <Button
@@ -398,7 +605,8 @@ export function QuestionAudioVideoSection({
                       : "اختيار ومعالجة"}
                   </Button>
                 </div>
-              ))}
+                );
+              })}
 
               {!candidatesLoading && candidates.length === 0 && (
                 <p className="text-sm text-muted-foreground">

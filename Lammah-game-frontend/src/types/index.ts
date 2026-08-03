@@ -145,10 +145,7 @@ export type CategoryGameplayMode = "STANDARD" | "TOP_10" | "BOMB";
 
 // Question types
 export type QuestionType = "text" | "image" | "audio" | "video" | "gif";
-export type QuestionGameplayType =
-  | "standard"
-  | "ranked_list"
-  | "bomb_sequence";
+export type QuestionGameplayType = "standard" | "ranked_list" | "bomb_sequence";
 export interface BombItemImage {
   url: string;
   storageKey: string;
@@ -313,7 +310,10 @@ export interface QuestionCoverImage {
 export interface Question {
   id: string;
   _id?: string;
-  categoryId: string;
+  categoryId?: string;
+  worldId?: string;
+  contentCategoryId?: string;
+  challengeTypeId?: string;
   catalogId?: string | Catalog | null;
   category?: Category | string;
   question: string;
@@ -329,8 +329,8 @@ export interface Question {
   wrongAnswers?: string[];
   acceptedAnswers?: string[];
   explanation?: string;
-  difficulty: QuestionDifficulty;
-  points: number; // 200, 400, 600
+  difficulty?: QuestionDifficulty;
+  points?: number; // Legacy gameplay only
   score?: number; // Future name for points
   gameMode?: GameMode;
   type: QuestionType;

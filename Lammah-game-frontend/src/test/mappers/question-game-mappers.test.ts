@@ -49,6 +49,21 @@ describe("Question and Game response mappers", () => {
     });
   });
 
+  it("carries world/content-scope/challenge-type ids through from the API response", () => {
+    const taxonomyQuestion = {
+      ...question,
+      worldId: "world-1",
+      contentCategoryId: "scope-1",
+      challengeTypeId: "challenge-1",
+    } as QuestionResponseDto;
+
+    expect(toQuestion(taxonomyQuestion)).toMatchObject({
+      worldId: "world-1",
+      contentCategoryId: "scope-1",
+      challengeTypeId: "challenge-1",
+    });
+  });
+
   it("maps category boards and authoritative turn/answered fields", () => {
     const game: GameResponseDto = {
       _id: "game-1",

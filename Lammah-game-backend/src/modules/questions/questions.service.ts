@@ -45,6 +45,7 @@ import { RankedListQuestionPolicy } from './application/ranked-list-question.pol
 import { normalizeAnswer } from '../../common/utils/answer-normalization.util';
 import { BombQuestionPolicy } from './application/bomb-question.policy';
 import { CategoryGameplayMode } from '../categories/schemas/category.schema';
+import { WorldContentClassificationService } from '../world-content/application/world-content-classification.service';
 
 export function sanitizeStandardAcceptedAnswers(
   values: string[] | undefined,
@@ -83,6 +84,7 @@ export class QuestionsService {
     private readonly audioIdentities: AudioRequestIdentityService,
     private readonly rankedLists: RankedListQuestionPolicy,
     private readonly bombQuestions: BombQuestionPolicy,
+    private readonly worldContent: WorldContentClassificationService,
   ) {}
 
   async create(
@@ -91,16 +93,28 @@ export class QuestionsService {
   ): Promise<Question> {
     const categoryId =
       createQuestionDto.category ?? createQuestionDto.categoryId;
-
-    if (!categoryId) {
-      throw new BadRequestException('Category ID is required');
-    }
-
-    const category =
-      await this.categoriesService.findByIdForQuestionAuthoring(categoryId);
+    const hasNewHierarchy = Boolean(
+      createQuestionDto.worldId &&
+      createQuestionDto.contentCategoryId &&
+      createQuestionDto.challengeTypeId,
+    );
+    if (!categoryId && !hasNewHierarchy)
+      throw new BadRequestException(
+        'World, content category, and challenge type are required',
+      );
+    if (hasNewHierarchy)
+      await this.worldContent.assertClassification({
+        worldId: createQuestionDto.worldId!,
+        scopeId: createQuestionDto.contentCategoryId!,
+        challengeTypeId: createQuestionDto.challengeTypeId!,
+      });
+    const category = categoryId
+      ? await this.categoriesService.findByIdForQuestionAuthoring(categoryId)
+      : undefined;
     const duplicateResult = await this.duplicates.check({
       question: createQuestionDto.question,
       categoryId,
+      global: !categoryId,
     });
     const payload = this.normalizeQuestionPayload(
       createQuestionDto,
@@ -138,7 +152,18 @@ export class QuestionsService {
               },
             }
           : {}),
-        category: new Types.ObjectId(categoryId),
+        ...(categoryId ? { category: new Types.ObjectId(categoryId) } : {}),
+        ...(hasNewHierarchy
+          ? {
+              worldId: new Types.ObjectId(createQuestionDto.worldId),
+              contentCategoryId: new Types.ObjectId(
+                createQuestionDto.contentCategoryId,
+              ),
+              challengeTypeId: new Types.ObjectId(
+                createQuestionDto.challengeTypeId,
+              ),
+            }
+          : {}),
       });
 
       if (question.requiresAudio && question.audioRequest)
@@ -148,7 +173,7 @@ export class QuestionsService {
           requestHash: question.audioRequest.requestHash!,
           mode: AudioRetryMode.RESEARCH,
         });
-      return question.populate('category');
+      return categoryId ? question.populate('category') : question;
     } catch (error) {
       if (storedImage) await this.imageStorage.delete(storedImage);
       throw error;
@@ -200,7 +225,11 @@ export class QuestionsService {
         invalidQuestionCount += 1;
         continue;
       }
-      if (question.status === QuestionStatus.APPROVED) {
+      if (
+        question.status === QuestionStatus.APPROVED &&
+        question.difficulty &&
+        question.difficulty in counts
+      ) {
         counts[question.difficulty] += 1;
       }
     }
@@ -309,6 +338,35 @@ export class QuestionsService {
     }
     const contentUpdate = this.withoutCanonicalMedia(updateQuestionDto);
     const categoryId = contentUpdate.category ?? contentUpdate.categoryId;
+    const hierarchy = {
+      worldId: contentUpdate.worldId ?? String(existingQuestion.worldId ?? ''),
+      contentCategoryId:
+        contentUpdate.contentCategoryId ??
+        String(existingQuestion.contentCategoryId ?? ''),
+      challengeTypeId:
+        contentUpdate.challengeTypeId ??
+        String(existingQuestion.challengeTypeId ?? ''),
+    };
+    const isHierarchyUpdate = Boolean(
+      contentUpdate.worldId ||
+      contentUpdate.contentCategoryId ||
+      contentUpdate.challengeTypeId,
+    );
+    if (isHierarchyUpdate) {
+      if (
+        !hierarchy.worldId ||
+        !hierarchy.contentCategoryId ||
+        !hierarchy.challengeTypeId
+      )
+        throw new BadRequestException(
+          'World, content category, and challenge type must be selected together',
+        );
+      await this.worldContent.assertClassification({
+        worldId: hierarchy.worldId,
+        scopeId: hierarchy.contentCategoryId,
+        challengeTypeId: hierarchy.challengeTypeId,
+      });
+    }
     let category: Category | undefined = existingQuestion.category
       ? await this.categoriesService.findByIdForQuestionAuthoring(
           String(existingQuestion.category),
@@ -350,6 +408,11 @@ export class QuestionsService {
         : {}),
       ...(categoryId && {
         category: new Types.ObjectId(categoryId),
+      }),
+      ...(isHierarchyUpdate && {
+        worldId: new Types.ObjectId(hierarchy.worldId),
+        contentCategoryId: new Types.ObjectId(hierarchy.contentCategoryId),
+        challengeTypeId: new Types.ObjectId(hierarchy.challengeTypeId),
       }),
       updatedAt: new Date(),
     };
@@ -501,14 +564,18 @@ export class QuestionsService {
     const catalogId = this.resolveCatalogObjectId(category);
     const policy = category?.audioPolicy ?? CategoryAudioPolicy.OPTIONAL;
     const rankedListFields = this.rankedLists.normalize(dto, existing);
-    const categoryMode =
-      category?.gameplayMode ?? CategoryGameplayMode.STANDARD;
     const questionType =
       dto.questionType ??
       existing?.questionType ??
-      (categoryMode === CategoryGameplayMode.BOMB
+      ((category?.gameplayMode ?? CategoryGameplayMode.STANDARD) ===
+      CategoryGameplayMode.BOMB
         ? QuestionGameplayType.BOMB_SEQUENCE
         : QuestionGameplayType.STANDARD);
+    const categoryMode = category
+      ? (category.gameplayMode ?? CategoryGameplayMode.STANDARD)
+      : questionType === QuestionGameplayType.BOMB_SEQUENCE
+        ? CategoryGameplayMode.BOMB
+        : CategoryGameplayMode.STANDARD;
     const bombContent = this.bombQuestions.normalize({
       categoryMode,
       questionType,
@@ -556,7 +623,10 @@ export class QuestionsService {
       throw new BadRequestException('Answer or correctAnswer is required');
     }
 
-    if (requireCoreFields && !points) {
+    const usesNewHierarchy = Boolean(
+      dto.worldId && dto.contentCategoryId && dto.challengeTypeId,
+    );
+    if (requireCoreFields && !points && !usesNewHierarchy) {
       throw new BadRequestException('Points or score is required');
     }
 

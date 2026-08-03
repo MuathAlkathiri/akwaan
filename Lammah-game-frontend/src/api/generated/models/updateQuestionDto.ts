@@ -26,6 +26,12 @@ import type { UpdateQuestionDtoGameplayMetadata } from "./updateQuestionDtoGamep
 import type { UpdateQuestionDtoAiMetadata } from "./updateQuestionDtoAiMetadata";
 
 export interface UpdateQuestionDto {
+  /** New content architecture world */
+  worldId?: string;
+  /** New content architecture category */
+  contentCategoryId?: string;
+  /** World-owned challenge type */
+  challengeTypeId?: string;
   category?: string;
   categoryId?: string;
   question?: string;

@@ -28,6 +28,12 @@ import type { CreateQuestionDtoGameplayMetadata } from "./createQuestionDtoGamep
 import type { CreateQuestionDtoAiMetadata } from "./createQuestionDtoAiMetadata";
 
 export interface CreateQuestionDto {
+  /** New content architecture world */
+  worldId?: string;
+  /** New content architecture category */
+  contentCategoryId?: string;
+  /** World-owned challenge type */
+  challengeTypeId?: string;
   category?: string;
   categoryId?: string;
   question: string;
@@ -51,7 +57,7 @@ export interface CreateQuestionDto {
   wrongAnswers?: string[];
   acceptedAnswers?: string[];
   explanation?: string;
-  difficulty: DifficultyLevel;
+  difficulty?: DifficultyLevel;
   points?: QuestionPoints;
   score?: QuestionPoints;
   gameMode?: GameMode;

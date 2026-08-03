@@ -40,21 +40,23 @@ export function buildQuestionPayload({
       ? {
           kind: data.audioKind as AudioQuestionKind,
           searchQuery: data.searchQuery.trim(),
-          targetName:
-            data.targetName?.trim() || undefined,
-          sourceTitle:
-            data.sourceTitle?.trim() || undefined,
-          language:
-            data.audioLanguage?.trim() || undefined,
-          preferredDurationSeconds:
-            timing.preferredDurationSeconds,
-          preferredStartSeconds:
-            timing.preferredStartSeconds,
+          targetName: data.targetName?.trim() || undefined,
+          sourceTitle: data.sourceTitle?.trim() || undefined,
+          provider: data.provider?.trim() || undefined,
+          language: data.audioLanguage?.trim() || undefined,
+          preferredDurationSeconds: timing.preferredDurationSeconds,
+          preferredStartSeconds: timing.preferredStartSeconds,
         }
       : undefined;
 
   return {
-    categoryId: data.categoryId,
+    ...(data.categoryId
+      ? { categoryId: data.categoryId }
+      : {
+          worldId: data.worldId,
+          contentCategoryId: data.contentCategoryId,
+          challengeTypeId: data.challengeTypeId,
+        }),
     question: data.question.trim(),
 
     questionType: isTop10
@@ -77,14 +79,13 @@ export function buildQuestionPayload({
         }
       : {}),
 
-    explanation:
-      data.explanation?.trim() || undefined,
+    explanation: data.explanation?.trim() || undefined,
 
-    difficulty: data.difficulty,
+    ...(data.categoryId && data.difficulty
+      ? { difficulty: data.difficulty }
+      : {}),
 
-    points: isTop10
-      ? 600
-      : Number(data.points),
+    ...(data.categoryId ? { points: isTop10 ? 600 : Number(data.points) } : {}),
 
     maxPoints: isTop10 ? 600 : undefined,
     turnDurationSeconds: isTop10 ? 20 : undefined,
@@ -92,21 +93,15 @@ export function buildQuestionPayload({
 
     rankedList: isTop10
       ? {
-          displayName:
-            question?.rankedList?.displayName ?? {
-              ar: "توب 10",
-              en: "Top 10",
-            },
+          displayName: question?.rankedList?.displayName ?? {
+            ar: "توب 10",
+            en: "Top 10",
+          },
 
-          entries: rankedEntries.map(
-            (entry, index) => ({
-              ...entry,
-              clientId:
-                entry.clientId ??
-                entry.id ??
-                `row-${index}`,
-            }),
-          ),
+          entries: rankedEntries.map((entry, index) => ({
+            ...entry,
+            clientId: entry.clientId ?? entry.id ?? `row-${index}`,
+          })),
         }
       : undefined,
     bombContent: isBomb

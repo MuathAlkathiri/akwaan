@@ -118,6 +118,7 @@ export class GameplayRuntime {
       sessionId: input.sessionId,
       runtimeId: id,
       initialState: input.initialState,
+      now: input.now,
     };
     const runtime = new GameplayRuntime(
       {
@@ -266,6 +267,7 @@ export class GameplayRuntime {
           activeTeamId: input.activeTeamId,
           activeParticipantId: input.activeParticipantId,
           runtimeState: this.state.runtimeState,
+          now,
         }),
       ),
       transitionRevision: this.revision + 1,

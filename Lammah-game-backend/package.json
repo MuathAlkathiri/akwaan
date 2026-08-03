@@ -32,7 +32,11 @@
     "api:validate": "ts-node -r tsconfig-paths/register scripts/validate-openapi.ts",
     "api:offline-check": "node scripts/check-openapi-offline.mjs",
     "api:check": "npm run api:offline-check && npm run api:validate",
-    "verify:wigolo": "ts-node -r tsconfig-paths/register scripts/verify-wigolo.ts"
+    "verify:wigolo": "ts-node -r tsconfig-paths/register scripts/verify-wigolo.ts",
+    "migrate:world-content": "ts-node -r tsconfig-paths/register src/scripts/migrate-world-content.ts",
+    "migrate:world-content:dist": "node dist/scripts/migrate-world-content.js",
+    "migrate:top10-variant": "ts-node -r tsconfig-paths/register src/scripts/migrate-top10-variant.ts",
+    "migrate:top10-variant:dist": "node dist/scripts/migrate-top10-variant.js"
   },
   "dependencies": {
     "@google/genai": "^1.52.0",

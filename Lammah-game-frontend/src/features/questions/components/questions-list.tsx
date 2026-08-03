@@ -17,11 +17,19 @@ import {
   getQuestionTypeLabel,
 } from "@/lib/utils";
 import type { Question } from "@/types";
-import { DeleteDialog, EmptyState, LoadingState, StatusBadge } from "@/components/shared";
+import {
+  DeleteDialog,
+  EmptyState,
+  LoadingState,
+  StatusBadge,
+} from "@/components/shared";
 
 interface QuestionsListProps {
   canPreview?: boolean;
   categoryId?: string;
+  worldId?: string;
+  contentCategoryId?: string;
+  challengeTypeId?: string;
   emptyMessage?: string;
 }
 
@@ -78,23 +86,29 @@ function getQuestionCategoryId(question: Question) {
 export function QuestionsList({
   canPreview = false,
   categoryId,
+  worldId,
+  contentCategoryId,
+  challengeTypeId,
   emptyMessage = "لا توجد أسئلة",
 }: QuestionsListProps) {
   const { data, isLoading, error } = useQuestions();
   const updateQuestionStatus = useUpdateQuestionStatus();
   const patchQuestion = usePatchQuestion();
   const deleteQuestion = useDeleteQuestion();
-  const questions = categoryId
-    ? (data || []).filter(
-        (question) => getQuestionCategoryId(question) === categoryId,
-      )
-    : data || [];
+  const questions = (data || []).filter((question) => {
+    if (categoryId && getQuestionCategoryId(question) !== categoryId)
+      return false;
+    if (worldId && question.worldId !== worldId) return false;
+    if (contentCategoryId && question.contentCategoryId !== contentCategoryId)
+      return false;
+    if (challengeTypeId && question.challengeTypeId !== challengeTypeId)
+      return false;
+    return true;
+  });
 
   if (isLoading) return <LoadingState count={4} />;
-  if (error)
-    return <EmptyState title="تعذر تحميل الأسئلة" />;
-  if (!questions.length)
-    return <EmptyState title={emptyMessage} />;
+  if (error) return <EmptyState title="تعذر تحميل الأسئلة" />;
+  if (!questions.length) return <EmptyState title={emptyMessage} />;
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
@@ -116,14 +130,21 @@ export function QuestionsList({
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary">{question.points}</Badge>
-                  <Badge variant="outline">
-                    {question.questionType === "ranked_list"
-                      ? "Top 10"
-                      : getDifficultyLabel(question.difficulty)}
-                  </Badge>
+                  {question.points !== undefined && (
+                    <Badge variant="secondary">{question.points}</Badge>
+                  )}
+                  {(question.questionType === "ranked_list" ||
+                    question.difficulty !== undefined) && (
+                    <Badge variant="outline">
+                      {question.questionType === "ranked_list"
+                        ? "Top 10"
+                        : getDifficultyLabel(question.difficulty!)}
+                    </Badge>
+                  )}
                   {question.questionType === "bomb_sequence" && (
-                    <Badge>Bomb · {question.bombContent?.items.length ?? 0} عناصر</Badge>
+                    <Badge>
+                      Bomb · {question.bombContent?.items.length ?? 0} عناصر
+                    </Badge>
                   )}
                   <Badge variant="outline">
                     {getQuestionTypeLabel(question.type)}
@@ -194,11 +215,13 @@ export function QuestionsList({
                   itemName="السؤال"
                   disabled={deleteQuestion.isPending}
                   onDelete={() => deleteQuestion.mutate(id)}
-                  trigger={<Button size="sm" variant="destructive">حذف</Button>}
+                  trigger={
+                    <Button size="sm" variant="destructive">
+                      حذف
+                    </Button>
+                  }
                 />
-                <StatusBadge>
-                  {getStatusLabel(question.status)}
-                </StatusBadge>
+                <StatusBadge>{getStatusLabel(question.status)}</StatusBadge>
                 {question.requiresAudio && (
                   <Badge variant="outline">
                     {getAudioStateLabel(question)}

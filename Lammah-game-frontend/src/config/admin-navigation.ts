@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Sparkles,
   Users,
+  Network,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -26,6 +27,15 @@ export const adminNavigation: AdminNavigationItem[] = [
     showOnDashboard: true,
     dashboardTitle: "Games management",
     dashboardDescription: "متابعة الألعاب المحفوظة وحالة كل تحدي.",
+  },
+  {
+    label: "العوالم",
+    href: "/admin/worlds",
+    icon: Network,
+    showOnDashboard: true,
+    dashboardTitle: "World Management",
+    dashboardDescription:
+      "إدارة العوالم والنطاقات والمكانيكا وعناصر المحتوى.",
   },
   {
     label: "الكتالوجات",

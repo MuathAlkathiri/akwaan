@@ -39,6 +39,7 @@ describe('QuestionsService manual audio policy', () => {
     new AudioRequestIdentityService(),
     new RankedListQuestionPolicy(),
     new BombQuestionPolicy(),
+    { assertHierarchy: jest.fn() } as never,
   );
   const base = {
     category: '507f1f77bcf86cd799439011',
