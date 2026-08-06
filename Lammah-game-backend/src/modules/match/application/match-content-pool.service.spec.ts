@@ -335,5 +335,50 @@ describe('MatchContentPool', () => {
         ).rejects.toMatchObject({ response: { code } });
       }
     });
+
+    it('keeps a repeated World on one pool per occurrence', async () => {
+      // A World appearing at occurrences 0 and 2: same worldId, two disjoint
+      // pools. The check is scoped to one occurrence's own four Scopes, so a
+      // repeated World validates twice independently rather than collapsing into
+      // a single world-level pool. (Which of the two pools a launch draws from is
+      // decided by the setup, which names the occurrence.)
+      const scopes = [
+        scope('s1', 'كأس العالم'),
+        scope('s2', 'الدوري الإنجليزي'),
+        scope('s3', 'الدوري السعودي'),
+        scope('s4', 'أبطال أوروبا'),
+        scope('s5', 'أفلام الأنمي'),
+        scope('s6', 'دراما'),
+        scope('s7', 'ألعاب'),
+        scope('s8', 'موسيقى'),
+      ];
+      const readyCounts = {
+        s1: 4,
+        s2: 4,
+        s3: 4,
+        s4: 4,
+        s5: 4,
+        s6: 4,
+        s7: 4,
+        s8: 4,
+      };
+
+      await expect(
+        pool({ scopes, readyCounts }).assertOccurrencePool({
+          occurrenceIndex: 0,
+          worldId: WORLD_ID,
+          scopeIds: ['s1', 's2', 's3', 's4'],
+          boardChallengeTypeIds: board,
+        }),
+      ).resolves.toBeUndefined();
+      await expect(
+        pool({ scopes, readyCounts }).assertOccurrencePool({
+          occurrenceIndex: 2,
+          worldId: WORLD_ID,
+          scopeIds: ['s5', 's6', 's7', 's8'],
+          boardChallengeTypeIds: board,
+        }),
+      ).resolves.toBeUndefined();
+    });
   });
 });
