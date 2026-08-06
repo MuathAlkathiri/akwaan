@@ -14,12 +14,18 @@ export function isGameBoardPath(pathname: string) {
 }
 
 /**
- * The player journey: home, a World, a Scope, a Board. These screens own their
+ * The player journey: home, a World, and the Match itself. These screens own their
  * own warm surface edge to edge, so the shell neither wraps them in the page
- * container nor paints the dark gameplay background behind them.
+ * container nor paints the dark gameplay background behind them — a Match board
+ * painted light inside a dark shell inside a second container is how the board
+ * came to look like a developer page.
  */
 export function isJourneyPath(pathname: string) {
-  return pathname === "/" || pathname.startsWith("/worlds");
+  return (
+    pathname === "/" ||
+    pathname.startsWith("/worlds") ||
+    pathname.startsWith("/matches")
+  );
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {

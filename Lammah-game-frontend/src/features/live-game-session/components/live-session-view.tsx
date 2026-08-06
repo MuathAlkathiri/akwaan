@@ -32,6 +32,11 @@ export function LiveSessionView() {
       </div>
     );
   }
+  // A session running a Match shows the Match and nothing else: the session
+  // controls, the runtime debugger, and the join panel are engine tooling, and
+  // stacking them above a live board is what made the board look like one of them.
+  if (snapshot.match) return <ControllerMatchView />;
+
   return (
     <main className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -51,16 +56,11 @@ export function LiveSessionView() {
           {error.message}
         </p>
       )}
-      <ControllerMatchView />
-      {snapshot.match ? null : (
-        <>
       <TeamClockList />
       <SessionControls />
       <GameplayRuntimePanel />
       <JoinAccessPanel sessionId={snapshot.sessionId} />
       <ParticipantLobby />
-        </>
-      )}
     </main>
   );
 }

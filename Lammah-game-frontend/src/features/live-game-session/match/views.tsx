@@ -1,28 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useLiveSession } from "../hooks/live-session-context";
+import { MatchHostScreen } from "./components/match-host-screen";
 import { MatchStageRouter } from "./match-stage-router";
 
+/** The host's surface. One screen for every stage of the Match. */
 export function ControllerMatchView() {
-  const { snapshot } = useLiveSession();
-  return (
-    <section className="space-y-3">
-      {snapshot && (
-        <div className="flex justify-end">
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/live-sessions/${snapshot.sessionId}/screen`} target="_blank">
-              <ExternalLink className="size-4" aria-hidden />
-              فتح الشاشة المشتركة
-            </Link>
-          </Button>
-        </div>
-      )}
-      <MatchStageRouter actor="controller" />
-    </section>
-  );
+  return <MatchHostScreen />;
 }
 
 export function SharedScreenMatchView() {
@@ -32,8 +15,13 @@ export function SharedScreenMatchView() {
 /**
  * A player's phone. It carries no participant id: the server already scopes the
  * snapshot and the runtime projection to whoever is asking.
+ *
+ * It owns its own surface, because a phone has no page shell around it.
  */
 export function ParticipantMatchView() {
-  return <MatchStageRouter actor="participant" />;
+  return (
+    <div className="min-h-screen bg-[#fffaf0] px-3 py-4">
+      <MatchStageRouter actor="participant" />
+    </div>
+  );
 }
-

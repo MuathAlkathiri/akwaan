@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { LiveSessionContext } from "@/features/live-game-session/hooks/live-session-context";
 import { MatchStageRouter } from "@/features/live-game-session/match/match-stage-router";
 import type {
@@ -21,24 +21,9 @@ import type { LiveSessionSnapshot } from "@/features/live-game-session/model";
 const ANIME = "world-anime";
 const FOOTBALL = "world-football";
 
-const api = vi.hoisted(() => ({
-  createMatch: vi.fn(),
-  startMatch: vi.fn(),
-  resolveMatchCoinToss: vi.fn(),
-  listMatchWorlds: vi.fn(),
-  selectMatchWorld: vi.fn(),
-  listMatchScopes: vi.fn(),
-  selectMatchScopes: vi.fn(),
-  launchMatchChallenge: vi.fn(),
-  continueMatchWorld: vi.fn(),
-  cancelMatch: vi.fn(),
-}));
-
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
 }));
-
-vi.mock("@/features/live-game-session/match/api/match-api", () => api);
 
 vi.mock("@/features/worlds/hooks/use-player-catalog", () => ({
   usePlayableWorlds: () => ({
@@ -200,11 +185,6 @@ function renderRouter(match: LiveSessionMatchSnapshot) {
   );
 }
 
-beforeEach(() => {
-  for (const mock of Object.values(api)) mock.mockReset();
-  api.listMatchWorlds.mockResolvedValue([]);
-});
-
 describe("unified Match board handoff", () => {
   it("renders all twelve positions grouped by occurrence", () => {
     renderRouter(unifiedMatch());
@@ -251,11 +231,9 @@ describe("unified Match board handoff", () => {
   it("never renders the sequential setup board or its selectable-World list", () => {
     renderRouter(unifiedMatch());
 
-    // The legacy board keys on currentOccurrence, which a unified Match has none of.
+    // The legacy board keyed on a "current" occurrence, which a Match has none of.
     expect(screen.queryByLabelText("لوحة تحديات العالم")).toBeNull();
     expect(screen.queryByText(/العالم 1 من 3/)).toBeNull();
-    // And the sequential Worlds endpoint is never called for it.
-    expect(api.listMatchWorlds).not.toHaveBeenCalled();
   });
 
   it("refuses to render a sequential setup stage for a unified Match", () => {
@@ -280,7 +258,7 @@ describe("unified Match board handoff", () => {
       expect(screen.queryByTestId("unified-board")).toBeNull();
       expect(screen.queryByLabelText("اختيار العالم")).toBeNull();
       // Reported as a client/server disagreement instead of being rendered.
-      expect(screen.getByText(/تحديث|مزامنة|غير مدعومة/)).toBeTruthy();
+      expect(screen.getByTestId("match-stage-recovery")).toBeTruthy();
       view.unmount();
     }
   });

@@ -11,7 +11,7 @@ export default function LiveSessionSharedScreenPage() {
     : params.sessionId;
   if (!sessionId) return null;
   return (
-    <div className="min-h-screen bg-[#fffaf0] py-6">
+    <div className="min-h-screen bg-[#fffaf0] px-4 py-6 sm:px-6">
       <LiveSessionProvider sessionId={sessionId}>
         <SharedScreenMatchView />
       </LiveSessionProvider>
