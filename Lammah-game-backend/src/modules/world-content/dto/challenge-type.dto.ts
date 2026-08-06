@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsBoolean,
   IsEnum,
   IsInt,
   IsOptional,
@@ -45,13 +44,6 @@ export class CreateChallengeTypeDto {
   @ApiProperty({ enum: ChallengeFamily })
   @IsEnum(ChallengeFamily)
   family: ChallengeFamily;
-
-  @ApiPropertyOptional({
-    description: 'Signature mechanics are exclusive; shared families are not',
-  })
-  @IsOptional()
-  @IsBoolean()
-  isExclusive?: boolean;
 
   @ApiPropertyOptional({ enum: ChallengeItemStructure })
   @IsOptional()

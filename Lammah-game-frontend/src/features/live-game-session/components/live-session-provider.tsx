@@ -42,7 +42,28 @@ export function LiveSessionProvider({
     connection: "connecting",
   });
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [syncState, setSyncState] = useState<
+    "idle" | "resynchronizing" | "restored"
+  >("idle");
   const socketRef = useRef<LiveSessionSocket>();
+  const snapshotRef = useRef(state.snapshot);
+  const syncStateRef = useRef(syncState);
+  const restoredTimerRef = useRef<number>();
+
+  useEffect(() => {
+    snapshotRef.current = state.snapshot;
+  }, [state.snapshot]);
+
+  useEffect(() => {
+    syncStateRef.current = syncState;
+  }, [syncState]);
+
+  const adoptSnapshot = useCallback(
+    (snapshot: import("../model").LiveSessionSnapshot) => {
+      dispatch({ type: "snapshot", snapshot, receivedAtMs: Date.now() });
+    },
+    [],
+  );
 
   useEffect(() => {
     if (initial.data) {
@@ -73,18 +94,46 @@ export function LiveSessionProvider({
     socket.connect({
       sessionId,
       token,
-      onSnapshot: (snapshot) =>
-        dispatch({ type: "snapshot", snapshot, receivedAtMs: Date.now() }),
+      onSnapshot: (snapshot) => {
+        adoptSnapshot(snapshot);
+        if (syncStateRef.current === "resynchronizing") {
+          window.clearTimeout(restoredTimerRef.current);
+          setSyncState("restored");
+          restoredTimerRef.current = window.setTimeout(
+            () => setSyncState("idle"),
+            1800,
+          );
+        }
+      },
       onConnection: (connection) =>
         dispatch({ type: "connection", connection }),
       onError: (error) => dispatch({ type: "error", error }),
+      onResyncing: () => setSyncState("resynchronizing"),
+      shouldRecoverMatch: (event) => {
+        const match = snapshotRef.current?.match;
+        if (match && event.matchId !== match.id) return false;
+        return !match || event.matchRevision > match.revision;
+      },
       participant: Boolean(participantCredential),
     });
     return () => {
+      window.clearTimeout(restoredTimerRef.current);
       socket.disconnect();
       socketRef.current = undefined;
     };
-  }, [participantCredential, sessionId]);
+  }, [adoptSnapshot, participantCredential, sessionId]);
+
+  useEffect(() => {
+    const restore = () => {
+      if (document.visibilityState === "visible") {
+        socketRef.current?.requestSnapshot();
+      }
+    };
+    document.addEventListener("visibilitychange", restore);
+    return () => document.removeEventListener("visibilitychange", restore);
+  }, []);
+
+  const resync = useCallback(() => socketRef.current?.requestSnapshot(), []);
 
   const command = useCallback(
     (action: string, options: LiveSessionCommandOptions = {}) => {
@@ -128,18 +177,24 @@ export function LiveSessionProvider({
           : undefined),
       nowMs,
       snapshotReceivedAtMs: state.snapshotReceivedAtMs,
+      syncState,
       command,
       gameplayCommand,
+      adoptSnapshot,
+      resync,
     }),
     [
       command,
       gameplayCommand,
+      adoptSnapshot,
       initial.error,
       nowMs,
       state.connection,
       state.error,
       state.snapshot,
       state.snapshotReceivedAtMs,
+      syncState,
+      resync,
     ],
   );
 

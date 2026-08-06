@@ -4,10 +4,23 @@ import type {
   ChallengeItemStructure,
   ContentItemStatus,
   ContentMediaType,
+  WorldChallengeConfiguration,
   WorldChallengeSlotKey,
-  WorldChallengeSlotType,
   WorldContentStatus,
 } from "../types";
+
+export function worldChallengeConfigurationName(
+  configuration: Pick<
+    WorldChallengeConfiguration,
+    "effectiveName" | "displayName" | "challengeType"
+  >,
+): string {
+  return (
+    configuration.effectiveName?.trim() ||
+    configuration.displayName?.trim() ||
+    configuration.challengeType.name
+  );
+}
 
 /**
  * Arabic labels only. The set of allowed values always comes from the server
@@ -22,17 +35,11 @@ export const FAMILY_LABEL: Record<ChallengeFamily, string> = {
   relational: "علائقي",
 };
 
-export const SLOT_LABEL: Record<WorldChallengeSlotType, string> = {
-  signature: "خانة التوقيع",
-  ryo: "خانة اقرأ خصمك",
-  flex: "الخانة المرنة",
-};
-
 export const SLOT_KEY_LABEL: Record<WorldChallengeSlotKey, string> = {
-  signature: "خانة التوقيع",
-  ryo_1: "اقرأ خصمك — الخانة الأولى",
-  ryo_2: "اقرأ خصمك — الخانة الثانية",
-  flex: "الخانة المرنة",
+  slot_1: "الخانة 1",
+  slot_2: "الخانة 2",
+  slot_3: "الخانة 3",
+  slot_4: "الخانة 4",
 };
 
 export const ANSWER_MODE_LABEL: Record<ChallengeAnswerMode, string> = {
@@ -42,6 +49,7 @@ export const ANSWER_MODE_LABEL: Record<ChallengeAnswerMode, string> = {
   match: "مطابقة نصية",
   vote: "تصويت",
   split: "معلومة مقسّمة",
+  distributed: "ركّبها (معلومات موزّعة)",
   top_10: "أفضل 10",
 };
 

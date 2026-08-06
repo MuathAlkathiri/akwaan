@@ -283,8 +283,11 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
       mechanicPayload: {
         variant: 'poison-deck',
         title: 'أفضل عشرة',
+        instruction: 'احتفظ بالبطاقة أو أرسلها لخصمك',
         rankingBasis: 'الترتيب الرسمي',
         sourceLabel: 'المصدر الرسمي',
+        sourceUrl: 'https://example.com/ranking',
+        asOfDate: '2026-08-04',
         candidates,
         rankedAnswer: candidates.slice(0, 10).map((candidate, index) => ({
           candidateId: candidate.id,

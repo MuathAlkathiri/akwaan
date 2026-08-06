@@ -21,7 +21,7 @@ export class WorldChallengeConfigurationRepository {
     return this.model.find().sort({ sortOrder: 1 }).exec();
   }
 
-  /** Every World a set of challenge types is configured in, for exclusivity and differentiation. */
+  /** Every World a set of global challenge types is configured in. */
   listByChallengeTypes(
     challengeTypeIds: string[],
   ): Promise<WorldChallengeConfiguration[]> {
@@ -39,7 +39,7 @@ export class WorldChallengeConfigurationRepository {
     return this.model.findById(id).exec();
   }
 
-  /** One configuration per board position; the mechanic may repeat. */
+  /** One configuration per generic board position. */
   findByWorldAndSlot(
     worldId: string,
     slotKey: string,

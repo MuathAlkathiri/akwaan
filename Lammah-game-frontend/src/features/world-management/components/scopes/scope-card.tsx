@@ -7,9 +7,9 @@ import {
   CountBadge,
   EntityStatusBadge,
   ReadinessBadge,
+  ReadinessChecklist,
 } from "../shared";
 import type { Scope } from "../../types";
-import { localizeReadinessIssue } from "../../utils/readiness.util";
 
 interface ScopeCardProps {
   scope: Scope;
@@ -58,11 +58,14 @@ export function ScopeCard({ scope, onEdit, onDelete }: ScopeCardProps) {
         </div>
       </div>
 
-      {blockers.map((issue) => (
-        <p key={issue.code} className="text-xs text-destructive">
-          {localizeReadinessIssue(issue)}
-        </p>
-      ))}
+      <ReadinessChecklist
+        report={{
+          readiness: blockers.length ? "not_ready" : "ready",
+          blockers,
+          warnings: scope.compatibility?.warnings ?? [],
+        }}
+        satisfiedText="النطاق يمكنه استخدام تحديات اللوحة."
+      />
       {Boolean(scope.compatibility?.excludedSlots?.length) && (
         <p className="text-xs text-muted-foreground">
           مستثنى:{" "}

@@ -19,9 +19,22 @@ export class WorldContentValidationError extends BadRequestException {
 }
 
 export class WorldContentConflictError extends ConflictException {
-  constructor(code: string, message: string) {
-    super({ code, message });
+  constructor(
+    code: string,
+    message: string,
+    /** Which records caused it, when the guard can name them. */
+    references?: WorldContentReferenceDetail[],
+  ) {
+    super({ code, message, ...(references?.length ? { references } : {}) });
   }
+}
+
+/** Enough to find the blocking record, and nothing more. */
+export interface WorldContentReferenceDetail {
+  source: string;
+  id: string;
+  label: string;
+  status?: string;
 }
 
 export function issue(

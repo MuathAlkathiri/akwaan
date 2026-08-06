@@ -27,7 +27,6 @@ export interface WorldFormValues {
   slug: string;
   description?: string;
   status: World["status"];
-  signatureMechanicId?: string;
   soundPack?: string;
   timerProfile?: string;
   toneProfile?: string;
@@ -39,9 +38,6 @@ export function buildWorldPayload(values: WorldFormValues) {
     slug: values.slug,
     description: optionalText(values.description),
     status: values.status,
-    ...(values.signatureMechanicId
-      ? { signatureMechanicId: values.signatureMechanicId }
-      : {}),
     soundPack: optionalText(values.soundPack),
     timerProfile: optionalText(values.timerProfile),
     toneProfile: optionalText(values.toneProfile),
@@ -97,21 +93,24 @@ export interface WorldChallengeConfigurationFormValues {
   slotKey: WorldChallengeConfiguration["slotKey"];
   sortOrder: number;
   isEnabled: boolean;
+  displayName?: string;
+  description?: string;
+  instructions?: string;
 }
 
 /**
- * Assignment carries no presentation and no name: the mechanic owns its timing,
- * input, reveal, and name, and the ContentItem owns media.
+ * Runtime fields remain global. Only player-facing copy may vary by World.
  */
 export function buildConfigurationPayload(
   values: WorldChallengeConfigurationFormValues,
-  isUpdate = false,
+  _isUpdate = false,
 ) {
   return {
-    // The mechanic itself is immutable after assignment: swap it by removing the
-    // configuration and creating a new one.
-    ...(isUpdate ? {} : { challengeTypeId: values.challengeTypeId }),
+    challengeTypeId: values.challengeTypeId,
     slotKey: values.slotKey,
+    displayName: optionalText(values.displayName),
+    description: optionalText(values.description),
+    instructions: optionalText(values.instructions),
     sortOrder: values.sortOrder,
     isEnabled: values.isEnabled,
   };

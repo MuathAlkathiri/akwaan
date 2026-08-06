@@ -6,6 +6,7 @@ import {
   WorldContentReferenceKind,
   WorldContentReferenceRegistry,
 } from '../../world-content/application/world-content-reference.registry';
+import { WorldContentReferenceDetail } from '../../world-content/domain/world-content.errors';
 import { Question } from '../schemas/question.schema';
 
 /**
@@ -42,9 +43,37 @@ export class LegacyQuestionWorldReferenceGuard
     kind: WorldContentReferenceKind,
     id: string,
   ): Promise<number> {
-    const filter = {
+    return this.questions.countDocuments(this.filterFor(kind, id)).exec();
+  }
+
+  /**
+   * Names the blocking questions so an admin can open or clean them instead of
+   * guessing. A legacy question often has no text yet, so the id is the label.
+   */
+  async describeReferences(
+    kind: WorldContentReferenceKind,
+    id: string,
+  ): Promise<WorldContentReferenceDetail[]> {
+    const documents = await this.questions
+      .find(this.filterFor(kind, id))
+      .select({ text: 1, status: 1 })
+      .limit(20)
+      .lean()
+      .exec();
+    return documents.map((document) => ({
+      source: this.source,
+      id: String(document._id),
+      label: String(document.text ?? '').trim() || 'سؤال بدون نص',
+      ...(document.status ? { status: String(document.status) } : {}),
+    }));
+  }
+
+  private filterFor(
+    kind: WorldContentReferenceKind,
+    id: string,
+  ): FilterQuery<Question> {
+    return {
       [this.fieldByKind[kind]]: new Types.ObjectId(id),
     } as FilterQuery<Question>;
-    return this.questions.countDocuments(filter).exec();
   }
 }

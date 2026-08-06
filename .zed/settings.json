@@ -1,0 +1,61 @@
+{
+  "languages": {
+    "TypeScript": {
+      "language_servers": ["typescript-language-server", "eslint"],
+      "formatter": "external",
+      "format_on_save": "on",
+      "external_formatter": {
+        "command": "node_modules/.bin/prettier",
+        "arguments": ["--stdin-filepath", "{buffer_path}"]
+      }
+    },
+    "TSX": {
+      "language_servers": ["typescript-language-server", "eslint"],
+      "formatter": "external",
+      "format_on_save": "on",
+      "external_formatter": {
+        "command": "node_modules/.bin/prettier",
+        "arguments": ["--stdin-filepath", "{buffer_path}"]
+      }
+    },
+    "JavaScript": {
+      "language_servers": ["typescript-language-server", "eslint"],
+      "formatter": "external",
+      "format_on_save": "on",
+      "external_formatter": {
+        "command": "node_modules/.bin/prettier",
+        "arguments": ["--stdin-filepath", "{buffer_path}"]
+      }
+    },
+    "JSON": {
+      "formatter": "external",
+      "format_on_save": "on",
+      "external_formatter": {
+        "command": "node_modules/.bin/prettier",
+        "arguments": ["--stdin-filepath", "{buffer_path}"]
+      }
+    },
+    "Markdown": {
+      "formatter": "external",
+      "format_on_save": "on",
+      "external_formatter": {
+        "command": "node_modules/.bin/prettier",
+        "arguments": ["--stdin-filepath", "{buffer_path}"]
+      }
+    }
+  },
+  "lsp": {
+    "eslint": {
+      "binary": {
+        "path": "node_modules/.bin/eslint",
+        "arguments": ["--stdin"]
+      }
+    }
+  },
+  "inlay_hints": {
+    "enabled": true,
+    "show_type_hints": true,
+    "show_parameter_hints": true,
+    "show_other_hints": true
+  }
+}

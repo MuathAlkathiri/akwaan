@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document } from 'mongoose';
 import { WorldContentStatus } from '../domain/world-content.constants';
 import { ContentAssetRef } from '../domain/world-content.types';
 import {
@@ -26,13 +26,6 @@ export class World extends Document {
   @Prop({ type: ContentAssetDefinition, _id: false }) icon?: ContentAssetRef;
 
   @Prop({ type: ContentAssetDefinition, _id: false }) banner?: ContentAssetRef;
-
-  /**
-   * The exclusive mechanic that gives this World its fingerprint (roadmap 4).
-   * Must match the challenge type configured in the World's Signature slot.
-   */
-  @Prop({ type: Types.ObjectId, ref: 'ChallengeType', default: null })
-  signatureMechanicId?: Types.ObjectId | null;
 
   /** World presentation profiles (roadmap 5). */
   @Prop({ type: String, trim: true, default: null })

@@ -36,6 +36,7 @@ import {
   CreateGameplayRuntimeDto,
   GameplayRuntimeMutationDto,
   SubmitGameplayCommandDto,
+  StartDistributedInformationDto,
   StartRyoGameplayDto,
   StartTop10PoisonDeckDto,
 } from './gameplay-runtime.dto';
@@ -43,6 +44,7 @@ import { LiveSessionHttpExceptionFilter } from './live-session-http-exception.fi
 import { StartBombGameplay } from '../application/start-bomb-gameplay.use-case';
 import { StartRyoGameplay } from '../application/start-ryo-gameplay.use-case';
 import { StartTop10PoisonDeck } from '../application/start-top10-poison-deck.use-case';
+import { StartDistributedInformation } from '../application/start-distributed-information.use-case';
 
 @ApiTags('live-gameplay-runtime')
 @ApiBearerAuth()
@@ -66,6 +68,7 @@ export class GameplayRuntimeController {
     private readonly startBomb: StartBombGameplay,
     private readonly startRyo: StartRyoGameplay,
     private readonly startTop10: StartTop10PoisonDeck,
+    private readonly startDistributed: StartDistributedInformation,
   ) {}
 
   @Post()
@@ -88,6 +91,19 @@ export class GameplayRuntimeController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.startTop10.execute({ sessionId, actorId: user.id, ...body });
+  }
+
+  @Post('development/distributed-information/start')
+  distributedInformationStart(
+    @Param('sessionId') sessionId: string,
+    @Body() body: StartDistributedInformationDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.startDistributed.execute({
+      sessionId,
+      actorId: user.id,
+      ...body,
+    });
   }
 
   @Post('development/ryo/start')

@@ -54,6 +54,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
           'sourceSummary',
           'candidateDiagnostics',
           'details',
+          // A blocked delete names the records that block it, so the admin can
+          // act instead of being told only that something references it.
+          'references',
         ] as const;
         structuredDetails = Object.fromEntries(
           allowedFields.flatMap((key) =>

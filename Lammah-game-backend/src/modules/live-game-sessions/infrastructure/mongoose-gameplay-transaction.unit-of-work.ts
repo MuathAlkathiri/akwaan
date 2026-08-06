@@ -87,6 +87,8 @@ export class MongooseGameplayTransactionUnitOfWork implements GameplayTransactio
       findRuntime: async (sessionId) => {
         const document = await this.runtimes
           .findOne({ sessionId })
+          // A Match plays several runtimes per session; the newest is the live one.
+          .sort({ createdAt: -1 })
           .session(mongoSession)
           .lean()
           .exec();
@@ -135,6 +137,7 @@ export class MongooseGameplayTransactionUnitOfWork implements GameplayTransactio
               revision: state.revision,
               activeRoundId: state.activeRound?.id,
               expiresAt: state.expiresAt,
+              createdAt: state.createdAt,
               completedAt: state.completedAt,
               state,
             },

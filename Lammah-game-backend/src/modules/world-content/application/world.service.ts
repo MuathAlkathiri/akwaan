@@ -11,7 +11,6 @@ import {
 } from '../domain/world-content.errors';
 import { ContentAssetRef, WorldView } from '../domain/world-content.types';
 import { CreateWorldDto, UpdateWorldDto } from '../dto/world.dto';
-import { ChallengeTypeRepository } from '../persistence/challenge-type.repository';
 import { ContentItemRepository } from '../persistence/content-item.repository';
 import { ScopeRepository } from '../persistence/scope.repository';
 import { WorldChallengeConfigurationRepository } from '../persistence/world-challenge-configuration.repository';
@@ -40,7 +39,6 @@ export class WorldService {
     private readonly scopes: ScopeRepository,
     private readonly configurations: WorldChallengeConfigurationRepository,
     private readonly contentItems: ContentItemRepository,
-    private readonly challengeTypes: ChallengeTypeRepository,
     private readonly readiness: WorldReadinessService,
     private readonly assets: WorldContentAssetMutator,
     private readonly references: WorldContentReferenceRegistry,
@@ -81,12 +79,9 @@ export class WorldService {
       throw new WorldContentValidationError([
         issue(
           'WORLD_ACTIVATION_REQUIRES_BOARD',
-          'A World is created as a draft and can only be activated once its four-slot board and Signature mechanic are configured',
+          'A World is created as a draft and can only be activated once its four board positions are configured',
         ),
       ]);
-    }
-    if (dto.signatureMechanicId) {
-      await this.assertChallengeTypeExists(dto.signatureMechanicId);
     }
     await this.assertSlugAvailable(dto.slug);
     const created = await this.assets.withAsset({
@@ -112,9 +107,6 @@ export class WorldService {
     file?: UploadedImageFile,
   ): Promise<WorldSummary> {
     const existing = await this.require(id);
-    if (dto.signatureMechanicId) {
-      await this.assertChallengeTypeExists(dto.signatureMechanicId);
-    }
     if (dto.slug && dto.slug !== existing.slug) {
       await this.assertSlugAvailable(dto.slug, id);
     }
@@ -122,9 +114,6 @@ export class WorldService {
     if (targetStatus === WorldContentStatus.ACTIVE) {
       await this.assertProjectionActivatable(id, {
         status: WorldContentStatus.ACTIVE,
-        ...(dto.signatureMechanicId
-          ? { signatureMechanicId: dto.signatureMechanicId }
-          : {}),
       });
     }
     const updated = await this.assets.withAsset({
@@ -230,17 +219,5 @@ export class WorldService {
       code: 'WORLD_SLUG_TAKEN',
       message: `A World with the short name "${slug}" already exists`,
     };
-  }
-
-  private async assertChallengeTypeExists(id: string): Promise<void> {
-    if (!(await this.challengeTypes.findById(id))) {
-      throw new WorldContentValidationError([
-        issue(
-          'SIGNATURE_MECHANIC_NOT_FOUND',
-          'The referenced Signature mechanic does not exist',
-          { challengeTypeId: id },
-        ),
-      ]);
-    }
   }
 }

@@ -36,7 +36,7 @@ describe('RYO gameplay plugin', () => {
       initialState: {
         challengeId: 'c',
         worldId: 'w',
-        slotKey: 'ryo_1',
+        slotKey: 'slot_2',
         itemsJson: JSON.stringify([{ id: '1' }, { id: '2' }, { id: '3' }]),
         teamIdsJson: JSON.stringify(['a', 'b']),
         startingTeamId: 'a',

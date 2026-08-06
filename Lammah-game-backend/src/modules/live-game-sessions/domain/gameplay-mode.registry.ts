@@ -7,6 +7,7 @@ import { LiveSessionDomainError } from './live-session.errors';
 import { BOMB_GAMEPLAY_PLUGIN } from './bomb-gameplay.plugin';
 import { RYO_GAMEPLAY_PLUGIN } from './ryo-gameplay.plugin';
 import { TOP10_POISON_DECK_PLUGIN } from './top10-poison-deck.plugin';
+import { DISTRIBUTED_INFORMATION_PLUGIN } from './distributed-information.plugin';
 
 @Injectable()
 export class GameplayModeRegistry {
@@ -32,6 +33,13 @@ export class GameplayModeRegistry {
         TOP10_POISON_DECK_PLUGIN.version,
       ),
       TOP10_POISON_DECK_PLUGIN,
+    ],
+    [
+      this.registryKey(
+        DISTRIBUTED_INFORMATION_PLUGIN.key,
+        DISTRIBUTED_INFORMATION_PLUGIN.version,
+      ),
+      DISTRIBUTED_INFORMATION_PLUGIN,
     ],
   ]);
 

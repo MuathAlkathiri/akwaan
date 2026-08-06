@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -12,21 +13,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 import {
   useChallengeTypes,
   useCreateWorldChallengeConfiguration,
   useUpdateWorldChallengeConfiguration,
+  useWorldBoard,
   useWorldContentMetadata,
 } from "../../hooks/use-world-content";
 import { useEntityFormSubmit } from "../../hooks/use-entity-form-submit";
 import { buildConfigurationPayload } from "../../services/world-content-forms";
 import { FormIssueList } from "../shared";
-import {
-  ANSWER_MODE_LABEL,
-  FAMILY_LABEL,
-  SLOT_KEY_LABEL,
-} from "../../utils/world-content.labels";
+import { ANSWER_MODE_LABEL, FAMILY_LABEL, SLOT_KEY_LABEL } from "../../utils/world-content.labels";
 import type {
   ChallengeType,
   WorldChallengeConfiguration,
@@ -42,9 +41,8 @@ interface ConfigurationFormProps {
 /**
  * Puts a global mechanic into one board position.
  *
- * There are only two decisions: which position, and which mechanic. Timing,
- * input, reveal behaviour, name, and scoring belong to the mechanic; media
- * belongs to the ContentItem. Nothing here is configured per World.
+ * The position is generic. Runtime fields stay on the global mechanic, while
+ * the World may override only its player-facing copy.
  */
 export function ConfigurationForm({
   worldId,
@@ -54,25 +52,47 @@ export function ConfigurationForm({
   const { data: challengeTypes = [], isLoading: loadingChallengeTypes } =
     useChallengeTypes();
   const { data: metadata } = useWorldContentMetadata();
+  const { data: board } = useWorldBoard(worldId);
 
   const [challengeTypeId, setChallengeTypeId] = useState(
     configuration?.challengeTypeId ?? "",
   );
   const [slotKey, setSlotKey] = useState<WorldChallengeSlotKey>(
-    configuration?.slotKey ?? "ryo_1",
+    configuration?.slotKey ?? "slot_1",
   );
+  const [displayName, setDisplayName] = useState(configuration?.displayName ?? "");
+  const [description, setDescription] = useState(configuration?.description ?? "");
+  const [instructions, setInstructions] = useState(configuration?.instructions ?? "");
   const [sortOrder, setSortOrder] = useState(configuration?.sortOrder ?? 0);
   const [isEnabled, setIsEnabled] = useState(configuration?.isEnabled ?? true);
   const [localProblems, setLocalProblems] = useState<string[]>([]);
 
   const slots = metadata?.slots ?? [];
-  const allowedFamilies =
-    slots.find((slot) => slot.key === slotKey)?.allowedFamilies ?? [];
+  const otherConfigurations = useMemo(
+    () =>
+      (board?.configurations ?? []).filter(
+        (entry) => entry.id !== configuration?.id,
+      ),
+    [board?.configurations, configuration?.id],
+  );
+  const assignedChallengeTypeIds = new Set(
+    otherConfigurations.map((entry) => entry.challengeTypeId),
+  );
   const selectable = challengeTypes.filter(
     (challengeType) =>
-      allowedFamilies.includes(challengeType.family) &&
-      challengeType.status === "active",
+      challengeType.status === "active" &&
+      !assignedChallengeTypeIds.has(challengeType.id),
   );
+  const occupiedSlots = useMemo(
+    () => new Set(otherConfigurations.map((entry) => entry.slotKey)),
+    [otherConfigurations],
+  );
+  const selectableSlots = slots.filter((slot) => !occupiedSlots.has(slot.key));
+  useEffect(() => {
+    if (!configuration && occupiedSlots.has(slotKey) && selectableSlots[0]) {
+      setSlotKey(selectableSlots[0].key);
+    }
+  }, [configuration, occupiedSlots, selectableSlots, slotKey]);
   const selected = challengeTypes.find(
     (challengeType) => challengeType.id === challengeTypeId,
   );
@@ -85,16 +105,6 @@ export function ConfigurationForm({
     errorMessage: "تعذر حفظ التحدي.",
   });
 
-  const onSlotChange = (next: string) => {
-    const nextSlot = next as WorldChallengeSlotKey;
-    setSlotKey(nextSlot);
-    const nextAllowed =
-      slots.find((slot) => slot.key === nextSlot)?.allowedFamilies ?? [];
-    if (selected && !nextAllowed.includes(selected.family)) {
-      setChallengeTypeId("");
-    }
-  };
-
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const problems = challengeTypeId ? [] : ["اختر المكانيكا أولاً."];
@@ -103,7 +113,15 @@ export function ConfigurationForm({
 
     const ok = await formSubmit.submit(
       buildConfigurationPayload(
-        { challengeTypeId, slotKey, sortOrder, isEnabled },
+        {
+          challengeTypeId,
+          slotKey,
+          displayName,
+          description,
+          instructions,
+          sortOrder,
+          isEnabled,
+        },
         Boolean(configuration),
       ),
     );
@@ -114,14 +132,14 @@ export function ConfigurationForm({
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
         <label className="mb-2 block text-sm font-medium">
-          ١. الخانة في اللوحة
+          ١. الموضع
         </label>
-        <Select value={slotKey} onValueChange={onSlotChange}>
-          <SelectTrigger aria-label="الخانة في اللوحة">
+        <Select value={slotKey} onValueChange={(value: string) => setSlotKey(value as WorldChallengeSlotKey)}>
+          <SelectTrigger aria-label="الموضع في اللوحة">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {slots.map((slot) => (
+            {selectableSlots.map((slot) => (
               <SelectItem key={slot.key} value={slot.key}>
                 {SLOT_KEY_LABEL[slot.key]}
               </SelectItem>
@@ -129,8 +147,7 @@ export function ConfigurationForm({
           </SelectContent>
         </Select>
         <p className="mt-1 text-xs text-muted-foreground">
-          لوحة كل عالم: خانة توقيع، خانتا «اقرأ خصمك»، وخانة مرنة. المكانيكا
-          نفسها تملأ الخانتين.
+          كل عالم يملك أربع خانات متساوية. نوع التحدي الذي تختاره هو ما يحدد طريقة اللعب.
         </p>
       </div>
 
@@ -139,7 +156,7 @@ export function ConfigurationForm({
         <Select
           value={challengeTypeId}
           onValueChange={setChallengeTypeId}
-          disabled={Boolean(configuration) || !selectable.length}
+          disabled={!selectable.length}
         >
           <SelectTrigger aria-label="المكانيكا">
             <SelectValue placeholder="اختر المكانيكا" />
@@ -155,19 +172,40 @@ export function ConfigurationForm({
 
         {!loadingChallengeTypes && !selectable.length && !configuration && (
           <p className="mt-1 text-xs text-destructive">
-            لا توجد مكانيكا نشطة من نوع{" "}
-            {allowedFamilies.map((family) => FAMILY_LABEL[family]).join(" أو ")}.
-            أضفها من تبويب «المكانيكا العامة» واجعل حالتها نشطة.
-          </p>
-        )}
-        {configuration && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            لتغيير المكانيكا، احذف هذا الإعداد وأضف واحداً جديداً.
+            لا توجد مكانيكا نشطة أخرى متاحة. فعّل مكانيكا عامة أو استبدل أحد تحديات اللوحة.
           </p>
         )}
       </div>
 
       {selected && <SelectedMechanicSummary challengeType={selected} />}
+
+      <div className="space-y-3 rounded-xl border p-3">
+        <p className="text-sm font-semibold">النص الظاهر في هذا العالم</p>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">اسم التحدي</label>
+          <Input
+            value={displayName}
+            placeholder={selected?.name ?? "اتركه فارغاً لاستخدام الاسم العام"}
+            onChange={(event) => setDisplayName(event.target.value)}
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">الوصف</label>
+          <Textarea
+            value={description}
+            placeholder="وصف مختصر مناسب لهذا العالم (اختياري)"
+            onChange={(event) => setDescription(event.target.value)}
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">التعليمات</label>
+          <Textarea
+            value={instructions}
+            placeholder="تعليمات اللاعب في هذا العالم (اختياري)"
+            onChange={(event) => setInstructions(event.target.value)}
+          />
+        </div>
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
@@ -209,7 +247,7 @@ export function ConfigurationForm({
   );
 }
 
-/** Everything the mechanic already decides, shown read-only. */
+/** Global runtime facts, shown read-only. */
 function SelectedMechanicSummary({
   challengeType,
 }: {
@@ -221,7 +259,7 @@ function SelectedMechanicSummary({
       <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
       <div className="space-y-0.5">
         <p>
-          <span className="text-muted-foreground">الاسم عند اللاعب: </span>
+          <span className="text-muted-foreground">الاسم العام: </span>
           {challengeType.name}
         </p>
         <p className="text-muted-foreground">
@@ -230,8 +268,8 @@ function SelectedMechanicSummary({
           {timer ? `${timer} ثانية لكل فقرة` : "إيقاع تحدده المكانيكا"}
         </p>
         <p className="text-muted-foreground">
-          الاسم والتوقيت وطريقة العرض ثابتة في كل العوالم. الوسائط تُحدد داخل
-          عنصر المحتوى.
+          طريقة اللعب والتوقيت والنقاط ثابتة في كل العوالم. يمكنك تخصيص الاسم
+          والوصف والتعليمات فقط.
         </p>
       </div>
     </div>

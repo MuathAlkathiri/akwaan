@@ -1,0 +1,182 @@
+import { ConflictException, Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { ScoringService } from '../../scoring/application/scoring.service';
+import { Match, MatchState } from '../domain/match';
+import { MatchSetupMode, MatchStatus } from '../domain/match.constants';
+import { MatchDocument } from './match.schema';
+import { MatchRepository } from './match.repository';
+
+export class MatchConcurrencyError extends ConflictException {
+  constructor() {
+    super({
+      code: 'MATCH_CONCURRENT_MODIFICATION',
+      message: 'The match changed while this command was being applied',
+    });
+  }
+}
+
+const ACTIVE_STATUSES = [MatchStatus.DRAFT, MatchStatus.ACTIVE];
+
+@Injectable()
+export class MongooseMatchRepository implements MatchRepository {
+  constructor(
+    @InjectModel(MatchDocument.name)
+    private readonly model: Model<MatchDocument>,
+    private readonly scoring: ScoringService,
+  ) {}
+
+  async create(match: Match): Promise<void> {
+    await this.model.create(this.toDocument(match.serialize()));
+  }
+
+  async findById(matchId: string): Promise<Match | null> {
+    return this.restore(await this.model.findOne({ matchId }).lean().exec());
+  }
+
+  async findActiveBySessionId(sessionId: string): Promise<Match | null> {
+    return this.restore(
+      await this.model
+        .findOne({ liveSessionId: sessionId, status: { $in: ACTIVE_STATUSES } })
+        .lean()
+        .exec(),
+    );
+  }
+
+  async findLatestBySessionId(sessionId: string): Promise<Match | null> {
+    return this.restore(
+      await this.model
+        .findOne({ liveSessionId: sessionId })
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec(),
+    );
+  }
+
+  /**
+   * Replaces the document only while the stored revision still matches, so two
+   * concurrent commands cannot both win.
+   */
+  async save(match: Match, expectedRevision: number): Promise<void> {
+    const state = match.serialize();
+    const result = await this.model
+      .replaceOne(
+        { matchId: state.id, revision: expectedRevision },
+        this.toDocument(state),
+      )
+      .exec();
+    if (result.modifiedCount !== 1) throw new MatchConcurrencyError();
+  }
+
+  private toDocument(state: MatchState): Record<string, unknown> {
+    return {
+      matchId: state.id,
+      liveSessionId: state.liveSessionId,
+      setupMode: state.setupMode,
+      status: state.status,
+      stage: state.stage,
+      stageEnteredAt: state.stageEnteredAt,
+      revision: state.revision,
+      processedCommandIds: state.processedCommandIds,
+      teams: state.teams,
+      coinToss: state.coinToss,
+      selections: state.selections,
+      occurrences: state.occurrences,
+      currentOccurrenceIndex: state.currentOccurrenceIndex,
+      configuredBoardPositions: state.configuredBoardPositions,
+      selectingTeamId: state.selectingTeamId,
+      pendingChallenge: state.pendingChallenge,
+      currentChallenge: state.currentChallenge,
+      // Stored plainly; the brand is re-applied on restore by the scoring module.
+      scoreEvents: state.scoreEvents.map((event) => ({ ...event })),
+      createdAt: state.createdAt,
+      startedAt: state.startedAt,
+      completedAt: state.completedAt,
+    };
+  }
+
+  private restore(document: MatchDocument | null): Match | null {
+    if (!document) return null;
+    const persistedEvents = (document.scoreEvents ?? []) as unknown[];
+    const scoreEvents = this.scoring.restoreEvents(persistedEvents);
+    const state = {
+      id: document.matchId,
+      liveSessionId: document.liveSessionId,
+      // A stored Match written before the unified redesign carries no setup mode
+      // and must keep playing the flow it was created for.
+      setupMode: document.setupMode ?? MatchSetupMode.LEGACY_SEQUENTIAL,
+      status: document.status,
+      stage: document.stage,
+      stageEnteredAt: new Date(document.stageEnteredAt),
+      revision: document.revision,
+      processedCommandIds: document.processedCommandIds ?? [],
+      teams: document.teams,
+      coinToss: document.coinToss
+        ? {
+            ...(document.coinToss as Record<string, unknown>),
+            resolvedAt: new Date(
+              (document.coinToss as { resolvedAt: string }).resolvedAt,
+            ),
+          }
+        : undefined,
+      selections: (
+        (document.selections ?? []) as Array<Record<string, unknown>>
+      ).map((selection) => ({
+        ...selection,
+        selectedAt: new Date(selection.selectedAt as string),
+      })),
+      occurrences: (
+        (document.occurrences ?? []) as Array<Record<string, unknown>>
+      ).map((occurrence) => ({
+        ...occurrence,
+        slots: Object.fromEntries(
+          Object.entries(
+            (occurrence.slots ?? {}) as Record<string, Record<string, unknown>>,
+          ).map(([slotKey, slot]) => [slotKey, this.restoreSlot(slot)]),
+        ),
+        completedAt: occurrence.completedAt
+          ? new Date(occurrence.completedAt as string)
+          : undefined,
+      })),
+      currentOccurrenceIndex: document.currentOccurrenceIndex,
+      configuredBoardPositions: (document.configuredBoardPositions ??
+        []) as unknown[],
+      selectingTeamId: document.selectingTeamId,
+      pendingChallenge: document.pendingChallenge
+        ? {
+            ...(document.pendingChallenge as Record<string, unknown>),
+            preparedAt: new Date(
+              (document.pendingChallenge as { preparedAt: string }).preparedAt,
+            ),
+          }
+        : undefined,
+      currentChallenge: document.currentChallenge
+        ? {
+            ...(document.currentChallenge as Record<string, unknown>),
+            startedAt: new Date(
+              (document.currentChallenge as { startedAt: string }).startedAt,
+            ),
+          }
+        : undefined,
+      scoreEvents,
+      createdAt: new Date(document.createdAt),
+      startedAt: document.startedAt ? new Date(document.startedAt) : undefined,
+      completedAt: document.completedAt
+        ? new Date(document.completedAt)
+        : undefined,
+    } as unknown as MatchState;
+    return Match.restore(state, scoreEvents);
+  }
+
+  private restoreSlot(slot: Record<string, unknown>): Record<string, unknown> {
+    return {
+      ...slot,
+      startedAt: slot.startedAt
+        ? new Date(slot.startedAt as string)
+        : undefined,
+      completedAt: slot.completedAt
+        ? new Date(slot.completedAt as string)
+        : undefined,
+    };
+  }
+}

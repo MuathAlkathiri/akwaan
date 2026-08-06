@@ -1,5 +1,4 @@
 import { Types } from 'mongoose';
-import { SLOT_KEY_TYPES } from '../domain/world-content.constants';
 import {
   ChallengeTypeView,
   ContentAnswerPayload,
@@ -30,9 +29,6 @@ export function toWorldView(document: World): WorldView {
     name: document.name,
     slug: document.slug,
     status: document.status,
-    ...(document.signatureMechanicId
-      ? { signatureMechanicId: id(document.signatureMechanicId) }
-      : {}),
     soundPack: document.soundPack ?? null,
     timerProfile: document.timerProfile ?? null,
     toneProfile: document.toneProfile ?? null,
@@ -60,7 +56,6 @@ export function toChallengeTypeView(
     name: document.name,
     slug: document.slug,
     family: document.family,
-    isExclusive: document.isExclusive,
     itemStructure: document.itemStructure,
     answerMode: document.answerMode,
     defaultPresentation: normalizePresentation(document.defaultPresentation),
@@ -88,8 +83,9 @@ export function toConfigurationView(
     worldId: id(document.worldId),
     challengeTypeId: id(document.challengeTypeId),
     slotKey: document.slotKey,
-    slotType: SLOT_KEY_TYPES[document.slotKey],
     ...(document.displayName ? { displayName: document.displayName } : {}),
+    ...(document.description ? { description: document.description } : {}),
+    ...(document.instructions ? { instructions: document.instructions } : {}),
     sortOrder: document.sortOrder ?? 0,
     isEnabled: document.isEnabled ?? false,
   };

@@ -26,11 +26,34 @@ export function liveSessionReducer(
   action: LiveSessionAction,
 ): LiveSessionState {
   switch (action.type) {
-    case "snapshot":
+    case "snapshot": {
+      const currentMatch = state.snapshot?.match;
+      const incomingMatch = action.snapshot.match;
+      const matchAdvanced = Boolean(
+        currentMatch &&
+          incomingMatch &&
+          currentMatch.id === incomingMatch.id &&
+          incomingMatch.revision > currentMatch.revision,
+      );
       if (
         state.snapshot &&
         action.snapshot.sessionId === state.snapshot.sessionId &&
         action.snapshot.revision < state.snapshot.revision
+      ) {
+        return state;
+      }
+      if (
+        currentMatch &&
+        incomingMatch &&
+        currentMatch.id === incomingMatch.id &&
+        incomingMatch.revision < currentMatch.revision
+      ) {
+        return state;
+      }
+      if (
+        currentMatch &&
+        !incomingMatch &&
+        action.snapshot.revision <= (state.snapshot?.revision ?? -1)
       ) {
         return state;
       }
@@ -46,7 +69,8 @@ export function liveSessionReducer(
       if (
         state.snapshot?.gameplay &&
         !action.snapshot.gameplay &&
-        action.snapshot.revision <= state.snapshot.revision
+        action.snapshot.revision <= state.snapshot.revision &&
+        !matchAdvanced
       ) {
         return state;
       }
@@ -56,6 +80,7 @@ export function liveSessionReducer(
         snapshotReceivedAtMs: action.receivedAtMs,
         error: undefined,
       };
+    }
     case "connection":
       return { ...state, connection: action.connection };
     case "error":

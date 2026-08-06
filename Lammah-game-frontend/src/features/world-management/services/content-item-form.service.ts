@@ -1,4 +1,6 @@
 import type {
+  DistributedInformationMergeOption,
+  DistributedInformationPayload,
   ChallengeAnswerMode,
   ContentAnswerPayload,
   ContentItem,
@@ -30,6 +32,56 @@ export interface ContentItemFormValues {
   notes: string;
   answer: AnswerFormState;
   top10: Top10FormState;
+  distributed: DistributedFormState;
+}
+
+/** One of the three fixed private segments of a "ركّبها" item. */
+export interface DistributedSegmentFormState {
+  id: "A" | "B" | "C";
+  contentAr: string;
+  contentEn: string;
+  imageUrl: string;
+}
+
+export type DistributedMergeKey = "AB_C" | "AC_B" | "BC_A";
+
+export interface DistributedFormState {
+  /** Set when a selected mechanic is the ركّبها wrapper. */
+  enabled: boolean;
+  publicPromptAr: string;
+  publicPromptEn: string;
+  segments: DistributedSegmentFormState[];
+  /** The author-approved two-player splits, at least one. */
+  mergeKeys: DistributedMergeKey[];
+  safetyConfirmed: boolean;
+  explanation: string;
+}
+
+/** Each split gives one player two segments and the other the remaining one. */
+export const DISTRIBUTED_MERGES: Record<
+  DistributedMergeKey,
+  { label: string; first: Array<"A" | "B" | "C">; second: Array<"A" | "B" | "C"> }
+> = {
+  AB_C: { label: "A+B | C", first: ["A", "B"], second: ["C"] },
+  AC_B: { label: "A+C | B", first: ["A", "C"], second: ["B"] },
+  BC_A: { label: "B+C | A", first: ["B", "C"], second: ["A"] },
+};
+
+function emptyDistributedState(): DistributedFormState {
+  return {
+    enabled: false,
+    publicPromptAr: "",
+    publicPromptEn: "",
+    segments: (["A", "B", "C"] as const).map((id) => ({
+      id,
+      contentAr: "",
+      contentEn: "",
+      imageUrl: "",
+    })),
+    mergeKeys: [],
+    safetyConfirmed: false,
+    explanation: "",
+  };
 }
 
 export interface Top10CardFormState {
@@ -46,6 +98,7 @@ export interface Top10FormState {
   instruction: string;
   rankingBasis: string;
   sourceLabel: string;
+  sourceUrl: string;
   asOfDate: string;
   explanation: string;
   cards: Top10CardFormState[];
@@ -58,6 +111,7 @@ function emptyTop10State(): Top10FormState {
     instruction: "",
     rankingBasis: "",
     sourceLabel: "",
+    sourceUrl: "",
     asOfDate: "",
     explanation: "",
     cards: Array.from({ length: 14 }, (_, index) => ({
@@ -117,6 +171,51 @@ export function emptyContentItemForm(scopeId: string): ContentItemFormValues {
     notes: "",
     answer: emptyAnswerState(),
     top10: emptyTop10State(),
+    distributed: emptyDistributedState(),
+  };
+}
+
+function mergeKeyOf(
+  option: {
+    firstParticipantSegmentIds?: string[];
+    secondParticipantSegmentIds?: string[];
+  },
+): DistributedMergeKey | undefined {
+  const pair = [...(option.firstParticipantSegmentIds ?? [])].sort().join("");
+  const single = (option.secondParticipantSegmentIds ?? []).join("");
+  const entry = Object.entries(DISTRIBUTED_MERGES).find(
+    ([, value]) =>
+      value.first.slice().sort().join("") === pair &&
+      value.second.join("") === single,
+  );
+  return entry?.[0] as DistributedMergeKey | undefined;
+}
+
+export function toDistributedFormState(
+  payload: DistributedInformationPayload | undefined,
+): DistributedFormState {
+  if (payload?.variant !== "three-segment-race") return emptyDistributedState();
+  const base = emptyDistributedState();
+  return {
+    enabled: true,
+    publicPromptAr: payload.publicPrompt?.ar ?? "",
+    publicPromptEn: payload.publicPrompt?.en ?? "",
+    segments: base.segments.map((segment) => {
+      const authored = payload.segments?.find(
+        (candidate: { id: string }) => candidate.id === segment.id,
+      );
+      return {
+        ...segment,
+        contentAr: authored?.content?.ar ?? "",
+        contentEn: authored?.content?.en ?? "",
+        imageUrl: authored?.media?.assets?.[0]?.url ?? "",
+      };
+    }),
+    mergeKeys: (payload.twoPlayerMergeOptions ?? [])
+      .map((option: DistributedInformationMergeOption) => mergeKeyOf(option))
+      .filter((key): key is DistributedMergeKey => Boolean(key)),
+    safetyConfirmed: payload.authorSafetyConfirmation === true,
+    explanation: payload.explanation ?? "",
   };
 }
 
@@ -162,6 +261,9 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
         clue: fragment.clue.ar,
       })),
     },
+    distributed: toDistributedFormState(
+      item.mechanicPayload as DistributedInformationPayload | undefined,
+    ),
     top10:
       top10Payload?.variant === "poison-deck"
         ? {
@@ -170,6 +272,7 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
             instruction: top10Payload.instruction ?? "",
             rankingBasis: top10Payload.rankingBasis ?? "",
             sourceLabel: top10Payload.sourceLabel ?? "",
+            sourceUrl: top10Payload.sourceUrl ?? "",
             asOfDate: top10Payload.asOfDate ?? "",
             explanation: top10Payload.explanation ?? "",
             cards: Array.from({ length: 14 }, (_, index) => {
@@ -283,6 +386,7 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
             instruction: values.top10.instruction.trim(),
             rankingBasis: values.top10.rankingBasis.trim(),
             sourceLabel: values.top10.sourceLabel.trim(),
+            sourceUrl: values.top10.sourceUrl.trim(),
             ...(values.top10.asOfDate
               ? { asOfDate: values.top10.asOfDate }
               : {}),
@@ -310,6 +414,43 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
               : {}),
           }
       : undefined;
+  // "ركّبها" carries only the distributed parts; the answer stays in
+  // answerPayload, the one validated home every mechanic already uses.
+  const distributedMechanicPayload = values.distributed.enabled
+    ? {
+        variant: "three-segment-race",
+        publicPrompt: {
+          ar: values.distributed.publicPromptAr.trim(),
+          ...(values.distributed.publicPromptEn.trim()
+            ? { en: values.distributed.publicPromptEn.trim() }
+            : {}),
+        },
+        segments: values.distributed.segments.map((segment) => ({
+          id: segment.id,
+          content: {
+            ar: segment.contentAr.trim(),
+            ...(segment.contentEn.trim() ? { en: segment.contentEn.trim() } : {}),
+          },
+          ...(segment.imageUrl.trim()
+            ? {
+                media: {
+                  type: "image",
+                  assets: [{ url: segment.imageUrl.trim() }],
+                },
+              }
+            : {}),
+        })),
+        twoPlayerMergeOptions: values.distributed.mergeKeys.map((key) => ({
+          firstParticipantSegmentIds: DISTRIBUTED_MERGES[key].first,
+          secondParticipantSegmentIds: DISTRIBUTED_MERGES[key].second,
+        })),
+        supportedTeamSizes: [2, 3],
+        authorSafetyConfirmation: values.distributed.safetyConfirmed,
+        ...(values.distributed.explanation.trim()
+          ? { explanation: values.distributed.explanation.trim() }
+          : {}),
+      }
+    : undefined;
   return {
     scopeId: values.scopeId,
     prompt: {
@@ -327,6 +468,9 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
         }),
     answerPayload: buildAnswerPayload(values.answer),
     ...(top10MechanicPayload ? { mechanicPayload: top10MechanicPayload } : {}),
+    ...(distributedMechanicPayload
+      ? { mechanicPayload: distributedMechanicPayload }
+      : {}),
     isReusableAcrossSessions: values.isReusableAcrossSessions,
     status: values.status,
     ...(values.notes.trim()
@@ -336,11 +480,43 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
 }
 
 /** Presence-only checks that keep the form usable before the server replies. */
+/**
+ * The machine-checkable half of the "ركّبها" contract, mirrored from the backend
+ * policy so an author sees the problem before saving rather than after.
+ */
+export function findDistributedProblems(
+  values: ContentItemFormValues,
+): string[] {
+  const problems: string[] = [];
+  const { distributed } = values;
+  if (!distributed.publicPromptAr.trim()) {
+    problems.push("السؤال العام مطلوب، ويراه كل أفراد الفريق.");
+  }
+  if (distributed.segments.some((segment) => !segment.contentAr.trim())) {
+    problems.push("اكتب محتوى المعلومات الثلاث (أ، ب، ج).");
+  }
+  if (!distributed.mergeKeys.length) {
+    problems.push("اختر توزيعاً آمناً واحداً على الأقل لفريق من لاعبين.");
+  }
+  if (!["match", "closest", "multiple_choice"].includes(values.answer.mode)) {
+    problems.push("طريقة الإجابة يجب أن تكون نصاً قصيراً أو رقماً أو اختياراً من متعدد.");
+  }
+  if (values.status === "ready" && !distributed.safetyConfirmed) {
+    problems.push(
+      "أكّد أنك راجعت التوزيع قبل جعل العنصر جاهزاً.",
+    );
+  }
+  return problems;
+}
+
 export function findLocalFormProblems(values: ContentItemFormValues): string[] {
   const problems: string[] = [];
   if (!values.promptAr.trim()) problems.push("نص السؤال بالعربية مطلوب.");
   if (!values.compatibleChallengeTypeIds.length) {
     problems.push("اختر نوع تحدٍ واحداً متوافقاً على الأقل.");
+  }
+  if (values.distributed.enabled) {
+    problems.push(...findDistributedProblems(values));
   }
   return problems;
 }

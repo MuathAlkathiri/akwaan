@@ -41,6 +41,11 @@ import {
   Top10Result,
 } from '../domain/top10-poison-deck.plugin';
 import { GameplayDeadlineScheduler } from './gameplay-deadline.scheduler';
+import {
+  DISTRIBUTED_INFORMATION_MODE_KEY,
+  DistributedResult,
+} from '../domain/distributed-information.plugin';
+import { GameplayObserverRegistry } from './gameplay-observer.registry';
 
 @Injectable()
 export class SubmitGameplayCommand {
@@ -63,6 +68,7 @@ export class SubmitGameplayCommand {
     private readonly scoring: ScoringService,
     @Inject(forwardRef(() => GameplayDeadlineScheduler))
     private readonly deadlines: GameplayDeadlineScheduler,
+    private readonly observers: GameplayObserverRegistry,
   ) {}
 
   async execute(
@@ -141,6 +147,11 @@ export class SubmitGameplayCommand {
           roundId: round.id,
           activeTeamId: round.activeTeamId,
           activeParticipantId: round.activeParticipantId,
+          // Never taken from the payload: a mechanic that authorises by player
+          // must be told who the authenticated submitter is.
+          ...(command.actor.kind === 'participant'
+            ? { submitterParticipantId: command.actor.participantId }
+            : {}),
           runtimeState: runtimeState.runtimeState,
           now,
         },
@@ -190,6 +201,43 @@ export class SubmitGameplayCommand {
           },
         };
       }
+      if (
+        runtime.modeKey === DISTRIBUTED_INFORMATION_MODE_KEY &&
+        handled.runtimeState.phase === 'completed' &&
+        !handled.runtimeState.scoreEventsJson
+      ) {
+        const result = JSON.parse(
+          String(handled.runtimeState.resultJson),
+        ) as DistributedResult;
+        const events = this.scoring.score(
+          SCORING_RULE_IDS.DISTRIBUTED_INFORMATION_RACE_RESULT,
+          {
+            teamIds: Object.keys(result.solved) as [string, string],
+            winnerTeamId: result.winnerTeamId,
+            tie: result.tie,
+            reason: result.reason,
+            solved: result.solved,
+            wrongAttempts: result.wrongAttempts,
+            elapsedMsAtLastProgress: result.elapsedMsAtLastProgress,
+            contentItemIds: JSON.parse(
+              String(handled.runtimeState.contentItemIdsJson ?? '[]'),
+            ) as string[],
+          },
+          {
+            matchId: session.id,
+            challengeSessionId: runtime.id,
+            occurredAt: now,
+          },
+        );
+        handled = {
+          ...handled,
+          runtimeState: {
+            ...handled.runtimeState,
+            // A tie mints nothing, but the marker still records that scoring ran.
+            scoreEventsJson: JSON.stringify(events),
+          },
+        };
+      }
       const previousSessionRevision = session.revision;
       const sessionChanged = this.applyEffects(handled.effects, session, now);
       if (sessionChanged) session.completeCommand(command.commandId, now);
@@ -208,7 +256,8 @@ export class SubmitGameplayCommand {
       });
       const terminal =
         this.completeBombIfTerminal(session, runtime, command, now) ||
-        this.completeTop10IfTerminal(runtime, command, now);
+        this.completeTop10IfTerminal(runtime, command, now) ||
+        this.completeDistributedIfTerminal(runtime, command, now);
       if (sessionChanged) {
         await context.saveSession(session, previousSessionRevision);
       }
@@ -258,6 +307,13 @@ export class SubmitGameplayCommand {
         sessionRevision: result.session.revision,
       },
     );
+    // Mode commands are the path a Top 10 deck finishes on, so a layer above the
+    // session learns about the terminal runtime here too.
+    await this.observers.notifyRuntimeMutated({
+      sessionId: command.sessionId,
+      runtimeId: result.runtime.id,
+      runtimeState: result.runtime.serialize(),
+    });
     if (!result.terminal) {
       await this.expiration.schedule(command.sessionId);
       await this.deadlines.schedule(command.sessionId);
@@ -271,7 +327,7 @@ export class SubmitGameplayCommand {
       commandId: command.commandId,
       actorId: command.actor.actorId,
     });
-    return snapshot;
+    return this.observers.enrichSnapshot(snapshot, command.actor);
   }
 
   private completeBombIfTerminal(
@@ -316,6 +372,40 @@ export class SubmitGameplayCommand {
           : 'items_completed',
       now,
     });
+    runtime.complete(
+      `${command.commandId}:runtime-complete`,
+      command.actor.actorId,
+      now,
+    );
+    return true;
+  }
+
+  /**
+   * "ركّبها" resolves inside the plugin — first finisher or deadline — so the
+   * runtime is closed as soon as its own state says the race is over.
+   */
+  private completeDistributedIfTerminal(
+    runtime: import('../domain/gameplay-runtime').GameplayRuntime,
+    command: GameplayRuntimeCommand,
+    now: Date,
+  ): boolean {
+    if (runtime.modeKey !== DISTRIBUTED_INFORMATION_MODE_KEY) return false;
+    const state = runtime.serialize();
+    if (state.runtimeState.phase !== 'completed') return false;
+    const round = state.activeRound;
+    if (round) {
+      runtime.completeRound({
+        roundId: round.id,
+        commandId: `${command.commandId}:round-complete`,
+        actorId: command.actor.actorId,
+        reason: 'distributed-information-resolved',
+        result: {
+          resultJson: state.runtimeState.resultJson,
+          scoreEventsJson: state.runtimeState.scoreEventsJson,
+        },
+        now,
+      });
+    }
     runtime.complete(
       `${command.commandId}:runtime-complete`,
       command.actor.actorId,

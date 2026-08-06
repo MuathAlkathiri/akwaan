@@ -16,13 +16,17 @@ import {
   toContentItemForm,
 } from "@/features/world-management/services/content-item-form.service";
 import {
+  describeBlockingReferences,
   describeIssues,
+  extractBlockingReferences,
   extractIssues,
+  toReadinessChecklist,
   getReadinessLabel,
   getReadinessTone,
   localizeReadinessIssue,
 } from "@/features/world-management/utils/readiness.util";
 import { presentWorldReadiness } from "@/features/world-management/utils/world-readiness.presenter";
+import { worldChallengeConfigurationName } from "@/features/world-management/utils/world-content.labels";
 import { adminNavigation } from "@/config/admin-navigation";
 import type { ContentItem, World } from "@/features/world-management/types";
 
@@ -35,14 +39,14 @@ describe("World Management admin navigation", () => {
 });
 
 describe("world and scope payloads", () => {
-  it("omits an unset Signature mechanic instead of sending an empty value", () => {
+  it("builds a World without a mechanic-specific board reference", () => {
     const payload = buildWorldPayload({
       name: "  Football  ",
       slug: "football",
       status: "draft",
     });
     expect(payload).toMatchObject({ name: "Football", slug: "football" });
-    expect("signatureMechanicId" in payload).toBe(false);
+    expect(Object.keys(payload)).not.toContain("signatureMechanicId");
   });
 
   it("carries the World presentation profiles and drops blank ones", () => {
@@ -50,13 +54,11 @@ describe("world and scope payloads", () => {
       name: "Anime",
       slug: "anime",
       status: "active",
-      signatureMechanicId: "challenge-1",
       soundPack: "anime-opening",
       timerProfile: "  ",
       toneProfile: "playful",
     });
     expect(payload).toMatchObject({
-      signatureMechanicId: "challenge-1",
       soundPack: "anime-opening",
       timerProfile: undefined,
       toneProfile: "playful",
@@ -76,6 +78,18 @@ describe("world and scope payloads", () => {
 });
 
 describe("mechanic and configuration payloads", () => {
+  it("falls back to the global mechanic name when no World name is configured", () => {
+    const configuration = {
+      effectiveName: "",
+      displayName: undefined,
+      challengeType: { name: "Read Your Opponent" },
+    } as Parameters<typeof worldChallengeConfigurationName>[0];
+
+    expect(worldChallengeConfigurationName(configuration)).toBe(
+      "Read Your Opponent",
+    );
+  });
+
   it("never sends exclusivity: the backend derives it from the family", () => {
     const payload = buildChallengeTypePayload({
       name: "Read Your Opponent",
@@ -93,41 +107,44 @@ describe("mechanic and configuration payloads", () => {
     expect(payload.scoringRuleId).toBe("ryo.payoff-matrix");
   });
 
-  it("assigns a mechanic to a board position and nothing else", () => {
-    // Timing, input, reveal, and name belong to the mechanic; media belongs to
-    // the ContentItem. Assignment carries none of them.
+  it("assigns a mechanic and presentation copy to a generic position", () => {
     const values = {
       challengeTypeId: "challenge-1",
-      slotKey: "ryo_2" as const,
+      slotKey: "slot_3" as const,
+      displayName: "مين أقرب",
+      description: "وصف كرة القدم",
+      instructions: "اختر الإجابة الأقرب",
       sortOrder: 3,
       isEnabled: true,
     };
     expect(buildConfigurationPayload(values)).toEqual({
       challengeTypeId: "challenge-1",
-      slotKey: "ryo_2",
+      slotKey: "slot_3",
+      displayName: "مين أقرب",
+      description: "وصف كرة القدم",
+      instructions: "اختر الإجابة الأقرب",
       sortOrder: 3,
       isEnabled: true,
     });
-    // The mechanic is immutable once assigned.
-    expect("challengeTypeId" in buildConfigurationPayload(values, true)).toBe(
-      false,
+    expect(buildConfigurationPayload(values, true).challengeTypeId).toBe(
+      "challenge-1",
     );
   });
 
-  it("lets the same canonical mechanic fill both RYO positions", () => {
+  it("keeps generic positions independent of mechanic identity", () => {
     const first = buildConfigurationPayload({
       challengeTypeId: "ryo",
-      slotKey: "ryo_1",
+      slotKey: "slot_2",
       sortOrder: 1,
       isEnabled: true,
     });
     const second = buildConfigurationPayload({
-      challengeTypeId: "ryo",
-      slotKey: "ryo_2",
+      challengeTypeId: "top-10",
+      slotKey: "slot_3",
       sortOrder: 2,
       isEnabled: true,
     });
-    expect(first.challengeTypeId).toBe(second.challengeTypeId);
+    expect(first.challengeTypeId).not.toBe(second.challengeTypeId);
     expect(first.slotKey).not.toBe(second.slotKey);
   });
 });
@@ -218,8 +235,11 @@ describe("content item answer payloads", () => {
     values.answer.mode = "top_10";
     values.top10.variant = "poison-deck";
     values.top10.title = "أفضل عشرة هدافين";
+    values.top10.instruction = "احتفظ بالبطاقة أو أرسلها لخصمك";
     values.top10.rankingBasis = "عدد الأهداف الرسمية";
     values.top10.sourceLabel = "الاتحاد الرسمي";
+    values.top10.sourceUrl = "https://example.com/ranking";
+    values.top10.asOfDate = "2026-08-04";
     values.top10.cards = values.top10.cards.map((card, index) => ({
       ...card,
       label: `لاعب ${index + 1}`,
@@ -229,6 +249,9 @@ describe("content item answer payloads", () => {
     expect(payload.mechanicPayload).toMatchObject({
       variant: "poison-deck",
       title: "أفضل عشرة هدافين",
+      instruction: "احتفظ بالبطاقة أو أرسلها لخصمك",
+      sourceUrl: "https://example.com/ranking",
+      asOfDate: "2026-08-04",
       candidates: expect.arrayContaining([
         expect.objectContaining({ id: "card-1", label: "لاعب 1" }),
       ]),
@@ -240,7 +263,7 @@ describe("content item answer payloads", () => {
         decoyCandidateIds: expect.any(Array),
       }),
     );
-    const mechanic = payload.mechanicPayload as {
+    const mechanic = payload.mechanicPayload as unknown as {
       candidates: unknown[];
       rankedAnswer: unknown[];
       decoyCandidateIds: unknown[];
@@ -248,6 +271,7 @@ describe("content item answer payloads", () => {
     expect(mechanic.candidates).toHaveLength(14);
     expect(mechanic.rankedAnswer).toHaveLength(10);
     expect(mechanic.decoyCandidateIds).toHaveLength(4);
+    expect(payload).not.toHaveProperty("metadata");
   });
 
   it("omits media entirely when the item has none", () => {
@@ -318,7 +342,7 @@ describe("readiness presentation", () => {
           code: "WORLD_CONTENT_VALIDATION_FAILED",
           issues: [
             { code: "BOARD_SLOT_COUNT_MISMATCH", message: "اللوحة ناقصة" },
-            { code: "SIGNATURE_MECHANIC_NOT_SET", message: "لا توقيع" },
+            { code: "DUPLICATE_BOARD_CHALLENGE_TYPE", message: "مكرر" },
             { notAnIssue: true },
           ],
         },
@@ -326,9 +350,80 @@ describe("readiness presentation", () => {
     };
     expect(describeIssues(extractIssues(error))).toEqual([
       "أكمل تحديات اللوحة الأربعة.",
-      "اختر تحديًا خاصًا يميّز هذا العالم.",
+      "اختر مكانيكا مختلفة؛ لا يمكن تكرار التحدي داخل العالم نفسه.",
     ]);
     expect(extractIssues(new Error("network"))).toEqual([]);
+  });
+
+  it("names the records that block a delete instead of only counting them", () => {
+    const error = {
+      response: {
+        data: {
+          code: "WORLD_CONTENT_STILL_REFERENCED",
+          message: '1 record(s) in "legacy-questions" still reference this challengeType',
+          references: [
+            {
+              source: "legacy-questions",
+              id: "6a6e5b519e10fe3b881da12a",
+              label: "سؤال بدون نص",
+              status: "draft",
+            },
+          ],
+        },
+      },
+    };
+
+    const references = extractBlockingReferences(error);
+    expect(references).toHaveLength(1);
+    const described = describeBlockingReferences(references);
+    // The admin can find the record: where it lives, what it is, and its id.
+    expect(described).toContain("أسئلة قديمة");
+    expect(described).toContain("6a6e5b519e10fe3b881da12a");
+    expect(described).toContain("draft");
+  });
+
+  it("turns a readiness report into an actionable checklist", () => {
+    const checks = toReadinessChecklist({
+      readiness: "limited",
+      blockers: [
+        { code: "CHALLENGE_TIMER_REQUIRED", message: "timer" },
+      ],
+      warnings: [
+        { code: "SCORING_RULE_AWAITING_MECHANIC", message: "awaiting" },
+      ],
+    });
+
+    expect(checks.map((check) => check.state)).toEqual(["blocker", "warning"]);
+    expect(checks[0].text).toBe("حدّد مدة المؤقّت لهذا التحدي.");
+    // The warning that used to fall through to "review this section" now says
+    // exactly why the mechanic is not playable.
+    expect(checks[1].text).toContain("لم تُبرمج بعد");
+    expect(checks[1].text).not.toContain("راجع هذا القسم");
+  });
+
+  it("shows one satisfied line when nothing is missing", () => {
+    const checks = toReadinessChecklist(
+      { readiness: "ready", blockers: [], warnings: [] },
+      "جاهزة للاستخدام.",
+    );
+    expect(checks).toEqual([
+      { code: "READY", state: "ok", text: "جاهزة للاستخدام." },
+    ]);
+  });
+
+  it("still falls back readably for a code it has no copy for", () => {
+    const checks = toReadinessChecklist({
+      readiness: "not_ready",
+      blockers: [{ code: "SOMETHING_BRAND_NEW", message: "x" }],
+      warnings: [],
+    });
+    expect(checks[0].state).toBe("blocker");
+    expect(checks[0].text).toBe("راجع هذا القسم وأكمل المعلومات المطلوبة.");
+  });
+
+  it("says nothing extra when the server named no records", () => {
+    expect(extractBlockingReferences(new Error("boom"))).toEqual([]);
+    expect(describeBlockingReferences([])).toBe("");
   });
 
   it("never exposes a raw backend validation message", () => {
@@ -358,21 +453,21 @@ describe("readiness presentation", () => {
         ],
         warnings: [],
         boardReady: false,
-        hasRelationalFlexSlot: false,
+        hasRelationalChallenge: false,
         scopeCompatibility: [],
         board: {
           worldId: "world-1",
           blockers: [],
           warnings: [],
-          slots: [{ slotKey: "ryo_1" }],
+          slots: [{ slotKey: "slot_1" }],
         },
       },
     } as unknown as World;
     const view = presentWorldReadiness(world);
     expect(view.total).toBe(6);
     expect(view.complete).toBe(2);
-    expect(view.items.find((item) => item.id === "ryo-1")?.complete).toBe(true);
-    expect(view.items.find((item) => item.id === "ryo-2")).toMatchObject({
+    expect(view.items.find((item) => item.id === "slot-1")?.complete).toBe(true);
+    expect(view.items.find((item) => item.id === "slot-2")).toMatchObject({
       complete: false,
       actionTarget: "board",
     });

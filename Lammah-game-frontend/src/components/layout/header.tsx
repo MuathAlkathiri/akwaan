@@ -11,12 +11,13 @@ import {
   adminNavigation,
   isAdminNavigationActive,
 } from "@/config/admin-navigation";
+import { isJourneyPath } from "./index";
 
+/** Worlds are the primary destination; everything else hangs off them. */
 const userNavItems = [
   { label: "الرئيسية", href: "/" },
-  { label: "الألعاب", href: "/games" },
+  { label: "العوالم", href: "/#all-worlds" },
   { label: "ألعابي", href: "/games" },
-  { label: "حسابي", href: "/#account" },
 ];
 
 export function Header() {
@@ -25,7 +26,9 @@ export function Header() {
   const visibleItems = isAdmin ? adminNavigation : userNavItems;
   const displayName = user?.fullName || "لاعب";
   const initial = displayName.trim().charAt(0) || "ل";
-  const isPlayerExperience = isAuthenticated && !isAdmin;
+  // The journey screens are warm and light, so the header stays light there too.
+  const isPlayerExperience =
+    isAuthenticated && !isAdmin && !isJourneyPath(pathname);
 
   return (
     <header

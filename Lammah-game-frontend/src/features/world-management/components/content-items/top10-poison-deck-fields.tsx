@@ -90,7 +90,15 @@ export function Top10PoisonDeckFields({
                 onChange={(event) => set({ sourceLabel: event.target.value })}
               />
             </Field>
-            <Field label="تاريخ البيانات (اختياري)">
+            <Field label="رابط المصدر">
+              <Input
+                type="url"
+                value={value.sourceUrl}
+                placeholder="https://example.com/ranking"
+                onChange={(event) => set({ sourceUrl: event.target.value })}
+              />
+            </Field>
+            <Field label="تاريخ البيانات">
               <Input
                 type="date"
                 value={value.asOfDate}

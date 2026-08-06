@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,11 +32,13 @@ import {
 import { FormIssueList } from "../shared";
 import { AnswerPayloadFields } from "./answer-payload-fields";
 import { Top10PoisonDeckFields } from "./top10-poison-deck-fields";
+import { DistributedInformationFields } from "./distributed-information-fields";
 import {
   CONTENT_STATUSES,
   CONTENT_STATUS_LABEL,
   MEDIA_TYPES,
   MEDIA_TYPE_LABEL,
+  worldChallengeConfigurationName,
 } from "../../utils/world-content.labels";
 import type {
   ContentItem,
@@ -98,6 +100,22 @@ export function ContentItemForm({
           shared.filter((mode) => modes.includes(mode)),
         )
     : [];
+
+  const distributedSelected = selectedChallengeTypes.some(
+    (configuration) => configuration.challengeType.answerMode === "distributed",
+  );
+  // Keep the payload flag in step with the selection, so deselecting the
+  // mechanic stops emitting its payload.
+  useEffect(() => {
+    setValues((current) =>
+      current.distributed.enabled === distributedSelected
+        ? current
+        : {
+            ...current,
+            distributed: { ...current.distributed, enabled: distributedSelected },
+          },
+    );
+  }, [distributedSelected]);
 
   const formSubmit = useEntityFormSubmit<ContentItem>({
     entityId: contentItem?.id,
@@ -179,22 +197,36 @@ export function ContentItemForm({
             لا توجد تحديات متاحة لهذا النطاق.
           </p>
         )}
-        {availableChallengeTypes.map((configuration) => (
-          <label
-            key={configuration.id}
-            className="flex items-center gap-2 text-sm"
-          >
-            <Checkbox
-              checked={values.compatibleChallengeTypeIds.includes(
-                configuration.challengeTypeId,
-              )}
-              onCheckedChange={() =>
-                toggleChallengeType(configuration.challengeTypeId)
-              }
-            />
-            <span>{configuration.displayName}</span>
-          </label>
-        ))}
+        {availableChallengeTypes.map((configuration) => {
+          const challengeName = worldChallengeConfigurationName(configuration);
+          const hasWorldName =
+            challengeName !== configuration.challengeType.name;
+
+          return (
+            <label
+              key={configuration.id}
+              className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-muted/60"
+            >
+              <Checkbox
+                className="mt-0.5"
+                checked={values.compatibleChallengeTypeIds.includes(
+                  configuration.challengeTypeId,
+                )}
+                onCheckedChange={() =>
+                  toggleChallengeType(configuration.challengeTypeId)
+                }
+              />
+              <span className="min-w-0">
+                <span className="block font-medium">{challengeName}</span>
+                {hasWorldName && (
+                  <span className="block text-xs text-muted-foreground">
+                    نوع التحدي: {configuration.challengeType.name}
+                  </span>
+                )}
+              </span>
+            </label>
+          );
+        })}
       </div>
 
       <AnswerPayloadFields
@@ -207,6 +239,14 @@ export function ContentItemForm({
         <Top10PoisonDeckFields
           value={values.top10}
           onChange={(top10) => set({ top10 })}
+        />
+      )}
+
+      {values.distributed.enabled && (
+        <DistributedInformationFields
+          value={values.distributed}
+          onChange={(distributed) => set({ distributed })}
+          answerMode={values.answer.mode}
         />
       )}
 

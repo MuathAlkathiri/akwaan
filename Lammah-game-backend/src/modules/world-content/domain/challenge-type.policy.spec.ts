@@ -63,23 +63,6 @@ describe('ChallengeTypePolicy', () => {
     ).toContain('INVALID_ITEM_STRUCTURE');
   });
 
-  it('requires a Signature mechanic to be exclusive', () => {
-    expect(
-      codes(
-        challengeType({
-          family: ChallengeFamily.SIGNATURE,
-          isExclusive: false,
-        }),
-      ),
-    ).toContain('SIGNATURE_MUST_BE_EXCLUSIVE');
-  });
-
-  it('refuses to let a shared family be marked exclusive', () => {
-    expect(codes(challengeType({ isExclusive: true }))).toContain(
-      'SHARED_FAMILY_MUST_NOT_BE_EXCLUSIVE',
-    );
-  });
-
   it('blocks activation without a scoring rule', () => {
     expect(codes(challengeType({ scoringRuleId: '' }))).toContain(
       'SCORING_RULE_REQUIRED',

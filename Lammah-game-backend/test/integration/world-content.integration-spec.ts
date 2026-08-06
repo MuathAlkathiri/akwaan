@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
-import { Connection } from 'mongoose';
+import { Connection, Types } from 'mongoose';
 import { createIntegrationTestApp } from '../helpers/test-app';
 import {
   connectTestDatabase,
@@ -16,7 +16,6 @@ import {
   ChallengeFamily,
   ContentItemStatus,
   WorldChallengeSlotKey,
-  WorldChallengeSlotType,
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
 import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
@@ -87,7 +86,7 @@ describe('World Management HTTP integration', () => {
           family.value === ChallengeFamily.SIGNATURE,
       ),
     ).toMatchObject({
-      mustBeExclusive: true,
+      mustBeExclusive: false,
       allowedAnswerModes: expect.arrayContaining([ChallengeAnswerMode.RYO]),
     });
     expect(
@@ -98,26 +97,10 @@ describe('World Management HTTP integration', () => {
     // constants the policies enforce.
     expect(metadata.boardSlotCount).toBe(4);
     expect(metadata.slots).toEqual([
-      {
-        key: WorldChallengeSlotKey.SIGNATURE,
-        slotType: WorldChallengeSlotType.SIGNATURE,
-        allowedFamilies: [ChallengeFamily.SIGNATURE],
-      },
-      {
-        key: WorldChallengeSlotKey.RYO_1,
-        slotType: WorldChallengeSlotType.RYO,
-        allowedFamilies: [ChallengeFamily.RYO],
-      },
-      {
-        key: WorldChallengeSlotKey.RYO_2,
-        slotType: WorldChallengeSlotType.RYO,
-        allowedFamilies: [ChallengeFamily.RYO],
-      },
-      {
-        key: WorldChallengeSlotKey.FLEX,
-        slotType: WorldChallengeSlotType.FLEX,
-        allowedFamilies: [ChallengeFamily.COOP, ChallengeFamily.RELATIONAL],
-      },
+      { key: WorldChallengeSlotKey.SLOT_1 },
+      { key: WorldChallengeSlotKey.SLOT_2 },
+      { key: WorldChallengeSlotKey.SLOT_3 },
+      { key: WorldChallengeSlotKey.SLOT_4 },
     ]);
     expect(
       metadata.answerModeCompatibility.find(
@@ -236,9 +219,9 @@ describe('World Management HTTP integration', () => {
       (challengeType: { slug: string }) => challengeType.slug === 'ryo-shared',
     );
 
-    // Exclusivity is derived from the family, not from the request body.
-    expect(signature.isExclusive).toBe(true);
-    expect(relational.isExclusive).toBe(false);
+    // Challenge Types are global and reusable across Worlds.
+    expect(signature).not.toHaveProperty('isExclusive');
+    expect(relational).not.toHaveProperty('isExclusive');
 
     const scope = (
       await bearer(authed().post(`/admin/worlds/${world.id}/scopes`))
@@ -257,35 +240,32 @@ describe('World Management HTTP integration', () => {
 
     await configure({
       challengeTypeId: signature.id,
-      slotKey: WorldChallengeSlotKey.SIGNATURE,
+      slotKey: WorldChallengeSlotKey.SLOT_1,
       isEnabled: true,
     }).expect(201);
-    // One canonical mechanic fills both RYO positions — no duplicate definition
-    // and no per-World rename.
     await configure({
       challengeTypeId: sharedRyo.id,
-      slotKey: WorldChallengeSlotKey.RYO_1,
+      slotKey: WorldChallengeSlotKey.SLOT_2,
       isEnabled: true,
       sortOrder: 1,
     }).expect(201);
     await configure({
-      challengeTypeId: sharedRyo.id,
-      slotKey: WorldChallengeSlotKey.RYO_2,
+      challengeTypeId: ryoTwo.id,
+      slotKey: WorldChallengeSlotKey.SLOT_3,
       isEnabled: true,
       sortOrder: 2,
+      displayName: 'اقرأ الأرقام',
+      description: 'نسخة كرة القدم',
+      instructions: 'اختر الرقم الأقرب',
     }).expect(201);
 
-    // A globally fixed mechanic refuses a World-specific label outright.
-    const renamed = await bearer(
-      authed().post(`/admin/worlds/${world.id}/challenge-configurations`),
-    )
-      .send({
-        challengeTypeId: ryoTwo.id,
-        slotKey: WorldChallengeSlotKey.RYO_2,
-        displayName: 'اقرأ الأرقام',
-      })
-      .expect(409);
-    expect(JSON.stringify(renamed.body)).toContain('BOARD_SLOT_ALREADY_FILLED');
+    const duplicateMechanic = await configure({
+      challengeTypeId: sharedRyo.id,
+      slotKey: WorldChallengeSlotKey.SLOT_4,
+    }).expect(409);
+    expect(JSON.stringify(duplicateMechanic.body)).toContain(
+      'DUPLICATE_BOARD_CHALLENGE_TYPE',
+    );
 
     // Three slots configured: still not activatable.
     const missingFlex = await bearer(
@@ -293,7 +273,6 @@ describe('World Management HTTP integration', () => {
     )
       .send({
         status: WorldContentStatus.ACTIVE,
-        signatureMechanicId: signature.id,
       })
       .expect(400);
     expect(JSON.stringify(missingFlex.body)).toContain(
@@ -302,7 +281,7 @@ describe('World Management HTTP integration', () => {
 
     await configure({
       challengeTypeId: relational.id,
-      slotKey: WorldChallengeSlotKey.FLEX,
+      slotKey: WorldChallengeSlotKey.SLOT_4,
       isEnabled: true,
       sortOrder: 3,
     }).expect(201);
@@ -310,30 +289,14 @@ describe('World Management HTTP integration', () => {
     // A board position holds exactly one configuration.
     const duplicate = await configure({
       challengeTypeId: relational.id,
-      slotKey: WorldChallengeSlotKey.FLEX,
+      slotKey: WorldChallengeSlotKey.SLOT_4,
     }).expect(409);
     expect(JSON.stringify(duplicate.body)).toContain(
       'BOARD_SLOT_ALREADY_FILLED',
     );
 
-    // The Signature reference must match the configured Signature slot.
-    const mismatchedSignature = await bearer(
-      authed().patch(`/admin/worlds/${world.id}`),
-    )
-      .send({
-        status: WorldContentStatus.ACTIVE,
-        signatureMechanicId: ryoTwo.id,
-      })
-      .expect(400);
-    expect(JSON.stringify(mismatchedSignature.body)).toContain(
-      'SIGNATURE_MECHANIC_MISMATCH',
-    );
-
     const activated = await bearer(authed().patch(`/admin/worlds/${world.id}`))
-      .send({
-        status: WorldContentStatus.ACTIVE,
-        signatureMechanicId: signature.id,
-      })
+      .send({ status: WorldContentStatus.ACTIVE })
       .expect(200);
     expect(activated.body.data.status).toBe(WorldContentStatus.ACTIVE);
 
@@ -344,9 +307,9 @@ describe('World Management HTTP integration', () => {
     ).body.data;
     expect(readiness.blockers).toEqual([]);
     expect(readiness.boardReady).toBe(true);
-    expect(readiness.hasRelationalFlexSlot).toBe(true);
+    expect(readiness.hasRelationalChallenge).toBe(true);
     expect(readiness.board.slots).toHaveLength(4);
-    // The mechanic's own name is what players see: one name in every World.
+    // Runtime stays global while player-facing copy may vary per World.
     expect(
       readiness.board.slots.map(
         (slot: { displayName: string }) => slot.displayName,
@@ -354,21 +317,20 @@ describe('World Management HTTP integration', () => {
     ).toEqual([
       'Formation Builder',
       'Read Your Opponent',
-      'Read Your Opponent',
+      'اقرأ الأرقام',
       'Same Wavelength',
     ]);
     expect(
       readiness.board.slots.map((slot: { slotKey: string }) => slot.slotKey),
-    ).toEqual(['signature', 'ryo_1', 'ryo_2', 'flex']);
+    ).toEqual(['slot_1', 'slot_2', 'slot_3', 'slot_4']);
 
     // A valid board may not be regressed while the World is active.
-    const flexSlot = readiness.board.slots.find(
-      (slot: { slotType: string }) =>
-        slot.slotType === WorldChallengeSlotType.FLEX,
+    const finalSlot = readiness.board.slots.find(
+      (slot: { slotKey: string }) => slot.slotKey === 'slot_4',
     );
     const refusedRemoval = await bearer(
       authed().delete(
-        `/admin/challenge-configurations/${flexSlot.configurationId}`,
+        `/admin/challenge-configurations/${finalSlot.configurationId}`,
       ),
     ).expect(400);
     expect(JSON.stringify(refusedRemoval.body)).toContain(
@@ -396,7 +358,7 @@ describe('World Management HTTP integration', () => {
     ).toContain('MATCH_WORLD_COUNT_INVALID');
   });
 
-  it('shares one mechanic across Worlds with no per-World presentation', async () => {
+  it('shares global mechanics across Worlds with per-World presentation', async () => {
     const anime = await createWorld('Anime', 'anime');
     const sharedRyo = (
       await bearer(authed().get('/admin/challenge-types')).expect(200)
@@ -416,8 +378,9 @@ describe('World Management HTTP integration', () => {
     )
       .send({
         challengeTypeId: sharedRyo.id,
-        slotKey: WorldChallengeSlotKey.RYO_1,
+        slotKey: WorldChallengeSlotKey.SLOT_2,
         isEnabled: true,
+        displayName: 'مين يعرفك؟',
       })
       .expect(201);
 
@@ -429,22 +392,18 @@ describe('World Management HTTP integration', () => {
     const codes = readiness.blockers.map(
       (issue: { code: string }) => issue.code,
     );
-    // A shared mechanic is intentionally identical in every World: Worlds differ
-    // through their Signature mechanic and their content, not by renaming or
-    // reconfiguring a shared one.
     expect(codes).not.toContain('INSUFFICIENT_PRESENTATION_DIFFERENTIATION');
     expect(codes).toContain('BOARD_SLOT_COUNT_MISMATCH');
-    // An exclusive Signature mechanic cannot be borrowed by a second World.
-    const exclusive = await bearer(
+    const reused = await bearer(
       authed().post(`/admin/worlds/${anime.id}/challenge-configurations`),
     )
       .send({
         challengeTypeId: signature.id,
-        slotKey: WorldChallengeSlotKey.SIGNATURE,
+        slotKey: WorldChallengeSlotKey.SLOT_1,
         isEnabled: true,
       })
       .expect(201);
-    expect(exclusive.body.data.id).toEqual(expect.any(String));
+    expect(reused.body.data.id).toEqual(expect.any(String));
     const afterExclusive = (
       await bearer(authed().get(`/admin/worlds/${anime.id}/readiness`)).expect(
         200,
@@ -452,7 +411,7 @@ describe('World Management HTTP integration', () => {
     ).body.data;
     expect(
       afterExclusive.blockers.map((issue: { code: string }) => issue.code),
-    ).toContain('EXCLUSIVE_CHALLENGE_TYPE_SHARED');
+    ).not.toContain('EXCLUSIVE_CHALLENGE_TYPE_SHARED');
   });
 
   it('validates content items centrally and refuses legacy fields', async () => {
@@ -566,6 +525,86 @@ describe('World Management HTTP integration', () => {
     expect(listed).toHaveLength(2);
   });
 
+  it('persists the complete native Poison Deck mechanic payload on create and update', async () => {
+    const world = await createWorld('Top 10 authoring', 'top-10-authoring');
+    const scope = (
+      await bearer(authed().post(`/admin/worlds/${world.id}/scopes`))
+        .send({
+          name: 'World Cup rankings',
+          slug: 'world-cup-rankings',
+          status: WorldContentStatus.ACTIVE,
+        })
+        .expect(201)
+    ).body.data;
+    const top10 = await createChallengeType({
+      name: 'Top 10 canonical',
+      slug: 'top-10-native-persistence',
+      family: ChallengeFamily.SIGNATURE,
+      answerMode: ChallengeAnswerMode.TOP_10,
+      defaultPresentation: presentation({ inputType: 'shared-card-deck' }),
+      scoringRuleId: SCORING_RULE_IDS.TOP10_POISON_DECK_RESULT,
+      status: WorldContentStatus.ACTIVE,
+    });
+    const candidates = Array.from({ length: 14 }, (_, index) => ({
+      id: `candidate-${index + 1}`,
+      label: `المرشح ${index + 1}`,
+    }));
+    const mechanicPayload = {
+      variant: 'poison-deck',
+      title: 'الترتيب التاريخي',
+      instruction: 'احتفظ بالبطاقة أو أرسلها لخصمك',
+      rankingBasis: 'النقاط الرسمية',
+      sourceLabel: 'المصدر الرسمي',
+      sourceUrl: 'https://example.com/all-time-ranking',
+      asOfDate: '2026-08-04',
+      candidates,
+      rankedAnswer: candidates.slice(0, 10).map((candidate, index) => ({
+        candidateId: candidate.id,
+        rank: index + 1,
+      })),
+      decoyCandidateIds: candidates.slice(10).map((candidate) => candidate.id),
+    };
+
+    const created = (
+      await bearer(authed().post('/admin/content-items'))
+        .send({
+          scopeId: scope.id,
+          prompt: { ar: 'اختر عناصر القائمة الصحيحة' },
+          compatibleChallengeTypeIds: [top10.id],
+          answerPayload: { mode: ChallengeAnswerMode.TOP_10 },
+          mechanicPayload,
+          status: ContentItemStatus.READY,
+        })
+        .expect(201)
+    ).body.data;
+    expect(created.mechanicPayload).toEqual(mechanicPayload);
+    expect(created.metadata).toBeUndefined();
+
+    const storedAfterCreate = await database
+      .collection('content_items')
+      .findOne({ _id: new Types.ObjectId(created.id) });
+    expect(storedAfterCreate?.mechanicPayload).toEqual(mechanicPayload);
+    expect(storedAfterCreate?.metadata?.notes).toBeUndefined();
+
+    const updatedPayload = {
+      ...mechanicPayload,
+      title: 'الترتيب التاريخي المحدّث',
+      sourceUrl: 'https://example.com/all-time-ranking/latest',
+    };
+    const updated = (
+      await bearer(authed().patch(`/admin/content-items/${created.id}`))
+        .send({ mechanicPayload: updatedPayload })
+        .expect(200)
+    ).body.data;
+    expect(updated.mechanicPayload).toEqual(updatedPayload);
+
+    const storedAfterUpdate = await database
+      .collection('content_items')
+      .findOne({ _id: new Types.ObjectId(created.id) });
+    expect(storedAfterUpdate?.mechanicPayload).toEqual(updatedPayload);
+    expect(storedAfterUpdate?.metadata?.notes).toBeUndefined();
+  });
+
   it('lets an active World with an incomplete board be repaired', async () => {
     // A World left active by legacy data has an invalid board. If board edits
     // were refused while active it could never be completed, so repair is
@@ -596,7 +635,7 @@ describe('World Management HTTP integration', () => {
     )
       .send({
         challengeTypeId: coop.id,
-        slotKey: WorldChallengeSlotKey.FLEX,
+        slotKey: WorldChallengeSlotKey.SLOT_4,
         isEnabled: true,
       })
       .expect(201);

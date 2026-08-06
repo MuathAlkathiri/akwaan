@@ -1,0 +1,34 @@
+"use client";
+
+import { useLiveSession } from "../../hooks/live-session-context";
+
+export function MatchScoreDisplay({ compact = false }: { compact?: boolean }) {
+  const { snapshot } = useLiveSession();
+  if (!snapshot?.match) return null;
+  const scores = snapshot.match.scoring.matchTotals;
+  return (
+    <section
+      aria-label="نتيجة المباراة"
+      className="grid grid-cols-2 gap-3 rounded-2xl border border-amber-200/80 bg-white/80 p-3 shadow-sm"
+    >
+      {snapshot.teams.map((team) => {
+        const score = scores.find((item) => item.teamId === team.id);
+        return (
+          <div key={team.id} className="text-center">
+            <p className="truncate text-sm text-slate-600">{team.name}</p>
+            <p
+              className={
+                compact
+                  ? "text-2xl font-black tabular-nums text-slate-950"
+                  : "text-4xl font-black tabular-nums text-slate-950"
+              }
+            >
+              {score?.displayTotal ?? 0}
+            </p>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+

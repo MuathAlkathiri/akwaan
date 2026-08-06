@@ -2,6 +2,7 @@ import { LiveSessionDomainError } from './live-session.errors';
 import {
   canSeeVisibility,
   GameplayInteractionPlugin,
+  InteractionActorProjection,
 } from './gameplay-interaction.plugin';
 
 export type GameplayStateValue = string | number | boolean | null;
@@ -34,6 +35,12 @@ export interface GameplayPluginContext {
   roundId?: string;
   activeTeamId?: string;
   activeParticipantId?: string;
+  /**
+   * The participant who actually issued this command, resolved from the
+   * authenticated actor by the session layer. A turn-based mechanic reads
+   * `activeParticipantId`; a simultaneous one needs to know who is speaking.
+   */
+  submitterParticipantId?: string;
   initialState?: GameplayModeState;
   runtimeState?: GameplayModeState;
   /** Server-owned command time; reducers must never consult the wall clock. */
@@ -74,6 +81,18 @@ export interface GameplayModePlugin {
     },
   ): GameplayCommandResult;
   projectRuntimeState(state: GameplayModeState): GameplayModeState;
+  /**
+   * The runtime as *this* actor may see it.
+   *
+   * Optional and additive: a mechanic where everyone sees the same thing keeps
+   * using `projectRuntimeState`. A mechanic that hands each participant private
+   * information implements this instead, so the split lives with the mechanic
+   * that owns the secret rather than in a snapshot mapper.
+   */
+  projectRuntimeStateForActor?(
+    state: GameplayModeState,
+    actor: InteractionActorProjection,
+  ): GameplayModeState;
   projectRoundState(state: GameplayModeState): GameplayModeState;
   readonly interaction?: GameplayInteractionPlugin;
 }

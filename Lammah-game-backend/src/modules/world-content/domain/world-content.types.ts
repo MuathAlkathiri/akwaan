@@ -1,4 +1,5 @@
 import {
+  DistributedInformationSegmentId,
   ChallengeAnswerMode,
   ChallengeFamily,
   ChallengeItemStructure,
@@ -6,7 +7,6 @@ import {
   ContentMediaType,
   VoteConsensusRule,
   WorldChallengeSlotKey,
-  WorldChallengeSlotType,
   WorldContentStatus,
 } from './world-content.constants';
 
@@ -68,7 +68,6 @@ export interface WorldView {
   name: string;
   slug: string;
   status: WorldContentStatus;
-  signatureMechanicId?: string;
   soundPack?: string | null;
   timerProfile?: string | null;
   toneProfile?: string | null;
@@ -88,7 +87,6 @@ export interface ChallengeTypeView {
   name: string;
   slug: string;
   family: ChallengeFamily;
-  isExclusive: boolean;
   itemStructure: ChallengeItemStructure;
   answerMode: ChallengeAnswerMode;
   defaultPresentation: ChallengePresentation;
@@ -102,9 +100,10 @@ export interface WorldChallengeConfigurationView {
   challengeTypeId: string;
   /** The board position this fills; the unique identity within a World. */
   slotKey: WorldChallengeSlotKey;
-  slotType: WorldChallengeSlotType;
-  /** Optional per-World label. Globally fixed mechanics never carry one. */
+  /** Optional presentation overrides for this World. */
   displayName?: string;
+  description?: string;
+  instructions?: string;
   sortOrder: number;
   isEnabled: boolean;
 }
@@ -181,10 +180,51 @@ export interface Top10PoisonDeckPayload {
   instruction?: string;
   rankingBasis: string;
   sourceLabel: string;
+  sourceUrl?: string;
   asOfDate?: string;
   candidates: Top10PoisonDeckCandidate[];
   rankedAnswer: Array<{ candidateId: string; rank: number }>;
   decoyCandidateIds: string[];
+  explanation?: string;
+}
+
+/**
+ * "ركّبها" content: one public prompt every teammate sees, three private
+ * segments split between them, and the merges an author has certified as safe
+ * for a two-player team.
+ *
+ * The answer is deliberately *not* here: it lives in `answerPayload`, the one
+ * place every mechanic's machine-resolvable answer already lives, so there is
+ * never a second source of truth for what is correct.
+ */
+export interface DistributedInformationSegment {
+  id: DistributedInformationSegmentId;
+  content: LocalizedText;
+  media?: ContentItemMedia;
+}
+
+/**
+ * How three segments are split across a two-player team: one player takes two,
+ * the other takes one. Every option must cover all three segments exactly once.
+ */
+export interface DistributedInformationMergeOption {
+  firstParticipantSegmentIds: DistributedInformationSegmentId[];
+  secondParticipantSegmentIds: DistributedInformationSegmentId[];
+}
+
+export interface DistributedInformationPayload {
+  variant: 'three-segment-race';
+  publicPrompt: LocalizedText;
+  segments: DistributedInformationSegment[];
+  /** At least one author-approved two-player split. */
+  twoPlayerMergeOptions: DistributedInformationMergeOption[];
+  supportedTeamSizes: number[];
+  /**
+   * The author's confirmation that no single player can solve the puzzle from
+   * their own segments. Structural leakage is checked automatically; this
+   * judgement cannot be, so it is recorded rather than inferred.
+   */
+  authorSafetyConfirmation: boolean;
   explanation?: string;
 }
 
@@ -196,7 +236,10 @@ export interface ContentItemView {
   compatibleChallengeTypeIds: string[];
   media?: ContentItemMedia;
   answerPayload: ContentAnswerPayload;
-  mechanicPayload?: Record<string, unknown> | Top10PoisonDeckPayload;
+  mechanicPayload?:
+    | Record<string, unknown>
+    | Top10PoisonDeckPayload
+    | DistributedInformationPayload;
   isReusableAcrossSessions: boolean;
   status: ContentItemStatus;
   metadata?: {

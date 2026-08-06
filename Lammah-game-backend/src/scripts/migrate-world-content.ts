@@ -8,9 +8,7 @@ import {
   ChallengeItemStructure,
   ContentItemStatus,
   ContentMediaType,
-  SLOT_KEY_TYPES,
   WorldChallengeSlotKey,
-  WorldChallengeSlotType,
   WorldContentStatus,
 } from '../modules/world-content/domain/world-content.constants';
 import { SCORING_RULE_IDS } from '../modules/scoring/domain/scoring-rule';
@@ -73,7 +71,7 @@ const LEGACY_MECHANIC_MAP: Record<string, LegacyMechanicDefinition | 'manual'> =
       answerMode: ChallengeAnswerMode.RYO,
       itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
       scoringRuleId: SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
-      slotKey: WorldChallengeSlotKey.RYO_1,
+      slotKey: WorldChallengeSlotKey.SLOT_2,
       timerSeconds: 25,
       inputType: 'phone-multiple-choice',
     },
@@ -109,7 +107,6 @@ interface PreviousWorld {
   sortOrder?: number;
   banner?: unknown;
   icon?: unknown;
-  signatureMechanicId?: Types.ObjectId | null;
 }
 
 interface PreviousContentCategory {
@@ -172,7 +169,6 @@ export class MigrationReport {
   contentItemsSkipped = 0;
   openAnswerItemsRequiringConversion = 0;
   worldsDemotedToDraft: string[] = [];
-  worldsMissingSignatureMechanic: string[] = [];
   worldsWithInvalidBoardComposition: string[] = [];
   scopeExclusionsCausingReadinessFailure: string[] = [];
   invalidReferences: string[] = [];
@@ -197,7 +193,6 @@ export class MigrationReport {
       `Content items skipped:                    ${this.contentItemsSkipped}`,
       `Worlds demoted to draft:                  ${this.worldsDemotedToDraft.length}`,
       `Open-answer items requiring conversion:   ${this.openAnswerItemsRequiringConversion}`,
-      `Worlds missing a Signature mechanic:      ${this.worldsMissingSignatureMechanic.length}`,
       `Worlds with invalid board composition:    ${this.worldsWithInvalidBoardComposition.length}`,
       `Scope exclusions causing readiness fail:  ${this.scopeExclusionsCausingReadinessFailure.length}`,
       `Invalid references:                       ${this.invalidReferences.length}`,
@@ -206,10 +201,6 @@ export class MigrationReport {
     console.log(lines.join('\n'));
 
     this.printList('Worlds demoted to draft', this.worldsDemotedToDraft);
-    this.printList(
-      'Worlds missing a Signature mechanic',
-      this.worldsMissingSignatureMechanic,
-    );
     this.printList(
       'Worlds with invalid board composition',
       this.worldsWithInvalidBoardComposition,
@@ -307,12 +298,11 @@ export class WorldContentMigration {
   async run(): Promise<MigrationReport> {
     await this.dropLegacyChallengeTypeIndex();
     await this.repairConfigurationIndexes();
-    const canonicalRyoId = await this.repairCanonicalRyo();
+    await this.repairCanonicalRyo();
     const worldIdByCatalog = await this.migrateCatalogsToWorlds();
     await this.migrateCategoriesToScopes(worldIdByCatalog);
     await this.migratePreviousContentCategories();
     await this.migrateChallengeTypes();
-    if (canonicalRyoId) await this.repairRyoBoardSlots(canonicalRyoId);
     // Runs after the boards exist, so completeness is judged on the migrated
     // configurations rather than on an empty board.
     await this.normalizePreviousWorlds();
@@ -369,7 +359,7 @@ export class WorldContentMigration {
     const definition = LEGACY_MECHANIC_MAP.standard;
     if (definition === 'manual') return undefined;
     const existing = candidates[0];
-    if (!existing) return this.upsertGlobalChallengeType(definition);
+    if (!existing) return undefined;
     if (this.apply) {
       await collection.updateOne(
         { _id: existing._id },
@@ -378,7 +368,6 @@ export class WorldContentMigration {
             name: definition.name,
             slug: definition.slug,
             family: definition.family,
-            isExclusive: false,
             itemStructure: definition.itemStructure,
             answerMode: definition.answerMode,
             scoringRuleId: definition.scoringRuleId,
@@ -396,84 +385,6 @@ export class WorldContentMigration {
       );
     }
     return existing._id as Types.ObjectId;
-  }
-
-  private async repairRyoBoardSlots(
-    canonicalRyoId: Types.ObjectId,
-  ): Promise<void> {
-    const collection = this.db.collection('world_challenge_configurations');
-    const assignments = await collection
-      .find({ challengeTypeId: canonicalRyoId })
-      .toArray();
-    const byWorld = new Map<string, typeof assignments>();
-    for (const assignment of assignments) {
-      const bucket = byWorld.get(String(assignment.worldId)) ?? [];
-      bucket.push(assignment);
-      byWorld.set(String(assignment.worldId), bucket);
-    }
-    for (const [worldId, entries] of byWorld) {
-      const occupied = new Set(entries.map((entry) => String(entry.slotKey)));
-      const missing = [
-        WorldChallengeSlotKey.RYO_1,
-        WorldChallengeSlotKey.RYO_2,
-      ].filter((slotKey) => !occupied.has(slotKey));
-      const unkeyed = entries.filter((entry) => !entry.slotKey);
-      if (unkeyed.length > missing.length) {
-        this.report.needsReview({
-          kind: 'ambiguous RYO board assignment',
-          id: worldId,
-          label: worldId,
-          reason:
-            'more unkeyed RYO assignments exist than available RYO board positions',
-        });
-        continue;
-      }
-      for (let index = 0; index < unkeyed.length; index += 1) {
-        if (this.apply)
-          await collection.updateOne(
-            { _id: unkeyed[index]._id },
-            {
-              $set: {
-                slotKey: missing[index],
-                slotType: WorldChallengeSlotType.RYO,
-              },
-              $unset: { displayName: '' },
-            },
-            { session: this.session },
-          );
-        occupied.add(missing[index]);
-      }
-      for (const slotKey of [
-        WorldChallengeSlotKey.RYO_1,
-        WorldChallengeSlotKey.RYO_2,
-      ]) {
-        if (occupied.has(slotKey)) continue;
-        this.report.worldChallengeConfigurationsCreated += 1;
-        if (this.apply)
-          await collection.insertOne(
-            {
-              worldId: new Types.ObjectId(worldId),
-              challengeTypeId: canonicalRyoId,
-              slotKey,
-              slotType: WorldChallengeSlotType.RYO,
-              sortOrder: slotKey === WorldChallengeSlotKey.RYO_1 ? 1 : 2,
-              isEnabled: false,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            },
-            { session: this.session },
-          );
-      }
-      if (this.apply)
-        await collection.updateMany(
-          {
-            worldId: new Types.ObjectId(worldId),
-            challengeTypeId: canonicalRyoId,
-          },
-          { $unset: { displayName: '', presentation: '', mediaType: '' } },
-          { session: this.session },
-        );
-    }
   }
 
   /**
@@ -904,11 +815,6 @@ export class WorldContentMigration {
       const enabled = configurations.filter(
         (entry: Record<string, unknown>) => entry.isEnabled,
       );
-      if (!world.signatureMechanicId) {
-        this.report.worldsMissingSignatureMechanic.push(
-          `${world.name} (${world.slug})`,
-        );
-      }
       if (enabled.length !== 4) {
         this.report.worldsWithInvalidBoardComposition.push(
           `${world.name}: ${enabled.length} enabled challenge configuration(s) of 4`,
@@ -953,12 +859,11 @@ export class WorldContentMigration {
         name: input.name,
         slug: input.slug,
         ...(input.banner ? { banner: input.banner } : {}),
-        signatureMechanicId: null,
         soundPack: null,
         timerProfile: null,
         toneProfile: null,
-        // Activation requires a complete four-slot board and a Signature
-        // mechanic, neither of which a legacy catalog can supply (roadmap 5, 18).
+        // Activation requires a complete four-slot board, which a legacy
+        // catalog cannot supply safely.
         status: WorldContentStatus.DRAFT,
         sortOrder: input.sortOrder,
         createdAt: new Date(),
@@ -1013,7 +918,6 @@ export class WorldContentMigration {
         name: definition.name,
         slug: definition.slug,
         family: definition.family,
-        isExclusive: definition.family === ChallengeFamily.SIGNATURE,
         itemStructure: definition.itemStructure,
         answerMode: definition.answerMode,
         defaultPresentation: {
@@ -1053,7 +957,6 @@ export class WorldContentMigration {
         worldId: input.worldId,
         challengeTypeId: input.challengeTypeId,
         slotKey: input.slotKey,
-        slotType: SLOT_KEY_TYPES[input.slotKey],
         ...(input.description ? { description: input.description } : {}),
         ...(input.icon ? { icon: input.icon } : {}),
         sortOrder: input.sortOrder,

@@ -21,14 +21,13 @@ export class CreateWorldChallengeConfigurationDto {
 
   @ApiProperty({
     enum: WorldChallengeSlotKey,
-    description: 'Board position this fills; ryo_1 and ryo_2 are distinct',
+    description: 'Generic board position this mechanic fills',
   })
   @IsEnum(WorldChallengeSlotKey)
   slotKey: WorldChallengeSlotKey;
 
   @ApiPropertyOptional({
-    description:
-      'Optional World label. Globally fixed mechanics such as RYO reject it.',
+    description: 'Optional player-facing name for this World',
   })
   @IsOptional()
   @IsString()
@@ -40,6 +39,12 @@ export class CreateWorldChallengeConfigurationDto {
   @IsString()
   @MaxLength(500)
   description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  instructions?: string;
 
   @IsOptional()
   @ValidateNested()

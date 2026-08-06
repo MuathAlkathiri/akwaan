@@ -46,10 +46,24 @@ export class GameplayRuntimeMutationDto {
   clientTimestamp?: string;
 }
 
+export class StartDistributedInformationDto {
+  @IsString()
+  worldId!: string;
+
+  @IsEnum(WorldChallengeSlotKey)
+  slotKey!: WorldChallengeSlotKey;
+
+  /** Exactly three distinct ready ContentItems; the server validates the rest. */
+  @IsArray()
+  @ArrayMinSize(3)
+  @ArrayMaxSize(3)
+  @IsString({ each: true })
+  contentItemIds!: string[];
+}
+
 export class StartRyoGameplayDto {
   @IsUUID() worldId!: string;
-  @IsEnum(WorldChallengeSlotKey) slotKey!:
-    WorldChallengeSlotKey.RYO_1 | WorldChallengeSlotKey.RYO_2;
+  @IsEnum(WorldChallengeSlotKey) slotKey!: WorldChallengeSlotKey;
   @IsArray()
   @ArrayMinSize(3)
   @ArrayMaxSize(3)

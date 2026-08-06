@@ -55,7 +55,7 @@ export function BoardSection({ worldId }: { worldId: string }) {
       ) : !configurations.length ? (
         <EmptyState
           title="اللوحة فارغة"
-          description="أضف مكانيكا توقيع واحدة، واثنتين من اقرأ خصمك، وواحدة مرنة."
+          description="املأ الخانات الأربع بأربع مكانيكا مختلفة."
         />
       ) : (
         <div className="space-y-3">
@@ -82,7 +82,7 @@ export function BoardSection({ worldId }: { worldId: string }) {
             warnings: data.board.warnings,
           }}
           title="تكوين اللوحة"
-          readyMessage="التكوين مطابق للقواعد: توقيع + اثنتان اقرأ خصمك + مرنة."
+          readyMessage="الخانات الأربع مكتملة، وكل خانة تحتوي مكانيكا مختلفة."
         />
       )}
 

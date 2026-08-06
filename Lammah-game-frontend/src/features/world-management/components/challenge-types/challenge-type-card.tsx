@@ -8,13 +8,13 @@ import {
   CountBadge,
   EntityStatusBadge,
   ReadinessBadge,
+  ReadinessChecklist,
 } from "../shared";
 import {
   ANSWER_MODE_LABEL,
   FAMILY_LABEL,
 } from "../../utils/world-content.labels";
 import type { ChallengeType } from "../../types";
-import { localizeReadinessIssue } from "../../utils/readiness.util";
 
 interface ChallengeTypeCardProps {
   challengeType: ChallengeType;
@@ -37,7 +37,6 @@ export function ChallengeTypeCard({
             <Badge variant="outline">
               {FAMILY_LABEL[challengeType.family]}
             </Badge>
-            {challengeType.isExclusive && <Badge>حصري</Badge>}
             <EntityStatusBadge status={challengeType.status} />
             <ReadinessBadge readiness={challengeType.readiness?.readiness} />
           </div>
@@ -77,19 +76,10 @@ export function ChallengeTypeCard({
         </div>
       </div>
 
-      {(challengeType.readiness?.blockers ?? []).map((issue) => (
-        <p key={issue.code} className="text-xs text-destructive">
-          {localizeReadinessIssue(issue)}
-        </p>
-      ))}
-      {(challengeType.readiness?.warnings ?? []).map((issue) => (
-        <p
-          key={issue.code}
-          className="text-xs text-amber-700 dark:text-amber-400"
-        >
-          {localizeReadinessIssue(issue)}
-        </p>
-      ))}
+      <ReadinessChecklist
+        report={challengeType.readiness}
+        satisfiedText="جاهزة للاستخدام في لوحات العوالم."
+      />
     </div>
   );
 }

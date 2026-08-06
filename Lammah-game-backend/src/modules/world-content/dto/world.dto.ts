@@ -3,7 +3,6 @@ import { Type } from 'class-transformer';
 import {
   IsEnum,
   IsInt,
-  IsMongoId,
   IsOptional,
   IsString,
   Matches,
@@ -34,13 +33,6 @@ export class CreateWorldDto {
   @ValidateNested()
   @Type(() => ContentAssetDto)
   banner?: ContentAssetDto;
-
-  @ApiPropertyOptional({
-    description: "Challenge type that fills this World's Signature slot",
-  })
-  @IsOptional()
-  @IsMongoId()
-  signatureMechanicId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

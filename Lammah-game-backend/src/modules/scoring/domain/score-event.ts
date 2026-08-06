@@ -1,3 +1,5 @@
+import { MalformedScoreEventError } from './scoring.errors';
+
 /**
  * The single ScoreEvent contract for the new system (roadmap 8).
  *
@@ -53,6 +55,75 @@ export function mintScoreEvent(
     delta: draft.delta,
     reason: draft.reason,
     ...(draft.metadata ? { metadata: draft.metadata } : {}),
+    [SCORE_EVENT_BRAND]: true,
+  };
+}
+
+/**
+ * A ScoreEvent as it survives JSON persistence: same fields, no brand, and
+ * `createdAt` reduced to a string. Mechanics persist their minted events inside
+ * their gameplay runtime state, so this is the shape that comes back out.
+ */
+export interface PersistedScoreEvent {
+  id: string;
+  matchId: string;
+  teamId: string;
+  challengeSessionId: string;
+  scoringRuleId: string;
+  delta: number;
+  reason: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string | Date;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
+
+/**
+ * Validates a persisted event and re-brands it.
+ *
+ * Restoring is the one other way a branded event comes into existence, and it
+ * stays inside this module for the same reason minting does: nothing outside the
+ * scoring module can fabricate an event the ledger will accept. `matchId` is
+ * carried through untouched — historically it holds the live-session id, which is
+ * provenance, not identity. Correlation is by `challengeSessionId`.
+ */
+export function restoreScoreEvent(value: unknown): ScoreEvent {
+  if (isScoreEvent(value)) return value;
+  const candidate = value as Partial<PersistedScoreEvent> | null;
+  if (!candidate || typeof candidate !== 'object') {
+    throw new MalformedScoreEventError('a persisted event was not an object');
+  }
+  for (const field of [
+    'id',
+    'matchId',
+    'teamId',
+    'challengeSessionId',
+    'scoringRuleId',
+    'reason',
+  ] as const) {
+    if (!isNonEmptyString(candidate[field])) {
+      throw new MalformedScoreEventError(`"${field}" is missing`);
+    }
+  }
+  if (!Number.isInteger(candidate.delta)) {
+    throw new MalformedScoreEventError('"delta" must be a whole number');
+  }
+  const createdAt = new Date(candidate.createdAt as string | Date);
+  if (Number.isNaN(createdAt.getTime())) {
+    throw new MalformedScoreEventError('"createdAt" is not a valid timestamp');
+  }
+  return {
+    id: candidate.id as string,
+    matchId: candidate.matchId as string,
+    teamId: candidate.teamId as string,
+    challengeSessionId: candidate.challengeSessionId as string,
+    scoringRuleId: candidate.scoringRuleId as string,
+    delta: candidate.delta as number,
+    reason: candidate.reason as string,
+    ...(candidate.metadata ? { metadata: candidate.metadata } : {}),
+    createdAt,
     [SCORE_EVENT_BRAND]: true,
   };
 }

@@ -27,6 +27,15 @@ export class ScoringRuleContractError extends BadRequestException {
   }
 }
 
+export class MalformedScoreEventError extends BadRequestException {
+  constructor(detail: string) {
+    super({
+      code: 'MALFORMED_SCORE_EVENT',
+      message: `A persisted score event could not be restored: ${detail}`,
+    });
+  }
+}
+
 export class ForeignScoreEventError extends BadRequestException {
   constructor() {
     super({

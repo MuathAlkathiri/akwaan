@@ -289,6 +289,28 @@ export class LiveGameSession {
     this.transitionTo('waiting', now);
   }
 
+  /**
+   * The statuses a session accepts new participants in.
+   *
+   * A unified Match starts its session before anybody is in the room — phones are
+   * invited later, at the preflight of the first challenge that needs them — so an
+   * `active` session must stay joinable. Bomb mode is unchanged: it hands out its
+   * private roles at the start and cannot absorb a latecomer.
+   *
+   * This is the single expression of the rule; join access and code resolution ask
+   * it rather than restating a status list.
+   */
+  static joinableStatuses(modeKey: string): LiveSessionStatus[] {
+    return modeKey === 'bomb' ? ['waiting'] : ['waiting', 'ready', 'active'];
+  }
+
+  /** Whether this session would accept a new participant right now. */
+  acceptsNewParticipants(): boolean {
+    return LiveGameSession.joinableStatuses(this.state.modeKey).includes(
+      this.state.status,
+    );
+  }
+
   enrollParticipant(input: {
     id?: string;
     displayName: string;
@@ -299,7 +321,7 @@ export class LiveGameSession {
     now: Date;
   }): LiveSessionParticipantState {
     this.assertStatus(
-      this.state.modeKey === 'bomb' ? ['waiting'] : ['waiting', 'ready'],
+      LiveGameSession.joinableStatuses(this.state.modeKey),
       input.now,
     );
     const duplicate = this.state.participants.find(

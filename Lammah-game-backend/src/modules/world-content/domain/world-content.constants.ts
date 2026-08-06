@@ -40,50 +40,27 @@ export enum ChallengeAnswerMode {
   VOTE = 'vote',
   SPLIT = 'split',
   TOP_10 = 'top_10',
+  /**
+   * "ركّبها" wraps a machine-checkable prompt the way RYO does: the mechanic
+   * supplies the private split, and the item keeps whichever answer contract it
+   * already had.
+   */
+  DISTRIBUTED = 'distributed',
 }
 
-export enum WorldChallengeSlotType {
-  SIGNATURE = 'signature',
-  RYO = 'ryo',
-  FLEX = 'flex',
-}
-
-/**
- * A board position, not a mechanic. The two RYO positions are distinct slots
- * filled by the same canonical mechanic, so uniqueness is per slot rather than
- * per challenge type (roadmap 3.1).
- */
+/** A generic board position. Gameplay meaning comes from its Challenge Type. */
 export enum WorldChallengeSlotKey {
-  SIGNATURE = 'signature',
-  RYO_1 = 'ryo_1',
-  RYO_2 = 'ryo_2',
-  FLEX = 'flex',
+  SLOT_1 = 'slot_1',
+  SLOT_2 = 'slot_2',
+  SLOT_3 = 'slot_3',
+  SLOT_4 = 'slot_4',
 }
-
-export const SLOT_KEY_TYPES: Readonly<
-  Record<WorldChallengeSlotKey, WorldChallengeSlotType>
-> = {
-  [WorldChallengeSlotKey.SIGNATURE]: WorldChallengeSlotType.SIGNATURE,
-  [WorldChallengeSlotKey.RYO_1]: WorldChallengeSlotType.RYO,
-  [WorldChallengeSlotKey.RYO_2]: WorldChallengeSlotType.RYO,
-  [WorldChallengeSlotKey.FLEX]: WorldChallengeSlotType.FLEX,
-};
 
 export const WORLD_BOARD_SLOT_KEYS: readonly WorldChallengeSlotKey[] = [
-  WorldChallengeSlotKey.SIGNATURE,
-  WorldChallengeSlotKey.RYO_1,
-  WorldChallengeSlotKey.RYO_2,
-  WorldChallengeSlotKey.FLEX,
-];
-
-/**
- * Families whose presentation and player-facing name are fixed by the mechanic
- * itself and may never be overridden per World. RYO is globally one challenge
- * with one name and one timer; Worlds differ by their Signature mechanic, their
- * content, and their own identity — not by renaming a shared mechanic.
- */
-export const GLOBALLY_FIXED_FAMILIES: readonly ChallengeFamily[] = [
-  ChallengeFamily.RYO,
+  WorldChallengeSlotKey.SLOT_1,
+  WorldChallengeSlotKey.SLOT_2,
+  WorldChallengeSlotKey.SLOT_3,
+  WorldChallengeSlotKey.SLOT_4,
 ];
 
 export enum ContentMediaType {
@@ -99,11 +76,8 @@ export enum VoteConsensusRule {
   TEAM_MATCH = 'team_match',
 }
 
-/** Board composition (roadmap 3.1): 1 signature + 2 RYO + 1 flex. */
+/** Every World board has exactly four generic positions. */
 export const WORLD_BOARD_SLOT_COUNT = 4;
-export const WORLD_SIGNATURE_SLOT_COUNT = 1;
-export const WORLD_RYO_SLOT_COUNT = 2;
-export const WORLD_FLEX_SLOT_COUNT = 1;
 
 /** Items per challenge slot (roadmap 3.3). Pacing only; not enforced here. */
 export const CHALLENGE_ITEMS_PER_SLOT = 3;
@@ -112,25 +86,32 @@ export const CHALLENGE_ITEMS_PER_SLOT = 3;
 export const MATCH_WORLD_SELECTION_COUNT = 3;
 export const MATCH_MINIMUM_RELATIONAL_CHALLENGE_COUNT = 1;
 
-export const WORLD_SLOT_REQUIRED_COUNTS: Readonly<
-  Record<WorldChallengeSlotType, number>
-> = {
-  [WorldChallengeSlotType.SIGNATURE]: WORLD_SIGNATURE_SLOT_COUNT,
-  [WorldChallengeSlotType.RYO]: WORLD_RYO_SLOT_COUNT,
-  [WorldChallengeSlotType.FLEX]: WORLD_FLEX_SLOT_COUNT,
-};
-
-/** Which families may occupy each slot (roadmap 3.1). */
-export const WORLD_SLOT_ALLOWED_FAMILIES: Readonly<
-  Record<WorldChallengeSlotType, readonly ChallengeFamily[]>
-> = {
-  [WorldChallengeSlotType.SIGNATURE]: [ChallengeFamily.SIGNATURE],
-  [WorldChallengeSlotType.RYO]: [ChallengeFamily.RYO],
-  [WorldChallengeSlotType.FLEX]: [
-    ChallengeFamily.COOP,
-    ChallengeFamily.RELATIONAL,
-  ],
-};
+/**
+ * "ركّبها" (distributed-information): three private segments per item, one
+ * public prompt, and a race between two teams.
+ */
+export const DISTRIBUTED_INFORMATION_SLUG = 'distributed-information';
+export const DISTRIBUTED_INFORMATION_VARIANT = 'three-segment-race';
+export const DISTRIBUTED_INFORMATION_SEGMENT_IDS = ['A', 'B', 'C'] as const;
+export type DistributedInformationSegmentId =
+  (typeof DISTRIBUTED_INFORMATION_SEGMENT_IDS)[number];
+/** Exactly three puzzles per challenge launch. */
+export const DISTRIBUTED_INFORMATION_ITEM_COUNT = 3;
+/** Two or three connected players per team; no solo and no four in V1. */
+export const DISTRIBUTED_INFORMATION_TEAM_SIZES = [2, 3] as const;
+/** A wrong answer locks that team's input for exactly this long. */
+export const DISTRIBUTED_INFORMATION_LOCK_MS = 5_000;
+/**
+ * The whole race. Derived from the Co-op family budget (45s per item) across the
+ * three puzzles rather than invented: 3 x 45 = 135.
+ */
+export const DISTRIBUTED_INFORMATION_TIMER_SECONDS = 135;
+/** The answer modes a distributed-information item may resolve with. */
+export const DISTRIBUTED_INFORMATION_ANSWER_MODES = [
+  'closest',
+  'match',
+  'multiple_choice',
+] as const;
 
 /**
  * Per-item pacing budget per family (roadmap 3.4). A mechanic inherits its
@@ -157,6 +138,7 @@ export const FAMILY_ALLOWED_ANSWER_MODES: Readonly<
   [ChallengeFamily.SIGNATURE]: Object.values(ChallengeAnswerMode),
   [ChallengeFamily.RYO]: [ChallengeAnswerMode.RYO],
   [ChallengeFamily.COOP]: [
+    ChallengeAnswerMode.DISTRIBUTED,
     ChallengeAnswerMode.SPLIT,
     ChallengeAnswerMode.MATCH,
     ChallengeAnswerMode.MULTIPLE_CHOICE,
@@ -189,6 +171,11 @@ export const ANSWER_MODE_COMPATIBLE_ITEM_MODES: Readonly<
   [ChallengeAnswerMode.VOTE]: [ChallengeAnswerMode.VOTE],
   [ChallengeAnswerMode.SPLIT]: [ChallengeAnswerMode.SPLIT],
   [ChallengeAnswerMode.TOP_10]: [ChallengeAnswerMode.TOP_10],
+  [ChallengeAnswerMode.DISTRIBUTED]: [
+    ChallengeAnswerMode.MATCH,
+    ChallengeAnswerMode.MULTIPLE_CHOICE,
+    ChallengeAnswerMode.CLOSEST,
+  ],
 };
 
 /**

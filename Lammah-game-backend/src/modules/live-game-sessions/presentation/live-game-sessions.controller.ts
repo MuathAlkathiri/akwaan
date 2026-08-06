@@ -15,7 +15,11 @@ import {
   CurrentUser,
 } from '../../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
-import { CancelLiveGameSession } from '../application/live-session-lifecycle.use-cases';
+import {
+  CancelLiveGameSession,
+  MarkSessionReady,
+  StartLiveGameSession,
+} from '../application/live-session-lifecycle.use-cases';
 import { CreateLiveGameSession } from '../application/create-live-game-session.use-case';
 import { GetLiveGameSession } from '../application/get-live-game-session.use-case';
 import { ReconnectParticipant } from '../application/reconnect-participant.use-case';
@@ -50,6 +54,8 @@ export class LiveGameSessionsController {
     private readonly createSession: CreateLiveGameSession,
     private readonly getSession: GetLiveGameSession,
     private readonly reconnectParticipant: ReconnectParticipant,
+    private readonly markReady: MarkSessionReady,
+    private readonly startSession: StartLiveGameSession,
     private readonly cancelSession: CancelLiveGameSession,
     private readonly createJoinAccess: CreateSessionJoinAccess,
     private readonly getJoinAccess: GetSessionJoinAccess,
@@ -86,6 +92,42 @@ export class LiveGameSessionsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.reconnectParticipant.execute({
+      sessionId,
+      actorId: user.id,
+      ...body,
+    });
+  }
+
+  /**
+   * Leaves the lobby, over HTTP.
+   *
+   * The same two commands have always existed on the socket, for a host that is
+   * already watching a session. A host that is *creating* one has no socket yet —
+   * it is setting a Match up before anybody is in the room — so the lifecycle is
+   * reachable over HTTP too. Both routes delegate to the same use cases the
+   * gateway calls: no rule is restated here, and the readiness rules (two active
+   * teams, and a ready player per team only once players exist) are unchanged.
+   */
+  @Post(':sessionId/ready')
+  ready(
+    @Param('sessionId') sessionId: string,
+    @Body() body: LiveSessionMutationDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.markReady.execute({
+      sessionId,
+      actorId: user.id,
+      ...body,
+    });
+  }
+
+  @Post(':sessionId/start')
+  start(
+    @Param('sessionId') sessionId: string,
+    @Body() body: LiveSessionMutationDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.startSession.execute({
       sessionId,
       actorId: user.id,
       ...body,

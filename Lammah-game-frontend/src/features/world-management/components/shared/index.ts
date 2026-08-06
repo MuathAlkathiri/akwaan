@@ -3,6 +3,7 @@ export * from "./search-toolbar";
 export * from "./content-thumbnail";
 export * from "./count-badge";
 export * from "./readiness-badge";
+export * from "./readiness-checklist";
 export * from "./entity-status-badge";
 export * from "./advanced-slug-field";
 export * from "./upload-field";

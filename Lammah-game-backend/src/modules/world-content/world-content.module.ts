@@ -4,6 +4,7 @@ import { LocalImageStorageService } from '../../common/uploads/local-image-stora
 import { ScoringModule } from '../scoring/scoring.module';
 import { ChallengeTypeService } from './application/challenge-type.service';
 import { ContentItemService } from './application/content-item.service';
+import { PlayerCatalogService } from './application/player-catalog.service';
 import { ScopeService } from './application/scope.service';
 import { WorldChallengeConfigurationService } from './application/world-challenge-configuration.service';
 import { WorldContentAssetMutator } from './application/world-content-asset.mutator';
@@ -25,6 +26,7 @@ import { WorldChallengeConfigurationRepository } from './persistence/world-chall
 import { WorldRepository } from './persistence/world.repository';
 import { ChallengeTypesController } from './presentation/challenge-types.controller';
 import { ContentItemsController } from './presentation/content-items.controller';
+import { PlayerWorldsController } from './presentation/player-worlds.controller';
 import { ScopesController } from './presentation/scopes.controller';
 import { WorldChallengeConfigurationsController } from './presentation/world-challenge-configurations.controller';
 import { WorldsController } from './presentation/worlds.controller';
@@ -61,6 +63,8 @@ import { World, WorldSchema } from './schemas/world.schema';
     ]),
   ],
   controllers: [
+    // Player read surface (authenticated, not admin-only).
+    PlayerWorldsController,
     WorldsController,
     ScopesController,
     WorldChallengeConfigurationsController,
@@ -88,6 +92,7 @@ import { World, WorldSchema } from './schemas/world.schema';
     ChallengeTypeService,
     WorldChallengeConfigurationService,
     ContentItemService,
+    PlayerCatalogService,
     WorldReadinessService,
     WorldContentClassificationService,
     WorldContentReferenceRegistry,
@@ -97,12 +102,15 @@ import { World, WorldSchema } from './schemas/world.schema';
   exports: [
     // The only surfaces other modules may consume.
     WorldContentClassificationService,
+    WorldReadinessService,
     WorldContentReferenceRegistry,
     MatchWorldSelectionPolicy,
     ContentItemCompatibilityPolicy,
     ContentItemRepository,
     ChallengeTypeRepository,
     WorldChallengeConfigurationRepository,
+    // The Match builds each World occurrence's content pool from Scopes.
+    ScopeRepository,
   ],
 })
 export class WorldContentModule {}

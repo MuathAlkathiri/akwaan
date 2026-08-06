@@ -158,6 +158,21 @@ export async function createLiveSession(input: CreateLiveSessionInput) {
   return response.data;
 }
 
+/**
+ * Cancels a session. Used by pre-match setup to undo a session it created when the
+ * Match itself could not be created, so no orphan session is left behind.
+ */
+export async function cancelLiveSession(
+  sessionId: string,
+  expectedRevision: number,
+): Promise<LiveSessionSnapshot> {
+  const response = await apiClient.post<LiveSessionSnapshot>(
+    `/live-game-sessions/${sessionId}/cancel`,
+    { commandId: crypto.randomUUID(), expectedRevision },
+  );
+  return response.data;
+}
+
 export async function getLiveSession(
   sessionId: string,
 ): Promise<LiveSessionSnapshot> {

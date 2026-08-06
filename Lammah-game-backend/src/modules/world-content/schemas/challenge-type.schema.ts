@@ -43,8 +43,6 @@ export class ChallengeType extends Document {
   family: ChallengeFamily;
 
   /** Signature mechanics are exclusive to one World; shared families are not. */
-  @Prop({ type: Boolean, default: false }) isExclusive: boolean;
-
   @Prop({
     type: String,
     enum: ChallengeItemStructure,

@@ -1,3 +1,5 @@
+import type { LiveSessionMatchSnapshot } from "./match/types";
+
 export type LiveSessionStatus =
   | "waiting"
   | "ready"
@@ -59,6 +61,7 @@ export interface LiveSessionSnapshot {
     readyTeamIds: string[];
   };
   gameplay?: GameplayRuntimeSnapshot;
+  match?: LiveSessionMatchSnapshot;
   result?: {
     reason: string;
     winnerTeamId?: string;

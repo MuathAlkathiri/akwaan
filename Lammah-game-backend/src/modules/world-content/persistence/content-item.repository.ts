@@ -49,6 +49,31 @@ export class ContentItemRepository {
     return this.model.findByIdAndDelete(id).exec();
   }
 
+  /**
+   * Every ready item a Match may play for one occurrence: in this World, in one of
+   * that occurrence's Scopes, and compatible with the mechanic in the board
+   * position. Unbounded on purpose — this is a gameplay draw, not an admin
+   * listing, and silently truncating the pool would silently bias selection.
+   */
+  listPlayableForOccurrence(query: {
+    worldId: string;
+    scopeIds: string[];
+    challengeTypeId: string;
+  }): Promise<ContentItem[]> {
+    return (
+      this.model
+        .find({
+          worldId: new Types.ObjectId(query.worldId),
+          scopeId: { $in: query.scopeIds.map((id) => new Types.ObjectId(id)) },
+          compatibleChallengeTypeIds: new Types.ObjectId(query.challengeTypeId),
+          status: ContentItemStatus.READY,
+        })
+        // Stable order, so a deterministic draw over it is reproducible.
+        .sort({ _id: 1 })
+        .exec()
+    );
+  }
+
   countByScope(scopeId: string): Promise<number> {
     return this.model
       .countDocuments({ scopeId: new Types.ObjectId(scopeId) })

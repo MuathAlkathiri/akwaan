@@ -12,6 +12,7 @@ import {
   LIVE_SESSION_TRANSITION_PUBLISHER,
   LiveSessionTransitionPublisher,
 } from './live-session-transition.publisher';
+import { GameplayObserverRegistry } from './gameplay-observer.registry';
 import { GameplayModeRegistry } from '../domain/gameplay-mode.registry';
 import { GameplayRuntime } from '../domain/gameplay-runtime';
 import { LiveGameSession } from '../domain/live-game-session';
@@ -54,6 +55,7 @@ export class GameplayInteractionUseCases {
     @Inject(LIVE_SESSION_CLOCK) private readonly clock: LiveSessionClock,
     private readonly sessionSnapshots: LiveGameSessionSnapshotMapper,
     private readonly gameplaySnapshots: GameplayRuntimeSnapshotMapper,
+    private readonly observers: GameplayObserverRegistry,
     @Inject(LIVE_SESSION_TRANSITION_PUBLISHER)
     private readonly publisher: LiveSessionTransitionPublisher,
     private readonly scoring: ScoringService,
@@ -560,7 +562,14 @@ export class GameplayInteractionUseCases {
       runtimeRevision: result.runtime.revision,
       sessionRevision: result.session.revision,
     });
-    return snapshot;
+    // Committed outside the transaction on purpose: reconciliation must never be
+    // able to roll back gameplay that already succeeded.
+    await this.observers.notifyRuntimeMutated({
+      sessionId: command.sessionId,
+      runtimeId: result.runtime.id,
+      runtimeState: result.runtime.serialize(),
+    });
+    return this.observers.enrichSnapshot(snapshot, command.actor);
   }
 
   private requireInteractionPlugin(runtime: GameplayRuntime) {

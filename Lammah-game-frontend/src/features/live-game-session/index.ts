@@ -6,3 +6,6 @@ export * from "./components/player-join-page";
 export * from "./hooks/live-session-context";
 export * from "./hooks/use-team-clock-display";
 export * from "./model";
+export * from "./match/types";
+export * from "./match/match-stage-router";
+export * from "./match/views";

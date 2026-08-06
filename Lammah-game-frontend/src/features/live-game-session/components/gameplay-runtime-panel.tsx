@@ -10,6 +10,7 @@ import { useLiveSession } from "../hooks/live-session-context";
 import { GameplayInteractionPanel } from "./gameplay-interaction-panel";
 import { BombGameplayPanel } from "./bomb-gameplay-panel";
 import { Top10PoisonDeckPanel } from "./top10-poison-deck-panel";
+import { RyoGameplayPanel } from "./ryo-gameplay-panel";
 
 const labels: Record<string, string> = {
   "runtime:start": "Start runtime",
@@ -52,6 +53,9 @@ export function GameplayRuntimePanel() {
   }
   if (runtime.mode.key === "top-10" && !debugEnabled) {
     return <Top10PoisonDeckPanel runtime={runtime} />;
+  }
+  if (runtime.mode.key === "read-your-opponent") {
+    return <RyoGameplayPanel runtime={runtime} />;
   }
   const round = runtime.activeRound;
   const activeTeam = snapshot.teams.find(
@@ -102,6 +106,8 @@ export function GameplayRuntimePanel() {
           <BombGameplayPanel runtime={runtime} />
         ) : runtime.mode.key === "top-10" ? (
           <Top10PoisonDeckPanel runtime={runtime} />
+        ) : runtime.mode.key === "read-your-opponent" ? (
+          <RyoGameplayPanel runtime={runtime} />
         ) : (
           <GameplayInteractionPanel runtime={runtime} />
         )}

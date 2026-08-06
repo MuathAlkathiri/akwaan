@@ -1,7 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { GameplayModeRegistry } from '../domain/gameplay-mode.registry';
-import { GameplayRuntime } from '../domain/gameplay-runtime';
+import {
+  GameplayRuntime,
+  isTerminalRuntimeStatus,
+} from '../domain/gameplay-runtime';
 import {
   GAMEPLAY_RUNTIME_REPOSITORY,
   GameplayRuntimeRepository,
@@ -18,6 +21,7 @@ import {
 } from '../domain/live-session.errors';
 import { LIVE_SESSION_CLOCK, LiveSessionClock } from './live-session-clock';
 import { GameplayRuntimeExecutor } from './gameplay-runtime.executor';
+import { GameplayObserverRegistry } from './gameplay-observer.registry';
 import { LiveSessionActor } from './live-session-actor';
 import {
   LIVE_SESSION_TRANSITION_PUBLISHER,
@@ -65,13 +69,17 @@ export class CreateGameplayRuntime {
     }
     const existing = await this.runtimes.findBySessionId(input.sessionId);
     if (existing) {
-      if (!existing.isDuplicate(input.commandId)) {
+      if (existing.isDuplicate(input.commandId)) {
+        return this.executor.snapshot(session, existing, input.actor);
+      }
+      // A session hosts one runtime at a time but several in sequence: a Match
+      // plays a new challenge once the previous runtime has finished.
+      if (!isTerminalRuntimeStatus(existing.serialize().status)) {
         throw new LiveSessionDomainError(
           'GAMEPLAY_RUNTIME_EXISTS',
-          'This live session already has a gameplay runtime',
+          'This live session already has a gameplay runtime in progress',
         );
       }
-      return this.executor.snapshot(session, existing, input.actor);
     }
     session.assertRevision(input.expectedSessionRevision);
     const state = session.serialize();
@@ -133,6 +141,7 @@ export class GetGameplayRuntime {
     @Inject(LIVE_GAME_SESSION_REPOSITORY)
     private readonly sessions: LiveGameSessionRepository,
     private readonly executor: GameplayRuntimeExecutor,
+    private readonly observers: GameplayObserverRegistry,
   ) {}
 
   async execute(sessionId: string, actor: LiveSessionActor) {
@@ -152,6 +161,9 @@ export class GetGameplayRuntime {
             participant.credentialVersion === actor.credentialVersion,
         ));
     if (!allowed) throw new LiveSessionForbiddenError();
-    return this.executor.snapshot(session, runtime, actor);
+    return this.observers.enrichSnapshot(
+      this.executor.snapshot(session, runtime, actor),
+      actor,
+    );
   }
 }

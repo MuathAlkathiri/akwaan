@@ -11,12 +11,18 @@ export type WorldContentStatus = "draft" | "active" | "archived";
 export type ContentItemStatus = "draft" | "ready" | "archived";
 export type ContentReadiness = "ready" | "limited" | "not_ready";
 export type ChallengeFamily = "signature" | "ryo" | "coop" | "relational";
-export type WorldChallengeSlotType = "signature" | "ryo" | "flex";
-/** A board position. ryo_1 and ryo_2 are distinct positions, one mechanic. */
-export type WorldChallengeSlotKey = "signature" | "ryo_1" | "ryo_2" | "flex";
+export type WorldChallengeSlotKey = "slot_1" | "slot_2" | "slot_3" | "slot_4";
 export type ContentMediaType = "none" | "image" | "audio" | "video";
 export type ChallengeAnswerMode =
-  "ryo" | "multiple_choice" | "closest" | "match" | "vote" | "split" | "top_10";
+  | "ryo"
+  | "multiple_choice"
+  | "closest"
+  | "match"
+  | "vote"
+  | "split"
+  | "top_10"
+  /** The ركّبها wrapper: the item keeps its own answer contract. */
+  | "distributed";
 export type ChallengeItemStructure = "discrete_triple" | "continuous";
 export type VoteConsensusRule = "exact" | "majority" | "team_match";
 
@@ -52,7 +58,6 @@ export interface ChallengePresentation {
 
 export interface BoardSlot {
   slotKey: WorldChallengeSlotKey;
-  slotType: WorldChallengeSlotType;
   configurationId: string;
   challengeTypeId: string;
   challengeTypeSlug: string;
@@ -84,7 +89,7 @@ export interface WorldReadinessReport extends ReadinessReport {
   board: BoardDefinition;
   scopeCompatibility: ScopeCompatibility[];
   boardReady: boolean;
-  hasRelationalFlexSlot: boolean;
+  hasRelationalChallenge: boolean;
 }
 
 export interface World {
@@ -94,7 +99,6 @@ export interface World {
   description?: string;
   icon?: ContentAsset;
   banner?: ContentAsset;
-  signatureMechanicId?: string;
   soundPack?: string | null;
   timerProfile?: string | null;
   toneProfile?: string | null;
@@ -128,7 +132,6 @@ export interface ChallengeType {
   description?: string;
   icon?: ContentAsset;
   family: ChallengeFamily;
-  isExclusive: boolean;
   itemStructure: ChallengeItemStructure;
   answerMode: ChallengeAnswerMode;
   defaultPresentation: ChallengePresentation;
@@ -145,12 +148,12 @@ export interface WorldChallengeConfiguration {
   worldId: string;
   challengeTypeId: string;
   slotKey: WorldChallengeSlotKey;
-  slotType: WorldChallengeSlotType;
-  /** Optional World label; globally fixed mechanics never carry one. */
+  /** Optional player-facing presentation overrides for this World. */
   displayName?: string;
   /** What players see: the label, or the mechanic's own name. */
   effectiveName: string;
   description?: string;
+  instructions?: string;
   icon?: ContentAsset;
   sortOrder: number;
   isEnabled: boolean;
@@ -160,7 +163,6 @@ export interface WorldChallengeConfiguration {
     | "name"
     | "slug"
     | "family"
-    | "isExclusive"
     | "answerMode"
     | "itemStructure"
     | "scoringRuleId"
@@ -217,12 +219,35 @@ export interface Top10PoisonDeckCandidate {
   media?: ContentAsset;
 }
 
+/** "ركّبها" content. The answer lives in answerPayload, never here. */
+export interface DistributedInformationSegment {
+  id: "A" | "B" | "C";
+  content: LocalizedText;
+  media?: { type: ContentMediaType; assets: ContentAsset[] };
+}
+
+export interface DistributedInformationMergeOption {
+  firstParticipantSegmentIds: Array<"A" | "B" | "C">;
+  secondParticipantSegmentIds: Array<"A" | "B" | "C">;
+}
+
+export interface DistributedInformationPayload {
+  variant: "three-segment-race";
+  publicPrompt: LocalizedText;
+  segments: DistributedInformationSegment[];
+  twoPlayerMergeOptions: DistributedInformationMergeOption[];
+  supportedTeamSizes: number[];
+  authorSafetyConfirmation: boolean;
+  explanation?: string;
+}
+
 export interface Top10PoisonDeckPayload {
   variant: "poison-deck";
   title: string;
   instruction?: string;
   rankingBasis: string;
   sourceLabel: string;
+  sourceUrl?: string;
   asOfDate?: string;
   candidates: Top10PoisonDeckCandidate[];
   rankedAnswer: Array<{ candidateId: string; rank: number }>;
@@ -256,8 +281,6 @@ export interface WorldContentMetadata {
   boardSlotCount: number;
   slots: Array<{
     key: WorldChallengeSlotKey;
-    slotType: WorldChallengeSlotType;
-    allowedFamilies: ChallengeFamily[];
   }>;
   answerModeCompatibility: Array<{
     challengeAnswerMode: ChallengeAnswerMode;

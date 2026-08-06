@@ -59,7 +59,6 @@ export class Top10VariantMigration {
           slug: 'top-10',
           description: 'تحدي أفضل 10 بنسخته المعتادة أو نسخة خذها أو دسّها.',
           family: ChallengeFamily.SIGNATURE,
-          isExclusive: true,
           itemStructure: ChallengeItemStructure.CONTINUOUS,
           answerMode: ChallengeAnswerMode.TOP_10,
           defaultPresentation: {

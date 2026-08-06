@@ -28,7 +28,7 @@ describe('WorldReadinessPolicy', () => {
     const report = policy.evaluate(input());
     expect(report.blockers).toEqual([]);
     expect(report.boardReady).toBe(true);
-    expect(report.hasRelationalFlexSlot).toBe(true);
+    expect(report.hasRelationalChallenge).toBe(true);
     expect(policy.canActivate(input())).toBe(true);
   });
 
@@ -38,18 +38,6 @@ describe('WorldReadinessPolicy', () => {
     );
     expect(report.blockers.map((problem) => problem.code)).toContain(
       'WORLD_WITHOUT_ACTIVE_SCOPE',
-    );
-  });
-
-  it('refuses a World without a Signature mechanic', () => {
-    const base = validBoard();
-    const report = policy.evaluate({
-      ...base,
-      world: { ...base.world, signatureMechanicId: undefined },
-      scopes: [scope()],
-    });
-    expect(report.blockers.map((problem) => problem.code)).toContain(
-      'SIGNATURE_MECHANIC_NOT_SET',
     );
   });
 

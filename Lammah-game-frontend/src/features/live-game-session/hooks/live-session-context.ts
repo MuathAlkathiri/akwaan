@@ -31,8 +31,11 @@ export interface LiveSessionContextValue {
   error?: LiveSessionError;
   nowMs: number;
   snapshotReceivedAtMs?: number;
+  syncState?: "idle" | "resynchronizing" | "restored";
   command: (action: string, options?: LiveSessionCommandOptions) => void;
   gameplayCommand: (action: string, options?: GameplayCommandOptions) => void;
+  adoptSnapshot?: (snapshot: LiveSessionSnapshot) => void;
+  resync?: () => void;
 }
 
 export const LiveSessionContext = createContext<LiveSessionContextValue | null>(

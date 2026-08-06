@@ -8,6 +8,7 @@ import { SessionConnectionStatus } from "./session-connection-status";
 import { GameplayRuntimePanel } from "./gameplay-runtime-panel";
 import { useTeamClockDisplay } from "../hooks/use-team-clock-display";
 import { BombGameplayPanel } from "./bomb-gameplay-panel";
+import { ParticipantMatchView } from "../match/views";
 
 export function PlayerLobby({ participantId }: { participantId: string }) {
   const { snapshot, command, connection, error, nowMs } = useLiveSession();
@@ -24,6 +25,9 @@ export function PlayerLobby({ participantId }: { participantId: string }) {
         </CardContent>
       </Card>
     );
+  }
+  if (snapshot.match) {
+    return <ParticipantMatchView participantId={participantId} />;
   }
   const team = snapshot.teams.find((item) => item.id === participant.teamId);
   const countdown = snapshot.countdownEndsAt

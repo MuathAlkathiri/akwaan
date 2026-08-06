@@ -1,3 +1,4 @@
+import { LiveSessionMatchProjection } from './live-session-match.projection';
 import { Injectable } from '@nestjs/common';
 import {
   LiveGameSession,
@@ -69,6 +70,11 @@ export interface LiveGameSessionSnapshot {
     completionReason: 'time_expired' | 'items_completed';
     finalRemainingTimes: Record<string, number>;
   };
+  /**
+   * Match orchestration context, present only when a Match wraps this session.
+   * Added by a registered snapshot enricher; `gameplay` stays untouched.
+   */
+  match?: LiveSessionMatchProjection;
   availableActions: string[];
   createdAt: string;
   startedAt?: string;

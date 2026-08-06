@@ -4,6 +4,7 @@ import { ScoringService } from './application/scoring.service';
 import { PerfectClearBonusRule } from './application/perfect-clear-bonus.rule';
 import { RyoPayoffMatrixRule } from './application/ryo-payoff-matrix.rule';
 import { Top10PoisonDeckResultRule } from './application/top10-poison-deck-result.rule';
+import { DistributedInformationRaceRule } from './application/distributed-information-race.rule';
 
 /**
  * The single scoring module for the new system (roadmap 0.3). The legacy
@@ -17,6 +18,7 @@ import { Top10PoisonDeckResultRule } from './application/top10-poison-deck-resul
     PerfectClearBonusRule,
     RyoPayoffMatrixRule,
     Top10PoisonDeckResultRule,
+    DistributedInformationRaceRule,
   ],
   exports: [ScoringRuleRegistry, ScoringService],
 })
@@ -26,11 +28,13 @@ export class ScoringModule implements OnModuleInit {
     private readonly perfectClearBonus: PerfectClearBonusRule,
     private readonly ryoPayoffMatrix: RyoPayoffMatrixRule,
     private readonly top10PoisonDeck: Top10PoisonDeckResultRule,
+    private readonly distributedRace: DistributedInformationRaceRule,
   ) {}
 
   onModuleInit(): void {
     this.registry.bind(this.perfectClearBonus);
     this.registry.bind(this.ryoPayoffMatrix);
     this.registry.bind(this.top10PoisonDeck);
+    this.registry.bind(this.distributedRace);
   }
 }

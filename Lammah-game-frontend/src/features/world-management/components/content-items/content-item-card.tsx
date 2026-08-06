@@ -3,14 +3,13 @@ import { Pencil, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ReadinessBadge } from "../shared";
+import { ReadinessBadge, ReadinessChecklist } from "../shared";
 import {
   ANSWER_MODE_LABEL,
   CONTENT_STATUS_LABEL,
   FAMILY_LABEL,
 } from "../../utils/world-content.labels";
 import type { ContentItem } from "../../types";
-import { localizeReadinessIssue } from "../../utils/readiness.util";
 
 interface ContentItemCardProps {
   item: ContentItem;
@@ -66,19 +65,7 @@ export function ContentItemCard({
         </div>
       </div>
 
-      {(item.readiness?.blockers ?? []).map((issue) => (
-        <p key={issue.code} className="text-xs text-destructive">
-          {localizeReadinessIssue(issue)}
-        </p>
-      ))}
-      {(item.readiness?.warnings ?? []).map((issue) => (
-        <p
-          key={issue.code}
-          className="text-xs text-amber-700 dark:text-amber-400"
-        >
-          {localizeReadinessIssue(issue)}
-        </p>
-      ))}
+      <ReadinessChecklist report={item.readiness} satisfiedText="جاهز للعب." />
     </div>
   );
 }

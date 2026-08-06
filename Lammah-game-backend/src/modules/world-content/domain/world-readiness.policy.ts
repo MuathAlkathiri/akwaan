@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import {
   BoardDefinition,
   BoardDefinitionPolicy,
-  ForeignAssignment,
 } from './board-definition.policy';
 import {
   ScopeCompatibility,
@@ -25,7 +24,6 @@ export interface WorldReadinessInput {
   scopes: ScopeView[];
   configurations: WorldChallengeConfigurationView[];
   challengeTypes: Map<string, ChallengeTypeView>;
-  foreignAssignments?: ForeignAssignment[];
   /** Ready content item counts per challenge type, for coverage warnings. */
   readyContentCountByChallengeType?: Map<string, number>;
 }
@@ -35,7 +33,7 @@ export interface WorldReadinessReport extends ReadinessReport {
   board: BoardDefinition;
   scopeCompatibility: ScopeCompatibility[];
   boardReady: boolean;
-  hasRelationalFlexSlot: boolean;
+  hasRelationalChallenge: boolean;
 }
 
 /**
@@ -55,7 +53,6 @@ export class WorldReadinessPolicy {
       world: input.world,
       configurations: input.configurations,
       challengeTypes: input.challengeTypes,
-      foreignAssignments: input.foreignAssignments,
     });
     const blockers: WorldContentIssue[] = [...board.blockers];
     const warnings: WorldContentIssue[] = [...board.warnings];
@@ -102,7 +99,7 @@ export class WorldReadinessPolicy {
       board,
       scopeCompatibility,
       boardReady: this.boards.isBoardReady(board),
-      hasRelationalFlexSlot: this.boards.hasRelationalFlexSlot(board),
+      hasRelationalChallenge: this.boards.hasRelationalChallenge(board),
     };
   }
 
@@ -125,7 +122,7 @@ export class WorldReadinessPolicy {
         issue(
           'CHALLENGE_WITHOUT_READY_CONTENT',
           `"${slot.displayName}" has no ready content items yet`,
-          { challengeTypeId: slot.challengeTypeId, slotType: slot.slotType },
+          { challengeTypeId: slot.challengeTypeId, slotKey: slot.slotKey },
         ),
       );
   }

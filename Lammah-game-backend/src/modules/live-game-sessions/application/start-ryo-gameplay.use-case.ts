@@ -52,7 +52,7 @@ export class StartRyoGameplay {
     sessionId: string;
     actorId: string;
     worldId: string;
-    slotKey: WorldChallengeSlotKey.RYO_1 | WorldChallengeSlotKey.RYO_2;
+    slotKey: WorldChallengeSlotKey;
     contentItemIds: string[];
     startingTeamId?: string;
   }) {
@@ -83,7 +83,7 @@ export class StartRyoGameplay {
     if (!configuration)
       throw new LiveSessionDomainError(
         'RYO_SLOT_NOT_CONFIGURED',
-        'The selected RYO slot is not configured',
+        'The selected board slot is not configured',
       );
     const mechanic = await this.challengeTypes.findById(
       String(configuration.challengeTypeId),
@@ -91,7 +91,7 @@ export class StartRyoGameplay {
     if (!mechanic || mechanic.slug !== RYO_MODE_KEY)
       throw new LiveSessionDomainError(
         'RYO_SLOT_INVALID',
-        'The selected slot must use the canonical RYO mechanic',
+        'The selected slot must use the Read Your Opponent mechanic',
       );
     const documents = await Promise.all(
       input.contentItemIds.map((id) => this.items.findById(id)),

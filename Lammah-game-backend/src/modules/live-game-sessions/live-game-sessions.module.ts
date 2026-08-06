@@ -113,7 +113,9 @@ import { ScoringModule } from '../scoring/scoring.module';
 import { WorldContentModule } from '../world-content/world-content.module';
 import { StartRyoGameplay } from './application/start-ryo-gameplay.use-case';
 import { StartTop10PoisonDeck } from './application/start-top10-poison-deck.use-case';
+import { StartDistributedInformation } from './application/start-distributed-information.use-case';
 import { GameplayDeadlineScheduler } from './application/gameplay-deadline.scheduler';
+import { GameplayObserverRegistry } from './application/gameplay-observer.registry';
 
 const applicationProviders = [
   CreateLiveGameSession,
@@ -165,6 +167,7 @@ const applicationProviders = [
   BombCountdownScheduler,
   StartRyoGameplay,
   StartTop10PoisonDeck,
+  StartDistributedInformation,
   GameplayDeadlineScheduler,
 ];
 
@@ -202,6 +205,7 @@ const applicationProviders = [
     LiveGameModeRegistry,
     LiveGameSessionSnapshotMapper,
     GameplayModeRegistry,
+    GameplayObserverRegistry,
     GameplayAuthorization,
     GameplayRuntimeSnapshotMapper,
     SystemLiveSessionClock,
@@ -247,6 +251,25 @@ const applicationProviders = [
     },
     ...applicationProviders,
     LiveGameSessionsGateway,
+  ],
+  // Exported so the Match layer can register itself without this module
+  // ever needing to know that a Match exists.
+  exports: [
+    GameplayObserverRegistry,
+    GetLiveGameSession,
+    GameplayModeRegistry,
+    StartRyoGameplay,
+    StartTop10PoisonDeck,
+    StartDistributedInformation,
+    GAMEPLAY_RUNTIME_REPOSITORY,
+    LIVE_GAME_SESSION_REPOSITORY,
+    // The Match layer announces its transitions on the session's own channel.
+    LIVE_SESSION_TRANSITION_PUBLISHER,
+    // A challenge preflight shows the session's join code; it reuses this rather
+    // than growing a second join system.
+    GetSessionJoinAccess,
+    CreateSessionJoinAccess,
+    LIVE_SESSION_JOIN_ACCESS_REPOSITORY,
   ],
 })
 export class LiveGameSessionsModule {}

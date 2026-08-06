@@ -4,19 +4,11 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 import {
   useCreateWorld,
   useUpdateWorld,
-  useWorldBoard,
 } from "../../hooks/use-world-content";
 import { useAutoSlug } from "../../hooks/use-auto-slug";
 import { useEntityFormSubmit } from "../../hooks/use-entity-form-submit";
@@ -34,8 +26,6 @@ interface WorldFormProps {
   onSuccess: () => void;
 }
 
-const NO_SIGNATURE = "none";
-
 export function WorldForm({ world, onSuccess }: WorldFormProps) {
   const [assetFile, setAssetFile] = useState<File | null>(null);
   const [name, setName] = useState(world?.name ?? "");
@@ -43,20 +33,10 @@ export function WorldForm({ world, onSuccess }: WorldFormProps) {
   const [status, setStatus] = useState<WorldContentStatus>(
     world?.status ?? "draft",
   );
-  const [signatureMechanicId, setSignatureMechanicId] = useState(
-    world?.signatureMechanicId ?? NO_SIGNATURE,
-  );
   const [soundPack, setSoundPack] = useState(world?.soundPack ?? "");
   const [timerProfile, setTimerProfile] = useState(world?.timerProfile ?? "");
   const [toneProfile, setToneProfile] = useState(world?.toneProfile ?? "");
   const slugField = useAutoSlug(world?.slug, "world");
-
-  // Only mechanics already configured in this World's Signature slot are
-  // offerable, so the reference can never point somewhere the board does not.
-  const board = useWorldBoard(world?.id);
-  const signatureCandidates = (board.data?.configurations ?? []).filter(
-    (configuration) => configuration.slotType === "signature",
-  );
 
   const formSubmit = useEntityFormSubmit<World>({
     entityId: world?.id,
@@ -73,8 +53,6 @@ export function WorldForm({ world, onSuccess }: WorldFormProps) {
       slug: slugField.slug,
       description,
       status,
-      signatureMechanicId:
-        signatureMechanicId === NO_SIGNATURE ? undefined : signatureMechanicId,
       soundPack,
       timerProfile,
       toneProfile,
@@ -115,37 +93,6 @@ export function WorldForm({ world, onSuccess }: WorldFormProps) {
         shape="wide"
       />
 
-      {world && (
-        <div>
-          <label className="mb-2 block text-sm font-medium">
-            مكانيكا التوقيع
-          </label>
-          <Select
-            value={signatureMechanicId}
-            onValueChange={setSignatureMechanicId}
-          >
-            <SelectTrigger aria-label="مكانيكا التوقيع">
-              <SelectValue placeholder="لم تُحدد" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_SIGNATURE}>لم تُحدد</SelectItem>
-              {signatureCandidates.map((configuration) => (
-                <SelectItem
-                  key={configuration.challengeTypeId}
-                  value={configuration.challengeTypeId}
-                >
-                  {configuration.displayName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="mt-1 text-xs text-muted-foreground">
-            يجب أن تطابق المكانيكا المهيأة في خانة التوقيع. لا يمكن تنشيط العالم
-            بدونها.
-          </p>
-        </div>
-      )}
-
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label className="mb-1.5 block text-sm font-medium">حزمة الصوت</label>
@@ -176,7 +123,7 @@ export function WorldForm({ world, onSuccess }: WorldFormProps) {
       <StatusSelect
         value={status}
         onChange={setStatus}
-        hint="التنشيط يتطلب لوحة مكتملة من 4 تحديات ونطاقاً نشطاً ومكانيكا توقيع."
+        hint="التنشيط يتطلب أربع خانات مكتملة بأربع مكانيكا مختلفة ونطاقاً نشطاً."
       />
 
       <AdvancedSlugField slugField={slugField} />

@@ -8,7 +8,6 @@ import {
   ChallengeFamily,
   ContentItemStatus,
   WorldChallengeSlotKey,
-  WorldChallengeSlotType,
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
 import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
@@ -205,8 +204,8 @@ describe('migrate:world-content (roadmap 18)', () => {
       .toArray();
     expect(configurations).toHaveLength(2);
     for (const configuration of configurations) {
-      expect(configuration.slotKey).toBe(WorldChallengeSlotKey.RYO_1);
-      expect(configuration.slotType).toBe(WorldChallengeSlotType.RYO);
+      expect(configuration.slotKey).toBe(WorldChallengeSlotKey.SLOT_2);
+      expect(configuration.slotType).toBeUndefined();
       // The mechanic keeps one global name, so no per-World label is written.
       expect(configuration.displayName).toBeUndefined();
       // A board slot is an editorial decision, never switched on by a migration.
@@ -310,7 +309,6 @@ describe('migrate:world-content (roadmap 18)', () => {
   it('reports the state that still needs a human decision', async () => {
     const report = await run(true);
 
-    expect(report.worldsMissingSignatureMechanic.length).toBeGreaterThan(0);
     expect(report.worldsWithInvalidBoardComposition.length).toBeGreaterThan(0);
     expect(
       report.manualReview.some(

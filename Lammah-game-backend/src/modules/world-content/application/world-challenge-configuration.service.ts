@@ -3,12 +3,6 @@ import { Types } from 'mongoose';
 import { UploadedImageFile } from '../../../common/uploads/local-image-storage.service';
 import { BoardDefinition } from '../domain/board-definition.policy';
 import {
-  GLOBALLY_FIXED_FAMILIES,
-  SLOT_KEY_TYPES,
-} from '../domain/world-content.constants';
-import {
-  assertNoIssues,
-  issue,
   withUniqueConstraint,
   WorldContentConflictError,
 } from '../domain/world-content.errors';
@@ -33,7 +27,6 @@ import {
 } from './world-content.mapper';
 
 export interface WorldChallengeConfigurationSummary extends WorldChallengeConfigurationView {
-  description?: string;
   icon?: ContentAssetRef;
   challengeType: ChallengeTypeView;
   /** What the player sees: the World label, or the mechanic's own name. */
@@ -50,9 +43,8 @@ export interface WorldBoardView {
  * Assigns a global mechanic to one board position of one World.
  *
  * Assignment is deliberately lightweight: the slot and the mechanic are the only
- * required decisions. Timing, input, reveal behaviour, and scoring belong to the
- * mechanic; media belongs to the ContentItem. A globally fixed mechanic such as
- * RYO keeps one name everywhere and rejects a per-World label outright.
+ * required decisions. Runtime belongs to the mechanic; player-facing name,
+ * description, and instructions may vary per World.
  */
 @Injectable()
 export class WorldChallengeConfigurationService {
@@ -106,15 +98,23 @@ export class WorldChallengeConfigurationService {
         `The ${dto.slotKey} board position is already filled in this World`,
       );
     }
-    this.assertLabelAllowed(challengeType, dto.displayName);
+    if (
+      await this.configurations.findByWorldAndChallengeType(
+        worldId,
+        dto.challengeTypeId,
+      )
+    ) {
+      throw this.duplicateMechanicConflict();
+    }
 
     const projected: WorldChallengeConfigurationView = {
       id: 'projected',
       worldId,
       challengeTypeId: dto.challengeTypeId,
       slotKey: dto.slotKey,
-      slotType: SLOT_KEY_TYPES[dto.slotKey],
       ...(dto.displayName ? { displayName: dto.displayName } : {}),
+      ...(dto.description ? { description: dto.description } : {}),
+      ...(dto.instructions ? { instructions: dto.instructions } : {}),
       sortOrder: dto.sortOrder ?? 0,
       isEnabled: dto.isEnabled ?? true,
     };
@@ -130,9 +130,9 @@ export class WorldChallengeConfigurationService {
         worldId: new Types.ObjectId(worldId),
         challengeTypeId: new Types.ObjectId(dto.challengeTypeId),
         slotKey: projected.slotKey,
-        slotType: projected.slotType,
         displayName: dto.displayName,
         description: dto.description,
+        instructions: dto.instructions,
         icon: dto.icon,
         sortOrder: projected.sortOrder,
         isEnabled: projected.isEnabled,
@@ -157,30 +157,30 @@ export class WorldChallengeConfigurationService {
   ): Promise<WorldChallengeConfigurationSummary> {
     const existing = await this.require(id);
     const worldId = String(existing.worldId);
-    if (
-      dto.challengeTypeId &&
-      dto.challengeTypeId !== String(existing.challengeTypeId)
-    ) {
-      assertNoIssues([
-        issue(
-          'CONFIGURATION_CHALLENGE_TYPE_IMMUTABLE',
-          'Assign a different mechanic by removing this configuration and creating a new one',
-        ),
-      ]);
-    }
-    const challengeType = await this.requireChallengeType(
-      String(existing.challengeTypeId),
+    const challengeTypeId =
+      dto.challengeTypeId ?? String(existing.challengeTypeId);
+    const challengeType = await this.requireChallengeType(challengeTypeId);
+    const duplicate = await this.configurations.findByWorldAndChallengeType(
+      worldId,
+      challengeTypeId,
     );
-    this.assertLabelAllowed(challengeType, dto.displayName);
+    if (duplicate && String(duplicate._id) !== id) {
+      throw this.duplicateMechanicConflict();
+    }
 
     const projected: WorldChallengeConfigurationView = {
       ...toConfigurationView(existing),
-      ...(dto.slotKey
-        ? { slotKey: dto.slotKey, slotType: SLOT_KEY_TYPES[dto.slotKey] }
-        : {}),
+      challengeTypeId,
+      ...(dto.slotKey ? { slotKey: dto.slotKey } : {}),
       ...(dto.displayName === undefined
         ? {}
         : { displayName: dto.displayName }),
+      ...(dto.description === undefined
+        ? {}
+        : { description: dto.description }),
+      ...(dto.instructions === undefined
+        ? {}
+        : { instructions: dto.instructions }),
       ...(dto.sortOrder === undefined ? {} : { sortOrder: dto.sortOrder }),
       ...(dto.isEnabled === undefined ? {} : { isEnabled: dto.isEnabled }),
     };
@@ -194,8 +194,8 @@ export class WorldChallengeConfigurationService {
       kind: 'world-challenge-configurations',
       field: 'icon',
       data: {
+        challengeTypeId: new Types.ObjectId(projected.challengeTypeId),
         slotKey: projected.slotKey,
-        slotType: projected.slotType,
         sortOrder: projected.sortOrder,
         isEnabled: projected.isEnabled,
         ...(dto.displayName === undefined
@@ -204,6 +204,9 @@ export class WorldChallengeConfigurationService {
         ...(dto.description === undefined
           ? {}
           : { description: dto.description }),
+        ...(dto.instructions === undefined
+          ? {}
+          : { instructions: dto.instructions }),
         ...(dto.icon === undefined ? {} : { icon: dto.icon }),
       },
       file,
@@ -238,26 +241,6 @@ export class WorldChallengeConfigurationService {
   }
 
   /**
-   * A globally fixed mechanic has one player-facing name everywhere. Worlds
-   * differ through their Signature mechanic and their content, not by renaming a
-   * shared mechanic.
-   */
-  private assertLabelAllowed(
-    challengeType: ChallengeTypeView,
-    displayName?: string,
-  ): void {
-    if (!displayName) return;
-    if (!GLOBALLY_FIXED_FAMILIES.includes(challengeType.family)) return;
-    assertNoIssues([
-      issue(
-        'MECHANIC_NAME_IS_GLOBAL',
-        `"${challengeType.name}" keeps the same name in every World and cannot be renamed here`,
-        { challengeTypeId: challengeType.id, family: challengeType.family },
-      ),
-    ]);
-  }
-
-  /**
    * Board edits are validated as a projection before anything is written, so a
    * live World is never left broken and nothing has to be rolled back. A World
    * whose board is already incomplete stays editable — that is how it gets
@@ -285,6 +268,13 @@ export class WorldChallengeConfigurationService {
     };
   }
 
+  private duplicateMechanicConflict(): WorldContentConflictError {
+    return new WorldContentConflictError(
+      'DUPLICATE_BOARD_CHALLENGE_TYPE',
+      'Duplicate mechanics are not allowed in the same World.',
+    );
+  }
+
   private summarize(
     document: WorldChallengeConfiguration,
     challengeType: ChallengeTypeView,
@@ -292,7 +282,6 @@ export class WorldChallengeConfigurationService {
     const view = toConfigurationView(document);
     return {
       ...view,
-      description: document.description,
       icon: document.icon,
       challengeType,
       effectiveName: view.displayName ?? challengeType.name,

@@ -99,12 +99,18 @@ describe('World Content architecture', () => {
         (path) =>
           !path.includes(join('modules', 'world-content')) &&
           !path.includes(join('modules', 'scoring')) &&
+          // Match orchestration is a designed consumer of World Content: it reads
+          // boards, slot keys, and readiness. That whole edge is intentional.
+          !path.includes(join('modules', 'match')) &&
           !path.endsWith('app.module.ts') &&
           !path.includes(join('src', 'scripts')) &&
           readFileSync(path, 'utf8').includes('world-content/'),
       )
       .map((path) => path.replace(`${SRC_ROOT}/`, ''));
+    // Everything left is the legacy question bridge or an existing challenge
+    // launcher reading the content a mechanic is about to play.
     expect(legacyImporters.sort()).toEqual([
+      'modules/live-game-sessions/application/start-distributed-information.use-case.ts',
       'modules/live-game-sessions/application/start-ryo-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-top10-poison-deck.use-case.ts',
       'modules/live-game-sessions/live-game-sessions.module.ts',

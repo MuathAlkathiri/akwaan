@@ -15,6 +15,7 @@ import { CatalogsModule } from './modules/catalogs/catalogs.module';
 import { HealthController } from './health.controller';
 import { WorldContentModule } from './modules/world-content/world-content.module';
 import { ScoringModule } from './modules/scoring/scoring.module';
+import { MatchModule } from './modules/match/match.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ScoringModule } from './modules/scoring/scoring.module';
     GamesModule,
     SubscriptionsModule,
     LiveGameSessionsModule,
+    MatchModule,
   ],
   controllers: [HealthController],
 })

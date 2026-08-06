@@ -77,6 +77,58 @@ external providers. Fake-provider call counts prove fatal failures do not contin
 asset work. Live AI remains a separate opt-in check; broader browser coverage remains
 Playwright debt and is intentionally outside this phase.
 
+## Match setup modes
+
+A Match carries an explicit persisted `setupMode`. New Matches are created in one
+step through `POST /live-game-sessions/:sessionId/match/unified`
+(`unified_preconfigured`): three configured World occurrences with exactly four
+Scopes each, twelve board positions, opening at `stage = board`. The sequential
+setup routes (`/create`, `/start`, `/coin-toss`, `/worlds/select`,
+`/scopes/select`, `/worlds/continue`) are `legacy_sequential` only, are deprecated,
+and Phase 5 deletes them — do not exercise a new Match through them and do not
+build new UI against their stages. See
+`docs/UNIFIED_MATCH_PHASE_1_ARCHITECTURE.md`.
+
+The host configures a Match at `/games/new/setup` before anything exists on the
+server; the wizard's own draft lives in `sessionStorage` and is never Match
+authority. Frontend coverage: `src/test/match-setup-draft.test.ts` (the reducer and
+draft recovery), `src/test/match-setup-wizard.test.tsx` (the journey, including
+that zero server calls happen before ابدأ المباراة), and
+`src/test/match-setup-creation-contract.test.ts` (the exact four requests that go
+on the wire). `src/test/unified-match-board-handoff.test.tsx` proves a
+preconfigured Match renders its twelve positions and never a sequential setup
+stage, and `src/test/unified-board-launch.test.tsx` covers the functional board:
+launching from any occurrence first, a request that carries no ContentItem id, the
+phone-required handoff coming from the server capability, precise unavailable
+reasons, completed tiles staying in place, and the last position routing to the
+Match-complete screen.
+
+Challenge preflight and phone pairing: `src/test/unified-preflight.test.tsx` covers
+the frontend (a tile click prepares rather than launches, QR and join code, team
+counters, Start gated on the server's `readyToLaunch`, cancel, and refresh recovery),
+`src/modules/match/application/match-challenge-readiness.service.spec.ts` covers the
+per-mechanic readiness contracts read off the real launchers, and
+`test/integration/unified-match-preflight.integration-spec.ts` is the end-to-end
+proof: prepare with no runtime, pair four phones through the real join route, launch,
+play the real ركّبها race to completion, reconcile back to the board, and reuse the
+same participants for the next challenge.
+
+Server-side content selection is covered by
+`src/modules/match/application/match-content-selection.service.spec.ts` (counts from
+the launcher, occurrence pool isolation, repeated-World isolation, determinism, and
+insufficient content) and end to end by the unified integration suite, which
+launches through the production route with no client content, plays the real RYO
+runtime, reconciles back to the board, and reloads from Mongo.
+
+Coverage: `test/integration/unified-match-api.integration-spec.ts` drives the
+production route end to end — Anime, Football, Anime again from a different
+Scope pool; a challenge from the *third* occurrence played first; reload from
+Mongo; and no Match written when a configuration fails to validate.
+`test/integration/match-persistence.integration-spec.ts` proves both setup modes
+round-trip unchanged, including that a stored Match with no `setupMode` reads as
+`legacy_sequential`. `test/integration/match-api.integration-spec.ts` remains the
+legacy-flow regression suite.
+
 Games concurrency is verified against MongoDB by loading the same game twice, saving
 one copy, and asserting that saving the stale copy raises Mongoose's version error.
 Run these suites through `docker compose -f docker-compose.test.yml run --rm

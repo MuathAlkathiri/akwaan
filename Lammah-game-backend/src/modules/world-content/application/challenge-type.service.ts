@@ -9,12 +9,9 @@ import {
   ChallengeItemStructure,
   FAMILY_ALLOWED_ANSWER_MODES,
   FAMILY_DEFAULT_TIMER_SECONDS,
-  SLOT_KEY_TYPES,
   WORLD_BOARD_SLOT_COUNT,
   WORLD_BOARD_SLOT_KEYS,
-  WORLD_SLOT_ALLOWED_FAMILIES,
   WorldChallengeSlotKey,
-  WorldChallengeSlotType,
   WorldContentStatus,
 } from '../domain/world-content.constants';
 import {
@@ -75,14 +72,9 @@ export interface WorldContentMetadata {
     allowsNegativeDelta: boolean;
     requiresMechanicBinding: boolean;
   }>;
-  /** Board composition: which families each slot accepts and how many it needs. */
+  /** Board composition: four generic positions. */
   boardSlotCount: number;
-  /** The four board positions, in order. ryo_1 and ryo_2 are distinct. */
-  slots: Array<{
-    key: WorldChallengeSlotKey;
-    slotType: WorldChallengeSlotType;
-    allowedFamilies: ChallengeFamily[];
-  }>;
+  slots: Array<{ key: WorldChallengeSlotKey }>;
   /** Which item answer payloads each challenge answer mode can consume. */
   answerModeCompatibility: Array<{
     challengeAnswerMode: ChallengeAnswerMode;
@@ -108,17 +100,13 @@ export class ChallengeTypeService {
       families: Object.values(ChallengeFamily).map((family) => ({
         value: family,
         allowedAnswerModes: [...FAMILY_ALLOWED_ANSWER_MODES[family]],
-        mustBeExclusive: family === ChallengeFamily.SIGNATURE,
+        mustBeExclusive: false,
         defaultTimerSeconds: FAMILY_DEFAULT_TIMER_SECONDS[family],
       })),
       itemStructures: Object.values(ChallengeItemStructure),
       scoringRules: this.scoringRules.list().map((rule) => ({ ...rule })),
       boardSlotCount: WORLD_BOARD_SLOT_COUNT,
-      slots: WORLD_BOARD_SLOT_KEYS.map((key) => ({
-        key,
-        slotType: SLOT_KEY_TYPES[key],
-        allowedFamilies: [...WORLD_SLOT_ALLOWED_FAMILIES[SLOT_KEY_TYPES[key]]],
-      })),
+      slots: WORLD_BOARD_SLOT_KEYS.map((key) => ({ key })),
       answerModeCompatibility: Object.values(ChallengeAnswerMode).map(
         (mode) => ({
           challengeAnswerMode: mode,
@@ -255,8 +243,6 @@ export class ChallengeTypeService {
       name: dto.name,
       slug: dto.slug,
       family: dto.family,
-      // Exclusivity follows from the family; it is not a free choice (7).
-      isExclusive: dto.family === ChallengeFamily.SIGNATURE,
       itemStructure:
         dto.itemStructure ?? ChallengeItemStructure.DISCRETE_TRIPLE,
       answerMode: dto.answerMode,
@@ -276,7 +262,6 @@ export class ChallengeTypeService {
       name: dto.name ?? existing.name,
       slug: dto.slug ?? existing.slug,
       family,
-      isExclusive: family === ChallengeFamily.SIGNATURE,
       itemStructure: dto.itemStructure ?? existing.itemStructure,
       answerMode: dto.answerMode ?? existing.answerMode,
       defaultPresentation: normalizePresentation(
@@ -292,7 +277,6 @@ export class ChallengeTypeService {
       name: candidate.name,
       slug: candidate.slug,
       family: candidate.family,
-      isExclusive: candidate.isExclusive,
       itemStructure: candidate.itemStructure,
       answerMode: candidate.answerMode,
       defaultPresentation: candidate.defaultPresentation,

@@ -5,6 +5,7 @@ import {
   GameplayRuntimeRepository,
 } from '../domain/gameplay-runtime.repository';
 import { GameplayRuntimeNotFoundError } from '../domain/live-session.errors';
+import { GameplayObserverRegistry } from './gameplay-observer.registry';
 import { GameplayRuntimeSnapshotMapper } from './gameplay-runtime.snapshot';
 import { actorSnapshotId, LiveSessionActor } from './live-session-actor';
 import {
@@ -19,6 +20,7 @@ export class LiveSessionSnapshotComposer {
     @Inject(GAMEPLAY_RUNTIME_REPOSITORY)
     private readonly runtimes: GameplayRuntimeRepository,
     private readonly gameplay: GameplayRuntimeSnapshotMapper,
+    private readonly observers: GameplayObserverRegistry,
   ) {}
 
   async compose(
@@ -37,12 +39,13 @@ export class LiveSessionSnapshotComposer {
       if (state.modeKey === 'bomb' && state.status === 'active') {
         throw new GameplayRuntimeNotFoundError(session.id);
       }
-      return snapshot;
+      // Stages before the first challenge still carry their Match projection.
+      return this.observers.enrichSnapshot(snapshot, actor);
     }
     snapshot.availableActions = snapshot.availableActions.filter(
       (action) => action !== 'runtime:create',
     );
     snapshot.gameplay = this.gameplay.toSnapshot(runtime, session, actor, now);
-    return snapshot;
+    return this.observers.enrichSnapshot(snapshot, actor);
   }
 }

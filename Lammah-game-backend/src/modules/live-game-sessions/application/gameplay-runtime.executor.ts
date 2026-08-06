@@ -25,6 +25,7 @@ import {
   LIVE_SESSION_TRANSITION_PUBLISHER,
   LiveSessionTransitionPublisher,
 } from './live-session-transition.publisher';
+import { GameplayObserverRegistry } from './gameplay-observer.registry';
 
 export interface GameplayRuntimeCommand {
   sessionId: string;
@@ -49,6 +50,7 @@ export class GameplayRuntimeExecutor {
     private readonly gameplaySnapshots: GameplayRuntimeSnapshotMapper,
     @Inject(LIVE_SESSION_TRANSITION_PUBLISHER)
     private readonly publisher: LiveSessionTransitionPublisher,
+    private readonly observers: GameplayObserverRegistry,
   ) {}
 
   async execute(
@@ -77,14 +79,27 @@ export class GameplayRuntimeExecutor {
         actorId: command.actor.actorId,
         revision: runtime.revision,
       });
-      return this.snapshot(session, runtime, command.actor, now);
+      return this.observers.enrichSnapshot(
+        this.snapshot(session, runtime, command.actor, now),
+        command.actor,
+      );
     }
     session.assertRevision(command.expectedSessionRevision);
     runtime.assertRevision(command.expectedRuntimeRevision);
     const previousRevision = runtime.revision;
     mutate(session, runtime, now);
     await this.runtimes.save(runtime, previousRevision);
-    const snapshot = this.snapshot(session, runtime, command.actor, now);
+    // Layers above the session (the Match) reconcile terminal runtimes here, so
+    // the projection they add below already reflects this mutation.
+    await this.observers.notifyRuntimeMutated({
+      sessionId: command.sessionId,
+      runtimeId: runtime.id,
+      runtimeState: runtime.serialize(),
+    });
+    const snapshot = await this.observers.enrichSnapshot(
+      this.snapshot(session, runtime, command.actor, now),
+      command.actor,
+    );
     this.publisher.publishEvent(command.sessionId, event, {
       runtimeId: runtime.id,
       runtimeRevision: runtime.revision,

@@ -3,7 +3,6 @@ import {
   ChallengeFamily,
   ChallengeItemStructure,
   ContentItemStatus,
-  SLOT_KEY_TYPES,
   WorldChallengeSlotKey,
   WorldContentStatus,
 } from './world-content.constants';
@@ -64,7 +63,6 @@ export function challengeType(
     name: `Mechanic ${family}`,
     slug: `mechanic-${family}`,
     family,
-    isExclusive: family === ChallengeFamily.SIGNATURE,
     itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
     answerMode: defaultAnswerMode(family),
     defaultPresentation: presentation(),
@@ -77,13 +75,12 @@ export function challengeType(
 export function configuration(
   overrides: Partial<WorldChallengeConfigurationView> = {},
 ): WorldChallengeConfigurationView {
-  const slotKey = overrides.slotKey ?? WorldChallengeSlotKey.RYO_1;
+  const slotKey = overrides.slotKey ?? WorldChallengeSlotKey.SLOT_2;
   return {
     id: 'configuration-1',
     worldId: 'world-football',
     challengeTypeId: 'challenge-ryo',
     slotKey,
-    slotType: SLOT_KEY_TYPES[slotKey],
     sortOrder: 0,
     isEnabled: true,
     ...overrides,
@@ -123,8 +120,7 @@ export function multipleChoicePayload(
 }
 
 /**
- * A complete, valid board: one Signature, two RYO, one Flex. Specs break exactly
- * one rule at a time from this baseline.
+ * A complete board with four generic positions and four distinct mechanics.
  */
 export function validBoard(): BoardDefinitionInput {
   const signature = challengeType({
@@ -146,10 +142,7 @@ export function validBoard(): BoardDefinitionInput {
     slug: 'same-wavelength',
   });
   return {
-    world: world({
-      status: WorldContentStatus.ACTIVE,
-      signatureMechanicId: signature.id,
-    }),
+    world: world({ status: WorldContentStatus.ACTIVE }),
     challengeTypes: new Map(
       [signature, ryoOne, ryoTwo, flex].map((entry) => [entry.id, entry]),
     ),
@@ -157,24 +150,24 @@ export function validBoard(): BoardDefinitionInput {
       configuration({
         id: 'configuration-signature',
         challengeTypeId: signature.id,
-        slotKey: WorldChallengeSlotKey.SIGNATURE,
+        slotKey: WorldChallengeSlotKey.SLOT_1,
       }),
       configuration({
         id: 'configuration-ryo-1',
         challengeTypeId: ryoOne.id,
-        slotKey: WorldChallengeSlotKey.RYO_1,
+        slotKey: WorldChallengeSlotKey.SLOT_2,
         sortOrder: 1,
       }),
       configuration({
         id: 'configuration-ryo-2',
         challengeTypeId: ryoTwo.id,
-        slotKey: WorldChallengeSlotKey.RYO_2,
+        slotKey: WorldChallengeSlotKey.SLOT_3,
         sortOrder: 2,
       }),
       configuration({
         id: 'configuration-flex',
         challengeTypeId: flex.id,
-        slotKey: WorldChallengeSlotKey.FLEX,
+        slotKey: WorldChallengeSlotKey.SLOT_4,
         sortOrder: 3,
       }),
     ],

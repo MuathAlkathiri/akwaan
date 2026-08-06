@@ -2,9 +2,11 @@ import { randomUUID } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import {
   mintScoreEvent,
+  restoreScoreEvent,
   ScoreEvent,
   ScoreEventDraft,
 } from '../domain/score-event';
+import { ScoreLedger } from '../domain/score-ledger';
 import { ScoringContext } from '../domain/scoring-rule';
 import { ScoringRuleContractError } from '../domain/scoring.errors';
 import { ScoringRuleRegistry } from './scoring-rule.registry';
@@ -17,6 +19,22 @@ import { ScoringRuleRegistry } from './scoring-rule.registry';
 @Injectable()
 export class ScoringService {
   constructor(private readonly registry: ScoringRuleRegistry) {}
+
+  /**
+   * Restores events a mechanic already minted and persisted in its runtime state.
+   *
+   * This is how a Match imports scoring without recalculating it: the mechanic
+   * owns the rule, the scoring module owns the events, and the Match only ever
+   * reads signed deltas. Malformed entries are rejected rather than dropped.
+   */
+  restoreEvents(persisted: readonly unknown[]): ScoreEvent[] {
+    return persisted.map(restoreScoreEvent);
+  }
+
+  /** Rebuilds a ledger from persisted events, preserving signed history. */
+  restoreLedger(persisted: readonly unknown[]): ScoreLedger {
+    return ScoreLedger.restore(persisted);
+  }
 
   score<TInput>(
     ruleId: string,

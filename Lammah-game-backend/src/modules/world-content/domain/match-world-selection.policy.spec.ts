@@ -14,7 +14,7 @@ describe('MatchWorldSelectionPolicy (roadmap 3.1, 11)', () => {
     worldName: 'Football',
     status: WorldContentStatus.ACTIVE,
     boardReady: true,
-    hasRelationalFlexSlot: false,
+    hasRelationalChallenge: false,
     ...overrides,
   });
 
@@ -22,7 +22,7 @@ describe('MatchWorldSelectionPolicy (roadmap 3.1, 11)', () => {
     candidate({
       worldId: 'a',
       worldName: 'Football',
-      hasRelationalFlexSlot: true,
+      hasRelationalChallenge: true,
     }),
     candidate({ worldId: 'b', worldName: 'Anime' }),
     candidate({ worldId: 'c', worldName: 'Video Games' }),
@@ -48,8 +48,49 @@ describe('MatchWorldSelectionPolicy (roadmap 3.1, 11)', () => {
     expect(codes(['a', 'b', 'c', 'a'])).toContain('MATCH_WORLD_COUNT_INVALID');
   });
 
-  it('rejects the same World selected twice', () => {
-    expect(codes(['a', 'a', 'b'])).toContain('MATCH_WORLD_DUPLICATED');
+  it('accepts the same World played more than once', () => {
+    // Football, Anime, Football and Football three times are both legitimate:
+    // each occurrence carries its own board progress in the Match aggregate.
+    const mixed = policy.validateSelectedWorldsForMatch(
+      ['a', 'b', 'a'],
+      three(),
+    );
+    expect(mixed.blockers).toEqual([]);
+    expect(mixed.structurallyValid).toBe(true);
+    expect(mixed.worldIds).toEqual(['a', 'b', 'a']);
+    expect(mixed.distinctWorldIds).toEqual(['a', 'b']);
+
+    const repeated = policy.validateSelectedWorldsForMatch(
+      ['a', 'a', 'a'],
+      three(),
+    );
+    expect(repeated.blockers).toEqual([]);
+    expect(repeated.structurallyValid).toBe(true);
+    expect(repeated.distinctWorldIds).toEqual(['a']);
+  });
+
+  it('still requires three occurrences when a World repeats', () => {
+    expect(codes(['a', 'a'])).toContain('MATCH_WORLD_COUNT_INVALID');
+    expect(codes(['a', 'a', 'a', 'a'])).toContain('MATCH_WORLD_COUNT_INVALID');
+  });
+
+  it('validates a repeated World on its own merits, once', () => {
+    const candidates = three();
+    candidates[0] = candidate({
+      worldId: 'a',
+      worldName: 'Football',
+      hasRelationalChallenge: true,
+      boardReady: false,
+    });
+    const report = policy.validateSelectedWorldsForMatch(
+      ['a', 'a', 'b'],
+      candidates,
+    );
+    expect(
+      report.blockers.filter(
+        (problem) => problem.code === 'MATCH_WORLD_BOARD_NOT_READY',
+      ),
+    ).toHaveLength(1);
   });
 
   it('rejects a World that does not exist', () => {
@@ -80,18 +121,39 @@ describe('MatchWorldSelectionPolicy (roadmap 3.1, 11)', () => {
     );
   });
 
-  it('rejects a three-World selection with zero Relational challenges', () => {
+  it('reports a missing Relational challenge as production readiness, not a structural error', () => {
     const candidates = three().map((entry) => ({
       ...entry,
-      hasRelationalFlexSlot: false,
+      hasRelationalChallenge: false,
     }));
     const report = policy.validateSelectedWorldsForMatch(
       ['a', 'b', 'c'],
       candidates,
     );
-    expect(report.blockers.map((problem) => problem.code)).toContain(
+
+    // The rule is preserved and explicit, so it cannot be lost by accident...
+    expect(report.productionBlockers.map((problem) => problem.code)).toEqual([
       'MATCH_WITHOUT_RELATIONAL_CHALLENGE',
-    );
+    ]);
+    expect(report.productionReady).toBe(false);
     expect(report.relationalChallengeCount).toBe(0);
+    // ...while a development Match of three valid Worlds is still playable.
+    expect(report.blockers).toEqual([]);
+    expect(report.structurallyValid).toBe(true);
+    expect(report.readiness).toBe('limited');
+  });
+
+  it('is production ready only when structure and composition both hold', () => {
+    const ready = policy.validateSelectedWorldsForMatch(
+      ['a', 'b', 'c'],
+      three(),
+    );
+    expect(ready.productionReady).toBe(true);
+    expect(ready.productionBlockers).toEqual([]);
+    expect(ready.readiness).toBe('ready');
+
+    const broken = policy.validateSelectedWorldsForMatch(['a', 'b'], three());
+    expect(broken.structurallyValid).toBe(false);
+    expect(broken.productionReady).toBe(false);
   });
 });

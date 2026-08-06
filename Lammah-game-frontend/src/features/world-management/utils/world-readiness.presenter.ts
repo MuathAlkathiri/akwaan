@@ -16,31 +16,31 @@ const SLOT_GUIDANCE: Record<
   WorldChallengeSlotKey,
   Omit<ReadinessChecklistItem, "complete" | "section">
 > = {
-  signature: {
-    id: "signature",
-    title: "التحدي الخاص بالعالم",
-    explanation: "اختر تحديًا واحدًا يميّز هذا العالم عن بقية العوالم.",
-    actionLabel: "اختيار التحدي",
+  slot_1: {
+    id: "slot-1",
+    title: "الخانة 1",
+    explanation: "اختر مكانيكا للخانة الأولى.",
+    actionLabel: "اختيار مكانيكا",
     actionTarget: "board",
   },
-  ryo_1: {
-    id: "ryo-1",
-    title: "تحدي اقرأ خصمك الأول",
-    explanation: "أضف أول تحدٍ من نوع اقرأ خصمك إلى اللوحة.",
+  slot_2: {
+    id: "slot-2",
+    title: "الخانة 2",
+    explanation: "اختر مكانيكا مختلفة للخانة الثانية.",
     actionLabel: "إضافة الآن",
     actionTarget: "board",
   },
-  ryo_2: {
-    id: "ryo-2",
-    title: "تحدي اقرأ خصمك الثاني",
-    explanation: "أضف تحديًا ثانيًا من نوع اقرأ خصمك ليكتمل إيقاع اللعبة.",
+  slot_3: {
+    id: "slot-3",
+    title: "الخانة 3",
+    explanation: "اختر مكانيكا مختلفة للخانة الثالثة.",
     actionLabel: "إضافة الآن",
     actionTarget: "board",
   },
-  flex: {
-    id: "flex",
-    title: "التحدي العام",
-    explanation: "أضف تحديًا عامًا تعاونيًا أو اجتماعيًا لإكمال اللوحة.",
+  slot_4: {
+    id: "slot-4",
+    title: "الخانة 4",
+    explanation: "اختر مكانيكا مختلفة للخانة الرابعة.",
     actionLabel: "إضافة الآن",
     actionTarget: "board",
   },
@@ -63,14 +63,11 @@ const SCOPE_CODES = new Set([
 
 const BOARD_CODES = new Set([
   "BOARD_SLOT_COUNT_MISMATCH",
-  "BOARD_SLOT_TYPE_COUNT_MISMATCH",
+  "BOARD_SLOT_EMPTY",
   "INVALID_BOARD_SLOT_KEY",
   "DUPLICATE_BOARD_SLOT",
-  "SLOT_FAMILY_MISMATCH",
-  "SIGNATURE_MECHANIC_NOT_SET",
-  "SIGNATURE_MECHANIC_MISMATCH",
+  "DUPLICATE_BOARD_CHALLENGE_TYPE",
   "CONFIGURED_CHALLENGE_TYPE_MISSING",
-  "EXCLUSIVE_CHALLENGE_TYPE_SHARED",
 ]);
 
 function allIssues(world: World): WorldContentIssue[] {
@@ -86,19 +83,41 @@ export function presentWorldReadiness(world: World) {
   const occupied = new Set(
     world.readiness.board.slots.map((slot) => slot.slotKey),
   );
+  const duplicateMechanicIds = new Set(
+    world.readiness.board.blockers
+      .filter((issue) => issue.code === "DUPLICATE_BOARD_CHALLENGE_TYPE")
+      .map((issue) => String(issue.details?.challengeTypeId ?? "")),
+  );
+  const invalidSlotKeys = new Set(
+    world.readiness.board.blockers
+      .filter((issue) => ["DUPLICATE_BOARD_SLOT", "BOARD_SLOT_EMPTY"].includes(issue.code))
+      .map((issue) => String(issue.details?.slotKey ?? "")),
+  );
   const boardItems = (
     Object.keys(SLOT_GUIDANCE) as WorldChallengeSlotKey[]
-  ).map((slotKey): ReadinessChecklistItem => ({
-    ...SLOT_GUIDANCE[slotKey],
-    section: "board",
-    complete: occupied.has(slotKey),
-    explanation: occupied.has(slotKey)
-      ? `تم إعداد ${SLOT_GUIDANCE[slotKey].title} بنجاح.`
-      : SLOT_GUIDANCE[slotKey].explanation,
-    ...(occupied.has(slotKey)
-      ? { actionLabel: undefined, actionTarget: undefined }
-      : {}),
-  }));
+  ).map((slotKey): ReadinessChecklistItem => {
+    const slot = world.readiness.board.slots.find((entry) => entry.slotKey === slotKey);
+    const duplicateMechanic = Boolean(
+      slot && duplicateMechanicIds.has(slot.challengeTypeId),
+    );
+    const complete = occupied.has(slotKey) && !duplicateMechanic && !invalidSlotKeys.has(slotKey);
+    return {
+      ...SLOT_GUIDANCE[slotKey],
+      section: "board",
+      complete,
+      title: duplicateMechanic
+        ? `استبدل التحدي المكرر في ${SLOT_GUIDANCE[slotKey].title}`
+        : SLOT_GUIDANCE[slotKey].title,
+      explanation: complete
+        ? `تم إعداد ${SLOT_GUIDANCE[slotKey].title} بنجاح.`
+        : duplicateMechanic
+          ? "اختر مكانيكا غير مستخدمة في أي خانة أخرى داخل هذا العالم."
+          : SLOT_GUIDANCE[slotKey].explanation,
+      ...(complete
+        ? { actionLabel: undefined, actionTarget: undefined }
+        : { actionLabel: "تعديل الآن", actionTarget: "board" }),
+    };
+  });
 
   const contentComplete = !hasIssue(issues, CONTENT_CODES);
   const scopesComplete = !hasIssue(issues, SCOPE_CODES);

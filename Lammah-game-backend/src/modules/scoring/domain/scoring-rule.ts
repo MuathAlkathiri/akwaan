@@ -24,6 +24,8 @@ export const SCORING_RULE_IDS = {
   /** Cross-family +1 for clearing every item of a challenge (roadmap 8). */
   CHALLENGE_PERFECT_CLEAR_BONUS: 'challenge.perfect-clear-bonus',
   TOP10_POISON_DECK_RESULT: 'top10.poison-deck.result',
+  /** +1 to the team that finishes the three-segment race first. */
+  DISTRIBUTED_INFORMATION_RACE_RESULT: 'distributed-information.race-result',
 } as const;
 
 export type ScoringRuleId =
@@ -106,6 +108,14 @@ export const SCORING_RULE_DECLARATIONS: readonly ScoringRuleDeclaration[] = [
     id: SCORING_RULE_IDS.TOP10_POISON_DECK_RESULT,
     description:
       'Awards one Match point to the poison-deck winner; ties award none.',
+    perfectClearBonusEligible: false,
+    allowsNegativeDelta: false,
+    requiresMechanicBinding: false,
+  },
+  {
+    id: SCORING_RULE_IDS.DISTRIBUTED_INFORMATION_RACE_RESULT,
+    description:
+      'Awards one Match point to the team that solves all three distributed-information puzzles first; a true tie awards none. Wrong answers cost only the five-second lock.',
     perfectClearBonusEligible: false,
     allowsNegativeDelta: false,
     requiresMechanicBinding: false,

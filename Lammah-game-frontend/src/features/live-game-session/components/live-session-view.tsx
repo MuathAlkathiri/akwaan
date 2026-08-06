@@ -10,6 +10,7 @@ import { TeamClockList } from "./team-clock-list";
 import { JoinAccessPanel } from "./join-access-panel";
 import { ParticipantLobby } from "./participant-lobby";
 import { GameplayRuntimePanel } from "./gameplay-runtime-panel";
+import { ControllerMatchView } from "../match/views";
 
 export function LiveSessionView() {
   const { snapshot, error } = useLiveSession();
@@ -50,11 +51,16 @@ export function LiveSessionView() {
           {error.message}
         </p>
       )}
+      <ControllerMatchView />
+      {snapshot.match ? null : (
+        <>
       <TeamClockList />
       <SessionControls />
       <GameplayRuntimePanel />
       <JoinAccessPanel sessionId={snapshot.sessionId} />
       <ParticipantLobby />
+        </>
+      )}
     </main>
   );
 }

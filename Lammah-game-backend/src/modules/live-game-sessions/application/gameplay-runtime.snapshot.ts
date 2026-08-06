@@ -140,7 +140,13 @@ export class GameplayRuntimeSnapshotMapper {
         version: state.modeVersion,
         stateSchemaVersion: state.stateSchemaVersion,
       },
-      modeState: plugin.projectRuntimeState(state.runtimeState),
+      // A mechanic that owns private per-participant information projects it
+      // itself; everything else keeps the one shared projection.
+      modeState:
+        plugin.projectRuntimeStateForActor?.(
+          state.runtimeState,
+          projectionActor,
+        ) ?? plugin.projectRuntimeState(state.runtimeState),
       activeRound: state.activeRound
         ? {
             id: state.activeRound.id,

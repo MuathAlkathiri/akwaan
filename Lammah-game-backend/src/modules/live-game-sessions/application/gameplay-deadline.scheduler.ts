@@ -10,6 +10,50 @@ import {
   LiveGameSessionRepository,
 } from '../domain/live-game-session.repository';
 import { TOP10_MODE_KEY } from '../domain/top10-poison-deck.plugin';
+import { DISTRIBUTED_INFORMATION_MODE_KEY } from '../domain/distributed-information.plugin';
+import type { GameplayRuntimeState } from '../domain/gameplay-runtime';
+
+/**
+ * What a mode's pending deadline looks like, and the command that resolves it.
+ *
+ * Top 10 puts its turn deadline on the round; "ركّبها" puts one race deadline on
+ * the runtime. Both need the same treatment: fire once, verify the deadline has
+ * not moved, and let the plugin decide the outcome.
+ */
+interface PendingDeadline {
+  deadlineAt: string;
+  commandType: string;
+}
+
+function pendingDeadline(
+  state: GameplayRuntimeState | undefined,
+): PendingDeadline | undefined {
+  const round = state?.activeRound;
+  if (!state || !round || round.status !== 'active') return undefined;
+  if (
+    state.modeKey === TOP10_MODE_KEY &&
+    state.status === 'round-active' &&
+    round.modeState.phase === 'assigning' &&
+    typeof round.modeState.deadlineAt === 'string'
+  ) {
+    return {
+      deadlineAt: round.modeState.deadlineAt,
+      commandType: 'timeout-card',
+    };
+  }
+  if (
+    state.modeKey === DISTRIBUTED_INFORMATION_MODE_KEY &&
+    state.status === 'round-active' &&
+    state.runtimeState.phase === 'active' &&
+    typeof state.runtimeState.deadlineAt === 'string'
+  ) {
+    return {
+      deadlineAt: state.runtimeState.deadlineAt,
+      commandType: 'expire-race',
+    };
+  }
+  return undefined;
+}
 import { SubmitGameplayCommand } from './submit-gameplay-command.use-case';
 
 /** Deadline scheduler shared by reconnect-safe, mode-owned round deadlines. */
@@ -31,26 +75,13 @@ export class GameplayDeadlineScheduler implements OnModuleDestroy {
     const session = await this.sessions.findById(sessionId);
     const runtime = await this.runtimes.findBySessionId(sessionId);
     const state = runtime?.serialize();
-    const round = state?.activeRound;
-    if (
-      !session ||
-      !runtime ||
-      state?.modeKey !== TOP10_MODE_KEY ||
-      state.status !== 'round-active' ||
-      round?.status !== 'active' ||
-      round.modeState.phase !== 'assigning' ||
-      typeof round.modeState.deadlineAt !== 'string'
-    ) {
-      return;
-    }
-    const delay = Math.max(
-      0,
-      Date.parse(round.modeState.deadlineAt) - Date.now(),
-    );
+    const pending = pendingDeadline(state);
+    if (!session || !runtime || !pending) return;
+    const delay = Math.max(0, Date.parse(pending.deadlineAt) - Date.now());
     this.timers.set(
       sessionId,
       setTimeout(
-        () => void this.expire(sessionId, String(round.modeState.deadlineAt)),
+        () => void this.expire(sessionId, pending.deadlineAt),
         delay + 25,
       ),
     );
@@ -70,13 +101,16 @@ export class GameplayDeadlineScheduler implements OnModuleDestroy {
       const session = await this.sessions.findById(sessionId);
       const runtime = await this.runtimes.findBySessionId(sessionId);
       const state = runtime?.serialize();
+      const pending = pendingDeadline(state);
       const round = state?.activeRound;
+      // A deadline that moved, or a race already resolved, needs nothing: the
+      // plugin's own terminal state is the authority, so this stays idempotent.
       if (
         !session ||
         !runtime ||
-        state?.modeKey !== TOP10_MODE_KEY ||
-        round?.modeState.phase !== 'assigning' ||
-        round.modeState.deadlineAt !== expectedDeadline
+        !round ||
+        !pending ||
+        pending.deadlineAt !== expectedDeadline
       ) {
         return;
       }
@@ -90,7 +124,7 @@ export class GameplayDeadlineScheduler implements OnModuleDestroy {
         expectedSessionRevision: session.revision,
         expectedRuntimeRevision: runtime.revision,
         roundId: round.id,
-        commandType: 'timeout-card',
+        commandType: pending.commandType,
         payload: {},
       });
     } catch (error) {

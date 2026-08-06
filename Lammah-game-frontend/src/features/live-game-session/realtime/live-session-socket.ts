@@ -5,12 +5,14 @@ import type {
   LiveSessionError,
   LiveSessionSnapshot,
 } from "../model";
+import type { MatchChangedEvent } from "../match/types";
 
 type SnapshotListener = (snapshot: LiveSessionSnapshot) => void;
 
 export class LiveSessionSocket {
   private socket?: Socket;
   private heartbeat?: number;
+  private recoverSnapshot?: () => void;
 
   connect(input: {
     sessionId: string;
@@ -18,6 +20,8 @@ export class LiveSessionSocket {
     onSnapshot: SnapshotListener;
     onConnection: (state: LiveSessionConnectionState) => void;
     onError: (error: LiveSessionError) => void;
+    onResyncing?: () => void;
+    shouldRecoverMatch?: (event: MatchChangedEvent) => boolean;
     participant?: boolean;
   }): void {
     this.disconnect();
@@ -28,6 +32,8 @@ export class LiveSessionSocket {
       reconnection: true,
     });
     this.socket = socket;
+    let connectedBefore = false;
+    let resyncPending = false;
     socket.on("connect", () => {
       input.onConnection("connected");
       socket.emit(
@@ -45,19 +51,32 @@ export class LiveSessionSocket {
           30_000,
         );
       }
+      if (connectedBefore) this.recoverSnapshot?.();
+      connectedBefore = true;
     });
     socket.io.on("reconnect_attempt", () => input.onConnection("reconnecting"));
-    socket.on("disconnect", () => input.onConnection("disconnected"));
+    socket.on("disconnect", () => {
+      resyncPending = false;
+      input.onConnection("disconnected");
+    });
     socket.on("connect_error", (error) => {
       input.onConnection("error");
       input.onError({ code: "CONNECTION_ERROR", message: error.message });
     });
     socket.on("live-session:error", input.onError);
-    socket.on("live-session:snapshot", input.onSnapshot);
-    const recoverSnapshot = () =>
+    socket.on("live-session:snapshot", (snapshot: LiveSessionSnapshot) => {
+      resyncPending = false;
+      input.onSnapshot(snapshot);
+    });
+    const recoverSnapshot = () => {
+      if (!socket.connected || resyncPending) return;
+      resyncPending = true;
+      input.onResyncing?.();
       socket.emit("live-session:request-snapshot", {
         sessionId: input.sessionId,
       });
+    };
+    this.recoverSnapshot = recoverSnapshot;
     [
       "live-session:state-changed",
       "live-session:clock-synchronized",
@@ -84,12 +103,20 @@ export class LiveSessionSocket {
       "live-session:interaction-resolved",
       "live-session:interaction-expired",
     ].forEach((event) => socket.on(event, recoverSnapshot));
+    socket.on("live-session:match-changed", (event: MatchChangedEvent) => {
+      if (input.shouldRecoverMatch?.(event) === false) return;
+      recoverSnapshot();
+    });
     socket.on("live-session:gameplay-error", (error: LiveSessionError) => {
       input.onError(error);
       if (error.code === "GAMEPLAY_RUNTIME_NOT_FOUND") {
         window.setTimeout(recoverSnapshot, 500);
       }
     });
+  }
+
+  requestSnapshot(): void {
+    this.recoverSnapshot?.();
   }
 
   command(
@@ -113,5 +140,6 @@ export class LiveSessionSocket {
     this.heartbeat = undefined;
     this.socket?.disconnect();
     this.socket = undefined;
+    this.recoverSnapshot = undefined;
   }
 }

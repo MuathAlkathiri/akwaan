@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   BoardDefinition,
   BoardDefinitionPolicy,
-  ForeignAssignment,
 } from '../domain/board-definition.policy';
 import {
   MatchWorldCandidate,
@@ -47,7 +46,6 @@ interface WorldContentContext {
   scopesByWorld: Map<string, ScopeView[]>;
   challengeTypes: Map<string, ChallengeTypeView>;
   configurationsByWorld: Map<string, WorldChallengeConfigurationView[]>;
-  configurationsByChallengeType: Map<string, WorldChallengeConfigurationView[]>;
 }
 
 /**
@@ -111,7 +109,6 @@ export class WorldReadinessService {
         input.worldId,
         input.configurationOverrides,
       );
-      this.reindexConfigurationsByChallengeType(context);
     }
     if (input.scopeOverrides) {
       context.scopesByWorld.set(input.worldId, input.scopeOverrides);
@@ -174,7 +171,7 @@ export class WorldReadinessService {
         worldName: world.name,
         status: world.status,
         boardReady: report.boardReady,
-        hasRelationalFlexSlot: report.hasRelationalFlexSlot,
+        hasRelationalChallenge: report.hasRelationalChallenge,
       }),
     );
     return this.matchPolicy.validateSelectedWorldsForMatch(
@@ -194,51 +191,10 @@ export class WorldReadinessService {
       scopes: context.scopesByWorld.get(world.id) ?? [],
       configurations,
       challengeTypes: context.challengeTypes,
-      foreignAssignments: this.foreignAssignments(world.id, context),
       ...(readyContentCountByChallengeType
         ? { readyContentCountByChallengeType }
         : {}),
     });
-  }
-
-  private foreignAssignments(
-    worldId: string,
-    context: WorldContentContext,
-  ): ForeignAssignment[] {
-    const assignments: ForeignAssignment[] = [];
-    for (const [
-      challengeTypeId,
-      configurations,
-    ] of context.configurationsByChallengeType) {
-      for (const configuration of configurations) {
-        if (configuration.worldId === worldId) continue;
-        assignments.push({
-          challengeTypeId,
-          worldId: configuration.worldId,
-          worldName:
-            context.worlds.get(configuration.worldId)?.name ??
-            configuration.worldId,
-        });
-      }
-    }
-    return assignments;
-  }
-
-  private reindexConfigurationsByChallengeType(
-    context: WorldContentContext,
-  ): void {
-    const byChallengeType = new Map<
-      string,
-      WorldChallengeConfigurationView[]
-    >();
-    for (const configurations of context.configurationsByWorld.values()) {
-      for (const configuration of configurations) {
-        const bucket = byChallengeType.get(configuration.challengeTypeId) ?? [];
-        bucket.push(configuration);
-        byChallengeType.set(configuration.challengeTypeId, bucket);
-      }
-    }
-    context.configurationsByChallengeType = byChallengeType;
   }
 
   private async loadContext(): Promise<WorldContentContext> {
@@ -261,19 +217,11 @@ export class WorldReadinessService {
       string,
       WorldChallengeConfigurationView[]
     >();
-    const configurationsByChallengeType = new Map<
-      string,
-      WorldChallengeConfigurationView[]
-    >();
     for (const configuration of configurations) {
       const view = toConfigurationView(configuration);
       const worldBucket = configurationsByWorld.get(view.worldId) ?? [];
       worldBucket.push(view);
       configurationsByWorld.set(view.worldId, worldBucket);
-      const challengeBucket =
-        configurationsByChallengeType.get(view.challengeTypeId) ?? [];
-      challengeBucket.push(view);
-      configurationsByChallengeType.set(view.challengeTypeId, challengeBucket);
     }
 
     return {
@@ -286,7 +234,6 @@ export class WorldReadinessService {
       scopesByWorld,
       challengeTypes: toChallengeTypeViewMap(challengeTypes),
       configurationsByWorld,
-      configurationsByChallengeType,
     };
   }
 }

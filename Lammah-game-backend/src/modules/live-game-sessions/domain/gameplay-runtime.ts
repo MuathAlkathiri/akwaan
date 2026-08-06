@@ -23,6 +23,13 @@ export type GameplayRuntimeStatus =
 export type GameplayRoundStatus =
   'pending' | 'active' | 'paused' | 'completed' | 'cancelled';
 
+/** A runtime that will never mutate again, so a new one may take its place. */
+export function isTerminalRuntimeStatus(
+  status: GameplayRuntimeStatus,
+): boolean {
+  return status === 'completed' || status === 'cancelled';
+}
+
 export interface GameplayRuntimeEventState {
   id: string;
   sequence: number;

@@ -2,6 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
 import { ScopeCompatibilityPolicy } from './scope-compatibility.policy';
 import {
+  DISTRIBUTED_INFORMATION_ANSWER_MODES,
+  DISTRIBUTED_INFORMATION_SEGMENT_IDS,
+  DISTRIBUTED_INFORMATION_TEAM_SIZES,
+  DISTRIBUTED_INFORMATION_VARIANT,
+  ContentItemStatus,
   ANSWER_MODE_COMPATIBLE_ITEM_MODES,
   ChallengeAnswerMode,
   ChallengeFamily,
@@ -20,6 +25,7 @@ import {
   WorldContentIssue,
   buildReadinessReport,
   ReadinessReport,
+  DistributedInformationPayload,
 } from './world-content.types';
 
 /**
@@ -71,9 +77,152 @@ export class ContentItemCompatibilityPolicy {
     blockers.push(...this.validateChallengeCompatibility(input, referenced));
     blockers.push(...this.validateMedia(input.item));
     blockers.push(...this.validateTop10Payload(input.item));
+    blockers.push(...this.validateDistributedInformationPayload(input.item));
     warnings.push(...this.reuseWarnings(input.item, referenced));
 
     return buildReadinessReport(blockers, warnings);
+  }
+
+  /**
+   * "ركّبها" structure. Only the parts a machine can decide are decided here:
+   * three unique segments, merge options that cover every segment exactly once,
+   * the two supported team sizes, and a recorded author safety confirmation.
+   * Whether the split is *genuinely* unsolvable alone is the author's judgement.
+   */
+  private validateDistributedInformationPayload(
+    item: ContentItemView,
+  ): WorldContentIssue[] {
+    const raw = item.mechanicPayload as
+      | (Partial<DistributedInformationPayload> & { variant?: string })
+      | undefined;
+    if (raw?.variant !== DISTRIBUTED_INFORMATION_VARIANT) return [];
+    const issues: WorldContentIssue[] = [];
+
+    if (!raw.publicPrompt?.ar?.trim()) {
+      issues.push(
+        issue(
+          'DISTRIBUTED_PUBLIC_PROMPT_REQUIRED',
+          'A public prompt every teammate can see is required',
+        ),
+      );
+    }
+
+    const segments = Array.isArray(raw.segments) ? raw.segments : [];
+    const segmentIds = segments.map((segment) => segment?.id);
+    if (segments.length !== DISTRIBUTED_INFORMATION_SEGMENT_IDS.length) {
+      issues.push(
+        issue(
+          'DISTRIBUTED_SEGMENT_COUNT_INVALID',
+          `Exactly ${DISTRIBUTED_INFORMATION_SEGMENT_IDS.length} private segments are required`,
+        ),
+      );
+    }
+    if (
+      new Set(segmentIds).size !== segmentIds.length ||
+      segmentIds.some(
+        (id) =>
+          !DISTRIBUTED_INFORMATION_SEGMENT_IDS.includes(
+            id as (typeof DISTRIBUTED_INFORMATION_SEGMENT_IDS)[number],
+          ),
+      )
+    ) {
+      issues.push(
+        issue(
+          'DISTRIBUTED_SEGMENT_IDS_INVALID',
+          `Segments must be exactly ${DISTRIBUTED_INFORMATION_SEGMENT_IDS.join(', ')}, each once`,
+        ),
+      );
+    }
+    if (segments.some((segment) => !segment?.content?.ar?.trim())) {
+      issues.push(
+        issue(
+          'DISTRIBUTED_SEGMENT_CONTENT_REQUIRED',
+          'Every segment needs its private content',
+        ),
+      );
+    }
+
+    const merges = Array.isArray(raw.twoPlayerMergeOptions)
+      ? raw.twoPlayerMergeOptions
+      : [];
+    if (!merges.length) {
+      issues.push(
+        issue(
+          'DISTRIBUTED_MERGE_OPTION_REQUIRED',
+          'At least one safe two-player split is required',
+        ),
+      );
+    }
+    for (const merge of merges) {
+      const first = merge?.firstParticipantSegmentIds ?? [];
+      const second = merge?.secondParticipantSegmentIds ?? [];
+      const combined = [...first, ...second];
+      const coversOnce =
+        combined.length === DISTRIBUTED_INFORMATION_SEGMENT_IDS.length &&
+        new Set(combined).size === combined.length &&
+        DISTRIBUTED_INFORMATION_SEGMENT_IDS.every((id) =>
+          combined.includes(id),
+        );
+      // One player takes two segments and the other takes one; anything else
+      // either leaks the whole puzzle or leaves a segment unread.
+      const splitIsTwoAndOne =
+        (first.length === 2 && second.length === 1) ||
+        (first.length === 1 && second.length === 2);
+      if (!coversOnce || !splitIsTwoAndOne) {
+        issues.push(
+          issue(
+            'DISTRIBUTED_MERGE_OPTION_INVALID',
+            'Each two-player split must give one player two segments and the other the remaining one',
+          ),
+        );
+      }
+    }
+
+    const teamSizes = Array.isArray(raw.supportedTeamSizes)
+      ? [...raw.supportedTeamSizes].sort()
+      : [];
+    if (
+      teamSizes.length !== DISTRIBUTED_INFORMATION_TEAM_SIZES.length ||
+      teamSizes.some(
+        (size, index) => size !== DISTRIBUTED_INFORMATION_TEAM_SIZES[index],
+      )
+    ) {
+      issues.push(
+        issue(
+          'DISTRIBUTED_TEAM_SIZES_INVALID',
+          `Supported team sizes must be exactly ${DISTRIBUTED_INFORMATION_TEAM_SIZES.join(' and ')}`,
+        ),
+      );
+    }
+
+    if (
+      !DISTRIBUTED_INFORMATION_ANSWER_MODES.includes(
+        item.answerPayload
+          ?.mode as (typeof DISTRIBUTED_INFORMATION_ANSWER_MODES)[number],
+      )
+    ) {
+      issues.push(
+        issue(
+          'DISTRIBUTED_ANSWER_MODE_UNSUPPORTED',
+          'The answer must be a number, a short text, or a multiple choice',
+        ),
+      );
+    }
+
+    // Ready content must carry the confirmation; a draft may still be in progress.
+    if (
+      item.status === ContentItemStatus.READY &&
+      raw.authorSafetyConfirmation !== true
+    ) {
+      issues.push(
+        issue(
+          'DISTRIBUTED_SAFETY_CONFIRMATION_REQUIRED',
+          'Confirm that no single player can solve the puzzle alone',
+        ),
+      );
+    }
+
+    return issues;
   }
 
   private validateTop10Payload(item: ContentItemView): WorldContentIssue[] {
@@ -98,6 +247,13 @@ export class ContentItemCompatibilityPolicy {
     const issues: WorldContentIssue[] = [];
     if (!raw.title?.trim())
       issues.push(issue('TOP10_TITLE_REQUIRED', 'Top 10 title is required'));
+    if (!raw.instruction?.trim())
+      issues.push(
+        issue(
+          'TOP10_INSTRUCTION_REQUIRED',
+          'Poison deck player instructions are required',
+        ),
+      );
     if (!raw.rankingBasis?.trim())
       issues.push(
         issue(
@@ -108,6 +264,17 @@ export class ContentItemCompatibilityPolicy {
     if (!raw.sourceLabel?.trim())
       issues.push(
         issue('TOP10_SOURCE_REQUIRED', 'An authoritative source is required'),
+      );
+    if (!raw.sourceUrl?.trim())
+      issues.push(
+        issue(
+          'TOP10_SOURCE_URL_REQUIRED',
+          'An authoritative source URL is required',
+        ),
+      );
+    if (!raw.asOfDate?.trim())
+      issues.push(
+        issue('TOP10_AS_OF_DATE_REQUIRED', 'The ranking data date is required'),
       );
     if (!Array.isArray(raw.candidates) || raw.candidates.length !== 14)
       issues.push(

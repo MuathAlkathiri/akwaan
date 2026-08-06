@@ -10,6 +10,10 @@ import {
   SectionCard,
 } from "@/components/shared";
 import { showToast } from "@/components/ui/toast";
+import {
+  describeBlockingReferences,
+  extractBlockingReferences,
+} from "../../utils/readiness.util";
 import { getApiErrorMessage } from "@/lib/utils";
 
 import {
@@ -120,12 +124,18 @@ export function ChallengeTypeCatalog() {
           deleteChallengeType.mutate(pendingDelete.id, {
             onSuccess: () => setPendingDelete(null),
             onError: (error) => {
+              // Name the blocking records when the server named them.
+              const blocking = describeBlockingReferences(
+                extractBlockingReferences(error),
+              );
               showToast({
                 type: "error",
-                message: getApiErrorMessage(
-                  error,
-                  "لا يمكن حذف مكانيكا مستخدمة.",
-                ),
+                message: [
+                  getApiErrorMessage(error, "لا يمكن حذف مكانيكا مستخدمة."),
+                  blocking && `المرتبط: ${blocking}`,
+                ]
+                  .filter(Boolean)
+                  .join(" — "),
               });
               setPendingDelete(null);
             },

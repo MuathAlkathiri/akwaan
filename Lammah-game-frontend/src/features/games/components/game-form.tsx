@@ -223,7 +223,7 @@ export function GameForm() {
             </p>
           </div>
           <Button asChild type="button" variant="outline" size="sm">
-            <Link href="/#categories">
+            <Link href="/games/categories">
               <Pencil className="ml-2 h-4 w-4" aria-hidden="true" />
               تعديل
             </Link>

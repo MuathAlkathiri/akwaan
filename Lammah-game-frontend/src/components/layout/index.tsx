@@ -13,12 +13,22 @@ export function isGameBoardPath(pathname: string) {
   );
 }
 
+/**
+ * The player journey: home, a World, a Scope, a Board. These screens own their
+ * own warm surface edge to edge, so the shell neither wraps them in the page
+ * container nor paints the dark gameplay background behind them.
+ */
+export function isJourneyPath(pathname: string) {
+  return pathname === "/" || pathname.startsWith("/worlds");
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isAdmin, isAuthenticated } = useAuth();
-  const isPlayerHome = pathname === "/" && isAuthenticated && !isAdmin;
-  const isPlayerExperience = isAuthenticated && !isAdmin;
-  const isGameBoard = isPlayerExperience && isGameBoardPath(pathname);
+  const isJourney = isJourneyPath(pathname);
+  const isPlayerExperience = isAuthenticated && !isAdmin && !isJourney;
+  const isGameBoard =
+    isAuthenticated && !isAdmin && isGameBoardPath(pathname);
 
   return (
     <div
@@ -35,7 +45,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           isGameBoard && "min-h-screen lg:h-dvh lg:overflow-hidden",
         )}
       >
-        {isPlayerHome || isGameBoard ? (
+        {isJourney || isGameBoard ? (
           children
         ) : (
           <div

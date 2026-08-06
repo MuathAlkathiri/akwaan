@@ -7,6 +7,7 @@ import {
   ANSWER_MODE_LABEL,
   FAMILY_LABEL,
   SLOT_KEY_LABEL,
+  worldChallengeConfigurationName,
 } from "../../utils/world-content.labels";
 import type { WorldChallengeConfiguration } from "../../types";
 
@@ -29,7 +30,9 @@ export function ConfigurationCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium">{configuration.effectiveName}</p>
+            <p className="font-medium">
+              {worldChallengeConfigurationName(configuration)}
+            </p>
             <Badge variant="outline">
               {SLOT_KEY_LABEL[configuration.slotKey]}
             </Badge>
@@ -43,6 +46,16 @@ export function ConfigurationCard({
           <p className="mt-1 text-xs text-muted-foreground">
             {timer ? `${timer} ثانية لكل فقرة` : "إيقاع تحدده المكانيكا"}
           </p>
+          {configuration.description && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {configuration.description}
+            </p>
+          )}
+          {configuration.instructions && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              التعليمات: {configuration.instructions}
+            </p>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button

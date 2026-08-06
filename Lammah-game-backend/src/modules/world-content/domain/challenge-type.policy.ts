@@ -78,7 +78,6 @@ export class ChallengeTypePolicy {
         'defaultPresentation',
       ),
     );
-    issues.push(...this.validateExclusivity(challengeType));
     issues.push(...this.validateScoringRule(challengeType));
     return issues;
   }
@@ -108,31 +107,6 @@ export class ChallengeTypePolicy {
         { challengeTypeId: challengeType.id, status: challengeType.status },
       ),
     ];
-  }
-
-  private validateExclusivity(
-    challengeType: ChallengeTypeView,
-  ): WorldContentIssue[] {
-    const isSignature = challengeType.family === ChallengeFamily.SIGNATURE;
-    if (isSignature && !challengeType.isExclusive) {
-      return [
-        issue(
-          'SIGNATURE_MUST_BE_EXCLUSIVE',
-          'A Signature mechanic must be exclusive to one World',
-          { challengeTypeId: challengeType.id },
-        ),
-      ];
-    }
-    if (!isSignature && challengeType.isExclusive) {
-      return [
-        issue(
-          'SHARED_FAMILY_MUST_NOT_BE_EXCLUSIVE',
-          `A ${challengeType.family} mechanic is shared across Worlds and must not be exclusive`,
-          { challengeTypeId: challengeType.id, family: challengeType.family },
-        ),
-      ];
-    }
-    return [];
   }
 
   private validateScoringRule(

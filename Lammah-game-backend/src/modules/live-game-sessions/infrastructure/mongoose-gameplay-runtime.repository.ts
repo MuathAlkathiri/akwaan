@@ -26,8 +26,15 @@ export class MongooseGameplayRuntimeRepository implements GameplayRuntimeReposit
     return this.restore(await this.model.findOne({ runtimeId }).lean().exec());
   }
 
+  /** The session's current runtime: the most recently created one. */
   async findBySessionId(sessionId: string): Promise<GameplayRuntime | null> {
-    return this.restore(await this.model.findOne({ sessionId }).lean().exec());
+    return this.restore(
+      await this.model
+        .findOne({ sessionId })
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec(),
+    );
   }
 
   async save(
@@ -65,6 +72,7 @@ export class MongooseGameplayRuntimeRepository implements GameplayRuntimeReposit
       revision: state.revision,
       activeRoundId: state.activeRound?.id,
       expiresAt: state.expiresAt,
+      createdAt: state.createdAt,
       completedAt: state.completedAt,
       state,
     };
