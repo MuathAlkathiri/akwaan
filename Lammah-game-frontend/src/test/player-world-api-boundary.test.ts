@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative, resolve, sep } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
@@ -17,13 +17,11 @@ import {
 const PLAYER_JOURNEY_FILES = [
   "src/app/page.tsx",
   "src/app/worlds/[worldId]/page.tsx",
-  "src/app/worlds/[worldId]/board/page.tsx",
   "src/features/worlds/components/worlds-home.tsx",
   "src/features/worlds/components/world-screen.tsx",
-  "src/features/worlds/components/board-screen.tsx",
   "src/features/worlds/hooks/use-player-catalog.ts",
-  "src/features/worlds/hooks/use-scope-pool-selection.ts",
   "src/features/worlds/api/player-catalog.api.ts",
+  "src/features/worlds/utils/scopes.ts",
   // Pre-match setup is a player surface too: it reads Worlds and Scopes through
   // the same public projections and must never reach an authoring module.
   "src/app/games/new/setup/page.tsx",
@@ -40,18 +38,76 @@ const PLAYER_JOURNEY_FILES = [
   "src/features/match-setup/errors/match-setup-errors.ts",
 ] as const;
 
-/** The sequential setup the wizard replaces. None of it may reappear here. */
-const MATCH_SETUP_FILES = [
-  "src/features/match-setup/components/match-setup-wizard.tsx",
-  "src/features/match-setup/components/occurrence-world-step.tsx",
-  "src/features/match-setup/components/occurrence-scopes-step.tsx",
-  "src/features/match-setup/components/match-setup-review.tsx",
-  "src/features/match-setup/components/match-setup-teams.tsx",
-  "src/features/match-setup/state/match-setup-draft.ts",
-  "src/features/match-setup/state/use-match-setup.ts",
-  "src/features/match-setup/api/create-configured-match.ts",
-  "src/features/match-setup/api/unified-match.api.ts",
+/**
+ * Everything the sequential Match journey left behind.
+ *
+ * The point of scanning for these is not tidiness. Each one is a way for a second
+ * Match journey to grow back: a stage the server no longer has, an endpoint it no
+ * longer serves, a client-side list of which mechanics are playable, or a request
+ * that names its own content. A file that mentions one has stopped consuming the
+ * unified contract, whether or not it still compiles.
+ */
+const REMOVED_LEGACY_SYMBOLS = [
+  // Stages and setup modes the server no longer reports.
+  "legacy_sequential",
+  "unified_preconfigured",
+  "setupMode",
+  "world_selection",
+  "scope_selection",
+  "world_complete",
+  "coin_toss",
+  // Projection fields of the sequential Match.
+  "currentOccurrence",
+  "worldSelection",
+  "WorldSelectionMethod",
+  // Endpoints Phase 5 deleted.
+  "/match/create",
+  "/match/start",
+  "/coin-toss",
+  "/worlds/select",
+  "/scopes/select",
+  "/worlds/continue",
+  "/match/development",
+  "match/api/match-api",
+  // Client-side gameplay rules: the server decides all of these.
+  "contentItemIds",
+  "PLAYABLE_CHALLENGE_SLUGS",
+  "isPlayableMechanic",
+  "buildOccurrenceBoard",
+  // Modules and routes this phase deleted.
+  "useMatchController",
+  "useScopePoolSelection",
+  "DevelopmentLaunchDialog",
+  "ScopeSelection",
+  "BoardScreen",
+  "/worlds/${worldId}/board",
+  // Placeholder language for mechanics that are, in fact, either playable or
+  // permanently unavailable — never merely "being prepared".
+  "قيد التجهيز",
+  "قريبًا",
+  "قريباً",
 ] as const;
+
+/** Production source only: the tests themselves may name what they forbid. */
+function productionSources(): string[] {
+  const root = resolve(process.cwd(), "src");
+  const files: string[] = [];
+  const walk = (directory: string) => {
+    for (const entry of readdirSync(directory)) {
+      const path = join(directory, entry);
+      if (statSync(path).isDirectory()) {
+        if (entry === "test" || entry === "generated") continue;
+        walk(path);
+        continue;
+      }
+      if (!/\.tsx?$/.test(entry)) continue;
+      if (/\.(test|spec)\.tsx?$/.test(entry)) continue;
+      files.push(path);
+    }
+  };
+  walk(root);
+  return files.map((path) => relative(process.cwd(), path).split(sep).join("/"));
+}
 
 describe("player World API boundary", () => {
   beforeEach(() => {
@@ -83,29 +139,6 @@ describe("player World API boundary", () => {
     }
   });
 
-  it("keeps pre-match setup off the sequential Match endpoints and stages", () => {
-    for (const relativePath of MATCH_SETUP_FILES) {
-      const source = readFileSync(resolve(process.cwd(), relativePath), "utf8");
-
-      // Setup happens before a Match exists, so none of these can apply.
-      for (const forbidden of [
-        "/match/create",
-        "/worlds/select",
-        "/scopes/select",
-        "/worlds/continue",
-        "/coin-toss",
-        "world_selection",
-        "scope_selection",
-        "coin_toss",
-        "world_complete",
-        "currentOccurrence",
-        "match/api/match-api",
-      ]) {
-        expect(source, `${relativePath} → ${forbidden}`).not.toContain(forbidden);
-      }
-    }
-  });
-
   it("creates a Match only through the unified production route", () => {
     const api = readFileSync(
       resolve(process.cwd(), "src/features/match-setup/api/unified-match.api.ts"),
@@ -126,5 +159,52 @@ describe("player World API boundary", () => {
     ]);
     // Never the development alias.
     expect(api).not.toContain("/development");
+  });
+});
+
+describe("no sequential Match journey survives in production source", () => {
+  const sources = productionSources().map((path) => ({
+    path,
+    text: readFileSync(resolve(process.cwd(), path), "utf8"),
+  }));
+
+  it("scans a real, non-trivial slice of the application", () => {
+    expect(sources.length).toBeGreaterThan(100);
+    expect(sources.map((file) => file.path)).toContain(
+      "src/features/live-game-session/match/match-stage-router.tsx",
+    );
+  });
+
+  it.each(REMOVED_LEGACY_SYMBOLS)("has no reference to %s", (symbol) => {
+    const offenders = sources
+      .filter((file) => file.text.includes(symbol))
+      .map((file) => file.path);
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps exactly one Match API client", () => {
+    const clients = sources
+      .filter((file) => file.text.includes("/match/unified"))
+      .map((file) => file.path);
+    expect(clients).toEqual([
+      "src/features/match-setup/api/unified-match.api.ts",
+    ]);
+  });
+
+  it("keeps exactly one Match stage router", () => {
+    const routers = sources
+      .filter((file) => /export function MatchStageRouter/.test(file.text))
+      .map((file) => file.path);
+    expect(routers).toEqual([
+      "src/features/live-game-session/match/match-stage-router.tsx",
+    ]);
+  });
+
+  it("has no board route beside the unified Match board", () => {
+    const boardRoutes = sources.filter(
+      (file) =>
+        file.path.startsWith("src/app/") && file.path.includes("/board/"),
+    );
+    expect(boardRoutes).toEqual([]);
   });
 });

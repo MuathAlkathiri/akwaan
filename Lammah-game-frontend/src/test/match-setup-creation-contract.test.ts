@@ -249,7 +249,6 @@ describe("configured Match creation contract", () => {
     const created = await createConfiguredMatch(configuredDraft(), dependencies);
 
     const match = created.snapshot.match!;
-    expect(match.setupMode).toBe("unified_preconfigured");
     expect(match.stage.key).toBe("board");
     expect(match.unified?.occurrences).toHaveLength(3);
     expect(

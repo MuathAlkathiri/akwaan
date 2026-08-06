@@ -85,7 +85,6 @@ function unifiedMatch(
   return {
     id: "match-1",
     revision: 0,
-    setupMode: "unified_preconfigured",
     status: "active",
     stage: {
       key: "board",
@@ -93,22 +92,6 @@ function unifiedMatch(
       minimumDisplayDurationMs: 0,
       audioCue: null,
       animationCue: null,
-    },
-    coinToss: {
-      status: "resolved",
-      winnerTeamId: "team-a",
-      firstChooserTeamId: "team-a",
-    },
-    worldSelection: {
-      selections: OCCURRENCE_WORLDS.map((worldId, occurrenceIndex) => ({
-        occurrenceIndex,
-        worldId,
-        method: "preconfigured" as const,
-        selectedAt: "2026-08-01T00:00:00.000Z",
-      })),
-      requiresAgreement: false,
-      remainingCount: 0,
-      complete: true,
     },
     unified: {
       occurrences: OCCURRENCE_WORLDS.map((worldId, occurrenceIndex) => ({

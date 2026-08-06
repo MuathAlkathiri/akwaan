@@ -1,48 +1,40 @@
+/**
+ * The Match contract, as one preconfigured Match exposes it.
+ *
+ * There is one setup mode and one journey: a Match is fully configured before it
+ * exists, opens at its board with twelve playable positions, and moves between
+ * exactly the four stages below. Nothing here describes a sequential setup,
+ * because the server no longer has one.
+ */
+
 export type MatchStageKey =
-  | "lobby"
-  | "coin_toss"
-  | "world_selection"
-  | "scope_selection"
+  /** All twelve positions, any of them selectable. */
   | "board"
-  /** Unified only: a position is chosen and waiting on its phones. */
+  /** One position is prepared and waiting on the phones its mechanic needs. */
   | "preflight"
+  /** A mechanic runtime is in progress. */
   | "challenge"
-  | "world_complete"
   | "match_complete";
 
 const MATCH_STAGE_KEYS: readonly MatchStageKey[] = [
-  "lobby",
-  "coin_toss",
-  "world_selection",
-  "scope_selection",
   "board",
   "preflight",
   "challenge",
-  "world_complete",
   "match_complete",
 ];
 
+/**
+ * Whether a stage key is one this client can render.
+ *
+ * An unknown value is never mapped onto a neighbouring stage: the client and the
+ * server disagreeing is a recoverable error, not something to guess through.
+ */
 export function isMatchStageKey(value: string): value is MatchStageKey {
   return (MATCH_STAGE_KEYS as readonly string[]).includes(value);
 }
 
-export type MatchStatus = "draft" | "active" | "completed" | "cancelled";
+export type MatchStatus = "active" | "completed" | "cancelled";
 
-/**
- * How a Match was set up, and therefore which contract the rest of its snapshot
- * follows. Always present; a Match stored before the unified redesign reports
- * `legacy_sequential`.
- */
-export type MatchSetupMode = "legacy_sequential" | "unified_preconfigured";
-
-export const UNIFIED_SETUP_MODE = "unified_preconfigured";
-
-export type MatchWorldSelectionMethod =
-  | "team_pick"
-  | "agreed"
-  | "random"
-  /** The only method a preconfigured Match records. */
-  | "preconfigured";
 export type MatchSlotKey = "slot_1" | "slot_2" | "slot_3" | "slot_4";
 export type MatchSlotLaunchability =
   | "launchable"
@@ -64,24 +56,19 @@ export interface MatchTeamStanding extends MatchTeamScore {
   name: string;
 }
 
-export interface MatchBoardSlot {
-  slotKey: MatchSlotKey;
-  challengeTypeId?: string;
-  challengeKey?: string;
-  challengeName?: string;
-  launchability: MatchSlotLaunchability;
-  status: MatchSlotStatus;
-  runtimeId?: string;
-  completedAt?: string;
-  scoreSummary?: MatchTeamScore[];
+export interface MatchScopeSummary {
+  scopeId: string;
+  name: string;
 }
 
 /** Why a board position cannot be played. */
 export type UnifiedUnavailableReason =
+  /** The configured mechanic has no launcher on the server. */
   | "launcher_not_implemented"
+  /** The Match holds no usable configuration for this position. */
   | "invalid_configuration";
 
-/** One of the twelve positions of a preconfigured Match board. */
+/** One of the twelve positions of a Match board. */
 export interface UnifiedBoardPosition {
   /** `occurrenceIndex + slotKey`. Never derived from worldId. */
   positionKey: string;
@@ -108,7 +95,7 @@ export interface UnifiedBoardPosition {
   scoreSummary?: MatchTeamScore[];
 }
 
-/** One configured World occurrence of a preconfigured Match. */
+/** One configured World occurrence of a Match. */
 export interface UnifiedConfiguredOccurrence {
   occurrenceIndex: number;
   worldId: string;
@@ -185,7 +172,7 @@ export interface UnifiedPreflight {
 
 /**
  * The preconfigured contract: three configured occurrences and one board of twelve
- * independently playable positions. Absent for legacy Matches.
+ * independently playable positions.
  */
 export interface UnifiedMatchProjection {
   occurrences: UnifiedConfiguredOccurrence[];
@@ -204,8 +191,7 @@ export interface UnifiedMatchProjection {
 export interface LiveSessionMatchSnapshot {
   id: string;
   revision: number;
-  setupMode: MatchSetupMode | (string & {});
-  status: MatchStatus;
+  status: MatchStatus | (string & {});
   stage: {
     key: MatchStageKey | (string & {});
     enteredAt: string;
@@ -213,45 +199,8 @@ export interface LiveSessionMatchSnapshot {
     audioCue: string | null;
     animationCue: string | null;
   };
-  coinToss: {
-    status: "pending" | "resolved";
-    winnerTeamId?: string;
-    firstChooserTeamId?: string;
-  };
-  worldSelection: {
-    selections: Array<{
-      occurrenceIndex: number;
-      worldId: string;
-      method: MatchWorldSelectionMethod;
-      selectedByTeamId?: string;
-      selectedAt: string;
-    }>;
-    nextTeamId?: string;
-    requiresAgreement: boolean;
-    remainingCount: number;
-    complete: boolean;
-  };
-  /** Present only for a preconfigured Match. */
-  unified?: UnifiedMatchProjection;
-  /** @deprecated Legacy sequential only. */
-  currentOccurrence?: {
-    index: number;
-    worldId: string;
-    status: "in_progress" | "completed";
-    /** The four Scopes this occurrence draws its content from. */
-    selectedScopeIds: string[];
-    selectedScopes: MatchScopeSummary[];
-    scopeSelectionComplete: boolean;
-  };
-  /** Present only while this occurrence still owes its Scopes. */
-  scopeSelection?: {
-    occurrenceIndex: number;
-    worldId: string;
-    required: number;
-    selectedScopeIds: string[];
-  };
-  /** Absent until the occurrence's Scope selection is complete. */
-  board?: { slots: MatchBoardSlot[] };
+  /** The whole board and its three occurrences; the board's only source. */
+  unified: UnifiedMatchProjection;
   currentChallenge?: {
     occurrenceIndex: number;
     slotKey: MatchSlotKey;
@@ -279,25 +228,6 @@ export interface LiveSessionMatchSnapshot {
   availableActions: string[];
 }
 
-export interface MatchScopeSummary {
-  scopeId: string;
-  name: string;
-}
-
-export interface MatchSelectableScope {
-  scopeId: string;
-  name: string;
-  readyContentItemCount: number;
-}
-
-export interface MatchSelectableWorld {
-  worldId: string;
-  name: string;
-  boardReady: boolean;
-  hasRelationalChallenge: boolean;
-  slotKeys: MatchSlotKey[];
-}
-
 export interface MatchChangedEvent {
   matchId: string;
   matchRevision: number;
@@ -308,7 +238,13 @@ export interface MatchChangedEvent {
 
 export type MatchActor = "controller" | "shared-screen" | "participant";
 
-/** Boundary check for an optional network projection; it validates shape, not rules. */
+/**
+ * Boundary check for an optional network projection; it validates shape, not rules.
+ *
+ * The unified projection is required: a Match without a board is not something
+ * this client can render, and pretending otherwise would land the host on an
+ * empty screen instead of an error they can act on.
+ */
 export function parseMatchSnapshot(
   value: unknown,
 ): LiveSessionMatchSnapshot | undefined {
@@ -317,18 +253,12 @@ export function parseMatchSnapshot(
   if (
     typeof candidate.id !== "string" ||
     typeof candidate.revision !== "number" ||
-    typeof candidate.setupMode !== "string" ||
     typeof candidate.status !== "string" ||
     !candidate.stage ||
     typeof candidate.stage.key !== "string" ||
-    !candidate.coinToss ||
-    !candidate.worldSelection ||
-    !Array.isArray(candidate.worldSelection.selections) ||
-    (candidate.board !== undefined &&
-      !Array.isArray(candidate.board.slots)) ||
-    (candidate.unified !== undefined &&
-      (!Array.isArray(candidate.unified.occurrences) ||
-        !Array.isArray(candidate.unified.board?.positions))) ||
+    !candidate.unified ||
+    !Array.isArray(candidate.unified.occurrences) ||
+    !Array.isArray(candidate.unified.board?.positions) ||
     !candidate.scoring ||
     !Array.isArray(candidate.scoring.matchTotals) ||
     !Array.isArray(candidate.availableActions)

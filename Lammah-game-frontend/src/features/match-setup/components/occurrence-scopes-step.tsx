@@ -11,7 +11,7 @@ import {
   usePlayableScopes,
   usePlayableWorld,
 } from "@/features/worlds/hooks/use-player-catalog";
-import { isSelectableScope } from "@/features/worlds/utils/challenge-availability";
+import { isSelectableScope } from "@/features/worlds/utils/scopes";
 import type { PlayableScope } from "@/features/worlds/types";
 import {
   SCOPES_PER_OCCURRENCE,

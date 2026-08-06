@@ -3,9 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { isJourneyPath } from "@/components/layout";
 import {
   WorldCard,
-  buildOccurrenceBoard,
-  countAvailable,
-  isPlayableMechanic,
+  isSelectableScope,
   playableWorlds,
   selectFeaturedWorlds,
 } from "@/features/worlds";
@@ -46,11 +44,6 @@ function slot(
   };
 }
 
-/** A one-Scope pool: the occurrence board is built from the pool, not a Scope. */
-function pool(usable: PlayableBoardSlot[]): PlayableScope[] {
-  return [scope("scope-1", usable)];
-}
-
 function scope(id: string, usable: PlayableBoardSlot[]): PlayableScope {
   return {
     id,
@@ -62,6 +55,24 @@ function scope(id: string, usable: PlayableBoardSlot[]): PlayableScope {
     usableSlots: usable,
   };
 }
+
+describe("scope browsability", () => {
+  it("offers a Scope that has at least one usable board position", () => {
+    const usable = slot("slot_1", "read-your-opponent", "اقرأ خصمك", 0);
+    expect(isSelectableScope(scope("s-1", [usable]))).toBe(true);
+  });
+
+  it("hides a Scope that can supply no board position at all", () => {
+    expect(isSelectableScope(scope("s-2", []))).toBe(false);
+  });
+
+  it("never judges a Scope by which mechanic its positions are configured with", () => {
+    // Whether a mechanic can be launched is the Match's answer, not this module's:
+    // an unimplemented mechanic still makes the Scope browsable.
+    const unimplemented = slot("slot_3", "same-wavelength", "نفس الموجة", 2);
+    expect(isSelectableScope(scope("s-3", [unimplemented]))).toBe(true);
+  });
+});
 
 describe("featured world selection", () => {
   const catalogue = [
@@ -153,95 +164,10 @@ describe("world card", () => {
   });
 });
 
-describe("occurrence board composition", () => {
-  const ryo = slot("slot_1", "read-your-opponent", "اقرأ خصمك", 0);
-  const top10 = slot("slot_2", "top-10", "أفضل 10", 1);
-  const relational = slot("slot_3", "same-wavelength", "نفس الموجة", 2);
-  const excluded = slot("slot_4", "top-10", "أفضل 10 مستبعد", 3);
-
-  it("marks implemented mechanics available and the rest locked", () => {
-    const board = buildOccurrenceBoard(
-      pool([ryo, top10, relational, excluded]),
-    );
-
-    expect(
-      board.map((entry) => [entry.slot.slotKey, entry.availability]),
-    ).toEqual([
-      ["slot_1", "available"],
-      ["slot_2", "available"],
-      ["slot_3", "locked"],
-      ["slot_4", "available"],
-    ]);
-    expect(countAvailable(board)).toBe(3);
-  });
-
-  it("explains why a locked challenge is locked", () => {
-    const board = buildOccurrenceBoard(pool([relational]));
-    expect(board[0].lockedReason).toBe("قريباً");
-  });
-
-  it("keeps a position open when any Scope in the pool can supply it", () => {
-    // One Scope cannot play Top 10; another can, so the position stays open.
-    const board = buildOccurrenceBoard([
-      scope("s1", [ryo]),
-      scope("s2", [ryo, top10]),
-    ]);
-
-    expect(
-      board.map((entry) => [entry.slot.slotKey, entry.availability]),
-    ).toEqual([
-      ["slot_1", "available"],
-      ["slot_2", "available"],
-    ]);
-  });
-
-  it("shows a completed challenge as completed without removing it", () => {
-    const board = buildOccurrenceBoard(pool([ryo, top10]), ["slot_1"]);
-
-    expect(board).toHaveLength(2);
-    expect(board[0].availability).toBe("completed");
-    // The rest of the board stays selectable after one challenge finishes.
-    expect(board[1].availability).toBe("available");
-  });
-
-  it("keeps every configured position on the board, in board order only", () => {
-    const board = buildOccurrenceBoard(
-      pool([top10, ryo, excluded, relational]),
-    );
-    expect(board.map((entry) => entry.slot.slotKey)).toEqual([
-      "slot_1",
-      "slot_2",
-      "slot_3",
-      "slot_4",
-    ]);
-  });
-
-  it("knows which mechanics can actually be launched", () => {
-    expect(isPlayableMechanic("read-your-opponent")).toBe(true);
-    expect(isPlayableMechanic("top-10")).toBe(true);
-    expect(isPlayableMechanic("distributed-information")).toBe(true);
-    expect(isPlayableMechanic("same-wavelength")).toBe(false);
-  });
-
-  it("shows ركّبها as available when its usable slot is returned", () => {
-    const distributed = slot("slot_4", "distributed-information", "ركّبها", 3);
-    expect(buildOccurrenceBoard(pool([distributed]))[0]).toMatchObject({
-      availability: "available",
-      slot: { displayName: "ركّبها" },
-    });
-  });
-
-  it("returns nothing for a pool with no compatibility yet", () => {
-    expect(buildOccurrenceBoard([])).toEqual([]);
-  });
-});
-
 describe("journey screens in the app shell", () => {
   it("renders every journey screen edge to edge", () => {
     expect(isJourneyPath("/")).toBe(true);
     expect(isJourneyPath("/worlds/w-1")).toBe(true);
-    expect(isJourneyPath("/worlds/w-1/scopes/s-1")).toBe(true);
-    expect(isJourneyPath("/worlds/w-1/scopes/s-1/board")).toBe(true);
   });
 
   it("leaves the rest of the application in the normal shell", () => {

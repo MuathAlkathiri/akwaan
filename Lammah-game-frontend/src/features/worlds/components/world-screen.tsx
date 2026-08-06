@@ -1,74 +1,49 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { Layers, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getMediaUrl } from "@/lib/api/media-url";
+import { cn } from "@/lib/utils";
 import { JourneyShell, JourneySection } from "./journey-shell";
 import { JourneyError } from "./journey-error";
-import { ScopeSelection, SCOPES_PER_OCCURRENCE } from "./scope-selection";
-import { WorldCover, WorldIcon } from "./world-cover";
+import { WorldCover, WorldIcon, washFor } from "./world-cover";
 import { WorldStats } from "./world-stats";
-import { useScopePoolSelection } from "../hooks/use-scope-pool-selection";
 import {
   usePlayableScopes,
   usePlayableWorld,
 } from "../hooks/use-player-catalog";
-import { isSelectableScope } from "../utils/challenge-availability";
-import type { PlayableWorld } from "../types";
-import { getLiveSession } from "@/features/live-game-session/api/live-session-api";
-import { listMatchScopes } from "@/features/live-game-session/match/api/match-api";
+import { isSelectableScope } from "../utils/scopes";
+import type { PlayableScope, PlayableWorld } from "../types";
 // The route only; importing the wizard itself would make worlds depend on setup.
 import { MATCH_SETUP_ROUTE } from "@/features/match-setup/routes";
 
 /**
- * Entering a World means choosing the four Scopes this occurrence is played
- * from. A Scope is never a game on its own: the four together are the content
- * pool that every challenge on the occurrence's board draws from.
+ * A World, to look at.
+ *
+ * Browsing only. A Match is configured whole before it exists — three World
+ * occurrences with four Scopes each — so this screen chooses nothing and starts
+ * nothing; its one call to action is the setup wizard. Anything else here would be
+ * a second way to run a Match.
  *
  * The three outcomes of loading are kept apart — still loading, failed, or
- * genuinely empty. Collapsing a failure into "nothing is ready" is what made
- * this screen look empty while its World was fully authored.
+ * genuinely empty. Collapsing a failure into "nothing is ready" is what made this
+ * screen look empty while its World was fully authored.
  */
-export function WorldScreen({
-  worldId,
-  sessionId,
-}: {
-  worldId: string;
-  sessionId?: string;
-}) {
+export function WorldScreen({ worldId }: { worldId: string }) {
   const worldQuery = usePlayableWorld(worldId);
   const scopes = usePlayableScopes(worldId);
-  const session = useQuery({
-    queryKey: ["match-journey-session", sessionId],
-    queryFn: () => getLiveSession(sessionId as string),
-    enabled: Boolean(sessionId),
-    staleTime: 0,
-  });
-  const occurrence = session.data?.match?.currentOccurrence;
-  const occurrenceMatches = occurrence?.worldId === worldId;
-  const offeredScopes = useQuery({
-    queryKey: ["match-journey-scopes", sessionId, occurrence?.index],
-    queryFn: () => listMatchScopes(sessionId as string),
-    enabled: Boolean(sessionId && occurrenceMatches),
-    staleTime: 0,
-  });
-  const offeredIds = useMemo(
-    () => new Set((offeredScopes.data ?? []).map((scope) => scope.scopeId)),
-    [offeredScopes.data],
-  );
   const world = worldQuery.data;
   const regions = useMemo(
     () =>
       (scopes.isSuccess ? scopes.data : [])
-        .filter((scope) => !sessionId || offeredIds.has(scope.id))
         .filter(isSelectableScope)
         .slice()
         .sort((left, right) => left.sortOrder - right.sortOrder),
-    [offeredIds, scopes.data, scopes.isSuccess, sessionId],
+    [scopes.data, scopes.isSuccess],
   );
-  const pool = useScopePoolSelection(sessionId);
-  const [confirming, setConfirming] = useState(false);
 
   if (!world) {
     return (
@@ -103,30 +78,12 @@ export function WorldScreen({
       <div className="space-y-10">
         <WorldHeader world={world} />
 
-        {!sessionId ? (
-          <RecoveryCard />
-        ) : session.isLoading ? (
-          <div className="h-32 animate-pulse rounded-3xl bg-white" />
-        ) : session.isError || !session.data?.match ? (
-          <RecoveryCard message="تعذر استعادة المباراة المرتبطة بهذا العالم." />
-        ) : !occurrenceMatches ? (
-          <RecoveryCard
-            message="هذا العالم ليس الدور الحالي في المباراة."
-            href={
-              occurrence
-                ? `/worlds/${occurrence.worldId}?sessionId=${encodeURIComponent(sessionId)}`
-                : MATCH_SETUP_ROUTE
-            }
-            label="الذهاب إلى العالم الحالي"
-          />
-        ) : (
-
         <JourneySection
           id="world-scopes"
-          title={`اختر ${SCOPES_PER_OCCURRENCE} نطاقات`}
-          description="النطاقات الأربعة تكوّن مخزون المحتوى لهذا العالم."
+          title="نطاقات هذا العالم"
+          description="كل محطة في المباراة تُلعب من أربعة نطاقات من عالمها."
         >
-          {scopes.isLoading || offeredScopes.isLoading ? (
+          {scopes.isLoading ? (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 3 }, (_, index) => (
                 <div
@@ -135,56 +92,85 @@ export function WorldScreen({
                 />
               ))}
             </div>
-          ) : scopes.isError || offeredScopes.isError ? (
+          ) : scopes.isError ? (
             <JourneyError
               title="تعذر تحميل النطاقات"
               description="حاول مرة أخرى"
-              onRetry={() => {
-                void scopes.refetch();
-                void offeredScopes.refetch();
-              }}
-              retrying={scopes.isFetching || offeredScopes.isFetching}
+              onRetry={() => void scopes.refetch()}
+              retrying={scopes.isFetching}
             />
           ) : regions.length ? (
-            <ScopeSelection
-              scopes={regions}
-              selectedScopeIds={pool.selectedScopeIds}
-              onToggle={pool.toggle}
-              confirming={confirming}
-              error={pool.error}
-              onConfirm={() => {
-                setConfirming(true);
-                void pool.confirm(world).finally(() => setConfirming(false));
-              }}
-            />
+            <ul className="grid list-none gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {regions.map((scope) => (
+                <li key={scope.id}>
+                  <ScopePreviewCard scope={scope} />
+                </li>
+              ))}
+            </ul>
           ) : (
             <div className="rounded-3xl border border-black/[0.06] bg-white p-10 text-center text-sm leading-6 text-slate-500 shadow-[0_10px_30px_rgba(24,16,54,.05)]">
               لا توجد نطاقات جاهزة في هذا العالم بعد.
             </div>
           )}
         </JourneySection>
-        )}
+
+        <section className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-primary/15 bg-white px-6 py-5 shadow-[0_10px_30px_rgba(24,16,54,.05)]">
+          <p className="text-sm leading-6 text-slate-500">
+            تُجهَّز المباراة بالكامل قبل أن تبدأ: ثلاث محطات عوالم وأربعة نطاقات
+            لكل محطة.
+          </p>
+          <Button asChild size="lg" className="rounded-2xl font-black">
+            <Link href={MATCH_SETUP_ROUTE}>
+              <Play className="ml-2 h-5 w-5 fill-current" aria-hidden />
+              ابدأ لعبة جديدة
+            </Link>
+          </Button>
+        </section>
       </div>
     </JourneyShell>
   );
 }
 
-function RecoveryCard({
-  message = "ابدأ لعبة جديدة أولًا",
-  href = MATCH_SETUP_ROUTE,
-  label = "ابدأ لعبة جديدة أولًا",
-}: {
-  message?: string;
-  href?: string;
-  label?: string;
-}) {
+/** A Scope as something to read about, not something to pick. */
+function ScopePreviewCard({ scope }: { scope: PlayableScope }) {
+  const imageUrl = getMediaUrl(scope.image?.url);
+
   return (
-    <section className="rounded-3xl border border-primary/15 bg-white p-8 text-center shadow-[0_10px_30px_rgba(24,16,54,.05)]">
-      <p className="font-black text-slate-900">{message}</p>
-      <Button asChild className="mt-5 rounded-2xl font-black">
-        <Link href={href}>{label}</Link>
-      </Button>
-    </section>
+    <article className="flex h-full min-h-[14rem] flex-col overflow-hidden rounded-3xl border border-black/[0.06] bg-white text-right shadow-[0_10px_30px_rgba(24,16,54,.06)]">
+      <span className="relative block h-28 w-full overflow-hidden">
+        <span
+          className={cn(
+            "absolute inset-0 bg-gradient-to-bl",
+            washFor(scope.slug || scope.id),
+          )}
+        />
+        {imageUrl && (
+          <Image
+            src={imageUrl}
+            alt=""
+            fill
+            unoptimized
+            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+            className="object-cover"
+          />
+        )}
+        <span className="absolute inset-0 bg-gradient-to-t from-white via-white/40 to-transparent" />
+      </span>
+
+      <div className="flex flex-1 flex-col gap-2 px-5 pb-5">
+        <h3 className="text-lg font-black text-slate-900">{scope.name}</h3>
+        {scope.description && (
+          <p className="line-clamp-2 text-sm leading-6 text-slate-500">
+            {scope.description}
+          </p>
+        )}
+        <p className="mt-auto inline-flex items-center gap-1.5 pt-1 text-xs font-bold text-[#15803D]">
+          <Layers className="h-4 w-4" aria-hidden="true" />
+          <span className="tabular-nums">{scope.readyContentItemCount}</span>
+          عنصر جاهز
+        </p>
+      </div>
+    </article>
   );
 }
 

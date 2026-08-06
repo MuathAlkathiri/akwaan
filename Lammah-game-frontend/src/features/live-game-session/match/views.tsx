@@ -29,7 +29,11 @@ export function SharedScreenMatchView() {
   return <MatchStageRouter actor="shared-screen" />;
 }
 
-export function ParticipantMatchView({ participantId }: { participantId: string }) {
-  return <MatchStageRouter actor="participant" participantId={participantId} />;
+/**
+ * A player's phone. It carries no participant id: the server already scopes the
+ * snapshot and the runtime projection to whoever is asking.
+ */
+export function ParticipantMatchView() {
+  return <MatchStageRouter actor="participant" />;
 }
 

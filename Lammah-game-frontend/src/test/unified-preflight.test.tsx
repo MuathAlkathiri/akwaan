@@ -30,24 +30,9 @@ const mocks = vi.hoisted(() => ({
   resync: vi.fn(),
 }));
 
-const matchApi = vi.hoisted(() => ({
-  createMatch: vi.fn(),
-  startMatch: vi.fn(),
-  resolveMatchCoinToss: vi.fn(),
-  listMatchWorlds: vi.fn(),
-  selectMatchWorld: vi.fn(),
-  listMatchScopes: vi.fn(),
-  selectMatchScopes: vi.fn(),
-  launchMatchChallenge: vi.fn(),
-  continueMatchWorld: vi.fn(),
-  cancelMatch: vi.fn(),
-}));
-
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
 }));
-
-vi.mock("@/features/live-game-session/match/api/match-api", () => matchApi);
 
 vi.mock("@/features/match-setup", () => ({
   prepareUnifiedChallenge: mocks.prepare,
@@ -192,7 +177,6 @@ function match(
   return {
     id: "match-1",
     revision: 9,
-    setupMode: "unified_preconfigured",
     status: "active",
     stage: {
       key: overrides.stage ?? "board",
@@ -200,13 +184,6 @@ function match(
       minimumDisplayDurationMs: 0,
       audioCue: null,
       animationCue: null,
-    },
-    coinToss: { status: "resolved", winnerTeamId: "team-a" },
-    worldSelection: {
-      selections: [],
-      requiresAgreement: false,
-      remainingCount: 0,
-      complete: true,
     },
     unified: {
       occurrences: [0, 1, 2].map((occurrenceIndex) => ({
@@ -295,8 +272,6 @@ beforeEach(() => {
   mocks.prepare.mockResolvedValue({ sessionId: "session-1" });
   mocks.launch.mockResolvedValue({ sessionId: "session-1" });
   mocks.cancel.mockResolvedValue({ sessionId: "session-1" });
-  for (const mock of Object.values(matchApi)) mock.mockReset();
-  matchApi.listMatchWorlds.mockResolvedValue([]);
 });
 
 describe("challenge preflight", () => {
@@ -568,14 +543,21 @@ describe("challenge preflight", () => {
     }
   });
 
-  it("refuses a preflight stage on a legacy Match", () => {
-    const legacy = {
-      ...match({ stage: "preflight", preflight: preflight() }),
-      setupMode: "legacy_sequential",
-    } as LiveSessionMatchSnapshot;
-    renderRouter(legacy);
+  it("recovers rather than guessing when a preflight stage carries no preflight", () => {
+    renderRouter(match({ stage: "preflight" }));
 
     expect(screen.queryByTestId("challenge-preflight")).toBeNull();
-    expect(screen.getByText(/تحديث|مزامنة|غير مدعومة/)).toBeTruthy();
+    expect(screen.queryByTestId("unified-board")).toBeNull();
+    expect(screen.getByTestId("match-stage-recovery")).toBeTruthy();
+  });
+
+  it("recovers on a stage this client does not know", () => {
+    for (const stage of ["world_selection", "coin_toss", "lobby", ""]) {
+      const view = renderRouter(match({ stage }));
+      expect(screen.getByTestId("match-stage-recovery")).toBeTruthy();
+      // Never quietly resolved to the board.
+      expect(screen.queryByTestId("unified-board")).toBeNull();
+      view.unmount();
+    }
   });
 });

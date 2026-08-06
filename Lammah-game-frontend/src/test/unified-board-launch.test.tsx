@@ -29,24 +29,9 @@ const mocks = vi.hoisted(() => ({
   resync: vi.fn(),
 }));
 
-const matchApi = vi.hoisted(() => ({
-  createMatch: vi.fn(),
-  startMatch: vi.fn(),
-  resolveMatchCoinToss: vi.fn(),
-  listMatchWorlds: vi.fn(),
-  selectMatchWorld: vi.fn(),
-  listMatchScopes: vi.fn(),
-  selectMatchScopes: vi.fn(),
-  launchMatchChallenge: vi.fn(),
-  continueMatchWorld: vi.fn(),
-  cancelMatch: vi.fn(),
-}));
-
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
 }));
-
-vi.mock("@/features/live-game-session/match/api/match-api", () => matchApi);
 
 vi.mock("@/features/match-setup", () => ({
   prepareUnifiedChallenge: mocks.prepare,
@@ -100,7 +85,6 @@ function unifiedMatch(
   return {
     id: "match-1",
     revision: 7,
-    setupMode: "unified_preconfigured",
     status: "active",
     stage: {
       key: overrides.stage ?? "board",
@@ -108,13 +92,6 @@ function unifiedMatch(
       minimumDisplayDurationMs: 0,
       audioCue: null,
       animationCue: null,
-    },
-    coinToss: { status: "resolved", winnerTeamId: "team-a" },
-    worldSelection: {
-      selections: [],
-      requiresAgreement: false,
-      remainingCount: 0,
-      complete: true,
     },
     unified: {
       occurrences: OCCURRENCE_WORLDS.map((worldId, occurrenceIndex) => ({
@@ -203,8 +180,6 @@ beforeEach(() => {
   mocks.prepare.mockReset();
   mocks.resync.mockReset();
   mocks.prepare.mockResolvedValue({ sessionId: "session-1" });
-  for (const mock of Object.values(matchApi)) mock.mockReset();
-  matchApi.listMatchWorlds.mockResolvedValue([]);
 });
 
 describe("unified board", () => {
@@ -330,15 +305,71 @@ describe("unified board", () => {
     renderBoard(unifiedMatch({ positions })).unmount();
   });
 
-  it("renders a precise unavailable reason rather than a vague label", () => {
+  it("says a mechanic has no launcher rather than calling it unfinished", () => {
     renderBoard(unifiedMatch());
 
     const locked = tile("0#slot_1");
-    expect(locked.textContent).toContain("هذا النوع من التحديات قيد التجهيز");
-    expect(locked.textContent).not.toContain("قريبًا");
+    expect(locked.textContent).toContain("هذا التحدي غير متاح للعب حاليًا");
+    expect(locked.textContent).toContain("لا يدعم الخادم تشغيل هذا النوع");
+    // None of the "nearly ready" language this phase exists to remove.
+    for (const obsolete of ["قيد التجهيز", "قريبًا", "قريباً"]) {
+      expect(locked.textContent).not.toContain(obsolete);
+    }
     expect(
       within(locked).queryByRole("button", { name: "اختيار هذا التحدي" }),
     ).toBeNull();
+  });
+
+  it("tells a broken position apart from an unimplemented mechanic", () => {
+    const positions = OCCURRENCE_WORLDS.flatMap((worldId, occurrenceIndex) =>
+      SLOTS.map((slotKey, index) =>
+        position(occurrenceIndex, worldId, slotKey, index, {
+          ...(occurrenceIndex === 0 && slotKey === "slot_4"
+            ? {
+                status: "unavailable" as const,
+                launchability: "unavailable" as const,
+                unavailableReason: "invalid_configuration" as const,
+              }
+            : {}),
+        }),
+      ),
+    );
+    renderBoard(unifiedMatch({ positions }));
+
+    const broken = tile("0#slot_4");
+    expect(broken.textContent).toContain("هذه الخانة غير صالحة في هذه المباراة");
+    expect(broken.textContent).not.toContain("لا يدعم الخادم تشغيل");
+    // And the unimplemented-mechanic tile still reads the other way round.
+    expect(tile("0#slot_1").textContent).toContain(
+      "لا يدعم الخادم تشغيل هذا النوع",
+    );
+  });
+
+  it("does not render a mechanic as unavailable just because a slug is unfamiliar", () => {
+    // Same unknown slug, but the server says it is launchable — so it is offered.
+    const positions = OCCURRENCE_WORLDS.flatMap((worldId, occurrenceIndex) =>
+      SLOTS.map((slotKey, index) =>
+        position(occurrenceIndex, worldId, slotKey, index, {
+          challengeKey: "a-mechanic-this-client-has-never-heard-of",
+          launchability: "launchable" as const,
+        }),
+      ),
+    ).map((entry) => {
+      const { unavailableReason: _dropped, ...rest } = entry;
+      return rest as UnifiedBoardPosition;
+    });
+    renderBoard(unifiedMatch({ positions }));
+
+    expect(
+      screen.getAllByRole("button", { name: "اختيار هذا التحدي" }),
+    ).toHaveLength(12);
+  });
+
+  it("reports a board that arrived with no positions instead of drawing an empty grid", () => {
+    renderBoard(unifiedMatch({ positions: [] }));
+
+    expect(screen.getByTestId("board-empty")).toBeTruthy();
+    expect(screen.queryAllByTestId(/^unified-position-/)).toHaveLength(0);
   });
 
   it("keeps a completed position in place and unlaunchable", () => {

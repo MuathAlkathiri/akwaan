@@ -1,6 +1,17 @@
 import axios from "axios";
 
+/**
+ * Server refusals, in Arabic.
+ *
+ * Every entry answers one server code, and the four kinds of refusal a host can
+ * hit are kept apart on purpose: a mechanic with no launcher, a Scope pool with
+ * nothing playable left in it, phones that are not in the room, and a position
+ * that is simply not this team's to choose are different problems with different
+ * fixes. Collapsing them into one "still being prepared" message is what made an
+ * implemented mechanic look unfinished.
+ */
 const messages: Record<string, string> = {
+  // Concurrency and authority.
   MATCH_STALE_REVISION: "تغيّرت المباراة على جهاز آخر. جارٍ جلب أحدث حالة.",
   STALE_REVISION: "الحالة المعروضة قديمة. جارٍ مزامنتها الآن.",
   CONCURRENT_UPDATE: "وصل تحديث أحدث للمباراة. حاول مجددًا بعد المزامنة.",
@@ -8,45 +19,59 @@ const messages: Record<string, string> = {
   SESSION_FORBIDDEN: "لا تملك صلاحية التحكّم في هذه الجلسة.",
   MATCH_NOT_FOUND: "لم تُنشأ مباراة لهذه الجلسة بعد.",
   MATCH_ALREADY_ACTIVE: "توجد مباراة نشطة لهذه الجلسة بالفعل.",
+  MATCH_CANCELLED: "أُلغيت هذه المباراة.",
   SESSION_NOT_ACTIVE: "ابدأ الجلسة أولًا، ثم أنشئ المباراة.",
   MATCH_STAGE_INVALID: "هذا الإجراء غير متاح في المرحلة الحالية.",
-  MATCH_WRONG_SELECTION_TURN: "ليس دور هذا الفريق في اختيار العالم.",
-  MATCH_SELECTION_TURN_INVALID: "اختيار العالم لا يطابق الدور الحالي.",
-  WORLD_SELECTION_OUT_OF_TURN: "ليس دور هذا الفريق في اختيار العالم.",
-  WORLD_SELECTION_METHOD_INVALID: "طريقة الاختيار لا تناسب هذه المحطة.",
-  THIRD_WORLD_METHOD_INVALID: "العالم الثالث يُحسم باتفاق الفريقين أو باختيار الخادم.",
-  MATCH_WORLD_NOT_ACTIVE: "هذا العالم غير نشط ولا يمكن اختياره الآن.",
-  MATCH_WORLD_BOARD_NOT_READY: "لوحة هذا العالم غير جاهزة للعب بعد.",
-  MATCH_WORLD_NOT_FOUND: "تعذر العثور على العالم المختار.",
-  MATCH_WORLD_REQUIRED: "اختر عالمًا أو استخدم الاختيار العشوائي.",
-  MATCH_NO_SELECTABLE_WORLD: "لا توجد عوالم جاهزة للاختيار حاليًا.",
-  MATCH_WORLDS_ALREADY_SELECTED: "اكتمل اختيار العوالم الثلاثة بالفعل.",
+
+  // The mechanic itself cannot be launched.
   CHALLENGE_NOT_LAUNCHABLE: "هذا التحدي غير متاح للعب حاليًا.",
-  BOARD_SLOT_NOT_AVAILABLE: "لا يمكن تشغيل هذه الخانة الآن؛ ربما اكتملت أو بدأ تحدٍ آخر.",
-  BOARD_SLOT_NOT_SCHEDULED: "هذا التحدي ليس ضمن لوحة العالم الحالية.",
+  CHALLENGE_LAUNCHER_NOT_FOUND: "هذا التحدي غير متاح للعب حاليًا.",
+  CHALLENGE_LAUNCHER_UNAVAILABLE: "مشغّل هذا التحدي غير متاح حاليًا.",
+
+  // The board position.
+  BOARD_SLOT_NOT_AVAILABLE:
+    "لا يمكن اختيار هذه الخانة الآن؛ ربما اكتملت أو بدأ تحدٍ آخر.",
+  BOARD_SLOT_NOT_SCHEDULED: "هذه الخانة ليست ضمن لوحة هذه المباراة.",
   MATCH_SLOT_ALREADY_COMPLETED: "اكتمل هذا التحدي من قبل.",
   MATCH_CHALLENGE_ALREADY_ACTIVE: "يوجد تحدٍ قيد اللعب الآن.",
-  CHALLENGE_LAUNCHER_NOT_FOUND: "هذا النوع من التحديات قيد التجهيز.",
-  CHALLENGE_LAUNCHER_UNAVAILABLE: "مشغّل هذا التحدي غير متاح حاليًا.",
-  INVALID_CONTENT_ITEM_COUNT: "عدد عناصر المحتوى لا يطابق متطلبات التحدي.",
-  RYO_CONTENT_COUNT_INVALID: "تحدي اقرأ خصمك يحتاج 3 عناصر محتوى بالضبط.",
-  TOP10_CONTENT_COUNT_INVALID: "تحدي أفضل 10 يحتاج عنصر محتوى واحدًا بالضبط.",
+  MATCH_OCCURRENCE_NOT_FOUND: "لا توجد محطة عوالم بهذا الرقم في المباراة.",
+  MATCH_WRONG_SELECTION_TURN: "ليس دور هذا الفريق في اختيار التحدي.",
+  MATCH_SELECTION_TURN_INVALID: "الاختيار لا يطابق دور الفريق الحالي.",
+
+  // Preparation and preflight.
+  MATCH_NO_PENDING_CHALLENGE: "لا توجد خانة مُجهّزة للتشغيل.",
+  MATCH_PENDING_CHALLENGE_MISMATCH:
+    "الخانة المُجهّزة تغيّرت. ارجع إلى اللوحة واختر من جديد.",
+  MATCH_REQUIRES_TWO_TEAMS: "تحتاج المباراة فريقين نشطين.",
+  TEAM_NEEDS_MORE_PLAYERS: "أحد الفريقين يحتاج لاعبين إضافيين متصلين.",
+  TEAM_HAS_TOO_MANY_PLAYERS: "أحد الفريقين لديه لاعبون متصلون أكثر من اللازم.",
+
+  // Content: the mechanic works, its Scope pool does not have enough for it.
+  MATCH_INSUFFICIENT_PLAYABLE_CONTENT:
+    "لا يوجد محتوى كافٍ ومتوافق في نطاقات هذه المحطة لتشغيل هذا التحدي.",
+  SCOPE_SELECTION_INCOMPLETE: "لم تكتمل نطاقات هذه المحطة الأربعة.",
+  SCOPE_NOT_FOUND: "أحد نطاقات هذه المحطة لم يعد موجودًا.",
+  SCOPE_NOT_IN_OCCURRENCE_WORLD: "أحد النطاقات لا ينتمي إلى عالم هذه المحطة.",
+  SCOPE_NOT_ACTIVE: "أحد نطاقات هذه المحطة غير مفعّل.",
+  SCOPE_HAS_NO_READY_CONTENT: "أحد نطاقات هذه المحطة لا يحتوي محتوى جاهزًا.",
+  SCOPE_HAS_NO_USABLE_SLOT:
+    "أحد نطاقات هذه المحطة لا يناسب أي تحدٍ في لوحة العالم.",
+  CONTENT_ITEM_ALREADY_PLAYED: "لُعب هذا المحتوى في هذه المحطة من قبل.",
+  CONTENT_ITEM_NOT_READY: "المحتوى المتاح لهذا التحدي ليس جاهزًا للعب.",
+  CONTENT_ITEM_INCOMPATIBLE: "المحتوى المتاح لا يناسب آلية هذا التحدي.",
+
+  // Mechanic-specific startup refusals.
   RYO_REQUIRES_THREE_ITEMS: "تحدي اقرأ خصمك يحتاج 3 عناصر محتوى مختلفة بالضبط.",
   TOP10_REQUIRES_ONE_ITEM: "تحدي أفضل 10 يحتاج عنصر محتوى واحدًا بالضبط.",
-  RYO_CONTENT_INVALID: "اختر 3 عناصر جاهزة ومتوافقة من العالم الحالي.",
-  TOP10_CONTENT_INVALID: "اختر عنصر أفضل 10 جاهزًا ومتوافقًا من العالم الحالي.",
-  RYO_SLOT_NOT_CONFIGURED: "خانة اقرأ خصمك غير مضبوطة في هذا العالم.",
-  RYO_SLOT_INVALID: "هذه الخانة ليست تحدي اقرأ خصمك المعتمد.",
+  DISTRIBUTED_REQUIRES_THREE_ITEMS:
+    "تحدي ركّبها يحتاج 3 عناصر محتوى مختلفة بالضبط.",
+  TOP10_VARIANT_INVALID: "عنصر أفضل 10 المختار ليس من نسخة خذها أو دسّها.",
   RYO_STARTING_TEAM_INVALID: "الفريق المحدد للبدء غير مشارك في المباراة.",
   TOP10_STARTING_TEAM_INVALID: "الفريق المحدد للبدء غير مشارك في المباراة.",
-  RYO_LAUNCH_FORBIDDEN: "تشغيل اقرأ خصمك متاح للمتحكّم فقط.",
-  TOP10_LAUNCH_FORBIDDEN: "تشغيل أفضل 10 متاح للمتحكّم فقط.",
-  INVALID_TOP10_VARIANT: "عنصر أفضل 10 المختار ليس من نسخة خذها أو دسّها.",
-  TOP10_VARIANT_INVALID: "عنصر أفضل 10 المختار ليس من نسخة خذها أو دسّها.",
-  TOP10_LAUNCH_TARGET_REQUIRED: "لم يرتبط التحدي بإعداد أفضل 10 صالح.",
-  TOP10_MECHANIC_INCOMPATIBLE: "إعداد أفضل 10 غير متوافق مع المحتوى المختار.",
   RYO_RUNTIME_NOT_CREATED: "تعذر بدء اقرأ خصمك. لم يُنشئ الخادم حالة اللعب.",
   TOP10_RUNTIME_NOT_CREATED: "تعذر بدء أفضل 10. لم يُنشئ الخادم حالة اللعب.",
+
+  // Transport.
   GAMEPLAY_RUNTIME_NOT_FOUND: "جارٍ استعادة التحدي الحالي من الخادم.",
   CONNECTION_ERROR: "تعذر الاتصال بالمباراة. سنواصل المحاولة تلقائيًا.",
   LOAD_FAILED: "تعذر تحميل حالة المباراة.",
