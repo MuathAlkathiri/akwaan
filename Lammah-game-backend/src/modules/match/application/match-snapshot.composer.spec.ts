@@ -1,23 +1,19 @@
 import { GameplayObserverRegistry } from '../../live-game-sessions/application/gameplay-observer.registry';
 import { LiveGameSessionSnapshot } from '../../live-game-sessions/application/live-game-session.snapshot';
 import { LiveSessionActor } from '../../live-game-sessions/application/live-session-actor';
-import { ChallengeFamily } from '../../world-content/domain/world-content.constants';
-import {
-  ChallengeAnswerMode,
-  ChallengeItemStructure,
-  WorldChallengeSlotKey,
-} from '../../world-content/domain/world-content.constants';
-import { BoardSlot } from '../../world-content/domain/board-definition.policy';
+import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.constants';
 import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 import { ScoringService } from '../../scoring/application/scoring.service';
 import { ScoringRuleRegistry } from '../../scoring/application/scoring-rule.registry';
+import { ConfiguredWorldOccurrence } from '../domain/configured-world-occurrence';
 import { Match } from '../domain/match';
 import {
+  MATCH_SLOT_ORDER,
   MatchSlotLaunchability,
   MatchSlotStatus,
   MatchStage,
-  WorldSelectionMethod,
 } from '../domain/match.constants';
+import { MatchBoardPositionConfiguration } from '../domain/unified-match-board.policy';
 import { LiveGameSessionRepository } from '../../live-game-sessions/domain/live-game-session.repository';
 import { LiveSessionJoinAccessRepository } from '../../live-game-sessions/domain/live-session-join-access.repository';
 import { MatchRepository } from '../persistence/match.repository';
@@ -30,22 +26,6 @@ import { MatchWorldCatalog } from './match-world.catalog';
 
 const RYO = 'read-your-opponent';
 
-const boardSlot = (
-  slotKey: WorldChallengeSlotKey,
-  challengeTypeSlug: string,
-): BoardSlot => ({
-  slotKey,
-  configurationId: `configuration-${slotKey}`,
-  challengeTypeId: `type-${challengeTypeSlug}`,
-  challengeTypeSlug,
-  family: ChallengeFamily.RYO,
-  displayName: 'اقرأ خصمك',
-  itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
-  answerMode: ChallengeAnswerMode.RYO,
-  scoringRuleId: SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
-  sortOrder: 0,
-});
-
 describe('MatchSnapshotComposer', () => {
   const now = new Date('2026-01-01T00:00:00.000Z');
   const scoring = new ScoringService(new ScoringRuleRegistry());
@@ -53,19 +33,10 @@ describe('MatchSnapshotComposer', () => {
   const snapshot = (): LiveGameSessionSnapshot =>
     ({ sessionId: 'live-session-1' }) as LiveGameSessionSnapshot;
 
+  /** The canonical RYO mechanic has a launcher; every other slot does not. */
   const catalog = () =>
     ({
-      describeWorld: () =>
-        Promise.resolve({
-          worldId: 'world-1',
-          name: 'كرة القدم',
-          boardReady: true,
-          slots: [
-            boardSlot(WorldChallengeSlotKey.SLOT_1, 'formation-builder'),
-            boardSlot(WorldChallengeSlotKey.SLOT_2, RYO),
-          ],
-        }),
-      launchabilityFor: (slot?: BoardSlot) =>
+      launchabilityFor: (slot: { challengeTypeSlug?: string }) =>
         slot?.challengeTypeSlug === RYO
           ? MatchSlotLaunchability.LAUNCHABLE
           : MatchSlotLaunchability.CONFIGURED_BUT_UNIMPLEMENTED,
@@ -86,6 +57,7 @@ describe('MatchSnapshotComposer', () => {
       findBySessionId: () => Promise.resolve(null),
       save: () => Promise.resolve(),
     };
+    // Scope names only; content eligibility is proven in its own tests.
     const contentPool = {
       listSelectableScopes: () =>
         Promise.resolve([
@@ -98,8 +70,6 @@ describe('MatchSnapshotComposer', () => {
           { scopeId: 's3', name: 'الدوري السعودي', readyContentItemCount: 22 },
           { scopeId: 's4', name: 'أبطال أوروبا', readyContentItemCount: 18 },
         ]),
-      assertSelectableScopes: () => Promise.resolve(),
-      assertPlayableItems: () => Promise.resolve(),
     } as unknown as MatchContentPool;
     const reconciliation = {
       ensureReconciled: () =>
@@ -165,48 +135,64 @@ describe('MatchSnapshotComposer', () => {
     return registry;
   };
 
-  const onBoard = () => {
-    const match = Match.create({
+  /** The example configuration: World 1, World 2, World 1 again. */
+  const occurrences = (): ConfiguredWorldOccurrence[] => [
+    {
+      occurrenceIndex: 0,
+      worldId: 'world-1',
+      selectedScopeIds: ['s1', 's2', 's3', 's4'],
+    },
+    {
+      occurrenceIndex: 1,
+      worldId: 'world-2',
+      selectedScopeIds: ['s1', 's2', 's3', 's4'],
+    },
+    {
+      occurrenceIndex: 2,
+      worldId: 'world-1',
+      selectedScopeIds: ['s5', 's6', 's7', 's8'],
+    },
+  ];
+
+  const boardPositions = (
+    configured: ConfiguredWorldOccurrence[] = occurrences(),
+  ): MatchBoardPositionConfiguration[] =>
+    configured.flatMap((occurrence) =>
+      MATCH_SLOT_ORDER.map((slotKey) => ({
+        occurrenceIndex: occurrence.occurrenceIndex,
+        worldId: occurrence.worldId,
+        slotKey,
+        challengeTypeId: `type-${slotKey}`,
+        challengeTypeSlug:
+          slotKey === WorldChallengeSlotKey.SLOT_2 ? RYO : `other-${slotKey}`,
+        displayName: 'اقرأ خصمك',
+      })),
+    );
+
+  /** A fully configured Match, created the only way a Match is created now. */
+  const unifiedMatch = (
+    options: {
+      winnerTeamId?: string;
+      configured?: ConfiguredWorldOccurrence[];
+      positions?: MatchBoardPositionConfiguration[];
+    } = {},
+  ): Match => {
+    const configured = options.configured ?? occurrences();
+    return Match.createUnified({
       liveSessionId: 'live-session-1',
       teams: [
         { id: 'team-alpha', name: 'ألفا' },
         { id: 'team-beta', name: 'بيتا' },
       ],
+      occurrences: configured,
+      boardPositions: options.positions ?? boardPositions(configured),
+      coinToss: {
+        winnerTeamId: options.winnerTeamId ?? 'team-alpha',
+        roll: 0,
+        resolvedAt: now,
+      },
       now,
     });
-    match.start({ commandId: 'start', now });
-    match.resolveCoinToss({
-      commandId: 'toss',
-      now,
-      winnerTeamId: 'team-alpha',
-      roll: 0,
-    });
-    for (const [index, method] of [
-      WorldSelectionMethod.TEAM_PICK,
-      WorldSelectionMethod.TEAM_PICK,
-      WorldSelectionMethod.AGREED,
-    ].entries()) {
-      match.selectWorld({
-        commandId: `world-${index}`,
-        now,
-        worldId: 'world-1',
-        method,
-        ...(method === WorldSelectionMethod.TEAM_PICK
-          ? { selectedByTeamId: index === 0 ? 'team-alpha' : 'team-beta' }
-          : {}),
-        scheduledSlotKeys: [
-          WorldChallengeSlotKey.SLOT_1,
-          WorldChallengeSlotKey.SLOT_2,
-        ],
-      });
-    }
-    match.selectScopes({
-      commandId: 'scopes-0',
-      now,
-      occurrenceIndex: 0,
-      scopeIds: ['s1', 's2', 's3', 's4'],
-    });
-    return match;
   };
 
   const controller: LiveSessionActor = { kind: 'user', actorId: 'host-1' };
@@ -228,7 +214,7 @@ describe('MatchSnapshotComposer', () => {
 
   it('projects the stage with the presentation the clients must not invent', async () => {
     const value = snapshot();
-    await composerFor(onBoard()).enrich(value, controller);
+    await composerFor(unifiedMatch()).enrich(value, controller);
 
     expect(value.match?.stage).toEqual({
       key: MatchStage.BOARD,
@@ -238,45 +224,36 @@ describe('MatchSnapshotComposer', () => {
       animationCue: 'board-reveal',
     });
     expect(value.match?.worldSelection.complete).toBe(true);
-    expect(value.match?.currentOccurrence).toEqual({
-      index: 0,
-      worldId: 'world-1',
-      status: 'in_progress',
-      scopeSelectionComplete: true,
-      selectedScopeIds: ['s1', 's2', 's3', 's4'],
-      selectedScopes: [
-        { scopeId: 's1', name: 'كأس العالم' },
-        { scopeId: 's2', name: 'الدوري الإنجليزي' },
-        { scopeId: 's3', name: 'الدوري السعودي' },
-        { scopeId: 's4', name: 'أبطال أوروبا' },
-      ],
-    });
-    // The pool is complete, so the board is published.
+    expect(value.match?.unified).toBeDefined();
+    // The sequential sections have no meaning here and are omitted.
+    expect(value.match?.board).toBeUndefined();
+    expect(value.match?.currentOccurrence).toBeUndefined();
     expect(value.match?.scopeSelection).toBeUndefined();
-    expect(value.match?.board).toBeDefined();
   });
 
   it('reports an unimplemented board position instead of hiding it', async () => {
     const value = snapshot();
-    await composerFor(onBoard()).enrich(value, controller);
+    await composerFor(unifiedMatch()).enrich(value, controller);
 
-    expect(value.match?.board?.slots).toEqual([
-      expect.objectContaining({
-        slotKey: WorldChallengeSlotKey.SLOT_1,
-        launchability: MatchSlotLaunchability.CONFIGURED_BUT_UNIMPLEMENTED,
-        status: MatchSlotStatus.AVAILABLE,
-      }),
-      expect.objectContaining({
-        slotKey: WorldChallengeSlotKey.SLOT_2,
-        launchability: MatchSlotLaunchability.LAUNCHABLE,
-        status: MatchSlotStatus.AVAILABLE,
-        challengeName: 'اقرأ خصمك',
-      }),
-    ]);
+    const positions = value.match!.unified!.board.positions;
+    expect(
+      positions.find((position) => position.positionKey === '0#slot_1'),
+    ).toMatchObject({
+      launchability: MatchSlotLaunchability.CONFIGURED_BUT_UNIMPLEMENTED,
+      status: MatchSlotStatus.AVAILABLE,
+      unavailableReason: 'launcher_not_implemented',
+    });
+    expect(
+      positions.find((position) => position.positionKey === '0#slot_2'),
+    ).toMatchObject({
+      launchability: MatchSlotLaunchability.LAUNCHABLE,
+      status: MatchSlotStatus.AVAILABLE,
+      challengeName: 'اقرأ خصمك',
+    });
   });
 
   it('gives Match commands to the controller and none to a participant', async () => {
-    const match = onBoard();
+    const match = unifiedMatch();
     const hostView = snapshot();
     const playerView = snapshot();
     await composerFor(match).enrich(hostView, controller);
@@ -290,11 +267,11 @@ describe('MatchSnapshotComposer', () => {
   });
 
   it('publishes team totals but never the ScoreEvents behind them', async () => {
-    const match = onBoard();
+    const match = unifiedMatch();
     match.launchChallenge({
       commandId: 'launch',
       now,
-      occurrenceIndex: match.currentOccurrenceIndex,
+      occurrenceIndex: 0,
       slotKey: WorldChallengeSlotKey.SLOT_2,
       challengeKey: RYO,
       runtimeId: 'runtime-1',
@@ -333,60 +310,12 @@ describe('MatchSnapshotComposer', () => {
   });
 
   describe('a preconfigured Match', () => {
-    const ANIME_POOL = ['s1', 's2', 's3', 's4'];
-    const ANIME_POOL_2 = ['s5', 's6', 's7', 's8'];
-
-    const occurrences = () => [
-      {
-        occurrenceIndex: 0,
-        worldId: 'world-1',
-        selectedScopeIds: [...ANIME_POOL],
-      },
-      {
-        occurrenceIndex: 1,
-        worldId: 'world-2',
-        selectedScopeIds: [...ANIME_POOL],
-      },
-      {
-        occurrenceIndex: 2,
-        worldId: 'world-1',
-        selectedScopeIds: [...ANIME_POOL_2],
-      },
-    ];
-
-    const unified = () =>
-      Match.createUnified({
-        liveSessionId: 'live-session-1',
-        teams: [
-          { id: 'team-alpha', name: 'ألفا' },
-          { id: 'team-beta', name: 'بيتا' },
-        ],
-        occurrences: occurrences(),
-        boardPositions: occurrences().flatMap((occurrence) =>
-          [
-            WorldChallengeSlotKey.SLOT_1,
-            WorldChallengeSlotKey.SLOT_2,
-            WorldChallengeSlotKey.SLOT_3,
-            WorldChallengeSlotKey.SLOT_4,
-          ].map((slotKey) => ({
-            occurrenceIndex: occurrence.occurrenceIndex,
-            worldId: occurrence.worldId,
-            slotKey,
-            challengeTypeId: `type-${slotKey}`,
-            challengeTypeSlug:
-              slotKey === WorldChallengeSlotKey.SLOT_2
-                ? RYO
-                : `other-${slotKey}`,
-            displayName: 'اقرأ خصمك',
-          })),
-        ),
-        coinToss: { winnerTeamId: 'team-beta', roll: 1, resolvedAt: now },
-        now,
-      });
-
     it('publishes its setup mode, three occurrences, and twelve positions', async () => {
       const value = snapshot();
-      await composerFor(unified()).enrich(value, controller);
+      await composerFor(unifiedMatch({ winnerTeamId: 'team-beta' })).enrich(
+        value,
+        controller,
+      );
 
       expect(value.match?.setupMode).toBe('unified_preconfigured');
       expect(value.match?.stage.key).toBe(MatchStage.BOARD);
@@ -404,7 +333,7 @@ describe('MatchSnapshotComposer', () => {
 
     it('keys positions by occurrence and slot, never by World', async () => {
       const value = snapshot();
-      await composerFor(unified()).enrich(value, controller);
+      await composerFor(unifiedMatch()).enrich(value, controller);
 
       const positions = value.match!.unified!.board.positions;
       expect(
@@ -416,17 +345,23 @@ describe('MatchSnapshotComposer', () => {
         (position) => position.occurrenceIndex === 2,
       );
       expect(repeated).toHaveLength(4);
-      expect(value.match!.unified!.occurrences[2].selectedScopeIds).toEqual(
-        ANIME_POOL_2,
-      );
-      expect(value.match!.unified!.occurrences[0].selectedScopeIds).toEqual(
-        ANIME_POOL,
-      );
+      expect(value.match!.unified!.occurrences[2].selectedScopeIds).toEqual([
+        's5',
+        's6',
+        's7',
+        's8',
+      ]);
+      expect(value.match!.unified!.occurrences[0].selectedScopeIds).toEqual([
+        's1',
+        's2',
+        's3',
+        's4',
+      ]);
     });
 
     it('reports launchability per position and leaves out the legacy sections', async () => {
       const value = snapshot();
-      await composerFor(unified()).enrich(value, controller);
+      await composerFor(unifiedMatch()).enrich(value, controller);
 
       const positions = value.match!.unified!.board.positions;
       expect(
@@ -459,7 +394,7 @@ describe('MatchSnapshotComposer', () => {
     });
 
     it('marks only the completed position and counts it once', async () => {
-      const match = unified();
+      const match = unifiedMatch();
       match.launchChallenge({
         commandId: 'launch',
         now,
