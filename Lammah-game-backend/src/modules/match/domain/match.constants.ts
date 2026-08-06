@@ -8,7 +8,6 @@ import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.
  */
 
 export enum MatchStatus {
-  DRAFT = 'draft',
   ACTIVE = 'active',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
@@ -23,13 +22,6 @@ export enum MatchStatus {
  */
 export enum MatchSetupMode {
   /**
-   * @deprecated Phase 5 removes this flow. World and Scope selection happen
-   * inside gameplay, one occurrence at a time, and the board only ever shows the
-   * occurrence at `currentOccurrenceIndex`. No new client may be built against
-   * it — see `docs/UNIFIED_MATCH_PHASE_1_ARCHITECTURE.md`.
-   */
-  LEGACY_SEQUENTIAL = 'legacy_sequential',
-  /**
    * The whole Match — three World occurrences with four Scopes each — is
    * configured before gameplay begins, and every one of the twelve board
    * positions is playable from the first moment.
@@ -38,15 +30,6 @@ export enum MatchSetupMode {
 }
 
 export enum MatchStage {
-  LOBBY = 'lobby',
-  COIN_TOSS = 'coin_toss',
-  WORLD_SELECTION = 'world_selection',
-  /**
-   * The four Scopes of the current World occurrence. Kept apart from
-   * world_selection because it is answered once per occurrence, not once
-   * per match, and a repeated World answers it again.
-   */
-  SCOPE_SELECTION = 'scope_selection',
   BOARD = 'board',
   /**
    * Unified only: a board position has been chosen and is waiting on the phones the
@@ -56,11 +39,6 @@ export enum MatchStage {
   PREFLIGHT = 'preflight',
   /** Wraps a mechanic runtime; the plugin owns its own internal phases. */
   CHALLENGE = 'challenge',
-  /**
-   * @deprecated Legacy sequential only. A unified Match has no "next World" to
-   * announce, so it never enters this stage.
-   */
-  WORLD_COMPLETE = 'world_complete',
   MATCH_COMPLETE = 'match_complete',
 }
 
@@ -84,12 +62,6 @@ export enum MatchSlotLaunchability {
 }
 
 export enum WorldSelectionMethod {
-  /** A team picked it outright. */
-  TEAM_PICK = 'team_pick',
-  /** Both teams agreed on the third World. */
-  AGREED = 'agreed',
-  /** Server-resolved 50/50 for the third World. */
-  RANDOM = 'random',
   /**
    * Chosen during pre-match setup, before any gameplay. The only method a
    * unified Match ever records.
@@ -99,14 +71,6 @@ export enum WorldSelectionMethod {
 
 /** Roadmap 3: every Match plays exactly three World occurrences. */
 export const MATCH_WORLD_OCCURRENCE_COUNT = 3;
-
-/**
- * A unified Match has no "current" World occurrence: all three are playable at
- * once. This sentinel is stored instead of a real index so any code that still
- * reaches for `currentOccurrenceIndex` as an authority finds nothing rather than
- * silently reading occurrence 0.
- */
-export const MATCH_NO_CURRENT_OCCURRENCE = -1;
 
 /** Item cardinality each launchable mechanic requires from content selection. */
 export const MATCH_CONTENT_CARDINALITY: Readonly<Record<string, number>> = {
@@ -128,26 +92,6 @@ export interface MatchStagePresentation {
 export const MATCH_STAGE_PRESENTATION: Readonly<
   Record<MatchStage, MatchStagePresentation>
 > = {
-  [MatchStage.LOBBY]: {
-    minimumDisplayDurationMs: 0,
-    audioCue: null,
-    animationCue: null,
-  },
-  [MatchStage.COIN_TOSS]: {
-    minimumDisplayDurationMs: 3500,
-    audioCue: 'coin-spin',
-    animationCue: 'coin-toss',
-  },
-  [MatchStage.WORLD_SELECTION]: {
-    minimumDisplayDurationMs: 0,
-    audioCue: 'world-select',
-    animationCue: 'world-carousel',
-  },
-  [MatchStage.SCOPE_SELECTION]: {
-    minimumDisplayDurationMs: 0,
-    audioCue: 'world-select',
-    animationCue: 'scope-carousel',
-  },
   [MatchStage.BOARD]: {
     minimumDisplayDurationMs: 0,
     audioCue: 'board-enter',
@@ -162,11 +106,6 @@ export const MATCH_STAGE_PRESENTATION: Readonly<
     minimumDisplayDurationMs: 0,
     audioCue: null,
     animationCue: 'challenge-intro',
-  },
-  [MatchStage.WORLD_COMPLETE]: {
-    minimumDisplayDurationMs: 4000,
-    audioCue: 'world-complete',
-    animationCue: 'world-complete',
   },
   [MatchStage.MATCH_COMPLETE]: {
     minimumDisplayDurationMs: 6000,

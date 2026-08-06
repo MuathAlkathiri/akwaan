@@ -7,7 +7,6 @@ import { LiveGameSessionSnapshot } from '../../live-game-sessions/application/li
 import { LiveSessionActor } from '../../live-game-sessions/application/live-session-actor';
 import {
   LiveSessionConfiguredOccurrence,
-  LiveSessionMatchBoardSlot,
   LiveSessionMatchProjection,
   LiveSessionMatchScope,
   LiveSessionMatchTeamScore,
@@ -27,13 +26,10 @@ import {
   LIVE_SESSION_JOIN_ACCESS_REPOSITORY,
   LiveSessionJoinAccessRepository,
 } from '../../live-game-sessions/domain/live-session-join-access.repository';
-import { BoardSlot } from '../../world-content/domain/board-definition.policy';
 import { Match } from '../domain/match';
 import {
-  MATCH_SCOPES_PER_OCCURRENCE,
   MATCH_STAGE_PRESENTATION,
   MATCH_UNIFIED_BOARD_POSITION_COUNT,
-  MATCH_WORLD_OCCURRENCE_COUNT,
   MatchSlotLaunchability,
   MatchSlotStatus,
   MatchStage,
@@ -106,20 +102,7 @@ export class MatchSnapshotComposer
     actor: LiveSessionActor,
   ): Promise<LiveSessionMatchProjection> {
     const presentation = MATCH_STAGE_PRESENTATION[match.stage];
-    const turn = match.nextSelectionTurn();
-    const occurrence = match.occurrences.find(
-      (candidate) => candidate.index === match.currentOccurrenceIndex,
-    );
     const isController = actor.kind === 'user';
-    const scopeSelectionComplete = occurrence
-      ? match.hasCompleteScopeSelection(occurrence.index)
-      : false;
-    const selectedScopes = occurrence
-      ? await this.describeScopes(
-          occurrence.worldId,
-          occurrence.selectedScopeIds,
-        )
-      : [];
 
     return {
       id: match.id,
@@ -140,50 +123,7 @@ export class MatchSnapshotComposer
             firstChooserTeamId: match.coinToss.winnerTeamId,
           }
         : { status: 'pending' },
-      worldSelection: {
-        selections: match.selections.map((selection) => ({
-          occurrenceIndex: selection.occurrenceIndex,
-          worldId: selection.worldId,
-          method: selection.method,
-          ...(selection.selectedByTeamId
-            ? { selectedByTeamId: selection.selectedByTeamId }
-            : {}),
-          selectedAt: selection.selectedAt.toISOString(),
-        })),
-        ...(turn?.teamId ? { nextTeamId: turn.teamId } : {}),
-        requiresAgreement: turn?.requiresAgreement ?? false,
-        remainingCount: MATCH_WORLD_OCCURRENCE_COUNT - match.selections.length,
-        complete: match.selections.length === MATCH_WORLD_OCCURRENCE_COUNT,
-      },
-      ...(match.isUnified ? { unified: await this.unified(match) } : {}),
-      ...(occurrence
-        ? {
-            currentOccurrence: {
-              index: occurrence.index,
-              worldId: occurrence.worldId,
-              status: occurrence.completedAt
-                ? ('completed' as const)
-                : ('in_progress' as const),
-              selectedScopeIds: [...occurrence.selectedScopeIds],
-              selectedScopes,
-              scopeSelectionComplete,
-            },
-          }
-        : {}),
-      ...(occurrence && !scopeSelectionComplete
-        ? {
-            scopeSelection: {
-              occurrenceIndex: occurrence.index,
-              worldId: occurrence.worldId,
-              required: MATCH_SCOPES_PER_OCCURRENCE,
-              selectedScopeIds: [...occurrence.selectedScopeIds],
-            },
-          }
-        : {}),
-      // A board without a content pool would invite a launch that cannot happen.
-      ...(scopeSelectionComplete
-        ? { board: { slots: await this.boardSlots(match) } }
-        : {}),
+      unified: await this.unified(match),
       ...(match.currentChallenge
         ? {
             currentChallenge: {
@@ -197,9 +137,9 @@ export class MatchSnapshotComposer
         : {}),
       scoring: {
         matchTotals: match.teams.map((team) => this.score(match, team.id)),
-        worldSubtotals: occurrence
-          ? match.worldSubtotals(occurrence.index)
-          : [],
+        // World subtotals ride on each occurrence of `unified`; the projection
+        // has no single "current" occurrence to answer for.
+        worldSubtotals: [],
       },
       standings: match.teams.map((team) => ({
         ...this.score(match, team.id),
@@ -502,50 +442,6 @@ export class MatchSnapshotComposer
     };
   }
 
-  /**
-   * The board of the occurrence being played, merging Match progress with the
-   * World's own configuration so an unimplemented mechanic is visibly reported
-   * rather than silently skipped.
-   *
-   * @deprecated Legacy sequential only. A unified Match projects all twelve
-   * positions through {@link MatchSnapshotComposer.unified} instead.
-   */
-  private async boardSlots(match: Match): Promise<LiveSessionMatchBoardSlot[]> {
-    const occurrence = match.occurrences.find(
-      (candidate) => candidate.index === match.currentOccurrenceIndex,
-    );
-    if (!occurrence) return [];
-    let configured: BoardSlot[] = [];
-    try {
-      configured = (await this.worlds.describeWorld(occurrence.worldId)).slots;
-    } catch {
-      // A World that has since been edited must not break an in-flight snapshot;
-      // Match-owned progress is still projected below.
-      configured = [];
-    }
-    const byKey = new Map(configured.map((slot) => [slot.slotKey, slot]));
-    return occurrence.scheduledSlotKeys.map((slotKey) => {
-      const progress = occurrence.slots[slotKey];
-      const definition = byKey.get(slotKey);
-      const eventIds = new Set(progress?.scoreEventIds ?? []);
-      return {
-        slotKey,
-        ...(definition ? { challengeTypeId: definition.challengeTypeId } : {}),
-        ...(definition ? { challengeKey: definition.challengeTypeSlug } : {}),
-        ...(definition ? { challengeName: definition.displayName } : {}),
-        launchability: this.worlds.launchabilityFor(definition),
-        status: progress?.status ?? MatchSlotStatus.UNAVAILABLE,
-        ...(progress?.runtimeId ? { runtimeId: progress.runtimeId } : {}),
-        ...(progress?.completedAt
-          ? { completedAt: progress.completedAt.toISOString() }
-          : {}),
-        ...(eventIds.size
-          ? { scoreSummary: this.slotScores(match, eventIds) }
-          : {}),
-      };
-    });
-  }
-
   /** Per-slot totals only; individual ScoreEvents stay server-side. */
   private slotScores(
     match: Match,
@@ -568,28 +464,12 @@ export class MatchSnapshotComposer
 
   /** What the controller may do next, derived from the stage. */
   private controllerActions(match: Match): string[] {
-    if (
-      match.status !== MatchStatus.DRAFT &&
-      match.status !== MatchStatus.ACTIVE
-    ) {
-      return [];
-    }
+    if (match.status !== MatchStatus.ACTIVE) return [];
     switch (match.stage) {
-      case MatchStage.LOBBY:
-        return ['match:start'];
-      case MatchStage.COIN_TOSS:
-        return ['match:coin-toss'];
-      case MatchStage.WORLD_SELECTION:
-        return ['match:select-world'];
-      case MatchStage.SCOPE_SELECTION:
-        return ['match:select-scopes', 'match:cancel'];
       case MatchStage.BOARD:
         return ['match:launch-challenge', 'match:cancel'];
       case MatchStage.CHALLENGE:
         return ['match:cancel'];
-      // Legacy sequential only; a unified Match never enters this stage.
-      case MatchStage.WORLD_COMPLETE:
-        return ['match:continue'];
       default:
         return [];
     }

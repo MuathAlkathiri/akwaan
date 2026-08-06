@@ -16,7 +16,7 @@ export class MatchConcurrencyError extends ConflictException {
   }
 }
 
-const ACTIVE_STATUSES = [MatchStatus.DRAFT, MatchStatus.ACTIVE];
+const ACTIVE_STATUSES = [MatchStatus.ACTIVE];
 
 @Injectable()
 export class MongooseMatchRepository implements MatchRepository {
@@ -82,7 +82,6 @@ export class MongooseMatchRepository implements MatchRepository {
       coinToss: state.coinToss,
       selections: state.selections,
       occurrences: state.occurrences,
-      currentOccurrenceIndex: state.currentOccurrenceIndex,
       configuredBoardPositions: state.configuredBoardPositions,
       selectingTeamId: state.selectingTeamId,
       pendingChallenge: state.pendingChallenge,
@@ -102,9 +101,10 @@ export class MongooseMatchRepository implements MatchRepository {
     const state = {
       id: document.matchId,
       liveSessionId: document.liveSessionId,
-      // A stored Match written before the unified redesign carries no setup mode
-      // and must keep playing the flow it was created for.
-      setupMode: document.setupMode ?? MatchSetupMode.LEGACY_SEQUENTIAL,
+      // A stored Match written before the unified redesign carries no setup mode;
+      // it is treated as the only mode that still exists. Truly legacy documents
+      // no longer have a shape this repository understands.
+      setupMode: document.setupMode ?? MatchSetupMode.UNIFIED_PRECONFIGURED,
       status: document.status,
       stage: document.stage,
       stageEnteredAt: new Date(document.stageEnteredAt),
@@ -138,7 +138,6 @@ export class MongooseMatchRepository implements MatchRepository {
           ? new Date(occurrence.completedAt as string)
           : undefined,
       })),
-      currentOccurrenceIndex: document.currentOccurrenceIndex,
       configuredBoardPositions: (document.configuredBoardPositions ??
         []) as unknown[],
       selectingTeamId: document.selectingTeamId,

@@ -6,11 +6,9 @@ import { ConfiguredWorldOccurrence } from './configured-world-occurrence';
 import { MatchBoardPositionKey } from './match-board-position-key';
 import { MatchChallengeReadinessRequirement } from './match-challenge-readiness';
 import {
-  MATCH_NO_CURRENT_OCCURRENCE,
   MATCH_SCOPES_PER_OCCURRENCE,
   MATCH_SLOT_ORDER,
   MATCH_UNIFIED_BOARD_POSITION_COUNT,
-  MATCH_WORLD_OCCURRENCE_COUNT,
   MatchSetupMode,
   MatchSlotLaunchability,
   MatchSlotStatus,
@@ -146,12 +144,6 @@ export interface MatchState {
   selections: MatchWorldSelection[];
   occurrences: MatchWorldOccurrence[];
   /**
-   * Legacy sequential only. A unified Match stores
-   * {@link MATCH_NO_CURRENT_OCCURRENCE} here, because all three occurrences are
-   * playable at once and nothing may derive selection authority from a sequence.
-   */
-  currentOccurrenceIndex: number;
-  /**
    * Unified only: the twelve board positions and the mechanic configured in each,
    * captured at creation so a reload rebuilds exactly this board.
    */
@@ -184,36 +176,6 @@ const MAX_PROCESSED_COMMANDS = 200;
  */
 export class Match {
   private constructor(private readonly state: MatchState) {}
-
-  /**
-   * @deprecated Legacy sequential setup. Phase 5 removes it; new Matches are
-   * created through {@link Match.createUnified}.
-   */
-  static create(input: {
-    id?: string;
-    liveSessionId: string;
-    teams: MatchTeam[];
-    now: Date;
-  }): Match {
-    Match.assertTwoTeams(input.teams);
-    return new Match({
-      id: input.id ?? randomUUID(),
-      liveSessionId: input.liveSessionId,
-      setupMode: MatchSetupMode.LEGACY_SEQUENTIAL,
-      status: MatchStatus.DRAFT,
-      stage: MatchStage.LOBBY,
-      stageEnteredAt: input.now,
-      teams: input.teams.map((team) => ({ ...team })),
-      selections: [],
-      occurrences: [],
-      currentOccurrenceIndex: 0,
-      configuredBoardPositions: [],
-      scoreEvents: [],
-      processedCommandIds: [],
-      revision: 0,
-      createdAt: input.now,
-    });
-  }
 
   /**
    * Creates a fully configured Match in one step.
@@ -309,7 +271,6 @@ export class Match {
           ]),
         ),
       })),
-      currentOccurrenceIndex: MATCH_NO_CURRENT_OCCURRENCE,
       configuredBoardPositions: positions.map((position) => ({ ...position })),
       selectingTeamId: input.coinToss.winnerTeamId,
       scoreEvents: [],
@@ -372,17 +333,6 @@ export class Match {
   get setupMode(): MatchSetupMode {
     return this.state.setupMode;
   }
-  get isUnified(): boolean {
-    return this.state.setupMode === MatchSetupMode.UNIFIED_PRECONFIGURED;
-  }
-  /**
-   * @deprecated Legacy sequential only. A unified Match answers
-   * {@link MATCH_NO_CURRENT_OCCURRENCE}: it has three live occurrences, and no
-   * command may derive authority from a sequence position.
-   */
-  get currentOccurrenceIndex(): number {
-    return this.state.currentOccurrenceIndex;
-  }
   /** Unified only: whose turn it is to choose the next board position. */
   get selectingTeamId(): string | undefined {
     return this.state.selectingTeamId;
@@ -415,17 +365,6 @@ export class Match {
   }
 
   /**
-   * Refuses a legacy sequential setup command.
-   *
-   * Exposed so an application service can refuse one *before* it starts resolving
-   * Worlds or Scopes for it, while the rule itself still lives in exactly one
-   * place — `assertLegacySequential`.
-   */
-  assertLegacySetupAvailable(command: string): void {
-    this.assertLegacySequential(command);
-  }
-
-  /**
    * Whether a board position could be launched right now.
    *
    * Read-only, and the same checks `launchChallenge` makes before it mutates. It
@@ -437,13 +376,9 @@ export class Match {
     slotKey: WorldChallengeSlotKey;
     selectingTeamId?: string;
   }): void {
-    this.assertStage(
-      this.isUnified
-        ? [MatchStage.BOARD, MatchStage.PREFLIGHT]
-        : [MatchStage.BOARD],
-    );
+    this.assertStage([MatchStage.BOARD, MatchStage.PREFLIGHT]);
     const occurrence = this.requireLaunchableOccurrence(input.occurrenceIndex);
-    if (this.isUnified) this.assertSelectionAuthority(input.selectingTeamId);
+    this.assertSelectionAuthority(input.selectingTeamId);
     const slot = occurrence.slots[input.slotKey];
     if (!slot) {
       throw new MatchDomainError(
@@ -469,226 +404,15 @@ export class Match {
     return this.state.processedCommandIds.includes(commandId);
   }
 
-  /**
-   * Moves the Match out of the lobby and into the coin toss.
-   *
-   * @deprecated Legacy sequential only — a unified Match is already active.
-   */
-  start(input: { commandId: string; now: Date }): void {
-    if (this.replay(input.commandId)) return;
-    this.assertLegacySequential('match:start');
-    this.assertStage([MatchStage.LOBBY]);
-    this.state.status = MatchStatus.ACTIVE;
-    this.state.startedAt = input.now;
-    this.enterStage(MatchStage.COIN_TOSS, input.now);
-    this.commit(input.commandId);
-  }
-
-  /**
-   * Records the toss exactly once. The winner chooses the first World; a replayed
-   * command or a reload returns the stored outcome rather than tossing again.
-   *
-   * @deprecated Legacy sequential only. A unified Match settles its toss inside
-   * {@link Match.createUnified} and asks nobody for a command.
-   */
-  resolveCoinToss(input: {
-    commandId: string;
-    now: Date;
-    winnerTeamId: string;
-    roll: number;
-  }): void {
-    if (this.replay(input.commandId)) return;
-    this.assertLegacySequential('match:coin-toss');
-    if (this.state.coinToss) return;
-    this.assertStage([MatchStage.COIN_TOSS]);
-    this.assertTeam(input.winnerTeamId);
-    this.state.coinToss = {
-      winnerTeamId: input.winnerTeamId,
-      roll: input.roll,
-      resolvedAt: input.now,
-    };
-    this.enterStage(MatchStage.WORLD_SELECTION, input.now);
-    this.commit(input.commandId);
-  }
-
-  /**
-   * Whose turn it is to pick, or undefined once all three are chosen — which is
-   * always the answer for a unified Match, whose Worlds were chosen before it
-   * existed.
-   *
-   * @deprecated Legacy sequential only.
-   */
-  nextSelectionTurn():
-    | { occurrenceIndex: number; teamId?: string; requiresAgreement: boolean }
-    | undefined {
-    const toss = this.state.coinToss;
-    if (!toss) return undefined;
-    const index = this.state.selections.length;
-    if (index >= MATCH_WORLD_OCCURRENCE_COUNT) return undefined;
-    // Roadmap: the toss winner picks first, the opponent picks second, and the
-    // third is agreed between them or resolved 50/50 by the server.
-    if (index === 2) return { occurrenceIndex: 2, requiresAgreement: true };
-    const other = this.state.teams.find(
-      (team) => team.id !== toss.winnerTeamId,
-    );
-    return {
-      occurrenceIndex: index,
-      teamId: index === 0 ? toss.winnerTeamId : other?.id,
-      requiresAgreement: false,
-    };
-  }
-
-  /**
-   * Appends one World occurrence. Repeated worldIds are legitimate and are never
-   * deduplicated: each occurrence carries its own schedule and progress.
-   *
-   * @deprecated Legacy sequential only. A unified Match arrives with all three
-   * occurrences already configured.
-   */
-  selectWorld(input: {
-    commandId: string;
-    now: Date;
-    worldId: string;
-    method: WorldSelectionMethod;
-    selectedByTeamId?: string;
-    scheduledSlotKeys: WorldChallengeSlotKey[];
-  }): void {
-    if (this.replay(input.commandId)) return;
-    this.assertLegacySequential('match:select-world');
-    this.assertStage([MatchStage.WORLD_SELECTION]);
-    const turn = this.nextSelectionTurn();
-    if (!turn) {
-      throw new MatchDomainError(
-        'MATCH_WORLDS_ALREADY_SELECTED',
-        `All ${MATCH_WORLD_OCCURRENCE_COUNT} World positions are already chosen`,
-      );
-    }
-    if (turn.requiresAgreement) {
-      if (
-        input.method !== WorldSelectionMethod.AGREED &&
-        input.method !== WorldSelectionMethod.RANDOM
-      ) {
-        throw new MatchDomainError(
-          'THIRD_WORLD_METHOD_INVALID',
-          'The third World is either agreed by both teams or resolved randomly',
-        );
-      }
-    } else {
-      if (input.method !== WorldSelectionMethod.TEAM_PICK) {
-        throw new MatchDomainError(
-          'WORLD_SELECTION_METHOD_INVALID',
-          'The first two Worlds are chosen by a team',
-        );
-      }
-      if (!input.selectedByTeamId || input.selectedByTeamId !== turn.teamId) {
-        throw new MatchDomainError(
-          'WORLD_SELECTION_OUT_OF_TURN',
-          "It is not that team's turn to choose a World",
-        );
-      }
-    }
-    if (!input.scheduledSlotKeys.length) {
-      throw new MatchDomainError(
-        'WORLD_SCHEDULE_EMPTY',
-        'A World occurrence needs at least one scheduled board position',
-      );
-    }
-    if (
-      new Set(input.scheduledSlotKeys).size !== input.scheduledSlotKeys.length
-    ) {
-      throw new MatchDomainError(
-        'WORLD_SCHEDULE_DUPLICATED',
-        'A board position cannot be scheduled twice in one occurrence',
-      );
-    }
-
-    this.state.selections.push({
-      occurrenceIndex: turn.occurrenceIndex,
-      worldId: input.worldId,
-      method: input.method,
-      ...(input.selectedByTeamId
-        ? { selectedByTeamId: input.selectedByTeamId }
-        : {}),
-      selectedAt: input.now,
-    });
-    this.state.occurrences.push({
-      index: turn.occurrenceIndex,
-      worldId: input.worldId,
-      selectedScopeIds: [],
-      scheduledSlotKeys: [...input.scheduledSlotKeys],
-      slots: Object.fromEntries(
-        input.scheduledSlotKeys.map((slotKey) => [
-          slotKey,
-          { status: MatchSlotStatus.AVAILABLE },
-        ]),
-      ),
-    });
-    if (this.state.selections.length === MATCH_WORLD_OCCURRENCE_COUNT) {
-      this.state.currentOccurrenceIndex = 0;
-      // Each occurrence still owes its four Scopes before its board opens.
-      this.enterStage(MatchStage.SCOPE_SELECTION, input.now);
-    }
-    this.commit(input.commandId);
-  }
-
-  /**
-   * Records the content pool for the current World occurrence.
-   *
-   * The Scopes belong to the occurrence, not to the World: playing Football
-   * twice means answering this twice, and the two answers stay independent.
-   * Whether each Scope exists, is active, and holds usable content is decided
-   * by World Content and asserted before this is called.
-   *
-   * @deprecated Legacy sequential only. A unified Match arrives with every
-   * occurrence's pool already chosen and validated.
-   */
-  selectScopes(input: {
-    commandId: string;
-    now: Date;
-    occurrenceIndex: number;
-    scopeIds: string[];
-  }): void {
-    if (this.replay(input.commandId)) return;
-    this.assertLegacySequential('match:select-scopes');
-    this.assertStage([MatchStage.SCOPE_SELECTION]);
-    const occurrence = this.requireCurrentOccurrence();
-    if (input.occurrenceIndex !== occurrence.index) {
-      throw new MatchDomainError(
-        'MATCH_OCCURRENCE_MISMATCH',
-        'That World occurrence is not the one being played',
-      );
-    }
-    if (input.scopeIds.length !== MATCH_SCOPES_PER_OCCURRENCE) {
-      throw new MatchDomainError(
-        'SCOPE_SELECTION_COUNT_INVALID',
-        `Each World occurrence is played from exactly ${MATCH_SCOPES_PER_OCCURRENCE} Scopes, received ${input.scopeIds.length}`,
-      );
-    }
-    if (new Set(input.scopeIds).size !== input.scopeIds.length) {
-      throw new MatchDomainError(
-        'SCOPE_SELECTION_DUPLICATED',
-        'The same Scope cannot be selected twice for one World occurrence',
-      );
-    }
-    occurrence.selectedScopeIds = [...input.scopeIds];
-    occurrence.selectedScopesAt = input.now;
-    this.enterStage(MatchStage.BOARD, input.now);
-    this.commit(input.commandId);
-  }
-
   /** The content pool of the occurrence being played. */
-  selectedScopeIds(
-    occurrenceIndex = this.state.currentOccurrenceIndex,
-  ): string[] {
+  selectedScopeIds(occurrenceIndex: number): string[] {
     const occurrence = this.state.occurrences.find(
       (candidate) => candidate.index === occurrenceIndex,
     );
     return [...(occurrence?.selectedScopeIds ?? [])];
   }
 
-  hasCompleteScopeSelection(
-    occurrenceIndex = this.state.currentOccurrenceIndex,
-  ): boolean {
+  hasCompleteScopeSelection(occurrenceIndex: number): boolean {
     return (
       this.selectedScopeIds(occurrenceIndex).length ===
       MATCH_SCOPES_PER_OCCURRENCE
@@ -696,9 +420,7 @@ export class Match {
   }
 
   /** Every ContentItem this occurrence has already consumed. */
-  usedContentItemIds(
-    occurrenceIndex = this.state.currentOccurrenceIndex,
-  ): string[] {
+  usedContentItemIds(occurrenceIndex: number): string[] {
     const occurrence = this.state.occurrences.find(
       (candidate) => candidate.index === occurrenceIndex,
     );
@@ -728,7 +450,6 @@ export class Match {
     selectingTeamId?: string;
   }): void {
     if (this.replay(input.commandId)) return;
-    this.assertUnified('match:prepare-challenge');
     // Only from the board, which is also what keeps a second pending challenge
     // from ever existing.
     this.assertStage([MatchStage.BOARD]);
@@ -770,7 +491,6 @@ export class Match {
    */
   cancelPreflight(input: { commandId: string; now: Date }): void {
     if (this.replay(input.commandId)) return;
-    this.assertUnified('match:cancel-preflight');
     this.assertStage([MatchStage.PREFLIGHT]);
     this.state.pendingChallenge = undefined;
     this.enterStage(MatchStage.BOARD, input.now);
@@ -809,10 +529,9 @@ export class Match {
    * Binds a board position to a gameplay runtime. The binding is authoritative:
    * the Match never reads the World or slot back out of the runtime state.
    *
-   * The position is named explicitly by `occurrenceIndex + slotKey`. For a
-   * unified Match any available position of any occurrence may be launched, in
-   * any order; for a legacy Match the named occurrence must still be the one
-   * being played.
+   * The position is named explicitly by `occurrenceIndex + slotKey`, and any
+   * available position of any of the three occurrences may be launched, in any
+   * order.
    */
   launchChallenge(input: {
     commandId: string;
@@ -823,19 +542,15 @@ export class Match {
     runtimeId: string;
     contentItemIds: string[];
     launchability: MatchSlotLaunchability;
-    /** Unified only: the team claiming board selection for this launch. */
+    /** The team claiming board selection for this launch. */
     selectingTeamId?: string;
   }): void {
     if (this.replay(input.commandId)) return;
-    // A unified launch may come straight from the board, or from a preflight that
-    // has just satisfied its phone requirement.
-    this.assertStage(
-      this.isUnified
-        ? [MatchStage.BOARD, MatchStage.PREFLIGHT]
-        : [MatchStage.BOARD],
-    );
+    // A launch may come straight from the board, or from a preflight that has
+    // just satisfied its phone requirement.
+    this.assertStage([MatchStage.BOARD, MatchStage.PREFLIGHT]);
     const occurrence = this.requireLaunchableOccurrence(input.occurrenceIndex);
-    if (this.isUnified) this.assertSelectionAuthority(input.selectingTeamId);
+    this.assertSelectionAuthority(input.selectingTeamId);
     if (occurrence.selectedScopeIds.length !== MATCH_SCOPES_PER_OCCURRENCE) {
       throw new MatchDomainError(
         'SCOPE_SELECTION_INCOMPLETE',
@@ -913,55 +628,9 @@ export class Match {
       ...(input.summary ? { summary: input.summary } : {}),
     };
     this.state.currentChallenge = undefined;
-
-    if (this.isUnified) {
-      this.completeUnifiedPosition(occurrence, input.now);
-      this.commit(input.commandId);
-      return { completed: true };
-    }
-
-    const occurrenceComplete = occurrence.scheduledSlotKeys.every(
-      (key) => occurrence.slots[key]?.status === MatchSlotStatus.COMPLETED,
-    );
-    if (!occurrenceComplete) {
-      this.enterStage(MatchStage.BOARD, input.now);
-      this.commit(input.commandId);
-      return { completed: true };
-    }
-    occurrence.completedAt = input.now;
-    const isLastOccurrence =
-      occurrence.index === MATCH_WORLD_OCCURRENCE_COUNT - 1;
-    if (isLastOccurrence) {
-      this.state.status = MatchStatus.COMPLETED;
-      this.state.completedAt = input.now;
-      this.enterStage(MatchStage.MATCH_COMPLETE, input.now);
-    } else {
-      this.enterStage(MatchStage.WORLD_COMPLETE, input.now);
-    }
+    this.completeUnifiedPosition(occurrence, input.now);
     this.commit(input.commandId);
     return { completed: true };
-  }
-
-  /**
-   * Leaves the world_complete interstitial and opens the next occurrence. Its
-   * Scopes are chosen first, unless a reconnect already restored them.
-   *
-   * @deprecated Legacy sequential only. A unified Match has no next World: all
-   * three occurrences are open from the first moment and none of them gates
-   * another.
-   */
-  advanceToNextWorld(input: { commandId: string; now: Date }): void {
-    if (this.replay(input.commandId)) return;
-    this.assertLegacySequential('match:continue');
-    this.assertStage([MatchStage.WORLD_COMPLETE]);
-    this.state.currentOccurrenceIndex += 1;
-    this.enterStage(
-      this.hasCompleteScopeSelection()
-        ? MatchStage.BOARD
-        : MatchStage.SCOPE_SELECTION,
-      input.now,
-    );
-    this.commit(input.commandId);
   }
 
   cancel(input: { commandId: string; now: Date }): void {
@@ -1119,39 +788,13 @@ export class Match {
     return undefined;
   }
 
-  /** @deprecated Legacy sequential only. */
-  private requireCurrentOccurrence(): MatchWorldOccurrence {
-    const occurrence = this.state.occurrences.find(
-      (candidate) => candidate.index === this.state.currentOccurrenceIndex,
-    );
-    if (!occurrence) {
-      throw new MatchDomainError(
-        'MATCH_OCCURRENCE_NOT_FOUND',
-        'The current World occurrence has not been selected yet',
-      );
-    }
-    return occurrence;
-  }
-
   /**
-   * The occurrence a launch may target.
-   *
-   * Unified: any of the three, named explicitly — no sequence is consulted.
-   * Legacy: the one being played, and nothing else.
+   * The occurrence a launch may target: any of the three, named explicitly. No
+   * sequence is consulted — a unified Match has no "current" occurrence.
    */
   private requireLaunchableOccurrence(
     occurrenceIndex: number,
   ): MatchWorldOccurrence {
-    if (!this.isUnified) {
-      const current = this.requireCurrentOccurrence();
-      if (occurrenceIndex !== current.index) {
-        throw new MatchDomainError(
-          'MATCH_OCCURRENCE_MISMATCH',
-          'That World occurrence is not the one being played',
-        );
-      }
-      return current;
-    }
     const occurrence = this.state.occurrences.find(
       (candidate) => candidate.index === occurrenceIndex,
     );
@@ -1174,28 +817,6 @@ export class Match {
         "It is not that team's turn to choose a board position",
       );
     }
-  }
-
-  /**
-   * Refuses a legacy sequential command on a unified Match. The two journeys stay
-   * explicitly separate rather than one pretending to be the other; Phase 5
-   * deletes the legacy side and these guards with it.
-   */
-  private assertLegacySequential(command: string): void {
-    if (!this.isUnified) return;
-    throw new MatchDomainError(
-      'MATCH_COMMAND_NOT_AVAILABLE_IN_SETUP_MODE',
-      `"${command}" belongs to the legacy sequential setup and has no meaning in a preconfigured match`,
-    );
-  }
-
-  /** The mirror of the guard above: a unified-only command on a legacy Match. */
-  private assertUnified(command: string): void {
-    if (this.isUnified) return;
-    throw new MatchDomainError(
-      'MATCH_COMMAND_NOT_AVAILABLE_IN_SETUP_MODE',
-      `"${command}" is only available in a preconfigured match`,
-    );
   }
 
   private assertStage(allowed: MatchStage[]): void {

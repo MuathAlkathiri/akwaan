@@ -30,7 +30,7 @@ import {
 import { MATCH_REPOSITORY } from './persistence/match.repository';
 import { MatchDocument, MatchSchema } from './persistence/match.schema';
 import { MongooseMatchRepository } from './persistence/mongoose-match.repository';
-import { MatchDevelopmentController } from './presentation/match.controller';
+import { MatchController } from './presentation/match.controller';
 import { UnifiedMatchController } from './presentation/unified-match.controller';
 
 /**
@@ -52,7 +52,7 @@ import { UnifiedMatchController } from './presentation/unified-match.controller'
       { name: MatchDocument.name, schema: MatchSchema },
     ]),
   ],
-  controllers: [MatchDevelopmentController, UnifiedMatchController],
+  controllers: [MatchController, UnifiedMatchController],
   providers: [
     SystemMatchClock,
     { provide: MATCH_CLOCK, useExisting: SystemMatchClock },

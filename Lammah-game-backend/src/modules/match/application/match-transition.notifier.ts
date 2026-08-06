@@ -4,11 +4,7 @@ import {
   LiveSessionTransitionPublisher,
 } from '../../live-game-sessions/application/live-session-transition.publisher';
 import { Match } from '../domain/match';
-import {
-  MATCH_WORLD_OCCURRENCE_COUNT,
-  MatchStage,
-  MatchStatus,
-} from '../domain/match.constants';
+import { MatchStage, MatchStatus } from '../domain/match.constants';
 
 export const MATCH_CHANGED_EVENT = 'live-session:match-changed';
 
@@ -20,15 +16,7 @@ export type MatchTransitionReason =
   | 'challenge-launched'
   | 'challenge-completed'
   | 'match-completed'
-  | 'cancelled'
-  // Legacy sequential setup only; Phase 5 removes these five.
-  | 'started'
-  | 'coin-toss-resolved'
-  | 'world-selected'
-  | 'world-selection-completed'
-  | 'scopes-selected'
-  | 'world-completed'
-  | 'advanced-to-next-world';
+  | 'cancelled';
 
 export interface MatchChangedPayload {
   matchId: string;
@@ -67,22 +55,9 @@ export class MatchTransitionNotifier {
     });
   }
 
-  /**
-   * The reason a World selection produced: the third one closes selection.
-   *
-   * @deprecated Legacy sequential only. A preconfigured Match announces its whole
-   * setup once, as `created`.
-   */
-  worldSelectionReason(match: Match): MatchTransitionReason {
-    return match.selections.length === MATCH_WORLD_OCCURRENCE_COUNT
-      ? 'world-selection-completed'
-      : 'world-selected';
-  }
-
   /** The reason a finished challenge produced, read from where the Match landed. */
   completionReason(match: Match): MatchTransitionReason {
     if (match.status === MatchStatus.COMPLETED) return 'match-completed';
-    if (match.stage === MatchStage.WORLD_COMPLETE) return 'world-completed';
     return 'challenge-completed';
   }
 }

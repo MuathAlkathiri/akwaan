@@ -8,14 +8,12 @@ import {
 } from '../helpers/test-database';
 import { Match } from '../../src/modules/match/domain/match';
 import {
-  MATCH_NO_CURRENT_OCCURRENCE,
   MATCH_SLOT_ORDER,
   MatchSetupMode,
   MatchSlotLaunchability,
   MatchSlotStatus,
   MatchStage,
   MatchStatus,
-  WorldSelectionMethod,
 } from '../../src/modules/match/domain/match.constants';
 import {
   MATCH_REPOSITORY,
@@ -66,65 +64,66 @@ describe('Match persistence integration', () => {
 
   const now = (offsetMs = 0) => new Date(1_760_000_000_000 + offsetMs);
 
-  const draft = () =>
-    Match.create({
+  const ANIME = 'world-anime';
+  const FOOTBALL = 'world-football';
+  const pools: Record<number, string[]> = {
+    0: ['naruto', 'bleach', 'one-piece', 'attack-on-titan'],
+    1: ['world-cup', 'premier-league', 'saudi-league', 'ucl'],
+    2: ['death-note', 'jujutsu', 'demon-slayer', 'hxh'],
+  };
+
+  const configuration = () => [
+    { occurrenceIndex: 0, worldId: ANIME, selectedScopeIds: [...pools[0]] },
+    { occurrenceIndex: 1, worldId: FOOTBALL, selectedScopeIds: [...pools[1]] },
+    // The same World again, from a different four Scopes.
+    { occurrenceIndex: 2, worldId: ANIME, selectedScopeIds: [...pools[2]] },
+  ];
+
+  /** A unified Match: the only kind this system plays. */
+  const unified = () =>
+    Match.createUnified({
       liveSessionId: `session-${Math.random()}`,
       teams,
+      occurrences: configuration(),
+      boardPositions: configuration().flatMap((occurrence) =>
+        MATCH_SLOT_ORDER.map((slotKey, index) => ({
+          occurrenceIndex: occurrence.occurrenceIndex,
+          worldId: occurrence.worldId,
+          slotKey,
+          challengeTypeId: `${occurrence.worldId}-type-${index}`,
+          challengeTypeSlug: `${occurrence.worldId}-mechanic-${index}`,
+          displayName: `${occurrence.worldId} ${slotKey}`,
+        })),
+      ),
+      coinToss: { winnerTeamId: teams[1].id, roll: 1, resolvedAt: now() },
       now: now(),
     });
 
-  /** A Match sitting on the board of its first World occurrence. */
-  const onBoard = () => {
-    const match = draft();
-    match.start({ commandId: 'cmd-start', now: now(1) });
-    match.resolveCoinToss({
-      commandId: 'cmd-toss',
-      now: now(2),
-      winnerTeamId: teams[0].id,
-      roll: 0,
-    });
-    match.selectWorld({
-      commandId: 'cmd-world-0',
-      now: now(3),
-      worldId: 'world-football',
-      method: WorldSelectionMethod.TEAM_PICK,
-      selectedByTeamId: teams[0].id,
-      scheduledSlotKeys: [
-        WorldChallengeSlotKey.SLOT_2,
-        WorldChallengeSlotKey.SLOT_3,
-      ],
-    });
-    match.selectWorld({
-      commandId: 'cmd-world-1',
-      now: now(4),
-      worldId: 'world-cinema',
-      method: WorldSelectionMethod.TEAM_PICK,
-      selectedByTeamId: teams[1].id,
-      scheduledSlotKeys: [WorldChallengeSlotKey.SLOT_2],
-    });
-    match.selectWorld({
-      commandId: 'cmd-world-2',
-      // Deliberately the same World as occurrence 0: repeats are legitimate.
-      now: now(5),
-      worldId: 'world-football',
-      method: WorldSelectionMethod.AGREED,
-      scheduledSlotKeys: [WorldChallengeSlotKey.SLOT_2],
-    });
-    selectScopesFor(match, 0);
-    return match;
-  };
-
-  /** The four Scopes one occurrence draws its content from. */
-  const scopeIdsFor = (occurrenceIndex: number) =>
-    ['a', 'b', 'c', 'd'].map((suffix) => `scope-${occurrenceIndex}-${suffix}`);
-
-  const selectScopesFor = (match: Match, occurrenceIndex: number) =>
-    match.selectScopes({
-      commandId: `cmd-scopes-${occurrenceIndex}`,
-      now: now(6),
+  /** Launches and completes one board position with a signed delta. */
+  const play = (
+    match: Match,
+    occurrenceIndex: number,
+    slotKey: WorldChallengeSlotKey,
+    runtimeId: string,
+    delta: number,
+  ) => {
+    match.launchChallenge({
+      commandId: `launch-${runtimeId}`,
+      now: now(30),
       occurrenceIndex,
-      scopeIds: scopeIdsFor(occurrenceIndex),
+      slotKey,
+      challengeKey: 'read-your-opponent',
+      runtimeId,
+      contentItemIds: [`${runtimeId}-a`, `${runtimeId}-b`, `${runtimeId}-c`],
+      launchability: MatchSlotLaunchability.LAUNCHABLE,
     });
+    match.completeChallenge({
+      commandId: `complete-${runtimeId}`,
+      now: now(31),
+      runtimeId,
+      events: [event({ delta, challengeSessionId: runtimeId })],
+    });
+  };
 
   const event = (
     overrides: {
@@ -139,7 +138,7 @@ describe('Match persistence integration', () => {
         id: `event-${overrides.teamId ?? 'a'}-${overrides.delta ?? 1}-${
           overrides.challengeSessionId ?? 'runtime-1'
         }`,
-        matchId: overrides.matchId ?? 'legacy-session-id',
+        matchId: overrides.matchId ?? 'original-live-session',
         teamId: overrides.teamId ?? teams[0].id,
         challengeSessionId: overrides.challengeSessionId ?? 'runtime-1',
         scoringRuleId: SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
@@ -150,7 +149,7 @@ describe('Match persistence integration', () => {
     ])[0];
 
   it('creates and loads a Match without changing anything about it', async () => {
-    const match = onBoard();
+    const match = unified();
     await matches.create(match);
 
     const loaded = await matches.findById(match.id);
@@ -158,13 +157,13 @@ describe('Match persistence integration', () => {
     expect(loaded!.serialize()).toEqual(match.serialize());
     expect(loaded!.stage).toBe(MatchStage.BOARD);
     // The occurrence's content pool is part of the authoritative state.
-    expect(loaded!.selectedScopeIds(0)).toEqual(scopeIdsFor(0));
+    expect(loaded!.selectedScopeIds(0)).toEqual(pools[0]);
     expect(loaded!.hasCompleteScopeSelection(0)).toBe(true);
     expect(loaded!.status).toBe(MatchStatus.ACTIVE);
   });
 
   it('finds the Match wrapping a live session, and only while it is playable', async () => {
-    const match = onBoard();
+    const match = unified();
     await matches.create(match);
 
     const active = await matches.findActiveBySessionId(match.liveSessionId);
@@ -182,7 +181,7 @@ describe('Match persistence integration', () => {
   });
 
   it('refuses a save whose expected revision has moved on', async () => {
-    const match = onBoard();
+    const match = unified();
     await matches.create(match);
     const stale = (await matches.findById(match.id))!;
     const fresh = (await matches.findById(match.id))!;
@@ -191,7 +190,7 @@ describe('Match persistence integration', () => {
     fresh.launchChallenge({
       commandId: 'cmd-launch-fresh',
       now: now(20),
-      occurrenceIndex: match.currentOccurrenceIndex,
+      occurrenceIndex: 0,
       slotKey: WorldChallengeSlotKey.SLOT_2,
       challengeKey: 'read-your-opponent',
       runtimeId: 'runtime-1',
@@ -203,7 +202,7 @@ describe('Match persistence integration', () => {
     stale.launchChallenge({
       commandId: 'cmd-launch-stale',
       now: now(21),
-      occurrenceIndex: match.currentOccurrenceIndex,
+      occurrenceIndex: 0,
       slotKey: WorldChallengeSlotKey.SLOT_3,
       challengeKey: 'read-your-opponent',
       runtimeId: 'runtime-2',
@@ -219,12 +218,12 @@ describe('Match persistence integration', () => {
   });
 
   it('round-trips a Match in the middle of a challenge', async () => {
-    const match = onBoard();
+    const match = unified();
     const revision = match.revision;
     match.launchChallenge({
       commandId: 'cmd-launch',
       now: now(20),
-      occurrenceIndex: match.currentOccurrenceIndex,
+      occurrenceIndex: 0,
       slotKey: WorldChallengeSlotKey.SLOT_2,
       challengeKey: 'read-your-opponent',
       runtimeId: 'runtime-1',
@@ -254,38 +253,23 @@ describe('Match persistence integration', () => {
   });
 
   it('round-trips a completed Match, keeping every occurrence independent', async () => {
-    const match = onBoard();
-    const play = (
-      runtimeId: string,
-      slotKey: WorldChallengeSlotKey,
-      delta: number,
-    ) => {
-      match.launchChallenge({
-        commandId: `launch-${runtimeId}`,
-        now: now(30),
-        occurrenceIndex: match.currentOccurrenceIndex,
-        slotKey,
-        challengeKey: 'read-your-opponent',
-        runtimeId,
-        contentItemIds: [`${runtimeId}-a`, `${runtimeId}-b`, `${runtimeId}-c`],
-        launchability: MatchSlotLaunchability.LAUNCHABLE,
-      });
-      match.completeChallenge({
-        commandId: `complete-${runtimeId}`,
-        now: now(31),
-        runtimeId,
-        events: [event({ delta, challengeSessionId: runtimeId })],
-      });
-    };
-
-    play('runtime-1', WorldChallengeSlotKey.SLOT_2, 2);
-    play('runtime-2', WorldChallengeSlotKey.SLOT_3, 3);
-    match.advanceToNextWorld({ commandId: 'next-1', now: now(40) });
-    selectScopesFor(match, 1);
-    play('runtime-3', WorldChallengeSlotKey.SLOT_2, 5);
-    match.advanceToNextWorld({ commandId: 'next-2', now: now(50) });
-    selectScopesFor(match, 2);
-    play('runtime-4', WorldChallengeSlotKey.SLOT_2, 7);
+    const match = unified();
+    play(match, 0, WorldChallengeSlotKey.SLOT_2, 'runtime-1', 2);
+    play(match, 0, WorldChallengeSlotKey.SLOT_3, 'runtime-2', 3);
+    play(match, 1, WorldChallengeSlotKey.SLOT_2, 'runtime-3', 5);
+    play(match, 2, WorldChallengeSlotKey.SLOT_2, 'runtime-4', 7);
+    // Complete the remaining eight positions so the Match finishes.
+    for (const occurrenceIndex of [0, 1, 2]) {
+      for (const slotKey of MATCH_SLOT_ORDER) {
+        const positionKey = `${occurrenceIndex}#${slotKey}`;
+        const already = match
+          .unifiedBoard()
+          .find((position) => position.positionKey === positionKey);
+        if (already?.status !== MatchSlotStatus.COMPLETED) {
+          play(match, occurrenceIndex, slotKey, `fill-${positionKey}`, 1);
+        }
+      }
+    }
 
     expect(match.status).toBe(MatchStatus.COMPLETED);
     await matches.create(match);
@@ -294,28 +278,28 @@ describe('Match persistence integration', () => {
     expect(loaded.stage).toBe(MatchStage.MATCH_COMPLETE);
     expect(loaded.result()).toEqual(match.result());
     // Each occurrence kept its own pool, including the repeated World.
-    expect(loaded.selectedScopeIds(0)).toEqual(scopeIdsFor(0));
-    expect(loaded.selectedScopeIds(2)).toEqual(scopeIdsFor(2));
+    expect(loaded.selectedScopeIds(0)).toEqual(pools[0]);
+    expect(loaded.selectedScopeIds(2)).toEqual(pools[2]);
     expect(loaded.selectedScopeIds(0)).not.toEqual(loaded.selectedScopeIds(2));
 
-    // The two Football occurrences carry different subtotals.
+    // The two Anime occurrences carry different subtotals.
     expect(loaded.worldSubtotals(0)).not.toEqual(loaded.worldSubtotals(2));
     expect(
       loaded.worldSubtotals(0).find((score) => score.teamId === teams[0].id)
         ?.signedTotal,
-    ).toBe(5);
+    ).toBe(7);
     expect(
       loaded.worldSubtotals(2).find((score) => score.teamId === teams[0].id)
         ?.signedTotal,
-    ).toBe(7);
+    ).toBe(10);
   });
 
   it('preserves a signed negative ScoreEvent and its original matchId', async () => {
-    const match = onBoard();
+    const match = unified();
     match.launchChallenge({
       commandId: 'cmd-launch',
       now: now(20),
-      occurrenceIndex: match.currentOccurrenceIndex,
+      occurrenceIndex: 0,
       slotKey: WorldChallengeSlotKey.SLOT_2,
       challengeKey: 'read-your-opponent',
       runtimeId: 'runtime-1',
@@ -327,7 +311,7 @@ describe('Match persistence integration', () => {
       now: now(21),
       runtimeId: 'runtime-1',
       events: [
-        event({ delta: -2, matchId: 'original-live-session' }),
+        event({ delta: -2, matchId: 'the-session-that-scored' }),
         event({ teamId: teams[1].id, delta: 1 }),
       ],
     });
@@ -338,7 +322,7 @@ describe('Match persistence integration', () => {
     const negative = stored.find((candidate) => candidate.delta === -2);
     expect(negative).toBeDefined();
     // Provenance is history: the Match never rewrites it to its own id.
-    expect(negative!.matchId).toBe('original-live-session');
+    expect(negative!.matchId).toBe('the-session-that-scored');
     expect(negative!.challengeSessionId).toBe('runtime-1');
     // The signed total stays negative while the display total clamps.
     expect(loaded.teamScore(teams[0].id)).toEqual({
@@ -349,7 +333,7 @@ describe('Match persistence integration', () => {
   });
 
   it('persists processed command ids so a replayed command changes nothing', async () => {
-    const match = onBoard();
+    const match = unified();
     await matches.create(match);
 
     const first = (await matches.findById(match.id))!;
@@ -357,7 +341,7 @@ describe('Match persistence integration', () => {
     first.launchChallenge({
       commandId: 'cmd-launch-once',
       now: now(20),
-      occurrenceIndex: match.currentOccurrenceIndex,
+      occurrenceIndex: 0,
       slotKey: WorldChallengeSlotKey.SLOT_2,
       challengeKey: 'read-your-opponent',
       runtimeId: 'runtime-1',
@@ -372,7 +356,7 @@ describe('Match persistence integration', () => {
     reloaded.launchChallenge({
       commandId: 'cmd-launch-once',
       now: now(22),
-      occurrenceIndex: match.currentOccurrenceIndex,
+      occurrenceIndex: 0,
       slotKey: WorldChallengeSlotKey.SLOT_3,
       challengeKey: 'read-your-opponent',
       runtimeId: 'runtime-2',
@@ -388,48 +372,6 @@ describe('Match persistence integration', () => {
    * three Scope pools, and whose turn it is are all authoritative state.
    */
   describe('a unified preconfigured Match', () => {
-    const ANIME = 'world-anime';
-    const FOOTBALL = 'world-football';
-    const pools: Record<number, string[]> = {
-      0: ['naruto', 'bleach', 'one-piece', 'attack-on-titan'],
-      1: ['world-cup', 'premier-league', 'saudi-league', 'ucl'],
-      2: ['death-note', 'jujutsu', 'demon-slayer', 'hxh'],
-    };
-
-    const configuration = () => [
-      { occurrenceIndex: 0, worldId: ANIME, selectedScopeIds: [...pools[0]] },
-      {
-        occurrenceIndex: 1,
-        worldId: FOOTBALL,
-        selectedScopeIds: [...pools[1]],
-      },
-      // The same World again, from a different four Scopes.
-      { occurrenceIndex: 2, worldId: ANIME, selectedScopeIds: [...pools[2]] },
-    ];
-
-    const unified = () =>
-      Match.createUnified({
-        liveSessionId: `session-${Math.random()}`,
-        teams,
-        occurrences: configuration(),
-        boardPositions: configuration().flatMap((occurrence) =>
-          MATCH_SLOT_ORDER.map((slotKey, index) => ({
-            occurrenceIndex: occurrence.occurrenceIndex,
-            worldId: occurrence.worldId,
-            slotKey,
-            challengeTypeId: `${occurrence.worldId}-type-${index}`,
-            challengeTypeSlug: `${occurrence.worldId}-mechanic-${index}`,
-            displayName: `${occurrence.worldId} ${slotKey}`,
-          })),
-        ),
-        coinToss: {
-          winnerTeamId: teams[1].id,
-          roll: 1,
-          resolvedAt: now(),
-        },
-        now: now(),
-      });
-
     it('reloads at the board with an identical twelve-position board', async () => {
       const match = unified();
       await matches.create(match);
@@ -437,10 +379,8 @@ describe('Match persistence integration', () => {
       const loaded = (await matches.findById(match.id))!;
       expect(loaded.serialize()).toEqual(match.serialize());
       expect(loaded.setupMode).toBe(MatchSetupMode.UNIFIED_PRECONFIGURED);
-      expect(loaded.isUnified).toBe(true);
       expect(loaded.stage).toBe(MatchStage.BOARD);
       expect(loaded.status).toBe(MatchStatus.ACTIVE);
-      expect(loaded.currentOccurrenceIndex).toBe(MATCH_NO_CURRENT_OCCURRENCE);
       expect(loaded.selectingTeamId).toBe(teams[1].id);
       expect(loaded.unifiedBoard()).toEqual(match.unifiedBoard());
       expect(loaded.unifiedBoard()).toHaveLength(12);
@@ -516,8 +456,8 @@ describe('Match persistence integration', () => {
       ).toBe(0);
     });
 
-    it('reads a stored Match with no setup mode as the legacy sequential flow', async () => {
-      const match = onBoard();
+    it('treats a stored Match with no setup mode as the only mode there is', async () => {
+      const match = unified();
       await matches.create(match);
       // Exactly how every Match written before the unified redesign looks.
       await database
@@ -525,34 +465,27 @@ describe('Match persistence integration', () => {
         .updateOne({ matchId: match.id }, { $unset: { setupMode: '' } });
 
       const loaded = (await matches.findById(match.id))!;
-      expect(loaded.setupMode).toBe(MatchSetupMode.LEGACY_SEQUENTIAL);
-      expect(loaded.isUnified).toBe(false);
+      expect(loaded.setupMode).toBe(MatchSetupMode.UNIFIED_PRECONFIGURED);
       expect(loaded.stage).toBe(MatchStage.BOARD);
-      expect(loaded.currentOccurrenceIndex).toBe(0);
-      // And it still plays the flow it was created for.
+      expect(loaded.serialize()).toEqual(match.serialize());
+      // The absent setup mode changes nothing about how it plays.
       expect(() =>
         loaded.launchChallenge({
-          commandId: 'legacy-launch',
+          commandId: 'unified-launch',
           now: now(30),
-          occurrenceIndex: 1,
+          occurrenceIndex: 0,
           slotKey: WorldChallengeSlotKey.SLOT_2,
           challengeKey: 'read-your-opponent',
-          runtimeId: 'runtime-legacy',
+          runtimeId: 'runtime-unified',
           contentItemIds: ['a', 'b', 'c'],
           launchability: MatchSlotLaunchability.LAUNCHABLE,
         }),
-      ).toThrow(
-        expect.objectContaining({
-          response: expect.objectContaining({
-            code: 'MATCH_OCCURRENCE_MISMATCH',
-          }),
-        }),
-      );
+      ).not.toThrow();
     });
   });
 
   it('rejects a stored Match whose ScoreEvents were tampered with', async () => {
-    const match = onBoard();
+    const match = unified();
     await matches.create(match);
     await database
       .collection('matches')

@@ -20,18 +20,6 @@ export interface LiveSessionMatchTeamScore {
   displayTotal: number;
 }
 
-export interface LiveSessionMatchBoardSlot {
-  slotKey: string;
-  challengeTypeId?: string;
-  challengeKey?: string;
-  challengeName?: string;
-  launchability: string;
-  status: string;
-  runtimeId?: string;
-  completedAt?: string;
-  scoreSummary?: LiveSessionMatchTeamScore[];
-}
-
 export interface LiveSessionMatchScope {
   scopeId: string;
   name: string;
@@ -86,8 +74,8 @@ export interface LiveSessionConfiguredOccurrence {
 }
 
 /**
- * Everything a preconfigured Match exposes that the sequential journey has no
- * equivalent for. Present only when `setupMode` is `unified_preconfigured`.
+ * Everything a preconfigured Match exposes. Present for every Match, since the
+ * sequential journey is gone.
  */
 export interface LiveSessionUnifiedMatchProjection {
   occurrences: LiveSessionConfiguredOccurrence[];
@@ -181,7 +169,7 @@ export interface LiveSessionMatchProjection {
   id: string;
   revision: number;
   /**
-   * `legacy_sequential` or `unified_preconfigured`. Always present, so a client
+   * Always `unified_preconfigured`; the only setup mode left. Kept so a client
    * never has to guess which contract the rest of this projection follows.
    */
   setupMode: string;
@@ -192,54 +180,7 @@ export interface LiveSessionMatchProjection {
     winnerTeamId?: string;
     firstChooserTeamId?: string;
   };
-  worldSelection: {
-    selections: Array<{
-      occurrenceIndex: number;
-      worldId: string;
-      method: string;
-      selectedByTeamId?: string;
-      selectedAt: string;
-    }>;
-    nextTeamId?: string;
-    requiresAgreement: boolean;
-    remainingCount: number;
-    complete: boolean;
-  };
-  /**
-   * The preconfigured Match contract: three configured occurrences and one board
-   * of twelve independently playable positions. Absent for legacy Matches.
-   */
-  unified?: LiveSessionUnifiedMatchProjection;
-  /** @deprecated Legacy sequential only. */
-  currentOccurrence?: {
-    index: number;
-    worldId: string;
-    status: 'in_progress' | 'completed';
-    /** The four Scopes this occurrence draws its content from. */
-    selectedScopeIds: string[];
-    /** Public names only; nothing about the content inside them. */
-    selectedScopes: LiveSessionMatchScope[];
-    scopeSelectionComplete: boolean;
-  };
-  /**
-   * Present only while this occurrence still owes its Scopes.
-   *
-   * @deprecated Legacy sequential only.
-   */
-  scopeSelection?: {
-    occurrenceIndex: number;
-    worldId: string;
-    required: number;
-    selectedScopeIds: string[];
-  };
-  /**
-   * The current occurrence's board. Absent until its Scope selection is complete,
-   * and absent entirely for a unified Match, which projects all twelve positions
-   * under `unified.board` instead.
-   *
-   * @deprecated Legacy sequential only.
-   */
-  board?: { slots: LiveSessionMatchBoardSlot[] };
+  unified: LiveSessionUnifiedMatchProjection;
   currentChallenge?: {
     occurrenceIndex: number;
     slotKey: string;

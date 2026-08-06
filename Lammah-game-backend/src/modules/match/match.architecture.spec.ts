@@ -115,20 +115,27 @@ describe('Match module architecture', () => {
     const unifiedFiles = matchFiles.filter((path) =>
       /unified/.test(path.split('/').pop() ?? ''),
     );
+    // Persistence columns are a storage detail (removed in B11); the guards below
+    // police the orchestration that drives the flow, not the on-disk shape.
+    const orchestrationFiles = matchFiles.filter(
+      (path) => !path.includes(join('persistence')),
+    );
 
     it('has unified modules to guard', () => {
       expect(unifiedFiles.length).toBeGreaterThanOrEqual(4);
     });
 
     it('never treats currentOccurrenceIndex as an authority', () => {
-      const offenders = unifiedFiles.filter((path) =>
+      // The sequential sequence position is gone entirely; nothing may read it
+      // back into existence.
+      const offenders = orchestrationFiles.filter((path) =>
         /currentOccurrenceIndex/.test(read(path)),
       );
       expect(offenders.map(relative)).toEqual([]);
     });
 
     it('never transitions through world_complete', () => {
-      const offenders = unifiedFiles.filter((path) =>
+      const offenders = orchestrationFiles.filter((path) =>
         /WORLD_COMPLETE|world_complete|advanceToNextWorld/.test(read(path)),
       );
       expect(offenders.map(relative)).toEqual([]);
@@ -212,21 +219,15 @@ describe('Match module architecture', () => {
       ]);
     });
 
-    it('keeps the sequential flow inside the files marked for removal', () => {
-      // Everything that still speaks the legacy journey carries a deprecation
-      // note, so Phase 5 has an exact list rather than a search.
-      const legacy = matchFiles.filter((path) =>
-        /WorldSelectionMethod\.(TEAM_PICK|AGREED|RANDOM)|MatchStage\.WORLD_COMPLETE|advanceToNextWorld/.test(
+    it('leaves no trace of the sequential flow behind', () => {
+      // Phase 5 removed the legacy journey; nothing may still speak its
+      // vocabulary, or the guard list silently grows a second flow again.
+      const offenders = orchestrationFiles.filter((path) =>
+        /WorldSelectionMethod\.(TEAM_PICK|AGREED|RANDOM)|MatchStage\.WORLD_COMPLETE|advanceToNextWorld|isUnified|nextSelectionTurn|currentOccurrenceIndex/.test(
           read(path),
         ),
       );
-      expect(legacy.length).toBeGreaterThan(0);
-      for (const path of legacy) {
-        expect({
-          path: relative(path),
-          deprecated: /@deprecated/.test(read(path)),
-        }).toEqual({ path: relative(path), deprecated: true });
-      }
+      expect(offenders.map(relative)).toEqual([]);
     });
   });
 

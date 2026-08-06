@@ -6,7 +6,6 @@ import {
   ContentItemStatus,
   WorldContentStatus,
 } from '../../world-content/domain/world-content.constants';
-import { MATCH_SCOPES_PER_OCCURRENCE } from '../domain/match.constants';
 import { MatchDomainError } from '../domain/match.errors';
 
 export interface MatchSelectableScope {
@@ -112,41 +111,6 @@ export class MatchContentPool {
         throw new MatchDomainError(
           'SCOPE_HAS_NO_USABLE_SLOT',
           `Scope "${scopeId}" excludes every mechanic on this World's board`,
-        );
-      }
-    }
-  }
-
-  /**
-   * Validates a proposed pool: four distinct Scopes, all of this World, all
-   * active, all holding ready content.
-   *
-   * @deprecated Legacy sequential only; the unified setup uses
-   * {@link MatchContentPool.assertOccurrencePool}.
-   */
-  async assertSelectableScopes(
-    worldId: string,
-    scopeIds: string[],
-  ): Promise<void> {
-    if (scopeIds.length !== MATCH_SCOPES_PER_OCCURRENCE) {
-      throw new MatchDomainError(
-        'SCOPE_SELECTION_COUNT_INVALID',
-        `Each World occurrence is played from exactly ${MATCH_SCOPES_PER_OCCURRENCE} Scopes, received ${scopeIds.length}`,
-      );
-    }
-    if (new Set(scopeIds).size !== scopeIds.length) {
-      throw new MatchDomainError(
-        'SCOPE_SELECTION_DUPLICATED',
-        'The same Scope cannot be selected twice for one World occurrence',
-      );
-    }
-    const selectable = await this.listSelectableScopes(worldId);
-    const byId = new Map(selectable.map((scope) => [scope.scopeId, scope]));
-    for (const scopeId of scopeIds) {
-      if (!byId.has(scopeId)) {
-        throw new MatchDomainError(
-          'SCOPE_NOT_SELECTABLE',
-          'Every selected Scope must be an active Scope of this World with ready content',
         );
       }
     }

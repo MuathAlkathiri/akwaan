@@ -223,12 +223,8 @@ describe('MatchSnapshotComposer', () => {
       audioCue: 'board-enter',
       animationCue: 'board-reveal',
     });
-    expect(value.match?.worldSelection.complete).toBe(true);
-    expect(value.match?.unified).toBeDefined();
-    // The sequential sections have no meaning here and are omitted.
-    expect(value.match?.board).toBeUndefined();
-    expect(value.match?.currentOccurrence).toBeUndefined();
-    expect(value.match?.scopeSelection).toBeUndefined();
+    // Every Match is unified; the projection always carries the preconfigured contract.
+    expect(value.match?.unified.board.totalPositionCount).toBe(12);
   });
 
   it('reports an unimplemented board position instead of hiding it', async () => {
@@ -386,11 +382,9 @@ describe('MatchSnapshotComposer', () => {
         MatchSlotLaunchability.CONFIGURED_BUT_UNIMPLEMENTED,
         MatchSlotLaunchability.CONFIGURED_BUT_UNIMPLEMENTED,
       ]);
-      // The sequential sections have no meaning here and are omitted rather than
-      // filled with a guess.
-      expect(value.match?.board).toBeUndefined();
-      expect(value.match?.currentOccurrence).toBeUndefined();
-      expect(value.match?.scopeSelection).toBeUndefined();
+      // The same slot appears across all three occurrences; each position
+      // reports its own launchability and status.
+      expect(value.match?.unified.board.positions).toHaveLength(12);
     });
 
     it('marks only the completed position and counts it once', async () => {

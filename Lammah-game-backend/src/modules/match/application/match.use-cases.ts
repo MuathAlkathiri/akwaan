@@ -8,11 +8,9 @@ import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.
 import { ConfiguredWorldOccurrence } from '../domain/configured-world-occurrence';
 import { Match, MatchCoinToss, MatchTeam } from '../domain/match';
 import {
-  MATCH_WORLD_OCCURRENCE_COUNT,
   MatchSlotLaunchability,
   MatchStage,
   MatchStatus,
-  WorldSelectionMethod,
 } from '../domain/match.constants';
 import {
   MatchDomainError,
@@ -35,15 +33,12 @@ import {
 import { MatchChallengeReadinessService } from './match-challenge-readiness.service';
 import { MATCH_CLOCK, MatchClock } from './match-clock';
 import { MatchContentSelector } from './match-content-selection.service';
-import {
-  MatchContentPool,
-  MatchSelectableScope,
-} from './match-content-pool.service';
+import { MatchContentPool } from './match-content-pool.service';
 import {
   MatchTransitionNotifier,
   MatchTransitionReason,
 } from './match-transition.notifier';
-import { MatchSelectableWorld, MatchWorldCatalog } from './match-world.catalog';
+import { MatchWorldCatalog } from './match-world.catalog';
 import { UnifiedMatchSetupValidator } from './unified-match-setup.validator';
 
 interface MatchCommand {
@@ -77,37 +72,6 @@ export class MatchUseCases {
     private readonly joinAccess: GetSessionJoinAccess,
     private readonly createJoinAccess: CreateSessionJoinAccess,
   ) {}
-
-  /**
-   * Wraps a started live session in a Match, taking the two active teams from the
-   * session so team identity is never duplicated.
-   *
-   * @deprecated Legacy sequential setup. Phase 5 removes it; new Matches are
-   * created through {@link MatchUseCases.createUnified}.
-   */
-  async create(input: { sessionId: string; actorId: string }): Promise<Match> {
-    const session = await this.requireControlledSession(
-      input.sessionId,
-      input.actorId,
-    );
-    const existing = await this.matches.findActiveBySessionId(input.sessionId);
-    if (existing) return existing;
-    const teams = this.playingTeams(session);
-    const match = Match.create({
-      liveSessionId: input.sessionId,
-      teams,
-      now: this.clock.now(),
-    });
-    await this.matches.create(match);
-    this.transitions.publish(match, 'created');
-    this.logger.log({
-      event: 'match_created',
-      matchId: match.id,
-      sessionId: input.sessionId,
-      setupMode: match.setupMode,
-    });
-    return match;
-  }
 
   /**
    * Creates a fully configured Match in one write.
@@ -164,163 +128,6 @@ export class MatchUseCases {
       selectingTeamId: match.selectingTeamId,
     });
     return match;
-  }
-
-  /** @deprecated Legacy sequential only. */
-  start(command: MatchCommand): Promise<Match> {
-    return this.mutate(command, 'started', (match, now) =>
-      match.start({ commandId: command.commandId, now }),
-    );
-  }
-
-  /**
-   * Tosses the coin server-side. The client never learns the outcome before it is
-   * recorded, and a replay always returns the stored result.
-   *
-   * @deprecated Legacy sequential only. A unified Match settles its toss during
-   * creation through the same rule, without a command.
-   */
-  resolveCoinToss(command: MatchCommand): Promise<Match> {
-    return this.mutate(command, 'coin-toss-resolved', (match, now) => {
-      const toss = this.tossCoin(match.teams, now);
-      match.resolveCoinToss({
-        commandId: command.commandId,
-        now,
-        winnerTeamId: toss.winnerTeamId,
-        roll: toss.roll,
-      });
-    });
-  }
-
-  /** The Worlds a Match may still choose from. */
-  async listSelectableWorlds(input: {
-    sessionId: string;
-    actorId: string;
-  }): Promise<MatchSelectableWorld[]> {
-    await this.requireControlledSession(input.sessionId, input.actorId);
-    return this.worlds.listSelectableWorlds();
-  }
-
-  /**
-   * Records one World occurrence. Whose turn it is, and whether a team pick or an
-   * agreement is required, is decided by the aggregate; this only resolves the
-   * board schedule and the random third World.
-   */
-  async selectWorld(
-    command: MatchCommand & {
-      worldId?: string;
-      method: WorldSelectionMethod;
-      selectedByTeamId?: string;
-    },
-  ): Promise<Match> {
-    return this.mutate(
-      command,
-      (match) => this.transitions.worldSelectionReason(match),
-      async (match, now) => {
-        // Refused before any World is resolved for it, so a preconfigured Match
-        // never spends a random pick on a command it cannot accept.
-        match.assertLegacySetupAvailable('match:select-world');
-        const turn = match.nextSelectionTurn();
-        if (!turn) {
-          throw new MatchDomainError(
-            'MATCH_WORLDS_ALREADY_SELECTED',
-            `All ${MATCH_WORLD_OCCURRENCE_COUNT} World positions are already chosen`,
-          );
-        }
-        let worldId = command.worldId;
-        if (command.method === WorldSelectionMethod.RANDOM) {
-          // Resolved here and stored immediately, so no client ever sees a future
-          // server choice before it is authoritative.
-          const selectable = await this.worlds.listSelectableWorlds();
-          if (!selectable.length) {
-            throw new MatchDomainError(
-              'MATCH_NO_SELECTABLE_WORLD',
-              'No active World with a valid board is available',
-            );
-          }
-          worldId = selectable[randomInt(0, selectable.length)].worldId;
-        }
-        if (!worldId) {
-          throw new MatchDomainError(
-            'MATCH_WORLD_REQUIRED',
-            'Choose a World or ask the server to resolve one randomly',
-          );
-        }
-        const schedule = await this.worlds.scheduleFor(worldId);
-        match.selectWorld({
-          commandId: command.commandId,
-          now,
-          worldId,
-          method: command.method,
-          ...(command.selectedByTeamId
-            ? { selectedByTeamId: command.selectedByTeamId }
-            : {}),
-          scheduledSlotKeys: schedule.slotKeys,
-        });
-      },
-    );
-  }
-
-  /**
-   * The Scopes the current World occurrence may draw its content from.
-   *
-   * @deprecated Legacy sequential only. A unified Match already carries its three
-   * validated pools; the pre-match setup UI reads Scopes from World Content.
-   */
-  async listSelectableScopes(input: {
-    sessionId: string;
-    actorId: string;
-  }): Promise<MatchSelectableScope[]> {
-    await this.requireControlledSession(input.sessionId, input.actorId);
-    const match = await this.matches.findActiveBySessionId(input.sessionId);
-    if (!match) {
-      throw new MatchNotFoundError(
-        'This live session has no match in progress',
-      );
-    }
-    match.assertLegacySetupAvailable('match:list-scopes');
-    const occurrence = match.occurrences.find(
-      (candidate) => candidate.index === match.currentOccurrenceIndex,
-    );
-    if (!occurrence) {
-      throw new MatchDomainError(
-        'MATCH_OCCURRENCE_NOT_FOUND',
-        'This match has no current World occurrence',
-      );
-    }
-    return this.contentPool.listSelectableScopes(occurrence.worldId);
-  }
-
-  /**
-   * Records the four Scopes of the current World occurrence.
-   *
-   * World Content decides whether each Scope is eligible; the aggregate decides
-   * the count, the distinctness, and when the board may open.
-   */
-  selectScopes(
-    command: MatchCommand & { occurrenceIndex: number; scopeIds: string[] },
-  ): Promise<Match> {
-    return this.mutate(command, 'scopes-selected', async (match, now) => {
-      const occurrence = match.occurrences.find(
-        (candidate) => candidate.index === command.occurrenceIndex,
-      );
-      if (!occurrence) {
-        throw new MatchDomainError(
-          'MATCH_OCCURRENCE_NOT_FOUND',
-          'That World occurrence does not exist',
-        );
-      }
-      await this.contentPool.assertSelectableScopes(
-        occurrence.worldId,
-        command.scopeIds,
-      );
-      match.selectScopes({
-        commandId: command.commandId,
-        now,
-        occurrenceIndex: command.occurrenceIndex,
-        scopeIds: command.scopeIds,
-      });
-    });
   }
 
   /**
@@ -505,9 +312,9 @@ export class MatchUseCases {
   /**
    * Starts the mechanic in one board position from explicitly named content.
    *
-   * @deprecated Client-supplied ContentItem ids. Kept for the legacy sequential
-   * journey and the development launch tools; a unified Match uses
-   * {@link MatchUseCases.launchUnifiedChallenge}, where the server chooses.
+   * The content is still validated against this occurrence's own pool before
+   * anything is launched. The server-owned counterpart is
+   * {@link MatchUseCases.launchUnifiedChallenge}, which draws the content itself.
    */
   async launchChallenge(
     command: MatchCommand & {
@@ -534,7 +341,7 @@ export class MatchUseCases {
   }
 
   /**
-   * The one launch sequence both modes share.
+   * The one launch sequence, shared by server-owned and client-supplied content.
    *
    * Order matters and is deliberate: everything is validated, then the content is
    * resolved, then the runtime is created, and only then is the binding written.
@@ -558,12 +365,12 @@ export class MatchUseCases {
     const match = await this.load(command);
     match.assertRevision(command.expectedMatchRevision);
     if (match.isDuplicate(command.commandId)) return match;
-    // A unified Match launches from its board, or from the preflight that has just
-    // gathered the phones the mechanic needs.
-    const launchableStages = match.isUnified
-      ? [MatchStage.BOARD, MatchStage.PREFLIGHT]
-      : [MatchStage.BOARD];
-    if (!launchableStages.includes(match.stage)) {
+    // A launch comes from the board, or from the preflight that has just gathered
+    // the phones the mechanic needs.
+    if (
+      match.stage !== MatchStage.BOARD &&
+      match.stage !== MatchStage.PREFLIGHT
+    ) {
       throw new MatchDomainError(
         'MATCH_STAGE_INVALID',
         `Challenges are launched from the board, not from ${match.stage}`,
@@ -641,13 +448,6 @@ export class MatchUseCases {
     return match;
   }
 
-  /** @deprecated Legacy sequential only. */
-  advanceToNextWorld(command: MatchCommand): Promise<Match> {
-    return this.mutate(command, 'advanced-to-next-world', (match, now) =>
-      match.advanceToNextWorld({ commandId: command.commandId, now }),
-    );
-  }
-
   cancel(command: MatchCommand): Promise<Match> {
     return this.mutate(command, 'cancelled', (match, now) =>
       match.cancel({ commandId: command.commandId, now }),
@@ -662,30 +462,17 @@ export class MatchUseCases {
   }
 
   /**
-   * The occurrence a launch targets.
-   *
-   * Unified: any of the three, named explicitly. `currentOccurrenceIndex` is not
-   * consulted — a unified Match does not have one.
-   * Legacy: the occurrence being played, and nothing else.
+   * The occurrence a launch targets: any of the three, named explicitly. No
+   * sequence is consulted — a unified Match does not have a current occurrence.
    */
   private requireLaunchOccurrence(match: Match, occurrenceIndex: number) {
     const occurrence = match.occurrences.find(
-      (candidate) =>
-        candidate.index ===
-        (match.isUnified ? occurrenceIndex : match.currentOccurrenceIndex),
+      (candidate) => candidate.index === occurrenceIndex,
     );
     if (!occurrence) {
       throw new MatchDomainError(
         'MATCH_OCCURRENCE_NOT_FOUND',
-        match.isUnified
-          ? `This match has no World occurrence ${occurrenceIndex}`
-          : 'This match has no current World occurrence',
-      );
-    }
-    if (occurrenceIndex !== occurrence.index) {
-      throw new MatchDomainError(
-        'MATCH_OCCURRENCE_MISMATCH',
-        'That World occurrence is not the one being played',
+        `This match has no World occurrence ${occurrenceIndex}`,
       );
     }
     return occurrence;
@@ -694,26 +481,21 @@ export class MatchUseCases {
   /**
    * The mechanic in one board position, and a refusal if it cannot be played.
    *
-   * A unified Match reads it from the board it persisted at creation, so a World
-   * edited mid-match cannot change what is already on the table. A legacy Match
-   * still reads the World's live configuration.
+   * The board the Match persisted at creation is authoritative, so a World edited
+   * mid-match cannot change what is already on the table.
    */
   private async launchableSlot(
     match: Match,
     occurrence: { index: number; worldId: string },
     slotKey: WorldChallengeSlotKey,
   ): Promise<{ challengeTypeId: string; challengeTypeSlug: string }> {
-    const configured = match.isUnified
-      ? match
-          .unifiedBoard()
-          .find(
-            (position) =>
-              position.occurrenceIndex === occurrence.index &&
-              position.slotKey === slotKey,
-          )
-      : (await this.worlds.describeWorld(occurrence.worldId)).slots.find(
-          (candidate) => candidate.slotKey === slotKey,
-        );
+    const configured = match
+      .unifiedBoard()
+      .find(
+        (position) =>
+          position.occurrenceIndex === occurrence.index &&
+          position.slotKey === slotKey,
+      );
     const launchability = this.worlds.launchabilityFor(configured);
     if (!configured) {
       throw new MatchDomainError(

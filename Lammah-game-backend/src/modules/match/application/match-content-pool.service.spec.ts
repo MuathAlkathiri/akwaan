@@ -105,56 +105,6 @@ describe('MatchContentPool', () => {
       expect(selectable.map((scope) => scope.scopeId)).not.toContain('s5');
       expect(selectable.map((scope) => scope.scopeId)).not.toContain('s3');
     });
-
-    it('accepts exactly four eligible Scopes', async () => {
-      await expect(
-        pool().assertSelectableScopes(WORLD_ID, ['s1', 's2', 's3', 's4']),
-      ).resolves.toBeUndefined();
-    });
-
-    it('refuses any count other than four', async () => {
-      for (const scopeIds of [
-        ['s1'],
-        ['s1', 's2', 's3'],
-        ['s1', 's2', 's3', 's4', 's5'],
-      ]) {
-        await expect(
-          pool().assertSelectableScopes(WORLD_ID, scopeIds),
-        ).rejects.toMatchObject({
-          response: { code: 'SCOPE_SELECTION_COUNT_INVALID' },
-        });
-      }
-    });
-
-    it('refuses a duplicate Scope', async () => {
-      await expect(
-        pool().assertSelectableScopes(WORLD_ID, ['s1', 's1', 's2', 's3']),
-      ).rejects.toMatchObject({
-        response: { code: 'SCOPE_SELECTION_DUPLICATED' },
-      });
-    });
-
-    it('refuses a Scope from another World, an inactive one, or an empty one', async () => {
-      // A Scope of another World never appears in this World's listing.
-      await expect(
-        pool().assertSelectableScopes(WORLD_ID, [
-          's1',
-          's2',
-          's3',
-          'other-world-scope',
-        ]),
-      ).rejects.toMatchObject({ response: { code: 'SCOPE_NOT_SELECTABLE' } });
-
-      await expect(
-        pool().assertSelectableScopes(WORLD_ID, ['s1', 's2', 's3', 's5']),
-      ).rejects.toMatchObject({ response: { code: 'SCOPE_NOT_SELECTABLE' } });
-
-      await expect(
-        pool({
-          readyCounts: { s1: 40, s2: 30, s3: 22, s4: 0 },
-        }).assertSelectableScopes(WORLD_ID, ['s1', 's2', 's3', 's4']),
-      ).rejects.toMatchObject({ response: { code: 'SCOPE_NOT_SELECTABLE' } });
-    });
   });
 
   describe('playing ContentItems from the pool', () => {

@@ -11,10 +11,6 @@ import {
   MinLength,
 } from 'class-validator';
 import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.constants';
-import {
-  MATCH_SCOPES_PER_OCCURRENCE,
-  WorldSelectionMethod,
-} from '../domain/match.constants';
 
 /** Every Match command carries its own id and the revision it was decided on. */
 export class MatchCommandDto {
@@ -27,43 +23,6 @@ export class MatchCommandDto {
   @IsInt()
   @Min(0)
   expectedMatchRevision!: number;
-}
-
-export class SelectMatchWorldDto extends MatchCommandDto {
-  @ApiPropertyOptional({
-    description: 'Omitted when the server resolves the World randomly',
-  })
-  @IsOptional()
-  @IsString()
-  @MinLength(1)
-  worldId?: string;
-
-  @ApiProperty({ enum: WorldSelectionMethod })
-  @IsEnum(WorldSelectionMethod)
-  method!: WorldSelectionMethod;
-
-  @ApiPropertyOptional({ description: 'Required for a team pick' })
-  @IsOptional()
-  @IsString()
-  @MinLength(1)
-  selectedByTeamId?: string;
-}
-
-export class SelectMatchScopesDto extends MatchCommandDto {
-  @ApiProperty({ description: 'The World occurrence these Scopes belong to' })
-  @IsInt()
-  @Min(0)
-  occurrenceIndex!: number;
-
-  @ApiProperty({
-    description: 'Exactly four distinct Scope ids from the occurrence World',
-    type: [String],
-  })
-  @IsArray()
-  @ArrayMinSize(MATCH_SCOPES_PER_OCCURRENCE)
-  @ArrayMaxSize(MATCH_SCOPES_PER_OCCURRENCE)
-  @IsString({ each: true })
-  scopeIds!: string[];
 }
 
 export class LaunchMatchChallengeDto extends MatchCommandDto {

@@ -7,7 +7,6 @@ import { ConfiguredWorldOccurrence } from './configured-world-occurrence';
 import { Match } from './match';
 import { MatchBoardPositionKey } from './match-board-position-key';
 import {
-  MATCH_NO_CURRENT_OCCURRENCE,
   MATCH_SLOT_ORDER,
   MATCH_UNIFIED_BOARD_POSITION_COUNT,
   MatchSetupMode,
@@ -139,51 +138,30 @@ describe('unified preconfigured Match', () => {
     it('opens directly on the board as an active Match', () => {
       const match = unifiedMatch();
       expect(match.setupMode).toBe(MatchSetupMode.UNIFIED_PRECONFIGURED);
-      expect(match.isUnified).toBe(true);
+      // The marker that once distinguished the two setup modes no longer exists.
+      expect(
+        (match as unknown as { isUnified?: unknown }).isUnified,
+      ).toBeUndefined();
       expect(match.stage).toBe(MatchStage.BOARD);
       expect(match.status).toBe(MatchStatus.ACTIVE);
       expect(match.revision).toBe(0);
     });
 
-    it('never passes through coin toss, world selection, or scope selection', () => {
+    it('carries no sequential command surface at all', () => {
       const match = unifiedMatch();
       // The toss is settled, so the result can be shown; no command produced it.
       expect(match.coinToss).toMatchObject({ winnerTeamId: TEAM_A.id });
-      expect(match.nextSelectionTurn()).toBeUndefined();
-      for (const attempt of [
-        () => match.start({ commandId: 'c1', now: NOW }),
-        () =>
-          match.resolveCoinToss({
-            commandId: 'c2',
-            now: NOW,
-            winnerTeamId: TEAM_B.id,
-            roll: 1,
-          }),
-        () =>
-          match.selectWorld({
-            commandId: 'c3',
-            now: NOW,
-            worldId: ANIME,
-            method: WorldSelectionMethod.TEAM_PICK,
-            selectedByTeamId: TEAM_A.id,
-            scheduledSlotKeys: [WorldChallengeSlotKey.SLOT_1],
-          }),
-        () =>
-          match.selectScopes({
-            commandId: 'c4',
-            now: NOW,
-            occurrenceIndex: 0,
-            scopeIds: ANIME_POOL,
-          }),
-        () => match.advanceToNextWorld({ commandId: 'c5', now: NOW }),
+      for (const method of [
+        'start',
+        'resolveCoinToss',
+        'nextSelectionTurn',
+        'selectWorld',
+        'selectScopes',
+        'advanceToNextWorld',
       ]) {
-        expect(attempt).toThrow(
-          expect.objectContaining({
-            response: expect.objectContaining({
-              code: 'MATCH_COMMAND_NOT_AVAILABLE_IN_SETUP_MODE',
-            }),
-          }),
-        );
+        expect(
+          (match as unknown as Record<string, unknown>)[method],
+        ).toBeUndefined();
       }
       expect(match.stage).toBe(MatchStage.BOARD);
       expect(match.revision).toBe(0);
@@ -211,9 +189,10 @@ describe('unified preconfigured Match', () => {
 
     it('has no current occurrence at all', () => {
       // Nothing may derive selection authority from a sequence position.
-      expect(unifiedMatch().currentOccurrenceIndex).toBe(
-        MATCH_NO_CURRENT_OCCURRENCE,
-      );
+      expect(
+        (unifiedMatch() as unknown as Record<string, unknown>)
+          .currentOccurrenceIndex,
+      ).toBeUndefined();
     });
 
     it('hands the first selection to the coin toss winner', () => {
@@ -481,7 +460,8 @@ describe('unified preconfigured Match', () => {
         play(match, 1, slotKey);
         expect(match.stage).toBe(MatchStage.BOARD);
       }
-      expect(match.stage).not.toBe(MatchStage.WORLD_COMPLETE);
+      // A completed occurrence stays on the board; there is no World-complete stage.
+      expect(match.stage).toBe(MatchStage.BOARD);
       expect(match.status).toBe(MatchStatus.ACTIVE);
       // The other two occurrences kept every position they had.
       expect(
@@ -751,30 +731,5 @@ describe('unified preflight', () => {
     expect(restored.stage).toBe(MatchStage.PREFLIGHT);
     expect(restored.pendingChallenge).toEqual(match.pendingChallenge);
     expect(restored.unifiedBoard()).toEqual(match.unifiedBoard());
-  });
-
-  it('is not available to a legacy sequential Match', () => {
-    const legacy = Match.create({
-      liveSessionId: 'live-session-1',
-      teams: [TEAM_A, TEAM_B],
-      now: NOW,
-    });
-    expect(() =>
-      legacy.prepareChallenge({
-        commandId: 'prepare',
-        now: NOW,
-        occurrenceIndex: 0,
-        slotKey: WorldChallengeSlotKey.SLOT_2,
-        challengeTypeId: 'type',
-        challengeTypeSlug: 'read-your-opponent',
-        requiresPhones: true,
-      }),
-    ).toThrow(
-      expect.objectContaining({
-        response: expect.objectContaining({
-          code: 'MATCH_COMMAND_NOT_AVAILABLE_IN_SETUP_MODE',
-        }),
-      }),
-    );
   });
 });

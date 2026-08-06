@@ -25,11 +25,10 @@ import {
 /**
  * The production route that creates a fully configured Match.
  *
- * Deliberately its own controller, mounted only on the stable `/match` path: the
- * preconfigured contract is never reachable through the legacy
- * `/match/development` alias. Authentication and authorship follow the existing
- * Match conventions — every route is authenticated, and only the live session's
- * controller may drive a Match.
+ * Deliberately its own controller, mounted only on the stable `/match` path.
+ * Authentication and authorship follow the existing Match conventions — every
+ * route is authenticated, and only the live session's controller may drive a
+ * Match.
  */
 @ApiTags('match')
 @ApiBearerAuth()

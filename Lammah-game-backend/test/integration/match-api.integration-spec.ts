@@ -21,10 +21,10 @@ import {
 } from '../../src/modules/world-content/domain/world-content.constants';
 import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
 import {
+  MatchSetupMode,
   MatchSlotStatus,
   MatchStage,
   MatchStatus,
-  WorldSelectionMethod,
 } from '../../src/modules/match/domain/match.constants';
 import { RYO_MODE_KEY } from '../../src/modules/live-game-sessions/domain/ryo-gameplay.plugin';
 import { MarkSessionReady } from '../../src/modules/live-game-sessions/application/live-session-lifecycle.use-cases';
@@ -54,13 +54,20 @@ import {
 /**
  * The Match vertical slice over HTTP.
  *
- * One live session is driven from an empty lobby to a completed Read Your Opponent
- * challenge: the Match binds a board position to the mechanic's own runtime, the
- * mechanic runs untouched, and the Match learns it finished from the runtime rather
- * than from a controller command.
+ * One live session is configured completely before gameplay and the Match opens
+ * on its board; then an explicit RYO challenge binds a board position to the
+ * mechanic's own runtime, the mechanic runs untouched, and the Match learns it
+ * finished from the runtime rather than from a controller command. The
+ * controller-owned launch route (`POST .../match/challenges/launch`) is the
+ * legacy-free survivor this spec uniquely exercises: it accepts the caller's
+ * own ContentItem ids, still validated against the occurrence's Scope pool.
  */
 type MatchBearingSnapshot = LiveGameSessionSnapshot & {
-  match: NonNullable<LiveGameSessionSnapshot['match']>;
+  match: NonNullable<LiveGameSessionSnapshot['match']> & {
+    unified: NonNullable<
+      NonNullable<LiveGameSessionSnapshot['match']>['unified']
+    >;
+  };
 };
 
 describe('Match API integration', () => {
@@ -382,12 +389,35 @@ describe('Match API integration', () => {
     return unwrap<MatchBearingSnapshot>(response);
   };
 
-  /** The four Scopes the current occurrence draws its content from. */
-  const selectScopes = async (sessionId: string, pool = scopeIds) =>
-    command(sessionId, '/scopes/select', {
-      occurrenceIndex: 0,
-      scopeIds: pool,
-    });
+  /**
+   * Three occurrences of the one seeded World, each drawing from the same four
+   * Scopes. The fifth Scope stays out of the pool so a launch can prove content
+   * outside it is refused.
+   */
+  const configuration = () =>
+    [0, 1, 2].map((occurrenceIndex) => ({
+      occurrenceIndex,
+      worldId,
+      selectedScopeIds: scopeIds.slice(0, 4),
+    }));
+
+  /** The one way a Match is created now: a complete preconfigured setup. */
+  const createUnified = async (sessionId: string, expected = 201) =>
+    unwrap<MatchBearingSnapshot>(
+      await bearer(http().post(matchRoute(sessionId, '/unified')))
+        .send({ occurrences: configuration() })
+        .expect(expected),
+    );
+
+  /** The board position `occurrence#slotKey`, with its own launchability. */
+  const position = (
+    match: MatchBearingSnapshot['match'],
+    occurrenceIndex: number,
+    slotKey: WorldChallengeSlotKey,
+  ) =>
+    match.unified.board.positions.find(
+      (candidate) => candidate.positionKey === `${occurrenceIndex}#${slotKey}`,
+    )!;
 
   /** Drives one RYO item to resolution through real participant submissions. */
   const playRyoItem = async (
@@ -449,127 +479,47 @@ describe('Match API integration', () => {
     });
   };
 
-  it('drives a Match from the lobby to a bound RYO challenge', async () => {
+  it('drives a Match from an empty session to a bound RYO challenge', async () => {
     const { sessionId, teamIds } = await startSession();
-    const stageSequence: string[] = [];
 
-    const created = unwrap<MatchBearingSnapshot>(
-      await bearer(http().post(matchRoute(sessionId, '/create'))).expect(201),
-    );
+    const created = await createUnified(sessionId);
     expect(created.match).toMatchObject({
-      status: MatchStatus.DRAFT,
+      setupMode: MatchSetupMode.UNIFIED_PRECONFIGURED,
+      status: MatchStatus.ACTIVE,
       revision: 0,
-      stage: { key: MatchStage.LOBBY },
+      stage: { key: MatchStage.BOARD },
+      coinToss: { status: 'resolved' },
     });
-    stageSequence.push(created.match.stage.key);
     // Stage presentation is served, so no client invents timings.
-    expect(created.match.stage.minimumDisplayDurationMs).toBe(0);
-    expect(created.match.availableActions).toEqual(['match:start']);
-
-    const started = await command(sessionId, '/start');
-    stageSequence.push(started.match.stage.key);
-    expect(started.match.stage).toMatchObject({
-      key: MatchStage.COIN_TOSS,
-      minimumDisplayDurationMs: 3500,
-      audioCue: 'coin-spin',
-      animationCue: 'coin-toss',
+    expect(created.match.stage).toMatchObject({
+      minimumDisplayDurationMs: 0,
+      audioCue: 'board-enter',
+      animationCue: 'board-reveal',
     });
-    expect(started.match.coinToss.status).toBe('pending');
-
-    const tossed = await command(sessionId, '/coin-toss');
-    stageSequence.push(tossed.match.stage.key);
-    expect(tossed.match.coinToss.status).toBe('resolved');
-    expect(teamIds).toContain(tossed.match.coinToss.winnerTeamId);
-    expect(tossed.match.worldSelection.nextTeamId).toBe(
-      tossed.match.coinToss.winnerTeamId,
+    expect(teamIds).toContain(created.match.coinToss.winnerTeamId);
+    // The coin toss winner chooses the first position.
+    expect(created.match.unified.selectingTeamId).toBe(
+      created.match.coinToss.winnerTeamId,
     );
-
-    const worlds = unwrap<Array<{ worldId: string }>>(
-      await bearer(http().get(matchRoute(sessionId, '/worlds'))).expect(200),
-    );
-    expect(worlds.map((world: { worldId: string }) => world.worldId)).toContain(
-      worldId,
-    );
-
-    const first = await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.TEAM_PICK,
-      selectedByTeamId: tossed.match.coinToss.winnerTeamId,
-    });
-    stageSequence.push(first.match.stage.key);
-    expect(first.match.worldSelection.remainingCount).toBe(2);
-    const second = await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.TEAM_PICK,
-      selectedByTeamId: first.match.worldSelection.nextTeamId,
-    });
-    stageSequence.push(second.match.stage.key);
-    expect(second.match.worldSelection.requiresAgreement).toBe(true);
-    // The same World is chosen three times on purpose: occurrences are distinct.
-    const worldsChosen = await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.AGREED,
-    });
-    stageSequence.push(worldsChosen.match.stage.key);
-    // The board does not open until the occurrence has its four Scopes.
-    expect(worldsChosen.match.stage.key).toBe(MatchStage.SCOPE_SELECTION);
-    expect(worldsChosen.match.board).toBeUndefined();
-    expect(worldsChosen.match.scopeSelection).toMatchObject({
-      occurrenceIndex: 0,
-      worldId,
-      required: 4,
-      selectedScopeIds: [],
-    });
-
-    const offered = unwrap<Array<{ scopeId: string }>>(
-      await bearer(http().get(matchRoute(sessionId, '/scopes'))).expect(200),
-    );
-    expect(offered.length).toBeGreaterThanOrEqual(4);
-
-    const third = await selectScopes(sessionId);
-    stageSequence.push(third.match.stage.key);
-    expect(third.match.stage.key).toBe(MatchStage.BOARD);
-    expect(third.match.currentOccurrence?.selectedScopeIds).toEqual(scopeIds);
-    expect(
-      third.match.currentOccurrence?.selectedScopes.map(
-        (scope: { name: string }) => scope.name,
-      ),
-    ).toEqual([
-      'كأس العالم',
-      'الدوري الإنجليزي',
-      'الدوري السعودي',
-      'أبطال أوروبا',
+    expect(created.match.availableActions).toEqual([
+      'match:launch-challenge',
+      'match:cancel',
     ]);
-    expect(third.match.worldSelection.complete).toBe(true);
-    expect(third.match.currentOccurrence).toMatchObject({
-      index: 0,
-      worldId,
-      status: 'in_progress',
-    });
-    const reloadedBoard = await snapshotOf(sessionId);
-    expect(reloadedBoard.match.stage.key).toBe(MatchStage.BOARD);
-    expect(reloadedBoard.match.currentOccurrence).toEqual(
-      third.match.currentOccurrence,
-    );
-    expect(stageSequence).toEqual([
-      MatchStage.LOBBY,
-      MatchStage.COIN_TOSS,
-      MatchStage.WORLD_SELECTION,
-      MatchStage.WORLD_SELECTION,
-      MatchStage.WORLD_SELECTION,
-      MatchStage.SCOPE_SELECTION,
-      MatchStage.BOARD,
-    ]);
+    // Three occurrences, one board of twelve independently playable positions.
+    expect(created.match.unified.occurrences).toHaveLength(3);
+    expect(created.match.unified.board.positions).toHaveLength(12);
 
-    // Every configured position is reported, including the two with no launcher.
-    expect(
-      third.match.board!.slots.map(
-        (slot: { slotKey: string; launchability: string }) => [
-          slot.slotKey,
-          slot.launchability,
-        ],
-      ),
-    ).toEqual([
+    // Every configured position is reported, including the three with no launcher.
+    const launchabilityBySlot = [
+      WorldChallengeSlotKey.SLOT_1,
+      WorldChallengeSlotKey.SLOT_2,
+      WorldChallengeSlotKey.SLOT_3,
+      WorldChallengeSlotKey.SLOT_4,
+    ].map((slotKey) => [
+      slotKey,
+      position(created.match, 0, slotKey).launchability,
+    ]);
+    expect(launchabilityBySlot).toEqual([
       [WorldChallengeSlotKey.SLOT_1, 'configured_but_unimplemented'],
       [WorldChallengeSlotKey.SLOT_2, 'launchable'],
       [WorldChallengeSlotKey.SLOT_3, 'configured_but_unimplemented'],
@@ -582,7 +532,7 @@ describe('Match API integration', () => {
     )
       .send({
         commandId: uuid(),
-        expectedMatchRevision: third.match.revision,
+        expectedMatchRevision: created.match.revision,
         occurrenceIndex: 0,
         slotKey: WorldChallengeSlotKey.SLOT_1,
         contentItemIds: [contentItemIds[0]],
@@ -607,35 +557,13 @@ describe('Match API integration', () => {
       launched.match.currentChallenge.runtimeId,
     );
     expect(
-      launched.match.board!.slots.find(
-        (slot: { slotKey: string }) =>
-          slot.slotKey === WorldChallengeSlotKey.SLOT_2,
-      ).status,
+      position(launched.match, 0, WorldChallengeSlotKey.SLOT_2).status,
     ).toBe(MatchSlotStatus.IN_PROGRESS);
   });
 
   it('completes the challenge from the runtime and imports its scores once', async () => {
     const { sessionId, participants } = await startSession();
-    await bearer(http().post(matchRoute(sessionId, '/create'))).expect(201);
-    await command(sessionId, '/start');
-    const tossed = await command(sessionId, '/coin-toss');
-    await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.TEAM_PICK,
-      selectedByTeamId: tossed.match.coinToss.winnerTeamId,
-    });
-    const second = await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.TEAM_PICK,
-      selectedByTeamId: (await snapshotOf(sessionId)).match.worldSelection
-        .nextTeamId,
-    });
-    expect(second.match.worldSelection.remainingCount).toBe(1);
-    await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.AGREED,
-    });
-    await selectScopes(sessionId);
+    await createUnified(sessionId);
     const launched = await command(sessionId, '/challenges/launch', {
       occurrenceIndex: 0,
       slotKey: WorldChallengeSlotKey.SLOT_2,
@@ -654,10 +582,7 @@ describe('Match API integration', () => {
     // Nobody sent a "finish challenge" command: the runtime said it was done.
     expect(reconciled.match.stage.key).toBe(MatchStage.BOARD);
     expect(reconciled.match.currentChallenge).toBeUndefined();
-    const slot = reconciled.match.board!.slots.find(
-      (candidate: { slotKey: string }) =>
-        candidate.slotKey === WorldChallengeSlotKey.SLOT_2,
-    );
+    const slot = position(reconciled.match, 0, WorldChallengeSlotKey.SLOT_2);
     expect(slot.status).toBe(MatchSlotStatus.COMPLETED);
     expect(slot.runtimeId).toBe(runtimeId);
     expect(slot.scoreSummary).toHaveLength(2);
@@ -677,12 +602,6 @@ describe('Match API integration', () => {
     );
     expect(announced).toEqual([
       'created',
-      'started',
-      'coin-toss-resolved',
-      'world-selected',
-      'world-selected',
-      'world-selection-completed',
-      'scopes-selected',
       'challenge-launched',
       'challenge-completed',
     ]);
@@ -721,25 +640,7 @@ describe('Match API integration', () => {
 
   it('only plays content that belongs to the four selected Scopes', async () => {
     const { sessionId } = await startSession();
-    await bearer(http().post(matchRoute(sessionId, '/create'))).expect(201);
-    await command(sessionId, '/start');
-    const tossed = await command(sessionId, '/coin-toss');
-    await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.TEAM_PICK,
-      selectedByTeamId: tossed.match.coinToss.winnerTeamId,
-    });
-    await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.TEAM_PICK,
-      selectedByTeamId: (await snapshotOf(sessionId)).match.worldSelection
-        .nextTeamId,
-    });
-    await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.AGREED,
-    });
-    const board = await selectScopes(sessionId);
+    const created = await createUnified(sessionId);
 
     // Content from a Scope that was not selected is refused outright.
     const outside = await bearer(
@@ -747,7 +648,7 @@ describe('Match API integration', () => {
     )
       .send({
         commandId: uuid(),
-        expectedMatchRevision: board.match.revision,
+        expectedMatchRevision: created.match.revision,
         occurrenceIndex: 0,
         slotKey: WorldChallengeSlotKey.SLOT_2,
         contentItemIds: outsideContentItemIds,
@@ -789,83 +690,53 @@ describe('Match API integration', () => {
     expect(busy.body.code).toBe('MATCH_STAGE_INVALID');
   });
 
-  it('refuses a Scope selection that is not exactly four distinct eligible Scopes', async () => {
-    const { sessionId } = await startSession();
-    await bearer(http().post(matchRoute(sessionId, '/create'))).expect(201);
-    await command(sessionId, '/start');
-    const tossed = await command(sessionId, '/coin-toss');
-    await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.TEAM_PICK,
-      selectedByTeamId: tossed.match.coinToss.winnerTeamId,
-    });
-    await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.TEAM_PICK,
-      selectedByTeamId: (await snapshotOf(sessionId)).match.worldSelection
-        .nextTeamId,
-    });
-    const ready = await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.AGREED,
-    });
-
-    const reject = async (scopeIdsToSend: string[], expected: string) => {
-      const response = await bearer(
-        http().post(matchRoute(sessionId, '/scopes/select')),
-      )
-        .send({
-          commandId: uuid(),
-          expectedMatchRevision: ready.match.revision,
-          occurrenceIndex: 0,
-          scopeIds: scopeIdsToSend,
-        })
-        .expect(400);
-      expect(JSON.stringify(response.body)).toContain(expected);
-    };
-
-    await reject(scopeIds.slice(0, 3), 'scopeIds');
-    await reject([scopeIds[0], scopeIds[0], scopeIds[1], scopeIds[2]], 'SCOPE');
-    await reject(
-      [scopeIds[0], scopeIds[1], scopeIds[2], 'ffffffffffffffffffffffff'],
-      'SCOPE_NOT_SELECTABLE',
-    );
-
-    // The board is still closed after every refusal.
-    const after = await snapshotOf(sessionId);
-    expect(after.match.stage.key).toBe(MatchStage.SCOPE_SELECTION);
-    expect(after.match.board).toBeUndefined();
-  });
-
   it('rejects stale revisions, replays, and non-controller callers', async () => {
     const { sessionId } = await startSession();
-    await bearer(http().post(matchRoute(sessionId, '/create'))).expect(201);
+    const created = await createUnified(sessionId);
 
     // A replayed command id is accepted and changes nothing.
     const commandId = uuid();
     const first = unwrap<MatchBearingSnapshot>(
-      await bearer(http().post(matchRoute(sessionId, '/start')))
-        .send({ commandId, expectedMatchRevision: 0 })
+      await bearer(http().post(matchRoute(sessionId, '/challenges/launch')))
+        .send({
+          commandId,
+          expectedMatchRevision: created.match.revision,
+          occurrenceIndex: 0,
+          slotKey: WorldChallengeSlotKey.SLOT_2,
+          contentItemIds,
+        })
         .expect(201),
     );
     const replay = unwrap<MatchBearingSnapshot>(
-      await bearer(http().post(matchRoute(sessionId, '/start')))
-        .send({ commandId, expectedMatchRevision: first.match.revision })
+      await bearer(http().post(matchRoute(sessionId, '/challenges/launch')))
+        .send({
+          commandId,
+          expectedMatchRevision: first.match.revision,
+          occurrenceIndex: 0,
+          slotKey: WorldChallengeSlotKey.SLOT_2,
+          contentItemIds,
+        })
         .expect(201),
     );
     expect(replay.match.revision).toBe(first.match.revision);
 
     // A stale revision is refused outright.
-    await bearer(http().post(matchRoute(sessionId, '/coin-toss')))
+    await bearer(http().post(matchRoute(sessionId, '/cancel')))
       .send({ commandId: uuid(), expectedMatchRevision: 0 })
       .expect(409);
 
     // A different authenticated user is not this session's controller.
     const otherToken = await loginForToken(app, fixtureCredentials.user);
     await http()
-      .post(matchRoute(sessionId, '/coin-toss'))
+      .post(matchRoute(sessionId, '/challenges/launch'))
       .set('Authorization', `Bearer ${otherToken}`)
-      .send({ commandId: uuid(), expectedMatchRevision: 1 })
+      .send({
+        commandId: uuid(),
+        expectedMatchRevision: first.match.revision,
+        occurrenceIndex: 0,
+        slotKey: WorldChallengeSlotKey.SLOT_2,
+        contentItemIds,
+      })
       .expect(403);
     await http()
       .get(matchRoute(sessionId))
@@ -887,8 +758,7 @@ describe('Match API integration', () => {
 
   it('hides controller-only Match actions from participants', async () => {
     const { sessionId, participants } = await startSession();
-    await bearer(http().post(matchRoute(sessionId, '/create'))).expect(201);
-    await command(sessionId, '/start');
+    await createUnified(sessionId);
 
     // A participant reads the Match through the session snapshot it already gets.
     const composer = app.get(LiveSessionSnapshotComposer);
@@ -902,7 +772,7 @@ describe('Match API integration', () => {
       new Date(),
     );
 
-    expect(snapshot.match?.stage.key).toBe(MatchStage.COIN_TOSS);
+    expect(snapshot.match?.stage.key).toBe(MatchStage.BOARD);
     expect(snapshot.match?.availableActions).toEqual([]);
     // Nothing a participant must not know reaches the projection.
     expect(JSON.stringify(snapshot.match)).not.toContain('scoreEvent');

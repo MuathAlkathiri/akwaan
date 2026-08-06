@@ -1038,13 +1038,18 @@ describe('Unified Match API integration', () => {
     expect(after.match.unified.board.completedPositionCount).toBe(0);
   });
 
-  it('refuses the legacy sequential setup commands', async () => {
+  it('leaves the legacy sequential setup routes dead', async () => {
     const { sessionId } = await startSession();
     const created = await createUnified(sessionId);
 
+    // Phase 5 removed the whole sequential surface: none of these routes exist,
+    // so each one 404s as if it never did — a client can no longer drive the
+    // legacy journey at all.
     for (const [path, body] of [
+      ['/create', {}],
       ['/start', {}],
       ['/coin-toss', {}],
+      ['/worlds', {}],
       ['/worlds/select', { worldId: anime.worldId, method: 'agreed' }],
       [
         '/scopes/select',
@@ -1052,16 +1057,13 @@ describe('Unified Match API integration', () => {
       ],
       ['/worlds/continue', {}],
     ] as Array<[string, Record<string, unknown>]>) {
-      const response = await bearer(http().post(matchRoute(sessionId, path)))
+      await bearer(http().post(matchRoute(sessionId, path)))
         .send({
           commandId: uuid(),
           expectedMatchRevision: created.match.revision,
           ...body,
         })
-        .expect(400);
-      expect(response.body.code).toBe(
-        'MATCH_COMMAND_NOT_AVAILABLE_IN_SETUP_MODE',
-      );
+        .expect(404);
     }
     const after = await snapshotOf(sessionId);
     expect(after.match.revision).toBe(created.match.revision);
