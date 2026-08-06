@@ -22,9 +22,10 @@ import {
 } from '../../src/modules/world-content/domain/world-content.constants';
 import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
 import {
+  MatchSetupMode,
   MatchSlotStatus,
   MatchStage,
-  WorldSelectionMethod,
+  MatchStatus,
 } from '../../src/modules/match/domain/match.constants';
 import {
   TOP10_MODE_KEY,
@@ -58,18 +59,25 @@ import {
 } from '../../src/modules/match/persistence/match.repository';
 
 type MatchBearingSnapshot = LiveGameSessionSnapshot & {
-  match: NonNullable<LiveGameSessionSnapshot['match']>;
+  match: NonNullable<LiveGameSessionSnapshot['match']> & {
+    unified: NonNullable<
+      NonNullable<LiveGameSessionSnapshot['match']>['unified']
+    >;
+  };
 };
 
 const CARD_COUNT = 14;
 const RANKED_COUNT = 10;
 
 /**
- * Top 10 Poison Deck, played through the Match orchestration layer.
+ * Top 10 Poison Deck, played through the unified Match orchestration layer.
  *
  * Every card assignment and every reveal is a real gameplay command against the
  * real runtime; nothing about the plugin's state is hand-written. The Match is
- * expected to learn the deck finished from the runtime itself.
+ * expected to learn the deck finished from the runtime itself. The host names a
+ * *position* and nothing else: the server draws the one poison deck from the
+ * occurrence's own Scope pool, and a classic-variant sibling in the same pool is
+ * never handed to the mechanic.
  */
 describe('Match Top 10 Poison Deck integration', () => {
   let app: INestApplication;
@@ -79,6 +87,9 @@ describe('Match Top 10 Poison Deck integration', () => {
   let worldId: string;
   let contentItemId: string;
   let scopeIds: string[];
+  /** An active World whose Top 10 position holds only classic-variant content. */
+  let classicWorldId: string;
+  let classicScopeIds: string[];
 
   const uuid = () =>
     `${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}`;
@@ -92,7 +103,8 @@ describe('Match Top 10 Poison Deck integration', () => {
     });
     token = await loginForToken(app, fixtureCredentials.admin);
     controllerId = await currentUserId();
-    ({ worldId, contentItemId, scopeIds } = await seedWorld());
+    ({ worldId, contentItemId, scopeIds, classicWorldId, classicScopeIds } =
+      await seedWorld());
   }, 60_000);
 
   afterAll(async () => {
@@ -140,7 +152,14 @@ describe('Match Top 10 Poison Deck integration', () => {
     };
   };
 
-  /** An active World whose Signature position is the canonical Top 10 mechanic. */
+  /**
+   * Two active Worlds sharing one complete board of mechanics.
+   *
+   * `top10-world` holds the canonical poison deck plus a classic-variant sibling
+   * the server must never draw. `top10-classic-world` holds nothing but classic
+   * variant content, so launching its Top 10 position has nothing playable to
+   * draw — the honest unified analogue of the old variant-level refusal.
+   */
   const seedWorld = async () => {
     const presentation = {
       inputType: 'phone-card-choice',
@@ -189,98 +208,153 @@ describe('Match Top 10 Poison Deck integration', () => {
       status: WorldContentStatus.ACTIVE,
     });
 
-    const world = unwrap<{ id: string }>(
-      await bearer(http().post('/admin/worlds'))
-        .send({ name: 'عالم أفضل 10', slug: 'top10-world' })
-        .expect(201),
-    );
-    // Four active Scopes, because a World occurrence is played from four.
-    const scopes = [] as Array<{ id: string }>;
-    for (const [name, slug] of [
-      ['الدوري', 'top10-league'],
-      ['الكأس', 'top10-cup'],
-      ['القارية', 'top10-continental'],
-      ['الودية', 'top10-friendlies'],
-    ]) {
-      scopes.push(
-        unwrap<{ id: string }>(
-          await bearer(http().post(`/admin/worlds/${world.id}/scopes`))
-            .send({ name, slug, status: WorldContentStatus.ACTIVE })
-            .expect(201),
-        ),
+    /** A World whose four board positions are the mechanics created above. */
+    const createConfiguredWorld = async ({
+      name,
+      slug,
+      scopeNames,
+      seedItems,
+    }: {
+      name: string;
+      slug: string;
+      scopeNames: string[];
+      seedItems: (scopes: Array<{ id: string }>) => Promise<void>;
+    }) => {
+      const world = unwrap<{ id: string }>(
+        await bearer(http().post('/admin/worlds'))
+          .send({ name, slug })
+          .expect(201),
       );
-    }
-    const scope = scopes[0];
-    const configure = (body: Record<string, unknown>) =>
-      bearer(
-        http().post(`/admin/worlds/${world.id}/challenge-configurations`),
-      ).send(body);
-    await configure({
-      challengeTypeId: top10.id,
-      slotKey: WorldChallengeSlotKey.SLOT_1,
-      isEnabled: true,
-    }).expect(201);
-    await configure({
-      challengeTypeId: ryo.id,
-      slotKey: WorldChallengeSlotKey.SLOT_2,
-      isEnabled: true,
-      sortOrder: 1,
-    }).expect(201);
-    await configure({
-      challengeTypeId: secondary.id,
-      slotKey: WorldChallengeSlotKey.SLOT_3,
-      isEnabled: true,
-      sortOrder: 2,
-    }).expect(201);
-    await configure({
-      challengeTypeId: relational.id,
-      slotKey: WorldChallengeSlotKey.SLOT_4,
-      isEnabled: true,
-      sortOrder: 3,
-    }).expect(201);
+      const scopes = [] as Array<{ id: string }>;
+      for (const [index, scopeName] of scopeNames.entries()) {
+        scopes.push(
+          unwrap<{ id: string }>(
+            await bearer(http().post(`/admin/worlds/${world.id}/scopes`))
+              .send({
+                name: scopeName,
+                slug: `${slug}-scope-${index}`,
+                status: WorldContentStatus.ACTIVE,
+              })
+              .expect(201),
+          ),
+        );
+      }
+      const configure = (body: Record<string, unknown>) =>
+        bearer(
+          http().post(`/admin/worlds/${world.id}/challenge-configurations`),
+        ).send(body);
+      await configure({
+        challengeTypeId: top10.id,
+        slotKey: WorldChallengeSlotKey.SLOT_1,
+        isEnabled: true,
+      }).expect(201);
+      await configure({
+        challengeTypeId: ryo.id,
+        slotKey: WorldChallengeSlotKey.SLOT_2,
+        isEnabled: true,
+        sortOrder: 1,
+      }).expect(201);
+      await configure({
+        challengeTypeId: secondary.id,
+        slotKey: WorldChallengeSlotKey.SLOT_3,
+        isEnabled: true,
+        sortOrder: 2,
+      }).expect(201);
+      await configure({
+        challengeTypeId: relational.id,
+        slotKey: WorldChallengeSlotKey.SLOT_4,
+        isEnabled: true,
+        sortOrder: 3,
+      }).expect(201);
+      await seedItems(scopes);
+      await bearer(http().patch(`/admin/worlds/${world.id}`))
+        .send({ status: WorldContentStatus.ACTIVE })
+        .expect(200);
+      return {
+        worldId: String(world.id),
+        scopeIds: scopes.map((entry) => String(entry.id)),
+      };
+    };
 
-    const item = unwrap<{ id: string }>(
-      await bearer(http().post('/admin/content-items'))
-        .send({
-          scopeId: scope.id,
-          prompt: { ar: 'رتّب أفضل عشرة' },
-          compatibleChallengeTypeIds: [top10.id],
-          answerPayload: { mode: ChallengeAnswerMode.TOP_10 },
-          mechanicPayload: poisonDeckPayload(),
-          status: ContentItemStatus.READY,
-        })
-        .expect(201),
-    );
+    const top10World = await createConfiguredWorld({
+      name: 'عالم أفضل 10',
+      slug: 'top10-world',
+      scopeNames: ['الدوري', 'الكأس', 'القارية', 'الودية'],
+      seedItems: async (scopes) => {
+        const [scope, ...rest] = scopes;
+        const item = unwrap<{ id: string }>(
+          await bearer(http().post('/admin/content-items'))
+            .send({
+              scopeId: scope.id,
+              prompt: { ar: 'رتّب أفضل عشرة' },
+              compatibleChallengeTypeIds: [top10.id],
+              answerPayload: { mode: ChallengeAnswerMode.TOP_10 },
+              mechanicPayload: poisonDeckPayload(),
+              status: ContentItemStatus.READY,
+            })
+            .expect(201),
+        );
+        contentItemId = String(item.id);
+        // A classic-variant sibling in the same Scope: the server draws from the
+        // pool through the mechanic's own playability contract, so this one must
+        // never be handed to the deck.
+        await bearer(http().post('/admin/content-items'))
+          .send({
+            scopeId: scope.id,
+            prompt: { ar: 'أفضل عشرة بالنسخة المعتادة' },
+            compatibleChallengeTypeIds: [top10.id],
+            answerPayload: { mode: ChallengeAnswerMode.TOP_10 },
+            mechanicPayload: { variant: 'classic' },
+            status: ContentItemStatus.READY,
+          })
+          .expect(201);
+        for (const [index, entry] of rest.entries()) {
+          await bearer(http().post('/admin/content-items'))
+            .send({
+              scopeId: entry.id,
+              prompt: { ar: `سؤال إضافي ${index}` },
+              compatibleChallengeTypeIds: [ryo.id],
+              answerPayload: {
+                mode: ChallengeAnswerMode.MULTIPLE_CHOICE,
+                options: [
+                  { id: 'right', label: { ar: 'صحيح' } },
+                  { id: 'wrong', label: { ar: 'خطأ' } },
+                ],
+                correctOptionId: 'right',
+              },
+              status: ContentItemStatus.READY,
+            })
+            .expect(201);
+        }
+      },
+    });
 
-    for (const [index, entry] of scopes.slice(1).entries()) {
-      await bearer(http().post('/admin/content-items'))
-        .send({
-          scopeId: entry.id,
-          prompt: { ar: `سؤال إضافي ${index}` },
-          compatibleChallengeTypeIds: [ryo.id],
-          answerPayload: {
-            mode: ChallengeAnswerMode.MULTIPLE_CHOICE,
-            options: [
-              { id: 'right', label: { ar: 'صحيح' } },
-              { id: 'wrong', label: { ar: 'خطأ' } },
-            ],
-            correctOptionId: 'right',
-          },
-          status: ContentItemStatus.READY,
-        })
-        .expect(201);
-    }
-
-    await bearer(http().patch(`/admin/worlds/${world.id}`))
-      .send({
-        status: WorldContentStatus.ACTIVE,
-      })
-      .expect(200);
+    const classicWorld = await createConfiguredWorld({
+      name: 'عالم أفضل 10 كلاسيكي',
+      slug: 'top10-classic-world',
+      scopeNames: ['الموسم', 'النهائيات', 'المنتخبات', 'التجارب'],
+      seedItems: async (scopes) => {
+        for (const [index, scope] of scopes.entries()) {
+          await bearer(http().post('/admin/content-items'))
+            .send({
+              scopeId: scope.id,
+              prompt: { ar: `أفضل عشرة كلاسيكي ${index + 1}` },
+              compatibleChallengeTypeIds: [top10.id],
+              answerPayload: { mode: ChallengeAnswerMode.TOP_10 },
+              mechanicPayload: { variant: 'classic' },
+              status: ContentItemStatus.READY,
+            })
+            .expect(201);
+        }
+      },
+    });
 
     return {
-      worldId: String(world.id),
-      contentItemId: String(item.id),
-      scopeIds: scopes.map((entry) => String(entry.id)),
+      worldId: top10World.worldId,
+      contentItemId,
+      scopeIds: top10World.scopeIds,
+      classicWorldId: classicWorld.worldId,
+      classicScopeIds: classicWorld.scopeIds,
     };
   };
 
@@ -352,29 +426,124 @@ describe('Match Top 10 Poison Deck integration', () => {
     ).revision;
 
   const matchRoute = (sessionId: string, path = '') =>
-    `/live-game-sessions/${sessionId}/match/development${path}`;
+    `/live-game-sessions/${sessionId}/match${path}`;
 
   const snapshotOf = async (sessionId: string) =>
     unwrap<MatchBearingSnapshot>(
       await bearer(http().get(matchRoute(sessionId))).expect(200),
     );
 
-  const command = async (
+  /** All three occurrences are the same poison-deck World, from its four Scopes. */
+  const configuration = () => [
+    { occurrenceIndex: 0, worldId, selectedScopeIds: scopeIds },
+    { occurrenceIndex: 1, worldId, selectedScopeIds: scopeIds },
+    { occurrenceIndex: 2, worldId, selectedScopeIds: scopeIds },
+  ];
+
+  const createUnified = async (
     sessionId: string,
-    path: string,
-    body: Record<string, unknown> = {},
-  ) => {
-    const current = await snapshotOf(sessionId);
-    return unwrap<MatchBearingSnapshot>(
-      await bearer(http().post(matchRoute(sessionId, path)))
-        .send({
-          commandId: uuid(),
-          expectedMatchRevision: current.match.revision,
-          ...body,
-        })
+    occurrences: ReturnType<typeof configuration> = configuration(),
+  ) =>
+    unwrap<MatchBearingSnapshot>(
+      await bearer(http().post(matchRoute(sessionId, '/unified')))
+        .send({ occurrences })
         .expect(201),
     );
+
+  /** One unified challenge command: a position, and nothing else. */
+  const challengeCommand = async (
+    sessionId: string,
+    path: 'prepare' | 'launch' | 'cancel',
+    body: {
+      occurrenceIndex?: number;
+      slotKey?: WorldChallengeSlotKey;
+      selectingTeamId?: string;
+      commandId?: string;
+      expectedMatchRevision?: number;
+    } = {},
+    expected = 201,
+  ) => {
+    const current = await snapshotOf(sessionId);
+    const response = await bearer(
+      http().post(matchRoute(sessionId, `/unified/challenges/${path}`)),
+    )
+      .send({
+        commandId: body.commandId ?? uuid(),
+        expectedMatchRevision:
+          body.expectedMatchRevision ?? current.match.revision,
+        ...(body.occurrenceIndex !== undefined
+          ? { occurrenceIndex: body.occurrenceIndex }
+          : {}),
+        ...(body.slotKey ? { slotKey: body.slotKey } : {}),
+        ...(body.selectingTeamId
+          ? { selectingTeamId: body.selectingTeamId }
+          : {}),
+      })
+      .expect(expected);
+    return unwrap<MatchBearingSnapshot>(response);
   };
+
+  /**
+   * Prepare, then launch — the two-step flow a phone-required mechanic needs.
+   *
+   * No ContentItem id travels in either direction: the server draws the content at
+   * launch, after it has re-checked that the phones are in the room.
+   */
+  const launchUnified = async (
+    sessionId: string,
+    body: {
+      occurrenceIndex: number;
+      slotKey: WorldChallengeSlotKey;
+      selectingTeamId?: string;
+      commandId?: string;
+      expectedMatchRevision?: number;
+    },
+    expected = 201,
+  ) => {
+    const stage = (await snapshotOf(sessionId)).match.stage.key;
+    if (stage !== MatchStage.PREFLIGHT) {
+      const prepared = await challengeCommand(
+        sessionId,
+        'prepare',
+        body,
+        expected === 201 ? 201 : undefined,
+      );
+      // A refusal at prepare is the answer; there is nothing to launch.
+      if ((prepared as unknown as { code?: string }).code) return prepared;
+    }
+    return challengeCommand(
+      sessionId,
+      'launch',
+      {
+        occurrenceIndex: body.occurrenceIndex,
+        slotKey: body.slotKey,
+        ...(body.selectingTeamId
+          ? { selectingTeamId: body.selectingTeamId }
+          : {}),
+      },
+      expected,
+    );
+  };
+
+  /** The ContentItems the server actually bound, read from stored Match state. */
+  const boundContentItemIds = async (
+    sessionId: string,
+    occurrenceIndex: number,
+    slotKey: WorldChallengeSlotKey,
+  ) => {
+    const match = (await app
+      .get<MatchRepository>(MATCH_REPOSITORY)
+      .findActiveBySessionId(sessionId))!;
+    const occurrence = match
+      .serialize()
+      .occurrences.find((entry) => entry.index === occurrenceIndex)!;
+    return occurrence.slots[slotKey]?.contentItemIds ?? [];
+  };
+
+  const positionOf = (snapshot: MatchBearingSnapshot, positionKey: string) =>
+    snapshot.match.unified.board.positions.find(
+      (position) => position.positionKey === positionKey,
+    )!;
 
   const runtimes = () =>
     app.get<GameplayRuntimeRepository>(GAMEPLAY_RUNTIME_REPOSITORY);
@@ -404,54 +573,26 @@ describe('Match Top 10 Poison Deck integration', () => {
     });
   };
 
-  /** The four Scopes the current occurrence draws its content from. */
-  const selectScopes = async (sessionId: string, pool = scopeIds) =>
-    command(sessionId, '/scopes/select', {
-      occurrenceIndex: 0,
-      scopeIds: pool,
-    });
-
-  /** Reaches the board of the first World occurrence. */
-  const matchOnBoard = async (sessionId: string) => {
-    await bearer(http().post(matchRoute(sessionId, '/create'))).expect(201);
-    await command(sessionId, '/start');
-    const tossed = await command(sessionId, '/coin-toss');
-    await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.TEAM_PICK,
-      selectedByTeamId: tossed.match.coinToss.winnerTeamId,
-    });
-    await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.TEAM_PICK,
-      selectedByTeamId: (await snapshotOf(sessionId)).match.worldSelection
-        .nextTeamId,
-    });
-    await command(sessionId, '/worlds/select', {
-      worldId,
-      method: WorldSelectionMethod.AGREED,
-    });
-    return selectScopes(sessionId);
-  };
-
   it('plays a full poison deck through the Match and reconciles it automatically', async () => {
     const { sessionId, participants } = await startSession();
-    const board = await matchOnBoard(sessionId);
-    expect(board.match.stage.key).toBe(MatchStage.BOARD);
-    expect(
-      board.match.board!.slots.find(
-        (slot) => slot.slotKey === WorldChallengeSlotKey.SLOT_1,
-      ),
-    ).toMatchObject({
+    const created = await createUnified(sessionId);
+    expect(created.match.setupMode).toBe(MatchSetupMode.UNIFIED_PRECONFIGURED);
+    expect(created.match.status).toBe(MatchStatus.ACTIVE);
+    expect(created.match.stage.key).toBe(MatchStage.BOARD);
+    expect(positionOf(created, '0#slot_1')).toMatchObject({
       challengeKey: TOP10_MODE_KEY,
       launchability: 'launchable',
     });
+    // The sequential sections are absent rather than filled with a guess.
+    expect(created.match.board).toBeUndefined();
+    expect(created.match.currentOccurrence).toBeUndefined();
+    expect(created.match.scopeSelection).toBeUndefined();
 
-    // 1. Launch through the generic Match challenge-launch route.
-    const launched = await command(sessionId, '/challenges/launch', {
+    // 1. Launch the position through the unified challenge-launch route.
+    const launched = await launchUnified(sessionId, {
       occurrenceIndex: 0,
       slotKey: WorldChallengeSlotKey.SLOT_1,
-      contentItemIds: [contentItemId],
+      selectingTeamId: created.match.unified.selectingTeamId,
     });
     expect(launched.match.stage.key).toBe(MatchStage.CHALLENGE);
     expect(launched.match.currentChallenge).toMatchObject({
@@ -461,11 +602,14 @@ describe('Match Top 10 Poison Deck integration', () => {
     });
     const runtimeId = launched.match.currentChallenge!.runtimeId;
     expect(launched.gameplay?.runtimeId).toBe(runtimeId);
+    expect(positionOf(launched, '0#slot_1').status).toBe(
+      MatchSlotStatus.IN_PROGRESS,
+    );
+    // The server drew exactly the poison deck from the pool — the classic
+    // sibling was filtered out, never played through the Match.
     expect(
-      launched.match.board!.slots.find(
-        (slot) => slot.slotKey === WorldChallengeSlotKey.SLOT_1,
-      )?.status,
-    ).toBe(MatchSlotStatus.IN_PROGRESS);
+      await boundContentItemIds(sessionId, 0, WorldChallengeSlotKey.SLOT_1),
+    ).toEqual([contentItemId]);
 
     // 2. All fourteen assignments, alternating teams, mixing keep, poison, and
     //    one controller-driven timeout that defaults to keep.
@@ -527,11 +671,10 @@ describe('Match Top 10 Poison Deck integration', () => {
     const reconciled = await snapshotOf(sessionId);
     expect(reconciled.match.stage.key).toBe(MatchStage.BOARD);
     expect(reconciled.match.currentChallenge).toBeUndefined();
-    const slot = reconciled.match.board!.slots.find(
-      (candidate) => candidate.slotKey === WorldChallengeSlotKey.SLOT_1,
-    )!;
-    expect(slot.status).toBe(MatchSlotStatus.COMPLETED);
-    expect(slot.runtimeId).toBe(runtimeId);
+    expect(positionOf(reconciled, '0#slot_1').status).toBe(
+      MatchSlotStatus.COMPLETED,
+    );
+    expect(positionOf(reconciled, '0#slot_1').runtimeId).toBe(runtimeId);
 
     // 5. Exactly one Top 10 ScoreEvent was imported, and the summary kept the
     //    mechanic's own internal scores and social metrics.
@@ -570,11 +713,9 @@ describe('Match Top 10 Poison Deck integration', () => {
     expect(reloadedRuntime!.serialize().status).toBe('completed');
     const reloadedSnapshot = await snapshotOf(sessionId);
     expect(reloadedSnapshot.match.scoring.matchTotals).toHaveLength(2);
-    expect(
-      reloadedSnapshot.match.board!.slots.find(
-        (candidate) => candidate.slotKey === WorldChallengeSlotKey.SLOT_1,
-      )?.status,
-    ).toBe(MatchSlotStatus.COMPLETED);
+    expect(positionOf(reloadedSnapshot, '0#slot_1').status).toBe(
+      MatchSlotStatus.COMPLETED,
+    );
     // Nothing private about the deck leaks into the projection.
     const projected = JSON.stringify(reloadedSnapshot.match);
     expect(projected).not.toContain('deckJson');
@@ -583,47 +724,59 @@ describe('Match Top 10 Poison Deck integration', () => {
 
   it('refuses classic Top 10 content and leaves the board position free', async () => {
     const { sessionId } = await startSession();
-    const board = await matchOnBoard(sessionId);
-    const scopeId = unwrap<Array<{ id: string; worldId: string }>>(
-      await bearer(http().get(`/admin/worlds/${worldId}/scopes`)).expect(200),
-    )[0].id;
-    const top10TypeId = board.match.board!.slots.find(
-      (slot) => slot.slotKey === WorldChallengeSlotKey.SLOT_1,
-    )!.challengeTypeId!;
-    const classic = unwrap<{ id: string }>(
-      await bearer(http().post('/admin/content-items'))
-        .send({
-          scopeId,
-          prompt: { ar: 'أفضل عشرة بالنسخة المعتادة' },
-          compatibleChallengeTypeIds: [top10TypeId],
-          answerPayload: { mode: ChallengeAnswerMode.TOP_10 },
-          mechanicPayload: { variant: 'classic' },
-          status: ContentItemStatus.READY,
-        })
-        .expect(201),
+    const created = await createUnified(sessionId, [
+      {
+        occurrenceIndex: 0,
+        worldId: classicWorldId,
+        selectedScopeIds: classicScopeIds,
+      },
+      {
+        occurrenceIndex: 1,
+        worldId: classicWorldId,
+        selectedScopeIds: classicScopeIds,
+      },
+      {
+        occurrenceIndex: 2,
+        worldId: classicWorldId,
+        selectedScopeIds: classicScopeIds,
+      },
+    ]);
+    expect(created.match.stage.key).toBe(MatchStage.BOARD);
+    // The mechanic itself is launchable; it is the content that cannot be played.
+    expect(positionOf(created, '0#slot_1')).toMatchObject({
+      challengeKey: TOP10_MODE_KEY,
+      launchability: 'launchable',
+    });
+
+    // Every item in the pool is the classic variant, which the poison deck never
+    // accepts — so the server has nothing to draw.
+    const refused = await launchUnified(
+      sessionId,
+      { occurrenceIndex: 0, slotKey: WorldChallengeSlotKey.SLOT_1 },
+      400,
+    );
+    expect((refused as unknown as { code: string }).code).toBe(
+      'MATCH_INSUFFICIENT_PLAYABLE_CONTENT',
     );
 
-    const refused = await bearer(
-      http().post(matchRoute(sessionId, '/challenges/launch')),
-    )
-      .send({
-        commandId: uuid(),
-        expectedMatchRevision: board.match.revision,
-        occurrenceIndex: 0,
-        slotKey: WorldChallengeSlotKey.SLOT_1,
-        contentItemIds: [classic.id],
-      })
-      .expect(400);
-    expect(refused.body.code).toBe('TOP10_VARIANT_INVALID');
-
-    // A refused launch never strands the Match in the challenge stage.
+    // A refused launch never strands the Match: no content was bound, no runtime
+    // was created, and the preflight is still held so the host can back out.
     const after = await snapshotOf(sessionId);
-    expect(after.match.stage.key).toBe(MatchStage.BOARD);
+    expect(after.match.stage.key).toBe(MatchStage.PREFLIGHT);
     expect(after.match.currentChallenge).toBeUndefined();
+    expect(positionOf(after, '0#slot_1').status).toBe(
+      MatchSlotStatus.AVAILABLE,
+    );
     expect(
-      after.match.board!.slots.find(
-        (slot) => slot.slotKey === WorldChallengeSlotKey.SLOT_1,
-      )?.status,
-    ).toBe(MatchSlotStatus.AVAILABLE);
+      await boundContentItemIds(sessionId, 0, WorldChallengeSlotKey.SLOT_1),
+    ).toEqual([]);
+    expect(after.gameplay).toBeUndefined();
+
+    // Backing out returns to the board with the position still free.
+    const cancelled = await challengeCommand(sessionId, 'cancel');
+    expect(cancelled.match.stage.key).toBe(MatchStage.BOARD);
+    expect(positionOf(cancelled, '0#slot_1').status).toBe(
+      MatchSlotStatus.AVAILABLE,
+    );
   }, 60_000);
 });
