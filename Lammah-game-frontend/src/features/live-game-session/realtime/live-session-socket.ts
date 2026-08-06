@@ -83,6 +83,11 @@ export class LiveSessionSocket {
       "live-session:turn-changed",
       "live-session:finished",
       "live-session:participant-joined",
+      // A phone coming online is what a challenge preflight is waiting for: the
+      // readiness counts and the Start button are computed from presence, so a
+      // host that ignores this event sits on a stale "not ready" until it
+      // reloads. The server publishes it; nothing else tells us.
+      "live-session:participant-presence-changed",
       "live-session:participant-ready-changed",
       "live-session:participant-team-changed",
       "live-session:participant-removed",

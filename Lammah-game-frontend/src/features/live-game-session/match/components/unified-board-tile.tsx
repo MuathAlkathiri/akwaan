@@ -111,7 +111,16 @@ export function UnifiedBoardTile({
       )}
 
       <div className="flex flex-wrap gap-1.5">
-        <Badge variant="outline">{slotStatusLabels[position.status]}</Badge>
+        {/*
+          Both server fields at once, without contradicting them. A position can be
+          `available` and still have no launcher, and reading "متاح للاختيار" above
+          "غير متاح للعب" told the host two opposite things about one tile.
+        */}
+        <Badge variant="outline">
+          {unplayable
+            ? slotStatusLabels.unavailable
+            : slotStatusLabels[position.status]}
+        </Badge>
         {position.requiresPhones && !completed && (
           <Badge variant="secondary" className="gap-1">
             <Smartphone className="size-3" aria-hidden />

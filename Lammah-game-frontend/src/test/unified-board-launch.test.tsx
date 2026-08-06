@@ -320,6 +320,20 @@ describe("unified board", () => {
     ).toBeNull();
   });
 
+  it("never labels an unlaunchable position as available for selection", () => {
+    renderBoard(unifiedMatch());
+
+    // The server says status=available *and* launchability=configured_but_
+    // unimplemented for this one. The tile must not claim both.
+    const locked = tile("0#slot_1");
+    expect(locked.dataset.status).toBe("available");
+    expect(locked.dataset.launchability).toBe("configured_but_unimplemented");
+    expect(locked.textContent).toContain("غير متاح");
+    expect(locked.textContent).not.toContain("متاح للاختيار");
+    // A genuinely selectable position still says so.
+    expect(tile("0#slot_2").textContent).toContain("متاح للاختيار");
+  });
+
   it("tells a broken position apart from an unimplemented mechanic", () => {
     const positions = OCCURRENCE_WORLDS.flatMap((worldId, occurrenceIndex) =>
       SLOTS.map((slotKey, index) =>

@@ -50,7 +50,9 @@ export function ChallengePreflight({
 
   return (
     <div className="space-y-4" data-testid="challenge-preflight" dir="rtl">
-      <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
+      {/* items-start: a challenge with no description must not stretch its card
+          to the height of the pairing panel and read as an empty box. */}
+      <div className="grid items-start gap-4 lg:grid-cols-[1fr_22rem]">
         <ChallengeBrief
           preflight={preflight}
           selectingTeamName={selectingTeamName}

@@ -74,6 +74,32 @@ describe("Match socket synchronization", () => {
     expect(onResyncing).toHaveBeenCalledTimes(1);
   });
 
+  it("resyncs when a phone's presence changes, which is what a preflight waits on", () => {
+    const client = new LiveSessionSocket();
+    client.connect({
+      sessionId: "session-1",
+      token: "token",
+      onSnapshot: vi.fn(),
+      onConnection: vi.fn(),
+      onError: vi.fn(),
+    });
+    socketHarness.handlers.get("connect")?.();
+    socketHarness.socket.emit.mockClear();
+
+    socketHarness.handlers.get("live-session:participant-presence-changed")?.({
+      participantId: "participant-1",
+      presence: "connected",
+    });
+
+    // Readiness and the Start button are computed from presence, so ignoring
+    // this event leaves the host on a stale "not ready" until it reloads.
+    expect(
+      socketHarness.socket.emit.mock.calls.filter(
+        ([event]) => event === "live-session:request-snapshot",
+      ),
+    ).toHaveLength(1);
+  });
+
   it("adopts a snapshot, then requests another authoritative snapshot on reconnect", () => {
     const onSnapshot = vi.fn();
     const client = new LiveSessionSocket();
