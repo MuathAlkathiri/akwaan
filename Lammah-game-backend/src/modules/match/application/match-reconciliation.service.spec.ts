@@ -6,10 +6,10 @@ import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.constants';
 import { Match, MatchState } from '../domain/match';
 import {
+  MATCH_SLOT_ORDER,
   MatchSlotLaunchability,
   MatchSlotStatus,
   MatchStage,
-  WorldSelectionMethod,
 } from '../domain/match.constants';
 import { MatchRepository } from '../persistence/match.repository';
 import { MatchConcurrencyError } from '../persistence/mongoose-match.repository';
@@ -65,51 +65,35 @@ describe('MatchReconciliationService', () => {
   const now = new Date('2026-01-01T00:00:00.000Z');
 
   const inChallenge = () => {
-    const match = Match.create({
+    const teams = [
+      { id: 'team-alpha', name: 'ألفا' },
+      { id: 'team-beta', name: 'بيتا' },
+    ];
+    const match = Match.createUnified({
       liveSessionId: 'live-session-1',
-      teams: [
-        { id: 'team-alpha', name: 'ألفا' },
-        { id: 'team-beta', name: 'بيتا' },
-      ],
-      now,
-    });
-    match.start({ commandId: 'start', now });
-    match.resolveCoinToss({
-      commandId: 'toss',
-      now,
-      winnerTeamId: 'team-alpha',
-      roll: 0,
-    });
-    for (const [index, method] of [
-      WorldSelectionMethod.TEAM_PICK,
-      WorldSelectionMethod.TEAM_PICK,
-      WorldSelectionMethod.AGREED,
-    ].entries()) {
-      match.selectWorld({
-        commandId: `world-${index}`,
-        now,
+      teams,
+      occurrences: [0, 1, 2].map((index) => ({
+        occurrenceIndex: index,
         worldId: 'world-1',
-        method,
-        ...(method === WorldSelectionMethod.TEAM_PICK
-          ? { selectedByTeamId: index === 0 ? 'team-alpha' : 'team-beta' }
-          : {}),
-        scheduledSlotKeys: [
-          WorldChallengeSlotKey.SLOT_2,
-          WorldChallengeSlotKey.SLOT_3,
-        ],
-      });
-    }
-    // Every occurrence owes its four Scopes before its board opens.
-    match.selectScopes({
-      commandId: 'scopes-0',
+        selectedScopeIds: ['s1', 's2', 's3', 's4'],
+      })),
+      boardPositions: [0, 1, 2].flatMap((index) =>
+        MATCH_SLOT_ORDER.map((slotKey) => ({
+          occurrenceIndex: index,
+          worldId: 'world-1',
+          slotKey,
+          challengeTypeId: 'type-ryo',
+          challengeTypeSlug: CHALLENGE_KEY,
+          displayName: `slot ${slotKey}`,
+        })),
+      ),
+      coinToss: { winnerTeamId: 'team-alpha', roll: 0, resolvedAt: now },
       now,
-      occurrenceIndex: 0,
-      scopeIds: ['s1', 's2', 's3', 's4'],
     });
     match.launchChallenge({
       commandId: 'launch',
       now,
-      occurrenceIndex: match.currentOccurrenceIndex,
+      occurrenceIndex: 0,
       slotKey: WorldChallengeSlotKey.SLOT_2,
       challengeKey: CHALLENGE_KEY,
       runtimeId: RUNTIME_ID,
