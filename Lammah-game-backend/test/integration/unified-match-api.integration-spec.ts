@@ -869,6 +869,34 @@ describe('Unified Match API integration', () => {
       ).toHaveLength(1);
     });
 
+    it('rejects a stale expectedMatchRevision with a conflict', async () => {
+      const { sessionId } = await startSession();
+      const created = await createUnified(sessionId);
+
+      // Preparing bumps the revision; a second command still carrying the
+      // creation revision is stale and refused outright with a conflict.
+      await challengeCommand(sessionId, 'prepare', {
+        occurrenceIndex: 0,
+        slotKey: WorldChallengeSlotKey.SLOT_2,
+      });
+      const stale = await bearer(
+        http().post(matchRoute(sessionId, '/unified/challenges/launch')),
+      )
+        .send({
+          commandId: uuid(),
+          expectedMatchRevision: created.match.revision,
+          occurrenceIndex: 0,
+          slotKey: WorldChallengeSlotKey.SLOT_2,
+        })
+        .expect(409);
+      expect(stale.body.code).toBe('MATCH_STALE_REVISION');
+
+      // The board is untouched: the position is still preflight, nothing launched.
+      const after = await snapshotOf(sessionId);
+      expect(after.match.stage.key).toBe(MatchStage.PREFLIGHT);
+      expect(after.match.revision).toBe(created.match.revision + 1);
+    });
+
     it('refuses a launch claimed by the team whose turn it is not', async () => {
       const { sessionId, teamIds } = await startSession();
       const created = await createUnified(sessionId);
@@ -980,51 +1008,28 @@ describe('Unified Match API integration', () => {
     const { sessionId } = await startSession();
     const created = await createUnified(sessionId);
 
-    // Content that belongs to occurrence 0's pool, offered to occurrence 2.
-    const wrongPool = await bearer(
-      http().post(matchRoute(sessionId, '/challenges/launch')),
-    )
-      .send({
-        commandId: uuid(),
-        expectedMatchRevision: created.match.revision,
-        occurrenceIndex: 2,
-        slotKey: WorldChallengeSlotKey.SLOT_2,
-        contentItemIds: [0, 1, 2].map(
-          (scopeIndex) => anime.itemIdsByScope[scopeIndex][0],
-        ),
-      })
-      .expect(400);
-    expect(wrongPool.body.code).toBe('CONTENT_ITEM_OUTSIDE_SCOPE_POOL');
-
-    // And the same content in the other direction.
-    const otherDirection = await bearer(
-      http().post(matchRoute(sessionId, '/challenges/launch')),
-    )
-      .send({
-        commandId: uuid(),
-        expectedMatchRevision: created.match.revision,
-        occurrenceIndex: 0,
-        slotKey: WorldChallengeSlotKey.SLOT_2,
-        contentItemIds: occurrenceTwoItems(),
-      })
-      .expect(400);
-    expect(otherDirection.body.code).toBe('CONTENT_ITEM_OUTSIDE_SCOPE_POOL');
-
-    // Football content in an Anime occurrence is refused on the World alone.
-    const wrongWorld = await bearer(
-      http().post(matchRoute(sessionId, '/challenges/launch')),
-    )
-      .send({
-        commandId: uuid(),
-        expectedMatchRevision: created.match.revision,
-        occurrenceIndex: 0,
-        slotKey: WorldChallengeSlotKey.SLOT_2,
-        contentItemIds: [0, 1, 2].map(
-          (scopeIndex) => football.itemIdsByScope[scopeIndex][0],
-        ),
-      })
-      .expect(400);
-    expect(wrongWorld.body.code).toBe('CONTENT_ITEM_OUTSIDE_OCCURRENCE_WORLD');
+    // The unified launch route structurally refuses any client-named content, so
+    // no request can cross pools or Worlds: content that belongs to the other
+    // Anime occurrence, and content from the Football World, are both refused by
+    // the DTO before a single Match rule runs.
+    for (const items of [
+      occurrenceTwoItems(),
+      [0, 1, 2].map((scopeIndex) => football.itemIdsByScope[scopeIndex][0]),
+    ]) {
+      const rejected = await bearer(
+        http().post(matchRoute(sessionId, '/unified/challenges/launch')),
+      )
+        .send({
+          commandId: uuid(),
+          expectedMatchRevision: created.match.revision,
+          occurrenceIndex: 0,
+          slotKey: WorldChallengeSlotKey.SLOT_2,
+          // The whole point: the client cannot choose what gets played.
+          contentItemIds: items,
+        })
+        .expect(400);
+      expect(JSON.stringify(rejected.body)).toContain('contentItemIds');
+    }
 
     // Every refusal left the board untouched.
     const after = await snapshotOf(sessionId);
