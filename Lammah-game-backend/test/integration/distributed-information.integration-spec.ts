@@ -43,6 +43,23 @@ import {
 } from '../../src/modules/live-game-sessions/domain/gameplay-runtime.repository';
 import { DistributedResult } from '../../src/modules/live-game-sessions/domain/distributed-information.plugin';
 import { MatchReconciliationService } from '../../src/modules/match/application/match-reconciliation.service';
+import {
+  MatchSetupMode,
+  MatchSlotStatus,
+  MatchStage,
+} from '../../src/modules/match/domain/match.constants';
+import {
+  MATCH_REPOSITORY,
+  MatchRepository,
+} from '../../src/modules/match/persistence/match.repository';
+
+type MatchBearingSnapshot = LiveGameSessionSnapshot & {
+  match: NonNullable<LiveGameSessionSnapshot['match']> & {
+    unified: NonNullable<
+      NonNullable<LiveGameSessionSnapshot['match']>['unified']
+    >;
+  };
+};
 
 /**
  * A real two-team "ركّبها" race over the real runtime.
@@ -62,6 +79,9 @@ describe('distributed-information race integration', () => {
 
   const uuid = () =>
     `${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}`;
+
+  /** The single accepted answer of every ready-content filler. */
+  const FILLER_ACCEPTED_ANSWER = 'نعم';
 
   beforeAll(async () => {
     database = await connectTestDatabase('distributed-information');
@@ -245,7 +265,9 @@ describe('distributed-information race integration', () => {
       expect(index).toBeLessThan(3);
     }
 
-    // Every Scope needs ready content to be selectable for an occurrence.
+    // Every Scope needs ready content to be selectable for an occurrence. The
+    // fillers are genuinely playable ركّبها items too, so a unified draw may
+    // reach one of them; `answerFor` below knows how to answer each.
     for (const [index, entry] of scopes.slice(1).entries()) {
       await bearer(http().post('/admin/content-items'))
         .send({
@@ -254,7 +276,7 @@ describe('distributed-information race integration', () => {
           compatibleChallengeTypeIds: [distributed.id],
           answerPayload: {
             mode: ChallengeAnswerMode.MATCH,
-            acceptedAnswers: ['نعم'],
+            acceptedAnswers: [FILLER_ACCEPTED_ANSWER],
           },
           mechanicPayload: {
             variant: DISTRIBUTED_INFORMATION_VARIANT,
@@ -360,6 +382,126 @@ describe('distributed-information race integration', () => {
       await bearer(http().get(`/live-game-sessions/${sessionId}`)).expect(200),
     ).revision;
 
+  const matchRoute = (sessionId: string, path = '') =>
+    `/live-game-sessions/${sessionId}/match${path}`;
+
+  const snapshotOf = async (sessionId: string) =>
+    unwrap<MatchBearingSnapshot>(
+      await bearer(http().get(matchRoute(sessionId))).expect(200),
+    );
+
+  /** All three occurrences are the same ركّبها World, from its four Scopes. */
+  const configuration = () => [
+    { occurrenceIndex: 0, worldId, selectedScopeIds: matchScopeIds },
+    { occurrenceIndex: 1, worldId, selectedScopeIds: matchScopeIds },
+    { occurrenceIndex: 2, worldId, selectedScopeIds: matchScopeIds },
+  ];
+
+  const createUnified = async (
+    sessionId: string,
+    occurrences: ReturnType<typeof configuration> = configuration(),
+  ) =>
+    unwrap<MatchBearingSnapshot>(
+      await bearer(http().post(matchRoute(sessionId, '/unified')))
+        .send({ occurrences })
+        .expect(201),
+    );
+
+  /** One unified challenge command: a position, and nothing else. */
+  const challengeCommand = async (
+    sessionId: string,
+    path: 'prepare' | 'launch' | 'cancel',
+    body: {
+      occurrenceIndex?: number;
+      slotKey?: WorldChallengeSlotKey;
+      selectingTeamId?: string;
+      commandId?: string;
+      expectedMatchRevision?: number;
+    } = {},
+    expected = 201,
+  ) => {
+    const current = await snapshotOf(sessionId);
+    const response = await bearer(
+      http().post(matchRoute(sessionId, `/unified/challenges/${path}`)),
+    )
+      .send({
+        commandId: body.commandId ?? uuid(),
+        expectedMatchRevision:
+          body.expectedMatchRevision ?? current.match.revision,
+        ...(body.occurrenceIndex !== undefined
+          ? { occurrenceIndex: body.occurrenceIndex }
+          : {}),
+        ...(body.slotKey ? { slotKey: body.slotKey } : {}),
+        ...(body.selectingTeamId
+          ? { selectingTeamId: body.selectingTeamId }
+          : {}),
+      })
+      .expect(expected);
+    return unwrap<MatchBearingSnapshot>(response);
+  };
+
+  /**
+   * Prepare, then launch — the two-step flow a phone-required mechanic needs.
+   *
+   * No ContentItem id travels in either direction: the server draws the content at
+   * launch, after it has re-checked that the phones are in the room.
+   */
+  const launchUnified = async (
+    sessionId: string,
+    body: {
+      occurrenceIndex: number;
+      slotKey: WorldChallengeSlotKey;
+      selectingTeamId?: string;
+      commandId?: string;
+      expectedMatchRevision?: number;
+    },
+    expected = 201,
+  ) => {
+    const stage = (await snapshotOf(sessionId)).match.stage.key;
+    if (stage !== MatchStage.PREFLIGHT) {
+      const prepared = await challengeCommand(
+        sessionId,
+        'prepare',
+        body,
+        expected === 201 ? 201 : undefined,
+      );
+      // A refusal at prepare is the answer; there is nothing to launch.
+      if ((prepared as unknown as { code?: string }).code) return prepared;
+    }
+    return challengeCommand(
+      sessionId,
+      'launch',
+      {
+        occurrenceIndex: body.occurrenceIndex,
+        slotKey: body.slotKey,
+        ...(body.selectingTeamId
+          ? { selectingTeamId: body.selectingTeamId }
+          : {}),
+      },
+      expected,
+    );
+  };
+
+  /** The ContentItems the server actually bound, read from stored Match state. */
+  const boundContentItemIds = async (
+    sessionId: string,
+    occurrenceIndex: number,
+    slotKey: WorldChallengeSlotKey,
+  ) => {
+    const match = (await app
+      .get<MatchRepository>(MATCH_REPOSITORY)
+      .findActiveBySessionId(sessionId))!;
+    const occurrence = match
+      .serialize()
+      .occurrences.find((entry) => entry.index === occurrenceIndex)!;
+    return occurrence.slots[slotKey]?.contentItemIds ?? [];
+  };
+
+  const positionOf = (snapshot: MatchBearingSnapshot, positionKey: string) =>
+    snapshot.match.unified.board.positions.find(
+      (position) => position.positionKey === positionKey,
+    )!;
+
   const launch = (sessionId: string) =>
     bearer(
       http().post(
@@ -402,14 +544,18 @@ describe('distributed-information race integration', () => {
 
   /** The correct answer for whichever puzzle this player is looking at. */
   const answerFor = (prompt: string): string | number => {
-    const puzzle = puzzlePayloads().find((entry) => entry.prompt === prompt)!;
-    if (puzzle.answer.mode === ChallengeAnswerMode.CLOSEST) {
-      return puzzle.answer.correctValue!;
+    const puzzle = puzzlePayloads().find((entry) => entry.prompt === prompt);
+    if (puzzle) {
+      if (puzzle.answer.mode === ChallengeAnswerMode.CLOSEST) {
+        return puzzle.answer.correctValue!;
+      }
+      if (puzzle.answer.mode === ChallengeAnswerMode.MULTIPLE_CHOICE) {
+        return puzzle.answer.correctOptionId!;
+      }
+      return puzzle.answer.acceptedAnswers![0];
     }
-    if (puzzle.answer.mode === ChallengeAnswerMode.MULTIPLE_CHOICE) {
-      return puzzle.answer.correctOptionId!;
-    }
-    return puzzle.answer.acceptedAnswers![0];
+    // A ready-content filler the spread draw reached.
+    return FILLER_ACCEPTED_ANSWER;
   };
 
   /** Plays one puzzle for a team through its assigned answerer. */
@@ -580,81 +726,27 @@ describe('distributed-information race integration', () => {
   it('runs through the Match board and returns to it with one point imported', async () => {
     const { sessionId, teamIds, players } = await startSession(3);
 
-    // A Match owns the board, so the challenge is launched from it.
-    await bearer(
-      http().post(`/live-game-sessions/${sessionId}/match/development/create`),
-    ).expect(201);
-    const matchSnapshot = async () =>
-      unwrap<{ match: Record<string, never> }>(
-        await bearer(
-          http().get(`/live-game-sessions/${sessionId}/match/development`),
-        ).expect(200),
-      ).match as unknown as {
-        revision: number;
-        stage: { key: string };
-        board?: { slots: Array<{ slotKey: string; status: string }> };
-        currentChallenge?: { runtimeId: string; slotKey: string };
-        scoring: {
-          matchTotals: Array<{ teamId: string; signedTotal: number }>;
-        };
-      };
-    const matchCommand = async (
-      path: string,
-      body: Record<string, unknown> = {},
-    ) => {
-      const current = await matchSnapshot();
-      await bearer(
-        http().post(
-          `/live-game-sessions/${sessionId}/match/development${path}`,
-        ),
-      )
-        .send({
-          commandId: uuid(),
-          expectedMatchRevision: current.revision,
-          ...body,
-        })
-        .expect(201);
-    };
+    // A preconfigured Match owns the board; the challenge is launched from it.
+    const created = await createUnified(sessionId);
+    expect(created.match.setupMode).toBe(MatchSetupMode.UNIFIED_PRECONFIGURED);
+    expect(created.match.stage.key).toBe(MatchStage.BOARD);
+    expect(positionOf(created, '0#slot_1').status).toBe(
+      MatchSlotStatus.AVAILABLE,
+    );
 
-    await matchCommand('/start');
-    await matchCommand('/coin-toss');
-    const tossed = await matchSnapshot();
-    void tossed;
-    for (let occurrence = 0; occurrence < 3; occurrence += 1) {
-      const current = await matchSnapshot();
-      const selection = current as unknown as {
-        worldSelection: { nextTeamId?: string; requiresAgreement: boolean };
-      };
-      await matchCommand('/worlds/select', {
-        worldId,
-        method: selection.worldSelection.requiresAgreement
-          ? 'agreed'
-          : 'team_pick',
-        ...(selection.worldSelection.requiresAgreement
-          ? {}
-          : { selectedByTeamId: selection.worldSelection.nextTeamId }),
-      });
-    }
-    // The occurrence draws its content from four Scopes.
-    await matchCommand('/scopes/select', {
-      occurrenceIndex: 0,
-      scopeIds: matchScopeIds,
-    });
-
-    const onBoard = await matchSnapshot();
-    expect(onBoard.stage.key).toBe('board');
-    expect(
-      onBoard.board?.slots.find((slot) => slot.slotKey === 'slot_1'),
-    ).toMatchObject({ status: 'available' });
-
-    await matchCommand('/challenges/launch', {
+    // The host names the position and nothing else: the server draws three
+    // playable ركّبها items from the occurrence's four Scopes — possibly the
+    // ready-content fillers — and plays them as a self-contained race.
+    const playing = await launchUnified(sessionId, {
       occurrenceIndex: 0,
       slotKey: WorldChallengeSlotKey.SLOT_1,
-      contentItemIds,
+      selectingTeamId: created.match.unified.selectingTeamId,
     });
-    const playing = await matchSnapshot();
-    expect(playing.stage.key).toBe('challenge');
-    const runtimeId = playing.currentChallenge!.runtimeId;
+    expect(playing.match.stage.key).toBe(MatchStage.CHALLENGE);
+    const runtimeId = playing.match.currentChallenge!.runtimeId;
+    expect(
+      await boundContentItemIds(sessionId, 0, WorldChallengeSlotKey.SLOT_1),
+    ).toHaveLength(3);
 
     // Play the whole race for one team.
     const alpha = players.filter((player) => player.teamId === teamIds[0]);
@@ -663,15 +755,15 @@ describe('distributed-information race integration', () => {
     await solveCurrentPuzzle(sessionId, alpha);
 
     // Reconciliation ran on its own and the board is open again.
-    const reconciled = await matchSnapshot();
-    expect(reconciled.stage.key).toBe('board');
-    expect(reconciled.currentChallenge).toBeUndefined();
-    expect(
-      reconciled.board?.slots.find((slot) => slot.slotKey === 'slot_1'),
-    ).toMatchObject({ status: 'completed' });
+    const reconciled = await snapshotOf(sessionId);
+    expect(reconciled.match.stage.key).toBe(MatchStage.BOARD);
+    expect(reconciled.match.currentChallenge).toBeUndefined();
+    expect(positionOf(reconciled, '0#slot_1').status).toBe(
+      MatchSlotStatus.COMPLETED,
+    );
     // Exactly one Match point, imported once.
     expect(
-      reconciled.scoring.matchTotals.find(
+      reconciled.match.scoring.matchTotals.find(
         (score) => score.teamId === teamIds[0],
       )?.signedTotal,
     ).toBe(1);
@@ -683,9 +775,11 @@ describe('distributed-information race integration', () => {
       runtimeId,
       runtimeState: runtime,
     });
-    const again = await matchSnapshot();
-    expect(again.revision).toBe(reconciled.revision);
-    expect(again.scoring.matchTotals).toEqual(reconciled.scoring.matchTotals);
+    const again = await snapshotOf(sessionId);
+    expect(again.match.revision).toBe(reconciled.match.revision);
+    expect(again.match.scoring.matchTotals).toEqual(
+      reconciled.match.scoring.matchTotals,
+    );
   }, 180_000);
 
   it('refuses to launch a team that is too small', async () => {
