@@ -4,9 +4,9 @@ import { ScoringRuleRegistry } from '../../scoring/application/scoring-rule.regi
 import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.constants';
 import { Match, MatchState } from '../domain/match';
 import {
+  MATCH_SLOT_ORDER,
   MatchSlotLaunchability,
   MatchStage,
-  WorldSelectionMethod,
 } from '../domain/match.constants';
 import { MatchRepository } from '../persistence/match.repository';
 import { MatchConcurrencyError } from '../persistence/mongoose-match.repository';
@@ -39,7 +39,7 @@ const scoring = new ScoringService(new ScoringRuleRegistry());
 
 const launcher = (): MatchChallengeLauncher => ({
   key: RYO,
-  launchRequirements: { contentItemCount: 3, requiresPhones: true },
+  launchRequirements: { contentItemCount: 3, requiresPhones: false },
   supports: (input) => input.challengeTypeSlug === RYO,
   validateLaunch: () => Promise.resolve(),
   launch: () => Promise.resolve({ runtimeId: 'runtime-1' }),
@@ -92,32 +92,19 @@ describe('MatchUseCases transitions', () => {
           }),
         }),
     } as unknown as LiveGameSessionRepository;
+    // A valid unified board needs all four positions in every occurrence.
+    const worldSchedule = {
+      worldName: 'كرة القدم',
+      slotKeys: [...MATCH_SLOT_ORDER],
+      slots: MATCH_SLOT_ORDER.map((slotKey) => ({
+        slotKey,
+        challengeTypeId: 'type-ryo',
+        challengeTypeSlug: RYO,
+        displayName: `slot ${slotKey}`,
+      })),
+    };
     const worlds = {
-      listSelectableWorlds: () =>
-        Promise.resolve([
-          { worldId: WORLD_ID, name: 'كرة القدم', boardReady: true },
-        ]),
-      scheduleFor: () =>
-        Promise.resolve({
-          slotKeys: [
-            WorldChallengeSlotKey.SLOT_2,
-            WorldChallengeSlotKey.SLOT_3,
-          ],
-          slots: [],
-        }),
-      describeWorld: () =>
-        Promise.resolve({
-          worldId: WORLD_ID,
-          name: 'كرة القدم',
-          boardReady: true,
-          slots: [
-            {
-              slotKey: WorldChallengeSlotKey.SLOT_2,
-              challengeTypeId: 'type-ryo',
-              challengeTypeSlug: RYO,
-            },
-          ],
-        }),
+      scheduleFor: () => Promise.resolve(worldSchedule),
       launchabilityFor: () => MatchSlotLaunchability.LAUNCHABLE,
     } as unknown as MatchWorldCatalog;
     const launchers = new ChallengeLauncherRegistry();
@@ -125,10 +112,7 @@ describe('MatchUseCases transitions', () => {
     // World Content eligibility is proven in its own tests; these assert the
     // transitions, so the pool simply accepts what it is given.
     const contentPool = {
-      listSelectableScopes: () => Promise.resolve([]),
-      assertSelectableScopes: () => Promise.resolve(),
       assertOccurrencePool: () => Promise.resolve(),
-      assertPlayableItems: () => Promise.resolve(),
     } as unknown as MatchContentPool;
     const useCases = new MatchUseCases(
       matches,
@@ -174,91 +158,75 @@ describe('MatchUseCases transitions', () => {
     published: Array<{ payload: Record<string, unknown> }>,
   ): unknown[] => published.map((entry) => entry.payload.reason);
 
-  /** Drives the Match to the board of its first World occurrence. */
-  const toBoard = async (setupResult: ReturnType<typeof setup>) => {
-    const { useCases } = setupResult;
-    await useCases.create({ sessionId: SESSION_ID, actorId: CONTROLLER });
-    await useCases.start(command('start', 0));
-    const tossed = await useCases.resolveCoinToss(command('toss', 1));
-    const winner = tossed.coinToss!.winnerTeamId;
-    const other = tossed.teams.find((team) => team.id !== winner)!.id;
-    await useCases.selectWorld({
-      ...command('w0', 2),
+  /** Three occurrences of the same World, each with its own four Scopes. */
+  const occurrences = () =>
+    [0, 1, 2].map((index) => ({
+      occurrenceIndex: index,
       worldId: WORLD_ID,
-      method: WorldSelectionMethod.TEAM_PICK,
-      selectedByTeamId: winner,
-    });
-    await useCases.selectWorld({
-      ...command('w1', 3),
-      worldId: WORLD_ID,
-      method: WorldSelectionMethod.TEAM_PICK,
-      selectedByTeamId: other,
-    });
-    const selected = await useCases.selectWorld({
-      ...command('w2', 4),
-      worldId: WORLD_ID,
-      method: WorldSelectionMethod.AGREED,
-    });
-    // The board opens only once the occurrence has its four Scopes.
-    return useCases.selectScopes({
-      ...command('scopes-0', selected.revision),
-      occurrenceIndex: 0,
-      scopeIds: ['s1', 's2', 's3', 's4'],
+      selectedScopeIds: ['s1', 's2', 's3', 's4'].map(
+        (scope) => `${scope}-${index}`,
+      ),
+    }));
+
+  /** Creates a fully configured Match, the only way a Match is created now. */
+  const createUnified = async (context: ReturnType<typeof setup>) => {
+    const { useCases } = context;
+    return useCases.createUnified({
+      sessionId: SESSION_ID,
+      actorId: CONTROLLER,
+      occurrences: occurrences(),
     });
   };
+
+  const launch = (
+    context: ReturnType<typeof setup>,
+    commandId: string,
+    expectedMatchRevision: number,
+    slotKey: WorldChallengeSlotKey = WorldChallengeSlotKey.SLOT_2,
+  ) =>
+    context.useCases.launchUnifiedChallenge({
+      ...command(commandId, expectedMatchRevision),
+      occurrenceIndex: 0,
+      slotKey,
+    });
 
   it('announces every authoritative Match change on one channel', async () => {
     const context = setup();
 
-    const board = await toBoard(context);
+    const created = await createUnified(context);
+    const launched = await launch(context, 'launch', created.revision);
 
-    expect(board.stage).toBe(MatchStage.BOARD);
+    expect(launched.stage).toBe(MatchStage.CHALLENGE);
     expect(
       context.published.every((entry) => entry.event === MATCH_CHANGED_EVENT),
     ).toBe(true);
     expect(reasons(context.published)).toEqual([
       'created',
-      'started',
-      'coin-toss-resolved',
-      'world-selected',
-      'world-selected',
-      'world-selection-completed',
-      'scopes-selected',
+      'challenge-launched',
     ]);
   });
 
   it('carries the new authoritative revision and stage, and nothing private', async () => {
     const context = setup();
-    await context.useCases.create({
-      sessionId: SESSION_ID,
-      actorId: CONTROLLER,
-    });
-    const started = await context.useCases.start(command('start', 0));
+    const created = await createUnified(context);
 
     const last = context.published.at(-1)!;
     expect(last.payload).toEqual({
-      matchId: started.id,
-      matchRevision: started.revision,
-      stage: MatchStage.COIN_TOSS,
-      status: started.status,
-      reason: 'started',
+      matchId: created.id,
+      matchRevision: created.revision,
+      stage: MatchStage.BOARD,
+      status: created.status,
+      reason: 'created',
     });
-    // The coin toss result cannot leak before the toss is even resolved.
-    expect(Object.keys(last.payload)).not.toContain('coinToss');
     expect(JSON.stringify(context.published)).not.toContain('contentItem');
   });
 
   it('announces a launched challenge once it is bound and stored', async () => {
     const context = setup();
-    const board = await toBoard(context);
+    const created = await createUnified(context);
     const before = context.published.length;
 
-    const launched = await context.useCases.launchChallenge({
-      ...command('launch', board.revision),
-      occurrenceIndex: 0,
-      slotKey: WorldChallengeSlotKey.SLOT_2,
-      contentItemIds: ['a', 'b', 'c'],
-    });
+    const launched = await launch(context, 'launch', created.revision);
 
     expect(context.published).toHaveLength(before + 1);
     expect(context.published.at(-1)!.payload).toMatchObject({
@@ -270,47 +238,34 @@ describe('MatchUseCases transitions', () => {
 
   it('says nothing when a command is a replay', async () => {
     const context = setup();
-    await context.useCases.create({
-      sessionId: SESSION_ID,
-      actorId: CONTROLLER,
-    });
-    const started = await context.useCases.start(command('start', 0));
+    const created = await createUnified(context);
+    const launched = await launch(context, 'launch', created.revision);
     const before = context.published.length;
 
-    const replay = await context.useCases.start(
-      command('start', started.revision),
-    );
+    const replay = await launch(context, 'launch', launched.revision);
 
-    expect(replay.revision).toBe(started.revision);
+    expect(replay.revision).toBe(launched.revision);
     expect(context.published).toHaveLength(before);
   });
 
   it('says nothing when the client acted on a stale revision', async () => {
     const context = setup();
-    await context.useCases.create({
-      sessionId: SESSION_ID,
-      actorId: CONTROLLER,
-    });
-    await context.useCases.start(command('start', 0));
+    const created = await createUnified(context);
+    await launch(context, 'launch', created.revision);
     const before = context.published.length;
 
     await expect(
-      context.useCases.resolveCoinToss(command('toss', 0)),
+      launch(context, 'launch-2', created.revision),
     ).rejects.toMatchObject({ response: { code: 'MATCH_STALE_REVISION' } });
     expect(context.published).toHaveLength(before);
   });
 
   it('says nothing when the save itself fails', async () => {
     const conflicted = setup({ conflict: true });
-    await conflicted.useCases.create({
-      sessionId: SESSION_ID,
-      actorId: CONTROLLER,
-    });
+    await createUnified(conflicted);
     const before = conflicted.published.length;
 
-    await expect(
-      conflicted.useCases.start(command('start', 0)),
-    ).rejects.toMatchObject({
+    await expect(launch(conflicted, 'launch', 0)).rejects.toMatchObject({
       response: { code: 'MATCH_CONCURRENT_MODIFICATION' },
     });
     expect(conflicted.published).toHaveLength(before);
@@ -320,7 +275,11 @@ describe('MatchUseCases transitions', () => {
     const context = setup();
 
     await expect(
-      context.useCases.create({ sessionId: SESSION_ID, actorId: 'someone' }),
+      context.useCases.createUnified({
+        sessionId: SESSION_ID,
+        actorId: 'someone',
+        occurrences: occurrences(),
+      }),
     ).rejects.toMatchObject({ response: { code: 'MATCH_FORBIDDEN' } });
     expect(context.published).toEqual([]);
   });
