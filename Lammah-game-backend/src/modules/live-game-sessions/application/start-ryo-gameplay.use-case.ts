@@ -30,6 +30,27 @@ import {
 import { Inject } from '@nestjs/common';
 import { RYO_MODE_KEY } from '../domain/ryo-gameplay.plugin';
 
+/**
+ * The authored answer contract as a plain object.
+ *
+ * What the repository hands back is a Mongoose subdocument, whose enumerable own
+ * properties are its internals rather than its fields — so spreading one yields
+ * `$__`, `$__parent` and friends, and silently drops `options` and
+ * `correctOptionId`. Everything downstream of the runtime item reads those two.
+ */
+export function plainAnswerPayload(payload: unknown): Record<string, unknown> {
+  const candidate = payload as { toObject?: () => Record<string, unknown> };
+  const plain =
+    typeof candidate?.toObject === 'function'
+      ? candidate.toObject()
+      : (payload as Record<string, unknown>);
+  const fields = { ...(plain ?? {}) };
+  // Mongoose keeps `_id` on subdocuments; it is not part of the answer contract
+  // and must not travel into a runtime payload.
+  delete fields._id;
+  return fields;
+}
+
 @Injectable()
 export class StartRyoGameplay {
   constructor(
@@ -135,7 +156,11 @@ export class StartRyoGameplay {
       prompt: item!.prompt,
       media: item!.media ?? null,
       answerMode: item!.answerPayload.mode,
-      ...item!.answerPayload,
+      // `answerPayload` is a Mongoose subdocument, and spreading one copies its
+      // internals instead of its fields: `options` and `correctOptionId` never
+      // reached the runtime, so the answering phone was offered an empty choice
+      // list and every answer graded as wrong. Take the plain object.
+      ...plainAnswerPayload(item!.answerPayload),
     }));
     await this.createRuntime.execute({
       sessionId: input.sessionId,

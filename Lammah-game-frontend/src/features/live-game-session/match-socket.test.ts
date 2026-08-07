@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const socketHarness = vi.hoisted(() => {
   type Handler = (...args: unknown[]) => void;
@@ -27,6 +27,7 @@ import { LiveSessionSocket } from "./realtime/live-session-socket";
 
 describe("Match socket synchronization", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     socketHarness.handlers.clear();
     socketHarness.managerHandlers.clear();
     socketHarness.io.mockImplementation(() => socketHarness.socket);
@@ -42,6 +43,10 @@ describe("Match socket synchronization", () => {
     socketHarness.socket.emit.mockClear();
     socketHarness.socket.on.mockClear();
     socketHarness.socket.disconnect.mockClear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("ignores an older Match event and coalesces authoritative resync requests", () => {
@@ -96,6 +101,89 @@ describe("Match socket synchronization", () => {
     expect(
       socketHarness.socket.emit.mock.calls.filter(
         ([event]) => event === "live-session:request-snapshot",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("resends a submission the server refused as stale, with fresh revisions", () => {
+    const client = new LiveSessionSocket();
+    client.connect({
+      sessionId: "session-1",
+      token: "token",
+      onSnapshot: vi.fn(),
+      onConnection: vi.fn(),
+      onError: vi.fn(),
+    });
+    socketHarness.handlers.get("connect")?.();
+    socketHarness.socket.emit.mockClear();
+
+    // Two players answering at once: whoever lands second carries the revision
+    // from before the first one applied, and the server refuses it.
+    client.command(
+      "live-session:interaction-submit",
+      {
+        sessionId: "session-1",
+        commandId: "command-1",
+        clientTimestamp: "2026-08-07T00:00:00.000Z",
+        expectedRuntimeRevision: 6,
+      },
+      () => ({ expectedRuntimeRevision: 7 }),
+    );
+
+    const [, , ack] = socketHarness.socket.emit.mock.calls.at(-1)!;
+    (ack as (value: unknown) => void)({
+      code: "STALE_RUNTIME_REVISION",
+      message: "Expected gameplay runtime revision 6, but current revision is 7",
+    });
+    vi.advanceTimersByTime(500);
+
+    const resent = socketHarness.socket.emit.mock.calls.filter(
+      ([event]) => event === "live-session:interaction-submit",
+    );
+    expect(resent).toHaveLength(2);
+    // Same command id, so a submission that did land is refused as a duplicate.
+    expect(resent[1][1]).toMatchObject({
+      commandId: "command-1",
+      expectedRuntimeRevision: 7,
+    });
+    // And it asked the server for the truth before resending.
+    expect(
+      socketHarness.socket.emit.mock.calls.some(
+        ([event]) => event === "live-session:request-snapshot",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not resend a command the server refused on its merits", () => {
+    const client = new LiveSessionSocket();
+    client.connect({
+      sessionId: "session-1",
+      token: "token",
+      onSnapshot: vi.fn(),
+      onConnection: vi.fn(),
+      onError: vi.fn(),
+    });
+    socketHarness.handlers.get("connect")?.();
+    socketHarness.socket.emit.mockClear();
+    const retry = vi.fn(() => ({ expectedRuntimeRevision: 7 }));
+
+    client.command(
+      "live-session:interaction-submit",
+      {
+        sessionId: "session-1",
+        commandId: "command-2",
+        clientTimestamp: "2026-08-07T00:00:00.000Z",
+      },
+      retry,
+    );
+    const [, , ack] = socketHarness.socket.emit.mock.calls.at(-1)!;
+    (ack as (value: unknown) => void)({ code: "RYO_WRONG_SIDE" });
+    vi.advanceTimersByTime(500);
+
+    expect(retry).not.toHaveBeenCalled();
+    expect(
+      socketHarness.socket.emit.mock.calls.filter(
+        ([event]) => event === "live-session:interaction-submit",
       ),
     ).toHaveLength(1);
   });

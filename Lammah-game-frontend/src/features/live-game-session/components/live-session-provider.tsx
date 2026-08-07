@@ -152,16 +152,31 @@ export function LiveSessionProvider({
   const gameplayCommand = useCallback(
     (action: string, options: GameplayCommandOptions = {}) => {
       if (!state.snapshot?.gameplay) return;
-      socketRef.current?.command(`live-session:${action}`, {
-        sessionId,
-        expectedSessionRevision: state.snapshot.revision,
-        expectedRuntimeRevision: state.snapshot.gameplay.revision,
-        expectedInteractionRevision:
-          state.snapshot.gameplay.activeRound?.interaction?.revision,
-        commandId: crypto.randomUUID(),
-        clientTimestamp: new Date().toISOString(),
-        ...options,
-      });
+      socketRef.current?.command(
+        `live-session:${action}`,
+        {
+          sessionId,
+          expectedSessionRevision: state.snapshot.revision,
+          expectedRuntimeRevision: state.snapshot.gameplay.revision,
+          expectedInteractionRevision:
+            state.snapshot.gameplay.activeRound?.interaction?.revision,
+          commandId: crypto.randomUUID(),
+          clientTimestamp: new Date().toISOString(),
+          ...options,
+        },
+        // Read from the ref, not the closure: the whole point of the retry is
+        // that the revisions captured when the player pressed are out of date.
+        () => {
+          const latest = snapshotRef.current;
+          if (!latest?.gameplay) return undefined;
+          return {
+            expectedSessionRevision: latest.revision,
+            expectedRuntimeRevision: latest.gameplay.revision,
+            expectedInteractionRevision:
+              latest.gameplay.activeRound?.interaction?.revision,
+          };
+        },
+      );
     },
     [sessionId, state.snapshot],
   );

@@ -9,6 +9,26 @@ import type { MatchChangedEvent } from "../match/types";
 
 type SnapshotListener = (snapshot: LiveSessionSnapshot) => void;
 
+/** Long enough for the resynced snapshot to arrive, short enough to feel instant. */
+const RETRY_DELAY_MS = 250;
+
+/**
+ * The codes the server uses when a command was decided against a revision that
+ * has since moved on. They are the only failures worth resending — every other
+ * refusal would fail again for the same reason.
+ */
+const STALE_REVISION_CODES = [
+  "STALE_RUNTIME_REVISION",
+  "STALE_REVISION",
+  "CONCURRENT_UPDATE",
+];
+
+function isStaleRevisionAck(ack: unknown): boolean {
+  if (!ack || typeof ack !== "object") return false;
+  const code = (ack as { code?: unknown }).code;
+  return typeof code === "string" && STALE_REVISION_CODES.includes(code);
+}
+
 export class LiveSessionSocket {
   private socket?: Socket;
   private heartbeat?: number;
@@ -133,11 +153,37 @@ export class LiveSessionSocket {
       clientTimestamp: string;
       [key: string]: unknown;
     },
+    /**
+     * Rebuilds the command against the revisions the client holds *now*.
+     *
+     * Two players answering a blind mechanic at the same moment is the normal
+     * case, not a race to be avoided: whoever arrives second carries the
+     * revision from before the first one landed, and the server rightly refuses
+     * it. Without this the second player's press is simply lost, and the round
+     * waits forever for a submission that was already made.
+     */
+    retryWithFreshRevisions?: () => Record<string, unknown> | undefined,
   ): void {
     if (!this.socket?.connected) {
       throw new Error("Live session connection is not available");
     }
-    this.socket.emit(event, command);
+    if (!retryWithFreshRevisions) {
+      this.socket.emit(event, command);
+      return;
+    }
+    this.socket.emit(event, command, (ack: unknown) => {
+      if (!isStaleRevisionAck(ack)) return;
+      // Take the newest snapshot the server has, then send the same command id
+      // again: a replay of a submission that did land is refused as a duplicate,
+      // so retrying can only ever fix the lost case.
+      this.recoverSnapshot?.();
+      window.setTimeout(() => {
+        const refreshed = retryWithFreshRevisions();
+        if (refreshed && this.socket?.connected) {
+          this.socket.emit(event, { ...command, ...refreshed });
+        }
+      }, RETRY_DELAY_MS);
+    });
   }
 
   disconnect(): void {

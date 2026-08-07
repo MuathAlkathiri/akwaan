@@ -557,11 +557,19 @@ export class GameplayInteractionUseCases {
       command.actor,
       result.now,
     );
-    this.publisher.publishEvent(command.sessionId, 'interaction-changed', {
-      runtimeId: result.runtime.id,
-      runtimeRevision: result.runtime.revision,
-      sessionRevision: result.session.revision,
-    });
+    // `publishEvent` emits the name verbatim, and every client listener is
+    // namespaced. Published bare, this reached nobody: a submission that resolved
+    // an item and opened the next one told no phone about it, so the players sat
+    // on the finished question until something else happened to resync them.
+    this.publisher.publishEvent(
+      command.sessionId,
+      'live-session:interaction-changed',
+      {
+        runtimeId: result.runtime.id,
+        runtimeRevision: result.runtime.revision,
+        sessionRevision: result.session.revision,
+      },
+    );
     // Committed outside the transaction on purpose: reconciliation must never be
     // able to roll back gameplay that already succeeded.
     await this.observers.notifyRuntimeMutated({
