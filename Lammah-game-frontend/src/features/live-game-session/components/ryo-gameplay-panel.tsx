@@ -7,14 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
+import { authoredText, type AuthoredText } from "../authored-text";
 import type { GameplayRuntimeSnapshot } from "../model";
 
+/**
+ * The item as the runtime republishes it — which is as the author wrote it. The
+ * text fields are localized objects, not strings; typing them as strings is what
+ * crashed this panel the first time a read-your-opponent challenge could start.
+ */
 interface RyoItem {
   id: string;
-  prompt: string;
-  media?: { url?: string; altText?: string } | null;
+  prompt: AuthoredText;
+  media?: { url?: string; altText?: AuthoredText } | null;
   answerMode: "multiple_choice" | "closest";
-  options?: Array<{ id: string; label: string }> | null;
+  options?: Array<{ id: string; label: AuthoredText }> | null;
 }
 
 function parseItem(value: unknown): RyoItem | undefined {
@@ -85,11 +91,11 @@ export function RyoGameplayPanel({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={item.media.url}
-                alt={item.media.altText ?? "صورة السؤال"}
+                alt={authoredText(item.media.altText, "صورة السؤال")}
                 className="mx-auto max-h-52 rounded-2xl object-contain"
               />
             )}
-            <h2 className="text-2xl font-black">{item.prompt}</h2>
+            <h2 className="text-2xl font-black">{authoredText(item.prompt)}</h2>
             {role === "answering" && canSubmit && item.answerMode === "multiple_choice" && (
               <div className="grid gap-2 sm:grid-cols-2">
                 {item.options?.map((option) => (
@@ -101,7 +107,7 @@ export function RyoGameplayPanel({
                       submit({ kind: "answer", mode: "multiple_choice", optionId: option.id })
                     }
                   >
-                    {option.label}
+                    {authoredText(option.label)}
                   </Button>
                 ))}
               </div>
