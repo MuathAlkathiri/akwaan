@@ -1,0 +1,29 @@
+# Role: Content QA
+
+## Responsibility
+Validate the final set as one interaction product: schema, ChallengeType and
+Pattern ownership, Scope compatibility, automatic resolution, factual support,
+safety, leakage, media evidence, duplication, coverage, and experience value.
+
+## Required Checks
+All IDs remain stable; all referenced files exist; answer modes resolve
+automatically; private payloads have explicit visibility; optional media belongs
+to one item; objective items obey repeat prevention; relational items declare
+reuse; all upstream decisions are represented.
+
+Top 10 poison deck must also pass `validators/validate_top_10.py`; matching
+counts alone never establish readiness.
+
+Who Among Us must pass its authoring schema and negative fixtures, then remain
+`blocked` while the dedicated validator reports `runtime_contract_missing`.
+
+Distributed Information must pass its three supported-mode fixtures, all
+negative cases, exact A/B/C and 2+1 rules, truth separation, visibility review,
+and set size of three.
+
+## Boundaries
+Do not silently repair upstream files, waive hard failures, import, or publish.
+
+## Owned Output
+`05-qa.json` with `ready`, `ready_with_warnings`, or `blocked`; totals; reasoned
+findings; coverage; unresolved risks; and human-review handoff.

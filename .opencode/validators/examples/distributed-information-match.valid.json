@@ -1,0 +1,68 @@
+{
+  "id": "draft-distributed-link",
+  "scopeId": "media.anime",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "ادمجوا الروابط الخاصة وحددوا الاسم المشترك."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "match",
+    "acceptedAnswers": [
+      "الاسم النموذجي",
+      "اسم نموذجي"
+    ]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "ما الكيان الوحيد الذي تربطه الأدلة الثلاثة؟"
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "دليل عن الانتماء لا يكفي وحده للتحديد."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "دليل عن حدث مشترك بين عدة كيانات."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "دليل زمني يفصل بين المرشحين بعد دمج الوصفين."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "B"
+        ]
+      }
+    ],
+    "supportedTeamSizes": [
+      2,
+      3
+    ],
+    "authorSafetyConfirmation": true
+  },
+  "status": "draft",
+  "metadata": {
+    "sources": [],
+    "validationStatus": "draft",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

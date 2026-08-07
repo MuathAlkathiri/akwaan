@@ -1,0 +1,211 @@
+{
+ "version": 1,
+ "records": [
+  {
+   "batch": "naruto_batch6",
+   "queries": [
+    {
+     "intent": "image: Byakugan eye close-up (Kaguya, ep 459)",
+     "query": "dailyanimeart naruto episode 459 Kaguya byakugan frame",
+     "engine": "dailyanimeart.com",
+     "used": true
+    },
+    {
+     "intent": "image: Shikamaru full-body/frame (ep 492)",
+     "query": "dailyanimeart naruto Shikamaru episode frame",
+     "engine": "dailyanimeart.com",
+     "used": true
+    },
+    {
+     "intent": "image: Tsunade frame (ep 333)",
+     "query": "dailyanimeart naruto Tsunade episode 333 frame",
+     "engine": "dailyanimeart.com",
+     "used": true
+    },
+    {
+     "intent": "image: Guy eight gates frame (ep 420)",
+     "query": "dailyanimeart naruto Guy 8 gates episode 420 frame",
+     "engine": "dailyanimeart.com",
+     "used": true
+    },
+    {
+     "intent": "image: Mount Myoboku toad training (ep 423)",
+     "query": "dailyanimeart naruto Mount Myoboku episode 423 frame",
+     "engine": "dailyanimeart.com",
+     "used": true
+    },
+    {
+     "intent": "video: Madara meteor drops in 4th war",
+     "query": "youtube xOSPEzs5Fro (Madara meteors clip)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "video: Haku ice mirrors vs Naruto/Sasuke",
+     "query": "youtube Kr7QjNpzMJA (Haku ice mirrors clip)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "video: Zabuza final words on the bridge",
+     "query": "youtube HUL2JrUIwdY (Zabuza death scene, subs verified)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "audio: Rasenshuriken SFX",
+     "query": "youtube F7NJ8SjBl9o (Rasenshuriken sound)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "audio: Sadness and Sorrow OST",
+     "query": "ytsearch 'naruto sad music' -> wEWF2xh5E8s (Sadness and Sorrow FULL VERSION)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "audio: Killer Bee rap (rejected: pushed Direct Character ID over cap)",
+     "query": "youtube ZT5ccCjKrB0 (Bee rap)",
+     "engine": "youtube",
+     "used": false
+    }
+   ]
+  },
+  {
+   "batch": "call-of-duty-batch1",
+   "queries": [
+    {
+     "intent": "image: MW2 Rust map gameplay frame",
+     "query": "ytsearch 'mw2 rust map gameplay' -> zp7siHwBEKk",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "image: BO2 Nuketown gameplay frame",
+     "query": "ytsearch 'black ops 2 nuketown gameplay' -> bsp89c_XKkg",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "image: CoD4 Shipment map gameplay frame",
+     "query": "ytsearch 'call of duty 4 shipment map gameplay' -> fLo4z-3_nTU",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "image: MW2 MP5 first-person frame",
+     "query": "ytsearch 'mw2 mp5 gameplay' -> QgI3nDOSNdg",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "image: CoD4 M16 first-person frame",
+     "query": "ytsearch 'call of duty 4 m16a4 gameplay' -> 1lziSZYKPXY",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "image: MW2 Intervention scope frame",
+     "query": "ytsearch 'mw2 intervention sniper gameplay' -> KleJ6myTiQY",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "image: CoD4 Juggernaut perk icon frame",
+     "query": "ytsearch 'mw2 juggernaut perk' -> _RiJm1x7a5E (CoD4 Juggernaut Perk)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "image: MW2 claymore device frame",
+     "query": "ytsearch 'call of duty claymore gameplay' -> CGtQt4eYaPc (COD MW2 claymores)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "audio: BO2 hitmarker sound",
+     "query": "youtube NF7NFslrxFA (Hitmarker BO2)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "audio: MW2 killstreak sound order / Harrier + Sentry",
+     "query": "youtube ftwiTOzwz6I (MW2 killstreak sounds, verified order via description)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "audio: BO1 Zombies Mystery Box SFX",
+     "query": "youtube OH6PWqLH6WQ (Black Ops Zombies Mystery Box Sound Effects)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "audio: BO1 Attack Dogs killstreak SFX",
+     "query": "youtube mxAD1se4aPs (Black Ops Dogs killstreak SFX)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "audio: Richtofen zombies quote",
+     "query": "youtube AaPHimSOCSY (Richtofen quote, subs verified)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "video: MW3 Kill Confirmed dog-tag gameplay",
+     "query": "youtube KXmq_ubywnQ (MW3 Kill Confirmed gameplay, scene-detected)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "video: BO2 Hardpoint gameplay",
+     "query": "youtube JCBSBMpCUFA (BO2 Standoff Hardpoint gameplay)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "video: CoD4 All Ghillied Up mission",
+     "query": "youtube EtwnnsyVs0Q (All Ghillied Up mission walkthrough)",
+     "engine": "youtube",
+     "used": true
+    },
+    {
+     "intent": "video: BO2 scorestreak select UI",
+     "query": "youtube UXlmm3k7PvQ (HOW TO SELECT SWAP ON BLACK OPS 2)",
+     "engine": "youtube",
+     "used": true
+    }
+   ]
+  },
+  {
+   "batch": "call-of-duty-batch1-asset-repair-2026-08-01",
+   "queries": [
+    {
+     "intent": "replacement image: CoD4 Juggernaut Perk icon visually dominant without answer text",
+     "query": "COD4 Juggernaut perk icon / COD4 create a class Juggernaut perk screen",
+     "engine": "wigolo image search + youtube",
+     "selectedSource": "youtube N5K6YYL1S-U frame @60s, cropped to icon",
+     "rejectedCandidates": [
+      "video thumbnail showed Steady Aim rather than Juggernaut",
+      "search result showed World at War armor icon rather than the requested CoD4 Perk"
+     ],
+     "used": true,
+     "blindAssetTest": "pass"
+    },
+    {
+     "intent": "replacement image: MW2 Claymore device visibly held or placed",
+     "query": "Modern Warfare 2 Claymore device gameplay close up / MW2 Claymore placement gameplay",
+     "engine": "wigolo image search + youtube",
+     "selectedSource": "youtube lGn503FAsdw frame @24s",
+     "rejectedCandidates": [
+      "GameReplays placement screenshot did not visibly show a Claymore device"
+     ],
+     "used": true,
+     "blindAssetTest": "pass"
+    }
+   ]
+  }
+ ]
+}

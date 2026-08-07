@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://akwaan.local/schemas/contentitem.schema.json",
+  "title": "Akwaan ContentItem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id", "scopeId", "compatibleChallengeTypeIds", "patternId", "prompt",
+    "answerMode", "interactionPayload", "resolutionPayload", "media",
+    "isReusableAcrossSessions", "metadata"
+  ],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "scopeId": {"type": "string", "pattern": "^[a-z0-9-]+\\.[a-z0-9-]+$"},
+    "compatibleChallengeTypeIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "patternId": {"type": "string"},
+    "prompt": {
+      "type": "object", "additionalProperties": false, "minProperties": 1,
+      "properties": {"ar": {"type": "string"}, "en": {"type": "string"}}
+    },
+    "answerMode": {"enum": ["ryo", "multiple_choice", "closest", "match", "vote", "split", "top_10", "distributed"]},
+    "interactionPayload": {"type": "object"},
+    "resolutionPayload": {"type": "object"},
+    "media": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["type", "path", "visibility", "requiredObservation", "provenance"],
+          "properties": {
+            "type": {"enum": ["image", "audio", "video"]},
+            "path": {"type": "string"},
+            "visibility": {"enum": ["public", "answering_team", "opposing_team", "seat_a", "seat_b"]},
+            "requiredObservation": {"type": "string"},
+            "provenance": {"type": "object"}
+          }
+        }
+      ]
+    },
+    "isReusableAcrossSessions": {"type": "boolean"},
+    "metadata": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sources", "validationStatus"],
+      "properties": {
+        "sources": {"type": "array", "items": {"type": "string"}},
+        "validationStatus": {"enum": ["draft", "reviewed", "ready", "blocked"]},
+        "explanation": {"type": ["string", "null"]},
+        "runtimeContractStatus": {"enum": ["fully_playable", "authoring_only", "runtime_contract_missing"]},
+        "runtimeBlocker": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

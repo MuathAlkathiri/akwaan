@@ -1,0 +1,30 @@
+{
+  "baseFixture": ".opencode/validators/examples/who-among-us.valid-authoring.json",
+  "cases": [
+    {
+      "id": "objective-answer-prompt",
+      "expectedCode": "objective_answer_prompt",
+      "overrides": {"prompt": {"ar": "من في الفريق سجّل أهدافًا أكثر؟"}}
+    },
+    {
+      "id": "sensitive-prompt",
+      "expectedCode": "sensitive_prompt",
+      "overrides": {"prompt": {"ar": "من فيكم وزنه أكبر؟"}}
+    },
+    {
+      "id": "hardcoded-participant",
+      "expectedCode": "hardcoded_participant",
+      "overrides": {"interactionPayload": {"hardcodedParticipantNames": ["أحمد"]}}
+    },
+    {
+      "id": "missing-tie-policy",
+      "expectedCode": "tie_policy_missing",
+      "deletePaths": ["resolutionPayload.tiePolicy"]
+    },
+    {
+      "id": "projection-leakage",
+      "expectedCode": "projection_leakage",
+      "overrides": {"interactionPayload": {"partialTallyVisibility": "public_live"}}
+    }
+  ]
+}

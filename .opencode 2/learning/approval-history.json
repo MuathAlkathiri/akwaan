@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "records": [
+    {
+      "date": "2026-07-31",
+      "subject": "naruto",
+      "catalog": "anime",
+      "question": "ما اسم هذا السلاح الذي يحمله أحد أعضاء أكاتسكي؟",
+      "answer": "ساميهادا",
+      "difficulty": "hard",
+      "mediaType": "image",
+      "questionPattern": "object_identification",
+      "mediaSource": "output/naruto_batch4/images/q8_samehada.png",
+      "sourceType": "generated_reference",
+      "reasonCodes": ["GOOD_OBJECT_QUESTION", "STRONG_MEDIA_DEPENDENCY", "GOOD_VISUAL_DETAIL", "GOOD_DIFFICULTY"],
+      "comment": "This is an excellent Naruto question. The image is necessary, the wording does not expose Kisame or the answer, and Samehada is recognizable without being trivial. Prefer more visual object-identification questions with this level of familiarity.",
+      "scope": "subject",
+      "confidence": 70,
+      "status": "active"
+    },
+    {
+      "date": "2026-07-31",
+      "subject": "naruto",
+      "catalog": "anime",
+      "question": "من هو الهوكاجي الثالث في قرية الورق؟",
+      "answer": "هيروزين ساروتوبي",
+      "difficulty": "easy",
+      "mediaType": "text",
+      "questionPattern": "knowledge_question",
+      "reasonCodes": ["GOOD_KNOWLEDGE_QUESTION", "GOOD_DIFFICULTY", "FUN_DISCUSSION_VALUE"],
+      "comment": "This represents the ideal easy-question difficulty. Hiruzen is important and familiar, but many viewers may need a brief moment to remember his name because he died early. Prefer questions whose answers are known but not immediately active in memory.",
+      "scope": "subject",
+      "confidence": 70,
+      "status": "active"
+    },
+    {
+      "date": "2026-08-01",
+      "subject": "call-of-duty",
+      "catalog": "gaming",
+      "question": "في وضع الزومبي، ما اسم الجهاز الذي يصدر هذا الصوت؟",
+      "answer": "الصندوق الغامض",
+      "difficulty": "easy",
+      "correctedFrom": "medium",
+      "mediaType": "audio",
+      "questionPattern": "sound_recognition",
+      "mediaSource": "output/call-of-duty-batch1/audio/q11_mystery_box.mp3",
+      "sourceType": "original game audio",
+      "reasonCodes": ["GOOD_AUDIO_RECOGNITION", "STRONG_MEDIA_DEPENDENCY", "GOOD_OBJECT_QUESTION", "GOOD_DIFFICULTY"],
+      "comment": "سؤال الصندوق الغامض جميل لكنه سهل.",
+      "normalizedSuccessSignature": "audio-only identification of an iconic Zombies object whose sound alone is distinctive and unmistakable; difficulty corrected from medium to easy (DIFFICULTY_MISCLASSIFIED)",
+      "scope": "subject",
+      "confidence": 70,
+      "status": "active"
+    }
+  ]
+}
