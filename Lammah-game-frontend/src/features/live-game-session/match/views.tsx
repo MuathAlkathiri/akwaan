@@ -13,15 +13,24 @@ export function SharedScreenMatchView() {
 }
 
 /**
- * A player's phone. It carries no participant id: the server already scopes the
- * snapshot and the runtime projection to whoever is asking.
+ * A player's phone.
  *
- * It owns its own surface, because a phone has no page shell around it.
+ * It owns its own surface, because a phone has no page shell around it, and it
+ * stays on this one page for the whole Match: waiting, preflight, gameplay, then
+ * waiting again. The id is only used to name the team on the waiting screen —
+ * the server scopes everything else to whoever is asking.
  */
-export function ParticipantMatchView() {
+export function ParticipantMatchView({
+  participantId,
+}: {
+  participantId?: string;
+}) {
   return (
     <div className="min-h-screen bg-[#fffaf0] px-3 py-4">
-      <MatchStageRouter actor="participant" />
+      <MatchStageRouter
+        actor="participant"
+        {...(participantId ? { participantId } : {})}
+      />
     </div>
   );
 }

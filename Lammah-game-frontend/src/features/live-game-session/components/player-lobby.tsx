@@ -27,7 +27,7 @@ export function PlayerLobby({ participantId }: { participantId: string }) {
     );
   }
   if (snapshot.match) {
-    return <ParticipantMatchView />;
+    return <ParticipantMatchView participantId={participantId} />;
   }
   const team = snapshot.teams.find((item) => item.id === participant.teamId);
   const countdown = snapshot.countdownEndsAt

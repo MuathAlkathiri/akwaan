@@ -15,6 +15,7 @@ import { MatchConnectionBanner } from "./components/match-connection-banner";
 import { UnifiedBoard } from "./components/unified-board";
 import { UnifiedChallengeStage } from "./components/unified-challenge-stage";
 import { UnifiedMatchComplete } from "./components/unified-match-complete";
+import { ParticipantWaiting } from "./components/participant-waiting";
 import { UnifiedPreflightStage } from "./components/unified-preflight-stage";
 import type { MatchActor } from "./types";
 import { isMatchStageKey } from "./types";
@@ -27,7 +28,14 @@ import { isMatchStageKey } from "./types";
  * error rather than mapped onto the board, because silently showing the board for
  * a state the server did not mean is how a host ends up acting on a lie.
  */
-export function MatchStageRouter({ actor }: { actor: MatchActor }) {
+export function MatchStageRouter({
+  actor,
+  participantId,
+}: {
+  actor: MatchActor;
+  /** A phone, so its waiting screen can name the team it belongs to. */
+  participantId?: string;
+}) {
   const { snapshot, error, resync } = useLiveSession();
 
   if (!snapshot) {
@@ -47,23 +55,51 @@ export function MatchStageRouter({ actor }: { actor: MatchActor }) {
 
   const match = snapshot.match;
   const stage = match.stage.key;
+  const isPhone = actor === "participant";
+  // A phone shows the team it belongs to while it waits; it has no other use for
+  // its own identity, because the server already scopes everything else to it.
+  const phoneTeamName = participantId
+    ? snapshot.teams.find(
+        (team) =>
+          team.id ===
+          snapshot.participants.find((person) => person.id === participantId)
+            ?.teamId,
+      )?.name
+    : undefined;
+
   let content: React.ReactNode;
   if (!isMatchStageKey(stage)) {
     content = <UnsupportedStage stage={stage} onResync={resync} />;
   } else if (stage === "board") {
-    content = <UnifiedBoard actor={actor} />;
+    // The board is the host's screen. A phone between challenges waits instead,
+    // on the page it joined on, with its socket open.
+    content = isPhone ? (
+      <ParticipantWaiting {...(phoneTeamName ? { teamName: phoneTeamName } : {})} />
+    ) : (
+      <UnifiedBoard actor={actor} />
+    );
   } else if (stage === "preflight") {
     // The preflight is entirely server state; without it there is nothing to show
     // and nothing to launch.
-    content = match.unified.preflight ? (
-      <UnifiedPreflightStage actor={actor} />
-    ) : (
+    content = !match.unified.preflight ? (
       <UnsupportedStage stage={stage} onResync={resync} />
+    ) : isPhone && !match.unified.preflight.requiresPhones ? (
+      // Being gathered for a challenge that does not want phones would be a lie.
+      <ParticipantWaiting {...(phoneTeamName ? { teamName: phoneTeamName } : {})} />
+    ) : (
+      <UnifiedPreflightStage actor={actor} />
     );
   } else if (stage === "challenge") {
     content = <UnifiedChallengeStage actor={actor} />;
   } else {
-    content = <UnifiedMatchComplete actor={actor} />;
+    content = isPhone ? (
+      <ParticipantWaiting
+        matchComplete
+        {...(phoneTeamName ? { teamName: phoneTeamName } : {})}
+      />
+    ) : (
+      <UnifiedMatchComplete actor={actor} />
+    );
   }
 
   return (
