@@ -130,6 +130,12 @@ function play(
     runtimeId,
     events: events(runtimeId, options.teamId ?? TEAM_A.id, options.delta ?? 1),
   });
+  // A challenge lands on its result, not on the board. Playing a position means
+  // acknowledging the result too.
+  match.continueFromChallengeResult({
+    commandId: `continue-${runtimeId}`,
+    now: NOW,
+  });
   return runtimeId;
 }
 

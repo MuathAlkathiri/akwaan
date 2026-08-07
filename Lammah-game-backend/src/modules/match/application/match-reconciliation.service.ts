@@ -140,6 +140,8 @@ export class MatchReconciliationService
       runtimeId: input.runtimeId,
       events,
       summary: summary.details,
+      winnerTeamId: summary.winnerTeamId ?? null,
+      challengeKey: summary.challengeKey,
     });
     if (!completed) return { outcome: 'already_reconciled', matchId: match.id };
     try {

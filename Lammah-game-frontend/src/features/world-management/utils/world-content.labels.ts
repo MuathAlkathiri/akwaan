@@ -50,7 +50,7 @@ export const ANSWER_MODE_LABEL: Record<ChallengeAnswerMode, string> = {
   vote: "تصويت",
   split: "معلومة مقسّمة",
   distributed: "ركّبها (معلومات موزّعة)",
-  top_10: "أفضل 10",
+  top_5: "أفضل 5",
 };
 
 export const ITEM_STRUCTURE_LABEL: Record<ChallengeItemStructure, string> = {
@@ -89,10 +89,10 @@ export const SCORING_RULE_PRESENTATION: Record<
     description:
       "مكافأة إضافية يمنحها النظام عند إكمال التحدي كاملًا، وليست قاعدة أساسية مستقلة.",
   },
-  "top10.poison-deck.result": {
-    label: "نقطة للفائز في خذها أو دسّها",
+  "top-5.result": {
+    label: "نقطة للفائز في أفضل 5",
     description:
-      "يقارن النظام مجموع البطاقات بعد الكشف ويمنح الفريق الفائز نقطة واحدة؛ التعادل بلا نقاط.",
+      "يمنح النظام نقطة مباراة واحدة للفريق الذي يملك عددًا أكبر من مداخل أفضل 5 الحقيقية. الخمسة لا تنقسم بالتساوي، فلا يوجد تعادل.",
     family: "signature",
   },
 };

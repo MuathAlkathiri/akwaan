@@ -12,6 +12,11 @@ import {
   ChallengeFamily,
   ContentMediaType,
   SESSION_REUSE_EXEMPT_FAMILIES,
+  TOP5_ENTRY_COUNT,
+  TOP5_RANKED_COUNT,
+  TOP5_RANKS,
+  TOP5_TRAP_COUNT,
+  TOP5_VARIANT,
   VoteConsensusRule,
   WorldContentStatus,
 } from './world-content.constants';
@@ -26,6 +31,7 @@ import {
   buildReadinessReport,
   ReadinessReport,
   DistributedInformationPayload,
+  Top5Payload,
 } from './world-content.types';
 
 /**
@@ -76,7 +82,7 @@ export class ContentItemCompatibilityPolicy {
     const referenced = this.resolveChallengeTypes(input, blockers);
     blockers.push(...this.validateChallengeCompatibility(input, referenced));
     blockers.push(...this.validateMedia(input.item));
-    blockers.push(...this.validateTop10Payload(input.item));
+    blockers.push(...this.validateTop5Payload(input.item));
     blockers.push(...this.validateDistributedInformationPayload(input.item));
     warnings.push(...this.reuseWarnings(input.item, referenced));
 
@@ -225,133 +231,123 @@ export class ContentItemCompatibilityPolicy {
     return issues;
   }
 
-  private validateTop10Payload(item: ContentItemView): WorldContentIssue[] {
-    if (item.answerPayload?.mode !== ChallengeAnswerMode.TOP_10) return [];
+  /**
+   * The Top 5 content contract, enforced here and nowhere else.
+   *
+   * Exactly ten entries, exactly five of them ranked 1..5 with no repeats, and
+   * therefore exactly five traps. Ids and normalised labels must be unique, so a
+   * reveal can never show the same thing twice and an ownership record can never
+   * be ambiguous about which entry it refers to.
+   */
+  private validateTop5Payload(item: ContentItemView): WorldContentIssue[] {
+    if (item.answerPayload?.mode !== ChallengeAnswerMode.TOP_5) return [];
     const raw = item.mechanicPayload as
-      | (Partial<
-          Omit<
-            import('./world-content.types').Top10PoisonDeckPayload,
-            'variant'
-          >
-        > & { variant?: string })
+      | (Partial<Omit<Top5Payload, 'variant'>> & { variant?: string })
       | undefined;
-    // Missing variant is the preserved classic pattern. Its established
-    // Question-era contract remains validated by RankedListQuestionPolicy.
-    if (!raw || raw.variant === undefined || raw.variant === 'classic')
-      return [];
-    if (raw.variant !== 'poison-deck') {
+    if (!raw || raw.variant !== TOP5_VARIANT) {
       return [
-        issue('TOP10_VARIANT_INVALID', 'Top 10 variant is not supported'),
+        issue(
+          'TOP5_VARIANT_INVALID',
+          `Top 5 content must declare the "${TOP5_VARIANT}" variant`,
+        ),
       ];
     }
     const issues: WorldContentIssue[] = [];
     if (!raw.title?.trim())
-      issues.push(issue('TOP10_TITLE_REQUIRED', 'Top 10 title is required'));
+      issues.push(issue('TOP5_TITLE_REQUIRED', 'Top 5 title is required'));
     if (!raw.instruction?.trim())
       issues.push(
-        issue(
-          'TOP10_INSTRUCTION_REQUIRED',
-          'Poison deck player instructions are required',
-        ),
+        issue('TOP5_INSTRUCTION_REQUIRED', 'Player instructions are required'),
       );
     if (!raw.rankingBasis?.trim())
       issues.push(
         issue(
-          'TOP10_RANKING_BASIS_REQUIRED',
+          'TOP5_RANKING_BASIS_REQUIRED',
           'An objective ranking basis is required',
         ),
       );
     if (!raw.sourceLabel?.trim())
       issues.push(
-        issue('TOP10_SOURCE_REQUIRED', 'An authoritative source is required'),
+        issue('TOP5_SOURCE_REQUIRED', 'An authoritative source is required'),
       );
     if (!raw.sourceUrl?.trim())
       issues.push(
         issue(
-          'TOP10_SOURCE_URL_REQUIRED',
+          'TOP5_SOURCE_URL_REQUIRED',
           'An authoritative source URL is required',
         ),
       );
     if (!raw.asOfDate?.trim())
       issues.push(
-        issue('TOP10_AS_OF_DATE_REQUIRED', 'The ranking data date is required'),
+        issue('TOP5_AS_OF_DATE_REQUIRED', 'The ranking data date is required'),
       );
-    if (!Array.isArray(raw.candidates) || raw.candidates.length !== 14)
+
+    const entries = Array.isArray(raw.entries) ? raw.entries : [];
+    if (entries.length !== TOP5_ENTRY_COUNT)
       issues.push(
         issue(
-          'TOP10_CANDIDATE_COUNT_INVALID',
-          'Poison deck requires exactly 14 candidates',
+          'TOP5_ENTRY_COUNT_INVALID',
+          `Top 5 requires exactly ${TOP5_ENTRY_COUNT} entries`,
+          { received: entries.length },
         ),
       );
-    if (!Array.isArray(raw.rankedAnswer) || raw.rankedAnswer.length !== 10)
+    const ids = entries.map((entry) => entry?.id?.trim());
+    if (ids.some((id) => !id) || new Set(ids).size !== entries.length)
       issues.push(
         issue(
-          'TOP10_RANKED_COUNT_INVALID',
-          'Poison deck requires exactly 10 ranked candidates',
+          'TOP5_DUPLICATE_ENTRY_ID',
+          'Entry ids must be present and unique',
         ),
       );
-    if (
-      !Array.isArray(raw.decoyCandidateIds) ||
-      raw.decoyCandidateIds.length !== 4
-    )
-      issues.push(
-        issue(
-          'TOP10_DECOY_COUNT_INVALID',
-          'Poison deck requires exactly 4 decoys',
-        ),
-      );
-    const candidates = Array.isArray(raw.candidates) ? raw.candidates : [];
-    const ids = candidates
-      .map((candidate) => candidate.id?.trim())
-      .filter(Boolean);
-    if (new Set(ids).size !== ids.length || ids.length !== candidates.length)
-      issues.push(
-        issue('TOP10_DUPLICATE_CANDIDATE_ID', 'Candidate ids must be unique'),
-      );
-    const labels = candidates.map((candidate) =>
-      normalizeAnswer(candidate.label ?? ''),
-    );
+    const labels = entries.map((entry) => normalizeAnswer(entry?.label ?? ''));
     if (
       labels.some((label) => !label) ||
       new Set(labels).size !== labels.length
     )
       issues.push(
         issue(
-          'TOP10_DUPLICATE_CANDIDATE_LABEL',
-          'Candidate labels must be present and unique',
+          'TOP5_DUPLICATE_ENTRY_LABEL',
+          'Entry labels must be present and unique',
         ),
       );
-    const rankedIds = (raw.rankedAnswer ?? []).map(
-      (entry) => entry.candidateId,
+    // `undefined` is not `null`: an author who forgot to classify an entry must
+    // not silently become an author who declared it a trap.
+    if (entries.some((entry) => entry?.rank === undefined))
+      issues.push(
+        issue(
+          'TOP5_RANK_MISSING',
+          'Every entry must declare a rank of 1..5 or null for a trap',
+        ),
+      );
+    const ranked = entries.filter(
+      (entry) => entry?.rank !== null && entry?.rank !== undefined,
     );
-    const decoys = raw.decoyCandidateIds ?? [];
-    const ranks = (raw.rankedAnswer ?? [])
-      .map((entry) => entry.rank)
-      .sort((a, b) => a - b);
-    if (ranks.join(',') !== '1,2,3,4,5,6,7,8,9,10')
+    const traps = entries.filter((entry) => entry?.rank === null);
+    if (ranked.length !== TOP5_RANKED_COUNT)
       issues.push(
         issue(
-          'TOP10_RANKS_INVALID',
-          'Ranks must be complete and unique from 1 through 10',
+          'TOP5_RANKED_COUNT_INVALID',
+          `Exactly ${TOP5_RANKED_COUNT} entries must carry a rank`,
+          { received: ranked.length },
         ),
       );
-    if (rankedIds.some((id) => decoys.includes(id)))
+    if (traps.length !== TOP5_TRAP_COUNT)
       issues.push(
         issue(
-          'TOP10_CANDIDATE_OVERLAP',
-          'A candidate cannot be both ranked and a decoy',
+          'TOP5_TRAP_COUNT_INVALID',
+          `Exactly ${TOP5_TRAP_COUNT} entries must be traps`,
+          { received: traps.length },
         ),
       );
-    const classified = [...rankedIds, ...decoys];
-    if (
-      classified.length !== 14 ||
-      classified.some((id) => !ids.includes(id)) ||
-      new Set(classified).size !== 14
-    )
+    const ranks = ranked
+      .map((entry) => Number(entry.rank))
+      .sort((left, right) => left - right);
+    if (ranks.join(',') !== TOP5_RANKS.join(','))
       issues.push(
         issue(
-          'TOP10_CLASSIFICATION_INCOMPLETE',
-          'Every candidate must be classified exactly once',
+          'TOP5_RANKS_INVALID',
+          `Ranks must be exactly ${TOP5_RANKS.join(', ')} with no repeats`,
+          { ranks },
         ),
       );
     return issues;
@@ -646,7 +642,7 @@ export class ContentItemCompatibilityPolicy {
         ];
       case ChallengeAnswerMode.RYO:
         return this.validateRyoPayload(payload);
-      case ChallengeAnswerMode.TOP_10:
+      case ChallengeAnswerMode.TOP_5:
         return [];
       default:
         return [

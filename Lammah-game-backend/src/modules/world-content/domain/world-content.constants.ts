@@ -39,7 +39,7 @@ export enum ChallengeAnswerMode {
   MATCH = 'match',
   VOTE = 'vote',
   SPLIT = 'split',
-  TOP_10 = 'top_10',
+  TOP_5 = 'top_5',
   /**
    * "ركّبها" wraps a machine-checkable prompt the way RYO does: the mechanic
    * supplies the private split, and the item keeps whichever answer contract it
@@ -85,6 +85,24 @@ export const CHALLENGE_ITEMS_PER_SLOT = 3;
 /** Match-level selection (roadmap 3). */
 export const MATCH_WORLD_SELECTION_COUNT = 3;
 export const MATCH_MINIMUM_RELATIONAL_CHALLENGE_COUNT = 1;
+
+/**
+ * "أفضل 5" (top-5): ten playable entries handed out one at a time — five real
+ * ranked entries and five traps — with every entry ending up owned by exactly
+ * one team.
+ */
+export const TOP5_SLUG = 'top-5';
+export const TOP5_VARIANT = 'keep-or-give';
+/** Every Top 5 challenge plays exactly this many entries. */
+export const TOP5_ENTRY_COUNT = 10;
+/** Exactly five of them carry an authoritative rank. */
+export const TOP5_RANKED_COUNT = 5;
+/** The ranks those five must hold, exactly once each. */
+export const TOP5_RANKS: readonly number[] = [1, 2, 3, 4, 5];
+/** The remaining five score nothing. */
+export const TOP5_TRAP_COUNT = TOP5_ENTRY_COUNT - TOP5_RANKED_COUNT;
+/** Seconds one team has to decide keep-or-give on the card in front of it. */
+export const TOP5_TURN_SECONDS = 15;
 
 /**
  * "ركّبها" (distributed-information): three private segments per item, one
@@ -170,7 +188,7 @@ export const ANSWER_MODE_COMPATIBLE_ITEM_MODES: Readonly<
   [ChallengeAnswerMode.MATCH]: [ChallengeAnswerMode.MATCH],
   [ChallengeAnswerMode.VOTE]: [ChallengeAnswerMode.VOTE],
   [ChallengeAnswerMode.SPLIT]: [ChallengeAnswerMode.SPLIT],
-  [ChallengeAnswerMode.TOP_10]: [ChallengeAnswerMode.TOP_10],
+  [ChallengeAnswerMode.TOP_5]: [ChallengeAnswerMode.TOP_5],
   [ChallengeAnswerMode.DISTRIBUTED]: [
     ChallengeAnswerMode.MATCH,
     ChallengeAnswerMode.MULTIPLE_CHOICE,

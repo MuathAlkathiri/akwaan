@@ -28,9 +28,13 @@ import { ScoringService } from '../../scoring/application/scoring.service';
 import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 import {
   advanceRyoChallengeState,
+  openRyoItemAssignments,
   RYO_MODE_KEY,
   ryoAnsweringTeam,
+  ryoAssignments,
+  withRyoAssignments,
 } from '../domain/ryo-gameplay.plugin';
+import { eligibleParticipantsOf } from './start-top5.use-case';
 
 export interface InteractionMutationCommand {
   sessionId: string;
@@ -187,6 +191,7 @@ export class GameplayInteractionUseCases {
               command.payload,
               actorProjection,
               interaction.prompt,
+              state.runtimeState,
             )
           : plugin.validateSubmission(command.payload);
         runtime.submitInteraction({
@@ -312,21 +317,38 @@ export class GameplayInteractionUseCases {
     const starting = String(runtimeState.startingTeamId);
     const answeringTeamId = ryoAnsweringTeam(teams, starting, nextIndex);
     const opposingTeamId = teams.find((id) => id !== answeringTeamId)!;
+    // Both teams act once per item, so both rotations advance here — and a
+    // player who has since disconnected is skipped rather than left holding an
+    // action nobody can take.
+    const participants = eligibleParticipantsOf(session.serialize());
+    const opened = openRyoItemAssignments({
+      state: ryoAssignments(runtimeState),
+      answeringTeamId,
+      opposingTeamId,
+      participants,
+    });
+    const advancedRuntimeState = withRyoAssignments(
+      { ...runtimeState, phase: 'collecting' },
+      opened.state,
+    );
     runtime.applyModeState({
       commandId: `${events[0].id}:advance`,
       actorId: 'system',
-      runtimeState: { ...runtimeState, phase: 'collecting' },
+      runtimeState: advancedRuntimeState,
       roundState: {
         phase: 'collecting',
         itemIndex: nextIndex,
         answeringTeamId,
         opposingTeamId,
+        answererParticipantId: opened.answererParticipantId,
+        deciderParticipantId: opened.deciderParticipantId,
       },
       eventType: 'ryo-item-advanced',
       eventPayload: { itemIndex: nextIndex },
       now,
       sessionRevision: session.revision,
       activeTeamId: answeringTeamId,
+      activeParticipantId: opened.answererParticipantId,
     });
     const plugin = this.requireInteractionPlugin(runtime);
     const item = { ...items[nextIndex], itemIndex: nextIndex };
@@ -338,7 +360,12 @@ export class GameplayInteractionUseCases {
           roundId: round.id,
           activeTeamId: answeringTeamId,
         },
-        { itemJson: JSON.stringify(item), opposingTeamId },
+        {
+          itemJson: JSON.stringify(item),
+          opposingTeamId,
+          answererParticipantId: opened.answererParticipantId,
+          deciderParticipantId: opened.deciderParticipantId,
+        },
         now,
       ),
       `${events[0].id}:prompt`,

@@ -49,10 +49,27 @@ export function RyoGameplayPanel({
   );
   const remainingMs = useInteractionDeadline(prompt?.deadlineAt, terminal);
   const alreadySubmitted = Boolean(interaction?.submissions.length);
+  // The server names one authoritative answerer and one authoritative
+  // Trust/Steal decision-maker per item. Submission authorisation alone is
+  // team-wide, so without this every teammate would be offered a button the
+  // server would then refuse.
+  //
+  // The server answers this per actor and against the live runtime, so a
+  // disconnect handoff moves the controls with the assignment.
+  const isAssignedActor = prompt?.payload.isAssignedActor === true;
   const canSubmit =
     runtime.availableActions.includes("submission:create") &&
+    isAssignedActor &&
     !alreadySubmitted &&
     connection === "connected";
+  const deciderName = (participantId: unknown) =>
+    snapshot?.participants.find((person) => person.id === participantId)
+      ?.displayName ?? "";
+  const assignedName = deciderName(
+    role === "answering"
+      ? prompt?.payload.answererParticipantId
+      : prompt?.payload.deciderParticipantId,
+  );
   const itemIndex = Number(runtime.modeState.currentItemIndex ?? 0);
   const answeringTeamId = String(round?.modeState.answeringTeamId ?? "");
   const opposingTeamId = String(round?.modeState.opposingTeamId ?? "");
@@ -97,7 +114,10 @@ export function RyoGameplayPanel({
             )}
             <h2 className="text-2xl font-black">{authoredText(item.prompt)}</h2>
             {role === "answering" && canSubmit && item.answerMode === "multiple_choice" && (
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div
+                className="grid gap-2 sm:grid-cols-2"
+                data-testid="ryo-answer-controls"
+              >
                 {item.options?.map((option) => (
                   <Button
                     key={option.id}
@@ -113,7 +133,10 @@ export function RyoGameplayPanel({
               </div>
             )}
             {role === "answering" && canSubmit && item.answerMode === "closest" && (
-              <div className="mx-auto flex max-w-sm gap-2">
+              <div
+                className="mx-auto flex max-w-sm gap-2"
+                data-testid="ryo-answer-controls"
+              >
                 <Input
                   dir="ltr"
                   inputMode="decimal"
@@ -130,7 +153,10 @@ export function RyoGameplayPanel({
               </div>
             )}
             {role === "opposing" && canSubmit && (
-              <div className="grid grid-cols-2 gap-3">
+              <div
+                className="grid grid-cols-2 gap-3"
+                data-testid="ryo-decision-controls"
+              >
                 <Button size="lg" onClick={() => submit({ kind: "decision", decision: "trust" })}>
                   أثق بإجابته
                 </Button>
@@ -144,8 +170,15 @@ export function RyoGameplayPanel({
               </div>
             )}
             {(role === "spectator" || alreadySubmitted || !canSubmit) && !terminal && (
-              <p className="rounded-xl bg-slate-100 p-4 text-slate-600">
-                {alreadySubmitted ? "تم استلام اختيارك. بانتظار الطرف الآخر…" : "بانتظار اختيارات الفريقين…"}
+              <p
+                className="rounded-xl bg-slate-100 p-4 text-slate-600"
+                data-testid="ryo-waiting"
+              >
+                {alreadySubmitted
+                  ? "تم استلام اختيارك. بانتظار الطرف الآخر…"
+                  : !isAssignedActor && role !== "spectator" && assignedName
+                    ? `${assignedName} هو صاحب القرار في هذه الفقرة. ناقشوها معه.`
+                    : "بانتظار اختيارات الفريقين…"}
               </p>
             )}
           </section>

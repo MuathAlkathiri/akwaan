@@ -38,12 +38,12 @@ import {
   SubmitGameplayCommandDto,
   StartDistributedInformationDto,
   StartRyoGameplayDto,
-  StartTop10PoisonDeckDto,
+  StartTop5Dto,
 } from './gameplay-runtime.dto';
 import { LiveSessionHttpExceptionFilter } from './live-session-http-exception.filter';
 import { StartBombGameplay } from '../application/start-bomb-gameplay.use-case';
 import { StartRyoGameplay } from '../application/start-ryo-gameplay.use-case';
-import { StartTop10PoisonDeck } from '../application/start-top10-poison-deck.use-case';
+import { StartTop5 } from '../application/start-top5.use-case';
 import { StartDistributedInformation } from '../application/start-distributed-information.use-case';
 
 @ApiTags('live-gameplay-runtime')
@@ -67,7 +67,7 @@ export class GameplayRuntimeController {
     private readonly cancelRuntime: CancelGameplayRuntime,
     private readonly startBomb: StartBombGameplay,
     private readonly startRyo: StartRyoGameplay,
-    private readonly startTop10: StartTop10PoisonDeck,
+    private readonly startTop5: StartTop5,
     private readonly startDistributed: StartDistributedInformation,
   ) {}
 
@@ -84,13 +84,13 @@ export class GameplayRuntimeController {
     });
   }
 
-  @Post('development/top-10/poison-deck/start')
-  top10PoisonDeckStart(
+  @Post('development/top-5/start')
+  top5Start(
     @Param('sessionId') sessionId: string,
-    @Body() body: StartTop10PoisonDeckDto,
+    @Body() body: StartTop5Dto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.startTop10.execute({ sessionId, actorId: user.id, ...body });
+    return this.startTop5.execute({ sessionId, actorId: user.id, ...body });
   }
 
   @Post('development/distributed-information/start')

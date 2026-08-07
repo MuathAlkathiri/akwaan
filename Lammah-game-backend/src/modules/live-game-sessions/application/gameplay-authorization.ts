@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   GameplayAuthorizationRequirement,
   GameplayModePlugin,
+  MODE_COMMAND_TYPES,
 } from '../domain/gameplay-mode.plugin';
 import { GameplayRuntimeState } from '../domain/gameplay-runtime';
 import { LiveGameSessionState } from '../domain/live-game-session';
@@ -94,15 +95,7 @@ export class GameplayAuthorization {
         actions.push('runtime:cancel');
       }
     }
-    for (const commandType of [
-      'advance-phase',
-      'submit-answer',
-      'skip',
-      'expire-team',
-      'assign-card',
-      'timeout-card',
-      'reveal-next',
-    ]) {
+    for (const commandType of MODE_COMMAND_TYPES) {
       const modeCommand = plugin.command(commandType);
       if (
         modeCommand &&

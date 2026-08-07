@@ -180,6 +180,7 @@ export class GameplayRuntimeSnapshotMapper {
                             interactionPlugin.projectPrompt(
                               interaction.prompt,
                               projectionActor,
+                              state.runtimeState,
                             ) ?? {},
                           visibleFrom:
                             interaction.prompt.visibleFrom?.toISOString(),

@@ -39,6 +39,17 @@ export enum MatchStage {
   PREFLIGHT = 'preflight',
   /** Wraps a mechanic runtime; the plugin owns its own internal phases. */
   CHALLENGE = 'challenge',
+  /**
+   * The challenge is over, scored, and recorded — and the Match is deliberately
+   * still standing on it.
+   *
+   * A finished mechanic used to drop the host straight back on the board, which
+   * left nowhere to show what actually happened. This stage is authoritative and
+   * persisted: a refresh during the reveal restores the reveal, and only an
+   * explicit continue command moves on. Scoring already happened when the stage
+   * was entered, so continuing can never award a point twice.
+   */
+  CHALLENGE_RESULT = 'challenge_result',
   MATCH_COMPLETE = 'match_complete',
 }
 
@@ -75,7 +86,7 @@ export const MATCH_WORLD_OCCURRENCE_COUNT = 3;
 /** Item cardinality each launchable mechanic requires from content selection. */
 export const MATCH_CONTENT_CARDINALITY: Readonly<Record<string, number>> = {
   'read-your-opponent': 3,
-  'top-10': 1,
+  'top-5': 1,
 };
 
 /**
@@ -106,6 +117,11 @@ export const MATCH_STAGE_PRESENTATION: Readonly<
     minimumDisplayDurationMs: 0,
     audioCue: null,
     animationCue: 'challenge-intro',
+  },
+  [MatchStage.CHALLENGE_RESULT]: {
+    minimumDisplayDurationMs: 0,
+    audioCue: 'challenge-result',
+    animationCue: 'ownership-reveal',
   },
   [MatchStage.MATCH_COMPLETE]: {
     minimumDisplayDurationMs: 6000,

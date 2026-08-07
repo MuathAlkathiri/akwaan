@@ -120,20 +120,65 @@ export class RyoChallengeLauncher
     return runtime.runtimeState?.phase === 'completed';
   }
 
+  /**
+   * Everything the recap needs to explain all three interactions.
+   *
+   * Each item carries who answered, what they answered, whether it was right,
+   * who made the blind Trust/Steal call, and the points that moved. The winner is
+   * the mechanic's own conclusion — the sum of the events it minted — not
+   * something the Match or a client works out afterwards.
+   */
   buildCompletionSummary(
     runtime: GameplayRuntimeState,
   ): MatchChallengeCompletionSummary {
     const results = this.parseList(runtime.runtimeState?.resultsJson);
+    const totals = new Map<string, number>();
+    const items = results.map((result, index) => {
+      const event = this.parseEvent(result.scoreEventJson);
+      const teamId =
+        typeof event?.teamId === 'string' ? event.teamId : undefined;
+      const delta = typeof event?.delta === 'number' ? event.delta : 0;
+      if (teamId) totals.set(teamId, (totals.get(teamId) ?? 0) + delta);
+      return {
+        itemIndex: Number(result.itemIndex ?? index),
+        prompt: result.promptText ?? null,
+        answeringTeamId: result.answeringTeamId ?? null,
+        answererParticipantId: result.answererParticipantId ?? null,
+        selectedAnswer: result.selectedAnswer ?? null,
+        correctAnswer: result.correctAnswer ?? null,
+        correct: result.correct ?? null,
+        opposingTeamId: result.opposingTeamId ?? null,
+        deciderParticipantId: result.deciderParticipantId ?? null,
+        decision: result.decision ?? null,
+        points: teamId ? [{ teamId, points: delta }] : [],
+      };
+    });
+    const ranked = [...totals.entries()].sort(
+      (left, right) => right[1] - left[1],
+    );
+    // RYO's payoff matrix can genuinely tie, unlike Top 5; a tie declares no
+    // winner rather than inventing one.
+    const winnerTeamId =
+      ranked.length && (ranked.length === 1 || ranked[0][1] > ranked[1][1])
+        ? ranked[0][0]
+        : null;
     return {
       challengeKey: this.key,
-      details: {
-        itemsPlayed: results.length,
-        items: results.map((result) => ({
-          correct: result.correct ?? null,
-          decision: result.decision ?? null,
-        })),
-      },
+      winnerTeamId,
+      details: { itemsPlayed: results.length, items },
     };
+  }
+
+  private parseEvent(value: unknown): Record<string, unknown> | undefined {
+    if (typeof value !== 'string' || !value) return undefined;
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return parsed && typeof parsed === 'object'
+        ? (parsed as Record<string, unknown>)
+        : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   private parseList(value: unknown): Array<Record<string, unknown>> {

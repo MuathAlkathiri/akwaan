@@ -86,8 +86,8 @@ describe('player catalog HTTP integration', () => {
 
     const mechanics = [
       await challengeType(
-        'أفضل 10',
-        'player-top-10',
+        'أفضل 5',
+        'player-top-5',
         ChallengeFamily.SIGNATURE,
         ChallengeAnswerMode.MULTIPLE_CHOICE,
         SCORING_RULE_IDS.SIGNATURE_DECLARED_BY_MECHANIC,

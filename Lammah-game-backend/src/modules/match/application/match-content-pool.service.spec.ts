@@ -116,7 +116,7 @@ describe('MatchContentPool', () => {
       item('outside', 'unselected-scope'),
       item('draft', 's1', { status: ContentItemStatus.DRAFT }),
       item('other-mechanic', 's1', {
-        compatibleChallengeTypeIds: ['type-top10'],
+        compatibleChallengeTypeIds: ['type-top5'],
       }),
     ];
 
@@ -233,7 +233,7 @@ describe('MatchContentPool', () => {
   });
 
   describe('validating one configured occurrence pool', () => {
-    const board = ['type-ryo', 'type-top10', 'type-relational', 'type-coop'];
+    const board = ['type-ryo', 'type-top5', 'type-relational', 'type-coop'];
     const assertPool = (
       scopeIds: string[],
       options: Parameters<typeof pool>[0] = {},

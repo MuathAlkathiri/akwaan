@@ -61,6 +61,10 @@ export function UnifiedBoardTile({
     <article
       data-testid={`unified-position-${position.positionKey}`}
       data-status={position.status}
+      // The mechanic and its progress, addressable from a driven browser without
+      // reading Arabic display copy that authors are free to change.
+      data-challenge-key={position.challengeKey}
+      data-position-status={position.status}
       data-launchability={position.launchability}
       className={cn(
         "flex h-full flex-col gap-3 rounded-2xl border p-4 transition",

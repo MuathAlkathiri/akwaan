@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MATCH_SETUP_ROUTE } from "@/features/match-setup/routes";
 import { RyoGameplayPanel } from "../components/ryo-gameplay-panel";
-import { Top10PoisonDeckPanel } from "../components/top10-poison-deck-panel";
+import { Top5Panel } from "../components/top5-panel";
 import { DistributedInformationPanel } from "../components/distributed-information-panel";
 import { DistributedInformationScreen } from "../components/distributed-information-screen";
 import { DISTRIBUTED_INFORMATION_MODE_KEY } from "./distributed-information.presentation";
 import { useLiveSession } from "../hooks/live-session-context";
 import { MatchConnectionBanner } from "./components/match-connection-banner";
 import { UnifiedBoard } from "./components/unified-board";
+import { UnifiedChallengeResultStage } from "./components/unified-challenge-result-stage";
 import { UnifiedChallengeStage } from "./components/unified-challenge-stage";
 import { UnifiedMatchComplete } from "./components/unified-match-complete";
 import { ParticipantWaiting } from "./components/participant-waiting";
@@ -23,10 +24,13 @@ import { isMatchStageKey } from "./types";
 /**
  * The only Match router.
  *
- * A Match has four stages and this switch has four branches. Anything else — an
+ * A Match has five stages and this switch has five branches. Anything else — an
  * unknown key, or a stage whose projection is missing — is reported as a recovery
  * error rather than mapped onto the board, because silently showing the board for
  * a state the server did not mean is how a host ends up acting on a lie.
+ *
+ * `challenge_result` is a real stage, not a frontend interlude: the server is
+ * standing on it too, so a refresh during a reveal comes back to the reveal.
  */
 export function MatchStageRouter({
   actor,
@@ -91,6 +95,19 @@ export function MatchStageRouter({
     );
   } else if (stage === "challenge") {
     content = <UnifiedChallengeStage actor={actor} />;
+  } else if (stage === "challenge_result") {
+    // A phone gets one screen that is both the result and the wait for whatever
+    // comes next — no second page, no redirect, same socket.
+    content = isPhone ? (
+      <ParticipantWaiting
+        {...(match.challengeResult
+          ? { challengeResult: match.challengeResult }
+          : {})}
+        {...(phoneTeamName ? { teamName: phoneTeamName } : {})}
+      />
+    ) : (
+      <UnifiedChallengeResultStage actor={actor} />
+    );
   } else {
     content = isPhone ? (
       <ParticipantWaiting
@@ -221,8 +238,8 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
   switch (runtime.mode.key) {
     case "read-your-opponent":
       return <RyoGameplayPanel runtime={runtime} />;
-    case "top-10":
-      return <Top10PoisonDeckPanel runtime={runtime} />;
+    case "top-5":
+      return <Top5Panel runtime={runtime} />;
     case DISTRIBUTED_INFORMATION_MODE_KEY:
       return actor === "participant" ? (
         <DistributedInformationPanel runtime={runtime} />

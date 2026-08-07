@@ -578,8 +578,16 @@ describe('Match API integration', () => {
     expect(midway.match.stage.key).toBe(MatchStage.CHALLENGE);
     await playRyoItem(sessionId, participants);
 
+    // Nobody sent a "finish challenge" command: the runtime said it was done —
+    // and the Match stopped on its result instead of returning to the board.
+    const resolved = await snapshotOf(sessionId);
+    expect(resolved.match.stage.key).toBe(MatchStage.CHALLENGE_RESULT);
+    expect(resolved.match.challengeResult).toMatchObject({
+      challengeKey: 'read-your-opponent',
+    });
+    expect(resolved.match.challengeHistory).toHaveLength(1);
+    await command(sessionId, '/unified/challenges/continue');
     const reconciled = await snapshotOf(sessionId);
-    // Nobody sent a "finish challenge" command: the runtime said it was done.
     expect(reconciled.match.stage.key).toBe(MatchStage.BOARD);
     expect(reconciled.match.currentChallenge).toBeUndefined();
     const slot = position(reconciled.match, 0, WorldChallengeSlotKey.SLOT_2);
@@ -604,6 +612,9 @@ describe('Match API integration', () => {
       'created',
       'challenge-launched',
       'challenge-completed',
+      // Leaving the result is its own announced transition, because it is its
+      // own authoritative stage change rather than a client-side dismissal.
+      'result-acknowledged',
     ]);
     expect(matchEvents(sessionId).at(-1)!.payload).toMatchObject({
       matchRevision: reconciled.match.revision,

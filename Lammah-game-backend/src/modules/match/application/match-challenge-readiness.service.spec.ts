@@ -5,7 +5,7 @@ import {
 } from './match-challenge-readiness.service';
 import { DistributedInformationChallengeLauncher } from './distributed-information-challenge.launcher';
 import { RyoChallengeLauncher } from './ryo-challenge.launcher';
-import { Top10PoisonDeckChallengeLauncher } from './top10-poison-deck-challenge.launcher';
+import { Top5ChallengeLauncher } from './top5-challenge.launcher';
 
 const TEAM_A = { id: 'team-a', name: 'البنفسجي', active: true };
 const TEAM_B = { id: 'team-b', name: 'الأخضر', active: true };
@@ -27,7 +27,7 @@ const distributed = construct(DistributedInformationChallengeLauncher)
   .launchRequirements.readiness as MatchChallengeReadinessRequirement;
 const ryo = construct(RyoChallengeLauncher).launchRequirements
   .readiness as MatchChallengeReadinessRequirement;
-const top10 = construct(Top10PoisonDeckChallengeLauncher).launchRequirements
+const top5 = construct(Top5ChallengeLauncher).launchRequirements
   .readiness as MatchChallengeReadinessRequirement;
 
 const player = (
@@ -188,10 +188,10 @@ describe('MatchChallengeReadinessService', () => {
    * RYO and Top 10 resolve from one phone per team, so they must not inherit
    * ركّبها's two-or-three range.
    */
-  describe('RYO and Top 10 — one phone per team, no upper bound', () => {
+  describe('RYO and Top 5 — one phone per team, no upper bound', () => {
     it.each([
       ['RYO', ryo],
-      ['Top 10', top10],
+      ['Top 5', top5],
     ])('%s declares its own contract', (_name, requirement) => {
       expect(requirement).toEqual({
         minParticipantsPerTeam: 1,
@@ -204,7 +204,7 @@ describe('MatchChallengeReadinessService', () => {
 
     it.each([
       ['RYO', ryo],
-      ['Top 10', top10],
+      ['Top 5', top5],
     ])('%s is ready with one phone per team', (_name, requirement) => {
       expect(evaluate(session({ a: 1, b: 1 }), requirement).allTeamsReady).toBe(
         true,
@@ -213,7 +213,7 @@ describe('MatchChallengeReadinessService', () => {
 
     it.each([
       ['RYO', ryo],
-      ['Top 10', top10],
+      ['Top 5', top5],
     ])('%s accepts more phones than ركّبها would', (_name, requirement) => {
       // Four per team is too many for ركّبها and fine here.
       expect(evaluate(session({ a: 4, b: 4 }), requirement).allTeamsReady).toBe(
@@ -226,7 +226,7 @@ describe('MatchChallengeReadinessService', () => {
 
     it.each([
       ['RYO', ryo],
-      ['Top 10', top10],
+      ['Top 5', top5],
     ])('%s still needs a phone on each team', (_name, requirement) => {
       expect(evaluate(session({ a: 2, b: 0 }), requirement).allTeamsReady).toBe(
         false,

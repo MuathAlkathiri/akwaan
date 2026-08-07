@@ -153,6 +153,9 @@ describe("player World API boundary", () => {
       // only — the server chooses the content.
       "/live-game-sessions/${input.sessionId}/match/unified/challenges/prepare",
       "/live-game-sessions/${input.sessionId}/match/unified/challenges/cancel",
+      // Leaving the result is its own explicit command; the stage never expires
+      // on a timer and the client never advances it locally.
+      "/live-game-sessions/${input.sessionId}/match/unified/challenges/continue",
       "/live-game-sessions/${input.sessionId}/match/unified/challenges/launch",
       "/live-game-sessions/${sessionId}/ready",
       "/live-game-sessions/${sessionId}/start",

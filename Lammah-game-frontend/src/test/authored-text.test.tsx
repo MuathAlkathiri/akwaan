@@ -77,6 +77,9 @@ function ryoRuntime(item: unknown): GameplayRuntimeSnapshot {
             itemJson: JSON.stringify(item),
             actorRole: "answering",
             answeringTeamId: "team-a",
+            // The server names the one authoritative answerer per item and tells
+            // each phone whether it is that person; only they get the options.
+            isAssignedActor: true,
           },
         },
         submissions: [],

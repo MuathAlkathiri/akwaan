@@ -129,6 +129,7 @@ describe('read-your-opponent requires an answer and a decision', () => {
         { kind: 'decision', decision: 'steal' } as never,
         { teamId: 'team-a' } as never,
         prompt,
+        {} as never,
       ),
     ).toThrow(/RYO_WRONG_SIDE|not available/);
     expect(() =>
@@ -136,6 +137,7 @@ describe('read-your-opponent requires an answer and a decision', () => {
         { kind: 'answer', mode: 'multiple_choice', optionId: 'a' } as never,
         { teamId: 'team-b' } as never,
         prompt,
+        {} as never,
       ),
     ).toThrow(/RYO_WRONG_SIDE|not available/);
   });

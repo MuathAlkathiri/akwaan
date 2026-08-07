@@ -6,6 +6,7 @@ import {
 import { LiveGameSessionSnapshot } from '../../live-game-sessions/application/live-game-session.snapshot';
 import { LiveSessionActor } from '../../live-game-sessions/application/live-session-actor';
 import {
+  LiveSessionChallengeResult,
   LiveSessionConfiguredOccurrence,
   LiveSessionMatchProjection,
   LiveSessionMatchScope,
@@ -145,6 +146,12 @@ export class MatchSnapshotComposer
         ...this.score(match, team.id),
         name: team.name,
       })),
+      ...(match.pendingResult
+        ? { challengeResult: this.challengeResult(match.pendingResult) }
+        : {}),
+      challengeHistory: match.challengeResults.map((result) =>
+        this.challengeResult(result),
+      ),
       ...(match.stage === MatchStage.MATCH_COMPLETE ||
       match.status === MatchStatus.COMPLETED
         ? { result: this.result(match) }
@@ -416,6 +423,29 @@ export class MatchSnapshotComposer
       ?.worldName;
   }
 
+  /** The recorded result, verbatim. Nothing is recomputed on the way out. */
+  private challengeResult(
+    result: import('../domain/match').MatchChallengeResult,
+  ): LiveSessionChallengeResult {
+    return {
+      id: result.id,
+      positionKey: result.positionKey,
+      occurrenceIndex: result.occurrenceIndex,
+      slotKey: result.slotKey,
+      worldId: result.worldId,
+      ...(result.worldName ? { worldName: result.worldName } : {}),
+      challengeTypeId: result.challengeTypeId,
+      challengeKey: result.challengeKey,
+      ...(result.challengeName ? { challengeName: result.challengeName } : {}),
+      selectedScopeIds: [...result.selectedScopeIds],
+      winnerTeamId: result.winnerTeamId,
+      teamPoints: result.teamPoints.map((entry) => ({ ...entry })),
+      details: result.details,
+      startedAt: result.startedAt.toISOString(),
+      completedAt: result.completedAt.toISOString(),
+    };
+  }
+
   private score(match: Match, teamId: string): LiveSessionMatchTeamScore {
     const score = match.teamScore(teamId);
     return {
@@ -470,6 +500,9 @@ export class MatchSnapshotComposer
         return ['match:launch-challenge', 'match:cancel'];
       case MatchStage.CHALLENGE:
         return ['match:cancel'];
+      case MatchStage.CHALLENGE_RESULT:
+        // One action, and it is the only way off this stage.
+        return ['match:continue-from-result', 'match:cancel'];
       default:
         return [];
     }

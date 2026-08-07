@@ -413,7 +413,7 @@ describe('Unified Match API integration', () => {
   /** One unified challenge command: a position, and nothing else. */
   const challengeCommand = async (
     sessionId: string,
-    path: 'prepare' | 'launch' | 'cancel',
+    path: 'prepare' | 'launch' | 'cancel' | 'continue',
     body: {
       occurrenceIndex?: number;
       slotKey?: WorldChallengeSlotKey;
@@ -695,7 +695,12 @@ describe('Unified Match API integration', () => {
     await playRyoItem(sessionId, participants);
     await playRyoItem(sessionId, participants);
 
-    // Nobody sent a "finish" command: the runtime reported it was done.
+    // Nobody sent a "finish" command: the runtime reported it was done — and the
+    // Match stopped on its result rather than jumping back to the board.
+    const resolved = await snapshotOf(sessionId);
+    expect(resolved.match.stage.key).toBe(MatchStage.CHALLENGE_RESULT);
+    expect(resolved.match.challengeResult).toBeDefined();
+    await challengeCommand(sessionId, 'continue');
     const reconciled = await snapshotOf(sessionId);
     expect(reconciled.match.stage.key).toBe(MatchStage.BOARD);
     expect(reconciled.match.status).toBe(MatchStatus.ACTIVE);
@@ -726,6 +731,8 @@ describe('Unified Match API integration', () => {
       'challenge-prepared',
       'challenge-launched',
       'challenge-completed',
+      // Leaving the result is its own stage change, so it gets its own reason.
+      'result-acknowledged',
     ]);
     expect(reasons).not.toContain('world-completed');
     expect(reasons).not.toContain('advanced-to-next-world');

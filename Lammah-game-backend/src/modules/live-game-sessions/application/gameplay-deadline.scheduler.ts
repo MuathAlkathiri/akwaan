@@ -9,16 +9,15 @@ import {
   LIVE_GAME_SESSION_REPOSITORY,
   LiveGameSessionRepository,
 } from '../domain/live-game-session.repository';
-import { TOP10_MODE_KEY } from '../domain/top10-poison-deck.plugin';
 import { DISTRIBUTED_INFORMATION_MODE_KEY } from '../domain/distributed-information.plugin';
 import type { GameplayRuntimeState } from '../domain/gameplay-runtime';
 
 /**
  * What a mode's pending deadline looks like, and the command that resolves it.
  *
- * Top 10 puts its turn deadline on the round; "ركّبها" puts one race deadline on
- * the runtime. Both need the same treatment: fire once, verify the deadline has
- * not moved, and let the plugin decide the outcome.
+ * Only "ركّبها" carries one today: it puts a single race deadline on the runtime.
+ * Top 5 deliberately has none — a card waits for its assigned player, and a
+ * player who leaves is handed off rather than timed out.
  */
 interface PendingDeadline {
   deadlineAt: string;
@@ -30,17 +29,6 @@ function pendingDeadline(
 ): PendingDeadline | undefined {
   const round = state?.activeRound;
   if (!state || !round || round.status !== 'active') return undefined;
-  if (
-    state.modeKey === TOP10_MODE_KEY &&
-    state.status === 'round-active' &&
-    round.modeState.phase === 'assigning' &&
-    typeof round.modeState.deadlineAt === 'string'
-  ) {
-    return {
-      deadlineAt: round.modeState.deadlineAt,
-      commandType: 'timeout-card',
-    };
-  }
   if (
     state.modeKey === DISTRIBUTED_INFORMATION_MODE_KEY &&
     state.status === 'round-active' &&

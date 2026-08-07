@@ -20,7 +20,7 @@ export type ChallengeAnswerMode =
   | "match"
   | "vote"
   | "split"
-  | "top_10"
+  | "top_5"
   /** The ركّبها wrapper: the item keeps its own answer contract. */
   | "distributed";
 export type ChallengeItemStructure = "discrete_triple" | "continuous";
@@ -210,13 +210,16 @@ export interface ContentItem {
   isSessionReuseExempt: boolean;
 }
 
-export type Top10Variant = "classic" | "poison-deck";
-
-export interface Top10PoisonDeckCandidate {
+/**
+ * One playable Top 5 entry. `rank` is the whole correctness contract: 1..5 for a
+ * real entry, `null` for a trap.
+ */
+export interface Top5Entry {
   id: string;
   label: string;
   shortLabel?: string;
   media?: ContentAsset;
+  rank: number | null;
 }
 
 /** "ركّبها" content. The answer lives in answerPayload, never here. */
@@ -241,17 +244,16 @@ export interface DistributedInformationPayload {
   explanation?: string;
 }
 
-export interface Top10PoisonDeckPayload {
-  variant: "poison-deck";
+export interface Top5Payload {
+  variant: "keep-or-give";
   title: string;
   instruction?: string;
   rankingBasis: string;
   sourceLabel: string;
   sourceUrl?: string;
   asOfDate?: string;
-  candidates: Top10PoisonDeckCandidate[];
-  rankedAnswer: Array<{ candidateId: string; rank: number }>;
-  decoyCandidateIds: string[];
+  /** Exactly ten: five ranked 1..5 and five traps. */
+  entries: Top5Entry[];
   explanation?: string;
 }
 

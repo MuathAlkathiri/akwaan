@@ -525,8 +525,8 @@ describe('World Management HTTP integration', () => {
     expect(listed).toHaveLength(2);
   });
 
-  it('persists the complete native Poison Deck mechanic payload on create and update', async () => {
-    const world = await createWorld('Top 10 authoring', 'top-10-authoring');
+  it('persists the complete native Top 5 mechanic payload on create and update', async () => {
+    const world = await createWorld('Top 5 authoring', 'top-5-authoring');
     const scope = (
       await bearer(authed().post(`/admin/worlds/${world.id}/scopes`))
         .send({
@@ -536,33 +536,30 @@ describe('World Management HTTP integration', () => {
         })
         .expect(201)
     ).body.data;
-    const top10 = await createChallengeType({
-      name: 'Top 10 canonical',
-      slug: 'top-10-native-persistence',
+    const top5 = await createChallengeType({
+      name: 'Top 5 canonical',
+      slug: 'top-5-native-persistence',
       family: ChallengeFamily.SIGNATURE,
-      answerMode: ChallengeAnswerMode.TOP_10,
+      answerMode: ChallengeAnswerMode.TOP_5,
       defaultPresentation: presentation({ inputType: 'shared-card-deck' }),
-      scoringRuleId: SCORING_RULE_IDS.TOP10_POISON_DECK_RESULT,
+      scoringRuleId: SCORING_RULE_IDS.TOP5_RESULT,
       status: WorldContentStatus.ACTIVE,
     });
-    const candidates = Array.from({ length: 14 }, (_, index) => ({
-      id: `candidate-${index + 1}`,
-      label: `المرشح ${index + 1}`,
-    }));
+    // Ten entries carrying their own rank: five real and five traps, with no
+    // second array that could contradict them.
     const mechanicPayload = {
-      variant: 'poison-deck',
+      variant: 'keep-or-give',
       title: 'الترتيب التاريخي',
-      instruction: 'احتفظ بالبطاقة أو أرسلها لخصمك',
+      instruction: 'احتفظ بها أو دسّها للخصم',
       rankingBasis: 'النقاط الرسمية',
       sourceLabel: 'المصدر الرسمي',
       sourceUrl: 'https://example.com/all-time-ranking',
       asOfDate: '2026-08-04',
-      candidates,
-      rankedAnswer: candidates.slice(0, 10).map((candidate, index) => ({
-        candidateId: candidate.id,
-        rank: index + 1,
+      entries: Array.from({ length: 10 }, (_, index) => ({
+        id: `entry-${index + 1}`,
+        label: `المرشح ${index + 1}`,
+        rank: index < 5 ? index + 1 : null,
       })),
-      decoyCandidateIds: candidates.slice(10).map((candidate) => candidate.id),
     };
 
     const created = (
@@ -570,8 +567,8 @@ describe('World Management HTTP integration', () => {
         .send({
           scopeId: scope.id,
           prompt: { ar: 'اختر عناصر القائمة الصحيحة' },
-          compatibleChallengeTypeIds: [top10.id],
-          answerPayload: { mode: ChallengeAnswerMode.TOP_10 },
+          compatibleChallengeTypeIds: [top5.id],
+          answerPayload: { mode: ChallengeAnswerMode.TOP_5 },
           mechanicPayload,
           status: ContentItemStatus.READY,
         })

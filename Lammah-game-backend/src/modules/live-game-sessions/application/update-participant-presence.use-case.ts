@@ -15,6 +15,7 @@ import {
   LiveSessionTransitionPublisher,
 } from './live-session-transition.publisher';
 import { BombCountdownScheduler } from './bomb-countdown.scheduler';
+import { ReassignTeamActions } from './reassign-team-actions.use-case';
 
 @Injectable()
 export class UpdateParticipantPresence {
@@ -30,6 +31,7 @@ export class UpdateParticipantPresence {
     @Inject(LIVE_SESSION_TRANSITION_PUBLISHER)
     private readonly publisher: LiveSessionTransitionPublisher,
     private readonly countdown: BombCountdownScheduler,
+    private readonly reassignTeamActions: ReassignTeamActions,
   ) {}
 
   async connected(sessionId: string, participantId: string): Promise<boolean> {
@@ -51,6 +53,9 @@ export class UpdateParticipantPresence {
   async disconnected(sessionId: string, participantId: string): Promise<void> {
     const now = this.clock.now();
     await this.presence.disconnect(sessionId, participantId, now);
+    // Before anything else: if this phone was the one holding a team action, the
+    // action moves on. A challenge must not stall on somebody's wifi.
+    await this.reassignTeamActions.forSession(sessionId);
     const session = await this.sessions.findById(sessionId);
     if (session) {
       const state = session.serialize();

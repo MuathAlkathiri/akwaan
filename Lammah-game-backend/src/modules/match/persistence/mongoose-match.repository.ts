@@ -88,6 +88,8 @@ export class MongooseMatchRepository implements MatchRepository {
       currentChallenge: state.currentChallenge,
       // Stored plainly; the brand is re-applied on restore by the scoring module.
       scoreEvents: state.scoreEvents.map((event) => ({ ...event })),
+      challengeResults: state.challengeResults.map((result) => ({ ...result })),
+      pendingResultId: state.pendingResultId,
       createdAt: state.createdAt,
       startedAt: state.startedAt,
       completedAt: state.completedAt,
@@ -158,6 +160,17 @@ export class MongooseMatchRepository implements MatchRepository {
           }
         : undefined,
       scoreEvents,
+      challengeResults: (
+        (document.challengeResults ?? []) as Array<Record<string, unknown>>
+      ).map((result) => ({
+        ...result,
+        // Mongo does not round-trip an empty Mixed object, and a result with no
+        // mechanic detail is still a result.
+        details: (result.details as Record<string, unknown>) ?? {},
+        startedAt: new Date(result.startedAt as string),
+        completedAt: new Date(result.completedAt as string),
+      })),
+      pendingResultId: document.pendingResultId,
       createdAt: new Date(document.createdAt),
       startedAt: document.startedAt ? new Date(document.startedAt) : undefined,
       completedAt: document.completedAt

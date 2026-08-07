@@ -15,6 +15,7 @@ export type MatchTransitionReason =
   | 'preflight-cancelled'
   | 'challenge-launched'
   | 'challenge-completed'
+  | 'result-acknowledged'
   | 'match-completed'
   | 'cancelled';
 
@@ -55,9 +56,20 @@ export class MatchTransitionNotifier {
     });
   }
 
-  /** The reason a finished challenge produced, read from where the Match landed. */
+  /**
+   * The reason a finished challenge produced, read from where the Match landed.
+   *
+   * A challenge now completes *into* the result stage rather than back onto the
+   * board, so `challenge-completed` no longer implies the board is showing.
+   */
   completionReason(match: Match): MatchTransitionReason {
     if (match.status === MatchStatus.COMPLETED) return 'match-completed';
     return 'challenge-completed';
+  }
+
+  /** Where the Match went after the host left the result screen. */
+  continueReason(match: Match): MatchTransitionReason {
+    if (match.stage === MatchStage.MATCH_COMPLETE) return 'match-completed';
+    return 'result-acknowledged';
   }
 }

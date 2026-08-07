@@ -79,6 +79,18 @@ export class MatchDocument {
   @Prop({ type: SchemaTypes.Mixed, default: [] })
   scoreEvents!: unknown;
 
+  /**
+   * Every finished challenge, oldest first and append-only. The authoritative
+   * source for the result screen and for Match history; nothing here is ever
+   * rewritten once the challenge that produced it has resolved.
+   */
+  @Prop({ type: SchemaTypes.Mixed, default: [] })
+  challengeResults!: unknown;
+
+  /** The result the Match is standing on while its stage is challenge_result. */
+  @Prop()
+  pendingResultId?: string;
+
   @Prop({ required: true })
   createdAt!: Date;
 

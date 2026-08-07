@@ -112,7 +112,10 @@ describe('World Content architecture', () => {
     expect(legacyImporters.sort()).toEqual([
       'modules/live-game-sessions/application/start-distributed-information.use-case.ts',
       'modules/live-game-sessions/application/start-ryo-gameplay.use-case.ts',
-      'modules/live-game-sessions/application/start-top10-poison-deck.use-case.ts',
+      'modules/live-game-sessions/application/start-top5.use-case.ts',
+      // The Top 5 plugin reads the content contract's own constants rather than
+      // restating ten, five, and the rank set a second time.
+      'modules/live-game-sessions/domain/top5-keep-or-give.plugin.ts',
       'modules/live-game-sessions/live-game-sessions.module.ts',
       'modules/live-game-sessions/presentation/gameplay-runtime.dto.ts',
       'modules/questions/application/legacy-question-world-reference.guard.ts',

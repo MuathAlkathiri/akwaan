@@ -146,7 +146,7 @@ export type ContentAnswerPayload =
       acceptedTolerance?: number;
     }
   | {
-      mode: ChallengeAnswerMode.TOP_10;
+      mode: ChallengeAnswerMode.TOP_5;
     };
 
 /**
@@ -165,26 +165,33 @@ export interface ContentItemMedia {
   assets: ContentAssetRef[];
 }
 
-export type Top10Variant = 'classic' | 'poison-deck';
-
-export interface Top10PoisonDeckCandidate {
+/**
+ * One playable Top 5 entry.
+ *
+ * `rank` is the whole correctness contract: 1..5 marks one of the five real
+ * entries, `null` marks a trap. There is no second flag saying the same thing,
+ * because two sources of truth for "is this a real answer" is exactly how a
+ * reveal ends up disagreeing with the score.
+ */
+export interface Top5Entry {
   id: string;
   label: string;
   shortLabel?: string;
   media?: ContentAssetRef;
+  /** 1..5 for a real Top 5 entry; null for a trap. */
+  rank: number | null;
 }
 
-export interface Top10PoisonDeckPayload {
-  variant: 'poison-deck';
+export interface Top5Payload {
+  variant: 'keep-or-give';
   title: string;
   instruction?: string;
   rankingBasis: string;
   sourceLabel: string;
   sourceUrl?: string;
   asOfDate?: string;
-  candidates: Top10PoisonDeckCandidate[];
-  rankedAnswer: Array<{ candidateId: string; rank: number }>;
-  decoyCandidateIds: string[];
+  /** Exactly ten: five ranked 1..5 and five traps. */
+  entries: Top5Entry[];
   explanation?: string;
 }
 
@@ -237,9 +244,7 @@ export interface ContentItemView {
   media?: ContentItemMedia;
   answerPayload: ContentAnswerPayload;
   mechanicPayload?:
-    | Record<string, unknown>
-    | Top10PoisonDeckPayload
-    | DistributedInformationPayload;
+    Record<string, unknown> | Top5Payload | DistributedInformationPayload;
   isReusableAcrossSessions: boolean;
   status: ContentItemStatus;
   metadata?: {

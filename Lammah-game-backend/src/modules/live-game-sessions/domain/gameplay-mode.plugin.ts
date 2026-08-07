@@ -4,6 +4,7 @@ import {
   GameplayInteractionPlugin,
   InteractionActorProjection,
 } from './gameplay-interaction.plugin';
+import { EligibleParticipant } from './team-action-assignment';
 
 export type GameplayStateValue = string | number | boolean | null;
 export type GameplayModeState = Record<string, GameplayStateValue>;
@@ -41,11 +42,42 @@ export interface GameplayPluginContext {
    * `activeParticipantId`; a simultaneous one needs to know who is speaking.
    */
   submitterParticipantId?: string;
+  /**
+   * Every player the session currently considers connected, as the assignment
+   * layer sees them. Present for mechanics that hand one authoritative action to
+   * one participant (see `team-action-assignment`); a mechanic that does not opt
+   * in simply ignores it.
+   */
+  eligibleParticipants?: readonly EligibleParticipant[];
   initialState?: GameplayModeState;
   runtimeState?: GameplayModeState;
   /** Server-owned command time; reducers must never consult the wall clock. */
   now?: Date;
 }
+
+/**
+ * Every mode command a plugin can answer to.
+ *
+ * `availableActions` has to ask each plugin about commands *by name* — the
+ * plugin contract is a lookup, not an enumeration — so this list is what tells a
+ * client which buttons it may show. A command missing from here is invisible:
+ * the server would accept it, but no phone would ever be told it could send it,
+ * which is exactly how Top 5's decision buttons disappeared once `assign-card`
+ * became `decide-card`. `gameplay-mode.registry.spec.ts` keeps it complete.
+ */
+export const MODE_COMMAND_TYPES: readonly string[] = [
+  // Neutral reference mode.
+  'advance-phase',
+  // Bomb.
+  'submit-answer',
+  'skip',
+  'expire-team',
+  // Top 5.
+  'decide-card',
+  'skip-card',
+  // ركّبها.
+  'expire-race',
+];
 
 export interface GameplayCommandDefinition {
   type: string;
@@ -60,6 +92,13 @@ export interface GameplayCommandResult {
   eventType: string;
   eventPayload: GameplayModeState;
   effects: GameplaySessionEffect[];
+  /**
+   * Who is authoritative for the team action this command opened, when the
+   * mechanic opted into single-participant team authority. The session layer
+   * writes it onto the round, which is what `active-participant` authorisation
+   * then reads — so the server, and only the server, decides who may act next.
+   */
+  assignment?: { teamId: string; participantId: string };
 }
 
 export interface GameplayModePlugin {

@@ -62,14 +62,25 @@ const messages: Record<string, string> = {
 
   // Mechanic-specific startup refusals.
   RYO_REQUIRES_THREE_ITEMS: "تحدي اقرأ خصمك يحتاج 3 عناصر محتوى مختلفة بالضبط.",
-  TOP10_REQUIRES_ONE_ITEM: "تحدي أفضل 10 يحتاج عنصر محتوى واحدًا بالضبط.",
+  TOP5_REQUIRES_ONE_ITEM: "تحدي أفضل 5 يحتاج عنصر محتوى واحدًا بالضبط.",
   DISTRIBUTED_REQUIRES_THREE_ITEMS:
     "تحدي ركّبها يحتاج 3 عناصر محتوى مختلفة بالضبط.",
-  TOP10_VARIANT_INVALID: "عنصر أفضل 10 المختار ليس من نسخة خذها أو دسّها.",
+  TOP5_VARIANT_INVALID: "عنصر المحتوى المختار غير مُعد لتحدي أفضل 5.",
   RYO_STARTING_TEAM_INVALID: "الفريق المحدد للبدء غير مشارك في المباراة.",
-  TOP10_STARTING_TEAM_INVALID: "الفريق المحدد للبدء غير مشارك في المباراة.",
+  TOP5_STARTING_TEAM_INVALID: "الفريق المحدد للبدء غير مشارك في المباراة.",
   RYO_RUNTIME_NOT_CREATED: "تعذر بدء اقرأ خصمك. لم يُنشئ الخادم حالة اللعب.",
-  TOP10_RUNTIME_NOT_CREATED: "تعذر بدء أفضل 10. لم يُنشئ الخادم حالة اللعب.",
+  TOP5_RUNTIME_NOT_CREATED: "تعذر بدء أفضل 5. لم يُنشئ الخادم حالة اللعب.",
+  TOP5_CONTENT_INVALID: "لا يوجد محتوى أفضل 5 جاهز لهذه الخانة.",
+  TOP5_MECHANIC_INCOMPATIBLE:
+    "إعداد أفضل 5 في هذا العالم لا يناسب المحتوى المتاح.",
+  // Server-side team-action authority. A hidden button is never the boundary.
+  TEAM_ACTION_WRONG_PARTICIPANT: "صاحب القرار في هذه الجولة لاعب آخر من فريقك.",
+  TEAM_ACTION_WRONG_TEAM: "هذا القرار من نصيب الفريق الآخر.",
+  TEAM_ACTION_STALE_ASSIGNMENT:
+    "تغيّر صاحب القرار قبل وصول اختيارك. حدِّث الشاشة وحاول مجددًا.",
+  TEAM_ACTION_NOT_ASSIGNED: "لا يوجد قرار مفتوح لهذا التحدي الآن.",
+  RYO_NOT_ASSIGNED_PARTICIPANT:
+    "لاعب آخر من فريقك هو المسؤول عن هذا الإجراء في هذه الفقرة.",
 
   // Transport.
   GAMEPLAY_RUNTIME_NOT_FOUND: "جارٍ استعادة التحدي الحالي من الخادم.",

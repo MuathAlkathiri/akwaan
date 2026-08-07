@@ -75,7 +75,7 @@ const LEGACY_MECHANIC_MAP: Record<string, LegacyMechanicDefinition | 'manual'> =
       timerSeconds: 25,
       inputType: 'phone-multiple-choice',
     },
-    'top-10': 'manual',
+    'top-5': 'manual',
     bomb: 'manual',
   };
 

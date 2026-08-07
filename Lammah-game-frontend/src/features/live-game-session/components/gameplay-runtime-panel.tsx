@@ -9,7 +9,7 @@ import { createGameplayRuntime } from "../api/live-session-api";
 import { useLiveSession } from "../hooks/live-session-context";
 import { GameplayInteractionPanel } from "./gameplay-interaction-panel";
 import { BombGameplayPanel } from "./bomb-gameplay-panel";
-import { Top10PoisonDeckPanel } from "./top10-poison-deck-panel";
+import { Top5Panel } from "./top5-panel";
 import { RyoGameplayPanel } from "./ryo-gameplay-panel";
 
 const labels: Record<string, string> = {
@@ -51,8 +51,8 @@ export function GameplayRuntimePanel() {
   if (runtime.mode.key === "bomb" && !debugEnabled) {
     return <BombGameplayPanel runtime={runtime} />;
   }
-  if (runtime.mode.key === "top-10" && !debugEnabled) {
-    return <Top10PoisonDeckPanel runtime={runtime} />;
+  if (runtime.mode.key === "top-5" && !debugEnabled) {
+    return <Top5Panel runtime={runtime} />;
   }
   if (runtime.mode.key === "read-your-opponent") {
     return <RyoGameplayPanel runtime={runtime} />;
@@ -104,8 +104,8 @@ export function GameplayRuntimePanel() {
         </div>
         {runtime.mode.key === "bomb" ? (
           <BombGameplayPanel runtime={runtime} />
-        ) : runtime.mode.key === "top-10" ? (
-          <Top10PoisonDeckPanel runtime={runtime} />
+        ) : runtime.mode.key === "top-5" ? (
+          <Top5Panel runtime={runtime} />
         ) : runtime.mode.key === "read-your-opponent" ? (
           <RyoGameplayPanel runtime={runtime} />
         ) : (

@@ -17,7 +17,7 @@ import { MatchUseCases } from './application/match.use-cases';
 import { DistributedInformationChallengeLauncher } from './application/distributed-information-challenge.launcher';
 import { RyoChallengeLauncher } from './application/ryo-challenge.launcher';
 import { RuntimeScoreEventCollector } from './application/runtime-score-event.collector';
-import { Top10PoisonDeckChallengeLauncher } from './application/top10-poison-deck-challenge.launcher';
+import { Top5ChallengeLauncher } from './application/top5-challenge.launcher';
 import { UnifiedMatchSetupValidator } from './application/unified-match-setup.validator';
 import {
   UnifiedMatchBoardPolicy,
@@ -72,7 +72,7 @@ import { UnifiedMatchController } from './presentation/unified-match.controller'
     UnifiedMatchSetupValidator,
     MatchUseCases,
     RyoChallengeLauncher,
-    Top10PoisonDeckChallengeLauncher,
+    Top5ChallengeLauncher,
     DistributedInformationChallengeLauncher,
     MatchReconciliationService,
     MatchSnapshotComposer,

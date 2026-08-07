@@ -226,6 +226,27 @@ export class MatchUseCases {
     );
   }
 
+  /**
+   * Leaves the challenge result and returns the Match to its board — or ends it.
+   *
+   * The only transition out of `challenge_result`. It awards nothing: every point
+   * was imported when the result was recorded, so a double press, a replayed
+   * command, or a reconnect that resends it cannot move a score. A press from
+   * any other stage is refused rather than silently ignored.
+   */
+  continueFromChallengeResult(command: MatchCommand): Promise<Match> {
+    return this.mutate(
+      command,
+      (match) => this.transitions.continueReason(match),
+      (match, now) => {
+        match.continueFromChallengeResult({
+          commandId: command.commandId,
+          now,
+        });
+      },
+    );
+  }
+
   /** Abandons a prepared position. Consumes nothing and changes no turn. */
   cancelUnifiedPreflight(command: MatchCommand): Promise<Match> {
     return this.mutate(command, 'preflight-cancelled', (match, now) =>

@@ -14,12 +14,18 @@ export type MatchStageKey =
   | "preflight"
   /** A mechanic runtime is in progress. */
   | "challenge"
+  /**
+   * The challenge is over and recorded, and the Match is deliberately standing
+   * on it. Scoring already happened; only an explicit host action leaves here.
+   */
+  | "challenge_result"
   | "match_complete";
 
 const MATCH_STAGE_KEYS: readonly MatchStageKey[] = [
   "board",
   "preflight",
   "challenge",
+  "challenge_result",
   "match_complete",
 ];
 
@@ -188,6 +194,33 @@ export interface UnifiedMatchProjection {
   preflight?: UnifiedPreflight;
 }
 
+/**
+ * One finished challenge, as the server recorded it.
+ *
+ * Everything on the result screen is read from here. The winner, the points, and
+ * the Top 5 ownership reveal order are all server decisions — this client renders
+ * them and never derives them.
+ */
+export interface MatchChallengeResult {
+  id: string;
+  positionKey: string;
+  occurrenceIndex: number;
+  slotKey: MatchSlotKey;
+  worldId: string;
+  worldName?: string;
+  challengeTypeId: string;
+  /** The mechanic that ran, which is what picks the result renderer. */
+  challengeKey: string;
+  challengeName?: string;
+  selectedScopeIds: string[];
+  winnerTeamId: string | null;
+  teamPoints: Array<{ teamId: string; points: number }>;
+  /** Mechanic-shaped and opaque here; each mechanic's own view reads it. */
+  details: Record<string, unknown>;
+  startedAt: string;
+  completedAt: string;
+}
+
 export interface LiveSessionMatchSnapshot {
   id: string;
   revision: number;
@@ -214,6 +247,10 @@ export interface LiveSessionMatchSnapshot {
   };
   /** Both teams with names and totals, for a board header. */
   standings?: MatchTeamStanding[];
+  /** Present exactly while the stage is `challenge_result`. */
+  challengeResult?: MatchChallengeResult;
+  /** Append-only history of every finished challenge, oldest first. */
+  challengeHistory?: MatchChallengeResult[];
   result?: {
     teams: MatchTeamScore[];
     winnerTeamId: string | null;

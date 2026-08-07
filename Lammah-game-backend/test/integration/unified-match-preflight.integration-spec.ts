@@ -572,7 +572,10 @@ describe('Unified Match preflight integration', () => {
       await solveOnePuzzle(sessionId, alpha);
     }
 
-    // ── Reconcile back to the board ──────────────────────────────────────────
+    // ── Stop on the result, then continue back to the board ──────────────────
+    const resolved = await snapshotOf(sessionId);
+    expect(resolved.match.stage.key).toBe(MatchStage.CHALLENGE_RESULT);
+    await unifiedCommand(sessionId, 'continue');
     const reconciled = await snapshotOf(sessionId);
     expect(reconciled.match.stage.key).toBe(MatchStage.BOARD);
     expect(reconciled.match.status).toBe(MatchStatus.ACTIVE);

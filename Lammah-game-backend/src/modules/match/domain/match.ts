@@ -131,6 +131,41 @@ export interface MatchResult {
   }>;
 }
 
+/**
+ * An immutable record of one finished challenge.
+ *
+ * Written once, when the challenge resolves, and never touched again. It is the
+ * authority for the result screen and the seed of Match history: everything the
+ * host is shown after a challenge is read from here, so no client reconstructs a
+ * result from socket traffic and no client recomputes a winner.
+ */
+export interface MatchChallengeResult {
+  id: string;
+  positionKey: string;
+  occurrenceIndex: number;
+  slotKey: WorldChallengeSlotKey;
+  worldId: string;
+  worldName?: string;
+  selectedScopeIds: string[];
+  challengeTypeId: string;
+  challengeTypeSlug: string;
+  /** The launcher key the runtime actually ran under. */
+  challengeKey: string;
+  challengeName?: string;
+  runtimeId: string;
+  contentItemIds: string[];
+  /** Decided by the mechanic, server side. Null only if a mechanic can tie. */
+  winnerTeamId: string | null;
+  /** The Match points this challenge moved, per team. Signed. */
+  teamPoints: Array<{ teamId: string; points: number }>;
+  /** The events this result imported; the anti-double-award anchor. */
+  scoreEventIds: string[];
+  /** Mechanic-shaped, client-safe facts: entries, ownership, reveal order… */
+  details: Record<string, unknown>;
+  startedAt: Date;
+  completedAt: Date;
+}
+
 export interface MatchState {
   id: string;
   liveSessionId: string;
@@ -157,6 +192,16 @@ export interface MatchState {
   pendingChallenge?: MatchPendingChallenge;
   currentChallenge?: MatchCurrentChallenge;
   scoreEvents: ScoreEvent[];
+  /**
+   * Every finished challenge, oldest first. Append-only: a new result never
+   * replaces an older one, which is what makes this usable as Match history.
+   */
+  challengeResults: MatchChallengeResult[];
+  /**
+   * The result the Match is currently standing on. Set exactly while the stage
+   * is `challenge_result`, and cleared by the continue command.
+   */
+  pendingResultId?: string;
   processedCommandIds: string[];
   revision: number;
   createdAt: Date;
@@ -274,6 +319,7 @@ export class Match {
       configuredBoardPositions: positions.map((position) => ({ ...position })),
       selectingTeamId: input.coinToss.winnerTeamId,
       scoreEvents: [],
+      challengeResults: [],
       processedCommandIds: [],
       revision: 0,
       createdAt: input.now,
@@ -282,7 +328,11 @@ export class Match {
   }
 
   static restore(state: MatchState, scoreEvents: ScoreEvent[]): Match {
-    return new Match({ ...state, scoreEvents });
+    return new Match({
+      ...state,
+      scoreEvents,
+      challengeResults: state.challengeResults ?? [],
+    });
   }
 
   private static assertTwoTeams(teams: MatchTeam[]): void {
@@ -340,6 +390,18 @@ export class Match {
   /** Unified only: the position chosen and waiting on its phones. */
   get pendingChallenge(): MatchPendingChallenge | undefined {
     return this.state.pendingChallenge;
+  }
+
+  /** Every finished challenge, oldest first. Append-only Match history. */
+  get challengeResults(): readonly MatchChallengeResult[] {
+    return this.state.challengeResults;
+  }
+
+  /** The result the Match is standing on, while it is standing on one. */
+  get pendingResult(): MatchChallengeResult | undefined {
+    return this.state.challengeResults.find(
+      (result) => result.id === this.state.pendingResultId,
+    );
   }
 
   /**
@@ -598,10 +660,17 @@ export class Match {
   }
 
   /**
-   * Completes the bound challenge and imports its signed events exactly once.
+   * Completes the bound challenge, imports its signed events exactly once, and
+   * stops the Match on the result.
+   *
+   * Scoring happens here and only here: the events are imported, the immutable
+   * ChallengeResult is appended, and the Match enters `challenge_result`. It does
+   * *not* return to the board — that is a separate, explicit command, which is
+   * what makes a refresh during the reveal restore the reveal.
    *
    * Idempotent by design: a repeated terminal notification finds the slot already
-   * completed and the event ids already present, so nothing double-counts.
+   * completed and the event ids already present, so nothing double-counts and no
+   * second result is appended.
    */
   completeChallenge(input: {
     commandId: string;
@@ -609,7 +678,10 @@ export class Match {
     runtimeId: string;
     events: ScoreEvent[];
     summary?: Record<string, unknown>;
-  }): { completed: boolean } {
+    /** Decided by the mechanic; the Match never derives a winner itself. */
+    winnerTeamId?: string | null;
+    challengeKey?: string;
+  }): { completed: boolean; result?: MatchChallengeResult } {
     if (this.replay(input.commandId)) return { completed: false };
     const binding = this.findBinding(input.runtimeId);
     if (!binding) return { completed: false };
@@ -620,17 +692,129 @@ export class Match {
       (event) => !this.state.scoreEvents.some((kept) => kept.id === event.id),
     );
     this.state.scoreEvents.push(...imported);
+    const scoreEventIds = input.events.map((event) => event.id);
     occurrence.slots[slotKey] = {
       ...slot,
       status: MatchSlotStatus.COMPLETED,
       completedAt: input.now,
-      scoreEventIds: input.events.map((event) => event.id),
+      scoreEventIds,
       ...(input.summary ? { summary: input.summary } : {}),
     };
+    if (
+      occurrence.scheduledSlotKeys.every(
+        (key) => occurrence.slots[key]?.status === MatchSlotStatus.COMPLETED,
+      )
+    ) {
+      occurrence.completedAt = input.now;
+    }
+    const result = this.recordChallengeResult({
+      occurrence,
+      slotKey,
+      slot,
+      runtimeId: input.runtimeId,
+      events: input.events,
+      scoreEventIds,
+      now: input.now,
+      details: input.summary ?? {},
+      winnerTeamId: input.winnerTeamId ?? null,
+      challengeKey: input.challengeKey ?? slot.challengeKey ?? '',
+    });
+    this.state.challengeResults.push(result);
+    this.state.pendingResultId = result.id;
     this.state.currentChallenge = undefined;
-    this.completeUnifiedPosition(occurrence, input.now);
+    this.enterStage(MatchStage.CHALLENGE_RESULT, input.now);
     this.commit(input.commandId);
-    return { completed: true };
+    return { completed: true, result };
+  }
+
+  /**
+   * Leaves the result screen: back to the board, or to the end of the Match.
+   *
+   * The only thing that moves a Match off `challenge_result`. It awards nothing
+   * and computes nothing — every point was already imported when the result was
+   * recorded — so pressing it twice, or replaying the command after a reconnect,
+   * cannot change a score.
+   */
+  continueFromChallengeResult(input: { commandId: string; now: Date }): {
+    stage: MatchStage;
+  } {
+    if (this.replay(input.commandId)) return { stage: this.state.stage };
+    this.assertStage([MatchStage.CHALLENGE_RESULT]);
+    this.state.pendingResultId = undefined;
+    if (this.state.selectingTeamId) {
+      this.state.selectingTeamId = unifiedMatchBoardPolicy.nextSelectingTeamId(
+        this.state.teams.map((team) => team.id),
+        this.state.selectingTeamId,
+      );
+    }
+    if (unifiedMatchBoardPolicy.isComplete(this.unifiedBoard())) {
+      this.state.status = MatchStatus.COMPLETED;
+      this.state.completedAt = input.now;
+      this.enterStage(MatchStage.MATCH_COMPLETE, input.now);
+    } else {
+      this.enterStage(MatchStage.BOARD, input.now);
+    }
+    this.commit(input.commandId);
+    return { stage: this.state.stage };
+  }
+
+  /**
+   * The immutable facts of one finished challenge, assembled once.
+   *
+   * The board position, the World, the Scope pool, the mechanic, the winner the
+   * mechanic declared, the points that moved and the ids of the events that moved
+   * them. Enough to explain the challenge later without re-reading a runtime that
+   * may no longer exist.
+   */
+  private recordChallengeResult(input: {
+    occurrence: MatchWorldOccurrence;
+    slotKey: WorldChallengeSlotKey;
+    slot: MatchSlotProgress;
+    runtimeId: string;
+    events: ScoreEvent[];
+    scoreEventIds: string[];
+    now: Date;
+    details: Record<string, unknown>;
+    winnerTeamId: string | null;
+    challengeKey: string;
+  }): MatchChallengeResult {
+    const positionKey = MatchBoardPositionKey.of(
+      input.occurrence.index,
+      input.slotKey,
+    ).value;
+    const configured = this.state.configuredBoardPositions.find(
+      (position) =>
+        position.occurrenceIndex === input.occurrence.index &&
+        position.slotKey === input.slotKey,
+    );
+    return {
+      id: randomUUID(),
+      positionKey,
+      occurrenceIndex: input.occurrence.index,
+      slotKey: input.slotKey,
+      worldId: input.occurrence.worldId,
+      ...(configured?.worldName ? { worldName: configured.worldName } : {}),
+      selectedScopeIds: [...input.occurrence.selectedScopeIds],
+      challengeTypeId: configured?.challengeTypeId ?? '',
+      challengeTypeSlug: configured?.challengeTypeSlug ?? input.challengeKey,
+      challengeKey: input.challengeKey,
+      ...(configured?.displayName
+        ? { challengeName: configured.displayName }
+        : {}),
+      runtimeId: input.runtimeId,
+      contentItemIds: [...(input.slot.contentItemIds ?? [])],
+      winnerTeamId: input.winnerTeamId,
+      teamPoints: this.state.teams.map((team) => ({
+        teamId: team.id,
+        points: input.events
+          .filter((event) => event.teamId === team.id)
+          .reduce((total, event) => total + event.delta, 0),
+      })),
+      scoreEventIds: [...input.scoreEventIds],
+      details: input.details,
+      startedAt: input.slot.startedAt ?? input.now,
+      completedAt: input.now,
+    };
   }
 
   cancel(input: { commandId: string; now: Date }): void {
@@ -725,40 +909,15 @@ export class Match {
         ? { pendingChallenge: { ...this.state.pendingChallenge } }
         : {}),
       scoreEvents: [...this.state.scoreEvents],
+      challengeResults: this.state.challengeResults.map((result) => ({
+        ...result,
+        selectedScopeIds: [...result.selectedScopeIds],
+        contentItemIds: [...result.contentItemIds],
+        teamPoints: result.teamPoints.map((entry) => ({ ...entry })),
+        scoreEventIds: [...result.scoreEventIds],
+      })),
       processedCommandIds: [...this.state.processedCommandIds],
     };
-  }
-
-  /**
-   * Marks one of the twelve positions done and hands selection to the other
-   * team. No World is "finished", nothing advances, and the eleven other
-   * positions keep exactly the state they had — the Match simply returns to its
-   * board until every required position is complete.
-   */
-  private completeUnifiedPosition(
-    occurrence: MatchWorldOccurrence,
-    now: Date,
-  ): void {
-    if (
-      occurrence.scheduledSlotKeys.every(
-        (key) => occurrence.slots[key]?.status === MatchSlotStatus.COMPLETED,
-      )
-    ) {
-      occurrence.completedAt = now;
-    }
-    if (this.state.selectingTeamId) {
-      this.state.selectingTeamId = unifiedMatchBoardPolicy.nextSelectingTeamId(
-        this.state.teams.map((team) => team.id),
-        this.state.selectingTeamId,
-      );
-    }
-    if (unifiedMatchBoardPolicy.isComplete(this.unifiedBoard())) {
-      this.state.status = MatchStatus.COMPLETED;
-      this.state.completedAt = now;
-      this.enterStage(MatchStage.MATCH_COMPLETE, now);
-      return;
-    }
-    this.enterStage(MatchStage.BOARD, now);
   }
 
   private ledger(): ScoreLedger {

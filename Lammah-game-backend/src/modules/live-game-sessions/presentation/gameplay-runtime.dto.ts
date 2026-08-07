@@ -72,7 +72,7 @@ export class StartRyoGameplayDto {
   @IsOptional() @IsUUID() startingTeamId?: string;
 }
 
-export class StartTop10PoisonDeckDto {
+export class StartTop5Dto {
   @IsUUID() worldId!: string;
   @IsOptional() @IsUUID() boardConfigurationId?: string;
   @IsOptional() @IsUUID() challengeTypeId?: string;

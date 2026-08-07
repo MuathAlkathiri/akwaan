@@ -79,6 +79,29 @@ export async function cancelUnifiedPreflight(input: {
 }
 
 /**
+ * Leaves the challenge result screen.
+ *
+ * The one transition out of `challenge_result`: back to the board, or on to the
+ * end of the Match. It awards nothing — every point was recorded when the
+ * challenge resolved — so a double click or a retry cannot move a score.
+ */
+export async function continueFromChallengeResult(input: {
+  sessionId: string;
+  expectedMatchRevision: number;
+  /** Reused across retries of the same click, so a replay changes nothing. */
+  commandId?: string;
+}): Promise<LiveSessionSnapshot> {
+  const response = await apiClient.post<LiveSessionSnapshot>(
+    `/live-game-sessions/${input.sessionId}/match/unified/challenges/continue`,
+    {
+      commandId: input.commandId ?? crypto.randomUUID(),
+      expectedMatchRevision: input.expectedMatchRevision,
+    },
+  );
+  return response.data;
+}
+
+/**
  * Launches one board position.
  *
  * The request names a position and nothing else — no ContentItem id, because the

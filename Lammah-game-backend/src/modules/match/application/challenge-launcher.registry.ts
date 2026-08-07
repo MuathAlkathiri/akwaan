@@ -68,6 +68,12 @@ export interface MatchChallengeLaunchContext {
 
 export interface MatchChallengeCompletionSummary {
   challengeKey: string;
+  /**
+   * Who the mechanic says won. The Match records this verbatim and never
+   * derives it — a winner is the mechanic's own conclusion, and a frontend must
+   * never be in a position to compute a different one.
+   */
+  winnerTeamId?: string | null;
   /** Mechanic-shaped, client-safe facts for the Match result card. */
   details: Record<string, unknown>;
 }

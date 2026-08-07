@@ -10,7 +10,7 @@ import {
 } from '../modules/world-content/domain/world-content.constants';
 import { RYO_MODE_KEY } from '../modules/live-game-sessions/domain/ryo-gameplay.plugin';
 import { DISTRIBUTED_INFORMATION_MODE_KEY } from '../modules/live-game-sessions/domain/distributed-information.plugin';
-import { TOP10_MODE_KEY } from '../modules/live-game-sessions/domain/top10-poison-deck.plugin';
+import { TOP5_MODE_KEY } from '../modules/live-game-sessions/domain/top5-keep-or-give.plugin';
 
 /**
  * Deciding which ChallengeType is a canonical mechanic wearing the wrong slug.
@@ -35,12 +35,12 @@ const ryo = (
 /** The other mechanics that live alongside it and must never be touched. */
 const bystanders: ChallengeTypeRecord[] = [
   {
-    _id: 'top10',
-    slug: 'top-10',
+    _id: 'top5',
+    slug: 'top-5',
     name: 'أفضل 10',
     family: ChallengeFamily.SIGNATURE,
     itemStructure: ChallengeItemStructure.CONTINUOUS,
-    answerMode: ChallengeAnswerMode.TOP_10,
+    answerMode: ChallengeAnswerMode.TOP_5,
   },
   {
     _id: 'split',
@@ -84,7 +84,7 @@ describe('canonical mechanic slug migration', () => {
     // rename a ChallengeType to a slug nothing resolves.
     const launcherKeys = [
       RYO_MODE_KEY,
-      TOP10_MODE_KEY,
+      TOP5_MODE_KEY,
       DISTRIBUTED_INFORMATION_MODE_KEY,
     ];
     for (const entry of CANONICAL_MECHANICS) {

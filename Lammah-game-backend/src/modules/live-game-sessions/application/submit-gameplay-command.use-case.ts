@@ -36,10 +36,11 @@ import { BombExpirationScheduler } from './bomb-expiration.scheduler';
 import { ScoringService } from '../../scoring/application/scoring.service';
 import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 import {
-  TOP10_MODE_KEY,
-  Top10Assignment,
-  Top10Result,
-} from '../domain/top10-poison-deck.plugin';
+  TOP5_MODE_KEY,
+  Top5Ownership,
+  Top5Result,
+} from '../domain/top5-keep-or-give.plugin';
+import { eligibleParticipantsOf } from './start-top5.use-case';
 import { GameplayDeadlineScheduler } from './gameplay-deadline.scheduler';
 import {
   DISTRIBUTED_INFORMATION_MODE_KEY,
@@ -152,6 +153,9 @@ export class SubmitGameplayCommand {
           ...(command.actor.kind === 'participant'
             ? { submitterParticipantId: command.actor.participantId }
             : {}),
+          // A mechanic with single-participant team authority needs the live
+          // roster to hand its next action to somebody who is actually here.
+          eligibleParticipants: eligibleParticipantsOf(session.serialize()),
           runtimeState: runtimeState.runtimeState,
           now,
         },
@@ -163,29 +167,25 @@ export class SubmitGameplayCommand {
         },
       );
       if (
-        runtime.modeKey === TOP10_MODE_KEY &&
+        runtime.modeKey === TOP5_MODE_KEY &&
         handled.roundState.phase === 'completed' &&
         !handled.runtimeState.scoreEventsJson
       ) {
-        const top10Result = JSON.parse(
+        const top5 = JSON.parse(
           String(handled.runtimeState.resultJson),
-        ) as Top10Result;
+        ) as Top5Result;
         const events = this.scoring.score(
-          SCORING_RULE_IDS.TOP10_POISON_DECK_RESULT,
+          SCORING_RULE_IDS.TOP5_RESULT,
           {
             teamIds: JSON.parse(String(handled.runtimeState.teamIdsJson)) as [
               string,
               string,
             ],
-            internalScores: top10Result.internalScores,
-            validCards: top10Result.validCards,
-            decoys: top10Result.decoys,
+            top5Counts: top5.top5Counts,
+            trapCounts: top5.trapCounts,
             contentItemId: String(handled.runtimeState.contentItemId),
             startingTeamId: String(handled.runtimeState.startingTeamId),
-            assignments: JSON.parse(
-              String(handled.runtimeState.assignmentsJson),
-            ) as Top10Assignment[],
-            metrics: top10Result.metrics,
+            ownership: top5.ownership as Top5Ownership[],
           },
           {
             matchId: session.id,
@@ -252,11 +252,16 @@ export class SubmitGameplayCommand {
         now,
         sessionRevision: session.revision,
         activeTeamId: session.serialize().activeTeamId,
-        activeParticipantId: this.activeRepresentative(session.serialize()),
+        // A mechanic that names its own next decision-maker wins over the
+        // "first connected player on the active team" fallback: the fallback
+        // exists for mechanics that have no such concept.
+        activeParticipantId:
+          handled.assignment?.participantId ??
+          this.activeRepresentative(session.serialize()),
       });
       const terminal =
         this.completeBombIfTerminal(session, runtime, command, now) ||
-        this.completeTop10IfTerminal(runtime, command, now) ||
+        this.completeTop5IfTerminal(runtime, command, now) ||
         this.completeDistributedIfTerminal(runtime, command, now);
       if (sessionChanged) {
         await context.saveSession(session, previousSessionRevision);
@@ -307,7 +312,7 @@ export class SubmitGameplayCommand {
         sessionRevision: result.session.revision,
       },
     );
-    // Mode commands are the path a Top 10 deck finishes on, so a layer above the
+    // Mode commands are the path a Top 5 deck finishes on, so a layer above the
     // session learns about the terminal runtime here too.
     await this.observers.notifyRuntimeMutated({
       sessionId: command.sessionId,
@@ -414,12 +419,12 @@ export class SubmitGameplayCommand {
     return true;
   }
 
-  private completeTop10IfTerminal(
+  private completeTop5IfTerminal(
     runtime: import('../domain/gameplay-runtime').GameplayRuntime,
     command: GameplayRuntimeCommand,
     now: Date,
   ): boolean {
-    if (runtime.modeKey !== TOP10_MODE_KEY) return false;
+    if (runtime.modeKey !== TOP5_MODE_KEY) return false;
     const state = runtime.serialize();
     const round = state.activeRound;
     if (!round || round.modeState.phase !== 'completed') return false;
@@ -427,7 +432,7 @@ export class SubmitGameplayCommand {
       roundId: round.id,
       commandId: `${command.commandId}:round-complete`,
       actorId: command.actor.actorId,
-      reason: 'top10-poison-deck-completed',
+      reason: 'top5-completed',
       result: {
         resultJson: state.runtimeState.resultJson,
         scoreEventsJson: state.runtimeState.scoreEventsJson,

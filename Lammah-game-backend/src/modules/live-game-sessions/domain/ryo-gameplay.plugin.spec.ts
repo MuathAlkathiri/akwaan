@@ -6,11 +6,27 @@ import {
 
 describe('RYO gameplay plugin', () => {
   const interaction = RYO_GAMEPLAY_PLUGIN.interaction!;
+  // One authoritative answerer (`p`, team a) and one authoritative Trust/Steal
+  // decider (`q`, team b) — the state the runtime persists.
+  const assignmentState = JSON.stringify({
+    rotations: [
+      { teamId: 'a', order: ['p'], cursor: 0 },
+      { teamId: 'b', order: ['q'], cursor: 0 },
+    ],
+    assignments: [
+      { teamId: 'a', participantId: 'p', action: 'ryo.answer', sequence: 1 },
+      { teamId: 'b', participantId: 'q', action: 'ryo.decision', sequence: 2 },
+    ],
+    nextSequence: 3,
+  });
+  const runtimeState = { teamActionJson: assignmentState };
   const now = new Date('2026-01-01T00:00:00Z');
   const prompt = interaction.preparePrompt(
     { sessionId: 's', runtimeId: 'r', activeTeamId: 'a' },
     {
       opposingTeamId: 'b',
+      answererParticipantId: 'p',
+      deciderParticipantId: 'q',
       itemJson: JSON.stringify({
         id: 'i1',
         prompt: 'سؤال',
@@ -44,6 +60,7 @@ describe('RYO gameplay plugin', () => {
         phase: 'collecting',
         scoreEventsJson: '[]',
         resultsJson: '[]',
+        teamActionJson: assignmentState,
       },
     });
     for (const [index, delta] of [1, -1, 1].entries()) {
@@ -68,6 +85,7 @@ describe('RYO gameplay plugin', () => {
         { kind: 'decision', decision: 'steal' },
         { controller: false, participantId: 'p', teamId: 'a' },
         { ...prompt, id: 'p', preparedAt: now },
+        runtimeState,
       ),
     ).toThrow('not available');
     expect(
@@ -75,8 +93,38 @@ describe('RYO gameplay plugin', () => {
         { kind: 'answer', mode: 'multiple_choice', optionId: 'x' },
         { controller: false, participantId: 'p', teamId: 'a' },
         { ...prompt, id: 'p', preparedAt: now },
+        runtimeState,
       ),
     ).toMatchObject({ kind: 'answer' });
+  });
+
+  it('refuses a teammate of the assigned player on the correct team', () => {
+    // Right team, right kind of submission, wrong person. The blind
+    // simultaneous design is untouched; only the actor is now named.
+    expect(() =>
+      interaction.validateSubmissionForActor!(
+        { kind: 'answer', mode: 'multiple_choice', optionId: 'x' },
+        { controller: false, participantId: 'p2', teamId: 'a' },
+        { ...prompt, id: 'p', preparedAt: now },
+        runtimeState,
+      ),
+    ).toThrow('assigned player');
+    expect(() =>
+      interaction.validateSubmissionForActor!(
+        { kind: 'decision', decision: 'trust' },
+        { controller: false, participantId: 'q2', teamId: 'b' },
+        { ...prompt, id: 'p', preparedAt: now },
+        runtimeState,
+      ),
+    ).toThrow('assigned player');
+    expect(
+      interaction.validateSubmissionForActor!(
+        { kind: 'decision', decision: 'trust' },
+        { controller: false, participantId: 'q', teamId: 'b' },
+        { ...prompt, id: 'p', preparedAt: now },
+        runtimeState,
+      ),
+    ).toMatchObject({ kind: 'decision' });
   });
 
   it('accepts finite closest values and rejects invalid values', () => {

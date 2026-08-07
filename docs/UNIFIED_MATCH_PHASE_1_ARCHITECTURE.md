@@ -304,14 +304,14 @@ readonly launchRequirements: {
 | --- | --- | --- | --- |
 | `read-your-opponent` | 3 | true | Needs a private answer from one team and a private steal/trust decision from the other before it resolves. |
 | `distributed-information` | 3 | true | Each puzzle is split across 2–3 connected phones per team; startup refuses a team outside that range. |
-| `top-10` | 1 | true | `assign-card` is authorised `active-team-player`; the controller can only reveal and time out. |
+| `top-5` | 1 | true | `decide-card` is authorised `active-participant` — one named player per team, not the team. The controller can only skip a stuck card. |
 
 **Every currently implemented mechanic requires phones.** There is no non-phone
 example to show, and none was invented.
 
 `isPlayableItem` carries the mechanic's own payload contract (machine-checkable
 answer modes for RYO; variant plus author safety confirmation for
-`distributed-information`; the poison-deck variant for `top-10`), so the draw can
+`distributed-information`; the `keep-or-give` variant for `top-5`), so the draw can
 never hand a runtime an item it would refuse.
 
 ### Insufficient content
@@ -390,7 +390,7 @@ set. `pendingChallenge` holds no ContentItem ids.
 | --- | --- | --- | --- |
 | `distributed-information` | 2 | 3 | `StartDistributedInformation.eligibleTeams` refuses anything else |
 | `read-your-opponent` | 1 | — | `connected-player` submissions; resolves on one answer + one decision |
-| `top-10` | 1 | — | `assign-card` is `active-team-player`; the controller can only reveal/time out |
+| `top-5` | 1 | — | `decide-card` is `active-participant`; the controller can only skip a stuck card |
 
 All three additionally require both teams, team assignment, and connected presence.
 `MatchChallengeReadinessService` is the only thing that counts: a controller is never

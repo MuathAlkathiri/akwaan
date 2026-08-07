@@ -119,7 +119,13 @@ function launch(
   });
 }
 
-/** Plays one position to completion, crediting the given deltas to it. */
+/**
+ * Plays one position through to the board again.
+ *
+ * A finished challenge now stops on its result, so "played" means completed *and*
+ * acknowledged. Tests that care about the result screen itself drive the two
+ * steps separately.
+ */
 function completePosition(
   match: Match,
   occurrenceIndex: number,
@@ -136,6 +142,10 @@ function completePosition(
       runtimeId,
       deltas ?? [{ id: `${runtimeId}-e`, teamId: TEAM_A.id, delta: 1 }],
     ),
+  });
+  match.continueFromChallengeResult({
+    commandId: `continue-${runtimeId}`,
+    now: NOW,
   });
   return runtimeId;
 }
@@ -314,7 +324,62 @@ describe('Match aggregate', () => {
       expect(match.occurrences[0].slots.slot_2?.summary).toEqual({
         itemsPlayed: 3,
       });
+      // A finished challenge stops on its result. It reaches the board only when
+      // the host says so, and the second terminal notification did not append a
+      // second result to history either.
+      expect(match.stage).toBe(MatchStage.CHALLENGE_RESULT);
+      expect(match.challengeResults).toHaveLength(1);
+      expect(match.pendingResult?.id).toBe(match.challengeResults[0].id);
+
+      match.continueFromChallengeResult({ commandId: 'c-continue', now: NOW });
       expect(match.stage).toBe(MatchStage.BOARD);
+      expect(match.pendingResult).toBeUndefined();
+      // Continuing awards nothing; the points were imported with the result.
+      expect(match.teamScore(TEAM_A.id).signedTotal).toBe(1);
+      expect(match.challengeResults).toHaveLength(1);
+    });
+
+    it('records an immutable, append-only result for every finished challenge', () => {
+      const match = newMatch();
+      completePosition(match, 0, WorldChallengeSlotKey.SLOT_1);
+      completePosition(match, 1, WorldChallengeSlotKey.SLOT_3);
+      expect(
+        match.challengeResults.map((result) => result.positionKey),
+      ).toEqual(['0#slot_1', '1#slot_3']);
+      // The older result survives the newer one — this is Match history.
+      expect(match.challengeResults[0].completedAt).toBeInstanceOf(Date);
+      expect(match.challengeResults[0].scoreEventIds).toHaveLength(1);
+    });
+
+    it('refuses to continue from any stage other than the result', () => {
+      const match = newMatch();
+      expect(() =>
+        match.continueFromChallengeResult({ commandId: 'c-early', now: NOW }),
+      ).toThrow(/MATCH_STAGE_INVALID|unavailable/);
+      launch(match, 0, WorldChallengeSlotKey.SLOT_2, 'runtime-1');
+      expect(() =>
+        match.continueFromChallengeResult({ commandId: 'c-mid', now: NOW }),
+      ).toThrow(/MATCH_STAGE_INVALID|unavailable/);
+    });
+
+    it('treats a replayed continue command as already done', () => {
+      const match = newMatch();
+      launch(match, 0, WorldChallengeSlotKey.SLOT_2, 'runtime-1');
+      match.completeChallenge({
+        commandId: 'c-done',
+        now: NOW,
+        runtimeId: 'runtime-1',
+        events: events('runtime-1', [
+          { id: 'e1', teamId: TEAM_A.id, delta: 1 },
+        ]),
+      });
+      match.continueFromChallengeResult({ commandId: 'c-continue', now: NOW });
+      const revision = match.revision;
+      // The same command id again: recognised, not re-applied, and the score is
+      // untouched.
+      match.continueFromChallengeResult({ commandId: 'c-continue', now: NOW });
+      expect(match.revision).toBe(revision);
+      expect(match.teamScore(TEAM_A.id).signedTotal).toBe(1);
     });
 
     it('preserves negative totals and clamps only the display value', () => {
@@ -349,6 +414,13 @@ describe('Match aggregate', () => {
         runtimeId: 'runtime-1',
         events: [],
       });
+      // Selection changes hands when the host leaves the result, not the moment
+      // the mechanic stops — the board is not showing yet.
+      expect(match.selectingTeamId).toBe(TEAM_A.id);
+      match.continueFromChallengeResult({
+        commandId: 'continue-runtime-1',
+        now: NOW,
+      });
 
       // Now it is the opponent's turn.
       expect(match.selectingTeamId).toBe(TEAM_B.id);
@@ -365,6 +437,10 @@ describe('Match aggregate', () => {
         now: NOW,
         runtimeId: 'runtime-2',
         events: [],
+      });
+      match.continueFromChallengeResult({
+        commandId: 'continue-runtime-2',
+        now: NOW,
       });
 
       expect(match.selectingTeamId).toBe(TEAM_A.id);

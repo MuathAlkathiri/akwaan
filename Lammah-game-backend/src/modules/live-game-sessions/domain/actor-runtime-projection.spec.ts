@@ -1,6 +1,6 @@
 import { CORE_ROUND_RUNTIME_PLUGIN } from './gameplay-mode.plugin';
 import { RYO_GAMEPLAY_PLUGIN } from './ryo-gameplay.plugin';
-import { TOP10_POISON_DECK_PLUGIN } from './top10-poison-deck.plugin';
+import { TOP5_KEEP_OR_GIVE_PLUGIN } from './top5-keep-or-give.plugin';
 import type { GameplayModePlugin } from './gameplay-mode.plugin';
 import type { InteractionActorProjection } from './gameplay-interaction.plugin';
 
@@ -26,7 +26,7 @@ describe('actor-aware runtime projection', () => {
   const withoutHook: GameplayModePlugin[] = [
     CORE_ROUND_RUNTIME_PLUGIN,
     RYO_GAMEPLAY_PLUGIN,
-    TOP10_POISON_DECK_PLUGIN,
+    TOP5_KEEP_OR_GIVE_PLUGIN,
   ];
 
   it('leaves every existing mechanic on the shared projection', () => {
@@ -50,6 +50,14 @@ describe('actor-aware runtime projection', () => {
         phase: 'intro',
         scoreEventsJson: '[]',
         resultsJson: '[]',
+        teamActionJson: JSON.stringify({
+          rotations: [
+            { teamId: 'team-alpha', order: ['participant-1'], cursor: 0 },
+            { teamId: 'team-beta', order: ['participant-2'], cursor: 0 },
+          ],
+          assignments: [],
+          nextSequence: 1,
+        }),
       },
       now: new Date('2026-01-01T00:00:00.000Z'),
     });

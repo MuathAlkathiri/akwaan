@@ -5,7 +5,7 @@ import {
 import { ScoringRuleRegistry } from './application/scoring-rule.registry';
 import { ScoringService } from './application/scoring.service';
 import { RyoPayoffMatrixRule } from './application/ryo-payoff-matrix.rule';
-import { Top10PoisonDeckResultRule } from './application/top10-poison-deck-result.rule';
+import { Top5ResultRule } from './application/top5-result.rule';
 import { ScoreLedger } from './domain/score-ledger';
 import {
   clampScoreForDisplay,
@@ -39,7 +39,7 @@ describe('Scoring foundation (roadmap 8, 16)', () => {
     registry = new ScoringRuleRegistry();
     registry.bind(new PerfectClearBonusRule(registry));
     registry.bind(new RyoPayoffMatrixRule());
-    registry.bind(new Top10PoisonDeckResultRule());
+    registry.bind(new Top5ResultRule());
     scoring = new ScoringService(registry);
   });
 
@@ -154,54 +154,49 @@ describe('Scoring foundation (roadmap 8, 16)', () => {
     });
   });
 
-  describe('Top 10 poison-deck result', () => {
-    it('awards exactly one Match point to the internal winner', () => {
+  describe('Top 5 result', () => {
+    it('awards exactly one Match point to the team owning more of the real five', () => {
       const [event] = scoring.score(
-        SCORING_RULE_IDS.TOP10_POISON_DECK_RESULT,
+        SCORING_RULE_IDS.TOP5_RESULT,
         {
           teamIds: ['team-a', 'team-b'],
-          internalScores: { 'team-a': 4, 'team-b': 2 },
-          validCards: { 'team-a': 5, 'team-b': 5 },
-          decoys: { 'team-a': 1, 'team-b': 3 },
+          top5Counts: { 'team-a': 3, 'team-b': 2 },
+          trapCounts: { 'team-a': 1, 'team-b': 4 },
           contentItemId: 'item-1',
           startingTeamId: 'team-b',
-          assignments: [{ candidateId: 'card-1' }],
-          metrics: {
-            'team-a': { successfulPoison: 2 },
-            'team-b': { giftedValidCard: 1 },
-          },
+          ownership: [{ entryId: 'entry-1' }],
         },
         context,
       );
       expect(event).toMatchObject({
         teamId: 'team-a',
         delta: 1,
-        scoringRuleId: SCORING_RULE_IDS.TOP10_POISON_DECK_RESULT,
-        reason: 'top10.poison-deck.win',
+        scoringRuleId: SCORING_RULE_IDS.TOP5_RESULT,
+        reason: 'top-5.win',
       });
+      // The 0-5 split is the challenge's internal result and stays metadata; the
+      // ledger only ever moves by one.
       expect(event.metadata).toMatchObject({
-        internalScores: { 'team-a': 4, 'team-b': 2 },
+        top5Counts: { 'team-a': 3, 'team-b': 2 },
         startingTeamId: 'team-b',
       });
     });
 
-    it('awards no Match point on a tie', () => {
-      expect(
-        scoring.score(
-          SCORING_RULE_IDS.TOP10_POISON_DECK_RESULT,
-          {
-            teamIds: ['team-a', 'team-b'],
-            internalScores: { 'team-a': 3, 'team-b': 3 },
-            validCards: { 'team-a': 5, 'team-b': 5 },
-            decoys: { 'team-a': 2, 'team-b': 2 },
-            contentItemId: 'item-1',
-            startingTeamId: 'team-a',
-            assignments: [],
-            metrics: {},
-          },
-          context,
-        ),
-      ).toEqual([]);
+    it('never awards more than one point however lopsided the split', () => {
+      const events = scoring.score(
+        SCORING_RULE_IDS.TOP5_RESULT,
+        {
+          teamIds: ['team-a', 'team-b'],
+          top5Counts: { 'team-a': 5, 'team-b': 0 },
+          trapCounts: { 'team-a': 0, 'team-b': 5 },
+          contentItemId: 'item-1',
+          startingTeamId: 'team-a',
+          ownership: [],
+        },
+        context,
+      );
+      expect(events).toHaveLength(1);
+      expect(events[0].delta).toBe(1);
     });
   });
 

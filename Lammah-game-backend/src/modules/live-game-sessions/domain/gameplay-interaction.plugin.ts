@@ -29,18 +29,37 @@ export interface GameplayInteractionPlugin {
   ): Omit<GameplayPromptState, 'id' | 'preparedAt'>;
   validatePrompt(prompt: GameplayPromptState): GameplayPromptState;
   validateSubmission(payload: GameplayCommandPayload): GameplayCommandPayload;
+  /**
+   * The actor-aware submission check.
+   *
+   * Gets the live runtime state as well as the prompt, because the prompt is a
+   * snapshot taken when the item opened while the runtime is what the server has
+   * since decided — a mechanic whose authorised participant can be reassigned
+   * mid-item (a disconnect handoff) must read the runtime, not the prompt.
+   */
   validateSubmissionForActor?(
     payload: GameplayCommandPayload,
     actor: InteractionActorProjection,
     prompt: GameplayPromptState,
+    runtimeState: GameplayModeState,
   ): GameplayCommandPayload;
   shouldAutoResolve?(
     submissions: GameplaySubmissionState[],
     prompt: GameplayPromptState,
   ): boolean;
+  /**
+   * The prompt as this actor may see it.
+   *
+   * Gets the live runtime state for the same reason `validateSubmissionForActor`
+   * does: the prompt is a snapshot from when the item opened, so anything the
+   * server can reassign mid-item — such as which participant is authoritative —
+   * must be read from the runtime or the projection will disagree with the
+   * authorisation check.
+   */
   projectPrompt(
     prompt: GameplayPromptState,
     actor: InteractionActorProjection,
+    runtimeState?: GameplayModeState,
   ): GameplayModeState | undefined;
   projectSubmission(
     submission: GameplaySubmissionState,

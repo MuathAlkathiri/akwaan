@@ -31,7 +31,7 @@ import {
 } from "../../services/content-item-form.service";
 import { FormIssueList } from "../shared";
 import { AnswerPayloadFields } from "./answer-payload-fields";
-import { Top10PoisonDeckFields } from "./top10-poison-deck-fields";
+import { Top5Fields } from "./top5-fields";
 import { DistributedInformationFields } from "./distributed-information-fields";
 import {
   CONTENT_STATUSES,
@@ -235,10 +235,10 @@ export function ContentItemForm({
         availableModes={availableModes}
       />
 
-      {values.answer.mode === "top_10" && (
-        <Top10PoisonDeckFields
-          value={values.top10}
-          onChange={(top10) => set({ top10 })}
+      {values.answer.mode === "top_5" && (
+        <Top5Fields
+          value={values.top5}
+          onChange={(top5) => set({ top5 })}
         />
       )}
 

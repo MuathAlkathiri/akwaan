@@ -410,7 +410,7 @@ describe('distributed-information race integration', () => {
   /** One unified challenge command: a position, and nothing else. */
   const challengeCommand = async (
     sessionId: string,
-    path: 'prepare' | 'launch' | 'cancel',
+    path: 'prepare' | 'launch' | 'cancel' | 'continue',
     body: {
       occurrenceIndex?: number;
       slotKey?: WorldChallengeSlotKey;
@@ -754,7 +754,12 @@ describe('distributed-information race integration', () => {
     await solveCurrentPuzzle(sessionId, alpha);
     await solveCurrentPuzzle(sessionId, alpha);
 
-    // Reconciliation ran on its own and the board is open again.
+    // Reconciliation ran on its own — onto the challenge result, which is where
+    // every mechanic now lands. The board reopens on the host's continue.
+    const resolved = await snapshotOf(sessionId);
+    expect(resolved.match.stage.key).toBe(MatchStage.CHALLENGE_RESULT);
+    expect(resolved.match.challengeResult).toBeDefined();
+    await challengeCommand(sessionId, 'continue');
     const reconciled = await snapshotOf(sessionId);
     expect(reconciled.match.stage.key).toBe(MatchStage.BOARD);
     expect(reconciled.match.currentChallenge).toBeUndefined();

@@ -44,8 +44,8 @@ vi.mock("@/features/live-game-session/components/ryo-gameplay-panel", () => ({
   RyoGameplayPanel: () => <div data-testid="renderer-ryo" />,
 }));
 vi.mock(
-  "@/features/live-game-session/components/top10-poison-deck-panel",
-  () => ({ Top10PoisonDeckPanel: () => <div data-testid="renderer-top10" /> }),
+  "@/features/live-game-session/components/top5-panel",
+  () => ({ Top5Panel: () => <div data-testid="renderer-top5" /> }),
 );
 vi.mock(
   "@/features/live-game-session/components/distributed-information-panel",
@@ -219,7 +219,7 @@ beforeEach(() => {
 describe("a running challenge is routed by its runtime mode key", () => {
   it.each([
     ["read-your-opponent", "renderer-ryo"],
-    ["top-10", "renderer-top10"],
+    ["top-5", "renderer-top5"],
   ])("renders %s with its own screen", (modeKey, testId) => {
     renderRouter(match({ stage: "challenge", currentChallenge: running }), {
       runtimeModeKey: modeKey,
@@ -250,12 +250,12 @@ describe("a running challenge is routed by its runtime mode key", () => {
   });
 
   it("ignores the challenge name entirely when choosing a renderer", () => {
-    // The board says "اقرأ خصمك"; the runtime says top-10. The runtime wins.
+    // The board says "اقرأ خصمك"; the runtime says top-5. The runtime wins.
     renderRouter(match({ stage: "challenge", currentChallenge: running }), {
-      runtimeModeKey: "top-10",
+      runtimeModeKey: "top-5",
     });
 
-    expect(screen.getByTestId("renderer-top10")).toBeTruthy();
+    expect(screen.getByTestId("renderer-top5")).toBeTruthy();
     expect(screen.queryByTestId("renderer-ryo")).toBeNull();
   });
 

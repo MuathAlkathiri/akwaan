@@ -139,7 +139,7 @@ describe("mechanic and configuration payloads", () => {
       isEnabled: true,
     });
     const second = buildConfigurationPayload({
-      challengeTypeId: "top-10",
+      challengeTypeId: "top-5",
       slotKey: "slot_3",
       sortOrder: 2,
       isEnabled: true,
@@ -228,49 +228,49 @@ describe("content item answer payloads", () => {
     });
   });
 
-  it("builds one poison-deck ContentItem with 14 classified cards", () => {
+  it("builds one Top 5 ContentItem with ten classified entries", () => {
     const values = emptyContentItemForm("scope-1");
-    values.promptAr = "أفضل عشرة";
-    values.compatibleChallengeTypeIds = ["top-10"];
-    values.answer.mode = "top_10";
-    values.top10.variant = "poison-deck";
-    values.top10.title = "أفضل عشرة هدافين";
-    values.top10.instruction = "احتفظ بالبطاقة أو أرسلها لخصمك";
-    values.top10.rankingBasis = "عدد الأهداف الرسمية";
-    values.top10.sourceLabel = "الاتحاد الرسمي";
-    values.top10.sourceUrl = "https://example.com/ranking";
-    values.top10.asOfDate = "2026-08-04";
-    values.top10.cards = values.top10.cards.map((card, index) => ({
-      ...card,
+    values.promptAr = "أفضل 5";
+    values.compatibleChallengeTypeIds = ["top-5"];
+    values.answer.mode = "top_5";
+    values.top5.title = "أفضل 5 هدافين";
+    values.top5.instruction = "احتفظ بها أو دسّها للخصم";
+    values.top5.rankingBasis = "عدد الأهداف الرسمية";
+    values.top5.sourceLabel = "الاتحاد الرسمي";
+    values.top5.sourceUrl = "https://example.com/ranking";
+    values.top5.asOfDate = "2026-08-04";
+    values.top5.entries = values.top5.entries.map((entry, index) => ({
+      ...entry,
       label: `لاعب ${index + 1}`,
     }));
     const payload = buildContentItemPayload(values);
-    expect(payload.answerPayload).toEqual({ mode: "top_10" });
+    expect(payload.answerPayload).toEqual({ mode: "top_5" });
     expect(payload.mechanicPayload).toMatchObject({
-      variant: "poison-deck",
-      title: "أفضل عشرة هدافين",
-      instruction: "احتفظ بالبطاقة أو أرسلها لخصمك",
+      variant: "keep-or-give",
+      title: "أفضل 5 هدافين",
+      instruction: "احتفظ بها أو دسّها للخصم",
       sourceUrl: "https://example.com/ranking",
       asOfDate: "2026-08-04",
-      candidates: expect.arrayContaining([
-        expect.objectContaining({ id: "card-1", label: "لاعب 1" }),
-      ]),
     });
-    expect(payload.mechanicPayload).toEqual(
-      expect.objectContaining({
-        candidates: expect.any(Array),
-        rankedAnswer: expect.any(Array),
-        decoyCandidateIds: expect.any(Array),
-      }),
-    );
     const mechanic = payload.mechanicPayload as unknown as {
-      candidates: unknown[];
-      rankedAnswer: unknown[];
-      decoyCandidateIds: unknown[];
+      entries: Array<{ id: string; label: string; rank: number | null }>;
     };
-    expect(mechanic.candidates).toHaveLength(14);
-    expect(mechanic.rankedAnswer).toHaveLength(10);
-    expect(mechanic.decoyCandidateIds).toHaveLength(4);
+    // Ten entries, and the rank lives on the entry — there is no second array
+    // that could disagree about which five are real.
+    expect(mechanic.entries).toHaveLength(10);
+    expect(mechanic.entries.filter((entry) => entry.rank !== null)).toHaveLength(
+      5,
+    );
+    expect(
+      mechanic.entries
+        .map((entry) => entry.rank)
+        .filter((rank): rank is number => rank !== null)
+        .sort((left, right) => left - right),
+    ).toEqual([1, 2, 3, 4, 5]);
+    expect(mechanic.entries.filter((entry) => entry.rank === null)).toHaveLength(
+      5,
+    );
+    expect(mechanic.entries[0]).toMatchObject({ id: "entry-1", label: "لاعب 1" });
     expect(payload).not.toHaveProperty("metadata");
   });
 

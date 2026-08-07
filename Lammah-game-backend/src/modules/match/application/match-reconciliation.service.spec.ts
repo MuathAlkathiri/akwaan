@@ -201,7 +201,10 @@ describe('MatchReconciliationService', () => {
       importedScoreEvents: 1,
     });
     const match = current()!;
-    expect(match.stage).toBe(MatchStage.BOARD);
+    // Reconciliation lands the Match on its result, not on the board: the host
+    // has not seen what happened yet.
+    expect(match.stage).toBe(MatchStage.CHALLENGE_RESULT);
+    expect(match.pendingResult?.runtimeId).toBe('runtime-1');
     expect(match.currentChallenge).toBeUndefined();
     expect(
       match.occurrences[0].slots[WorldChallengeSlotKey.SLOT_2],
@@ -217,7 +220,7 @@ describe('MatchReconciliationService', () => {
         payload: {
           matchId: match.id,
           matchRevision: match.revision,
-          stage: MatchStage.BOARD,
+          stage: MatchStage.CHALLENGE_RESULT,
           status: match.status,
           reason: 'challenge-completed',
         },
@@ -349,7 +352,7 @@ describe('MatchReconciliationService', () => {
     );
 
     expect(converged.outcome).toBe('reconciled');
-    expect(conflicted.current()!.stage).toBe(MatchStage.BOARD);
+    expect(conflicted.current()!.stage).toBe(MatchStage.CHALLENGE_RESULT);
     expect(conflicted.current()!.serialize().scoreEvents).toHaveLength(1);
     expect(conflicted.published).toHaveLength(1);
   });

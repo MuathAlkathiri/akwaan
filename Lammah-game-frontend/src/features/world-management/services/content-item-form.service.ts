@@ -7,8 +7,7 @@ import type {
   ContentItemStatus,
   ContentMediaType,
   VoteConsensusRule,
-  Top10PoisonDeckPayload,
-  Top10Variant,
+  Top5Payload,
 } from "../types";
 
 /**
@@ -31,7 +30,7 @@ export interface ContentItemFormValues {
   isReusableAcrossSessions: boolean;
   notes: string;
   answer: AnswerFormState;
-  top10: Top10FormState;
+  top5: Top5FormState;
   distributed: DistributedFormState;
 }
 
@@ -84,16 +83,20 @@ function emptyDistributedState(): DistributedFormState {
   };
 }
 
-export interface Top10CardFormState {
+/** Exactly ten entries per Top 5 item: five ranked 1..5 and five traps. */
+export const TOP5_ENTRY_COUNT = 10;
+export const TOP5_RANKED_COUNT = 5;
+
+export interface Top5EntryFormState {
   id: string;
   label: string;
   shortLabel: string;
   imageUrl: string;
-  classification: "decoy" | `${number}`;
+  /** `"trap"`, or the rank as a string. There is no third state. */
+  classification: "trap" | `${number}`;
 }
 
-export interface Top10FormState {
-  variant: Top10Variant;
+export interface Top5FormState {
   title: string;
   instruction: string;
   rankingBasis: string;
@@ -101,12 +104,11 @@ export interface Top10FormState {
   sourceUrl: string;
   asOfDate: string;
   explanation: string;
-  cards: Top10CardFormState[];
+  entries: Top5EntryFormState[];
 }
 
-function emptyTop10State(): Top10FormState {
+function emptyTop5State(): Top5FormState {
   return {
-    variant: "classic",
     title: "",
     instruction: "",
     rankingBasis: "",
@@ -114,14 +116,14 @@ function emptyTop10State(): Top10FormState {
     sourceUrl: "",
     asOfDate: "",
     explanation: "",
-    cards: Array.from({ length: 14 }, (_, index) => ({
-      id: `card-${index + 1}`,
+    entries: Array.from({ length: TOP5_ENTRY_COUNT }, (_, index) => ({
+      id: `entry-${index + 1}`,
       label: "",
       shortLabel: "",
       imageUrl: "",
-      classification: (index < 10
+      classification: (index < TOP5_RANKED_COUNT
         ? String(index + 1)
-        : "decoy") as Top10CardFormState["classification"],
+        : "trap") as Top5EntryFormState["classification"],
     })),
   };
 }
@@ -170,7 +172,7 @@ export function emptyContentItemForm(scopeId: string): ContentItemFormValues {
     isReusableAcrossSessions: false,
     notes: "",
     answer: emptyAnswerState(),
-    top10: emptyTop10State(),
+    top5: emptyTop5State(),
     distributed: emptyDistributedState(),
   };
 }
@@ -221,15 +223,8 @@ export function toDistributedFormState(
 
 export function toContentItemForm(item: ContentItem): ContentItemFormValues {
   const payload = item.answerPayload;
-  const top10Payload = item.mechanicPayload as
-    Partial<Top10PoisonDeckPayload> | undefined;
-  const emptyTop10 = emptyTop10State();
-  const rankByCandidate = new Map(
-    (top10Payload?.rankedAnswer ?? []).map((answer) => [
-      answer.candidateId,
-      String(answer.rank),
-    ]),
-  );
+  const top5Payload = item.mechanicPayload as Partial<Top5Payload> | undefined;
+  const emptyTop5 = emptyTop5State();
   return {
     scopeId: item.scopeId,
     promptAr: item.prompt.ar,
@@ -264,31 +259,32 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
     distributed: toDistributedFormState(
       item.mechanicPayload as DistributedInformationPayload | undefined,
     ),
-    top10:
-      top10Payload?.variant === "poison-deck"
+    top5:
+      top5Payload?.variant === "keep-or-give"
         ? {
-            variant: "poison-deck",
-            title: top10Payload.title ?? "",
-            instruction: top10Payload.instruction ?? "",
-            rankingBasis: top10Payload.rankingBasis ?? "",
-            sourceLabel: top10Payload.sourceLabel ?? "",
-            sourceUrl: top10Payload.sourceUrl ?? "",
-            asOfDate: top10Payload.asOfDate ?? "",
-            explanation: top10Payload.explanation ?? "",
-            cards: Array.from({ length: 14 }, (_, index) => {
-              const candidate = top10Payload.candidates?.[index];
+            title: top5Payload.title ?? "",
+            instruction: top5Payload.instruction ?? "",
+            rankingBasis: top5Payload.rankingBasis ?? "",
+            sourceLabel: top5Payload.sourceLabel ?? "",
+            sourceUrl: top5Payload.sourceUrl ?? "",
+            asOfDate: top5Payload.asOfDate ?? "",
+            explanation: top5Payload.explanation ?? "",
+            entries: Array.from({ length: TOP5_ENTRY_COUNT }, (_, index) => {
+              const entry = top5Payload.entries?.[index];
               return {
-                id: candidate?.id ?? `card-${index + 1}`,
-                label: candidate?.label ?? "",
-                shortLabel: candidate?.shortLabel ?? "",
-                imageUrl: candidate?.media?.url ?? "",
-                classification: (candidate && rankByCandidate.get(candidate.id)
-                  ? rankByCandidate.get(candidate.id)
-                  : "decoy") as "decoy" | `${number}`,
+                id: entry?.id ?? `entry-${index + 1}`,
+                label: entry?.label ?? "",
+                shortLabel: entry?.shortLabel ?? "",
+                imageUrl: entry?.media?.url ?? "",
+                // A stored `null` means the author said "trap"; a missing entry
+                // gets the same default the empty form does.
+                classification: (entry && entry.rank != null
+                  ? String(entry.rank)
+                  : "trap") as "trap" | `${number}`,
               };
             }),
           }
-        : emptyTop10,
+        : emptyTop5,
   };
 }
 
@@ -351,8 +347,8 @@ export function buildAnswerPayload(
         },
         acceptedAnswers: toLines(answer.acceptedAnswers),
       };
-    case "top_10":
-      return { mode: "top_10" };
+    case "top_5":
+      return { mode: "top_5" };
     case "ryo":
     default:
       // Roadmap 6.1: an RYO prompt is multiple choice or a numeric estimate,
@@ -376,43 +372,36 @@ export function buildAnswerPayload(
 
 export function buildContentItemPayload(values: ContentItemFormValues) {
   const mediaUrls = values.mediaUrls.map((url) => url.trim()).filter(Boolean);
-  const top10MechanicPayload =
-    values.answer.mode === "top_10"
-      ? values.top10.variant === "classic"
-        ? { variant: "classic" }
-        : {
-            variant: "poison-deck",
-            title: values.top10.title.trim(),
-            instruction: values.top10.instruction.trim(),
-            rankingBasis: values.top10.rankingBasis.trim(),
-            sourceLabel: values.top10.sourceLabel.trim(),
-            sourceUrl: values.top10.sourceUrl.trim(),
-            ...(values.top10.asOfDate
-              ? { asOfDate: values.top10.asOfDate }
+  const top5MechanicPayload =
+    values.answer.mode === "top_5"
+      ? {
+          variant: "keep-or-give",
+          title: values.top5.title.trim(),
+          instruction: values.top5.instruction.trim(),
+          rankingBasis: values.top5.rankingBasis.trim(),
+          sourceLabel: values.top5.sourceLabel.trim(),
+          sourceUrl: values.top5.sourceUrl.trim(),
+          ...(values.top5.asOfDate ? { asOfDate: values.top5.asOfDate } : {}),
+          // One list with the rank on the entry: there is no second array that
+          // could disagree with it about which entries are real.
+          entries: values.top5.entries.map((entry) => ({
+            id: entry.id,
+            label: entry.label.trim(),
+            ...(entry.shortLabel.trim()
+              ? { shortLabel: entry.shortLabel.trim() }
               : {}),
-            candidates: values.top10.cards.map((card) => ({
-              id: card.id,
-              label: card.label.trim(),
-              ...(card.shortLabel.trim()
-                ? { shortLabel: card.shortLabel.trim() }
-                : {}),
-              ...(card.imageUrl.trim()
-                ? { media: { url: card.imageUrl.trim() } }
-                : {}),
-            })),
-            rankedAnswer: values.top10.cards
-              .filter((card) => card.classification !== "decoy")
-              .map((card) => ({
-                candidateId: card.id,
-                rank: Number(card.classification),
-              })),
-            decoyCandidateIds: values.top10.cards
-              .filter((card) => card.classification === "decoy")
-              .map((card) => card.id),
-            ...(values.top10.explanation.trim()
-              ? { explanation: values.top10.explanation.trim() }
+            ...(entry.imageUrl.trim()
+              ? { media: { url: entry.imageUrl.trim() } }
               : {}),
-          }
+            rank:
+              entry.classification === "trap"
+                ? null
+                : Number(entry.classification),
+          })),
+          ...(values.top5.explanation.trim()
+            ? { explanation: values.top5.explanation.trim() }
+            : {}),
+        }
       : undefined;
   // "ركّبها" carries only the distributed parts; the answer stays in
   // answerPayload, the one validated home every mechanic already uses.
@@ -467,7 +456,7 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
           },
         }),
     answerPayload: buildAnswerPayload(values.answer),
-    ...(top10MechanicPayload ? { mechanicPayload: top10MechanicPayload } : {}),
+    ...(top5MechanicPayload ? { mechanicPayload: top5MechanicPayload } : {}),
     ...(distributedMechanicPayload
       ? { mechanicPayload: distributedMechanicPayload }
       : {}),

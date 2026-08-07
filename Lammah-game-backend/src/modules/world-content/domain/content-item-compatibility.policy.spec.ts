@@ -267,66 +267,132 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
     ).toContain('RYO_PAYLOAD_INCOMPLETE');
   });
 
-  it('validates a complete poison deck while preserving missing variant as classic', () => {
-    const top10 = challengeType({
-      id: 'challenge-ryo',
-      slug: 'top-10',
+  describe('Top 5 content contract', () => {
+    const top5 = challengeType({
+      id: 'challenge-top-5',
+      slug: 'top-5',
       family: ChallengeFamily.SIGNATURE,
-      answerMode: ChallengeAnswerMode.TOP_10,
+      answerMode: ChallengeAnswerMode.TOP_5,
     });
-    const candidates = Array.from({ length: 14 }, (_, index) => ({
-      id: `card-${index + 1}`,
-      label: `بطاقة ${index + 1}`,
-    }));
-    const poisonItem = contentItem({
-      answerPayload: { mode: ChallengeAnswerMode.TOP_10 },
-      mechanicPayload: {
-        variant: 'poison-deck',
-        title: 'أفضل عشرة',
-        instruction: 'احتفظ بالبطاقة أو أرسلها لخصمك',
-        rankingBasis: 'الترتيب الرسمي',
-        sourceLabel: 'المصدر الرسمي',
-        sourceUrl: 'https://example.com/ranking',
-        asOfDate: '2026-08-04',
-        candidates,
-        rankedAnswer: candidates.slice(0, 10).map((candidate, index) => ({
-          candidateId: candidate.id,
-          rank: index + 1,
-        })),
-        decoyCandidateIds: candidates
-          .slice(10)
-          .map((candidate) => candidate.id),
-      },
+    const entry = (index: number, rank: number | null) => ({
+      id: `entry-${index}`,
+      label: `مدخل ${index}`,
+      rank,
     });
-    expect(codes({ item: poisonItem, challengeTypes: typeMap(top10) })).toEqual(
-      [],
-    );
-    expect(
+    // Five ranked 1..5 and five traps: the only shape the mechanic can score.
+    const validEntries = [
+      ...[1, 2, 3, 4, 5].map((rank) => entry(rank, rank)),
+      ...[6, 7, 8, 9, 10].map((index) => entry(index, null)),
+    ];
+    const payload = (overrides: Record<string, unknown> = {}) => ({
+      variant: 'keep-or-give',
+      title: 'أفضل 5',
+      instruction: 'احتفظ بالبطاقة أو دسّها للخصم',
+      rankingBasis: 'الترتيب الرسمي',
+      sourceLabel: 'المصدر الرسمي',
+      sourceUrl: 'https://example.com/ranking',
+      asOfDate: '2026-08-04',
+      entries: validEntries,
+      ...overrides,
+    });
+    const evaluateTop5 = (overrides: Record<string, unknown> = {}) =>
       codes({
         item: contentItem({
-          answerPayload: { mode: ChallengeAnswerMode.TOP_10 },
+          compatibleChallengeTypeIds: [top5.id],
+          answerPayload: { mode: ChallengeAnswerMode.TOP_5 },
+          mechanicPayload: payload(overrides),
         }),
-        challengeTypes: typeMap(top10),
-      }),
-    ).toEqual([]);
+        challengeTypes: typeMap(top5),
+      });
 
-    expect(
-      codes({
-        item: contentItem({
-          ...poisonItem,
-          mechanicPayload: {
-            ...poisonItem.mechanicPayload,
-            decoyCandidateIds: ['card-1', 'card-11', 'card-12', 'card-13'],
-          },
+    it('accepts exactly ten entries with ranks 1..5 and five traps', () => {
+      expect(evaluateTop5()).toEqual([]);
+    });
+
+    it('rejects anything other than ten entries', () => {
+      expect(evaluateTop5({ entries: validEntries.slice(0, 9) })).toEqual(
+        expect.arrayContaining(['TOP5_ENTRY_COUNT_INVALID']),
+      );
+      expect(
+        evaluateTop5({ entries: [...validEntries, entry(11, null)] }),
+      ).toEqual(expect.arrayContaining(['TOP5_ENTRY_COUNT_INVALID']));
+    });
+
+    it('rejects a rank set that is not exactly 1..5', () => {
+      expect(
+        evaluateTop5({
+          entries: [
+            ...[1, 2, 3, 4, 6].map((rank) => entry(rank, rank)),
+            ...[6, 7, 8, 9, 10].map((index) => entry(index + 100, null)),
+          ],
         }),
-        challengeTypes: typeMap(top10),
-      }),
-    ).toEqual(
-      expect.arrayContaining([
-        'TOP10_CANDIDATE_OVERLAP',
-        'TOP10_CLASSIFICATION_INCOMPLETE',
-      ]),
-    );
+      ).toEqual(expect.arrayContaining(['TOP5_RANKS_INVALID']));
+      // A repeated rank is two claims to the same position.
+      expect(
+        evaluateTop5({
+          entries: [
+            ...[1, 2, 3, 4].map((rank) => entry(rank, rank)),
+            entry(50, 4),
+            ...[6, 7, 8, 9, 10].map((index) => entry(index, null)),
+          ],
+        }),
+      ).toEqual(expect.arrayContaining(['TOP5_RANKS_INVALID']));
+    });
+
+    it('rejects a ranked/trap split that is not five and five', () => {
+      expect(
+        evaluateTop5({
+          entries: [
+            ...[1, 2, 3, 4, 5].map((rank) => entry(rank, rank)),
+            entry(6, 5),
+            ...[7, 8, 9, 10].map((index) => entry(index, null)),
+          ],
+        }),
+      ).toEqual(
+        expect.arrayContaining([
+          'TOP5_RANKED_COUNT_INVALID',
+          'TOP5_TRAP_COUNT_INVALID',
+        ]),
+      );
+    });
+
+    it('rejects duplicate entry ids and duplicate labels', () => {
+      expect(
+        evaluateTop5({
+          entries: [
+            ...validEntries.slice(0, 9),
+            { ...entry(99, null), id: 'entry-1' },
+          ],
+        }),
+      ).toEqual(expect.arrayContaining(['TOP5_DUPLICATE_ENTRY_ID']));
+      expect(
+        evaluateTop5({
+          entries: [
+            ...validEntries.slice(0, 9),
+            { id: 'entry-99', label: 'مدخل 1', rank: null },
+          ],
+        }),
+      ).toEqual(expect.arrayContaining(['TOP5_DUPLICATE_ENTRY_LABEL']));
+    });
+
+    it('treats a missing rank as unclassified rather than a trap', () => {
+      // `undefined` means the author never said; `null` means they said "trap".
+      // Collapsing the two would invent a correctness claim.
+      expect(
+        evaluateTop5({
+          entries: [
+            ...validEntries.slice(0, 9),
+            { id: 'entry-10', label: 'مدخل 10' },
+          ],
+        }),
+      ).toEqual(expect.arrayContaining(['TOP5_RANK_MISSING']));
+    });
+
+    it('refuses the retired Top 10 poison-deck payload outright', () => {
+      expect(evaluateTop5({ variant: 'poison-deck' })).toEqual(
+        expect.arrayContaining(['TOP5_VARIANT_INVALID']),
+      );
+    });
   });
 
   it('accepts every medium through the same mechanic, and requires assets when a type is set', () => {

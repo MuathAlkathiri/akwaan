@@ -53,7 +53,7 @@ describe('Match module architecture', () => {
     for (const path of launchers) {
       const content = read(path);
       expect(content).toMatch(
-        /StartRyoGameplay|StartTop10PoisonDeck|StartDistributedInformation/,
+        /StartRyoGameplay|StartTop5|StartDistributedInformation/,
       );
       // No launcher may build a runtime, a round, or an interaction itself.
       expect(content).not.toMatch(
@@ -234,7 +234,7 @@ describe('Match module architecture', () => {
   it('reaches live-game-sessions only through its published surfaces', () => {
     const allowed = [
       'live-game-sessions/application/start-ryo-gameplay.use-case',
-      'live-game-sessions/application/start-top10-poison-deck.use-case',
+      'live-game-sessions/application/start-top5.use-case',
       'live-game-sessions/application/start-distributed-information.use-case',
       'live-game-sessions/application/gameplay-observer.registry',
       'live-game-sessions/application/get-live-game-session.use-case',
@@ -251,7 +251,7 @@ describe('Match module architecture', () => {
       'live-game-sessions/domain/live-game-session.repository',
       'live-game-sessions/presentation/live-session-http-exception.filter',
       'live-game-sessions/domain/ryo-gameplay.plugin',
-      'live-game-sessions/domain/top10-poison-deck.plugin',
+      'live-game-sessions/domain/top5-keep-or-give.plugin',
       'live-game-sessions/domain/distributed-information.plugin',
       'live-game-sessions/live-game-sessions.module',
     ];

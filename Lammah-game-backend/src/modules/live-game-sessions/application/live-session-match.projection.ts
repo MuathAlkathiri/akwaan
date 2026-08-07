@@ -157,6 +157,34 @@ export interface LiveSessionUnifiedPreflight {
   preparedAt: string;
 }
 
+/**
+ * One finished challenge, exactly as the server recorded it.
+ *
+ * Everything the result screen and Match history render comes from here. The
+ * winner, the points, and — for Top 5 — the ownership reveal order are all
+ * server decisions carried verbatim; a client that recomputed any of them would
+ * be able to disagree with the ledger.
+ */
+export interface LiveSessionChallengeResult {
+  id: string;
+  positionKey: string;
+  occurrenceIndex: number;
+  slotKey: string;
+  worldId: string;
+  worldName?: string;
+  challengeTypeId: string;
+  challengeKey: string;
+  challengeName?: string;
+  selectedScopeIds: string[];
+  winnerTeamId: string | null;
+  /** Signed Match points this challenge moved, per team. */
+  teamPoints: Array<{ teamId: string; points: number }>;
+  /** Mechanic-shaped facts: Top 5 entries and reveal order, RYO item recap… */
+  details: Record<string, unknown>;
+  startedAt: string;
+  completedAt: string;
+}
+
 /** A team as the board header shows it: name and current totals. */
 export interface LiveSessionMatchTeamStanding {
   teamId: string;
@@ -197,6 +225,16 @@ export interface LiveSessionMatchProjection {
    * lookup to say who is playing and who is leading.
    */
   standings: LiveSessionMatchTeamStanding[];
+  /**
+   * The result the Match is standing on. Present exactly while the stage is
+   * `challenge_result`, so a refresh mid-reveal restores the reveal.
+   */
+  challengeResult?: LiveSessionChallengeResult;
+  /**
+   * Every finished challenge, oldest first and append-only. The foundation of
+   * Match history: a client never rebuilds this from socket events.
+   */
+  challengeHistory: LiveSessionChallengeResult[];
   result?: {
     teams: LiveSessionMatchTeamScore[];
     winnerTeamId: string | null;

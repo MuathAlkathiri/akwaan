@@ -44,7 +44,9 @@ export interface CanonicalMechanic {
 /**
  * Only mechanics whose structural identity is unambiguous.
  *
- * `top-10` is deliberately absent: it is already canonically slugged.
+ * `top-5` is deliberately absent: it is already canonically slugged, and its
+ * rename from the retired `top-10` is `migrate-top10-to-top5` — a payload
+ * reshape, not a slug repair.
  * `distributed-information` is deliberately absent too — the ChallengeType that
  * resembles it ("معلومات مقسّمة") answers with `split`, which that mechanic's
  * launcher does not accept, so they are different mechanics rather than one

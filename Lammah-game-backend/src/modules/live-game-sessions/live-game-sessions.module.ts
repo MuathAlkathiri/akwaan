@@ -112,7 +112,8 @@ import { LiveSessionSnapshotComposer } from './application/live-session-snapshot
 import { ScoringModule } from '../scoring/scoring.module';
 import { WorldContentModule } from '../world-content/world-content.module';
 import { StartRyoGameplay } from './application/start-ryo-gameplay.use-case';
-import { StartTop10PoisonDeck } from './application/start-top10-poison-deck.use-case';
+import { StartTop5 } from './application/start-top5.use-case';
+import { ReassignTeamActions } from './application/reassign-team-actions.use-case';
 import { StartDistributedInformation } from './application/start-distributed-information.use-case';
 import { GameplayDeadlineScheduler } from './application/gameplay-deadline.scheduler';
 import { GameplayObserverRegistry } from './application/gameplay-observer.registry';
@@ -166,7 +167,8 @@ const applicationProviders = [
   BombExpirationScheduler,
   BombCountdownScheduler,
   StartRyoGameplay,
-  StartTop10PoisonDeck,
+  StartTop5,
+  ReassignTeamActions,
   StartDistributedInformation,
   GameplayDeadlineScheduler,
 ];
@@ -259,7 +261,7 @@ const applicationProviders = [
     GetLiveGameSession,
     GameplayModeRegistry,
     StartRyoGameplay,
-    StartTop10PoisonDeck,
+    StartTop5,
     StartDistributedInformation,
     GAMEPLAY_RUNTIME_REPOSITORY,
     LIVE_GAME_SESSION_REPOSITORY,

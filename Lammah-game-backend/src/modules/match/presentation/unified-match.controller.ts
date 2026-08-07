@@ -118,6 +118,33 @@ export class UnifiedMatchController {
   }
 
   /**
+   * Leaves the challenge result screen.
+   *
+   * The single, explicit transition out of `challenge_result`: back to the board,
+   * or on to the end of the Match when the last position has been played. It
+   * awards nothing — the points were imported when the result was recorded — so a
+   * repeated press is safe and a replay is recognised by its command id.
+   */
+  @Post('unified/challenges/continue')
+  @ApiOperation({
+    summary: 'Return to the board from a challenge result',
+    description:
+      'Moves the Match from challenge_result to board, or to match_complete when every board position is finished. Never awards or recalculates a score.',
+  })
+  async continueFromChallengeResult(
+    @Param('sessionId') sessionId: string,
+    @Body() body: MatchCommandDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<LiveGameSessionSnapshot> {
+    await this.matches.continueFromChallengeResult({
+      sessionId,
+      actorId: user.id,
+      ...body,
+    });
+    return this.getSession.execute(sessionId, user.id);
+  }
+
+  /**
    * Launches one of the twelve board positions.
    *
    * Any available position of any occurrence, in any order. The server picks the

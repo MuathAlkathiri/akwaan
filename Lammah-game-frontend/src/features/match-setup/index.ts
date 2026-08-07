@@ -32,6 +32,7 @@ export {
 } from "./api/create-configured-match";
 export {
   cancelUnifiedPreflight,
+  continueFromChallengeResult,
   createUnifiedMatch,
   launchUnifiedChallenge,
   markLiveSessionReady,

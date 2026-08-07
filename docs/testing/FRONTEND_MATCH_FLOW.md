@@ -89,7 +89,7 @@ The current Docker database cannot run a complete Match:
   than the structurally required four.
 - Its configured RYO-looking mechanic uses a generated slug, not the canonical
   `read-your-opponent` launcher key, and has only one ready compatible item.
-- Its `top-10` Signature slot has zero ready compatible ContentItems.
+- Its `top-5` Signature slot has zero ready compatible ContentItems.
 - `انمي` is active but has no enabled board configurations.
 - There is no canonical `read-your-opponent` ChallengeType record.
 

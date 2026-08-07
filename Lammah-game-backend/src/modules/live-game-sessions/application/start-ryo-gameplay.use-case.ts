@@ -28,7 +28,17 @@ import {
   GameplayRuntimeRepository,
 } from '../domain/gameplay-runtime.repository';
 import { Inject } from '@nestjs/common';
-import { RYO_MODE_KEY } from '../domain/ryo-gameplay.plugin';
+import {
+  openRyoItemAssignments,
+  RYO_MODE_KEY,
+} from '../domain/ryo-gameplay.plugin';
+import {
+  buildTeamRotations,
+  createTeamActionAssignmentState,
+  serializeTeamActionAssignments,
+} from '../domain/team-action-assignment';
+import { eligibleParticipantsOf } from './start-top5.use-case';
+import { randomInt } from 'crypto';
 
 /**
  * The authored answer contract as a plain object.
@@ -149,6 +159,23 @@ export class StartRyoGameplay {
         'RYO_STARTING_TEAM_INVALID',
         'Starting team is not active',
       );
+    const opposingTeamId = teams.find((id) => id !== startingTeamId)!;
+    // One authoritative answerer and one authoritative Trust/Steal decider per
+    // item, from a rotation randomised once and then persisted. The two actions
+    // stay blind and simultaneous; only who may take them is now decided.
+    const participants = eligibleParticipantsOf(sessionState);
+    const opened = openRyoItemAssignments({
+      state: createTeamActionAssignmentState(
+        buildTeamRotations({
+          teams,
+          participants,
+          randomIndex: (exclusiveMax) => randomInt(exclusiveMax),
+        }),
+      ),
+      answeringTeamId: startingTeamId,
+      opposingTeamId,
+      participants,
+    });
     const actor = { kind: 'user' as const, actorId: input.actorId };
     const runtimeItems = documents.map((item, itemIndex) => ({
       id: String(item!._id),
@@ -177,6 +204,7 @@ export class StartRyoGameplay {
         teamIdsJson: JSON.stringify(teams),
         currentItemIndex: 0,
         startingTeamId,
+        teamActionJson: serializeTeamActionAssignments(opened.state),
         phase: 'intro',
         scoreEventsJson: '[]',
         resultsJson: '[]',
@@ -198,6 +226,7 @@ export class StartRyoGameplay {
       expectedSessionRevision: session.revision,
       expectedRuntimeRevision: runtime.revision,
       activeTeamId: startingTeamId,
+      activeParticipantId: opened.answererParticipantId,
     });
     runtime = (await this.runtimes.findBySessionId(input.sessionId))!;
     const roundId = runtime.serialize().activeRound!.id;
@@ -219,7 +248,9 @@ export class StartRyoGameplay {
       expectedRuntimeRevision: runtime.revision,
       payload: {
         itemJson: JSON.stringify(runtimeItems[0]),
-        opposingTeamId: teams.find((id) => id !== startingTeamId)!,
+        opposingTeamId,
+        answererParticipantId: opened.answererParticipantId,
+        deciderParticipantId: opened.deciderParticipantId,
       },
     });
     runtime = (await this.runtimes.findBySessionId(input.sessionId))!;

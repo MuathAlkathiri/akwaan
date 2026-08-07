@@ -6,9 +6,89 @@ import {
 import { GameplayPromptState } from './gameplay-interaction';
 import { InteractionActorProjection } from './gameplay-interaction.plugin';
 import { LiveSessionDomainError } from './live-session.errors';
+import {
+  assignNextTeamAction,
+  assignmentFor,
+  EligibleParticipant,
+  parseTeamActionAssignments,
+  serializeTeamActionAssignments,
+  TeamActionAssignmentState,
+} from './team-action-assignment';
 
 export const RYO_MODE_KEY = 'read-your-opponent';
 export const RYO_TIMER_SECONDS = 25;
+
+/**
+ * The two authoritative team actions one RYO item opens, simultaneously.
+ *
+ * Both are live at once and neither can see the other — that blind simultaneity
+ * is the mechanic. What changed is only *who* on each team may act: one named
+ * answerer and one named decision-maker, instead of whoever's phone was fastest.
+ */
+export const RYO_ANSWER_ACTION = 'ryo.answer';
+export const RYO_DECISION_ACTION = 'ryo.decision';
+
+/**
+ * Opens the next item's two actions and advances both teams' rotations.
+ *
+ * Every team acts exactly once per item, so both rotations move on every item:
+ * with two players per team that produces A1/B1, then A2/B2, then A1/B1 again.
+ */
+export function openRyoItemAssignments(input: {
+  state: TeamActionAssignmentState;
+  answeringTeamId: string;
+  opposingTeamId: string;
+  participants: readonly EligibleParticipant[];
+}): {
+  state: TeamActionAssignmentState;
+  answererParticipantId: string;
+  deciderParticipantId: string;
+} {
+  const answer = assignNextTeamAction(input.state, {
+    teamId: input.answeringTeamId,
+    action: RYO_ANSWER_ACTION,
+    participants: input.participants,
+  });
+  const decision = assignNextTeamAction(answer.state, {
+    teamId: input.opposingTeamId,
+    action: RYO_DECISION_ACTION,
+    participants: input.participants,
+  });
+  return {
+    state: decision.state,
+    answererParticipantId: answer.assignment.participantId,
+    deciderParticipantId: decision.assignment.participantId,
+  };
+}
+
+export function ryoAssignments(
+  state: GameplayModeState,
+): TeamActionAssignmentState {
+  return parseTeamActionAssignments(state.teamActionJson);
+}
+
+export function withRyoAssignments(
+  state: GameplayModeState,
+  assignments: TeamActionAssignmentState,
+): GameplayModeState {
+  return {
+    ...state,
+    teamActionJson: serializeTeamActionAssignments(assignments),
+  };
+}
+
+export function ryoAssignedParticipants(state: GameplayModeState): {
+  answererParticipantId: string;
+  deciderParticipantId: string;
+} {
+  const assignments = ryoAssignments(state);
+  return {
+    answererParticipantId:
+      assignmentFor(assignments, RYO_ANSWER_ACTION)?.participantId ?? '',
+    deciderParticipantId:
+      assignmentFor(assignments, RYO_DECISION_ACTION)?.participantId ?? '',
+  };
+}
 
 export function ryoAnsweringTeam(
   teamIds: string[],
@@ -73,6 +153,9 @@ function validateRuntime(state: GameplayModeState): GameplayModeState {
       'RYO requires exactly three items and two distinct teams',
     );
   }
+  // Without a readable rotation nobody is authorised, so the runtime is invalid
+  // rather than open to whoever submits first.
+  parseTeamActionAssignments(state.teamActionJson);
   return {
     ...state,
     itemsJson: JSON.stringify(items),
@@ -125,10 +208,16 @@ function submission(payload: GameplayCommandPayload): GameplayCommandPayload {
   );
 }
 
+/**
+ * Both halves of the RYO authority check, in the order that produces the most
+ * honest refusal: wrong team first, then right team but not the assigned player.
+ * A hidden button is never the security boundary — this is.
+ */
 function actorSubmission(
   payload: GameplayCommandPayload,
   actor: InteractionActorProjection,
   prompt: GameplayPromptState,
+  runtimeState: GameplayModeState,
 ) {
   const valid = submission(payload);
   const answering = prompt.internalPayload.answeringTeamId;
@@ -140,6 +229,19 @@ function actorSubmission(
     throw new LiveSessionDomainError(
       'RYO_WRONG_SIDE',
       'This action is not available to your team',
+    );
+  }
+  // From the runtime, not the prompt: a disconnect handoff moves the assignment
+  // while the item is still open, and the prompt still names whoever left.
+  const current = ryoAssignedParticipants(runtimeState);
+  const assigned =
+    valid.kind === 'answer'
+      ? current.answererParticipantId
+      : current.deciderParticipantId;
+  if (assigned && actor.participantId !== assigned) {
+    throw new LiveSessionDomainError(
+      'RYO_NOT_ASSIGNED_PARTICIPANT',
+      'Only the assigned player may take this action for the team',
     );
   }
   return valid;
@@ -184,6 +286,11 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       phase: valid.phase ?? 'intro',
       scoreEventsJson: valid.scoreEventsJson ?? '[]',
       resultsJson: valid.resultsJson ?? '[]',
+      // Who is authoritative right now, from the same state the submission
+      // check reads. The prompt carries these too, but a prompt is a snapshot:
+      // after a disconnect handoff it still names whoever left, so a phone that
+      // trusted it would show its controls to the wrong player.
+      ...ryoAssignedParticipants(valid),
     };
   },
   projectRoundState: validateRound,
@@ -194,11 +301,13 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       const item = parse<Record<string, unknown>>(input.itemJson, 'item');
       if (
         typeof context.activeTeamId !== 'string' ||
-        typeof input.opposingTeamId !== 'string'
+        typeof input.opposingTeamId !== 'string' ||
+        typeof input.answererParticipantId !== 'string' ||
+        typeof input.deciderParticipantId !== 'string'
       )
         throw new LiveSessionDomainError(
           'INVALID_RYO_PROMPT',
-          'RYO team ownership is missing',
+          'RYO team ownership and participant assignment are missing',
         );
       return {
         type: 'ryo.item',
@@ -212,6 +321,11 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
             options: item.options ?? null,
           }),
           answeringTeamId: context.activeTeamId,
+          opposingTeamId: input.opposingTeamId,
+          // Public, and deliberately so: a teammate has to know who to talk to,
+          // and neither id says anything about what the other side chose.
+          answererParticipantId: input.answererParticipantId,
+          deciderParticipantId: input.deciderParticipantId,
         },
         participantPayload: {},
         hostPayload: {},
@@ -219,6 +333,8 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
           itemJson: JSON.stringify(item),
           answeringTeamId: context.activeTeamId,
           opposingTeamId: input.opposingTeamId,
+          answererParticipantId: input.answererParticipantId,
+          deciderParticipantId: input.deciderParticipantId,
         },
         visibility: 'public',
         metadata: {},
@@ -238,13 +354,33 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
         accepted.some((s) => s.payload.kind === 'decision')
       );
     },
-    projectPrompt(prompt, actor) {
+    projectPrompt(prompt, actor, runtimeState) {
       const result = { ...prompt.publicPayload };
       if (actor.teamId === prompt.internalPayload.answeringTeamId)
         result.actorRole = 'answering';
       else if (actor.teamId === prompt.internalPayload.opposingTeamId)
         result.actorRole = 'opposing';
       else result.actorRole = 'spectator';
+      // From the runtime when it is available, which is what the submission
+      // check reads: after a disconnect handoff the prompt still names whoever
+      // left, and a phone trusting it would offer controls to the wrong player.
+      const current = runtimeState
+        ? ryoAssignedParticipants(runtimeState)
+        : {
+            answererParticipantId: String(
+              prompt.internalPayload.answererParticipantId ?? '',
+            ),
+            deciderParticipantId: String(
+              prompt.internalPayload.deciderParticipantId ?? '',
+            ),
+          };
+      result.answererParticipantId = current.answererParticipantId;
+      result.deciderParticipantId = current.deciderParticipantId;
+      // A convenience for rendering only. The server refuses an unassigned
+      // submission whatever this says.
+      result.isAssignedActor =
+        actor.participantId === current.answererParticipantId ||
+        actor.participantId === current.deciderParticipantId;
       return result;
     },
     projectSubmission(value, actor) {
@@ -280,6 +416,12 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
           ? item.correctOptionId
           : item.correctValue;
       const opponentDecision = decision?.payload.decision ?? 'trust';
+      const answererParticipantId = String(
+        prompt?.internalPayload.answererParticipantId ?? '',
+      );
+      const deciderParticipantId = String(
+        prompt?.internalPayload.deciderParticipantId ?? '',
+      );
       return {
         outcome: {
           type: 'ryo.result',
@@ -289,6 +431,21 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
             correctAnswer: String(correctAnswer ?? ''),
             correct,
             decision: opponentDecision,
+            itemIndex: Number(item.itemIndex ?? 0),
+            // The prompt is already public on the shared screen; carrying it into
+            // the record is what lets a recap be read without the runtime.
+            promptText:
+              typeof item.prompt === 'object' && item.prompt
+                ? String((item.prompt as { ar?: string }).ar ?? '')
+                : String(item.prompt ?? ''),
+            answeringTeamId: String(
+              prompt?.internalPayload.answeringTeamId ?? '',
+            ),
+            opposingTeamId: String(
+              prompt?.internalPayload.opposingTeamId ?? '',
+            ),
+            answererParticipantId,
+            deciderParticipantId,
           },
           teamPayload: {},
           participantPayload: {},

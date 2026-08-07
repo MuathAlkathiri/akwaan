@@ -123,6 +123,12 @@ describe('Match persistence integration', () => {
       runtimeId,
       events: [event({ delta, challengeSessionId: runtimeId })],
     });
+    // A finished challenge stops on its result; playing a position through
+    // means acknowledging that result too.
+    match.continueFromChallengeResult({
+      commandId: `continue-${runtimeId}`,
+      now: now(32),
+    });
   };
 
   const event = (
@@ -409,6 +415,10 @@ describe('Match persistence integration', () => {
         now: now(11),
         runtimeId: playedFirst,
         events: [event({ delta: 3, challengeSessionId: playedFirst })],
+      });
+      match.continueFromChallengeResult({
+        commandId: 'continue-2',
+        now: now(11),
       });
       match.launchChallenge({
         commandId: 'launch-0',

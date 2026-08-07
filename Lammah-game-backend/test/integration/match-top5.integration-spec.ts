@@ -28,11 +28,17 @@ import {
   MatchStatus,
 } from '../../src/modules/match/domain/match.constants';
 import {
-  TOP10_MODE_KEY,
-  TOP10_POISON_DECK_VARIANT,
-  Top10Assignment,
-  Top10Result,
-} from '../../src/modules/live-game-sessions/domain/top10-poison-deck.plugin';
+  TOP5_MODE_KEY,
+  Top5Ownership,
+  Top5Result,
+} from '../../src/modules/live-game-sessions/domain/top5-keep-or-give.plugin';
+import {
+  TOP5_ENTRY_COUNT,
+  TOP5_RANKED_COUNT,
+  TOP5_VARIANT,
+} from '../../src/modules/world-content/domain/world-content.constants';
+import { parseTeamActionAssignments } from '../../src/modules/live-game-sessions/domain/team-action-assignment';
+import { LiveSessionForbiddenError } from '../../src/modules/live-game-sessions/domain/live-session.errors';
 import { RYO_MODE_KEY } from '../../src/modules/live-game-sessions/domain/ryo-gameplay.plugin';
 import { LiveGameSessionSnapshot } from '../../src/modules/live-game-sessions/application/live-game-session.snapshot';
 import { LiveSessionActor } from '../../src/modules/live-game-sessions/application/live-session-actor';
@@ -41,6 +47,8 @@ import {
   StartLiveGameSession,
 } from '../../src/modules/live-game-sessions/application/live-session-lifecycle.use-cases';
 import { CreateSessionJoinAccess } from '../../src/modules/live-game-sessions/application/live-session-join-access.use-cases';
+import { GameplayInteractionUseCases } from '../../src/modules/live-game-sessions/application/gameplay-interaction.use-cases';
+import { ryoAssignedParticipants } from '../../src/modules/live-game-sessions/domain/ryo-gameplay.plugin';
 import {
   JoinLiveSession,
   SetParticipantReadiness,
@@ -66,20 +74,19 @@ type MatchBearingSnapshot = LiveGameSessionSnapshot & {
   };
 };
 
-const CARD_COUNT = 14;
-const RANKED_COUNT = 10;
+const CARD_COUNT = TOP5_ENTRY_COUNT;
 
 /**
- * Top 10 Poison Deck, played through the unified Match orchestration layer.
+ * أفضل 5, played through the unified Match orchestration layer.
  *
- * Every card assignment and every reveal is a real gameplay command against the
- * real runtime; nothing about the plugin's state is hand-written. The Match is
- * expected to learn the deck finished from the runtime itself. The host names a
- * *position* and nothing else: the server draws the one poison deck from the
- * occurrence's own Scope pool, and a classic-variant sibling in the same pool is
- * never handed to the mechanic.
+ * Every decision is a real gameplay command from a real participant's actor;
+ * nothing about the plugin's state is hand-written. Two players per team, so the
+ * rotation is observable: exactly one of them is authorised per card, and the
+ * server refuses the other one. The Match learns the deck finished from the
+ * runtime itself, records an immutable result, and *stops there* until the host
+ * says otherwise.
  */
-describe('Match Top 10 Poison Deck integration', () => {
+describe('Match Top 5 integration', () => {
   let app: INestApplication;
   let database: Connection;
   let token: string;
@@ -87,7 +94,7 @@ describe('Match Top 10 Poison Deck integration', () => {
   let worldId: string;
   let contentItemId: string;
   let scopeIds: string[];
-  /** An active World whose Top 10 position holds only classic-variant content. */
+  /** An active World whose Top 5 position holds only unplayable content. */
   let classicWorldId: string;
   let classicScopeIds: string[];
 
@@ -95,11 +102,11 @@ describe('Match Top 10 Poison Deck integration', () => {
     `${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}`;
 
   beforeAll(async () => {
-    database = await connectTestDatabase('match-top10');
+    database = await connectTestDatabase('match-top5');
     await resetTestDatabase(database);
     await seedIntegrationFixtures(database);
     app = await createIntegrationTestApp({
-      env: { MONGODB_URI: isolatedTestDatabaseUri('match-top10') },
+      env: { MONGODB_URI: isolatedTestDatabaseUri('match-top5') },
     });
     token = await loginForToken(app, fixtureCredentials.admin);
     controllerId = await currentUserId();
@@ -125,47 +132,35 @@ describe('Match Top 10 Poison Deck integration', () => {
         .id,
     );
 
-  /** A poison deck: 14 candidates, 10 ranked answers, 4 decoys. */
-  const poisonDeckPayload = () => {
-    const candidates = Array.from({ length: CARD_COUNT }, (_, index) => ({
-      id: `card-${index + 1}`,
+  /** Ten entries: five ranked 1..5 and five traps. */
+  const top5Payload = () => ({
+    variant: TOP5_VARIANT,
+    title: 'أكثر خمسة لاعبين تسجيلاً',
+    instruction: 'احتفظ بها أو دسّها للخصم',
+    rankingBasis: 'إجمالي الأهداف',
+    sourceLabel: 'أرشيف البطولة',
+    sourceUrl: 'https://example.invalid/top-scorers',
+    asOfDate: '2026-01-01',
+    entries: Array.from({ length: CARD_COUNT }, (_, index) => ({
+      id: `entry-${index + 1}`,
       label: `مرشح ${index + 1}`,
-    }));
-    return {
-      variant: TOP10_POISON_DECK_VARIANT,
-      title: 'أكثر عشرة لاعبين تسجيلاً',
-      instruction: 'وزّع البطاقات',
-      rankingBasis: 'إجمالي الأهداف',
-      sourceLabel: 'أرشيف البطولة',
-      sourceUrl: 'https://example.invalid/top-scorers',
-      asOfDate: '2026-01-01',
-      candidates,
-      rankedAnswer: candidates
-        .slice(0, RANKED_COUNT)
-        .map((candidate, index) => ({
-          candidateId: candidate.id,
-          rank: index + 1,
-        })),
-      decoyCandidateIds: candidates
-        .slice(RANKED_COUNT)
-        .map((candidate) => candidate.id),
-    };
-  };
+      rank: index < TOP5_RANKED_COUNT ? index + 1 : null,
+    })),
+  });
 
   /**
    * Two active Worlds sharing one complete board of mechanics.
    *
-   * `top10-world` holds the canonical poison deck plus a classic-variant sibling
-   * the server must never draw. `top10-classic-world` holds nothing but classic
-   * variant content, so launching its Top 10 position has nothing playable to
-   * draw — the honest unified analogue of the old variant-level refusal.
+   * `top5-world` holds one playable Top 5 item plus an unplayable sibling the
+   * server must never draw. `top5-empty-world` holds nothing playable at all, so
+   * launching its Top 5 position has nothing to draw.
    */
   const seedWorld = async () => {
     const presentation = {
       inputType: 'phone-card-choice',
       timerSeconds: 6,
       soundPack: null,
-      revealStyle: 'rank-10-to-1-then-decoys',
+      revealStyle: 'random-ownership-reveal',
     };
     const challengeType = async (body: Record<string, unknown>) =>
       unwrap<{ id: string }>(
@@ -174,13 +169,13 @@ describe('Match Top 10 Poison Deck integration', () => {
           .expect(201),
       );
 
-    const top10 = await challengeType({
-      name: 'أفضل 10',
-      slug: TOP10_MODE_KEY,
+    const top5 = await challengeType({
+      name: 'أفضل 5',
+      slug: TOP5_MODE_KEY,
       family: ChallengeFamily.SIGNATURE,
-      answerMode: ChallengeAnswerMode.TOP_10,
+      answerMode: ChallengeAnswerMode.TOP_5,
       itemStructure: ChallengeItemStructure.CONTINUOUS,
-      scoringRuleId: SCORING_RULE_IDS.TOP10_POISON_DECK_RESULT,
+      scoringRuleId: SCORING_RULE_IDS.TOP5_RESULT,
       status: WorldContentStatus.ACTIVE,
     });
     const ryo = await challengeType({
@@ -193,7 +188,7 @@ describe('Match Top 10 Poison Deck integration', () => {
     });
     const secondary = await challengeType({
       name: 'معلومات سريعة',
-      slug: 'top10-quick-facts',
+      slug: 'top5-quick-facts',
       family: ChallengeFamily.RYO,
       answerMode: ChallengeAnswerMode.RYO,
       scoringRuleId: SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
@@ -201,7 +196,7 @@ describe('Match Top 10 Poison Deck integration', () => {
     });
     const relational = await challengeType({
       name: 'Same Wavelength',
-      slug: 'top10-same-wavelength',
+      slug: 'top5-same-wavelength',
       family: ChallengeFamily.RELATIONAL,
       answerMode: ChallengeAnswerMode.VOTE,
       scoringRuleId: SCORING_RULE_IDS.RELATIONAL_ITEM_SUCCESS,
@@ -244,7 +239,7 @@ describe('Match Top 10 Poison Deck integration', () => {
           http().post(`/admin/worlds/${world.id}/challenge-configurations`),
         ).send(body);
       await configure({
-        challengeTypeId: top10.id,
+        challengeTypeId: top5.id,
         slotKey: WorldChallengeSlotKey.SLOT_1,
         isEnabled: true,
       }).expect(201);
@@ -276,9 +271,9 @@ describe('Match Top 10 Poison Deck integration', () => {
       };
     };
 
-    const top10World = await createConfiguredWorld({
-      name: 'عالم أفضل 10',
-      slug: 'top10-world',
+    const top5World = await createConfiguredWorld({
+      name: 'عالم أفضل 5',
+      slug: 'top5-world',
       scopeNames: ['الدوري', 'الكأس', 'القارية', 'الودية'],
       seedItems: async (scopes) => {
         const [scope, ...rest] = scopes;
@@ -286,25 +281,30 @@ describe('Match Top 10 Poison Deck integration', () => {
           await bearer(http().post('/admin/content-items'))
             .send({
               scopeId: scope.id,
-              prompt: { ar: 'رتّب أفضل عشرة' },
-              compatibleChallengeTypeIds: [top10.id],
-              answerPayload: { mode: ChallengeAnswerMode.TOP_10 },
-              mechanicPayload: poisonDeckPayload(),
+              prompt: { ar: 'رتّب أفضل خمسة' },
+              compatibleChallengeTypeIds: [top5.id],
+              answerPayload: { mode: ChallengeAnswerMode.TOP_5 },
+              mechanicPayload: top5Payload(),
               status: ContentItemStatus.READY,
             })
             .expect(201),
         );
         contentItemId = String(item.id);
-        // A classic-variant sibling in the same Scope: the server draws from the
-        // pool through the mechanic's own playability contract, so this one must
-        // never be handed to the deck.
+        // A sibling in the same Scope that Top 5 must never draw: it answers a
+        // different way and is compatible with a different mechanic entirely.
         await bearer(http().post('/admin/content-items'))
           .send({
             scopeId: scope.id,
-            prompt: { ar: 'أفضل عشرة بالنسخة المعتادة' },
-            compatibleChallengeTypeIds: [top10.id],
-            answerPayload: { mode: ChallengeAnswerMode.TOP_10 },
-            mechanicPayload: { variant: 'classic' },
+            prompt: { ar: 'سؤال في نفس النطاق لآلية أخرى' },
+            compatibleChallengeTypeIds: [ryo.id],
+            answerPayload: {
+              mode: ChallengeAnswerMode.MULTIPLE_CHOICE,
+              options: [
+                { id: 'right', label: { ar: 'صحيح' } },
+                { id: 'wrong', label: { ar: 'خطأ' } },
+              ],
+              correctOptionId: 'right',
+            },
             status: ContentItemStatus.READY,
           })
           .expect(201);
@@ -330,18 +330,24 @@ describe('Match Top 10 Poison Deck integration', () => {
     });
 
     const classicWorld = await createConfiguredWorld({
-      name: 'عالم أفضل 10 كلاسيكي',
-      slug: 'top10-classic-world',
+      name: 'عالم أفضل 5 بلا محتوى',
+      slug: 'top5-empty-world',
       scopeNames: ['الموسم', 'النهائيات', 'المنتخبات', 'التجارب'],
       seedItems: async (scopes) => {
         for (const [index, scope] of scopes.entries()) {
           await bearer(http().post('/admin/content-items'))
             .send({
               scopeId: scope.id,
-              prompt: { ar: `أفضل عشرة كلاسيكي ${index + 1}` },
-              compatibleChallengeTypeIds: [top10.id],
-              answerPayload: { mode: ChallengeAnswerMode.TOP_10 },
-              mechanicPayload: { variant: 'classic' },
+              prompt: { ar: `سؤال عادي ${index + 1}` },
+              compatibleChallengeTypeIds: [ryo.id],
+              answerPayload: {
+                mode: ChallengeAnswerMode.MULTIPLE_CHOICE,
+                options: [
+                  { id: 'right', label: { ar: 'صحيح' } },
+                  { id: 'wrong', label: { ar: 'خطأ' } },
+                ],
+                correctOptionId: 'right',
+              },
               status: ContentItemStatus.READY,
             })
             .expect(201);
@@ -350,9 +356,9 @@ describe('Match Top 10 Poison Deck integration', () => {
     });
 
     return {
-      worldId: top10World.worldId,
+      worldId: top5World.worldId,
       contentItemId,
-      scopeIds: top10World.scopeIds,
+      scopeIds: top5World.scopeIds,
       classicWorldId: classicWorld.worldId,
       classicScopeIds: classicWorld.scopeIds,
     };
@@ -380,30 +386,34 @@ describe('Match Top 10 Poison Deck integration', () => {
     const readiness = app.get(SetParticipantReadiness);
     const presence = app.get(UpdateParticipantPresence);
     const participants: Array<LiveSessionActor & { teamId: string }> = [];
+    // Two per team on purpose: with one player each, "the assigned participant"
+    // and "anyone on the team" would be indistinguishable.
     for (const [index, teamId] of teamIds.entries()) {
-      const joined = await join.execute({
-        joinCode: access.joinCode,
-        displayName: `Player ${index + 1}`,
-        requestedTeamId: teamId,
-        joinRequestId: uuid(),
-      });
-      const actor = {
-        kind: 'participant' as const,
-        actorId: joined.participantId,
-        sessionId,
-        participantId: joined.participantId,
-        role: 'team-player' as const,
-        credentialVersion: 1,
-        teamId,
-      };
-      await presence.connected(sessionId, joined.participantId);
-      await readiness.execute({
-        actor,
-        ready: true,
-        expectedRevision: await sessionRevision(sessionId),
-        commandId: uuid(),
-      });
-      participants.push(actor);
+      for (const seat of [1, 2]) {
+        const joined = await join.execute({
+          joinCode: access.joinCode,
+          displayName: `Player ${index + 1}-${seat}`,
+          requestedTeamId: teamId,
+          joinRequestId: uuid(),
+        });
+        const actor = {
+          kind: 'participant' as const,
+          actorId: joined.participantId,
+          sessionId,
+          participantId: joined.participantId,
+          role: 'team-player' as const,
+          credentialVersion: 1,
+          teamId,
+        };
+        await presence.connected(sessionId, joined.participantId);
+        await readiness.execute({
+          actor,
+          ready: true,
+          expectedRevision: await sessionRevision(sessionId),
+          commandId: uuid(),
+        });
+        participants.push(actor);
+      }
     }
     await app.get(MarkSessionReady).execute({
       sessionId,
@@ -433,7 +443,7 @@ describe('Match Top 10 Poison Deck integration', () => {
       await bearer(http().get(matchRoute(sessionId))).expect(200),
     );
 
-  /** All three occurrences are the same poison-deck World, from its four Scopes. */
+  /** All three occurrences are the same Top 5 World, from its four Scopes. */
   const configuration = () => [
     { occurrenceIndex: 0, worldId, selectedScopeIds: scopeIds },
     { occurrenceIndex: 1, worldId, selectedScopeIds: scopeIds },
@@ -453,7 +463,7 @@ describe('Match Top 10 Poison Deck integration', () => {
   /** One unified challenge command: a position, and nothing else. */
   const challengeCommand = async (
     sessionId: string,
-    path: 'prepare' | 'launch' | 'cancel',
+    path: 'prepare' | 'launch' | 'cancel' | 'continue',
     body: {
       occurrenceIndex?: number;
       slotKey?: WorldChallengeSlotKey;
@@ -573,20 +583,24 @@ describe('Match Top 10 Poison Deck integration', () => {
     });
   };
 
-  it('plays a full poison deck through the Match and reconciles it automatically', async () => {
+  /** Who the server currently authorises to decide, straight from the runtime. */
+  const assignedDecider = async (sessionId: string) => {
+    const state = await runtimeState(sessionId);
+    return parseTeamActionAssignments(
+      state.runtimeState.teamActionJson,
+    ).assignments.find((entry) => entry.action === 'top5.decision')!;
+  };
+
+  it('plays all ten cards, stops on its result, and reconciles automatically', async () => {
     const { sessionId, participants } = await startSession();
     const created = await createUnified(sessionId);
     expect(created.match.setupMode).toBe(MatchSetupMode.UNIFIED_PRECONFIGURED);
     expect(created.match.status).toBe(MatchStatus.ACTIVE);
     expect(created.match.stage.key).toBe(MatchStage.BOARD);
     expect(positionOf(created, '0#slot_1')).toMatchObject({
-      challengeKey: TOP10_MODE_KEY,
+      challengeKey: TOP5_MODE_KEY,
       launchability: 'launchable',
     });
-    // The sequential sections are absent rather than filled with a guess.
-    expect(created.match.board).toBeUndefined();
-    expect(created.match.currentOccurrence).toBeUndefined();
-    expect(created.match.scopeSelection).toBeUndefined();
 
     // 1. Launch the position through the unified challenge-launch route.
     const launched = await launchUnified(sessionId, {
@@ -598,104 +612,137 @@ describe('Match Top 10 Poison Deck integration', () => {
     expect(launched.match.currentChallenge).toMatchObject({
       occurrenceIndex: 0,
       slotKey: WorldChallengeSlotKey.SLOT_1,
-      challengeKey: TOP10_MODE_KEY,
+      challengeKey: TOP5_MODE_KEY,
     });
     const runtimeId = launched.match.currentChallenge!.runtimeId;
     expect(launched.gameplay?.runtimeId).toBe(runtimeId);
-    expect(positionOf(launched, '0#slot_1').status).toBe(
-      MatchSlotStatus.IN_PROGRESS,
-    );
-    // The server drew exactly the poison deck from the pool — the classic
-    // sibling was filtered out, never played through the Match.
+    // The server drew exactly the playable Top 5 item; the sibling was filtered.
     expect(
       await boundContentItemIds(sessionId, 0, WorldChallengeSlotKey.SLOT_1),
     ).toEqual([contentItemId]);
 
-    // 2. All fourteen assignments, alternating teams, mixing keep, poison, and
-    //    one controller-driven timeout that defaults to keep.
+    // 2. Ten decisions, alternating teams, each from the one authorised phone.
     const actions: string[] = [];
+    const deciders: string[] = [];
+    const decidingTeams: string[] = [];
     for (let turn = 0; turn < CARD_COUNT; turn += 1) {
-      const before = await runtimeState(sessionId);
-      const activeTeamId = before.activeRound!.activeTeamId;
-      const actor = participants.find(
-        (participant) => participant.teamId === activeTeamId,
+      const assignment = await assignedDecider(sessionId);
+      deciders.push(assignment.participantId);
+      decidingTeams.push(assignment.teamId);
+      const holder = participants.find(
+        (participant) => participant.participantId === assignment.participantId,
       )!;
-      if (turn === 3) {
-        // The controller expires the turn: the plugin defaults it to keep.
-        await modeCommand(
-          sessionId,
-          { kind: 'user', actorId: controllerId },
-          'timeout-card',
-        );
-        actions.push('timeout');
-      } else {
-        const action = turn % 2 === 0 ? 'keep' : 'poison';
-        await modeCommand(sessionId, actor, 'assign-card', { action });
-        actions.push(action);
+
+      if (turn === 0) {
+        // A teammate on the *correct* team is still refused: this is exactly
+        // what a team-level check would have let through.
+        const teammate = participants.find(
+          (participant) =>
+            participant.teamId === assignment.teamId &&
+            participant.participantId !== assignment.participantId,
+        )!;
+        await expect(
+          modeCommand(sessionId, teammate, 'decide-card', { action: 'keep' }),
+        ).rejects.toBeInstanceOf(LiveSessionForbiddenError);
+        // And so is the opposing team.
+        const opponent = participants.find(
+          (participant) => participant.teamId !== assignment.teamId,
+        )!;
+        await expect(
+          modeCommand(sessionId, opponent, 'decide-card', { action: 'keep' }),
+        ).rejects.toBeInstanceOf(LiveSessionForbiddenError);
+        // A decision against an assignment the server has moved past is refused
+        // even from the right phone.
+        await expect(
+          modeCommand(sessionId, holder, 'decide-card', {
+            action: 'keep',
+            assignmentSequence: assignment.sequence + 99,
+          }),
+        ).rejects.toThrow(/moved past/);
       }
-    }
-    expect(
-      actions.filter((action) => action === 'keep').length,
-    ).toBeGreaterThan(0);
-    expect(
-      actions.filter((action) => action === 'poison').length,
-    ).toBeGreaterThan(0);
-    expect(actions).toContain('timeout');
 
-    const assigned = await runtimeState(sessionId);
-    const assignments = JSON.parse(
-      String(assigned.runtimeState.assignmentsJson),
-    ) as Top10Assignment[];
-    expect(assignments).toHaveLength(CARD_COUNT);
-    expect(assignments.filter((entry) => entry.timedOut)).toHaveLength(1);
-    expect(assigned.runtimeState.phase).toBe('revealing');
-    // Still mid-challenge: the Match has not been told anything yet.
-    expect((await snapshotOf(sessionId)).match.stage.key).toBe(
-      MatchStage.CHALLENGE,
-    );
-
-    // 3. The real reveal walk: ranks 10 down to 1, then the four decoys.
-    const controller: LiveSessionActor = {
-      kind: 'user',
-      actorId: controllerId,
-    };
-    for (let reveal = 0; reveal < CARD_COUNT; reveal += 1) {
-      await modeCommand(sessionId, controller, 'reveal-next');
+      const action = turn % 2 === 0 ? 'keep' : 'give';
+      await modeCommand(sessionId, holder, 'decide-card', {
+        action,
+        assignmentSequence: assignment.sequence,
+      });
+      actions.push(action);
     }
+    expect(actions.filter((action) => action === 'keep')).toHaveLength(5);
+    expect(actions.filter((action) => action === 'give')).toHaveLength(5);
+    // A -> B -> A -> B across the ten cards…
+    expect(decidingTeams[0]).not.toBe(decidingTeams[1]);
+    expect(decidingTeams[0]).toBe(decidingTeams[2]);
+    // …and inside each team, its two players took turns.
+    expect(new Set(deciders).size).toBe(4);
+    expect(deciders[0]).not.toBe(deciders[2]);
+    expect(deciders[0]).toBe(deciders[4]);
 
     const terminal = await runtimeState(sessionId);
     expect(terminal.runtimeState.phase).toBe('completed');
     expect(terminal.status).toBe('completed');
+    const pluginResult = JSON.parse(
+      String(terminal.runtimeState.resultJson),
+    ) as Top5Result;
+    const ownership = pluginResult.ownership as Top5Ownership[];
+    expect(ownership).toHaveLength(CARD_COUNT);
+    // Exactly one owner per entry, and every entry owned.
+    expect(new Set(ownership.map((record) => record.entryId)).size).toBe(
+      CARD_COUNT,
+    );
+    // Five scoring entries between two teams: it cannot tie.
+    const [teamA, teamB] = Object.keys(pluginResult.top5Counts);
+    expect(
+      pluginResult.top5Counts[teamA] + pluginResult.top5Counts[teamB],
+    ).toBe(TOP5_RANKED_COUNT);
+    expect(pluginResult.top5Counts[teamA]).not.toBe(
+      pluginResult.top5Counts[teamB],
+    );
+    expect(pluginResult.winnerTeamId).toBeTruthy();
+    // The reveal order is the server's, once, and covers every entry.
+    expect(pluginResult.revealOrder).toHaveLength(CARD_COUNT);
+    expect(new Set(pluginResult.revealOrder).size).toBe(CARD_COUNT);
 
-    // 4. Reconciliation ran on its own, from the runtime's own terminal state.
-    const reconciled = await snapshotOf(sessionId);
-    expect(reconciled.match.stage.key).toBe(MatchStage.BOARD);
-    expect(reconciled.match.currentChallenge).toBeUndefined();
-    expect(positionOf(reconciled, '0#slot_1').status).toBe(
+    // 3. The Match stopped on its result rather than returning to the board.
+    const resolved = await snapshotOf(sessionId);
+    expect(resolved.match.stage.key).toBe(MatchStage.CHALLENGE_RESULT);
+    expect(resolved.match.currentChallenge).toBeUndefined();
+    expect(positionOf(resolved, '0#slot_1').status).toBe(
       MatchSlotStatus.COMPLETED,
     );
-    expect(positionOf(reconciled, '0#slot_1').runtimeId).toBe(runtimeId);
+    const result = resolved.match.challengeResult!;
+    expect(result).toMatchObject({
+      positionKey: '0#slot_1',
+      challengeKey: TOP5_MODE_KEY,
+      winnerTeamId: pluginResult.winnerTeamId,
+    });
+    expect(result.teamPoints).toEqual(
+      expect.arrayContaining([
+        { teamId: pluginResult.winnerTeamId, points: 1 },
+      ]),
+    );
+    const details = result.details as unknown as Top5Result;
+    expect(details.revealOrder).toEqual(pluginResult.revealOrder);
+    expect(details.entries).toHaveLength(CARD_COUNT);
+    expect(resolved.match.challengeHistory).toHaveLength(1);
 
-    // 5. Exactly one Top 10 ScoreEvent was imported, and the summary kept the
-    //    mechanic's own internal scores and social metrics.
+    // 4. A refresh during the result restores exactly the same result.
+    const refreshed = await snapshotOf(sessionId);
+    expect(refreshed.match.stage.key).toBe(MatchStage.CHALLENGE_RESULT);
+    expect(refreshed.match.challengeResult!.id).toBe(result.id);
+    expect(
+      (refreshed.match.challengeResult!.details as unknown as Top5Result)
+        .revealOrder,
+    ).toEqual(pluginResult.revealOrder);
+
+    // 5. Exactly one Top 5 ScoreEvent, imported once.
     const matches = app.get<MatchRepository>(MATCH_REPOSITORY);
     const stored = (await matches.findLatestBySessionId(sessionId))!;
     const events = stored.serialize().scoreEvents;
     expect(events).toHaveLength(1);
-    expect(events[0].scoringRuleId).toBe(
-      SCORING_RULE_IDS.TOP10_POISON_DECK_RESULT,
-    );
+    expect(events[0].scoringRuleId).toBe(SCORING_RULE_IDS.TOP5_RESULT);
+    expect(events[0].delta).toBe(1);
     expect(events[0].challengeSessionId).toBe(runtimeId);
-    const progress = stored.occurrences[0].slots[WorldChallengeSlotKey.SLOT_1]!;
-    expect(progress.scoreEventIds).toEqual([events[0].id]);
-    const summary = progress.summary as unknown as Top10Result;
-    const pluginResult = JSON.parse(
-      String(terminal.runtimeState.resultJson),
-    ) as Top10Result;
-    expect(summary.internalScores).toEqual(pluginResult.internalScores);
-    expect(summary.validCards).toEqual(pluginResult.validCards);
-    expect(summary.decoys).toEqual(pluginResult.decoys);
-    expect(summary.metrics).toEqual(pluginResult.metrics);
 
     // 6. Reconciling the same terminal runtime again changes nothing.
     const revisionBefore = stored.revision;
@@ -707,22 +754,159 @@ describe('Match Top 10 Poison Deck integration', () => {
     const afterRepeat = (await matches.findLatestBySessionId(sessionId))!;
     expect(afterRepeat.revision).toBe(revisionBefore);
     expect(afterRepeat.serialize().scoreEvents).toHaveLength(1);
+    expect(afterRepeat.challengeResults).toHaveLength(1);
 
-    // 7. The completed state is what Mongo actually holds.
-    const reloadedRuntime = await runtimes().findById(runtimeId);
-    expect(reloadedRuntime!.serialize().status).toBe('completed');
-    const reloadedSnapshot = await snapshotOf(sessionId);
-    expect(reloadedSnapshot.match.scoring.matchTotals).toHaveLength(2);
-    expect(positionOf(reloadedSnapshot, '0#slot_1').status).toBe(
-      MatchSlotStatus.COMPLETED,
-    );
-    // Nothing private about the deck leaks into the projection.
-    const projected = JSON.stringify(reloadedSnapshot.match);
+    // 7. Continuing returns to the board and awards nothing further.
+    const continued = await challengeCommand(sessionId, 'continue');
+    expect(continued.match.stage.key).toBe(MatchStage.BOARD);
+    expect(continued.match.challengeResult).toBeUndefined();
+    expect(continued.match.challengeHistory).toHaveLength(1);
+    expect(
+      (await matches.findLatestBySessionId(sessionId))!.serialize().scoreEvents,
+    ).toHaveLength(1);
+
+    // 8. A repeated continue is refused rather than double-advancing, and the
+    //    score is untouched either way.
+    await challengeCommand(sessionId, 'continue', {}, 400);
+    const afterRepeatedContinue = await snapshotOf(sessionId);
+    expect(afterRepeatedContinue.match.stage.key).toBe(MatchStage.BOARD);
+    expect(
+      (await matches.findLatestBySessionId(sessionId))!.serialize().scoreEvents,
+    ).toHaveLength(1);
+
+    // 9. Nothing private about the deck ever leaked into the live projection.
+    const projected = JSON.stringify(afterRepeatedContinue.match.unified);
     expect(projected).not.toContain('deckJson');
-    expect(projected).not.toContain('rankedAnswer');
+    expect(projected).not.toContain('revealOrderJson');
+  }, 180_000);
+
+  it('gives RYO one authoritative answerer and one authoritative decider per item', async () => {
+    const { sessionId, participants } = await startSession();
+    const created = await createUnified(sessionId);
+    const launched = await launchUnified(sessionId, {
+      occurrenceIndex: 0,
+      slotKey: WorldChallengeSlotKey.SLOT_2,
+      selectingTeamId: created.match.unified.selectingTeamId,
+    });
+    expect(launched.match.currentChallenge!.challengeKey).toBe(RYO_MODE_KEY);
+
+    const interactions = app.get(GameplayInteractionUseCases);
+    const submit = async (
+      actor: LiveSessionActor,
+      payload: Record<string, unknown>,
+    ) => {
+      const runtime = await runtimeState(sessionId);
+      const round = runtime.activeRound!;
+      return interactions.submit({
+        sessionId,
+        roundId: round.id,
+        actor,
+        commandId: uuid(),
+        expectedSessionRevision: await sessionRevision(sessionId),
+        expectedRuntimeRevision: runtime.revision,
+        expectedInteractionRevision: round.interaction!.revision,
+        payload: payload as never,
+      });
+    };
+
+    const seenAnswerers: string[] = [];
+    const seenDeciders: string[] = [];
+    for (let item = 0; item < 3; item += 1) {
+      const runtime = await runtimeState(sessionId);
+      const assigned = ryoAssignedParticipants(runtime.runtimeState);
+      const answeringTeamId = String(
+        runtime.activeRound!.modeState.answeringTeamId,
+      );
+      seenAnswerers.push(assigned.answererParticipantId);
+      seenDeciders.push(assigned.deciderParticipantId);
+
+      const answerer = participants.find(
+        (person) => person.participantId === assigned.answererParticipantId,
+      )!;
+      const decider = participants.find(
+        (person) => person.participantId === assigned.deciderParticipantId,
+      )!;
+      expect(answerer.teamId).toBe(answeringTeamId);
+      expect(decider.teamId).not.toBe(answeringTeamId);
+
+      if (item === 0) {
+        // A teammate of the answerer is on the answering team and still refused.
+        const answerersTeammate = participants.find(
+          (person) =>
+            person.teamId === answerer.teamId &&
+            person.participantId !== answerer.participantId,
+        )!;
+        await expect(
+          submit(answerersTeammate, {
+            kind: 'answer',
+            mode: 'multiple_choice',
+            optionId: 'right',
+          }),
+        ).rejects.toThrow(/assigned player/);
+        // Same on the reading side.
+        const decidersTeammate = participants.find(
+          (person) =>
+            person.teamId === decider.teamId &&
+            person.participantId !== decider.participantId,
+        )!;
+        await expect(
+          submit(decidersTeammate, { kind: 'decision', decision: 'steal' }),
+        ).rejects.toThrow(/assigned player/);
+        // And the sides themselves are still enforced.
+        await expect(
+          submit(decider, {
+            kind: 'answer',
+            mode: 'multiple_choice',
+            optionId: 'right',
+          }),
+        ).rejects.toThrow(/not available to your team/);
+      }
+
+      // Blind and simultaneous is preserved: the answer alone resolves nothing,
+      // and neither side can read the other before both have arrived.
+      await submit(answerer, {
+        kind: 'answer',
+        mode: 'multiple_choice',
+        optionId: 'right',
+      });
+      const midItem = await runtimeState(sessionId);
+      expect(midItem.activeRound!.interaction!.status).toBe('open');
+      expect(midItem.activeRound!.interaction!.outcome).toBeUndefined();
+
+      await submit(decider, { kind: 'decision', decision: 'trust' });
+    }
+
+    // Both teams acted once per item, so both rotations advanced: with two
+    // players a side, the second item used the other pair.
+    expect(seenAnswerers[0]).not.toBe(seenAnswerers[1]);
+    expect(seenAnswerers[0]).toBe(seenAnswerers[2]);
+    expect(seenDeciders[0]).not.toBe(seenDeciders[1]);
+    expect(new Set([...seenAnswerers, ...seenDeciders]).size).toBe(4);
+
+    // Three items completed and the Match stopped on the RYO result.
+    const resolved = await snapshotOf(sessionId);
+    expect(resolved.match.stage.key).toBe(MatchStage.CHALLENGE_RESULT);
+    const result = resolved.match.challengeResult!;
+    expect(result.challengeKey).toBe(RYO_MODE_KEY);
+    const details = result.details as unknown as {
+      itemsPlayed: number;
+      items: Array<Record<string, unknown>>;
+    };
+    expect(details.itemsPlayed).toBe(3);
+    // The recap can explain all three interactions, including who took them.
+    expect(details.items[0]).toMatchObject({
+      answererParticipantId: seenAnswerers[0],
+      deciderParticipantId: seenDeciders[0],
+      decision: 'trust',
+      correct: true,
+    });
+    await challengeCommand(sessionId, 'continue');
+    expect((await snapshotOf(sessionId)).match.stage.key).toBe(
+      MatchStage.BOARD,
+    );
   }, 120_000);
 
-  it('refuses classic Top 10 content and leaves the board position free', async () => {
+  it('refuses unplayable content and leaves the board position free', async () => {
     const { sessionId } = await startSession();
     const created = await createUnified(sessionId, [
       {
@@ -744,11 +928,11 @@ describe('Match Top 10 Poison Deck integration', () => {
     expect(created.match.stage.key).toBe(MatchStage.BOARD);
     // The mechanic itself is launchable; it is the content that cannot be played.
     expect(positionOf(created, '0#slot_1')).toMatchObject({
-      challengeKey: TOP10_MODE_KEY,
+      challengeKey: TOP5_MODE_KEY,
       launchability: 'launchable',
     });
 
-    // Every item in the pool is the classic variant, which the poison deck never
+    // Every item in the pool answers a different way, which Top 5 never
     // accepts — so the server has nothing to draw.
     const refused = await launchUnified(
       sessionId,
