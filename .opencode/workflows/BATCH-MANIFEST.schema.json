@@ -19,7 +19,7 @@
     "targetContentItemCount": {"type": "integer", "minimum": 1},
     "allowedAnswerModes": {
       "type": "array", "minItems": 1, "uniqueItems": true,
-      "items": {"enum": ["ryo", "multiple_choice", "closest", "match", "vote", "split", "top_10", "distributed"]}
+      "items": {"enum": ["ryo", "multiple_choice", "closest", "match", "vote", "split", "top_5", "distributed"]}
     },
     "mediaPolicy": {
       "type": "object", "additionalProperties": false,

@@ -6,7 +6,7 @@ BASE = "http://localhost:3000"
 LOGIN = {"email": "admin@test.com", "password": "strongPassword@123"}
 
 WORLD_CUP_SCOPE = "6a70f97cdfbf25db50410672"
-TOP_10_CHALLENGE_TYPE = "6a71107b0cfcf2052be32ed7"
+TOP_5_CHALLENGE_TYPE = "6a71107b0cfcf2052be32ed7"
 
 PACK = "output/football-top10-poison-development-pack-002.json"
 
@@ -30,8 +30,15 @@ def api(method, path, token, **kwargs):
 def to_backend(item):
     inter = item["interactionPayload"]
     reso = item["resolutionPayload"]
-    cands = inter["candidates"]
-
+    label_map = {c["id"]: c["label"] for c in inter["candidates"]}
+    ordered = sorted(reso["rankedEntries"], key=lambda e: e["rank"])
+    entries = [
+        {"id": e["candidateId"], "label": label_map[e["candidateId"]], "rank": e["rank"]}
+        for e in ordered[:5]
+    ] + [
+        {"id": e["candidateId"], "label": label_map[e["candidateId"]], "rank": None}
+        for e in ordered[5:]
+    ]
     compact_ranked = [
         {"candidateId": e["candidateId"], "rank": e["rank"]} for e in reso["rankedEntries"]
     ]
@@ -53,14 +60,19 @@ def to_backend(item):
         note_json = json.dumps(notes, ensure_ascii=False, separators=(",", ":"))
     return {
         "scopeId": WORLD_CUP_SCOPE,
-        "compatibleChallengeTypeIds": [TOP_10_CHALLENGE_TYPE],
+        "compatibleChallengeTypeIds": [TOP_5_CHALLENGE_TYPE],
         "prompt": {"ar": item["prompt"]["ar"]},
-        "answerPayload": {
-            "mode": "top_10",
-            "options": [
-                {"id": c["id"], "label": {"ar": c["label"]}} for c in cands
-            ],
+        "mechanicPayload": {
+            "variant": "keep-or-give",
+            "title": inter["title"],
+            "instruction": "احتفظ بالبطاقة أو أرسلها لخصمك، ثم اكشفوا الترتيب.",
+            "rankingBasis": inter["rankingBasis"],
+            "sourceLabel": inter["sourceLabel"],
+            "sourceUrl": inter.get("sourceUrl"),
+            "asOfDate": inter.get("asOfDate"),
+            "entries": entries,
         },
+        "answerPayload": {"mode": "top_5"},
         "isReusableAcrossSessions": False,
         "status": "ready",
         "metadata": {"notes": note_json},

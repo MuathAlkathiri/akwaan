@@ -16,9 +16,9 @@
 13. Run leakage and duplicate validation.
 14. Run set-level QA and hand off for human approval.
 
-For `top-10` with `poison-deck`, generation creates one continuous ContentItem
-using runtime mode `top_10`; it never expands the deck into separate records.
-Load the dedicated Top 10 schema and validator before review.
+For `top-5` with `keep-or-give`, generation creates one continuous ContentItem
+using runtime mode `top_5`; it never expands the ten-card deck into separate
+records. Load the dedicated Top 5 schema and validator before review.
 
 For `who-among-us` with `team-consensus`, load its dedicated authoring schema.
 Generate only blocked authoring drafts using dynamic roster binding. Do not

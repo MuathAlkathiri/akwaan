@@ -8,7 +8,7 @@ import re
 import sys
 from pathlib import Path
 
-from validate_top_10 import validate as validate_top_10
+from validate_top_5 import validate as validate_top_5
 from validate_who_among_us import validate as validate_who_among_us
 from validate_distributed_information import validate as validate_distributed_information
 
@@ -22,7 +22,9 @@ def active_files() -> list[Path]:
     return [
         path
         for path in ACTIVE.rglob("*")
-        if path.is_file() and HISTORICAL_DIR not in path.parents
+        if path.is_file()
+        and HISTORICAL_DIR not in path.parents
+        and "node_modules" not in path.parts
     ]
 
 
@@ -129,25 +131,24 @@ for path in [p for p in files if p.suffix == ".json"]:
     except json.JSONDecodeError as exc:
         errors.append(f"invalid JSON {path.relative_to(ROOT)}: {exc}")
 
-# Top 10 integration and deep fixture validation.
-top_10_root = challenge_root / "top-10"
-top_10_required = [
-    top_10_root / "SKILL.md",
-    top_10_root / "patterns" / "classic" / "PATTERN.md",
-    top_10_root / "patterns" / "poison-deck" / "PATTERN.md",
-    top_10_root / "top-10.patterns.schema.json",
-    ACTIVE / "validators" / "TOP-10.md",
-    ACTIVE / "validators" / "validate_top_10.py",
+# Top 5 integration and deep fixture validation.
+top_5_root = challenge_root / "top-5"
+top_5_required = [
+    top_5_root / "SKILL.md",
+    top_5_root / "patterns" / "keep-or-give" / "PATTERN.md",
+    top_5_root / "top-5.patterns.schema.json",
+    ACTIVE / "validators" / "TOP-5.md",
+    ACTIVE / "validators" / "validate_top_5.py",
 ]
-for path in top_10_required:
+for path in top_5_required:
     if not path.exists():
-        errors.append(f"missing Top 10 contract: {path.relative_to(ROOT)}")
-top_10_fixture = ACTIVE / "validators" / "examples" / "top-10-poison-deck.valid.json"
-if top_10_fixture.exists():
-    fixture_errors = validate_top_10(json.loads(text(top_10_fixture)))
-    errors.extend(f"Top 10 fixture: {error}" for error in fixture_errors)
+        errors.append(f"missing Top 5 contract: {path.relative_to(ROOT)}")
+top_5_fixture = ACTIVE / "validators" / "examples" / "top-5-keep-or-give.valid.json"
+if top_5_fixture.exists():
+    fixture_errors = validate_top_5(json.loads(text(top_5_fixture)))
+    errors.extend(f"Top 5 fixture: {error}" for error in fixture_errors)
 else:
-    errors.append("missing Top 10 validation fixture")
+    errors.append("missing Top 5 validation fixture")
 
 # Who Among Us authoring completeness and intentional runtime blocker.
 who_root = challenge_root / "who-among-us"
@@ -230,7 +231,7 @@ for path in files:
         errors.append(f"retired health file active: {path.relative_to(ROOT)}")
 
 # Canonical mode set remains machine-resolvable.
-mode_set = {"ryo", "multiple_choice", "closest", "match", "vote", "split", "top_10", "distributed"}
+mode_set = {"ryo", "multiple_choice", "closest", "match", "vote", "split", "top_5", "distributed"}
 item_schema = json.loads(text(ACTIVE / "validators" / "CONTENTITEM.schema.json"))
 declared_modes = set(item_schema["properties"]["answerMode"]["enum"])
 if declared_modes != mode_set:

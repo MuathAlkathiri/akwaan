@@ -16,9 +16,9 @@ Use `approve`, `approve_with_edits`, `return_for_repair`, `reject`, or
 Do not silently rewrite another Role's file, invent evidence, curate assets, or
 publish. A factual item that fails the intended interaction is not approved.
 
-For Top 10 poison deck, additionally verify the membership-oriented prompt,
-14/10/4 counts, unique candidate IDs and ranks, disjoint exhaustive sets,
-objective dated source, tie policy, near-cutoff decoys, reviewer notes, hidden
+For Top 5 keep-or-give, additionally verify the membership-oriented prompt,
+10/5/5 counts, unique entry IDs and ranks 1–5, disjoint exhaustive sets,
+objective dated source, tie policy, near-cutoff traps, reviewer notes, hidden
 deck truth, runtime identifiers, and backend-compatible payload.
 
 For Who Among Us, verify dynamic roster binding, one private vote per eligible

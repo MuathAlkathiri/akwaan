@@ -127,8 +127,8 @@ def main() -> int:
             ROOT / ".opencode/workflows/examples/anime-one-piece-ryo.json",
         ),
         (
-            ROOT / ".opencode/skills/challenge-types/top-10/top-10.patterns.schema.json",
-            ROOT / ".opencode/validators/examples/top-10-poison-deck.valid.json",
+            ROOT / ".opencode/skills/challenge-types/top-5/top-5.patterns.schema.json",
+            ROOT / ".opencode/validators/examples/top-5-keep-or-give.valid.json",
         ),
         (
             ROOT / ".opencode/skills/challenge-types/who-among-us/who-among-us.schema.json",

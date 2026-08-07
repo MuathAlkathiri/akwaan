@@ -9,7 +9,7 @@ owningChallengeType: distributed-information
 - Item shape: native `answerPayload` plus `mechanicPayload` with variant, public prompt, A/B/C segments, safe merges, `[2,3]`, safety confirmation, and optional explanation.
 - Distribution: three players receive one segment each; two players receive an approved 2+1 partition covering A/B/C exactly once. One item supports both sizes.
 - Submission: runtime randomly assigns exactly one answerer per team and item. Three-player teams each answer once in random order; two-player teams alternate from a random start. Authors never store identity or schedule.
-- Answer modes: `match` with normalized accepted values, `multiple_choice` with options and one correct option ID, or finite numeric `closest` with optional nonnegative tolerance.
+- Answer modes: `match` with normalized accepted values, `multiple_choice` with localized option labels and one correct option ID, or finite numeric `closest` with nonnegative `acceptedTolerance`.
 - Wrong result: five-second lock for that team; main timer continues; retries remain unlimited until deadline.
 - Race: first to solve all three wins. Deadline compares solved count, then earliest elapsed time at that count, then true tie.
 - Scoring: a non-tie winner receives one Match point; a true tie receives none.

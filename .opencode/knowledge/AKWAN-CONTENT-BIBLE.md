@@ -62,14 +62,15 @@ Every active output is a ContentItem with:
 - provenance and validation metadata.
 
 The runtime may support `ryo`, `multiple_choice`, `closest`, `match`, `vote`,
-`split`, `top_10`, and `distributed`. Every mode resolves without a human referee. Use the project's
+`split`, `top_5`, and `distributed`. Every mode resolves without a human referee. Use the project's
 single Arabic normalization utility for accepted-text matching.
 
 ## Core Families
 
 - Read Your Opponent: simultaneous private answer plus Steal/Trust prediction.
 - Split: rapid deterministic classification into two or three groups.
-- Top 10: alternating KEEP/POISON decisions across a hidden ranked deck.
+- Top 5: alternating KEEP/GIVE decisions across a hidden ten-card deck with
+  five real ranks and five traps.
 - Co-op: partial information forces verbal dependency between teammates.
 - Distributed Information: simultaneous two-team synthesis race over three private-segment items.
 - Relational: agreement, consensus, or teammate prediction; no external truth.

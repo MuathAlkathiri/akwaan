@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://akwaan.local/schemas/top-5-contentitem.schema.json",
+  "title": "Akwaan Top 5 ContentItem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id", "scopeId", "compatibleChallengeTypeIds", "patternId", "prompt",
+    "answerMode", "interactionPayload", "resolutionPayload", "media",
+    "isReusableAcrossSessions", "metadata"
+  ],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "scopeId": {"type": "string", "pattern": "^[a-z0-9-]+\\.[a-z0-9-]+$"},
+    "compatibleChallengeTypeIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "contains": {"const": "top-5"},
+      "items": {"type": "string"}
+    },
+    "patternId": {"const": "keep-or-give"},
+    "prompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {"ar": {"type": "string", "minLength": 1}, "en": {"type": "string", "minLength": 1}}
+    },
+    "answerMode": {"const": "top_5"},
+    "interactionPayload": {"type": "object"},
+    "resolutionPayload": {"type": "object"},
+    "media": {"type": "null"},
+    "isReusableAcrossSessions": {"type": "boolean", "const": false},
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sources", "validationStatus", "trapReview"],
+      "properties": {
+        "sources": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "validationStatus": {"enum": ["draft", "reviewed", "ready", "blocked"]},
+        "explanation": {"type": ["string", "null"]},
+        "trapReview": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["candidateId", "cutoffDistance", "plausibility", "tooEasy"],
+            "properties": {
+              "candidateId": {"type": "string", "minLength": 1},
+              "cutoffDistance": {"type": "integer", "minimum": 1},
+              "plausibility": {"type": "string", "minLength": 1},
+              "tooEasy": {"type": "boolean"}
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "rank"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "shortLabel": {"type": "string"},
+        "sourceValue": {"type": ["number", "string"]},
+        "rank": {"type": ["integer", "null"]},
+        "media": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "path", "visibility", "requiredObservation", "provenance"],
+          "properties": {
+            "type": {"const": "image"},
+            "path": {"type": "string", "minLength": 1},
+            "visibility": {"const": "public"},
+            "requiredObservation": {"type": "string", "minLength": 1},
+            "provenance": {"type": "object"}
+          }
+        }
+      }
+    },
+    "keepOrGive": {
+      "properties": {
+        "patternId": {"const": "keep-or-give"},
+        "interactionPayload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "variant", "title", "rankingBasis", "sourceLabel", "sourceUrl",
+            "asOfDate", "entries", "teamCount", "turnCount",
+            "turnDeadlineSeconds", "actions", "timeoutAction"
+          ],
+          "properties": {
+            "variant": {"const": "keep-or-give"},
+            "title": {"type": "string", "minLength": 1},
+            "rankingBasis": {"type": "string", "minLength": 1},
+            "sourceLabel": {"type": "string", "minLength": 1},
+            "sourceUrl": {"type": "string", "format": "uri", "minLength": 1},
+            "asOfDate": {"type": "string", "format": "date"},
+            "tiebreaker": {"type": "string", "minLength": 1},
+            "entries": {
+              "type": "array", "minItems": 10, "maxItems": 10,
+              "items": {"$ref": "#/$defs/entry"}
+            },
+            "teamCount": {"const": 2},
+            "turnCount": {"const": 10},
+            "turnDeadlineSeconds": {"const": 15},
+            "actions": {"const": ["keep", "give"]},
+            "timeoutAction": {"const": "keep"}
+          }
+        },
+        "resolutionPayload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scoringRuleId", "winnerScoreEventType", "tieScoreEventType",
+            "runtimeEventTypes"
+          ],
+          "properties": {
+            "scoringRuleId": {"const": "top-5.result"},
+            "winnerScoreEventType": {"const": "top-5.win"},
+            "tieScoreEventType": {"type": "null"},
+            "runtimeEventTypes": {
+              "const": ["top5-card-decided", "top5-completed"]
+            }
+          }
+        },
+        "metadata": {
+          "properties": {"trapReview": {"type": "array", "minItems": 5, "maxItems": 5}}
+        }
+      }
+    }
+  },
+  "allOf": [{"$ref": "#/$defs/keepOrGive"}]
+}

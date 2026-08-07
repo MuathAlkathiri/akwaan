@@ -11,7 +11,7 @@ automatically; private payloads have explicit visibility; optional media belongs
 to one item; objective items obey repeat prevention; relational items declare
 reuse; all upstream decisions are represented.
 
-Top 10 poison deck must also pass `validators/validate_top_10.py`; matching
+Top 5 keep-or-give must also pass `validators/validate_top_5.py`; matching
 counts alone never establish readiness.
 
 Who Among Us must pass its authoring schema and negative fixtures, then remain

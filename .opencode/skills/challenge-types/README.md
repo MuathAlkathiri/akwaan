@@ -12,7 +12,7 @@ Resolve mechanics here before World and Scope material.
 | `same-wavelength` | Relational | `exact-match` | `.opencode/skills/challenge-types/same-wavelength/SKILL.md` |
 | `who-among-us` | Relational private roster vote; authoring-only | `team-consensus` | `.opencode/skills/challenge-types/who-among-us/SKILL.md` |
 | `guess-your-teammate` | Relational | `private-prediction` | `.opencode/skills/challenge-types/guess-your-teammate/SKILL.md` |
-| `top-10` | Alternating bluff | `poison-deck`, isolated `classic` | `.opencode/skills/challenge-types/top-10/SKILL.md` |
+| `top-5` | Alternating keep-or-give bluff | `keep-or-give` | `.opencode/skills/challenge-types/top-5/SKILL.md` |
 
 Signature mechanics remain unassigned. Discovery does not imply World
 compatibility; always apply the selected Scope exclusions.

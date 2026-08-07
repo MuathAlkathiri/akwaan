@@ -12,7 +12,7 @@
   "answerPayload": {
     "mode": "closest",
     "correctValue": 34,
-    "tolerance": 0
+    "acceptedTolerance": 0
   },
   "mechanicPayload": {
     "variant": "three-segment-race",

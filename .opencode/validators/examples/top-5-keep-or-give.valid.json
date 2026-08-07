@@ -1,0 +1,53 @@
+{
+  "id": "top-5-validation-fixture",
+  "scopeId": "football.world-cup",
+  "compatibleChallengeTypeIds": ["top-5"],
+  "patternId": "keep-or-give",
+  "prompt": {"ar": "أي من هذه المنتخبات يقع ضمن أعلى 5 وفق الترتيب المحدد؟"},
+  "answerMode": "top_5",
+  "interactionPayload": {
+    "variant": "keep-or-give",
+    "title": "أفضل 5 منتخبات",
+    "rankingBasis": "موضع المنتخب في ترتيب الاختبار الرسمي",
+    "sourceLabel": "مصدر اختبار رسمي",
+    "sourceUrl": "https://example.com/official-ranking-fixture",
+    "asOfDate": "2026-08-04",
+    "entries": [
+      {"id": "candidate-01", "label": "المنتخب 1", "sourceValue": 1, "rank": 1},
+      {"id": "candidate-02", "label": "المنتخب 2", "sourceValue": 2, "rank": 2},
+      {"id": "candidate-03", "label": "المنتخب 3", "sourceValue": 3, "rank": 3},
+      {"id": "candidate-04", "label": "المنتخب 4", "sourceValue": 4, "rank": 4},
+      {"id": "candidate-05", "label": "المنتخب 5", "sourceValue": 5, "rank": 5},
+      {"id": "candidate-06", "label": "المنتخب 6", "sourceValue": 6, "rank": null},
+      {"id": "candidate-07", "label": "المنتخب 7", "sourceValue": 7, "rank": null},
+      {"id": "candidate-08", "label": "المنتخب 8", "sourceValue": 8, "rank": null},
+      {"id": "candidate-09", "label": "المنتخب 9", "sourceValue": 9, "rank": null},
+      {"id": "candidate-10", "label": "المنتخب 10", "sourceValue": 10, "rank": null}
+    ],
+    "teamCount": 2,
+    "turnCount": 10,
+    "turnDeadlineSeconds": 15,
+    "actions": ["keep", "give"],
+    "timeoutAction": "keep"
+  },
+  "resolutionPayload": {
+    "scoringRuleId": "top-5.result",
+    "winnerScoreEventType": "top-5.win",
+    "tieScoreEventType": null,
+    "runtimeEventTypes": ["top5-card-decided", "top5-completed"]
+  },
+  "media": null,
+  "isReusableAcrossSessions": false,
+  "metadata": {
+    "sources": ["https://example.com/official-ranking-fixture"],
+    "validationStatus": "draft",
+    "explanation": "Synthetic schema fixture; not production content.",
+    "trapReview": [
+      {"candidateId": "candidate-06", "cutoffDistance": 1, "plausibility": "Immediately below cutoff.", "tooEasy": false},
+      {"candidateId": "candidate-07", "cutoffDistance": 2, "plausibility": "Near-cutoff entry.", "tooEasy": false},
+      {"candidateId": "candidate-08", "cutoffDistance": 3, "plausibility": "Near-cutoff entry.", "tooEasy": false},
+      {"candidateId": "candidate-09", "cutoffDistance": 4, "plausibility": "Near-cutoff entry.", "tooEasy": false},
+      {"candidateId": "candidate-10", "cutoffDistance": 5, "plausibility": "Adjacent source range.", "tooEasy": false}
+    ]
+  }
+}

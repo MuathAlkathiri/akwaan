@@ -15,8 +15,8 @@
     "answerPayload": {
       "oneOf": [
         {"type": "object", "additionalProperties": false, "required": ["mode", "acceptedAnswers"], "properties": {"mode": {"const": "match"}, "acceptedAnswers": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}}},
-        {"type": "object", "additionalProperties": false, "required": ["mode", "correctOptionId", "options"], "properties": {"mode": {"const": "multiple_choice"}, "correctOptionId": {"type": "string", "minLength": 1}, "options": {"type": "array", "minItems": 2, "items": {"type": "object", "additionalProperties": false, "required": ["id", "label"], "properties": {"id": {"type": "string"}, "label": {"type": "string"}}}}}},
-        {"type": "object", "additionalProperties": false, "required": ["mode", "correctValue"], "properties": {"mode": {"const": "closest"}, "correctValue": {"type": "number"}, "tolerance": {"type": "number", "minimum": 0}}}
+        {"type": "object", "additionalProperties": false, "required": ["mode", "correctOptionId", "options"], "properties": {"mode": {"const": "multiple_choice"}, "correctOptionId": {"type": "string", "minLength": 1}, "options": {"type": "array", "minItems": 2, "items": {"type": "object", "additionalProperties": false, "required": ["id", "label"], "properties": {"id": {"type": "string"}, "label": {"$ref": "#/$defs/localizedText"}}}}}},
+        {"type": "object", "additionalProperties": false, "required": ["mode", "correctValue"], "properties": {"mode": {"const": "closest"}, "correctValue": {"type": "number"}, "acceptedTolerance": {"type": "number", "minimum": 0}}}
       ]
     },
     "mechanicPayload": {

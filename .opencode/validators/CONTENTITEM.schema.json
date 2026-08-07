@@ -18,7 +18,7 @@
       "type": "object", "additionalProperties": false, "minProperties": 1,
       "properties": {"ar": {"type": "string"}, "en": {"type": "string"}}
     },
-    "answerMode": {"enum": ["ryo", "multiple_choice", "closest", "match", "vote", "split", "top_10", "distributed"]},
+    "answerMode": {"enum": ["ryo", "multiple_choice", "closest", "match", "vote", "split", "top_5", "distributed"]},
     "interactionPayload": {"type": "object"},
     "resolutionPayload": {"type": "object"},
     "media": {

@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-08",
+  "title": "Akwaan Active Content System manifest",
+  "contentItemModes": [
+    "ryo",
+    "multiple_choice",
+    "closest",
+    "match",
+    "vote",
+    "split",
+    "top_5",
+    "distributed"
+  ],
+  "challengeTypes": [
+    {
+      "slug": "distributed-information",
+      "name": "challenge-type-distributed-information",
+      "patterns": [
+        "three-segment-race"
+      ],
+      "skill": ".opencode/skills/challenge-types/distributed-information/SKILL.md"
+    },
+    {
+      "slug": "guess-your-teammate",
+      "name": "challenge-type-guess-your-teammate",
+      "patterns": [
+        "private-prediction"
+      ],
+      "skill": ".opencode/skills/challenge-types/guess-your-teammate/SKILL.md"
+    },
+    {
+      "slug": "read-your-opponent",
+      "name": "challenge-type-read-your-opponent",
+      "patterns": [
+        "closest",
+        "multiple-choice"
+      ],
+      "skill": ".opencode/skills/challenge-types/read-your-opponent/SKILL.md"
+    },
+    {
+      "slug": "same-wavelength",
+      "name": "challenge-type-same-wavelength",
+      "patterns": [
+        "exact-match"
+      ],
+      "skill": ".opencode/skills/challenge-types/same-wavelength/SKILL.md"
+    },
+    {
+      "slug": "split",
+      "name": "challenge-type-split",
+      "patterns": [
+        "ordered-groups",
+        "three-groups",
+        "two-groups"
+      ],
+      "skill": ".opencode/skills/challenge-types/split/SKILL.md"
+    },
+    {
+      "slug": "split-clue",
+      "name": "challenge-type-split-clue",
+      "patterns": [
+        "complementary-halves"
+      ],
+      "skill": ".opencode/skills/challenge-types/split-clue/SKILL.md"
+    },
+    {
+      "slug": "top-5",
+      "name": "challenge-type-top-5",
+      "patterns": [
+        "keep-or-give"
+      ],
+      "skill": ".opencode/skills/challenge-types/top-5/SKILL.md"
+    },
+    {
+      "slug": "twenty-inquiries",
+      "name": "challenge-type-twenty-inquiries",
+      "patterns": [
+        "bounded-identity"
+      ],
+      "skill": ".opencode/skills/challenge-types/twenty-inquiries/SKILL.md"
+    },
+    {
+      "slug": "who-among-us",
+      "name": "challenge-type-who-among-us",
+      "patterns": [
+        "team-consensus"
+      ],
+      "skill": ".opencode/skills/challenge-types/who-among-us/SKILL.md"
+    }
+  ],
+  "worlds": [
+    {
+      "slug": "anime",
+      "scopes": [
+        "attack-on-titan",
+        "bleach",
+        "naruto",
+        "one-piece"
+      ]
+    },
+    {
+      "slug": "football",
+      "scopes": [
+        "champions-league",
+        "premier-league",
+        "saudi-league",
+        "world-cup"
+      ]
+    },
+    {
+      "slug": "video-games",
+      "scopes": [
+        "call-of-duty",
+        "fifa",
+        "gta",
+        "overwatch"
+      ]
+    }
+  ],
+  "validators": [
+    "audit_active_architecture.py",
+    "test_distributed_information_fixtures.py",
+    "test_who_among_us_fixtures.py",
+    "validate_distributed_information.py",
+    "validate_schema_examples.py",
+    "validate_top_5.py",
+    "validate_who_among_us.py"
+  ],
+  "legacyArchives": [
+    "duplicate-workspaces-2026-08-08",
+    "old-skills",
+    "pre-final-migration-2026-08-03",
+    "retired-top10-2026-08-08"
+  ]
+}

@@ -29,6 +29,12 @@ Scope and lists every compatible ChallengeType.
 
 Start with the ChallengeType. Research never chooses the mechanic.
 
+## Workspace Manifest
+
+`manifest.json` is the machine-readable snapshot of the active workspace:
+ChallengeTypes and owned Patterns, Worlds and Scopes, validators, canonical
+content-item modes, and legacy archives. Regenerate it after structural changes.
+
 ## Active Ownership
 
 - `knowledge/architecture/`: global contracts.

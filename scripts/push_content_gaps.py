@@ -23,7 +23,7 @@ Mappings (backend IDs verified against /admin/challenge-types and
     who-among-us              -> 6a723f657d6c784779ea6bdc  (vote)
     guess-your-teammate       -> 6a723f4c7d6c784779ea6bba  (coop/closest)
     split-clue                -> 6a70fb0adfbf25db50410702  (signature/split)
-    top-10                    -> 6a71107b0cfcf2052be32ed7  (signature/top_10)
+    top-5                     -> 6a71107b0cfcf2052be32ed7  (signature/top_5 keep-or-give)
 
 Usage:
     push_content_gaps.py [--dry-run] [pack.json ...]
@@ -60,7 +60,7 @@ CHALLENGE_TYPE_IDS = {
     "who-among-us": "6a723f657d6c784779ea6bdc",
     "guess-your-teammate": "6a723f4c7d6c784779ea6bba",
     "split-clue": "6a70fb0adfbf25db50410702",
-    "top-10": "6a71107b0cfcf2052be32ed7",
+    "top-5": "6a71107b0cfcf2052be32ed7",
 }
 
 OUT = Path(__file__).resolve().parents[1]
@@ -139,28 +139,47 @@ def split_payload(item):
     }
 
 
-def top10_payload(item):
-    """Top 10 poison deck: signature mechanic payload mirrors stored shape."""
+def top5_payload(item):
+    """Top 5 keep-or-give: ten entries, five ranked (ranks 1-5) and five traps.
+
+    Accepts the canonical authoring shape (entries with rank) or the retired
+    poison-deck shape (candidates + rankedEntries + decoyCandidateIds). Conversion
+    follows the production migrate-top10-to-top5 semantics: ranks 1-5 stay ranked,
+    ranks 6-10 become traps (rank null), and authored decoys are dropped.
+    """
     inter = item["interactionPayload"]
     reso = item["resolutionPayload"]
+    if inter.get("entries"):
+        entries = [dict(e) for e in inter["entries"]]
+    else:
+        label_map = {c["id"]: c["label"] for c in inter.get("candidates", [])}
+        ordered = sorted(reso["rankedEntries"], key=lambda e: e["rank"])
+        entries = [
+            {
+                "id": e["candidateId"],
+                "label": label_map[e["candidateId"]],
+                "rank": e["rank"],
+            }
+            for e in ordered[:5]
+        ] + [
+            {
+                "id": e["candidateId"],
+                "label": label_map[e["candidateId"]],
+                "rank": None,
+            }
+            for e in ordered[5:]
+        ]
     return {
-        "mode": "top_10",
+        "mode": "top_5",
         "mechanicPayload": {
-            "variant": inter["variant"],
+            "variant": "keep-or-give",
             "title": inter["title"],
             "instruction": "احتفظ بالبطاقة أو أرسلها لخصمك، ثم اكشفوا الترتيب.",
             "rankingBasis": inter["rankingBasis"],
             "sourceLabel": inter["sourceLabel"],
-            "sourceUrl": inter["sourceUrl"],
-            "asOfDate": inter["asOfDate"],
-            "candidates": [
-                {"id": c["id"], "label": c["label"]} for c in inter["candidates"]
-            ],
-            "rankedAnswer": [
-                {"candidateId": e["candidateId"], "rank": e["rank"]}
-                for e in reso["rankedEntries"]
-            ],
-            "decoyCandidateIds": reso["decoyCandidateIds"],
+            "sourceUrl": inter.get("sourceUrl"),
+            "asOfDate": inter.get("asOfDate"),
+            "entries": entries,
         },
     }
 
@@ -175,8 +194,8 @@ def to_backend(item, challenge_type):
         "isReusableAcrossSessions": item["isReusableAcrossSessions"],
         "status": "ready",
     }
-    if challenge_type == "top-10":
-        ap = top10_payload(item)
+    if challenge_type == "top-5":
+        ap = top5_payload(item)
         payload["mechanicPayload"] = ap.pop("mechanicPayload")
         payload["answerPayload"] = ap
     elif challenge_type == "read-your-opponent":

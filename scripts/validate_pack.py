@@ -5,8 +5,9 @@ Usage:
     validate_pack.py <pack.json> [pack.json ...]
 
 Extracts every ContentItem from a pack (flat `items` or `contentItemBatches`).
-Top-10 items are validated against the dedicated top-10 patterns schema and the
-Top 10 validator; all other items are validated against CONTENTITEM.schema.json.
+Top-5 items (including legacy packs still tagged `top-10`) are validated against
+the dedicated top-5 patterns schema and the Top 5 validator; all other items are
+validated against CONTENTITEM.schema.json.
 """
 
 from __future__ import annotations
@@ -17,11 +18,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 GENERIC_SCHEMA = ROOT / ".opencode/validators/CONTENTITEM.schema.json"
-TOP10_SCHEMA = ROOT / ".opencode/skills/challenge-types/top-10/top-10.patterns.schema.json"
+TOP5_SCHEMA = ROOT / ".opencode/skills/challenge-types/top-5/top-5.patterns.schema.json"
 
 sys.path.insert(0, str(ROOT / ".opencode/validators"))
 import validate_schema_examples as vse  # noqa: E402
-import validate_top_10 as vtt  # noqa: E402
+import validate_top_5 as vtt  # noqa: E402
 
 
 def iter_items(pack: dict):
@@ -35,15 +36,16 @@ def iter_items(pack: dict):
 def validate_pack(path: Path) -> int:
     pack = json.loads(path.read_text(encoding="utf-8"))
     generic = json.loads(GENERIC_SCHEMA.read_text(encoding="utf-8"))
-    t10schema = json.loads(TOP10_SCHEMA.read_text(encoding="utf-8"))
+    t5schema = json.loads(TOP5_SCHEMA.read_text(encoding="utf-8"))
     failed = False
     item_count = 0
     for item in iter_items(pack):
         item_count += 1
-        is_top10 = "top-10" in item.get("compatibleChallengeTypeIds", [])
-        schema = t10schema if is_top10 else generic
+        ids = item.get("compatibleChallengeTypeIds", [])
+        is_top5 = any(tag in ids for tag in ("top-5", "top-10"))
+        schema = t5schema if is_top5 else generic
         errors = vse.validate(item, schema, schema)
-        if is_top10:
+        if is_top5:
             errors += vtt.validate(item)
         if errors:
             failed = True
