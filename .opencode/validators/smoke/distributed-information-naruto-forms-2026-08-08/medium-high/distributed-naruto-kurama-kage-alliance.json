@@ -1,0 +1,112 @@
+{
+  "id": "distributed-naruto-kurama-kage-alliance",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "حلّوا ألغازكم الفردية، وأعلنوا الحل الذي استخرجتموه، ثم اجمعوا الحلول الثلاثة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "multiple_choice",
+    "correctOptionId": "d",
+    "options": [
+      {
+        "id": "a",
+        "label": {
+          "ar": "شوكاكو"
+        }
+      },
+      {
+        "id": "b",
+        "label": {
+          "ar": "إيسوبو"
+        }
+      },
+      {
+        "id": "c",
+        "label": {
+          "ar": "غيوكي"
+        }
+      },
+      {
+        "id": "d",
+        "label": {
+          "ar": "كويراما"
+        }
+      }
+    ]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كل لاعب يحلّ لغزه الخاص وحده، ثم يعلن حلَّه. اجمعوا الحلول الثلاثة واختاروا من الخيارات وحشَ الذيل الوحيد الذي تجمعه الدلائل كلها."
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "لغزك الخاص: رسالةٌ فكّكها حكماءُ القرى ذات مرة: أربع صفاتٍ لمن يتصدّر القوم، اجمع الحرفَ الأول من كل صفة: حكمةٌ، أمانةٌ، كفاءةٌ، مهابةٌ — فتخرج بكلمةٍ واحدة. ما الكلمة التي تجمّعها تلك الحروف، وهي اللقب الذي ناله حاوي أحد الوحوش فقاد قريتَه؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لغزك الخاص: حين توحّدت القرى في حربٍ واحدة، رُفع رمزٌ يجمعهم؛ وُضع في واجهته ما يدلّ على يدٍ تقاتل معًا لا ضدًّا: رمالُ صحراء، وقبضةُ وحشٍ، وعلامةُ أملٍ تعتلي. من وقف تحت هذا الرمز كان إلى جانب القرى. ما الصفة التي جمعت من قاتلوا في صفّ التحالف؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لغزك الخاص: إخوةٌ من وحوشٍ تجمعهم علاقةُ تقدّمٍ وتأخّرٍ في القدر؛ حين طاردهم الصيّادون وقع أوّلُهم في الشرك أسرعَ من إخوته، ثم تنادروا واحدًا بعد واحد. من لم يكن في طليعة الواقعين بل قُدِّر له أن يتأخّر عنهم؟ ما الصفة الجامعة لمن تأخّر سقوطُهم؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "B"
+        ],
+        "secondParticipantSegmentIds": [
+          "C"
+        ]
+      },
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "B"
+        ]
+      },
+      {
+        "firstParticipantSegmentIds": [
+          "B",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "A"
+        ]
+      }
+    ],
+    "supportedTeamSizes": [
+      2,
+      3
+    ],
+    "authorSafetyConfirmation": true,
+    "explanation": "ألغازٌ مستقلة تُحلّ بمعرفة عالم ناروتو. أ: لقب الحاكم (فكّ حروف أولية)، ب: قاتل في صفّ التحالف (رمز)، ج: لم يكن أول من سُجن (علاقة ترتيب). أي دليلين يبقيان خيارين (الحاكم+التحالف: شوكاكو/كويراما، الحاكم+التأخر: إيسوبو/كويراما، التحالف+التأخر: غيوكي/كويراما)، والثلاثة تفرد كويراما. لا عدّ ولا جمع."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

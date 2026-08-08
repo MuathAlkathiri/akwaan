@@ -1,0 +1,112 @@
+{
+  "id": "distributed-naruto-senju-clan",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "حلّوا ألغازكم الفردية، وأعلنوا الحل الذي استخرجتموه، ثم اجمعوا الحلول الثلاثة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "multiple_choice",
+    "correctOptionId": "c",
+    "options": [
+      {
+        "id": "a",
+        "label": {
+          "ar": "عشيرة الأوتشيها"
+        }
+      },
+      {
+        "id": "b",
+        "label": {
+          "ar": "عشيرة الساروتوبي"
+        }
+      },
+      {
+        "id": "c",
+        "label": {
+          "ar": "عشيرة السينجو"
+        }
+      },
+      {
+        "id": "d",
+        "label": {
+          "ar": "عشيرة الأوزوماكي"
+        }
+      }
+    ]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كل لاعب يحلّ لغزه الخاص وحده، ثم يعلن حلَّه. اجمعوا الحلول الثلاثة واختاروا من الخيارات العشيرةَ الوحيدة التي تجمعها الدلائل كلها."
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "لغزك الخاص: رمزُ القرية ورقةٌ خضراءُ تُحفر على خوذٍ وقبّعات؛ عشائرُ بنت هذه القرية فانقسمت زواياها: عشيرةٌ عقدت الورقةَ على جبين كلّ جنديّ، وعشيرةٌ نقشتها فوق بوّابتها الغربية، وعشيرةٌ نسجتها في راية قائدها. ما الصفة الجامعة لهذه العشائر التي تنتمي إلى قرية الأوراق؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لغزك الخاص: استبعد من بين العشائر ما لم يجلس أحدُ أبنائها في مقعد القائد الأعلى، ثم انظر إلى ما بقي: أيُّ العشائر أنجبت من بلغ منصبَ الهوكاجي؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لغزك الخاص: علاقةُ دمٍ تنتقل في الأبناء قوةً موروثةً لا تُدرّس: عينٌ تحمرّ عند صاحبها حين يقسو قلبُه، وذيلٌ من طاقةٍ يزهر خلف ظهرٍ يحمي وطنَه، وحيويّةٌ تنساب في العروق تُطيل أعمارَ أصحابها. أيُّ العشائر اتصفت بقوةٍ فطريةٍ مميزةٍ في دمها؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "B"
+        ],
+        "secondParticipantSegmentIds": [
+          "C"
+        ]
+      },
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "B"
+        ]
+      },
+      {
+        "firstParticipantSegmentIds": [
+          "B",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "A"
+        ]
+      }
+    ],
+    "supportedTeamSizes": [
+      2,
+      3
+    ],
+    "authorSafetyConfirmation": true,
+    "explanation": "ألغازٌ مستقلة تُحلّ بمعرفة عالم ناروتو. أ: تنتمي إلى قرية الأوراق (رمز الورقة)، ب: من عشائرها من بلغ منصب الهوكاجي (استبعاد)، ج: ذات قوة فطرية مميزة (علاقة دمٍ موروثة). أي دليلين يبقيان خيارين (الأوراق+الهوكاجي: السينجو/الساروتوبي، الأوراق+القوة: السينجو/الأوتشيها، الهوكاجي+القوة: السينجو/الأوزوماكي)، والثلاثة تفرد السينجو. لا عدّ ولا جمع."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "id": "distributed-naruto-anbu-masked-leaf",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "حلّوا ألغازكم الفردية، وأعلنوا الحل الذي استخرجتموه، ثم اجمعوا الحلول الثلاثة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "multiple_choice",
+    "correctOptionId": "c",
+    "options": [
+      {
+        "id": "a",
+        "label": {
+          "ar": "الجذر"
+        }
+      },
+      {
+        "id": "b",
+        "label": {
+          "ar": "الأكاتسكي"
+        }
+      },
+      {
+        "id": "c",
+        "label": {
+          "ar": "الأنبو"
+        }
+      },
+      {
+        "id": "d",
+        "label": {
+          "ar": "شرطة كونوها"
+        }
+      }
+    ]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كل لاعب يحلّ لغزه الخاص وحده، ثم يعلن حلَّه. اجمعوا الحلول الثلاثة واختاروا من الخيارات المنظمةَ الوحيدة التي تجمعها الدلائل كلها."
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "لغزك الخاص: عُثر على رسالةٍ مشفّرةٍ بمفتاحٍ واحد: ○=ا، ▢=ل، △=و، ◇=ر، ☆=ق. فكّك ما كُتب: ○▢○△◇○☆، فتخرج بكلمةٍ تنطق انتماءً إلى إحدى قرى عالمك. ما الكلمة التي فككتها؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لغزك الخاص: نمطٌ يميّز أعضاءها: كلُّ فردٍ فيها يقنّع وجهَه خلف قناعٍ يحاكي وحوشًا وأطيافًا، فيصبح صوتُه مشوّهًا واسمُه سرًّا لا يذكره إلّا سجلٌّ مختوم. ما الصفة التي تتكرّر في هذه المنظمات التقنّعية؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لغزك الخاص: تُروى الحكاية في جزأينِ متلازمين: أحداثٌ بدأت بواكيرَها في الجزء الأول فحضرت مشهدَ امتحان النينجا الكبير، وأحداثٌ أخّرت نفسَها إلى الجزء الثاني. ما الصفة الجامعة للمنظمات التي كانت حاضرةً منذ الجزء الأول؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "B"
+        ],
+        "secondParticipantSegmentIds": [
+          "C"
+        ]
+      },
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "B"
+        ]
+      },
+      {
+        "firstParticipantSegmentIds": [
+          "B",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "A"
+        ]
+      }
+    ],
+    "supportedTeamSizes": [
+      2,
+      3
+    ],
+    "authorSafetyConfirmation": true,
+    "explanation": "ألغازٌ مستقلة تُحلّ بمعرفة عالم ناروتو. أ: من قرية الأوراق (فكّ رمز)، ب: تخفي هوية أعضائها خلف أقنعة (نمط)، ج: ظهرت في الجزء الأول (علاقة زمنية). أي دليلين يبقيان خيارين (الأوراق+الأقنعة: الجذر/الأنبو، الأوراق+الجزء الأول: الأنبو/شرطة كونوها، الأقنعة+الجزء الأول: الأنبو/الأكاتسكي)، والثلاثة تفرد الأنبو. لا عدّ ولا جمع."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}
