@@ -292,7 +292,10 @@ describe("unified Match board handoff", () => {
     expect(screen.getByTestId("board-progress").textContent).toBe("1/12");
     const completed = screen.getByTestId("unified-position-2#slot_2");
     expect(within(completed).getByLabelText("مكتمل")).toBeTruthy();
-    expect(completed.textContent).toContain("البنفسجي: 2");
+    // The completed tile keeps its score as a team-coloured chip, so the name
+    // and the number both stay on the board after the challenge ends.
+    expect(completed.textContent).toContain("البنفسجي");
+    expect(completed.textContent).toContain("2");
     // The identically-slotted position of the repeated World is untouched.
     expect(
       within(screen.getByTestId("unified-position-0#slot_2")).queryByLabelText(
@@ -300,7 +303,7 @@ describe("unified Match board handoff", () => {
       ),
     ).toBeNull();
     // Selection alternated to the other team.
-    expect(screen.getByTestId("selecting-team").textContent).toContain(
+    expect(screen.getByTestId("selecting-team-board").textContent).toContain(
       "الأخضر",
     );
   });

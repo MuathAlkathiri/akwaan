@@ -5,71 +5,158 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Akwaan design tokens.
+ *
+ * One semantic layer sits between shadcn's primitives and every screen: nothing
+ * user-facing names a raw colour. The identity is a warm off-white room with dark
+ * navy type — the World artwork supplies the colour, and the shell stays out of
+ * its way. The retired purple identity is gone from the token set entirely, so a
+ * component cannot reach for it by accident.
+ *
+ * Team colour is semantic, not decorative: green and coral belong to *teams*, and
+ * are never borrowed for a button, a surface, or a status. That is what lets the
+ * same two colours mean the same two teams on the board, in gameplay, in a reveal,
+ * and on a phone.
+ */
 @layer base {
   :root {
-    --background: 240 20% 99%;
-    --foreground: 250 28% 12%;
-    --card: 0 0% 100%;
-    --card-foreground: 250 28% 12%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 250 28% 12%;
-    --primary: 263 70% 50%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 250 20% 95%;
-    --secondary-foreground: 250 30% 20%;
-    --muted: 240 18% 96%;
-    --muted-foreground: 245 10% 43%;
-    --accent: 145 63% 42%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 245 18% 89%;
-    --input: 245 18% 89%;
-    --ring: 263 70% 50%;
-    --radius: 0.75rem;
-    --chart-1: 263 70% 50%;
-    --chart-2: 145 63% 42%;
-    --chart-3: 36 88% 52%;
-    --chart-4: 199 89% 48%;
-    --chart-5: 330 75% 55%;
-    --sidebar: 0 0% 100%;
-    --sidebar-foreground: 250 28% 12%;
-    --sidebar-primary: 263 70% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 145 63% 94%;
-    --sidebar-accent-foreground: 145 65% 25%;
-    --sidebar-border: 245 18% 89%;
-    --sidebar-ring: 263 70% 50%;
+    /* ── Surfaces ───────────────────────────────────────────────────────── */
+    /* Warm off-white: the room the whole product sits in. */
+    --background: 43 38% 95%;
+    --foreground: 219 45% 16%;
+    /* Elevated: cards, panels, anything that lifts off the room. */
+    --card: 40 45% 99%;
+    --card-foreground: 219 45% 16%;
+    --popover: 40 45% 99%;
+    --popover-foreground: 219 45% 16%;
+    /* Muted: recessed surfaces — inactive tiles, wells, quiet chips. */
+    --muted: 42 26% 92%;
+    --muted-foreground: 218 15% 45%;
+    --secondary: 42 30% 90%;
+    --secondary-foreground: 219 45% 20%;
+
+    /* ── Action ─────────────────────────────────────────────────────────── */
+    /* Navy, deliberately not a team colour: a primary button must never read
+       as "the green team". */
+    --primary: 219 52% 20%;
+    --primary-foreground: 40 45% 99%;
+    --accent: 42 30% 90%;
+    --accent-foreground: 219 45% 20%;
+
+    /* ── Lines and focus ────────────────────────────────────────────────── */
+    --border: 40 22% 86%;
+    --input: 40 22% 84%;
+    --ring: 219 60% 38%;
+
+    /* ── Status ─────────────────────────────────────────────────────────── */
+    --destructive: 358 66% 50%;
+    --destructive-foreground: 40 45% 99%;
+    --success: 152 58% 33%;
+    --success-foreground: 40 45% 99%;
+    --success-subtle: 152 45% 93%;
+    --warning: 33 88% 42%;
+    --warning-foreground: 40 45% 99%;
+    --warning-subtle: 38 85% 92%;
+
+    /* ── Board / progress states ────────────────────────────────────────── */
+    --selected: 219 60% 38%;
+    --selected-subtle: 219 55% 94%;
+    --completed: 152 40% 32%;
+    --completed-subtle: 152 35% 94%;
+    --disabled-foreground: 218 10% 58%;
+
+    /* ── Teams ──────────────────────────────────────────────────────────── */
+    /* Team one: green. `surface` fills, `border` outlines, `text` writes on a
+       light surface, `strong` writes on the solid fill. */
+    --team-green: 152 55% 36%;
+    /* Surfaces sit clearly below the room's 95% lightness: at 92% a team chip
+       was a 3% step off the background and read as plain white. */
+    --team-green-surface: 152 44% 87%;
+    --team-green-border: 152 38% 62%;
+    --team-green-text: 152 62% 22%;
+    --team-green-strong: 40 45% 99%;
+    /* Team two: coral. */
+    --team-coral: 348 72% 57%;
+    --team-coral-surface: 350 76% 91%;
+    --team-coral-border: 349 66% 74%;
+    --team-coral-text: 348 62% 36%;
+    --team-coral-strong: 40 45% 99%;
+
+    --radius: 0.875rem;
+
+    /* ── Motion ─────────────────────────────────────────────────────────── */
+    /* One scale, so a hover and a reveal cannot drift apart. */
+    --motion-fast: 140ms;
+    --motion-base: 240ms;
+    --motion-slow: 460ms;
+    --motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+    /* Charts keep working; they simply stop being purple. */
+    --chart-1: 219 52% 30%;
+    --chart-2: 152 55% 36%;
+    --chart-3: 348 72% 57%;
+    --chart-4: 33 88% 48%;
+    --chart-5: 199 70% 42%;
+    --sidebar: 40 45% 99%;
+    --sidebar-foreground: 219 45% 16%;
+    --sidebar-primary: 219 52% 20%;
+    --sidebar-primary-foreground: 40 45% 99%;
+    --sidebar-accent: 42 30% 92%;
+    --sidebar-accent-foreground: 219 45% 20%;
+    --sidebar-border: 40 22% 86%;
+    --sidebar-ring: 219 60% 38%;
   }
 
+  /**
+   * Dark is kept only so admin tooling and OS-level preferences do not break.
+   * The product identity is the light room above; nothing player-facing opts in.
+   */
   .dark {
-    --background: 252 30% 8%;
-    --foreground: 240 20% 98%;
-    --card: 252 25% 11%;
-    --card-foreground: 240 20% 98%;
-    --popover: 252 25% 11%;
-    --popover-foreground: 240 20% 98%;
-    --primary: 263 82% 68%;
-    --primary-foreground: 252 30% 10%;
-    --secondary: 252 18% 18%;
-    --secondary-foreground: 240 20% 98%;
-    --muted: 252 18% 17%;
-    --muted-foreground: 245 12% 68%;
-    --accent: 145 65% 48%;
-    --accent-foreground: 252 30% 8%;
-    --destructive: 0 63% 45%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 252 16% 22%;
-    --input: 252 16% 22%;
-    --ring: 263 82% 68%;
-    --sidebar: 252 25% 11%;
-    --sidebar-foreground: 240 20% 98%;
-    --sidebar-primary: 263 82% 68%;
-    --sidebar-primary-foreground: 252 30% 10%;
-    --sidebar-accent: 145 40% 18%;
-    --sidebar-accent-foreground: 145 65% 75%;
-    --sidebar-border: 252 16% 22%;
-    --sidebar-ring: 263 82% 68%;
+    --background: 219 34% 10%;
+    --foreground: 40 30% 96%;
+    --card: 219 30% 13%;
+    --card-foreground: 40 30% 96%;
+    --popover: 219 30% 13%;
+    --popover-foreground: 40 30% 96%;
+    --primary: 40 40% 94%;
+    --primary-foreground: 219 45% 14%;
+    --secondary: 219 22% 20%;
+    --secondary-foreground: 40 30% 96%;
+    --muted: 219 22% 18%;
+    --muted-foreground: 218 14% 68%;
+    --accent: 219 22% 20%;
+    --accent-foreground: 40 30% 96%;
+    --destructive: 358 60% 52%;
+    --destructive-foreground: 40 30% 96%;
+    --success: 152 50% 44%;
+    --success-subtle: 152 30% 18%;
+    --warning: 33 80% 52%;
+    --warning-subtle: 33 40% 18%;
+    --selected: 219 60% 58%;
+    --selected-subtle: 219 32% 20%;
+    --completed: 152 45% 44%;
+    --completed-subtle: 152 28% 17%;
+    --disabled-foreground: 218 10% 50%;
+    --team-green: 152 50% 46%;
+    --team-green-surface: 152 30% 18%;
+    --team-green-border: 152 35% 34%;
+    --team-green-text: 152 45% 74%;
+    --team-coral: 348 70% 64%;
+    --team-coral-surface: 348 32% 21%;
+    --team-coral-border: 348 40% 38%;
+    --team-coral-text: 348 70% 82%;
+    --border: 219 20% 24%;
+    --input: 219 20% 24%;
+    --ring: 219 60% 58%;
+    --sidebar: 219 30% 13%;
+    --sidebar-foreground: 40 30% 96%;
+    --sidebar-primary: 40 40% 94%;
+    --sidebar-primary-foreground: 219 45% 14%;
+    --sidebar-accent: 219 22% 20%;
+    --sidebar-accent-foreground: 40 30% 96%;
+    --sidebar-border: 219 20% 24%;
+    --sidebar-ring: 219 60% 58%;
   }
 
   * {
@@ -81,10 +168,9 @@
   }
 
   body {
+    /* Flat and warm. The old identity painted two purple radial glows here,
+       which fought every World banner placed on top of them. */
     @apply min-h-screen bg-background text-foreground antialiased;
-    background-image:
-      radial-gradient(circle at 12% 0%, hsl(var(--primary) / 0.08), transparent 28rem),
-      radial-gradient(circle at 88% 8%, hsl(var(--accent) / 0.07), transparent 24rem);
   }
 
   button:not(:disabled),
@@ -93,21 +179,50 @@
   }
 }
 
-@keyframes top10-answer-reveal {
-  0% {
-    opacity: 0.65;
-    transform: scale(0.98);
+/* ── Motion language ──────────────────────────────────────────────────────
+   A short vocabulary, used where movement carries meaning: a card arriving, an
+   ownership colour landing, a score ticking up, a winner announced. Everything
+   here is disabled wholesale under prefers-reduced-motion.                    */
+
+@keyframes akwaan-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
-  55% {
-    transform: scale(1.015);
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes akwaan-pop {
+  0% {
+    transform: scale(0.72);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.14);
+    opacity: 1;
   }
   100% {
+    transform: scale(1);
     opacity: 1;
+  }
+}
+
+@keyframes akwaan-claim {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.035);
+  }
+  100% {
     transform: scale(1);
   }
 }
 
-@keyframes top10-answer-shake {
+@keyframes akwaan-shake {
   0%,
   100% {
     transform: translateX(0);
@@ -120,29 +235,58 @@
   }
 }
 
-.top10-answer-reveal {
-  animation: top10-answer-reveal 220ms ease-out;
-}
+@layer utilities {
+  .akwaan-rise {
+    animation: akwaan-rise var(--motion-base) var(--motion-ease) both;
+  }
 
-.top10-answer-shake {
-  animation: top10-answer-shake 240ms ease-in-out;
-}
+  /* The +1 landing on a real Top 5 entry. */
+  .akwaan-pop {
+    animation: akwaan-pop var(--motion-base) var(--motion-ease) both;
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  .top10-answer-reveal,
-  .top10-answer-shake {
-    animation: none;
+  /* A field taking its owner's colour. */
+  .akwaan-claim {
+    animation: akwaan-claim var(--motion-slow) var(--motion-ease);
+  }
+
+  .akwaan-shake {
+    animation: akwaan-shake var(--motion-base) ease-in-out;
+  }
+
+  /**
+   * The one elevated surface treatment. Screens compose this instead of
+   * re-inventing a border/shadow/radius trio each time.
+   */
+  .surface-card {
+    @apply rounded-[var(--radius)] border border-border bg-card text-card-foreground shadow-[0_1px_2px_hsl(var(--foreground)/0.04),0_8px_24px_-16px_hsl(var(--foreground)/0.18)];
+  }
+
+  /* Tabular, LTR-locked numerals: Arabic UI, Western digits for scores. */
+  .akwaan-numeral {
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    unicode-bidi: isolate;
   }
 }
 
-@layer utilities {
-  .surface-card {
-    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+@media (prefers-reduced-motion: reduce) {
+  .akwaan-rise,
+  .akwaan-pop,
+  .akwaan-claim,
+  .akwaan-shake {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
   }
 }
 
 ::selection {
-  background: hsl(var(--primary) / 0.2);
+  background: hsl(var(--primary) / 0.16);
 }
 
 html[dir="rtl"] {

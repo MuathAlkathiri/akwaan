@@ -8,6 +8,7 @@ import { BOMB_GAMEPLAY_PLUGIN } from './bomb-gameplay.plugin';
 import { RYO_GAMEPLAY_PLUGIN } from './ryo-gameplay.plugin';
 import { TOP5_KEEP_OR_GIVE_PLUGIN } from './top5-keep-or-give.plugin';
 import { DISTRIBUTED_INFORMATION_PLUGIN } from './distributed-information.plugin';
+import { CLOSEST_GAMEPLAY_PLUGIN } from './closest-gameplay.plugin';
 
 @Injectable()
 export class GameplayModeRegistry {
@@ -40,6 +41,10 @@ export class GameplayModeRegistry {
         DISTRIBUTED_INFORMATION_PLUGIN.version,
       ),
       DISTRIBUTED_INFORMATION_PLUGIN,
+    ],
+    [
+      this.registryKey(CLOSEST_GAMEPLAY_PLUGIN.key, CLOSEST_GAMEPLAY_PLUGIN.version),
+      CLOSEST_GAMEPLAY_PLUGIN,
     ],
   ]);
 

@@ -124,9 +124,14 @@ export class RyoChallengeLauncher
    * Everything the recap needs to explain all three interactions.
    *
    * Each item carries who answered, what they answered, whether it was right,
-   * who made the blind Trust/Steal call, and the points that moved. The winner is
-   * the mechanic's own conclusion — the sum of the events it minted — not
-   * something the Match or a client works out afterwards.
+   * who made the blind Trust/Steal call, and the signed payoff that moved. Those
+   * payoffs are *mechanic* accounting: they decide who won the challenge and
+   * they are what the recap shows, but they never reach the Match scoreboard —
+   * the Match receives one point for the winner and nothing else.
+   *
+   * The winner is therefore still the mechanic's own conclusion (the sum of its
+   * own signed events), computed here rather than by the Match or a client. A
+   * genuine tie returns no winner, and a tie mints no Match point.
    */
   buildCompletionSummary(
     runtime: GameplayRuntimeState,
@@ -150,7 +155,9 @@ export class RyoChallengeLauncher
         opposingTeamId: result.opposingTeamId ?? null,
         deciderParticipantId: result.deciderParticipantId ?? null,
         decision: result.decision ?? null,
-        points: teamId ? [{ teamId, points: delta }] : [],
+        // Renamed from `points`: these are payoff swings inside the mechanic,
+        // not Match points, and one name must not mean both.
+        mechanicPoints: teamId ? [{ teamId, points: delta }] : [],
       };
     });
     const ranked = [...totals.entries()].sort(
@@ -162,10 +169,22 @@ export class RyoChallengeLauncher
       ranked.length && (ranked.length === 1 || ranked[0][1] > ranked[1][1])
         ? ranked[0][0]
         : null;
+    const mechanicTotals = Object.fromEntries(totals);
     return {
       challengeKey: this.key,
       winnerTeamId,
-      details: { itemsPlayed: results.length, items },
+      mechanicSummary: mechanicTotals,
+      details: {
+        itemsPlayed: results.length,
+        items,
+        /**
+         * The challenge's own signed totals, e.g. `{ teamA: 2, teamB: -1 }`.
+         * Persisted here because the Match ledger no longer carries them, and
+         * losing them would lose the recap.
+         */
+        mechanicTotals,
+        tie: winnerTeamId === null,
+      },
     };
   }
 

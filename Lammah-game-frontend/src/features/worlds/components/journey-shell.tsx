@@ -21,7 +21,7 @@ export function JourneyShell({
   className?: string;
 }) {
   return (
-    <div className="min-h-[calc(100vh-5.5rem)] bg-[#fdfaf4] px-4 pb-20 pt-5 text-slate-900 sm:px-6 lg:px-8">
+    <div className="min-h-[calc(100vh-5.5rem)] bg-background px-4 pb-20 pt-5 text-foreground sm:px-6 lg:px-8">
       <div className={cn("mx-auto max-w-7xl", className)}>
         {trail?.length ? <JourneyTrail trail={trail} /> : null}
         {children}
@@ -42,7 +42,7 @@ export interface JourneyCrumb {
 export function JourneyTrail({ trail }: { trail: JourneyCrumb[] }) {
   return (
     <nav aria-label="مسار التصفح" className="mb-6">
-      <ol className="flex flex-wrap items-center gap-1 text-sm font-bold text-slate-500">
+      <ol className="flex flex-wrap items-center gap-1 text-sm font-bold text-muted-foreground">
         {trail.map((crumb, index) => {
           const last = index === trail.length - 1;
           return (
@@ -59,7 +59,7 @@ export function JourneyTrail({ trail }: { trail: JourneyCrumb[] }) {
                 </Link>
               ) : (
                 <span
-                  className="px-2 py-1 text-slate-900"
+                  className="px-2 py-1 text-foreground"
                   aria-current={last ? "page" : undefined}
                 >
                   {crumb.label}
@@ -67,7 +67,7 @@ export function JourneyTrail({ trail }: { trail: JourneyCrumb[] }) {
               )}
               {!last && (
                 <ChevronLeft
-                  className="h-4 w-4 shrink-0 text-slate-300"
+                  className="h-4 w-4 shrink-0 text-border"
                   aria-hidden="true"
                 />
               )}
@@ -97,11 +97,11 @@ export function JourneySection({
     <section aria-labelledby={id} className="scroll-mt-24">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 id={id} className="text-2xl font-black text-slate-900">
+          <h2 id={id} className="text-2xl font-black text-foreground">
             {title}
           </h2>
           {description && (
-            <p className="mt-1 text-sm leading-6 text-slate-500">
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
               {description}
             </p>
           )}

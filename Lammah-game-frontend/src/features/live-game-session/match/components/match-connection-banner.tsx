@@ -1,58 +1,40 @@
 "use client";
 
-import { CheckCircle2, RefreshCw, WifiOff } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLiveSession } from "../../hooks/live-session-context";
 import { matchErrorMessage } from "../errors/match-errors";
-import type { MatchActor } from "../types";
 
-export function MatchConnectionBanner({ actor }: { actor: MatchActor }) {
-  const { connection, syncState, error, resync } = useLiveSession();
-  if (
-    connection === "connected" &&
-    (!syncState || syncState === "idle") &&
-    !error
-  ) {
-    return null;
-  }
-  const syncing = syncState === "resynchronizing";
-  const restored = syncState === "restored";
-  const disconnected = connection !== "connected";
-  const message = restored
-    ? "تمت استعادة أحدث حالة للمباراة."
-    : syncing
-      ? "جارٍ مزامنة المباراة مع الخادم…"
-      : disconnected
-        ? "الاتصال متوقف مؤقتًا. ستبقى الحالة ظاهرة وسنحاول الاستعادة تلقائيًا."
-        : matchErrorMessage(error?.code) ?? "تعذر تنفيذ آخر إجراء.";
+/**
+ * What the room is told while the connection is not simply fine.
+ *
+ * Every state here is one Arabic sentence and, where it helps, one button. The
+ * server's own error text never appears: it is written for a log reader, and a
+ * host reading it aloud to a room learns nothing they can act on. The code rides
+ * along as a data attribute for support instead.
+ */
+export function MatchConnectionBanner() {
+  const { error, resync } = useLiveSession();
+  // Initial hydration, live reconnecting, and successful resync are represented
+  // by the fixed MatchShell connection pill. They must not insert a transient
+  // row above the active stage. This surface is reserved for actionable errors.
+  if (!error) return null;
+  const message = matchErrorMessage(error.code) ?? "تعذر تنفيذ آخر إجراء.";
   return (
     <aside
       role="status"
       aria-live="polite"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-slate-900"
+      data-testid="match-connection-banner"
+      {...(error?.code ? { "data-error-code": error.code } : {})}
+      className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius)] border border-warning/35 bg-warning-subtle p-3 text-sm text-foreground"
     >
       <span className="flex items-center gap-2">
-        {restored ? (
-          <CheckCircle2 className="size-4 text-emerald-600" aria-hidden />
-        ) : disconnected ? (
-          <WifiOff className="size-4 text-amber-700" aria-hidden />
-        ) : (
-          <RefreshCw className="size-4 animate-spin" aria-hidden />
-        )}
+        <AlertTriangle className="size-4 text-warning" aria-hidden />
         {message}
       </span>
-      {!restored && (
-        <Button size="sm" variant="outline" onClick={() => resync?.()}>
-          مزامنة الآن
-        </Button>
-      )}
-      {actor === "controller" && error?.message && (
-        <details className="w-full text-xs text-slate-500">
-          <summary>تفاصيل للمطوّر</summary>
-          {error.code}: {error.message}
-        </details>
-      )}
+      <Button size="sm" variant="outline" onClick={() => resync?.()}>
+        مزامنة الآن
+      </Button>
     </aside>
   );
 }
-

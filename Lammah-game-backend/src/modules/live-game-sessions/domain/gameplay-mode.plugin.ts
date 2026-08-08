@@ -77,6 +77,10 @@ export const MODE_COMMAND_TYPES: readonly string[] = [
   'skip-card',
   // ركّبها.
   'expire-race',
+  // مين أقرب.
+  'submit-estimate',
+  'advance-closest-item',
+  'expire-closest-item',
 ];
 
 export interface GameplayCommandDefinition {

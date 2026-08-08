@@ -1,93 +1,89 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, RefreshCw, WifiOff } from "lucide-react";
+import { Home, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLiveSession } from "../../hooks/live-session-context";
 import { MatchStageRouter } from "../match-stage-router";
+import { matchErrorCopy } from "../match-error-copy";
+import { MatchShell } from "./match-shell";
 
 /**
  * The host's Match screen.
  *
  * One surface for the whole Match: the board, a preflight, a challenge, and the
- * result all render through the same router underneath this header. The header
- * itself holds only what belongs to the room rather than to the Match — the link
- * to the shared screen, and whether this device is still talking to the server.
+ * result all render through the same router inside the same shell. The shell
+ * holds what belongs to the room — teams, score, progress, connection — and the
+ * router owns everything that belongs to the game.
  *
  * Deliberately not the internal live-session panel: session controls, runtime
  * debugging, and the join panel are admin tooling, and a Match host has no use
  * for any of it while running a game.
  */
 export function MatchHostScreen() {
-  const { snapshot, connection, error, resync } = useLiveSession();
+  const { snapshot, error, resync } = useLiveSession();
 
   if (!snapshot && error) {
+    // The server's message names ids and is written in English for a log reader.
+    // A room full of players gets the Arabic sentence instead; the code stays on
+    // the element for support.
+    const copy = matchErrorCopy(error);
     return (
-      <section
-        role="alert"
-        dir="rtl"
-        data-testid="match-host-error"
-        className="mx-auto max-w-xl space-y-4 rounded-2xl border border-destructive/30 bg-white p-10 text-center"
-      >
-        <h1 className="text-xl font-black text-slate-900">
-          تعذر تحميل المباراة
-        </h1>
-        <p className="text-sm leading-6 text-slate-600">{error.message}</p>
-        <Button
-          type="button"
-          onClick={() => resync?.()}
-          className="rounded-xl font-black"
+      <MatchShell actor="controller">
+        <Alert
+          variant="destructive"
+          dir="rtl"
+          data-testid="match-host-error"
+          data-error-code={error.code}
+          className="mx-auto max-w-xl text-center"
         >
-          <RefreshCw className="ml-1.5 size-4" aria-hidden />
-          إعادة المحاولة
-        </Button>
-      </section>
+          <AlertTitle className="text-2xl font-black">{copy.title}</AlertTitle>
+          <AlertDescription className="space-y-4">
+            <p className="text-base leading-7">{copy.body}</p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {copy.retryable && (
+                <Button
+                  type="button"
+                  onClick={() => resync?.()}
+                  className="font-black"
+                >
+                  <RefreshCw className="size-4" aria-hidden />
+                  إعادة المحاولة
+                </Button>
+              )}
+              <Button
+                asChild
+                variant="outline"
+                className="font-black no-underline [&_a]:no-underline"
+              >
+                <Link href="/">
+                  <Home className="size-4" aria-hidden />
+                  الرئيسية
+                </Link>
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      </MatchShell>
     );
   }
 
   return (
-    <div dir="rtl" className="space-y-4">
-      <header className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
-          {connection === "connected" ? (
-            <span data-testid="host-connection">متصل بالخادم</span>
-          ) : (
-            <span
-              data-testid="host-connection"
-              className="flex items-center gap-1.5 text-amber-700"
-            >
-              <WifiOff className="size-4" aria-hidden />
-              {connection === "connecting"
-                ? "جارٍ الاتصال…"
-                : "الاتصال متوقف مؤقتًا"}
-            </span>
-          )}
-        </div>
-        {snapshot && (
-          <Button asChild variant="outline" size="sm" className="font-black">
-            <Link
-              href={`/live-sessions/${snapshot.sessionId}/screen`}
-              target="_blank"
-            >
-              <ExternalLink className="ml-1.5 size-4" aria-hidden />
-              فتح الشاشة المشتركة
-            </Link>
-          </Button>
-        )}
-      </header>
-
+    <MatchShell actor="controller">
       {snapshot ? (
         <MatchStageRouter actor="controller" />
       ) : (
-        <div
-          className="mx-auto w-full max-w-6xl space-y-4"
-          aria-label="جارٍ تحميل المباراة"
-        >
-          <Skeleton className="h-20 w-full rounded-2xl" />
-          <Skeleton className="h-72 w-full rounded-2xl" />
+        <div className="space-y-4" aria-label="جارٍ تحميل المباراة">
+          <Skeleton className="h-24 w-full rounded-[var(--radius)]" />
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Skeleton className="h-80 w-full rounded-[var(--radius)]" />
+            <Skeleton className="h-80 w-full rounded-[var(--radius)]" />
+            <Skeleton className="h-80 w-full rounded-[var(--radius)]" />
+          </div>
         </div>
       )}
-    </div>
+    </MatchShell>
   );
 }

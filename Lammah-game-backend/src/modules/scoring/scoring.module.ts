@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { ScoringRuleRegistry } from './application/scoring-rule.registry';
 import { ScoringService } from './application/scoring.service';
+import { ChallengeWinRule } from './application/challenge-win.rule';
 import { PerfectClearBonusRule } from './application/perfect-clear-bonus.rule';
 import { RyoPayoffMatrixRule } from './application/ryo-payoff-matrix.rule';
 import { Top5ResultRule } from './application/top5-result.rule';
@@ -15,6 +16,7 @@ import { DistributedInformationRaceRule } from './application/distributed-inform
   providers: [
     ScoringRuleRegistry,
     ScoringService,
+    ChallengeWinRule,
     PerfectClearBonusRule,
     RyoPayoffMatrixRule,
     Top5ResultRule,
@@ -25,6 +27,7 @@ import { DistributedInformationRaceRule } from './application/distributed-inform
 export class ScoringModule implements OnModuleInit {
   constructor(
     private readonly registry: ScoringRuleRegistry,
+    private readonly challengeWin: ChallengeWinRule,
     private readonly perfectClearBonus: PerfectClearBonusRule,
     private readonly ryoPayoffMatrix: RyoPayoffMatrixRule,
     private readonly top5Result: Top5ResultRule,
@@ -32,6 +35,7 @@ export class ScoringModule implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
+    this.registry.bind(this.challengeWin);
     this.registry.bind(this.perfectClearBonus);
     this.registry.bind(this.ryoPayoffMatrix);
     this.registry.bind(this.top5Result);

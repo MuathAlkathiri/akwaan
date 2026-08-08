@@ -74,6 +74,12 @@ export interface MatchChallengeCompletionSummary {
    * never be in a position to compute a different one.
    */
   winnerTeamId?: string | null;
+  /**
+   * The mechanic's own margin, e.g. `{ 'team-a': 3, 'team-b': 2 }`. Carried onto
+   * the Match point as provenance — it explains why this team won — and never
+   * summed into the Match scoreboard.
+   */
+  mechanicSummary?: Record<string, unknown>;
   /** Mechanic-shaped, client-safe facts for the Match result card. */
   details: Record<string, unknown>;
 }

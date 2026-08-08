@@ -11,6 +11,7 @@ import {
 import { RYO_MODE_KEY } from '../modules/live-game-sessions/domain/ryo-gameplay.plugin';
 import { DISTRIBUTED_INFORMATION_MODE_KEY } from '../modules/live-game-sessions/domain/distributed-information.plugin';
 import { TOP5_MODE_KEY } from '../modules/live-game-sessions/domain/top5-keep-or-give.plugin';
+import { CLOSEST_MODE_KEY } from '../modules/live-game-sessions/domain/closest-gameplay.plugin';
 
 /**
  * Deciding which ChallengeType is a canonical mechanic wearing the wrong slug.
@@ -76,7 +77,9 @@ const bystanders: ChallengeTypeRecord[] = [
   },
 ];
 
-const mechanic = CANONICAL_MECHANICS[0];
+const mechanic = CANONICAL_MECHANICS.find(
+  (entry) => entry.slug === RYO_MODE_KEY,
+)!;
 
 describe('canonical mechanic slug migration', () => {
   it('only claims mechanics whose launcher key it can name', () => {
@@ -86,6 +89,7 @@ describe('canonical mechanic slug migration', () => {
       RYO_MODE_KEY,
       TOP5_MODE_KEY,
       DISTRIBUTED_INFORMATION_MODE_KEY,
+      CLOSEST_MODE_KEY,
     ];
     for (const entry of CANONICAL_MECHANICS) {
       expect(launcherKeys).toContain(entry.slug);
@@ -174,7 +178,7 @@ describe('canonical mechanic slug migration', () => {
     const claimed = CANONICAL_MECHANICS.map((entry) => entry.answerMode);
     expect(claimed).not.toContain(ChallengeAnswerMode.SPLIT);
     expect(claimed).not.toContain(ChallengeAnswerMode.VOTE);
-    expect(claimed).not.toContain(ChallengeAnswerMode.CLOSEST);
+    expect(claimed).toContain(ChallengeAnswerMode.CLOSEST);
 
     for (const bystander of bystanders) {
       const decision = decideRename(mechanic, [ryo(), ...bystanders]);

@@ -31,13 +31,17 @@ export const unavailableReasons: Record<
   UnifiedUnavailableReason,
   { label: string; detail: string }
 > = {
+  // "The server does not support running this type of challenge" is true and
+  // useless: a host cannot act on it, and it names our internals in a room full
+  // of players. Not placeholder language either — a mechanic is playable or it is
+  // not, and this one is not.
   launcher_not_implemented: {
-    label: "هذا التحدي غير متاح للعب حاليًا",
-    detail: "لا يدعم الخادم تشغيل هذا النوع من التحديات.",
+    label: "غير متاح",
+    detail: "هذا التحدي غير مفعّل في أكوان.",
   },
   invalid_configuration: {
-    label: "هذه الخانة غير صالحة في هذه المباراة",
-    detail: "لم تُسجَّل هذه الخانة ضمن إعداد المباراة.",
+    label: "غير مُعدّ",
+    detail: "هذه الخانة ليست ضمن إعداد هذه المباراة.",
   },
 };
 

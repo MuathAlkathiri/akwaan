@@ -118,7 +118,18 @@ export class CreateJoinAccessDto {
 export class JoinLiveSessionDto {
   @IsString()
   @MaxLength(40)
-  @Matches(/^[\p{L}\p{N} _-]+$/u)
+  /**
+   * A human display name, Unicode-aware.
+   *
+   * `\p{M}` is the fix: Arabic diacritics are *combining marks*, not letters, so
+   * a letters-and-numbers pattern rejected "مُعاذ" and "مُحَمَّد" while accepting
+   * "معاذ" — players were being told their own name was invalid.
+   *
+   * Deliberately still a whitelist rather than a loosened free-text field: format
+   * characters (`\p{Cf}`) stay out, which is what keeps bidi overrides and
+   * zero-width joiners from being smuggled into a name every phone renders.
+   */
+  @Matches(/^[\p{L}\p{M}\p{N} _-]+$/u)
   displayName!: string;
 
   @IsOptional()

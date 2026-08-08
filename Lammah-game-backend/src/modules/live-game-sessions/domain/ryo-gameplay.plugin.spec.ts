@@ -38,6 +38,77 @@ describe('RYO gameplay plugin', () => {
     now,
   );
 
+  it('records the answer a room can read, not the option id it graded', () => {
+    // Grading compares option ids, so that is what a submission carries. A recap
+    // that reads "أجاب: option-1" at a room is the internal key leaking out; the
+    // authored label is the answer as far as anyone playing is concerned.
+    const localised = interaction.preparePrompt(
+      { sessionId: 's', runtimeId: 'r', activeTeamId: 'a' },
+      {
+        opposingTeamId: 'b',
+        answererParticipantId: 'p',
+        deciderParticipantId: 'q',
+        itemJson: JSON.stringify({
+          id: 'i1',
+          prompt: { ar: 'من هو الهداف؟' },
+          answerMode: 'multiple_choice',
+          options: [
+            { id: 'option-1', label: { ar: 'كريستيانو رونالدو' } },
+            { id: 'option-2', label: { ar: 'ميسي' } },
+          ],
+          correctOptionId: 'option-1',
+        }),
+      },
+      now,
+    );
+    const base = {
+      id: '1',
+      participantId: 'p',
+      type: 'ryo',
+      schemaVersion: 1,
+      receivedAt: now,
+      requestId: 'q',
+      status: 'accepted' as const,
+      resultVisibility: 'submitting-participant' as const,
+      promptId: 'p',
+      submittedAt: now,
+    };
+    const answered = interaction.createOutcome(
+      [
+        {
+          ...base,
+          teamId: 'a',
+          payload: {
+            kind: 'answer',
+            mode: 'multiple_choice',
+            optionId: 'option-2',
+          },
+        },
+        {
+          ...base,
+          id: '2',
+          participantId: 'q',
+          teamId: 'b',
+          payload: { kind: 'decision', decision: 'trust' },
+        },
+      ],
+      now,
+      { ...localised, id: 'p', preparedAt: now },
+    );
+
+    const payload = answered.outcome.publicPayload as Record<string, unknown>;
+    expect(payload.selectedAnswer).toBe('ميسي');
+    expect(payload.correctAnswer).toBe('كريستيانو رونالدو');
+    expect(payload.correct).toBe(false);
+    // The graded ids are untouched: only what is shown was resolved.
+    const scoring = JSON.parse(
+      String((answered.outcome.privatePayload as Record<string, unknown>)
+        .scoringInputJson),
+    ) as Record<string, unknown>;
+    expect(scoring.selectedAnswer).toBe('option-2');
+    expect(scoring.correctAnswer).toBe('option-1');
+  });
+
   it('persists the authoritative A-B-A three-item rotation', () => {
     expect(
       [0, 1, 2].map((index) => ryoAnsweringTeam(['a', 'b'], 'a', index)),

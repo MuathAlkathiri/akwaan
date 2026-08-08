@@ -374,6 +374,21 @@ export interface Question {
   updatedAt: string;
 }
 
+/**
+ * The classic game's team palette.
+ *
+ * Spelled out here rather than imported from `legacy/classic-game`, so the shared
+ * type surface carries no dependency on the retired product. Akwaan teams get
+ * their identity from `lib/team-identity` instead.
+ */
+export type LegacyTeamColorKey =
+  | "blue"
+  | "green"
+  | "yellow"
+  | "red"
+  | "orange"
+  | "pink";
+
 // Team types
 export interface Team {
   id: string;
@@ -381,7 +396,7 @@ export interface Team {
   name: string;
   members: string[];
   score: number;
-  color?: import("@/features/games/config/team-colors").TeamColorKey;
+  color?: LegacyTeamColorKey;
 }
 
 // Board Question types
@@ -430,7 +445,7 @@ export interface CreateGamePayload {
   teams: Array<{
     name: string;
     members: string[];
-    color: import("@/features/games/config/team-colors").TeamColorKey;
+    color: LegacyTeamColorKey;
   }>;
   categoryIds: string[];
 }

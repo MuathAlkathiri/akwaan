@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Layers, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { occurrenceLabel, prepareUnifiedChallenge } from "@/features/match-setup";
+import { usePlayableWorlds } from "@/features/worlds/hooks/use-player-catalog";
+import { WorldMedia } from "@/components/akwaan/world-media";
+import { ARABIC_NOUNS, arabicCount } from "@/lib/arabic-plural";
 import { useLiveSession } from "../../hooks/live-session-context";
 import { UnifiedBoardTile } from "./unified-board-tile";
 import { localizeMatchError } from "../errors/match-errors";
@@ -15,16 +19,18 @@ import type {
 } from "../types";
 
 /**
- * The Match board: three World occurrences and their twelve challenges, all at once.
+ * The Match board: three World occurrences, four positions each.
  *
- * There is no order here. Every available position is equally launchable, whichever
- * occurrence it belongs to, and a completed one stays where it is — so the board
- * always reads as the whole Match rather than a queue. Two occurrences of the same
- * World are two separate groups with two separate Scope pools, because that is what
- * they are.
+ * Designed around the Worlds rather than around a flat grid of twelve. Each
+ * occurrence is one column headed by its own artwork, so the host reads "this
+ * World, these four challenges" instead of scanning a wall of identical cards.
+ * A repeated World still gets its own column and its own artwork — the occurrence
+ * label is what distinguishes them, because the two are genuinely separate boards
+ * with separate Scopes.
  *
- * Every tile's state comes from the server's board projection. This component adds
- * no availability rule of its own.
+ * The artwork comes from the player World catalog the client already reads, keyed
+ * by the `worldId` the board projection carries. Nothing about the Match contract
+ * changed to get a picture onto this screen.
  */
 export function UnifiedBoard({ actor }: { actor: MatchActor }) {
   const { snapshot, resync } = useLiveSession();
@@ -33,6 +39,18 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
   // Fixed per chosen position, so a retry of the same click is a replay to the
   // server rather than a second preparation.
   const commandId = useRef<string>();
+  // Host surfaces only: a participant has no user session, and a 401 here
+  // would bounce the player to /login mid-Match.
+  const worlds = usePlayableWorlds(actor !== "participant");
+
+  const artworkByWorldId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const world of worlds.data ?? []) {
+      const url = world.banner?.url ?? world.icon?.url;
+      if (url) map.set(world.id, url);
+    }
+    return map;
+  }, [worlds.data]);
 
   const match = snapshot?.match;
   const unified = match?.unified;
@@ -40,8 +58,8 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
   /**
    * Choosing a tile *prepares* it; it does not start it.
    *
-   * That is the fix this phase exists for: a phone-required runtime used to be
-   * created here and then fail because the players were not in the room. The
+   * That is the fix an earlier phase exists for: a phone-required runtime used to
+   * be created here and then fail because the players were not in the room. The
    * server now answers with a preflight, and the router renders it.
    */
   const prepare = useCallback(
@@ -87,137 +105,132 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
   const selectionOpen = match.availableActions.includes(
     "match:launch-challenge",
   );
-
+  const selectingTeamName = unified.selectingTeamId
+    ? (standings.find((team) => team.teamId === unified.selectingTeamId)?.name ??
+      teamName(snapshot, unified.selectingTeamId))
+    : undefined;
   return (
-    <div className="space-y-5" data-testid="unified-board">
-      <BoardHeader
-        standings={standings}
-        selectingTeamName={
-          unified.selectingTeamId
-            ? (standings.find(
-                (team) => team.teamId === unified.selectingTeamId,
-              )?.name ?? teamName(snapshot, unified.selectingTeamId))
-            : undefined
-        }
-        completed={board.completedPositionCount}
-        total={board.totalPositionCount}
-      />
+    <div className="space-y-3" data-testid="unified-board">
+      {selectingTeamName && (
+        <span data-testid="selecting-team-board" className="sr-only">
+          {selectingTeamName} — دوركم الآن لاختيار تحدٍ
+        </span>
+      )}
+      <div className="flex justify-end lg:hidden">
+        {/* The shell's own progress bar takes over at `lg`, where this became the
+            same fraction printed twice on one screen. */}
+        <p
+          data-testid="board-progress"
+          className="akwaan-numeral rounded-[var(--radius)] border border-border bg-card px-3 py-2.5 text-sm font-black text-muted-foreground lg:hidden"
+        >
+          {board.completedPositionCount}/{board.totalPositionCount}
+        </p>
+      </div>
 
       {error && (
-        <p
-          role="alert"
-          className="rounded-xl border border-destructive/30 bg-destructive/[0.06] px-4 py-3 text-sm font-bold text-destructive"
-        >
-          {error}
-        </p>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription className="font-bold">{error}</AlertDescription>
+        </Alert>
       )}
 
       {board.positions.length === 0 ? (
         <EmptyBoard onResync={() => resync?.()} />
       ) : (
-        unified.occurrences.map((occurrence) => {
-          const positions = board.positions.filter(
-            (position) =>
-              position.occurrenceIndex === occurrence.occurrenceIndex,
-          );
-          return (
-            <section
-              key={occurrence.occurrenceIndex}
-              aria-label={occurrenceLabel(occurrence.occurrenceIndex)}
-              data-testid={`unified-occurrence-${occurrence.occurrenceIndex}`}
-              className="space-y-3 rounded-2xl border border-black/[0.05] bg-white/70 p-4"
-            >
-              <header className="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="text-lg font-black text-slate-900">
-                  {occurrenceLabel(occurrence.occurrenceIndex)}
-                  {occurrence.worldName ? ` · ${occurrence.worldName}` : ""}
-                </h3>
-                <p className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
-                  <Layers className="size-3.5 shrink-0" aria-hidden />
-                  {occurrence.selectedScopes.length
-                    ? occurrence.selectedScopes
-                        .map((scope) => scope.name || scope.scopeId)
-                        .join(" · ")
-                    : `${occurrence.selectedScopeIds.length} نطاقات`}
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {unified.occurrences.map((occurrence) => {
+            const positions = board.positions.filter(
+              (position) =>
+                position.occurrenceIndex === occurrence.occurrenceIndex,
+            );
+            const done = positions.filter(
+              (position) => position.status === "completed",
+            ).length;
+            return (
+              <section
+                key={occurrence.occurrenceIndex}
+                aria-label={`${occurrenceLabel(occurrence.occurrenceIndex)} · ${occurrence.worldName ?? ""}`}
+                data-testid={`unified-occurrence-${occurrence.occurrenceIndex}`}
+                className="flex flex-col gap-3.5 rounded-[calc(var(--radius)+0.25rem)] border border-border/75 bg-card/55 p-4 shadow-[0_12px_35px_-30px_hsl(var(--foreground)/0.45)]"
+              >
+                {/* A repeated World gives three columns identical artwork, so the
+                    station number is stated outside the picture where nothing can
+                    make it ambiguous. The numeral is the distinguishing mark; the
+                    artwork is still the personality. */}
+                <div className="flex items-center gap-2 px-0.5">
+                  <span
+                    aria-hidden
+                    className="akwaan-numeral grid size-6 shrink-0 place-items-center rounded-full bg-foreground text-xs font-black text-background"
+                  >
+                    {occurrence.occurrenceIndex + 1}
+                  </span>
+                  <span className="truncate text-sm font-black text-foreground">
+                    {occurrenceLabel(occurrence.occurrenceIndex)}
+                  </span>
+                </div>
+
+                {/* The World is the hero of its own column. */}
+                <WorldMedia
+                  name={occurrence.worldName ?? "عالم"}
+                  {...(artworkByWorldId.get(occurrence.worldId)
+                    ? { imageUrl: artworkByWorldId.get(occurrence.worldId) }
+                    : {})}
+                  priority={occurrence.occurrenceIndex === 0}
+                  variant="strip"
+                  className="!aspect-[16/4] rounded-[calc(var(--radius)-0.2rem)]"
+                >
+                  <span className="akwaan-numeral rounded-full border border-white/25 bg-black/25 px-2 py-1 text-xs font-black text-white backdrop-blur-sm">
+                    {done}/{positions.length}
+                  </span>
+                </WorldMedia>
+
+                <p className="flex items-start gap-1.5 px-0.5 text-xs font-bold leading-5 text-muted-foreground">
+                  <Layers className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                  <span className="min-w-0">
+                    {occurrence.selectedScopes.length
+                      ? occurrence.selectedScopes
+                          .map((scope) => scope.name || scope.scopeId)
+                          .join(" · ")
+                      : arabicCount(
+                          occurrence.selectedScopeIds.length,
+                          ARABIC_NOUNS.scope,
+                        )}
+                  </span>
                 </p>
-              </header>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                {positions.map((position) => {
-                  const playable =
-                    position.status === "available" &&
-                    position.launchability === "launchable";
-                  return (
-                    <UnifiedBoardTile
-                      key={position.positionKey}
-                      position={position}
-                      // Any available position, from any occurrence, at any time.
-                      canSelect={isController && playable && selectionOpen}
-                      {...(isController && playable && !selectionOpen
-                        ? { blockedReason: "اختيار التحديات غير متاح الآن." }
-                        : {})}
-                      pending={Boolean(pending)}
-                      standings={standings}
-                      onSelect={(chosen) => void prepare(chosen)}
-                      onResume={() => resync?.()}
-                    />
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })
+
+                <div className="grid gap-2.5">
+                  {positions.map((position) => {
+                    const playable =
+                      position.status === "available" &&
+                      position.launchability === "launchable";
+                    return (
+                      <UnifiedBoardTile
+                        key={position.positionKey}
+                        position={position}
+                        // Any available position, from any occurrence, at any time.
+                        canSelect={isController && playable && selectionOpen}
+                        {...(isController && playable && !selectionOpen
+                          ? { blockedReason: "اختيار التحديات غير متاح الآن." }
+                          : {})}
+                        pending={pending === position.positionKey}
+                        standings={standings}
+                        onSelect={(chosen) => void prepare(chosen)}
+                        onResume={() => resync?.()}
+                      />
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       )}
 
       {!isController && board.positions.length > 0 && (
-        <p className="rounded-xl bg-white p-4 text-center text-sm text-slate-600">
+        <p className="surface-card p-4 text-center text-sm text-muted-foreground">
           بانتظار المتحكّم لاختيار التحدي التالي.
         </p>
       )}
     </div>
-  );
-}
-
-/** Scores, whose turn it is, and how much of the Match is done. */
-function BoardHeader({
-  standings,
-  selectingTeamName,
-  completed,
-  total,
-}: {
-  standings: MatchTeamStanding[];
-  selectingTeamName?: string;
-  completed: number;
-  total: number;
-}) {
-  return (
-    <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-black/[0.05] bg-white p-4">
-      <ul className="flex list-none flex-wrap items-center gap-4">
-        {standings.map((team) => (
-          <li key={team.teamId} className="text-center">
-            <p className="text-xs font-bold text-slate-500">{team.name}</p>
-            <p className="text-2xl font-black tabular-nums text-slate-900">
-              {team.displayTotal}
-            </p>
-          </li>
-        ))}
-      </ul>
-      <div className="text-left">
-        {selectingTeamName && (
-          <p
-            data-testid="selecting-team"
-            className="text-sm font-black text-primary"
-          >
-            دور الاختيار: {selectingTeamName}
-          </p>
-        )}
-        <p
-          data-testid="board-progress"
-          className="text-sm font-bold tabular-nums text-slate-500"
-        >
-          {completed}/{total}
-        </p>
-      </div>
-    </header>
   );
 }
 
@@ -228,26 +241,20 @@ function BoardHeader({
  */
 function EmptyBoard({ onResync }: { onResync: () => void }) {
   return (
-    <section
-      role="alert"
-      data-testid="board-empty"
-      className="space-y-3 rounded-2xl border border-amber-300 bg-amber-50 p-8 text-center"
-    >
-      <AlertTriangle className="mx-auto size-7 text-amber-600" aria-hidden />
-      <p className="text-base font-black text-slate-900">
+    <Alert role="alert" data-testid="board-empty" className="text-center">
+      <AlertTriangle className="mx-auto size-7 text-warning" aria-hidden />
+      <AlertTitle className="text-base font-black">
         لم تصل أي خانات لهذه المباراة
-      </p>
-      <p className="text-sm text-slate-600">
-        أعد المزامنة؛ إذا استمر الأمر فإعداد المباراة ناقص على الخادم.
-      </p>
-      <Button
-        type="button"
-        onClick={onResync}
-        className="rounded-xl font-black"
-      >
-        <RefreshCw className="ml-1.5 size-4" aria-hidden />
-        مزامنة المباراة
-      </Button>
-    </section>
+      </AlertTitle>
+      <AlertDescription className="space-y-3">
+        <p className="text-sm">
+          أعد المزامنة؛ إذا استمر الأمر فإعداد المباراة ناقص على الخادم.
+        </p>
+        <Button type="button" onClick={onResync} className="font-black">
+          <RefreshCw className="size-4" aria-hidden />
+          مزامنة المباراة
+        </Button>
+      </AlertDescription>
+    </Alert>
   );
 }

@@ -19,6 +19,7 @@ import { RyoChallengeLauncher } from './application/ryo-challenge.launcher';
 import { RuntimeScoreEventCollector } from './application/runtime-score-event.collector';
 import { Top5ChallengeLauncher } from './application/top5-challenge.launcher';
 import { UnifiedMatchSetupValidator } from './application/unified-match-setup.validator';
+import { ClosestChallengeLauncher } from './application/closest-challenge.launcher';
 import {
   UnifiedMatchBoardPolicy,
   unifiedMatchBoardPolicy,
@@ -74,6 +75,7 @@ import { UnifiedMatchController } from './presentation/unified-match.controller'
     RyoChallengeLauncher,
     Top5ChallengeLauncher,
     DistributedInformationChallengeLauncher,
+    ClosestChallengeLauncher,
     MatchReconciliationService,
     MatchSnapshotComposer,
   ],

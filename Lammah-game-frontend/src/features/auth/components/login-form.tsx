@@ -36,7 +36,7 @@ export function LoginForm() {
     setError("");
     try {
       const response = await login(data);
-      router.push(response.user.role === "admin" ? "/admin" : "/games");
+      router.push(response.user.role === "admin" ? "/admin" : "/");
     } catch (cause) {
       setError(
         getApiErrorMessage(

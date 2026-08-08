@@ -143,6 +143,13 @@ export class DistributedInformationChallengeLauncher
     }
     return {
       challengeKey: this.key,
+      // Declared upward so the Match can award its single point. The race
+      // already decided this; it was only ever reported inside `details`.
+      winnerTeamId: result.tie ? null : (result.winnerTeamId ?? null),
+      mechanicSummary: {
+        solved: result.solved,
+        elapsedMsAtLastProgress: result.elapsedMsAtLastProgress,
+      },
       details: {
         winnerTeamId: result.winnerTeamId,
         tie: result.tie,

@@ -48,6 +48,10 @@ vi.mock(
   () => ({ Top5Panel: () => <div data-testid="renderer-top5" /> }),
 );
 vi.mock(
+  "@/features/live-game-session/components/closest-gameplay-panel",
+  () => ({ ClosestGameplayPanel: () => <div data-testid="renderer-closest" /> }),
+);
+vi.mock(
   "@/features/live-game-session/components/distributed-information-panel",
   () => ({
     DistributedInformationPanel: () => (
@@ -219,6 +223,7 @@ beforeEach(() => {
 describe("a running challenge is routed by its runtime mode key", () => {
   it.each([
     ["read-your-opponent", "renderer-ryo"],
+    ["closest", "renderer-closest"],
     ["top-5", "renderer-top5"],
   ])("renders %s with its own screen", (modeKey, testId) => {
     renderRouter(match({ stage: "challenge", currentChallenge: running }), {
@@ -325,12 +330,11 @@ describe("reconciliation returns to the board", () => {
     expect(screen.getAllByTestId(/^unified-position-/)).toHaveLength(12);
     const finished = screen.getByTestId("unified-position-1#slot_2");
     expect(finished.dataset.status).toBe("completed");
-    expect(finished.textContent).toContain("البنفسجي: 3");
+    expect(finished.textContent).toContain("البنفسجي");
+    expect(finished.textContent).toContain("3");
     // Scores and the turn are the server's, updated in the same snapshot.
     expect(screen.getByTestId("board-progress").textContent).toBe("1/12");
-    expect(screen.getByTestId("selecting-team").textContent).toBe(
-      "دور الاختيار: الأخضر",
-    );
+    expect(screen.getByTestId("selecting-team-board").textContent).toContain("الأخضر");
     expect(screen.getByTestId("unified-board").textContent).toContain("3");
   });
 
@@ -342,9 +346,7 @@ describe("reconciliation returns to the board", () => {
     const finished = screen.getByTestId("unified-position-1#slot_2");
     expect(finished.textContent).not.toContain("اختيار هذا التحدي");
     // The eleven others are still offered.
-    expect(
-      screen.getAllByRole("button", { name: "اختيار هذا التحدي" }),
-    ).toHaveLength(11);
+    expect(screen.getAllByTestId(/^unified-position-/).filter((node) => node.tagName === "BUTTON")).toHaveLength(11);
   });
 });
 

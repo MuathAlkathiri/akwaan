@@ -98,17 +98,24 @@ export function LiveSessionProvider({
         adoptSnapshot(snapshot);
         if (syncStateRef.current === "resynchronizing") {
           window.clearTimeout(restoredTimerRef.current);
-          setSyncState("restored");
-          restoredTimerRef.current = window.setTimeout(
-            () => setSyncState("idle"),
-            1800,
-          );
+          // The first socket snapshot is initial hydration, not a recovery.
+          // Only an already-rendered Match can genuinely return from a resync.
+          if (snapshotRef.current) {
+            setSyncState("restored");
+            restoredTimerRef.current = window.setTimeout(
+              () => setSyncState("idle"),
+              1800,
+            );
+          } else {
+            setSyncState("idle");
+          }
         }
       },
       onConnection: (connection) =>
         dispatch({ type: "connection", connection }),
       onError: (error) => dispatch({ type: "error", error }),
-      onResyncing: () => setSyncState("resynchronizing"),
+      onResyncing: () =>
+        setSyncState(snapshotRef.current ? "resynchronizing" : "idle"),
       shouldRecoverMatch: (event) => {
         const match = snapshotRef.current?.match;
         if (match && event.matchId !== match.id) return false;

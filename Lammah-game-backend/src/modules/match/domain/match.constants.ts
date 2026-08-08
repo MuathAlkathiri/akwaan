@@ -87,6 +87,7 @@ export const MATCH_WORLD_OCCURRENCE_COUNT = 3;
 export const MATCH_CONTENT_CARDINALITY: Readonly<Record<string, number>> = {
   'read-your-opponent': 3,
   'top-5': 1,
+  closest: 3,
 };
 
 /**

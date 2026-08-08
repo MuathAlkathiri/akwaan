@@ -27,15 +27,15 @@ export function JourneyError({
     <div
       role="alert"
       data-testid="journey-error"
-      className="rounded-3xl border border-destructive/20 bg-white p-10 text-center shadow-[0_10px_30px_rgba(24,16,54,.05)]"
+      className="rounded-3xl border border-destructive/20 bg-card p-10 text-center shadow-[0_10px_30px_rgba(24,16,54,.05)]"
     >
       <AlertTriangle
         className="mx-auto h-8 w-8 text-destructive"
         aria-hidden="true"
       />
-      <p className="mt-4 text-lg font-black text-slate-900">{title}</p>
+      <p className="mt-4 text-lg font-black text-foreground">{title}</p>
       {description && (
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
           {description}
         </p>
       )}
@@ -44,7 +44,7 @@ export function JourneyError({
           type="button"
           onClick={onRetry}
           disabled={retrying}
-          className="mt-6 rounded-2xl font-black"
+          className="mt-6 rounded-[var(--radius)] font-black"
         >
           <RotateCcw className="ml-2 h-4 w-4" aria-hidden="true" />
           {retrying ? "جارٍ المحاولة..." : retryLabel}

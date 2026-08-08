@@ -14,6 +14,7 @@ import {
   OCCURRENCE_COUNT,
   occurrenceLabel,
 } from "../state/match-setup-draft";
+import { withLamPrefix } from "@/lib/arabic-plural";
 
 /**
  * The pre-match setup journey.
@@ -41,11 +42,11 @@ export function MatchSetupWizard() {
       >
         <div className="space-y-8" data-testid="match-setup-wizard" data-step={draft.activeStep}>
           <header>
-            <p className="text-sm font-black text-[#15803D]">إعداد المباراة</p>
-            <h1 className="mt-1 text-3xl font-black text-slate-900 sm:text-4xl">
+            <p className="text-sm font-black text-success">إعداد المباراة</p>
+            <h1 className="mt-1 text-3xl font-black text-foreground sm:text-4xl">
               جهّز المباراة كاملة
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               اختر {OCCURRENCE_COUNT} عوالم و4 نطاقات لكل عالم. تُنشأ المباراة
               مرة واحدة في النهاية، وتفتح لوحتها كاملة بـ12 تحديًا.
             </p>
@@ -87,8 +88,8 @@ export function MatchSetupWizard() {
                 onBack={() => act({ type: "back" })}
                 backDisabled={active.occurrenceIndex === 0}
               >
-                <p className="text-sm leading-6 text-slate-500">
-                  اختر عالمًا لـ{occurrenceLabel(active.occurrenceIndex)}.
+                <p className="text-sm leading-6 text-muted-foreground">
+                  اختر عالمًا {withLamPrefix(occurrenceLabel(active.occurrenceIndex))}.
                 </p>
               </StepFooter>
             </div>

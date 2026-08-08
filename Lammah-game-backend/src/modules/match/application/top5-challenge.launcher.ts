@@ -144,6 +144,8 @@ export class Top5ChallengeLauncher
     return {
       challengeKey: this.key,
       winnerTeamId: result.winnerTeamId,
+      // The 3-2 that decided it. Provenance on the Match point, never a score.
+      ...(result.top5Counts ? { mechanicSummary: result.top5Counts } : {}),
       details: {
         title: runtime.runtimeState?.title ?? '',
         rankingBasis: runtime.runtimeState?.rankingBasis ?? '',

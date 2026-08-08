@@ -9,13 +9,13 @@ export function MatchScoreDisplay({ compact = false }: { compact?: boolean }) {
   return (
     <section
       aria-label="نتيجة المباراة"
-      className="grid grid-cols-2 gap-3 rounded-2xl border border-amber-200/80 bg-white/80 p-3 shadow-sm"
+      className="grid grid-cols-2 gap-3 rounded-[var(--radius)] border border-warning/25 bg-card/80 p-3 shadow-sm"
     >
       {snapshot.teams.map((team) => {
         const score = scores.find((item) => item.teamId === team.id);
         return (
           <div key={team.id} className="text-center">
-            <p className="truncate text-sm text-slate-600">{team.name}</p>
+            <p className="truncate text-sm text-muted-foreground">{team.name}</p>
             <p
               className={
                 compact

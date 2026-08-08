@@ -24,7 +24,7 @@ const PLAYER_JOURNEY_FILES = [
   "src/features/worlds/utils/scopes.ts",
   // Pre-match setup is a player surface too: it reads Worlds and Scopes through
   // the same public projections and must never reach an authoring module.
-  "src/app/games/new/setup/page.tsx",
+  "src/app/matches/new/page.tsx",
   "src/features/match-setup/components/match-setup-wizard.tsx",
   "src/features/match-setup/components/occurrence-world-step.tsx",
   "src/features/match-setup/components/occurrence-scopes-step.tsx",

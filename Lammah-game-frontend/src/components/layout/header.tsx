@@ -11,13 +11,11 @@ import {
   adminNavigation,
   isAdminNavigationActive,
 } from "@/config/admin-navigation";
-import { isJourneyPath } from "./index";
 
 /** Worlds are the primary destination; everything else hangs off them. */
 const userNavItems = [
   { label: "الرئيسية", href: "/" },
   { label: "العوالم", href: "/#all-worlds" },
-  { label: "ألعابي", href: "/games" },
 ];
 
 export function Header() {
@@ -26,25 +24,13 @@ export function Header() {
   const visibleItems = isAdmin ? adminNavigation : userNavItems;
   const displayName = user?.fullName || "لاعب";
   const initial = displayName.trim().charAt(0) || "ل";
-  // The journey screens are warm and light, so the header stays light there too.
-  const isPlayerExperience =
-    isAuthenticated && !isAdmin && !isJourneyPath(pathname);
 
+  // One header, one surface. The retired identity had a second dark variant for
+  // authenticated player screens, which is why the product looked like two
+  // different apps depending on which route you were on.
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-50 w-full px-4 py-3",
-        isPlayerExperience &&
-          "border-b border-white/[0.06] bg-[#110b25]/78 text-white shadow-[0_10px_28px_rgba(5,2,16,.2)] backdrop-blur-xl",
-      )}
-    >
-      <div
-        className={cn(
-          "container flex min-h-16 items-center justify-between gap-4 rounded-lg border bg-card/95 px-4 shadow-sm backdrop-blur-xl md:px-6",
-          isPlayerExperience &&
-            "border-white/10 bg-[#211a38]/88 shadow-[0_10px_28px_rgba(4,1,15,.22)] backdrop-blur-xl",
-        )}
-      >
+    <header className="sticky top-0 z-50 w-full px-4 py-3">
+      <div className="container flex min-h-16 items-center justify-between gap-4 rounded-[var(--radius)] border border-border bg-card/95 px-4 shadow-sm backdrop-blur-xl md:px-6">
         <div className="flex items-center gap-3">
           <Link
             href="/"
@@ -57,7 +43,7 @@ export function Header() {
               fill
               priority
               sizes="160px"
-              className="object-contain drop-shadow-[0_4px_10px_rgba(91,33,182,.2)]"
+              className="object-contain"
             />
           </Link>
         </div>
@@ -71,8 +57,7 @@ export function Header() {
                 !isHashLink &&
                 (isAdmin
                   ? isAdminNavigationActive(pathname, itemPath)
-                  : pathname === itemPath ||
-                    (itemPath === "/games" && pathname.startsWith("/games/")));
+                  : pathname === itemPath);
 
               return (
                 <Link

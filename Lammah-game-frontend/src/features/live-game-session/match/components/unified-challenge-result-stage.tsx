@@ -2,7 +2,12 @@
 
 import { useCallback, useRef, useState } from "react";
 import { ArrowLeft, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { WorldMedia } from "@/components/akwaan/world-media";
+import { usePlayableWorlds } from "@/features/worlds/hooks/use-player-catalog";
+import { teamIdentityOf } from "@/lib/team-identity";
+import { cn } from "@/lib/utils";
 import {
   continueFromChallengeResult,
   occurrenceLabel,
@@ -11,6 +16,7 @@ import { useLiveSession } from "../../hooks/live-session-context";
 import { localizeMatchError } from "../errors/match-errors";
 import { slotLabels, teamName } from "../presentation";
 import { RyoResultRecap } from "./ryo-result-recap";
+import { ClosestResultRecap } from "./closest-result-recap";
 import { Top5ResultReveal } from "./top5-result-reveal";
 import type { MatchActor, MatchChallengeResult } from "../types";
 
@@ -27,6 +33,8 @@ import type { MatchActor, MatchChallengeResult } from "../types";
  */
 export function UnifiedChallengeResultStage({ actor }: { actor: MatchActor }) {
   const { snapshot, resync } = useLiveSession();
+  // Host surfaces only; see UnifiedBoard.
+  const worlds = usePlayableWorlds(actor !== "participant");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   // Fixed per press, so a retry is a replay to the server rather than a second
@@ -61,55 +69,64 @@ export function UnifiedChallengeResultStage({ actor }: { actor: MatchActor }) {
     // The stage says there is a result and the projection does not carry one.
     // Showing the board instead would be showing something the server did not mean.
     return (
-      <section
+      <Alert
         role="alert"
         dir="rtl"
         data-testid="challenge-result-missing"
-        className="space-y-3 rounded-2xl border border-amber-300 bg-amber-50 p-6 text-center"
+        className="mx-auto max-w-xl text-center"
       >
-        <p className="text-base font-black text-slate-900">
+        <AlertTitle className="text-base font-black">
           تعذّر عرض نتيجة التحدي
-        </p>
-        <p className="text-sm text-slate-600">
-          المباراة في مرحلة النتيجة لكن الخادم لم يرسل تفاصيلها.
-        </p>
-        <Button type="button" onClick={() => resync?.()} className="rounded-xl font-black">
-          <RefreshCw className="ml-1.5 size-4" aria-hidden />
-          مزامنة المباراة
-        </Button>
-      </section>
+        </AlertTitle>
+        <AlertDescription className="space-y-3">
+          <p className="text-sm">
+            المباراة في مرحلة النتيجة لكن الخادم لم يرسل تفاصيلها.
+          </p>
+          <Button type="button" onClick={() => resync?.()} className="font-black">
+            <RefreshCw className="size-4" aria-hidden />
+            مزامنة المباراة
+          </Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 
+  const worldImageUrl = worlds.data?.find(
+    (world) => world.id === result.worldId,
+  )?.banner?.url;
   // The last position of the Match: continuing ends it rather than returning.
   const isFinalPosition =
     match.unified.board.completedPositionCount >=
     match.unified.board.totalPositionCount;
 
   return (
-    <div className="space-y-5" data-testid="unified-challenge-result">
-      <header className="rounded-2xl border border-black/[0.05] bg-white p-4">
-        <p className="text-xs font-black text-primary">
-          {occurrenceLabel(result.occurrenceIndex)}
-          {result.worldName ? ` · ${result.worldName}` : ""}
-          {` · ${slotLabels[result.slotKey]}`}
-        </p>
-        <h1 className="mt-0.5 text-xl font-black text-slate-900">
-          {result.challengeName ?? "نتيجة التحدي"}
-        </h1>
+    <div
+      className="mx-auto max-w-5xl space-y-5"
+      data-testid="unified-challenge-result"
+    >
+      <header className="surface-card overflow-hidden">
+        <WorldMedia
+          name={result.worldName ?? "عالم"}
+          eyebrow={`${occurrenceLabel(result.occurrenceIndex)} · ${slotLabels[result.slotKey]}`}
+          variant="strip"
+          {...(worldImageUrl ? { imageUrl: worldImageUrl } : {})}
+          className="rounded-none"
+        />
+        <div className="px-5 py-3.5">
+          <h1 className="text-xl font-black text-foreground sm:text-2xl">
+            {result.challengeName ?? "نتيجة التحدي"}
+          </h1>
+        </div>
       </header>
 
-      <section className="rounded-2xl border border-black/[0.05] bg-white p-5">
+      <section className="surface-card p-5 sm:p-6">
         <ChallengeResultBody result={result} />
       </section>
 
       {error && (
-        <p
-          role="alert"
-          className="rounded-xl border border-destructive/30 bg-destructive/[0.06] px-4 py-3 text-sm font-bold text-destructive"
-        >
-          {error}
-        </p>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription className="font-bold">{error}</AlertDescription>
+        </Alert>
       )}
 
       {actor === "controller" ? (
@@ -120,14 +137,14 @@ export function UnifiedChallengeResultStage({ actor }: { actor: MatchActor }) {
             disabled={pending}
             onClick={() => void advance()}
             data-testid="challenge-result-continue"
-            className="rounded-xl font-black"
+            className="min-w-52 font-black"
           >
-            <ArrowLeft className="ml-1.5 size-4" aria-hidden />
+            <ArrowLeft className="size-4" aria-hidden />
             {isFinalPosition ? "إنهاء المباراة" : "العودة إلى الأكوان"}
           </Button>
         </div>
       ) : (
-        <p className="text-center text-sm text-slate-500">
+        <p className="text-center text-sm font-bold text-muted-foreground">
           بانتظار المضيف للمتابعة…
         </p>
       )}
@@ -150,23 +167,41 @@ function ChallengeResultBody({ result }: { result: MatchChallengeResult }) {
       return <Top5ResultReveal result={result} snapshot={snapshot} />;
     case "read-your-opponent":
       return <RyoResultRecap result={result} snapshot={snapshot} />;
+    case "closest":
+      return <ClosestResultRecap result={result} snapshot={snapshot} />;
     default:
       return (
-        <div className="space-y-2 text-center" data-testid="generic-challenge-result">
-          <p className="text-2xl font-black text-slate-900">
+        <div
+          className="space-y-2 text-center"
+          data-testid="generic-challenge-result"
+        >
+          <p className="text-2xl font-black text-foreground">
             {result.winnerTeamId
               ? `🏆 فوز ${teamName(snapshot, result.winnerTeamId)}`
               : "انتهى التحدي دون فائز"}
           </p>
-          {result.teamPoints
+          {result.matchPoints
             .filter((entry) => entry.points !== 0)
-            .map((entry) => (
-              <p key={entry.teamId} className="text-sm font-bold text-slate-600">
-                {teamName(snapshot, entry.teamId)}:{" "}
-                {entry.points > 0 ? `+${entry.points}` : entry.points} نقطة
-                للمباراة
-              </p>
-            ))}
+            .map((entry) => {
+              const identity = teamIdentityOf(entry.teamId, snapshot.teams);
+              return (
+                <p
+                  key={entry.teamId}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-black",
+                    identity.surface,
+                    identity.border,
+                    identity.text,
+                  )}
+                >
+                  {teamName(snapshot, entry.teamId)}
+                  <span className="akwaan-numeral">
+                    {entry.points > 0 ? `+${entry.points}` : entry.points}
+                  </span>{" "}
+                  نقطة للمباراة
+                </p>
+              );
+            })}
         </div>
       );
   }

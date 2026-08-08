@@ -26,7 +26,7 @@ export function ParticipantMatchView({
   participantId?: string;
 }) {
   return (
-    <div className="min-h-screen bg-[#fffaf0] px-3 py-4">
+    <div className="min-h-screen bg-background px-3 py-4">
       <MatchStageRouter
         actor="participant"
         {...(participantId ? { participantId } : {})}

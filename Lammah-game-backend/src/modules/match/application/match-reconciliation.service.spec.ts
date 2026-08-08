@@ -1,5 +1,6 @@
 import { GameplayObserverRegistry } from '../../live-game-sessions/application/gameplay-observer.registry';
 import { GameplayRuntimeState } from '../../live-game-sessions/domain/gameplay-runtime';
+import { ChallengeWinRule } from '../../scoring/application/challenge-win.rule';
 import { ScoringService } from '../../scoring/application/scoring.service';
 import { ScoringRuleRegistry } from '../../scoring/application/scoring-rule.registry';
 import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
@@ -26,7 +27,9 @@ import { RuntimeScoreEventCollector } from './runtime-score-event.collector';
 
 const CHALLENGE_KEY = 'read-your-opponent';
 const RUNTIME_ID = 'runtime-1';
-const scoring = new ScoringService(new ScoringRuleRegistry());
+const scoringRegistry = new ScoringRuleRegistry();
+scoringRegistry.bind(new ChallengeWinRule());
+const scoring = new ScoringService(scoringRegistry);
 
 const scoreEvent = (id: string, delta: number) => ({
   id,
@@ -55,8 +58,11 @@ const launcher = (): MatchChallengeLauncher => ({
   validateLaunch: () => Promise.resolve(),
   launch: () => Promise.resolve({ runtimeId: RUNTIME_ID }),
   detectTerminal: (runtime) => runtime.runtimeState.phase === 'completed',
+  // A mechanic that finished 3-1 internally. The Match must still move by one.
   buildCompletionSummary: () => ({
     challengeKey: CHALLENGE_KEY,
+    winnerTeamId: 'team-alpha',
+    mechanicSummary: { 'team-alpha': 3, 'team-beta': 1 },
     details: { itemsPlayed: 3 },
   }),
 });
@@ -151,6 +157,7 @@ describe('MatchReconciliationService', () => {
       repository,
       launchers,
       new RuntimeScoreEventCollector(scoring),
+      scoring,
       { now: () => now },
       new MatchTransitionNotifier({
         publish: () => undefined,
@@ -210,10 +217,23 @@ describe('MatchReconciliationService', () => {
       match.occurrences[0].slots[WorldChallengeSlotKey.SLOT_2],
     ).toMatchObject({
       status: MatchSlotStatus.COMPLETED,
-      scoreEventIds: ['e1'],
       summary: { itemsPlayed: 3 },
     });
-    expect(match.teamScore('team-alpha').signedTotal).toBe(3);
+    // The mechanic finished 3-1; the Match moves by exactly one, because a Match
+    // point means "won a challenge" and not "scored more inside one".
+    expect(match.teamScore('team-alpha').signedTotal).toBe(1);
+    expect(match.teamScore('team-beta').signedTotal).toBe(0);
+    const challengeResult = match.pendingResult!;
+    expect(challengeResult.winnerTeamId).toBe('team-alpha');
+    expect(challengeResult.matchPoints).toEqual([
+      { teamId: 'team-alpha', points: 1 },
+      { teamId: 'team-beta', points: 0 },
+    ]);
+    // The mechanic's own signed events survive on the result for the recap.
+    expect(challengeResult.mechanicScoreEvents).toHaveLength(1);
+    expect(challengeResult.matchPointEventId).toBe(
+      `challenge-win:${RUNTIME_ID}:0`,
+    );
     expect(published).toEqual([
       {
         event: MATCH_CHANGED_EVENT,
@@ -256,7 +276,9 @@ describe('MatchReconciliationService', () => {
     // The slot is already completed, so nothing is imported or announced again.
     expect(second.outcome).toBe('already_reconciled');
     expect(third.outcome).toBe('already_reconciled');
-    expect(current()!.teamScore('team-alpha').signedTotal).toBe(3);
+    // Three notifications, one point. Ever.
+    expect(current()!.teamScore('team-alpha').signedTotal).toBe(1);
+    expect(current()!.serialize().scoreEvents).toHaveLength(1);
     expect(published).toHaveLength(1);
   });
 

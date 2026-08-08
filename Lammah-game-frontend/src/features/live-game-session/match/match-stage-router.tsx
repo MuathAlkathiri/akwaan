@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MATCH_SETUP_ROUTE } from "@/features/match-setup/routes";
 import { RyoGameplayPanel } from "../components/ryo-gameplay-panel";
 import { Top5Panel } from "../components/top5-panel";
+import { ClosestGameplayPanel } from "../components/closest-gameplay-panel";
 import { DistributedInformationPanel } from "../components/distributed-information-panel";
 import { DistributedInformationScreen } from "../components/distributed-information-screen";
 import { DISTRIBUTED_INFORMATION_MODE_KEY } from "./distributed-information.presentation";
@@ -50,8 +51,8 @@ export function MatchStageRouter({
         data-testid="match-loading"
         dir="rtl"
       >
-        <Skeleton className="h-20 w-full rounded-2xl" />
-        <Skeleton className="h-72 w-full rounded-2xl" />
+        <Skeleton className="h-20 w-full rounded-[var(--radius)]" />
+        <Skeleton className="h-72 w-full rounded-[var(--radius)]" />
       </div>
     );
   }
@@ -91,7 +92,10 @@ export function MatchStageRouter({
       // Being gathered for a challenge that does not want phones would be a lie.
       <ParticipantWaiting {...(phoneTeamName ? { teamName: phoneTeamName } : {})} />
     ) : (
-      <UnifiedPreflightStage actor={actor} />
+      <UnifiedPreflightStage
+        actor={actor}
+        {...(participantId ? { participantId } : {})}
+      />
     );
   } else if (stage === "challenge") {
     content = <UnifiedChallengeStage actor={actor} />;
@@ -122,11 +126,11 @@ export function MatchStageRouter({
   return (
     <main
       dir="rtl"
-      className="mx-auto w-full max-w-6xl space-y-4"
+      className={`mx-auto w-full space-y-4 ${stage === "board" ? "max-w-[80rem]" : "max-w-6xl"}`}
       data-match-actor={actor}
       data-match-stage={stage}
     >
-      <MatchConnectionBanner actor={actor} />
+      <MatchConnectionBanner />
       {error && actor !== "controller" && (
         <p className="sr-only" role="alert">
           تعذر تحديث المباراة. ستتم إعادة المحاولة تلقائيًا.
@@ -155,23 +159,23 @@ function UnsupportedStage({
       role="alert"
       dir="rtl"
       data-testid="match-stage-recovery"
-      className="space-y-4 rounded-2xl border border-amber-300 bg-amber-50 p-6 text-center"
+      className="space-y-4 rounded-[var(--radius)] border border-warning/35 bg-warning-subtle p-6 text-center"
     >
-      <AlertTriangle className="mx-auto size-8 text-amber-600" aria-hidden />
-      <h1 className="text-xl font-black text-slate-900">
+      <AlertTriangle className="mx-auto size-8 text-warning" aria-hidden />
+      <h1 className="text-xl font-black text-foreground">
         تعذر عرض المرحلة الحالية
       </h1>
-      <p className="text-sm leading-6 text-slate-600">
+      <p className="text-sm leading-6 text-muted-foreground">
         وصلت حالة غير معروفة أو ناقصة من الخادم. بيانات المباراة محفوظة ولم يتغيّر
         شيء.
       </p>
-      <p className="text-xs font-bold text-slate-500">
+      <p className="text-xs font-bold text-muted-foreground">
         المرحلة المُستلمة: <span dir="ltr">{stage || "—"}</span>
       </p>
       <Button
         type="button"
         onClick={() => onResync?.()}
-        className="rounded-xl font-black"
+        className="rounded-[var(--radius)] font-black"
       >
         <RefreshCw className="ml-1.5 size-4" aria-hidden />
         مزامنة المباراة
@@ -192,12 +196,12 @@ function MatchAbsent({ actor }: { actor: MatchActor }) {
       <section
         dir="rtl"
         data-testid="match-absent"
-        className="mx-auto max-w-xl space-y-2 rounded-2xl border border-black/[0.06] bg-white p-10 text-center"
+        className="mx-auto max-w-xl space-y-2 rounded-[var(--radius)] border border-border bg-card p-10 text-center"
       >
-        <h1 className="text-2xl font-black text-slate-900">
+        <h1 className="text-2xl font-black text-foreground">
           المباراة لم تبدأ بعد
         </h1>
-        <p className="text-sm text-slate-600">بانتظار المتحكّم.</p>
+        <p className="text-sm text-muted-foreground">بانتظار المتحكّم.</p>
       </section>
     );
   }
@@ -205,16 +209,16 @@ function MatchAbsent({ actor }: { actor: MatchActor }) {
     <section
       dir="rtl"
       data-testid="match-absent"
-      className="mx-auto max-w-xl space-y-4 rounded-2xl border border-black/[0.06] bg-white p-10 text-center"
+      className="mx-auto max-w-xl space-y-4 rounded-[var(--radius)] border border-border bg-card p-10 text-center"
     >
-      <h1 className="text-2xl font-black text-slate-900">
+      <h1 className="text-2xl font-black text-foreground">
         لا توجد مباراة في هذه الجلسة
       </h1>
-      <p className="text-sm leading-6 text-slate-600">
+      <p className="text-sm leading-6 text-muted-foreground">
         تُجهَّز المباراة بالكامل قبل أن تبدأ: ثلاث محطات عوالم وأربعة نطاقات لكل
         محطة.
       </p>
-      <Button asChild className="rounded-xl font-black">
+      <Button asChild className="rounded-[var(--radius)] font-black">
         <Link href={MATCH_SETUP_ROUTE}>ابدأ إعداد مباراة جديدة</Link>
       </Button>
     </section>
@@ -240,6 +244,8 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
       return <RyoGameplayPanel runtime={runtime} />;
     case "top-5":
       return <Top5Panel runtime={runtime} />;
+    case "closest":
+      return <ClosestGameplayPanel runtime={runtime} />;
     case DISTRIBUTED_INFORMATION_MODE_KEY:
       return actor === "participant" ? (
         <DistributedInformationPanel runtime={runtime} />
@@ -253,20 +259,20 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
         <section
           role="alert"
           data-testid="runtime-renderer-missing"
-          className="space-y-2 rounded-2xl border border-amber-300 bg-amber-50 p-6 text-center"
+          className="space-y-2 rounded-[var(--radius)] border border-warning/35 bg-warning-subtle p-6 text-center"
         >
           <AlertTriangle
-            className="mx-auto size-7 text-amber-600"
+            className="mx-auto size-7 text-warning"
             aria-hidden
           />
-          <p className="text-base font-black text-slate-900">
+          <p className="text-base font-black text-foreground">
             لا توجد شاشة لهذا التحدي في هذا التطبيق
           </p>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted-foreground">
             بدأ الخادم آلية لعب لا يعرف هذا الإصدار عرضها. حدِّث التطبيق أو ألغِ
             التحدي من الخادم.
           </p>
-          <p className="text-xs font-bold text-slate-500">
+          <p className="text-xs font-bold text-muted-foreground">
             آلية اللعب: <span dir="ltr">{runtime.mode.key}</span>
           </p>
         </section>

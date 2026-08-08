@@ -177,8 +177,14 @@ export interface LiveSessionChallengeResult {
   challengeName?: string;
   selectedScopeIds: string[];
   winnerTeamId: string | null;
-  /** Signed Match points this challenge moved, per team. */
-  teamPoints: Array<{ teamId: string; points: number }>;
+  /** True when the mechanic declared no winner, so no Match point exists. */
+  tie: boolean;
+  /**
+   * The **Match** points this challenge moved: `+1` to the winner, `0` to the
+   * loser, `0` to both on a tie. A Match point means "won a challenge", so this
+   * is never a mechanic's internal margin — that is in `details`.
+   */
+  matchPoints: Array<{ teamId: string; points: number }>;
   /** Mechanic-shaped facts: Top 5 entries and reveal order, RYO item recap… */
   details: Record<string, unknown>;
   startedAt: string;

@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { Check, Layers, Swords } from "lucide-react";
+import { Check, Layers, Puzzle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { cn } from "@/lib/utils";
+import { ARABIC_NOUNS, arabicNoun } from "@/lib/arabic-plural";
+import { WorldArtworkPending } from "@/features/worlds/components/world-cover";
 import { JourneySection } from "@/features/worlds/components/journey-shell";
 import { JourneyError } from "@/features/worlds/components/journey-error";
 import { usePlayableWorlds } from "@/features/worlds/hooks/use-player-catalog";
@@ -47,7 +49,7 @@ export function OccurrenceWorldStep({
           {Array.from({ length: 6 }, (_, index) => (
             <div
               key={index}
-              className="h-52 animate-pulse rounded-3xl border border-black/[0.05] bg-white"
+              className="h-52 animate-pulse rounded-3xl border border-border bg-card"
             />
           ))}
         </div>
@@ -72,7 +74,7 @@ export function OccurrenceWorldStep({
           ))}
         </ul>
       ) : (
-        <p className="rounded-3xl border border-black/[0.06] bg-white p-10 text-center text-sm leading-6 text-slate-500">
+        <p className="rounded-3xl border border-border bg-card p-10 text-center text-sm leading-6 text-muted-foreground">
           لا توجد عوالم جاهزة للعب بعد.
         </p>
       )}
@@ -99,24 +101,33 @@ function WorldChoiceCard({
       aria-label={world.name}
       onClick={() => onChoose(world.id)}
       className={cn(
-        "group relative flex h-full w-full flex-col overflow-hidden rounded-3xl border bg-white text-right shadow-[0_10px_30px_rgba(24,16,54,.06)] transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
+        "group relative flex h-full w-full flex-col overflow-hidden rounded-3xl border bg-card text-right shadow-[0_10px_30px_rgba(24,16,54,.06)] transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
         selected
           ? "border-primary/45 ring-2 ring-primary/20"
-          : "border-black/[0.06] hover:-translate-y-0.5 hover:border-primary/25",
+          : "border-border hover:-translate-y-0.5 hover:border-primary/25",
       )}
     >
-      <span className="relative block h-28 w-full overflow-hidden bg-primary/[0.06]">
-        {cover && (
-          <Image
-            src={cover}
-            alt=""
-            fill
-            unoptimized
-            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-            className="object-cover"
-          />
+      {/* The same pending plate the home grid uses. A World waiting for artwork
+          must not look like two different problems on two screens. */}
+      <span
+        className="relative block h-28 w-full overflow-hidden bg-primary/[0.06]"
+        data-has-artwork={cover ? "true" : "false"}
+      >
+        {cover ? (
+          <>
+            <Image
+              src={cover}
+              alt=""
+              fill
+              unoptimized
+              sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+              className="object-cover"
+            />
+            <span className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
+          </>
+        ) : (
+          <WorldArtworkPending />
         )}
-        <span className="absolute inset-0 bg-gradient-to-t from-white via-white/40 to-transparent" />
         {selected && (
           <span className="absolute left-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground">
             <Check className="h-5 w-5" aria-hidden />
@@ -125,7 +136,7 @@ function WorldChoiceCard({
       </span>
       <span className="flex flex-1 flex-col gap-2 px-5 pb-5">
         <span className="flex items-center gap-2">
-          <span className="block text-lg font-black text-slate-900">
+          <span className="block text-lg font-black text-foreground">
             {world.name}
           </span>
           {repeated && (
@@ -135,21 +146,25 @@ function WorldChoiceCard({
           )}
         </span>
         {world.description && (
-          <span className="line-clamp-2 text-sm leading-6 text-slate-500">
+          <span className="line-clamp-2 text-sm leading-6 text-muted-foreground">
             {world.description}
           </span>
         )}
-        <span className="mt-auto flex flex-wrap gap-3 pt-1 text-xs font-bold text-slate-500">
+        <span className="mt-auto flex flex-wrap gap-3 pt-1 text-xs font-bold text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <Layers className="h-4 w-4" aria-hidden />
-            <span className="tabular-nums">{world.scopeCount}</span> نطاق
+            <span className="tabular-nums">{world.scopeCount}</span>{" "}
+            {arabicNoun(world.scopeCount, ARABIC_NOUNS.scope)}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <Swords className="h-4 w-4" aria-hidden />
+            <Puzzle className="h-4 w-4" aria-hidden />
             <span className="tabular-nums">
               {world.challengeConfigurationCount}
             </span>{" "}
-            تحدٍ
+            {arabicNoun(
+              world.challengeConfigurationCount,
+              ARABIC_NOUNS.challenge,
+            )}
           </span>
         </span>
       </span>
@@ -168,13 +183,13 @@ export function StepFooter({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-black/[0.06] bg-white px-6 py-5 shadow-[0_10px_30px_rgba(24,16,54,.05)]">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-border bg-card px-6 py-5 shadow-[0_10px_30px_rgba(24,16,54,.05)]">
       <Button
         type="button"
         variant="outline"
         disabled={backDisabled}
         onClick={onBack}
-        className="rounded-2xl font-black"
+        className="rounded-[var(--radius)] font-black"
       >
         رجوع
       </Button>

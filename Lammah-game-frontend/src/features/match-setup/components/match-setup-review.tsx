@@ -110,7 +110,7 @@ export function MatchSetupReview({
             type="button"
             size="lg"
             onClick={onContinue}
-            className="min-w-44 rounded-2xl font-black"
+            className="min-w-44 rounded-[var(--radius)] font-black"
           >
             متابعة إلى الفريقين
           </Button>
@@ -131,12 +131,12 @@ function Summary() {
   return (
     <ul
       data-testid="review-summary"
-      className="grid list-none gap-3 rounded-3xl border border-black/[0.06] bg-white p-6 shadow-[0_10px_30px_rgba(24,16,54,.05)] sm:grid-cols-2"
+      className="grid list-none gap-3 rounded-3xl border border-border bg-card p-6 shadow-[0_10px_30px_rgba(24,16,54,.05)] sm:grid-cols-2"
     >
       {facts.map((fact) => (
         <li
           key={fact.text}
-          className="flex items-center gap-2 text-sm font-bold text-slate-600"
+          className="flex items-center gap-2 text-sm font-bold text-muted-foreground"
         >
           <fact.icon className="h-4 w-4 shrink-0 text-primary" aria-hidden />
           {fact.text}
@@ -177,14 +177,14 @@ function OccurrenceReviewCard({
   return (
     <article
       data-testid={`review-occurrence-${occurrence.occurrenceIndex}`}
-      className="rounded-3xl border border-black/[0.06] bg-white p-6 shadow-[0_10px_30px_rgba(24,16,54,.05)]"
+      className="rounded-3xl border border-border bg-card p-6 shadow-[0_10px_30px_rgba(24,16,54,.05)]"
     >
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm font-black text-primary">
             {occurrenceLabel(occurrence.occurrenceIndex)}
           </p>
-          <h3 className="mt-1 text-xl font-black text-slate-900">
+          <h3 className="mt-1 text-xl font-black text-foreground">
             {world?.name ?? "…"}
           </h3>
         </div>
@@ -193,7 +193,7 @@ function OccurrenceReviewCard({
             type="button"
             variant="outline"
             onClick={() => onEditWorld(occurrence.occurrenceIndex)}
-            className="rounded-2xl font-black"
+            className="rounded-[var(--radius)] font-black"
           >
             تغيير العالم
           </Button>
@@ -201,21 +201,21 @@ function OccurrenceReviewCard({
             type="button"
             variant="outline"
             onClick={() => onEditScopes(occurrence.occurrenceIndex)}
-            className="rounded-2xl font-black"
+            className="rounded-[var(--radius)] font-black"
           >
             تغيير النطاقات
           </Button>
         </div>
       </header>
 
-      <p className="mt-4 text-xs font-black text-slate-400">
+      <p className="mt-4 text-xs font-black text-disabled-foreground">
         النطاقات ({occurrence.selectedScopeIds.length}/{SCOPES_PER_OCCURRENCE})
       </p>
       <ul className="mt-2 flex list-none flex-wrap gap-2">
         {occurrence.selectedScopeIds.map((scopeId) => (
           <li
             key={scopeId}
-            className="rounded-2xl border border-primary/15 bg-primary/[0.06] px-3 py-1.5 text-sm font-bold text-primary"
+            className="rounded-[var(--radius)] border border-primary/15 bg-primary/[0.06] px-3 py-1.5 text-sm font-bold text-primary"
           >
             {scopeById.get(scopeId)?.name ?? "…"}
           </li>
@@ -224,14 +224,14 @@ function OccurrenceReviewCard({
 
       {challengeNames.length > 0 && (
         <>
-          <p className="mt-4 text-xs font-black text-slate-400">
+          <p className="mt-4 text-xs font-black text-disabled-foreground">
             التحديات ({challengeNames.length})
           </p>
           <ul className="mt-2 flex list-none flex-wrap gap-2">
             {challengeNames.map((name) => (
               <li
                 key={name}
-                className="rounded-2xl border border-black/[0.07] bg-slate-50 px-3 py-1.5 text-sm font-bold text-slate-600"
+                className="rounded-[var(--radius)] border border-black/[0.07] bg-muted/60 px-3 py-1.5 text-sm font-bold text-muted-foreground"
               >
                 {name}
               </li>

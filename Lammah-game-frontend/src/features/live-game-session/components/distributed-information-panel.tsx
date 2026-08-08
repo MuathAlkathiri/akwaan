@@ -94,11 +94,11 @@ export function DistributedInformationPanel({
   }
 
   return (
-    <Card dir="rtl" className="overflow-hidden border-violet-200">
-      <CardHeader className="bg-gradient-to-l from-violet-100 to-background">
+    <Card dir="rtl" className="overflow-hidden border-border">
+      <CardHeader className="bg-muted/50">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-violet-700">
+            <p className="text-sm font-medium text-muted-foreground">
               {DISTRIBUTED_CHALLENGE_NAME}
             </p>
             <CardTitle className="mt-1 text-xl">
@@ -119,7 +119,7 @@ export function DistributedInformationPanel({
 
       <CardContent className="space-y-5">
         {teamFinished ? (
-          <p className="rounded-xl bg-emerald-50 p-4 text-center font-bold text-emerald-800">
+          <p className="rounded-[var(--radius)] bg-success-subtle p-4 text-center font-bold text-success">
             أنهى فريقك كل الألغاز. بانتظار النتيجة النهائية...
           </p>
         ) : (
@@ -133,16 +133,16 @@ export function DistributedInformationPanel({
 
             <section
               aria-label="معلوماتك الخاصة"
-              className="rounded-xl border border-amber-300 bg-amber-50 p-4"
+              className="rounded-[var(--radius)] border border-warning/35 bg-warning-subtle p-4"
             >
-              <p className="text-sm font-black text-amber-900">
+              <p className="text-sm font-black text-foreground">
                 معلوماتك الخاصة — لا تعرض شاشتك
               </p>
               <ul className="mt-3 space-y-2">
                 {segments.map((segment) => (
                   <li
                     key={segment.id}
-                    className="rounded-lg bg-white p-3 text-base font-bold shadow-sm"
+                    className="rounded-lg bg-card p-3 text-base font-bold shadow-sm"
                   >
                     {segment.content}
                   </li>
@@ -153,7 +153,7 @@ export function DistributedInformationPanel({
             {lockSeconds > 0 && (
               <p
                 role="alert"
-                className="rounded-xl bg-rose-50 p-4 text-center font-bold text-rose-800"
+                className="rounded-[var(--radius)] bg-destructive/[0.07] p-4 text-center font-bold text-destructive"
               >
                 إجابة غير صحيحة
                 <span className="mt-1 block">
@@ -164,7 +164,7 @@ export function DistributedInformationPanel({
 
             {isAnswerer ? (
               <section className="space-y-3">
-                <p className="font-black text-violet-800">
+                <p className="font-black text-foreground">
                   أنت المجيب في هذا اللغز
                 </p>
                 {state.answerMode === "multiple_choice" ? (
@@ -212,7 +212,7 @@ export function DistributedInformationPanel({
                 </Button>
               </section>
             ) : (
-              <p className="rounded-xl bg-violet-50 p-4 text-center font-bold text-violet-900">
+              <p className="rounded-[var(--radius)] bg-muted p-4 text-center font-bold text-foreground">
                 ناقش معلوماتك مع فريقك
                 <span className="mt-1 block">والمجيب سيرسل الإجابة</span>
               </p>
@@ -261,9 +261,9 @@ function DistributedResultCard({
   }, [state.resultJson]);
 
   return (
-    <Card dir="rtl" className="border-emerald-200">
+    <Card dir="rtl" className="border-success/25">
       <CardHeader className="text-center">
-        <p className="text-sm font-medium text-emerald-700">
+        <p className="text-sm font-medium text-success">
           {DISTRIBUTED_CHALLENGE_NAME}
         </p>
         <CardTitle className="text-2xl font-black">
@@ -281,7 +281,7 @@ function DistributedResultCard({
           </p>
         ))}
         {!result?.tie && result?.winnerTeamId && (
-          <p className="font-black text-emerald-800">
+          <p className="font-black text-success">
             نقطة مباراة واحدة للفريق الفائز
           </p>
         )}

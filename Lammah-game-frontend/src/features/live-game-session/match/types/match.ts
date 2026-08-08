@@ -214,7 +214,14 @@ export interface MatchChallengeResult {
   challengeName?: string;
   selectedScopeIds: string[];
   winnerTeamId: string | null;
-  teamPoints: Array<{ teamId: string; points: number }>;
+  /** True when the mechanic declared no winner, so no Match point was awarded. */
+  tie: boolean;
+  /**
+   * The **Match** points this challenge moved: `+1` to the winner, `0` to the
+   * loser, `0` to both on a tie. A Match point means "won a challenge", so this
+   * is never the mechanic's internal margin — that lives in `details`.
+   */
+  matchPoints: Array<{ teamId: string; points: number }>;
   /** Mechanic-shaped and opaque here; each mechanic's own view reads it. */
   details: Record<string, unknown>;
   startedAt: string;

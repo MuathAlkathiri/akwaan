@@ -1,7 +1,6 @@
 import {
   Boxes,
   ClipboardList,
-  Gamepad2,
   LayoutDashboard,
   Sparkles,
   Users,
@@ -20,14 +19,6 @@ export interface AdminNavigationItem {
 
 export const adminNavigation: AdminNavigationItem[] = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  {
-    label: "الألعاب",
-    href: "/games",
-    icon: Gamepad2,
-    showOnDashboard: true,
-    dashboardTitle: "Games management",
-    dashboardDescription: "متابعة الألعاب المحفوظة وحالة كل تحدي.",
-  },
   {
     label: "العوالم",
     href: "/admin/worlds",

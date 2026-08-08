@@ -7,6 +7,10 @@ const config = {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/features/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    // The semantic layer lives here, and it is the *only* place team utility
+    // classes are written. Leaving it out meant every team colour resolved to
+    // nothing: the classes were emitted into the markup and never into the CSS.
+    "./src/lib/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     container: {
@@ -51,6 +55,54 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Akwaan semantic tokens. Screens name meaning, never a hue: `team-green`
+        // is "team one", not "a green", which is what keeps the two teams the
+        // same two colours on every surface.
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+          subtle: "hsl(var(--success-subtle))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+          subtle: "hsl(var(--warning-subtle))",
+        },
+        selected: {
+          DEFAULT: "hsl(var(--selected))",
+          subtle: "hsl(var(--selected-subtle))",
+        },
+        completed: {
+          DEFAULT: "hsl(var(--completed))",
+          subtle: "hsl(var(--completed-subtle))",
+        },
+        disabled: {
+          foreground: "hsl(var(--disabled-foreground))",
+        },
+        team: {
+          green: {
+            DEFAULT: "hsl(var(--team-green))",
+            surface: "hsl(var(--team-green-surface))",
+            border: "hsl(var(--team-green-border))",
+            text: "hsl(var(--team-green-text))",
+            strong: "hsl(var(--team-green-strong))",
+          },
+          coral: {
+            DEFAULT: "hsl(var(--team-coral))",
+            surface: "hsl(var(--team-coral-surface))",
+            border: "hsl(var(--team-coral-border))",
+            text: "hsl(var(--team-coral-text))",
+            strong: "hsl(var(--team-coral-strong))",
+          },
+        },
+      },
+      transitionTimingFunction: {
+        akwaan: "var(--motion-ease)",
+      },
+      transitionDuration: {
+        fast: "var(--motion-fast)",
+        base: "var(--motion-base)",
+        slow: "var(--motion-slow)",
       },
       borderRadius: {
         lg: "var(--radius)",

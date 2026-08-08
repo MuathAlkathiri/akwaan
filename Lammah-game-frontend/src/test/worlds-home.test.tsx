@@ -6,6 +6,7 @@ import {
   isSelectableScope,
   playableWorlds,
   selectFeaturedWorlds,
+  worldCardDisplayName,
 } from "@/features/worlds";
 import type {
   PlayableBoardSlot,
@@ -131,6 +132,11 @@ describe("featured world selection", () => {
 });
 
 describe("world card", () => {
+  it("presents canonical World naming without changing stored names", () => {
+    expect(worldCardDisplayName("كرة القدم")).toBe("عالم كرة القدم");
+    expect(worldCardDisplayName("عالم الأنمي")).toBe("عالم الأنمي");
+  });
+
   it("is an entrance into the World, not into its content", () => {
     render(
       <WorldCard
@@ -154,13 +160,29 @@ describe("world card", () => {
     );
 
     expect(screen.getByText("5")).toBeTruthy();
-    expect(screen.getByText("نطاق")).toBeTruthy();
+    // Arabic agreement: 3-10 takes the plural, so "5 نطاقات" not "5 نطاق".
+    expect(screen.getByText("نطاقات")).toBeTruthy();
     expect(screen.getByText("4")).toBeTruthy();
-    expect(screen.getByText("تحدٍّ")).toBeTruthy();
+    expect(screen.getByText("تحدّيات")).toBeTruthy();
     expect(screen.getByText("كل ما يخص كرة القدم")).toBeTruthy();
     // Content items are an authoring concern and never reach a player card.
     expect(document.body.textContent).not.toContain("320");
     expect(document.body.textContent).not.toContain("سؤال");
+  });
+
+  it("uses one banner frame and does not render a floating letter badge", () => {
+    render(
+      <WorldCard
+        featured
+        world={world({
+          name: "كرة القدم",
+          banner: { url: "/uploads/football.webp" },
+        })}
+      />,
+    );
+
+    expect(screen.getByTestId("world-card-media")).toHaveClass("aspect-[3/2]");
+    expect(screen.queryByText("ك")).not.toBeInTheDocument();
   });
 });
 

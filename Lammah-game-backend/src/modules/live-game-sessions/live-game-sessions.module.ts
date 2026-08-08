@@ -117,6 +117,7 @@ import { ReassignTeamActions } from './application/reassign-team-actions.use-cas
 import { StartDistributedInformation } from './application/start-distributed-information.use-case';
 import { GameplayDeadlineScheduler } from './application/gameplay-deadline.scheduler';
 import { GameplayObserverRegistry } from './application/gameplay-observer.registry';
+import { StartClosestGameplay } from './application/start-closest-gameplay.use-case';
 
 const applicationProviders = [
   CreateLiveGameSession,
@@ -171,6 +172,7 @@ const applicationProviders = [
   ReassignTeamActions,
   StartDistributedInformation,
   GameplayDeadlineScheduler,
+  StartClosestGameplay,
 ];
 
 @Module({
@@ -262,6 +264,7 @@ const applicationProviders = [
     GameplayModeRegistry,
     StartRyoGameplay,
     StartTop5,
+    StartClosestGameplay,
     StartDistributedInformation,
     GAMEPLAY_RUNTIME_REPOSITORY,
     LIVE_GAME_SESSION_REPOSITORY,

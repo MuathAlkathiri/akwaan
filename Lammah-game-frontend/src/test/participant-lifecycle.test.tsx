@@ -232,7 +232,7 @@ describe("a phone waits instead of showing the host board", () => {
     const waiting = screen.getByTestId("participant-waiting");
     expect(waiting.textContent).toContain("لا يوجد تحدٍ يحتاج الجوال حالياً");
     expect(waiting.textContent).toContain(
-      "سيتم تحديث الصفحة تلقائياً عند بدء التحدي التالي.",
+      "سنفتح التحدي القادم هنا. أبقِ جوالك معك.",
     );
     expect(waiting.textContent).toContain("البنفسجي");
     // Never the host's screen.
@@ -266,7 +266,12 @@ describe("a phone follows the challenge lifecycle", () => {
   it("enters the preflight when the challenge wants phones", () => {
     renderPhone(match({ stage: "preflight", preflight: preflight() }));
 
-    expect(screen.getByTestId("preflight-waiting")).toBeTruthy();
+    // A phone is not a small shared screen: it is told it is in, on which team,
+    // and what is starting — never the host's readiness counters.
+    const mine = screen.getByTestId("participant-preflight");
+    expect(mine).toBeTruthy();
+    expect(mine.textContent).toContain("أنت في المباراة");
+    expect(screen.queryByTestId("preflight-waiting")).toBeNull();
     expect(screen.queryByTestId("participant-waiting")).toBeNull();
   });
 
@@ -279,7 +284,7 @@ describe("a phone follows the challenge lifecycle", () => {
     );
 
     expect(screen.getByTestId("participant-waiting")).toBeTruthy();
-    expect(screen.queryByTestId("preflight-waiting")).toBeNull();
+    expect(screen.queryByTestId("participant-preflight")).toBeNull();
   });
 
   it("enters gameplay when the runtime starts", () => {

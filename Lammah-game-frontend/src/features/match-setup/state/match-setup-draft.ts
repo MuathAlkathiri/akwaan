@@ -52,7 +52,10 @@ export function createDraft(): MatchSetupDraft {
     })),
     activeOccurrenceIndex: 0,
     activeStep: "world",
-    teamNames: ["البنفسجي", "الأخضر"],
+    // The default names follow the team palette, in the Match's own team order:
+    // first team green, second coral. "البنفسجي" was a leftover of the retired
+    // purple identity and read as a contradiction once team one became green.
+    teamNames: ["الأخضر", "الوردي"],
   };
 }
 

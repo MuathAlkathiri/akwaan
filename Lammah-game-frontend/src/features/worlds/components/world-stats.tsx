@@ -2,6 +2,7 @@
 
 import { Layers, Puzzle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ARABIC_NOUNS, arabicNoun } from "@/lib/arabic-plural";
 import type { PlayableWorld } from "../types";
 
 /**
@@ -25,14 +26,17 @@ export function WorldStats({
       <Stat
         icon={<Layers className="h-4 w-4" aria-hidden="true" />}
         value={world.scopeCount}
-        label="نطاق"
-        tone="purple"
+        label={arabicNoun(world.scopeCount, ARABIC_NOUNS.scope)}
+        tone="brand"
         compact={compact}
       />
       <Stat
         icon={<Puzzle className="h-4 w-4" aria-hidden="true" />}
         value={world.challengeConfigurationCount}
-        label="تحدٍّ"
+        label={arabicNoun(
+          world.challengeConfigurationCount,
+          ARABIC_NOUNS.challenge,
+        )}
         tone="green"
         compact={compact}
       />
@@ -50,7 +54,7 @@ export function Stat({
   icon: React.ReactNode;
   value: number | string;
   label: string;
-  tone: "purple" | "green";
+  tone: "brand" | "green";
   compact?: boolean;
 }) {
   return (
@@ -58,9 +62,9 @@ export function Stat({
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border font-bold",
         compact ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm",
-        tone === "purple"
+        tone === "brand"
           ? "border-primary/15 bg-primary/[0.07] text-primary"
-          : "border-[#22C55E]/20 bg-[#22C55E]/[0.09] text-[#15803D]",
+          : "border-success/25 bg-success-subtle text-success",
       )}
     >
       {icon}

@@ -37,7 +37,7 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
 
   return (
     <div className="space-y-4" data-testid="unified-challenge">
-      <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-black/[0.05] bg-white p-4">
+      <header className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius)] border border-border bg-card p-4">
         <div className="min-w-0">
           {current && (
             <p className="text-xs font-black text-primary">
@@ -46,15 +46,15 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
               {` · ${slotLabels[current.slotKey]}`}
             </p>
           )}
-          <h1 className="mt-0.5 truncate text-xl font-black text-slate-900">
+          <h1 className="mt-0.5 truncate text-xl font-black text-foreground">
             {position?.challengeName ?? "جارٍ استعادة التحدي"}
           </h1>
         </div>
         <ul className="flex list-none flex-wrap items-center gap-4">
           {standings.map((team) => (
             <li key={team.teamId} className="text-center">
-              <p className="text-xs font-bold text-slate-500">{team.name}</p>
-              <p className="text-2xl font-black tabular-nums text-slate-900">
+              <p className="text-xs font-bold text-muted-foreground">{team.name}</p>
+              <p className="text-2xl font-black tabular-nums text-foreground">
                 {team.displayTotal}
               </p>
             </li>
@@ -67,10 +67,10 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
       ) : (
         <section
           data-testid="challenge-restoring"
-          className="flex flex-col items-center gap-3 rounded-2xl border border-black/[0.06] bg-white p-10 text-center"
+          className="flex flex-col items-center gap-3 rounded-[var(--radius)] border border-border bg-card p-10 text-center"
         >
-          <RefreshCw className="size-6 animate-spin text-slate-400" aria-hidden />
-          <p className="text-sm text-slate-600">
+          <RefreshCw className="size-6 animate-spin text-disabled-foreground" aria-hidden />
+          <p className="text-sm text-muted-foreground">
             جارٍ استعادة حالة التحدي من الخادم…
           </p>
           <button
@@ -84,7 +84,7 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
       )}
 
       {actor === "controller" && (
-        <p className="text-center text-sm text-slate-500">
+        <p className="text-center text-sm text-muted-foreground">
           ستعود اللوحة تلقائيًا فور اكتمال التحدي في الخادم.
         </p>
       )}

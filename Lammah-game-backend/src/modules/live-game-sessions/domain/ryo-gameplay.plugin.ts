@@ -98,6 +98,34 @@ export function ryoAnsweringTeam(
   return teamIds[(teamIds.indexOf(startingTeamId) + itemIndex) % 2];
 }
 
+/**
+ * The authored text of a chosen option, not its id.
+ *
+ * Falls back to the id only when the option can no longer be found — a recap
+ * that says something odd is still better than one that says nothing at all.
+ */
+function optionLabel(
+  item: { options?: unknown },
+  optionId: string,
+): string {
+  const options = Array.isArray(item.options) ? item.options : [];
+  const match = options.find(
+    (option): option is { id: string; label?: unknown } =>
+      !!option &&
+      typeof option === 'object' &&
+      String((option as { id?: unknown }).id) === optionId,
+  );
+  const label = match?.label;
+  if (typeof label === 'string' && label.trim()) return label.trim();
+  if (label && typeof label === 'object') {
+    const authored = label as Record<string, unknown>;
+    for (const value of [authored.ar, authored.en, ...Object.values(authored)]) {
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+  }
+  return optionId;
+}
+
 function parse<T>(value: unknown, label: string): T {
   if (typeof value !== 'string')
     throw new LiveSessionDomainError(
@@ -415,6 +443,17 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
         item.answerMode === 'multiple_choice'
           ? item.correctOptionId
           : item.correctValue;
+      // What a recap *shows*. A multiple-choice answer is stored as an option id
+      // because that is what grading compares, but "أجاب: option-1" is an
+      // internal key read out to a room. The authored label is the answer.
+      const selectedAnswerText =
+        answerPayload?.mode === 'multiple_choice'
+          ? optionLabel(item, String(answerPayload.optionId ?? ''))
+          : String(selectedAnswer ?? '');
+      const correctAnswerText =
+        item.answerMode === 'multiple_choice'
+          ? optionLabel(item, String(item.correctOptionId ?? ''))
+          : String(correctAnswer ?? '');
       const opponentDecision = decision?.payload.decision ?? 'trust';
       const answererParticipantId = String(
         prompt?.internalPayload.answererParticipantId ?? '',
@@ -427,8 +466,8 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
           type: 'ryo.result',
           schemaVersion: 1,
           publicPayload: {
-            selectedAnswer: selectedAnswer ?? null,
-            correctAnswer: String(correctAnswer ?? ''),
+            selectedAnswer: selectedAnswerText || null,
+            correctAnswer: correctAnswerText,
             correct,
             decision: opponentDecision,
             itemIndex: Number(item.itemIndex ?? 0),

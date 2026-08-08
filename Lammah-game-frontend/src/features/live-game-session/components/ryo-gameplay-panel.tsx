@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { ChallengeFrame } from "../match/components/challenge-frame";
+import { teamIdentityOf } from "@/lib/team-identity";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
@@ -78,28 +80,51 @@ export function RyoGameplayPanel({
   const submit = (payload: Record<string, string | number>) =>
     gameplayCommand("interaction-submit", { roundId: round?.id, payload });
 
+  const answeringIdentity = teamIdentityOf(answeringTeamId, snapshot?.teams ?? []);
+  const opposingIdentity = teamIdentityOf(opposingTeamId, snapshot?.teams ?? []);
+
   return (
-    <Card dir="rtl" className="overflow-hidden border-amber-200">
-      <CardHeader className="bg-gradient-to-l from-amber-100 to-white">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-bold text-amber-800">اقرأ خصمك</p>
-            <CardTitle>السؤال {Math.min(3, itemIndex + 1)} من 3</CardTitle>
-          </div>
-          <Badge variant="outline">
-            {remainingMs === undefined
-              ? "بانتظار السؤال"
-              : `${Math.ceil(remainingMs / 1000)} ثانية`}
+    <ChallengeFrame
+      eyebrow="اقرأ خصمك"
+      title={`السؤال ${Math.min(3, itemIndex + 1)} من 3`}
+      progressValue={(Math.min(3, itemIndex) / 3) * 100}
+      aside={
+        remainingMs !== undefined && (
+          <Badge
+            variant="outline"
+            className="akwaan-numeral font-black"
+            data-testid="ryo-timer"
+          >
+            {Math.ceil(remainingMs / 1000)} ثانية
           </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-5 pt-6">
+        )
+      }
+      className="mx-auto max-w-3xl"
+    >
+      <div className="space-y-5">
+        {/* Both roles, in their own team colours, always visible. Which side a
+            phone is on is the first thing its player needs to know. */}
         <div className="grid gap-2 text-center text-sm sm:grid-cols-2">
-          <p className="rounded-xl bg-slate-100 p-3">
-            يجيب: <strong>{team(answeringTeamId)}</strong>
+          <p
+            className={cn(
+              "rounded-[var(--radius)] border p-3 font-bold",
+              answeringIdentity.surface,
+              answeringIdentity.border,
+              answeringIdentity.text,
+            )}
+          >
+            يجيب: <strong className="font-black">{team(answeringTeamId)}</strong>
           </p>
-          <p className="rounded-xl bg-amber-100 p-3">
-            يقرأ الخصم: <strong>{team(opposingTeamId)}</strong>
+          <p
+            className={cn(
+              "rounded-[var(--radius)] border p-3 font-bold",
+              opposingIdentity.surface,
+              opposingIdentity.border,
+              opposingIdentity.text,
+            )}
+          >
+            يقرأ الخصم:{" "}
+            <strong className="font-black">{team(opposingTeamId)}</strong>
           </p>
         </div>
         {item ? (
@@ -109,10 +134,12 @@ export function RyoGameplayPanel({
               <img
                 src={item.media.url}
                 alt={authoredText(item.media.altText, "صورة السؤال")}
-                className="mx-auto max-h-52 rounded-2xl object-contain"
+                className="mx-auto max-h-52 rounded-[var(--radius)] object-contain"
               />
             )}
-            <h2 className="text-2xl font-black">{authoredText(item.prompt)}</h2>
+            <h2 className="text-2xl font-black leading-snug text-foreground sm:text-3xl">
+              {authoredText(item.prompt)}
+            </h2>
             {role === "answering" && canSubmit && item.answerMode === "multiple_choice" && (
               <div
                 className="grid gap-2 sm:grid-cols-2"
@@ -157,12 +184,17 @@ export function RyoGameplayPanel({
                 className="grid grid-cols-2 gap-3"
                 data-testid="ryo-decision-controls"
               >
-                <Button size="lg" onClick={() => submit({ kind: "decision", decision: "trust" })}>
+                <Button
+                  size="lg"
+                  className="h-14 text-base font-black"
+                  onClick={() => submit({ kind: "decision", decision: "trust" })}
+                >
                   أثق بإجابته
                 </Button>
                 <Button
                   size="lg"
                   variant="destructive"
+                  className="h-14 text-base font-black"
                   onClick={() => submit({ kind: "decision", decision: "steal" })}
                 >
                   أسرق النقاط
@@ -171,7 +203,7 @@ export function RyoGameplayPanel({
             )}
             {(role === "spectator" || alreadySubmitted || !canSubmit) && !terminal && (
               <p
-                className="rounded-xl bg-slate-100 p-4 text-slate-600"
+                className="rounded-[var(--radius)] bg-muted p-4 font-bold text-muted-foreground"
                 data-testid="ryo-waiting"
               >
                 {alreadySubmitted
@@ -183,22 +215,35 @@ export function RyoGameplayPanel({
             )}
           </section>
         ) : (
-          <p className="rounded-xl bg-slate-100 p-6 text-center text-slate-600">
+          <p className="rounded-[var(--radius)] bg-muted p-6 text-center font-bold text-muted-foreground">
             جارٍ تجهيز السؤال التالي…
           </p>
         )}
         {interaction?.outcome && (
-          <div className="rounded-2xl bg-emerald-50 p-4 text-center" role="status">
-            <p className="font-black">
-              {interaction.outcome.payload.correct ? "إجابة صحيحة" : "إجابة غير صحيحة"}
+          <div
+            className={cn(
+              "akwaan-rise rounded-[var(--radius)] border p-4 text-center",
+              interaction.outcome.payload.correct
+                ? "border-success/30 bg-success-subtle"
+                : "border-destructive/25 bg-destructive/[0.07]",
+            )}
+            role="status"
+          >
+            <p className="text-lg font-black text-foreground">
+              {interaction.outcome.payload.correct
+                ? "إجابة صحيحة"
+                : "إجابة غير صحيحة"}
             </p>
-            <p className="text-sm text-slate-600">
-              قرار الخصم: {interaction.outcome.payload.decision === "steal" ? "سرقة" : "ثقة"}
+            <p className="text-sm font-bold text-muted-foreground">
+              قرار الخصم:{" "}
+              {interaction.outcome.payload.decision === "steal"
+                ? "سرقة"
+                : "ثقة"}
             </p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </ChallengeFrame>
   );
 }
 

@@ -1,5 +1,8 @@
 "use client";
 
+import { Separator } from "@/components/ui/separator";
+import { teamIdentityOf } from "@/lib/team-identity";
+import { cn } from "@/lib/utils";
 import { teamName } from "../presentation";
 import type { LiveSessionSnapshot } from "../../model";
 import type { MatchChallengeResult } from "../types";
@@ -23,12 +26,20 @@ export interface RyoResultItem {
   opposingTeamId?: string;
   deciderParticipantId?: string;
   decision?: "trust" | "steal" | string;
-  points?: Array<{ teamId: string; points: number }>;
+  /**
+   * The signed payoff this interaction moved *inside the mechanic*. Not a Match
+   * point: RYO's three items can swing ±1 each, and the Match still only ever
+   * receives one point for whoever won the challenge overall.
+   */
+  mechanicPoints?: Array<{ teamId: string; points: number }>;
 }
 
 export interface RyoResultDetails {
   itemsPlayed?: number;
   items?: RyoResultItem[];
+  /** The challenge's own signed totals, e.g. `{ teamA: 2, teamB: -1 }`. */
+  mechanicTotals?: Record<string, number>;
+  tie?: boolean;
 }
 
 const DECISION_LABEL: Record<string, string> = {
@@ -54,6 +65,19 @@ export function RyoResultRecap({
   const person = (participantId?: string) =>
     snapshot.participants.find((candidate) => candidate.id === participantId)
       ?.displayName;
+  // The mechanic's own totals, derived from the per-item payoffs when the
+  // server did not persist them (a result recorded before normalisation).
+  const mechanicTotals: Record<string, number> =
+    details?.mechanicTotals ??
+    items.reduce<Record<string, number>>((totals, item) => {
+      for (const entry of item.mechanicPoints ?? []) {
+        totals[entry.teamId] = (totals[entry.teamId] ?? 0) + entry.points;
+      }
+      return totals;
+    }, {});
+  const winnerIdentity = result.winnerTeamId
+    ? teamIdentityOf(result.winnerTeamId, snapshot.teams)
+    : undefined;
 
   return (
     <div className="space-y-5" data-testid="ryo-result-recap">
@@ -62,9 +86,9 @@ export function RyoResultRecap({
           <li
             key={item.itemIndex ?? index}
             data-testid={`ryo-result-item-${index}`}
-            className="space-y-1 rounded-xl border border-black/[0.06] bg-slate-50 p-4 text-sm"
+            className="space-y-1.5 rounded-[var(--radius)] border border-border bg-muted/50 p-4 text-sm"
           >
-            <p className="font-black text-slate-900">
+            <p className="font-black text-foreground">
               السؤال {index + 1}
               {item.prompt ? ` · ${item.prompt}` : ""}
             </p>
@@ -78,16 +102,18 @@ export function RyoResultRecap({
               {" أجاب: "}
               <span dir="auto">{String(item.selectedAnswer ?? "—")}</span>{" "}
               <span
-                className={
-                  item.correct ? "font-black text-emerald-700" : "font-black text-rose-700"
-                }
+                className={cn(
+                  "font-black",
+                  item.correct ? "text-success" : "text-destructive",
+                )}
               >
                 {item.correct ? "صحيح ✓" : "خطأ ✗"}
               </span>
             </p>
             {!item.correct && item.correctAnswer != null && (
-              <p className="text-slate-600">
-                الإجابة الصحيحة: <span dir="auto">{String(item.correctAnswer)}</span>
+              <p className="text-muted-foreground">
+                الإجابة الصحيحة:{" "}
+                <span dir="auto">{String(item.correctAnswer)}</span>
               </p>
             )}
             <p>
@@ -100,34 +126,106 @@ export function RyoResultRecap({
               {": "}
               {DECISION_LABEL[String(item.decision)] ?? String(item.decision ?? "—")}
             </p>
-            {(item.points ?? [])
+            {(item.mechanicPoints ?? [])
               .filter((entry) => entry.points !== 0)
-              .map((entry) => (
-                <p key={entry.teamId} className="font-bold text-slate-700">
-                  {teamName(snapshot, entry.teamId)}:{" "}
-                  {entry.points > 0 ? `+${entry.points}` : entry.points}
-                </p>
-              ))}
+              .map((entry) => {
+                const identity = teamIdentityOf(entry.teamId, snapshot.teams);
+                return (
+                  <p
+                    key={entry.teamId}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-black",
+                      identity.surface,
+                      identity.border,
+                      identity.text,
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn("size-1.5 rounded-full", identity.dot)}
+                    />
+                    {teamName(snapshot, entry.teamId)}
+                    <span className="akwaan-numeral">
+                      {entry.points > 0 ? `+${entry.points}` : entry.points}
+                    </span>
+                  </p>
+                );
+              })}
           </li>
         ))}
       </ol>
 
+      <Separator />
+
+      {/* RYO's payoff matrix can genuinely tie, so a tie is stated rather than
+          dressed up as a win for whoever happens to be listed first. */}
       <section
-        className="space-y-1 rounded-2xl bg-slate-900 p-6 text-center text-white"
+        className={cn(
+          "akwaan-rise space-y-2 rounded-[var(--radius)] border-2 p-6 text-center",
+          winnerIdentity
+            ? cn(winnerIdentity.surface, winnerIdentity.border)
+            : "border-border bg-muted",
+        )}
         data-testid="ryo-result-winner"
+        data-tie={result.winnerTeamId ? "false" : "true"}
       >
-        <p className="text-2xl font-black">
+        <p className="text-2xl font-black text-foreground sm:text-3xl">
           {result.winnerTeamId
             ? `🏆 فوز ${teamName(snapshot, result.winnerTeamId)}`
             : "تعادل في هذا التحدي"}
         </p>
-        <p className="text-sm text-slate-200">
-          {result.teamPoints
-            .map(
-              (entry) =>
-                `${teamName(snapshot, entry.teamId)} ${entry.points > 0 ? "+" : ""}${entry.points}`,
-            )
-            .join(" · ")}
+        {/* The challenge's own signed totals — the thing the three items above
+            actually add up to. Deliberately labelled as the challenge result,
+            because the Match point below is a different number entirely. */}
+        <p className="text-xs font-bold text-muted-foreground">
+          نتيجة التحدي
+        </p>
+        <ul
+          className="flex list-none flex-wrap justify-center gap-2"
+          data-testid="ryo-mechanic-totals"
+        >
+          {Object.entries(mechanicTotals).map(([teamId, total]) => {
+            const identity = teamIdentityOf(teamId, snapshot.teams);
+            return (
+              <li
+                key={teamId}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-sm font-black",
+                  identity.border,
+                  identity.text,
+                )}
+              >
+                <span
+                  aria-hidden
+                  className={cn("size-2 rounded-full", identity.dot)}
+                />
+                {teamName(snapshot, teamId)}
+                <span className="akwaan-numeral">
+                  {total > 0 ? `+${total}` : total}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+
+        {/* And the one line that actually moves the Match. */}
+        <p
+          className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1 text-sm font-black text-success"
+          data-testid="ryo-match-point"
+        >
+          {result.tie ? (
+            "لا نقطة مباراة — تعادل"
+          ) : (
+            <>
+              <span className="akwaan-numeral">
+                +
+                {result.matchPoints.find(
+                  (entry) => entry.teamId === result.winnerTeamId,
+                )?.points ?? 1}
+              </span>{" "}
+              نقطة للمباراة
+            </>
+          )}
         </p>
       </section>
     </div>

@@ -183,18 +183,18 @@ beforeEach(() => {
 });
 
 describe("unified board", () => {
-  it("shows three occurrences, twelve positions, scores and the turn", () => {
+  it("shows three occurrences, twelve positions, progress and the turn", () => {
     renderBoard(unifiedMatch());
 
     expect(screen.getAllByTestId(/^unified-occurrence-/)).toHaveLength(3);
     expect(screen.getAllByTestId(/^unified-position-/)).toHaveLength(12);
     expect(screen.getByTestId("board-progress").textContent).toBe("0/12");
-    expect(screen.getByTestId("selecting-team").textContent).toBe(
-      "دور الاختيار: البنفسجي",
+    // Whose turn it is belongs to the board; the running scoreboard belongs to
+    // the Match shell around it, so the board no longer restates both totals.
+    expect(screen.getByTestId("selecting-team-board").textContent).toContain(
+      "البنفسجي",
     );
-    const header = screen.getByTestId("unified-board");
-    expect(header.textContent).toContain("البنفسجي");
-    expect(header.textContent).toContain("الأخضر");
+    expect(screen.queryByTestId("team-scoreboard")).toBeNull();
   });
 
   it("shows every occurrence its own four Scopes, repeats included", () => {
@@ -202,8 +202,11 @@ describe("unified board", () => {
 
     const first = screen.getByTestId("unified-occurrence-0");
     const third = screen.getByTestId("unified-occurrence-2");
-    expect(first.textContent).toContain("العالم الأول · انمي");
-    expect(third.textContent).toContain("العالم الثالث · انمي");
+    // The occurrence is headed by its World artwork: the occurrence label is the
+    // eyebrow and the World name is the title, so both read on the same header.
+    expect(first.textContent).toContain("العالم الأول");
+    expect(first.textContent).toContain("انمي");
+    expect(third.textContent).toContain("العالم الثالث");
     for (let index = 0; index < 4; index += 1) {
       expect(first.textContent).toContain(`نطاق 0-${index}`);
       expect(third.textContent).toContain(`نطاق 2-${index}`);
@@ -218,11 +221,7 @@ describe("unified board", () => {
     renderBoard(unifiedMatch());
 
     // Occurrence 2 while occurrences 0 and 1 are untouched.
-    await user.click(
-      within(tile("2#slot_2")).getByRole("button", {
-        name: "اختيار هذا التحدي",
-      }),
-    );
+    await user.click(tile("2#slot_2"));
 
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalledTimes(1));
     const request = mocks.prepare.mock.calls[0][0];
@@ -255,11 +254,7 @@ describe("unified board", () => {
     ] as const) {
       mocks.prepare.mockClear();
       const view = renderBoard(unifiedMatch());
-      await user.click(
-        within(tile(expected)).getByRole("button", {
-          name: "اختيار هذا التحدي",
-        }),
-      );
+      await user.click(tile(expected));
       await waitFor(() =>
         expect(mocks.prepare.mock.calls[0][0]).toMatchObject({
           occurrenceIndex,
@@ -277,9 +272,7 @@ describe("unified board", () => {
     );
     renderBoard(unifiedMatch());
 
-    const choose = within(tile("0#slot_2")).getByRole("button", {
-      name: "اختيار هذا التحدي",
-    });
+    const choose = tile("0#slot_2");
     await user.click(choose);
     await user.click(choose);
     await user.click(choose);
@@ -309,15 +302,14 @@ describe("unified board", () => {
     renderBoard(unifiedMatch());
 
     const locked = tile("0#slot_1");
-    expect(locked.textContent).toContain("هذا التحدي غير متاح للعب حاليًا");
-    expect(locked.textContent).toContain("لا يدعم الخادم تشغيل هذا النوع");
+    expect(locked.textContent).toContain("هذا التحدي غير مفعّل في أكوان");
+    // The old detail named our internals at a room full of players.
+    expect(locked.textContent).not.toContain("الخادم");
     // None of the "nearly ready" language this phase exists to remove.
     for (const obsolete of ["قيد التجهيز", "قريبًا", "قريباً"]) {
       expect(locked.textContent).not.toContain(obsolete);
     }
-    expect(
-      within(locked).queryByRole("button", { name: "اختيار هذا التحدي" }),
-    ).toBeNull();
+    expect(locked.tagName).toBe("ARTICLE");
   });
 
   it("never labels an unlaunchable position as available for selection", () => {
@@ -328,10 +320,8 @@ describe("unified board", () => {
     const locked = tile("0#slot_1");
     expect(locked.dataset.status).toBe("available");
     expect(locked.dataset.launchability).toBe("configured_but_unimplemented");
-    expect(locked.textContent).toContain("غير متاح");
     expect(locked.textContent).not.toContain("متاح للاختيار");
-    // A genuinely selectable position still says so.
-    expect(tile("0#slot_2").textContent).toContain("متاح للاختيار");
+    expect(tile("0#slot_2").tagName).toBe("BUTTON");
   });
 
   it("tells a broken position apart from an unimplemented mechanic", () => {
@@ -351,12 +341,12 @@ describe("unified board", () => {
     renderBoard(unifiedMatch({ positions }));
 
     const broken = tile("0#slot_4");
-    expect(broken.textContent).toContain("هذه الخانة غير صالحة في هذه المباراة");
-    expect(broken.textContent).not.toContain("لا يدعم الخادم تشغيل");
-    // And the unimplemented-mechanic tile still reads the other way round.
-    expect(tile("0#slot_1").textContent).toContain(
-      "لا يدعم الخادم تشغيل هذا النوع",
-    );
+    expect(broken.textContent).toContain("ليست ضمن إعداد هذه المباراة");
+    // And the unimplemented-mechanic tile still reads the other way round: the
+    // server's two reasons stay two different sentences on the board.
+    expect(broken.textContent).not.toContain("غير مفعّل في أكوان");
+    expect(tile("0#slot_1").textContent).toContain("هذا التحدي غير مفعّل في أكوان");
+    expect(tile("0#slot_1").textContent).not.toContain("ليست ضمن إعداد");
   });
 
   it("does not render a mechanic as unavailable just because a slug is unfamiliar", () => {
@@ -374,9 +364,7 @@ describe("unified board", () => {
     });
     renderBoard(unifiedMatch({ positions }));
 
-    expect(
-      screen.getAllByRole("button", { name: "اختيار هذا التحدي" }),
-    ).toHaveLength(12);
+    expect(screen.getAllByTestId(/^unified-position-/).filter((node) => node.tagName === "BUTTON")).toHaveLength(12);
   });
 
   it("reports a board that arrived with no positions instead of drawing an empty grid", () => {
@@ -415,21 +403,14 @@ describe("unified board", () => {
     expect(screen.getAllByTestId(/^unified-position-/)).toHaveLength(12);
     const completed = tile("2#slot_2");
     expect(within(completed).getByLabelText("مكتمل")).toBeTruthy();
-    expect(completed.textContent).toContain("البنفسجي: 2");
-    expect(
-      within(completed).queryByRole("button", { name: "اختيار هذا التحدي" }),
-    ).toBeNull();
+    expect(completed.textContent).toContain("البنفسجي");
+    expect(completed.textContent).toContain("2");
+    expect(completed.tagName).toBe("ARTICLE");
     // The identically-slotted position of the repeated World is still open.
-    expect(
-      within(tile("0#slot_2")).getByRole("button", {
-        name: "اختيار هذا التحدي",
-      }),
-    ).toBeTruthy();
+    expect(tile("0#slot_2").tagName).toBe("BUTTON");
     // The turn alternated, and the progress moved by one.
     expect(screen.getByTestId("board-progress").textContent).toBe("1/12");
-    expect(screen.getByTestId("selecting-team").textContent).toBe(
-      "دور الاختيار: الأخضر",
-    );
+    expect(screen.getByTestId("selecting-team-board").textContent).toContain("الأخضر");
   });
 
   it("offers a way back into a running challenge", () => {
@@ -446,23 +427,20 @@ describe("unified board", () => {
 
     const running = tile("1#slot_2");
     expect(running.dataset.status).toBe("in_progress");
-    expect(
-      within(running).getByRole("button", { name: "العودة إلى التحدي" }),
-    ).toBeTruthy();
+    expect(running.tagName).toBe("BUTTON");
+    expect(running.textContent).toContain("قيد اللعب");
   });
 
   it("gives a shared screen no launch controls", () => {
     renderBoard(unifiedMatch(), "shared-screen");
 
-    expect(
-      screen.queryByRole("button", { name: "اختيار هذا التحدي" }),
-    ).toBeNull();
+    expect(screen.getAllByTestId(/^unified-position-/).every((node) => node.tagName !== "BUTTON")).toBe(true);
     expect(screen.getByTestId("unified-board").textContent).toContain(
       "بانتظار المتحكّم",
     );
     // It still sees the whole board and whose turn it is.
     expect(screen.getAllByTestId(/^unified-position-/)).toHaveLength(12);
-    expect(screen.getByTestId("selecting-team")).toBeTruthy();
+    expect(screen.getByTestId("selecting-team-board")).toBeTruthy();
   });
 
   it("surfaces a refused preparation without leaving the board", async () => {
@@ -479,21 +457,13 @@ describe("unified board", () => {
     });
     renderBoard(unifiedMatch());
 
-    await user.click(
-      within(tile("0#slot_2")).getByRole("button", {
-        name: "اختيار هذا التحدي",
-      }),
-    );
+    await user.click(tile("0#slot_2"));
 
     await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
     expect(mocks.resync).not.toHaveBeenCalled();
     // The board is intact and the position is still offered.
     expect(screen.getAllByTestId(/^unified-position-/)).toHaveLength(12);
-    expect(
-      within(tile("0#slot_2")).getByRole("button", {
-        name: "اختيار هذا التحدي",
-      }),
-    ).toBeTruthy();
+    expect(tile("0#slot_2").tagName).toBe("BUTTON");
   });
 
   it("routes the last position to the Match complete screen", () => {

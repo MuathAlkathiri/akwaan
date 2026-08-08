@@ -44,10 +44,14 @@ export class ScoringService {
     const declaration = this.registry.declaration(ruleId);
     const calculator = this.registry.calculator<TInput>(ruleId);
     const drafts = calculator.calculate(input, context);
-    return drafts.map((draft) => {
+    return drafts.map((draft, index) => {
       this.assertDraft(ruleId, draft, declaration.allowsNegativeDelta);
       return mintScoreEvent(draft, {
-        id: randomUUID(),
+        // Reproducible when the caller supplies a seed, so a replayed import of
+        // the same challenge mints the same id and the ledger recognises it.
+        id: context.eventIdSeed
+          ? `${context.eventIdSeed}:${index}`
+          : randomUUID(),
         matchId: context.matchId,
         challengeSessionId: context.challengeSessionId,
         scoringRuleId: ruleId,

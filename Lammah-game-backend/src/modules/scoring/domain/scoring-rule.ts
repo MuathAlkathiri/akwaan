@@ -8,6 +8,16 @@ import { ScoreEventDraft } from './score-event';
  */
 
 export const SCORING_RULE_IDS = {
+  /**
+   * The only rule that moves the Match scoreboard.
+   *
+   * A Match point answers one question — "how many challenges has this team
+   * won?" — so every completed challenge contributes exactly one point to its
+   * winner and nothing at all on a tie, whatever its internal margin was. Every
+   * other rule below is *mechanic accounting*: it decides who won a challenge
+   * and what its recap says, and its deltas never reach the Match ledger.
+   */
+  CHALLENGE_WIN: 'challenge.win',
   /** Roadmap 6.1 payoff matrix. Opts out of the perfect-clear bonus. */
   RYO_PAYOFF_MATRIX: 'ryo.payoff-matrix',
   /** +1 per cleared Co-op item. */
@@ -50,6 +60,16 @@ export interface ScoringContext {
   matchId: string;
   challengeSessionId: string;
   occurredAt: Date;
+  /**
+   * Makes the minted event ids reproducible.
+   *
+   * A Match point is imported by a reconciliation that is designed to be safe to
+   * run again, so the same challenge resolving twice must produce the *same*
+   * event id — that is what lets the ledger's existing id check recognise it as
+   * already imported rather than adding a second point. Omitted, ids are random,
+   * which is correct for mechanic accounting that is minted exactly once.
+   */
+  eventIdSeed?: string;
 }
 
 /**
@@ -66,6 +86,14 @@ export interface ScoringRuleCalculator<TInput = unknown> {
  * roadmap's scoring table, not gameplay behaviour.
  */
 export const SCORING_RULE_DECLARATIONS: readonly ScoringRuleDeclaration[] = [
+  {
+    id: SCORING_RULE_IDS.CHALLENGE_WIN,
+    description:
+      'Awards exactly one Match point to the winner of a completed challenge, and none on a tie. The challenge decides its own winner; this rule only records it.',
+    perfectClearBonusEligible: false,
+    allowsNegativeDelta: false,
+    requiresMechanicBinding: false,
+  },
   {
     id: SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
     description:

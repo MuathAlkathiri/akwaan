@@ -95,7 +95,7 @@ export function JoinAccessPanel({
           <>
             <div className="grid gap-5 sm:grid-cols-[auto_1fr] sm:items-center">
               {joinUrl && access.data.enabled && (
-                <div className="rounded-lg border bg-white p-3">
+                <div className="rounded-lg border bg-card p-3">
                   <QRCodeSVG
                     value={joinUrl}
                     size={160}

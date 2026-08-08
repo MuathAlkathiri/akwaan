@@ -154,11 +154,31 @@ export interface MatchChallengeResult {
   challengeName?: string;
   runtimeId: string;
   contentItemIds: string[];
-  /** Decided by the mechanic, server side. Null only if a mechanic can tie. */
+  /** Decided by the mechanic, server side. Null when the challenge tied. */
   winnerTeamId: string | null;
-  /** The Match points this challenge moved, per team. Signed. */
-  teamPoints: Array<{ teamId: string; points: number }>;
-  /** The events this result imported; the anti-double-award anchor. */
+  /** True when the mechanic declared no winner. Then no Match point exists. */
+  tie: boolean;
+  /**
+   * The **Match** points this challenge moved: exactly `+1` to the winner and
+   * `0` to the loser, or `0` to both on a tie. Never a mechanic's internal
+   * margin — that lives in `details` and in `mechanicScoreEvents`.
+   *
+   * Renamed from `teamPoints`, which used to carry whatever the mechanic minted
+   * and therefore meant "Match points" for Top 5 and "signed payoff swings" for
+   * RYO. One name cannot mean two things in a ledger.
+   */
+  matchPoints: Array<{ teamId: string; points: number }>;
+  /**
+   * The id of the single Match-level event that represents this challenge's
+   * point, or null on a tie. The anti-double-award anchor.
+   */
+  matchPointEventId: string | null;
+  /**
+   * The mechanic's own signed events, kept verbatim for the recap and never
+   * summed into the Match. RYO's per-item payoffs live here.
+   */
+  mechanicScoreEvents: Array<Record<string, unknown>>;
+  /** The Match-level event ids this result imported. At most one. */
   scoreEventIds: string[];
   /** Mechanic-shaped, client-safe facts: entries, ownership, reveal order… */
   details: Record<string, unknown>;
@@ -681,6 +701,8 @@ export class Match {
     /** Decided by the mechanic; the Match never derives a winner itself. */
     winnerTeamId?: string | null;
     challengeKey?: string;
+    /** The mechanic's own signed events. Recorded, never scored. */
+    mechanicEvents?: Array<Record<string, unknown>>;
   }): { completed: boolean; result?: MatchChallengeResult } {
     if (this.replay(input.commandId)) return { completed: false };
     const binding = this.findBinding(input.runtimeId);
@@ -718,6 +740,7 @@ export class Match {
       details: input.summary ?? {},
       winnerTeamId: input.winnerTeamId ?? null,
       challengeKey: input.challengeKey ?? slot.challengeKey ?? '',
+      mechanicEvents: input.mechanicEvents ?? [],
     });
     this.state.challengeResults.push(result);
     this.state.pendingResultId = result.id;
@@ -777,6 +800,7 @@ export class Match {
     details: Record<string, unknown>;
     winnerTeamId: string | null;
     challengeKey: string;
+    mechanicEvents: Array<Record<string, unknown>>;
   }): MatchChallengeResult {
     const positionKey = MatchBoardPositionKey.of(
       input.occurrence.index,
@@ -804,12 +828,18 @@ export class Match {
       runtimeId: input.runtimeId,
       contentItemIds: [...(input.slot.contentItemIds ?? [])],
       winnerTeamId: input.winnerTeamId,
-      teamPoints: this.state.teams.map((team) => ({
+      tie: input.winnerTeamId === null,
+      // Derived from the imported Match-level events, which are now exactly one
+      // (+1 to the winner) or none. A loser is recorded explicitly as 0 so the
+      // result reads as a complete statement rather than a single-sided one.
+      matchPoints: this.state.teams.map((team) => ({
         teamId: team.id,
         points: input.events
           .filter((event) => event.teamId === team.id)
           .reduce((total, event) => total + event.delta, 0),
       })),
+      matchPointEventId: input.events[0]?.id ?? null,
+      mechanicScoreEvents: input.mechanicEvents.map((event) => ({ ...event })),
       scoreEventIds: [...input.scoreEventIds],
       details: input.details,
       startedAt: input.slot.startedAt ?? input.now,
@@ -913,7 +943,10 @@ export class Match {
         ...result,
         selectedScopeIds: [...result.selectedScopeIds],
         contentItemIds: [...result.contentItemIds],
-        teamPoints: result.teamPoints.map((entry) => ({ ...entry })),
+        matchPoints: result.matchPoints.map((entry) => ({ ...entry })),
+        mechanicScoreEvents: result.mechanicScoreEvents.map((event) => ({
+          ...event,
+        })),
         scoreEventIds: [...result.scoreEventIds],
       })),
       processedCommandIds: [...this.state.processedCommandIds],

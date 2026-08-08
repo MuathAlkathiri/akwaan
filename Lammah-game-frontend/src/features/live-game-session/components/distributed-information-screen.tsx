@@ -51,8 +51,8 @@ export function DistributedInformationScreen({
   const completed = state.phase === "completed";
 
   return (
-    <Card dir="rtl" className="overflow-hidden border-violet-200">
-      <CardHeader className="bg-gradient-to-l from-violet-100 to-background">
+    <Card dir="rtl" className="overflow-hidden border-border">
+      <CardHeader className="bg-muted/50">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle className="text-2xl font-black">
             {DISTRIBUTED_CHALLENGE_NAME}
@@ -88,9 +88,9 @@ export function DistributedInformationScreen({
                 </div>
                 {/* A plain track keeps the race readable without pulling in a
                     primitive this design system does not have yet. */}
-                <div className="h-3 overflow-hidden rounded-full bg-violet-100">
+                <div className="h-3 overflow-hidden rounded-full bg-muted">
                   <div
-                    className="h-full rounded-full bg-violet-500 transition-all"
+                    className="h-full rounded-full bg-muted0 transition-all"
                     style={{
                       width: `${(entry.solved / puzzleCount) * 100}%`,
                     }}
@@ -102,14 +102,14 @@ export function DistributedInformationScreen({
         </ul>
 
         {completed && (
-          <div className="rounded-xl bg-emerald-50 p-5 text-center">
-            <p className="text-xl font-black text-emerald-900">
+          <div className="rounded-[var(--radius)] bg-success-subtle p-5 text-center">
+            <p className="text-xl font-black text-success">
               {result?.tie
                 ? "تعادل — لا نقطة لأي فريق"
                 : `فاز ${teams.get(String(result?.winnerTeamId)) ?? ""}`}
             </p>
             {!result?.tie && result?.winnerTeamId && (
-              <p className="mt-1 font-bold text-emerald-800">
+              <p className="mt-1 font-bold text-success">
                 +1 نقطة مباراة
               </p>
             )}

@@ -11,6 +11,7 @@ import { GameplayInteractionPanel } from "./gameplay-interaction-panel";
 import { BombGameplayPanel } from "./bomb-gameplay-panel";
 import { Top5Panel } from "./top5-panel";
 import { RyoGameplayPanel } from "./ryo-gameplay-panel";
+import { ClosestGameplayPanel } from "./closest-gameplay-panel";
 
 const labels: Record<string, string> = {
   "runtime:start": "Start runtime",
@@ -56,6 +57,9 @@ export function GameplayRuntimePanel() {
   }
   if (runtime.mode.key === "read-your-opponent") {
     return <RyoGameplayPanel runtime={runtime} />;
+  }
+  if (runtime.mode.key === "closest") {
+    return <ClosestGameplayPanel runtime={runtime} />;
   }
   const round = runtime.activeRound;
   const activeTeam = snapshot.teams.find(
@@ -108,6 +112,8 @@ export function GameplayRuntimePanel() {
           <Top5Panel runtime={runtime} />
         ) : runtime.mode.key === "read-your-opponent" ? (
           <RyoGameplayPanel runtime={runtime} />
+        ) : runtime.mode.key === "closest" ? (
+          <ClosestGameplayPanel runtime={runtime} />
         ) : (
           <GameplayInteractionPanel runtime={runtime} />
         )}

@@ -1,6 +1,8 @@
 "use client";
 
 import { PartyPopper, Smartphone } from "lucide-react";
+import { teamIdentityOf } from "@/lib/team-identity";
+import { cn } from "@/lib/utils";
 import { useLiveSession } from "../../hooks/live-session-context";
 import { teamName } from "../presentation";
 import type { MatchChallengeResult } from "../types";
@@ -33,9 +35,13 @@ export function ParticipantWaiting({
     challengeResult?.winnerTeamId && snapshot
       ? teamName(snapshot, challengeResult.winnerTeamId)
       : undefined;
-  const winnerPoints = challengeResult?.teamPoints.find(
+  const winnerPoints = challengeResult?.matchPoints.find(
     (entry) => entry.teamId === challengeResult.winnerTeamId,
   )?.points;
+  const winnerIdentity =
+    challengeResult?.winnerTeamId && snapshot
+      ? teamIdentityOf(challengeResult.winnerTeamId, snapshot.teams)
+      : undefined;
 
   return (
     <section
@@ -43,41 +49,59 @@ export function ParticipantWaiting({
       data-testid="participant-waiting"
       data-match-complete={matchComplete ? "true" : "false"}
       data-showing-result={challengeResult ? "true" : "false"}
-      className="mx-auto max-w-md space-y-3 rounded-2xl border border-black/[0.06] bg-white p-8 text-center"
+      className="surface-card mx-auto mt-8 max-w-md space-y-3 p-8 text-center"
     >
       {challengeResult && !matchComplete ? (
         <>
-          <PartyPopper className="mx-auto size-8 text-violet-500" aria-hidden />
-          <h1 className="text-lg font-black text-slate-900">انتهى التحدي 🎉</h1>
+          {/* Calm on purpose: a player can sit here for minutes between
+              challenges, so nothing loops or pulses. */}
+          <PartyPopper className="mx-auto size-8 text-success" aria-hidden />
+          <h1 className="text-lg font-black text-foreground">انتهى التحدي 🎉</h1>
           {winnerName && (
-            <p className="text-base font-black text-slate-800">
+            <p
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-base font-black",
+                winnerIdentity?.surface,
+                winnerIdentity?.border,
+                winnerIdentity?.text,
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn("size-2 rounded-full", winnerIdentity?.dot)}
+              />
               فاز {winnerName}
-              {winnerPoints ? ` · +${winnerPoints} نقطة` : ""}
+              {winnerPoints ? (
+                <span className="akwaan-numeral">+{winnerPoints} نقطة</span>
+              ) : null}
             </p>
           )}
-          <p className="text-sm leading-6 text-slate-500">
+          <p className="text-sm leading-6 text-muted-foreground">
             بانتظار التحدي القادم…
             <br />
-            سيتم تحديث الصفحة تلقائياً عند بدء تحدٍ يحتاج الجوال.
+            سنفتح التحدي القادم هنا. أبقِ جوالك معك.
           </p>
         </>
       ) : (
         <>
-          <Smartphone className="mx-auto size-8 text-slate-400" aria-hidden />
-          <h1 className="text-lg font-black text-slate-900">
+          <Smartphone
+            className="mx-auto size-8 text-muted-foreground"
+            aria-hidden
+          />
+          <h1 className="text-lg font-black text-foreground">
             {matchComplete
               ? "انتهت المباراة"
               : "لا يوجد تحدٍ يحتاج الجوال حالياً"}
           </h1>
-          <p className="text-sm leading-6 text-slate-500">
+          <p className="text-sm leading-6 text-muted-foreground">
             {matchComplete
               ? "شكرًا لكم. لا حاجة لإبقاء الجوال مفتوحًا."
-              : "سيتم تحديث الصفحة تلقائياً عند بدء التحدي التالي."}
+              : "سنفتح التحدي القادم هنا. أبقِ جوالك معك."}
           </p>
         </>
       )}
       {joinedTeamName && (
-        <p className="text-sm font-bold text-slate-600">
+        <p className="text-sm font-bold text-muted-foreground">
           أنت مع فريق {joinedTeamName}
         </p>
       )}

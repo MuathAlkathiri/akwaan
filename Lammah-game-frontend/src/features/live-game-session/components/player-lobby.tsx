@@ -79,7 +79,7 @@ export function PlayerLobby({ participantId }: { participantId: string }) {
         <div
           role="status"
           aria-live="polite"
-          className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm"
+          className="rounded-lg border border-warning/35 bg-warning-subtle p-3 text-sm"
         >
           {connection === "connecting"
             ? "Connecting to the game…"
@@ -109,7 +109,7 @@ export function PlayerLobby({ participantId }: { participantId: string }) {
             <div
               role="timer"
               aria-live="polite"
-              className="rounded-xl bg-primary/10 p-6 text-center"
+              className="rounded-[var(--radius)] bg-primary/10 p-6 text-center"
             >
               <p className="text-sm text-muted-foreground">Bomb starts in</p>
               <p className="text-6xl font-black text-primary">{countdown}</p>
@@ -127,7 +127,7 @@ export function PlayerLobby({ participantId }: { participantId: string }) {
                 <p
                   className={
                     feedback === "bomb-answer-correct"
-                      ? "mt-2 text-sm text-emerald-600"
+                      ? "mt-2 text-sm text-success"
                       : "mt-2 text-sm text-destructive"
                   }
                   role="status"

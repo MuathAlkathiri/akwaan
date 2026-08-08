@@ -31,7 +31,7 @@ function BombItemImage({
   );
 
   return (
-    <div className="relative mx-auto flex aspect-video w-full max-w-2xl items-center justify-center overflow-hidden rounded-xl bg-muted">
+    <div className="relative mx-auto flex aspect-video w-full max-w-2xl items-center justify-center overflow-hidden rounded-[var(--radius)] bg-muted">
       {state === "loading" && (
         <div
           role="status"
@@ -197,7 +197,7 @@ export function BombGameplayPanel({
   const activeTeam = snapshot?.teams.find((team) => team.id === activeTeamId);
 
   return (
-    <section className="space-y-5 rounded-xl border bg-card p-5">
+    <section className="space-y-5 rounded-[var(--radius)] border bg-card p-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="flex items-center gap-2 text-xl font-semibold">
           <Bomb className="size-5 text-destructive" aria-hidden />
@@ -238,7 +238,7 @@ export function BombGameplayPanel({
         !resolvingExpiration &&
         snapshot?.status === "active" && (
           <div className="space-y-4">
-            <div className="flex flex-col items-center gap-3 rounded-xl bg-muted/60 p-4 text-center">
+            <div className="flex flex-col items-center gap-3 rounded-[var(--radius)] bg-muted/60 p-4 text-center">
               <Button
                 type="button"
                 size="lg"

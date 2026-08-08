@@ -21,11 +21,19 @@ export function usePlayableWorld(worldId?: string) {
   });
 }
 
-/** Active Worlds, readable by any authenticated player. */
-export function usePlayableWorlds() {
+/**
+ * Active Worlds, readable by any authenticated **user**.
+ *
+ * `enabled` is not optional in spirit: a paired phone has no user session, and
+ * the API client redirects to the login page on a 401 — so a participant surface
+ * that fetches this throws the player out of the game mid-Match. Any component a
+ * phone can reach must pass `false`.
+ */
+export function usePlayableWorlds(enabled = true) {
   return useQuery({
     queryKey: playerCatalogKeys.worlds,
     queryFn: fetchPlayableWorlds,
+    enabled,
   });
 }
 

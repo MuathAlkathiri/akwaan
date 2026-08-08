@@ -12,8 +12,13 @@ import {
   WifiOff,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { WorldMedia } from "@/components/akwaan/world-media";
+import { teamIdentity, TEAM_TONE_ORDER } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
 import { occurrenceLabel } from "@/features/match-setup";
 import type { PreflightTeam, UnifiedPreflight } from "../types";
@@ -21,10 +26,14 @@ import type { PreflightTeam, UnifiedPreflight } from "../types";
 /**
  * The moment between choosing a position and starting it.
  *
- * Right side says what is about to be played; left side is how the phones get here
- * and whether they have. Everything shown is server state — the readiness numbers,
- * the requirement, and `readyToLaunch` all come from the mechanic's own contract, so
- * the button and the server cannot disagree. The check is re-run at launch anyway.
+ * A launch moment, not a form. The World's own artwork heads the brief so the host
+ * can see what is about to be played from across the room; the pairing side answers
+ * one question — are the phones here — with a per-team progress bar and the players'
+ * own names.
+ *
+ * Everything shown is server state: the readiness numbers, the requirement, and
+ * `readyToLaunch` all come from the mechanic's own contract, so the button and the
+ * server cannot disagree. The check is re-run at launch anyway.
  *
  * When the players are already paired the QR steps back to a secondary affordance:
  * nobody should be made to rescan between challenges.
@@ -32,6 +41,7 @@ import type { PreflightTeam, UnifiedPreflight } from "../types";
 export function ChallengePreflight({
   preflight,
   selectingTeamName,
+  worldImageUrl,
   launching,
   cancelling,
   error,
@@ -40,6 +50,8 @@ export function ChallengePreflight({
 }: {
   preflight: UnifiedPreflight;
   selectingTeamName?: string;
+  /** The approved World banner, from the catalog the client already reads. */
+  worldImageUrl?: string;
   launching: boolean;
   cancelling: boolean;
   error?: string;
@@ -52,39 +64,40 @@ export function ChallengePreflight({
     <div className="space-y-4" data-testid="challenge-preflight" dir="rtl">
       {/* items-start: a challenge with no description must not stretch its card
           to the height of the pairing panel and read as an empty box. */}
-      <div className="grid items-start gap-4 lg:grid-cols-[1fr_22rem]">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(19rem,0.75fr)]">
         <ChallengeBrief
           preflight={preflight}
           selectingTeamName={selectingTeamName}
+          {...(worldImageUrl ? { worldImageUrl } : {})}
         />
         {preflight.requiresPhones ? (
           <PairingPanel preflight={preflight} collapsed={alreadyPaired} />
         ) : (
-          <aside className="rounded-2xl border border-black/[0.06] bg-white p-5 text-sm leading-6 text-slate-600">
+          <aside className="surface-card p-5 text-sm leading-6 text-muted-foreground">
             يُلعب هذا التحدي من الشاشة المشتركة. لا حاجة لجوالات.
           </aside>
         )}
       </div>
 
       {error && (
-        <p role="alert" className="text-sm font-bold text-destructive">
-          {error}
-        </p>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription className="font-bold">{error}</AlertDescription>
+        </Alert>
       )}
 
-      <footer className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/[0.06] bg-white px-5 py-4">
+      <footer className="flex flex-wrap items-center justify-between gap-3 px-1 py-2">
         <Button
           type="button"
           variant="outline"
           disabled={launching || cancelling}
           onClick={onCancel}
-          className="rounded-xl font-black"
+          className="border-transparent bg-transparent font-black text-muted-foreground shadow-none hover:bg-muted hover:text-foreground"
         >
           {cancelling ? "جارٍ الإلغاء…" : "رجوع إلى اللوحة"}
         </Button>
         <div className="flex flex-wrap items-center gap-3">
           {!preflight.readyToLaunch && (
-            <p className="text-sm font-bold text-slate-500">
+            <p className="text-sm font-bold text-muted-foreground">
               {blockingSummary(preflight)}
             </p>
           )}
@@ -94,7 +107,10 @@ export function ChallengePreflight({
             data-testid="preflight-start"
             disabled={!preflight.readyToLaunch || launching || cancelling}
             onClick={onLaunch}
-            className="min-w-40 rounded-xl font-black"
+            className={cn(
+              "min-w-48 font-black transition-shadow",
+              preflight.readyToLaunch && "shadow-[0_12px_28px_-16px_hsl(var(--primary)/0.65)]",
+            )}
           >
             {launching ? "جارٍ البدء…" : "ابدأ التحدي"}
           </Button>
@@ -107,71 +123,84 @@ export function ChallengePreflight({
 function ChallengeBrief({
   preflight,
   selectingTeamName,
+  worldImageUrl,
 }: {
   preflight: UnifiedPreflight;
   selectingTeamName?: string;
+  worldImageUrl?: string;
 }) {
   const requirement = preflight.requirement;
   return (
-    <section className="space-y-4 rounded-2xl border border-black/[0.06] bg-white p-5">
-      <header>
-        <p className="text-sm font-black text-primary">
-          {occurrenceLabel(preflight.occurrenceIndex)}
-          {preflight.worldName ? ` · ${preflight.worldName}` : ""}
-        </p>
-        <h1 className="mt-1 text-2xl font-black text-slate-900">
-          {preflight.challengeName}
-        </h1>
-      </header>
+    <section className="surface-card overflow-hidden">
+      <WorldMedia
+        name={preflight.worldName ?? "عالم"}
+        eyebrow={occurrenceLabel(preflight.occurrenceIndex)}
+        variant="strip"
+        {...(worldImageUrl ? { imageUrl: worldImageUrl } : {})}
+        className="rounded-none"
+      />
+      <div className="space-y-3.5 p-5">
+        <header>
+          <h1 className="text-2xl font-black text-foreground sm:text-3xl">
+            {preflight.challengeName}
+          </h1>
+          {preflight.description && (
+            <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+              {preflight.description}
+            </p>
+          )}
+        </header>
 
-      {preflight.description && (
-        <p className="text-sm leading-6 text-slate-600">
-          {preflight.description}
-        </p>
-      )}
-      {preflight.instructions && (
-        <p className="rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-700">
-          {preflight.instructions}
-        </p>
-      )}
-
-      {requirement && (
-        <p
-          data-testid="preflight-requirement"
-          className="flex items-center gap-2 text-sm font-bold text-slate-700"
-        >
-          <Users className="size-4 shrink-0 text-primary" aria-hidden />
-          {playerRequirementLabel(requirement)}
-        </p>
-      )}
-
-      {preflight.selectedScopes.length > 0 && (
-        <div>
-          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-black text-slate-500">
-            <Layers className="size-3.5" aria-hidden />
-            نطاقات هذه المحطة
+        {preflight.instructions && (
+          <p className="rounded-[var(--radius)] bg-muted p-3 text-sm leading-6 text-foreground/85">
+            {preflight.instructions}
           </p>
-          <ul className="flex list-none flex-wrap gap-1.5">
-            {preflight.selectedScopes.map((scope) => (
-              <li
-                key={scope.scopeId}
-                className="rounded-lg border border-primary/15 bg-primary/[0.06] px-2 py-1 text-xs font-bold text-primary"
-              >
-                {scope.name || scope.scopeId}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        )}
 
-      {selectingTeamName && (
-        <p
-          data-testid="preflight-selecting-team"
-          className="text-sm font-bold text-slate-600"
-        >
-          دور الاختيار: {selectingTeamName}
-        </p>
-      )}
+        <div className="flex flex-wrap items-center gap-3">
+          {requirement && (
+            <p
+              data-testid="preflight-requirement"
+              className="flex items-center gap-2 text-sm font-bold text-foreground/80"
+            >
+              <Users className="size-4 shrink-0 text-primary" aria-hidden />
+              {playerRequirementLabel(requirement)}
+            </p>
+          )}
+          {preflight.requiresPhones && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-bold text-secondary-foreground">
+              <Smartphone className="size-3" aria-hidden />
+              يحتاج جوالات
+            </span>
+          )}
+        </div>
+
+        {preflight.selectedScopes.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <p className="mb-1.5 flex items-center gap-1.5 text-xs font-black text-muted-foreground">
+                <Layers className="size-3.5" aria-hidden />
+                نطاقات هذه المحطة
+              </p>
+              <p className="text-sm font-bold leading-6 text-foreground/75">
+                {preflight.selectedScopes
+                  .map((scope) => scope.name || scope.scopeId)
+                  .join(" · ")}
+              </p>
+            </div>
+          </>
+        )}
+
+        {selectingTeamName && (
+          <p
+            data-testid="preflight-selecting-team"
+            className="text-sm font-bold text-muted-foreground"
+          >
+            دور الاختيار: {selectingTeamName}
+          </p>
+        )}
+      </div>
     </section>
   );
 }
@@ -213,12 +242,12 @@ function PairingPanel({
   };
 
   return (
-    <aside className="space-y-3 rounded-2xl border border-black/[0.06] bg-white p-5">
+    <aside className={cn("surface-card space-y-3 p-4", collapsed && !expanded && "bg-card/70")}>
       {collapsed && !expanded ? (
-        <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
           <p
             data-testid="preflight-players-paired"
-            className="flex items-center gap-2 text-sm font-black text-[#15803D]"
+            className="flex items-center gap-2 text-sm font-black text-success"
           >
             <Check className="size-4 shrink-0" aria-hidden />
             اللاعبون مرتبطون وجاهزون
@@ -227,40 +256,42 @@ function PairingPanel({
             type="button"
             variant="outline"
             onClick={() => setExpanded(true)}
-            className="w-full rounded-xl font-black"
+            size="sm"
+            className="shrink-0 font-black"
           >
-            <UserPlus className="ml-1.5 size-4" aria-hidden />
+            <UserPlus className="size-4" aria-hidden />
             إضافة لاعب أو إدارة اللاعبين
           </Button>
         </div>
       ) : (
         <div className="space-y-3">
-          <p className="flex items-center gap-2 text-xs font-black text-slate-500">
+          <p className="flex items-center gap-2 text-xs font-black text-muted-foreground">
             <Smartphone className="size-3.5" aria-hidden />
             هذا التحدي يحتاج جوالات اللاعبين
           </p>
           {showQr && joinUrl && (
-            <div className="flex items-center gap-3">
-              <span className="rounded-xl border border-black/[0.06] bg-white p-2">
-                <QRCodeSVG value={joinUrl} size={104} level="M" />
+            <div className="flex items-center gap-3 rounded-[var(--radius)] bg-muted/55 p-2.5">
+              <span className="rounded-xl border border-border bg-white p-1.5">
+                <QRCodeSVG value={joinUrl} size={88} level="M" />
               </span>
-              <span className="min-w-0 flex-1 space-y-1.5">
+              <span className="min-w-0 flex-1 space-y-1">
+                <span className="block text-[0.65rem] font-black text-muted-foreground">
+                  قولوا للاعبين: ادخلوا الكود
+                </span>
                 <span
                   data-testid="preflight-join-code"
-                  className="block text-2xl font-black tracking-[0.2em] text-slate-900"
+                  className="akwaan-numeral block text-3xl font-black tracking-[0.22em] text-foreground"
                 >
                   {join!.joinCode}
-                </span>
-                <span className="block truncate text-xs text-slate-500">
-                  {joinUrl}
                 </span>
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
                   onClick={() => void copy()}
-                  className="h-8 rounded-lg px-2 text-xs font-black"
+                  className="h-8 px-2 text-xs font-black"
                 >
-                  <Copy className="ml-1 size-3.5" aria-hidden />
+                  <Copy className="size-3.5" aria-hidden />
                   {copied ? "تم النسخ" : "نسخ الرابط"}
                 </Button>
               </span>
@@ -270,9 +301,9 @@ function PairingPanel({
       )}
 
       <ul className="list-none space-y-2">
-        {preflight.teams.map((team) => (
+        {preflight.teams.map((team, index) => (
           <li key={team.teamId}>
-            <TeamReadinessCard team={team} />
+            <TeamReadinessCard team={team} order={index} />
           </li>
         ))}
       </ul>
@@ -280,53 +311,109 @@ function PairingPanel({
   );
 }
 
-function TeamReadinessCard({ team }: { team: PreflightTeam }) {
+/**
+ * One team's phones, at a glance.
+ *
+ * The bar answers "are they here" before any reading happens; the names answer
+ * "who is missing". Ready is stated in words and with a tick as well as colour,
+ * because a host scanning this from two metres away should not have to compare
+ * two greens.
+ */
+function TeamReadinessCard({
+  team,
+  order,
+}: {
+  team: PreflightTeam;
+  order: number;
+}) {
+  const identity = teamIdentity(
+    TEAM_TONE_ORDER[order % TEAM_TONE_ORDER.length],
+  );
+  const target = team.maximum ?? team.minimum;
+  const progress = target
+    ? Math.min(100, (team.connectedCount / target) * 100)
+    : 0;
+
   return (
     <div
       data-testid={`preflight-team-${team.teamId}`}
       data-ready={team.ready}
       className={cn(
-        "rounded-xl border p-3",
+        "space-y-2 rounded-[var(--radius)] border p-3 transition-colors duration-base ease-akwaan",
         team.ready
-          ? "border-[#22C55E]/30 bg-[#22C55E]/[0.07]"
-          : "border-amber-300 bg-amber-50",
+          ? cn(identity.surface, identity.border)
+          : "border-border bg-card",
       )}
     >
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-sm font-black text-slate-900">{team.teamName}</p>
-        <p className="text-sm font-black tabular-nums text-slate-700">
-          {team.connectedCount}/{team.maximum ?? team.minimum} متصل
+        <p
+          className={cn(
+            "flex items-center gap-1.5 text-sm font-black",
+            team.ready ? identity.text : "text-foreground",
+          )}
+        >
+          <span
+            aria-hidden
+            className={cn("size-2 shrink-0 rounded-full", identity.dot)}
+          />
+          {team.teamName}
+        </p>
+        <p className="akwaan-numeral text-sm font-black text-foreground/80">
+          {team.connectedCount}/{target}
         </p>
       </div>
+
+      <Progress
+        value={progress}
+        aria-label={`${team.teamName}: ${team.connectedCount} من ${target} متصل`}
+        className="h-1.5"
+      />
+
       {team.participants.length > 0 && (
-        <ul className="mt-2 flex list-none flex-wrap gap-1.5">
+        <ul className="list-none space-y-1">
           {team.participants.map((participant) => (
             <li
               key={participant.participantId}
               className={cn(
-                "inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-bold",
+                "flex min-h-7 items-center gap-1.5 rounded-lg px-1.5 py-1 text-xs font-bold",
                 participant.connected
-                  ? "bg-white text-slate-700"
-                  : "bg-slate-100 text-slate-400",
+                  ? "bg-card text-foreground/85"
+                  : "bg-muted text-disabled-foreground",
               )}
             >
+              <Avatar className="size-5">
+                <AvatarFallback
+                  className={cn(
+                    "text-[0.6rem] font-black",
+                    participant.connected
+                      ? cn(identity.surface, identity.text)
+                      : "bg-secondary text-disabled-foreground",
+                  )}
+                >
+                  {participant.displayName.trim().charAt(0) || "؟"}
+                </AvatarFallback>
+              </Avatar>
               {participant.connected ? (
-                <Wifi className="size-3" aria-label="متصل" />
+                <Wifi className="size-3 shrink-0" aria-label="متصل" />
               ) : (
-                <WifiOff className="size-3" aria-label="غير متصل" />
+                <WifiOff className="size-3 shrink-0" aria-label="غير متصل" />
               )}
               {participant.displayName}
+              <span className="ms-auto text-[0.65rem] font-bold text-muted-foreground">
+                {participant.connected ? "متصل" : "غير متصل"}
+              </span>
             </li>
           ))}
         </ul>
       )}
-      {!team.ready && (
-        <Badge variant="outline" className="mt-2">
-          {team.connectedCount < team.minimum
-            ? `يحتاج ${team.minimum - team.connectedCount} لاعبًا إضافيًا`
-            : `يحتاج ${team.connectedCount - (team.maximum ?? team.connectedCount)} لاعبًا أقل`}
-        </Badge>
-      )}
+
+      <p className={cn("text-xs font-black", team.ready ? identity.text : "text-muted-foreground")}>
+        {team.ready
+          ? `${team.teamName} جاهز ✓`
+          : team.connectedCount < team.minimum
+            ? "بانتظار لاعب"
+            : "بانتظار اكتمال الجاهزية"}
+      </p>
     </div>
   );
 }

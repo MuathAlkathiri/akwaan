@@ -54,6 +54,12 @@ export interface CanonicalMechanic {
  */
 export const CANONICAL_MECHANICS: readonly CanonicalMechanic[] = [
   {
+    slug: 'closest',
+    family: ChallengeFamily.COOP,
+    itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
+    answerMode: ChallengeAnswerMode.CLOSEST,
+  },
+  {
     slug: 'read-your-opponent',
     family: ChallengeFamily.RYO,
     itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,

@@ -167,6 +167,17 @@ export class MongooseMatchRepository implements MatchRepository {
         // Mongo does not round-trip an empty Mixed object, and a result with no
         // mechanic detail is still a result.
         details: (result.details as Record<string, unknown>) ?? {},
+        // A result written before Match scoring was normalised has `teamPoints`
+        // holding whatever its mechanic minted. It is read under the new name so
+        // stored history stays readable, and is *not* rewritten: the ledger it
+        // came from is immutable, and re-deriving it would be inventing history.
+        matchPoints:
+          result.matchPoints ??
+          (result as { teamPoints?: unknown }).teamPoints ??
+          [],
+        tie: result.tie ?? result.winnerTeamId === null,
+        matchPointEventId: result.matchPointEventId ?? null,
+        mechanicScoreEvents: result.mechanicScoreEvents ?? [],
         startedAt: new Date(result.startedAt as string),
         completedAt: new Date(result.completedAt as string),
       })),

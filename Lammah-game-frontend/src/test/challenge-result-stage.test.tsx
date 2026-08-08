@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LiveSessionContext } from "@/features/live-game-session/hooks/live-session-context";
 import { MatchStageRouter } from "@/features/live-game-session/match/match-stage-router";
+import { MatchShell } from "@/features/live-game-session/match/components/match-shell";
 import { Top5ResultReveal } from "@/features/live-game-session/match/components/top5-result-reveal";
 import type {
   LiveSessionMatchSnapshot,
@@ -100,7 +101,9 @@ function top5Result(
     challengeName: "أفضل 5",
     selectedScopeIds: ["s0", "s1", "s2", "s3"],
     winnerTeamId: TEAM_A,
-    teamPoints: [
+    tie: false,
+    // The Match point, not the mechanic's 3-2. Those live in `details`.
+    matchPoints: [
       { teamId: TEAM_A, points: 1 },
       { teamId: TEAM_B, points: 0 },
     ],
@@ -126,12 +129,17 @@ function ryoResult(): MatchChallengeResult {
     challengeKey: "read-your-opponent",
     challengeName: "اقرأ خصمك",
     winnerTeamId: TEAM_B,
-    teamPoints: [
-      { teamId: TEAM_A, points: 1 },
-      { teamId: TEAM_B, points: 2 },
+    tie: false,
+    // One Match point to the winner, however the payoff matrix swung.
+    matchPoints: [
+      { teamId: TEAM_A, points: 0 },
+      { teamId: TEAM_B, points: 1 },
     ],
     details: {
       itemsPlayed: 3,
+      // The challenge's own signed totals — what the three items add up to.
+      mechanicTotals: { [TEAM_A]: 1, [TEAM_B]: 2 },
+      tie: false,
       items: [0, 1, 2].map((index) => ({
         itemIndex: index,
         prompt: `سؤال ${index + 1}`,
@@ -143,7 +151,9 @@ function ryoResult(): MatchChallengeResult {
         opposingTeamId: index % 2 === 0 ? TEAM_B : TEAM_A,
         deciderParticipantId: index % 2 === 0 ? "p-b1" : "p-a1",
         decision: index === 1 ? "steal" : "trust",
-        points: [{ teamId: index % 2 === 0 ? TEAM_A : TEAM_B, points: 1 }],
+        mechanicPoints: [
+          { teamId: index % 2 === 0 ? TEAM_A : TEAM_B, points: 1 },
+        ],
       })),
     },
   };
@@ -155,6 +165,11 @@ function match(
     challengeResult?: MatchChallengeResult;
     challengeHistory?: MatchChallengeResult[];
     completedPositionCount?: number;
+    matchTotals?: Array<{
+      teamId: string;
+      signedTotal: number;
+      displayTotal: number;
+    }>;
   } = {},
 ): LiveSessionMatchSnapshot {
   return {
@@ -178,16 +193,21 @@ function match(
       selectingTeamId: TEAM_A,
     },
     scoring: {
-      matchTotals: [
+      matchTotals: overrides.matchTotals ?? [
         { teamId: TEAM_A, signedTotal: 1, displayTotal: 1 },
         { teamId: TEAM_B, signedTotal: 0, displayTotal: 0 },
       ],
       worldSubtotals: [],
     },
-    standings: [
-      { teamId: TEAM_A, signedTotal: 1, displayTotal: 1, name: "البنفسجي" },
-      { teamId: TEAM_B, signedTotal: 0, displayTotal: 0, name: "الأخضر" },
-    ],
+    standings: (
+      overrides.matchTotals ?? [
+        { teamId: TEAM_A, signedTotal: 1, displayTotal: 1 },
+        { teamId: TEAM_B, signedTotal: 0, displayTotal: 0 },
+      ]
+    ).map((score) => ({
+      ...score,
+      name: score.teamId === TEAM_A ? "الأخضر" : "الوردي",
+    })),
     ...(overrides.challengeResult
       ? { challengeResult: overrides.challengeResult }
       : {}),
@@ -256,6 +276,31 @@ function renderRouter(
             ? { participantId: options.participantId }
             : {})}
         />
+      </LiveSessionContext.Provider>
+    </QueryClientProvider>,
+  );
+}
+
+/** The Match shell around the stage, for the header scoreboard. */
+function renderShell(value: LiveSessionMatchSnapshot) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <LiveSessionContext.Provider
+        value={{
+          snapshot: snapshotOf(value),
+          connection: "connected",
+          nowMs: Date.parse("2026-08-07T10:05:00.000Z"),
+          command: vi.fn(),
+          gameplayCommand: vi.fn(),
+          resync: mocks.resync,
+        }}
+      >
+        <MatchShell actor="controller">
+          <MatchStageRouter actor="controller" />
+        </MatchShell>
       </LiveSessionContext.Provider>
     </QueryClientProvider>,
   );
@@ -410,6 +455,59 @@ describe("Top 5 ownership reveal", () => {
       />,
     );
     expect(screen.getByTestId("top5-result-unreadable")).toBeTruthy();
+  });
+});
+
+describe("the Match scoreboard counts challenge wins, not mechanic points", () => {
+  it("reads 1-0 after one challenge that finished 3-2 inside itself", () => {
+    // The server has already normalised this: one completed challenge, one
+    // Match point. The shell simply shows what the Match ledger says, while the
+    // result below it still shows the mechanic's own 3-2.
+    renderShell(
+      match({
+        challengeResult: top5Result(),
+        matchTotals: [
+          { teamId: TEAM_A, signedTotal: 1, displayTotal: 1 },
+          { teamId: TEAM_B, signedTotal: 0, displayTotal: 0 },
+        ],
+      }),
+    );
+    const scores = screen
+      .getByTestId("team-scoreboard")
+      .querySelectorAll(".akwaan-numeral");
+    expect([...scores].map((node) => node.textContent)).toEqual(["1", "0"]);
+    // Named for what it counts, so nobody reads it as a mechanic total.
+    expect(
+      screen.getByTestId("team-scoreboard").getAttribute("aria-label"),
+    ).toContain("التحديات");
+  });
+
+  it("shows the RYO challenge totals and its single Match point separately", () => {
+    renderRouter(match({ challengeResult: ryoResult() }));
+    // The mechanic's own signed totals: +1 / +2 across three items.
+    const totals = screen.getByTestId("ryo-mechanic-totals");
+    expect(totals.textContent).toContain("+2");
+    // And exactly one Match point, stated as its own line.
+    expect(screen.getByTestId("ryo-match-point").textContent).toContain(
+      "+1 نقطة للمباراة",
+    );
+  });
+
+  it("states a tied challenge as awarding no Match point", () => {
+    const tied = {
+      ...ryoResult(),
+      winnerTeamId: null,
+      tie: true,
+      matchPoints: [
+        { teamId: TEAM_A, points: 0 },
+        { teamId: TEAM_B, points: 0 },
+      ],
+    };
+    renderRouter(match({ challengeResult: tied }));
+    expect(screen.getByTestId("ryo-result-winner").dataset.tie).toBe("true");
+    expect(screen.getByTestId("ryo-match-point").textContent).toContain(
+      "لا نقطة مباراة",
+    );
   });
 });
 

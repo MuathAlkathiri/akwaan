@@ -44,12 +44,12 @@ export function SetupProgress({
               aria-current={active ? "step" : undefined}
               onClick={() => onEditWorld(occurrence.occurrenceIndex)}
               className={cn(
-                "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-black transition disabled:cursor-not-allowed",
+                "inline-flex items-center gap-2 rounded-[var(--radius)] border px-4 py-2 text-sm font-black transition disabled:cursor-not-allowed",
                 active
                   ? "border-primary/40 bg-primary/[0.08] text-primary"
                   : complete
-                    ? "border-[#22C55E]/30 bg-[#22C55E]/[0.09] text-[#15803D] hover:border-[#22C55E]/50"
-                    : "border-black/[0.08] bg-white text-slate-400",
+                    ? "border-success/30 bg-success-subtle text-success hover:border-success/50"
+                    : "border-black/[0.08] bg-card text-disabled-foreground",
               )}
             >
               {complete && <Check className="h-4 w-4" aria-hidden />}

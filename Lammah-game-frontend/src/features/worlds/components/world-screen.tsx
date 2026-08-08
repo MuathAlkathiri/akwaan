@@ -1,15 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo } from "react";
 import { Layers, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getMediaUrl } from "@/lib/api/media-url";
-import { cn } from "@/lib/utils";
 import { JourneyShell, JourneySection } from "./journey-shell";
 import { JourneyError } from "./journey-error";
-import { WorldCover, WorldIcon, washFor } from "./world-cover";
+import { ScopeCardMedia } from "./scope-card-media";
+import { WorldCover } from "./world-cover";
 import { WorldStats } from "./world-stats";
 import {
   usePlayableScopes,
@@ -49,7 +47,7 @@ export function WorldScreen({ worldId }: { worldId: string }) {
     return (
       <JourneyShell trail={[{ label: "العوالم", href: "/" }]}>
         {worldQuery.isLoading ? (
-          <div className="h-56 animate-pulse rounded-3xl border border-black/[0.05] bg-white" />
+          <div className="h-56 animate-pulse rounded-3xl border border-border bg-card" />
         ) : worldQuery.isError ? (
           <JourneyError
             title="تعذر تحميل العالم"
@@ -58,11 +56,11 @@ export function WorldScreen({ worldId }: { worldId: string }) {
             retrying={worldQuery.isFetching}
           />
         ) : (
-          <div className="rounded-3xl border border-black/[0.06] bg-white p-10 text-center shadow-[0_10px_30px_rgba(24,16,54,.05)]">
-            <p className="text-lg font-black text-slate-900">
+          <div className="rounded-3xl border border-border bg-card p-10 text-center shadow-[0_10px_30px_rgba(24,16,54,.05)]">
+            <p className="text-lg font-black text-foreground">
               هذا العالم غير متاح
             </p>
-            <Button asChild className="mt-6 rounded-2xl font-black">
+            <Button asChild className="mt-6 rounded-[var(--radius)] font-black">
               <Link href="/">العودة للعوالم</Link>
             </Button>
           </div>
@@ -88,7 +86,7 @@ export function WorldScreen({ worldId }: { worldId: string }) {
               {Array.from({ length: 3 }, (_, index) => (
                 <div
                   key={index}
-                  className="h-60 animate-pulse rounded-3xl border border-black/[0.05] bg-white"
+                  className="h-60 animate-pulse rounded-3xl border border-border bg-card"
                 />
               ))}
             </div>
@@ -108,21 +106,21 @@ export function WorldScreen({ worldId }: { worldId: string }) {
               ))}
             </ul>
           ) : (
-            <div className="rounded-3xl border border-black/[0.06] bg-white p-10 text-center text-sm leading-6 text-slate-500 shadow-[0_10px_30px_rgba(24,16,54,.05)]">
+            <div className="rounded-3xl border border-border bg-card p-10 text-center text-sm leading-6 text-muted-foreground shadow-[0_10px_30px_rgba(24,16,54,.05)]">
               لا توجد نطاقات جاهزة في هذا العالم بعد.
             </div>
           )}
         </JourneySection>
 
-        <section className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-primary/15 bg-white px-6 py-5 shadow-[0_10px_30px_rgba(24,16,54,.05)]">
-          <p className="text-sm leading-6 text-slate-500">
+        <section className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-primary/15 bg-card px-6 py-5 shadow-[0_10px_30px_rgba(24,16,54,.05)]">
+          <p className="text-sm leading-6 text-muted-foreground">
             تُجهَّز المباراة بالكامل قبل أن تبدأ: ثلاث محطات عوالم وأربعة نطاقات
             لكل محطة.
           </p>
-          <Button asChild size="lg" className="rounded-2xl font-black">
+          <Button asChild size="lg" className="rounded-[var(--radius)] font-black">
             <Link href={MATCH_SETUP_ROUTE}>
               <Play className="ml-2 h-5 w-5 fill-current" aria-hidden />
-              ابدأ لعبة جديدة
+              ابدأ مباراة جديدة
             </Link>
           </Button>
         </section>
@@ -133,38 +131,20 @@ export function WorldScreen({ worldId }: { worldId: string }) {
 
 /** A Scope as something to read about, not something to pick. */
 function ScopePreviewCard({ scope }: { scope: PlayableScope }) {
-  const imageUrl = getMediaUrl(scope.image?.url);
-
   return (
-    <article className="flex h-full min-h-[14rem] flex-col overflow-hidden rounded-3xl border border-black/[0.06] bg-white text-right shadow-[0_10px_30px_rgba(24,16,54,.06)]">
-      <span className="relative block h-28 w-full overflow-hidden">
-        <span
-          className={cn(
-            "absolute inset-0 bg-gradient-to-bl",
-            washFor(scope.slug || scope.id),
-          )}
-        />
-        {imageUrl && (
-          <Image
-            src={imageUrl}
-            alt=""
-            fill
-            unoptimized
-            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-            className="object-cover"
-          />
-        )}
-        <span className="absolute inset-0 bg-gradient-to-t from-white via-white/40 to-transparent" />
-      </span>
+    <article className="group flex h-full min-h-[15rem] flex-col overflow-hidden rounded-3xl border border-border bg-card text-right shadow-[0_10px_30px_rgba(24,16,54,.06)]">
+      <ScopeCardMedia scope={scope} />
 
-      <div className="flex flex-1 flex-col gap-2 px-5 pb-5">
-        <h3 className="text-lg font-black text-slate-900">{scope.name}</h3>
+      <div className="relative -mt-3 flex flex-1 flex-col gap-2 px-5 pb-4">
+        <h3 className="text-xl font-black tracking-tight text-foreground">
+          {scope.name}
+        </h3>
         {scope.description && (
-          <p className="line-clamp-2 text-sm leading-6 text-slate-500">
+          <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
             {scope.description}
           </p>
         )}
-        <p className="mt-auto inline-flex items-center gap-1.5 pt-1 text-xs font-bold text-[#15803D]">
+        <p className="mt-auto inline-flex items-center gap-1.5 pt-1 text-xs font-bold text-success">
           <Layers className="h-4 w-4" aria-hidden="true" />
           <span className="tabular-nums">{scope.readyContentItemCount}</span>
           عنصر جاهز
@@ -176,24 +156,52 @@ function ScopePreviewCard({ scope }: { scope: PlayableScope }) {
 
 function WorldHeader({ world }: { world: PlayableWorld }) {
   return (
-    <header className="relative overflow-hidden rounded-3xl border border-black/[0.06] bg-white shadow-[0_10px_30px_rgba(24,16,54,.06)]">
-      <span className="relative block h-36 w-full sm:h-44">
-        <WorldCover world={world} sizes="100vw" priority />
-      </span>
-      <div className="relative -mt-10 flex flex-wrap items-end gap-4 px-6 pb-6">
-        <WorldIcon world={world} className="h-20 w-20" />
-        <div className="min-w-0 flex-1 pb-1">
-          <h1 className="text-3xl font-black text-slate-900 sm:text-4xl">
+    <header className="relative grid items-center gap-6 py-3 md:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)] md:py-5">
+      <div className="relative mx-auto w-full max-w-[18rem] sm:max-w-[20rem] md:max-w-[22rem]">
+        <WorldArtworkAtmosphere world={world} />
+        <div className="relative rounded-full border border-primary/15 bg-card p-2 shadow-[0_16px_40px_rgba(24,16,54,.11)]">
+          <span
+            data-testid="world-hero-artwork"
+            className="relative block aspect-square overflow-hidden rounded-full bg-secondary"
+          >
+            <WorldCover
+              world={world}
+              sizes="(min-width: 768px) 22rem, 18rem"
+              priority
+            />
+          </span>
+        </div>
+      </div>
+
+      <div className="min-w-0 text-center md:text-right">
+        <div>
+          <h1 className="text-3xl font-black text-foreground sm:text-4xl">
             {world.name}
           </h1>
-          {world.description && (
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              {world.description}
-            </p>
-          )}
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            {world.description || "عالم جاهز للعب."}
+          </p>
         </div>
-        <WorldStats world={world} className="pb-1" />
+        <WorldStats world={world} className="mt-5 justify-center md:justify-start" />
       </div>
     </header>
+  );
+}
+
+/** Local atmosphere: the artwork itself supplies the World-specific colour. */
+function WorldArtworkAtmosphere({ world }: { world: PlayableWorld }) {
+  return (
+    <div
+      aria-hidden
+      data-testid="world-hero-background"
+      className="pointer-events-none absolute -inset-9"
+    >
+      <div className="absolute inset-[15%] overflow-hidden rounded-full opacity-[0.14] blur-3xl scale-110">
+        <WorldCover world={world} sizes="22rem" />
+      </div>
+      <div className="absolute inset-3 rounded-full border border-primary/[0.06]" />
+      <div className="absolute inset-0 rounded-full border border-primary/[0.04]" />
+      <div className="absolute inset-0 rounded-full opacity-30 bg-[radial-gradient(hsl(var(--foreground)/0.1)_1px,transparent_1px)] [background-size:28px_28px] [mask-image:radial-gradient(circle,transparent_45%,black_78%,transparent_100%)]" />
+    </div>
   );
 }

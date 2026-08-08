@@ -282,10 +282,7 @@ describe("challenge preflight", () => {
     // No QR anywhere on the board.
     expect(screen.queryByTestId("preflight-join-code")).toBeNull();
     await user.click(
-      within(screen.getByTestId("unified-position-2#slot_1")).getByRole(
-        "button",
-        { name: "اختيار هذا التحدي" },
-      ),
+      screen.getByTestId("unified-position-2#slot_1"),
     );
 
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalledTimes(1));
@@ -318,17 +315,17 @@ describe("challenge preflight", () => {
     // A real QR, carrying the absolute join URL for this origin.
     const qr = view.querySelector("svg[height]");
     expect(qr).toBeTruthy();
-    expect(view.textContent).toContain("/join/live-session/ABC123");
+    expect(view.textContent).not.toContain("/join/live-session/ABC123");
     // The requirement in words, from the numbers the server sent.
     expect(screen.getByTestId("preflight-requirement").textContent).toContain(
       "2 أو 3 لاعبين في كل فريق",
     );
     // Both teams, with their counts and their chips.
     expect(screen.getByTestId("preflight-team-team-a").textContent).toContain(
-      "1/3 متصل",
+      "1/3",
     );
     expect(screen.getByTestId("preflight-team-team-b").textContent).toContain(
-      "3/3 متصل",
+      "3/3",
     );
     expect(screen.getByTestId("preflight-team-team-b").textContent).toContain(
       "سارة",
@@ -501,7 +498,10 @@ describe("challenge preflight", () => {
     const waiting = screen.getByTestId("preflight-waiting");
     expect(waiting.textContent).toContain("ركّبها");
     expect(waiting.textContent).toContain("هذا التحدي يحتاج جوالات اللاعبين");
-    expect(waiting.textContent).toContain("البنفسجي: 1/3 متصل");
+    // The shared screen still names the team and its count; the counter itself is
+    // rendered as a tabular numeral so it reads left-to-right inside Arabic copy.
+    expect(waiting.textContent).toContain("البنفسجي");
+    expect(waiting.textContent).toContain("1/3");
   });
 
   it("shows no pairing panel for a mechanic that needs no phones", () => {

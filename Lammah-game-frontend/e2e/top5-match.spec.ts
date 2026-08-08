@@ -26,6 +26,16 @@ const TOP5_WORLD = process.env.E2E_TOP5_WORLD ?? "كرة قدم";
 const HOST = process.env.E2E_HOST_EMAIL ?? "top5smoke@test.com";
 const PASSWORD = process.env.E2E_HOST_PASSWORD ?? "Top5Smoke!42";
 
+/**
+ * Real Arabic names, including diacritics.
+ *
+ * "مُعاذ" carries a combining mark, which the old letters-and-numbers validation
+ * rejected on both the phone and the server — a player was told their own name
+ * was invalid. Using it here keeps that fixed in the browser, not just in a unit
+ * test.
+ */
+const ARABIC_NAMES = ["مُعاذ", "عبدالله", "مُحَمَّد", "خالد"] as const;
+
 /** Join order: two phones on team A, then two on team B. */
 const TEAM_OF_PHONE = [0, 0, 1, 1] as const;
 
@@ -67,7 +77,7 @@ test.describe("@top5 the unified Match in a browser", () => {
       contexts.push(context);
       const phone = await context.newPage();
       phones.push(phone);
-      await joinPhone(phone, joinCode, `لاعب ${index + 1}`, team);
+      await joinPhone(phone, joinCode, ARABIC_NAMES[index], team);
     }
 
     // ── 3. Launch, but only once the server can see all four phones ──────────
@@ -216,6 +226,14 @@ test.describe("@top5 the unified Match in a browser", () => {
       `${Math.max(...counters.map(Number))} من أفضل 5`,
     );
 
+    // ── 14b. The Match scoreboard counts the win, not the 3-2 ────────────────
+    // The whole point of Match scoring normalisation: whatever the mechanic's
+    // internal counters read, one completed challenge moves the board by one.
+    expect(
+      await matchScores(page),
+      "one completed challenge must read as 1-0, never as the mechanic's margin",
+    ).toEqual([1, 0]);
+
     // ── 15. A refresh during the result restores it ──────────────────────────
     await page.reload();
     await expect(page.getByTestId("unified-challenge-result")).toBeVisible({
@@ -232,6 +250,11 @@ test.describe("@top5 the unified Match in a browser", () => {
     expect(
       await page.locator('[data-testid^="top5-live-count-"]').allInnerTexts(),
     ).toEqual(counters);
+    // A reload re-imports nothing: the point was awarded once.
+    expect(
+      await matchScores(page),
+      "a refresh must not award the challenge a second time",
+    ).toEqual([1, 0]);
 
     // ── 17. Phones show result/waiting, not the board ────────────────────────
     for (const phone of phones) {
@@ -253,6 +276,8 @@ test.describe("@top5 the unified Match in a browser", () => {
     await expect(
       page.locator('[data-challenge-key="top-5"]').first(),
     ).toHaveAttribute("data-position-status", "completed");
+    // Continuing past the result is not a second award either.
+    expect(await matchScores(page)).toEqual([1, 0]);
 
     // ── 18. Another phone-required challenge, no reload on the phones ────────
     const loadCounts = phones.map((phone) => {
@@ -306,7 +331,7 @@ test.describe("@top5 the unified Match in a browser", () => {
       contexts.push(context);
       const phone = await context.newPage();
       phones.push(phone);
-      await joinPhone(phone, joinCode, `لاعب ${index + 1}`, team);
+      await joinPhone(phone, joinCode, ARABIC_NAMES[index], team);
     }
     await waitForPairedPhones(page);
     const start = page.getByTestId("preflight-start");
@@ -377,6 +402,28 @@ test.describe("@top5 the unified Match in a browser", () => {
       3,
     );
     await expect(page.getByTestId("ryo-result-winner")).toBeVisible();
+
+    // The mechanic's own signed totals are still shown in full — three items of
+    // Trust/Steal payoff, which is where a 2-1 board used to come from.
+    await expect(page.getByTestId("ryo-mechanic-totals")).toBeVisible();
+    // And the Match point is stated separately, as one point or none.
+    const matchPoint = page.getByTestId("ryo-match-point");
+    await expect(matchPoint).toBeVisible();
+    const tied =
+      (await page.getByTestId("ryo-result-winner").getAttribute("data-tie")) ===
+      "true";
+    await expect(matchPoint).toContainText(
+      tied ? "لا نقطة مباراة" : "+1 نقطة للمباراة",
+    );
+
+    // However the payoff matrix swung, the board moved by at most one.
+    const scores = await matchScores(page);
+    expect(
+      scores.reduce((sum, value) => sum + value, 0),
+      "three signed payoff swings must still be worth one Match point",
+    ).toBe(tied ? 0 : 1);
+    expect(Math.max(...scores)).toBe(tied ? 0 : 1);
+
     await page.getByTestId("challenge-result-continue").click();
     await expect(page.getByTestId("unified-board")).toBeVisible({
       timeout: 30_000,
@@ -385,6 +432,23 @@ test.describe("@top5 the unified Match in a browser", () => {
     for (const context of contexts) await context.close();
   });
 });
+
+/**
+ * The Match scoreboard in the shell header, highest first.
+ *
+ * Read from the shell rather than from any challenge surface: this is the number
+ * a room actually reads as "the score", and it must be a count of challenge wins.
+ */
+async function matchScores(page: Page): Promise<number[]> {
+  const numerals = page
+    .getByTestId("team-scoreboard")
+    .locator(".akwaan-numeral");
+  await expect(numerals).toHaveCount(2, { timeout: 30_000 });
+  const values = (await numerals.allInnerTexts()).map((text) =>
+    Number(text.trim()),
+  );
+  return values.sort((left, right) => right - left);
+}
 
 /**
  * The one phone currently offered a given control, waited for rather than sampled.
@@ -476,7 +540,7 @@ async function login(page: Page): Promise<void> {
  * registered is how this previously configured a World with no Top 5 on its board.
  */
 async function completeSetup(page: Page): Promise<void> {
-  await page.goto("/games/new/setup");
+  await page.goto("/matches/new");
   await expect(page.getByTestId("match-setup-wizard")).toBeVisible({
     timeout: 30_000,
   });
@@ -526,10 +590,13 @@ async function joinPhone(
   teamIndex: number,
 ): Promise<void> {
   await phone.goto(`/join/live-session/${joinCode}`);
-  await phone.locator("input").first().fill(displayName);
-  // The team picker is a listbox, so it is opened and then chosen from.
-  await phone.getByRole("combobox").click();
-  await phone.getByRole("option").nth(teamIndex).click();
+  await phone.locator("input[autocomplete='nickname']").fill(displayName);
+  // Two large team cards rather than a dropdown: on a phone, choosing a team is
+  // the whole interaction, so it is a tap target and not a menu.
+  await phone.locator("[data-team-option]").nth(teamIndex).click();
+  await expect(
+    phone.locator("[data-team-option]").nth(teamIndex),
+  ).toHaveAttribute("data-selected", "true");
   await phone.locator('button[type="submit"]').click();
   await expect(phone.locator("body")).not.toContainText("رمز غير صالح", {
     timeout: 30_000,

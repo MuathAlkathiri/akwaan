@@ -6,11 +6,14 @@ import {
 import { GameplayRuntimeState } from '../../live-game-sessions/domain/gameplay-runtime';
 import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.constants';
 import { Match } from '../domain/match';
+import { MatchBoardPositionKey } from '../domain/match-board-position-key';
 import { MatchStage } from '../domain/match.constants';
 import {
   MATCH_REPOSITORY,
   MatchRepository,
 } from '../persistence/match.repository';
+import { ScoringService } from '../../scoring/application/scoring.service';
+import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 import { ChallengeLauncherRegistry } from './challenge-launcher.registry';
 import { MATCH_CLOCK, MatchClock } from './match-clock';
 import { MatchTransitionNotifier } from './match-transition.notifier';
@@ -60,6 +63,7 @@ export class MatchReconciliationService
     @Inject(MATCH_REPOSITORY) private readonly matches: MatchRepository,
     private readonly launchers: ChallengeLauncherRegistry,
     private readonly collector: RuntimeScoreEventCollector,
+    private readonly scoring: ScoringService,
     @Inject(MATCH_CLOCK) private readonly clock: MatchClock,
     private readonly transitions: MatchTransitionNotifier,
   ) {}
@@ -128,8 +132,44 @@ export class MatchReconciliationService
       return { outcome: 'not_terminal', matchId: match.id };
     }
 
-    const events = this.collector.collect(input.runtimeState, input.runtimeId);
+    // Two different ledgers, deliberately kept apart.
+    //
+    // `mechanicEvents` is the mechanic's own accounting — RYO's signed per-item
+    // payoffs, for instance. It explains the recap and it decided the winner,
+    // and it is recorded on the result verbatim. It is *not* imported into the
+    // Match, which is why one RYO challenge no longer moves the scoreboard by
+    // its internal margin.
+    //
+    // The Match ledger receives exactly one thing: a single point for whoever
+    // the mechanic says won, or nothing at all on a tie.
+    const mechanicEvents = this.collector.collect(
+      input.runtimeState,
+      input.runtimeId,
+    );
     const summary = launcher.buildCompletionSummary(input.runtimeState);
+    const matchPointEvents = this.scoring.score(
+      SCORING_RULE_IDS.CHALLENGE_WIN,
+      {
+        winnerTeamId: summary.winnerTeamId ?? null,
+        teamIds: match.teams.map((team) => team.id),
+        challengeKey: summary.challengeKey,
+        positionKey: MatchBoardPositionKey.of(
+          current.occurrenceIndex,
+          current.slotKey,
+        ).value,
+        ...(summary.mechanicSummary
+          ? { mechanicSummary: summary.mechanicSummary }
+          : {}),
+      },
+      {
+        matchId: match.id,
+        challengeSessionId: input.runtimeId,
+        occurredAt: this.clock.now(),
+        // Deterministic: a second reconciliation of the same runtime mints the
+        // same id, so the ledger recognises it instead of adding a second point.
+        eventIdSeed: `challenge-win:${input.runtimeId}`,
+      },
+    );
     const revision = match.revision;
     // Captured before the aggregate moves on, so a deferral reports where the
     // Match is actually stuck rather than where it was about to go.
@@ -138,7 +178,8 @@ export class MatchReconciliationService
       commandId: reconciliationCommandId(input.runtimeId),
       now: this.clock.now(),
       runtimeId: input.runtimeId,
-      events,
+      events: matchPointEvents,
+      mechanicEvents: mechanicEvents.map((event) => ({ ...event })),
       summary: summary.details,
       winnerTeamId: summary.winnerTeamId ?? null,
       challengeKey: summary.challengeKey,
@@ -165,14 +206,16 @@ export class MatchReconciliationService
       runtimeId: input.runtimeId,
       slotKey: current.slotKey,
       challengeKey: current.challengeKey,
-      importedScoreEvents: events.length,
+      importedScoreEvents: matchPointEvents.length,
+      mechanicScoreEvents: mechanicEvents.length,
+      winnerTeamId: summary.winnerTeamId ?? null,
       stage: match.stage,
       status: match.status,
     });
     return {
       outcome: 'reconciled',
       matchId: match.id,
-      importedScoreEvents: events.length,
+      importedScoreEvents: matchPointEvents.length,
     };
   }
 

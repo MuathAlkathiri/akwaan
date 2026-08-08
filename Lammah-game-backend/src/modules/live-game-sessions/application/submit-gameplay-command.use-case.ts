@@ -47,6 +47,7 @@ import {
   DistributedResult,
 } from '../domain/distributed-information.plugin';
 import { GameplayObserverRegistry } from './gameplay-observer.registry';
+import { CLOSEST_MODE_KEY } from '../domain/closest-gameplay.plugin';
 
 @Injectable()
 export class SubmitGameplayCommand {
@@ -263,11 +264,16 @@ export class SubmitGameplayCommand {
         this.completeBombIfTerminal(session, runtime, command, now) ||
         this.completeTop5IfTerminal(runtime, command, now) ||
         this.completeDistributedIfTerminal(runtime, command, now);
+      const closestTerminal = this.completeClosestIfTerminal(
+        runtime,
+        command,
+        now,
+      );
       if (sessionChanged) {
         await context.saveSession(session, previousSessionRevision);
       }
       await context.saveRuntime(runtime, previousRuntimeRevision);
-      return { session, runtime, now, terminal };
+      return { session, runtime, now, terminal: terminal || closestTerminal };
     });
 
     const terminalState = result.session.serialize();
@@ -439,6 +445,33 @@ export class SubmitGameplayCommand {
       },
       now,
     });
+    runtime.complete(
+      `${command.commandId}:runtime-complete`,
+      command.actor.actorId,
+      now,
+    );
+    return true;
+  }
+
+  private completeClosestIfTerminal(
+    runtime: import('../domain/gameplay-runtime').GameplayRuntime,
+    command: GameplayRuntimeCommand,
+    now: Date,
+  ): boolean {
+    if (runtime.modeKey !== CLOSEST_MODE_KEY) return false;
+    const state = runtime.serialize();
+    if (state.runtimeState.phase !== 'completed') return false;
+    const round = state.activeRound;
+    if (round) {
+      runtime.completeRound({
+        roundId: round.id,
+        commandId: `${command.commandId}:round-complete`,
+        actorId: command.actor.actorId,
+        reason: 'closest-three-items-completed',
+        result: { resultsJson: state.runtimeState.resultsJson },
+        now,
+      });
+    }
     runtime.complete(
       `${command.commandId}:runtime-complete`,
       command.actor.actorId,

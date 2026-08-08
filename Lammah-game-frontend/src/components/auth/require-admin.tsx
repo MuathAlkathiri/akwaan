@@ -13,7 +13,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
     if (!isAuthenticated) {
       router.replace("/login");
     } else if (!isAdmin) {
-      router.replace("/games");
+      router.replace("/");
     }
   }, [isAdmin, isAuthenticated, isLoading, router]);
 

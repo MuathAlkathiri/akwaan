@@ -240,6 +240,12 @@ describe("pre-match setup wizard", () => {
     expect(
       screen.getByRole("heading", { name: "اختر 4 نطاقات لهذا العالم" }),
     ).toBeTruthy();
+    expect(screen.getAllByTestId("scope-card-media")).toHaveLength(8);
+    expect(screen.getAllByTestId("scope-artwork-pending")).toHaveLength(8);
+    expect(screen.getAllByTestId("scope-card-media")[0]).toHaveClass(
+      "h-40",
+      "sm:h-44",
+    );
     expect(screen.getByTestId("scope-count").textContent).toBe("0/4");
     // Three Scopes cannot continue.
     for (const name of ANIME_FIRST_FOUR.slice(0, 3)) {
@@ -339,7 +345,7 @@ describe("pre-match setup wizard", () => {
     await waitFor(() => expect(mocks.createMatch).toHaveBeenCalledTimes(1));
     expect(mocks.createSession).toHaveBeenCalledTimes(1);
     expect(mocks.createSession).toHaveBeenCalledWith({
-      teamNames: ["البنفسجي", "الأخضر"],
+      teamNames: ["الأخضر", "الوردي"],
     });
     // The session leaves the lobby over HTTP, with no phones involved.
     expect(mocks.markReady).toHaveBeenCalledWith("session-1", 0);

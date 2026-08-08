@@ -148,9 +148,9 @@ describe("home is a dashboard of Worlds", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain(
       "أهلاً",
     );
-    expect(screen.getByRole("link", { name: "ابدأ لعبة جديدة" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "ابدأ مباراة جديدة" })).toHaveAttribute(
       "href",
-      "/games/new/setup",
+      "/matches/new",
     );
     expect(document.body.textContent).not.toContain("لعبة أسئلة جماعية");
 
@@ -184,8 +184,14 @@ describe("the World page is browsing, not setup", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain(
       "كرة القدم",
     );
+    expect(screen.getByTestId("world-hero-artwork")).toHaveClass(
+      "aspect-square",
+      "rounded-full",
+    );
+    expect(screen.getByTestId("world-hero-background")).toBeInTheDocument();
     const region = screen.getByRole("region", { name: "نطاقات هذا العالم" });
     expect(within(region).getAllByRole("heading", { level: 3 })).toHaveLength(5);
+    expect(within(region).getAllByTestId("scope-card-media")).toHaveLength(5);
     expect(within(region).getByText("كأس العالم")).toBeTruthy();
   });
 
@@ -208,8 +214,8 @@ describe("the World page is browsing, not setup", () => {
     render(<WorldScreen worldId="id-football" />);
 
     expect(
-      screen.getByRole("link", { name: /ابدأ لعبة جديدة/ }),
-    ).toHaveAttribute("href", "/games/new/setup");
+      screen.getByRole("link", { name: /ابدأ مباراة جديدة/ }),
+    ).toHaveAttribute("href", "/matches/new");
   });
 
   it("hides a Scope with no usable board position", () => {

@@ -11,6 +11,7 @@ import { JourneyError } from "./journey-error";
 import { WorldCard } from "./world-card";
 import { usePlayableWorlds } from "../hooks/use-player-catalog";
 import { playableWorlds, selectFeaturedWorlds } from "../utils/featured-worlds";
+import { ARABIC_NOUNS, arabicCount } from "@/lib/arabic-plural";
 
 /**
  * The Akwaan home: a dashboard of Worlds, not a landing page.
@@ -30,10 +31,10 @@ export function WorldsHome() {
       <div className="space-y-10">
         <Welcome name={user?.fullName} worldCount={worlds.length} />
 
-        <Button asChild size="lg" className="rounded-2xl font-black shadow-[0_10px_30px_rgba(91,33,182,.2)]">
+        <Button asChild size="lg" className="rounded-[var(--radius)] font-black shadow-[0_10px_30px_hsl(219_45%_16%/0.2)]">
           <Link href={MATCH_SETUP_ROUTE}>
             <Play className="ml-2 h-5 w-5 fill-current" aria-hidden />
-            ابدأ لعبة جديدة
+            ابدأ مباراة جديدة
           </Link>
         </Button>
 
@@ -93,20 +94,20 @@ function Welcome({ name, worldCount }: { name?: string; worldCount: number }) {
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <p className="text-sm font-black text-[#15803D]">أكوان</p>
-        <h1 className="mt-1 text-3xl font-black text-slate-900 sm:text-4xl">
+        <p className="text-sm font-black text-success">أكوان</p>
+        <h1 className="mt-1 text-3xl font-black text-foreground sm:text-4xl">
           {name ? `أهلاً ${name}` : "أهلاً بك"}
         </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {worldCount
-            ? `${worldCount} عالم بانتظاركم. اختر عالماً وابدأ.`
+            ? `${arabicCount(worldCount, ARABIC_NOUNS.world)} بانتظاركم. اختر عالمًا وابدأ.`
             : "اختر عالماً وابدأ الجلسة."}
         </p>
       </div>
       <Button
         asChild
         variant="outline"
-        className="rounded-2xl border-primary/20 bg-white font-black text-primary hover:bg-primary/[0.06] hover:text-primary"
+        className="rounded-[var(--radius)] border-primary/20 bg-card font-black text-primary hover:bg-primary/[0.06] hover:text-primary"
       >
         <Link href="#all-worlds">
           <Compass className="ml-2 h-4 w-4" aria-hidden="true" />
@@ -137,7 +138,7 @@ export function CardSkeletons({
       {Array.from({ length: count }, (_, index) => (
         <div
           key={index}
-          className={`animate-pulse rounded-3xl border border-black/[0.05] bg-white ${className ?? "h-52"}`}
+          className={`animate-pulse rounded-3xl border border-border bg-card ${className ?? "h-52"}`}
         />
       ))}
     </div>
@@ -151,15 +152,15 @@ export function CardSkeletons({
  */
 export function EmptyWorlds({ isAuthenticated }: { isAuthenticated: boolean }) {
   return (
-    <div className="rounded-3xl border border-black/[0.06] bg-white p-10 text-center shadow-[0_10px_30px_rgba(24,16,54,.05)]">
-      <p className="text-lg font-black text-slate-900">
+    <div className="rounded-3xl border border-border bg-card p-10 text-center shadow-[0_10px_30px_rgba(24,16,54,.05)]">
+      <p className="text-lg font-black text-foreground">
         لا توجد عوالم متاحة بعد
       </p>
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
         سيظهر هنا كل عالم فور تفعيله.
       </p>
       {!isAuthenticated && (
-        <Button asChild className="mt-6 rounded-2xl font-black">
+        <Button asChild className="mt-6 rounded-[var(--radius)] font-black">
           <Link href="/login">تسجيل الدخول</Link>
         </Button>
       )}
