@@ -1,0 +1,35 @@
+{
+  "id": "naruto-biju-tail-middle",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": ["distributed-information"],
+  "patternId": "three-segment-race",
+  "prompt": {"ar": "رتّبوا الأرقام معًا وحددوا البيجو في المنتصف.", "en": "Order the numbers together and identify the middle tailed beast."},
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "match",
+    "acceptedAnswers": ["كوكوأو", "كوكو", "كوكواو"]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {"ar": "ما اسم البيجو الذي يقع رقم ذيله في منتصف الأرقام الثلاثة بعد ترتيبها؟"},
+    "segments": [
+      {"id": "A", "content": {"ar": "بيجوك: شوكاكو، وهو ذو ذيل واحد."}},
+      {"id": "B", "content": {"ar": "بيجوك: كوراما، وهو ذو تسعة ذيول."}},
+      {"id": "C", "content": {"ar": "قاعدة الترتيب: رتّبوا أرقام ذيول البيجو الثلاثة، والمطلوب من يقع رقمه في المنتصف. البيجو الثالث لديك ذو خمسة ذيول."}}
+    ],
+    "twoPlayerMergeOptions": [
+      {"firstParticipantSegmentIds": ["A", "C"], "secondParticipantSegmentIds": ["B"]},
+      {"firstParticipantSegmentIds": ["A", "B"], "secondParticipantSegmentIds": ["C"]}
+    ],
+    "supportedTeamSizes": [2, 3],
+    "authorSafetyConfirmation": true,
+    "explanation": "راجعت التوزيع، ولا يستطيع لاعب واحد حل اللغز بمفرده."
+  },
+  "status": "draft",
+  "metadata": {
+    "sources": ["Naruto databook / anime canon: Shukaku (1), Kokuo (5), Kurama (9) tail counts"],
+    "validationStatus": "draft",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

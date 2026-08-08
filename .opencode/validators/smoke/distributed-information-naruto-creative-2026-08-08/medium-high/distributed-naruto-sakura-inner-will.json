@@ -1,0 +1,55 @@
+{
+  "id": "distributed-naruto-sakura-inner-will",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": ["distributed-information"],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "حلّوا ألغازكم الفردية، وأعلنوا الحل الذي استخرجتموه، ثم اجمعوا الحلول الثلاثة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "match",
+    "acceptedAnswers": ["ساكورا هارونو", "هارونو ساكورا", "ساكورا", "هارونو"]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كل لاعب يحلّ لغزه الخاص وحده، ثم يعلن حلَّه. اجمعوا الحلول الثلاثة: من الشخصية الوحيدة في عالم ناروتو التي تنطبق عليها الدلائل الثلاثة كلها؟"
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "لغزك الخاص: ثلاثة بدأوا رحلتهم معًا — أحدهم يحلم بأن يصبح قائد القرية، وآخر يسعى للانتقام من أخيه، والثالثة تريد أن تثبت أن قوتها لا تقل عنهما. ما الفريق الذي جمعهم؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لغزك الخاص: إرادةٌ كامنة لا تظهر في الهدوء، تنفجر قوةً مدمرةً حين يمسّ الغضب أحدها؛ لقّبها أصحابها باسم الشخصية الثانية التي تسكنهم. ما اسم هذه القوة الداخلية؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لغزك الخاص: في غابة الامتحان هاجمها شريرٌ فأخضعها، فقفز الأشقر وضرب الأرض بقبضةٍ كسرت سيطرة الوهم. ما الحدث الذي نالته حينها؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {"firstParticipantSegmentIds": ["A", "B"], "secondParticipantSegmentIds": ["C"]},
+      {"firstParticipantSegmentIds": ["A", "C"], "secondParticipantSegmentIds": ["B"]},
+      {"firstParticipantSegmentIds": ["B", "C"], "secondParticipantSegmentIds": ["A"]}
+    ],
+    "supportedTeamSizes": [2, 3],
+    "authorSafetyConfirmation": true,
+    "explanation": "ألغازٌ مستقلة تُحلّ بمعرفة عالم ناروتو. أ: الفريق 7، ب: القوة الداخلية، ج: نالت إنقاذ ناروتو. أي دليلين يبقيان مرشحين اثنين (الفريق 7+القوة الداخلية: ساكورا/ناروتو، الفريق 7+الإنقاذ: ساكورا/ساسكي، القوة الداخلية+الإنقاذ: ساكورا/أوبيتو)، والدلائل الثلاثة تفرد ساكورا. لا عدّ ولا جمع."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": ["naruto.anime.main-continuity"],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

@@ -19,9 +19,11 @@ Run `python3 .opencode/validators/validate_distributed_information.py <paths>`. 
 
 The validator cannot prove safety of play; these remain editorial checks per item:
 
-- Every single segment is insufficient alone, and every one of the three canonical two-plus-one partitions (AB|C, AC|B, BC|A) is also insufficient alone, because the runtime draws a random partition for two-player teams.
-- Synthesis rather than recall: the item resolves by combining holdings, not by one participant's pre-existing knowledge.
-- The shared-link pool is finite and inferable from the public prompt, and no pair of clues resolves alone.
+- Every single segment is a genuine, self-contained mini-puzzle solvable alone by its holder using World, Scope, and Scope Knowledge; its answer is a derived World clue (a team, office, trait, relation, or symbol) that the player announces. The clue must not be the final truth itself.
+- The mini-puzzles never resolve by counting, summing, measuring frequency, totaling lists, or arithmetic; the final resolution is World-grounded deduction combining the three derived clues with shared World knowledge.
+- Every single clue is insufficient alone, and every one of the three canonical two-plus-one partitions (AB|C, AC|B, BC|A) is also insufficient alone, because the runtime draws a random partition for two-player teams.
+- Synthesis rather than recall: the item resolves by combining derived holdings, not by one participant's pre-existing knowledge, and no pair of derived clues resolves alone.
+- The shared-link pool is finite and inferable from the public prompt and Scope, and no pair of clues resolves alone.
 - Numeric tolerance and multiple-choice option set accept the intended answers and reject plausible wrong ones.
 - Scope, spoiler, and version boundaries hold; no sensitive or subjective material.
 

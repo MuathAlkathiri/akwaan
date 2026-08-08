@@ -18,13 +18,13 @@ Confusion, urgency, discovery, an aha moment, relief, wrong-answer frustration, 
 Both teams receive the same three ContentItems in independently randomized runtime order. Each item has one public prompt and three private segments. Teammates communicate; only the runtime-assigned answerer submits. Wrong submissions lock that team for five seconds while the main clock keeps running; the answer is never revealed during the item.
 
 ## Thinking Pattern
-Identify each holding, describe it precisely, combine A/B/C, reject misleading first interpretations, and agree on one machine-resolvable answer.
+Identify each holding, solve its mini-puzzle alone to derive a World clue, describe the clue precisely, combine the three derived clues with World knowledge, reject misleading first interpretations, and agree on one machine-resolvable answer.
 
 ## Success Pattern
-Every participant contributes necessary information, every possible two-player holding still needs the partner, synthesis creates an aha moment, and the item works equally for team sizes two and three.
+Every participant solves a genuine mini-puzzle and contributes necessary derived information, every possible two-player holding still needs the partner, synthesis creates an aha moment, and the item works equally for team sizes two and three.
 
 ## Failure Pattern
-One view solves alone, a two-segment holder solves without the partner, contribution is decorative, combination is mere transcription, wording is ambiguous, private data leaks, or resolution needs host judgment.
+One view solves alone, a two-segment holder solves without the partner, contribution is decorative (mere transcription or read-aloud), a clue is the final answer rather than a derived World fact, the puzzle resolves by counting or arithmetic instead of World knowledge, wording is ambiguous, private data leaks, or resolution needs host judgment.
 
 ## Input Contract
 Canonical ID and runtime/plugin key are `distributed-information`; owned Pattern and variant are `three-segment-race`; wrapper answer mode is `distributed`. Each ContentItem stores native `answerPayload` and `mechanicPayload`. Supported inner answer modes are `match`, `closest`, and `multiple_choice`. Team sizes are exactly `[2,3]`, and each Challenge uses exactly three ContentItems that both teams play in independently randomized order.
@@ -38,7 +38,7 @@ Exactly three independent ContentItems form one Challenge. Each item contains a 
 ## Allowed Content Patterns
 - `three-segment-race`
 
-Safe constructions inside it include combined total, missing member, shared link, cross-reference, sequence/order, count after filtering, and deterministic visual assembly. Any construction must leave every single segment and every two-segment holding unable to resolve alone.
+The canonical creative construction is the personal-puzzle model. Each segment is an independent mini-puzzle that one player solves alone using World, Scope, and Scope Knowledge; the puzzle's answer is a derived World clue the player announces. The three derived clues plus shared World knowledge isolate exactly one answer. Mini-puzzles must be self-contained, solvable alone, and never count, sum, measure frequency, total lists, or apply arithmetic; the final resolution is World-grounded deduction, never aggregation. Any construction must leave every single clue and every two-clue holding unable to resolve alone.
 
 ## Content Safety Rules
 Every segment must be necessary, distinct, verbally describable, private, and insufficient alone; every two-plus-one partition must also be insufficient alone because the runtime draws it at random. Reject sensitive fragmentation, subjective outcomes, spoiler/version violations, unsupported claims, and any item where knowledge replaces synthesis. Required confirmation: `راجعت التوزيع، ولا يستطيع لاعب واحد حل اللغز بمفرده.`
@@ -53,7 +53,7 @@ The mechanic is global; World, Scope, and Scope Knowledge provide only themed fa
 Validate canonical IDs; exact native objects; a non-empty Arabic public prompt; three unique A/B/C segments with distinct content; `[2,3]`; at least one exhaustive non-overlapping 2+1 merge with all three canonical partitions safe; safety confirmation when status is `ready`; supported inner mode; deterministic truth; no truth in mechanic data; no runtime-owned fields; no public/private leakage; no string-truth workaround; Scope evidence; and three distinct items per Challenge.
 
 ## Anti-patterns
-One sufficient segment, one-player-all-three distribution, any two-segment holding that solves alone, unsafe merge, public fragment, teammate or opponent leakage, duplicated truth, JSON-string payload, authored participant IDs, answerer schedules, item orders, lock timestamps, progress, score events, host entry, host judgment, subjective result, support for team size one or four, authored hints, or any authored state that only the runtime may produce.
+One sufficient segment, one-player-all-three distribution, any two-segment holding that solves alone, unsafe merge, public fragment, teammate or opponent leakage, duplicated truth, JSON-string payload, authored participant IDs, answerer schedules, item orders, lock timestamps, progress, score events, host entry, host judgment, subjective result, support for team size one or four, authored hints, count/sum/frequency/list-total constructions, decorative read-aloud segments, a segment whose answer is the final truth instead of a derived clue, or any authored state that only the runtime may produce.
 
 ## Contract Status
 

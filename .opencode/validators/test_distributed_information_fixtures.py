@@ -22,9 +22,9 @@ CASES={
  'missing_safety':case(lambda x:x['mechanicPayload'].pop('authorSafetyConfirmation')),
  'truth_in_mechanic':case(lambda x:x['mechanicPayload'].update(correctAnswer='hidden')),
  'runtime_field_in_mechanic':case(lambda x:x['mechanicPayload'].update(hint='لا توجد تلميحات في النظام')),
- 'segment_exposes_truth':case(lambda x:x['mechanicPayload']['segments'][0]['content'].update(ar='ساكورا هارونو')),
+ 'segment_exposes_truth':case(lambda x:x['mechanicPayload']['segments'][0]['content'].update(ar='كاكاشي هاتاكي')),
  'public_exposes_private':case(lambda x:x['mechanicPayload']['publicPrompt'].update(ar=x['mechanicPayload']['segments'][0]['content']['ar'])),
- 'public_truth_leakage':case(lambda x:x['mechanicPayload']['publicPrompt'].update(ar='الجملة الصحيحة هي ساكورا هارونو')),
+ 'public_truth_leakage':case(lambda x:x['mechanicPayload']['publicPrompt'].update(ar='الجملة الصحيحة هي كاكاشي هاتاكي')),
  'notes_payload_hack':case(lambda x:x['metadata'].update(notes={'payload':'bad'})),
 }
 

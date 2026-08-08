@@ -1,0 +1,55 @@
+{
+  "id": "distributed-naruto-obito-team-sharingan",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": ["distributed-information"],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "حلّوا ألغازكم الفردية، وأعلنوا الحل الذي استخرجتموه، ثم اجمعوا الحلول الثلاثة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "match",
+    "acceptedAnswers": ["أوبيتو أوتشيها", "أوتشيها أوبيتو", "أوبيتو", "توبي"]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كل لاعب يحلّ لغزه الخاص وحده، ثم يعلن حلَّه. اجمعوا الحلول الثلاثة: من الشخصية الوحيدة في عالم ناروتو التي تنطبق عليها الدلائل الثلاثة كلها؟"
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "لغزك الخاص: فريقٌ قاده الأصفر قبل أن يتقلّد منصب القرية؛ في الفريق تلميذٌ عُرف بأستاذ النسخ، وتلميذةٌ رحلت مبكرًا، وفارسٌ يرتدي نظارة ووعد أن يحمي زملاءه. ما الفريق الذي جمعهم؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لغزك الخاص: عينٌ لا تُرى إلّا عند فقدان عزيز؛ تمنح صاحبها رؤية الخيوط الرفيعة وتقليد الحركات وقراءة اللحظة القادمة. ما اسم هذه العين؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لغزك الخاص: تقنيةٌ تتيح الانتقال الفوري إلى موقعٍ وُسم بختم، فيخترق صاحبها المسافات بين ليلة وضحاها. ما نوع هذه التقنية؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {"firstParticipantSegmentIds": ["A", "B"], "secondParticipantSegmentIds": ["C"]},
+      {"firstParticipantSegmentIds": ["A", "C"], "secondParticipantSegmentIds": ["B"]},
+      {"firstParticipantSegmentIds": ["B", "C"], "secondParticipantSegmentIds": ["A"]}
+    ],
+    "supportedTeamSizes": [2, 3],
+    "authorSafetyConfirmation": true,
+    "explanation": "ألغازٌ مستقلة تُحلّ بمعرفة عالم ناروتو. أ: فريق الجيل الرابع، ب: الشارينغان، ج: تقنية المسافة اللحظية. أي دليلين يبقيان مرشحين اثنين (الفريق+الشارينغان: أوبيتو/كاكاشي، الفريق+المسافة: أوبيتو/ميناتو، الشارينغان+المسافة: أوبيتو/مادارا)، والدلائل الثلاثة تفرد أوبيتو. لا عدّ ولا جمع."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": ["naruto.anime.main-continuity"],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

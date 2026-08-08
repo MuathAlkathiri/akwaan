@@ -27,11 +27,16 @@ produce review-ready or production content while the runtime status is
 
 For `distributed-information` with `three-segment-race`, load its dedicated
 schema and validator. Plan exactly three independent ContentItems, each with
-native `answerPayload` and `mechanicPayload`. Every one of the three canonical
-2+1 partitions must be non-solving because the runtime deals a random partition
-to two-player teams. Runtime owns both team orders, answerer schedules, the
-135-second clock, five-second locks, progress, and score events. There is no
-hint mechanic and no in-race reveal; never author either.
+native `answerPayload` and `mechanicPayload`. Each segment is an independent
+mini-puzzle solved alone by its holder with World, Scope, and Scope Knowledge;
+its answer is the derived World clue the player announces, and the three clues
+plus World knowledge isolate one answer. Never use counting, sums, arithmetic,
+frequency, or list totals, and never let a segment be a decorative read-aloud.
+Every one of the three canonical 2+1 partitions must be non-solving because the
+runtime deals a random partition to two-player teams. Runtime owns both team
+orders, answerer schedules, the 135-second clock, five-second locks, progress,
+and score events. There is no hint mechanic and no in-race reveal; never author
+either.
 
 Never route by a legacy domain hierarchy. Never let research choose the mechanic.
 Every stage writes a unique file and preserves stable IDs.

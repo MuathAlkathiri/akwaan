@@ -25,5 +25,9 @@ unsupported claim or hidden assumption.
 For Distributed Information, plan the public prompt, exact truth, why A/B/C are
 each necessary, every one of the three canonical 2+1 partitions, why each
 two-segment holding still needs the partner (the runtime draws the partition at
-random), and the intended aha moment before drafting. Never author runtime
-state, hints, or in-race reveals.
+random), and the intended aha moment before drafting. Write each segment as an
+independent mini-puzzle the holder solves alone with World, Scope, and Scope
+Knowledge; the puzzle's answer is the derived World clue the player announces,
+and the three clues plus World knowledge isolate one answer. Never make the
+answer depend on counting, sums, arithmetic, frequency, or list totals. Never
+author runtime state, hints, or in-race reveals.

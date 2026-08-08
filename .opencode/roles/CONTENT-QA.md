@@ -18,9 +18,11 @@ Who Among Us must pass its authoring schema and negative fixtures, then remain
 `blocked` while the dedicated validator reports `runtime_contract_missing`.
 
 Distributed Information must pass its three supported-mode fixtures, all
-negative cases, exact A/B/C rules, every canonical 2+1 partition left unable to
-resolve alone, truth separation, visibility review, no runtime-owned fields, and
-set size of three.
+negative cases, exact A/B/C rules, the personal-puzzle model (each segment an
+independent mini-puzzle whose answer is a derived World clue, never a
+count/sum/frequency/list-total or arithmetic construction, never a decorative
+read-aloud), every canonical 2+1 partition left unable to resolve alone, truth
+separation, visibility review, no runtime-owned fields, and set size of three.
 
 ## Boundaries
 Do not silently repair upstream files, waive hard failures, import, or publish.

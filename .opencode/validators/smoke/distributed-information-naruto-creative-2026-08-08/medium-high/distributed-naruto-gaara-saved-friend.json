@@ -1,0 +1,55 @@
+{
+  "id": "distributed-naruto-gaara-saved-friend",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": ["distributed-information"],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "حلّوا ألغازكم الفردية، وأعلنوا الحل الذي استخرجتموه، ثم اجمعوا الحلول الثلاثة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "match",
+    "acceptedAnswers": ["غارا", "ساباكو نو غارا"]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كل لاعب يحلّ لغزه الخاص وحده، ثم يعلن حلَّه. اجمعوا الحلول الثلاثة: من الشخصية الوحيدة في عالم ناروتو التي تنطبق عليها الدلائل الثلاثة كلها؟"
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "لغزك الخاص: في عراكه مع الأشقر، قال له إنه يفهم وحدته، ثم ضرب الأرض بقبضته ليوقف غضبه ويرده عن قرية الأوراق. ما الحدث الذي ناله حينها؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لغزك الخاص: بدأ العلاقة عدوًّا يريد قتل الأشقر، وختمها صديقًا يعدُّه مثالًا يسير على خطاه. ما التحوّل الذي حدث في علاقتهما؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لغزك الخاص: في جوفه سكن وحشٌ من رمال حيّة، منحه دفاعًا تلقائيًا لكنه سلبه النوم؛ وحشٌ ذو ذيل واحد تعجز القرية عن ضبطه. ما الذي يحمله في جسده؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {"firstParticipantSegmentIds": ["A", "B"], "secondParticipantSegmentIds": ["C"]},
+      {"firstParticipantSegmentIds": ["A", "C"], "secondParticipantSegmentIds": ["B"]},
+      {"firstParticipantSegmentIds": ["B", "C"], "secondParticipantSegmentIds": ["A"]}
+    ],
+    "supportedTeamSizes": [2, 3],
+    "authorSafetyConfirmation": true,
+    "explanation": "ألغازٌ مستقلة تُحلّ بمعرفة عالم ناروتو. أ: نال إنقاذ ناروتو، ب: تحوّل من عدوّ إلى صديق، ج: حاوي وحشٍ ذي ذيل. أي دليلين يبقيان مرشحين اثنين (الإنقاذ+الصداقة: غارا/هيناتا، الإنقاذ+الحاوية: غارا/أوبيتو، الصداقة+الحاوية: غارا/ناروتو)، والدلائل الثلاثة تفرد غارا. لا عدّ ولا جمع."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": ["naruto.anime.main-continuity"],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

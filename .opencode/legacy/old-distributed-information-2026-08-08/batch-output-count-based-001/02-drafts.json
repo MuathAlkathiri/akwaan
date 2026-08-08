@@ -1,0 +1,156 @@
+{
+  "batchId": "anime-naruto-distributed-information-001",
+  "manifestIdentity": {
+    "world": "anime",
+    "scope": "anime.naruto",
+    "challengeType": "distributed-information",
+    "patternId": "three-segment-race"
+  },
+  "experiencePlan": {
+    "goal": "Three independent rukab-ha style synthesis puzzles where each of the three private fragments is necessary, no fragment or approved two-segment holding solves alone, and the combined A/B/C yields one deterministic answer.",
+    "socialDynamic": "Both teams race on the same three items; teammates verbally swap their private fragments, correct misleading first impressions, and converge on a single answer while the runtime assigns one answerer per team and item.",
+    "privateInfo": "Exactly three private segments A/B/C per item. Each segment holds a partial list, a partial rule, or a relative discriminator that only makes sense combined with the others.",
+    "publicInfo": "The public prompt, the answer mode and its options (for multiple_choice), and the runtime state (orders, answerer, clock, locks, progress).",
+    "decision": "One machine-resolvable value per item: a finite count (closest), a choice among public options (multiple_choice), or a name (match).",
+    "reveal": "Automatic reveal of the correct value in answerPayload; the aha is recognizing the combined picture (four team leaders, the snake-summoning Sannin, the middle Five-Tails).",
+    "successCondition": "Every participant contributes necessary information; each approved 2+1 holding still needs the partner; no view is decorative or read-aloud transcription; the item works identically for teams of two and three.",
+    "sequencing": "Item 1 teaches the combined-total interaction with role tags. Item 2 requires applying a distributed filtering rule. Item 3 asks for relative ordering across three values, the tactically richest.",
+    "tensionLevers": [
+      "partial counts that tempt an early confident answer",
+      "a filtering rule held by only one participant",
+      "an ordering puzzle where any two values leave the middle ambiguous"
+    ]
+  },
+  "duplicatePolicy": {
+    "preventConsecutiveObjectiveReuse": true,
+    "relationalReusable": true
+  },
+  "reusePolicy": "All three items are objective (machine-resolvable), so isReusableAcrossSessions=false on every item.",
+  "spoilerEndpoint": "Naruto and Naruto Shippuden anime continuity; no sequel-only or spoiler material referenced.",
+  "items": [
+    {
+      "itemId": "naruto-rookie-team-leaders",
+      "draft": {
+        "id": "naruto-rookie-team-leaders",
+        "scopeId": "anime.naruto",
+        "compatibleChallengeTypeIds": ["distributed-information"],
+        "patternId": "three-segment-race",
+        "prompt": {"ar": "اجمعوا قوائمكم وحددوا عدد القادة.", "en": "Combine your lists and determine the number of leaders."},
+        "answerMode": "distributed",
+        "answerPayload": {"mode": "closest", "correctValue": 4, "acceptedTolerance": 0},
+        "mechanicPayload": {
+          "variant": "three-segment-race",
+          "publicPrompt": {"ar": "كم عدد القادة (معلمي الفرق) بين الشخصيات المذكورة في بطاقاتكم؟"},
+          "segments": [
+            {"id": "A", "content": {"ar": "لديك: كاكاشي (قائد فريق)، ناروتو (عضو)، ساكورا (عضو)."}},
+            {"id": "B", "content": {"ar": "لديك: أسوما (قائد فريق)، غاي (قائد فريق)، إينو (عضو)، تشوجي (عضو)."}},
+            {"id": "C", "content": {"ar": "لديك: كوريناي (قائدة فريق)، شيكامارو (عضو)، هيناتا (عضو)، كيبا (عضو)."}}
+          ],
+          "twoPlayerMergeOptions": [
+            {"firstParticipantSegmentIds": ["A", "C"], "secondParticipantSegmentIds": ["B"]},
+            {"firstParticipantSegmentIds": ["A", "B"], "secondParticipantSegmentIds": ["C"]}
+          ],
+          "supportedTeamSizes": [2, 3],
+          "authorSafetyConfirmation": true,
+          "explanation": "راجعت التوزيع، ولا يستطيع لاعب واحد حل اللغز بمفرده."
+        },
+        "status": "draft",
+        "metadata": {
+          "sources": ["Naruto anime canon: Team 7 (Kakashi), Team 8 (Kurenai), Team 10 (Asuma), Team Guy (Might Guy)"],
+          "validationStatus": "draft",
+          "runtimeContractStatus": "fully_playable",
+          "runtimeBlocker": null
+        }
+      },
+      "draftNotes": "Combined-total construction. A holds one leader, B two, C one; only the summed view reaches 4. Each partial count is verifiably short of the total.",
+      "knownWarnings": []
+    },
+    {
+      "itemId": "naruto-sannin-summons",
+      "draft": {
+        "id": "naruto-sannin-summons",
+        "scopeId": "anime.naruto",
+        "compatibleChallengeTypeIds": ["distributed-information"],
+        "patternId": "three-segment-race",
+        "prompt": {"ar": "اجمعوا معلوماتكم واختاروا الإجابة الصحيحة.", "en": "Combine your information and select the correct answer."},
+        "answerMode": "distributed",
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "correctOptionId": "n1",
+          "options": [
+            {"id": "n0", "label": {"ar": "0"}},
+            {"id": "n1", "label": {"ar": "1"}},
+            {"id": "n2", "label": {"ar": "2"}},
+            {"id": "n3", "label": {"ar": "3"}}
+          ]
+        },
+        "mechanicPayload": {
+          "variant": "three-segment-race",
+          "publicPrompt": {"ar": "كم عدد السانين الثلاثة الذين حيوان استدعائهم من الأفاعي؟"},
+          "segments": [
+            {"id": "A", "content": {"ar": "جيرايا يستدعي الضفادع، وتسونادي تستدعي البزاقات."}},
+            {"id": "B", "content": {"ar": "أوروتشيمارو يستدعي الأفاعي."}},
+            {"id": "C", "content": {"ar": "قاعدة الحساب: يُحسب السانين فقط إذا كان حيوان استدعائه من الأفاعي تحديدًا، ولا تُحسب الضفادع ولا البزاقات."}}
+          ],
+          "twoPlayerMergeOptions": [
+            {"firstParticipantSegmentIds": ["A", "C"], "secondParticipantSegmentIds": ["B"]},
+            {"firstParticipantSegmentIds": ["A", "B"], "secondParticipantSegmentIds": ["C"]}
+          ],
+          "supportedTeamSizes": [2, 3],
+          "authorSafetyConfirmation": true,
+          "explanation": "راجعت التوزيع، ولا يستطيع لاعب واحد حل اللغز بمفرده."
+        },
+        "status": "draft",
+        "metadata": {
+          "sources": ["Naruto anime canon: Sannin summons — Jiraiya toads (Gamabunta), Tsunade slugs (Katsuyu), Orochimaru snakes (Manda)"],
+          "validationStatus": "draft",
+          "runtimeContractStatus": "fully_playable",
+          "runtimeBlocker": null
+        }
+      },
+      "draftNotes": "Filtered-count construction with a distributed rule. The counting rule lives only in C; the candidate values live only in A and B, so no view can apply the rule to the full set.",
+      "knownWarnings": []
+    },
+    {
+      "itemId": "naruto-biju-tail-middle",
+      "draft": {
+        "id": "naruto-biju-tail-middle",
+        "scopeId": "anime.naruto",
+        "compatibleChallengeTypeIds": ["distributed-information"],
+        "patternId": "three-segment-race",
+        "prompt": {"ar": "رتّبوا الأرقام معًا وحددوا البيجو في المنتصف.", "en": "Order the numbers together and identify the middle tailed beast."},
+        "answerMode": "distributed",
+        "answerPayload": {
+          "mode": "match",
+          "acceptedAnswers": ["كوكوأو", "كوكو", "كوكواو"]
+        },
+        "mechanicPayload": {
+          "variant": "three-segment-race",
+          "publicPrompt": {"ar": "ما اسم البيجو الذي يقع رقم ذيله في منتصف الأرقام الثلاثة بعد ترتيبها؟"},
+          "segments": [
+            {"id": "A", "content": {"ar": "بيجوك: شوكاكو، وهو ذو ذيل واحد."}},
+            {"id": "B", "content": {"ar": "بيجوك: كوراما، وهو ذو تسعة ذيول."}},
+            {"id": "C", "content": {"ar": "قاعدة الترتيب: رتّبوا أرقام ذيول البيجو الثلاثة، والمطلوب من يقع رقمه في المنتصف. البيجو الثالث لديك ذو خمسة ذيول."}}
+          ],
+          "twoPlayerMergeOptions": [
+            {"firstParticipantSegmentIds": ["A", "C"], "secondParticipantSegmentIds": ["B"]},
+            {"firstParticipantSegmentIds": ["A", "B"], "secondParticipantSegmentIds": ["C"]}
+          ],
+          "supportedTeamSizes": [2, 3],
+          "authorSafetyConfirmation": true,
+          "explanation": "راجعت التوزيع، ولا يستطيع لاعب واحد حل اللغز بمفرده."
+        },
+        "status": "draft",
+        "metadata": {
+          "sources": ["Naruto databook / anime canon: Shukaku (1), Kokuo (5), Kurama (9) tail counts"],
+          "validationStatus": "draft",
+          "runtimeContractStatus": "fully_playable",
+          "runtimeBlocker": null
+        }
+      },
+      "draftNotes": "Relative-ordering construction. With any two values the middle remains ambiguous; only the full {1, 5, 9} set pins the middle to Kokuo (Five-Tails). The answer name never appears in any segment.",
+      "knownWarnings": []
+    }
+  ],
+  "status": "drafting"
+}

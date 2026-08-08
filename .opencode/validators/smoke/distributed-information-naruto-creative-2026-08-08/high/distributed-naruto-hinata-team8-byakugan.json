@@ -1,0 +1,55 @@
+{
+  "id": "distributed-naruto-hinata-team8-byakugan",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": ["distributed-information"],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "حلّوا ألغازكم الفردية، وأعلنوا الحل الذي استخرجتموه، ثم اجمعوا الحلول الثلاثة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "match",
+    "acceptedAnswers": ["هيناتا هيوغا", "هيوغا هيناتا", "هيناتا"]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كل لاعب يحلّ لغزه الخاص وحده، ثم يعلن حلَّه. اجمعوا الحلول الثلاثة: من الشخصية الوحيدة في عالم ناروتو التي تنطبق عليها الدلائل الثلاثة كلها؟"
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "لغزك الخاص: فريقٌ يقوده قائدٌ يرافق كلبًا أسود، وتقوده رؤيةٌ ترى أبعد من الأفق؛ فيه متتبعٌ للأثر من عشيرة الحشرات، وفتاةٌ لعينها قُدّرت بـ«العين اللطيفة». ما الفريق الذي جمعهم؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لغزك الخاص: جيلٌ كامل من صغار القرية اجتازوا امتحان الشهادة معًا، عُرفوا بلقبٍ يحمل عددهم؛ لُقّبوا جيلًا واعدًا يحمل مستقبل القرية. ما اللقب الذي يحمل عدد هذا الجيل؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لغزك الخاص: بصرٌ خفيّ يرى خيوط الطاقة ويدرك الوهم قبل وقوعه؛ من يملك هذا البصر يرى الشبكة الخفية حول جسد كل نينجا ويبدّد الصور الزائفة. ما القدرة التي يمنحها هذا البصر لصاحبه؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {"firstParticipantSegmentIds": ["A", "B"], "secondParticipantSegmentIds": ["C"]},
+      {"firstParticipantSegmentIds": ["A", "C"], "secondParticipantSegmentIds": ["B"]},
+      {"firstParticipantSegmentIds": ["B", "C"], "secondParticipantSegmentIds": ["A"]}
+    ],
+    "supportedTeamSizes": [2, 3],
+    "authorSafetyConfirmation": true,
+    "explanation": "ألغازٌ مستقلة تُحلّ بمعرفة عالم ناروتو. أ: الفريق 8، ب: جيل كونوها الاثني عشر، ج: وعي الجينجتسو (القدرة على كشف الوهم ببصر الشاكرا). أي دليلين يبقيان مرشحين اثنين أو أكثر (الفريق 8+الجيل: هيناتا/كيبا/شينو، الفريق 8+الوعي: هيناتا/كوريناي، الجيل+الوعي: هيناتا/ساكورا)، والدلائل الثلاثة تفرد هيناتا. لا عدّ ولا جمع."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": ["naruto.anime.main-continuity"],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

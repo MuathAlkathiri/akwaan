@@ -1,0 +1,67 @@
+{
+  "batchId": "anime-naruto-distributed-information-001",
+  "world": {
+    "id": "anime",
+    "worldPath": ".opencode/skills/worlds/anime/WORLD.md"
+  },
+  "scope": {
+    "id": "anime.naruto",
+    "scopePath": ".opencode/skills/worlds/anime/scopes/naruto/SCOPE.md",
+    "knowledgePath": ".opencode/skills/worlds/anime/scopes/naruto/KNOWLEDGE.md"
+  },
+  "challengeType": {
+    "id": "distributed-information",
+    "skillPath": ".opencode/skills/challenge-types/distributed-information/SKILL.md"
+  },
+  "patternId": "three-segment-race",
+  "targetContentItemCount": 3,
+  "allowedAnswerModes": [
+    "distributed"
+  ],
+  "mediaPolicy": {
+    "mode": "text_only",
+    "allowedTypes": [],
+    "privateVisibilityRequired": true
+  },
+  "experienceGoal": "Three independent synthesis puzzles where every participant holds a necessary private fragment and teammates must combine A/B/C to produce one deterministic answer before the opposing team.",
+  "interactionConstraints": [
+    "exactly three independent ContentItems form the challenge",
+    "one public prompt plus exactly three private segments A/B/C per item",
+    "no single segment or approved two-segment holding is solvable alone",
+    "canonical 2-player 2+1 distribution via safe merges covering A/B/C exactly once",
+    "team sizes exactly [2, 3]",
+    "machine truth stored only in answerPayload; mechanicPayload holds only distributed material",
+    "authorSafetyConfirmation required for ready status",
+    "runtime owns team orders, answerer schedule, 135-second clock, five-second locks, progress, and score"
+  ],
+  "outputLanguage": "ar",
+  "duplicatePolicy": {
+    "preventConsecutiveObjectiveReuse": true,
+    "relationalReusable": true
+  },
+  "outputDirectory": ".output/contentitem-batches/anime/naruto/distributed-information-001/",
+  "assignedRoles": {
+    "researcher": {
+      "rolePath": ".opencode/roles/CONTENTITEM-RESEARCHER.md",
+      "outputFile": "01-research.json",
+      "assignee": null
+    },
+    "writer": {
+      "rolePath": ".opencode/roles/CONTENTITEM-WRITER.md",
+      "outputFile": "02-drafts.json",
+      "assignee": null
+    },
+    "reviewer": {
+      "rolePath": ".opencode/roles/CONTENTITEM-REVIEWER.md",
+      "outputFile": "03-review.json",
+      "assignee": null
+    },
+    "assetCurator": null,
+    "contentQa": {
+      "rolePath": ".opencode/roles/CONTENT-QA.md",
+      "outputFile": "05-qa.json",
+      "assignee": null
+    }
+  },
+  "status": "human_review"
+}

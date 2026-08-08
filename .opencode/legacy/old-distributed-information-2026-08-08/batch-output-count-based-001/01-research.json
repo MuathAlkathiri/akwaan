@@ -1,0 +1,51 @@
+{
+  "batchId": "anime-naruto-distributed-information-001",
+  "manifestIdentity": {
+    "world": "anime",
+    "scope": "anime.naruto",
+    "challengeType": "distributed-information",
+    "patternId": "three-segment-race"
+  },
+  "status": "complete",
+  "spoilerEndpoint": "Naruto and Naruto Shippuden anime continuity through its declared endpoint. No Boruto/sequel-only material, no games, no unmarked filler, and no death, identity, or transformation spoilers are referenced.",
+  "mechanicNote": "Mechanic, Pattern, and payload shape were already selected by the manifest (distributed-information + three-segment-race). Research verified only stable Scope material that can be divided into necessary private fragments and never chose or redesigned the mechanic.",
+  "evidence": [
+    {
+      "evidenceId": "E-ROOKIE-TEAM-LEADERS",
+      "claim": "The four Konoha rookie squads and their jonin leaders are stable through the anime: Team 7 led by Kakashi Hatake (Naruto, Sasuke, Sakura), Team 8 led by Kurenai Yuhi (Hinata, Shino, Kiba), Team 10 led by Asuma Sarutobi (Shikamaru, Ino, Choji), and Team Guy led by Might Guy (Rock Lee, Neji, Tenten). Counting only the four leaders gives exactly four qualifying entries.",
+      "source": "Naruto anime canon, team assignments as established in Part I and maintained through Shippuden",
+      "confidence": "high",
+      "spoilerBoundary": "within endpoint; no death or identity spoilers",
+      "blockers": []
+    },
+    {
+      "evidenceId": "E-SANNIN-SUMMONS",
+      "claim": "The three Legendary Sannin each have a stable primary summon animal: Jiraiya summons toads (Gamabunta, Mount Myoboku), Tsunade summons slugs (Katsuyu, Shikkotsu Forest), and Orochimaru summons snakes (Manda). Exactly one Sannin summons snakes.",
+      "source": "Naruto anime canon and licensed guides; Katsuyu/Gamabunta/Manda summon records",
+      "confidence": "high",
+      "spoilerBoundary": "within endpoint; no spoilers",
+      "blockers": []
+    },
+    {
+      "evidenceId": "E-TAILED-BEAST-TAILS",
+      "claim": "The nine tailed beasts map one-to-one to a tail count: Shukaku (1), Matatabi (2), Isobu (3), Son Goku (4), Kokuo (5), Saiken (6), Chomei (7), Gyuki (8), Kurama (9). For the triple {1, 5, 9}, the middle value is 5, which identifies Kokuo, the Five-Tails.",
+      "source": "Naruto databook / anime canon; Narutopedia tailed-beast tail-count records",
+      "confidence": "high",
+      "spoilerBoundary": "within endpoint; Kokuo's tail count is not a spoiler",
+      "blockers": []
+    }
+  ],
+  "ambiguityFindings": [
+    {
+      "findingId": "F-KOKUO-VILLAGE",
+      "note": "Some fan wikis misstate Kokuo's last jinchuriki village (one lists Hidden Cloud; canon is Iwagakure/Han). No host-village claim is used in the items, so the discrepancy cannot affect resolution.",
+      "source": "Fan wikis vs. Narutopedia canon"
+    },
+    {
+      "findingId": "F-TEAM-NUMBER",
+      "note": "Might Guy's squad is usually called 'Team Guy' in the anime rather than by a numeric designation. Items refer to role (leader) rather than team numbers, avoiding the naming ambiguity.",
+      "source": "Naruto anime canon"
+    }
+  ],
+  "blockers": []
+}

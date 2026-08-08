@@ -1,0 +1,118 @@
+{
+  "batchId": "anime-naruto-distributed-information-001",
+  "world": "anime",
+  "scope": "anime.naruto",
+  "challengeType": "distributed-information",
+  "patternId": "three-segment-race",
+  "status": "human_review",
+  "items": [
+    {
+      "id": "naruto-rookie-team-leaders",
+      "scopeId": "anime.naruto",
+      "compatibleChallengeTypeIds": ["distributed-information"],
+      "patternId": "three-segment-race",
+      "prompt": {"ar": "اجمعوا قوائمكم وحددوا عدد القادة.", "en": "Combine your lists and determine the number of leaders."},
+      "answerMode": "distributed",
+      "answerPayload": {"mode": "closest", "correctValue": 4, "acceptedTolerance": 0},
+      "mechanicPayload": {
+        "variant": "three-segment-race",
+        "publicPrompt": {"ar": "كم عدد القادة (معلمي الفرق) بين الشخصيات المذكورة في بطاقاتكم؟"},
+        "segments": [
+          {"id": "A", "content": {"ar": "لديك: كاكاشي (قائد فريق)، ناروتو (عضو)، ساكورا (عضو)."}},
+          {"id": "B", "content": {"ar": "لديك: أسوما (قائد فريق)، غاي (قائد فريق)، إينو (عضو)، تشوجي (عضو)."}},
+          {"id": "C", "content": {"ar": "لديك: كوريناي (قائدة فريق)، شيكامارو (عضو)، هيناتا (عضو)، كيبا (عضو)."}}
+        ],
+        "twoPlayerMergeOptions": [
+          {"firstParticipantSegmentIds": ["A", "C"], "secondParticipantSegmentIds": ["B"]},
+          {"firstParticipantSegmentIds": ["A", "B"], "secondParticipantSegmentIds": ["C"]}
+        ],
+        "supportedTeamSizes": [2, 3],
+        "authorSafetyConfirmation": true,
+        "explanation": "راجعت التوزيع، ولا يستطيع لاعب واحد حل اللغز بمفرده."
+      },
+      "status": "draft",
+      "metadata": {
+        "sources": ["Naruto anime canon: Team 7 (Kakashi), Team 8 (Kurenai), Team 10 (Asuma), Team Guy (Might Guy)"],
+        "validationStatus": "draft",
+        "runtimeContractStatus": "fully_playable",
+        "runtimeBlocker": null
+      }
+    },
+    {
+      "id": "naruto-sannin-summons",
+      "scopeId": "anime.naruto",
+      "compatibleChallengeTypeIds": ["distributed-information"],
+      "patternId": "three-segment-race",
+      "prompt": {"ar": "اجمعوا معلوماتكم واختاروا الإجابة الصحيحة.", "en": "Combine your information and select the correct answer."},
+      "answerMode": "distributed",
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "n1",
+        "options": [
+          {"id": "n0", "label": {"ar": "0"}},
+          {"id": "n1", "label": {"ar": "1"}},
+          {"id": "n2", "label": {"ar": "2"}},
+          {"id": "n3", "label": {"ar": "3"}}
+        ]
+      },
+      "mechanicPayload": {
+        "variant": "three-segment-race",
+        "publicPrompt": {"ar": "كم عدد السانين الثلاثة الذين حيوان استدعائهم من الأفاعي؟"},
+        "segments": [
+          {"id": "A", "content": {"ar": "جيرايا يستدعي الضفادع، وتسونادي تستدعي البزاقات."}},
+          {"id": "B", "content": {"ar": "أوروتشيمارو يستدعي الأفاعي."}},
+          {"id": "C", "content": {"ar": "قاعدة الحساب: يُحسب السانين فقط إذا كان حيوان استدعائه من الأفاعي تحديدًا، ولا تُحسب الضفادع ولا البزاقات."}}
+        ],
+        "twoPlayerMergeOptions": [
+          {"firstParticipantSegmentIds": ["A", "C"], "secondParticipantSegmentIds": ["B"]},
+          {"firstParticipantSegmentIds": ["A", "B"], "secondParticipantSegmentIds": ["C"]}
+        ],
+        "supportedTeamSizes": [2, 3],
+        "authorSafetyConfirmation": true,
+        "explanation": "راجعت التوزيع، ولا يستطيع لاعب واحد حل اللغز بمفرده."
+      },
+      "status": "draft",
+      "metadata": {
+        "sources": ["Naruto anime canon: Sannin summons — Jiraiya toads (Gamabunta), Tsunade slugs (Katsuyu), Orochimaru snakes (Manda)"],
+        "validationStatus": "draft",
+        "runtimeContractStatus": "fully_playable",
+        "runtimeBlocker": null
+      }
+    },
+    {
+      "id": "naruto-biju-tail-middle",
+      "scopeId": "anime.naruto",
+      "compatibleChallengeTypeIds": ["distributed-information"],
+      "patternId": "three-segment-race",
+      "prompt": {"ar": "رتّبوا الأرقام معًا وحددوا البيجو في المنتصف.", "en": "Order the numbers together and identify the middle tailed beast."},
+      "answerMode": "distributed",
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": ["كوكوأو", "كوكو", "كوكواو"]
+      },
+      "mechanicPayload": {
+        "variant": "three-segment-race",
+        "publicPrompt": {"ar": "ما اسم البيجو الذي يقع رقم ذيله في منتصف الأرقام الثلاثة بعد ترتيبها؟"},
+        "segments": [
+          {"id": "A", "content": {"ar": "بيجوك: شوكاكو، وهو ذو ذيل واحد."}},
+          {"id": "B", "content": {"ar": "بيجوك: كوراما، وهو ذو تسعة ذيول."}},
+          {"id": "C", "content": {"ar": "قاعدة الترتيب: رتّبوا أرقام ذيول البيجو الثلاثة، والمطلوب من يقع رقمه في المنتصف. البيجو الثالث لديك ذو خمسة ذيول."}}
+        ],
+        "twoPlayerMergeOptions": [
+          {"firstParticipantSegmentIds": ["A", "C"], "secondParticipantSegmentIds": ["B"]},
+          {"firstParticipantSegmentIds": ["A", "B"], "secondParticipantSegmentIds": ["C"]}
+        ],
+        "supportedTeamSizes": [2, 3],
+        "authorSafetyConfirmation": true,
+        "explanation": "راجعت التوزيع، ولا يستطيع لاعب واحد حل اللغز بمفرده."
+      },
+      "status": "draft",
+      "metadata": {
+        "sources": ["Naruto databook / anime canon: Shukaku (1), Kokuo (5), Kurama (9) tail counts"],
+        "validationStatus": "draft",
+        "runtimeContractStatus": "fully_playable",
+        "runtimeBlocker": null
+      }
+    }
+  ]
+}

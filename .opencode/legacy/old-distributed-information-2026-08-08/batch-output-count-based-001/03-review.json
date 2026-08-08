@@ -1,0 +1,65 @@
+{
+  "batchId": "anime-naruto-distributed-information-001",
+  "manifestIdentity": {
+    "world": "anime",
+    "scope": "anime.naruto",
+    "challengeType": "distributed-information",
+    "patternId": "three-segment-race"
+  },
+  "status": "review_complete",
+  "reasonCodeLegend": {
+    "DI_OK": "satisfies the Distributed Information experience (synthesis race)",
+    "PAT_OWN": "Pattern ownership respected (three-segment-race owned by distributed-information)",
+    "SCOPE_OK": "fits anime.naruto Scope and Knowledge within the spoiler endpoint",
+    "SCHEMA_OK": "valid native distributed-information schema (answerPayload + mechanicPayload)",
+    "MODE_OK": "supported inner mode (closest / multiple_choice / match)",
+    "RES_AUTO": "automatic deterministic resolution from answerPayload only",
+    "EV_OK": "facts supported by research evidence",
+    "ABC_NECESSARY": "each of A, B, C is necessary; no segment reveals the complete answer alone",
+    "PAIR_BLOCKED": "no approved two-segment holding solves without the partner",
+    "MERGE_OK": "every merge is an exhaustive non-overlapping 2+1 partition of A/B/C",
+    "SIZES_OK": "supportedTeamSizes exactly [2, 3]",
+    "CONFIRM_OK": "authorSafetyConfirmation present and true",
+    "TRUTH_SEP": "truth exists only in answerPayload; no truth keys in mechanicPayload",
+    "NO_LEAK": "no public/private truth leakage; no metadata.notes",
+    "NO_MEDIA": "no media required (text-only batch)",
+    "NO_RUNTIME": "no authored runtime state (orders, answerer, locks, progress, scores)",
+    "REVEAL_OK": "reveal produces recognition and aha"
+  },
+  "totals": {
+    "approve": 3,
+    "approve_with_edits": 0,
+    "return_for_repair": 0,
+    "reject": 0,
+    "move_to_other_challenge_type": 0,
+    "acceptedToQa": 3
+  },
+  "decisions": [
+    {
+      "itemId": "naruto-rookie-team-leaders",
+      "decision": "approve",
+      "reasonCodes": ["DI_OK", "PAT_OWN", "SCOPE_OK", "SCHEMA_OK", "MODE_OK", "RES_AUTO", "EV_OK", "ABC_NECESSARY", "PAIR_BLOCKED", "MERGE_OK", "SIZES_OK", "CONFIRM_OK", "TRUTH_SEP", "NO_LEAK", "NO_MEDIA", "NO_RUNTIME", "REVEAL_OK"],
+      "summary": "Combined-total construction (closest, answer 4). Solve-test: A alone yields one leader, B two, C one; no view reaches the total. A+B gives three leaders but cannot confirm C holds no fourth; A+C gives two but cannot confirm B; B+C likewise. Only the full A/B/C view sums to the four jonin sensei (Kakashi, Kurenai, Asuma, Guy). The 2+1 partitions {A,B}|{C} and {A,C}|{B} both leave the pair short of the answer.",
+      "requestedRepairs": [],
+      "assetEligible": false
+    },
+    {
+      "itemId": "naruto-sannin-summons",
+      "decision": "approve",
+      "reasonCodes": ["DI_OK", "PAT_OWN", "SCOPE_OK", "SCHEMA_OK", "MODE_OK", "RES_AUTO", "EV_OK", "ABC_NECESSARY", "PAIR_BLOCKED", "MERGE_OK", "SIZES_OK", "CONFIRM_OK", "TRUTH_SEP", "NO_LEAK", "NO_MEDIA", "NO_RUNTIME", "REVEAL_OK"],
+      "summary": "Filtered-count with a distributed rule (multiple_choice, answer 1). Solve-test: A names two Sannin summons, B names one, C alone holds the counting rule. A+B has every candidate but no rule, so it cannot filter; A+C and B+C have the rule but only a partial candidate set, so neither can produce a confident total. Only combining the rule (C) with all three summons pins the snake-summoning Sannin (Orochimaru). All merge partitions leave the pair unable to solve.",
+      "requestedRepairs": [],
+      "assetEligible": false
+    },
+    {
+      "itemId": "naruto-biju-tail-middle",
+      "decision": "approve",
+      "reasonCodes": ["DI_OK", "PAT_OWN", "SCOPE_OK", "SCHEMA_OK", "MODE_OK", "RES_AUTO", "EV_OK", "ABC_NECESSARY", "PAIR_BLOCKED", "MERGE_OK", "SIZES_OK", "CONFIRM_OK", "TRUTH_SEP", "NO_LEAK", "NO_MEDIA", "NO_RUNTIME", "REVEAL_OK"],
+      "summary": "Relative-ordering construction (match, answer Kokuo / Five-Tails). Solve-test: A holds {1}, B holds {9}, C holds the ordering rule plus {5}. Any two values leave the middle ambiguous (e.g. {5,9} could be ordered with a missing value below 5, between, or above 9). Only the full {1,5,9} pins the middle to 5, identifying Kokuo. The answer name appears in no segment, so no leakage. All merges leave the pair without the complete triple.",
+      "requestedRepairs": [],
+      "assetEligible": false
+    }
+  ],
+  "blockers": [],
+  "nextOwner": "contentQa (validate final set with the canonical validator)"
+}

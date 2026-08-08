@@ -1,0 +1,61 @@
+{
+  "id": "distributed-naruto-sasuke-sannin-choice",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": ["distributed-information"],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "حلّوا ألغازكم الفردية، وأعلنوا الحل الذي استخرجتموه، ثم اجمعوا الحلول الثلاثة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "multiple_choice",
+    "correctOptionId": "a",
+    "options": [
+      {"id": "a", "label": {"ar": "ساسكي"}},
+      {"id": "b", "label": {"ar": "ناروتو"}},
+      {"id": "c", "label": {"ar": "كاكاشي"}},
+      {"id": "d", "label": {"ar": "ميناتو"}}
+    ]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كل لاعب يحلّ لغزه الخاص وحده، ثم يعلن حلَّه. اجمعوا الحلول الثلاثة واختاروا من الخيارات الشخصية الوحيدة التي تجمعها الدلائل كلها."
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "لغزك الخاص: ثلاثة بدأوا رحلتهم معًا — أحدهم يحلم بأن يصبح قائد القرية، والآخر يسعى للانتقام من أخيه، والثالثة تحلم بأن تكون سيدة الشفاء. ما الفريق الذي جمعهم؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لغزك الخاص: جيلٌ من التلاميذ تتلمذوا على يد الأساتذة الأسطوريين الثلاثة الذين حملوا لقب الحكماء؛ منهم من درس على يد سيّد الثعابين، ومنهم من درس على يد ضفدع الجبل، ومنهم من درس على يد سيدة الشفاء. ما الصفة الجامعة لكل من تتلمذ على يد أحد هؤلاء الأساتذة؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لغزك الخاص: صفةٌ تُنسب لمن بلغ قمّة الموهبة منذ الصغر؛ أنهى أكاديمية النينجا في عامه الأول متفوقًا، وذكره زملاؤه بالعبقري. ما الصفة التي نالها؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {"firstParticipantSegmentIds": ["A", "B"], "secondParticipantSegmentIds": ["C"]},
+      {"firstParticipantSegmentIds": ["A", "C"], "secondParticipantSegmentIds": ["B"]},
+      {"firstParticipantSegmentIds": ["B", "C"], "secondParticipantSegmentIds": ["A"]}
+    ],
+    "supportedTeamSizes": [2, 3],
+    "authorSafetyConfirmation": true,
+    "explanation": "ألغازٌ مستقلة تُحلّ بمعرفة عالم ناروتو. أ: الفريق 7، ب: تلميذ سانين (تلميذ سيّد الثعابين)، ج: العبقرية. أي دليلين يبقيان مرشحين اثنين أو أكثر في الخيارات (الفريق 7+تلميذ سانين: ساسكي/ناروتو، الفريق 7+العبقرية: ساسكي/كاكاشي، تلميذ سانين+العبقرية: ساسكي/ميناتو)، والدلائل الثلاثة تفرد ساسكي. لا عدّ ولا جمع."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": ["naruto.anime.main-continuity"],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}
