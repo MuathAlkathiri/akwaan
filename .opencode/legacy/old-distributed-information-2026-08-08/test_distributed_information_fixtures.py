@@ -15,16 +15,18 @@ def case(fn):
 
 CASES={
  'two_segments':case(lambda x:x['mechanicPayload']['segments'].pop()),
- 'duplicate_segment_content':case(lambda x:x['mechanicPayload']['segments'][1]['content'].update(ar=x['mechanicPayload']['segments'][0]['content']['ar'])),
+ 'four_segments':case(lambda x:x['mechanicPayload']['segments'].append({'id':'D','content':{'ar':'إضافة'}})),
+ 'duplicate_segment_id':case(lambda x:x['mechanicPayload']['segments'][2].update(id='A')),
+ 'missing_merge':case(lambda x:x['mechanicPayload'].update(twoPlayerMergeOptions=[])),
  'merge_omits_segment':case(lambda x:x['mechanicPayload']['twoPlayerMergeOptions'][0].update(firstParticipantSegmentIds=['A'],secondParticipantSegmentIds=['B'])),
+ 'merge_duplicates_segment':case(lambda x:x['mechanicPayload']['twoPlayerMergeOptions'][0].update(firstParticipantSegmentIds=['A','B'],secondParticipantSegmentIds=['B'])),
  'one_player_all_three':case(lambda x:x['mechanicPayload']['twoPlayerMergeOptions'][0].update(firstParticipantSegmentIds=['A','B','C'],secondParticipantSegmentIds=[])),
  'unsupported_team_size':case(lambda x:x['mechanicPayload'].update(supportedTeamSizes=[2,4])),
- 'missing_safety':case(lambda x:x['mechanicPayload'].pop('authorSafetyConfirmation')),
+ 'missing_safety':case(lambda x:(x.update(status='ready'),x['metadata'].update(validationStatus='ready'),x['mechanicPayload'].pop('authorSafetyConfirmation'))),
  'truth_in_mechanic':case(lambda x:x['mechanicPayload'].update(correctAnswer='hidden')),
- 'runtime_field_in_mechanic':case(lambda x:x['mechanicPayload'].update(hint='لا توجد تلميحات في النظام')),
- 'segment_exposes_truth':case(lambda x:x['mechanicPayload']['segments'][0]['content'].update(ar='ساكورا هارونو')),
+ 'segment_exposes_truth':case(lambda x:x['mechanicPayload']['segments'][0]['content'].update(ar='الاسم النموذجي')),
  'public_exposes_private':case(lambda x:x['mechanicPayload']['publicPrompt'].update(ar=x['mechanicPayload']['segments'][0]['content']['ar'])),
- 'public_truth_leakage':case(lambda x:x['mechanicPayload']['publicPrompt'].update(ar='الجملة الصحيحة هي ساكورا هارونو')),
+ 'unresolvable_truth':case(lambda x:x['answerPayload'].update(mode='opinion')),
  'notes_payload_hack':case(lambda x:x['metadata'].update(notes={'payload':'bad'})),
 }
 

@@ -23,5 +23,7 @@ creates the intended social moment, resolves automatically, and contains no
 unsupported claim or hidden assumption.
 
 For Distributed Information, plan the public prompt, exact truth, why A/B/C are
-each necessary, every safe 2+1 merge, why each two-segment holder still needs the
-partner, and the intended aha moment before drafting. Never author runtime state.
+each necessary, every one of the three canonical 2+1 partitions, why each
+two-segment holding still needs the partner (the runtime draws the partition at
+random), and the intended aha moment before drafting. Never author runtime
+state, hints, or in-race reveals.

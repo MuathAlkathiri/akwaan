@@ -62,8 +62,10 @@ Every active output is a ContentItem with:
 - provenance and validation metadata.
 
 The runtime may support `ryo`, `multiple_choice`, `closest`, `match`, `vote`,
-`split`, `top_5`, and `distributed`. Every mode resolves without a human referee. Use the project's
-single Arabic normalization utility for accepted-text matching.
+`split`, `top_5`, and `distributed`. Every mode resolves without a human referee.
+Accepted-text matching uses the project's single Arabic normalization utility,
+except `distributed-information` `match`, which the runtime compares after simple
+trim, lowercase, and whitespace collapse.
 
 ## Core Families
 

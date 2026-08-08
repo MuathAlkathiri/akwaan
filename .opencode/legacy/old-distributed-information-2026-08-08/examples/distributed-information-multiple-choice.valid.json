@@ -1,0 +1,79 @@
+{
+  "id": "draft-distributed-cross-reference",
+  "scopeId": "games.example",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "طبّقوا القاعدة على القيم الموزعة واختاروا النتيجة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "multiple_choice",
+    "correctOptionId": "b",
+    "options": [
+      {
+        "id": "a",
+        "label": {"ar": "الخيار الأول"}
+      },
+      {
+        "id": "b",
+        "label": {"ar": "الخيار الثاني"}
+      },
+      {
+        "id": "c",
+        "label": {"ar": "الخيار الثالث"}
+      }
+    ]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "أي خيار ينتج بعد تطبيق القاعدة على البيانات الثلاثة؟"
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "لديك جدول الرموز بلا قيم."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لديك القيم بلا ترتيب الرموز."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لديك قاعدة الربط التي تحتاج الجدول والقيم."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": [
+          "A"
+        ],
+        "secondParticipantSegmentIds": [
+          "B",
+          "C"
+        ]
+      }
+    ],
+    "supportedTeamSizes": [
+      2,
+      3
+    ],
+    "authorSafetyConfirmation": true
+  },
+  "status": "draft",
+  "metadata": {
+    "sources": [],
+    "validationStatus": "draft",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

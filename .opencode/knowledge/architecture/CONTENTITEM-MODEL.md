@@ -24,4 +24,6 @@ source notes belong in metadata and are never exposed before resolution.
 `answerPayload` stores the one machine-resolvable truth and `mechanicPayload`
 stores `three-segment-race` gameplay material. It does not duplicate these into
 the conceptual interaction/resolution pair. Its dedicated schema follows the
-authoritative backend-to-authoring contract.
+authoritative backend-to-authoring contract, including the requirement that
+every one of the three canonical 2+1 partitions be non-solving because the
+runtime draws a random partition for two-player teams.

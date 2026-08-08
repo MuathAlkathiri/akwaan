@@ -1,58 +1,41 @@
 {
-  "id": "distributed-naruto-rule-choice",
+  "id": "naruto-twice-konoha-count",
   "scopeId": "anime.naruto",
   "compatibleChallengeTypeIds": [
     "distributed-information"
   ],
   "patternId": "three-segment-race",
   "prompt": {
-    "ar": "طبّقوا القاعدة الخاصة على الرقمين واختاروا الناتج."
+    "ar": "طابقوا القوائم ثم طبّقوا معيار القرية."
   },
   "answerMode": "distributed",
   "answerPayload": {
-    "mode": "multiple_choice",
-    "correctOptionId": "c",
-    "options": [
-      {
-        "id": "a",
-        "label": {"ar": "اثنا عشر"}
-      },
-      {
-        "id": "b",
-        "label": {"ar": "سبعة"}
-      },
-      {
-        "id": "c",
-        "label": {"ar": "سبعة عشر"}
-      },
-      {
-        "id": "d",
-        "label": {"ar": "ثمانية"}
-      }
-    ]
+    "mode": "closest",
+    "correctValue": 3,
+    "acceptedTolerance": 0
   },
   "mechanicPayload": {
     "variant": "three-segment-race",
     "publicPrompt": {
-      "ar": "طبّقوا القاعدة في البطاقة الثالثة على الرقمين واختاروا الناتج."
+      "ar": "كم من الشخصيات التي وردت في قائمتين بالضبط وُلِدت في قرية الورق؟"
     },
     "segments": [
       {
         "id": "A",
         "content": {
-          "ar": "رقمك: 4."
+          "ar": "قائمتك: ناروتو، ساسكي، ساكورا."
         }
       },
       {
         "id": "B",
         "content": {
-          "ar": "رقمك: 3."
+          "ar": "قائمتك: ناروتو، ساسكي، إيتاتشي."
         }
       },
       {
         "id": "C",
         "content": {
-          "ar": "القاعدة: اضرب الرقمين ثم أضف عدد القرى العظمى الخمس."
+          "ar": "قائمتك: ناروتو، ساكورا، إيتاتشي."
         }
       }
     ],
@@ -72,7 +55,7 @@
     ],
     "supportedTeamSizes": [2, 3],
     "authorSafetyConfirmation": true,
-    "explanation": "حاصل الضرب 12 ثم تُضاف القرى العظمى الخمس ليصبح الناتج 17؛ القاعدة مخفية في البطاقة الثالثة."
+    "explanation": "ساسكي وساكورا وإيتاتشي وردوا في قائمتين بالضبط وناروتو في الثلاث، والثلاثة وُلدوا في قرية الورق فيكون الجواب 3."
   },
   "status": "ready",
   "metadata": {

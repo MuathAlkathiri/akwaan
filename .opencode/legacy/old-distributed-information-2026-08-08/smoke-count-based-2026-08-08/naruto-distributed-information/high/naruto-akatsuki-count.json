@@ -1,58 +1,41 @@
 {
-  "id": "distributed-naruto-rule-choice",
+  "id": "naruto-akatsuki-count",
   "scopeId": "anime.naruto",
   "compatibleChallengeTypeIds": [
     "distributed-information"
   ],
   "patternId": "three-segment-race",
   "prompt": {
-    "ar": "طبّقوا القاعدة الخاصة على الرقمين واختاروا الناتج."
+    "ar": "اعددوا أعضاء الأكاتسكي بين الأسماء الموزعة."
   },
   "answerMode": "distributed",
   "answerPayload": {
-    "mode": "multiple_choice",
-    "correctOptionId": "c",
-    "options": [
-      {
-        "id": "a",
-        "label": {"ar": "اثنا عشر"}
-      },
-      {
-        "id": "b",
-        "label": {"ar": "سبعة"}
-      },
-      {
-        "id": "c",
-        "label": {"ar": "سبعة عشر"}
-      },
-      {
-        "id": "d",
-        "label": {"ar": "ثمانية"}
-      }
-    ]
+    "mode": "closest",
+    "correctValue": 8,
+    "acceptedTolerance": 0
   },
   "mechanicPayload": {
     "variant": "three-segment-race",
     "publicPrompt": {
-      "ar": "طبّقوا القاعدة في البطاقة الثالثة على الرقمين واختاروا الناتج."
+      "ar": "كم عدد شخصيات الأكاتسكي بين الأسماء المذكورة في البطاقات؟"
     },
     "segments": [
       {
         "id": "A",
         "content": {
-          "ar": "رقمك: 4."
+          "ar": "أسماءك: إيتاتشي، كيسامي، جيرايا."
         }
       },
       {
         "id": "B",
         "content": {
-          "ar": "رقمك: 3."
+          "ar": "أسماءك: ساسوري، ديدارا، هيدان."
         }
       },
       {
         "id": "C",
         "content": {
-          "ar": "القاعدة: اضرب الرقمين ثم أضف عدد القرى العظمى الخمس."
+          "ar": "أسماءك: كونان، باين، كاكوزو."
         }
       }
     ],
@@ -72,7 +55,7 @@
     ],
     "supportedTeamSizes": [2, 3],
     "authorSafetyConfirmation": true,
-    "explanation": "حاصل الضرب 12 ثم تُضاف القرى العظمى الخمس ليصبح الناتج 17؛ القاعدة مخفية في البطاقة الثالثة."
+    "explanation": "من الأسماء التسعة ثمانية من الأكاتسكي وجيرايا ليس منهم؛ لا يعرف أي لاعب إلا عدّ بطاقته."
   },
   "status": "ready",
   "metadata": {

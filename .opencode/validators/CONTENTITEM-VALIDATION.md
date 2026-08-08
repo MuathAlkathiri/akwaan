@@ -21,3 +21,10 @@ fixed participant, one private vote per actor, hidden partial totals, explicit
 self-vote and team-size policy, multiple-winner ties, social-only scoring,
 relational safety, reuse, and a proven runtime contract. Until then, default
 validation returns `runtime_contract_missing`.
+
+Distributed Information additionally requires native payloads, exact A/B/C
+segments with distinct content, team sizes `[2,3]`, all three canonical 2+1
+partitions non-solving alone, no truth or runtime-owned fields in mechanic data,
+no public/private leakage, a supported inner mode, the author safety
+confirmation, and exactly three items per Challenge. Run
+`validate_distributed_information.py` and its fixture suite.

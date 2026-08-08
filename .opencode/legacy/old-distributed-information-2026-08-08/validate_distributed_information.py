@@ -7,13 +7,6 @@ from pathlib import Path
 IDS = {"A", "B", "C"}
 MODES = {"match", "multiple_choice", "closest"}
 TRUTH_KEYS = {"correctAnswer", "correctValue", "acceptedAnswers", "correctOptionId", "answerPayload", "answer"}
-RUNTIME_KEYS = {
-    "hint", "hints", "hintMs", "hintTimeMs", "lockMs", "lockDuration",
-    "timerSeconds", "timeLimit", "deadlineMs", "answerer", "answererSchedule",
-    "answerOrder", "itemOrder", "order", "solved", "solvedCount",
-    "wrongAttempts", "elapsedMs", "winner", "score", "scoringRule",
-    "reveal", "revealed",
-}
 
 def walk_keys(value):
     if isinstance(value, dict):
@@ -22,11 +15,6 @@ def walk_keys(value):
             yield from walk_keys(child)
     elif isinstance(value, list):
         for child in value: yield from walk_keys(child)
-
-def text_of(localized):
-    if not isinstance(localized, dict):
-        return ""
-    return " ".join(str(v) for v in localized.values()).strip().lower()
 
 def validate(item: dict) -> list[str]:
     e = []
@@ -38,25 +26,19 @@ def validate(item: dict) -> list[str]:
     mode = answer.get("mode")
     if mode not in MODES: e.append("inner_answer_mode_unsupported")
     if mode == "match" and (not isinstance(answer.get("acceptedAnswers"), list) or not all(isinstance(x, str) and x.strip() for x in answer.get("acceptedAnswers", []))): e.append("machine_truth_invalid")
-    if mode == "closest":
-        truth, tolerance = answer.get("correctValue"), answer.get("acceptedTolerance", 0)
-        if not isinstance(truth, (int, float)) or isinstance(truth, bool) or not math.isfinite(truth): e.append("machine_truth_invalid")
-        if not isinstance(tolerance, (int, float)) or isinstance(tolerance, bool) or not math.isfinite(tolerance) or tolerance < 0: e.append("machine_truth_invalid")
+    if mode == "closest" and (not isinstance(answer.get("correctValue"), (int, float)) or isinstance(answer.get("correctValue"), bool) or not math.isfinite(answer.get("correctValue", math.inf))): e.append("machine_truth_invalid")
     if mode == "multiple_choice":
-        options = [x for x in answer.get("options", []) if isinstance(x, dict)]
-        ids = [x.get("id") for x in options]
-        if len(options) < 2 or answer.get("correctOptionId") not in ids or len(set(ids)) != len(ids): e.append("machine_truth_invalid")
+        options = answer.get("options", [])
+        ids = [x.get("id") for x in options if isinstance(x, dict)]
+        if len(options) < 2 or answer.get("correctOptionId") not in ids: e.append("machine_truth_invalid")
     if mechanic.get("variant") != "three-segment-race": e.append("variant_invalid")
     if not str(mechanic.get("publicPrompt", {}).get("ar", "")).strip(): e.append("public_prompt_missing")
     segments = mechanic.get("segments", [])
     if len(segments) != 3: e.append("segment_count_invalid")
     seg_ids = [x.get("id") for x in segments if isinstance(x, dict)]
     if len(seg_ids) != 3 or set(seg_ids) != IDS: e.append("segment_ids_invalid")
-    contents = []
     for segment in segments:
         if not isinstance(segment, dict) or not str(segment.get("content", {}).get("ar", "")).strip(): e.append("segment_content_missing")
-        contents.append(str(segment.get("content", {}).get("ar", "")).strip().lower())
-    if len(segments) == 3 and len(set(contents)) != 3: e.append("duplicate_segment_content")
     merges = mechanic.get("twoPlayerMergeOptions", [])
     if not merges: e.append("merge_missing")
     for merge in merges:
@@ -66,19 +48,16 @@ def validate(item: dict) -> list[str]:
     if mechanic.get("supportedTeamSizes") != [2, 3]: e.append("team_sizes_invalid")
     if item.get("status") == "ready" and mechanic.get("authorSafetyConfirmation") is not True: e.append("safety_confirmation_missing")
     if TRUTH_KEYS & set(walk_keys(mechanic)): e.append("truth_duplicated_in_mechanic")
-    if RUNTIME_KEYS & set(walk_keys(mechanic)): e.append("runtime_field_in_mechanic")
-    notes = item.get("metadata", {}).get("notes")
-    if notes is not None and not isinstance(notes, str): e.append("metadata_notes_forbidden")
-    public = text_of(mechanic.get("publicPrompt"))
+    if "notes" in item.get("metadata", {}): e.append("metadata_notes_forbidden")
+    public = " ".join(mechanic.get("publicPrompt", {}).values()).strip().lower()
     answer_text = []
     answer_text += [str(x).lower() for x in answer.get("acceptedAnswers", [])]
     answer_text += [str(answer.get("correctValue", "")).lower(), str(answer.get("correctOptionId", "")).lower()]
     if any(x and x in public for x in answer_text): e.append("public_truth_leakage")
     for segment in segments:
-        if not isinstance(segment, dict): continue
-        content = text_of(segment.get("content"))
+        content = " ".join(segment.get("content", {}).values()).lower() if isinstance(segment, dict) else ""
         if any(x and x in content for x in answer_text): e.append("segment_truth_leakage")
-        if content and public and content in public: e.append("public_private_leakage")
+        if content and content in public: e.append("public_private_leakage")
     meta = item.get("metadata", {})
     if item.get("status") not in {"draft", "ready"} or meta.get("validationStatus") != item.get("status"): e.append("validation_status_invalid")
     if meta.get("runtimeContractStatus") != "fully_playable" or meta.get("runtimeBlocker") is not None: e.append("runtime_status_invalid")

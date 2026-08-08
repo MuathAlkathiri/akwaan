@@ -1,5 +1,5 @@
 {
-  "id": "distributed-naruto-rule-choice",
+  "id": "naruto-sum-choice",
   "scopeId": "anime.naruto",
   "compatibleChallengeTypeIds": [
     "distributed-information"
@@ -11,48 +11,48 @@
   "answerMode": "distributed",
   "answerPayload": {
     "mode": "multiple_choice",
-    "correctOptionId": "c",
+    "correctOptionId": "a",
     "options": [
       {
         "id": "a",
-        "label": {"ar": "اثنا عشر"}
+        "label": {"ar": "ثمانية"}
       },
       {
         "id": "b",
-        "label": {"ar": "سبعة"}
+        "label": {"ar": "خمسة عشر"}
       },
       {
         "id": "c",
-        "label": {"ar": "سبعة عشر"}
+        "label": {"ar": "اثنان"}
       },
       {
         "id": "d",
-        "label": {"ar": "ثمانية"}
+        "label": {"ar": "خمسة وثلاثون"}
       }
     ]
   },
   "mechanicPayload": {
     "variant": "three-segment-race",
     "publicPrompt": {
-      "ar": "طبّقوا القاعدة في البطاقة الثالثة على الرقمين واختاروا الناتج."
+      "ar": "ما الناتج بعد تطبيق القاعدة على الرقمين؟"
     },
     "segments": [
       {
         "id": "A",
         "content": {
-          "ar": "رقمك: 4."
+          "ar": "رقمك: 3."
         }
       },
       {
         "id": "B",
         "content": {
-          "ar": "رقمك: 3."
+          "ar": "رقمك: 5."
         }
       },
       {
         "id": "C",
         "content": {
-          "ar": "القاعدة: اضرب الرقمين ثم أضف عدد القرى العظمى الخمس."
+          "ar": "القاعدة: اجمع الرقمين."
         }
       }
     ],
@@ -72,7 +72,7 @@
     ],
     "supportedTeamSizes": [2, 3],
     "authorSafetyConfirmation": true,
-    "explanation": "حاصل الضرب 12 ثم تُضاف القرى العظمى الخمس ليصبح الناتج 17؛ القاعدة مخفية في البطاقة الثالثة."
+    "explanation": "مجموع الرقمين 3 و5 يساوي 8؛ القاعدة في البطاقة الثالثة فلا تُعرف العملية من الرقمين وحدهما."
   },
   "status": "ready",
   "metadata": {

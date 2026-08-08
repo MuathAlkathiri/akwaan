@@ -26,10 +26,11 @@ actor, no fixed participant, no objective result, no partial tally, declared
 self-vote and team-size policy, multiple-winner ties, safety, reuse, and blocked
 runtime status. Never mark an authoring-only payload ready.
 
-For Distributed Information, solve-test A, B, C, every allowed two-segment
-holding, and each such view plus the public prompt. Reject solo solvability,
+For Distributed Information, solve-test A, B, C, and every possible two-segment
+holding (all three canonical 2+1 partitions) alone and with the public prompt.
+Reject solo solvability, any two-segment holding that resolves alone,
 read-aloud transcription, imbalance, ambiguity, leakage, size asymmetry,
-non-deterministic truth, or any runtime-owned field.
+non-deterministic truth, or any runtime-owned field, hint, or reveal.
 
 ## Owned Output
 `03-review.json` with one decision per stable item ID, contract checks, reason

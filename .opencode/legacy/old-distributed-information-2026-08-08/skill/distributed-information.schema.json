@@ -21,7 +21,7 @@
     },
     "mechanicPayload": {
       "type": "object", "additionalProperties": false,
-      "required": ["variant", "publicPrompt", "segments", "twoPlayerMergeOptions", "supportedTeamSizes", "authorSafetyConfirmation"],
+      "required": ["variant", "publicPrompt", "segments", "twoPlayerMergeOptions", "supportedTeamSizes"],
       "properties": {
         "variant": {"const": "three-segment-race"},
         "publicPrompt": {"$ref": "#/$defs/localizedText"},

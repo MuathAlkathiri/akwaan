@@ -1,67 +1,72 @@
 {
-  "id": "draft-distributed-link",
-  "scopeId": "media.anime",
+  "id": "distributed-naruto-sakura-link",
+  "scopeId": "anime.naruto",
   "compatibleChallengeTypeIds": [
     "distributed-information"
   ],
   "patternId": "three-segment-race",
   "prompt": {
-    "ar": "ادمجوا الروابط الخاصة وحددوا الاسم المشترك."
+    "ar": "ادمجوا الأدلة الخاصة وحددوا الشخصية الوحيدة المطابقة."
   },
   "answerMode": "distributed",
   "answerPayload": {
     "mode": "match",
     "acceptedAnswers": [
-      "الاسم النموذجي",
-      "اسم نموذجي"
+      "ساكورا هارونو",
+      "هارونو ساكورا",
+      "ساكورا",
+      "هارونو"
     ]
   },
   "mechanicPayload": {
     "variant": "three-segment-race",
     "publicPrompt": {
-      "ar": "ما الكيان الوحيد الذي تربطه الأدلة الثلاثة؟"
+      "ar": "ضمن فريق 7 وأستاذه، ما الشخصية الوحيدة التي تنطبق عليها الجمل الثلاث كلها؟"
     },
     "segments": [
       {
         "id": "A",
         "content": {
-          "ar": "دليل عن الانتماء لا يكفي وحده للتحديد."
+          "ar": "لست من عشيرة الأوتشيها."
         }
       },
       {
         "id": "B",
         "content": {
-          "ar": "دليل عن حدث مشترك بين عدة كيانات."
+          "ar": "لست الحاوية لذيل التاسع."
         }
       },
       {
         "id": "C",
         "content": {
-          "ar": "دليل زمني يفصل بين المرشحين بعد دمج الوصفين."
+          "ar": "لم أكن قائد وحدة الأنبو سابقًا."
         }
       }
     ],
     "twoPlayerMergeOptions": [
       {
-        "firstParticipantSegmentIds": [
-          "A",
-          "C"
-        ],
-        "secondParticipantSegmentIds": [
-          "B"
-        ]
+        "firstParticipantSegmentIds": ["A", "B"],
+        "secondParticipantSegmentIds": ["C"]
+      },
+      {
+        "firstParticipantSegmentIds": ["A", "C"],
+        "secondParticipantSegmentIds": ["B"]
+      },
+      {
+        "firstParticipantSegmentIds": ["B", "C"],
+        "secondParticipantSegmentIds": ["A"]
       }
     ],
-    "supportedTeamSizes": [
-      2,
-      3
-    ],
-    "authorSafetyConfirmation": true
+    "supportedTeamSizes": [2, 3],
+    "authorSafetyConfirmation": true,
+    "explanation": "دليل مرشّح مشترك: كل جملة تبقّي مرشحين على الأقل، والتقاطع الوحيد بين الجمل الثلاث هو ساكورا."
   },
-  "status": "draft",
+  "status": "ready",
   "metadata": {
-    "sources": [],
-    "validationStatus": "draft",
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
     "runtimeContractStatus": "fully_playable",
     "runtimeBlocker": null
   }

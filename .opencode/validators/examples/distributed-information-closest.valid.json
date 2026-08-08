@@ -1,66 +1,68 @@
 {
-  "id": "draft-distributed-total",
-  "scopeId": "sports.football",
+  "id": "distributed-naruto-twice-count",
+  "scopeId": "anime.naruto",
   "compatibleChallengeTypeIds": [
     "distributed-information"
   ],
   "patternId": "three-segment-race",
   "prompt": {
-    "ar": "اجمعوا الأدلة الخاصة وحددوا المجموع المطلوب."
+    "ar": "اجمعوا القوائم الخاصة واحسبوا الشخصيات المشتركة."
   },
   "answerMode": "distributed",
   "answerPayload": {
     "mode": "closest",
-    "correctValue": 34,
+    "correctValue": 2,
     "acceptedTolerance": 0
   },
   "mechanicPayload": {
     "variant": "three-segment-race",
     "publicPrompt": {
-      "ar": "ما مجموع القيم المطابقة للشرط بعد دمج معلوماتكم؟"
+      "ar": "كم شخصية وردت في قائمتين من القوائم الثلاث بالضبط؟"
     },
     "segments": [
       {
         "id": "A",
         "content": {
-          "ar": "لديك قيمتان؛ تعتمد صلاحية الأولى على قاعدة زميلك."
+          "ar": "قائمتك: ناروتو، ساسكي، ساكورا."
         }
       },
       {
         "id": "B",
         "content": {
-          "ar": "لديك قيمتان وعلامة تربط إحداهما بوصف لدى زميلك."
+          "ar": "قائمتك: ساسكي، إيتاتشي، كاكاشي."
         }
       },
       {
         "id": "C",
         "content": {
-          "ar": "لديك قاعدة الاختيار وقيمة إضافية مشروطة."
+          "ar": "قائمتك: ناروتو، نيجي، هيناتا."
         }
       }
     ],
     "twoPlayerMergeOptions": [
       {
-        "firstParticipantSegmentIds": [
-          "A",
-          "B"
-        ],
-        "secondParticipantSegmentIds": [
-          "C"
-        ]
+        "firstParticipantSegmentIds": ["A", "B"],
+        "secondParticipantSegmentIds": ["C"]
+      },
+      {
+        "firstParticipantSegmentIds": ["A", "C"],
+        "secondParticipantSegmentIds": ["B"]
+      },
+      {
+        "firstParticipantSegmentIds": ["B", "C"],
+        "secondParticipantSegmentIds": ["A"]
       }
     ],
-    "supportedTeamSizes": [
-      2,
-      3
-    ],
+    "supportedTeamSizes": [2, 3],
     "authorSafetyConfirmation": true,
-    "explanation": "مثال بنيوي غير إنتاجي لنمط المجموع المركب."
+    "explanation": "ناروتو وساسكي يظهران في قائمتين بالضبط، والباقون في قائمة واحدة؛ لا يمكن معرفة ذلك دون القوائم الثلاث."
   },
-  "status": "draft",
+  "status": "ready",
   "metadata": {
-    "sources": [],
-    "validationStatus": "draft",
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
     "runtimeContractStatus": "fully_playable",
     "runtimeBlocker": null
   }

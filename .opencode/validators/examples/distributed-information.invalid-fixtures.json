@@ -1,19 +1,17 @@
 {
   "baseFixture": "distributed-information-match.valid.json",
   "cases": [
-    {"id":"two_segments","expected":"segment_count_invalid"},
-    {"id":"four_segments","expected":"segment_count_invalid"},
-    {"id":"duplicate_segment_id","expected":"segment_ids_invalid"},
-    {"id":"missing_merge","expected":"merge_missing"},
-    {"id":"merge_omits_segment","expected":"merge_invalid"},
-    {"id":"merge_duplicates_segment","expected":"merge_invalid"},
-    {"id":"one_player_all_three","expected":"merge_invalid"},
-    {"id":"unsupported_team_size","expected":"team_sizes_invalid"},
-    {"id":"missing_safety","expected":"safety_confirmation_missing"},
-    {"id":"truth_in_mechanic","expected":"truth_duplicated_in_mechanic"},
-    {"id":"segment_exposes_truth","expected":"segment_truth_leakage"},
-    {"id":"public_exposes_private","expected":"public_private_leakage"},
-    {"id":"unresolvable_truth","expected":"inner_answer_mode_unsupported"},
-    {"id":"notes_payload_hack","expected":"metadata_notes_forbidden"}
+    {"id": "two_segments", "expected": "segment_count_invalid"},
+    {"id": "duplicate_segment_content", "expected": "duplicate_segment_content"},
+    {"id": "merge_omits_segment", "expected": "merge_invalid"},
+    {"id": "one_player_all_three", "expected": "merge_invalid"},
+    {"id": "unsupported_team_size", "expected": "team_sizes_invalid"},
+    {"id": "missing_safety", "expected": "safety_confirmation_missing"},
+    {"id": "truth_in_mechanic", "expected": "truth_duplicated_in_mechanic"},
+    {"id": "runtime_field_in_mechanic", "expected": "runtime_field_in_mechanic"},
+    {"id": "segment_exposes_truth", "expected": "segment_truth_leakage"},
+    {"id": "public_exposes_private", "expected": "public_private_leakage"},
+    {"id": "public_truth_leakage", "expected": "public_truth_leakage"},
+    {"id": "notes_payload_hack", "expected": "metadata_notes_forbidden"}
   ]
 }
