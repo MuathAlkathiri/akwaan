@@ -28,6 +28,46 @@ def text_of(localized):
         return ""
     return " ".join(str(v) for v in localized.values()).strip().lower()
 
+def candidate_geometry_errors(mode: str, answer: dict, mechanic: dict) -> list[str]:
+    """Enforce the distributed-information safety contract via candidateSets.
+
+    Each segment resolves to a candidate subset (option ids for MC, accepted
+    answer names for match, numeric values for closest). Runtime-safety
+    requires: every segment keeps >= 2 candidates, every two-player merge
+    keeps >= 2 candidates, and only the all-three merge collapses to exactly
+    the ground-truth answer.
+    """
+    e = []
+    sets = mechanic.get("candidateSets")
+    if not isinstance(sets, dict) or not {"A", "B", "C"} <= set(sets):
+        return ["candidate_sets_required"]
+    try:
+        cs = {k: list(sets[k]) for k in ("A", "B", "C")}
+    except Exception:
+        return ["candidate_sets_invalid"]
+    for k in ("A", "B", "C"):
+        if len(cs[k]) < 2:
+            e.append("candidate_singleton_segment")
+    for name, (x, y) in {"AB": ("A", "B"), "AC": ("A", "C"), "BC": ("B", "C")}.items():
+        inter = set(cs[x]) & set(cs[y])
+        if len(inter) < 2:
+            e.append(f"candidate_merge_{name}_ambiguous")
+    tri = set(cs["A"]) & set(cs["B"]) & set(cs["C"])
+    if len(tri) != 1:
+        e.append("candidate_triple_not_unique")
+    else:
+        only = next(iter(tri))
+        if mode == "multiple_choice":
+            if answer.get("correctOptionId") not in tri:
+                e.append("candidate_answer_mismatch")
+        elif mode == "match":
+            if only not in (answer.get("acceptedAnswers") or []):
+                e.append("candidate_answer_mismatch")
+        elif mode == "closest":
+            if only != answer.get("correctValue"):
+                e.append("candidate_answer_mismatch")
+    return e
+
 def validate(item: dict) -> list[str]:
     e = []
     if "distributed-information" not in item.get("compatibleChallengeTypeIds", []): e.append("challenge_type_invalid")
@@ -37,6 +77,7 @@ def validate(item: dict) -> list[str]:
     if not isinstance(answer, dict) or not isinstance(mechanic, dict): return sorted(set(e + ["native_payload_object_required"]))
     mode = answer.get("mode")
     if mode not in MODES: e.append("inner_answer_mode_unsupported")
+    e.extend(candidate_geometry_errors(mode, answer, mechanic))
     if mode == "match" and (not isinstance(answer.get("acceptedAnswers"), list) or not all(isinstance(x, str) and x.strip() for x in answer.get("acceptedAnswers", []))): e.append("machine_truth_invalid")
     if mode == "closest":
         truth, tolerance = answer.get("correctValue"), answer.get("acceptedTolerance", 0)

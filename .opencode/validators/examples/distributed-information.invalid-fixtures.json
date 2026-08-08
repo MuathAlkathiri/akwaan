@@ -12,6 +12,9 @@
     {"id": "segment_exposes_truth", "expected": "segment_truth_leakage"},
     {"id": "public_exposes_private", "expected": "public_private_leakage"},
     {"id": "public_truth_leakage", "expected": "public_truth_leakage"},
-    {"id": "notes_payload_hack", "expected": "metadata_notes_forbidden"}
+    {"id": "notes_payload_hack", "expected": "metadata_notes_forbidden"},
+    {"id": "candidate_singleton_segment", "expected": "candidate_singleton_segment"},
+    {"id": "candidate_merge_AB_ambiguous", "expected": "candidate_merge_AB_ambiguous"},
+    {"id": "candidate_triple_not_unique", "expected": "candidate_triple_not_unique"}
   ]
 }

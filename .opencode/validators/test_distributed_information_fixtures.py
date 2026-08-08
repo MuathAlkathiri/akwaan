@@ -26,6 +26,9 @@ CASES={
  'public_exposes_private':case(lambda x:x['mechanicPayload']['publicPrompt'].update(ar=x['mechanicPayload']['segments'][0]['content']['ar'])),
  'public_truth_leakage':case(lambda x:x['mechanicPayload']['publicPrompt'].update(ar='الجملة الصحيحة هي كاكاشي هاتاكي')),
  'notes_payload_hack':case(lambda x:x['metadata'].update(notes={'payload':'bad'})),
+ 'candidate_singleton_segment':case(lambda x:x['mechanicPayload'].update(candidateSets={'A':['كاكاشي هاتاكي','ناروتو أوزوماكي'],'B':['كاكاشي هاتاكي','ساسكي أوتشيها'],'C':['كاكاشي هاتاكي']})),
+ 'candidate_merge_AB_ambiguous':case(lambda x:x['mechanicPayload'].update(candidateSets={'A':['كاكاشي هاتاكي','ناروتو أوزوماكي'],'B':['ناروتو أوزوماكي','ساسكي أوتشيها'],'C':['كاكاشي هاتاكي','ساسكي أوتشيها']})),
+ 'candidate_triple_not_unique':case(lambda x:x['mechanicPayload'].update(candidateSets={'A':['كاكاشي هاتاكي','ناروتو أوزوماكي'],'B':['كاكاشي هاتاكي','ناروتو أوزوماكي'],'C':['كاكاشي هاتاكي','ناروتو أوزوماكي']})),
 }
 
 failed=False

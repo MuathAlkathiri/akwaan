@@ -21,12 +21,13 @@
     },
     "mechanicPayload": {
       "type": "object", "additionalProperties": false,
-      "required": ["variant", "publicPrompt", "segments", "twoPlayerMergeOptions", "supportedTeamSizes", "authorSafetyConfirmation"],
+      "required": ["variant", "publicPrompt", "segments", "twoPlayerMergeOptions", "candidateSets", "supportedTeamSizes", "authorSafetyConfirmation"],
       "properties": {
         "variant": {"const": "three-segment-race"},
         "publicPrompt": {"$ref": "#/$defs/localizedText"},
         "segments": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/segment"}},
         "twoPlayerMergeOptions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/merge"}},
+        "candidateSets": {"$ref": "#/$defs/candidateSets"},
         "supportedTeamSizes": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"enum": [2, 3]}},
         "authorSafetyConfirmation": {"type": "boolean"},
         "explanation": {"type": "string"}
@@ -38,6 +39,8 @@
   "$defs": {
     "localizedText": {"type": "object", "additionalProperties": false, "required": ["ar"], "properties": {"ar": {"type": "string", "minLength": 1}, "en": {"type": "string", "minLength": 1}}},
     "segment": {"type": "object", "additionalProperties": false, "required": ["id", "content"], "properties": {"id": {"enum": ["A", "B", "C"]}, "content": {"$ref": "#/$defs/localizedText"}, "media": {"type": "object"}}},
-    "merge": {"type": "object", "additionalProperties": false, "required": ["firstParticipantSegmentIds", "secondParticipantSegmentIds"], "properties": {"firstParticipantSegmentIds": {"type": "array", "items": {"enum": ["A", "B", "C"]}}, "secondParticipantSegmentIds": {"type": "array", "items": {"enum": ["A", "B", "C"]}}}}
+    "merge": {"type": "object", "additionalProperties": false, "required": ["firstParticipantSegmentIds", "secondParticipantSegmentIds"], "properties": {"firstParticipantSegmentIds": {"type": "array", "items": {"enum": ["A", "B", "C"]}}, "secondParticipantSegmentIds": {"type": "array", "items": {"enum": ["A", "B", "C"]}}}},
+    "candidateSets": {"type": "object", "additionalProperties": false, "required": ["A", "B", "C"], "properties": {"A": {"$ref": "#/$defs/candidateSet"}, "B": {"$ref": "#/$defs/candidateSet"}, "C": {"$ref": "#/$defs/candidateSet"}}},
+    "candidateSet": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": ["string", "number"]}}
   }
 }

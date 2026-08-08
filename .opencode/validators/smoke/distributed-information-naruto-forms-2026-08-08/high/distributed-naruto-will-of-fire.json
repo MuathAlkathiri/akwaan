@@ -1,0 +1,129 @@
+{
+  "id": "distributed-naruto-will-of-fire",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "حلّوا ألغازكم الفردية، وأعلنوا الحل الذي استخرجتموه، ثم اجمعوا الحلول الثلاثة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "multiple_choice",
+    "correctOptionId": "a",
+    "options": [
+      {
+        "id": "a",
+        "label": {
+          "ar": "ناروتو أوزوماكي"
+        }
+      },
+      {
+        "id": "b",
+        "label": {
+          "ar": "ساسكي أوتشيها"
+        }
+      },
+      {
+        "id": "c",
+        "label": {
+          "ar": "ساكورا هارونو"
+        }
+      },
+      {
+        "id": "d",
+        "label": {
+          "ar": "كاكاشي هاتاكي"
+        }
+      }
+    ]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كل لاعب يحلّ لغزه الخاص وحده، ثم يعلن حلَّه. اجمعوا الحلول الثلاثة واختاروا من الخيارات الشخصيةَ الوحيدة التي تجمعها الدلائل كلها."
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "لغزك الخاص: ثلاثةٌ رهنوا الرهانَ أمام معلمهم: مَن ينتزع الجرسين قبل الغداء لم يعُد إلى الأكاديمية، ومَن فشل بقي مربوطًا بجذعٍ في وضح النهار؛ ثلاثةً قبلوا الرهان معًا ثم أقسموا ألّا يتخلّى أحدٌ عن أحد. ما الفريق الذي جمعهم؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لغزك الخاص: هجومٌ يجمّع الشاكرا في الكفّ ثم يندفع صوب العدوّ: كرةٌ دوّارةٌ تسحق ما تقابله، أو برقٌ يسري بين الأصابع فيخرق ما أمامه. ممن أتقنوا هجومَ الكفّ الشهير في الحكاية؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لغزك الخاص: من ظلّت قدمُهم على أرض القرية ولم تنشقّ عنها: مَن غادر غدرًا فلا يُعدّ فيهم، ومَن بقي وفيًّا للقرية بقلبه وعينه حتى بعد أن طال به السفار. ما الصفة الجامعة لمن لم ينشقّوا عن القرية؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "B"
+        ],
+        "secondParticipantSegmentIds": [
+          "C"
+        ]
+      },
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "B"
+        ]
+      },
+      {
+        "firstParticipantSegmentIds": [
+          "B",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "A"
+        ]
+      }
+    ],
+    "candidateSets": {
+      "A": [
+        "a",
+        "b",
+        "c"
+      ],
+      "B": [
+        "a",
+        "b",
+        "d"
+      ],
+      "C": [
+        "a",
+        "c",
+        "d"
+      ]
+    },
+    "supportedTeamSizes": [
+      2,
+      3
+    ],
+    "authorSafetyConfirmation": true,
+    "explanation": "ألغازٌ مستقلة تُحلّ بمعرفة عالم ناروتو. أ: الطلاب الثلاثة في رهان الجرسين (مطابقة)، ب: أتقنوا هجومَ الكفّ (الراسنغان أو التشيدوري)، ج: لم ينشقّوا عن القرية (استبعاد). أي دليلين يبقيان خيارين (الرهان+الكفّ: ناروتو/ساسكي، الرهان+الولاء: ناروتو/ساكورا، الكفّ+الولاء: ناروتو/كاكاشي)، والثلاثة تفرد ناروتو. لا عدّ ولا جمع."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

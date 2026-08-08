@@ -24,7 +24,9 @@ validation returns `runtime_contract_missing`.
 
 Distributed Information additionally requires native payloads, exact A/B/C
 segments with distinct content, team sizes `[2,3]`, all three canonical 2+1
-partitions non-solving alone, no truth or runtime-owned fields in mechanic data,
-no public/private leakage, a supported inner mode, the author safety
-confirmation, and exactly three items per Challenge. Run
+partitions non-solving alone, machine-readable `candidateSets` (every segment
+set ≥2, every pair intersection ≥2, triple intersection exactly the ground
+truth), no truth or runtime-owned fields in mechanic data, no public/private
+leakage, a supported inner mode, the author safety confirmation, and exactly
+three items per Challenge. Run
 `validate_distributed_information.py` and its fixture suite.

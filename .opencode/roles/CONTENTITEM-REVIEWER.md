@@ -34,7 +34,11 @@ Then solve-test every possible two-segment holding (all three canonical 2+1
 partitions) alone and with the public prompt. Reject solo solvability, any
 two-segment holding that resolves alone, read-aloud transcription, imbalance,
 ambiguity, leakage, size asymmetry, non-deterministic truth, or any
-runtime-owned field, hint, or reveal.
+runtime-owned field, hint, or reveal. Confirm `mechanicPayload.candidateSets`
+is present and canon-derived: every segment set keeps at least two candidates,
+every pair intersection at least two, and the triple intersection is exactly
+the ground truth — and that no membership was bent, broadened, or
+reinterpreted to make the triangle come out clean.
 
 ## Owned Output
 `03-review.json` with one decision per stable item ID, contract checks, reason

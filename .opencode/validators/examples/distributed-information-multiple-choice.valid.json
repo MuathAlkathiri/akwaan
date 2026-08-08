@@ -15,19 +15,27 @@
     "options": [
       {
         "id": "a",
-        "label": {"ar": "إيتاتشي"}
+        "label": {
+          "ar": "إيتاتشي"
+        }
       },
       {
         "id": "b",
-        "label": {"ar": "أوبيتو"}
+        "label": {
+          "ar": "أوبيتو"
+        }
       },
       {
         "id": "c",
-        "label": {"ar": "أوروتشيمارو"}
+        "label": {
+          "ar": "أوروتشيمارو"
+        }
       },
       {
         "id": "d",
-        "label": {"ar": "كاكاشي"}
+        "label": {
+          "ar": "كاكاشي"
+        }
       }
     ]
   },
@@ -52,27 +60,62 @@
       {
         "id": "C",
         "content": {
-          "ar": "لغزك الخاص: صفةٌ تُنسب لمن بلغ قمّة الموهبة؛ أنهى صاحبها أكاديمية النينجا في زمنٍ قياسي، وأتقن فنّ اللهب من المحاولة الأولى في صغره. ما الصفة التي نالها؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+          "ar": "لغزك الخاص: عينٌ يرثها أصحابُها بالدم فترى حركةَ الخصم قبل أن يخطوَها؛ من يُحرم منها يستعيرُها عطيةً فيكافئ بها نبوغَه. من ارتبطت مسيرتُه بهذه العين ارتباطًا صريحًا؟ حلُّ اللغز هو الدليل الذي ستعلنه."
         }
       }
     ],
     "twoPlayerMergeOptions": [
       {
-        "firstParticipantSegmentIds": ["A", "B"],
-        "secondParticipantSegmentIds": ["C"]
+        "firstParticipantSegmentIds": [
+          "A",
+          "B"
+        ],
+        "secondParticipantSegmentIds": [
+          "C"
+        ]
       },
       {
-        "firstParticipantSegmentIds": ["A", "C"],
-        "secondParticipantSegmentIds": ["B"]
+        "firstParticipantSegmentIds": [
+          "A",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "B"
+        ]
       },
       {
-        "firstParticipantSegmentIds": ["B", "C"],
-        "secondParticipantSegmentIds": ["A"]
+        "firstParticipantSegmentIds": [
+          "B",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "A"
+        ]
       }
     ],
-    "supportedTeamSizes": [2, 3],
+    "supportedTeamSizes": [
+      2,
+      3
+    ],
     "authorSafetyConfirmation": true,
-    "explanation": "نموذج إبداعي: ألغازٌ مستقلة تُحلّ بمعرفة عالم ناروتو. أ: الأكاتسكي، ب: الأنبو، ج: العبقرية. داخل الخيارات يبقى كل دليلين مرشحين اثنين (أ+ب: إيتاتشي/أوبيتو، أ+ج: إيتاتشي/أوروتشيمارو، ب+ج: إيتاتشي/كاكاشي)، والدلائل الثلاثة مع المعرفة العالمية تفرد إيتاتشي. لا عدّ ولا جمع ولا حساب."
+    "explanation": "نموذج إبداعي: ألغازٌ مستقلة تُحلّ بمعرفة عالم ناروتو. أ: الأكاتسكي، ب: الأنبو/الخدمة السرية، ج: الارتباط بعين الشارينغان. أي دليلين يبقيان مرشحين اثنين (أ+ب: إيتاتشي/أوروتشيمارو، أ+ج: إيتاتشي/أوبيتو، ب+ج: إيتاتشي/كاكاشي)، والدلائل الثلاثة مع المعرفة العالمية تفرد إيتاتشي. لا عدّ ولا جمع ولا حساب.",
+    "candidateSets": {
+      "A": [
+        "a",
+        "b",
+        "c"
+      ],
+      "B": [
+        "a",
+        "c",
+        "d"
+      ],
+      "C": [
+        "a",
+        "b",
+        "d"
+      ]
+    }
   },
   "status": "ready",
   "metadata": {

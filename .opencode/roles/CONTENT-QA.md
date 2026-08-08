@@ -21,7 +21,10 @@ Distributed Information must pass its three supported-mode fixtures, all
 negative cases, exact A/B/C rules, the personal-puzzle model (each segment an
 independent mini-puzzle whose answer is a derived World clue, never a
 count/sum/frequency/list-total or arithmetic construction, never a decorative
-read-aloud), every canonical 2+1 partition left unable to resolve alone, truth
+read-aloud), every canonical 2+1 partition left unable to resolve alone,
+machine-readable `candidateSets` (segment sets ≥2, pair intersections ≥2,
+triple intersection exactly the ground truth, membership canon-derived and
+never bent to fit the triangle), truth
 separation, visibility review, no runtime-owned fields, and set size of three.
 
 ## Boundaries

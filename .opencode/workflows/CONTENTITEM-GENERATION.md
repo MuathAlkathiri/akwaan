@@ -33,7 +33,12 @@ its answer is the derived World clue the player announces, and the three clues
 plus World knowledge isolate one answer. Never use counting, sums, arithmetic,
 frequency, or list totals, and never let a segment be a decorative read-aloud.
 Every one of the three canonical 2+1 partitions must be non-solving because the
-runtime deals a random partition to two-player teams. Runtime owns both team
+runtime deals a random partition to two-player teams. Record that safety in
+`mechanicPayload.candidateSets`: per segment A/B/C the finite candidate subset
+its clue leaves standing (option IDs for `multiple_choice`, accepted answer
+names for `match`, numeric values for `closest`). Candidate membership derives
+from canon only; never bend, broaden, or reinterpret canon to make the
+candidate triangle come out clean. Runtime owns both team
 orders, answerer schedules, the 135-second clock, five-second locks, progress,
 and score events. There is no hint mechanic and no in-race reveal; never author
 either.

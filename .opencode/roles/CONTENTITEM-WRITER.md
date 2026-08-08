@@ -30,4 +30,7 @@ independent mini-puzzle the holder solves alone with World, Scope, and Scope
 Knowledge; the puzzle's answer is the derived World clue the player announces,
 and the three clues plus World knowledge isolate one answer. Never make the
 answer depend on counting, sums, arithmetic, frequency, or list totals. Never
-author runtime state, hints, or in-race reveals.
+author runtime state, hints, or in-race reveals. Record the safety in
+`mechanicPayload.candidateSets`: per segment A/B/C the finite candidate subset
+its clue leaves standing, with membership derived from canon only — never bend,
+broaden, or reinterpret canon to make the candidate triangle come out clean.
