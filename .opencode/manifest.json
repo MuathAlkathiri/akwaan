@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-08",
+  "generatedAt": "2026-08-09",
   "title": "Akwaan Active Content System manifest",
   "contentItemModes": [
     "ryo",
@@ -17,7 +17,7 @@
       "slug": "distributed-information",
       "name": "challenge-type-distributed-information",
       "patterns": [
-        "three-segment-race"
+        "shared-fragments"
       ],
       "skill": ".opencode/skills/challenge-types/distributed-information/SKILL.md"
     },
@@ -116,11 +116,14 @@
         "gta",
         "overwatch"
       ]
+    },
+    {
+      "slug": "puzzles",
+      "scopes": []
     }
   ],
   "validators": [
     "audit_active_architecture.py",
-    "test_distributed_information_fixtures.py",
     "test_who_among_us_fixtures.py",
     "validate_distributed_information.py",
     "validate_schema_examples.py",
@@ -128,6 +131,7 @@
     "validate_who_among_us.py"
   ],
   "legacyArchives": [
+    "distributed-information-world-clues-2026-08-09",
     "duplicate-workspaces-2026-08-08",
     "old-distributed-information-2026-08-08",
     "old-skills",

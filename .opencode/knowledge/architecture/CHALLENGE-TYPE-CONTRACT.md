@@ -8,3 +8,8 @@ Compatibility, Validation Rules, and Anti-patterns.
 
 ChallengeTypes are global. World-specific naming and presentation are
 configuration, not separate mechanics.
+
+Exception: per product direction, the `distributed-information` ChallengeType
+(ركّبها) is exclusively owned by Puzzle World (عالم الألغاز). It is not a
+generic ChallengeType intended to run across Anime, Football, Video Games, or
+other Worlds; its puzzles are self-contained and never require canon knowledge.

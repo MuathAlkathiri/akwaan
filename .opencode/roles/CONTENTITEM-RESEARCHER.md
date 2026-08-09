@@ -20,7 +20,7 @@ ambiguity, spoiler or version boundary, media anchors, blockers, and status.
 Research is complete when the Writer can use every supported claim without
 hidden conversation context. Unsupported or disputed claims remain blocked.
 
-For Distributed Information, gather stable facts and relationships that divide
-into independently useful fragments, plus aliases, ambiguity risks, and
-spoiler/version limits. Evidence must support synthesis rather than reward one
-participant's pre-existing recall.
+For Distributed Information, puzzles are self-contained: the instruction and
+fragments carry all solving material. Research verifies determinism only —
+exact names, spellings, numeric values, and any spoiler/version boundary — and
+never supplies canon facts that puzzle solving depends on.

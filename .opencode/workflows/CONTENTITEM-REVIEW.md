@@ -13,8 +13,11 @@ private voting, no partial tally, multiple-winner tie policy, minimum team size,
 social-only scoring, relational safety, and runtime-blocked status. A
 structurally valid draft remains blocked until its backend contract is proven.
 
-Distributed Information review attempts resolution from A, B, C, and every
-approved two-segment holding separately, always with the public prompt. Reject
-if any succeeds without the teammate, if synthesis becomes transcription, if
-the truth appears outside `answerPayload`, or if actor-specific visibility can
-leak teammate, opponent, future-item, or truth data.
+Distributed Information review attempts resolution from the instruction plus
+each fragment alone and then from the combined fragments. Reject if any fragment
+alone yields the answer, if the full puzzle is duplicated on one device, if a
+fake third fragment was authored for a three-player team, if trivia replaces the
+puzzle, if the item needs the host screen, if the truth appears outside
+`answerPayload`, if the answer is ambiguous without an explicit accepted-solution
+policy, or if actor-specific visibility can leak teammate, opponent, future-item,
+or truth data.

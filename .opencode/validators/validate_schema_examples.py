@@ -134,18 +134,6 @@ def main() -> int:
             ROOT / ".opencode/skills/challenge-types/who-among-us/who-among-us.schema.json",
             ROOT / ".opencode/validators/examples/who-among-us.valid-authoring.json",
         ),
-        (
-            ROOT / ".opencode/skills/challenge-types/distributed-information/distributed-information.schema.json",
-            ROOT / ".opencode/validators/examples/distributed-information-closest.valid.json",
-        ),
-        (
-            ROOT / ".opencode/skills/challenge-types/distributed-information/distributed-information.schema.json",
-            ROOT / ".opencode/validators/examples/distributed-information-match.valid.json",
-        ),
-        (
-            ROOT / ".opencode/skills/challenge-types/distributed-information/distributed-information.schema.json",
-            ROOT / ".opencode/validators/examples/distributed-information-multiple-choice.valid.json",
-        ),
     ]
     failed = False
     for schema_path, fixture_path in pairs:

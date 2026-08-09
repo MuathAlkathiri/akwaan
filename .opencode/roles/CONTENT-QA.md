@@ -17,15 +17,15 @@ counts alone never establish readiness.
 Who Among Us must pass its authoring schema and negative fixtures, then remain
 `blocked` while the dedicated validator reports `runtime_contract_missing`.
 
-Distributed Information must pass its three supported-mode fixtures, all
-negative cases, exact A/B/C rules, the personal-puzzle model (each segment an
-independent mini-puzzle whose answer is a derived World clue, never a
-count/sum/frequency/list-total or arithmetic construction, never a decorative
-read-aloud), every canonical 2+1 partition left unable to resolve alone,
-machine-readable `candidateSets` (segment sets ≥2, pair intersections ≥2,
-triple intersection exactly the ground truth, membership canon-derived and
-never bent to fit the triangle), truth
-separation, visibility review, no runtime-owned fields, and set size of three.
+Distributed Information must pass its dedicated validator, the shared-puzzle
+model (one instruction plus exactly two complementary fragments plus one
+machine-resolvable answer, fragments as literal puzzle pieces, never semantic
+clues), the two-participant and three-participant shapes (no fake third
+fragment), host-screen independence, no fragment or full-puzzle duplication,
+no trivia masquerading as puzzles, deterministic truth or an explicit
+multi-accepted-solution policy, truth separation, visibility review, no
+runtime-owned fields, and exactly three items per Challenge. Every item must
+remain authoring-only while the shared-fragments runtime contract is pending.
 
 ## Boundaries
 Do not silently repair upstream files, waive hard failures, import, or publish.

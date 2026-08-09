@@ -22,12 +22,12 @@ source notes belong in metadata and are never exposed before resolution.
 
 `distributed-information` uses the implementation-native separation:
 `answerPayload` stores the one machine-resolvable truth and `mechanicPayload`
-stores `three-segment-race` gameplay material. It does not duplicate these into
-the conceptual interaction/resolution pair. Its dedicated schema follows the
-authoritative backend-to-authoring contract, including the requirement that
-every one of the three canonical 2+1 partitions be non-solving because the
-runtime draws a random partition for two-player teams. `mechanicPayload` must
-carry the machine-readable `candidateSets` safety record — per segment A/B/C
-the finite candidate subset its clue leaves standing — whose geometry (segment
-sets ≥2, pair intersections ≥2, triple intersection exactly the ground truth)
-the validator enforces.
+stores `shared-fragments` gameplay material: the localized team `instruction`,
+exactly two private `fragments`, `[2,3]`, and the author safety confirmation. It
+does not duplicate these into the conceptual interaction/resolution pair. Each
+ContentItem is one shared puzzle. Distribution is runtime-owned: two
+participants hold one fragment each with the instruction randomly attached to
+one holder; three participants hold the two fragments plus an instruction-only
+third. The host screen carries no puzzle material. The runtime contract is
+`authoring_only` until the product backend migrates from the retired
+`three-segment-race` payload; see the canonical ركّبها definition.

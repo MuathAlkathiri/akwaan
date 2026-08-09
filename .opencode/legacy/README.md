@@ -26,6 +26,11 @@ Retirement archives (each with its own README):
   contract, replaced by the active Top 5 `keep-or-give` contract. Includes the
   classic pattern, schema, validator, and the historical development-pack repair
   report.
+- `distributed-information-world-clues-2026-08-09/`: the retired semantic
+  World-clue authoring material for ركّبها / Distributed Information
+  (`three-segment-race`, A/B/C segments, `candidateSets`, Naruto-forms smoke
+  batch), replaced by the active cooperative shared-fragments Puzzle World
+  model.
 - `duplicate-workspaces-2026-08-08/`: unique files rescued from the byte-for-byte
   identical `.opencode 2/3/4` workspaces before those directories were removed.
 - `old-skills/`: the former Lammah Skills tree (see above).

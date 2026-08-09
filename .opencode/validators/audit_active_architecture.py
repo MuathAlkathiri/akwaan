@@ -179,30 +179,14 @@ else:
 distributed_root = challenge_root / "distributed-information"
 distributed_required = [
     distributed_root / "SKILL.md",
-    distributed_root / "patterns" / "three-segment-race" / "PATTERN.md",
+    distributed_root / "patterns" / "shared-fragments" / "PATTERN.md",
     distributed_root / "distributed-information.schema.json",
     ACTIVE / "validators" / "DISTRIBUTED-INFORMATION.md",
     ACTIVE / "validators" / "validate_distributed_information.py",
-    ACTIVE / "validators" / "test_distributed_information_fixtures.py",
-    ACTIVE / "validators" / "examples" / "distributed-information.invalid-fixtures.json",
 ]
 for path in distributed_required:
     if not path.exists():
         errors.append(f"missing Distributed Information contract: {path.relative_to(ROOT)}")
-for fixture_name in [
-    "distributed-information-closest.valid.json",
-    "distributed-information-match.valid.json",
-    "distributed-information-multiple-choice.valid.json",
-]:
-    fixture = ACTIVE / "validators" / "examples" / fixture_name
-    if not fixture.exists():
-        errors.append(f"missing Distributed Information fixture: {fixture.relative_to(ROOT)}")
-        continue
-    item = json.loads(text(fixture))
-    errors.extend(
-        f"Distributed Information fixture: {error}"
-        for error in validate_distributed_information(item)
-    )
 
 # Example manifests contain exactly the schema-required top-level keys.
 schema_path = ACTIVE / "workflows" / "BATCH-MANIFEST.schema.json"

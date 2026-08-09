@@ -64,13 +64,15 @@ familiarity with the interaction, vary thematic material, and make item three
 feel tactically richer than item one.
 # Distributed Information / ركّبها
 
-This global mechanic is a simultaneous two-team race over exactly three
-independent puzzles. Each ContentItem has one public prompt and exactly three
-private segments, supporting team sizes two and three through safe 2+1 merges
-or one segment per participant. The runtime deals a random two-plus-one
-partition to two-player teams, so every one of the three canonical partitions
-must be non-solving. Content owns only truth and distributed gameplay material.
-Runtime owns random team orders, answerer assignment, the 135-second deadline,
-five-second wrong-result locks, progress, timeout comparison, and the single
-Match-point score event. There is no hint mechanic, and correct truth is never
-revealed during play.
+This Puzzle World mechanic is a cooperative shared-puzzle challenge raced
+between two teams over exactly three independent puzzles. Each ContentItem is
+one shared puzzle: a team instruction plus two secret fragments. With two
+participants the fragments are split between them and the instruction is
+randomly attached to one holder; with three participants the two fragments are
+held by two participants and the third holds the instruction. Assignments are
+shuffled. The host screen reveals no puzzle-solving information — only neutral
+match state. Content owns only truth and the puzzle material. Runtime owns
+random team orders, answerer assignment, the 135-second deadline, five-second
+wrong-result locks, progress, timeout comparison, and the single Match-point
+score event. There is no hint mechanic, and correct truth is never revealed
+during play.

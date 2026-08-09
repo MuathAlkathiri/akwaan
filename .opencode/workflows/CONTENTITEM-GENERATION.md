@@ -25,23 +25,21 @@ Generate only blocked authoring drafts using dynamic roster binding. Do not
 produce review-ready or production content while the runtime status is
 `runtime_contract_missing`.
 
-For `distributed-information` with `three-segment-race`, load its dedicated
+For `distributed-information` with `shared-fragments`, load its dedicated
 schema and validator. Plan exactly three independent ContentItems, each with
-native `answerPayload` and `mechanicPayload`. Each segment is an independent
-mini-puzzle solved alone by its holder with World, Scope, and Scope Knowledge;
-its answer is the derived World clue the player announces, and the three clues
-plus World knowledge isolate one answer. Never use counting, sums, arithmetic,
-frequency, or list totals, and never let a segment be a decorative read-aloud.
-Every one of the three canonical 2+1 partitions must be non-solving because the
-runtime deals a random partition to two-player teams. Record that safety in
-`mechanicPayload.candidateSets`: per segment A/B/C the finite candidate subset
-its clue leaves standing (option IDs for `multiple_choice`, accepted answer
-names for `match`, numeric values for `closest`). Candidate membership derives
-from canon only; never bend, broaden, or reinterpret canon to make the
-candidate triangle come out clean. Runtime owns both team
-orders, answerer schedules, the 135-second clock, five-second locks, progress,
-and score events. There is no hint mechanic and no in-race reveal; never author
-either.
+native `answerPayload` and `mechanicPayload`. Each item is one shared puzzle: a
+localized team `instruction`, exactly two complementary `fragments`, and one
+machine-resolvable answer. Choose a puzzle family; design one complete puzzle;
+write the instruction; fix the answer; split it into two complementary
+fragments; verify neither fragment alone solves; verify the two-participant
+shape (fragments split, instruction attached to one holder) and the
+three-participant shape (two fragments plus an instruction-only third). Never
+author a fake third fragment, runtime state, hints, participant identities, or
+in-race reveals. Runtime owns both team orders, answerer schedules, the
+135-second clock, five-second locks, progress, and score events. The host screen
+carries no puzzle material. While the shared-fragments runtime contract is
+pending, every item stays `authoring_only` with a nonempty `runtimeBlocker`, and
+no item may be marked ready.
 
 Never route by a legacy domain hierarchy. Never let research choose the mechanic.
 Every stage writes a unique file and preserves stable IDs.

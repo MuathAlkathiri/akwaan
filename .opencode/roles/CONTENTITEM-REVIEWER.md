@@ -26,19 +26,19 @@ actor, no fixed participant, no objective result, no partial tally, declared
 self-vote and team-size policy, multiple-winner ties, safety, reuse, and blocked
 runtime status. Never mark an authoring-only payload ready.
 
-For Distributed Information, solve-test each segment's mini-puzzle alone and
-confirm it yields a derived World clue (not the final truth and not a read-aloud
-transcription). Confirm the mini-puzzles need World, Scope, and Scope Knowledge
-and never resolve by counting, sums, arithmetic, frequency, or list totals.
-Then solve-test every possible two-segment holding (all three canonical 2+1
-partitions) alone and with the public prompt. Reject solo solvability, any
-two-segment holding that resolves alone, read-aloud transcription, imbalance,
-ambiguity, leakage, size asymmetry, non-deterministic truth, or any
-runtime-owned field, hint, or reveal. Confirm `mechanicPayload.candidateSets`
-is present and canon-derived: every segment set keeps at least two candidates,
-every pair intersection at least two, and the triple intersection is exactly
-the ground truth — and that no membership was bent, broadened, or
-reinterpreted to make the triangle come out clean.
+For Distributed Information, solve-test the puzzle from the instruction plus
+each fragment separately and then from the combined fragments. Reject any
+fragment that alone yields the answer, any duplicated full puzzle, a fake third
+fragment authored for a three-player team, trivia presented as a distributed
+puzzle, answer choices as the main architecture, host-dependent content, unclear
+instructions, ambiguity without an explicit accepted-solution policy,
+phone-unrenderable layouts, information outside the instruction and fragments,
+imbalance, leakage, or non-deterministic truth. Confirm the item works for two
+participants (fragments split, instruction attached to one holder) and for three
+participants (two fragments plus an instruction-only third), and that the host
+screen is never needed. Confirm `mechanicPayload.authorSafetyConfirmation` when
+a future ready status is claimed and that the item stays authoring-only while the
+shared-fragments runtime contract is pending.
 
 ## Owned Output
 `03-review.json` with one decision per stable item ID, contract checks, reason

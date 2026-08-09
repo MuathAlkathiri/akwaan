@@ -22,11 +22,12 @@ self-vote and team-size policy, multiple-winner ties, social-only scoring,
 relational safety, reuse, and a proven runtime contract. Until then, default
 validation returns `runtime_contract_missing`.
 
-Distributed Information additionally requires native payloads, exact A/B/C
-segments with distinct content, team sizes `[2,3]`, all three canonical 2+1
-partitions non-solving alone, machine-readable `candidateSets` (every segment
-set ≥2, every pair intersection ≥2, triple intersection exactly the ground
-truth), no truth or runtime-owned fields in mechanic data, no public/private
-leakage, a supported inner mode, the author safety confirmation, and exactly
-three items per Challenge. Run
-`validate_distributed_information.py` and its fixture suite.
+Distributed Information additionally requires native payloads, one team
+instruction plus exactly two complementary fragments with distinct content,
+team sizes `[2,3]`, no fragment or full-puzzle duplication, no fake third
+fragment, no trivia as a distributed puzzle, deterministic truth or an explicit
+accepted-solution policy, no truth or runtime-owned fields in mechanic data, no
+public/private leakage, a supported inner mode, the author safety confirmation,
+host-screen independence, and exactly three items per Challenge. Run
+`validate_distributed_information.py`. Every item stays `authoring_only` while
+the shared-fragments runtime contract is pending.

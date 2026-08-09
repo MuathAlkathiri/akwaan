@@ -74,7 +74,7 @@ trim, lowercase, and whitespace collapse.
 - Top 5: alternating KEEP/GIVE decisions across a hidden ten-card deck with
   five real ranks and five traps.
 - Co-op: partial information forces verbal dependency between teammates.
-- Distributed Information: simultaneous two-team synthesis race over three private-segment items.
+- Distributed Information / ركّبها: cooperative shared-puzzle challenge where two teams race to combine secret fragments plus a team instruction into one answer; owned by Puzzle World.
 - Relational: agreement, consensus, or teammate prediction; no external truth.
 - Signature: one exclusive, auto-resolvable mechanic per World, defined later.
 

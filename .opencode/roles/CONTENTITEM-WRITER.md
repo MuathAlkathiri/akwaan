@@ -22,15 +22,15 @@ Complete only when every item follows the mechanic and Pattern contracts,
 creates the intended social moment, resolves automatically, and contains no
 unsupported claim or hidden assumption.
 
-For Distributed Information, plan the public prompt, exact truth, why A/B/C are
-each necessary, every one of the three canonical 2+1 partitions, why each
-two-segment holding still needs the partner (the runtime draws the partition at
-random), and the intended aha moment before drafting. Write each segment as an
-independent mini-puzzle the holder solves alone with World, Scope, and Scope
-Knowledge; the puzzle's answer is the derived World clue the player announces,
-and the three clues plus World knowledge isolate one answer. Never make the
-answer depend on counting, sums, arithmetic, frequency, or list totals. Never
-author runtime state, hints, or in-race reveals. Record the safety in
-`mechanicPayload.candidateSets`: per segment A/B/C the finite candidate subset
-its clue leaves standing, with membership derived from canon only — never bend,
-broaden, or reinterpret canon to make the candidate triangle come out clean.
+For Distributed Information, plan the public prompt, the team instruction, the
+exact answer, and the two complementary fragments before drafting. Choose a
+puzzle family; design ONE complete puzzle; write the instruction (the task);
+fix the answer; split the puzzle into exactly two complementary fragments;
+verify neither fragment alone solves; verify the two-participant shape; verify
+the three-participant shape (two fragments plus an instruction-only third
+holder); verify host-screen independence; and confirm the puzzle is fun to
+describe aloud. Fragments are literal puzzle pieces — never semantic clues to a
+separate fact — and never a fake third fragment for a three-player team. Never
+author runtime state, hints, participant identities, or in-race reveals. Record
+the safety in `mechanicPayload.authorSafetyConfirmation` and keep the item
+`authoring_only` while the shared-fragments runtime contract is pending.
