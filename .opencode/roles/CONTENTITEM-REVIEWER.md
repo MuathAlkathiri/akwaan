@@ -26,21 +26,37 @@ actor, no fixed participant, no objective result, no partial tally, declared
 self-vote and team-size policy, multiple-winner ties, safety, reuse, and blocked
 runtime status. Never mark an authoring-only payload ready.
 
-For Distributed Information, solve-test the puzzle from the instruction plus
-each fragment separately and then from the combined fragments. Reject any
-fragment that alone yields the answer, any duplicated full puzzle, a fake third
-fragment authored for a three-player team, trivia presented as a distributed
-puzzle, answer choices as the main architecture, host-dependent content, unclear
-instructions, ambiguity without an explicit accepted-solution policy,
-phone-unrenderable layouts, information outside the instruction and fragments,
-imbalance, leakage, or non-deterministic truth. Confirm the item works for two
-participants (fragments split, instruction attached to one holder) and for three
-participants (two fragments plus an instruction-only third), and that the host
-screen is never needed. Confirm the item belongs to one of the six Puzzle World
-scopes and that Scope Knowledge never supplies required solving material; when
-`mechanicPayload.puzzleFamily` is present, confirm it is a canonical family name
-that matches the actual solving operation. Confirm
-`mechanicPayload.authorSafetyConfirmation` when
+For Distributed Information, run the manual logic gate and the fragment
+solo-solve gate on every item; the automated validator proves schema, leakage,
+and contracts but cannot prove puzzle logic, so these are mandatory reasoning
+gates. Logic gate: independently re-derive the answer from the instruction plus
+fragment A plus fragment B, without consulting the stored answer or explanation,
+and record `derivedAnswer`, `expectedAnswer`, and `logicVerified` in
+`03-review.json`. Reject or return for repair when `derivedAnswer !=
+expectedAnswer` or when the reasoning relies on an unstated rule. Solo-solve
+gate: test the instruction with fragment A alone and with fragment B alone and
+record `aSoloSolvable` and `bSoloSolvable`; both must be false — "harder alone"
+is not enough, the answer must not be deterministically derivable from one
+fragment. Then reject any duplicated full puzzle, a fake third fragment authored
+for a three-player team, trivia presented as a distributed puzzle, answer
+choices as the main architecture, host-dependent content, unclear instructions,
+ambiguity without an explicit accepted-solution policy, phone-unrenderable
+layouts, information outside the instruction and fragments, imbalance, leakage,
+or non-deterministic truth. Confirm the item works for two participants
+(fragments split, instruction attached to one holder) and for three participants,
+where the third participant receives ONLY the shared instruction: no third
+fragment, no distributed rule/axis/visual, no candidate list, and no additional
+puzzle data; the third participant may repeat the instruction, listen,
+coordinate, track reasoning, and announce the team answer, but holds only the
+instruction. Confirm the host screen is never needed. Confirm scope routing:
+the item's primary material and solving operation must genuinely belong to the
+declared Scope; when the core material belongs to another Puzzle World Scope
+(for example symbol value-decoding belongs to `symbols-codes`), do not keep the
+item for family diversity — repair it so the declared Scope's material is
+genuinely primary, or reject or move it. Confirm Scope Knowledge never supplies
+required solving material; when `mechanicPayload.puzzleFamily` is present,
+confirm it is a canonical family name that matches the actual solving operation.
+Confirm `mechanicPayload.authorSafetyConfirmation` when
 a future ready status is claimed and that the item stays authoring-only while the
 shared-fragments runtime contract is pending.
 

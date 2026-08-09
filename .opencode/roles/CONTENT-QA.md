@@ -20,12 +20,25 @@ Who Among Us must pass its authoring schema and negative fixtures, then remain
 Distributed Information must pass its dedicated validator, the shared-puzzle
 model (one instruction plus exactly two complementary fragments plus one
 machine-resolvable answer, fragments as literal puzzle pieces, never semantic
-clues), the two-participant and three-participant shapes (no fake third
-fragment), host-screen independence, no fragment or full-puzzle duplication,
-no trivia masquerading as puzzles, deterministic truth or an explicit
-multi-accepted-solution policy, truth separation, visibility review, no
-runtime-owned fields, and exactly three items per Challenge. Verify the scope
-routing is one of the six Puzzle World scopes and that a three-item Challenge
+clues), the two-participant and three-participant shapes (the third participant
+holds ONLY the instruction — no third fragment, no distributed rule/axis/visual,
+no candidate list, no extra puzzle data), host-screen independence, no fragment
+or full-puzzle duplication, no trivia masquerading as puzzles, deterministic
+truth or an explicit multi-accepted-solution policy, truth separation,
+visibility review, no runtime-owned fields, and exactly three items per
+Challenge. QA must run the manual logic gate: re-derive the answer independently
+from the instruction plus both fragments and record `derivedAnswer`,
+`expectedAnswer`, and `logicVerified` in `05-qa.json`; reject when
+`derivedAnswer != expectedAnswer` or when the reasoning relies on an unstated
+rule. The validator cannot prove puzzle logic, so this gate is mandatory and may
+override a passing validator. QA must also confirm every item's reviewer solo
+test recorded `aSoloSolvable` and `bSoloSolvable` as false (the answer must not
+be deterministically derivable from instruction plus a single fragment), confirm
+each accepted item's scope routing (its primary material and solving operation
+genuinely belong to the declared Scope; an item whose core is, for example,
+symbol value-decoding is routed to `symbols-codes`, not kept for family
+diversity), and recompute difficulty, family, and answer-format counts from final
+item metadata instead of hand-written totals. Verify a three-item Challenge
 spans three distinct puzzle families. Every item must
 remain authoring-only while the shared-fragments runtime contract is pending.
 
