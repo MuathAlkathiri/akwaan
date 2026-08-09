@@ -119,7 +119,14 @@
     },
     {
       "slug": "puzzles",
-      "scopes": []
+      "scopes": [
+        "general-knowledge",
+        "letters-words",
+        "numbers-arithmetic",
+        "logic-deduction",
+        "shapes-patterns",
+        "symbols-codes"
+      ]
     }
   ],
   "validators": [

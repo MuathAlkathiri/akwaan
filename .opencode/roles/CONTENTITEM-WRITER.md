@@ -23,14 +23,17 @@ creates the intended social moment, resolves automatically, and contains no
 unsupported claim or hidden assumption.
 
 For Distributed Information, plan the public prompt, the team instruction, the
-exact answer, and the two complementary fragments before drafting. Choose a
-puzzle family; design ONE complete puzzle; write the instruction (the task);
-fix the answer; split the puzzle into exactly two complementary fragments;
-verify neither fragment alone solves; verify the two-participant shape; verify
-the three-participant shape (two fragments plus an instruction-only third
-holder); verify host-screen independence; and confirm the puzzle is fun to
-describe aloud. Fragments are literal puzzle pieces — never semantic clues to a
-separate fact — and never a fake third fragment for a three-player team. Never
-author runtime state, hints, participant identities, or in-race reveals. Record
-the safety in `mechanicPayload.authorSafetyConfirmation` and keep the item
-`authoring_only` while the shared-fragments runtime contract is pending.
+exact answer, and the two complementary fragments before drafting. Resolve the
+Scope and load its `KNOWLEDGE.md` for flavor. Choose a puzzle family from
+`.opencode/knowledge/architecture/PUZZLE-FAMILY.md` and tag it in
+`mechanicPayload.puzzleFamily`; design ONE complete puzzle; write the
+instruction (the task); fix the answer; split the puzzle into exactly two
+complementary fragments; verify neither fragment alone solves; verify the
+two-participant shape; verify the three-participant shape (two fragments plus an
+instruction-only third holder); verify host-screen independence; and confirm the
+puzzle is fun to describe aloud. Fragments are literal puzzle pieces — never
+semantic clues to a separate fact — and never a fake third fragment for a
+three-player team. Never author runtime state, hints, participant identities, or
+in-race reveals. Record the safety in `mechanicPayload.authorSafetyConfirmation`
+and keep the item `authoring_only` while the shared-fragments runtime contract
+is pending. A three-item Challenge uses three distinct puzzle families.

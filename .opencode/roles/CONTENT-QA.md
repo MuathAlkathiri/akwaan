@@ -24,7 +24,9 @@ clues), the two-participant and three-participant shapes (no fake third
 fragment), host-screen independence, no fragment or full-puzzle duplication,
 no trivia masquerading as puzzles, deterministic truth or an explicit
 multi-accepted-solution policy, truth separation, visibility review, no
-runtime-owned fields, and exactly three items per Challenge. Every item must
+runtime-owned fields, and exactly three items per Challenge. Verify the scope
+routing is one of the six Puzzle World scopes and that a three-item Challenge
+spans three distinct puzzle families. Every item must
 remain authoring-only while the shared-fragments runtime contract is pending.
 
 ## Boundaries

@@ -72,21 +72,14 @@ fragments) lives on participant phones and is never projected.
 
 ## 7. Puzzle-Family Taxonomy
 
-Initial families:
-
-- Distributed letter puzzles — letters or letter sets split across fragments
-  that combine into one answer.
-- Missing shape / visual pattern — a shape, pattern, or diagram split across
-  fragments that must be completed or recognized as a whole.
-- Distributed equations / matrices — numbers, operators, or matrix cells split
-  across fragments that combine into one result.
-
-Future families, not yet authored: ordering puzzles, distributed relationship
-logic, map/path puzzles, code-breaking, symbol keys, image fragments,
-spot-the-difference distributed views, instruction/rule puzzles, partial
-diagrams, spatial reasoning, route finding, matching, sequence reconstruction,
-and logic tables. No rigid per-family schema exists yet; the shared
-instruction + fragments + answer shape covers them.
+A family names the solving operation (how fragments combine), never the material
+domain. Canonical family names live in
+`.opencode/knowledge/architecture/PUZZLE-FAMILY.md` and are tagged optionally in
+`mechanicPayload.puzzleFamily`. Puzzle World has six scopes
+(`general-knowledge`, `letters-words`, `numbers-arithmetic`, `logic-deduction`,
+`shapes-patterns`, `symbols-codes`) that route flavor only; a scope never
+replaces a family. No rigid per-family schema exists; the shared instruction +
+fragments + answer shape covers every family.
 
 ## 8. Authoring Principles
 

@@ -36,7 +36,11 @@ phone-unrenderable layouts, information outside the instruction and fragments,
 imbalance, leakage, or non-deterministic truth. Confirm the item works for two
 participants (fragments split, instruction attached to one holder) and for three
 participants (two fragments plus an instruction-only third), and that the host
-screen is never needed. Confirm `mechanicPayload.authorSafetyConfirmation` when
+screen is never needed. Confirm the item belongs to one of the six Puzzle World
+scopes and that Scope Knowledge never supplies required solving material; when
+`mechanicPayload.puzzleFamily` is present, confirm it is a canonical family name
+that matches the actual solving operation. Confirm
+`mechanicPayload.authorSafetyConfirmation` when
 a future ready status is claimed and that the item stays authoring-only while the
 shared-fragments runtime contract is pending.
 

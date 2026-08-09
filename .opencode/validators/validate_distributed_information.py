@@ -99,6 +99,9 @@ def validate(item: dict) -> list[str]:
         e.append("instruction_duplicated_in_fragment")
     if mechanic.get("supportedTeamSizes") != [2, 3]:
         e.append("team_sizes_invalid")
+    family = mechanic.get("puzzleFamily")
+    if family is not None and not (isinstance(family, str) and family.strip()):
+        e.append("puzzle_family_invalid")
     if item.get("status") == "ready" and mechanic.get("authorSafetyConfirmation") is not True:
         e.append("safety_confirmation_missing")
     if TRUTH_KEYS & set(walk_keys(mechanic)):

@@ -20,4 +20,5 @@ fake third fragment was authored for a three-player team, if trivia replaces the
 puzzle, if the item needs the host screen, if the truth appears outside
 `answerPayload`, if the answer is ambiguous without an explicit accepted-solution
 policy, or if actor-specific visibility can leak teammate, opponent, future-item,
-or truth data.
+or truth data. Confirm the scope is one of the six Puzzle World scopes and that a
+declared `mechanicPayload.puzzleFamily` matches the actual solving operation.

@@ -29,7 +29,10 @@ For `distributed-information` with `shared-fragments`, load its dedicated
 schema and validator. Plan exactly three independent ContentItems, each with
 native `answerPayload` and `mechanicPayload`. Each item is one shared puzzle: a
 localized team `instruction`, exactly two complementary `fragments`, and one
-machine-resolvable answer. Choose a puzzle family; design one complete puzzle;
+machine-resolvable answer. Choose a puzzle family from
+`.opencode/knowledge/architecture/PUZZLE-FAMILY.md`, tag it in
+`mechanicPayload.puzzleFamily`, and use three distinct families across the three
+items; design one complete puzzle;
 write the instruction; fix the answer; split it into two complementary
 fragments; verify neither fragment alone solves; verify the two-participant
 shape (fragments split, instruction attached to one holder) and the

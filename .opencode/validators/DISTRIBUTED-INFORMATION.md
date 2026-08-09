@@ -7,7 +7,8 @@ is `authoring_only`.
 The validator enforces canonical routing, native object payloads, supported inner
 modes, the shared-puzzle structure, exact team sizes, the safety confirmation,
 deterministic truth, privacy leakage checks, no truth in mechanic data, and no
-notes-based payload workaround.
+notes-based payload workaround. The optional `mechanicPayload.puzzleFamily` tag
+must be a nonempty string when present.
 
 ## Shared-Puzzle Contract
 
@@ -23,6 +24,9 @@ notes-based payload workaround.
 - Answer: `match`, `closest`, or `multiple_choice` machine truth in
   `answerPayload`; multiple accepted solutions require every accepted value to be
   recorded explicitly.
+- Optional family tag: `mechanicPayload.puzzleFamily` names the solving
+  operation with a canonical family name (for example, `letter-set`); it must be
+  a nonempty string when present and never changes the shared-puzzle structure.
 - Safety confirmation (required for any future ready status):
   `راجعت اللغز، ولا يستطيع أي لاعب حله بمفرده من المعلومة التي لديه، والجمع اللفظي ضروري للوصول إلى الحل.`
 - Runtime blocker: the product backend still expects the retired

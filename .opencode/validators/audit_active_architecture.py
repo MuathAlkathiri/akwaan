@@ -98,6 +98,23 @@ for knowledge in (ACTIVE / "skills" / "worlds").rglob("KNOWLEDGE.md"):
     if not (knowledge.parent / "SCOPE.md").exists():
         errors.append(f"KNOWLEDGE.md missing paired SCOPE.md: {knowledge.relative_to(ROOT)}")
 
+# Manifest world scopes match disk scopes in both directions.
+manifest = json.loads(text(ACTIVE / "manifest.json"))
+declared_scopes: dict[str, set[str]] = {}
+for world in manifest["worlds"]:
+    world_slug = world["slug"]
+    scopes = set(world.get("scopes", []))
+    declared_scopes[world_slug] = scopes
+    world_dir = ACTIVE / "skills" / "worlds" / world_slug
+    for slug in scopes:
+        if not (world_dir / "scopes" / slug / "SCOPE.md").exists():
+            errors.append(f"manifest scope missing SCOPE.md: {world_slug}/{slug}")
+for directory in scope_dirs:
+    world_slug = directory.parent.parent.name
+    scope_slug = directory.name
+    if scope_slug not in declared_scopes.get(world_slug, set()):
+        errors.append(f"disk scope undeclared in manifest: {world_slug}/{scope_slug}")
+
 # ChallengeType contract completeness.
 required_sections = [
     "Experience Goal", "Social Dynamic", "Player Emotion", "Interaction Pattern",

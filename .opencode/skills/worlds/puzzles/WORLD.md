@@ -15,9 +15,11 @@
 - Ownership: this World is the exclusive home of the
   `distributed-information` ChallengeType (ركّبها). That mechanic is not intended
   to run across Anime, Football, or Video Games.
-- Scopes: none declared yet. Puzzle World challenges are mechanic-driven and do
-  not require canon knowledge scopes. No Puzzle World items may be authored until
-  scopes and the shared-fragments runtime contract exist.
+- Scopes: `general-knowledge`, `letters-words`, `numbers-arithmetic`,
+  `logic-deduction`, `shapes-patterns`, and `symbols-codes`. Scopes route
+  material flavor; their Knowledge files never supply required solving
+  information. No Puzzle World item may be authored `ready` until the
+  shared-fragments runtime contract exists.
 
 This file supplies presentation context only. It does not own mechanic behavior
 or Content Patterns.

@@ -23,7 +23,8 @@ source notes belong in metadata and are never exposed before resolution.
 `distributed-information` uses the implementation-native separation:
 `answerPayload` stores the one machine-resolvable truth and `mechanicPayload`
 stores `shared-fragments` gameplay material: the localized team `instruction`,
-exactly two private `fragments`, `[2,3]`, and the author safety confirmation. It
+exactly two private `fragments`, `[2,3]`, the author safety confirmation, and an
+optional `puzzleFamily` tag naming the solving operation. It
 does not duplicate these into the conceptual interaction/resolution pair. Each
 ContentItem is one shared puzzle. Distribution is runtime-owned: two
 participants hold one fragment each with the instruction randomly attached to

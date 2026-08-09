@@ -77,7 +77,9 @@ of correct truth.
 Exactly three independent ContentItems form one Challenge. Each item contains a
 localized public prompt, one localized team instruction, exactly two localized
 private fragments with distinct content, `[2,3]`, the required author safety
-confirmation for ready status, and optional explanation. Correct truth exists
+confirmation for ready status, and optional explanation. Optionally tag the
+solving operation in `mechanicPayload.puzzleFamily` with a canonical family name
+from `.opencode/knowledge/architecture/PUZZLE-FAMILY.md`. Correct truth exists
 only in `answerPayload`.
 
 ## Allowed Content Patterns
@@ -113,10 +115,12 @@ not reveal private content or truth. Media must render on a participant's phone
 screen.
 
 ## Scope Compatibility
-Distributed Information is exclusively owned by Puzzle World (عالم الألغاز). It
-is not a generic ChallengeType intended to run across Anime, Football, or Video
-Games. Puzzles are self-contained: World, Scope, and Scope Knowledge are used
-only for flavor and never supply required solving information. Apply every
+Distributed Information is exclusively owned by Puzzle World (عالم الألغاز).
+Puzzle World declares six scopes: `general-knowledge`, `letters-words`,
+`numbers-arithmetic`, `logic-deduction`, `shapes-patterns`, and `symbols-codes`.
+It is not a generic ChallengeType intended to run across Anime, Football, or
+Video Games. Puzzles are self-contained: World, Scope, and Scope Knowledge are
+used only for flavor and never supply required solving information. Apply every
 declared exclusion, spoiler boundary, and version boundary.
 
 ## Validation Rules

@@ -28,7 +28,8 @@
         "fragments": {"type": "array", "minItems": 2, "maxItems": 6, "items": {"$ref": "#/$defs/fragment"}},
         "supportedTeamSizes": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"enum": [2, 3]}},
         "authorSafetyConfirmation": {"type": "boolean"},
-        "explanation": {"type": "string"}
+        "explanation": {"type": "string"},
+        "puzzleFamily": {"type": "string", "minLength": 1}
       }
     },
     "status": {"enum": ["draft", "ready"]},
