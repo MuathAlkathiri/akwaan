@@ -26,9 +26,11 @@ puzzle-solving information. Players solve by verbally combining what they see.
 Distributed Information belongs specifically to عالم الألغاز / Puzzle World. It
 is NOT a generic ChallengeType intended to run across Anime, Football, Video
 Games, or other Worlds. This is an exception to the general rule that
-ChallengeTypes are global. World, Scope, and Scope Knowledge are used only for
-flavor and never supply required solving information; puzzles are
-self-contained.
+ChallengeTypes are global. Scope defines the puzzle's primary content/material
+domain; it constrains what material belongs, the knowledge/content domain the
+puzzle uses, routing, authoring boundaries, and review expectations but never
+owns mechanic behavior. Puzzles stay self-contained: solving never requires
+material beyond the instruction and fragments.
 
 ## 3. Content Model
 
@@ -72,14 +74,14 @@ fragments) lives on participant phones and is never projected.
 
 ## 7. Puzzle-Family Taxonomy
 
-A family names the solving operation (how fragments combine), never the material
-domain. Canonical family names live in
+A family names the solving operation or construction used to turn material into
+a puzzle, never the material itself. Canonical family names live in
 `.opencode/knowledge/architecture/PUZZLE-FAMILY.md` and are tagged optionally in
 `mechanicPayload.puzzleFamily`. Puzzle World has six scopes
 (`general-knowledge`, `letters-words`, `numbers-arithmetic`, `logic-deduction`,
-`shapes-patterns`, `symbols-codes`) that route flavor only; a scope never
-replaces a family. No rigid per-family schema exists; the shared instruction +
-fragments + answer shape covers every family.
+`shapes-patterns`, `symbols-codes`); a scope defines the puzzle's primary
+content/material domain and never replaces a family. No rigid per-family schema
+exists; the shared instruction + fragments + answer shape covers every family.
 
 ## 8. Authoring Principles
 

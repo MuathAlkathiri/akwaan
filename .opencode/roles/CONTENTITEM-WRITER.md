@@ -24,7 +24,8 @@ unsupported claim or hidden assumption.
 
 For Distributed Information, plan the public prompt, the team instruction, the
 exact answer, and the two complementary fragments before drafting. Resolve the
-Scope and load its `KNOWLEDGE.md` for flavor. Choose a puzzle family from
+Scope and load its `KNOWLEDGE.md` to fix the puzzle's primary content/material
+domain. Choose a puzzle family from
 `.opencode/knowledge/architecture/PUZZLE-FAMILY.md` and tag it in
 `mechanicPayload.puzzleFamily`; design ONE complete puzzle; write the
 instruction (the task); fix the answer; split the puzzle into exactly two

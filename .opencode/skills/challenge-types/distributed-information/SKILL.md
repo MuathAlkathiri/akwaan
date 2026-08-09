@@ -119,8 +119,11 @@ Distributed Information is exclusively owned by Puzzle World (عالم الأل�
 Puzzle World declares six scopes: `general-knowledge`, `letters-words`,
 `numbers-arithmetic`, `logic-deduction`, `shapes-patterns`, and `symbols-codes`.
 It is not a generic ChallengeType intended to run across Anime, Football, or
-Video Games. Puzzles are self-contained: World, Scope, and Scope Knowledge are
-used only for flavor and never supply required solving information. Apply every
+Video Games. Scope defines the puzzle's primary content/material domain and
+constrains what material belongs, the knowledge/content domain the puzzle uses,
+routing, authoring boundaries, and review expectations; Scope never owns
+mechanic behavior. Puzzles are self-contained: solving requires only the
+instruction and fragments. Apply every
 declared exclusion, spoiler boundary, and version boundary.
 
 ## Validation Rules

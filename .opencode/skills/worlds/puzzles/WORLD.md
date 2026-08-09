@@ -16,9 +16,10 @@
   `distributed-information` ChallengeType (ركّبها). That mechanic is not intended
   to run across Anime, Football, or Video Games.
 - Scopes: `general-knowledge`, `letters-words`, `numbers-arithmetic`,
-  `logic-deduction`, `shapes-patterns`, and `symbols-codes`. Scopes route
-  material flavor; their Knowledge files never supply required solving
-  information. No Puzzle World item may be authored `ready` until the
+  `logic-deduction`, `shapes-patterns`, and `symbols-codes`. A Scope defines the
+  puzzle's primary content/material domain and constrains what material belongs,
+  routing, authoring boundaries, and review expectations; it never owns mechanic
+  behavior. No Puzzle World item may be authored `ready` until the
   shared-fragments runtime contract exists.
 
 This file supplies presentation context only. It does not own mechanic behavior
