@@ -63,8 +63,14 @@ any clue or the prompt, and no truth or runtime-owned fields inside
 Later clues must be more identifying in BOTH senses: logically narrower AND more
 likely to trigger recognition in the intended audience (UNIQUENESS ≠
 RECOGNIZABILITY). A unique-but-unrecognizable fact does not justify a late slot.
-No clue may assert a subjective superlative (الأشهر، الأعظم، الأفضل) as its
-identifying fact unless anchored to an objective, sourced metric.
+Recognizability is judged qualitatively (weaker / stronger; very low / low /
+medium / high / very high); numeric recognition probabilities are never
+fabricated without real playtest or solve-rate telemetry. No clue may assert a
+subjective superlative (الأشهر، الأعظم، الأفضل) as its identifying fact unless
+anchored to an objective, sourced metric. The complete ladder must stay grounded
+in the selected Scope: general career or entity facts may occasionally support
+identification, but the majority of clues must test Scope knowledge, not trivia
+about an entity that happens to belong to the Scope.
 
 ## Media Compatibility
 
@@ -91,6 +97,8 @@ Literal answer leakage; inverted progression; early giveaways; an impossibly
 vague final clue; semantic duplication; useless obscurity; opinion-based or
 disputed facts; unstable statistics without context; ambiguous naming;
 nickname collisions; a unique-but-unrecognizable record as a late "strong" clue;
-subjective superlatives (الأشهر، الأعظم، الأفضل) without an objective metric;
+fabricated numeric recognition probabilities; a ladder whose majority drifts
+into general football or trivia outside the selected Scope; subjective
+superlatives (الأشهر، الأعظم، الأفضل) without an objective metric;
 guessing-style or puzzle-solving content; scope
 misrouting; and any authored runtime state.

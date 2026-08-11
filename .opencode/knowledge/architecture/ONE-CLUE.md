@@ -92,12 +92,28 @@ where "later clue is more identifying than earlier":
   trigger recognition AND logically narrower; when the two conflict,
   recognizability governs. A fact that is only useful after the answer is known
   is unusable as a clue.
+- No fabricated recognition probabilities: recognizability is a qualitative
+  expert judgment, not a measured number. Reviewer and QA must express it with
+  qualitative terms (weaker / stronger; very low / low / medium / high / very
+  high) or a concise qualitative explanation. Do not invent numeric
+  recognition probabilities (for example 0.35, 0.60, 0.72, 0.90) unless they
+  come from real measured playtest or solve-rate telemetry; such telemetry may
+  be introduced separately when the data actually exists.
 - Subjective-superlative gate: a clue must not assert a subjective superlative
   (الأشهر، الأعظم، الأفضل، الأكثر شهرة، and similar opinion claims) as the
   identifying fact unless it is anchored to an objective, sourced metric (for
   example official capacity, a dated attendance record, a count, or a dated
   official award). A clue that merely calls the target "the most famous X" FAILS
   even when the answer happens to be correct.
+- Scope-fidelity gate: a clue being factually true about the target is not
+  enough; the complete five-clue ladder must stay meaningfully grounded in the
+  selected Scope. For a World Cup item, general career or entity facts may
+  occasionally support identification, but the ladder must not drift into mostly
+  general football or trivia unrelated to the World Cup. Reviewer and QA ask:
+  "Does this ladder test knowledge appropriate to the selected Scope, or merely
+  trivia about an entity that happens to belong to the Scope?" Not every clue
+  must literally mention the Scope, but the ladder as a whole must preserve
+  Scope identity.
 - The ladder reads as knowledge recognition, not decoding, puzzle solving, or
   guesswork; the team answers because it KNOWS the target.
 
@@ -126,10 +142,14 @@ The Writer's fixed order:
 4. Research 7–10 verified candidate facts (Researcher provides these).
 5. Select the five best facts and assign each to an ordered clue.
 6. Order clues monotonically hardest→easiest (C1..C5).
-7. Write each clue in natural, concise Arabic that adds new information.
-8. Verify no clue contains the answer or an accepted variant.
-9. Record the accepted answer set with canonical name first.
-10. Verify the item is one ladder and the Challenge is exactly three distinct items.
+7. Keep the ladder grounded in the Scope: general career or entity facts may
+   support identification, but the majority of clues must test knowledge of the
+   selected Scope, not generic trivia about an entity that happens to belong to
+   it.
+8. Write each clue in natural, concise Arabic that adds new information.
+9. Verify no clue contains the answer or an accepted variant.
+10. Record the accepted answer set with canonical name first.
+11. Verify the item is one ladder and the Challenge is exactly three distinct items.
 
 ## 8. Anti-Patterns
 
@@ -139,8 +159,11 @@ while later clues are generic; an impossibly vague clue 5; five rephrasings of
 one fact; obscure but non-identifying trivia; opinion-based or disputed facts;
 unstable current statistics without date or context; multiple equally valid
 answers; nickname ambiguity; a unique-but-unrecognizable record used to fake a
-stronger late clue (UNIQUENESS ≠ RECOGNIZABILITY); subjective superlatives
-(الأشهر، الأعظم، الأفضل) asserted without an objective metric; clues based on
+stronger late clue (UNIQUENESS ≠ RECOGNIZABILITY); fabricated numeric
+recognition probabilities without real playtest or solve-rate telemetry;
+subjective superlatives (الأشهر، الأعظم، الأفضل) asserted without an objective
+metric; a ladder whose majority drifts into general football or trivia outside
+the selected Scope; clues based on
 spelling accidents; facts only useful after the answer is known; machine-translated Arabic; scope misrouting;
 trivia from another World or Scope; trivia as a puzzle-solving or guessing task;
 media that reveals the answer; any authored runtime state (schedules, stage

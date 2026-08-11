@@ -38,8 +38,10 @@ decides only what a machine can decide.
 
 The validator does not and cannot prove factual correctness, relative
 difficulty, clue usefulness, semantic duplication, monotonic identification,
-recognizability (UNIQUENESS ≠ RECOGNIZABILITY), or subjective-superlative
-anchoring. Those are Reviewer and QA gates recorded in the workflow stage files.
+recognizability (UNIQUENESS ≠ RECOGNIZABILITY), subjective-superlative
+anchoring, or scope fidelity (whether the ladder tests the selected Scope or
+merely trivia about an entity that happens to belong to it). Those are Reviewer
+and QA gates recorded in the workflow stage files.
 
 ## Fixtures
 

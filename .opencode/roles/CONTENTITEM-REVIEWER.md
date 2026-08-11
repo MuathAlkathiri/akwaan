@@ -72,10 +72,19 @@ Monotonicity is judged on RECOGNITION, not just logic: for each transition run
 the recognizability gate — is the later clue more likely to trigger recognition
 of the target in the intended audience, even beyond being logically narrower?
 A unique-but-unrecognizable late clue (UNIQUENESS ≠ RECOGNIZABILITY) FAILS even
-when it is logically unique. Run the subjective-superlative gate on every clue:
+when it is logically unique. Express recognizability qualitatively only
+(weaker / stronger; very low / low / medium / high / very high); never
+fabricate numeric recognition probabilities without real playtest or solve-rate
+telemetry. Run the subjective-superlative gate on every clue:
 reject any clue whose identifying fact is a subjective superlative
 ('الأشهر', 'الأعظم', 'الأفضل', and similar opinion claims) unless it is
-anchored to an objective, sourced metric.
+anchored to an objective, sourced metric. Run the scope-fidelity gate on the
+complete ladder: ask "does this ladder test knowledge appropriate to the
+selected Scope, or merely trivia about an entity that happens to belong to the
+Scope?" General career or entity facts may occasionally support identification,
+but a ladder whose majority drifts into general football or unrelated trivia
+fails even when every clue is individually factual; not every clue must mention
+the Scope, but the ladder as a whole must preserve Scope identity.
 Also run the early-giveaway test (does clue 2 or 3 make the later clues
 redundant?) and the useless-clue test (does removing any clue leave the ladder
 with no information loss?), record both, and reject a ladder that is not
