@@ -16,6 +16,7 @@ import {
   FAMILY_DEFAULT_TIMER_SECONDS,
   WORLD_BOARD_SLOT_COUNT,
   WORLD_BOARD_SLOT_KEYS,
+  contentPatternForChallengeAnswerMode,
   WorldChallengeSlotKey,
   WorldContentStatus,
 } from '../domain/world-content.constants';
@@ -100,6 +101,7 @@ export interface WorldContentMetadata {
   answerModeCompatibility: Array<{
     challengeAnswerMode: ChallengeAnswerMode;
     itemAnswerModes: ChallengeAnswerMode[];
+    contentPattern: ReturnType<typeof contentPatternForChallengeAnswerMode>;
   }>;
 }
 
@@ -141,6 +143,7 @@ export class ChallengeTypeService {
         (mode) => ({
           challengeAnswerMode: mode,
           itemAnswerModes: [...ANSWER_MODE_COMPATIBLE_ITEM_MODES[mode]],
+          contentPattern: contentPatternForChallengeAnswerMode(mode),
         }),
       ),
     };

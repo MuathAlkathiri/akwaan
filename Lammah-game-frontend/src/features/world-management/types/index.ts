@@ -26,6 +26,8 @@ export type ChallengeAnswerMode =
   | "distributed";
 export type ChallengeItemStructure = "discrete_triple" | "continuous";
 export type VoteConsensusRule = "exact" | "majority" | "team_match";
+export type ContentPattern =
+  "generic" | "top_5" | "distributed_information" | "one_clue";
 
 export interface ContentAsset {
   url: string;
@@ -296,6 +298,15 @@ export interface WorldContentMetadata {
   answerModeCompatibility: Array<{
     challengeAnswerMode: ChallengeAnswerMode;
     itemAnswerModes: ChallengeAnswerMode[];
+    contentPattern: ContentPattern;
+  }>;
+}
+
+export interface OneCluePayload {
+  clues: Array<{
+    order: number;
+    value: number;
+    text: LocalizedText;
   }>;
 }
 

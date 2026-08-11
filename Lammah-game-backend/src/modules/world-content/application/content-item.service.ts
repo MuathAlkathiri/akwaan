@@ -171,6 +171,15 @@ export class ContentItemService {
       'Legacy question fields are not part of the World Content domain',
     );
     const { report, compatibleFamilies } = await this.evaluate(candidate);
+    assertNoIssues(
+      report.blockers.filter((problem) =>
+        [
+          'ONE_CLUE_STRUCTURE_INVALID',
+          'DISTRIBUTED_INFORMATION_STRUCTURE_REQUIRED',
+        ].includes(problem.code),
+      ),
+      'The selected mechanic content pattern is invalid',
+    );
     if (candidate.status === ContentItemStatus.READY) {
       assertNoIssues(
         report.blockers,

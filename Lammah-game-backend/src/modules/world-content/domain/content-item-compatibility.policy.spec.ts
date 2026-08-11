@@ -171,6 +171,77 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
         challengeTypes: typeMap(oneClue),
       }),
     ).toContain('ONE_CLUE_STRUCTURE_INVALID');
+
+    for (const clues of [
+      [5, 4, 3, 2],
+      [6, 5, 4, 3, 2, 1],
+      [4, 5, 3, 2, 1],
+    ]) {
+      expect(
+        codes({
+          item: contentItem({
+            ...item,
+            mechanicPayload: {
+              clues: clues.map((value, index) => ({
+                order: index + 1,
+                value,
+                text: { ar: `دليل ${index + 1}` },
+              })),
+            },
+          }),
+          challengeTypes: typeMap(oneClue),
+        }),
+      ).toContain('ONE_CLUE_STRUCTURE_INVALID');
+    }
+  });
+
+  it('does not cross-match One Clue and ركّبها content patterns', () => {
+    const oneClue = challengeType({
+      id: 'one-clue',
+      slug: 'one-clue',
+      family: ChallengeFamily.COOP,
+      answerMode: ChallengeAnswerMode.ONE_CLUE,
+    });
+    const distributed = challengeType({
+      id: 'distributed',
+      slug: 'distributed-information',
+      family: ChallengeFamily.COOP,
+      answerMode: ChallengeAnswerMode.DISTRIBUTED,
+    });
+    const oneClueItem = contentItem({
+      compatibleChallengeTypeIds: ['one-clue', 'distributed'],
+      answerPayload: {
+        mode: ChallengeAnswerMode.MATCH,
+        acceptedAnswers: ['الهلال'],
+      },
+      mechanicPayload: {
+        clues: [5, 4, 3, 2, 1].map((value, index) => ({
+          order: index + 1,
+          value,
+          text: { ar: `دليل ${index + 1}` },
+        })),
+      },
+    });
+    expect(
+      codes({
+        item: oneClueItem,
+        challengeTypes: typeMap(oneClue, distributed),
+      }),
+    ).toContain('DISTRIBUTED_INFORMATION_STRUCTURE_REQUIRED');
+
+    expect(
+      codes({
+        item: contentItem({
+          compatibleChallengeTypeIds: ['one-clue'],
+          answerPayload: {
+            mode: ChallengeAnswerMode.MATCH,
+            acceptedAnswers: ['الهلال'],
+          },
+          mechanicPayload: { variant: 'three-segment-race' },
+        }),
+        challengeTypes: typeMap(oneClue),
+      }),
+    ).toContain('ONE_CLUE_STRUCTURE_INVALID');
   });
 
   it('detects accepted answers that collapse to the same normalized value', () => {

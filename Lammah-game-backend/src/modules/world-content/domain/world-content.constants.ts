@@ -139,6 +139,20 @@ export const ONE_CLUE_ITEM_COUNT = 3;
 export const ONE_CLUE_STAGE_SECONDS = 7;
 export const ONE_CLUE_VALUES = [5, 4, 3, 2, 1] as const;
 
+export type ContentPattern =
+  'generic' | 'top_5' | 'distributed_information' | 'one_clue';
+
+/** Mechanic-owned authoring structure, distinct from its answer contract. */
+export function contentPatternForChallengeAnswerMode(
+  mode: ChallengeAnswerMode,
+): ContentPattern {
+  if (mode === ChallengeAnswerMode.TOP_5) return 'top_5';
+  if (mode === ChallengeAnswerMode.DISTRIBUTED)
+    return 'distributed_information';
+  if (mode === ChallengeAnswerMode.ONE_CLUE) return 'one_clue';
+  return 'generic';
+}
+
 /**
  * Per-item pacing budget per family (roadmap 3.4). A mechanic inherits its
  * family's timer instead of an author inventing one; Signature mechanics define

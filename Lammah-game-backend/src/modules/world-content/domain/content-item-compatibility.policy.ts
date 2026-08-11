@@ -86,7 +86,9 @@ export class ContentItemCompatibilityPolicy {
     blockers.push(...this.validateChallengeCompatibility(input, referenced));
     blockers.push(...this.validateMedia(input.item));
     blockers.push(...this.validateTop5Payload(input.item));
-    blockers.push(...this.validateDistributedInformationPayload(input.item));
+    blockers.push(
+      ...this.validateDistributedInformationPayload(input.item, referenced),
+    );
     blockers.push(...this.validateOneCluePayload(input.item, referenced));
     warnings.push(...this.reuseWarnings(input.item, referenced));
 
@@ -127,11 +129,27 @@ export class ContentItemCompatibilityPolicy {
    */
   private validateDistributedInformationPayload(
     item: ContentItemView,
+    challengeTypes: ChallengeTypeView[],
   ): WorldContentIssue[] {
     const raw = item.mechanicPayload as
       | (Partial<DistributedInformationPayload> & { variant?: string })
       | undefined;
-    if (raw?.variant !== DISTRIBUTED_INFORMATION_VARIANT) return [];
+    const requiresDistributed = challengeTypes.some(
+      (type) => type.answerMode === ChallengeAnswerMode.DISTRIBUTED,
+    );
+    if (
+      !requiresDistributed &&
+      raw?.variant !== DISTRIBUTED_INFORMATION_VARIANT
+    )
+      return [];
+    if (raw?.variant !== DISTRIBUTED_INFORMATION_VARIANT) {
+      return [
+        issue(
+          'DISTRIBUTED_INFORMATION_STRUCTURE_REQUIRED',
+          'ركّبها requires its three-segment content pattern',
+        ),
+      ];
+    }
     const issues: WorldContentIssue[] = [];
 
     if (!raw.publicPrompt?.ar?.trim()) {

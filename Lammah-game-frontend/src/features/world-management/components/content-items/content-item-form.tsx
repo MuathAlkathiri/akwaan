@@ -26,6 +26,7 @@ import {
   buildContentItemPayload,
   emptyContentItemForm,
   findLocalFormProblems,
+  selectCompatibleContentPattern,
   toContentItemForm,
   type ContentItemFormValues,
 } from "../../services/content-item-form.service";
@@ -33,6 +34,7 @@ import { FormIssueList } from "../shared";
 import { AnswerPayloadFields } from "./answer-payload-fields";
 import { Top5Fields } from "./top5-fields";
 import { DistributedInformationFields } from "./distributed-information-fields";
+import { OneClueFields } from "./one-clue-fields";
 import {
   CONTENT_STATUSES,
   CONTENT_STATUS_LABEL,
@@ -84,6 +86,10 @@ export function ContentItemForm({
     (configuration) =>
       values.compatibleChallengeTypeIds.includes(configuration.challengeTypeId),
   );
+  const patternOf = (answerMode: string) =>
+    metadata?.answerModeCompatibility.find(
+      (entry) => entry.challengeAnswerMode === answerMode,
+    )?.contentPattern ?? "generic";
   // Only the payload modes every selected mechanic can consume, using the
   // compatibility table the backend enforces.
   const availableModes = selectedChallengeTypes.length
@@ -104,6 +110,10 @@ export function ContentItemForm({
   const distributedSelected = selectedChallengeTypes.some(
     (configuration) => configuration.challengeType.answerMode === "distributed",
   );
+  const oneClueSelected = selectedChallengeTypes.some(
+    (configuration) =>
+      patternOf(configuration.challengeType.answerMode) === "one_clue",
+  );
   // Keep the payload flag in step with the selection, so deselecting the
   // mechanic stops emitting its payload.
   useEffect(() => {
@@ -112,10 +122,26 @@ export function ContentItemForm({
         ? current
         : {
             ...current,
-            distributed: { ...current.distributed, enabled: distributedSelected },
+            distributed: {
+              ...current.distributed,
+              enabled: distributedSelected,
+            },
           },
     );
   }, [distributedSelected]);
+
+  useEffect(() => {
+    setValues((current) => {
+      if (current.oneClue.enabled === oneClueSelected) return current;
+      return {
+        ...current,
+        answer: oneClueSelected
+          ? { ...current.answer, mode: "match" }
+          : current.answer,
+        oneClue: { ...current.oneClue, enabled: oneClueSelected },
+      };
+    });
+  }, [oneClueSelected]);
 
   const formSubmit = useEntityFormSubmit<ContentItem>({
     entityId: contentItem?.id,
@@ -125,16 +151,33 @@ export function ContentItemForm({
     errorMessage: "تعذر حفظ عنصر المحتوى.",
   });
 
-  const toggleChallengeType = (challengeTypeId: string) =>
+  const toggleChallengeType = (challengeTypeId: string) => {
+    if (values.compatibleChallengeTypeIds.includes(challengeTypeId)) {
+      set({
+        compatibleChallengeTypeIds: values.compatibleChallengeTypeIds.filter(
+          (value) => value !== challengeTypeId,
+        ),
+      });
+      return;
+    }
+    const selected = availableChallengeTypes.find(
+      (configuration) => configuration.challengeTypeId === challengeTypeId,
+    );
+    if (!selected) return;
+    const patternById = Object.fromEntries(
+      availableChallengeTypes.map((configuration) => [
+        configuration.challengeTypeId,
+        patternOf(configuration.challengeType.answerMode),
+      ]),
+    );
     set({
-      compatibleChallengeTypeIds: values.compatibleChallengeTypeIds.includes(
+      compatibleChallengeTypeIds: selectCompatibleContentPattern(
+        values.compatibleChallengeTypeIds,
         challengeTypeId,
-      )
-        ? values.compatibleChallengeTypeIds.filter(
-            (value) => value !== challengeTypeId,
-          )
-        : [...values.compatibleChallengeTypeIds, challengeTypeId],
+        patternById,
+      ),
     });
+  };
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -171,24 +214,28 @@ export function ContentItemForm({
         </p>
       </div>
 
-      <div>
-        <label className="mb-2 block text-sm font-medium">نص السؤال</label>
-        <Textarea
-          value={values.promptAr}
-          rows={3}
-          onChange={(event) => set({ promptAr: event.target.value })}
-        />
-      </div>
+      {!oneClueSelected && (
+        <>
+          <div>
+            <label className="mb-2 block text-sm font-medium">نص السؤال</label>
+            <Textarea
+              value={values.promptAr}
+              rows={3}
+              onChange={(event) => set({ promptAr: event.target.value })}
+            />
+          </div>
 
-      <div>
-        <label className="mb-2 block text-sm font-medium">
-          النص بالإنجليزية (اختياري)
-        </label>
-        <Input
-          value={values.promptEn}
-          onChange={(event) => set({ promptEn: event.target.value })}
-        />
-      </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium">
+              النص بالإنجليزية (اختياري)
+            </label>
+            <Input
+              value={values.promptEn}
+              onChange={(event) => set({ promptEn: event.target.value })}
+            />
+          </div>
+        </>
+      )}
 
       <div className="space-y-2 rounded-xl border p-3">
         <p className="text-sm font-semibold">التحديات المتوافقة</p>
@@ -229,17 +276,25 @@ export function ContentItemForm({
         })}
       </div>
 
-      <AnswerPayloadFields
-        value={values.answer}
-        onChange={(answer) => set({ answer })}
-        availableModes={availableModes}
-      />
+      {oneClueSelected ? (
+        <OneClueFields
+          value={values.oneClue}
+          acceptedAnswers={values.answer.acceptedAnswers}
+          onChange={(oneClue) => set({ oneClue })}
+          onAcceptedAnswersChange={(acceptedAnswers) =>
+            set({ answer: { ...values.answer, acceptedAnswers } })
+          }
+        />
+      ) : (
+        <AnswerPayloadFields
+          value={values.answer}
+          onChange={(answer) => set({ answer })}
+          availableModes={availableModes}
+        />
+      )}
 
       {values.answer.mode === "top_5" && (
-        <Top5Fields
-          value={values.top5}
-          onChange={(top5) => set({ top5 })}
-        />
+        <Top5Fields value={values.top5} onChange={(top5) => set({ top5 })} />
       )}
 
       {values.distributed.enabled && (

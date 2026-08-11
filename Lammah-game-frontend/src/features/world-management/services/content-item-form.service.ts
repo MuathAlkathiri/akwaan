@@ -8,6 +8,8 @@ import type {
   ContentMediaType,
   VoteConsensusRule,
   Top5Payload,
+  OneCluePayload,
+  ContentPattern,
 } from "../types";
 
 /**
@@ -32,6 +34,39 @@ export interface ContentItemFormValues {
   answer: AnswerFormState;
   top5: Top5FormState;
   distributed: DistributedFormState;
+  oneClue: OneClueFormState;
+}
+
+/** A ContentItem cannot carry two different mechanic-owned payload shapes. */
+export function selectCompatibleContentPattern(
+  currentIds: string[],
+  nextId: string,
+  patternById: Record<string, ContentPattern>,
+): string[] {
+  const nextPattern = patternById[nextId] ?? "generic";
+  return [
+    ...currentIds.filter(
+      (id) => (patternById[id] ?? "generic") === nextPattern,
+    ),
+    nextId,
+  ];
+}
+
+export const ONE_CLUE_VALUES = [5, 4, 3, 2, 1] as const;
+export const ONE_CLUE_PROMPT_AR = "اكتشف الإجابة المستهدفة من الأدلة";
+
+export interface OneClueFormState {
+  enabled: boolean;
+  targetAnswer: string;
+  clues: string[];
+}
+
+function emptyOneClueState(): OneClueFormState {
+  return {
+    enabled: false,
+    targetAnswer: "",
+    clues: ONE_CLUE_VALUES.map(() => ""),
+  };
 }
 
 /** One of the three fixed private segments of a "ركّبها" item. */
@@ -59,7 +94,11 @@ export interface DistributedFormState {
 /** Each split gives one player two segments and the other the remaining one. */
 export const DISTRIBUTED_MERGES: Record<
   DistributedMergeKey,
-  { label: string; first: Array<"A" | "B" | "C">; second: Array<"A" | "B" | "C"> }
+  {
+    label: string;
+    first: Array<"A" | "B" | "C">;
+    second: Array<"A" | "B" | "C">;
+  }
 > = {
   AB_C: { label: "A+B | C", first: ["A", "B"], second: ["C"] },
   AC_B: { label: "A+C | B", first: ["A", "C"], second: ["B"] },
@@ -174,15 +213,14 @@ export function emptyContentItemForm(scopeId: string): ContentItemFormValues {
     answer: emptyAnswerState(),
     top5: emptyTop5State(),
     distributed: emptyDistributedState(),
+    oneClue: emptyOneClueState(),
   };
 }
 
-function mergeKeyOf(
-  option: {
-    firstParticipantSegmentIds?: string[];
-    secondParticipantSegmentIds?: string[];
-  },
-): DistributedMergeKey | undefined {
+function mergeKeyOf(option: {
+  firstParticipantSegmentIds?: string[];
+  secondParticipantSegmentIds?: string[];
+}): DistributedMergeKey | undefined {
   const pair = [...(option.firstParticipantSegmentIds ?? [])].sort().join("");
   const single = (option.secondParticipantSegmentIds ?? []).join("");
   const entry = Object.entries(DISTRIBUTED_MERGES).find(
@@ -225,6 +263,9 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
   const payload = item.answerPayload;
   const top5Payload = item.mechanicPayload as Partial<Top5Payload> | undefined;
   const emptyTop5 = emptyTop5State();
+  const oneCluePayload = item.mechanicPayload as
+    Partial<OneCluePayload> | undefined;
+  const acceptedAnswers = payload.acceptedAnswers ?? [];
   return {
     scopeId: item.scopeId,
     promptAr: item.prompt.ar,
@@ -249,7 +290,9 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
         payload.acceptedTolerance === undefined
           ? ""
           : String(payload.acceptedTolerance),
-      acceptedAnswers: (payload.acceptedAnswers ?? []).join("\n"),
+      acceptedAnswers: acceptedAnswers
+        .slice(oneCluePayload?.clues ? 1 : 0)
+        .join("\n"),
       consensusRule: payload.consensusRule ?? "majority",
       fragments: (payload.splitPayload?.fragments ?? []).map((fragment) => ({
         seat: fragment.seat,
@@ -259,6 +302,15 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
     distributed: toDistributedFormState(
       item.mechanicPayload as DistributedInformationPayload | undefined,
     ),
+    oneClue: oneCluePayload?.clues
+      ? {
+          enabled: true,
+          targetAnswer: acceptedAnswers[0] ?? "",
+          clues: ONE_CLUE_VALUES.map(
+            (_value, index) => oneCluePayload.clues?.[index]?.text?.ar ?? "",
+          ),
+        }
+      : emptyOneClueState(),
     top5:
       top5Payload?.variant === "keep-or-give"
         ? {
@@ -418,7 +470,9 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
           id: segment.id,
           content: {
             ar: segment.contentAr.trim(),
-            ...(segment.contentEn.trim() ? { en: segment.contentEn.trim() } : {}),
+            ...(segment.contentEn.trim()
+              ? { en: segment.contentEn.trim() }
+              : {}),
           },
           ...(segment.imageUrl.trim()
             ? {
@@ -440,10 +494,30 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
           : {}),
       }
     : undefined;
+  const oneClueMechanicPayload = values.oneClue.enabled
+    ? {
+        clues: ONE_CLUE_VALUES.map((value, index) => ({
+          order: index + 1,
+          value,
+          text: { ar: values.oneClue.clues[index]?.trim() ?? "" },
+        })),
+      }
+    : undefined;
+  const answerPayload = values.oneClue.enabled
+    ? {
+        mode: "match" as const,
+        acceptedAnswers: [
+          values.oneClue.targetAnswer.trim(),
+          ...toLines(values.answer.acceptedAnswers),
+        ].filter(Boolean),
+      }
+    : buildAnswerPayload(values.answer);
   return {
     scopeId: values.scopeId,
     prompt: {
-      ar: values.promptAr.trim(),
+      ar:
+        values.promptAr.trim() ||
+        (values.oneClue.enabled ? ONE_CLUE_PROMPT_AR : ""),
       ...(values.promptEn.trim() ? { en: values.promptEn.trim() } : {}),
     },
     compatibleChallengeTypeIds: values.compatibleChallengeTypeIds,
@@ -455,10 +529,13 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
             assets: mediaUrls.map((url) => ({ url })),
           },
         }),
-    answerPayload: buildAnswerPayload(values.answer),
+    answerPayload,
     ...(top5MechanicPayload ? { mechanicPayload: top5MechanicPayload } : {}),
     ...(distributedMechanicPayload
       ? { mechanicPayload: distributedMechanicPayload }
+      : {}),
+    ...(oneClueMechanicPayload
+      ? { mechanicPayload: oneClueMechanicPayload }
       : {}),
     isReusableAcrossSessions: values.isReusableAcrossSessions,
     status: values.status,
@@ -488,24 +565,39 @@ export function findDistributedProblems(
     problems.push("اختر توزيعاً آمناً واحداً على الأقل لفريق من لاعبين.");
   }
   if (!["match", "closest", "multiple_choice"].includes(values.answer.mode)) {
-    problems.push("طريقة الإجابة يجب أن تكون نصاً قصيراً أو رقماً أو اختياراً من متعدد.");
+    problems.push(
+      "طريقة الإجابة يجب أن تكون نصاً قصيراً أو رقماً أو اختياراً من متعدد.",
+    );
   }
   if (values.status === "ready" && !distributed.safetyConfirmed) {
-    problems.push(
-      "أكّد أنك راجعت التوزيع قبل جعل العنصر جاهزاً.",
-    );
+    problems.push("أكّد أنك راجعت التوزيع قبل جعل العنصر جاهزاً.");
   }
   return problems;
 }
 
 export function findLocalFormProblems(values: ContentItemFormValues): string[] {
   const problems: string[] = [];
-  if (!values.promptAr.trim()) problems.push("نص السؤال بالعربية مطلوب.");
+  if (!values.promptAr.trim() && !values.oneClue.enabled)
+    problems.push("نص السؤال بالعربية مطلوب.");
   if (!values.compatibleChallengeTypeIds.length) {
     problems.push("اختر نوع تحدٍ واحداً متوافقاً على الأقل.");
   }
   if (values.distributed.enabled) {
     problems.push(...findDistributedProblems(values));
+  }
+  if (values.oneClue.enabled) {
+    if (!values.oneClue.targetAnswer.trim())
+      problems.push("الإجابة المستهدفة مطلوبة.");
+    if (
+      values.oneClue.clues.length !== ONE_CLUE_VALUES.length ||
+      values.oneClue.clues.some((clue) => !clue.trim())
+    )
+      problems.push("اكتب الأدلة الخمسة كاملة.");
+    const clues = values.oneClue.clues
+      .map((clue) => clue.trim())
+      .filter(Boolean);
+    if (new Set(clues).size !== clues.length)
+      problems.push("لا يمكن تكرار نص الدليل نفسه.");
   }
   return problems;
 }
