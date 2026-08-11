@@ -40,6 +40,13 @@ import {
 } from './match-transition.notifier';
 import { MatchWorldCatalog } from './match-world.catalog';
 import { UnifiedMatchSetupValidator } from './unified-match-setup.validator';
+import {
+  assertTeamActionAuthorized,
+  assignNextTeamAction,
+  buildTeamRotations,
+  createTeamActionAssignmentState,
+} from '../../live-game-sessions/domain/team-action-assignment';
+import { LiveSessionActor } from '../../live-game-sessions/application/live-session-actor';
 
 interface MatchCommand {
   sessionId: string;
@@ -166,6 +173,44 @@ export class MatchUseCases {
     const joinCode = requirements.requiresPhones
       ? await this.ensureJoinCode(command.sessionId, command.actorId)
       : undefined;
+    const session = await this.sessions.findById(command.sessionId);
+    if (!session) throw new MatchNotFoundError();
+    const participants = session
+      .serialize()
+      .participants.filter(
+        (participant) =>
+          participant.role === 'team-player' && !participant.removedAt,
+      )
+      .map((participant) => ({
+        participantId: participant.id,
+        teamId: participant.teamId,
+        connected: participant.connected,
+      }));
+    let doubleAssignments = createTeamActionAssignmentState(
+      match.teamDoubles.flatMap((token) => {
+        if (token.status !== 'available') return [];
+        if (
+          !participants.some(
+            (participant) =>
+              participant.teamId === token.teamId && participant.connected,
+          )
+        ) {
+          return [];
+        }
+        return buildTeamRotations({
+          teams: [token.teamId],
+          participants,
+          randomIndex: (exclusiveMax) => randomInt(0, exclusiveMax),
+        });
+      }),
+    );
+    for (const rotation of doubleAssignments.rotations) {
+      doubleAssignments = assignNextTeamAction(doubleAssignments, {
+        teamId: rotation.teamId,
+        action: `match.double.${rotation.teamId}`,
+        participants,
+      }).state;
+    }
     const revision = match.revision;
     match.prepareChallenge({
       commandId: command.commandId,
@@ -180,6 +225,7 @@ export class MatchUseCases {
       ...(command.selectingTeamId
         ? { selectingTeamId: command.selectingTeamId }
         : {}),
+      doubleAssignments,
     });
     await this.matches.save(match, revision);
     this.transitions.publish(match, 'challenge-prepared');
@@ -192,6 +238,57 @@ export class MatchUseCases {
       challengeKey: launcher.key,
       requiresPhones: requirements.requiresPhones,
     });
+    return match;
+  }
+
+  /** Participant-only command for the private preflight Double control. */
+  async setTeamDouble(input: {
+    sessionId: string;
+    actor: LiveSessionActor;
+    commandId: string;
+    expectedMatchRevision: number;
+    assignmentSequence: number;
+    armed: boolean;
+  }): Promise<Match> {
+    if (
+      input.actor.kind !== 'participant' ||
+      input.actor.sessionId !== input.sessionId ||
+      input.actor.role !== 'team-player'
+    ) {
+      throw new MatchForbiddenError();
+    }
+    const actor = input.actor;
+    const session = await this.sessions.findById(input.sessionId);
+    const participant = session
+      ?.serialize()
+      .participants.find(
+        (candidate) =>
+          candidate.id === actor.participantId &&
+          !candidate.removedAt &&
+          candidate.credentialVersion === actor.credentialVersion,
+      );
+    if (!participant?.teamId) throw new MatchForbiddenError();
+    const match = await this.matches.findActiveBySessionId(input.sessionId);
+    if (!match) throw new MatchNotFoundError();
+    match.assertRevision(input.expectedMatchRevision);
+    if (match.isDuplicate(input.commandId)) return match;
+    const assignments = match.pendingChallenge?.doubleAssignments;
+    if (!assignments) throw new MatchForbiddenError();
+    assertTeamActionAuthorized(assignments, {
+      action: `match.double.${participant.teamId}`,
+      teamId: participant.teamId,
+      participantId: participant.id,
+      sequence: input.assignmentSequence,
+    });
+    const revision = match.revision;
+    match.setTeamDouble({
+      commandId: input.commandId,
+      now: this.clock.now(),
+      teamId: participant.teamId,
+      armed: input.armed,
+    });
+    await this.matches.save(match, revision);
+    this.transitions.publish(match, 'double-updated');
     return match;
   }
 

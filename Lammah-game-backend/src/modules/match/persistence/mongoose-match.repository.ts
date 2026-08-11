@@ -79,6 +79,7 @@ export class MongooseMatchRepository implements MatchRepository {
       revision: state.revision,
       processedCommandIds: state.processedCommandIds,
       teams: state.teams,
+      teamDoubles: state.teamDoubles,
       coinToss: state.coinToss,
       selections: state.selections,
       occurrences: state.occurrences,
@@ -113,6 +114,14 @@ export class MongooseMatchRepository implements MatchRepository {
       revision: document.revision,
       processedCommandIds: document.processedCommandIds ?? [],
       teams: document.teams,
+      teamDoubles: (
+        (document.teamDoubles ?? []) as Array<Record<string, unknown>>
+      ).map((token) => ({
+        ...token,
+        consumedAt: token.consumedAt
+          ? new Date(token.consumedAt as string)
+          : undefined,
+      })),
       coinToss: document.coinToss
         ? {
             ...(document.coinToss as Record<string, unknown>),
@@ -178,6 +187,10 @@ export class MongooseMatchRepository implements MatchRepository {
         tie: result.tie ?? result.winnerTeamId === null,
         matchPointEventId: result.matchPointEventId ?? null,
         mechanicScoreEvents: result.mechanicScoreEvents ?? [],
+        double: result.double ?? {
+          consumedTeamIds: [],
+          appliedTeamId: null,
+        },
         startedAt: new Date(result.startedAt as string),
         completedAt: new Date(result.completedAt as string),
       })),

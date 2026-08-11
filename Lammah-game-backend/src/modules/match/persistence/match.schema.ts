@@ -43,6 +43,9 @@ export class MatchDocument {
   @Prop({ type: SchemaTypes.Mixed, required: true })
   teams!: unknown;
 
+  @Prop({ type: SchemaTypes.Mixed, default: [] })
+  teamDoubles!: unknown;
+
   @Prop({ type: SchemaTypes.Mixed })
   coinToss?: unknown;
 

@@ -96,6 +96,27 @@ export async function reconnectLiveParticipant(credential: string) {
   return response.data;
 }
 
+export async function setMatchDouble(
+  sessionId: string,
+  credential: string,
+  input: {
+    commandId: string;
+    expectedMatchRevision: number;
+    assignmentSequence: number;
+    armed: boolean;
+  },
+) {
+  const response = await apiClient.post<LiveSessionSnapshot>(
+    `/live-game-sessions/${sessionId}/match/double`,
+    input,
+    {
+      headers: { Authorization: `Bearer ${credential}` },
+      skipAuthRedirect: true,
+    },
+  );
+  return response.data;
+}
+
 export async function assignParticipantTeam(
   sessionId: string,
   participantId: string,

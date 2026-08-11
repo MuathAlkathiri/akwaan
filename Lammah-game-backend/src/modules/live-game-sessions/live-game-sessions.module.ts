@@ -274,6 +274,7 @@ const applicationProviders = [
     // than growing a second join system.
     GetSessionJoinAccess,
     CreateSessionJoinAccess,
+    ParticipantCredentialGuard,
     LIVE_SESSION_JOIN_ACCESS_REPOSITORY,
   ],
 })

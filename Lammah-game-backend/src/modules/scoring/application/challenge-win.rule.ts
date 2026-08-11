@@ -15,6 +15,9 @@ export interface ChallengeWinInput {
   positionKey: string;
   /** The mechanic's own margin, e.g. `{ teamA: 3, teamB: 2 }`. Never scored. */
   mechanicSummary?: Record<string, unknown>;
+  /** Match-level token context. Mechanics never calculate or multiply this. */
+  doubleApplied?: boolean;
+  doubleConsumedTeamIds?: readonly string[];
 }
 
 /**
@@ -41,11 +44,13 @@ export class ChallengeWinRule implements ScoringRuleCalculator<ChallengeWinInput
     return [
       {
         teamId: input.winnerTeamId,
-        delta: 1,
+        delta: input.doubleApplied ? 2 : 1,
         reason: `challenge.win.${input.challengeKey}`,
         metadata: {
           challengeKey: input.challengeKey,
           positionKey: input.positionKey,
+          doubleApplied: input.doubleApplied === true,
+          doubleConsumedTeamIds: [...(input.doubleConsumedTeamIds ?? [])],
           // Carried for provenance only: it explains *why* this team won, and
           // is never summed into anything.
           ...(input.mechanicSummary

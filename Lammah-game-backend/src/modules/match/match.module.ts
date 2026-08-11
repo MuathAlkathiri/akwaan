@@ -33,6 +33,7 @@ import { MatchDocument, MatchSchema } from './persistence/match.schema';
 import { MongooseMatchRepository } from './persistence/mongoose-match.repository';
 import { MatchController } from './presentation/match.controller';
 import { UnifiedMatchController } from './presentation/unified-match.controller';
+import { MatchParticipantController } from './presentation/match-participant.controller';
 
 /**
  * Match orchestration.
@@ -53,7 +54,11 @@ import { UnifiedMatchController } from './presentation/unified-match.controller'
       { name: MatchDocument.name, schema: MatchSchema },
     ]),
   ],
-  controllers: [MatchController, UnifiedMatchController],
+  controllers: [
+    MatchController,
+    UnifiedMatchController,
+    MatchParticipantController,
+  ],
   providers: [
     SystemMatchClock,
     { provide: MATCH_CLOCK, useExisting: SystemMatchClock },

@@ -13,7 +13,7 @@ import { useLiveSession } from "../../hooks/live-session-context";
 import { ChallengePreflight } from "./challenge-preflight";
 import { localizeMatchError } from "../errors/match-errors";
 import { teamName } from "../presentation";
-import type { MatchActor } from "../types";
+import type { MatchActor, UnifiedPreflight } from "../types";
 
 /**
  * The preflight stage of a preconfigured Match.
@@ -30,7 +30,7 @@ export function UnifiedPreflightStage({
   /** Present on a phone: whose phone this is, so it can say so. */
   participantId?: string;
 }) {
-  const { snapshot, resync } = useLiveSession();
+  const { snapshot, resync, setMatchDouble } = useLiveSession();
   // A phone renders this stage too, and it has no user session: fetching the
   // catalog from a participant surface 401s and bounces the player to /login.
   const worlds = usePlayableWorlds(actor === "controller");
@@ -107,9 +107,14 @@ export function UnifiedPreflightStage({
       <ParticipantPreflight
         challengeName={preflight.challengeName}
         readyToLaunch={preflight.readyToLaunch}
+        doubleControl={preflight.doubleControl}
+        onDoubleChange={setMatchDouble}
         {...(me?.displayName ? { playerName: me.displayName } : {})}
         {...(myTeam
-          ? { teamName: myTeam.name, identity: teamIdentityOf(myTeam.id, snapshot.teams) }
+          ? {
+              teamName: myTeam.name,
+              identity: teamIdentityOf(myTeam.id, snapshot.teams),
+            }
           : {})}
       />
     );
@@ -200,13 +205,21 @@ function ParticipantPreflight({
   teamName,
   identity,
   readyToLaunch,
+  doubleControl,
+  onDoubleChange,
 }: {
   challengeName: string;
   playerName?: string;
   teamName?: string;
   identity?: TeamIdentity;
   readyToLaunch: boolean;
+  doubleControl?: UnifiedPreflight["doubleControl"];
+  onDoubleChange?: (
+    armed: boolean,
+    assignmentSequence: number,
+  ) => Promise<void>;
 }) {
+  const [changingDouble, setChangingDouble] = useState(false);
   return (
     <section
       dir="rtl"
@@ -236,15 +249,45 @@ function ParticipantPreflight({
             identity.text,
           )}
         >
-          <span aria-hidden className={cn("size-2.5 rounded-full", identity.dot)} />
+          <span
+            aria-hidden
+            className={cn("size-2.5 rounded-full", identity.dot)}
+          />
           {teamName}
         </p>
       )}
 
       <div className="space-y-1 border-t border-border/70 pt-4">
-        <p className="text-xs font-black text-muted-foreground">التحدي القادم</p>
+        <p className="text-xs font-black text-muted-foreground">
+          التحدي القادم
+        </p>
         <p className="text-xl font-black text-foreground">{challengeName}</p>
       </div>
+
+      {doubleControl && (
+        <button
+          type="button"
+          disabled={changingDouble}
+          aria-pressed={doubleControl.status === "armed"}
+          onClick={() => {
+            setChangingDouble(true);
+            void onDoubleChange?.(
+              doubleControl.status !== "armed",
+              doubleControl.assignmentSequence,
+            ).finally(() => setChangingDouble(false));
+          }}
+          className={cn(
+            "w-full rounded-2xl border px-4 py-3 text-base font-black transition",
+            doubleControl.status === "armed"
+              ? "border-warning bg-warning/15 text-foreground"
+              : "border-border bg-background text-foreground hover:border-warning/60",
+          )}
+        >
+          {doubleControl.status === "armed"
+            ? "تم تفعيل الدبل ×2"
+            : "استخدم الدبل ×2"}
+        </button>
+      )}
 
       <p className="text-sm font-bold text-muted-foreground">
         {readyToLaunch

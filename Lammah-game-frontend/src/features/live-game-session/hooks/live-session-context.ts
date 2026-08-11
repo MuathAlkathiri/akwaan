@@ -36,6 +36,10 @@ export interface LiveSessionContextValue {
   gameplayCommand: (action: string, options?: GameplayCommandOptions) => void;
   adoptSnapshot?: (snapshot: LiveSessionSnapshot) => void;
   resync?: () => void;
+  setMatchDouble?: (
+    armed: boolean,
+    assignmentSequence: number,
+  ) => Promise<void>;
 }
 
 export const LiveSessionContext = createContext<LiveSessionContextValue | null>(

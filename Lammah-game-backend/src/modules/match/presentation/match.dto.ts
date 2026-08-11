@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsInt,
   IsOptional,
@@ -23,6 +24,17 @@ export class MatchCommandDto {
   @IsInt()
   @Min(0)
   expectedMatchRevision!: number;
+}
+
+export class SetMatchDoubleDto extends MatchCommandDto {
+  @ApiProperty()
+  @IsBoolean()
+  armed!: boolean;
+
+  @ApiProperty({ description: 'Server-issued assignment sequence' })
+  @IsInt()
+  @Min(1)
+  assignmentSequence!: number;
 }
 
 export class LaunchMatchChallengeDto extends MatchCommandDto {

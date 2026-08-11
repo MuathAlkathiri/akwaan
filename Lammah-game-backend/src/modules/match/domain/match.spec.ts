@@ -160,6 +160,42 @@ function completeAll(match: Match): void {
 }
 
 describe('Match aggregate', () => {
+  it('consumes both independently armed Double tokens at launch', () => {
+    const match = newMatch();
+    match.prepareChallenge({
+      commandId: 'prepare-double',
+      now: NOW,
+      occurrenceIndex: 0,
+      slotKey: WorldChallengeSlotKey.SLOT_1,
+      challengeTypeId: 'challenge-type-ryo',
+      challengeTypeSlug: 'read-your-opponent',
+      requiresPhones: true,
+    });
+    match.setTeamDouble({
+      commandId: 'arm-a',
+      now: NOW,
+      teamId: TEAM_A.id,
+      armed: true,
+    });
+    match.setTeamDouble({
+      commandId: 'arm-b',
+      now: NOW,
+      teamId: TEAM_B.id,
+      armed: true,
+    });
+    launch(match, 0, WorldChallengeSlotKey.SLOT_1, 'runtime-double');
+
+    expect(match.currentChallenge?.doubledTeamIds).toEqual([
+      TEAM_A.id,
+      TEAM_B.id,
+    ]);
+    expect(match.teamDoubles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ teamId: TEAM_A.id, status: 'consumed' }),
+        expect.objectContaining({ teamId: TEAM_B.id, status: 'consumed' }),
+      ]),
+    );
+  });
   describe('creation and identity', () => {
     it('requires exactly two distinct teams', () => {
       expect(() =>

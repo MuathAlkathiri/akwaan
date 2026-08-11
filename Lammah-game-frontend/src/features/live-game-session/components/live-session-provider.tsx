@@ -11,7 +11,7 @@ import {
 } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { authStorage } from "@/features/auth/storage/auth-storage";
-import { getLiveSession } from "../api/live-session-api";
+import { getLiveSession, setMatchDouble } from "../api/live-session-api";
 import {
   LiveSessionContext,
   type GameplayCommandOptions,
@@ -142,6 +142,21 @@ export function LiveSessionProvider({
 
   const resync = useCallback(() => socketRef.current?.requestSnapshot(), []);
 
+  const updateMatchDouble = useCallback(
+    async (armed: boolean, assignmentSequence: number) => {
+      const match = snapshotRef.current?.match;
+      if (!participantCredential || !match) return;
+      const next = await setMatchDouble(sessionId, participantCredential, {
+        commandId: crypto.randomUUID(),
+        expectedMatchRevision: match.revision,
+        assignmentSequence,
+        armed,
+      });
+      adoptSnapshot(next);
+    },
+    [adoptSnapshot, participantCredential, sessionId],
+  );
+
   const command = useCallback(
     (action: string, options: LiveSessionCommandOptions = {}) => {
       if (!state.snapshot) return;
@@ -204,6 +219,7 @@ export function LiveSessionProvider({
       gameplayCommand,
       adoptSnapshot,
       resync,
+      setMatchDouble: updateMatchDouble,
     }),
     [
       command,
@@ -217,6 +233,7 @@ export function LiveSessionProvider({
       state.snapshotReceivedAtMs,
       syncState,
       resync,
+      updateMatchDouble,
     ],
   );
 

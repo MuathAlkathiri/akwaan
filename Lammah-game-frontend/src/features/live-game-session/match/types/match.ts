@@ -43,14 +43,9 @@ export type MatchStatus = "active" | "completed" | "cancelled";
 
 export type MatchSlotKey = "slot_1" | "slot_2" | "slot_3" | "slot_4";
 export type MatchSlotLaunchability =
-  | "launchable"
-  | "configured_but_unimplemented"
-  | "unavailable";
+  "launchable" | "configured_but_unimplemented" | "unavailable";
 export type MatchSlotStatus =
-  | "available"
-  | "in_progress"
-  | "completed"
-  | "unavailable";
+  "available" | "in_progress" | "completed" | "unavailable";
 
 export interface MatchTeamScore {
   teamId: string;
@@ -174,6 +169,11 @@ export interface UnifiedPreflight {
   blockingReasons: PreflightBlocker[];
   selectingTeamId?: string;
   preparedAt: string;
+  doubleControl?: {
+    teamId: string;
+    status: "available" | "armed";
+    assignmentSequence: number;
+  };
 }
 
 /**
@@ -216,6 +216,7 @@ export interface MatchChallengeResult {
   winnerTeamId: string | null;
   /** True when the mechanic declared no winner, so no Match point was awarded. */
   tie: boolean;
+  double?: { consumedTeamIds: string[]; appliedTeamId: string | null };
   /**
    * The **Match** points this challenge moved: `+1` to the winner, `0` to the
    * loser, `0` to both on a tie. A Match point means "won a challenge", so this
@@ -247,7 +248,12 @@ export interface LiveSessionMatchSnapshot {
     challengeKey: string;
     runtimeId: string;
     startedAt: string;
+    doubledTeamIds?: string[];
   };
+  doubles?: Array<{
+    teamId: string;
+    status: "available" | "armed" | "consumed";
+  }>;
   scoring: {
     matchTotals: MatchTeamScore[];
     worldSubtotals: MatchTeamScore[];

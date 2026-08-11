@@ -13,6 +13,7 @@ export type MatchTransitionReason =
   | 'created'
   | 'challenge-prepared'
   | 'preflight-cancelled'
+  | 'double-updated'
   | 'challenge-launched'
   | 'challenge-completed'
   | 'result-acknowledged'

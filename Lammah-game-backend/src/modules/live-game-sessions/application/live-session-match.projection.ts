@@ -155,6 +155,12 @@ export interface LiveSessionUnifiedPreflight {
   blockingReasons: LiveSessionPreflightBlocker[];
   selectingTeamId?: string;
   preparedAt: string;
+  /** Present only on the assigned participant's private snapshot. */
+  doubleControl?: {
+    teamId: string;
+    status: 'available' | 'armed';
+    assignmentSequence: number;
+  };
 }
 
 /**
@@ -179,6 +185,7 @@ export interface LiveSessionChallengeResult {
   winnerTeamId: string | null;
   /** True when the mechanic declared no winner, so no Match point exists. */
   tie: boolean;
+  double: { consumedTeamIds: string[]; appliedTeamId: string | null };
   /**
    * The **Match** points this challenge moved: `+1` to the winner, `0` to the
    * loser, `0` to both on a tie. A Match point means "won a challenge", so this
@@ -221,7 +228,12 @@ export interface LiveSessionMatchProjection {
     challengeKey: string;
     runtimeId: string;
     startedAt: string;
+    doubledTeamIds: string[];
   };
+  doubles: Array<{
+    teamId: string;
+    status: 'available' | 'armed' | 'consumed';
+  }>;
   scoring: {
     matchTotals: LiveSessionMatchTeamScore[];
     worldSubtotals: LiveSessionMatchTeamScore[];

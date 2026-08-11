@@ -35,6 +35,8 @@ function matchPointsFor(input: {
   winnerTeamId: string | null;
   runtimeId: string;
   mechanicSummary?: Record<string, unknown>;
+  doubleApplied?: boolean;
+  doubleConsumedTeamIds?: string[];
 }) {
   return scoring.score(
     SCORING_RULE_IDS.CHALLENGE_WIN,
@@ -46,6 +48,8 @@ function matchPointsFor(input: {
       ...(input.mechanicSummary
         ? { mechanicSummary: input.mechanicSummary }
         : {}),
+      doubleApplied: input.doubleApplied,
+      doubleConsumedTeamIds: input.doubleConsumedTeamIds,
     },
     {
       matchId: 'match-1',
@@ -140,6 +144,31 @@ const score = (match: Match) => ({
 });
 
 describe('Match score counts challenge wins, not mechanic points', () => {
+  it('keeps challenge.win and awards +2 when the Match Double applies', () => {
+    const [event] = matchPointsFor({
+      winnerTeamId: TEAM_A.id,
+      runtimeId: 'runtime-double',
+      doubleApplied: true,
+      doubleConsumedTeamIds: [TEAM_A.id],
+    });
+    expect(event.scoringRuleId).toBe(SCORING_RULE_IDS.CHALLENGE_WIN);
+    expect(event.delta).toBe(2);
+    expect(event.metadata).toMatchObject({
+      doubleApplied: true,
+      doubleConsumedTeamIds: [TEAM_A.id],
+    });
+  });
+
+  it('mints no event for a tied doubled challenge', () => {
+    expect(
+      matchPointsFor({
+        winnerTeamId: null,
+        runtimeId: 'runtime-double-tie',
+        doubleApplied: false,
+        doubleConsumedTeamIds: [TEAM_A.id, TEAM_B.id],
+      }),
+    ).toEqual([]);
+  });
   it('turns an internal 2-1 into a Match scoreboard of 1-0', () => {
     const match = newMatch();
     play(match, {

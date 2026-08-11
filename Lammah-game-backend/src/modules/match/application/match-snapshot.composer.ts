@@ -124,7 +124,7 @@ export class MatchSnapshotComposer
             firstChooserTeamId: match.coinToss.winnerTeamId,
           }
         : { status: 'pending' },
-      unified: await this.unified(match),
+      unified: await this.unified(match, actor),
       ...(match.currentChallenge
         ? {
             currentChallenge: {
@@ -133,9 +133,15 @@ export class MatchSnapshotComposer
               challengeKey: match.currentChallenge.challengeKey,
               runtimeId: match.currentChallenge.runtimeId,
               startedAt: match.currentChallenge.startedAt.toISOString(),
+              doubledTeamIds: [...match.currentChallenge.doubledTeamIds],
             },
           }
         : {}),
+      doubles: match.teamDoubles.map((token) => ({
+        teamId: token.teamId,
+        // Armed choices stay private until launch.
+        status: token.status === 'armed' ? 'available' : token.status,
+      })),
       scoring: {
         matchTotals: match.teams.map((team) => this.score(match, team.id)),
         // World subtotals ride on each occurrence of `unified`; the projection
@@ -195,9 +201,10 @@ export class MatchSnapshotComposer
    */
   private async unified(
     match: Match,
+    actor: LiveSessionActor,
   ): Promise<LiveSessionUnifiedMatchProjection> {
     const positions = match.unifiedBoard();
-    const preflight = await this.unifiedPreflight(match);
+    const preflight = await this.unifiedPreflight(match, actor);
     const occurrences: LiveSessionConfiguredOccurrence[] = [];
     // A repeated World is described once; its two occurrences still keep their own
     // pools, so only the name lookup is shared.
@@ -260,6 +267,7 @@ export class MatchSnapshotComposer
    */
   private async unifiedPreflight(
     match: Match,
+    actor: LiveSessionActor,
   ): Promise<LiveSessionUnifiedPreflight | undefined> {
     const pending = match.pendingChallenge;
     if (!pending) return undefined;
@@ -282,6 +290,15 @@ export class MatchSnapshotComposer
         : undefined;
     const join = pending.joinCode
       ? await this.joinFor(match.liveSessionId, pending.joinCode)
+      : undefined;
+    const ownAssignment =
+      actor.kind === 'participant'
+        ? pending.doubleAssignments?.assignments.find(
+            (assignment) => assignment.participantId === actor.participantId,
+          )
+        : undefined;
+    const ownToken = ownAssignment
+      ? match.teamDoubles.find((token) => token.teamId === ownAssignment.teamId)
       : undefined;
 
     return {
@@ -329,6 +346,15 @@ export class MatchSnapshotComposer
         ? { selectingTeamId: pending.selectingTeamId }
         : {}),
       preparedAt: pending.preparedAt.toISOString(),
+      ...(ownAssignment && ownToken && ownToken.status !== 'consumed'
+        ? {
+            doubleControl: {
+              teamId: ownAssignment.teamId,
+              status: ownToken.status as 'available' | 'armed',
+              assignmentSequence: ownAssignment.sequence,
+            },
+          }
+        : {}),
     };
   }
 
@@ -441,6 +467,10 @@ export class MatchSnapshotComposer
       winnerTeamId: result.winnerTeamId,
       matchPoints: result.matchPoints.map((entry) => ({ ...entry })),
       tie: result.tie,
+      double: {
+        consumedTeamIds: [...result.double.consumedTeamIds],
+        appliedTeamId: result.double.appliedTeamId,
+      },
       details: result.details,
       startedAt: result.startedAt.toISOString(),
       completedAt: result.completedAt.toISOString(),

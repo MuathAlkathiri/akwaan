@@ -157,6 +157,10 @@ export class MatchReconciliationService
           current.occurrenceIndex,
           current.slotKey,
         ).value,
+        doubleApplied:
+          summary.winnerTeamId != null &&
+          current.doubledTeamIds.includes(summary.winnerTeamId),
+        doubleConsumedTeamIds: current.doubledTeamIds,
         ...(summary.mechanicSummary
           ? { mechanicSummary: summary.mechanicSummary }
           : {}),

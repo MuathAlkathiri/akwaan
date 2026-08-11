@@ -23,10 +23,21 @@ import {
   unifiedMatchBoardPolicy,
 } from './unified-match-board.policy';
 import { unifiedMatchSetupPolicy } from './unified-match-setup.policy';
+import { TeamActionAssignmentState } from '../../live-game-sessions/domain/team-action-assignment';
 
 export interface MatchTeam {
   id: string;
   name: string;
+}
+
+export type MatchDoubleStatus = 'available' | 'armed' | 'consumed';
+
+export interface MatchTeamDouble {
+  teamId: string;
+  status: MatchDoubleStatus;
+  armedPositionKey?: string;
+  consumedPositionKey?: string;
+  consumedAt?: Date;
 }
 
 export interface MatchCoinToss {
@@ -102,6 +113,8 @@ export interface MatchPendingChallenge {
   joinCode?: string;
   /** Which team's choice this was, when the Match tracks selection turns. */
   selectingTeamId?: string;
+  /** Server-selected participant allowed to arm each team's Double. */
+  doubleAssignments?: TeamActionAssignmentState;
 }
 
 export interface MatchCurrentChallenge {
@@ -111,6 +124,8 @@ export interface MatchCurrentChallenge {
   runtimeId: string;
   contentItemIds: string[];
   startedAt: Date;
+  /** Public only after launch; both teams may have armed independently. */
+  doubledTeamIds: string[];
 }
 
 export interface MatchTeamScore {
@@ -158,6 +173,10 @@ export interface MatchChallengeResult {
   winnerTeamId: string | null;
   /** True when the mechanic declared no winner. Then no Match point exists. */
   tie: boolean;
+  double: {
+    consumedTeamIds: string[];
+    appliedTeamId: string | null;
+  };
   /**
    * The **Match** points this challenge moved: exactly `+1` to the winner and
    * `0` to the loser, or `0` to both on a tie. Never a mechanic's internal
@@ -195,6 +214,8 @@ export interface MatchState {
   stage: MatchStage;
   stageEnteredAt: Date;
   teams: MatchTeam[];
+  /** Exactly one server-owned Double token per team for the whole Match. */
+  teamDoubles: MatchTeamDouble[];
   coinToss?: MatchCoinToss;
   selections: MatchWorldSelection[];
   occurrences: MatchWorldOccurrence[];
@@ -316,6 +337,10 @@ export class Match {
       stage: MatchStage.BOARD,
       stageEnteredAt: input.now,
       teams: input.teams.map((team) => ({ ...team })),
+      teamDoubles: input.teams.map((team) => ({
+        teamId: team.id,
+        status: 'available',
+      })),
       coinToss: { ...input.coinToss },
       selections: configured.map((occurrence) => ({
         occurrenceIndex: occurrence.occurrenceIndex,
@@ -352,6 +377,18 @@ export class Match {
       ...state,
       scoreEvents,
       challengeResults: state.challengeResults ?? [],
+      teamDoubles: state.teamDoubles?.length
+        ? state.teamDoubles
+        : state.teams.map((team) => ({
+            teamId: team.id,
+            status: 'available',
+          })),
+      currentChallenge: state.currentChallenge
+        ? {
+            ...state.currentChallenge,
+            doubledTeamIds: state.currentChallenge.doubledTeamIds ?? [],
+          }
+        : undefined,
     });
   }
 
@@ -390,6 +427,9 @@ export class Match {
   }
   get teams(): readonly MatchTeam[] {
     return this.state.teams;
+  }
+  get teamDoubles(): readonly MatchTeamDouble[] {
+    return this.state.teamDoubles;
   }
   get coinToss(): MatchCoinToss | undefined {
     return this.state.coinToss;
@@ -457,6 +497,7 @@ export class Match {
     occurrenceIndex: number;
     slotKey: WorldChallengeSlotKey;
     selectingTeamId?: string;
+    doubleAssignments?: TeamActionAssignmentState;
   }): void {
     this.assertStage([MatchStage.BOARD, MatchStage.PREFLIGHT]);
     const occurrence = this.requireLaunchableOccurrence(input.occurrenceIndex);
@@ -530,6 +571,7 @@ export class Match {
     readiness?: MatchChallengeReadinessRequirement;
     joinCode?: string;
     selectingTeamId?: string;
+    doubleAssignments?: TeamActionAssignmentState;
   }): void {
     if (this.replay(input.commandId)) return;
     // Only from the board, which is also what keeps a second pending challenge
@@ -559,6 +601,9 @@ export class Match {
       ...(input.selectingTeamId
         ? { selectingTeamId: input.selectingTeamId }
         : {}),
+      ...(input.doubleAssignments
+        ? { doubleAssignments: input.doubleAssignments }
+        : {}),
     };
     this.enterStage(MatchStage.PREFLIGHT, input.now);
     this.commit(input.commandId);
@@ -574,8 +619,50 @@ export class Match {
   cancelPreflight(input: { commandId: string; now: Date }): void {
     if (this.replay(input.commandId)) return;
     this.assertStage([MatchStage.PREFLIGHT]);
+    const positionKey = this.state.pendingChallenge?.positionKey;
+    this.state.teamDoubles = this.state.teamDoubles.map((token) =>
+      token.status === 'armed' && token.armedPositionKey === positionKey
+        ? { teamId: token.teamId, status: 'available' }
+        : token,
+    );
     this.state.pendingChallenge = undefined;
     this.enterStage(MatchStage.BOARD, input.now);
+    this.commit(input.commandId);
+  }
+
+  /** Arms or cancels a team's one Match-level Double during preflight only. */
+  setTeamDouble(input: {
+    commandId: string;
+    now: Date;
+    teamId: string;
+    armed: boolean;
+  }): void {
+    if (this.replay(input.commandId)) return;
+    this.assertStage([MatchStage.PREFLIGHT]);
+    this.assertTeam(input.teamId);
+    const pending = this.state.pendingChallenge;
+    if (!pending) {
+      throw new MatchDomainError(
+        'MATCH_NO_PENDING_CHALLENGE',
+        'A Double can only be armed for a prepared challenge',
+      );
+    }
+    const token = this.state.teamDoubles.find(
+      (candidate) => candidate.teamId === input.teamId,
+    );
+    if (!token || token.status === 'consumed') {
+      throw new MatchDomainError(
+        'MATCH_DOUBLE_UNAVAILABLE',
+        'This team has already used its Double',
+      );
+    }
+    if (input.armed) {
+      token.status = 'armed';
+      token.armedPositionKey = pending.positionKey;
+    } else {
+      token.status = 'available';
+      token.armedPositionKey = undefined;
+    }
     this.commit(input.commandId);
   }
 
@@ -672,7 +759,29 @@ export class Match {
       runtimeId: input.runtimeId,
       contentItemIds: [...input.contentItemIds],
       startedAt: input.now,
+      doubledTeamIds: this.state.teamDoubles
+        .filter(
+          (token) =>
+            token.status === 'armed' &&
+            token.armedPositionKey ===
+              MatchBoardPositionKey.of(occurrence.index, input.slotKey).value,
+        )
+        .map((token) => token.teamId),
     };
+    const doubledTeamIds = new Set(this.state.currentChallenge.doubledTeamIds);
+    this.state.teamDoubles = this.state.teamDoubles.map((token) =>
+      doubledTeamIds.has(token.teamId)
+        ? {
+            teamId: token.teamId,
+            status: 'consumed',
+            consumedPositionKey: MatchBoardPositionKey.of(
+              occurrence.index,
+              input.slotKey,
+            ).value,
+            consumedAt: input.now,
+          }
+        : token,
+    );
     // The preflight has done its job; the runtime is now the authority.
     this.state.pendingChallenge = undefined;
     this.enterStage(MatchStage.CHALLENGE, input.now);
@@ -741,6 +850,7 @@ export class Match {
       winnerTeamId: input.winnerTeamId ?? null,
       challengeKey: input.challengeKey ?? slot.challengeKey ?? '',
       mechanicEvents: input.mechanicEvents ?? [],
+      doubledTeamIds: this.state.currentChallenge?.doubledTeamIds ?? [],
     });
     this.state.challengeResults.push(result);
     this.state.pendingResultId = result.id;
@@ -801,6 +911,7 @@ export class Match {
     winnerTeamId: string | null;
     challengeKey: string;
     mechanicEvents: Array<Record<string, unknown>>;
+    doubledTeamIds: string[];
   }): MatchChallengeResult {
     const positionKey = MatchBoardPositionKey.of(
       input.occurrence.index,
@@ -829,6 +940,14 @@ export class Match {
       contentItemIds: [...(input.slot.contentItemIds ?? [])],
       winnerTeamId: input.winnerTeamId,
       tie: input.winnerTeamId === null,
+      double: {
+        consumedTeamIds: [...input.doubledTeamIds],
+        appliedTeamId:
+          input.winnerTeamId &&
+          input.doubledTeamIds.includes(input.winnerTeamId)
+            ? input.winnerTeamId
+            : null,
+      },
       // Derived from the imported Match-level events, which are now exactly one
       // (+1 to the winner) or none. A loser is recorded explicitly as 0 so the
       // result reads as a complete statement rather than a single-sided one.
@@ -920,6 +1039,7 @@ export class Match {
     return {
       ...this.state,
       teams: this.state.teams.map((team) => ({ ...team })),
+      teamDoubles: this.state.teamDoubles.map((token) => ({ ...token })),
       selections: this.state.selections.map((selection) => ({ ...selection })),
       occurrences: this.state.occurrences.map((occurrence) => ({
         ...occurrence,
@@ -936,7 +1056,29 @@ export class Match {
         (position) => ({ ...position }),
       ),
       ...(this.state.pendingChallenge
-        ? { pendingChallenge: { ...this.state.pendingChallenge } }
+        ? {
+            pendingChallenge: {
+              ...this.state.pendingChallenge,
+              ...(this.state.pendingChallenge.doubleAssignments
+                ? {
+                    doubleAssignments: {
+                      ...this.state.pendingChallenge.doubleAssignments,
+                      rotations:
+                        this.state.pendingChallenge.doubleAssignments.rotations.map(
+                          (rotation) => ({
+                            ...rotation,
+                            order: [...rotation.order],
+                          }),
+                        ),
+                      assignments:
+                        this.state.pendingChallenge.doubleAssignments.assignments.map(
+                          (assignment) => ({ ...assignment }),
+                        ),
+                    },
+                  }
+                : {}),
+            },
+          }
         : {}),
       scoreEvents: [...this.state.scoreEvents],
       challengeResults: this.state.challengeResults.map((result) => ({
@@ -948,6 +1090,10 @@ export class Match {
           ...event,
         })),
         scoreEventIds: [...result.scoreEventIds],
+        double: {
+          ...result.double,
+          consumedTeamIds: [...result.double.consumedTeamIds],
+        },
       })),
       processedCommandIds: [...this.state.processedCommandIds],
     };
