@@ -60,6 +60,12 @@ nonblank Arabic text, no exact duplicate clue text, no literal answer leakage in
 any clue or the prompt, and no truth or runtime-owned fields inside
 `mechanicPayload`. The item is one ladder; a Challenge is exactly three items.
 
+Later clues must be more identifying in BOTH senses: logically narrower AND more
+likely to trigger recognition in the intended audience (UNIQUENESS ≠
+RECOGNIZABILITY). A unique-but-unrecognizable fact does not justify a late slot.
+No clue may assert a subjective superlative (الأشهر، الأعظم، الأفضل) as its
+identifying fact unless anchored to an objective, sourced metric.
+
 ## Media Compatibility
 
 Text-first. Clue media is not authored in the initial skill. Any future item
@@ -84,5 +90,7 @@ ladder.
 Literal answer leakage; inverted progression; early giveaways; an impossibly
 vague final clue; semantic duplication; useless obscurity; opinion-based or
 disputed facts; unstable statistics without context; ambiguous naming;
-nickname collisions; guessing-style or puzzle-solving content; scope
+nickname collisions; a unique-but-unrecognizable record as a late "strong" clue;
+subjective superlatives (الأشهر، الأعظم، الأفضل) without an objective metric;
+guessing-style or puzzle-solving content; scope
 misrouting; and any authored runtime state.

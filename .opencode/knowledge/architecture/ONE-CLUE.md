@@ -84,6 +84,20 @@ where "later clue is more identifying than earlier":
 - Every clue is independently verifiable, adds new information (never a
   rephrasing of an earlier fact), and is false-positive-resistant (an informed
   player with a different candidate must not mis-identify).
+- UNIQUENESS ≠ RECOGNIZABILITY: "later clue is more identifying" means more
+  likely to trigger recognition of the target in the intended audience, not
+  merely logically narrower. A statistically unique but obscure fact (a record
+  an informed fan cannot recall) must not earn a late slot just because it is
+  unique. For every transition, the later clue must generally be more likely to
+  trigger recognition AND logically narrower; when the two conflict,
+  recognizability governs. A fact that is only useful after the answer is known
+  is unusable as a clue.
+- Subjective-superlative gate: a clue must not assert a subjective superlative
+  (الأشهر، الأعظم، الأفضل، الأكثر شهرة، and similar opinion claims) as the
+  identifying fact unless it is anchored to an objective, sourced metric (for
+  example official capacity, a dated attendance record, a count, or a dated
+  official award). A clue that merely calls the target "the most famous X" FAILS
+  even when the answer happens to be correct.
 - The ladder reads as knowledge recognition, not decoding, puzzle solving, or
   guesswork; the team answers because it KNOWS the target.
 
@@ -124,8 +138,10 @@ prompt; clue 1 clearer than clue 3; clue 2 effectively giving the answer away
 while later clues are generic; an impossibly vague clue 5; five rephrasings of
 one fact; obscure but non-identifying trivia; opinion-based or disputed facts;
 unstable current statistics without date or context; multiple equally valid
-answers; nickname ambiguity; clues based on spelling accidents; facts only
-useful after the answer is known; machine-translated Arabic; scope misrouting;
+answers; nickname ambiguity; a unique-but-unrecognizable record used to fake a
+stronger late clue (UNIQUENESS ≠ RECOGNIZABILITY); subjective superlatives
+(الأشهر، الأعظم، الأفضل) asserted without an objective metric; clues based on
+spelling accidents; facts only useful after the answer is known; machine-translated Arabic; scope misrouting;
 trivia from another World or Scope; trivia as a puzzle-solving or guessing task;
 media that reveals the answer; any authored runtime state (schedules, stage
 order, elimination, progress, scores); and legacy fields (`points`, `score`,

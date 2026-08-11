@@ -45,13 +45,19 @@ remain authoring-only while the shared-fragments runtime contract is pending.
 One Clue must pass `validators/validate_one_clue.py` and its fixtures. QA must
 re-run the manual monotonic ladder gate on every item (record `ladderTransitions`
 in `05-qa.json`), confirm the Reviewer recorded the early-giveaway and
-useless-clue tests, confirm no literal or alias leakage beyond the documented
-short-alias threshold, confirm each clue fact is verified and adds new
+useless-clue tests, confirm the recognizability gate was applied per transition
+(UNIQUENESS ≠ RECOGNIZABILITY: a later clue must be more likely to trigger
+recognition in the intended audience, not merely logically narrower) and the
+subjective-superlative gate per clue (no 'الأشهر'/'الأعظم'/'الأفضل' as an
+identifying fact unless anchored to an objective, sourced metric), confirm no
+literal or alias leakage beyond the documented short-alias threshold, confirm
+each clue fact is verified and adds new
 information, confirm the truth lives only in `answerPayload`, confirm `media:
 null`, confirm a Challenge spans exactly three distinct items, and confirm the
 item may be marked `ready` because the runtime contract is production-ready
 (`runtimeContractStatus: fully_playable`). The validator cannot prove monotonic
-quality, factual support, or usefulness, so these reasoning gates are mandatory
+quality, factual support, usefulness, recognizability, or superlative anchoring,
+so these reasoning gates are mandatory
 and may override a passing validator.
 
 ## Boundaries

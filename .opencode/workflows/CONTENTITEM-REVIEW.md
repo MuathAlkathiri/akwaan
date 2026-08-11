@@ -25,7 +25,13 @@ declared `mechanicPayload.puzzleFamily` matches the actual solving operation.
 
 One Clue review runs the manual monotonic ladder gate on every item: record each
 transition `1→2`, `2→3`, `3→4`, `4→5` and require every later clue to be more
-identifying than the earlier one. Run the early-giveaway test (an early clue
+identifying than the earlier one. More identifying means recognition, not just
+logic: a later clue must generally be more likely to trigger recognition in the
+intended audience (UNIQUENESS ≠ RECOGNIZABILITY), so a unique-but-unrecognizable
+clue fails the gate even when it is logically unique. Run the subjective-
+superlative gate on every clue and reject 'الأشهر', 'الأعظم', 'الأفضل', and
+similar claims unless anchored to an objective, sourced metric. Run the
+early-giveaway test (an early clue
 must not make later clues redundant) and the useless-clue test (no clue may carry
 zero information). Reject literal or alias leakage beyond the documented
 short-alias threshold, guessing-style or puzzle-solving content, truth outside

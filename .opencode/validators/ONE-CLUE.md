@@ -37,8 +37,9 @@ decides only what a machine can decide.
 ## Reasoning Gates
 
 The validator does not and cannot prove factual correctness, relative
-difficulty, clue usefulness, semantic duplication, or monotonic identification.
-Those are Reviewer and QA gates recorded in the workflow stage files.
+difficulty, clue usefulness, semantic duplication, monotonic identification,
+recognizability (UNIQUENESS ≠ RECOGNIZABILITY), or subjective-superlative
+anchoring. Those are Reviewer and QA gates recorded in the workflow stage files.
 
 ## Fixtures
 

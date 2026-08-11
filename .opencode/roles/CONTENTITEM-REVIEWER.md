@@ -68,6 +68,14 @@ the alias test independently of the mechanical short-alias threshold), media
 item: for each transition `1→2`, `2→3`, `3→4`, `4→5` record whether a neutral
 reader finds the later clue more identifying than the earlier one and record
 `ladderTransitions` PASS/FAIL in `03-review.json`; the ladder must be monotonic.
+Monotonicity is judged on RECOGNITION, not just logic: for each transition run
+the recognizability gate — is the later clue more likely to trigger recognition
+of the target in the intended audience, even beyond being logically narrower?
+A unique-but-unrecognizable late clue (UNIQUENESS ≠ RECOGNIZABILITY) FAILS even
+when it is logically unique. Run the subjective-superlative gate on every clue:
+reject any clue whose identifying fact is a subjective superlative
+('الأشهر', 'الأعظم', 'الأفضل', and similar opinion claims) unless it is
+anchored to an objective, sourced metric.
 Also run the early-giveaway test (does clue 2 or 3 make the later clues
 redundant?) and the useless-clue test (does removing any clue leave the ladder
 with no information loss?), record both, and reject a ladder that is not
