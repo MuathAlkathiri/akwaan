@@ -10,20 +10,19 @@ import {
   SectionCard,
 } from "@/components/shared";
 import { showToast } from "@/components/ui/toast";
-import {
-  describeBlockingReferences,
-  extractBlockingReferences,
-} from "../../utils/readiness.util";
 import { getApiErrorMessage } from "@/lib/utils";
+import { presentChallengeTypeDeletion } from "../../utils/challenge-type-deletion.presenter";
 
 import {
   useChallengeTypes,
+  useChallengeTypeDeletionPreview,
   useDeleteChallengeType,
+  useArchiveChallengeType,
 } from "../../hooks/use-world-content";
 import { EntityFormDialog, RowSkeleton, SearchToolbar } from "../shared";
 import { ChallengeTypeCard } from "./challenge-type-card";
 import { ChallengeTypeForm } from "./challenge-type-form";
-import type { ChallengeType } from "../../types";
+import type { ChallengeType, ChallengeTypeDeletionPreview } from "../../types";
 
 /**
  * Global mechanic definitions, deliberately outside any World. Assigning one to a
@@ -35,7 +34,31 @@ export function ChallengeTypeCatalog() {
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<ChallengeType | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ChallengeType | null>(null);
+  const [deletePreview, setDeletePreview] =
+    useState<ChallengeTypeDeletionPreview | null>(null);
   const deleteChallengeType = useDeleteChallengeType();
+  const previewChallengeType = useChallengeTypeDeletionPreview();
+  const archiveChallengeType = useArchiveChallengeType();
+
+  const closeDeleteDialog = () => {
+    setPendingDelete(null);
+    setDeletePreview(null);
+  };
+
+  const requestDelete = (challengeType: ChallengeType) => {
+    setPendingDelete(challengeType);
+    setDeletePreview(null);
+    previewChallengeType.mutate(challengeType.id, {
+      onSuccess: setDeletePreview,
+      onError: (error) => {
+        showToast({
+          type: "error",
+          message: getApiErrorMessage(error, "تعذر تحميل تفاصيل الحذف."),
+        });
+        closeDeleteDialog();
+      },
+    });
+  };
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -46,6 +69,10 @@ export function ChallengeTypeCatalog() {
         challengeType.slug.includes(query),
     );
   }, [challengeTypes, search]);
+  const deletionPresentation =
+    pendingDelete && deletePreview
+      ? presentChallengeTypeDeletion(pendingDelete.name, deletePreview)
+      : null;
 
   return (
     <SectionCard
@@ -78,7 +105,7 @@ export function ChallengeTypeCatalog() {
                 key={challengeType.id}
                 challengeType={challengeType}
                 onEdit={() => setEditing(challengeType)}
-                onDelete={() => setPendingDelete(challengeType)}
+                onDelete={() => requestDelete(challengeType)}
               />
             ))}
           </div>
@@ -112,32 +139,43 @@ export function ChallengeTypeCatalog() {
       <ConfirmationDialog
         open={Boolean(pendingDelete)}
         onOpenChange={(open) => {
-          if (!open) setPendingDelete(null);
+          if (!open) closeDeleteDialog();
         }}
-        title="حذف المكانيكا"
-        description={`هل تريد حذف "${pendingDelete?.name ?? ""}"؟ لا يمكن حذف مكانيكا مستخدمة في أي عالم أو مرتبطة بمحتوى.`}
-        confirmLabel="حذف"
-        destructive
-        disabled={deleteChallengeType.isPending}
+        title={deletionPresentation?.title ?? "فحص إمكانية الحذف"}
+        description={
+          !deletePreview ? (
+            "جاري فحص سجل المباريات والارتباطات..."
+          ) : (
+            <span className="whitespace-pre-line">
+              {deletionPresentation?.description}
+            </span>
+          )
+        }
+        confirmLabel={deletionPresentation?.confirmLabel}
+        destructive={deletionPresentation?.destructive}
+        disabled={
+          !deletePreview ||
+          deleteChallengeType.isPending ||
+          archiveChallengeType.isPending
+        }
         onConfirm={() => {
-          if (!pendingDelete) return;
-          deleteChallengeType.mutate(pendingDelete.id, {
-            onSuccess: () => setPendingDelete(null),
+          if (!pendingDelete || !deletePreview) return;
+          const mutation = deletePreview.archiveRequired
+            ? archiveChallengeType
+            : deleteChallengeType;
+          mutation.mutate(pendingDelete.id, {
+            onSuccess: closeDeleteDialog,
             onError: (error) => {
-              // Name the blocking records when the server named them.
-              const blocking = describeBlockingReferences(
-                extractBlockingReferences(error),
-              );
               showToast({
                 type: "error",
-                message: [
-                  getApiErrorMessage(error, "لا يمكن حذف مكانيكا مستخدمة."),
-                  blocking && `المرتبط: ${blocking}`,
-                ]
-                  .filter(Boolean)
-                  .join(" — "),
+                message: getApiErrorMessage(
+                  error,
+                  deletePreview.archiveRequired
+                    ? "تعذر أرشفة الميكانيكا."
+                    : "تعذر حذف الميكانيكا.",
+                ),
               });
-              setPendingDelete(null);
+              closeDeleteDialog();
             },
           });
         }}

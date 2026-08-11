@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 interface ConfirmationDialogProps {
   trigger?: ReactNode;
   title: string;
-  description: string;
+  description: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;

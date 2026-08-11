@@ -151,6 +151,22 @@ export function useDeleteChallengeType() {
   });
 }
 
+export function useChallengeTypeDeletionPreview() {
+  return useMutation({
+    mutationFn: (challengeTypeId: string) =>
+      api.fetchChallengeTypeDeletionPreview(challengeTypeId),
+  });
+}
+
+export function useArchiveChallengeType() {
+  const invalidate = useInvalidateWorldContent();
+  return useMutation({
+    mutationFn: (challengeTypeId: string) =>
+      api.archiveChallengeType(challengeTypeId),
+    onSuccess: invalidate,
+  });
+}
+
 /* World challenge configurations */
 
 export function useWorldBoard(worldId?: string) {

@@ -36,7 +36,7 @@ export interface ProductionMechanicProvisionReport {
   apply: boolean;
   entries: Array<{
     slug: string;
-    outcome: 'create' | 'update' | 'unchanged';
+    outcome: 'create' | 'update' | 'unchanged' | 'intentionally-deleted';
     id?: string;
     changedFields: string[];
   }>;
@@ -50,14 +50,28 @@ export class ProductionMechanicProvisioner {
 
   async run(): Promise<ProductionMechanicProvisionReport> {
     const collection = this.db.collection('challenge_types');
+    const lifecycle = this.db.collection('production_mechanic_lifecycle');
     const entries: ProductionMechanicProvisionReport['entries'] = [];
     for (const definition of PRODUCTION_MECHANICS) {
       const existing = await collection.findOne({ slug: definition.slug });
+      const deletedByAdmin = await lifecycle.findOne({
+        slug: definition.slug,
+        state: 'deleted_by_admin',
+      });
       const systemFields = productionMechanicSystemFields(definition);
       const changedFields = Object.entries(systemFields)
         .filter(([field, value]) => existing?.[field] !== value)
         .map(([field]) => field);
       if (!existing) {
+        if (deletedByAdmin) {
+          entries.push({
+            slug: definition.slug,
+            outcome: 'intentionally-deleted',
+            id: String(deletedByAdmin.challengeTypeId ?? ''),
+            changedFields: [],
+          });
+          continue;
+        }
         if (this.apply) {
           const result = await collection.insertOne(
             canonicalProvisionedDocument(definition),

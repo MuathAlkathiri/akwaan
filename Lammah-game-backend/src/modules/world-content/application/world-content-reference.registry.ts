@@ -16,7 +16,11 @@ export type WorldContentReferenceKind = 'world' | 'scope' | 'challengeType';
 export interface WorldContentReferenceGuard {
   /** Human-readable owner, used in the conflict message. */
   readonly source: string;
-  countReferences(kind: WorldContentReferenceKind, id: string): Promise<number>;
+  countReferences(
+    kind: WorldContentReferenceKind,
+    id: string,
+    identity?: { slug?: string },
+  ): Promise<number>;
   /**
    * The blocking records, when the guard can name them. A count alone tells an
    * admin something is wrong but not what to fix, so a guard that can identify
@@ -55,5 +59,26 @@ export class WorldContentReferenceRegistry {
         );
       }
     }
+  }
+
+  async countReferences(
+    kind: WorldContentReferenceKind,
+    id: string,
+    identity?: { slug?: string },
+  ): Promise<number> {
+    const counts = await Promise.all(
+      this.guards.map((guard) => guard.countReferences(kind, id, identity)),
+    );
+    return counts.reduce((total, count) => total + count, 0);
+  }
+
+  async countReferencesFrom(
+    source: string,
+    kind: WorldContentReferenceKind,
+    id: string,
+    identity?: { slug?: string },
+  ): Promise<number> {
+    const guard = this.guards.find((entry) => entry.source === source);
+    return guard ? guard.countReferences(kind, id, identity) : 0;
   }
 }

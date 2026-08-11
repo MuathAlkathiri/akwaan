@@ -24,6 +24,7 @@ import { ContentItemRepository } from './persistence/content-item.repository';
 import { ScopeRepository } from './persistence/scope.repository';
 import { WorldChallengeConfigurationRepository } from './persistence/world-challenge-configuration.repository';
 import { WorldRepository } from './persistence/world.repository';
+import { ProductionMechanicLifecycleRepository } from './persistence/production-mechanic-lifecycle.repository';
 import { ChallengeTypesController } from './presentation/challenge-types.controller';
 import { ContentItemsController } from './presentation/content-items.controller';
 import { PlayerWorldsController } from './presentation/player-worlds.controller';
@@ -86,6 +87,7 @@ import { World, WorldSchema } from './schemas/world.schema';
     ChallengeTypeRepository,
     WorldChallengeConfigurationRepository,
     ContentItemRepository,
+    ProductionMechanicLifecycleRepository,
     // application
     WorldService,
     ScopeService,

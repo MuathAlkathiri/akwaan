@@ -91,4 +91,11 @@ export class WorldChallengeConfigurationRepository {
       .countDocuments({ worldId: new Types.ObjectId(worldId) })
       .exec();
   }
+
+  async deleteByChallengeType(challengeTypeId: string): Promise<number> {
+    const result = await this.model
+      .deleteMany({ challengeTypeId: new Types.ObjectId(challengeTypeId) })
+      .exec();
+    return result.deletedCount ?? 0;
+  }
 }

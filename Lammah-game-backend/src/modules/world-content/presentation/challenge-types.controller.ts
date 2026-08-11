@@ -72,6 +72,16 @@ export class ChallengeTypesController {
     return envelope(this.challengeTypes.readiness(challengeTypeId));
   }
 
+  @Get(':challengeTypeId/deletion-preview')
+  deletionPreview(@Param('challengeTypeId') challengeTypeId: string) {
+    return envelope(this.challengeTypes.deletionPreview(challengeTypeId));
+  }
+
+  @Post(':challengeTypeId/archive')
+  archive(@Param('challengeTypeId') challengeTypeId: string) {
+    return envelope(this.challengeTypes.archive(challengeTypeId));
+  }
+
   @Patch(':challengeTypeId')
   @UseInterceptors(worldContentAssetInterceptor)
   @ApiConsumes('multipart/form-data', 'application/json')

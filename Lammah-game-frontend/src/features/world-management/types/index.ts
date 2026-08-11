@@ -298,3 +298,15 @@ export interface WorldContentMetadata {
     itemAnswerModes: ChallengeAnswerMode[];
   }>;
 }
+
+export interface ChallengeTypeDeletionPreview {
+  challengeTypeId: string;
+  name: string;
+  historicalMatchUsageCount: number;
+  contentItemCount: number;
+  worldAssignmentCount: number;
+  scopeExclusionCount: number;
+  canHardDelete: boolean;
+  archiveRequired: boolean;
+  productionMechanic: boolean;
+}

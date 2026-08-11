@@ -4,7 +4,10 @@ import {
   PRODUCTION_MECHANICS,
   productionMechanicSystemFields,
 } from '../modules/world-content/domain/production-mechanic.definition';
-import { canonicalProvisionedDocument } from './provision-production-mechanics';
+import {
+  canonicalProvisionedDocument,
+  ProductionMechanicProvisioner,
+} from './provision-production-mechanics';
 import { ChallengePresentationPolicy } from '../modules/world-content/domain/challenge-presentation.policy';
 import { ScoringRuleRegistry } from '../modules/scoring/application/scoring-rule.registry';
 
@@ -48,5 +51,40 @@ describe('production mechanic provisioning', () => {
       ...productionMechanicSystemFields(definition),
       updatedAt: undefined,
     });
+  });
+
+  it('does not recreate production mechanics intentionally deleted by an admin', async () => {
+    const insertOne = jest.fn();
+    const db = {
+      collection: jest.fn((name: string) =>
+        name === 'challenge_types'
+          ? { findOne: jest.fn().mockResolvedValue(null), insertOne }
+          : {
+              findOne: jest.fn(({ slug }: { slug: string }) =>
+                Promise.resolve({
+                  slug,
+                  state: 'deleted_by_admin',
+                  challengeTypeId: `deleted-${slug}`,
+                }),
+              ),
+            },
+      ),
+    };
+    const report = await new ProductionMechanicProvisioner(
+      db as never,
+      true,
+    ).run();
+    expect(report.entries).toHaveLength(PRODUCTION_MECHANICS.length);
+    expect(report.entries).toEqual(
+      expect.arrayContaining(
+        PRODUCTION_MECHANICS.map((definition) =>
+          expect.objectContaining({
+            slug: definition.slug,
+            outcome: 'intentionally-deleted',
+          }),
+        ),
+      ),
+    );
+    expect(insertOne).not.toHaveBeenCalled();
   });
 });

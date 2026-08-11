@@ -94,6 +94,15 @@ export class ContentItemRepository {
       .exec();
   }
 
+  async deleteByChallengeType(challengeTypeId: string): Promise<number> {
+    const result = await this.model
+      .deleteMany({
+        compatibleChallengeTypeIds: new Types.ObjectId(challengeTypeId),
+      })
+      .exec();
+    return result.deletedCount ?? 0;
+  }
+
   /** Ready-item counts per challenge type, used by readiness coverage. */
   async readyCountsByChallengeType(
     worldId: string,

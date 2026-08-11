@@ -1,6 +1,7 @@
 import apiClient from "@/lib/api/client";
 import type {
   ChallengeType,
+  ChallengeTypeDeletionPreview,
   ContentItem,
   Scope,
   World,
@@ -92,6 +93,18 @@ export const updateChallengeType = (
 export const deleteChallengeType = async (challengeTypeId: string) => {
   await apiClient.delete(`/admin/challenge-types/${challengeTypeId}`);
 };
+
+export const fetchChallengeTypeDeletionPreview = (challengeTypeId: string) =>
+  unwrap<ChallengeTypeDeletionPreview>(
+    apiClient.get(
+      `/admin/challenge-types/${challengeTypeId}/deletion-preview`,
+    ),
+  );
+
+export const archiveChallengeType = (challengeTypeId: string) =>
+  unwrap<ChallengeType>(
+    apiClient.post(`/admin/challenge-types/${challengeTypeId}/archive`),
+  );
 
 /* World-specific challenge configurations */
 

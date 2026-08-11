@@ -39,6 +39,7 @@ import {
 import { ChallengeTypeRepository } from '../persistence/challenge-type.repository';
 import { ContentItemRepository } from '../persistence/content-item.repository';
 import { ScopeRepository } from '../persistence/scope.repository';
+import { ProductionMechanicLifecycleRepository } from '../persistence/production-mechanic-lifecycle.repository';
 import { WorldChallengeConfigurationRepository } from '../persistence/world-challenge-configuration.repository';
 import { ChallengeType } from '../schemas/challenge-type.schema';
 import { WorldContentAssetMutator } from './world-content-asset.mutator';
@@ -53,6 +54,18 @@ export interface ChallengeTypeSummary extends ChallengeTypeView {
   worldConfigurationCount: number;
   contentItemCount: number;
   readiness: ReadinessReport;
+}
+
+export interface ChallengeTypeDeletionPreview {
+  challengeTypeId: string;
+  name: string;
+  historicalMatchUsageCount: number;
+  contentItemCount: number;
+  worldAssignmentCount: number;
+  scopeExclusionCount: number;
+  canHardDelete: boolean;
+  archiveRequired: boolean;
+  productionMechanic: boolean;
 }
 
 /**
@@ -99,6 +112,7 @@ export class ChallengeTypeService {
     private readonly scoringRules: ScoringRuleRegistry,
     private readonly assets: WorldContentAssetMutator,
     private readonly references: WorldContentReferenceRegistry,
+    private readonly lifecycle: ProductionMechanicLifecycleRepository,
   ) {}
 
   metadata(): WorldContentMetadata {
@@ -143,6 +157,61 @@ export class ChallengeTypeService {
 
   async readiness(id: string): Promise<ReadinessReport> {
     return this.evaluate(await this.require(id));
+  }
+
+  async deletionPreview(id: string): Promise<ChallengeTypeDeletionPreview> {
+    const challengeType = await this.require(id);
+    const [
+      historicalMatchUsageCount,
+      contentItemCount,
+      worldAssignmentCount,
+      scopeExclusionCount,
+    ] = await Promise.all([
+      this.references.countReferencesFrom(
+        'persisted-matches',
+        'challengeType',
+        id,
+        { slug: challengeType.slug },
+      ),
+      this.contentItems.countByChallengeType(id),
+      this.configurations.countByChallengeType(id),
+      this.scopes.countExcludingChallengeType(id),
+    ]);
+    const archiveRequired = historicalMatchUsageCount > 0;
+    return {
+      challengeTypeId: id,
+      name: challengeType.name,
+      historicalMatchUsageCount,
+      contentItemCount,
+      worldAssignmentCount,
+      scopeExclusionCount,
+      canHardDelete: !archiveRequired,
+      archiveRequired,
+      productionMechanic: Boolean(
+        productionMechanicDefinition(challengeType.slug),
+      ),
+    };
+  }
+
+  async archive(id: string): Promise<ChallengeTypeSummary> {
+    const existing = await this.require(id);
+    const matchUsageCount = await this.references.countReferencesFrom(
+      'persisted-matches',
+      'challengeType',
+      id,
+      { slug: existing.slug },
+    );
+    if (matchUsageCount === 0) {
+      throw new WorldContentConflictError(
+        'CHALLENGE_TYPE_ARCHIVE_NOT_REQUIRED',
+        'This mechanic has no persisted Match history and should be hard deleted instead',
+      );
+    }
+    const updated = await this.challengeTypes.updateById(id, {
+      status: WorldContentStatus.ARCHIVED,
+    });
+    if (!updated) throw new NotFoundException('Challenge type not found');
+    return this.summarize(updated);
   }
 
   async create(
@@ -235,30 +304,26 @@ export class ChallengeTypeService {
 
   async remove(id: string): Promise<{ id: string }> {
     const existing = await this.require(id);
-    const [configurationCount, contentItemCount, scopeExclusionCount] =
-      await Promise.all([
-        this.configurations.countByChallengeType(id),
-        this.contentItems.countByChallengeType(id),
-        this.scopes.countExcludingChallengeType(id),
-      ]);
-    if (configurationCount) {
+    const matchUsageCount = await this.references.countReferencesFrom(
+      'persisted-matches',
+      'challengeType',
+      id,
+      { slug: existing.slug },
+    );
+    if (matchUsageCount > 0) {
       throw new WorldContentConflictError(
-        'CHALLENGE_TYPE_IN_USE',
-        `This mechanic is configured in ${configurationCount} World(s); remove those configurations first`,
+        'CHALLENGE_TYPE_HAS_MATCH_HISTORY',
+        `This mechanic is referenced by ${matchUsageCount} persisted Match(es) and must be archived instead`,
       );
     }
-    if (contentItemCount) {
-      throw new WorldContentConflictError(
-        'CHALLENGE_TYPE_IN_USE',
-        `${contentItemCount} content item(s) are tagged as compatible with this mechanic`,
-      );
+    if (productionMechanicDefinition(existing.slug)) {
+      await this.lifecycle.markDeleted(existing.slug, id);
     }
-    await this.references.assertUnreferenced('challengeType', id);
-    // A dangling exclusion would fail Scope readiness, so it is cleaned up with
-    // the mechanic it referred to rather than left behind (roadmap 6).
-    if (scopeExclusionCount) {
-      await this.scopes.removeChallengeTypeFromExclusions(id);
-    }
+    // Standalone Mongo has no transactions. References are removed first and
+    // the root last, so a failure cannot leave a dangling reference.
+    await this.configurations.deleteByChallengeType(id);
+    await this.contentItems.deleteByChallengeType(id);
+    await this.scopes.removeChallengeTypeFromExclusions(id);
     await this.challengeTypes.deleteById(id);
     await this.assets.discard(existing.icon);
     return { id };
