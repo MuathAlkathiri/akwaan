@@ -63,6 +63,11 @@ export const SCORING_RULE_PRESENTATION: Record<
   string,
   { label: string; description: string; family?: ChallengeFamily }
 > = {
+  "challenge.win": {
+    label: "نقطة للفائز بالتحدي",
+    description:
+      "يسجل النظام نقطة مباراة واحدة للفريق الفائز بالتحدي، ولا يسجل نقطة عند التعادل.",
+  },
   "ryo.payoff-matrix": {
     label: "نظام اقرأ خصمك",
     description:

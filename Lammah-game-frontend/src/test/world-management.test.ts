@@ -84,6 +84,28 @@ describe("mechanic and configuration payloads", () => {
   it("presents the server-provided One Clue wrapper with its product label", () => {
     expect(ANSWER_MODE_LABEL.one_clue).toBe("بدليل واحد");
   });
+
+  it("serializes One Clue with the implemented generic Match winner rule", () => {
+    expect(
+      buildChallengeTypePayload({
+        name: "بدليل واحد",
+        slug: "one-clue",
+        family: "coop",
+        itemStructure: "discrete_triple",
+        answerMode: "one_clue",
+        scoringRuleId: "challenge.win",
+        status: "active",
+        defaultPresentation: {
+          inputType: "phone-text",
+          timerSeconds: 7,
+        },
+      }),
+    ).toMatchObject({
+      slug: "one-clue",
+      answerMode: "one_clue",
+      scoringRuleId: "challenge.win",
+    });
+  });
   it("falls back to the global mechanic name when no World name is configured", () => {
     const configuration = {
       effectiveName: "",

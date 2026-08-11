@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ScoringRuleRegistry } from '../../scoring/application/scoring-rule.registry';
+import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 import { ChallengePresentationPolicy } from './challenge-presentation.policy';
 import {
   ChallengeAnswerMode,
@@ -44,6 +45,17 @@ export class ChallengeTypePolicy {
         issue(
           'ONE_CLUE_CANONICAL_BINDING_REQUIRED',
           `The ${ONE_CLUE_SLUG} slug and one_clue answer mode must be configured together`,
+        ),
+      );
+    }
+    if (
+      challengeType.slug === ONE_CLUE_SLUG &&
+      challengeType.scoringRuleId !== SCORING_RULE_IDS.CHALLENGE_WIN
+    ) {
+      issues.push(
+        issue(
+          'ONE_CLUE_SCORING_RULE_INVALID',
+          `One Clue resolves its Match result through ${SCORING_RULE_IDS.CHALLENGE_WIN}`,
         ),
       );
     }

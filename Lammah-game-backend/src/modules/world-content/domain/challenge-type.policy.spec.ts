@@ -64,6 +64,7 @@ describe('ChallengeTypePolicy', () => {
           slug: 'one-clue',
           family: ChallengeFamily.COOP,
           answerMode: ChallengeAnswerMode.ONE_CLUE,
+          scoringRuleId: SCORING_RULE_IDS.CHALLENGE_WIN,
         }),
       ),
     ).toEqual([]);
@@ -76,6 +77,20 @@ describe('ChallengeTypePolicy', () => {
         }),
       ),
     ).toContain('ONE_CLUE_CANONICAL_BINDING_REQUIRED');
+  });
+
+  it('keeps One Clue ready only through its implemented Match scoring rule', () => {
+    const oneClue = challengeType({
+      slug: 'one-clue',
+      family: ChallengeFamily.COOP,
+      answerMode: ChallengeAnswerMode.ONE_CLUE,
+      scoringRuleId: SCORING_RULE_IDS.CHALLENGE_WIN,
+    });
+    expect(policy.validate(oneClue)).toEqual([]);
+    expect(policy.warnings(oneClue)).toEqual([]);
+    expect(
+      codes({ ...oneClue, scoringRuleId: SCORING_RULE_IDS.COOP_ITEM_SUCCESS }),
+    ).toContain('ONE_CLUE_SCORING_RULE_INVALID');
   });
 
   it('rejects an unsupported item structure', () => {

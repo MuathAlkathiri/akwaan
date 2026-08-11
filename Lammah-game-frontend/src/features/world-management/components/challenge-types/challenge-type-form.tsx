@@ -92,8 +92,10 @@ export function ChallengeTypeForm({
     (entry) => entry.value === family,
   );
   const allowedAnswerModes = familyMeta?.allowedAnswerModes ?? [];
-  const scoringRules = (metadata.data?.scoringRules ?? []).filter(
-    (rule) => SCORING_RULE_PRESENTATION[rule.id]?.family === family,
+  const scoringRules = (metadata.data?.scoringRules ?? []).filter((rule) =>
+    answerMode === "one_clue"
+      ? rule.id === "challenge.win"
+      : SCORING_RULE_PRESENTATION[rule.id]?.family === family,
   );
 
   useEffect(() => {
@@ -150,6 +152,7 @@ export function ChallengeTypeForm({
       setDescription("خمسة أدلة متدرجة، وإجابة واحدة مقفلة لكل فريق.");
       slugField.onManualSlugChange("one-clue");
       setItemStructure("discrete_triple");
+      setScoringRuleId("challenge.win");
       setPresentation({
         inputType: "phone-text",
         timerSeconds: 7,

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { SCORING_RULE_IDS } from '../modules/scoring/domain/scoring-rule';
 import {
   ChallengeAnswerMode,
   ChallengeFamily,
@@ -29,7 +30,7 @@ async function main(): Promise<void> {
             answerMode: ChallengeAnswerMode.ONE_CLUE,
             'defaultPresentation.inputType': 'phone-text',
             'defaultPresentation.timerSeconds': ONE_CLUE_STAGE_SECONDS,
-            scoringRuleId: 'coop.item-success',
+            scoringRuleId: SCORING_RULE_IDS.CHALLENGE_WIN,
             status: WorldContentStatus.ACTIVE,
             updatedAt: new Date(),
           },
@@ -61,9 +62,7 @@ async function main(): Promise<void> {
       soundPack: null,
       revealStyle: null,
     },
-    // Match scoring remains challenge.win. This is only the authoring-side
-    // compatibility rule required by the ChallengeType contract.
-    scoringRuleId: 'coop.item-success',
+    scoringRuleId: SCORING_RULE_IDS.CHALLENGE_WIN,
     status: WorldContentStatus.ACTIVE,
     sortOrder: 0,
     createdAt: now,
