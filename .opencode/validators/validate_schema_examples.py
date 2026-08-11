@@ -134,6 +134,10 @@ def main() -> int:
             ROOT / ".opencode/skills/challenge-types/who-among-us/who-among-us.schema.json",
             ROOT / ".opencode/validators/examples/who-among-us.valid-authoring.json",
         ),
+        (
+            ROOT / ".opencode/skills/challenge-types/one-clue/one-clue.schema.json",
+            ROOT / ".opencode/validators/examples/one-clue.valid.json",
+        ),
     ]
     failed = False
     for schema_path, fixture_path in pairs:

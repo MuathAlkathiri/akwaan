@@ -11,6 +11,7 @@ from pathlib import Path
 from validate_top_5 import validate as validate_top_5
 from validate_who_among_us import validate as validate_who_among_us
 from validate_distributed_information import validate as validate_distributed_information
+from validate_one_clue import validate as validate_one_clue
 
 ROOT = Path(__file__).resolve().parents[2]
 ACTIVE = ROOT / ".opencode"
@@ -204,6 +205,29 @@ distributed_required = [
 for path in distributed_required:
     if not path.exists():
         errors.append(f"missing Distributed Information contract: {path.relative_to(ROOT)}")
+
+# One Clue production-ready contract and full fixture suite.
+one_clue_root = challenge_root / "one-clue"
+one_clue_required = [
+    one_clue_root / "SKILL.md",
+    one_clue_root / "patterns" / "progressive-clues" / "PATTERN.md",
+    one_clue_root / "one-clue.schema.json",
+    ACTIVE / "knowledge" / "architecture" / "ONE-CLUE.md",
+    ACTIVE / "validators" / "ONE-CLUE.md",
+    ACTIVE / "validators" / "validate_one_clue.py",
+    ACTIVE / "validators" / "test_one_clue_fixtures.py",
+    ACTIVE / "validators" / "examples" / "one-clue.invalid-fixtures.json",
+]
+for path in one_clue_required:
+    if not path.exists():
+        errors.append(f"missing One Clue contract: {path.relative_to(ROOT)}")
+one_clue_fixture = ACTIVE / "validators" / "examples" / "one-clue.valid.json"
+if one_clue_fixture.exists():
+    fixture_errors = validate_one_clue(json.loads(text(one_clue_fixture)))
+    errors.extend(f"One Clue fixture: {error}" for error in fixture_errors)
+else:
+    errors.append("missing One Clue validation fixture")
+
 
 # Example manifests contain exactly the schema-required top-level keys.
 schema_path = ACTIVE / "workflows" / "BATCH-MANIFEST.schema.json"

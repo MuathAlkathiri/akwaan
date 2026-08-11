@@ -44,5 +44,18 @@ carries no puzzle material. While the shared-fragments runtime contract is
 pending, every item stays `authoring_only` with a nonempty `runtimeBlocker`, and
 no item may be marked ready.
 
+For `one-clue` with `progressive-clues`, load its dedicated schema and
+validator. Plan exactly three independent ContentItems, each with native
+`answerPayload` (`mode: match` + `acceptedAnswers`) and `mechanicPayload`
+(exactly five `clues` with `order` 1..5 and `value` 5, 4, 3, 2, 1 in exact
+per-order sequence). Research 7–10 verified candidate facts per answer target;
+select five; order them monotonically hardest to easiest
+(`C1 < C2 < C3 < C4 < C5`); write each clue in natural Arabic adding genuinely
+new verified information; keep the truth only in `answerPayload`; verify no
+literal or alias leakage; and keep `media: null`, `isReusableAcrossSessions:
+false`, and `runtimeContractStatus: fully_playable`. The item may be marked
+ready. Runtime owns stage timing, cumulative reveal, answerer assignment,
+elimination, progress, and score events.
+
 Never route by a legacy domain hierarchy. Never let research choose the mechanic.
 Every stage writes a unique file and preserves stable IDs.

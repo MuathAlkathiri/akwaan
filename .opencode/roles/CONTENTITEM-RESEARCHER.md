@@ -24,3 +24,10 @@ For Distributed Information, puzzles are self-contained: the instruction and
 fragments carry all solving material. Research verifies determinism only —
 exact names, spellings, numeric values, and any spoiler/version boundary — and
 never supplies canon facts that puzzle solving depends on.
+
+For One Clue, gather 7–10 verified candidate facts per answer target so the
+Writer can select five. Verify each fact's source, exact names and accepted
+Arabic spellings/variants, ambiguity, and any dated context for current
+statistics. Record a per-fact monotonic position estimate (how identifying the
+fact is) to feed the Writer's ladder, but never write player-facing clues or
+the answer into research output beyond the accepted answer set.

@@ -13,6 +13,7 @@ Resolve mechanics here before World and Scope material.
 | `who-among-us` | Relational private roster vote; authoring-only | `team-consensus` | `.opencode/skills/challenge-types/who-among-us/SKILL.md` |
 | `guess-your-teammate` | Relational | `private-prediction` | `.opencode/skills/challenge-types/guess-your-teammate/SKILL.md` |
 | `top-5` | Alternating keep-or-give bluff | `keep-or-give` | `.opencode/skills/challenge-types/top-5/SKILL.md` |
+| `one-clue` | Co-op progressive knowledge recognition | `progressive-clues` | `.opencode/skills/challenge-types/one-clue/SKILL.md` |
 
 Signature mechanics remain unassigned. Discovery does not imply World
 compatibility; always apply the selected Scope exclusions.

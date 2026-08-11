@@ -22,3 +22,14 @@ puzzle, if the item needs the host screen, if the truth appears outside
 policy, or if actor-specific visibility can leak teammate, opponent, future-item,
 or truth data. Confirm the scope is one of the six Puzzle World scopes and that a
 declared `mechanicPayload.puzzleFamily` matches the actual solving operation.
+
+One Clue review runs the manual monotonic ladder gate on every item: record each
+transition `1→2`, `2→3`, `3→4`, `4→5` and require every later clue to be more
+identifying than the earlier one. Run the early-giveaway test (an early clue
+must not make later clues redundant) and the useless-clue test (no clue may carry
+zero information). Reject literal or alias leakage beyond the documented
+short-alias threshold, guessing-style or puzzle-solving content, truth outside
+`answerPayload`, duplicated clue text, non-monotonic progression, ambiguous or
+disputed facts, and any authored runtime state. Confirm the item is
+production-ready (`runtimeContractStatus: fully_playable`) and that a Challenge
+spans exactly three distinct items.

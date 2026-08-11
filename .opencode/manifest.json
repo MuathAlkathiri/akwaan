@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-09",
+  "generatedAt": "2026-08-12",
   "title": "Akwaan Active Content System manifest",
   "contentItemModes": [
     "ryo",
@@ -28,6 +28,14 @@
         "private-prediction"
       ],
       "skill": ".opencode/skills/challenge-types/guess-your-teammate/SKILL.md"
+    },
+    {
+      "slug": "one-clue",
+      "name": "challenge-type-one-clue",
+      "patterns": [
+        "progressive-clues"
+      ],
+      "skill": ".opencode/skills/challenge-types/one-clue/SKILL.md"
     },
     {
       "slug": "read-your-opponent",
@@ -131,8 +139,10 @@
   ],
   "validators": [
     "audit_active_architecture.py",
+    "test_one_clue_fixtures.py",
     "test_who_among_us_fixtures.py",
     "validate_distributed_information.py",
+    "validate_one_clue.py",
     "validate_schema_examples.py",
     "validate_top_5.py",
     "validate_who_among_us.py"

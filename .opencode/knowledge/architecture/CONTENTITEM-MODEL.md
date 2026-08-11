@@ -32,3 +32,15 @@ one holder; three participants hold the two fragments plus an instruction-only
 third. The host screen carries no puzzle material. The runtime contract is
 `authoring_only` until the product backend migrates from the retired
 `three-segment-race` payload; see the canonical ركّبها definition.
+
+## Native One Clue Shape
+
+`one-clue` uses the same implementation-native separation: `answerPayload`
+stores the one machine-resolvable truth (`mode: match` with `acceptedAnswers`)
+and `mechanicPayload` stores `progressive-clues` gameplay material: exactly five
+localized `clues` with `order` 1..5 and `value` 5, 4, 3, 2, 1. The truth is
+never duplicated into `mechanicPayload`, the prompt, or metadata. One ContentItem
+is one recognition ladder; a Challenge is exactly three items. Stage timing,
+cumulative reveal, answerer assignment, elimination, progress, and score events
+are runtime-owned. The runtime contract is `fully_playable`; see the canonical
+بدليل واحد definition.

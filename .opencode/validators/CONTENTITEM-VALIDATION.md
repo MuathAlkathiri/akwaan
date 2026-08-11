@@ -31,3 +31,13 @@ public/private leakage, a supported inner mode, the author safety confirmation,
 host-screen independence, and exactly three items per Challenge. Run
 `validate_distributed_information.py`. Every item stays `authoring_only` while
 the shared-fragments runtime contract is pending.
+
+One Clue additionally requires canonical IDs, native payloads, exactly three
+distinct items per Challenge, five clues with unique orders 1–5 and values 5–1
+in exact per-order sequence, nonblank Arabic clue text, no duplicated clue text,
+no literal answer leakage (short-alias threshold in LEAKAGE.md), a `match`
+accepted-answer set, monotonic identification from clue 1 to clue 5, factual
+validity and independence per clue, no guessing-style or puzzle-solving content,
+no truth or runtime-owned fields in mechanic data, `media: null`, consumed on
+use, and a production-ready runtime contract. Run `validate_one_clue.py` and
+`test_one_clue_fixtures.py`.

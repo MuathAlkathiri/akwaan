@@ -1,0 +1,140 @@
+{
+  "baseFixture": ".opencode/validators/examples/one-clue.valid.json",
+  "cases": [
+    {
+      "id": "clue-count-four",
+      "expectedCode": "clue_count_invalid",
+      "overrides": {
+        "mechanicPayload": {
+          "clues": [
+            {"order": 1, "value": 5, "text": {"ar": "أول دليل."}},
+            {"order": 2, "value": 4, "text": {"ar": "دليل ثانٍ."}},
+            {"order": 3, "value": 3, "text": {"ar": "دليل ثالث."}},
+            {"order": 4, "value": 2, "text": {"ar": "دليل رابع."}}
+          ]
+        }
+      }
+    },
+    {
+      "id": "clue-count-six",
+      "expectedCode": "clue_count_invalid",
+      "overrides": {
+        "mechanicPayload": {
+          "clues": [
+            {"order": 1, "value": 5, "text": {"ar": "أول دليل."}},
+            {"order": 2, "value": 4, "text": {"ar": "دليل ثانٍ."}},
+            {"order": 3, "value": 3, "text": {"ar": "دليل ثالث."}},
+            {"order": 4, "value": 2, "text": {"ar": "دليل رابع."}},
+            {"order": 5, "value": 1, "text": {"ar": "دليل خامس."}},
+            {"order": 6, "value": 1, "text": {"ar": "دليل سادس."}}
+          ]
+        }
+      }
+    },
+    {
+      "id": "clue-order-swapped",
+      "expectedCode": "clue_order_invalid",
+      "overrides": {
+        "mechanicPayload": {
+          "clues": [
+            {"order": 2, "value": 5, "text": {"ar": "أول دليل."}},
+            {"order": 1, "value": 4, "text": {"ar": "دليل ثانٍ."}},
+            {"order": 3, "value": 3, "text": {"ar": "دليل ثالث."}},
+            {"order": 4, "value": 2, "text": {"ar": "دليل رابع."}},
+            {"order": 5, "value": 1, "text": {"ar": "دليل خامس."}}
+          ]
+        }
+      }
+    },
+    {
+      "id": "clue-value-mismatch",
+      "expectedCode": "clue_value_invalid",
+      "overrides": {
+        "mechanicPayload": {
+          "clues": [
+            {"order": 1, "value": 4, "text": {"ar": "أول دليل."}},
+            {"order": 2, "value": 5, "text": {"ar": "دليل ثانٍ."}},
+            {"order": 3, "value": 3, "text": {"ar": "دليل ثالث."}},
+            {"order": 4, "value": 2, "text": {"ar": "دليل رابع."}},
+            {"order": 5, "value": 1, "text": {"ar": "دليل خامس."}}
+          ]
+        }
+      }
+    },
+    {
+      "id": "clue-text-blank",
+      "expectedCode": "clue_text_missing",
+      "overrides": {
+        "mechanicPayload": {
+          "clues": [
+            {"order": 1, "value": 5, "text": {"ar": "أول دليل."}},
+            {"order": 2, "value": 4, "text": {"ar": "دليل ثانٍ."}},
+            {"order": 3, "value": 3, "text": {"ar": ""}},
+            {"order": 4, "value": 2, "text": {"ar": "دليل رابع."}},
+            {"order": 5, "value": 1, "text": {"ar": "دليل خامس."}}
+          ]
+        }
+      }
+    },
+    {
+      "id": "duplicate-clue-text",
+      "expectedCode": "duplicate_clue_text",
+      "overrides": {
+        "mechanicPayload": {
+          "clues": [
+            {"order": 1, "value": 5, "text": {"ar": "نفس الدليل."}},
+            {"order": 2, "value": 4, "text": {"ar": "نفس الدليل."}},
+            {"order": 3, "value": 3, "text": {"ar": "دليل ثالث."}},
+            {"order": 4, "value": 2, "text": {"ar": "دليل رابع."}},
+            {"order": 5, "value": 1, "text": {"ar": "دليل خامس."}}
+          ]
+        }
+      }
+    },
+    {
+      "id": "answer-leaked-in-clue",
+      "expectedCode": "public_truth_leakage",
+      "overrides": {
+        "mechanicPayload": {
+          "clues": [
+            {"order": 1, "value": 5, "text": {"ar": "أول دليل."}},
+            {"order": 2, "value": 4, "text": {"ar": "دليل ثانٍ."}},
+            {"order": 3, "value": 3, "text": {"ar": "أسطورة الكرة هو اللاعب."}},
+            {"order": 4, "value": 2, "text": {"ar": "دليل رابع."}},
+            {"order": 5, "value": 1, "text": {"ar": "دليل خامس."}}
+          ]
+        }
+      }
+    },
+    {
+      "id": "answer-mode-invalid",
+      "expectedCode": "answer_mode_invalid",
+      "overrides": {
+        "answerMode": "split",
+        "answerPayload": {"mode": "split"}
+      }
+    },
+    {
+      "id": "wrong-pattern",
+      "expectedCode": "pattern_id_invalid",
+      "overrides": {"patternId": "shared-fragments"}
+    },
+    {
+      "id": "reuse-policy",
+      "expectedCode": "reuse_policy_invalid",
+      "overrides": {"isReusableAcrossSessions": true}
+    },
+    {
+      "id": "runtime-status",
+      "expectedCode": "runtime_status_invalid",
+      "overrides": {
+        "metadata": {"runtimeContractStatus": "authoring_only", "runtimeBlocker": "runtime_contract_missing"}
+      }
+    },
+    {
+      "id": "legacy-field",
+      "expectedCode": "legacy_field_present",
+      "overrides": {"difficulty": "easy"}
+    }
+  ]
+}

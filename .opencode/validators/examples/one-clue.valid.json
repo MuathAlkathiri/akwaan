@@ -1,0 +1,31 @@
+{
+  "id": "one-clue-validation-fixture",
+  "scopeId": "football.world-cup",
+  "compatibleChallengeTypeIds": ["one-clue"],
+  "patternId": "progressive-clues",
+  "prompt": {"ar": "من هو اللاعب الذي نشير إليه بخمسة أدلة متدرجة؟"},
+  "answerMode": "one_clue",
+  "answerPayload": {
+    "mode": "match",
+    "acceptedAnswers": ["أسطورة الكرة"]
+  },
+  "mechanicPayload": {
+    "clues": [
+      {"order": 1, "value": 5, "text": {"ar": "هذا اللاعب بدأ مسيرته في قارة أخرى قبل الاحتراف الأوروبي."}},
+      {"order": 2, "value": 4, "text": {"ar": "سجّل هدفه الأهم في نهائي قاري بحضور قياسي."}},
+      {"order": 3, "value": 3, "text": {"ar": "حمل رقم قميص شهير ارتبط به اسمه لدى الجماهير."}},
+      {"order": 4, "value": 2, "text": {"ar": "قاد منتخبه الوطني للفوز بلقب قاري وحيد في تاريخه."}},
+      {"order": 5, "value": 1, "text": {"ar": "امتدت مسيرته الاحترافية أكثر من عقدين في دوري أوروبي كبير."}}
+    ]
+  },
+  "media": null,
+  "isReusableAcrossSessions": false,
+  "status": "ready",
+  "metadata": {
+    "sources": ["https://example.com/one-clue-fixture-source"],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null,
+    "explanation": "Synthetic schema fixture; not production content."
+  }
+}

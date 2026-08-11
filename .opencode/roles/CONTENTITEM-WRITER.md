@@ -38,3 +38,16 @@ three-player team. Never author runtime state, hints, participant identities, or
 in-race reveals. Record the safety in `mechanicPayload.authorSafetyConfirmation`
 and keep the item `authoring_only` while the shared-fragments runtime contract
 is pending. A three-item Challenge uses three distinct puzzle families.
+
+For One Clue, resolve the Scope and fix ONE deterministic answer target inside
+its candidate field. Order the clues monotonically hardest to easiest
+(`C1 < C2 < C3 < C4 < C5`): each clue adds genuinely new, verified information
+and later clues are progressively more identifying. Write exactly five clues in
+`mechanicPayload.clues` with `order` 1..5 and `value` 5, 4, 3, 2, 1 in exact
+per-order sequence, each with nonblank natural Arabic text. Record the truth
+only in `answerPayload` (`mode: match` + `acceptedAnswers`, canonical name
+first) — never in the prompt, a clue, or metadata. The final clue may be
+near-deterministic but must never contain the answer or an accepted variant.
+Verify no literal leakage (see LEAKAGE.md short-alias threshold), no duplicated
+clue text, no guessing-style or puzzle-solving content, `media: null`, and
+`isReusableAcrossSessions: false`. A Challenge is exactly three distinct items.

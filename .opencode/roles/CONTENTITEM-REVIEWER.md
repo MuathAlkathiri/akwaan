@@ -60,6 +60,23 @@ Confirm `mechanicPayload.authorSafetyConfirmation` when
 a future ready status is claimed and that the item stays authoring-only while the
 shared-fragments runtime contract is pending.
 
+For One Clue, verify canonical IDs, the exact five-clue ladder (`order` 1..5,
+`value` 5, 4, 3, 2, 1, nonblank Arabic text, no duplicate text), truth only in
+`answerPayload`, automatic `match` resolution, literal and alias leakage (run
+the alias test independently of the mechanical short-alias threshold), media
+`null`, and consumed-on-use. Run the mandatory monotonic ladder gate on every
+item: for each transition `1→2`, `2→3`, `3→4`, `4→5` record whether a neutral
+reader finds the later clue more identifying than the earlier one and record
+`ladderTransitions` PASS/FAIL in `03-review.json`; the ladder must be monotonic.
+Also run the early-giveaway test (does clue 2 or 3 make the later clues
+redundant?) and the useless-clue test (does removing any clue leave the ladder
+with no information loss?), record both, and reject a ladder that is not
+strictly progressive or that reads as guessing or puzzle solving. Verify each
+fact per clue for factual validity, source support, ambiguity risk, answer
+leakage, and duplicate-information risk. Confirm the Challenge contains exactly
+three distinct items and the item is production-ready
+(`runtimeContractStatus: fully_playable`).
+
 ## Owned Output
 `03-review.json` with one decision per stable item ID, contract checks, reason
 codes, requested repairs, media eligibility, blockers, totals, and status.

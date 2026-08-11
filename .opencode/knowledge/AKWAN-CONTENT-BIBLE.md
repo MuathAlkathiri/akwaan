@@ -75,6 +75,10 @@ trim, lowercase, and whitespace collapse.
   five real ranks and five traps.
 - Co-op: partial information forces verbal dependency between teammates.
 - Distributed Information / ركّبها: cooperative shared-puzzle challenge where two teams race to combine secret fragments plus a team instruction into one answer; owned by Puzzle World.
+- One Clue / بدليل واحد: cooperative knowledge-recognition challenge where a
+  hidden answer is revealed through exactly five progressively easier clues and
+  teams lock a text answer each stage; the shared `normalizeAnswer` utility
+  resolves exact matching; global across Worlds.
 - Relational: agreement, consensus, or teammate prediction; no external truth.
 - Signature: one exclusive, auto-resolvable mechanic per World, defined later.
 
