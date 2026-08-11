@@ -1,5 +1,11 @@
 import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
 import {
+  ONE_CLUE_ITEM_COUNT,
+  ONE_CLUE_SLUG,
+  ONE_CLUE_STAGE_SECONDS,
+  ONE_CLUE_VALUES,
+} from '../../world-content/domain/world-content.constants';
+import {
   GameplayCommandPayload,
   GameplayCommandResult,
   GameplayModePlugin,
@@ -18,10 +24,8 @@ import {
   TeamActionAssignmentState,
 } from './team-action-assignment';
 
-export const ONE_CLUE_MODE_KEY = 'one-clue';
-export const ONE_CLUE_ITEM_COUNT = 3;
-export const ONE_CLUE_STAGE_SECONDS = 7;
-export const ONE_CLUE_VALUES = [5, 4, 3, 2, 1] as const;
+export const ONE_CLUE_MODE_KEY = ONE_CLUE_SLUG;
+export { ONE_CLUE_ITEM_COUNT, ONE_CLUE_STAGE_SECONDS, ONE_CLUE_VALUES };
 export const oneClueAnswerAction = (teamId: string) =>
   `one-clue.answer.${teamId}`;
 

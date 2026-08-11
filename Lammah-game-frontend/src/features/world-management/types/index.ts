@@ -21,6 +21,7 @@ export type ChallengeAnswerMode =
   | "vote"
   | "split"
   | "top_5"
+  | "one_clue"
   /** The ركّبها wrapper: the item keeps its own answer contract. */
   | "distributed";
 export type ChallengeItemStructure = "discrete_triple" | "continuous";

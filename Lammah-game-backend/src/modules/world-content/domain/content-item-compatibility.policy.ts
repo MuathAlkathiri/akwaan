@@ -17,6 +17,8 @@ import {
   TOP5_RANKS,
   TOP5_TRAP_COUNT,
   TOP5_VARIANT,
+  ONE_CLUE_SLUG,
+  ONE_CLUE_VALUES,
   VoteConsensusRule,
   WorldContentStatus,
 } from './world-content.constants';
@@ -32,6 +34,7 @@ import {
   ReadinessReport,
   DistributedInformationPayload,
   Top5Payload,
+  OneCluePayload,
 } from './world-content.types';
 
 /**
@@ -84,9 +87,36 @@ export class ContentItemCompatibilityPolicy {
     blockers.push(...this.validateMedia(input.item));
     blockers.push(...this.validateTop5Payload(input.item));
     blockers.push(...this.validateDistributedInformationPayload(input.item));
+    blockers.push(...this.validateOneCluePayload(input.item, referenced));
     warnings.push(...this.reuseWarnings(input.item, referenced));
 
     return buildReadinessReport(blockers, warnings);
+  }
+
+  private validateOneCluePayload(
+    item: ContentItemView,
+    challengeTypes: ChallengeTypeView[],
+  ): WorldContentIssue[] {
+    if (!challengeTypes.some((type) => type.slug === ONE_CLUE_SLUG)) return [];
+    const raw = item.mechanicPayload as Partial<OneCluePayload> | undefined;
+    const clues = Array.isArray(raw?.clues) ? raw.clues : [];
+    if (
+      clues.length !== ONE_CLUE_VALUES.length ||
+      clues.some(
+        (clue, index) =>
+          clue?.order !== index + 1 ||
+          clue?.value !== ONE_CLUE_VALUES[index] ||
+          !clue?.text?.ar?.trim(),
+      )
+    ) {
+      return [
+        issue(
+          'ONE_CLUE_STRUCTURE_INVALID',
+          'One Clue requires exactly five ordered clues valued 5, 4, 3, 2, 1',
+        ),
+      ];
+    }
+    return [];
   }
 
   /**

@@ -51,6 +51,7 @@ export const ANSWER_MODE_LABEL: Record<ChallengeAnswerMode, string> = {
   split: "معلومة مقسّمة",
   distributed: "ركّبها (معلومات موزّعة)",
   top_5: "أفضل 5",
+  one_clue: "بدليل واحد",
 };
 
 export const ITEM_STRUCTURE_LABEL: Record<ChallengeItemStructure, string> = {

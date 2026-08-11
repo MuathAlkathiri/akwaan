@@ -4,8 +4,9 @@ import {
   ChallengeFamily,
   ChallengeItemStructure,
   WorldContentStatus,
+  ONE_CLUE_SLUG,
+  ONE_CLUE_STAGE_SECONDS,
 } from '../modules/world-content/domain/world-content.constants';
-import { ONE_CLUE_MODE_KEY } from '../modules/live-game-sessions/domain/one-clue-gameplay.plugin';
 
 const APPLY = process.argv.includes('--apply');
 const MONGO_URI =
@@ -15,10 +16,28 @@ async function main(): Promise<void> {
   const connection = await mongoose.connect(MONGO_URI);
   const db = connection.connection.db as mongoose.mongo.Db;
   const challengeTypes = db.collection('challenge_types');
-  const existing = await challengeTypes.findOne({ slug: ONE_CLUE_MODE_KEY });
+  const existing = await challengeTypes.findOne({ slug: ONE_CLUE_SLUG });
   if (existing) {
+    if (APPLY) {
+      await challengeTypes.updateOne(
+        { _id: existing._id },
+        {
+          $set: {
+            name: 'بدليل واحد',
+            family: ChallengeFamily.COOP,
+            itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
+            answerMode: ChallengeAnswerMode.ONE_CLUE,
+            'defaultPresentation.inputType': 'phone-text',
+            'defaultPresentation.timerSeconds': ONE_CLUE_STAGE_SECONDS,
+            scoringRuleId: 'coop.item-success',
+            status: WorldContentStatus.ACTIVE,
+            updatedAt: new Date(),
+          },
+        },
+      );
+    }
     console.log(
-      `[one-clue provisioning] already present id=${String(existing._id)}`,
+      `[one-clue provisioning] ${APPLY ? 'updated' : 'already present'} id=${String(existing._id)}`,
     );
     await mongoose.disconnect();
     return;
@@ -31,14 +50,14 @@ async function main(): Promise<void> {
   const now = new Date();
   const result = await challengeTypes.insertOne({
     name: 'بدليل واحد',
-    slug: ONE_CLUE_MODE_KEY,
+    slug: ONE_CLUE_SLUG,
     description: 'خمسة أدلة متدرجة، وإجابة واحدة مقفلة لكل فريق.',
     family: ChallengeFamily.COOP,
     itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
-    answerMode: ChallengeAnswerMode.MATCH,
+    answerMode: ChallengeAnswerMode.ONE_CLUE,
     defaultPresentation: {
       inputType: 'phone-text',
-      timerSeconds: 7,
+      timerSeconds: ONE_CLUE_STAGE_SECONDS,
       soundPack: null,
       revealStyle: null,
     },

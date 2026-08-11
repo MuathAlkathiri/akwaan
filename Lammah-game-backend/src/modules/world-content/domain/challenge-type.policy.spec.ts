@@ -3,6 +3,7 @@ import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 import { ChallengePresentationPolicy } from './challenge-presentation.policy';
 import { ChallengeTypePolicy } from './challenge-type.policy';
 import {
+  ANSWER_MODE_COMPATIBLE_ITEM_MODES,
   ChallengeAnswerMode,
   ChallengeFamily,
   ChallengeItemStructure,
@@ -51,6 +52,30 @@ describe('ChallengeTypePolicy', () => {
         }),
       ),
     ).toContain('ANSWER_MODE_NOT_ALLOWED_FOR_FAMILY');
+  });
+
+  it('binds the One Clue wrapper mode to its canonical runtime slug', () => {
+    expect(
+      ANSWER_MODE_COMPATIBLE_ITEM_MODES[ChallengeAnswerMode.ONE_CLUE],
+    ).toEqual([ChallengeAnswerMode.MATCH]);
+    expect(
+      policy.validate(
+        challengeType({
+          slug: 'one-clue',
+          family: ChallengeFamily.COOP,
+          answerMode: ChallengeAnswerMode.ONE_CLUE,
+        }),
+      ),
+    ).toEqual([]);
+    expect(
+      codes(
+        challengeType({
+          slug: 'lookalike',
+          family: ChallengeFamily.COOP,
+          answerMode: ChallengeAnswerMode.ONE_CLUE,
+        }),
+      ),
+    ).toContain('ONE_CLUE_CANONICAL_BINDING_REQUIRED');
   });
 
   it('rejects an unsupported item structure', () => {

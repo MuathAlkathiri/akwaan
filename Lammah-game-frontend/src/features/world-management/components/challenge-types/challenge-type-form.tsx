@@ -142,6 +142,23 @@ export function ChallengeTypeForm({
     }
   };
 
+  const onAnswerModeChange = (next: string) => {
+    const nextMode = next as ChallengeAnswerMode;
+    setAnswerMode(nextMode);
+    if (!challengeType && nextMode === "one_clue") {
+      setName("بدليل واحد");
+      setDescription("خمسة أدلة متدرجة، وإجابة واحدة مقفلة لكل فريق.");
+      slugField.onManualSlugChange("one-clue");
+      setItemStructure("discrete_triple");
+      setPresentation({
+        inputType: "phone-text",
+        timerSeconds: 7,
+        soundPack: null,
+        revealStyle: null,
+      });
+    }
+  };
+
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const payload = buildChallengeTypePayload({
@@ -210,12 +227,7 @@ export function ChallengeTypeForm({
           <label className="mb-1.5 block text-sm font-medium">
             نمط الإجابة
           </label>
-          <Select
-            value={answerMode}
-            onValueChange={(next: string) =>
-              setAnswerMode(next as ChallengeAnswerMode)
-            }
-          >
+          <Select value={answerMode} onValueChange={onAnswerModeChange}>
             <SelectTrigger aria-label="نمط الإجابة">
               <SelectValue />
             </SelectTrigger>

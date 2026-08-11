@@ -6,6 +6,7 @@ import {
   ChallengeFamily,
   ChallengeItemStructure,
   FAMILY_ALLOWED_ANSWER_MODES,
+  ONE_CLUE_SLUG,
   WorldContentStatus,
 } from './world-content.constants';
 import { issue } from './world-content.errors';
@@ -34,6 +35,17 @@ export class ChallengeTypePolicy {
         }),
       );
       return issues;
+    }
+    if (
+      (challengeType.slug === ONE_CLUE_SLUG) !==
+      (challengeType.answerMode === ChallengeAnswerMode.ONE_CLUE)
+    ) {
+      issues.push(
+        issue(
+          'ONE_CLUE_CANONICAL_BINDING_REQUIRED',
+          `The ${ONE_CLUE_SLUG} slug and one_clue answer mode must be configured together`,
+        ),
+      );
     }
     if (
       !Object.values(ChallengeAnswerMode).includes(challengeType.answerMode)

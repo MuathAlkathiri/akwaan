@@ -235,6 +235,14 @@ export interface DistributedInformationPayload {
   explanation?: string;
 }
 
+export interface OneCluePayload {
+  clues: Array<{
+    order: number;
+    value: number;
+    text: LocalizedText;
+  }>;
+}
+
 export interface ContentItemView {
   id: string;
   scopeId: string;
@@ -244,7 +252,10 @@ export interface ContentItemView {
   media?: ContentItemMedia;
   answerPayload: ContentAnswerPayload;
   mechanicPayload?:
-    Record<string, unknown> | Top5Payload | DistributedInformationPayload;
+    | Record<string, unknown>
+    | Top5Payload
+    | DistributedInformationPayload
+    | OneCluePayload;
   isReusableAcrossSessions: boolean;
   status: ContentItemStatus;
   metadata?: {

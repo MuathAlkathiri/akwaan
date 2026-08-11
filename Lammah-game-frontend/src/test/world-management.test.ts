@@ -26,7 +26,10 @@ import {
   localizeReadinessIssue,
 } from "@/features/world-management/utils/readiness.util";
 import { presentWorldReadiness } from "@/features/world-management/utils/world-readiness.presenter";
-import { worldChallengeConfigurationName } from "@/features/world-management/utils/world-content.labels";
+import {
+  ANSWER_MODE_LABEL,
+  worldChallengeConfigurationName,
+} from "@/features/world-management/utils/world-content.labels";
 import { adminNavigation } from "@/config/admin-navigation";
 import type { ContentItem, World } from "@/features/world-management/types";
 
@@ -78,6 +81,9 @@ describe("world and scope payloads", () => {
 });
 
 describe("mechanic and configuration payloads", () => {
+  it("presents the server-provided One Clue wrapper with its product label", () => {
+    expect(ANSWER_MODE_LABEL.one_clue).toBe("بدليل واحد");
+  });
   it("falls back to the global mechanic name when no World name is configured", () => {
     const configuration = {
       effectiveName: "",
@@ -258,19 +264,22 @@ describe("content item answer payloads", () => {
     // Ten entries, and the rank lives on the entry — there is no second array
     // that could disagree about which five are real.
     expect(mechanic.entries).toHaveLength(10);
-    expect(mechanic.entries.filter((entry) => entry.rank !== null)).toHaveLength(
-      5,
-    );
+    expect(
+      mechanic.entries.filter((entry) => entry.rank !== null),
+    ).toHaveLength(5);
     expect(
       mechanic.entries
         .map((entry) => entry.rank)
         .filter((rank): rank is number => rank !== null)
         .sort((left, right) => left - right),
     ).toEqual([1, 2, 3, 4, 5]);
-    expect(mechanic.entries.filter((entry) => entry.rank === null)).toHaveLength(
-      5,
-    );
-    expect(mechanic.entries[0]).toMatchObject({ id: "entry-1", label: "لاعب 1" });
+    expect(
+      mechanic.entries.filter((entry) => entry.rank === null),
+    ).toHaveLength(5);
+    expect(mechanic.entries[0]).toMatchObject({
+      id: "entry-1",
+      label: "لاعب 1",
+    });
     expect(payload).not.toHaveProperty("metadata");
   });
 
@@ -360,7 +369,8 @@ describe("readiness presentation", () => {
       response: {
         data: {
           code: "WORLD_CONTENT_STILL_REFERENCED",
-          message: '1 record(s) in "legacy-questions" still reference this challengeType',
+          message:
+            '1 record(s) in "legacy-questions" still reference this challengeType',
           references: [
             {
               source: "legacy-questions",
@@ -385,9 +395,7 @@ describe("readiness presentation", () => {
   it("turns a readiness report into an actionable checklist", () => {
     const checks = toReadinessChecklist({
       readiness: "limited",
-      blockers: [
-        { code: "CHALLENGE_TIMER_REQUIRED", message: "timer" },
-      ],
+      blockers: [{ code: "CHALLENGE_TIMER_REQUIRED", message: "timer" }],
       warnings: [
         { code: "SCORING_RULE_AWAITING_MECHANIC", message: "awaiting" },
       ],
@@ -466,7 +474,9 @@ describe("readiness presentation", () => {
     const view = presentWorldReadiness(world);
     expect(view.total).toBe(6);
     expect(view.complete).toBe(2);
-    expect(view.items.find((item) => item.id === "slot-1")?.complete).toBe(true);
+    expect(view.items.find((item) => item.id === "slot-1")?.complete).toBe(
+      true,
+    );
     expect(view.items.find((item) => item.id === "slot-2")).toMatchObject({
       complete: false,
       actionTarget: "board",

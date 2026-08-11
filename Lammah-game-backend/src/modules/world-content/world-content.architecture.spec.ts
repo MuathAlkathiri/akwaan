@@ -117,6 +117,7 @@ describe('World Content architecture', () => {
       'modules/live-game-sessions/application/start-top5.use-case.ts',
       // The Top 5 plugin reads the content contract's own constants rather than
       // restating ten, five, and the rank set a second time.
+      'modules/live-game-sessions/domain/one-clue-gameplay.plugin.ts',
       'modules/live-game-sessions/domain/top5-keep-or-give.plugin.ts',
       'modules/live-game-sessions/live-game-sessions.module.ts',
       'modules/live-game-sessions/presentation/gameplay-runtime.dto.ts',

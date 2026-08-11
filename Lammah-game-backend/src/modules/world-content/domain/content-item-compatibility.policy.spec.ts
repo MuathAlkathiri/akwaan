@@ -139,6 +139,40 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
     ).toContain('ACCEPTED_ANSWERS_REQUIRED');
   });
 
+  it('enforces five ordered weighted clues for One Clue content', () => {
+    const oneClue = challengeType({
+      id: 'challenge-ryo',
+      slug: 'one-clue',
+      family: ChallengeFamily.COOP,
+      answerMode: ChallengeAnswerMode.ONE_CLUE,
+    });
+    const item = contentItem({
+      answerPayload: {
+        mode: ChallengeAnswerMode.MATCH,
+        acceptedAnswers: ['الهلال'],
+      },
+      mechanicPayload: {
+        clues: [5, 4, 3, 2, 1].map((value, index) => ({
+          order: index + 1,
+          value,
+          text: { ar: `دليل ${index + 1}` },
+        })),
+      },
+    });
+    expect(
+      evaluate({ item, challengeTypes: typeMap(oneClue) }).blockers,
+    ).toEqual([]);
+    expect(
+      codes({
+        item: contentItem({
+          ...item,
+          mechanicPayload: { clues: [] },
+        }),
+        challengeTypes: typeMap(oneClue),
+      }),
+    ).toContain('ONE_CLUE_STRUCTURE_INVALID');
+  });
+
   it('detects accepted answers that collapse to the same normalized value', () => {
     // Uses the one shared Arabic normalizer, so tashkeel and alef variants are
     // recognised as the same answer (roadmap 6.5).

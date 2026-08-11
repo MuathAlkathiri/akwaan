@@ -40,6 +40,8 @@ export enum ChallengeAnswerMode {
   VOTE = 'vote',
   SPLIT = 'split',
   TOP_5 = 'top_5',
+  /** Progressive five-clue wrapper; ContentItems keep a MATCH answer payload. */
+  ONE_CLUE = 'one_clue',
   /**
    * "ركّبها" wraps a machine-checkable prompt the way RYO does: the mechanic
    * supplies the private split, and the item keeps whichever answer contract it
@@ -131,6 +133,12 @@ export const DISTRIBUTED_INFORMATION_ANSWER_MODES = [
   'multiple_choice',
 ] as const;
 
+/** "بدليل واحد": a core mechanic that wraps deterministic text matching. */
+export const ONE_CLUE_SLUG = 'one-clue';
+export const ONE_CLUE_ITEM_COUNT = 3;
+export const ONE_CLUE_STAGE_SECONDS = 7;
+export const ONE_CLUE_VALUES = [5, 4, 3, 2, 1] as const;
+
 /**
  * Per-item pacing budget per family (roadmap 3.4). A mechanic inherits its
  * family's timer instead of an author inventing one; Signature mechanics define
@@ -156,6 +164,7 @@ export const FAMILY_ALLOWED_ANSWER_MODES: Readonly<
   [ChallengeFamily.SIGNATURE]: Object.values(ChallengeAnswerMode),
   [ChallengeFamily.RYO]: [ChallengeAnswerMode.RYO],
   [ChallengeFamily.COOP]: [
+    ChallengeAnswerMode.ONE_CLUE,
     ChallengeAnswerMode.DISTRIBUTED,
     ChallengeAnswerMode.SPLIT,
     ChallengeAnswerMode.MATCH,
@@ -189,6 +198,7 @@ export const ANSWER_MODE_COMPATIBLE_ITEM_MODES: Readonly<
   [ChallengeAnswerMode.VOTE]: [ChallengeAnswerMode.VOTE],
   [ChallengeAnswerMode.SPLIT]: [ChallengeAnswerMode.SPLIT],
   [ChallengeAnswerMode.TOP_5]: [ChallengeAnswerMode.TOP_5],
+  [ChallengeAnswerMode.ONE_CLUE]: [ChallengeAnswerMode.MATCH],
   [ChallengeAnswerMode.DISTRIBUTED]: [
     ChallengeAnswerMode.MATCH,
     ChallengeAnswerMode.MULTIPLE_CHOICE,
