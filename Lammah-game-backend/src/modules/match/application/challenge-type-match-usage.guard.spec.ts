@@ -1,7 +1,7 @@
 import { ChallengeTypeMatchUsageGuard } from './challenge-type-match-usage.guard';
 
 describe('ChallengeTypeMatchUsageGuard', () => {
-  it('counts executed history and active configured dependencies by id or slug', async () => {
+  it('counts only active dependencies in the blocking guard', async () => {
     const exec = jest.fn().mockResolvedValue(2);
     const countDocuments = jest.fn().mockReturnValue({ exec });
     const registry = { register: jest.fn() };
@@ -14,15 +14,15 @@ describe('ChallengeTypeMatchUsageGuard', () => {
       guard.countReferences('challengeType', 'type-1', { slug: 'closest' }),
     ).resolves.toBe(2);
     expect(registry.register).toHaveBeenCalledWith(guard);
-    expect(countDocuments).toHaveBeenCalledWith(
-      expect.objectContaining({
-        $or: expect.arrayContaining([
-          { 'challengeResults.challengeTypeId': 'type-1' },
-          { 'challengeResults.challengeKey': 'closest' },
-          expect.objectContaining({ status: 'active' }),
-        ]),
-      }),
-    );
+    expect(registry.register).toHaveBeenCalledTimes(3);
+    expect(countDocuments).toHaveBeenCalledWith({
+      status: 'active',
+      $or: expect.arrayContaining([
+        { 'challengeResults.challengeTypeId': 'type-1' },
+        { 'challengeResults.challengeKey': 'closest' },
+        { 'configuredBoardPositions.challengeTypeId': 'type-1' },
+      ]),
+    });
   });
 
   it('does not treat non-Match reference kinds as gameplay usage', async () => {

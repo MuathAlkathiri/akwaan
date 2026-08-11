@@ -60,11 +60,13 @@ export interface ChallengeTypeDeletionPreview {
   challengeTypeId: string;
   name: string;
   historicalMatchUsageCount: number;
+  activeMatchUsageCount: number;
   contentItemCount: number;
   worldAssignmentCount: number;
   scopeExclusionCount: number;
   canHardDelete: boolean;
-  archiveRequired: boolean;
+  blockReason?: 'active_match' | 'unsafe_historical_snapshot';
+  historicalSnapshotSafe: boolean;
   productionMechanic: boolean;
 }
 
@@ -163,12 +165,26 @@ export class ChallengeTypeService {
     const challengeType = await this.require(id);
     const [
       historicalMatchUsageCount,
+      activeMatchUsageCount,
+      unsafeHistoricalMatchCount,
       contentItemCount,
       worldAssignmentCount,
       scopeExclusionCount,
     ] = await Promise.all([
       this.references.countReferencesFrom(
-        'persisted-matches',
+        'persisted-matches-historical',
+        'challengeType',
+        id,
+        { slug: challengeType.slug },
+      ),
+      this.references.countReferencesFrom(
+        'persisted-matches-active',
+        'challengeType',
+        id,
+        { slug: challengeType.slug },
+      ),
+      this.references.countReferencesFrom(
+        'persisted-matches-unsafe-history',
         'challengeType',
         id,
         { slug: challengeType.slug },
@@ -177,41 +193,27 @@ export class ChallengeTypeService {
       this.configurations.countByChallengeType(id),
       this.scopes.countExcludingChallengeType(id),
     ]);
-    const archiveRequired = historicalMatchUsageCount > 0;
+    const historicalSnapshotSafe = unsafeHistoricalMatchCount === 0;
+    const canHardDelete = activeMatchUsageCount === 0 && historicalSnapshotSafe;
     return {
       challengeTypeId: id,
       name: challengeType.name,
       historicalMatchUsageCount,
+      activeMatchUsageCount,
       contentItemCount,
       worldAssignmentCount,
       scopeExclusionCount,
-      canHardDelete: !archiveRequired,
-      archiveRequired,
+      canHardDelete,
+      ...(activeMatchUsageCount > 0
+        ? { blockReason: 'active_match' as const }
+        : !historicalSnapshotSafe
+          ? { blockReason: 'unsafe_historical_snapshot' as const }
+          : {}),
+      historicalSnapshotSafe,
       productionMechanic: Boolean(
         productionMechanicDefinition(challengeType.slug),
       ),
     };
-  }
-
-  async archive(id: string): Promise<ChallengeTypeSummary> {
-    const existing = await this.require(id);
-    const matchUsageCount = await this.references.countReferencesFrom(
-      'persisted-matches',
-      'challengeType',
-      id,
-      { slug: existing.slug },
-    );
-    if (matchUsageCount === 0) {
-      throw new WorldContentConflictError(
-        'CHALLENGE_TYPE_ARCHIVE_NOT_REQUIRED',
-        'This mechanic has no persisted Match history and should be hard deleted instead',
-      );
-    }
-    const updated = await this.challengeTypes.updateById(id, {
-      status: WorldContentStatus.ARCHIVED,
-    });
-    if (!updated) throw new NotFoundException('Challenge type not found');
-    return this.summarize(updated);
   }
 
   async create(
@@ -304,16 +306,29 @@ export class ChallengeTypeService {
 
   async remove(id: string): Promise<{ id: string }> {
     const existing = await this.require(id);
-    const matchUsageCount = await this.references.countReferencesFrom(
-      'persisted-matches',
+    const activeMatchUsageCount = await this.references.countReferencesFrom(
+      'persisted-matches-active',
       'challengeType',
       id,
       { slug: existing.slug },
     );
-    if (matchUsageCount > 0) {
+    if (activeMatchUsageCount > 0) {
       throw new WorldContentConflictError(
-        'CHALLENGE_TYPE_HAS_MATCH_HISTORY',
-        `This mechanic is referenced by ${matchUsageCount} persisted Match(es) and must be archived instead`,
+        'CHALLENGE_TYPE_IN_ACTIVE_MATCH',
+        `This mechanic is referenced by ${activeMatchUsageCount} active Match(es)`,
+      );
+    }
+    const unsafeHistoricalMatchCount =
+      await this.references.countReferencesFrom(
+        'persisted-matches-unsafe-history',
+        'challengeType',
+        id,
+        { slug: existing.slug },
+      );
+    if (unsafeHistoricalMatchCount > 0) {
+      throw new WorldContentConflictError(
+        'CHALLENGE_TYPE_HISTORY_SNAPSHOT_UNSAFE',
+        `${unsafeHistoricalMatchCount} completed Match(es) lack a self-contained mechanic snapshot`,
       );
     }
     if (productionMechanicDefinition(existing.slug)) {

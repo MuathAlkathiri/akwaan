@@ -303,10 +303,12 @@ export interface ChallengeTypeDeletionPreview {
   challengeTypeId: string;
   name: string;
   historicalMatchUsageCount: number;
+  activeMatchUsageCount: number;
   contentItemCount: number;
   worldAssignmentCount: number;
   scopeExclusionCount: number;
   canHardDelete: boolean;
-  archiveRequired: boolean;
+  blockReason?: "active_match" | "unsafe_historical_snapshot";
+  historicalSnapshotSafe: boolean;
   productionMechanic: boolean;
 }

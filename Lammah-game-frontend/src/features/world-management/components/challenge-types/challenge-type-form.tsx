@@ -304,6 +304,7 @@ export function ChallengeTypeForm({
       <StatusSelect
         value={status}
         onChange={setStatus}
+        statuses={["draft", "active"]}
         hint="المكانيكا يجب أن تكون نشطة لتُستخدم في لوحة أي عالم."
       />
 

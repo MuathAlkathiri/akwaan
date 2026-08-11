@@ -29,7 +29,9 @@ describe('ChallengeType deletion lifecycle', () => {
     sortOrder: 0,
   };
 
-  function setup(matchUsage = 0) {
+  function setup(
+    usage: { active?: number; historical?: number; unsafe?: number } = {},
+  ) {
     const challengeTypes = {
       findById: jest.fn().mockResolvedValue(existing),
       deleteById: jest.fn().mockResolvedValue(existing),
@@ -51,7 +53,15 @@ describe('ChallengeType deletion lifecycle', () => {
       removeChallengeTypeFromExclusions: jest.fn().mockResolvedValue(1),
     };
     const references = {
-      countReferencesFrom: jest.fn().mockResolvedValue(matchUsage),
+      countReferencesFrom: jest.fn((source: string) =>
+        Promise.resolve(
+          source === 'persisted-matches-active'
+            ? (usage.active ?? 0)
+            : source === 'persisted-matches-historical'
+              ? (usage.historical ?? 0)
+              : (usage.unsafe ?? 0),
+        ),
+      ),
     };
     const lifecycle = { markDeleted: jest.fn() };
     const assets = { discard: jest.fn() };
@@ -85,11 +95,12 @@ describe('ChallengeType deletion lifecycle', () => {
     await expect(service.deletionPreview(id)).resolves.toMatchObject({
       challengeTypeId: id,
       historicalMatchUsageCount: 0,
+      activeMatchUsageCount: 0,
       contentItemCount: 36,
       worldAssignmentCount: 2,
       scopeExclusionCount: 1,
       canHardDelete: true,
-      archiveRequired: false,
+      historicalSnapshotSafe: true,
     });
   });
 
@@ -103,11 +114,19 @@ describe('ChallengeType deletion lifecycle', () => {
     expect(challengeTypes.deleteById).toHaveBeenCalledWith(id);
   });
 
-  it('re-checks Match usage and rejects hard delete without cascading', async () => {
-    const { service, configurations, contentItems, challengeTypes } = setup(1);
+  it('allows completed history and preserves it outside the authoring cascade', async () => {
+    const { service, challengeTypes } = setup({ historical: 3 });
+    await expect(service.remove(id)).resolves.toEqual({ id });
+    expect(challengeTypes.deleteById).toHaveBeenCalledWith(id);
+  });
+
+  it('re-checks active Match usage and rejects hard delete without cascading', async () => {
+    const { service, configurations, contentItems, challengeTypes } = setup({
+      active: 1,
+    });
     await expect(service.remove(id)).rejects.toMatchObject({
       response: expect.objectContaining({
-        code: 'CHALLENGE_TYPE_HAS_MATCH_HISTORY',
+        code: 'CHALLENGE_TYPE_IN_ACTIVE_MATCH',
       }),
     });
     expect(configurations.deleteByChallengeType).not.toHaveBeenCalled();
@@ -115,22 +134,13 @@ describe('ChallengeType deletion lifecycle', () => {
     expect(challengeTypes.deleteById).not.toHaveBeenCalled();
   });
 
-  it('archives a historically used mechanic without deleting dependencies', async () => {
-    const { service, challengeTypes, contentItems } = setup(3);
-    await service.archive(id);
-    expect(challengeTypes.updateById).toHaveBeenCalledWith(id, {
-      status: WorldContentStatus.ARCHIVED,
-    });
-    expect(contentItems.deleteByChallengeType).not.toHaveBeenCalled();
-  });
-
-  it('rejects archive when hard deletion is still safe', async () => {
-    const { service, challengeTypes } = setup();
-    await expect(service.archive(id)).rejects.toMatchObject({
+  it('blocks deletion when completed history lacks its identity snapshot', async () => {
+    const { service, challengeTypes } = setup({ historical: 1, unsafe: 1 });
+    await expect(service.remove(id)).rejects.toMatchObject({
       response: expect.objectContaining({
-        code: 'CHALLENGE_TYPE_ARCHIVE_NOT_REQUIRED',
+        code: 'CHALLENGE_TYPE_HISTORY_SNAPSHOT_UNSAFE',
       }),
     });
-    expect(challengeTypes.updateById).not.toHaveBeenCalled();
+    expect(challengeTypes.deleteById).not.toHaveBeenCalled();
   });
 });

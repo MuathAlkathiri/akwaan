@@ -101,11 +101,6 @@ export const fetchChallengeTypeDeletionPreview = (challengeTypeId: string) =>
     ),
   );
 
-export const archiveChallengeType = (challengeTypeId: string) =>
-  unwrap<ChallengeType>(
-    apiClient.post(`/admin/challenge-types/${challengeTypeId}/archive`),
-  );
-
 /* World-specific challenge configurations */
 
 export const fetchWorldBoard = (worldId: string) =>

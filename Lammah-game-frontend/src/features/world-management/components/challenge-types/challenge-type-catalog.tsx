@@ -17,7 +17,6 @@ import {
   useChallengeTypes,
   useChallengeTypeDeletionPreview,
   useDeleteChallengeType,
-  useArchiveChallengeType,
 } from "../../hooks/use-world-content";
 import { EntityFormDialog, RowSkeleton, SearchToolbar } from "../shared";
 import { ChallengeTypeCard } from "./challenge-type-card";
@@ -38,7 +37,6 @@ export function ChallengeTypeCatalog() {
     useState<ChallengeTypeDeletionPreview | null>(null);
   const deleteChallengeType = useDeleteChallengeType();
   const previewChallengeType = useChallengeTypeDeletionPreview();
-  const archiveChallengeType = useArchiveChallengeType();
 
   const closeDeleteDialog = () => {
     setPendingDelete(null);
@@ -155,24 +153,19 @@ export function ChallengeTypeCatalog() {
         destructive={deletionPresentation?.destructive}
         disabled={
           !deletePreview ||
-          deleteChallengeType.isPending ||
-          archiveChallengeType.isPending
+          !deletionPresentation?.canConfirm ||
+          deleteChallengeType.isPending
         }
         onConfirm={() => {
           if (!pendingDelete || !deletePreview) return;
-          const mutation = deletePreview.archiveRequired
-            ? archiveChallengeType
-            : deleteChallengeType;
-          mutation.mutate(pendingDelete.id, {
+          deleteChallengeType.mutate(pendingDelete.id, {
             onSuccess: closeDeleteDialog,
             onError: (error) => {
               showToast({
                 type: "error",
                 message: getApiErrorMessage(
                   error,
-                  deletePreview.archiveRequired
-                    ? "تعذر أرشفة الميكانيكا."
-                    : "تعذر حذف الميكانيكا.",
+                  "تعذر حذف الميكانيكا.",
                 ),
               });
               closeDeleteDialog();

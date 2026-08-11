@@ -8,11 +8,12 @@ const preview = (
   challengeTypeId: "type-1",
   name: "تجريبية",
   historicalMatchUsageCount: 0,
+  activeMatchUsageCount: 0,
   contentItemCount: 36,
   worldAssignmentCount: 3,
   scopeExclusionCount: 2,
   canHardDelete: true,
-  archiveRequired: false,
+  historicalSnapshotSafe: true,
   productionMechanic: false,
   ...overrides,
 });
@@ -27,18 +28,31 @@ describe("ChallengeType deletion confirmation", () => {
     expect(result.destructive).toBe(true);
   });
 
-  it("offers archive without a destructive delete path for Match history", () => {
+  it("warns strongly but allows deletion for completed Match history", () => {
     const result = presentChallengeTypeDeletion(
       "تاريخية",
       preview({
         historicalMatchUsageCount: 4,
-        canHardDelete: false,
-        archiveRequired: true,
       }),
     );
-    expect(result.title).toContain("لا يمكن حذف");
+    expect(result.title).toContain("حذف «تاريخية» نهائيًا");
     expect(result.description).toContain("4 مباراة");
-    expect(result.confirmLabel).toBe("أرشفة الميكانيكا");
-    expect(result.destructive).toBe(false);
+    expect(result.description).toContain("ستبقى نتائج المباريات السابقة محفوظة");
+    expect(result.confirmLabel).toBe("حذف نهائي");
+    expect(result.destructive).toBe(true);
+  });
+
+  it("blocks deletion while an active Match references the mechanic", () => {
+    const result = presentChallengeTypeDeletion(
+      "نشطة",
+      preview({
+        activeMatchUsageCount: 2,
+        canHardDelete: false,
+        blockReason: "active_match",
+      }),
+    );
+    expect(result.description).toContain("2 مباراة نشطة");
+    expect(result.canConfirm).toBe(false);
+    expect(result.confirmLabel).not.toContain("أرشفة");
   });
 });

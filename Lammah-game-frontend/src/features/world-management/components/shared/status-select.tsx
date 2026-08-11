@@ -16,6 +16,7 @@ interface StatusSelectProps {
   onChange: (status: WorldContentStatus) => void;
   label?: string;
   hint?: string;
+  statuses?: WorldContentStatus[];
 }
 
 export function StatusSelect({
@@ -23,6 +24,7 @@ export function StatusSelect({
   onChange,
   label = "الحالة",
   hint,
+  statuses = STATUSES,
 }: StatusSelectProps) {
   return (
     <div>
@@ -35,7 +37,7 @@ export function StatusSelect({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {STATUSES.map((status) => (
+          {statuses.map((status) => (
             <SelectItem key={status} value={status}>
               {STATUS_LABEL[status]}
             </SelectItem>

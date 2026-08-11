@@ -119,9 +119,9 @@ export function BoardSection({ worldId }: { worldId: string }) {
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null);
         }}
-        title="حذف إعداد التحدي"
+        title="إزالة من العالم"
         description={`هل تريد إزالة "${pendingDelete?.displayName ?? ""}" من لوحة هذا العالم؟`}
-        confirmLabel="حذف"
+        confirmLabel="إزالة من العالم"
         destructive
         disabled={deleteConfiguration.isPending}
         onConfirm={() => {
@@ -131,7 +131,7 @@ export function BoardSection({ worldId }: { worldId: string }) {
             onError: (error) => {
               showToast({
                 type: "error",
-                message: getApiErrorMessage(error, "تعذر حذف الإعداد."),
+                message: getApiErrorMessage(error, "تعذر إزالة الميكانيكا من العالم."),
               });
               setPendingDelete(null);
             },
