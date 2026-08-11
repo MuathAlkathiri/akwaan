@@ -13,8 +13,8 @@ import { teamIdentity, TEAM_TONE_ORDER } from "@/lib/team-identity";
  *    emitted into the markup and never into the CSS: team colour resolved to
  *    transparent everywhere, silently, with no build error.
  *
- *  - The retired purple identity must stay retired. A token file is the one
- *    place it could quietly come back.
+ *  - Brand colours and gameplay team colours must remain separate. A token
+ *    file is the one place those responsibilities could quietly blur.
  */
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
@@ -44,18 +44,57 @@ describe("Tailwind can see every file that writes utility classes", () => {
   });
 });
 
+describe("the semantic typography experiment", () => {
+  it("loads one display face and one body face through Next font variables", () => {
+    const layout = read("src/app/layout.tsx");
+    expect(layout).toContain("Noto_Kufi_Arabic");
+    expect(layout).toContain("Readex_Pro");
+    expect(layout).toContain('variable: "--font-display"');
+    expect(layout).toContain('variable: "--font-body"');
+  });
+
+  it("maps headings to display and ordinary UI to body without changing scale", () => {
+    const css = read("src/app/globals.css");
+    const config = read("tailwind.config.ts");
+    expect(config).toContain('display: ["var(--font-display)"');
+    expect(config).toContain('body: ["var(--font-body)"');
+    expect(css).toMatch(/h1,\s*\n\s*h2,\s*\n\s*h3\s*\{\s*\n\s*@apply font-display/);
+    expect(css).toContain("@apply font-body");
+    expect(css).toMatch(/\.akwaan-numeral\s*\{\s*\n\s*font-family: var\(--font-body\)/);
+  });
+});
+
+describe("the canonical Akwaan brand asset", () => {
+  it("uses the primary logo on active player-facing brand surfaces", () => {
+    for (const path of [
+      "src/components/layout/header.tsx",
+      "src/features/live-game-session/match/components/match-shell.tsx",
+      "src/features/live-game-session/components/player-join-page.tsx",
+    ]) {
+      const source = read(path);
+      expect(source).toContain('/brand/akwaan-logo.png');
+      expect(source).not.toContain('/brand/lammah-logo.png');
+    }
+  });
+});
+
 describe("the retired identity stays retired", () => {
-  it("defines no purple anywhere in the token set", () => {
+  it("does not restore the retired purple canvas or glow", () => {
     const css = read("src/app/globals.css");
     // The old canvas, header and glow values.
     for (const retired of ["#130d27", "#211a38", "#110b25", "139, 92, 246"]) {
       expect(css).not.toContain(retired);
     }
-    // Purple hues live around 260-290; the palette is navy, green and coral.
-    const hues = [...css.matchAll(/--[a-z-]+:\s*(\d+)\s+\d+%\s+\d+%/g)].map(
-      (match) => Number(match[1]),
-    );
-    expect(hues.filter((hue) => hue >= 255 && hue <= 300)).toEqual([]);
+  });
+
+  it("exposes the approved Akwaan palette without changing team semantics", () => {
+    const css = read("src/app/globals.css");
+    expect(css).toContain("--brand-navy: 239 40% 17%");
+    expect(css).toContain("--brand-purple: 247 100% 71%");
+    expect(css).toContain("--brand-cyan: 188 49% 54%");
+    expect(css).toContain("--brand-gold: 40 57% 63%");
+    expect(css).toContain("--team-green: 152 55% 36%");
+    expect(css).toContain("--team-coral: 348 72% 57%");
   });
 
   it("keeps the app background warm rather than pure white", () => {

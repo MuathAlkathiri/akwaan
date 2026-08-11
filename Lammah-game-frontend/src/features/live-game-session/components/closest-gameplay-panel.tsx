@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,6 +74,24 @@ export function ClosestGameplayPanel({
   const teamName = (id: string) =>
     snapshot?.teams.find((team) => team.id === id)?.name ?? "الفريق";
 
+  // The same panel instance serves all three questions. Never carry a previous
+  // estimate into the next item, even when the server advances without remounting.
+  useEffect(
+    () => setEstimate(""),
+    [runtime.runtimeId, round?.id, item?.id, itemIndex],
+  );
+
+  const submitEstimate = () => {
+    const value = Number(estimate);
+    if (!estimate.trim() || !Number.isFinite(value)) return;
+    gameplayCommand("gameplay-command", {
+      roundId: round?.id,
+      commandType: "submit-estimate",
+      payload: { value },
+    });
+    setEstimate("");
+  };
+
   return (
     <ChallengeFrame
       eyebrow="مين أقرب"
@@ -129,21 +147,17 @@ export function ClosestGameplayPanel({
         {canAnswer && (
           <div className="mx-auto flex max-w-sm gap-2" data-testid="closest-answer-controls">
             <Input
+              key={`${runtime.runtimeId}:${round?.id ?? "round"}:${item?.id ?? itemIndex}`}
               dir="ltr"
               inputMode="decimal"
+              autoComplete="off"
               value={estimate}
               onChange={(event) => setEstimate(event.target.value)}
               placeholder="اكتب تقدير فريقك"
             />
             <Button
               disabled={!estimate.trim() || !Number.isFinite(Number(estimate))}
-              onClick={() =>
-                gameplayCommand("gameplay-command", {
-                  roundId: round?.id,
-                  commandType: "submit-estimate",
-                  payload: { value: Number(estimate) },
-                })
-              }
+              onClick={submitEstimate}
             >
               إرسال
             </Button>

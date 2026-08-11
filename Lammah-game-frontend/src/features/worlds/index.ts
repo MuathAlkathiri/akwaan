@@ -1,5 +1,4 @@
 export { WorldsHome } from "./components/worlds-home";
-export { WorldScreen } from "./components/world-screen";
 export { WorldCard, worldCardDisplayName } from "./components/world-card";
 export { JourneyShell, JourneySection } from "./components/journey-shell";
 export {

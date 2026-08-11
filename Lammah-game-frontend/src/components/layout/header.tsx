@@ -25,24 +25,23 @@ export function Header() {
   const displayName = user?.fullName || "لاعب";
   const initial = displayName.trim().charAt(0) || "ل";
 
-  // One header, one surface. The retired identity had a second dark variant for
-  // authenticated player screens, which is why the product looked like two
-  // different apps depending on which route you were on.
+  // One header, one surface. It shares the page canvas instead of floating in a
+  // second card, so the brand, navigation and Home content read as one system.
   return (
-    <header className="sticky top-0 z-50 w-full px-4 py-3">
-      <div className="container flex min-h-16 items-center justify-between gap-4 rounded-[var(--radius)] border border-border bg-card/95 px-4 shadow-sm backdrop-blur-xl md:px-6">
-        <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/95 backdrop-blur-xl">
+      <div className="container flex min-h-[72px] items-center justify-between gap-3 px-4 md:px-6">
+        <div className="flex shrink-0 items-center">
           <Link
             href="/"
-            className="relative block h-12 w-36 shrink-0 sm:w-40"
-            aria-label="لمة - الرئيسية"
+            className="relative block h-14 w-32 overflow-hidden sm:h-16 sm:w-36"
+            aria-label="أكوان - الرئيسية"
           >
             <Image
-              src="/brand/lammah-logo.png"
-              alt="لمة"
+              src="/brand/akwaan-logo.png"
+              alt="أكوان"
               fill
               priority
-              sizes="160px"
+              sizes="(min-width: 640px) 144px, 128px"
               className="object-contain"
             />
           </Link>
@@ -80,8 +79,8 @@ export function Header() {
         <div className="flex items-center gap-3">
           {isAuthenticated ? (
             <>
-              <div className="hidden items-center gap-3 rounded-lg border bg-muted/50 px-3 py-2 sm:flex">
-                <Avatar>
+              <div className="hidden items-center gap-2 rounded-lg border border-border/70 bg-card/45 px-2.5 py-1.5 sm:flex">
+                <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-accent text-accent-foreground">
                     {initial}
                   </AvatarFallback>

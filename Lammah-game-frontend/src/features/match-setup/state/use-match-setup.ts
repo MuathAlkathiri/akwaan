@@ -48,6 +48,7 @@ const DEFAULT_DEPENDENCIES = {
  * cannot produce two sessions.
  */
 export function useMatchSetup(
+  initialWorldId?: string,
   dependencies: Partial<typeof DEFAULT_DEPENDENCIES> = {},
 ) {
   const router = useRouter();
@@ -62,8 +63,15 @@ export function useMatchSetup(
   useEffect(() => {
     const stored = readStoredDraft();
     if (stored) dispatch({ type: "restore", draft: stored });
+    if (initialWorldId) {
+      dispatch({
+        type: "choose-world",
+        occurrenceIndex: 0,
+        worldId: initialWorldId,
+      });
+    }
     setRestored(true);
-  }, []);
+  }, [initialWorldId]);
 
   useEffect(() => {
     // Only persist once the initial read has happened, so an empty first render

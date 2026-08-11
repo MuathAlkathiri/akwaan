@@ -74,7 +74,7 @@ export function UnifiedBoardTile({
         <span className="flex items-center gap-2">
           <span
             className={cn(
-              "truncate text-sm font-black sm:text-base",
+              "truncate font-display text-sm font-bold sm:text-base",
               unplayable ? "text-disabled-foreground" : "text-foreground",
             )}
           >

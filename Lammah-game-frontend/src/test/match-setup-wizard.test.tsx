@@ -82,6 +82,39 @@ const scope = (id: string, name: string, worldId: string): PlayableScope => ({
       scoringRuleId: "ryo",
       sortOrder: 0,
     },
+    {
+      slotKey: "slot_2",
+      challengeTypeId: `${worldId}-type-2`,
+      challengeTypeSlug: "closest",
+      family: "closest",
+      displayName: "مين أقرب",
+      itemStructure: "closest",
+      answerMode: "closest",
+      scoringRuleId: "challenge.win",
+      sortOrder: 1,
+    },
+    {
+      slotKey: "slot_3",
+      challengeTypeId: `${worldId}-type-3`,
+      challengeTypeSlug: "distributed-information",
+      family: "distributed-information",
+      displayName: "معلومات مقسمة",
+      itemStructure: "distributed",
+      answerMode: "distributed",
+      scoringRuleId: "challenge.win",
+      sortOrder: 2,
+    },
+    {
+      slotKey: "slot_4",
+      challengeTypeId: `${worldId}-type-4`,
+      challengeTypeSlug: "top-five",
+      family: "top-five",
+      displayName: "توب 5",
+      itemStructure: "ranked",
+      answerMode: "ranked",
+      scoringRuleId: "challenge.win",
+      sortOrder: 3,
+    },
   ],
 });
 
@@ -232,6 +265,22 @@ describe("pre-match setup wizard", () => {
     expect(serverCalls()).toBe(0);
   });
 
+  it("opens directly on Scopes when a World comes from the home card", async () => {
+    render(<MatchSetupWizard initialWorldId={ANIME} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("match-setup-wizard").dataset.step).toBe(
+        "scopes",
+      ),
+    );
+    expect(
+      screen.getByRole("heading", { name: "اختر 4 نطاقات لهذا العالم" }),
+    ).toBeTruthy();
+    expect(screen.getAllByTestId("scope-card-media")).toHaveLength(8);
+    expect(screen.getByTestId("scope-count")).toHaveTextContent("0/4");
+    expect(serverCalls()).toBe(0);
+  });
+
   it("opens the Scope step for the chosen World and enforces exactly four", async () => {
     const user = userEvent.setup();
     render(<MatchSetupWizard />);
@@ -303,15 +352,11 @@ describe("pre-match setup wizard", () => {
 
     await configureWholeMatch(user);
 
-    expect(screen.getByRole("heading", { name: "مراجعة المباراة" })).toBeTruthy();
-    const summary = screen.getByTestId("review-summary");
-    expect(summary.textContent).toContain("3 عوالم");
-    expect(summary.textContent).toContain("12 نطاقًا مختارًا");
-    expect(summary.textContent).toContain("12 تحديًا على البورد");
-    expect(summary.textContent).toContain("يمكن اختيار التحديات بأي ترتيب");
-    expect(summary.textContent).toContain(
-      "بعض التحديات قد تحتاج جوالات بعد بدء المباراة",
-    );
+    expect(screen.getByRole("heading", { name: "راجع مباراتك" })).toBeTruthy();
+    expect(screen.getByText("3 عوالم · 12 نطاق · 12 تحدي")).toBeTruthy();
+    expect(screen.queryByTestId("review-summary")).toBeNull();
+    expect(screen.queryByTestId("setup-progress")).toBeNull();
+    expect(screen.getByTestId("review-world-stations").children).toHaveLength(3);
 
     // Three cards, the first and third both Anime, with different Scopes.
     const first = screen.getByTestId("review-occurrence-0");
@@ -325,6 +370,14 @@ describe("pre-match setup wizard", () => {
     expect(
       within(screen.getByTestId("review-occurrence-1")).getByText("كرة القدم"),
     ).toBeTruthy();
+    expect(within(first).getAllByRole("listitem")).toHaveLength(8);
+    expect(within(first).getByText("اقرأ خصمك")).toBeTruthy();
+    expect(within(first).getByText("مين أقرب")).toBeTruthy();
+    expect(within(first).getByText("معلومات مقسمة")).toBeTruthy();
+    expect(within(first).getByText("توب 5")).toBeTruthy();
+    expect(within(first).getByText("جاهز")).toBeTruthy();
+    expect(within(first).getByRole("button", { name: "تعديل النطاقات" })).toBeTruthy();
+    expect(within(first).getByRole("button", { name: "تغيير العالم" })).toBeTruthy();
 
     // Still no QR, no session code, and no server call.
     expect(screen.queryByText(/رمز الانضمام|QR/)).toBeNull();

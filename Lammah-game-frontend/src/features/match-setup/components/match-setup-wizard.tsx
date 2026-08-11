@@ -25,8 +25,9 @@ import { withLamPrefix } from "@/lib/arabic-plural";
  * participants: this is a request being composed, and the backend validates all of
  * it in one atomic call.
  */
-export function MatchSetupWizard() {
-  const { draft, act, start, submitting, rolledBack } = useMatchSetup();
+export function MatchSetupWizard({ initialWorldId }: { initialWorldId?: string }) {
+  const { draft, act, start, submitting, rolledBack } =
+    useMatchSetup(initialWorldId);
   const active = draft.occurrences.find(
     (occurrence) => occurrence.occurrenceIndex === draft.activeOccurrenceIndex,
   );
@@ -41,23 +42,27 @@ export function MatchSetupWizard() {
         trail={[{ label: "العوالم", href: "/" }, { label: "مباراة جديدة" }]}
       >
         <div className="space-y-8" data-testid="match-setup-wizard" data-step={draft.activeStep}>
-          <header>
-            <p className="text-sm font-black text-success">إعداد المباراة</p>
-            <h1 className="mt-1 text-3xl font-black text-foreground sm:text-4xl">
-              جهّز المباراة كاملة
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              اختر {OCCURRENCE_COUNT} عوالم و4 نطاقات لكل عالم. تُنشأ المباراة
-              مرة واحدة في النهاية، وتفتح لوحتها كاملة بـ12 تحديًا.
-            </p>
-          </header>
+          {draft.activeStep !== "review" && (
+            <>
+              <header>
+                <p className="text-sm font-black text-success">إعداد المباراة</p>
+                <h1 className="mt-1 text-3xl font-black text-foreground sm:text-4xl">
+                  جهّز المباراة كاملة
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  اختر {OCCURRENCE_COUNT} عوالم و4 نطاقات لكل عالم. تُنشأ المباراة
+                  مرة واحدة في النهاية، وتفتح لوحتها كاملة بـ12 تحديًا.
+                </p>
+              </header>
 
-          <SetupProgress
-            draft={draft}
-            onEditWorld={(occurrenceIndex) =>
-              act({ type: "edit-world", occurrenceIndex })
-            }
-          />
+              <SetupProgress
+                draft={draft}
+                onEditWorld={(occurrenceIndex) =>
+                  act({ type: "edit-world", occurrenceIndex })
+                }
+              />
+            </>
+          )}
 
           {draft.activeStep === "world" && active && (
             <div className="space-y-5">

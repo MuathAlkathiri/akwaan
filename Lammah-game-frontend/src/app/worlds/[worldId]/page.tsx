@@ -1,9 +1,11 @@
-"use client";
+import { redirect } from "next/navigation";
+import { matchSetupRouteForWorld } from "@/features/match-setup/routes";
 
-import { useParams } from "next/navigation";
-import { WorldScreen } from "@/features/worlds";
-
-export default function WorldPage() {
-  const params = useParams<{ worldId: string }>();
-  return <WorldScreen worldId={params.worldId} />;
+export default async function WorldPage({
+  params,
+}: {
+  params: Promise<{ worldId: string }>;
+}) {
+  const { worldId } = await params;
+  redirect(matchSetupRouteForWorld(worldId));
 }

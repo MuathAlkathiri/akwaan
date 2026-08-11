@@ -110,7 +110,7 @@ function WorldChoiceCard({
       {/* The same pending plate the home grid uses. A World waiting for artwork
           must not look like two different problems on two screens. */}
       <span
-        className="relative block h-28 w-full overflow-hidden bg-primary/[0.06]"
+        className="relative -mx-px -mt-px mb-px block h-28 w-[calc(100%+2px)] overflow-hidden bg-primary/[0.06]"
         data-has-artwork={cover ? "true" : "false"}
       >
         {cover ? (

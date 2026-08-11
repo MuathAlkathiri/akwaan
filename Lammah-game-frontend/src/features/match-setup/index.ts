@@ -1,5 +1,5 @@
 export { MatchSetupWizard } from "./components/match-setup-wizard";
-export { MATCH_SETUP_ROUTE } from "./routes";
+export { MATCH_SETUP_ROUTE, matchSetupRouteForWorld } from "./routes";
 export {
   BOARD_POSITION_COUNT,
   OCCURRENCE_COUNT,

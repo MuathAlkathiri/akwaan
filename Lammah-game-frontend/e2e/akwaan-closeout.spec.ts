@@ -33,13 +33,13 @@ test.describe("@closeout every user-facing Akwaan surface", () => {
 
   test.beforeAll(() => mkdirSync(SHOTS, { recursive: true }));
 
-  test("public entry: home, the World catalog, and setup", async ({ page }) => {
+  test("public entry: home and direct World setup", async ({ page }) => {
     await page.setViewportSize(LAPTOP);
     await login(page);
 
     await page.goto("/");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByTestId("world-card").first().or(page.locator("a[href^='/worlds/']").first())).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator("a[href^='/matches/new?worldId=']").first()).toBeVisible({ timeout: 30_000 });
     // A World still waiting for artwork states it, rather than showing a pale
     // rectangle that reads as a failed image.
     await expect(page.getByTestId("world-artwork-pending").first()).toBeVisible();
@@ -49,18 +49,21 @@ test.describe("@closeout every user-facing Akwaan surface", () => {
     expect(homeText).not.toMatch(/\d+\s+نطاق\b/);
     await shoot(page, "home-laptop");
 
-    await page.locator("a[href^='/worlds/']").first().click();
-    await page.waitForURL(/\/worlds\//, { timeout: 30_000 });
+    const featured = page.getByTestId("featured-worlds-carousel");
+    await featured.hover();
+    await featured.getByRole("link", { name: /ادخل عالم/ }).click();
+    await page.waitForURL(/\/matches\/new\?worldId=/, { timeout: 30_000 });
     await page.waitForLoadState("networkidle");
-    await shoot(page, "worlds-catalog-laptop");
-
-    await page.goto("/matches/new");
-    await expect(page.getByTestId("match-setup-wizard")).toBeVisible({
+    await expect(page.getByTestId("match-setup-wizard")).toHaveAttribute(
+      "data-step",
+      "scopes",
+      {
       timeout: 30_000,
-    });
+      },
+    );
     // The ل- prefix merges with the definite article; "لـالعالم" is not Arabic.
     expect(await page.locator("body").innerText()).not.toContain("لـال");
-    await shoot(page, "setup-laptop");
+    await shoot(page, "setup-direct-scopes-laptop");
   });
 
   test("the Match: board, preflight, both mechanics, and their results", async ({
@@ -364,7 +367,7 @@ async function completeSetup(page: Page): Promise<void> {
     }
     await page.getByRole("button", { name: "متابعة", exact: true }).click();
   }
-  await expect(page.getByTestId("review-summary")).toBeVisible({
+  await expect(page.getByTestId("review-world-stations")).toBeVisible({
     timeout: 30_000,
   });
   await page.getByRole("button", { name: "متابعة إلى الفريقين" }).click();

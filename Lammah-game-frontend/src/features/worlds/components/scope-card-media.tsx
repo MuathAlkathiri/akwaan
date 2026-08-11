@@ -23,7 +23,7 @@ export function ScopeCardMedia({
       data-testid="scope-card-media"
       data-has-artwork={imageUrl ? "true" : "false"}
       className={cn(
-        "relative block h-40 w-full shrink-0 overflow-hidden bg-secondary sm:h-44",
+        "relative -mx-px -mt-px mb-px block h-40 w-[calc(100%+2px)] shrink-0 overflow-hidden bg-secondary sm:h-44",
         className,
       )}
     >

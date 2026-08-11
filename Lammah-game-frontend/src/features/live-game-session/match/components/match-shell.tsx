@@ -71,7 +71,7 @@ export function MatchShell({
             className="relative block h-8 w-24 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-9 sm:w-28"
           >
             <Image
-              src="/brand/lammah-logo.png"
+              src="/brand/akwaan-logo.png"
               alt="أكوان"
               fill
               priority

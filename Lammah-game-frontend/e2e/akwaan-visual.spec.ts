@@ -201,41 +201,65 @@ test.describe("@visual Akwaan identity", () => {
     await shoot(page, "scope-cards", "phone");
   });
 
-  test("captures the circular World detail hero and canonical Scope artwork", async ({
-    page,
-  }) => {
+  test("captures the three-station Match review loadout", async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.laptop);
+    await login(page);
+    await page.goto("/matches/new");
+    await configureToReview(page);
+
+    const stations = page.getByTestId("review-world-stations");
+    await expect(stations).toBeVisible();
+    await expect(stations.locator(":scope > li")).toHaveCount(3);
+    await expect(page.getByTestId("setup-progress")).toHaveCount(0);
+    await expect(page.getByTestId("review-summary")).toHaveCount(0);
+    await expect(page.getByTestId("review-ready-state")).toHaveCount(3);
+    await expect(page.getByText("3 عوالم · 12 نطاق · 12 تحدي")).toBeVisible();
+    await shoot(page, "match-review", "laptop");
+
+    await page.setViewportSize(VIEWPORTS.shared);
+    await expect(stations).toBeVisible();
+    await shoot(page, "match-review", "shared");
+
+    await page.setViewportSize(VIEWPORTS.phone);
+    await expect(stations).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      VIEWPORTS.phone.width,
+    );
+    await page.screenshot({
+      path: resolve(SHOTS, "match-review-phone-full.png"),
+      fullPage: true,
+    });
+
+    await page
+      .getByTestId("review-occurrence-0")
+      .getByRole("button", { name: "تعديل النطاقات" })
+      .click();
+    await expect(page.getByTestId("match-setup-wizard")).toHaveAttribute(
+      "data-step",
+      "scopes",
+    );
+  });
+
+  test("opens a World card directly at Scope selection", async ({ page }) => {
     await page.setViewportSize(VIEWPORTS.laptop);
     await login(page);
     await page.goto("/");
 
-    const worldLink = page.getByRole("link", { name: /فيديو قيمز/ }).first();
+    const carousel = page.getByTestId("featured-worlds-carousel");
+    await carousel.hover();
+    const worldLink = carousel.getByRole("link", { name: /ادخل عالم/ });
     await expect(worldLink).toBeVisible({ timeout: 30_000 });
     const worldHref = await worldLink.getAttribute("href");
-    expect(worldHref).toMatch(/^\/worlds\//);
-    await page.goto(worldHref!);
+    expect(worldHref).toMatch(/^\/matches\/new\?worldId=/);
+    await worldLink.click();
 
-    const hero = page.getByTestId("world-hero-artwork");
-    const scopeMedia = page.getByTestId("scope-card-media");
-    await expect(hero).toBeVisible({ timeout: 30_000 });
-    await expect(scopeMedia.first()).toBeVisible({ timeout: 30_000 });
-
-    for (const [viewport, size] of [
-      ["shared", VIEWPORTS.shared],
-      ["laptop", VIEWPORTS.laptop],
-      ["laptop-chrome", VIEWPORTS.laptopChrome],
-      ["narrow", VIEWPORTS.narrow],
-      ["phone", VIEWPORTS.phone],
-    ] as const) {
-      await page.setViewportSize(size);
-      await expect(hero).toBeVisible();
-      await shoot(page, "world-detail", viewport);
-    }
-
-    await page.setViewportSize(VIEWPORTS.laptop);
-    await page.screenshot({
-      path: resolve(SHOTS, "world-detail-laptop-full.png"),
-      fullPage: true,
-    });
+    await expect(page).toHaveURL(/\/matches\/new\?worldId=/);
+    await expect(page.getByTestId("match-setup-wizard")).toHaveAttribute(
+      "data-step",
+      "scopes",
+    );
+    await expect(page.getByTestId("scope-card-media").first()).toBeVisible();
+    await shoot(page, "setup-direct-scopes", "laptop");
   });
 
   test("captures the recovery state a corrupt stage produces", async ({
@@ -270,6 +294,15 @@ async function login(page: Page): Promise<void> {
 }
 
 async function completeSetup(page: Page): Promise<void> {
+  await configureToReview(page);
+  await page.getByRole("button", { name: "متابعة إلى الفريقين" }).click();
+  const start = page.getByRole("button", { name: /ابدأ المباراة/ });
+  await expect(start).toBeEnabled({ timeout: 30_000 });
+  await start.click();
+  await page.waitForURL(/\/matches\/[^/]+$/, { timeout: 60_000 });
+}
+
+async function configureToReview(page: Page): Promise<void> {
   for (let occurrence = 0; occurrence < 3; occurrence += 1) {
     const world = page.locator(
       `button[aria-pressed][aria-label="${TOP5_WORLD}"]`,
@@ -288,12 +321,7 @@ async function completeSetup(page: Page): Promise<void> {
     }
     await page.getByRole("button", { name: "متابعة", exact: true }).click();
   }
-  await expect(page.getByTestId("review-summary")).toBeVisible({
+  await expect(page.getByTestId("review-world-stations")).toBeVisible({
     timeout: 30_000,
   });
-  await page.getByRole("button", { name: "متابعة إلى الفريقين" }).click();
-  const start = page.getByRole("button", { name: /ابدأ المباراة/ });
-  await expect(start).toBeEnabled({ timeout: 30_000 });
-  await start.click();
-  await page.waitForURL(/\/matches\/[^/]+$/, { timeout: 60_000 });
 }

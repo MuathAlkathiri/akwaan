@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { matchSetupRouteForWorld } from "@/features/match-setup/routes";
 import type { PlayableWorld } from "../types";
 import { WorldCover } from "./world-cover";
 import { WorldStats } from "./world-stats";
@@ -18,33 +19,47 @@ export function WorldCard({
   world,
   featured = false,
   priority = false,
+  className,
+  carouselActive = true,
+  onCarouselActivate,
 }: {
   world: PlayableWorld;
   featured?: boolean;
   priority?: boolean;
+  className?: string;
+  carouselActive?: boolean;
+  onCarouselActivate?: () => void;
 }) {
   const accent = worldCardAccent(world);
 
   return (
     <Link
-      href={`/worlds/${world.id}`}
-      aria-label={`ادخل عالم ${world.name}`}
+      href={matchSetupRouteForWorld(world.id)}
+      aria-label={
+        carouselActive ? `ادخل عالم ${world.name}` : `اعرض عالم ${world.name}`
+      }
+      onClick={(event) => {
+        if (carouselActive || !onCarouselActivate) return;
+        event.preventDefault();
+        onCarouselActivate();
+      }}
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-3xl border bg-card shadow-[0_12px_32px_rgba(24,16,54,.07)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_44px_hsl(219_45%_16%/0.13)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
         accent.card,
+        className,
       )}
     >
       <span
         data-testid="world-card-media"
         className={cn(
-          "relative block w-full shrink-0 overflow-hidden bg-secondary",
+          "relative -mx-px -mt-px mb-px block w-[calc(100%+2px)] shrink-0 overflow-hidden bg-secondary",
           featured ? "aspect-[3/2]" : "aspect-[5/3]",
         )}
       >
         <WorldCover
           world={world}
           priority={priority}
-          imageClassName="scale-[1.04]"
+          imageClassName="scale-[1.1] object-[center_58%]"
           sizes={
             featured
               ? "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"

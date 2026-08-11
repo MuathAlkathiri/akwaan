@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Compass, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-provider";
 // The route only; importing the wizard itself would make worlds depend on setup.
@@ -9,19 +9,18 @@ import { MATCH_SETUP_ROUTE } from "@/features/match-setup/routes";
 import { JourneyShell, JourneySection } from "./journey-shell";
 import { JourneyError } from "./journey-error";
 import { WorldCard } from "./world-card";
+import { FeaturedWorldsCarousel } from "./featured-worlds-carousel";
 import { usePlayableWorlds } from "../hooks/use-player-catalog";
 import { playableWorlds, selectFeaturedWorlds } from "../utils/featured-worlds";
-import { ARABIC_NOUNS, arabicCount } from "@/lib/arabic-plural";
 
 /**
  * The Akwaan home: a dashboard of Worlds, not a landing page.
  *
- * There is no promotional hero and no marketing call to action, because the
- * Worlds themselves are the call to action. The only thing above them is where
- * the player already was.
+ * The hero names the one action the product is asking for; the Worlds directly
+ * below it provide the visual discovery layer.
  */
 export function WorldsHome() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const query = usePlayableWorlds();
   const worlds = query.isSuccess ? playableWorlds(query.data) : [];
   const featured = query.isSuccess ? selectFeaturedWorlds(query.data) : [];
@@ -29,19 +28,12 @@ export function WorldsHome() {
   return (
     <JourneyShell>
       <div className="space-y-10">
-        <Welcome name={user?.fullName} worldCount={worlds.length} />
-
-        <Button asChild size="lg" className="rounded-[var(--radius)] font-black shadow-[0_10px_30px_hsl(219_45%_16%/0.2)]">
-          <Link href={MATCH_SETUP_ROUTE}>
-            <Play className="ml-2 h-5 w-5 fill-current" aria-hidden />
-            ابدأ مباراة جديدة
-          </Link>
-        </Button>
+        <Welcome />
 
         <JourneySection
           id="featured-worlds"
           title="عوالم مختارة"
-          description="ابدأ من عالم جاهز، كل واحد بنطاقاته وتحدياته."
+          description="ثلاثة عوالم جاهزة لاكتشافها."
         >
           {query.isLoading ? (
             <CardSkeletons count={3} className="h-72" columns="featured" />
@@ -57,16 +49,7 @@ export function WorldsHome() {
               retrying={query.isFetching}
             />
           ) : featured.length ? (
-            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {featured.map((world, index) => (
-                <WorldCard
-                  key={world.id}
-                  world={world}
-                  featured
-                  priority={index === 0}
-                />
-              ))}
-            </div>
+            <FeaturedWorldsCarousel worlds={featured} />
           ) : (
             <EmptyWorlds isAuthenticated={isAuthenticated} />
           )}
@@ -90,28 +73,23 @@ export function WorldsHome() {
   );
 }
 
-function Welcome({ name, worldCount }: { name?: string; worldCount: number }) {
+function Welcome() {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <p className="text-sm font-black text-success">أكوان</p>
-        <h1 className="mt-1 text-3xl font-black text-foreground sm:text-4xl">
-          {name ? `أهلاً ${name}` : "أهلاً بك"}
-        </h1>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          {worldCount
-            ? `${arabicCount(worldCount, ARABIC_NOUNS.world)} بانتظاركم. اختر عالمًا وابدأ.`
-            : "اختر عالماً وابدأ الجلسة."}
-        </p>
-      </div>
+    <header className="mx-auto max-w-2xl py-3 text-center sm:py-5">
+      <h1 className="text-3xl font-black text-foreground sm:text-4xl">
+        اختر عالمك وابدأ التحدي
+      </h1>
+      <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">
+        عوالم مختلفة، تحديات مختلفة، وكل مباراة لها قصتها.
+      </p>
       <Button
         asChild
-        variant="outline"
-        className="rounded-[var(--radius)] border-primary/20 bg-card font-black text-primary hover:bg-primary/[0.06] hover:text-primary"
+        size="lg"
+        className="mt-6 rounded-[var(--radius)] font-black shadow-[0_10px_30px_hsl(var(--primary)/0.2)]"
       >
-        <Link href="#all-worlds">
-          <Compass className="ml-2 h-4 w-4" aria-hidden="true" />
-          تصفّح كل العوالم
+        <Link href={MATCH_SETUP_ROUTE}>
+          <Play className="ml-2 h-5 w-5 fill-current" aria-hidden />
+          ابدأ مباراة جديدة
         </Link>
       </Button>
     </header>

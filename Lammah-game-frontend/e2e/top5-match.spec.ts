@@ -573,7 +573,7 @@ async function completeSetup(page: Page): Promise<void> {
     await page.getByRole("button", { name: "متابعة", exact: true }).click();
   }
 
-  await expect(page.getByTestId("review-summary")).toBeVisible({
+  await expect(page.getByTestId("review-world-stations")).toBeVisible({
     timeout: 30_000,
   });
   await page.getByRole("button", { name: "متابعة إلى الفريقين" }).click();

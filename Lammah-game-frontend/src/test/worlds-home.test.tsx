@@ -145,7 +145,9 @@ describe("world card", () => {
     );
 
     const link = screen.getByRole("link", { name: /كرة القدم/ });
-    expect(link.getAttribute("href")).toBe("/worlds/w-football");
+    expect(link.getAttribute("href")).toBe(
+      "/matches/new?worldId=w-football",
+    );
   });
 
   it("carries only the counts a player chooses by", () => {

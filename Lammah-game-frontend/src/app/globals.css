@@ -11,8 +11,8 @@
  * One semantic layer sits between shadcn's primitives and every screen: nothing
  * user-facing names a raw colour. The identity is a warm off-white room with dark
  * navy type — the World artwork supplies the colour, and the shell stays out of
- * its way. The retired purple identity is gone from the token set entirely, so a
- * component cannot reach for it by accident.
+ * its way. Brand accents are explicit tokens rather than a global purple wash,
+ * so their use stays intentional and separate from gameplay state.
  *
  * Team colour is semantic, not decorative: green and coral belong to *teams*, and
  * are never borrowed for a button, a surface, or a status. That is what lets the
@@ -21,15 +21,21 @@
  */
 @layer base {
   :root {
+    /* ── Brand identity ────────────────────────────────────────────────── */
+    --brand-navy: 239 40% 17%;
+    --brand-purple: 247 100% 71%;
+    --brand-cyan: 188 49% 54%;
+    --brand-gold: 40 57% 63%;
+
     /* ── Surfaces ───────────────────────────────────────────────────────── */
     /* Warm off-white: the room the whole product sits in. */
     --background: 43 38% 95%;
-    --foreground: 219 45% 16%;
+    --foreground: var(--brand-navy);
     /* Elevated: cards, panels, anything that lifts off the room. */
     --card: 40 45% 99%;
-    --card-foreground: 219 45% 16%;
+    --card-foreground: var(--brand-navy);
     --popover: 40 45% 99%;
-    --popover-foreground: 219 45% 16%;
+    --popover-foreground: var(--brand-navy);
     /* Muted: recessed surfaces — inactive tiles, wells, quiet chips. */
     --muted: 42 26% 92%;
     --muted-foreground: 218 15% 45%;
@@ -39,7 +45,7 @@
     /* ── Action ─────────────────────────────────────────────────────────── */
     /* Navy, deliberately not a team colour: a primary button must never read
        as "the green team". */
-    --primary: 219 52% 20%;
+    --primary: var(--brand-navy);
     --primary-foreground: 40 45% 99%;
     --accent: 42 30% 90%;
     --accent-foreground: 219 45% 20%;
@@ -93,11 +99,11 @@
     --motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 
     /* Charts keep working; they simply stop being purple. */
-    --chart-1: 219 52% 30%;
+    --chart-1: var(--brand-navy);
     --chart-2: 152 55% 36%;
     --chart-3: 348 72% 57%;
-    --chart-4: 33 88% 48%;
-    --chart-5: 199 70% 42%;
+    --chart-4: var(--brand-gold);
+    --chart-5: var(--brand-cyan);
     --sidebar: 40 45% 99%;
     --sidebar-foreground: 219 45% 16%;
     --sidebar-primary: 219 52% 20%;
@@ -164,13 +170,21 @@
   }
 
   html {
-    @apply font-sans;
+    @apply font-body;
   }
 
   body {
     /* Flat and warm. The old identity painted two purple radial glows here,
        which fought every World banner placed on top of them. */
     @apply min-h-screen bg-background text-foreground antialiased;
+  }
+
+  /* Two voices, one hierarchy: Kufi carries identity at display scale while
+     Readex remains the calmer reading and interaction face everywhere else. */
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
   }
 
   button:not(:disabled),
@@ -264,6 +278,7 @@
 
   /* Tabular, LTR-locked numerals: Arabic UI, Western digits for scores. */
   .akwaan-numeral {
+    font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
     font-variant-numeric: tabular-nums;
     direction: ltr;
     unicode-bidi: isolate;

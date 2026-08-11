@@ -18,7 +18,6 @@ const PLAYER_JOURNEY_FILES = [
   "src/app/page.tsx",
   "src/app/worlds/[worldId]/page.tsx",
   "src/features/worlds/components/worlds-home.tsx",
-  "src/features/worlds/components/world-screen.tsx",
   "src/features/worlds/hooks/use-player-catalog.ts",
   "src/features/worlds/api/player-catalog.api.ts",
   "src/features/worlds/utils/scopes.ts",
