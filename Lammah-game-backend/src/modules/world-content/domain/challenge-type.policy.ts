@@ -1,15 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { ScoringRuleRegistry } from '../../scoring/application/scoring-rule.registry';
-import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 import { ChallengePresentationPolicy } from './challenge-presentation.policy';
 import {
   ChallengeAnswerMode,
   ChallengeFamily,
   ChallengeItemStructure,
   FAMILY_ALLOWED_ANSWER_MODES,
-  ONE_CLUE_SLUG,
   WorldContentStatus,
 } from './world-content.constants';
+import {
+  productionMechanicDefinition,
+  productionMechanicSystemFields,
+} from './production-mechanic.definition';
 import { issue } from './world-content.errors';
 import { ChallengeTypeView, WorldContentIssue } from './world-content.types';
 
@@ -37,27 +39,30 @@ export class ChallengeTypePolicy {
       );
       return issues;
     }
-    if (
-      (challengeType.slug === ONE_CLUE_SLUG) !==
-      (challengeType.answerMode === ChallengeAnswerMode.ONE_CLUE)
-    ) {
-      issues.push(
-        issue(
-          'ONE_CLUE_CANONICAL_BINDING_REQUIRED',
-          `The ${ONE_CLUE_SLUG} slug and one_clue answer mode must be configured together`,
-        ),
+    const productionDefinition = productionMechanicDefinition(
+      challengeType.slug,
+    );
+    if (productionDefinition) {
+      const expected = productionMechanicSystemFields(productionDefinition);
+      const actual = productionMechanicSystemFields({
+        ...productionDefinition,
+        family: challengeType.family,
+        itemStructure: challengeType.itemStructure,
+        answerMode: challengeType.answerMode,
+        matchScoringRuleId: challengeType.scoringRuleId as never,
+      });
+      const drift = Object.keys(expected).filter(
+        (field) => expected[field] !== actual[field],
       );
-    }
-    if (
-      challengeType.slug === ONE_CLUE_SLUG &&
-      challengeType.scoringRuleId !== SCORING_RULE_IDS.CHALLENGE_WIN
-    ) {
-      issues.push(
-        issue(
-          'ONE_CLUE_SCORING_RULE_INVALID',
-          `One Clue resolves its Match result through ${SCORING_RULE_IDS.CHALLENGE_WIN}`,
-        ),
-      );
+      if (drift.length) {
+        issues.push(
+          issue(
+            'PRODUCTION_MECHANIC_CONFIGURATION_DRIFT',
+            `Production mechanic "${challengeType.slug}" does not match its canonical runtime definition`,
+            { fields: drift, expected, actual },
+          ),
+        );
+      }
     }
     if (
       !Object.values(ChallengeAnswerMode).includes(challengeType.answerMode)

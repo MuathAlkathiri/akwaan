@@ -131,6 +131,7 @@ export function validBoard(): BoardDefinitionInput {
   const ryoOne = challengeType({
     id: 'challenge-ryo',
     slug: 'read-your-opponent',
+    scoringRuleId: SCORING_RULE_IDS.CHALLENGE_WIN,
   });
   const ryoTwo = challengeType({
     id: 'challenge-ryo-2',

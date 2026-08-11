@@ -3,6 +3,11 @@ import { UploadedImageFile } from '../../../common/uploads/local-image-storage.s
 import { ScoringRuleRegistry } from '../../scoring/application/scoring-rule.registry';
 import { ChallengeTypePolicy } from '../domain/challenge-type.policy';
 import {
+  PRODUCTION_MECHANICS,
+  productionMechanicDefinition,
+  ProductionMechanicDefinition,
+} from '../domain/production-mechanic.definition';
+import {
   ANSWER_MODE_COMPATIBLE_ITEM_MODES,
   ChallengeAnswerMode,
   ChallengeFamily,
@@ -57,6 +62,7 @@ export interface ChallengeTypeSummary extends ChallengeTypeView {
  * drift (roadmap 21).
  */
 export interface WorldContentMetadata {
+  productionMechanics: Array<Omit<ProductionMechanicDefinition, 'seed'>>;
   families: Array<{
     value: ChallengeFamily;
     allowedAnswerModes: ChallengeAnswerMode[];
@@ -97,6 +103,14 @@ export class ChallengeTypeService {
 
   metadata(): WorldContentMetadata {
     return {
+      productionMechanics: PRODUCTION_MECHANICS.map((entry) => ({
+        slug: entry.slug,
+        runtimeKey: entry.runtimeKey,
+        family: entry.family,
+        itemStructure: entry.itemStructure,
+        answerMode: entry.answerMode,
+        matchScoringRuleId: entry.matchScoringRuleId,
+      })),
       families: Object.values(ChallengeFamily).map((family) => ({
         value: family,
         allowedAnswerModes: [...FAMILY_ALLOWED_ANSWER_MODES[family]],
@@ -170,6 +184,22 @@ export class ChallengeTypeService {
       await this.assertSlugAvailable(dto.slug, id);
     }
     const candidate = this.mergeCandidate(toChallengeTypeView(existing), dto);
+    const canonical = productionMechanicDefinition(existing.slug);
+    if (canonical) {
+      if (candidate.slug !== canonical.slug) {
+        assertNoIssues([
+          issue(
+            'PRODUCTION_MECHANIC_SLUG_RUNTIME_OWNED',
+            `Production mechanic identifier "${canonical.slug}" is runtime-owned`,
+            { expected: canonical.slug, actual: candidate.slug },
+          ),
+        ]);
+      }
+      assertNoIssues(
+        this.policy.validate({ ...candidate, slug: canonical.slug }),
+        'Production mechanic system fields are runtime-owned',
+      );
+    }
     assertNoIssues(
       this.policy.validate(candidate),
       'Challenge type is invalid',

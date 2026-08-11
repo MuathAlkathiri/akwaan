@@ -272,6 +272,14 @@ export interface ScoringRuleOption {
  * restated client-side (roadmap 21).
  */
 export interface WorldContentMetadata {
+  productionMechanics: Array<{
+    slug: string;
+    runtimeKey: string;
+    family: ChallengeFamily;
+    itemStructure: ChallengeItemStructure;
+    answerMode: ChallengeAnswerMode;
+    matchScoringRuleId: string;
+  }>;
   families: Array<{
     value: ChallengeFamily;
     allowedAnswerModes: ChallengeAnswerMode[];

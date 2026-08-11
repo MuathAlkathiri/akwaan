@@ -6,11 +6,12 @@ import type { useAutoSlug } from "../../hooks/use-auto-slug";
 
 interface AdvancedSlugFieldProps {
   slugField: ReturnType<typeof useAutoSlug>;
+  disabled?: boolean;
 }
 
 // Collapsible "advanced" disclosure so the slug is never presented as a
 // primary field — it's auto-generated from the name and only editable here.
-export function AdvancedSlugField({ slugField }: AdvancedSlugFieldProps) {
+export function AdvancedSlugField({ slugField, disabled = false }: AdvancedSlugFieldProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -30,6 +31,7 @@ export function AdvancedSlugField({ slugField }: AdvancedSlugFieldProps) {
           <Input
             dir="ltr"
             value={slugField.slug}
+            disabled={disabled}
             onChange={(event) => {
               slugField.enableManualEditing();
               slugField.onManualSlugChange(event.target.value);

@@ -24,7 +24,11 @@ describe('ChallengeTypePolicy', () => {
     policy.validate(challenge).map((problem) => problem.code);
 
   it('accepts a coherent shared mechanic', () => {
-    expect(policy.validate(challengeType())).toEqual([]);
+    expect(
+      policy.validate(
+        challengeType({ scoringRuleId: SCORING_RULE_IDS.CHALLENGE_WIN }),
+      ),
+    ).toEqual([]);
   });
 
   it('rejects an unsupported family', () => {
@@ -71,12 +75,12 @@ describe('ChallengeTypePolicy', () => {
     expect(
       codes(
         challengeType({
-          slug: 'lookalike',
+          slug: 'one-clue',
           family: ChallengeFamily.COOP,
-          answerMode: ChallengeAnswerMode.ONE_CLUE,
+          answerMode: ChallengeAnswerMode.CLOSEST,
         }),
       ),
-    ).toContain('ONE_CLUE_CANONICAL_BINDING_REQUIRED');
+    ).toContain('PRODUCTION_MECHANIC_CONFIGURATION_DRIFT');
   });
 
   it('keeps One Clue ready only through its implemented Match scoring rule', () => {
@@ -90,7 +94,7 @@ describe('ChallengeTypePolicy', () => {
     expect(policy.warnings(oneClue)).toEqual([]);
     expect(
       codes({ ...oneClue, scoringRuleId: SCORING_RULE_IDS.COOP_ITEM_SUCCESS }),
-    ).toContain('ONE_CLUE_SCORING_RULE_INVALID');
+    ).toContain('PRODUCTION_MECHANIC_CONFIGURATION_DRIFT');
   });
 
   it('rejects an unsupported item structure', () => {

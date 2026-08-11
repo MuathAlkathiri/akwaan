@@ -2,10 +2,9 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import type { Db } from 'mongodb';
 import {
-  ChallengeAnswerMode,
-  ChallengeFamily,
-  ChallengeItemStructure,
-} from '../modules/world-content/domain/world-content.constants';
+  PRODUCTION_MECHANICS,
+  ProductionMechanicDefinition,
+} from '../modules/world-content/domain/production-mechanic.definition';
 import { SLUG_PATTERN } from '../modules/world-content/schemas/world-content-shared.schema';
 
 const APPLY = process.argv.includes('--apply');
@@ -33,13 +32,10 @@ const MONGO_URI =
  */
 
 /** A mechanic that has a launcher, and the shape a ChallengeType must have to be it. */
-export interface CanonicalMechanic {
-  /** The launcher key. This is the slug the ChallengeType must end up with. */
-  slug: string;
-  family: string;
-  itemStructure: string;
-  answerMode: string;
-}
+export type CanonicalMechanic = Pick<
+  ProductionMechanicDefinition,
+  'slug' | 'family' | 'itemStructure' | 'answerMode'
+>;
 
 /**
  * Only mechanics whose structural identity is unambiguous.
@@ -52,20 +48,8 @@ export interface CanonicalMechanic {
  * launcher does not accept, so they are different mechanics rather than one
  * mechanic with a bad slug. Converting them is content authoring, not a rename.
  */
-export const CANONICAL_MECHANICS: readonly CanonicalMechanic[] = [
-  {
-    slug: 'closest',
-    family: ChallengeFamily.COOP,
-    itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
-    answerMode: ChallengeAnswerMode.CLOSEST,
-  },
-  {
-    slug: 'read-your-opponent',
-    family: ChallengeFamily.RYO,
-    itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
-    answerMode: ChallengeAnswerMode.RYO,
-  },
-];
+export const CANONICAL_MECHANICS: readonly CanonicalMechanic[] =
+  PRODUCTION_MECHANICS;
 
 export interface ChallengeTypeRecord {
   _id: unknown;

@@ -91,10 +91,14 @@ export function ChallengeTypeForm({
   const familyMeta = metadata.data?.families.find(
     (entry) => entry.value === family,
   );
+  const productionDefinition = metadata.data?.productionMechanics.find(
+    (entry) => entry.slug === challengeType?.slug,
+  );
+  const runtimeOwned = Boolean(productionDefinition);
   const allowedAnswerModes = familyMeta?.allowedAnswerModes ?? [];
   const scoringRules = (metadata.data?.scoringRules ?? []).filter((rule) =>
-    answerMode === "one_clue"
-      ? rule.id === "challenge.win"
+    productionDefinition
+      ? rule.id === productionDefinition.matchScoringRuleId
       : SCORING_RULE_PRESENTATION[rule.id]?.family === family,
   );
 
@@ -147,19 +151,6 @@ export function ChallengeTypeForm({
   const onAnswerModeChange = (next: string) => {
     const nextMode = next as ChallengeAnswerMode;
     setAnswerMode(nextMode);
-    if (!challengeType && nextMode === "one_clue") {
-      setName("بدليل واحد");
-      setDescription("خمسة أدلة متدرجة، وإجابة واحدة مقفلة لكل فريق.");
-      slugField.onManualSlugChange("one-clue");
-      setItemStructure("discrete_triple");
-      setScoringRuleId("challenge.win");
-      setPresentation({
-        inputType: "phone-text",
-        timerSeconds: 7,
-        soundPack: null,
-        revealStyle: null,
-      });
-    }
   };
 
   const onSubmit = async (event: React.FormEvent) => {
@@ -207,7 +198,7 @@ export function ChallengeTypeForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1.5 block text-sm font-medium">العائلة</label>
-          <Select value={family} onValueChange={onFamilyChange}>
+          <Select value={family} onValueChange={onFamilyChange} disabled={runtimeOwned}>
             <SelectTrigger aria-label="العائلة">
               <SelectValue />
             </SelectTrigger>
@@ -230,7 +221,7 @@ export function ChallengeTypeForm({
           <label className="mb-1.5 block text-sm font-medium">
             نمط الإجابة
           </label>
-          <Select value={answerMode} onValueChange={onAnswerModeChange}>
+          <Select value={answerMode} onValueChange={onAnswerModeChange} disabled={runtimeOwned}>
             <SelectTrigger aria-label="نمط الإجابة">
               <SelectValue />
             </SelectTrigger>
@@ -250,6 +241,7 @@ export function ChallengeTypeForm({
           </label>
           <Select
             value={itemStructure}
+            disabled={runtimeOwned}
             onValueChange={(next: string) =>
               setItemStructure(next as ChallengeItemStructure)
             }
@@ -315,7 +307,12 @@ export function ChallengeTypeForm({
         hint="المكانيكا يجب أن تكون نشطة لتُستخدم في لوحة أي عالم."
       />
 
-      <AdvancedSlugField slugField={slugField} />
+      {runtimeOwned && (
+        <p className="text-xs text-muted-foreground">
+          العائلة ونمط الإجابة والبنية وقاعدة نقاط المباراة والمعرّف مرتبطة بتنفيذ التشغيل ولا يمكن تعديلها يدويًا.
+        </p>
+      )}
+      <AdvancedSlugField slugField={slugField} disabled={runtimeOwned} />
 
       <FormIssueList error={formSubmit.error} issues={formSubmit.issues} />
 
