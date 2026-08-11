@@ -81,6 +81,10 @@ export const MODE_COMMAND_TYPES: readonly string[] = [
   'submit-estimate',
   'advance-closest-item',
   'expire-closest-item',
+  // بدليل واحد.
+  'submit-one-clue-answer',
+  'advance-one-clue-item',
+  'expire-one-clue-stage',
 ];
 
 export interface GameplayCommandDefinition {

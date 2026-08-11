@@ -12,6 +12,7 @@ import {
 import { DISTRIBUTED_INFORMATION_MODE_KEY } from '../domain/distributed-information.plugin';
 import type { GameplayRuntimeState } from '../domain/gameplay-runtime';
 import { CLOSEST_MODE_KEY } from '../domain/closest-gameplay.plugin';
+import { ONE_CLUE_MODE_KEY } from '../domain/one-clue-gameplay.plugin';
 
 /**
  * What a mode's pending deadline looks like, and the command that resolves it.
@@ -50,6 +51,17 @@ function pendingDeadline(
     return {
       deadlineAt: state.runtimeState.deadlineAt,
       commandType: 'expire-closest-item',
+    };
+  }
+  if (
+    state.modeKey === ONE_CLUE_MODE_KEY &&
+    state.status === 'round-active' &&
+    state.runtimeState.phase === 'collecting' &&
+    typeof state.runtimeState.deadlineAt === 'string'
+  ) {
+    return {
+      deadlineAt: state.runtimeState.deadlineAt,
+      commandType: 'expire-one-clue-stage',
     };
   }
   return undefined;

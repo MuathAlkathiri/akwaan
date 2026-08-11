@@ -8,6 +8,7 @@ import { MATCH_SETUP_ROUTE } from "@/features/match-setup/routes";
 import { RyoGameplayPanel } from "../components/ryo-gameplay-panel";
 import { Top5Panel } from "../components/top5-panel";
 import { ClosestGameplayPanel } from "../components/closest-gameplay-panel";
+import { OneClueGameplayPanel } from "../components/one-clue-gameplay-panel";
 import { DistributedInformationPanel } from "../components/distributed-information-panel";
 import { DistributedInformationScreen } from "../components/distributed-information-screen";
 import { DISTRIBUTED_INFORMATION_MODE_KEY } from "./distributed-information.presentation";
@@ -79,7 +80,9 @@ export function MatchStageRouter({
     // The board is the host's screen. A phone between challenges waits instead,
     // on the page it joined on, with its socket open.
     content = isPhone ? (
-      <ParticipantWaiting {...(phoneTeamName ? { teamName: phoneTeamName } : {})} />
+      <ParticipantWaiting
+        {...(phoneTeamName ? { teamName: phoneTeamName } : {})}
+      />
     ) : (
       <UnifiedBoard actor={actor} />
     );
@@ -90,7 +93,9 @@ export function MatchStageRouter({
       <UnsupportedStage stage={stage} onResync={resync} />
     ) : isPhone && !match.unified.preflight.requiresPhones ? (
       // Being gathered for a challenge that does not want phones would be a lie.
-      <ParticipantWaiting {...(phoneTeamName ? { teamName: phoneTeamName } : {})} />
+      <ParticipantWaiting
+        {...(phoneTeamName ? { teamName: phoneTeamName } : {})}
+      />
     ) : (
       <UnifiedPreflightStage
         actor={actor}
@@ -166,8 +171,8 @@ function UnsupportedStage({
         تعذر عرض المرحلة الحالية
       </h1>
       <p className="text-sm leading-6 text-muted-foreground">
-        وصلت حالة غير معروفة أو ناقصة من الخادم. بيانات المباراة محفوظة ولم يتغيّر
-        شيء.
+        وصلت حالة غير معروفة أو ناقصة من الخادم. بيانات المباراة محفوظة ولم
+        يتغيّر شيء.
       </p>
       <p className="text-xs font-bold text-muted-foreground">
         المرحلة المُستلمة: <span dir="ltr">{stage || "—"}</span>
@@ -246,6 +251,8 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
       return <Top5Panel runtime={runtime} />;
     case "closest":
       return <ClosestGameplayPanel runtime={runtime} />;
+    case "one-clue":
+      return <OneClueGameplayPanel runtime={runtime} />;
     case DISTRIBUTED_INFORMATION_MODE_KEY:
       return actor === "participant" ? (
         <DistributedInformationPanel runtime={runtime} />
@@ -261,10 +268,7 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
           data-testid="runtime-renderer-missing"
           className="space-y-2 rounded-[var(--radius)] border border-warning/35 bg-warning-subtle p-6 text-center"
         >
-          <AlertTriangle
-            className="mx-auto size-7 text-warning"
-            aria-hidden
-          />
+          <AlertTriangle className="mx-auto size-7 text-warning" aria-hidden />
           <p className="text-base font-black text-foreground">
             لا توجد شاشة لهذا التحدي في هذا التطبيق
           </p>

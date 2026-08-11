@@ -12,6 +12,7 @@ import { BombGameplayPanel } from "./bomb-gameplay-panel";
 import { Top5Panel } from "./top5-panel";
 import { RyoGameplayPanel } from "./ryo-gameplay-panel";
 import { ClosestGameplayPanel } from "./closest-gameplay-panel";
+import { OneClueGameplayPanel } from "./one-clue-gameplay-panel";
 
 const labels: Record<string, string> = {
   "runtime:start": "Start runtime",
@@ -60,6 +61,9 @@ export function GameplayRuntimePanel() {
   }
   if (runtime.mode.key === "closest") {
     return <ClosestGameplayPanel runtime={runtime} />;
+  }
+  if (runtime.mode.key === "one-clue") {
+    return <OneClueGameplayPanel runtime={runtime} />;
   }
   const round = runtime.activeRound;
   const activeTeam = snapshot.teams.find(
@@ -114,6 +118,8 @@ export function GameplayRuntimePanel() {
           <RyoGameplayPanel runtime={runtime} />
         ) : runtime.mode.key === "closest" ? (
           <ClosestGameplayPanel runtime={runtime} />
+        ) : runtime.mode.key === "one-clue" ? (
+          <OneClueGameplayPanel runtime={runtime} />
         ) : (
           <GameplayInteractionPanel runtime={runtime} />
         )}

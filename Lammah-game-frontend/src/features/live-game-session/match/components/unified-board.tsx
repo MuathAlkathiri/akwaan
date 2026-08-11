@@ -116,6 +116,18 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
           {selectingTeamName} — دوركم الآن لاختيار تحدٍ
         </span>
       )}
+      {match.doubles?.length ? (
+        <div className="flex flex-wrap justify-end gap-2" data-testid="match-double-tokens">
+          {match.doubles.map((token) => (
+            <span
+              key={token.teamId}
+              className="rounded-full border border-border bg-card px-3 py-1 text-xs font-black text-muted-foreground"
+            >
+              {teamName(snapshot, token.teamId)} · {token.status === "consumed" ? "الدبل مستخدم" : "الدبل ×2 متاح"}
+            </span>
+          ))}
+        </div>
+      ) : null}
       <div className="flex justify-end lg:hidden">
         {/* The shell's own progress bar takes over at `lg`, where this became the
             same fraction printed twice on one screen. */}

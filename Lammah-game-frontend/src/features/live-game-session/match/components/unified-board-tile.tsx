@@ -6,6 +6,7 @@ import {
   Eye,
   Gamepad2,
   ListOrdered,
+  Lightbulb,
   Loader2,
   Lock,
   Puzzle,
@@ -40,7 +41,9 @@ export function UnifiedBoardTile({
     position.status === "unavailable" ||
     position.launchability !== "launchable";
   const reason = unplayable
-    ? unavailableReasons[position.unavailableReason ?? "launcher_not_implemented"]
+    ? unavailableReasons[
+        position.unavailableReason ?? "launcher_not_implemented"
+      ]
     : undefined;
   const Icon = challengeIcon(position.challengeKey);
   const interactive = canSelect || inProgress;
@@ -133,7 +136,8 @@ export function UnifiedBoardTile({
                 )}
               >
                 <span className="max-w-16 truncate">
-                  {standings.find((team) => team.teamId === score.teamId)?.name ?? "فريق"}
+                  {standings.find((team) => team.teamId === score.teamId)
+                    ?.name ?? "فريق"}
                 </span>
                 <span className="akwaan-numeral">{score.displayTotal}</span>
               </span>
@@ -141,7 +145,10 @@ export function UnifiedBoardTile({
           })}
         </span>
       ) : interactive ? (
-        <ChevronLeft className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:-translate-x-0.5" aria-hidden />
+        <ChevronLeft
+          className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:-translate-x-0.5"
+          aria-hidden
+        />
       ) : null}
     </>
   );
@@ -191,6 +198,7 @@ function challengeIcon(challengeKey: string) {
   if (challengeKey === "top-5") return ListOrdered;
   if (challengeKey === "read-your-opponent") return Eye;
   if (challengeKey === "closest") return Target;
+  if (challengeKey === "one-clue") return Lightbulb;
   if (challengeKey === "distributed-information") return Puzzle;
   return Gamepad2;
 }

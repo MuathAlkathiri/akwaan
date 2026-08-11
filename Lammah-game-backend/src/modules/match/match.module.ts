@@ -34,6 +34,7 @@ import { MongooseMatchRepository } from './persistence/mongoose-match.repository
 import { MatchController } from './presentation/match.controller';
 import { UnifiedMatchController } from './presentation/unified-match.controller';
 import { MatchParticipantController } from './presentation/match-participant.controller';
+import { OneClueChallengeLauncher } from './application/one-clue-challenge.launcher';
 
 /**
  * Match orchestration.
@@ -81,6 +82,7 @@ import { MatchParticipantController } from './presentation/match-participant.con
     Top5ChallengeLauncher,
     DistributedInformationChallengeLauncher,
     ClosestChallengeLauncher,
+    OneClueChallengeLauncher,
     MatchReconciliationService,
     MatchSnapshotComposer,
   ],

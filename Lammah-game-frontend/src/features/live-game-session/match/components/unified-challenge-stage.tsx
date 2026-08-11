@@ -57,6 +57,9 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
               <p className="text-2xl font-black tabular-nums text-foreground">
                 {team.displayTotal}
               </p>
+              {current?.doubledTeamIds?.includes(team.teamId) && (
+                <p className="text-xs font-black text-warning">فعّل الدبل ×2</p>
+              )}
             </li>
           ))}
         </ul>

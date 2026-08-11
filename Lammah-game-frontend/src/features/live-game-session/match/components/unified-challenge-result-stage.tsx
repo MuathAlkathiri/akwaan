@@ -18,6 +18,7 @@ import { slotLabels, teamName } from "../presentation";
 import { RyoResultRecap } from "./ryo-result-recap";
 import { ClosestResultRecap } from "./closest-result-recap";
 import { Top5ResultReveal } from "./top5-result-reveal";
+import { OneClueResultRecap } from "./one-clue-result-recap";
 import type { MatchActor, MatchChallengeResult } from "../types";
 
 /**
@@ -82,7 +83,11 @@ export function UnifiedChallengeResultStage({ actor }: { actor: MatchActor }) {
           <p className="text-sm">
             المباراة في مرحلة النتيجة لكن الخادم لم يرسل تفاصيلها.
           </p>
-          <Button type="button" onClick={() => resync?.()} className="font-black">
+          <Button
+            type="button"
+            onClick={() => resync?.()}
+            className="font-black"
+          >
             <RefreshCw className="size-4" aria-hidden />
             مزامنة المباراة
           </Button>
@@ -169,6 +174,8 @@ function ChallengeResultBody({ result }: { result: MatchChallengeResult }) {
       return <RyoResultRecap result={result} snapshot={snapshot} />;
     case "closest":
       return <ClosestResultRecap result={result} snapshot={snapshot} />;
+    case "one-clue":
+      return <OneClueResultRecap result={result} snapshot={snapshot} />;
     default:
       return (
         <div

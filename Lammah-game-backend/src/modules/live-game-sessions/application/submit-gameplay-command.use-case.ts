@@ -48,6 +48,7 @@ import {
 } from '../domain/distributed-information.plugin';
 import { GameplayObserverRegistry } from './gameplay-observer.registry';
 import { CLOSEST_MODE_KEY } from '../domain/closest-gameplay.plugin';
+import { ONE_CLUE_MODE_KEY } from '../domain/one-clue-gameplay.plugin';
 
 @Injectable()
 export class SubmitGameplayCommand {
@@ -269,11 +270,21 @@ export class SubmitGameplayCommand {
         command,
         now,
       );
+      const oneClueTerminal = this.completeOneClueIfTerminal(
+        runtime,
+        command,
+        now,
+      );
       if (sessionChanged) {
         await context.saveSession(session, previousSessionRevision);
       }
       await context.saveRuntime(runtime, previousRuntimeRevision);
-      return { session, runtime, now, terminal: terminal || closestTerminal };
+      return {
+        session,
+        runtime,
+        now,
+        terminal: terminal || closestTerminal || oneClueTerminal,
+      };
     });
 
     const terminalState = result.session.serialize();
@@ -468,6 +479,33 @@ export class SubmitGameplayCommand {
         commandId: `${command.commandId}:round-complete`,
         actorId: command.actor.actorId,
         reason: 'closest-three-items-completed',
+        result: { resultsJson: state.runtimeState.resultsJson },
+        now,
+      });
+    }
+    runtime.complete(
+      `${command.commandId}:runtime-complete`,
+      command.actor.actorId,
+      now,
+    );
+    return true;
+  }
+
+  private completeOneClueIfTerminal(
+    runtime: import('../domain/gameplay-runtime').GameplayRuntime,
+    command: GameplayRuntimeCommand,
+    now: Date,
+  ): boolean {
+    if (runtime.modeKey !== ONE_CLUE_MODE_KEY) return false;
+    const state = runtime.serialize();
+    if (state.runtimeState.phase !== 'completed') return false;
+    const round = state.activeRound;
+    if (round) {
+      runtime.completeRound({
+        roundId: round.id,
+        commandId: `${command.commandId}:round-complete`,
+        actorId: command.actor.actorId,
+        reason: 'one-clue-three-items-completed',
         result: { resultsJson: state.runtimeState.resultsJson },
         now,
       });

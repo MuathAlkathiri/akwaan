@@ -112,6 +112,7 @@ describe('World Content architecture', () => {
     expect(legacyImporters.sort()).toEqual([
       'modules/live-game-sessions/application/start-closest-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-distributed-information.use-case.ts',
+      'modules/live-game-sessions/application/start-one-clue-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-ryo-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-top5.use-case.ts',
       // The Top 5 plugin reads the content contract's own constants rather than

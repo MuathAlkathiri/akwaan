@@ -118,6 +118,7 @@ import { StartDistributedInformation } from './application/start-distributed-inf
 import { GameplayDeadlineScheduler } from './application/gameplay-deadline.scheduler';
 import { GameplayObserverRegistry } from './application/gameplay-observer.registry';
 import { StartClosestGameplay } from './application/start-closest-gameplay.use-case';
+import { StartOneClueGameplay } from './application/start-one-clue-gameplay.use-case';
 
 const applicationProviders = [
   CreateLiveGameSession,
@@ -173,6 +174,7 @@ const applicationProviders = [
   StartDistributedInformation,
   GameplayDeadlineScheduler,
   StartClosestGameplay,
+  StartOneClueGameplay,
 ];
 
 @Module({
@@ -265,6 +267,7 @@ const applicationProviders = [
     StartRyoGameplay,
     StartTop5,
     StartClosestGameplay,
+    StartOneClueGameplay,
     StartDistributedInformation,
     GAMEPLAY_RUNTIME_REPOSITORY,
     LIVE_GAME_SESSION_REPOSITORY,
@@ -274,6 +277,7 @@ const applicationProviders = [
     // than growing a second join system.
     GetSessionJoinAccess,
     CreateSessionJoinAccess,
+    ParticipantCredentialService,
     ParticipantCredentialGuard,
     LIVE_SESSION_JOIN_ACCESS_REPOSITORY,
   ],

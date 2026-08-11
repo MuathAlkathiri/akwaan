@@ -49,11 +49,11 @@ describe('Match module architecture', () => {
     const launchers = matchFiles.filter((path) =>
       path.endsWith('.launcher.ts'),
     );
-    expect(launchers).toHaveLength(4);
+    expect(launchers).toHaveLength(5);
     for (const path of launchers) {
       const content = read(path);
       expect(content).toMatch(
-        /StartRyoGameplay|StartTop5|StartDistributedInformation|StartClosestGameplay/,
+        /StartRyoGameplay|StartTop5|StartDistributedInformation|StartClosestGameplay|StartOneClueGameplay/,
       );
       // No launcher may build a runtime, a round, or an interaction itself.
       expect(content).not.toMatch(
@@ -237,6 +237,7 @@ describe('Match module architecture', () => {
       'live-game-sessions/application/start-top5.use-case',
       'live-game-sessions/application/start-distributed-information.use-case',
       'live-game-sessions/application/start-closest-gameplay.use-case',
+      'live-game-sessions/application/start-one-clue-gameplay.use-case',
       'live-game-sessions/application/gameplay-observer.registry',
       'live-game-sessions/application/get-live-game-session.use-case',
       'live-game-sessions/application/live-game-session.snapshot',
@@ -255,6 +256,9 @@ describe('Match module architecture', () => {
       'live-game-sessions/domain/top5-keep-or-give.plugin',
       'live-game-sessions/domain/distributed-information.plugin',
       'live-game-sessions/domain/closest-gameplay.plugin',
+      'live-game-sessions/domain/one-clue-gameplay.plugin',
+      'live-game-sessions/domain/team-action-assignment',
+      'live-game-sessions/presentation/participant-auth',
       'live-game-sessions/live-game-sessions.module',
     ];
     const imported = new Set<string>();

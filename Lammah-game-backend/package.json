@@ -44,7 +44,9 @@
     "migrate:distributed-information": "ts-node -r tsconfig-paths/register src/scripts/migrate-distributed-information.ts",
     "migrate:distributed-information:dist": "node dist/scripts/migrate-distributed-information.js",
     "migrate:canonical-mechanic-slugs": "ts-node -r tsconfig-paths/register src/scripts/migrate-canonical-mechanic-slugs.ts",
-    "migrate:canonical-mechanic-slugs:dist": "node dist/scripts/migrate-canonical-mechanic-slugs.js"
+    "migrate:canonical-mechanic-slugs:dist": "node dist/scripts/migrate-canonical-mechanic-slugs.js",
+    "provision:one-clue": "ts-node -r tsconfig-paths/register src/scripts/provision-one-clue-challenge.ts",
+    "provision:one-clue:dist": "node dist/scripts/provision-one-clue-challenge.js"
   },
   "dependencies": {
     "@google/genai": "^1.52.0",
