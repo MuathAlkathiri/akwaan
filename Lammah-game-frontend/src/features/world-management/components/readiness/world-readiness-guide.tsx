@@ -52,7 +52,7 @@ export function WorldReadinessGuide({
               {view.complete} من {view.total} متطلبات مكتملة
             </p>
           </div>
-          <span className="text-2xl font-black tabular-nums">
+          <span className="text-2xl font-black akwaan-numeral">
             {view.percent}%
           </span>
         </div>
@@ -75,7 +75,7 @@ export function WorldReadinessGuide({
               className="rounded-lg border bg-background p-3"
             >
               <p className="text-xs text-muted-foreground">{item.label}</p>
-              <p className="mt-1 font-bold tabular-nums">
+              <p className="mt-1 font-bold akwaan-numeral">
                 {item.value} / {item.total}
               </p>
             </div>

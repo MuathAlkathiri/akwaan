@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { ChallengeCountdown } from "../match/components/challenge-countdown";
+import { AnswerOption } from "../match/components/answer-option";
+import { BidiText } from "@/components/akwaan/bidi-text";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -106,7 +109,7 @@ export function DistributedInformationPanel({
             </CardTitle>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">الوقت المتبقي: {raceSeconds} ثانية</Badge>
+            <ChallengeCountdown remainingMs={raceSeconds * 1000} />
             <Badge variant="secondary">
               فريقك: {mine?.solved ?? 0}/{puzzleCount}
             </Badge>
@@ -170,15 +173,14 @@ export function DistributedInformationPanel({
                 {state.answerMode === "multiple_choice" ? (
                   <div className="grid gap-2 sm:grid-cols-2">
                     {options.map((option) => (
-                      <Button
+                      <AnswerOption
                         key={option.id}
-                        type="button"
-                        variant={answer === option.id ? "default" : "outline"}
+                        selected={answer === option.id}
                         disabled={lockSeconds > 0 || connection !== "connected"}
                         onClick={() => setAnswer(option.id)}
                       >
-                        {option.label}
-                      </Button>
+                        <BidiText>{option.label}</BidiText>
+                      </AnswerOption>
                     ))}
                   </div>
                 ) : (

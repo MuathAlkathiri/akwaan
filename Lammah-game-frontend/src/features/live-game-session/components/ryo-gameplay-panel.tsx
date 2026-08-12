@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { HeartHandshake, Lock, Swords, Unlock } from "lucide-react";
 import { ChallengeFrame } from "../match/components/challenge-frame";
-import { teamIdentityOf } from "@/lib/team-identity";
+import { ChallengeCountdown } from "../match/components/challenge-countdown";
+import { AnswerOption } from "../match/components/answer-option";
+import { teamIdentityOf, type TeamIdentity } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
+import { BidiText } from "@/components/akwaan/bidi-text";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
@@ -50,7 +53,23 @@ export function RyoGameplayPanel({
     interaction && ["resolved", "cancelled", "expired"].includes(interaction.status),
   );
   const remainingMs = useInteractionDeadline(prompt?.deadlineAt, terminal);
-  const alreadySubmitted = Boolean(interaction?.submissions.length);
+  // Which *side* has locked in, from the server's redacted projection: it publishes
+  // that a submission exists and its kind, never the choice inside it. `kind`
+  // follows from the two roles the screen already shows, so this leaks nothing —
+  // and it is what lets both teams watch each other commit.
+  const submissions = interaction?.submissions ?? [];
+  const answerLocked = submissions.some(
+    (submission) => submission.payload.kind === "answer",
+  );
+  const decisionLocked = submissions.some(
+    (submission) => submission.payload.kind === "decision",
+  );
+  const alreadySubmitted =
+    role === "answering"
+      ? answerLocked
+      : role === "opposing"
+        ? decisionLocked
+        : false;
   // The server names one authoritative answerer and one authoritative
   // Trust/Steal decision-maker per item. Submission authorisation alone is
   // team-wide, so without this every teammate would be offered a button the
@@ -88,47 +107,33 @@ export function RyoGameplayPanel({
       eyebrow="اقرأ خصمك"
       title={`السؤال ${Math.min(3, itemIndex + 1)} من 3`}
       progressValue={(Math.min(3, itemIndex) / 3) * 100}
-      aside={
-        remainingMs !== undefined && (
-          <Badge
-            variant="outline"
-            className="akwaan-numeral font-black"
-            data-testid="ryo-timer"
-          >
-            {Math.ceil(remainingMs / 1000)} ثانية
-          </Badge>
-        )
-      }
       className="mx-auto max-w-3xl"
     >
       <div className="space-y-5">
-        {/* Both roles, in their own team colours, always visible. Which side a
-            phone is on is the first thing its player needs to know. */}
-        <div className="grid gap-2 text-center text-sm sm:grid-cols-2">
-          <p
-            className={cn(
-              "rounded-[var(--radius)] border p-3 font-bold",
-              answeringIdentity.surface,
-              answeringIdentity.border,
-              answeringIdentity.text,
-            )}
-          >
-            يجيب: <strong className="font-black">{team(answeringTeamId)}</strong>
-          </p>
-          <p
-            className={cn(
-              "rounded-[var(--radius)] border p-3 font-bold",
-              opposingIdentity.surface,
-              opposingIdentity.border,
-              opposingIdentity.text,
-            )}
-          >
-            يقرأ الخصم:{" "}
-            <strong className="font-black">{team(opposingTeamId)}</strong>
-          </p>
+        {/* Both sides' lock state, one indicator each, both visible to both teams.
+            That a team has committed is public; what it chose is not — the drama of
+            this mechanic is watching your opponent lock in before you do. */}
+        <div
+          className="grid gap-2 text-sm sm:grid-cols-2"
+          data-testid="ryo-lock-indicators"
+        >
+          <TeamLockIndicator
+            teamName={team(answeringTeamId)}
+            role="يجيب"
+            identity={answeringIdentity}
+            locked={answerLocked}
+            testId="ryo-lock-answering"
+          />
+          <TeamLockIndicator
+            teamName={team(opposingTeamId)}
+            role="يقرأ الخصم"
+            identity={opposingIdentity}
+            locked={decisionLocked}
+            testId="ryo-lock-opposing"
+          />
         </div>
         {item ? (
-          <section className="mx-auto max-w-2xl space-y-4 text-center">
+          <section className="mx-auto flex max-w-2xl flex-col items-center gap-5 text-center">
             {item.media?.url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -137,25 +142,32 @@ export function RyoGameplayPanel({
                 className="mx-auto max-h-52 rounded-[var(--radius)] object-contain"
               />
             )}
-            <h2 className="text-2xl font-black leading-snug text-foreground sm:text-3xl">
-              {authoredText(item.prompt)}
+            {/* The question is the largest thing on screen, at a size that reads
+                from three metres on a television. */}
+            <h2 className="text-[2rem] font-black leading-snug text-foreground sm:text-[2.5rem]">
+              <BidiText>{authoredText(item.prompt)}</BidiText>
             </h2>
+
+            {/* Second-largest, immediately after it: in a ~10-second blind window
+                the clock is the only tension driver in the mechanic. */}
+            {remainingMs !== undefined && (
+              <ChallengeCountdown remainingMs={remainingMs} variant="prominent" />
+            )}
+
             {role === "answering" && canSubmit && item.answerMode === "multiple_choice" && (
               <div
-                className="grid gap-2 sm:grid-cols-2"
+                className="grid w-full gap-2 sm:grid-cols-2"
                 data-testid="ryo-answer-controls"
               >
                 {item.options?.map((option) => (
-                  <Button
+                  <AnswerOption
                     key={option.id}
-                    size="lg"
-                    variant="outline"
                     onClick={() =>
                       submit({ kind: "answer", mode: "multiple_choice", optionId: option.id })
                     }
                   >
-                    {authoredText(option.label)}
-                  </Button>
+                    <BidiText>{authoredText(option.label)}</BidiText>
+                  </AnswerOption>
                 ))}
               </div>
             )}
@@ -180,25 +192,36 @@ export function RyoGameplayPanel({
               </div>
             )}
             {role === "opposing" && canSubmit && (
+              /**
+               * Steal and Trust, weighted identically.
+               *
+               * The payoff matrix is symmetric, so the two options must look
+               * symmetric. They were a bright red button and a filled navy one —
+               * "danger, don't" beside "safe default" — which pushed players toward
+               * Trust and removed the bluffing layer the mechanic is built on.
+               *
+               * Same border, same fill, same size, same padding, same weight. They
+               * differ by icon and label and by nothing else, and neither takes a
+               * semantic colour: at this moment nothing on screen is correct or
+               * wrong yet.
+               */
               <div
-                className="grid grid-cols-2 gap-3"
+                className="grid w-full grid-cols-2 gap-3"
                 data-testid="ryo-decision-controls"
               >
-                <Button
-                  size="lg"
-                  className="h-14 text-base font-black"
-                  onClick={() => submit({ kind: "decision", decision: "trust" })}
-                >
-                  أثق بإجابته
-                </Button>
-                <Button
-                  size="lg"
-                  variant="destructive"
-                  className="h-14 text-base font-black"
-                  onClick={() => submit({ kind: "decision", decision: "steal" })}
-                >
-                  أسرق النقاط
-                </Button>
+                {DECISIONS.map(({ decision, label, Icon }) => (
+                  <Button
+                    key={decision}
+                    size="lg"
+                    variant="outline"
+                    data-decision={decision}
+                    className="h-auto min-h-[4rem] flex-col gap-1.5 border-2 bg-card py-3 text-base font-black hover:bg-accent active:scale-[0.99]"
+                    onClick={() => submit({ kind: "decision", decision })}
+                  >
+                    <Icon className="size-6" aria-hidden />
+                    {label}
+                  </Button>
+                ))}
               </div>
             )}
             {(role === "spectator" || alreadySubmitted || !canSubmit) && !terminal && (
@@ -220,21 +243,31 @@ export function RyoGameplayPanel({
           </p>
         )}
         {interaction?.outcome && (
+          /**
+           * The one place a semantic colour belongs: a full-surface state that
+           * exists for the moment an answer resolves and then goes away. Nothing
+           * persistent in this product is allowed to be green or red, which is what
+           * makes this surface legible the instant it appears.
+           */
           <div
+            data-testid="ryo-reveal"
+            data-outcome={
+              interaction.outcome.payload.correct ? "correct" : "wrong"
+            }
             className={cn(
-              "akwaan-rise rounded-[var(--radius)] border p-4 text-center",
+              "akwaan-rise rounded-[var(--radius)] p-5 text-center text-sem-reveal-foreground",
               interaction.outcome.payload.correct
-                ? "border-success/30 bg-success-subtle"
-                : "border-destructive/25 bg-destructive/[0.07]",
+                ? "bg-sem-success"
+                : "bg-sem-error",
             )}
             role="status"
           >
-            <p className="text-lg font-black text-foreground">
+            <p className="text-2xl font-black">
               {interaction.outcome.payload.correct
                 ? "إجابة صحيحة"
                 : "إجابة غير صحيحة"}
             </p>
-            <p className="text-sm font-bold text-muted-foreground">
+            <p className="text-sm font-bold opacity-90">
               قرار الخصم:{" "}
               {interaction.outcome.payload.decision === "steal"
                 ? "سرقة"
@@ -244,6 +277,69 @@ export function RyoGameplayPanel({
         )}
       </div>
     </ChallengeFrame>
+  );
+}
+
+/**
+ * The two choices, defined once.
+ *
+ * Kept as data rather than two hand-written buttons so the pair cannot drift apart:
+ * one of them gaining a variant, a size or a colour is the defect this whole screen
+ * was rebuilt to remove. A team is addressed in the plural — "أثق بإجابتكم", never
+ * "بإجابته".
+ */
+const DECISIONS = [
+  { decision: "trust", label: "نثق بإجابتكم", Icon: HeartHandshake },
+  { decision: "steal", label: "نسرق النقاط", Icon: Swords },
+] as const;
+
+/**
+ * One team's lock state.
+ *
+ * Flips the instant that team submits, independently of the other. In the team's own
+ * colour, and never in a semantic colour: locking in is not a correct or a wrong
+ * thing to have done. The lock icon carries the state as well, so the change is
+ * readable without comparing two hues.
+ */
+function TeamLockIndicator({
+  teamName,
+  role,
+  identity,
+  locked,
+  testId,
+}: {
+  teamName: string;
+  role: string;
+  identity: TeamIdentity;
+  locked: boolean;
+  testId: string;
+}) {
+  const Icon = locked ? Lock : Unlock;
+  return (
+    <p
+      data-testid={testId}
+      data-locked={locked ? "true" : "false"}
+      className={cn(
+        "flex items-center justify-between gap-2 rounded-[var(--radius)] border-2 p-3 font-bold transition-colors duration-base ease-akwaan",
+        identity.border,
+        // Locked fills with the team's own colour; still deciding stays a tint. An
+        // opacity step alone was too quiet to read across a room, and this is the
+        // moment the mechanic wants everyone to notice. Both states are the team's
+        // colour: committing is not a correct or an incorrect thing to have done.
+        locked ? identity.solid : cn(identity.surface, identity.text),
+      )}
+    >
+      <span className="min-w-0">
+        <span className="block text-[0.7rem] font-bold opacity-80">{role}</span>
+        <strong className="block truncate font-black">{teamName}</strong>
+      </span>
+      <span className="flex shrink-0 items-center gap-1.5 text-xs font-black">
+        <Icon className="size-4" aria-hidden />
+        {/* One verb for both sides: the answering team picks an answer and the
+            opposing team picks Steal or Trust, and "يقرر" only described the second. */}
+        {locked ? "اختار" : "يختار…"}
+      </span>
+    </p>
   );
 }
 

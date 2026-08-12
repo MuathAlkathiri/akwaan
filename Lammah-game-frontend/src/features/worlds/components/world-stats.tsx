@@ -68,7 +68,7 @@ export function Stat({
       )}
     >
       {icon}
-      <span className="tabular-nums">{value}</span>
+      <span className="akwaan-numeral">{value}</span>
       <span className="opacity-75">{label}</span>
     </span>
   );

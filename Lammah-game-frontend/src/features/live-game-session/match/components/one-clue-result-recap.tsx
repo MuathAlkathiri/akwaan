@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { BidiText } from "@/components/akwaan/bidi-text";
 import { teamIdentityOf } from "@/lib/team-identity";
 import type { LiveSessionSnapshot } from "../../model";
 import type { MatchChallengeResult } from "../types";
@@ -26,7 +27,7 @@ export function OneClueResultRecap({
       <p className="text-center text-2xl font-black">
         {result.tie
           ? "تعادل في نقاط الأدلة"
-          : `🏆 فوز ${teamName(snapshot, result.winnerTeamId!)}`}
+          : `فوز ${teamName(snapshot, result.winnerTeamId!)}`}
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         {snapshot.teams.map((team) => {
@@ -60,7 +61,7 @@ export function OneClueResultRecap({
             key={`${index}:${item.correctAnswer}`}
             className="flex items-center justify-between rounded-[var(--radius)] border border-border p-3 text-sm"
           >
-            <span className="font-black">{item.correctAnswer}</span>
+            <BidiText className="font-black">{item.correctAnswer}</BidiText>
             <span className="text-muted-foreground">
               حُسم عند الدليل {item.clueNumber}
             </span>

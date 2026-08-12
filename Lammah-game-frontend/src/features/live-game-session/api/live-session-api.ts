@@ -13,6 +13,8 @@ export interface CreateLiveSessionInput {
   modeKey?: string;
   modeVersion?: number;
   teamNames: string[];
+  /** Positional against `teamNames`. See `src/lib/team-palette.ts`. */
+  teamColorIds?: string[];
 }
 
 export interface JoinAccessInput {

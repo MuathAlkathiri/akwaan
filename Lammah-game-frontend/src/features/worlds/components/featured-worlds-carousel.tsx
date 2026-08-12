@@ -103,11 +103,23 @@ export function FeaturedWorldsCarousel({
                 data-carousel-position={position}
                 className={cn(
                   "absolute w-[min(86vw,24rem)] transform-gpu transition-[transform,opacity] duration-500 ease-[cubic-bezier(.22,1,.36,1)] motion-reduce:transition-none sm:w-[23rem] lg:w-[24rem]",
+                  // 104%, not 78%. A neighbour scaled to .87 and pushed only 78% of
+                  // its own width still had its inner ~15% underneath the elevated
+                  // centre card, which covered the start of its title — "عالم كرة
+                  // قدم" arrived on screen as "كرة قدم". At 104% the neighbour's
+                  // inner edge clears the centre card's outer edge, so nothing can
+                  // overlap a title.
+                  //
+                  // Below `sm` the neighbours are not shown at all. A card is 86vw
+                  // there, so a peek to either side cannot fit beside it however it
+                  // is scaled: pushing them out far enough not to overlap sent them
+                  // past the viewport and left the active card visibly off-centre.
+                  // One card, centred, is the honest layout at that width.
                   position === -1 &&
-                    "z-10 -translate-x-[78%] scale-[.87] opacity-60 sm:-translate-x-[76%] lg:-translate-x-[82%]",
+                    "z-10 hidden -translate-x-[104%] scale-[.87] opacity-55 sm:block",
                   active && "z-30 translate-x-0 scale-100 opacity-100",
                   position === 1 &&
-                    "z-10 translate-x-[78%] scale-[.87] opacity-60 sm:translate-x-[76%] lg:translate-x-[82%]",
+                    "z-10 hidden translate-x-[104%] scale-[.87] opacity-55 sm:block",
                 )}
               >
                 <WorldCard

@@ -8,6 +8,8 @@
  * snapshot — a snapshot is something the server told us, and this is not.
  */
 
+import { defaultTeamColorId, resolveTeamColor } from "@/lib/team-palette";
+
 /** Roadmap 3: three World occurrences per Match. */
 export const OCCURRENCE_COUNT = 3;
 /** Each occurrence is played from exactly four Scopes. */
@@ -28,7 +30,17 @@ export interface MatchSetupDraft {
   occurrences: DraftOccurrence[];
   activeOccurrenceIndex: number;
   activeStep: MatchSetupStep;
+  /**
+   * What each team is *called*. A team is identified by its name on every surface;
+   * its colour is a separate attribute below, never its label.
+   */
   teamNames: [string, string];
+  /**
+   * Which colour each team wears, as an id from that team's own pool
+   * (`src/lib/team-palette.ts`). Position 0 draws from the cool pool and position 1
+   * from the warm pool, so the two picks cannot collide however the host chooses.
+   */
+  teamColorIds: [string, string];
   /** Set when the backend rejected a specific occurrence. */
   issue?: { occurrenceIndex?: number; message: string; code?: string };
 }
@@ -52,10 +64,12 @@ export function createDraft(): MatchSetupDraft {
     })),
     activeOccurrenceIndex: 0,
     activeStep: "world",
-    // The default names follow the team palette, in the Match's own team order:
-    // first team green, second coral. "البنفسجي" was a leftover of the retired
-    // purple identity and read as a contradiction once team one became green.
-    teamNames: ["الأخضر", "الوردي"],
+    // Teams are named, not coloured. The old defaults were "الأخضر" and "الوردي" —
+    // the two colours themselves — which made a reveal ambiguous: a green element
+    // at reveal time has to mean "correct", and it cannot also mean "team one".
+    // These are placeholders a host is expected to overwrite.
+    teamNames: ["الفريق الأول", "الفريق الثاني"],
+    teamColorIds: [defaultTeamColorId(0), defaultTeamColorId(1)],
   };
 }
 
@@ -70,6 +84,7 @@ export type MatchSetupAction =
   | { type: "go-to-review" }
   | { type: "go-to-teams" }
   | { type: "set-team-name"; index: 0 | 1; name: string }
+  | { type: "set-team-color"; index: 0 | 1; colorId: string }
   | { type: "report-issue"; occurrenceIndex?: number; message: string; code?: string }
   | { type: "clear-issue" }
   | { type: "restore"; draft: MatchSetupDraft }
@@ -298,6 +313,17 @@ export function matchSetupReducer(
       const teamNames: [string, string] = [...draft.teamNames];
       teamNames[action.index] = action.name;
       return { ...draft, teamNames };
+    }
+
+    case "set-team-color": {
+      // Resolved rather than stored raw: a pick from the other team's pool would
+      // put both teams in one hue arc, which is the one thing the pools prevent.
+      const teamColorIds: [string, string] = [...draft.teamColorIds];
+      teamColorIds[action.index] = resolveTeamColor(
+        action.index,
+        action.colorId,
+      ).id;
+      return { ...draft, teamColorIds };
     }
 
     case "report-issue":

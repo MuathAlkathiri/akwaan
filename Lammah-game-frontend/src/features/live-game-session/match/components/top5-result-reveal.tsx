@@ -111,7 +111,7 @@ export function Top5ResultReveal({
         data-testid="top5-result-unreadable"
         className="rounded-[var(--radius)] border border-warning/40 bg-warning-subtle p-4 text-sm font-bold text-foreground"
       >
-        تعذّر قراءة تفاصيل نتيجة أفضل 5 من الخادم.
+        تعذّر عرض تفاصيل نتيجة أفضل 5.
       </p>
     );
   }
@@ -274,7 +274,7 @@ export function Top5ResultReveal({
           data-testid="top5-winner"
         >
           <p className="text-3xl font-black text-foreground sm:text-4xl">
-            🏆 فوز {teamName(snapshot, result.winnerTeamId)}
+            فوز {teamName(snapshot, result.winnerTeamId)}
           </p>
           <p className={cn("text-sm font-bold", winnerIdentity?.text)}>
             <span className="akwaan-numeral">

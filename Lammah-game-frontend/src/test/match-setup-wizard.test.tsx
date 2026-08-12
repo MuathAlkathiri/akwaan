@@ -398,7 +398,10 @@ describe("pre-match setup wizard", () => {
     await waitFor(() => expect(mocks.createMatch).toHaveBeenCalledTimes(1));
     expect(mocks.createSession).toHaveBeenCalledTimes(1);
     expect(mocks.createSession).toHaveBeenCalledWith({
-      teamNames: ["الأخضر", "الوردي"],
+      // The defaults are placeholder *names* now. A team called "صقور الرياض" left a
+      // reveal ambiguous: green had to mean "correct" and "team one" at once.
+      teamNames: ["الفريق الأول", "الفريق الثاني"],
+      teamColorIds: ["indigo", "magenta"],
     });
     // The session leaves the lobby over HTTP, with no phones involved.
     expect(mocks.markReady).toHaveBeenCalledWith("session-1", 0);

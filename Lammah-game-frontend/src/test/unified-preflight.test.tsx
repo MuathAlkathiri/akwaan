@@ -95,7 +95,7 @@ const preflight = (
   teams: [
     {
       teamId: "team-a",
-      teamName: "البنفسجي",
+      teamName: "أسود الشمال",
       connectedCount: 1,
       minimum: 2,
       maximum: 3,
@@ -106,7 +106,7 @@ const preflight = (
     },
     {
       teamId: "team-b",
-      teamName: "الأخضر",
+      teamName: "صقور الرياض",
       connectedCount: 3,
       minimum: 2,
       maximum: 3,
@@ -124,7 +124,7 @@ const preflight = (
     {
       code: "TEAM_NEEDS_MORE_PLAYERS",
       teamId: "team-a",
-      teamName: "البنفسجي",
+      teamName: "أسود الشمال",
       connectedCount: 1,
       required: 2,
     },
@@ -140,7 +140,7 @@ const readyPreflight = () =>
     teams: [
       {
         teamId: "team-a",
-        teamName: "البنفسجي",
+        teamName: "أسود الشمال",
         connectedCount: 2,
         minimum: 2,
         maximum: 3,
@@ -152,7 +152,7 @@ const readyPreflight = () =>
       },
       {
         teamId: "team-b",
-        teamName: "الأخضر",
+        teamName: "صقور الرياض",
         connectedCount: 2,
         minimum: 2,
         maximum: 3,
@@ -219,8 +219,8 @@ function match(
       worldSubtotals: [],
     },
     standings: [
-      { teamId: "team-a", name: "البنفسجي", signedTotal: 0, displayTotal: 0 },
-      { teamId: "team-b", name: "الأخضر", signedTotal: 0, displayTotal: 0 },
+      { teamId: "team-a", name: "أسود الشمال", signedTotal: 0, displayTotal: 0 },
+      { teamId: "team-b", name: "صقور الرياض", signedTotal: 0, displayTotal: 0 },
     ],
     availableActions: ["match:launch-challenge", "match:cancel"],
   } as LiveSessionMatchSnapshot;
@@ -241,8 +241,8 @@ function renderRouter(
     serverTimestamp: "2026-08-06T00:00:00.000Z",
     round: { number: 1 },
     teams: [
-      { id: "team-a", name: "البنفسجي", active: true },
-      { id: "team-b", name: "الأخضر", active: true },
+      { id: "team-a", name: "أسود الشمال", active: true },
+      { id: "team-b", name: "صقور الرياض", active: true },
     ],
     participants: [],
     availableActions: [],
@@ -337,7 +337,7 @@ describe("challenge preflight", () => {
       "true",
     );
     expect(screen.getByTestId("preflight-selecting-team").textContent).toBe(
-      "دور الاختيار: البنفسجي",
+      "دور الاختيار: أسود الشمال",
     );
   });
 
@@ -348,7 +348,7 @@ describe("challenge preflight", () => {
     expect(start.hasAttribute("disabled")).toBe(true);
     // And says who it is waiting for.
     expect(screen.getByTestId("challenge-preflight").textContent).toContain(
-      "بانتظار البنفسجي",
+      "بانتظار أسود الشمال",
     );
   });
 
@@ -472,7 +472,7 @@ describe("challenge preflight", () => {
         status: 400,
         data: {
           code: "MATCH_CHALLENGE_NOT_READY",
-          message: 'البنفسجي: 1 connected, 2 required',
+          message: 'أسود الشمال: 1 connected, 2 required',
         },
       },
     });
@@ -500,7 +500,7 @@ describe("challenge preflight", () => {
     expect(waiting.textContent).toContain("هذا التحدي يحتاج جوالات اللاعبين");
     // The shared screen still names the team and its count; the counter itself is
     // rendered as a tabular numeral so it reads left-to-right inside Arabic copy.
-    expect(waiting.textContent).toContain("البنفسجي");
+    expect(waiting.textContent).toContain("أسود الشمال");
     expect(waiting.textContent).toContain("1/3");
   });
 

@@ -122,8 +122,8 @@ function unifiedMatch(
       worldSubtotals: [],
     },
     standings: [
-      { teamId: "team-a", name: "البنفسجي", signedTotal: 0, displayTotal: 0 },
-      { teamId: "team-b", name: "الأخضر", signedTotal: 0, displayTotal: 0 },
+      { teamId: "team-a", name: "أسود الشمال", signedTotal: 0, displayTotal: 0 },
+      { teamId: "team-b", name: "صقور الرياض", signedTotal: 0, displayTotal: 0 },
     ],
     availableActions: ["match:launch-challenge", "match:cancel"],
   } as LiveSessionMatchSnapshot;
@@ -138,8 +138,8 @@ function snapshot(match: LiveSessionMatchSnapshot): LiveSessionSnapshot {
     serverTimestamp: "2026-08-01T00:00:00.000Z",
     round: { number: 1 },
     teams: [
-      { id: "team-a", name: "البنفسجي", active: true },
-      { id: "team-b", name: "الأخضر", active: true },
+      { id: "team-a", name: "أسود الشمال", active: true },
+      { id: "team-b", name: "صقور الرياض", active: true },
     ],
     participants: [],
     availableActions: [],
@@ -192,7 +192,7 @@ describe("unified board", () => {
     // Whose turn it is belongs to the board; the running scoreboard belongs to
     // the Match shell around it, so the board no longer restates both totals.
     expect(screen.getByTestId("selecting-team-board").textContent).toContain(
-      "البنفسجي",
+      "أسود الشمال",
     );
     expect(screen.queryByTestId("team-scoreboard")).toBeNull();
   });
@@ -403,14 +403,14 @@ describe("unified board", () => {
     expect(screen.getAllByTestId(/^unified-position-/)).toHaveLength(12);
     const completed = tile("2#slot_2");
     expect(within(completed).getByLabelText("مكتمل")).toBeTruthy();
-    expect(completed.textContent).toContain("البنفسجي");
+    expect(completed.textContent).toContain("أسود الشمال");
     expect(completed.textContent).toContain("2");
     expect(completed.tagName).toBe("ARTICLE");
     // The identically-slotted position of the repeated World is still open.
     expect(tile("0#slot_2").tagName).toBe("BUTTON");
     // The turn alternated, and the progress moved by one.
     expect(screen.getByTestId("board-progress").textContent).toBe("1/12");
-    expect(screen.getByTestId("selecting-team-board").textContent).toContain("الأخضر");
+    expect(screen.getByTestId("selecting-team-board").textContent).toContain("صقور الرياض");
   });
 
   it("offers a way back into a running challenge", () => {
@@ -498,7 +498,7 @@ describe("unified board", () => {
     const complete = screen.getByTestId("unified-match-complete");
     expect(complete.textContent).toContain("انتهت المباراة");
     expect(complete.textContent).toContain("12/12 تحديًا مكتمل");
-    expect(complete.textContent).toContain("الفائز: البنفسجي");
+    expect(complete.textContent).toContain("الفائز: أسود الشمال");
     // All twelve are still listed, grouped by occurrence.
     expect(screen.getAllByTestId(/^complete-occurrence-/)).toHaveLength(3);
     expect(screen.getAllByTestId(/^complete-position-/)).toHaveLength(12);

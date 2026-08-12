@@ -73,7 +73,7 @@ function preflight(
     teams: [
       {
         teamId: "team-a",
-        teamName: "البنفسجي",
+        teamName: "أسود الشمال",
         connectedCount: 1,
         minimum: 1,
         ready: true,
@@ -136,8 +136,8 @@ function match(
       worldSubtotals: [],
     },
     standings: [
-      { teamId: "team-a", name: "البنفسجي", signedTotal: 0, displayTotal: 0 },
-      { teamId: "team-b", name: "الأخضر", signedTotal: 0, displayTotal: 0 },
+      { teamId: "team-a", name: "أسود الشمال", signedTotal: 0, displayTotal: 0 },
+      { teamId: "team-b", name: "صقور الرياض", signedTotal: 0, displayTotal: 0 },
     ],
     ...(overrides.stage === "match_complete"
       ? {
@@ -168,8 +168,8 @@ function renderPhone(
     serverTimestamp: "2026-08-07T00:00:00.000Z",
     round: { number: 1 },
     teams: [
-      { id: "team-a", name: "البنفسجي", active: true },
-      { id: "team-b", name: "الأخضر", active: true },
+      { id: "team-a", name: "أسود الشمال", active: true },
+      { id: "team-b", name: "صقور الرياض", active: true },
     ],
     participants: [
       {
@@ -234,7 +234,7 @@ describe("a phone waits instead of showing the host board", () => {
     expect(waiting.textContent).toContain(
       "سنفتح التحدي القادم هنا. أبقِ جوالك معك.",
     );
-    expect(waiting.textContent).toContain("البنفسجي");
+    expect(waiting.textContent).toContain("أسود الشمال");
     // Never the host's screen.
     expect(screen.queryByTestId("unified-board")).toBeNull();
     expect(screen.queryAllByTestId(/^unified-position-/)).toHaveLength(0);

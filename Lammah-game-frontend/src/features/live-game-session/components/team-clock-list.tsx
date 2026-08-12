@@ -30,7 +30,7 @@ function TeamClockDisplay({
       </CardHeader>
       <CardContent>
         <output
-          className="font-mono text-3xl font-bold tabular-nums"
+          className="akwaan-numeral text-3xl font-bold"
           aria-label={`${name} remaining time`}
         >
           {clock.formatted}

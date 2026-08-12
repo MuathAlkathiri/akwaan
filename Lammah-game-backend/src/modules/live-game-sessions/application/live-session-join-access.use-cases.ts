@@ -272,7 +272,14 @@ export class ResolveJoinCode {
                   team.active &&
                   (!policy.teamScopeId || team.id === policy.teamScopeId),
               )
-              .map((team) => ({ id: team.id, name: team.name }))
+              // The colour travels with the team rather than being derived from
+              // this array's order: the list is filtered, so a phone deriving
+              // colour from position would paint the wrong team.
+              .map((team) => ({
+                id: team.id,
+                name: team.name,
+                colorId: team.colorId,
+              }))
           : [],
       expiresAt: policy.expiresAt.toISOString(),
       displayName: { required: true, maximumLength: 40 },

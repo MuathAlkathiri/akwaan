@@ -206,7 +206,7 @@ function match(
       ]
     ).map((score) => ({
       ...score,
-      name: score.teamId === TEAM_A ? "الأخضر" : "الوردي",
+      name: score.teamId === TEAM_A ? "صقور الرياض" : "نجوم جدة",
     })),
     ...(overrides.challengeResult
       ? { challengeResult: overrides.challengeResult }
@@ -225,8 +225,8 @@ function snapshotOf(value: LiveSessionMatchSnapshot): LiveSessionSnapshot {
     serverTimestamp: "2026-08-07T10:05:00.000Z",
     round: { number: 1 },
     teams: [
-      { id: TEAM_A, name: "البنفسجي", active: true },
-      { id: TEAM_B, name: "الأخضر", active: true },
+      { id: TEAM_A, name: "أسود الشمال", active: true },
+      { id: TEAM_B, name: "صقور الرياض", active: true },
     ],
     participants: [
       {
@@ -439,7 +439,7 @@ describe("Top 5 ownership reveal", () => {
         "2",
       );
       const winner = screen.getByTestId("top5-winner");
-      expect(winner.textContent).toContain("البنفسجي");
+      expect(winner.textContent).toContain("أسود الشمال");
       expect(winner.textContent).toContain("3 من أفضل 5");
       expect(winner.textContent).toContain("+1 نقطة للمباراة");
     } finally {
@@ -524,7 +524,7 @@ describe("RYO result recap", () => {
     expect(second.textContent).toContain("سرق");
     expect(second.textContent).toContain("خطأ");
     expect(screen.getByTestId("ryo-result-winner").textContent).toContain(
-      "الأخضر",
+      "صقور الرياض",
     );
   });
 });
@@ -538,7 +538,7 @@ describe("phone lifecycle across a challenge result", () => {
     const waiting = screen.getByTestId("participant-waiting");
     expect(waiting.dataset.showingResult).toBe("true");
     expect(waiting.textContent).toContain("انتهى التحدي");
-    expect(waiting.textContent).toContain("البنفسجي");
+    expect(waiting.textContent).toContain("أسود الشمال");
     expect(waiting.textContent).toContain("بانتظار التحدي القادم");
     // No board, no result page of its own, and nothing to press.
     expect(screen.queryByTestId("unified-board")).toBeNull();

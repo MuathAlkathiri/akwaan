@@ -171,8 +171,8 @@ function UnsupportedStage({
         تعذر عرض المرحلة الحالية
       </h1>
       <p className="text-sm leading-6 text-muted-foreground">
-        وصلت حالة غير معروفة أو ناقصة من الخادم. بيانات المباراة محفوظة ولم
-        يتغيّر شيء.
+        هذه المرحلة غير مفهومة لهذا الإصدار. نتائج المباراة محفوظة ولم يتغيّر
+        شيء.
       </p>
       <p className="text-xs font-bold text-muted-foreground">
         المرحلة المُستلمة: <span dir="ltr">{stage || "—"}</span>
@@ -183,7 +183,7 @@ function UnsupportedStage({
         className="rounded-[var(--radius)] font-black"
       >
         <RefreshCw className="ml-1.5 size-4" aria-hidden />
-        مزامنة المباراة
+        تحديث المباراة
       </Button>
     </section>
   );
@@ -273,8 +273,8 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
             لا توجد شاشة لهذا التحدي في هذا التطبيق
           </p>
           <p className="text-sm text-muted-foreground">
-            بدأ الخادم آلية لعب لا يعرف هذا الإصدار عرضها. حدِّث التطبيق أو ألغِ
-            التحدي من الخادم.
+            هذا التحدي يحتاج إصدارًا أحدث من اللعبة. حدِّث الصفحة، أو ألغِ التحدي
+            وواصلوا اللعب.
           </p>
           <p className="text-xs font-bold text-muted-foreground">
             آلية اللعب: <span dir="ltr">{runtime.mode.key}</span>

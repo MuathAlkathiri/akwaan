@@ -36,7 +36,7 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
     }));
 
   return (
-    <div className="space-y-4" data-testid="unified-challenge">
+    <div className="stage-center space-y-4" data-testid="unified-challenge">
       <header className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius)] border border-border bg-card p-4">
         <div className="min-w-0">
           {current && (
@@ -54,7 +54,7 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
           {standings.map((team) => (
             <li key={team.teamId} className="text-center">
               <p className="text-xs font-bold text-muted-foreground">{team.name}</p>
-              <p className="text-2xl font-black tabular-nums text-foreground">
+              <p className="text-2xl font-black akwaan-numeral text-foreground">
                 {team.displayTotal}
               </p>
               {current?.doubledTeamIds?.includes(team.teamId) && (
@@ -74,21 +74,21 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
         >
           <RefreshCw className="size-6 animate-spin text-disabled-foreground" aria-hidden />
           <p className="text-sm text-muted-foreground">
-            جارٍ استعادة حالة التحدي من الخادم…
+            جارٍ استعادة التحدي…
           </p>
           <button
             type="button"
             onClick={() => resync?.()}
             className="text-sm font-black text-primary underline underline-offset-4"
           >
-            إعادة المزامنة الآن
+            حاول الآن
           </button>
         </section>
       )}
 
       {actor === "controller" && (
         <p className="text-center text-sm text-muted-foreground">
-          ستعود اللوحة تلقائيًا فور اكتمال التحدي في الخادم.
+          ستعود اللوحة بعد لحظات.
         </p>
       )}
     </div>

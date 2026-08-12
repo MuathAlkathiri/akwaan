@@ -9,7 +9,7 @@ vi.mock("@/features/live-game-session/hooks/live-session-context", () => ({
     connection: "connected",
     gameplayCommand: mocks.gameplayCommand,
     snapshot: {
-      teams: [{ id: "team-1", name: "الأخضر" }],
+      teams: [{ id: "team-1", name: "صقور الرياض" }],
       participants: [{ id: "player-1", displayName: "معاذ" }],
     },
   }),

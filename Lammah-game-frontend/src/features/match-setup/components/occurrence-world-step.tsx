@@ -153,12 +153,12 @@ function WorldChoiceCard({
         <span className="mt-auto flex flex-wrap gap-3 pt-1 text-xs font-bold text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <Layers className="h-4 w-4" aria-hidden />
-            <span className="tabular-nums">{world.scopeCount}</span>{" "}
+            <span className="akwaan-numeral">{world.scopeCount}</span>{" "}
             {arabicNoun(world.scopeCount, ARABIC_NOUNS.scope)}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Puzzle className="h-4 w-4" aria-hidden />
-            <span className="tabular-nums">
+            <span className="akwaan-numeral">
               {world.challengeConfigurationCount}
             </span>{" "}
             {arabicNoun(

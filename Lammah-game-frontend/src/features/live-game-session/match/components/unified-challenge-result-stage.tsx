@@ -81,7 +81,7 @@ export function UnifiedChallengeResultStage({ actor }: { actor: MatchActor }) {
         </AlertTitle>
         <AlertDescription className="space-y-3">
           <p className="text-sm">
-            المباراة في مرحلة النتيجة لكن الخادم لم يرسل تفاصيلها.
+            انتهى التحدي، لكن تفاصيل نتيجته لم تصل بعد.
           </p>
           <Button
             type="button"
@@ -89,7 +89,7 @@ export function UnifiedChallengeResultStage({ actor }: { actor: MatchActor }) {
             className="font-black"
           >
             <RefreshCw className="size-4" aria-hidden />
-            مزامنة المباراة
+            تحديث النتيجة
           </Button>
         </AlertDescription>
       </Alert>
@@ -106,7 +106,7 @@ export function UnifiedChallengeResultStage({ actor }: { actor: MatchActor }) {
 
   return (
     <div
-      className="mx-auto max-w-5xl space-y-5"
+      className="stage-center mx-auto max-w-5xl space-y-5"
       data-testid="unified-challenge-result"
     >
       <header className="surface-card overflow-hidden">
@@ -184,7 +184,7 @@ function ChallengeResultBody({ result }: { result: MatchChallengeResult }) {
         >
           <p className="text-2xl font-black text-foreground">
             {result.winnerTeamId
-              ? `🏆 فوز ${teamName(snapshot, result.winnerTeamId)}`
+              ? `فوز ${teamName(snapshot, result.winnerTeamId)}`
               : "انتهى التحدي دون فائز"}
           </p>
           {result.matchPoints

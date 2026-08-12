@@ -54,7 +54,7 @@ export function SetupProgress({
             >
               {complete && <Check className="h-4 w-4" aria-hidden />}
               {occurrenceLabel(occurrence.occurrenceIndex)}
-              <span className="tabular-nums opacity-70">
+              <span className="akwaan-numeral opacity-70">
                 {occurrence.selectedScopeIds.length}/{SCOPES_PER_OCCURRENCE}
               </span>
             </button>

@@ -90,7 +90,7 @@ export function Header() {
                     {displayName}
                   </span>
                   <span className="block text-xs font-bold text-muted-foreground">
-                    مرحبًا بك 👋
+                    مرحبًا بك
                   </span>
                 </span>
               </div>

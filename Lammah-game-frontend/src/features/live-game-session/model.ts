@@ -39,6 +39,12 @@ export interface LiveSessionSnapshot {
     id: string;
     name: string;
     active: boolean;
+    /**
+     * The colour the host chose for this team, as a palette id. Absent on sessions
+     * created before the pick existed, or derived from a parent game — the client
+     * falls back to that position's default.
+     */
+    colorId?: string;
     clock: LiveSessionClockSnapshot;
   }>;
   participants: Array<{
@@ -188,7 +194,7 @@ export interface LiveSessionJoinMetadata {
   mode: { key: string; version: number };
   status: LiveSessionStatus;
   assignmentPolicy: LiveSessionJoinPolicy;
-  teams: Array<{ id: string; name: string }>;
+  teams: Array<{ id: string; name: string; colorId?: string }>;
   expiresAt: string;
 }
 

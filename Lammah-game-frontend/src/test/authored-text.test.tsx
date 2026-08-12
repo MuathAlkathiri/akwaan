@@ -18,8 +18,8 @@ vi.mock("@/features/live-game-session/hooks/live-session-context", () => ({
     snapshot: {
       sessionId: "session-1",
       teams: [
-        { id: "team-a", name: "البنفسجي", active: true },
-        { id: "team-b", name: "الأخضر", active: true },
+        { id: "team-a", name: "أسود الشمال", active: true },
+        { id: "team-b", name: "صقور الرياض", active: true },
       ],
       participants: [],
     },

@@ -66,9 +66,17 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Akwaan semantic tokens. Screens name meaning, never a hue: `team-green`
-        // is "team one", not "a green", which is what keeps the two teams the
-        // same two colours on every surface.
+        // The two reserved reveal colours. Available as utilities only so the
+        // reveal surface can use them; anything persistent belongs to a team
+        // colour or to neutral chrome.
+        sem: {
+          success: "hsl(var(--sem-success))",
+          error: "hsl(var(--sem-error))",
+          "reveal-foreground": "hsl(var(--sem-reveal-foreground))",
+        },
+        // Akwaan semantic tokens. Screens name meaning, never a hue: `team-1`
+        // is "the first team", whatever colour its host chose, which is what
+        // keeps a team the same colour on every surface.
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
@@ -90,20 +98,24 @@ const config = {
         disabled: {
           foreground: "hsl(var(--disabled-foreground))",
         },
+        // Slot 1 and slot 2. `base` is the chosen hue, `tint` its 12% fill, `text`
+        // and `fill` the variants already resolved for the active theme.
         team: {
-          green: {
-            DEFAULT: "hsl(var(--team-green))",
-            surface: "hsl(var(--team-green-surface))",
-            border: "hsl(var(--team-green-border))",
-            text: "hsl(var(--team-green-text))",
-            strong: "hsl(var(--team-green-strong))",
+          1: {
+            DEFAULT: "hsl(var(--team-1-base))",
+            base: "hsl(var(--team-1-base))",
+            tint: "var(--team-1-tint)",
+            text: "hsl(var(--team-1-text))",
+            fill: "hsl(var(--team-1-fill))",
+            "fill-foreground": "hsl(var(--team-1-fill-foreground))",
           },
-          coral: {
-            DEFAULT: "hsl(var(--team-coral))",
-            surface: "hsl(var(--team-coral-surface))",
-            border: "hsl(var(--team-coral-border))",
-            text: "hsl(var(--team-coral-text))",
-            strong: "hsl(var(--team-coral-strong))",
+          2: {
+            DEFAULT: "hsl(var(--team-2-base))",
+            base: "hsl(var(--team-2-base))",
+            tint: "var(--team-2-tint)",
+            text: "hsl(var(--team-2-text))",
+            fill: "hsl(var(--team-2-fill))",
+            "fill-foreground": "hsl(var(--team-2-fill-foreground))",
           },
         },
       },

@@ -37,6 +37,21 @@ export class CreateLiveGameSessionDto {
   @IsString({ each: true })
   @MaxLength(80, { each: true })
   teamNames!: string[];
+
+  /**
+   * The colour each team wears, positional against `teamNames`.
+   *
+   * Optional, and deliberately not validated against a colour list: which colours
+   * exist is a presentation concern the client owns, and a server that also knew the
+   * palette would be a second source of truth for it. An id the client does not
+   * recognise falls back to that team's default.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(8)
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
+  teamColorIds?: string[];
 }
 
 export class LiveSessionMutationDto {

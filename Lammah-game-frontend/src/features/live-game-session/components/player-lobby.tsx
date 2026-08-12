@@ -119,7 +119,7 @@ export function PlayerLobby({ participantId }: { participantId: string }) {
               <p className="text-sm text-muted-foreground">
                 {team?.name ?? "Team"}
               </p>
-              <p className="font-mono text-4xl font-bold tabular-nums">
+              <p className="akwaan-numeral text-4xl font-bold">
                 {clock.formatted}
               </p>
               {(feedback === "bomb-answer-correct" ||

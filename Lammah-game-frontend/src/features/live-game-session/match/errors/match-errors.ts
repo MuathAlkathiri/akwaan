@@ -68,8 +68,8 @@ const messages: Record<string, string> = {
   TOP5_VARIANT_INVALID: "عنصر المحتوى المختار غير مُعد لتحدي أفضل 5.",
   RYO_STARTING_TEAM_INVALID: "الفريق المحدد للبدء غير مشارك في المباراة.",
   TOP5_STARTING_TEAM_INVALID: "الفريق المحدد للبدء غير مشارك في المباراة.",
-  RYO_RUNTIME_NOT_CREATED: "تعذر بدء اقرأ خصمك. لم يُنشئ الخادم حالة اللعب.",
-  TOP5_RUNTIME_NOT_CREATED: "تعذر بدء أفضل 5. لم يُنشئ الخادم حالة اللعب.",
+  RYO_RUNTIME_NOT_CREATED: "تعذر بدء اقرأ خصمك. حاولوا مرة أخرى.",
+  TOP5_RUNTIME_NOT_CREATED: "تعذر بدء أفضل 5. حاولوا مرة أخرى.",
   TOP5_CONTENT_INVALID: "لا يوجد محتوى أفضل 5 جاهز لهذه الخانة.",
   TOP5_MECHANIC_INCOMPATIBLE:
     "إعداد أفضل 5 في هذا العالم لا يناسب المحتوى المتاح.",
@@ -83,7 +83,7 @@ const messages: Record<string, string> = {
     "لاعب آخر من فريقك هو المسؤول عن هذا الإجراء في هذه الفقرة.",
 
   // Transport.
-  GAMEPLAY_RUNTIME_NOT_FOUND: "جارٍ استعادة التحدي الحالي من الخادم.",
+  GAMEPLAY_RUNTIME_NOT_FOUND: "جارٍ استعادة التحدي الحالي.",
   CONNECTION_ERROR: "تعذر الاتصال بالمباراة. سنواصل المحاولة تلقائيًا.",
   LOAD_FAILED: "تعذر تحميل حالة المباراة.",
 };
@@ -109,7 +109,7 @@ export function localizeMatchError(error: unknown): LocalizedMatchError {
         messages[code] ??
         (error.response
           ? "تعذر تنفيذ الإجراء. تحقق من الحالة وحاول مجددًا."
-          : "انقطع الاتصال بالخادم. تحقق من الشبكة وحاول مجددًا."),
+          : "انقطع الاتصال. تحققوا من الشبكة وحاولوا مجددًا."),
       rawMessage: raw,
     };
   }

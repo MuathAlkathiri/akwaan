@@ -11,6 +11,7 @@ import {
 } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { authStorage } from "@/features/auth/storage/auth-storage";
+import { teamColorVariables } from "@/lib/team-palette";
 import { getLiveSession, setMatchDouble } from "../api/live-session-api";
 import {
   LiveSessionContext,
@@ -239,7 +240,20 @@ export function LiveSessionProvider({
 
   return (
     <LiveSessionContext.Provider value={value}>
-      {children}
+      {/**
+       * The teams' colours, applied once for every screen inside a session.
+       *
+       * Both clients read the same two ids off the same snapshot, so the shared
+       * screen and every phone resolve `--team-{n}-*` to the same hues without
+       * exchanging anything. Placing this here rather than in each surface is what
+       * stops one screen from picking its own colours again.
+       */}
+      <div
+        data-testid="team-colour-scope"
+        style={teamColorVariables(state.snapshot?.teams ?? [])}
+      >
+        {children}
+      </div>
     </LiveSessionContext.Provider>
   );
 }

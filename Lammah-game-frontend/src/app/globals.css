@@ -14,10 +14,17 @@
  * its way. Brand accents are explicit tokens rather than a global purple wash,
  * so their use stays intentional and separate from gameplay state.
  *
- * Team colour is semantic, not decorative: green and coral belong to *teams*, and
- * are never borrowed for a button, a surface, or a status. That is what lets the
- * same two colours mean the same two teams on the board, in gameplay, in a reveal,
- * and on a phone.
+ * Two colour systems live here and are not allowed to touch:
+ *
+ *  - **Team colour is persistent chrome.** It says *who*, never *how it went*: the
+ *    top bar, score pills, borders, progress. Numbers come from
+ *    `src/lib/team-palette.ts`, which is the only place a team colour is written as
+ *    a number and the only place the hue and contrast rules are enforced.
+ *
+ *  - **Semantic colour is transient.** `--sem-success` and `--sem-error` are the
+ *    full-surface reveal at the moment an answer resolves, and nothing else. A
+ *    permanently green pill makes a reveal unreadable, because at reveal time green
+ *    has to mean "correct" and not "team one".
  */
 @layer base {
   :root {
@@ -25,6 +32,8 @@
     --brand-navy: 239 40% 17%;
     --brand-purple: 247 100% 71%;
     --brand-cyan: 188 49% 54%;
+    /* Reserved: timer, system chrome, brand. Never a team colour, and no team
+       colour may sit within 40° of it. */
     --brand-gold: 40 57% 63%;
 
     /* ── Surfaces ───────────────────────────────────────────────────────── */
@@ -55,12 +64,28 @@
     --input: 40 22% 84%;
     --ring: 219 60% 38%;
 
-    /* ── Status ─────────────────────────────────────────────────────────── */
-    --destructive: 358 66% 50%;
-    --destructive-foreground: 40 45% 99%;
-    --success: 152 58% 33%;
-    --success-foreground: 40 45% 99%;
-    --success-subtle: 152 45% 93%;
+    /* ── Reserved semantic colours ──────────────────────────────────────────
+       One definition each, for the one thing each means. Both are fixed across
+       themes because a reveal *covers* the room rather than sitting in it, so what
+       has to stay legible is the reveal's own text on it — not the reveal against
+       a background it hides. Both clear 4.5:1 against `--sem-reveal-foreground`.
+
+       Applying either to anything that outlives the reveal is the defect these
+       tokens exist to make visible; `src/test/semantic-colour-scope.test.ts`
+       enforces that on the player-facing Match surfaces.                        */
+    --sem-success: 160 69% 29%;
+    --sem-error: 351 63% 38%;
+    --sem-reveal-foreground: 40 45% 99%;
+
+    /* ── Status ─────────────────────────────────────────────────────────────
+       Form and admin status, aliased to the reserved colours rather than holding
+       a second value: "wrong" is one colour in this product, whatever surface it
+       appears on. Only the *placement* rule differs.                            */
+    --destructive: var(--sem-error);
+    --destructive-foreground: var(--sem-reveal-foreground);
+    --success: var(--sem-success);
+    --success-foreground: var(--sem-reveal-foreground);
+    --success-subtle: 160 45% 93%;
     --warning: 33 88% 42%;
     --warning-foreground: 40 45% 99%;
     --warning-subtle: 38 85% 92%;
@@ -72,22 +97,39 @@
     --completed-subtle: 152 35% 94%;
     --disabled-foreground: 218 10% 58%;
 
-    /* ── Teams ──────────────────────────────────────────────────────────── */
-    /* Team one: green. `surface` fills, `border` outlines, `text` writes on a
-       light surface, `strong` writes on the solid fill. */
-    --team-green: 152 55% 36%;
-    /* Surfaces sit clearly below the room's 95% lightness: at 92% a team chip
-       was a 3% step off the background and read as plain white. */
-    --team-green-surface: 152 44% 87%;
-    --team-green-border: 152 38% 62%;
-    --team-green-text: 152 62% 22%;
-    --team-green-strong: 40 45% 99%;
-    /* Team two: coral. */
-    --team-coral: 348 72% 57%;
-    --team-coral-surface: 350 76% 91%;
-    --team-coral-border: 349 66% 74%;
-    --team-coral-text: 348 62% 36%;
-    --team-coral-strong: 40 45% 99%;
+    /* ── Teams ──────────────────────────────────────────────────────────────
+       Slot 1 and slot 2, not hue names: a team is "the first team", and its colour
+       is a secondary attribute the host can change. Naming the token after the hue
+       is how a renamed team ended up still being called green in the CSS.
+
+       Four tokens per slot, so no component ever writes a hex:
+         base       the chosen hue — solid fills, bars, dots, borders
+         on-light   darkened, ≥4.5:1 on the cream room
+         on-dark    lightened, ≥4.5:1 on the dark room
+         tint       12% of the base — card backgrounds and pills
+
+       `text`, `fill` and `fill-foreground` are resolutions of those four for the
+       active theme, so a component asks for "this team's text" once and gets the
+       right one in both rooms.
+
+       The defaults are the first colour of each pool (cool for slot 1, warm for
+       slot 2). Every value here is pinned against `src/lib/team-palette.ts` by
+       `src/test/team-palette.test.ts`.                                          */
+    --team-1-base: 232 53% 50%;
+    --team-1-on-light: 232 53% 50%;
+    --team-1-on-dark: 232 53% 72%;
+    --team-1-tint: hsl(var(--team-1-base) / 0.12);
+    --team-1-text: var(--team-1-on-light);
+    --team-1-fill: var(--team-1-on-light);
+    --team-1-fill-foreground: 40 45% 99%;
+
+    --team-2-base: 324 58% 50%;
+    --team-2-on-light: 324 58% 48%;
+    --team-2-on-dark: 324 58% 68%;
+    --team-2-tint: hsl(var(--team-2-base) / 0.12);
+    --team-2-text: var(--team-2-on-light);
+    --team-2-fill: var(--team-2-on-light);
+    --team-2-fill-foreground: 40 45% 99%;
 
     --radius: 0.875rem;
 
@@ -115,54 +157,74 @@
   }
 
   /**
-   * Dark is kept only so admin tooling and OS-level preferences do not break.
-   * The product identity is the light room above; nothing player-facing opts in.
+   * The dark room — an opt-in, not the default.
+   *
+   * The warm off-white room above is Akwaan's identity and is what every client starts
+   * in. This exists for a viewer who wants it: a large panel in a dimly lit living
+   * room across a 40-minute match is a real glare case, and it is theirs to decide.
+   * Each client remembers its own choice — see `src/providers/theme-provider.tsx`.
+   *
+   * Held to the same standard as the light room rather than treated as a fallback:
+   * only the tokens that must change are redefined, and every team and semantic colour
+   * was verified against this exact background (see `src/lib/team-palette.ts`).
    */
   .dark {
-    --background: 219 34% 10%;
-    --foreground: 40 30% 96%;
-    --card: 219 30% 13%;
-    --card-foreground: 40 30% 96%;
-    --popover: 219 30% 13%;
-    --popover-foreground: 40 30% 96%;
-    --primary: 40 40% 94%;
-    --primary-foreground: 219 45% 14%;
-    --secondary: 219 22% 20%;
-    --secondary-foreground: 40 30% 96%;
-    --muted: 219 22% 18%;
-    --muted-foreground: 218 14% 68%;
-    --accent: 219 22% 20%;
-    --accent-foreground: 40 30% 96%;
-    --destructive: 358 60% 52%;
-    --destructive-foreground: 40 30% 96%;
-    --success: 152 50% 44%;
-    --success-subtle: 152 30% 18%;
-    --warning: 33 80% 52%;
-    --warning-subtle: 33 40% 18%;
-    --selected: 219 60% 58%;
-    --selected-subtle: 219 32% 20%;
-    --completed: 152 45% 44%;
-    --completed-subtle: 152 28% 17%;
-    --disabled-foreground: 218 10% 50%;
-    --team-green: 152 50% 46%;
-    --team-green-surface: 152 30% 18%;
-    --team-green-border: 152 35% 34%;
-    --team-green-text: 152 45% 74%;
-    --team-coral: 348 70% 64%;
-    --team-coral-surface: 348 32% 21%;
-    --team-coral-border: 348 40% 38%;
-    --team-coral-text: 348 70% 82%;
-    --border: 219 20% 24%;
-    --input: 219 20% 24%;
-    --ring: 219 60% 58%;
-    --sidebar: 219 30% 13%;
-    --sidebar-foreground: 40 30% 96%;
-    --sidebar-primary: 40 40% 94%;
-    --sidebar-primary-foreground: 219 45% 14%;
-    --sidebar-accent: 219 22% 20%;
-    --sidebar-accent-foreground: 40 30% 96%;
-    --sidebar-border: 219 20% 24%;
-    --sidebar-ring: 219 60% 58%;
+    --background: 236 42% 7%;
+    --foreground: 43 30% 95%;
+    --card: 236 30% 13%;
+    --card-foreground: 43 30% 95%;
+    --popover: 236 30% 13%;
+    --popover-foreground: 43 30% 95%;
+    --primary: 43 30% 95%;
+    --primary-foreground: 236 42% 10%;
+    --secondary: 236 22% 20%;
+    --secondary-foreground: 43 30% 95%;
+    --muted: 236 22% 17%;
+    --muted-foreground: 240 14% 72%;
+    --accent: 236 22% 20%;
+    --accent-foreground: 43 30% 95%;
+    /* Form status only. The reveal keeps `--sem-*`, which does not move: it covers
+       the room rather than sitting in it. These two are the *text* forms, lightened
+       so validation copy stays readable on a dark surface. */
+    --destructive: 351 72% 68%;
+    --success: 160 55% 58%;
+    /* Lightened enough to read as *text* on a dark surface, which means anything
+       filled with them needs dark ink rather than the near-white the light room uses:
+       near-white on a 68%-lightness red is 2.9:1. The reveal keeps `--sem-*` and its
+       own foreground, so it is unaffected either way. */
+    --destructive-foreground: 236 42% 10%;
+    --success-foreground: 236 42% 10%;
+    --success-subtle: 160 32% 16%;
+    --warning: 33 80% 62%;
+    --warning-subtle: 33 40% 16%;
+    --selected: 232 65% 70%;
+    --selected-subtle: 232 32% 20%;
+    --completed: 160 45% 56%;
+    --completed-subtle: 160 28% 15%;
+    --disabled-foreground: 240 10% 55%;
+    /* Teams keep their base — a team's colour is the same colour in both rooms —
+       and swap which resolved variant carries text and fills. */
+    --team-1-text: var(--team-1-on-dark);
+    --team-1-fill: var(--team-1-on-dark);
+    --team-1-fill-foreground: 236 42% 7%;
+    /* 12% of a mid-tone hue over a 7% background is a 2-point step and reads as
+       nothing; the dark room needs a heavier tint to show the same pill. */
+    --team-1-tint: hsl(var(--team-1-base) / 0.24);
+    --team-2-text: var(--team-2-on-dark);
+    --team-2-fill: var(--team-2-on-dark);
+    --team-2-fill-foreground: 236 42% 7%;
+    --team-2-tint: hsl(var(--team-2-base) / 0.24);
+    --border: 236 20% 22%;
+    --input: 236 20% 22%;
+    --ring: 232 65% 70%;
+    --sidebar: 236 30% 13%;
+    --sidebar-foreground: 43 30% 95%;
+    --sidebar-primary: 43 30% 95%;
+    --sidebar-primary-foreground: 236 42% 10%;
+    --sidebar-accent: 236 22% 20%;
+    --sidebar-accent-foreground: 43 30% 95%;
+    --sidebar-border: 236 20% 22%;
+    --sidebar-ring: 232 65% 70%;
   }
 
   * {
@@ -274,6 +336,25 @@
    */
   .surface-card {
     @apply rounded-[var(--radius)] border border-border bg-card text-card-foreground shadow-[0_1px_2px_hsl(var(--foreground)/0.04),0_8px_24px_-16px_hsl(var(--foreground)/0.18)];
+  }
+
+  /**
+   * A single-focus stage: one thing to look at, centred in what is left of the
+   * viewport under the Match bar.
+   *
+   * The question, decision and reveal screens were all top-anchored, which left
+   * 40–60% of a television empty below the content — on a large display that reads
+   * as unfinished rather than minimal. Centring rather than padding, so nothing is
+   * added to the screen to fill it.
+   *
+   * Dense stages — the board, a result recap with twelve rows — deliberately do not
+   * use this: they have their own reason to start at the top.
+   */
+  .stage-center {
+    display: flex;
+    min-height: calc(100dvh - 11rem);
+    flex-direction: column;
+    justify-content: center;
   }
 
   /* Tabular, LTR-locked numerals: Arabic UI, Western digits for scores. */

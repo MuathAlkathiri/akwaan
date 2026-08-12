@@ -6,12 +6,12 @@ describe("radio group", () => {
   it("centers the selected indicator without direction-sensitive transforms", () => {
     render(
       <RadioGroup dir="rtl" value="green">
-        <RadioGroupItem value="green" aria-label="الأخضر" />
+        <RadioGroupItem value="green" aria-label="صقور الرياض" />
       </RadioGroup>,
     );
 
     const indicator = screen
-      .getByRole("radio", { name: "الأخضر" })
+      .getByRole("radio", { name: "صقور الرياض" })
       .querySelector('[data-slot="radio-group-indicator"]');
     expect(indicator).toHaveClass("absolute", "inset-0", "place-items-center");
     expect(indicator?.firstElementChild).not.toHaveClass(

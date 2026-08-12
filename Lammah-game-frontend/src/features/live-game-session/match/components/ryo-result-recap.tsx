@@ -1,5 +1,6 @@
 "use client";
 
+import { BidiText } from "@/components/akwaan/bidi-text";
 import { Separator } from "@/components/ui/separator";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
@@ -100,7 +101,7 @@ export function RyoResultRecap({
                 ? ` (${person(item.answererParticipantId)})`
                 : ""}
               {" أجاب: "}
-              <span dir="auto">{String(item.selectedAnswer ?? "—")}</span>{" "}
+              <BidiText>{String(item.selectedAnswer ?? "—")}</BidiText>{" "}
               <span
                 className={cn(
                   "font-black",
@@ -113,7 +114,7 @@ export function RyoResultRecap({
             {!item.correct && item.correctAnswer != null && (
               <p className="text-muted-foreground">
                 الإجابة الصحيحة:{" "}
-                <span dir="auto">{String(item.correctAnswer)}</span>
+                <BidiText>{String(item.correctAnswer)}</BidiText>
               </p>
             )}
             <p>
@@ -171,7 +172,7 @@ export function RyoResultRecap({
       >
         <p className="text-2xl font-black text-foreground sm:text-3xl">
           {result.winnerTeamId
-            ? `🏆 فوز ${teamName(snapshot, result.winnerTeamId)}`
+            ? `فوز ${teamName(snapshot, result.winnerTeamId)}`
             : "تعادل في هذا التحدي"}
         </p>
         {/* The challenge's own signed totals — the thing the three items above

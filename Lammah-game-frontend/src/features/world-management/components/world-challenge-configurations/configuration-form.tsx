@@ -132,7 +132,7 @@ export function ConfigurationForm({
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
         <label className="mb-2 block text-sm font-medium">
-          ١. الموضع
+          <span className="akwaan-numeral">1</span>. الموضع
         </label>
         <Select value={slotKey} onValueChange={(value: string) => setSlotKey(value as WorldChallengeSlotKey)}>
           <SelectTrigger aria-label="الموضع في اللوحة">
@@ -152,7 +152,9 @@ export function ConfigurationForm({
       </div>
 
       <div>
-        <label className="mb-2 block text-sm font-medium">٢. المكانيكا</label>
+        <label className="mb-2 block text-sm font-medium">
+          <span className="akwaan-numeral">2</span>. المكانيكا
+        </label>
         <Select
           value={challengeTypeId}
           onValueChange={setChallengeTypeId}

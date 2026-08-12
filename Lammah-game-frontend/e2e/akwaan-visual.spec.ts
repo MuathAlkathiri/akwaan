@@ -110,8 +110,8 @@ test.describe("@visual Akwaan identity", () => {
     // The Match shell owns identity, teams and progress; the board owns the turn.
     await expect(page.getByTestId("match-shell")).toBeVisible();
     await expect(page.getByTestId("team-scoreboard")).toBeVisible();
-    await expect(page.getByTestId("team-score-green")).toBeVisible();
-    await expect(page.getByTestId("team-score-coral")).toBeVisible();
+    await expect(page.getByTestId("team-score-1")).toBeVisible();
+    await expect(page.getByTestId("team-score-2")).toBeVisible();
     // No site navigation over a game surface.
     expect(await page.locator("header nav").count()).toBe(0);
     await shoot(page, "board", "laptop");

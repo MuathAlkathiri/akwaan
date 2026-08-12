@@ -105,7 +105,11 @@ describe("distributed-information phone panel", () => {
     expect(screen.getByText("فريقك: 1/3")).toBeTruthy();
     expect(screen.getByText("الخصم: 2/3")).toBeTruthy();
     // 135s race started at :00, now is :10 → 125 left, from the server stamp.
-    expect(screen.getByText("الوقت المتبقي: 125 ثانية")).toBeTruthy();
+    // Every mechanic's clock is the one shared countdown now, so the assertion is
+    // on that component rather than on a per-panel string.
+    const countdown = screen.getByTestId("challenge-countdown");
+    expect(countdown.textContent).toBe("125ثانية");
+    expect(countdown.getAttribute("aria-label")).toBe("الوقت المتبقي 125 ثانية");
   });
 
   it("gives the answerer an input and submits the real gameplay command", async () => {

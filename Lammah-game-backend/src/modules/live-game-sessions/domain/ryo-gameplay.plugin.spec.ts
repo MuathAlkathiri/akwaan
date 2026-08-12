@@ -1,3 +1,5 @@
+import type { GameplaySubmissionState } from './gameplay-interaction';
+import type { GameplayCommandPayload } from './gameplay-mode.plugin';
 import {
   advanceRyoChallengeState,
   RYO_GAMEPLAY_PLUGIN,
@@ -222,6 +224,139 @@ describe('RYO gameplay plugin', () => {
     );
     expect(projected?.actorRole).toBe('opposing');
     expect(JSON.stringify(projected)).not.toContain('correctOptionId');
+  });
+
+  /**
+   * The blind window's privacy contract.
+   *
+   * A public projection may say that a side has locked in, because both roles are
+   * already on the screen and watching the opponent commit is the mechanic. It may
+   * never carry, or allow anyone to infer, *what* was chosen — Steal versus Trust, an
+   * option id, or an estimate — before the simultaneous reveal.
+   */
+  const submissionOf = (
+    payload: GameplayCommandPayload,
+    overrides: Partial<GameplaySubmissionState> = {},
+  ): GameplaySubmissionState => ({
+    id: '1',
+    participantId: 'q',
+    type: 'ryo',
+    schemaVersion: 1,
+    receivedAt: now,
+    requestId: 'r',
+    status: 'pending-adjudication' as const,
+    resultVisibility: 'submitting-participant' as const,
+    payload,
+    ...overrides,
+  });
+
+  /** Every actor who can read a snapshot: both sides, and the shared screen. */
+  const ACTORS = [
+    { controller: false, participantId: 'q', teamId: 'b' },
+    { controller: false, participantId: 'p', teamId: 'a' },
+    { controller: true, participantId: 'host', teamId: undefined },
+  ];
+
+  it('publishes that a side locked in, for every submission shape, without publishing the choice', () => {
+    // The three payload shapes `validateSubmission` can store, and the secret inside
+    // each of them. Nothing but existence and kind may cross to any actor — not even
+    // to the submission's own author.
+    const cases: Array<{
+      payload: GameplayCommandPayload;
+      kind: string;
+      secrets: string[];
+    }> = [
+      {
+        payload: { kind: 'decision', decision: 'steal' },
+        kind: 'decision',
+        secrets: ['steal'],
+      },
+      {
+        payload: { kind: 'decision', decision: 'trust' },
+        kind: 'decision',
+        secrets: ['trust'],
+      },
+      {
+        payload: { kind: 'answer', mode: 'multiple_choice', optionId: 'option-2' },
+        kind: 'answer',
+        secrets: ['option-2', 'multiple_choice'],
+      },
+      {
+        payload: { kind: 'answer', mode: 'closest', value: 1998 },
+        kind: 'answer',
+        secrets: ['1998', 'closest'],
+      },
+    ];
+
+    for (const { payload, kind, secrets } of cases) {
+      for (const actor of ACTORS) {
+        const projected = interaction.projectSubmission(
+          submissionOf(payload),
+          actor,
+        );
+        // Exactly two fields. An added field is a leak until proven otherwise, so the
+        // assertion is equality rather than a subset match.
+        expect(projected).toEqual({ status: 'pending-adjudication', kind });
+        const wire = JSON.stringify(projected);
+        for (const secret of secrets) {
+          expect(wire).not.toContain(secret);
+        }
+      }
+    }
+  });
+
+  it('never lets the status encode correctness before the reveal', () => {
+    // `accepted` is passed unconditionally by the auto-close path, for both sides at
+    // once, and only after both have submitted — so it marks "counted", never "right".
+    // A status that tracked correctness would leak the outcome one tick early.
+    for (const actor of ACTORS) {
+      const pending = interaction.projectSubmission(
+        submissionOf({ kind: 'answer', mode: 'multiple_choice', optionId: 'x' }),
+        actor,
+      );
+      const accepted = interaction.projectSubmission(
+        submissionOf(
+          { kind: 'answer', mode: 'multiple_choice', optionId: 'x' },
+          { status: 'accepted' },
+        ),
+        actor,
+      );
+      expect(pending).toEqual({ status: 'pending-adjudication', kind: 'answer' });
+      expect(accepted).toEqual({ status: 'accepted', kind: 'answer' });
+    }
+  });
+
+  it('drops a withdrawn submission instead of publishing that a side changed its mind', () => {
+    // Hesitation is a tell, and this game is built on reading tells. A withdrawn
+    // submission is not a lock, so it leaves the projection entirely rather than
+    // appearing with a `withdrawn` status for the opponent to read.
+    for (const status of ['withdrawn', 'superseded'] as const) {
+      for (const actor of ACTORS) {
+        expect(
+          interaction.projectSubmission(
+            submissionOf({ kind: 'decision', decision: 'trust' }, { status }),
+            actor,
+          ),
+        ).toBeUndefined();
+      }
+    }
+  });
+
+  it('keeps one live entry per side, so the entry count cannot be read as indecision', () => {
+    // With `one-per-participant`, a resubmission requires withdrawing first — and the
+    // withdrawn one is no longer projected. So a side is either absent or present
+    // once, and the array length carries nothing.
+    const projected = [
+      submissionOf({ kind: 'answer', mode: 'closest', value: 1 }, { status: 'withdrawn' }),
+      submissionOf({ kind: 'answer', mode: 'closest', value: 2 }, { id: '2' }),
+    ]
+      .map((submission) =>
+        interaction.projectSubmission(submission, ACTORS[1]),
+      )
+      .filter(Boolean);
+    expect(projected).toEqual([
+      { status: 'pending-adjudication', kind: 'answer' },
+    ]);
   });
 
   it('requests automatic resolution only after both blind sides submit', () => {

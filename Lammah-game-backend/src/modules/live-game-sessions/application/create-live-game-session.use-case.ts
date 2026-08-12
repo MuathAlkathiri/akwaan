@@ -23,6 +23,7 @@ export interface CreateLiveGameSessionInput {
   modeKey: string;
   modeVersion: number;
   teamNames: string[];
+  teamColorIds?: string[];
   actor: AuthenticatedUser;
 }
 
@@ -93,6 +94,9 @@ export class CreateLiveGameSession {
       controllerActorId: input.actor.id,
       controllerDisplayName: input.actor.fullName,
       teamNames: gameplay?.teamNames ?? input.teamNames,
+      // A session derived from a parent game brings its own team names, and the
+      // colours belong with the names they were chosen alongside.
+      ...(gameplay?.teamNames ? {} : { teamColorIds: input.teamColorIds }),
       reconnectTokenHash: hashReconnectToken(reconnectToken),
       rules,
       now,

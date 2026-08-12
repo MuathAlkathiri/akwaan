@@ -411,10 +411,29 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
         actor.participantId === current.deciderParticipantId;
       return result;
     },
-    projectSubmission(value, actor) {
-      return actor.participantId === value.participantId
-        ? { status: value.status, kind: value.payload.kind }
-        : undefined;
+    /**
+     * That a side has locked in is public. Everything else about it is not.
+     *
+     * The drama of this mechanic is watching the opponent commit before you do, so
+     * every actor sees that a submission exists and its `kind` — which follows from
+     * the two sides' roles, and those are already on the screen. The choice itself
+     * (`decision`, `optionId`, `value`) is never projected to *anyone*, not even its
+     * own author: it reaches a client for the first time inside the simultaneous
+     * outcome.
+     *
+     * Only *live* submissions are projected. A withdrawn or superseded one is dropped
+     * entirely rather than published with its status, for two reasons that are the
+     * same reason: it does not represent a lock, and publishing it would leak that a
+     * side committed and then changed its mind. In a game built on reading your
+     * opponent, hesitation is exactly the kind of tell that must stay private — and
+     * with one live submission per participant, dropping them also means the count of
+     * public entries can never be read as indecision.
+     */
+    projectSubmission(value) {
+      if (value.status === 'withdrawn' || value.status === 'superseded') {
+        return undefined;
+      }
+      return { status: value.status, kind: value.payload.kind };
     },
     createOutcome(submissions, _now, prompt) {
       const answer = submissions.find((s) => s.payload.kind === 'answer');

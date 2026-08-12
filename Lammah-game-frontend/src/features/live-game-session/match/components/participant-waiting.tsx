@@ -55,8 +55,8 @@ export function ParticipantWaiting({
         <>
           {/* Calm on purpose: a player can sit here for minutes between
               challenges, so nothing loops or pulses. */}
-          <PartyPopper className="mx-auto size-8 text-success" aria-hidden />
-          <h1 className="text-lg font-black text-foreground">انتهى التحدي 🎉</h1>
+          <PartyPopper className="mx-auto size-8 text-brand-gold" aria-hidden />
+          <h1 className="text-lg font-black text-foreground">انتهى التحدي</h1>
           {winnerName && (
             <p
               className={cn(

@@ -2,17 +2,10 @@
 
 import { useEffect } from "react";
 import { useQueries } from "@tanstack/react-query";
-import {
-  Check,
-  Eye,
-  Gamepad2,
-  ListOrdered,
-  Pencil,
-  Puzzle,
-  Target,
-  type LucideIcon,
-} from "lucide-react";
+import { Check, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ARABIC_NOUNS, arabicCount } from "@/lib/arabic-plural";
+import { challengeIcon } from "@/features/live-game-session/match/challenge-identity";
 import { WorldCover } from "@/features/worlds/components/world-cover";
 import {
   fetchPlayableScopes,
@@ -180,7 +173,10 @@ function WorldStation({
         .flatMap((scope) => scope.usableSlots)
         .map((slot) => [slot.slotKey, slot]),
     ).values(),
-  ].sort((left, right) => left.sortOrder - right.sortOrder);
+    // By slot, the same order the board uses. Sorting one screen by the slot
+    // definition's own `sortOrder` and the other by slot key is how the setup review
+    // and the board came to list a World's challenges differently.
+  ].sort((left, right) => left.slotKey.localeCompare(right.slotKey));
   const ready = isOccurrenceComplete(occurrence);
 
   return (
@@ -202,8 +198,8 @@ function WorldStation({
               {world?.name ?? "…"}
             </h2>
             <p className="mt-1 text-xs font-bold text-muted-foreground">
-              {occurrence.selectedScopeIds.length} نطاقات · {challenges.length}{" "}
-              تحديات
+              {arabicCount(occurrence.selectedScopeIds.length, ARABIC_NOUNS.scope)}{" "}
+              · {arabicCount(challenges.length, ARABIC_NOUNS.challenge)}
             </p>
           </div>
           <span
@@ -280,10 +276,3 @@ function ChallengeRow({ challenge }: { challenge: PlayableBoardSlot }) {
   );
 }
 
-function challengeIcon(slug: string): LucideIcon {
-  if (slug.includes("opponent")) return Eye;
-  if (slug.includes("closest")) return Target;
-  if (slug.includes("distributed")) return Puzzle;
-  if (slug.includes("top")) return ListOrdered;
-  return Gamepad2;
-}

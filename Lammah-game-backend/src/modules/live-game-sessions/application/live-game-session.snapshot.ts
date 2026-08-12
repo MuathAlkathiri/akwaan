@@ -28,6 +28,8 @@ export interface LiveGameSessionSnapshot {
     id: string;
     name: string;
     active: boolean;
+    /** The colour the host chose for this team; absent means the client default. */
+    colorId?: string;
     clock: {
       allocatedMs: number;
       consumedMs: number;
@@ -124,6 +126,7 @@ export class LiveGameSessionSnapshotMapper {
           id: team.id,
           name: team.name,
           active: team.active,
+          colorId: team.colorId,
           clock: {
             allocatedMs: team.clock.allocatedMs,
             consumedMs: team.clock.consumedMs,

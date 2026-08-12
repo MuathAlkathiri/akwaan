@@ -1,3 +1,4 @@
+import { resolveTeamColor } from "@/lib/team-palette";
 import {
   OCCURRENCE_COUNT,
   SCOPES_PER_OCCURRENCE,
@@ -69,6 +70,11 @@ function parseDraft(value: unknown): MatchSetupDraft | undefined {
         (name): name is string => typeof name === "string",
       )
     : [];
+  const colorIds = Array.isArray(draft.teamColorIds)
+    ? draft.teamColorIds.filter(
+        (colorId): colorId is string => typeof colorId === "string",
+      )
+    : [];
   const fallback = createDraft();
   return {
     occurrences,
@@ -78,6 +84,15 @@ function parseDraft(value: unknown): MatchSetupDraft | undefined {
       teamNames.length === 2
         ? [teamNames[0], teamNames[1]]
         : fallback.teamNames,
+    // Resolved against each team's own pool, so a stored id from an older palette
+    // becomes that position's default instead of a colour it may no longer own.
+    teamColorIds:
+      colorIds.length === 2
+        ? [
+            resolveTeamColor(0, colorIds[0]).id,
+            resolveTeamColor(1, colorIds[1]).id,
+          ]
+        : fallback.teamColorIds,
   };
 }
 

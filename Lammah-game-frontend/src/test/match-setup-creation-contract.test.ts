@@ -102,8 +102,10 @@ const configuredDraft = () => {
   return apply(
     draft,
     { type: "go-to-teams" },
-    { type: "set-team-name", index: 0, name: "البنفسجي" },
-    { type: "set-team-name", index: 1, name: "الأخضر" },
+    // Names, not colours: a team called "صقور الرياض" makes a reveal ambiguous.
+    { type: "set-team-name", index: 0, name: "صقور الرياض" },
+    { type: "set-team-name", index: 1, name: "نجوم جدة" },
+    { type: "set-team-color", index: 1, colorId: "rose" },
   );
 };
 
@@ -196,10 +198,13 @@ describe("configured Match creation contract", () => {
     expect(created.reconnectToken).toBe("reconnect-token");
   });
 
-  it("sends the two team names and no participants", () => {
+  it("sends the two team names, their colours, and no participants", () => {
     return createConfiguredMatch(configuredDraft(), dependencies).then(() => {
+      // The colours go with the names so every client resolves the same two hues
+      // from the session rather than deciding locally.
       expect(recorded[0].body).toEqual({
-        teamNames: ["البنفسجي", "الأخضر"],
+        teamNames: ["صقور الرياض", "نجوم جدة"],
+        teamColorIds: ["indigo", "rose"],
         modeKey: "core-timed-turns",
         modeVersion: 1,
       });

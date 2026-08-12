@@ -19,6 +19,18 @@ export interface LiveSessionTeamState {
   id: string;
   name: string;
   active: boolean;
+  /**
+   * Which colour this team wears, as an id from the client's team palette.
+   *
+   * Held here rather than resolved per device because both clients — the shared
+   * screen and every phone — have to agree on it. A colour chosen locally would
+   * make one team green on the TV and violet in someone's hand. The server keeps the
+   * id opaque: it is presentation the host chose, not a rule the server enforces.
+   *
+   * Optional so sessions created before the pick existed, and sessions derived from
+   * a parent game, still restore; the client falls back to its own default.
+   */
+  colorId?: string;
   clock: TeamClockState;
 }
 
@@ -104,6 +116,8 @@ export class LiveGameSession {
     controllerActorId: string;
     controllerDisplayName: string;
     teamNames: string[];
+    /** Positional, aligned with `teamNames`; absent entries take the client default. */
+    teamColorIds?: string[];
     reconnectTokenHash: string;
     rules: LiveGameModeRules;
     now: Date;
@@ -134,10 +148,13 @@ export class LiveGameSession {
         modeVersion: input.rules.version,
         status: 'waiting',
         controllerActorId: input.controllerActorId,
-        teams: names.map((name) => ({
+        teams: names.map((name, index) => ({
           id: randomUUID(),
           name,
           active: true,
+          ...(input.teamColorIds?.[index]
+            ? { colorId: input.teamColorIds[index] }
+            : {}),
           clock: TeamClock.create(
             input.rules.initialTeamDurationMs,
           ).serialize(),

@@ -150,10 +150,17 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {unified.occurrences.map((occurrence) => {
-            const positions = board.positions.filter(
-              (position) =>
-                position.occurrenceIndex === occurrence.occurrenceIndex,
-            );
+            // Sorted by slot, not left in whatever order the array arrived in: the
+            // three columns showed their four challenges in different orders with no
+            // reason a player could see, which reads as a bug. Slot order is the one
+            // order the whole product names positions by.
+            const positions = board.positions
+              .filter(
+                (position) =>
+                  position.occurrenceIndex === occurrence.occurrenceIndex,
+              )
+              .slice()
+              .sort((left, right) => left.slotKey.localeCompare(right.slotKey));
             const done = positions.filter(
               (position) => position.status === "completed",
             ).length;
@@ -260,11 +267,11 @@ function EmptyBoard({ onResync }: { onResync: () => void }) {
       </AlertTitle>
       <AlertDescription className="space-y-3">
         <p className="text-sm">
-          أعد المزامنة؛ إذا استمر الأمر فإعداد المباراة ناقص على الخادم.
+          حدِّث اللوحة؛ إذا استمر الأمر فإعداد هذه المباراة غير مكتمل.
         </p>
         <Button type="button" onClick={onResync} className="font-black">
           <RefreshCw className="size-4" aria-hidden />
-          مزامنة المباراة
+          تحديث اللوحة
         </Button>
       </AlertDescription>
     </Alert>

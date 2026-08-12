@@ -18,8 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { WorldMedia } from "@/components/akwaan/world-media";
-import { teamIdentity, TEAM_TONE_ORDER } from "@/lib/team-identity";
+import { teamIdentity, TEAM_SLOT_ORDER } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
+import { ARABIC_NOUNS, arabicCount, arabicNoun } from "@/lib/arabic-plural";
 import { occurrenceLabel } from "@/features/match-setup";
 import type { PreflightTeam, UnifiedPreflight } from "../types";
 
@@ -69,6 +70,9 @@ export function ChallengePreflight({
           preflight={preflight}
           selectingTeamName={selectingTeamName}
           {...(worldImageUrl ? { worldImageUrl } : {})}
+          launching={launching}
+          cancelling={cancelling}
+          onLaunch={onLaunch}
         />
         {preflight.requiresPhones ? (
           <PairingPanel preflight={preflight} collapsed={alreadyPaired} />
@@ -85,7 +89,9 @@ export function ChallengePreflight({
         </Alert>
       )}
 
-      <footer className="flex flex-wrap items-center justify-between gap-3 px-1 py-2">
+      {/* Only the way *out* stays outside the cards. The action that starts this
+          challenge now sits inside the challenge's own card — see ChallengeBrief. */}
+      <footer className="flex flex-wrap items-center gap-3 px-1 py-2">
         <Button
           type="button"
           variant="outline"
@@ -95,39 +101,32 @@ export function ChallengePreflight({
         >
           {cancelling ? "جارٍ الإلغاء…" : "رجوع إلى اللوحة"}
         </Button>
-        <div className="flex flex-wrap items-center gap-3">
-          {!preflight.readyToLaunch && (
-            <p className="text-sm font-bold text-muted-foreground">
-              {blockingSummary(preflight)}
-            </p>
-          )}
-          <Button
-            type="button"
-            size="lg"
-            data-testid="preflight-start"
-            disabled={!preflight.readyToLaunch || launching || cancelling}
-            onClick={onLaunch}
-            className={cn(
-              "min-w-48 font-black transition-shadow",
-              preflight.readyToLaunch && "shadow-[0_12px_28px_-16px_hsl(var(--primary)/0.65)]",
-            )}
-          >
-            {launching ? "جارٍ البدء…" : "ابدأ التحدي"}
-          </Button>
-        </div>
       </footer>
     </div>
   );
 }
 
+/**
+ * What is about to be played, and the button that plays it.
+ *
+ * The launch action lives *in* this card rather than floating under the grid: it acts
+ * on this challenge, and a primary action orphaned below a card whose other half is
+ * empty reads as unfinished layout rather than as the obvious next step.
+ */
 function ChallengeBrief({
   preflight,
   selectingTeamName,
   worldImageUrl,
+  launching,
+  cancelling,
+  onLaunch,
 }: {
   preflight: UnifiedPreflight;
   selectingTeamName?: string;
   worldImageUrl?: string;
+  launching: boolean;
+  cancelling: boolean;
+  onLaunch: () => void;
 }) {
   const requirement = preflight.requirement;
   return (
@@ -200,6 +199,32 @@ function ChallengeBrief({
             دور الاختيار: {selectingTeamName}
           </p>
         )}
+
+        <Separator />
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {!preflight.readyToLaunch ? (
+            <p className="text-sm font-bold text-muted-foreground">
+              {blockingSummary(preflight)}
+            </p>
+          ) : (
+            <span />
+          )}
+          <Button
+            type="button"
+            size="lg"
+            data-testid="preflight-start"
+            disabled={!preflight.readyToLaunch || launching || cancelling}
+            onClick={onLaunch}
+            className={cn(
+              "min-w-48 font-black transition-shadow",
+              preflight.readyToLaunch &&
+                "shadow-[0_12px_28px_-16px_hsl(var(--primary)/0.65)]",
+            )}
+          >
+            {launching ? "جارٍ البدء…" : "ابدأ التحدي"}
+          </Button>
+        </div>
       </div>
     </section>
   );
@@ -314,10 +339,19 @@ function PairingPanel({
 /**
  * One team's phones, at a glance.
  *
- * The bar answers "are they here" before any reading happens; the names answer
- * "who is missing". Ready is stated in words and with a tick as well as colour,
- * because a host scanning this from two metres away should not have to compare
- * two greens.
+ * Two dimensions, and they are drawn with two different systems on purpose:
+ *
+ *  - **Which team this is** — the team's own colour, always. The card belonged to this
+ *    team before its phones arrived and still will after.
+ *  - **Whether they are ready** — a semantic status chip. This used to be carried by
+ *    the *presence* of the team colour: a not-ready team was drawn plain and went
+ *    coloured once its phones arrived, which made the team's identity flicker on and
+ *    off with its readiness and left the host comparing two team colours to find the
+ *    blocked side.
+ *
+ * Now both read at once, and neither borrows the other's meaning. Status is stated in
+ * words and with an icon as well as colour, so a host scanning from two metres does
+ * not have to resolve a hue to know what is holding the launch up.
  */
 function TeamReadinessCard({
   team,
@@ -327,7 +361,7 @@ function TeamReadinessCard({
   order: number;
 }) {
   const identity = teamIdentity(
-    TEAM_TONE_ORDER[order % TEAM_TONE_ORDER.length],
+    TEAM_SLOT_ORDER[order % TEAM_SLOT_ORDER.length],
   );
   const target = team.maximum ?? team.minimum;
   const progress = target
@@ -340,17 +374,13 @@ function TeamReadinessCard({
       data-ready={team.ready}
       className={cn(
         "space-y-2 rounded-[var(--radius)] border p-3 transition-colors duration-base ease-akwaan",
-        team.ready
-          ? cn(identity.surface, identity.border)
-          : "border-border bg-card",
+        identity.surface,
+        identity.border,
       )}
     >
       <div className="flex items-baseline justify-between gap-2">
         <p
-          className={cn(
-            "flex items-center gap-1.5 text-sm font-black",
-            team.ready ? identity.text : "text-foreground",
-          )}
+          className={cn("flex items-center gap-1.5 text-sm font-black", identity.text)}
         >
           <span
             aria-hidden
@@ -407,9 +437,24 @@ function TeamReadinessCard({
         </ul>
       )}
 
-      <p className={cn("text-xs font-black", team.ready ? identity.text : "text-muted-foreground")}>
+      {/* The status, in the status system: green means ready, amber means still
+          waiting, and neither is ever this team's colour. */}
+      <p
+        data-testid={`preflight-team-status-${team.teamId}`}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-black",
+          team.ready
+            ? "border-success/30 bg-success-subtle text-success"
+            : "border-warning/30 bg-warning-subtle text-warning",
+        )}
+      >
+        {team.ready ? (
+          <Check className="size-3.5 shrink-0" aria-hidden />
+        ) : (
+          <Smartphone className="size-3.5 shrink-0" aria-hidden />
+        )}
         {team.ready
-          ? `${team.teamName} جاهز ✓`
+          ? "جاهزون"
           : team.connectedCount < team.minimum
             ? "بانتظار لاعب"
             : "بانتظار اكتمال الجاهزية"}
@@ -424,12 +469,15 @@ function playerRequirementLabel(
 ): string {
   const { minParticipantsPerTeam: min, maxParticipantsPerTeam: max } =
     requirement;
+  // Arabic does not pluralise the way `{n} {noun}` assumes. "1 لاعبًا" and
+  // "2 لاعبين" are both broken to a native reader; one is "لاعب واحد" and the other
+  // "لاعبان". The rules live in one utility, never in a template.
   const range =
     max === undefined
-      ? `${min} لاعبًا على الأقل`
+      ? `${arabicCount(min, ARABIC_NOUNS.player)} على الأقل`
       : max === min
-        ? `${min} لاعبين بالضبط`
-        : `${min} أو ${max} لاعبين`;
+        ? `${arabicCount(min, ARABIC_NOUNS.player)} بالضبط`
+        : `${min} أو ${max} ${arabicNoun(max, ARABIC_NOUNS.player)}`;
   return requirement.requiresBothTeams
     ? `${range} في كل فريق`
     : `${range} في فريق واحد`;

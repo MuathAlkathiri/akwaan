@@ -130,7 +130,7 @@ const ISSUES: Record<string, SetupIssue> = {
 };
 
 const NETWORK_MESSAGE =
-  "انقطع الاتصال بالخادم. إعدادك محفوظ — تحقق من الشبكة وحاول مرة أخرى.";
+  "انقطع الاتصال. إعدادك محفوظ — تحقق من الشبكة وحاول مرة أخرى.";
 const UNKNOWN_MESSAGE = "تعذر إنشاء المباراة. تحقق من اختياراتك وحاول مرة أخرى.";
 
 export interface MatchSetupError {

@@ -126,7 +126,7 @@ function snapshot(match: LiveSessionMatchSnapshot): LiveSessionSnapshot {
     teams: [
       {
         id: "team-a",
-        name: "البنفسجي",
+        name: "أسود الشمال",
         active: true,
         clock: {
           remainingMs: 1000,
@@ -137,7 +137,7 @@ function snapshot(match: LiveSessionMatchSnapshot): LiveSessionSnapshot {
       },
       {
         id: "team-b",
-        name: "الأخضر",
+        name: "صقور الرياض",
         active: true,
         clock: {
           remainingMs: 1000,
@@ -294,7 +294,7 @@ describe("unified Match board handoff", () => {
     expect(within(completed).getByLabelText("مكتمل")).toBeTruthy();
     // The completed tile keeps its score as a team-coloured chip, so the name
     // and the number both stay on the board after the challenge ends.
-    expect(completed.textContent).toContain("البنفسجي");
+    expect(completed.textContent).toContain("أسود الشمال");
     expect(completed.textContent).toContain("2");
     // The identically-slotted position of the repeated World is untouched.
     expect(
@@ -304,7 +304,7 @@ describe("unified Match board handoff", () => {
     ).toBeNull();
     // Selection alternated to the other team.
     expect(screen.getByTestId("selecting-team-board").textContent).toContain(
-      "الأخضر",
+      "صقور الرياض",
     );
   });
 });

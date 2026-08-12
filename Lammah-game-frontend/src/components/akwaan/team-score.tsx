@@ -35,7 +35,7 @@ export function TeamScore({
 }) {
   return (
     <div
-      data-testid={`team-score-${identity.tone}`}
+      data-testid={`team-score-${identity.slot}`}
       data-active={active ? "true" : "false"}
       className={cn(
         "flex items-center gap-3 rounded-[var(--radius)] border px-3 py-2 transition-colors duration-base ease-akwaan",

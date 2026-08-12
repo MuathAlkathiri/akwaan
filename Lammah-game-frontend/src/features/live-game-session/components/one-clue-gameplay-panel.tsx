@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BidiText } from "@/components/akwaan/bidi-text";
 import { Badge } from "@/components/ui/badge";
+import { ChallengeCountdown } from "../match/components/challenge-countdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -91,9 +93,7 @@ export function OneClueGameplayPanel({
               {Number(state.currentClueValue ?? 5)} نقاط
             </Badge>
             {remainingMs !== undefined && (
-              <Badge variant="outline" className="akwaan-numeral font-black">
-                {Math.ceil(remainingMs / 1000)} ثانية
-              </Badge>
+              <ChallengeCountdown remainingMs={remainingMs} />
             )}
           </div>
         ) : null
@@ -101,8 +101,10 @@ export function OneClueGameplayPanel({
       className="mx-auto max-w-4xl"
     >
       <div className="space-y-5" dir="rtl">
-        <h2 className="text-center text-xl font-black text-foreground sm:text-3xl">
-          {item ? authoredText(item.prompt) : "جارٍ تجهيز السؤال…"}
+        <h2 className="text-center text-[2rem] font-black leading-snug text-foreground sm:text-[2.5rem]">
+          <BidiText>
+            {item ? authoredText(item.prompt) : "جارٍ تجهيز السؤال…"}
+          </BidiText>
         </h2>
 
         {!revealed && (

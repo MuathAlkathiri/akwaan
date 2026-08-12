@@ -66,7 +66,7 @@ export function OccurrenceScopesStep({
           <span
             data-testid="scope-count"
             className={cn(
-              "rounded-full border px-3 py-1.5 text-sm font-black tabular-nums",
+              "rounded-full border px-3 py-1.5 text-sm font-black akwaan-numeral",
               complete
                 ? "border-success/25 bg-success-subtle text-success"
                 : "border-primary/15 bg-primary/[0.07] text-primary",
@@ -201,12 +201,12 @@ function ScopeChoiceCard({
         <span className="mt-auto flex flex-wrap gap-3 pt-1 text-xs font-bold text-muted-foreground">
           <span className="inline-flex items-center gap-1.5 text-success">
             <Layers className="h-4 w-4" aria-hidden />
-            <span className="tabular-nums">{scope.readyContentItemCount}</span>
+            <span className="akwaan-numeral">{scope.readyContentItemCount}</span>
             عنصر جاهز
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Swords className="h-4 w-4" aria-hidden />
-            <span className="tabular-nums">{scope.usableSlots.length}</span>
+            <span className="akwaan-numeral">{scope.usableSlots.length}</span>
             تحدٍ متاح
           </span>
         </span>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { TeamScoreboard } from "@/components/akwaan/team-score";
+import { ThemeToggle } from "@/components/akwaan/theme-toggle";
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { useLiveSession } from "../../hooks/live-session-context";
@@ -51,15 +52,27 @@ export function MatchShell({
     name: team.name,
     score: team.displayTotal,
   }));
-  const selectingTeamId =
-    match?.stage.key === "board" ? match.unified.selectingTeamId : undefined;
-  const selectingTeam = teams.find((team) => team.id === selectingTeamId);
-  const selectingIdentity = selectingTeamId
+  /**
+   * Whose turn it is, wherever the Match currently is.
+   *
+   * The board's selecting team while a position is being chosen, and the acting team
+   * once a challenge is running. Players ask this question constantly and it used to
+   * be answered by 12px of grey text.
+   */
+  const activeTeamId =
+    match?.stage.key === "board"
+      ? match.unified.selectingTeamId
+      : (snapshot?.gameplay?.activeTeamId ??
+        match?.unified.preflight?.selectingTeamId);
+  const activeTeam = teams.find((team) => team.id === activeTeamId);
+  const activeIdentity = activeTeamId
     ? teamIdentityOf(
-        selectingTeamId,
+        activeTeamId,
         teams.map((team) => ({ id: team.id })),
       )
     : undefined;
+  const activeLabel =
+    match?.stage.key === "board" ? "دوركم الآن — اختاروا تحديًا" : "دوركم الآن";
 
   return (
     <div dir="rtl" className="min-h-dvh" data-testid="match-shell">
@@ -111,23 +124,8 @@ export function MatchShell({
             </div>
           )}
 
-          {selectingTeam && selectingIdentity && (
-            <p
-              data-testid="selecting-team"
-              className={cn(
-                "order-4 flex w-full items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-xs font-black sm:order-none sm:w-auto",
-                selectingIdentity.surface,
-                selectingIdentity.border,
-                selectingIdentity.text,
-              )}
-            >
-              <MousePointerClick className="size-3.5" aria-hidden />
-              <span>{selectingTeam.name}</span>
-              <span className="text-current/75">دوركم الآن — اختروا تحديًا</span>
-            </p>
-          )}
-
           <div className="ms-auto flex items-center gap-2">
+            <ThemeToggle />
             <ConnectionPill connection={connection} />
             {actor === "controller" && snapshot && (
               <Button
@@ -147,6 +145,37 @@ export function MatchShell({
             )}
           </div>
         </div>
+
+        {/**
+         * Whose turn it is, in that team's own colour, at a size that carries.
+         *
+         * A *bounded band* under the bar rather than a tint on the page: tinting the
+         * whole background degrades body-text contrast and fights the full-surface
+         * reveal, and the point here is only to make turn ownership unmissable from
+         * three metres. Colour plus the team's name plus an icon — never colour
+         * alone — and it animates in so a change of turn is noticed rather than
+         * discovered.
+         */}
+        {activeTeam && activeIdentity && (
+          <div
+            data-testid="active-team-band"
+            data-team-id={activeTeam.id}
+            className={cn(
+              "flex items-center justify-center gap-3 border-t-2 px-3 py-2 transition-colors duration-base ease-akwaan",
+              activeIdentity.surface,
+              activeIdentity.border,
+              activeIdentity.text,
+            )}
+          >
+            <MousePointerClick className="size-5 shrink-0" aria-hidden />
+            <span className="truncate text-xl font-black leading-tight sm:text-2xl">
+              {activeTeam.name}
+            </span>
+            <span className="hidden text-sm font-bold opacity-80 sm:inline">
+              {activeLabel}
+            </span>
+          </div>
+        )}
       </header>
 
       <main className="mx-auto w-full max-w-[110rem] px-3 pb-16 pt-4 sm:px-5">
@@ -157,37 +186,60 @@ export function MatchShell({
 }
 
 /**
- * Whether this device is still talking to the server.
+ * Whether this device is still talking to the game.
  *
- * Reads as calm when it is, and states the problem plainly when it is not —
- * paired with an icon, because a host glancing across a room should not have to
- * distinguish two colours to know the game is still live.
+ * Three states, and the colour escalates with how much the room needs to care:
+ * neutral while connected, amber while reconnecting, red once the connection is gone.
+ * Each pairs the colour with an icon and a word, so the state never depends on
+ * resolving a hue from across a room.
+ *
+ * Connected is deliberately *calm* rather than green. Not because green is forbidden
+ * on a persistent status — it is not — but because "working normally" is not news, and
+ * a pill that shouts for the whole match stops being read by the time it matters. The
+ * failure states are the ones that earn colour.
  */
 function ConnectionPill({ connection }: { connection: string }) {
-  const connected = connection === "connected";
+  const state =
+    connection === "connected"
+      ? "connected"
+      : connection === "connecting"
+        ? "connecting"
+        : "lost";
+  const presentation = {
+    // Calm, not green. Nothing is wrong, and nothing needs the room's attention.
+    connected: {
+      className: "border-border bg-muted text-muted-foreground",
+      label: "متصل",
+      Icon: Wifi,
+    },
+    // Amber: probably fine in a second, worth knowing about if it is not.
+    connecting: {
+      className: "border-warning/30 bg-warning-subtle text-warning",
+      label: "جارٍ الاتصال…",
+      Icon: WifiOff,
+    },
+    // Red: the game is not live. This is the state the pill exists for.
+    lost: {
+      className: "border-destructive/35 bg-destructive/10 text-destructive",
+      label: "الاتصال متوقف",
+      Icon: WifiOff,
+    },
+  }[state];
+  const Icon = presentation.Icon;
+
   return (
     <span
       data-testid="host-connection"
       data-connection={connection}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold",
-        connected
-          ? "border-success/25 bg-success-subtle text-success"
-          : "border-warning/30 bg-warning-subtle text-warning",
+        presentation.className,
       )}
     >
-      {connected ? (
-        <Wifi className="size-3.5" aria-hidden />
-      ) : (
-        <WifiOff className="size-3.5" aria-hidden />
-      )}
-      <span className="hidden sm:inline">
-        {connected
-          ? "متصل"
-          : connection === "connecting"
-            ? "جارٍ الاتصال…"
-            : "الاتصال متوقف"}
-      </span>
+      <Icon className="size-3.5" aria-hidden />
+      {/* The word is always rendered for assistive tech; only its display is
+          responsive, so the state is never icon-only to a screen reader. */}
+      <span className="sr-only sm:not-sr-only">{presentation.label}</span>
     </span>
   );
 }

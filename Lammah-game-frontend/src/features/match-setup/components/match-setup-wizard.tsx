@@ -152,6 +152,9 @@ export function MatchSetupWizard({ initialWorldId }: { initialWorldId?: string }
               onRename={(index, name) =>
                 act({ type: "set-team-name", index, name })
               }
+              onRecolor={(index, colorId) =>
+                act({ type: "set-team-color", index, colorId })
+              }
               onBack={() => act({ type: "back" })}
               onStart={() => void start()}
             />

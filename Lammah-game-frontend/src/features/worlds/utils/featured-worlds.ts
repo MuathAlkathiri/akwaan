@@ -48,9 +48,14 @@ function matches(world: PlayableWorld, aliases: readonly string[]): boolean {
 }
 
 /**
- * Football, Anime, and Video Games when they exist, in that order. Any missing
- * slot is filled with the next playable World so the row is never half empty,
- * and a World is never featured twice.
+ * Which three Worlds the home page leads with — Football, Anime and Video Games when
+ * they exist, and the next playable World for any missing slot, so the row is never
+ * half empty and no World is featured twice.
+ *
+ * **Selection order is not display order.** The keys above decide *which* Worlds are
+ * featured; `sortOrder` decides what order every screen shows Worlds in. Returning
+ * them in key order is why the home page and the match screens listed the same three
+ * Worlds differently, which players read as a bug rather than as a curation.
  */
 export function selectFeaturedWorlds(
   worlds: PlayableWorld[],
@@ -77,5 +82,7 @@ export function selectFeaturedWorlds(
     taken.add(world.id);
   }
 
-  return featured.slice(0, limit);
+  // Back into the canonical order before returning: one ordering of Worlds, on
+  // every screen.
+  return playableWorlds(featured.slice(0, limit));
 }

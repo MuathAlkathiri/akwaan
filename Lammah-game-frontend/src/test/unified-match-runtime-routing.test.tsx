@@ -147,8 +147,8 @@ function match(
       : {}),
     scoring: { matchTotals: totals, worldSubtotals: [] },
     standings: [
-      { ...totals[0], name: "البنفسجي" },
-      { ...totals[1], name: "الأخضر" },
+      { ...totals[0], name: "أسود الشمال" },
+      { ...totals[1], name: "صقور الرياض" },
     ],
     ...(overrides.result ? { result: overrides.result } : {}),
     availableActions: ["match:launch-challenge", "match:cancel"],
@@ -170,8 +170,8 @@ function renderRouter(
     serverTimestamp: "2026-08-06T00:00:00.000Z",
     round: { number: 1 },
     teams: [
-      { id: "team-a", name: "البنفسجي", active: true },
-      { id: "team-b", name: "الأخضر", active: true },
+      { id: "team-a", name: "أسود الشمال", active: true },
+      { id: "team-b", name: "صقور الرياض", active: true },
     ],
     participants: [],
     availableActions: [],
@@ -330,11 +330,11 @@ describe("reconciliation returns to the board", () => {
     expect(screen.getAllByTestId(/^unified-position-/)).toHaveLength(12);
     const finished = screen.getByTestId("unified-position-1#slot_2");
     expect(finished.dataset.status).toBe("completed");
-    expect(finished.textContent).toContain("البنفسجي");
+    expect(finished.textContent).toContain("أسود الشمال");
     expect(finished.textContent).toContain("3");
     // Scores and the turn are the server's, updated in the same snapshot.
     expect(screen.getByTestId("board-progress").textContent).toBe("1/12");
-    expect(screen.getByTestId("selecting-team-board").textContent).toContain("الأخضر");
+    expect(screen.getByTestId("selecting-team-board").textContent).toContain("صقور الرياض");
     expect(screen.getByTestId("unified-board").textContent).toContain("3");
   });
 
@@ -389,7 +389,7 @@ describe("the final position ends the Match", () => {
     expect(screen.queryByTestId("unified-board")).toBeNull();
     expect(complete.textContent).toContain("12/12");
     // The winner is read from the result, never recomputed here.
-    expect(complete.textContent).toContain("الفائز: البنفسجي");
+    expect(complete.textContent).toContain("الفائز: أسود الشمال");
     expect(complete.textContent).toContain("9");
     expect(complete.textContent).toContain("4");
     expect(screen.getAllByTestId(/^complete-position-/)).toHaveLength(12);

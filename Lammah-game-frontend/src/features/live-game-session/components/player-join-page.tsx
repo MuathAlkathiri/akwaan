@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { teamIdentity, TEAM_TONE_ORDER } from "@/lib/team-identity";
+import { ThemeToggle } from "@/components/akwaan/theme-toggle";
+import { teamIdentity, TEAM_SLOT_ORDER } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
 import {
   Form,
@@ -149,6 +150,11 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
 
   return (
     <div dir="rtl" className="mx-auto min-h-dvh max-w-md px-4 py-8">
+      {/* This phone's own theme, independent of the room's screen: a player
+          brightening their phone must not put the television's glare back. */}
+      <div className="mb-2 flex justify-end">
+        <ThemeToggle />
+      </div>
       <div className="mb-5 text-center">
         <div className="relative mx-auto mb-3 h-10 w-28">
           <Image
@@ -236,7 +242,7 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
                         >
                           {metadata.data!.teams.map((team, index) => {
                             const identity = teamIdentity(
-                              TEAM_TONE_ORDER[index % TEAM_TONE_ORDER.length],
+                              TEAM_SLOT_ORDER[index % TEAM_SLOT_ORDER.length],
                             );
                             const selected = field.value === team.id;
                             return (

@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
+import { ChallengeCountdown } from "../match/components/challenge-countdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLiveSession } from "../hooks/live-session-context";
 import type { GameplayRuntimeSnapshot } from "../model";
@@ -58,9 +59,9 @@ export function DistributedInformationScreen({
             {DISTRIBUTED_CHALLENGE_NAME}
           </CardTitle>
           {!completed && (
-            <Badge variant="outline" className="text-base">
-              {remainingRaceSeconds(state.deadlineAt, nowMs)} ثانية
-            </Badge>
+            <ChallengeCountdown
+              remainingMs={remainingRaceSeconds(state.deadlineAt, nowMs) * 1000}
+            />
           )}
         </div>
       </CardHeader>
@@ -81,7 +82,7 @@ export function DistributedInformationScreen({
                     >
                       {DISTRIBUTED_STATUS_LABEL[status]}
                     </Badge>
-                    <span className="font-black tabular-nums">
+                    <span className="font-black akwaan-numeral">
                       {entry.solved}/{puzzleCount}
                     </span>
                   </span>

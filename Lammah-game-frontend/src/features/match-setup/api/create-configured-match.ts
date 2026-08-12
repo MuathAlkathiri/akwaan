@@ -60,7 +60,13 @@ export async function createConfiguredMatch(
 
   let created: Awaited<ReturnType<typeof createLiveSession>>;
   try {
-    created = await dependencies.createSession({ teamNames });
+    // The colours travel with the names: both clients read them off the session
+    // rather than each deciding locally, which is what keeps one team one colour on
+    // the shared screen and in every hand.
+    created = await dependencies.createSession({
+      teamNames,
+      teamColorIds: [...draft.teamColorIds],
+    });
   } catch (cause) {
     // Nothing exists yet, so there is nothing to undo.
     throw new MatchSetupFailure(toMatchSetupError(cause), false);

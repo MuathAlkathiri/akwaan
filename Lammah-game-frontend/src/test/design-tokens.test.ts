@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { describe, expect, it } from "vitest";
-import { teamIdentity, TEAM_TONE_ORDER } from "@/lib/team-identity";
+import { teamIdentity, TEAM_SLOT_ORDER } from "@/lib/team-identity";
 
 /**
  * The design tokens exist, and Tailwind can actually see them.
@@ -26,19 +26,26 @@ describe("Tailwind can see every file that writes utility classes", () => {
 
   it("declares every team utility the identity layer emits", () => {
     const config = read("tailwind.config.ts");
-    for (const tone of TEAM_TONE_ORDER) {
-      const identity = teamIdentity(tone);
-      // Each class maps to a token the config actually defines.
-      for (const className of [
+    for (const slot of TEAM_SLOT_ORDER) {
+      const identity = teamIdentity(slot);
+      // Each class maps to a token the config actually defines. `solid` carries
+      // two classes, so it is split before checking.
+      const classes = [
         identity.surface,
         identity.border,
         identity.text,
         identity.dot,
         identity.ring,
-      ]) {
+        ...identity.solid.split(" "),
+      ];
+      for (const className of classes) {
         const token = className.replace(/^(bg|text|border|ring)-/, "");
-        const [, , key] = token.split("-");
-        expect(config).toContain(`team-${tone}${key ? `-${key}` : ""}`);
+        expect(token.startsWith(`team-${slot}-`)).toBe(true);
+        // `team-1-fill-foreground` is declared as a quoted key.
+        const key = token.slice(`team-${slot}-`.length);
+        expect(config).toMatch(
+          new RegExp(`"?${key}"?:\\s*"(hsl\\()?var\\(--team-${slot}-${key}\\)`),
+        );
       }
     }
   });
@@ -93,8 +100,16 @@ describe("the retired identity stays retired", () => {
     expect(css).toContain("--brand-purple: 247 100% 71%");
     expect(css).toContain("--brand-cyan: 188 49% 54%");
     expect(css).toContain("--brand-gold: 40 57% 63%");
-    expect(css).toContain("--team-green: 152 55% 36%");
-    expect(css).toContain("--team-coral: 348 72% 57%");
+  });
+
+  it("keeps hue names out of the team token layer", () => {
+    // A team is slot 1 or slot 2 and its colour is the host's pick. A token named
+    // after a hue cannot survive a recolour, and is how "the green team" got back
+    // into the copy last time.
+    const css = read("src/app/globals.css");
+    for (const hue of ["--team-green", "--team-coral", "--team-pink"]) {
+      expect(css).not.toContain(hue);
+    }
   });
 
   it("keeps the app background warm rather than pure white", () => {
@@ -110,15 +125,16 @@ describe("the retired identity stays retired", () => {
     expect(lightness).toBeLessThan(100);
   });
 
-  it("keeps team surfaces distinguishable from the room", () => {
+  it("tints team surfaces from the team's own base rather than a fourth hue", () => {
+    // A surface that sits within a couple of points of the room reads as plain
+    // white, which is how the first pass looked; deriving it from the base as an
+    // alpha keeps the step honest *and* keeps it on the team's own hue after a
+    // recolour.
     const css = read("src/app/globals.css");
-    const lightnessOf = (token: string) =>
-      Number(css.match(new RegExp(`${token}:\\s*\\d+\\s+\\d+%\\s+(\\d+)%`))![1]);
-    const room = lightnessOf("--background");
-    // A team surface that sits within a couple of points of the room reads as
-    // plain white, which is exactly how the first pass looked.
-    for (const token of ["--team-green-surface", "--team-coral-surface"]) {
-      expect(room - lightnessOf(token)).toBeGreaterThanOrEqual(4);
+    for (const slot of [1, 2]) {
+      expect(css).toMatch(
+        new RegExp(`--team-${slot}-tint:\\s*hsl\\(var\\(--team-${slot}-base\\)\\s*/\\s*0\\.1`),
+      );
     }
   });
 });

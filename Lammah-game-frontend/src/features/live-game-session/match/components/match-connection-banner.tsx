@@ -33,7 +33,7 @@ export function MatchConnectionBanner() {
         {message}
       </span>
       <Button size="sm" variant="outline" onClick={() => resync?.()}>
-        مزامنة الآن
+        حدِّث الآن
       </Button>
     </aside>
   );

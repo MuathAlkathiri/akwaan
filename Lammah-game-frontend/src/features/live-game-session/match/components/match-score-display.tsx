@@ -19,8 +19,8 @@ export function MatchScoreDisplay({ compact = false }: { compact?: boolean }) {
             <p
               className={
                 compact
-                  ? "text-2xl font-black tabular-nums text-slate-950"
-                  : "text-4xl font-black tabular-nums text-slate-950"
+                  ? "akwaan-numeral text-2xl font-black text-foreground"
+                  : "akwaan-numeral text-4xl font-black text-foreground"
               }
             >
               {score?.displayTotal ?? 0}
