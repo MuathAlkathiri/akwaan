@@ -26,6 +26,25 @@ export class MongooseGameplayRuntimeRepository implements GameplayRuntimeReposit
     return this.restore(await this.model.findOne({ runtimeId }).lean().exec());
   }
 
+  async findSessionIdsWithLiveRuntimes(): Promise<string[]> {
+    // Newest runtime per session, keeping only sessions whose newest one is
+    // still running. An older non-terminal runtime under a newer terminal one
+    // is history, not a live challenge, and must not be rearmed.
+    const rows = await this.model
+      .aggregate<{ _id: string; status: string }>([
+        { $sort: { sessionId: 1, createdAt: -1 } },
+        {
+          $group: {
+            _id: '$sessionId',
+            status: { $first: '$status' },
+          },
+        },
+        { $match: { status: { $nin: ['completed', 'cancelled'] } } },
+      ])
+      .exec();
+    return rows.map((row) => row._id);
+  }
+
   /** The session's current runtime: the most recently created one. */
   async findBySessionId(sessionId: string): Promise<GameplayRuntime | null> {
     return this.restore(

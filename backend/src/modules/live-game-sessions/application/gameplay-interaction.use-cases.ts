@@ -471,6 +471,13 @@ export class GameplayInteractionUseCases {
         now,
         session.revision,
       );
+      // The same post-resolution advance the auto-resolve path runs. Without
+      // it a resolution that arrives from anywhere other than the second
+      // player's submission — a host resolving by hand, or a deadline expiring
+      // with nobody having answered — settled the interaction and then stopped:
+      // the item never scored, the index never moved, and the round stayed
+      // open on an item that was already over.
+      this.applyRyoResolution(runtime, session, outcome, now);
       await context.saveSession(session, previousSessionRevision);
     });
   }

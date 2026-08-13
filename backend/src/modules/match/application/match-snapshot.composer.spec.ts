@@ -56,6 +56,7 @@ describe('MatchSnapshotComposer', () => {
       // No runtime in flight, so read-side convergence has nothing to reconcile.
       findBySessionId: () => Promise.resolve(null),
       save: () => Promise.resolve(),
+      findSessionIdsWithLiveRuntimes: () => Promise.resolve([]),
     };
     // Scope names only; content eligibility is proven in its own tests.
     const contentPool = {

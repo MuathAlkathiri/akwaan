@@ -219,6 +219,13 @@ export class GameplayRuntime {
   get modeVersion() {
     return this.state.modeVersion;
   }
+  get status(): GameplayRuntimeStatus {
+    return this.state.status;
+  }
+  /** Cheap terminality check; `serialize()` rebuilds the whole aggregate. */
+  get isTerminal(): boolean {
+    return isTerminalRuntimeStatus(this.state.status);
+  }
 
   isDuplicate(commandId: string): boolean {
     return this.state.processedCommandIds.includes(commandId);
@@ -463,6 +470,14 @@ export class GameplayRuntime {
     result?: GameplayModeState;
     now: Date;
   }): void {
+    // Same reasoning as `complete`: a round that is already recorded as
+    // finished has nothing left to do, and re-completing it must not undo the
+    // transaction that finished it.
+    if (
+      this.state.completedRounds.some((round) => round.id === input.roundId)
+    ) {
+      return;
+    }
     const round = this.requireRound(input.roundId, ['active', 'paused']);
     round.status = 'completed';
     round.completedAt = input.now;
@@ -502,6 +517,14 @@ export class GameplayRuntime {
   }
 
   complete(commandId: string, actorId: string, now: Date, force = false): void {
+    // Finalization is reached from several directions — a player's last
+    // command, an expired deadline, a reconnect replaying a resolution — and
+    // more than one of them can arrive for the same challenge. Completing an
+    // already-completed runtime is the expected outcome of that race, not an
+    // error: throwing here aborts the surrounding transaction and rolls the
+    // completion back, which is what leaves a finished challenge looking
+    // "in progress" and blocks the next one.
+    if (this.state.status === 'completed') return;
     this.assertStatus(['awaiting-round', 'between-rounds']);
     if (this.state.activeRound && !force) {
       throw new LiveSessionDomainError(
