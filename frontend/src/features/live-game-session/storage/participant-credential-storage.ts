@@ -1,15 +1,29 @@
 import type { ParticipantCredential } from "../model";
 
-const prefix = "lammah.live-participant.";
+const prefix = "akwaan.live-participant.";
+// Pre-Akwaan prefix, read once so a participant mid-match in an already-open tab
+// keeps their credential across the rename instead of being bounced to re-join.
+const legacyPrefix = "lammah.live-participant.";
 
 function key(joinCode: string): string {
   return `${prefix}${joinCode.trim().toUpperCase()}`;
 }
 
+function legacyKey(joinCode: string): string {
+  return `${legacyPrefix}${joinCode.trim().toUpperCase()}`;
+}
+
 export const participantCredentialStorage = {
   get(joinCode: string): ParticipantCredential | undefined {
     if (typeof window === "undefined") return undefined;
-    const value = window.sessionStorage.getItem(key(joinCode));
+    let value = window.sessionStorage.getItem(key(joinCode));
+    if (value === null) {
+      value = window.sessionStorage.getItem(legacyKey(joinCode));
+      if (value !== null) {
+        window.sessionStorage.setItem(key(joinCode), value);
+        window.sessionStorage.removeItem(legacyKey(joinCode));
+      }
+    }
     if (!value) return undefined;
     try {
       const parsed = JSON.parse(value) as ParticipantCredential;
@@ -28,5 +42,6 @@ export const participantCredentialStorage = {
   },
   remove(joinCode: string): void {
     window.sessionStorage.removeItem(key(joinCode));
+    window.sessionStorage.removeItem(legacyKey(joinCode));
   },
 };

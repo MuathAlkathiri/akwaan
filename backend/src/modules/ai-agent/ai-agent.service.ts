@@ -578,7 +578,7 @@ export class AiAgentService {
         {
           allowDefault:
             categoryProfileResolution.profile.id === 'general-text-trivia' &&
-            ['default', 'lammah', 'demo', 'system'].includes(
+            ['default', 'akwaan', 'demo', 'system'].includes(
               (category.slug || '').toLowerCase(),
             ),
         },

@@ -2,7 +2,7 @@
 
 ## Existing architecture
 
-Lammah is an npm-workspace monorepo with a NestJS/Mongoose backend and a
+Akwaan is an npm-workspace monorepo with a NestJS/Mongoose backend and a
 Next.js/React 18 frontend. The existing `games` module owns the classic board
 game and its category/question flows. HTTP authentication uses Passport JWT,
 controllers receive the authenticated database user, and frontend requests use

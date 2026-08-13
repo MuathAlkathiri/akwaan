@@ -3,7 +3,7 @@ import requests
 
 BASE = "http://localhost:3000"
 CATEGORY = "6a6bba53cd32ac388851fd77"
-TOKEN = open("/tmp/lammah_token").read().strip()
+TOKEN = open("/tmp/akwaan_token").read().strip()
 HEADERS = {"Authorization": f"Bearer {TOKEN}"}
 
 POINTS = {"easy": 200, "medium": 400, "hard": 600}

@@ -70,8 +70,8 @@ export class PromptBuilderService {
       categoryName: input.categoryName,
       knowledgeFile: input.knowledgeFile,
     });
-    return `You are a senior Arabic quiz editor for Lammah.
-Lammah is an offline competitive party quiz game played by friends.
+    return `You are a senior Arabic quiz editor for Akwaan.
+Akwaan is an offline competitive party quiz game played by friends.
 
 The Knowledge File below is the primary source of guidance.
 Use it to decide what to ask, what to avoid, and what quality means for this category.

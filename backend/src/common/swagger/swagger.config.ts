@@ -14,9 +14,9 @@ export function configureApiApplication(app: INestApplication): void {
 
 export function createOpenApiDocument(app: INestApplication): OpenAPIObject {
   const config = new DocumentBuilder()
-    .setTitle('Lammah Game API')
+    .setTitle('Akwaan API')
     .setDescription(
-      'Runtime HTTP contract for Lammah game administration, content, and gameplay.',
+      'Runtime HTTP contract for Akwaan administration, content, and gameplay.',
     )
     .setVersion('1.0.0')
     .addBearerAuth(

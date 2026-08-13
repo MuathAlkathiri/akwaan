@@ -1,7 +1,7 @@
 {
-  "name": "lammah-quiz-backend",
+  "name": "@akwaan/backend",
   "version": "1.0.0",
-  "description": "Backend for Lammah quiz-party game",
+  "description": "Backend for Akwaan, a quiz-party game",
   "author": "Muath",
   "license": "MIT",
   "scripts": {

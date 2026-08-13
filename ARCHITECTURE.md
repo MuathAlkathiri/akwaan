@@ -1,6 +1,6 @@
-# Lammah architecture
+# Akwaan architecture
 
-Lammah is a feature-first modular monolith. The frontend and backend remain separate workspaces in one repository; Docker and workspace scripts live at the root.
+Akwaan is a feature-first modular monolith. The frontend and backend remain separate workspaces in one repository; Docker and workspace scripts live at the root.
 
 ## Dependency direction
 

@@ -61,7 +61,7 @@ EOF
 
 trap - ERR INT TERM
 echo
-echo "Lammah temporary public URL: ${frontend_url}"
+echo "Akwaan temporary public URL: ${frontend_url}"
 echo "API tunnel: ${api_url}"
 echo
 echo "Keep this Mac awake and Docker running."

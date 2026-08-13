@@ -32,7 +32,7 @@ export class AppleMusicPreviewProvider implements MusicAssetProvider {
       url.searchParams.set('lang', 'ar_sa');
       const response = await fetch(url, {
         signal: AbortSignal.timeout(10_000),
-        headers: { 'User-Agent': 'LammahQuiz/1.0 official-preview-search' },
+        headers: { 'User-Agent': 'Akwaan/1.0 official-preview-search' },
       });
       if (!response.ok) continue;
       const results =

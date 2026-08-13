@@ -380,7 +380,7 @@ export class WigoloClient implements OnModuleDestroy {
         stderr: 'pipe',
       });
       const client = new Client({
-        name: 'lammah-entity-verification',
+        name: 'akwaan-entity-verification',
         version: '1.0.0',
       });
       try {

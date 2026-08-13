@@ -12,6 +12,6 @@ describe('KnowledgeLoaderService', () => {
       issueCode: 'CATEGORY_LOCAL_KNOWLEDGE_NOT_FOUND',
       knowledge: { raw: '' },
     });
-    expect(loaded.knowledge.raw).not.toContain('Lammah');
+    expect(loaded.knowledge.raw).not.toContain('Akwaan');
   });
 });

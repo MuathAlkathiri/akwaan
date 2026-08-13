@@ -303,7 +303,7 @@ export class JikanAnimeImageProvider implements AssetProvider {
             signal: AbortSignal.timeout(this.timeoutMs),
             headers: {
               Accept: 'application/json',
-              'User-Agent': 'LammahQuiz/1.0 (anime character image retrieval)',
+              'User-Agent': 'Akwaan/1.0 (anime character image retrieval)',
             },
           });
           JikanAnimeImageProvider.lastRequestAt = Date.now();

@@ -101,11 +101,11 @@ export function GameBoard({ gameId }: GameBoardProps) {
             <Link
               href="/"
               className="relative h-10 w-20 shrink-0 sm:h-12 sm:w-28"
-              aria-label="لمة"
+              aria-label="أكوان"
             >
               <Image
-                src="/brand/lammah-logo.png"
-                alt="لمة"
+                src="/brand/akwaan-logo.png"
+                alt="أكوان"
                 fill
                 priority
                 sizes="112px"

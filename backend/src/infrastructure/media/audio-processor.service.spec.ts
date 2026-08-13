@@ -5,7 +5,7 @@ import { AudioProcessorService } from './audio-processor.service';
 
 describe('AudioProcessorService video trimming', () => {
   it('passes the exact submitted start time to ffmpeg', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'lammah-video-trim-'));
+    const directory = await mkdtemp(join(tmpdir(), 'akwaan-video-trim-'));
     const outputPath = join(directory, 'clip.mp4');
     const commands = {
       run: jest.fn(async (_command: string, args: string[]) => {

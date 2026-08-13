@@ -25,7 +25,7 @@ export class AuthoritativeHttpClient {
           signal: AbortSignal.timeout(input.timeoutMs),
           headers: {
             'User-Agent':
-              'LammahQuiz/1.0 (authoritative research; contact: admin@lammah.local)',
+              'Akwaan/1.0 (authoritative research; contact: admin@akwaan.local)',
             Accept: 'application/json',
           },
         });

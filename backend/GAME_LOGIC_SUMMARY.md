@@ -1,7 +1,7 @@
 # MVP Game Logic Implementation Summary
 
 ## Overview
-Successfully implemented the first MVP version of the Lammah quiz game logic. The backend now supports creating games with exactly 2 teams, building game boards from 6 approved questions per category, and managing game flow with point allocation and answer reveal mechanics.
+Successfully implemented the first MVP version of the Akwaan quiz game logic. The backend now supports creating games with exactly 2 teams, building game boards from 6 approved questions per category, and managing game flow with point allocation and answer reveal mechanics.
 
 ## Files Created
 

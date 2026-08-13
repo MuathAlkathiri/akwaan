@@ -352,7 +352,7 @@ export class WikimediaImageProvider implements AssetProvider {
           signal: AbortSignal.timeout(10_000),
           headers: {
             'User-Agent':
-              'LammahQuiz/1.0 (contact: admin@lammah.app; question image retrieval)',
+              'Akwaan/1.0 (contact: admin@akwaan.app; question image retrieval)',
             Accept: 'application/json',
           },
         });

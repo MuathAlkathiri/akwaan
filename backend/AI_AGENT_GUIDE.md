@@ -28,7 +28,7 @@ Implemented full AI question generation using OpenRouter. The AI Agent now gener
 
 ### 2. Update .env file
 ```bash
-# Edit /Users/muath/Lammah-game-backend/.env
+# Edit /Users/muath/akwaan/backend/.env
 OPENROUTER_API_KEY=your_actual_openrouter_api_key_here
 OPENROUTER_MODEL=google/gemini-2.5-flash
 ```

@@ -51,7 +51,7 @@
 
 ### Development Mode
 ```bash
-cd /Users/muath/Lammah-game-backend
+cd /Users/muath/akwaan/backend
 npm install          # Already done
 npm run start:dev
 ```

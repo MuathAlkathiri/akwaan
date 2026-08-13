@@ -32,7 +32,7 @@ export class ImageDownloadService {
     const response = await fetch(source, {
       redirect: 'follow',
       signal: AbortSignal.timeout(this.timeoutMs),
-      headers: { 'User-Agent': 'LammahQuiz/1.0 (question image retrieval)' },
+      headers: { 'User-Agent': 'Akwaan/1.0 (question image retrieval)' },
     });
     if (!response.ok)
       throw new Error(`Image download returned HTTP ${response.status}`);

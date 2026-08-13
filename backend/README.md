@@ -1,6 +1,6 @@
-# Lammah Quiz Backend
+# Akwaan Backend
 
-Backend for Lammah, a quiz-party game built with NestJS, MongoDB, and TypeScript.
+Backend for Akwaan, a quiz-party game built with NestJS, MongoDB, and TypeScript.
 
 ## Project Structure
 
@@ -42,7 +42,7 @@ src/
 
 1. Clone the repository and navigate to the project:
 ```bash
-cd /Users/muath/Lammah-game-backend
+cd /Users/muath/akwaan/backend
 ```
 
 2. Install dependencies:
@@ -259,4 +259,4 @@ MIT
 ## Author
 
 Muath
-# Lammah-game
+# Akwaan

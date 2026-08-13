@@ -20,7 +20,7 @@ Normal verification performs no external AI, media-provider, or network calls.
 
 Start the isolated environment with
 `docker compose -f docker-compose.test.yml --profile e2e up --build -d`, then run
-`npm run test:e2e`. It uses the ephemeral `lammah_e2e_test` database and deterministic
+`npm run test:e2e`. It uses the ephemeral `akwaan_e2e_test` database and deterministic
 fixture accounts. `E2E_BASE_URL` defaults to `http://127.0.0.1:3201`. Stop and erase
 the ephemeral stack with `docker compose -f docker-compose.test.yml down -v`.
 

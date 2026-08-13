@@ -142,7 +142,7 @@ describe("dedicated gameplay question routes", () => {
   it("renders the board header RTL with the logo before the home action", () => {
     render(<GameBoard gameId="game-1" />);
     const header = screen.getByTestId("game-board-header");
-    const logo = screen.getByRole("link", { name: "لمة" });
+    const logo = screen.getByRole("link", { name: "أكوان" });
     const home = screen.getByRole("link", { name: "الرئيسية" });
 
     expect(header).toHaveAttribute("dir", "rtl");

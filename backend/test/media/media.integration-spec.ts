@@ -12,7 +12,7 @@ describe('FFmpeg media integration', () => {
   const processor = new AudioProcessorService(commands);
 
   beforeAll(async () => {
-    directory = await mkdtemp(join(tmpdir(), 'lammah-media-test-'));
+    directory = await mkdtemp(join(tmpdir(), 'akwaan-media-test-'));
   });
   afterAll(async () => rm(directory, { recursive: true, force: true }));
 

@@ -52,7 +52,7 @@ const entity = (overrides: Partial<VerifiedEntity> = {}): VerifiedEntity => ({
 });
 
 const create = async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'lammah-wigolo-cache-'));
+  const dir = await mkdtemp(join(tmpdir(), 'akwaan-wigolo-cache-'));
   const file = join(dir, 'cache.json');
   const config = new ConfigService({ WIGOLO_CACHE_FILE: file });
   return { file, repo: new WigoloCacheRepository(config) };

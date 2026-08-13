@@ -1,6 +1,6 @@
 # Context
 
-Lammah is an offline competitive party quiz game played by friends.
+Akwaan is an offline competitive party quiz game played by friends.
 Questions should feel social, energetic, and useful in a real room.
 
 ---

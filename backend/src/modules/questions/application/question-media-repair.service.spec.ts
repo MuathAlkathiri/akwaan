@@ -16,7 +16,7 @@ describe('QuestionMediaRepairService', () => {
   let directory: string;
 
   beforeEach(async () => {
-    directory = await mkdtemp(join(tmpdir(), 'lammah-media-repair-'));
+    directory = await mkdtemp(join(tmpdir(), 'akwaan-media-repair-'));
   });
 
   afterEach(async () => {

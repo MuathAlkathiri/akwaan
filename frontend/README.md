@@ -1,4 +1,4 @@
-# Lammah Game - Frontend
+# Akwaan - Frontend
 
 A modern Next.js frontend for the Seen Jeem-style quiz party game.
 

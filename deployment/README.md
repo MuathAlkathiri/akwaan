@@ -1,4 +1,4 @@
-# Lammah temporary VM deployment
+# Akwaan temporary VM deployment
 
 This deployment runs the existing frontend, backend, MongoDB replica set, and
 uploaded media on one Docker host. It is suitable for an Oracle Always Free VM
@@ -24,8 +24,8 @@ microphone permission.
 ## 2. Configure and launch
 
 ```bash
-git clone <repository-url> lammah-game
-cd lammah-game
+git clone <repository-url> akwaan
+cd akwaan
 cp deployment/.env.oracle.example deployment/.env
 openssl rand -hex 64
 # Put the generated value and both DNS hosts in deployment/.env.

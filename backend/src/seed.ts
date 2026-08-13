@@ -23,6 +23,9 @@ import {
 
 dotenv.config();
 
+// LEGACY_PERSISTED_IDENTIFIER: the `lammah-quiz` database name predates the Akwaan
+// rename and still holds the live content. Renaming it needs a verified data
+// migration, not an edit here — this default must keep matching the real database.
 const DEFAULT_MONGODB_URI = 'mongodb://localhost:27017/lammah-quiz';
 
 const categorySeeds = [
@@ -203,7 +206,7 @@ async function seedAdmin(userModel: Model<User>): Promise<void> {
     return;
   }
   const email = configuredEmail.toLowerCase().trim();
-  const fullName = process.env.ADMIN_FULL_NAME ?? 'Lammah Admin';
+  const fullName = process.env.ADMIN_FULL_NAME ?? 'Akwaan Admin';
 
   const existingAdmin = await userModel
     .findOne({ email })

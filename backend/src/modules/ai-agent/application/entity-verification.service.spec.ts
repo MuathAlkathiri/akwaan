@@ -61,7 +61,7 @@ describe('EntityVerificationService', () => {
       },
     };
     const config = new ConfigService({
-      WIGOLO_CACHE_FILE: `/tmp/lammah-wigolo-${Date.now()}.json`,
+      WIGOLO_CACHE_FILE: `/tmp/akwaan-wigolo-${Date.now()}.json`,
     });
     const service = new EntityVerificationService(
       provider,
@@ -82,7 +82,7 @@ describe('EntityVerificationService', () => {
       },
     };
     const config = new ConfigService({
-      WIGOLO_CACHE_FILE: `/tmp/lammah-wigolo-batch-${Date.now()}.json`,
+      WIGOLO_CACHE_FILE: `/tmp/akwaan-wigolo-batch-${Date.now()}.json`,
     });
     const service = new EntityVerificationService(
       provider,
@@ -101,7 +101,7 @@ describe('EntityVerificationService', () => {
       },
     };
     const config = new ConfigService({
-      WIGOLO_CACHE_FILE: `/tmp/lammah-wigolo-timeout-${Date.now()}.json`,
+      WIGOLO_CACHE_FILE: `/tmp/akwaan-wigolo-timeout-${Date.now()}.json`,
     });
     const result = await new EntityVerificationService(
       provider,

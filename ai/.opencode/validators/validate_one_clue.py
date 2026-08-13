@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate progressive-clues One Clue ContentItems.
 
-Mirrors the production contract verified against the Lammah game backend:
+Mirrors the production contract verified against the Akwaan game backend:
 wrapper answer mode `one_clue`, item answer payload mode `match`, exactly five
 clues ordered 1..5 valued 5, 4, 3, 2, 1, Arabic-only clue text, and automatic
 text resolution through the shared Arabic normalizer. The validator decides only

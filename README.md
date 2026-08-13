@@ -1,103 +1,93 @@
-# Lammah Game
+# Akwaan — أكوان
 
-Lammah Game is split into a NestJS backend and a Next.js frontend.
-
-## Project structure
+Akwaan is an Arabic social party game. This is the single monorepo for the whole
+product: the player/admin web app, the API, and the AI content-authoring
+workspace.
 
 ```text
-Lammah-game/
-├── Lammah-game-backend/   # NestJS API, MongoDB/Mongoose, auth, AI, music
-├── Lammah-game-frontend/  # Next.js web app
-└── docker-compose.yml     # Local/VPS Docker setup
+akwaan/
+├── frontend/   # Next.js web app (player + admin)
+├── backend/    # NestJS API, MongoDB/Mongoose, auth, AI, media
+└── ai/         # OpenCode content-authoring workspace (skills, roles, validators)
 ```
 
-## Environment files
+`frontend` and `backend` are npm workspaces driven from the repository root.
+`ai` is a Python/OpenCode workspace with its own tooling — it is versioned here
+but is not an npm workspace.
 
-Create local env files from the examples before running the apps:
+## Setup
 
-```sh
-cp Lammah-game-backend/.env.example Lammah-game-backend/.env
-cp Lammah-game-frontend/.env.example Lammah-game-frontend/.env.local
+```bash
+npm install
+
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
 ```
 
-Do not commit `.env`, `.env.local`, or other real secret files. Keep real JWT secrets, API keys, Spotify credentials, and database URLs out of GitHub.
+Then fill in `backend/.env` (Mongo URI, JWT secret, admin bootstrap, AI keys).
 
-## Backend env variables
+> **Database name.** The Mongo database is `lammah-quiz`. That name predates the
+> Akwaan rename and is where the live content actually lives, so it is
+> deliberately unchanged. The same applies to the Docker volumes
+> (`lammah-game_mongodb_data`, `lammah-game_backend_uploads`), which are pinned by
+> explicit name in `docker-compose.yml` so they survive directory renames.
+> Renaming either one requires a verified, non-destructive data migration.
 
-Required:
+## Develop
 
-- `MONGODB_URI`: MongoDB connection string.
-- `JWT_SECRET`: strong secret used to sign auth tokens.
+```bash
+npm run dev            # backend + frontend together
+npm run dev:backend    # NestJS on :3000 (watch)
+npm run dev:frontend   # Next.js on :3001
+```
 
-Common optional values:
+## Verify
 
-- `PORT`: backend port, defaults to `3000`.
-- `APP_BASE_URL`: public backend URL, for example `http://localhost:3000`.
-- `JWT_EXPIRES_IN`: token lifetime, for example `7d`.
-- `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_FULL_NAME`: optional first admin seed.
-- `AI_PROVIDER`: `openrouter` or `lmstudio`.
-- `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`: required when using OpenRouter.
-- `LMSTUDIO_BASE_URL`, `LMSTUDIO_MODEL`, `LMSTUDIO_API_KEY`: used when using LM Studio.
-- `AI_REQUEST_TIMEOUT_MS`, `AI_MAX_TOKENS`, `AI_ENABLE_REWRITE`, `AI_AUDIO_VOICE`: AI generation tuning.
-- `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_MARKET`, `SPOTIFY_SEED_TRACKS`: music question support.
-
-## Frontend env variables
-
-- `NEXT_PUBLIC_API_URL`: browser-visible backend URL, for example `http://localhost:3000`.
-
-## Run locally
-
-From the repo root, you can run common workspace commands:
-
-```sh
-npm run build
+```bash
 npm run lint
-npm test
-npm run verify
+npm run typecheck
+npm run test
+npm run build
+
+npm run verify         # all of the above + API contract checks
 ```
 
-See [TESTING.md](TESTING.md) for unit, browser, integration-boundary, and fixture
-guidance. Dependencies are managed by the single root `package-lock.json`.
+Per-workspace equivalents exist as `:backend` / `:frontend` variants — see
+`package.json`. Test layers (integration, media, e2e) are documented in
+[TESTING.md](TESTING.md).
 
-Use `npm run verify` for deterministic offline verification. `npm run verify:full`
-adds Mongo integration, FFmpeg media integration, and Playwright E2E checks after the
-isolated test services and Chromium have been prepared.
+## Docker
 
-Backend:
-
-```sh
-cd Lammah-game-backend
-npm install
-npm run start:dev
+```bash
+docker compose up -d --build      # frontend :3001, backend :3002, mongo :27017
+docker compose config             # validate before starting
+docker compose down               # never pass -v: that destroys the database
 ```
 
-Frontend:
+The Compose project is named `akwaan`; service names are `frontend`, `backend`,
+and `mongodb`.
 
-```sh
-cd Lammah-game-frontend
-npm install
-npm run dev
+## API contract
+
+The backend is the source of truth. `backend/openapi/openapi.json` is generated
+from the NestJS decorators, and the frontend's typed client is generated from
+that file by Orval:
+
+```bash
+npm run api:openapi        # regenerate the spec from backend code
+npm run api:generate       # regenerate frontend/src/api/generated from the spec
+npm run api:check          # fail if the committed spec is stale
 ```
 
-Local URLs:
+## AI authoring workspace
 
-- Backend API: `http://localhost:3000`
-- Swagger UI: `http://localhost:3000/api`
-- Frontend: `http://localhost:3001`
+See [ai/.opencode/README.md](ai/.opencode/README.md). It reads the product
+source through repository-relative paths (`../backend`, `../frontend`), so it
+works from any checkout location.
 
-## Run with Docker Compose
+## Further reading
 
-The compose file is set up for a simple testing server/VPS with local MongoDB:
-
-```sh
-cp Lammah-game-backend/.env.example Lammah-game-backend/.env
-docker compose up --build
-```
-
-Docker URLs:
-
-- Backend API: `http://localhost:3000`
-- Frontend: `http://localhost:3001`
-- MongoDB: `localhost:27017`
-
-If you use MongoDB Atlas instead of the bundled local MongoDB service, set `MONGODB_URI` to your Atlas connection string and remove the `mongodb` service, `backend.depends_on`, and the `MONGODB_URI` override from `docker-compose.yml`.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — module and layering rules
+- [GAME_NEW_SYSTEM_ROADMAP.md](GAME_NEW_SYSTEM_ROADMAP.md) — source of truth for architecture and priorities
+- [TESTING.md](TESTING.md) — test layers and how to run them
+- [deployment/README.md](deployment/README.md) — VM deployment
