@@ -24,6 +24,7 @@ describe('MusicService', () => {
     const storage = {
       saveOriginal: jest.fn().mockResolvedValue(original),
       allocateSnippet: jest.fn().mockResolvedValue(snippet),
+      publish: jest.fn().mockResolvedValue(undefined),
       delete: jest.fn().mockResolvedValue(undefined),
     };
     const questions = {

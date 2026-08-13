@@ -49,6 +49,7 @@
     "provision:production-mechanics:dist": "node dist/scripts/provision-production-mechanics.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1109.0",
     "@google/genai": "^1.52.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@nestjs/common": "^10.3.0",

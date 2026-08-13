@@ -83,6 +83,7 @@ export class MusicService {
         startSecond: plan.snippetStartSecond,
         durationSeconds: plan.snippetDurationSeconds,
       });
+      await this.storage.publish(snippet);
       const metadata = await this.metadataAgent.inferMetadata({
         filename: file.originalname,
         ...dto,

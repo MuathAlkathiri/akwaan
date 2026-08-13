@@ -21,7 +21,8 @@ import { MobileWorldSelector } from "./mobile-world-selector";
  * World.
  */
 export function WorldManagementWorkspace() {
-  const { data: worlds = [], isLoading } = useWorlds();
+  const worldsQuery = useWorlds();
+  const worlds = worldsQuery.data ?? [];
   const { selectedWorldId, selectedWorld, selectWorld } =
     useWorldSelection(worlds);
   const [addFirstWorldOpen, setAddFirstWorldOpen] = useState(false);
@@ -42,8 +43,25 @@ export function WorldManagementWorkspace() {
         </TabsList>
 
         <TabsContent value="worlds" className="mt-4">
-          {isLoading ? (
+          {worldsQuery.isLoading ? (
             <LoadingState count={3} />
+          ) : worldsQuery.isError ? (
+            <div className="space-y-4">
+              <EmptyState
+                icon={Globe2}
+                title="تعذر تحميل العوالم"
+                description="لم نتمكن من جلب بيانات العوالم. تحقق من تسجيل الدخول والاتصال ثم حاول مرة أخرى."
+              />
+              <div className="flex justify-center">
+                <Button
+                  variant="outline"
+                  disabled={worldsQuery.isFetching}
+                  onClick={() => void worldsQuery.refetch()}
+                >
+                  {worldsQuery.isFetching ? "جاري المحاولة..." : "إعادة المحاولة"}
+                </Button>
+              </div>
+            </div>
           ) : !worlds.length ? (
             <div className="space-y-4">
               <EmptyState

@@ -23,12 +23,15 @@ import { ChallengeTypeCard } from "./challenge-type-card";
 import { ChallengeTypeForm } from "./challenge-type-form";
 import type { ChallengeType, ChallengeTypeDeletionPreview } from "../../types";
 
+const EMPTY_CHALLENGE_TYPES: ChallengeType[] = [];
+
 /**
  * Global mechanic definitions, deliberately outside any World. Assigning one to a
  * World happens in the World's board tab.
  */
 export function ChallengeTypeCatalog() {
-  const { data: challengeTypes = [], isLoading } = useChallengeTypes();
+  const challengeTypesQuery = useChallengeTypes();
+  const challengeTypes = challengeTypesQuery.data ?? EMPTY_CHALLENGE_TYPES;
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<ChallengeType | null>(null);
@@ -83,8 +86,26 @@ export function ChallengeTypeCatalog() {
         </Button>
       }
     >
-      {isLoading ? (
+      {challengeTypesQuery.isLoading ? (
         <RowSkeleton rows={3} />
+      ) : challengeTypesQuery.isError ? (
+        <div className="space-y-4">
+          <EmptyState
+            title="تعذر تحميل الميكانيكا"
+            description="لم نتمكن من جلب بيانات الميكانيكا. تحقق من تسجيل الدخول والاتصال ثم حاول مرة أخرى."
+          />
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              disabled={challengeTypesQuery.isFetching}
+              onClick={() => void challengeTypesQuery.refetch()}
+            >
+              {challengeTypesQuery.isFetching
+                ? "جاري المحاولة..."
+                : "إعادة المحاولة"}
+            </Button>
+          </div>
+        </div>
       ) : !challengeTypes.length ? (
         <EmptyState
           title="لا توجد مكانيكا بعد"

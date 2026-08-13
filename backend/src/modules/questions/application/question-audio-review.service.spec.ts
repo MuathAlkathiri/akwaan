@@ -191,6 +191,7 @@ describe('QuestionAudioReviewService video reuse', () => {
   const storage = {
     saveQuestionMedia: jest.fn(),
     allocateQuestionMediaClip: jest.fn(),
+    publish: jest.fn(),
     delete: jest.fn(),
   };
   const inspector = {

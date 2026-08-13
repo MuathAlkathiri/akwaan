@@ -1,0 +1,6 @@
+SyntaxError: Unexpected token (17:34)
+
+  15 | const smap = Object.fromEntries(scopes.map(x => [String(x._id), x.slug || x.name]));
+  16 | for (const [id, sl] of Object.entries(smap)) {
+> 17 |   if (MY.has(id)) console.log(id, =
+     |                                   ^

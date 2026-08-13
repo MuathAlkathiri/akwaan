@@ -29,6 +29,11 @@ test-media
 **/test-media
 deployment/backups
 
+# Authoring workspace and captured screenshots. Neither image reads them, and
+# together they add ~85MB to every build context, including Render's.
+ai
+**/e2e-screenshots
+
 *.tsbuildinfo
 
 .env

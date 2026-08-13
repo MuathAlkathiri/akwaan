@@ -1,8 +1,13 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
 import { mkdir, rm, writeFile } from 'fs/promises';
 import { extname, join } from 'path';
+import {
+  DisabledMediaObjectStorage,
+  MEDIA_OBJECT_STORAGE,
+  type MediaObjectStorage,
+} from './media-object-storage';
 
 export interface UploadedImageFile {
   originalname: string;
@@ -40,7 +45,13 @@ export class LocalImageStorageService {
     'image/webp',
   ];
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    // Nest always injects this; the default only serves direct construction in
+    // unit tests that exercise validation and never touch the mirror.
+    @Inject(MEDIA_OBJECT_STORAGE)
+    private readonly objectStorage: MediaObjectStorage = new DisabledMediaObjectStorage(),
+  ) {}
 
   async save(
     file: UploadedImageFile,
@@ -65,6 +76,12 @@ export class LocalImageStorageService {
 
     await writeFile(absolutePath, file.buffer);
 
+    // Mirror before returning: the caller persists this URL, so an object that
+    // only exists on an ephemeral disk would become a broken reference the
+    // first time the host restarts.
+    const objectKey = `${relativeDir}/${filename}`.replace(/\\/g, '/');
+    await this.objectStorage.put(objectKey, file.buffer, file.mimetype);
+
     return {
       filename,
       path: relativePath,
@@ -82,6 +99,7 @@ export class LocalImageStorageService {
     const absolutePath = join(uploadsRoot, relativePath);
 
     await rm(absolutePath, { force: true }).catch(() => undefined);
+    await this.objectStorage.remove(relativePath);
   }
 
   validate(file: UploadedImageFile): void {

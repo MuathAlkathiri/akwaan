@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
+import { MediaStorageModule } from './common/uploads/media-storage.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { QuestionsModule } from './modules/questions/questions.module';
 import { AiAgentModule } from './modules/ai-agent/ai-agent.module';
@@ -24,6 +25,7 @@ import { MatchModule } from './modules/match/match.module';
       envFilePath: '.env',
     }),
     DatabaseModule,
+    MediaStorageModule,
     UsersModule,
     AuthModule,
     CatalogsModule,

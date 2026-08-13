@@ -11,6 +11,14 @@ services:
       NODE_ENV: production
       PORT: 3000
       APP_BASE_URL: http://localhost:3002
+      # This stack runs NODE_ENV=production, where the API refuses to assume a
+      # localhost allowlist — a public deployment must fail loudly on a missing
+      # CORS_ORIGINS rather than quietly trusting a developer machine. The local
+      # frontend origin is therefore named explicitly here.
+      CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001}
+      # Local-only stack, so the API docs stay mounted at /api. The BETA sets
+      # this to "false".
+      SWAGGER_ENABLED: ${BACKEND_SWAGGER_ENABLED:-true}
       # LEGACY_PERSISTED_IDENTIFIER: `lammah-quiz` is the live database name and
       # predates the Akwaan rename. Do not "fix" it — see the volumes note below.
       MONGODB_URI: ${BACKEND_MONGODB_URI:-mongodb://mongodb:27017/lammah-quiz?replicaSet=rs0}

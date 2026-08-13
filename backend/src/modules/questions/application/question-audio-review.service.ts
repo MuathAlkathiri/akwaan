@@ -461,6 +461,7 @@ export class QuestionAudioReviewService {
           startSecond: start,
           durationSeconds: duration,
         });
+      await this.storage.publish(stored);
       const storedDuration = isVideo
         ? await this.inspector.videoDurationSeconds(stored.absolutePath)
         : await this.inspector.audioDurationSeconds(stored.absolutePath);

@@ -1,0 +1,91 @@
+# Render blueprint for the Akwaan BETA backend.
+#
+# Backend only. MongoDB lives in Atlas and media lives in Cloudflare R2 — Render
+# Free gives a web service no persistent disk, so nothing here may hold state.
+#
+# Docker rather than a native Node build: the runtime shells out to ffmpeg and
+# ffprobe for audio/video snippets and to yt-dlp for asset ingest. backend/
+# Dockerfile already installs all three and understands the npm-workspace
+# layout; a native build would install packages fine and then fail the first
+# time an admin uploaded a clip.
+#
+# No secret values belong in this file. Everything marked `sync: false` is
+# entered once in the Render dashboard and never committed.
+
+services:
+  - type: web
+    name: akwaan-api
+    runtime: docker
+    plan: free
+    # Closest free region to the Gulf. Change before the first deploy if you
+    # would rather be near a different audience — it cannot be moved after.
+    region: frankfurt
+    branch: main
+    autoDeploy: true
+
+    # Build from the repository root: the Dockerfile copies the root
+    # package.json and package-lock.json to install the workspace.
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Atlas SRV URI, including the `lammah-quiz` database name.
+      - key: MONGODB_URI
+        sync: false
+
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+      # Exact Vercel origin, no trailing slash. Governs both the HTTP API and
+      # the live-session socket. Unset in production means an empty allowlist
+      # and every browser call is refused.
+      - key: CORS_ORIGINS
+        sync: false
+
+      # This service's own public URL, e.g. https://akwaan-api.onrender.com
+      - key: APP_BASE_URL
+        sync: false
+
+      # Writable scratch space for ffmpeg. Ephemeral by design: the durable
+      # copy is the R2 mirror below.
+      - key: UPLOADS_DIR
+        value: /app/uploads
+
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: MEDIA_PUBLIC_BASE_URL
+        sync: false
+
+      # Off unless explicitly turned on. Swagger documents every admin
+      # mutation; AI generation and YouTube ingest cost money and CPU that a
+      # free instance does not have.
+      - key: SWAGGER_ENABLED
+        value: "false"
+      - key: AI_QUESTION_GENERATION_ENABLED
+        value: "false"
+      - key: ALLOW_YOUTUBE_ASSET_DOWNLOADS
+        value: "false"
+
+      - key: MUSIC_QUESTION_CATEGORY_SLUG
+        value: songs
+      - key: WIGOLO_EXECUTABLE_PATH
+        value: /app/node_modules/.bin/wigolo
+      - key: WIGOLO_CACHE_FILE
+        value: /app/.cache/entity-verification.json
+
+      # Set only if you turn AI generation on later.
+      - key: GEMINI_API_KEY
+        sync: false

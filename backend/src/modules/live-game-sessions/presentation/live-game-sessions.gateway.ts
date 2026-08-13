@@ -1,4 +1,5 @@
 import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
+import { corsOriginDelegate } from '../../../common/config/cors-origins';
 import { JwtService } from '@nestjs/jwt';
 import {
   ConnectedSocket,
@@ -86,7 +87,10 @@ type LiveSocket = Socket<
 )
 @WebSocketGateway({
   namespace: '/live-game-sessions',
-  cors: { origin: true, credentials: true },
+  // The same allowlist the HTTP API uses. `origin: true` reflected whatever
+  // asked, which with `credentials: true` lets any page on the internet open a
+  // session socket on a signed-in player's behalf.
+  cors: { origin: corsOriginDelegate(), credentials: true },
 })
 export class LiveGameSessionsGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
