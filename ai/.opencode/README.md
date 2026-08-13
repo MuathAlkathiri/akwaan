@@ -16,7 +16,7 @@ Scope and lists every compatible ChallengeType.
 
 ## Required Reading
 
-1. `knowledge/AKWAN-CONTENT-BIBLE.md` and
+1. `knowledge/AKWAAN-CONTENT-BIBLE.md` and
    `knowledge/architecture/PRODUCT-EXPERIENCE.md`
 2. the assigned Role
 3. the selected `skills/challenge-types/<id>/SKILL.md`
