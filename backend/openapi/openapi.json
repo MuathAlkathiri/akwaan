@@ -3374,8 +3374,8 @@
     }
   },
   "info": {
-    "title": "Lammah Game API",
-    "description": "Runtime HTTP contract for Lammah game administration, content, and gameplay.",
+    "title": "Akwaan API",
+    "description": "Runtime HTTP contract for Akwaan administration, content, and gameplay.",
     "version": "1.0.0",
     "contact": {}
   },
