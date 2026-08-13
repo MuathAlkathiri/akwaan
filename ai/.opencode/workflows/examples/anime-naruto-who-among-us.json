@@ -1,0 +1,37 @@
+{
+  "batchId": "anime-naruto-who-among-us-authoring-001",
+  "world": {"id": "anime", "worldPath": ".opencode/skills/worlds/anime/WORLD.md"},
+  "scope": {
+    "id": "anime.naruto",
+    "scopePath": ".opencode/skills/worlds/anime/scopes/naruto/SCOPE.md",
+    "knowledgePath": ".opencode/skills/worlds/anime/scopes/naruto/KNOWLEDGE.md"
+  },
+  "challengeType": {
+    "id": "who-among-us",
+    "skillPath": ".opencode/skills/challenge-types/who-among-us/SKILL.md"
+  },
+  "patternId": "team-consensus",
+  "targetContentItemCount": 3,
+  "allowedAnswerModes": ["vote"],
+  "mediaPolicy": {"mode": "text_only", "allowedTypes": [], "privateVisibilityRequired": true},
+  "experienceGoal": "Create safe private team voting and a simultaneous social tally reveal.",
+  "interactionConstraints": [
+    "authoring_only",
+    "runtime_contract_missing",
+    "dynamic active-team roster",
+    "private votes",
+    "no partial tally",
+    "multiple winners on ties"
+  ],
+  "outputLanguage": "ar",
+  "duplicatePolicy": {"preventConsecutiveObjectiveReuse": true, "relationalReusable": true},
+  "outputDirectory": ".output/contentitem-batches/anime/naruto/who-among-us-authoring-001/",
+  "assignedRoles": {
+    "researcher": null,
+    "writer": {"rolePath": ".opencode/roles/CONTENTITEM-WRITER.md", "outputFile": "02-drafts.json", "assignee": null},
+    "reviewer": {"rolePath": ".opencode/roles/CONTENTITEM-REVIEWER.md", "outputFile": "03-review.json", "assignee": null},
+    "assetCurator": null,
+    "contentQa": {"rolePath": ".opencode/roles/CONTENT-QA.md", "outputFile": "05-qa.json", "assignee": null}
+  },
+  "status": "blocked"
+}

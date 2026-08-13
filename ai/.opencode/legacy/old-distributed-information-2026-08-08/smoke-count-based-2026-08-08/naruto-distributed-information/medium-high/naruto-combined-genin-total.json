@@ -1,0 +1,69 @@
+{
+  "id": "naruto-combined-genin-total",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "اجمعوا أعدادكم الخاصة وحددوا المجموع."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "closest",
+    "correctValue": 9,
+    "acceptedTolerance": 0
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "ما مجموع أعداد تلاميذ الفرق الثلاثة؟"
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "عدد تلاميذ الفريق الثامن: 3."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "عدد تلاميذ الفريق العاشر: 3."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "عدد تلاميذ فريق غاي: 3."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": ["A", "B"],
+        "secondParticipantSegmentIds": ["C"]
+      },
+      {
+        "firstParticipantSegmentIds": ["A", "C"],
+        "secondParticipantSegmentIds": ["B"]
+      },
+      {
+        "firstParticipantSegmentIds": ["B", "C"],
+        "secondParticipantSegmentIds": ["A"]
+      }
+    ],
+    "supportedTeamSizes": [2, 3],
+    "authorSafetyConfirmation": true,
+    "explanation": "كل بطاقة تحمل عدد تلاميذ فريق واحد، ولا يُعرف المجموع إلا بعد الجمع بين الفرق الثلاثة."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

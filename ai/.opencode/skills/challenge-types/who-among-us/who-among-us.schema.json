@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://akwaan.local/schemas/who-among-us-contentitem.schema.json",
+  "title": "Akwaan Who Among Us Authoring ContentItem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id", "scopeId", "compatibleChallengeTypeIds", "patternId", "prompt",
+    "answerMode", "interactionPayload", "resolutionPayload", "media",
+    "isReusableAcrossSessions", "metadata"
+  ],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "scopeId": {"type": "string", "pattern": "^[a-z0-9-]+\\.[a-z0-9-]+$"},
+    "compatibleChallengeTypeIds": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "contains": {"const": "who-among-us"},
+      "items": {"type": "string"}
+    },
+    "patternId": {"const": "team-consensus"},
+    "prompt": {
+      "type": "object", "additionalProperties": false, "minProperties": 1,
+      "properties": {
+        "ar": {"type": "string", "minLength": 8},
+        "en": {"type": "string", "minLength": 8}
+      }
+    },
+    "answerMode": {"const": "vote"},
+    "interactionPayload": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "runtimeContractStatus", "actorModel", "rosterBinding", "voteValueType",
+        "submissionLimitPerActor", "duplicateSelectionsAllowed", "selfVotePolicy",
+        "minimumTeamSize", "maximumTeamSize", "timerSeconds", "timeoutPolicy",
+        "individualVoteVisibility", "partialTallyVisibility", "revealTrigger",
+        "hardcodedParticipantIds", "hardcodedParticipantNames"
+      ],
+      "properties": {
+        "runtimeContractStatus": {"const": "runtime_contract_missing"},
+        "actorModel": {"const": "active_team_all_eligible"},
+        "rosterBinding": {"const": "active_team_eligible_roster"},
+        "voteValueType": {"const": "participant_id"},
+        "submissionLimitPerActor": {"const": 1},
+        "duplicateSelectionsAllowed": {"const": true},
+        "selfVotePolicy": {"const": "forbidden"},
+        "minimumTeamSize": {"const": 3},
+        "maximumTeamSize": {"type": "null"},
+        "timerSeconds": {"type": "null"},
+        "timeoutPolicy": {"const": "runtime_contract_missing"},
+        "individualVoteVisibility": {"const": "private_until_reveal"},
+        "partialTallyVisibility": {"const": "hidden"},
+        "revealTrigger": {"const": "all_submitted_or_runtime_deadline"},
+        "hardcodedParticipantIds": {"type": "array", "maxItems": 0},
+        "hardcodedParticipantNames": {"type": "array", "maxItems": 0}
+      }
+    },
+    "resolutionPayload": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "resolution", "winnerPolicy", "tiePolicy", "winnerCardinality",
+        "revealPayload", "scoringPolicy", "matchPointValue"
+      ],
+      "properties": {
+        "resolution": {"const": "participant_vote_tally"},
+        "winnerPolicy": {"const": "highest_vote_total"},
+        "tiePolicy": {"const": "multiple_winners"},
+        "winnerCardinality": {"const": "one_or_more"},
+        "revealPayload": {"const": "final_tally_only"},
+        "scoringPolicy": {"const": "social_reveal_only"},
+        "matchPointValue": {"type": "null"}
+      }
+    },
+    "media": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["type", "path", "visibility", "requiredObservation", "provenance"],
+          "properties": {
+            "type": {"enum": ["image", "audio", "video"]},
+            "path": {"type": "string", "minLength": 1},
+            "visibility": {"const": "public"},
+            "requiredObservation": {"type": "string"},
+            "provenance": {"type": "object"}
+          }
+        }
+      ]
+    },
+    "isReusableAcrossSessions": {"const": true},
+    "metadata": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sources", "validationStatus", "runtimeContractStatus", "runtimeBlocker"],
+      "properties": {
+        "sources": {"type": "array", "items": {"type": "string"}},
+        "validationStatus": {"const": "blocked"},
+        "runtimeContractStatus": {"const": "runtime_contract_missing"},
+        "runtimeBlocker": {"const": "runtime_contract_missing"},
+        "explanation": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

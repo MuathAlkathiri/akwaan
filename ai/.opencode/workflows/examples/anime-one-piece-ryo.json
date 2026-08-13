@@ -1,0 +1,30 @@
+{
+  "batchId": "anime-one-piece-ryo-001",
+  "world": {"id": "anime", "worldPath": ".opencode/skills/worlds/anime/WORLD.md"},
+  "scope": {
+    "id": "anime.one-piece",
+    "scopePath": ".opencode/skills/worlds/anime/scopes/one-piece/SCOPE.md",
+    "knowledgePath": ".opencode/skills/worlds/anime/scopes/one-piece/KNOWLEDGE.md"
+  },
+  "challengeType": {
+    "id": "read-your-opponent",
+    "skillPath": ".opencode/skills/challenge-types/read-your-opponent/SKILL.md"
+  },
+  "patternId": "multiple-choice",
+  "targetContentItemCount": 3,
+  "allowedAnswerModes": ["multiple_choice"],
+  "mediaPolicy": {"mode": "optional", "allowedTypes": ["image", "audio", "video"], "privateVisibilityRequired": true},
+  "experienceGoal": "Create three escalating Steal or Trust confidence decisions.",
+  "interactionConstraints": ["simultaneous private choices", "automatic resolution", "no early reveal"],
+  "outputLanguage": "ar",
+  "duplicatePolicy": {"preventConsecutiveObjectiveReuse": true, "relationalReusable": true},
+  "outputDirectory": ".output/contentitem-batches/anime/one-piece/ryo-001/",
+  "assignedRoles": {
+    "researcher": {"rolePath": ".opencode/roles/CONTENTITEM-RESEARCHER.md", "outputFile": "01-research.json", "assignee": null},
+    "writer": {"rolePath": ".opencode/roles/CONTENTITEM-WRITER.md", "outputFile": "02-drafts.json", "assignee": null},
+    "reviewer": {"rolePath": ".opencode/roles/CONTENTITEM-REVIEWER.md", "outputFile": "03-review.json", "assignee": null},
+    "assetCurator": {"rolePath": ".opencode/roles/ASSET-CURATOR.md", "outputFile": "04-assets.json", "assignee": null},
+    "contentQa": {"rolePath": ".opencode/roles/CONTENT-QA.md", "outputFile": "05-qa.json", "assignee": null}
+  },
+  "status": "planned"
+}

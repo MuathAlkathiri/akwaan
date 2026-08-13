@@ -1,0 +1,69 @@
+{
+  "id": "naruto-twice-konoha-count",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "طابقوا القوائم ثم طبّقوا معيار القرية."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "closest",
+    "correctValue": 3,
+    "acceptedTolerance": 0
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كم من الشخصيات التي وردت في قائمتين بالضبط وُلِدت في قرية الورق؟"
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "قائمتك: ناروتو، ساسكي، ساكورا."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "قائمتك: ناروتو، ساسكي، إيتاتشي."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "قائمتك: ناروتو، ساكورا، إيتاتشي."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": ["A", "B"],
+        "secondParticipantSegmentIds": ["C"]
+      },
+      {
+        "firstParticipantSegmentIds": ["A", "C"],
+        "secondParticipantSegmentIds": ["B"]
+      },
+      {
+        "firstParticipantSegmentIds": ["B", "C"],
+        "secondParticipantSegmentIds": ["A"]
+      }
+    ],
+    "supportedTeamSizes": [2, 3],
+    "authorSafetyConfirmation": true,
+    "explanation": "ساسكي وساكورا وإيتاتشي وردوا في قائمتين بالضبط وناروتو في الثلاث، والثلاثة وُلدوا في قرية الورق فيكون الجواب 3."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

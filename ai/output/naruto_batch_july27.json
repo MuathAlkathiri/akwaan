@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "category": "naruto",
+    "difficulty": "easy",
+    "mediaType": "image",
+    "question": "ما اسم هذا الشخصية؟",
+    "answer": "إيتاشي أوتشيها",
+    "acceptedAnswers": ["إيتاشي أوتشيها", "ايتاشي اوتشيها", "ايتاشي أوتشيها", "إيتاشي اوتشيها", "Itachi Uchiha", "ايتاشي"],
+    "mediaDescription": "صورة لإيتاشي أوتشيها يرتدي رداء أكاتسكي مع الشيرينغان مفعّل في عينه",
+    "mediaSource": "output/naruto_assets/images/q1_itachi.png",
+    "rationale": "إيتاشي من أكثر الشخصيات'iconية في ناروتو. أي متابع للأنمي يتعرف عليه فوراً من الرداء الأسود مع الغيوم الحمراء والشيرينغان."
+  },
+  {
+    "id": 2,
+    "category": "naruto",
+    "difficulty": "easy",
+    "mediaType": "audio",
+    "question": "ما اسم هذه التقنية الساحرة؟",
+    "answer": "راسengan",
+    "acceptedAnswers": ["راسengan", "رَاسِنغَن", "الراسengan", "Rasengan", "راسينغان"],
+    "mediaDescription": "مقطع صوتي يظهر صوت شحن تقنية الراسengan مع صرخة ناروتو",
+    "mediaSource": "output/naruto_assets/audio/q2_rasengan_quicksounds.mp3",
+    "rationale": "الراسengan هي أكثر تقنية مميزة لناروتو. الصوت المميز للشحن والهجمة يعرفه أي متابع."
+  },
+  {
+    "id": 3,
+    "category": "naruto",
+    "difficulty": "easy",
+    "mediaType": "text",
+    "question": "ما اسم المنظمة التي ينتمي إليها إيتاشي؟",
+    "answer": "أكاتسكي",
+    "acceptedAnswers": ["أكاتسكي", "اكاتسكي", "Akatsuki", "أكادسكي"],
+    "mediaDescription": null,
+    "mediaSource": null,
+    "rationale": "أكاتسكي من أكثر المنظمات شهرة في عالم الأنمي. أي متابع لناروتو يعرف هذه المنظمة."
+  },
+  {
+    "id": 4,
+    "category": "naruto",
+    "difficulty": "medium",
+    "mediaType": "video",
+    "question": "ما هي القدرة التي يستخدمها كاكاشي هنا؟",
+    "answer": "كاموي",
+    "acceptedAnswers": ["كاموي", "كاميوي", "Kamui", "كاموي نو كورسي", "kamui"],
+    "mediaDescription": "فيديو يظهر كاكاشي وهو يستخدم كاموي لإرسال طائر ديدارا إلى بُعد آخر",
+    "mediaSource": "output/naruto_assets/video/q4_kakashi_kamui.mp4",
+    "rationale": "مشهد كاكاشي وهو يستخدم كاموي على طائر ديدارا من أشهر المشاهد في أرك المعركة. المشاهد العاديون يتذكرون المشهد لكن قد يحتاجون تذكيراً باسم القدرة."
+  },
+  {
+    "id": 5,
+    "category": "naruto",
+    "difficulty": "medium",
+    "mediaType": "image",
+    "question": "ما هي تقنية الحماية التي تحمي غارا من الهجمات؟",
+    "answer": "درع الرمال",
+    "acceptedAnswers": ["درع الرمال", "درع رملي", "سونا نو تاتي", "Sand Shield", "درع الغبار", "درع الرمل"],
+    "mediaDescription": "صورة لغارا وحوله حجاب من الرمال يصد هجمة",
+    "mediaSource": "output/naruto_assets/images/q5_gaara.png",
+    "rationale": "غارا ودرعه الرملي من أبرز مميزاته. المشاهد العاديون يتذكرون المشهد لكن اسم التقنية قد يحتاج تذكيراً."
+  },
+  {
+    "id": 6,
+    "category": "naruto",
+    "difficulty": "medium",
+    "mediaType": "audio",
+    "question": "ما اسم هذه الأغنية التصويرية؟",
+    "answer": "Blue Bird",
+    "acceptedAnswers": ["Blue Bird", "blue bird", "الطائر الأزرق", "ブルーバード", "Ikimono Gakari", "ايكيومونو غاكاري"],
+    "mediaDescription": "مقطع من أغنية Blue Bird (Opening 3 من شيبودن)",
+    "mediaSource": "output/naruto_assets/audio/q6_blue_bird.mp3",
+    "rationale": "Blue Bird من أشهر افتتاحيات ناروتو شيبودن وتظهر في اللحظات العاطفية والتحفيزية. المشاهد المنتظمون يتذكرونها لكن اسمها بالإنجليزي قد يصعب تذكره."
+  },
+  {
+    "id": 7,
+    "category": "naruto",
+    "difficulty": "hard",
+    "mediaType": "video",
+    "question": "من يظهر خلف هذا القناع؟",
+    "answer": "أوبّيتو أوتشيها",
+    "acceptedAnswers": ["أوبّيتو أوتشيها", "اوبتو اوتشيها", "أوبتو أوتشيها", "Obito Uchiha", "أوبّيتو", "أوبتو"],
+    "mediaDescription": "فيديو يظهر لحظة كسر قناع مادارا (أوبتو) وظهور وجهه الحقيقي",
+    "mediaSource": "output/naruto_assets/video/q7_obito_mask.mp4",
+    "rationale": "لحظة كسر القناع من أكثر اللحظات المذهلة في ناروتو. المتابعين المخلصين يتذكرونها لكن قد لا يتذكرون الاسم الكامل."
+  },
+  {
+    "id": 8,
+    "category": "naruto",
+    "difficulty": "hard",
+    "mediaType": "image",
+    "question": "ما اسم هذا التحول في عين الشيرينغان؟",
+    "answer": "مانغيكيو شيرينغان أبدي",
+    "acceptedAnswers": ["مانغيكيو شيرينغان أبدي", "مانغيكيو شيرينغان", "Eternal Mangekyo Sharingan", "المانغيكيو الأبدي", "شيرينغان أبدي"],
+    "mediaDescription": "صورة واضحة لنمط مانغيكيو شيرينغان أبدي (النمط المركّب)",
+    "mediaSource": "output/naruto_assets/images/q8_mangekyo.png",
+    "rationale": "هذا نادر في الأنمي ويظهر فقط مع ساسكي وإيتاشي. المتابعين المخلصين يتذكرون النمط لكن التمييز بين المانغيكيو العادي والأبدي يتطلب معرفة عميقة."
+  },
+  {
+    "id": 9,
+    "category": "naruto",
+    "difficulty": "hard",
+    "mediaType": "audio",
+    "question": "ما هي القدرة التي تُشعل النار السوداء؟",
+    "answer": "أماتيراسو",
+    "acceptedAnswers": ["أماتيراسو", "اماتيراسو", "Amaterasu"],
+    "mediaDescription": "مقطع صوتي لصوت تفعيل أماتيراسو مع صوت احتراق",
+    "mediaSource": "output/naruto_assets/audio/q9_fire_crispy.mp3",
+    "rationale": "صوت أماتيراسو مميز لكن يختلف عن أصوات النار العادية. المتابعين المخلصين يتذكرون الفرق لكن قد يخلطون مع نار أخرى."
+  },
+  {
+    "id": 10,
+    "category": "naruto",
+    "difficulty": "hard",
+    "mediaType": "text",
+    "question": "من ابتكر تقنية الهيرين أصلاً قبل أن يُكملها ميناتو؟",
+    "answer": "توبيرااما سينجو",
+    "acceptedAnswers": ["توبيرااما سينجو", "توبيرااما", "Tobirama Senju", "توبيروما سينجو"],
+    "mediaDescription": null,
+    "mediaSource": null,
+    "rationale": "توبيرااما ابتكر تقنية الهيرين شايكين وأكملها ميناتو لاحقاً. هذه معلومات عميقة يعرفها المتابعون المخلصون لكنها ليست معروفة لدى الجميع."
+  }
+]

@@ -1,0 +1,69 @@
+{
+  "id": "naruto-akatsuki-count",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "اعددوا أعضاء الأكاتسكي بين الأسماء الموزعة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "closest",
+    "correctValue": 8,
+    "acceptedTolerance": 0
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كم عدد شخصيات الأكاتسكي بين الأسماء المذكورة في البطاقات؟"
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "أسماءك: إيتاتشي، كيسامي، جيرايا."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "أسماءك: ساسوري، ديدارا، هيدان."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "أسماءك: كونان، باين، كاكوزو."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": ["A", "B"],
+        "secondParticipantSegmentIds": ["C"]
+      },
+      {
+        "firstParticipantSegmentIds": ["A", "C"],
+        "secondParticipantSegmentIds": ["B"]
+      },
+      {
+        "firstParticipantSegmentIds": ["B", "C"],
+        "secondParticipantSegmentIds": ["A"]
+      }
+    ],
+    "supportedTeamSizes": [2, 3],
+    "authorSafetyConfirmation": true,
+    "explanation": "من الأسماء التسعة ثمانية من الأكاتسكي وجيرايا ليس منهم؛ لا يعرف أي لاعب إلا عدّ بطاقته."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

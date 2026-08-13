@@ -1,0 +1,71 @@
+{
+  "id": "naruto-jiraiya-link",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "ادمجوا الأدلة الخاصة وحددوا الشخصية الوحيدة المطابقة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "match",
+    "acceptedAnswers": [
+      "جيرايا",
+      "جيريا"
+    ]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "ضمن السانين الثلاثة وأحد أعوانهم، ما الشخصية الوحيدة التي تنطبق عليها الجمل الثلاث كلها؟"
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "أنا أحد السانين الثلاثة."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لم أتولَّ منصب الهوكاجي."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لم أنشق عن قرية الورق."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": ["A", "B"],
+        "secondParticipantSegmentIds": ["C"]
+      },
+      {
+        "firstParticipantSegmentIds": ["A", "C"],
+        "secondParticipantSegmentIds": ["B"]
+      },
+      {
+        "firstParticipantSegmentIds": ["B", "C"],
+        "secondParticipantSegmentIds": ["A"]
+      }
+    ],
+    "supportedTeamSizes": [2, 3],
+    "authorSafetyConfirmation": true,
+    "explanation": "المرشحون: جيرايا وأوروتشيمارو وتسونادي وكابوتو؛ كل جملة تستبعد مرشحًا مختلفًا والتقاطع الوحيد هو جيرايا."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://akwaan.local/schemas/contentitem-batch-manifest.schema.json",
+  "title": "Akwaan ContentItem Batch Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "batchId", "world", "scope", "challengeType", "patternId",
+    "targetContentItemCount", "allowedAnswerModes", "mediaPolicy",
+    "experienceGoal", "interactionConstraints", "outputLanguage",
+    "duplicatePolicy", "outputDirectory", "assignedRoles", "status"
+  ],
+  "properties": {
+    "batchId": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "world": {"$ref": "#/$defs/worldRef"},
+    "scope": {"$ref": "#/$defs/scopeRef"},
+    "challengeType": {"$ref": "#/$defs/challengeTypeRef"},
+    "patternId": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "targetContentItemCount": {"type": "integer", "minimum": 1},
+    "allowedAnswerModes": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"enum": ["ryo", "multiple_choice", "closest", "match", "vote", "split", "top_5", "distributed"]}
+    },
+    "mediaPolicy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["mode", "allowedTypes", "privateVisibilityRequired"],
+      "properties": {
+        "mode": {"enum": ["text_only", "optional", "required", "mixed"]},
+        "allowedTypes": {"type": "array", "uniqueItems": true, "items": {"enum": ["image", "audio", "video"]}},
+        "privateVisibilityRequired": {"type": "boolean"}
+      }
+    },
+    "experienceGoal": {"type": "string", "minLength": 10},
+    "interactionConstraints": {"type": "array", "items": {"type": "string"}},
+    "outputLanguage": {"enum": ["ar", "en", "bilingual"]},
+    "duplicatePolicy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["preventConsecutiveObjectiveReuse", "relationalReusable"],
+      "properties": {
+        "preventConsecutiveObjectiveReuse": {"type": "boolean", "const": true},
+        "relationalReusable": {"type": "boolean", "const": true}
+      }
+    },
+    "outputDirectory": {"type": "string", "pattern": "^\\.output/contentitem-batches/[a-z0-9/_-]+/$"},
+    "assignedRoles": {
+      "type": "object", "additionalProperties": false,
+      "required": ["researcher", "writer", "reviewer", "assetCurator", "contentQa"],
+      "properties": {
+        "researcher": {"$ref": "#/$defs/optionalAssignment"},
+        "writer": {"$ref": "#/$defs/assignment"},
+        "reviewer": {"$ref": "#/$defs/assignment"},
+        "assetCurator": {"$ref": "#/$defs/optionalAssignment"},
+        "contentQa": {"$ref": "#/$defs/assignment"}
+      }
+    },
+    "status": {"enum": ["planned", "experience_planned", "researching", "drafting", "reviewing", "curating_assets", "qa", "human_review", "approved", "blocked", "cancelled"]}
+  },
+  "$defs": {
+    "worldRef": {
+      "type": "object", "additionalProperties": false, "required": ["id", "worldPath"],
+      "properties": {
+        "id": {"type": "string"},
+        "worldPath": {"type": "string", "pattern": "^\\.opencode/skills/worlds/[^/]+/WORLD\\.md$"}
+      }
+    },
+    "scopeRef": {
+      "type": "object", "additionalProperties": false, "required": ["id", "scopePath", "knowledgePath"],
+      "properties": {
+        "id": {"type": "string"},
+        "scopePath": {"type": "string", "pattern": "^\\.opencode/skills/worlds/[^/]+/scopes/[^/]+/SCOPE\\.md$"},
+        "knowledgePath": {"type": "string", "pattern": "^\\.opencode/skills/worlds/[^/]+/scopes/[^/]+/KNOWLEDGE\\.md$"}
+      }
+    },
+    "challengeTypeRef": {
+      "type": "object", "additionalProperties": false, "required": ["id", "skillPath"],
+      "properties": {
+        "id": {"type": "string"},
+        "skillPath": {"type": "string", "pattern": "^\\.opencode/skills/challenge-types/[^/]+/SKILL\\.md$"}
+      }
+    },
+    "assignment": {
+      "type": "object", "additionalProperties": false, "required": ["rolePath", "outputFile", "assignee"],
+      "properties": {
+        "rolePath": {"type": "string", "pattern": "^\\.opencode/roles/[A-Z-]+\\.md$"},
+        "outputFile": {"type": "string", "pattern": "^0[1-5]-[a-z-]+\\.json$"},
+        "assignee": {"type": ["string", "null"]}
+      }
+    },
+    "optionalAssignment": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/assignment"}]}
+  }
+}

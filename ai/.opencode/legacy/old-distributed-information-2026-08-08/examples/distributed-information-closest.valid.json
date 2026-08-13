@@ -1,0 +1,67 @@
+{
+  "id": "draft-distributed-total",
+  "scopeId": "sports.football",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "اجمعوا الأدلة الخاصة وحددوا المجموع المطلوب."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "closest",
+    "correctValue": 34,
+    "acceptedTolerance": 0
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "ما مجموع القيم المطابقة للشرط بعد دمج معلوماتكم؟"
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "لديك قيمتان؛ تعتمد صلاحية الأولى على قاعدة زميلك."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لديك قيمتان وعلامة تربط إحداهما بوصف لدى زميلك."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لديك قاعدة الاختيار وقيمة إضافية مشروطة."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "B"
+        ],
+        "secondParticipantSegmentIds": [
+          "C"
+        ]
+      }
+    ],
+    "supportedTeamSizes": [
+      2,
+      3
+    ],
+    "authorSafetyConfirmation": true,
+    "explanation": "مثال بنيوي غير إنتاجي لنمط المجموع المركب."
+  },
+  "status": "draft",
+  "metadata": {
+    "sources": [],
+    "validationStatus": "draft",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

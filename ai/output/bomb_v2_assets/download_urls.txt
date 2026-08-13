@@ -1,0 +1,60 @@
+countries|السعودية|Saudi Arabia|https://upload.wikimedia.org/wikipedia/commons/0/0d/Flag_of_Saudi_Arabia.svg
+countries|مصر|Egypt|https://upload.wikimedia.org/wikipedia/commons/f/fe/Flag_of_Egypt.svg
+countries|الإمارات|UAE|https://upload.wikimedia.org/wikipedia/commons/c/cb/Flag_of_the_United_Arab_Emirates.svg
+countries|فرنسا|France|https://upload.wikimedia.org/wikipedia/commons/c/c3/Flag_of_France.svg
+countries|اليابان|Japan|https://upload.wikimedia.org/wikipedia/commons/9/9e/Flag_of_Japan.svg
+countries|البرازيل|Brazil|https://upload.wikimedia.org/wikipedia/commons/0/05/Flag_of_Brazil.svg
+countries|بريطانيا|UK|https://upload.wikimedia.org/wikipedia/commons/8/83/Flag_of_the_United_Kingdom_%283-5%29.svg
+countries|أمريكا|USA|https://upload.wikimedia.org/wikipedia/commons/a/a4/Flag_of_the_United_States.svg
+countries|الهند|India|https://upload.wikimedia.org/wikipedia/commons/4/41/Flag_of_India.svg
+countries|الصين|China|https://upload.wikimedia.org/wikipedia/commons/f/fa/Flag_of_the_People%27s_Republic_of_China.svg
+countries|ألمانيا|Germany|https://upload.wikimedia.org/wikipedia/commons/b/ba/Flag_of_Germany.svg
+countries|إيطاليا|Italy|https://upload.wikimedia.org/wikipedia/commons/0/03/Flag_of_Italy.svg
+animals|أسد|Lion|https://upload.wikimedia.org/wikipedia/commons/0/02/Lion_male.jpg
+animals|فيل|Elephant|https://upload.wikimedia.org/wikipedia/commons/8/83/Elephant_running.jpg
+animals|زرافة|Giraffe|https://upload.wikimedia.org/wikipedia/commons/e/e7/Giraffe_in_Zulu_Nyala_Reserve_04.jpg
+animals|باندا|Panda|https://upload.wikimedia.org/wikipedia/commons/8/8a/Bai_yun_giant_panda.jpg
+animals|دلفين|Dolphin|https://upload.wikimedia.org/wikipedia/commons/b/b2/Bottlenose_dolphin_mother_and_juvenile.jpg
+animals|بومة|Owl|https://upload.wikimedia.org/wikipedia/commons/3/3d/Eastern_Screech_Owl.jpg
+animals|ذئب|Wolf|https://upload.wikimedia.org/wikipedia/commons/3/32/Howling_wolf_01.jpg
+animals|دب|Bear|https://upload.wikimedia.org/wikipedia/commons/9/94/Brown_bear.jpg
+animals|بطريق|Penguin|https://upload.wikimedia.org/wikipedia/commons/d/d8/Emperor-kol8_hg.jpg
+animals|نمر|Tiger|https://upload.wikimedia.org/wikipedia/commons/5/5b/A_prowling_Tiger.jpg
+animals|فهد|Cheetah|https://upload.wikimedia.org/wikipedia/commons/9/94/Cheetah_Profile.jpg
+animals|نسر|Eagle|https://upload.wikimedia.org/wikipedia/commons/a/a4/Bald_eagle_closeup_16x9.jpg
+brands|أبل|Apple|https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg
+brands|نايكي|Nike|https://upload.wikimedia.org/wikipedia/commons/a/a6/Logo_NIKE.svg
+brands|كوكاكولا|Coca-Cola|https://upload.wikimedia.org/wikipedia/commons/c/ce/Coca-Cola_logo.svg
+brands|ماكدونالدز|McDonald's|https://upload.wikimedia.org/wikipedia/commons/3/36/McDonald%27s_Golden_Arches.svg
+brands|ستاربكس|Starbucks|https://upload.wikimedia.org/wikipedia/commons/4/4d/Starbucks_logo.jpg
+brands|جوجل|Google|https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg
+brands|سامسونج|Samsung|https://upload.wikimedia.org/wikipedia/commons/a/a7/Samsung_logo.svg
+brands|تويوتا|Toyota|https://upload.wikimedia.org/wikipedia/commons/e/e7/Toyota.svg
+brands|أديداس|Adidas|https://upload.wikimedia.org/wikipedia/commons/2/20/Adidas_Logo.svg
+brands|مرسيدس|Mercedes|https://upload.wikimedia.org/wikipedia/commons/4/48/Mercedes-Benz_logo.svg
+brands|بي إم دبليو|BMW|https://upload.wikimedia.org/wikipedia/commons/4/44/BMW.svg
+brands|بيبسي|Pepsi|https://upload.wikimedia.org/wikipedia/commons/6/68/Pepsi_2023.svg
+players|كريستيانو رونالدو|Ronaldo|https://upload.wikimedia.org/wikipedia/commons/8/8c/Cristiano_Ronaldo_2018.jpg
+players|ليونيل ميسي|Messi|https://upload.wikimedia.org/wikipedia/commons/1/15/Lionel_Messi.jpg
+players|نيمار|Neymar|https://upload.wikimedia.org/wikipedia/commons/6/62/Neymar.jpg
+players|محمد صلاح|Salah|https://upload.wikimedia.org/wikipedia/commons/0/03/Mohamed_Salah.JPG
+players|كيليان مبابي|Mbappé|https://upload.wikimedia.org/wikipedia/commons/4/4a/Kylian_Mbapp%C3%A9.jpg
+players|إيرلينغ هالاند|Haaland|https://upload.wikimedia.org/wikipedia/commons/5/54/Erling_Haaland_2023.jpg
+players|كريم بنزيما|Benzema|https://upload.wikimedia.org/wikipedia/commons/2/23/Karim_Benzema.jpg
+players|رودري|Rodri|https://upload.wikimedia.org/wikipedia/commons/4/4b/RODRI_-_SWE_vs_ESP_-_UEFA_EURO_2020_QUALIFIERS_-_2019.10.15_%28cropped%29.jpg
+players|كيفن دي بروين|De Bruyne|https://upload.wikimedia.org/wikipedia/commons/4/40/Kevin_De_Bruyne_201807091.jpg
+players|لوكا مودريتش|Modrić|https://upload.wikimedia.org/wikipedia/commons/0/00/Luka_Modric_2015.jpg
+players|فينيسيوس جونيور|Vinícius Jr|https://upload.wikimedia.org/wikipedia/commons/3/37/Vinicius_Jr_2018_%28cropped%29.jpg
+players|روبرت ليفاندوفسكي|Lewandowski|https://upload.wikimedia.org/wikipedia/commons/0/03/Robert_Lewandowski%2C_FC_Bayern_M%C3%BCnchen_%28by_Sven_Mandel%2C_2019-05-27%29_01.jpg
+characters|ناروتو|Naruto|https://upload.wikimedia.org/wikipedia/commons/6/6b/Cosplay_-_AWA15_-_Naruto_Uzumaki_%283982533553%29.jpg
+characters|غوكو|Goku|https://upload.wikimedia.org/wikipedia/commons/4/45/NYCC_2016_-_Super_Saiyan_Blue_Goku_%2830227483945%29.jpg
+characters|بيكاتشو|Pikachu|https://upload.wikimedia.org/wikipedia/commons/f/f1/Pokemon_Pikachu_%28front%29.jpg
+characters|سبونج بوب|SpongeBob|https://upload.wikimedia.org/wikipedia/commons/7/7a/SpongeBob_SquarePants_character.png
+characters|ميكي ماوس|Mickey Mouse|https://upload.wikimedia.org/wikipedia/commons/d/d4/Mickey_Mouse.png
+characters|هومر سيمبسون|Homer Simpson|https://upload.wikimedia.org/wikipedia/commons/1/10/Simpsons_500th_Episode_Marathon_-_Homer_%286950944797%29.jpg
+characters|هاري بوتر|Harry Potter|https://upload.wikimedia.org/wikipedia/commons/9/97/Harry_Potter.jpg
+characters|دارث فيدر|Darth Vader|https://upload.wikimedia.org/wikipedia/commons/c/cd/Darth_Vader_%2828499862173%29.jpg
+characters|باتمان|Batman|https://upload.wikimedia.org/wikipedia/commons/3/34/Batman-minimal-poster-descktop.png
+characters|سوبر ماريو|Mario|https://upload.wikimedia.org/wikipedia/commons/6/67/AM2_Con_2012_-_Super_Mario_cosplay_%2814004571434%29.jpg
+characters|وودي|Woody|https://upload.wikimedia.org/wikipedia/commons/0/03/Woody_at_Toy_Story_Land%2C_Hong_Kong.jpg
+characters|إلسا|Elsa|https://upload.wikimedia.org/wikipedia/commons/e/ec/ElsaFrozen.jpg

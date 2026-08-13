@@ -1,0 +1,51 @@
+{
+  "batchId": "anime-naruto-distributed-information-001",
+  "manifestIdentity": {
+    "world": "anime",
+    "scope": "anime.naruto",
+    "challengeType": "distributed-information",
+    "patternId": "three-segment-race"
+  },
+  "status": "ready",
+  "totals": {
+    "items": 3,
+    "ready": 3,
+    "ready_with_warnings": 0,
+    "blocked": 0
+  },
+  "checks": {
+    "stableIds": "pass",
+    "referencedFilesExist": "pass",
+    "answerModesResolveAutomatically": "pass",
+    "privatePayloadVisibility": "pass",
+    "noAuthoredRuntimeState": "pass",
+    "truthOnlyInAnswerPayload": "pass",
+    "canonicalValidator": "pass",
+    "negativeFixtureEquivalent": "pass",
+    "setSize": "pass"
+  },
+  "findings": [
+    {
+      "findingId": "F-SET-DIVERSITY",
+      "note": "The three items exercise three distinct constructions (combined total, filtered count with distributed rule, relative ordering) across three distinct material axes (team leaders, Sannin summons, tailed-beast tail counts), so no two items test the same memory or interaction.",
+      "status": "satisfied"
+    },
+    {
+      "findingId": "F-READY-ELIGIBILITY",
+      "note": "Every item carries authorSafetyConfirmation=true and runtimeContractStatus=fully_playable, so each passes the canonical validator in both draft and ready status.",
+      "status": "satisfied"
+    },
+    {
+      "findingId": "F-MERGE-COVERAGE",
+      "note": "All merge options are exhaustive non-overlapping 2+1 partitions of A/B/C; reviewer solve-test confirmed each two-segment holding is insufficient.",
+      "status": "satisfied"
+    }
+  ],
+  "coverage": {
+    "distributedInformationInteraction": "all three items genuinely require combining A/B/C",
+    "twoPlayerTwoPlusOne": "each item supports a safe 2+1 distribution",
+    "spoilerBoundary": "no death, identity, or transformation spoilers; no sequel-only content"
+  },
+  "unresolvedRisks": [],
+  "handoff": "human_review"
+}

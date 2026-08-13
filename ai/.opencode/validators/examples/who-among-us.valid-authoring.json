@@ -1,0 +1,44 @@
+{
+  "id": "who-among-us-authoring-fixture",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": ["who-among-us"],
+  "patternId": "team-consensus",
+  "prompt": {"ar": "من في الفريق سيقترح الخطة الأكثر جرأة داخل عالم ناروتو؟"},
+  "answerMode": "vote",
+  "interactionPayload": {
+    "runtimeContractStatus": "runtime_contract_missing",
+    "actorModel": "active_team_all_eligible",
+    "rosterBinding": "active_team_eligible_roster",
+    "voteValueType": "participant_id",
+    "submissionLimitPerActor": 1,
+    "duplicateSelectionsAllowed": true,
+    "selfVotePolicy": "forbidden",
+    "minimumTeamSize": 3,
+    "maximumTeamSize": null,
+    "timerSeconds": null,
+    "timeoutPolicy": "runtime_contract_missing",
+    "individualVoteVisibility": "private_until_reveal",
+    "partialTallyVisibility": "hidden",
+    "revealTrigger": "all_submitted_or_runtime_deadline",
+    "hardcodedParticipantIds": [],
+    "hardcodedParticipantNames": []
+  },
+  "resolutionPayload": {
+    "resolution": "participant_vote_tally",
+    "winnerPolicy": "highest_vote_total",
+    "tiePolicy": "multiple_winners",
+    "winnerCardinality": "one_or_more",
+    "revealPayload": "final_tally_only",
+    "scoringPolicy": "social_reveal_only",
+    "matchPointValue": null
+  },
+  "media": null,
+  "isReusableAcrossSessions": true,
+  "metadata": {
+    "sources": [],
+    "validationStatus": "blocked",
+    "runtimeContractStatus": "runtime_contract_missing",
+    "runtimeBlocker": "runtime_contract_missing",
+    "explanation": "Authoring fixture only; not production content."
+  }
+}

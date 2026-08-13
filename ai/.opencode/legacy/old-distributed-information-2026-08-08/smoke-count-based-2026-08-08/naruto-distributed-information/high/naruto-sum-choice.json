@@ -1,0 +1,86 @@
+{
+  "id": "naruto-sum-choice",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "طبّقوا القاعدة الخاصة على الرقمين واختاروا الناتج."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "multiple_choice",
+    "correctOptionId": "a",
+    "options": [
+      {
+        "id": "a",
+        "label": {"ar": "ثمانية"}
+      },
+      {
+        "id": "b",
+        "label": {"ar": "خمسة عشر"}
+      },
+      {
+        "id": "c",
+        "label": {"ar": "اثنان"}
+      },
+      {
+        "id": "d",
+        "label": {"ar": "خمسة وثلاثون"}
+      }
+    ]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "ما الناتج بعد تطبيق القاعدة على الرقمين؟"
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "رقمك: 3."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "رقمك: 5."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "القاعدة: اجمع الرقمين."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": ["A", "B"],
+        "secondParticipantSegmentIds": ["C"]
+      },
+      {
+        "firstParticipantSegmentIds": ["A", "C"],
+        "secondParticipantSegmentIds": ["B"]
+      },
+      {
+        "firstParticipantSegmentIds": ["B", "C"],
+        "secondParticipantSegmentIds": ["A"]
+      }
+    ],
+    "supportedTeamSizes": [2, 3],
+    "authorSafetyConfirmation": true,
+    "explanation": "مجموع الرقمين 3 و5 يساوي 8؛ القاعدة في البطاقة الثالثة فلا تُعرف العملية من الرقمين وحدهما."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

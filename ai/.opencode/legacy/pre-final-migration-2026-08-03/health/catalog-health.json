@@ -1,0 +1,79 @@
+{
+ "version": 1,
+ "records": [
+  {
+   "catalog": "anime",
+   "subjectsWithContent": 1,
+   "totalSubjects": 1,
+   "volume": {
+    "generated": 60,
+    "approved": 2,
+    "rejected": 3,
+    "pending": 55,
+    "overallApprovalRate": 0.4,
+    "repair": 5
+   },
+   "difficulty": {
+    "easy": {
+     "generated": 19,
+     "approved": 1,
+     "rejected": 1
+    },
+    "medium": {
+     "generated": 25,
+     "approved": 0,
+     "rejected": 1
+    },
+    "hard": {
+     "generated": 16,
+     "approved": 1,
+     "rejected": 1
+    }
+   },
+   "mostCommonRejectionReason": "ANSWER_LEAKAGE",
+   "mostSuccessfulPattern": "knowledge_question",
+   "highestHealthSubject": "naruto (60 — Needs Attention)",
+   "attentionRequiredSubjects": [
+    "naruto"
+   ],
+   "lastAggregation": "2026-07-31"
+  },
+  {
+   "catalog": "gaming",
+   "subjectsWithContent": 1,
+   "totalSubjects": 1,
+   "volume": {
+    "generated": 35,
+    "approved": 2,
+    "rejected": 3,
+    "pending": 30,
+    "overallApprovalRate": 0.29,
+    "repair": 4
+   },
+   "difficulty": {
+    "easy": {
+     "generated": 9,
+     "approved": 1,
+     "rejected": 2
+    },
+    "medium": {
+     "generated": 20,
+     "approved": 0,
+     "rejected": 2
+    },
+    "hard": {
+     "generated": 6,
+     "approved": 0,
+     "rejected": 0
+    }
+   },
+   "mostCommonRejectionReason": "QUESTION_TOO_OBVIOUS",
+   "mostSuccessfulPattern": "sound_recognition",
+   "highestHealthSubject": "call-of-duty (66 — Needs Attention)",
+   "attentionRequiredSubjects": [
+    "call-of-duty"
+   ],
+   "lastAggregation": "2026-08-01"
+  }
+ ]
+}

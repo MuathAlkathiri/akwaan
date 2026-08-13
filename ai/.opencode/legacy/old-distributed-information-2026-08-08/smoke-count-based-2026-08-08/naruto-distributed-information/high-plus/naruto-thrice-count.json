@@ -1,0 +1,69 @@
+{
+  "id": "naruto-thrice-count",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "قارنوا القوائم الخاصة واحسبوا المشتركين."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "closest",
+    "correctValue": 3,
+    "acceptedTolerance": 0
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كم شخصية وردت في القوائم الثلاث كلها؟"
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "قائمتك: ناروتو، ساسكي، ساكورا، نيجي."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "قائمتك: ناروتو، ساسكي، ساكورا، هيناتا."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "قائمتك: ناروتو، ساسكي، ساكورا، كيبا."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": ["A", "B"],
+        "secondParticipantSegmentIds": ["C"]
+      },
+      {
+        "firstParticipantSegmentIds": ["A", "C"],
+        "secondParticipantSegmentIds": ["B"]
+      },
+      {
+        "firstParticipantSegmentIds": ["B", "C"],
+        "secondParticipantSegmentIds": ["A"]
+      }
+    ],
+    "supportedTeamSizes": [2, 3],
+    "authorSafetyConfirmation": true,
+    "explanation": "ناروتو وساسكي وساكورا وردوا في القوائم الثلاث؛ الاسم الإضافي في كل بطاقة مختلف فلا يُعرف الثلاثي دون كل القوائم."
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

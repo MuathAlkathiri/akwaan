@@ -1,0 +1,129 @@
+{
+  "id": "distributed-naruto-anbu-masked-leaf",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "حلّوا ألغازكم الفردية، وأعلنوا الحل الذي استخرجتموه، ثم اجمعوا الحلول الثلاثة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "multiple_choice",
+    "correctOptionId": "c",
+    "options": [
+      {
+        "id": "a",
+        "label": {
+          "ar": "الجذر"
+        }
+      },
+      {
+        "id": "b",
+        "label": {
+          "ar": "الأكاتسكي"
+        }
+      },
+      {
+        "id": "c",
+        "label": {
+          "ar": "الأنبو"
+        }
+      },
+      {
+        "id": "d",
+        "label": {
+          "ar": "شرطة كونوها"
+        }
+      }
+    ]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كل لاعب يحلّ لغزه الخاص وحده، ثم يعلن حلَّه. اجمعوا الحلول الثلاثة واختاروا من الخيارات المنظمةَ الوحيدة التي تجمعها الدلائل كلها."
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "لغزك الخاص: عُثر على رسالةٍ مشفّرةٍ بمفتاحٍ واحد: ○=ا، ▢=ل، △=و، ◇=ر، ☆=ق. فكّك ما كُتب: ○▢○△◇○☆، فتخرج بكلمةٍ تنطق انتماءً إلى إحدى قرى عالمك. ما الكلمة التي فككتها؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لغزك الخاص: نمطٌ يميّز أعضاءها: قناعٌ يحاكي وحوشًا وأطيافًا، أو عباءةٌ غيميّةٌ تخفي الوجهَ تحت طيّةٍ سوداء، أو اسمٌ مستعارٌ يمحو الحسبَ والنسب. ما الصفة الجامعة للمنظمات التي يختفي فيها وجهُ العضو واسمُه؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لغزك الخاص: منظماتٌ لها حضورٌ معترفٌ به على ساحة الحكاية: قوةٌ نخبويةٌ تخدم القريةَ خلف أقنعة، وشرطةٌ تنسب إلى عشيرةٍ عظيمة، وطائفةٌ يُخشى صيتها في كل القرى. وأمّا من كانت سريّةً لا يُعترف بها فلا يُعدّ لها حضورٌ. ما الصفة الجامعة للمنظمات ذات الحضور المعترف به؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "B"
+        ],
+        "secondParticipantSegmentIds": [
+          "C"
+        ]
+      },
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "B"
+        ]
+      },
+      {
+        "firstParticipantSegmentIds": [
+          "B",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "A"
+        ]
+      }
+    ],
+    "supportedTeamSizes": [
+      2,
+      3
+    ],
+    "authorSafetyConfirmation": true,
+    "explanation": "ألغازٌ مستقلة تُحلّ بمعرفة عالم ناروتو. أ: من قرية الأوراق (فكّ رمز)، ب: تخفي هوية أعضائها خلف أقنعة (نمط)، ج: ظهرت في الجزء الأول (علاقة زمنية). أي دليلين يبقيان خيارين (الأوراق+الأقنعة: الجذر/الأنبو، الأوراق+الجزء الأول: الأنبو/شرطة كونوها، الأقنعة+الجزء الأول: الأنبو/الأكاتسكي)، والثلاثة تفرد الأنبو. لا عدّ ولا جمع.",
+    "candidateSets": {
+      "A": [
+        "a",
+        "c",
+        "d"
+      ],
+      "B": [
+        "a",
+        "b",
+        "c"
+      ],
+      "C": [
+        "b",
+        "c",
+        "d"
+      ]
+    }
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

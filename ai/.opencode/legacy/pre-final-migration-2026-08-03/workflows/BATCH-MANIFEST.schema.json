@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://akwaan.local/schemas/content-batch-manifest.schema.json",
+  "title": "Akwaan Co-op Content Batch Manifest",
+  "description": "Challenge-first manifest for a human-supervised content-production batch.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "batchId",
+    "world",
+    "challengeType",
+    "scopes",
+    "targetContentItemCount",
+    "outputLanguage",
+    "spoilerPolicy",
+    "allowedAnswerModes",
+    "mediaPolicy",
+    "researchRequirements",
+    "sourceRequirements",
+    "outputDirectory",
+    "assignedRoles",
+    "status",
+    "createdAt",
+    "operatorNotes"
+  ],
+  "properties": {
+    "batchId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "examples": ["anime-one-piece-otaku-001"]
+    },
+    "world": {
+      "$ref": "#/$defs/namedKnowledgeRef",
+      "examples": [{"id": "anime", "skillPath": ".opencode/skills/worlds/anime/SKILL.md"}]
+    },
+    "challengeType": {
+      "$ref": "#/$defs/namedKnowledgeRef",
+      "examples": [{"id": "otaku", "skillPath": ".opencode/skills/challenges/anime/otaku/SKILL.md"}]
+    },
+    "scopes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/scopeRef"},
+      "examples": [[{"id": "one-piece", "knowledgePath": ".opencode/skills/scopes/anime/one-piece/KNOWLEDGE.md"}]]
+    },
+    "targetContentItemCount": {
+      "type": "integer",
+      "minimum": 1,
+      "examples": [10]
+    },
+    "outputLanguage": {
+      "type": "string",
+      "enum": ["ar", "en", "bilingual"],
+      "examples": ["ar"]
+    },
+    "spoilerPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tier", "recentContentAllowed", "notes"],
+      "properties": {
+        "tier": {
+          "type": "string",
+          "enum": ["broad_premise", "established_anime", "recent_anime", "manga_explicit", "custom"]
+        },
+        "recentContentAllowed": {"type": "boolean"},
+        "endpoint": {"type": ["string", "null"]},
+        "coolingPeriodDays": {"type": ["integer", "null"], "minimum": 0},
+        "notes": {"type": "string"}
+      }
+    },
+    "allowedAnswerModes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["multiple_choice", "closest", "match", "vote", "split"]
+      }
+    },
+    "mediaPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "allowedTypes", "assetCurationRequired", "notes"],
+      "properties": {
+        "mode": {"type": "string", "enum": ["text_only", "optional", "required", "mixed"]},
+        "allowedTypes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "enum": ["image", "audio", "video", "structured", "interactive"]}
+        },
+        "assetCurationRequired": {"type": "boolean"},
+        "notes": {"type": "string"}
+      }
+    },
+    "researchRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["freshVerificationRequired", "coverageTargets", "contentItemsForbidden", "notes"],
+      "properties": {
+        "freshVerificationRequired": {"type": "boolean"},
+        "coverageTargets": {"type": "array", "items": {"type": "string"}},
+        "contentItemsForbidden": {"type": "boolean", "const": true},
+        "notes": {"type": "string"}
+      }
+    },
+    "sourceRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimumIndependentSourcesForDisputedClaims", "officialPreferred", "preserveReferences", "notes"],
+      "properties": {
+        "minimumIndependentSourcesForDisputedClaims": {"type": "integer", "minimum": 2},
+        "officialPreferred": {"type": "boolean", "const": true},
+        "preserveReferences": {"type": "boolean", "const": true},
+        "notes": {"type": "string"}
+      }
+    },
+    "outputDirectory": {
+      "type": "string",
+      "pattern": "^\\.output/content-batches/[a-z0-9/_-]+/$",
+      "examples": [".output/content-batches/anime/one-piece/otaku/batch-001/"]
+    },
+    "assignedRoles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["researcher", "writer", "reviewer", "assetCurator", "contentQa"],
+      "properties": {
+        "researcher": {"$ref": "#/$defs/roleAssignment"},
+        "writer": {"$ref": "#/$defs/roleAssignment"},
+        "reviewer": {"$ref": "#/$defs/roleAssignment"},
+        "assetCurator": {"$ref": "#/$defs/optionalRoleAssignment"},
+        "contentQa": {"$ref": "#/$defs/roleAssignment"}
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["planned", "researching", "writing", "reviewing", "curating_assets", "qa", "human_review", "approved", "blocked", "cancelled", "manually_imported"]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "operatorNotes": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "namedKnowledgeRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "skillPath"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "skillPath": {"type": "string", "pattern": "^\\.opencode/skills/.+/SKILL\\.md$"}
+      }
+    },
+    "scopeRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "knowledgePath"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "knowledgePath": {"type": "string", "pattern": "^\\.opencode/skills/scopes/.+/KNOWLEDGE\\.md$"}
+      }
+    },
+    "roleAssignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rolePath", "outputFile", "assignee"],
+      "properties": {
+        "rolePath": {"type": "string", "pattern": "^\\.opencode/roles/.+\\.md$"},
+        "outputFile": {"type": "string", "pattern": "^0[1-5]-[a-z-]+\\.json$"},
+        "assignee": {"type": ["string", "null"]}
+      }
+    },
+    "optionalRoleAssignment": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/roleAssignment"}
+      ]
+    }
+  }
+}

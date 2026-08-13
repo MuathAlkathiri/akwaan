@@ -1,0 +1,129 @@
+{
+  "id": "distributed-naruto-itachi-clues",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "حلّوا ألغازكم الفردية، وأعلنوا الحل الذي استخرجتموه، ثم اجمعوا الحلول الثلاثة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "multiple_choice",
+    "correctOptionId": "a",
+    "options": [
+      {
+        "id": "a",
+        "label": {
+          "ar": "إيتاتشي"
+        }
+      },
+      {
+        "id": "b",
+        "label": {
+          "ar": "أوبيتو"
+        }
+      },
+      {
+        "id": "c",
+        "label": {
+          "ar": "أوروتشيمارو"
+        }
+      },
+      {
+        "id": "d",
+        "label": {
+          "ar": "كاكاشي"
+        }
+      }
+    ]
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كل لاعب يحلّ لغزه الخاص وحده، ثم يعلن حلَّه. اجمعوا الحلول الثلاثة واختاروا من الخيارات الشخصية الوحيدة التي تجمعها الدلائل كلها."
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "لغزك الخاص: منظمةٌ ارتدى أعضاؤها عباءاتٍ سوداء منقوشةً بغيماتٍ حمراء، وجالوا يطاردون حاملي الوحوش ذات الذيول. ما اسم المنظمة؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لغزك الخاص: فرقةٌ سرّية في قرية الأوراق، يخدم أعضاؤها خلف أقنعةٍ صامتة ويؤدون أوامر القائد دون أن يتركوا أثرًا. ما اسم الفرقة؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لغزك الخاص: عينٌ يرثها أصحابُها بالدم فترى حركةَ الخصم قبل أن يخطوَها؛ من يُحرم منها يستعيرُها عطيةً فيكافئ بها نبوغَه. من ارتبطت مسيرتُه بهذه العين ارتباطًا صريحًا؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "B"
+        ],
+        "secondParticipantSegmentIds": [
+          "C"
+        ]
+      },
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "B"
+        ]
+      },
+      {
+        "firstParticipantSegmentIds": [
+          "B",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "A"
+        ]
+      }
+    ],
+    "supportedTeamSizes": [
+      2,
+      3
+    ],
+    "authorSafetyConfirmation": true,
+    "explanation": "نموذج إبداعي: ألغازٌ مستقلة تُحلّ بمعرفة عالم ناروتو. أ: الأكاتسكي، ب: الأنبو/الخدمة السرية، ج: الارتباط بعين الشارينغان. أي دليلين يبقيان مرشحين اثنين (أ+ب: إيتاتشي/أوروتشيمارو، أ+ج: إيتاتشي/أوبيتو، ب+ج: إيتاتشي/كاكاشي)، والدلائل الثلاثة مع المعرفة العالمية تفرد إيتاتشي. لا عدّ ولا جمع ولا حساب.",
+    "candidateSets": {
+      "A": [
+        "a",
+        "b",
+        "c"
+      ],
+      "B": [
+        "a",
+        "c",
+        "d"
+      ],
+      "C": [
+        "a",
+        "b",
+        "d"
+      ]
+    }
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://akwaan.local/schemas/one-clue.schema.json",
+  "title": "One Clue ContentItem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id", "scopeId", "compatibleChallengeTypeIds", "patternId", "prompt",
+    "answerMode", "answerPayload", "mechanicPayload", "media",
+    "isReusableAcrossSessions", "status", "metadata"
+  ],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "scopeId": {"type": "string", "pattern": "^[a-z0-9-]+\\.[a-z0-9-]+$"},
+    "compatibleChallengeTypeIds": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "contains": {"const": "one-clue"},
+      "items": {"type": "string"}
+    },
+    "patternId": {"const": "progressive-clues"},
+    "prompt": {"$ref": "#/$defs/localizedText"},
+    "answerMode": {"const": "one_clue"},
+    "answerPayload": {
+      "type": "object", "additionalProperties": false,
+      "required": ["mode", "acceptedAnswers"],
+      "properties": {
+        "mode": {"const": "match"},
+        "acceptedAnswers": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "mechanicPayload": {
+      "type": "object", "additionalProperties": false,
+      "required": ["clues"],
+      "properties": {
+        "clues": {"type": "array", "minItems": 5, "maxItems": 5, "items": {"$ref": "#/$defs/clue"}}
+      }
+    },
+    "media": {"const": null},
+    "isReusableAcrossSessions": {"type": "boolean", "const": false},
+    "status": {"enum": ["draft", "reviewed", "ready", "blocked"]},
+    "metadata": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sources", "validationStatus", "runtimeContractStatus", "runtimeBlocker"],
+      "properties": {
+        "sources": {"type": "array", "items": {"type": "string"}},
+        "validationStatus": {"enum": ["draft", "reviewed", "ready", "blocked"]},
+        "runtimeContractStatus": {"const": "fully_playable"},
+        "runtimeBlocker": {"const": null},
+        "explanation": {"type": ["string", "null"]},
+        "notes": {"type": ["string", "null"]}
+      }
+    }
+  },
+  "$defs": {
+    "localizedText": {"type": "object", "additionalProperties": false, "required": ["ar"], "properties": {"ar": {"type": "string", "minLength": 1}, "en": {"type": "string", "minLength": 1}}},
+    "clue": {
+      "type": "object", "additionalProperties": false,
+      "required": ["order", "value", "text"],
+      "properties": {
+        "order": {"type": "integer", "minimum": 1, "maximum": 5},
+        "value": {"enum": [1, 2, 3, 4, 5]},
+        "text": {"$ref": "#/$defs/localizedText"}
+      }
+    }
+  }
+}

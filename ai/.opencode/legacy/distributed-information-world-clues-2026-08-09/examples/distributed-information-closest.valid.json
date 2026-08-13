@@ -1,0 +1,104 @@
+{
+  "id": "distributed-naruto-minato-hokage-order",
+  "scopeId": "anime.naruto",
+  "compatibleChallengeTypeIds": [
+    "distributed-information"
+  ],
+  "patternId": "three-segment-race",
+  "prompt": {
+    "ar": "حلّوا ألغازكم الفردية، وأعلنوا الحل الذي استخرجتموه، ثم اجمعوا الحلول الثلاثة."
+  },
+  "answerMode": "distributed",
+  "answerPayload": {
+    "mode": "closest",
+    "correctValue": 4,
+    "acceptedTolerance": 0
+  },
+  "mechanicPayload": {
+    "variant": "three-segment-race",
+    "publicPrompt": {
+      "ar": "كل لاعب يحلّ لغزه الخاص وحده، ثم يعلن حلَّه. اجمعوا الحلول الثلاثة لتحديد الشخصية الوحيدة التي تجمعها الدلائل كلها، ثم اكتبوا الرقم الترتيبي للمنصب الذي تولّته."
+    },
+    "segments": [
+      {
+        "id": "A",
+        "content": {
+          "ar": "لغزك الخاص: ألقابٌ سبقت المنصب وثبتت في الذاكرة: 'البروفيسور' الذي جمع في صدره كلَّ التقنيات، و'الأصفر السريع' الذي لم يدركه خصمٌ قط، و'أستاذ النسخ' الذي أتقن آلافَها من أول نظرة. ممن نال هؤلاء لقبَ عبقريٍّ أو أستاذٍ قبل أن يتقلّدوا القيادة؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "B",
+        "content": {
+          "ar": "لغزك الخاص: ساعاتٌ صارت القريةُ فيها على شفا الدمار فحمل القائدُ الأمانةَ بجسده: ليلةٌ سقط فيها الوحشُ الأعظم على الجدران، وامتحانٌ أُقيم فكاد يُحيل القريةَ رمادًا، وغزوٌ وُجّهت فيه القبضةُ إلى قلب القرية. من حملوا عبءَ الحماية في ساعات الخطر الكبرى؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      },
+      {
+        "id": "C",
+        "content": {
+          "ar": "لغزك الخاص: دربُ الأصفر السريع: هو نفسُه، أو تلميذُه الذي صار أستاذَ النسخ، أو ابنُه الذي ورث الحلمَ فحمله حتى القمة. من ترتبط مسيرتُه مباشرةً بدرب الأصفر السريع؟ حلُّ اللغز هو الدليل الذي ستعلنه."
+        }
+      }
+    ],
+    "twoPlayerMergeOptions": [
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "B"
+        ],
+        "secondParticipantSegmentIds": [
+          "C"
+        ]
+      },
+      {
+        "firstParticipantSegmentIds": [
+          "A",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "B"
+        ]
+      },
+      {
+        "firstParticipantSegmentIds": [
+          "B",
+          "C"
+        ],
+        "secondParticipantSegmentIds": [
+          "A"
+        ]
+      }
+    ],
+    "supportedTeamSizes": [
+      2,
+      3
+    ],
+    "authorSafetyConfirmation": true,
+    "explanation": "نموذج إبداعي: ألغازٌ مستقلة تُحلّ بمعرفة عالم ناروتو. أ: الألقاب (البروفيسور/الأصفر السريع/أستاذ النسخ) فتُبقي هيروزين(3)/ميناتو(4)/كاكاشي(6)، ب: ساعات الخطر الكبرى فتُبقي هيروزين(3)/ميناتو(4)/ناروتو(7)، ج: درب الأصفر السريع فتُبقي ميناتو(4)/كاكاشي(6)/ناروتو(7). أي دليلين يبقيان رقمين مختلفين، والدلائل الثلاثة تفرد الرقم 4 (ميناتو). لا عدّ ولا جمع ولا حساب.",
+    "candidateSets": {
+      "A": [
+        3,
+        4,
+        6
+      ],
+      "B": [
+        3,
+        4,
+        7
+      ],
+      "C": [
+        4,
+        6,
+        7
+      ]
+    }
+  },
+  "status": "ready",
+  "metadata": {
+    "sources": [
+      "naruto.anime.main-continuity"
+    ],
+    "validationStatus": "ready",
+    "runtimeContractStatus": "fully_playable",
+    "runtimeBlocker": null
+  }
+}

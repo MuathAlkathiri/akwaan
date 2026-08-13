@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://akwaan.local/schemas/top-10-contentitem.schema.json",
+  "title": "Akwaan Top 10 ContentItem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id", "scopeId", "compatibleChallengeTypeIds", "patternId", "prompt",
+    "answerMode", "interactionPayload", "resolutionPayload", "media",
+    "isReusableAcrossSessions", "metadata"
+  ],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "scopeId": {"type": "string", "pattern": "^[a-z0-9-]+\\.[a-z0-9-]+$"},
+    "compatibleChallengeTypeIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "contains": {"const": "top-10"},
+      "items": {"type": "string"}
+    },
+    "patternId": {"enum": ["classic", "poison-deck"]},
+    "prompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {"ar": {"type": "string", "minLength": 1}, "en": {"type": "string", "minLength": 1}}
+    },
+    "answerMode": {"const": "top_10"},
+    "interactionPayload": {"type": "object"},
+    "resolutionPayload": {"type": "object"},
+    "media": {"type": "null"},
+    "isReusableAcrossSessions": {"type": "boolean", "const": false},
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sources", "validationStatus", "decoyReview"],
+      "properties": {
+        "sources": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "validationStatus": {"enum": ["draft", "reviewed", "ready", "blocked"]},
+        "explanation": {"type": ["string", "null"]},
+        "decoyReview": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["candidateId", "cutoffDistance", "plausibility", "tooEasy"],
+            "properties": {
+              "candidateId": {"type": "string", "minLength": 1},
+              "cutoffDistance": {"type": "integer", "minimum": 1},
+              "plausibility": {"type": "string", "minLength": 1},
+              "tooEasy": {"type": "boolean"}
+            }
+          }
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {"$ref": "#/$defs/classic"},
+    {"$ref": "#/$defs/poisonDeck"}
+  ],
+  "$defs": {
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "shortLabel": {"type": "string"},
+        "sourceValue": {"type": ["number", "string"]},
+        "media": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "path", "visibility", "requiredObservation", "provenance"],
+          "properties": {
+            "type": {"const": "image"},
+            "path": {"type": "string", "minLength": 1},
+            "visibility": {"const": "public"},
+            "requiredObservation": {"type": "string", "minLength": 1},
+            "provenance": {"type": "object"}
+          }
+        }
+      }
+    },
+    "classic": {
+      "properties": {
+        "patternId": {"const": "classic"},
+        "interactionPayload": {
+          "type": "object",
+          "properties": {"variant": {"const": "classic"}},
+          "additionalProperties": true
+        },
+        "resolutionPayload": {
+          "type": "object",
+          "required": ["rankedEntries"],
+          "properties": {
+            "rankedEntries": {"type": "array", "minItems": 10, "maxItems": 10}
+          },
+          "additionalProperties": true
+        },
+        "metadata": {
+          "properties": {"decoyReview": {"type": "array", "maxItems": 0}}
+        }
+      }
+    },
+    "poisonDeck": {
+      "properties": {
+        "patternId": {"const": "poison-deck"},
+        "interactionPayload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "variant", "title", "rankingBasis", "sourceLabel", "sourceUrl",
+            "asOfDate", "candidates", "teamCount", "turnCount",
+            "turnDeadlineSeconds", "actions", "timeoutAction"
+          ],
+          "properties": {
+            "variant": {"const": "poison-deck"},
+            "title": {"type": "string", "minLength": 1},
+            "rankingBasis": {"type": "string", "minLength": 1},
+            "sourceLabel": {"type": "string", "minLength": 1},
+            "sourceUrl": {"type": "string", "format": "uri", "minLength": 1},
+            "asOfDate": {"type": "string", "format": "date"},
+            "tiebreaker": {"type": "string", "minLength": 1},
+            "candidates": {
+              "type": "array", "minItems": 14, "maxItems": 14,
+              "items": {"$ref": "#/$defs/candidate"}
+            },
+            "teamCount": {"const": 2},
+            "turnCount": {"const": 14},
+            "turnDeadlineSeconds": {"const": 6},
+            "actions": {"const": ["KEEP", "POISON"]},
+            "timeoutAction": {"const": "KEEP"}
+          }
+        },
+        "resolutionPayload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rankedEntries", "decoyCandidateIds", "revealOrder",
+            "validOwnedCardValue", "decoyOwnedCardValue", "poisonBonus",
+            "scoringRuleId", "winnerScoreEventType", "tieScoreEventType",
+            "socialMetricIds"
+          ],
+          "properties": {
+            "rankedEntries": {
+              "type": "array", "minItems": 10, "maxItems": 10,
+              "items": {
+                "type": "object", "additionalProperties": false,
+                "required": ["candidateId", "rank"],
+                "properties": {
+                  "candidateId": {"type": "string", "minLength": 1},
+                  "rank": {"type": "integer", "minimum": 1, "maximum": 10}
+                }
+              }
+            },
+            "decoyCandidateIds": {
+              "type": "array", "minItems": 4, "maxItems": 4,
+              "uniqueItems": true, "items": {"type": "string", "minLength": 1}
+            },
+            "revealOrder": {"const": "rank_10_to_1_then_decoys"},
+            "validOwnedCardValue": {"const": 1},
+            "decoyOwnedCardValue": {"const": -1},
+            "poisonBonus": {"const": 0},
+            "scoringRuleId": {"const": "top10.poison-deck.result"},
+            "winnerScoreEventType": {"const": "top10.poison-deck.win"},
+            "tieScoreEventType": {"type": "null"},
+            "socialMetricIds": {
+              "const": ["successfulPoison", "giftedValidCard", "selfKeptDecoy", "selfKeptValid"]
+            }
+          }
+        },
+        "metadata": {
+          "properties": {"decoyReview": {"type": "array", "minItems": 4, "maxItems": 4}}
+        }
+      }
+    }
+  }
+}
