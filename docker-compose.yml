@@ -79,6 +79,9 @@ volumes:
   # would silently bind a brand new empty volume and orphan the live data.
   # LEGACY_PERSISTED_IDENTIFIER — the `lammah-game_` prefix is storage identity,
   # not branding. Do not "clean up" without a verified volume migration.
+  # `up` prints "volume ... was created for project lammah-game (expected akwaan)".
+  # That warning is expected and correct: it means Compose found and reused the
+  # existing data instead of creating an empty volume. Nothing to fix.
   backend_uploads:
     name: lammah-game_backend_uploads
   mongodb_data:
