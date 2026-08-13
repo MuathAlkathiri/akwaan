@@ -6,10 +6,10 @@ const outputRoot = process.env.ORVAL_OUTPUT_ROOT
   : path.resolve(__dirname, "src/api/generated");
 
 export default defineConfig({
-  lammahApi: {
+  akwaanApi: {
     input: path.resolve(
       __dirname,
-      "../Lammah-game-backend/openapi/openapi.json",
+      "../backend/openapi/openapi.json",
     ),
     output: {
       mode: "tags-split",

@@ -1,14 +1,18 @@
+name: akwaan
+
 services:
   backend:
     build:
       context: .
-      dockerfile: Lammah-game-backend/Dockerfile
+      dockerfile: backend/Dockerfile
     env_file:
-      - ./Lammah-game-backend/.env
+      - ./backend/.env
     environment:
       NODE_ENV: production
       PORT: 3000
       APP_BASE_URL: http://localhost:3002
+      # LEGACY_PERSISTED_IDENTIFIER: `lammah-quiz` is the live database name and
+      # predates the Akwaan rename. Do not "fix" it — see the volumes note below.
       MONGODB_URI: ${BACKEND_MONGODB_URI:-mongodb://mongodb:27017/lammah-quiz?replicaSet=rs0}
       LMSTUDIO_BASE_URL: ${BACKEND_LMSTUDIO_BASE_URL:-http://host.docker.internal:1234/v1}
       LM_STUDIO_BASE_URL: ${BACKEND_LM_STUDIO_BASE_URL:-http://host.docker.internal:1234/v1}
@@ -38,7 +42,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Lammah-game-frontend/Dockerfile
+      dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://localhost:3002
     environment:
@@ -70,5 +74,12 @@ services:
     restart: unless-stopped
 
 volumes:
+  # Pinned to their pre-rename names on purpose. Compose otherwise derives volume
+  # names from the project name, so renaming the project/directory to `akwaan`
+  # would silently bind a brand new empty volume and orphan the live data.
+  # LEGACY_PERSISTED_IDENTIFIER — the `lammah-game_` prefix is storage identity,
+  # not branding. Do not "clean up" without a verified volume migration.
   backend_uploads:
+    name: lammah-game_backend_uploads
   mongodb_data:
+    name: lammah-game_mongodb_data

@@ -20,11 +20,11 @@ services:
     volumes: [".:/workspace"]
     environment:
       NODE_ENV: test
-      TEST_MONGODB_URI: mongodb://mongodb-test:27017/lammah_integration_test?replicaSet=rs0
-      MONGODB_URI: mongodb://mongodb-test:27017/lammah_integration_test?replicaSet=rs0
+      TEST_MONGODB_URI: mongodb://mongodb-test:27017/akwaan_integration_test?replicaSet=rs0
+      MONGODB_URI: mongodb://mongodb-test:27017/akwaan_integration_test?replicaSet=rs0
       JWT_SECRET: docker-integration-only-secret
       EXTERNAL_INTEGRATIONS_DISABLED: "true"
-      NODE_PATH: /workspace/Lammah-game-backend/node_modules:/workspace/node_modules
+      NODE_PATH: /workspace/backend/node_modules:/workspace/node_modules
     command: npm run test:backend:integration
     depends_on:
       mongodb-test: { condition: service_healthy }
@@ -33,7 +33,7 @@ services:
   media-integration:
     build:
       context: .
-      dockerfile: Lammah-game-backend/Dockerfile
+      dockerfile: backend/Dockerfile
       target: build
     working_dir: /app
     command: sh -c "apk add --no-cache ffmpeg && npm run test:media:integration"
@@ -42,21 +42,21 @@ services:
   backend-e2e:
     build:
       context: .
-      dockerfile: Lammah-game-backend/Dockerfile
+      dockerfile: backend/Dockerfile
       target: build
     working_dir: /app
     environment:
       NODE_ENV: test
-      TEST_MONGODB_URI: mongodb://mongodb-test:27017/lammah_e2e_test?replicaSet=rs0
-      MONGODB_URI: mongodb://mongodb-test:27017/lammah_e2e_test?replicaSet=rs0
+      TEST_MONGODB_URI: mongodb://mongodb-test:27017/akwaan_e2e_test?replicaSet=rs0
+      MONGODB_URI: mongodb://mongodb-test:27017/akwaan_e2e_test?replicaSet=rs0
       JWT_SECRET: docker-e2e-only-secret
       EXTERNAL_INTEGRATIONS_DISABLED: "true"
       PORT: 3000
-      NODE_PATH: /app/Lammah-game-backend/node_modules:/app/node_modules
+      NODE_PATH: /app/backend/node_modules:/app/node_modules
       AI_PROVIDER: lmstudio
       LMSTUDIO_BASE_URL: http://127.0.0.1:9/v1
       CORS_ORIGINS: http://127.0.0.1:3201
-    command: sh -c "npm run test:fixtures:seed --workspace Lammah-game-backend && npm run start --workspace Lammah-game-backend"
+    command: sh -c "npm run test:fixtures:seed --workspace backend && npm run start --workspace backend"
     ports: ["127.0.0.1:3100:3000"]
     depends_on:
       mongodb-test: { condition: service_healthy }
@@ -65,7 +65,7 @@ services:
   frontend-e2e:
     build:
       context: .
-      dockerfile: Lammah-game-frontend/Dockerfile
+      dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://127.0.0.1:3100
     environment:

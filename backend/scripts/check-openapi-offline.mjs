@@ -2,7 +2,7 @@ import { readFileSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 
-const output = resolve("/tmp/lammah-openapi-offline-check.json");
+const output = resolve("/tmp/akwaan-openapi-offline-check.json");
 const result = spawnSync("npm", ["run", "api:openapi"], {
   cwd: resolve(import.meta.dirname, ".."),
   encoding: "utf8",

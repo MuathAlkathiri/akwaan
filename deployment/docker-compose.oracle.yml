@@ -1,4 +1,4 @@
-name: lammah
+name: akwaan
 
 services:
   mongodb:
@@ -21,7 +21,7 @@ services:
   backend:
     build:
       context: ..
-      dockerfile: Lammah-game-backend/Dockerfile
+      dockerfile: backend/Dockerfile
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -32,7 +32,7 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
-      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-Lammah Admin}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-Akwaan Admin}
       UPLOADS_DIR: /app/uploads
       SWAGGER_ENABLED: "false"
       AI_QUESTION_GENERATION_ENABLED: "false"
@@ -66,7 +66,7 @@ services:
   frontend:
     build:
       context: ..
-      dockerfile: Lammah-game-frontend/Dockerfile
+      dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: https://${API_HOST:?Set API_HOST in deployment/.env}
     environment:
@@ -117,6 +117,10 @@ networks:
     driver: bridge
 
 volumes:
+  # LEGACY_PERSISTED_IDENTIFIER — these volumes already exist on the deployed VM.
+  # The `lammah_` prefix is storage identity, not branding: renaming it here would
+  # orphan the live remote data on the next `up`. Only change alongside a verified
+  # volume migration performed on the VM itself.
   mongodb_data:
     name: lammah_mongodb_data
   backend_uploads:

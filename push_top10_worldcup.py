@@ -170,7 +170,7 @@ def main() -> int:
     parser.add_argument(
         "--env-file",
         type=Path,
-        default=Path(__file__).resolve().parent / "Lammah-game-backend" / ".env",
+        default=Path(__file__).resolve().parent / "backend" / ".env",
     )
     args = parser.parse_args()
 

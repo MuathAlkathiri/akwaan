@@ -1,14 +1,14 @@
 [
   {
     "label": "dev: backend",
-    "command": "npm run start:dev --workspace Lammah-game-backend",
+    "command": "npm run start:dev --workspace backend",
     "cwd": ".",
     "use_new_terminal": true,
     "allow_concurrent_runs": false
   },
   {
     "label": "dev: frontend",
-    "command": "npm run dev --workspace Lammah-game-frontend",
+    "command": "npm run dev --workspace frontend",
     "cwd": ".",
     "use_new_terminal": true,
     "allow_concurrent_runs": false
@@ -29,14 +29,14 @@
   },
   {
     "label": "test: backend",
-    "command": "npm run test --workspace Lammah-game-backend -- --runInBand",
+    "command": "npm run test --workspace backend -- --runInBand",
     "cwd": ".",
     "use_new_terminal": true,
     "allow_concurrent_runs": false
   },
   {
     "label": "test: frontend",
-    "command": "npm run test --workspace Lammah-game-frontend",
+    "command": "npm run test --workspace frontend",
     "cwd": ".",
     "use_new_terminal": true,
     "allow_concurrent_runs": false
@@ -50,14 +50,14 @@
   },
   {
     "label": "build: backend",
-    "command": "npm run build --workspace Lammah-game-backend",
+    "command": "npm run build --workspace backend",
     "cwd": ".",
     "use_new_terminal": true,
     "allow_concurrent_runs": false
   },
   {
     "label": "build: frontend",
-    "command": "npm run build --workspace Lammah-game-frontend",
+    "command": "npm run build --workspace frontend",
     "cwd": ".",
     "use_new_terminal": true,
     "allow_concurrent_runs": false
