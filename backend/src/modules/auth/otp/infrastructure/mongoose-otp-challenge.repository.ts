@@ -19,7 +19,6 @@ export class MongooseOtpChallengeRepository implements OtpChallengeRepository {
     identifierType: 'email' | 'phone';
     codeHash: string;
     expiresAt: Date;
-    maxAttempts: number;
     issuedAt: Date;
     issuanceCount: number;
     requestIp: string | null;
@@ -45,8 +44,6 @@ export class MongooseOtpChallengeRepository implements OtpChallengeRepository {
       purpose: 'login',
       codeHash: input.codeHash,
       expiresAt: input.expiresAt,
-      attempts: 0,
-      maxAttempts: input.maxAttempts,
       consumedAt: null,
       invalidatedAt: null,
       issuedAt: input.issuedAt,
@@ -86,13 +83,6 @@ export class MongooseOtpChallengeRepository implements OtpChallengeRepository {
       .exec();
     return result.modifiedCount === 1;
   }
-
-  async recordFailedAttempt(id: string): Promise<number> {
-    const updated = await this.model
-      .findOneAndUpdate({ _id: id }, { $inc: { attempts: 1 } }, { new: true })
-      .exec();
-    return updated?.attempts ?? Number.MAX_SAFE_INTEGER;
-  }
 }
 
 function toDomain(document: OtpChallengeDocument): OtpChallenge {
@@ -103,8 +93,6 @@ function toDomain(document: OtpChallengeDocument): OtpChallenge {
     purpose: document.purpose,
     codeHash: document.codeHash,
     expiresAt: new Date(document.expiresAt),
-    attempts: document.attempts,
-    maxAttempts: document.maxAttempts,
     consumedAt: document.consumedAt ? new Date(document.consumedAt) : null,
     invalidatedAt: document.invalidatedAt
       ? new Date(document.invalidatedAt)

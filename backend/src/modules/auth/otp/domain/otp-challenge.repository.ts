@@ -9,8 +9,6 @@ export interface OtpChallenge {
   purpose: 'login';
   codeHash: string;
   expiresAt: Date;
-  attempts: number;
-  maxAttempts: number;
   consumedAt: Date | null;
   invalidatedAt: Date | null;
   issuedAt: Date;
@@ -29,7 +27,6 @@ export interface OtpChallengeRepository {
     identifierType: OtpIdentifierType;
     codeHash: string;
     expiresAt: Date;
-    maxAttempts: number;
     issuedAt: Date;
     issuanceCount: number;
     requestIp: string | null;
@@ -48,9 +45,10 @@ export interface OtpChallengeRepository {
    * to consumed. Two simultaneous verifications of the same correct code must
    * produce exactly one true, so this has to be a single conditional update in
    * the database rather than a read followed by a write.
+   *
+   * This is the only thing that ends a challenge early. A wrong guess leaves it
+   * untouched: brute force is held off by request throttling, not by burning
+   * the code the legitimate user is still typing.
    */
   consume(id: string, consumedAt: Date): Promise<boolean>;
-
-  /** Records a wrong guess. Returns the attempt count after incrementing. */
-  recordFailedAttempt(id: string): Promise<number>;
 }

@@ -17,8 +17,20 @@ export class OtpConfig {
     return this.positive('OTP_RESEND_COOLDOWN_SECONDS', 60);
   }
 
-  get maxAttempts(): number {
-    return this.positive('OTP_MAX_ATTEMPTS', 5);
+  /**
+   * Verification throttles, per minute.
+   *
+   * These replaced the per-challenge attempt ceiling. A user mistyping a digit
+   * should not burn their code, but a script should not get a million guesses
+   * either: at 10/minute an identifier can try roughly 50 codes inside a
+   * five-minute window, which is 0.005% of the six-digit space.
+   */
+  get maxVerifyPerIdentifierPerMinute(): number {
+    return this.positive('OTP_MAX_VERIFY_PER_IDENTIFIER_MINUTE', 10);
+  }
+
+  get maxVerifyPerIpPerMinute(): number {
+    return this.positive('OTP_MAX_VERIFY_PER_IP_MINUTE', 20);
   }
 
   /** Requests per identifier per hour, above the per-minute cooldown. */

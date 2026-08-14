@@ -29,12 +29,6 @@ export class OtpChallengeDocument extends Document {
   @Prop({ required: true })
   expiresAt: Date;
 
-  @Prop({ required: true, default: 0 })
-  attempts: number;
-
-  @Prop({ required: true })
-  maxAttempts: number;
-
   /** Set once, by the single verification that wins the race. */
   @Prop({ type: Date, default: null })
   consumedAt: Date | null;

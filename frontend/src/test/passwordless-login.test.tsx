@@ -40,7 +40,9 @@ describe("passwordless login", () => {
     requestOtp.mockResolvedValue(sent);
     loginWithOtp.mockResolvedValue({ user: { role: "user" } });
   });
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it("requests a code for an email and moves to the code step", async () => {
     const user = userEvent.setup();
@@ -146,7 +148,7 @@ describe("passwordless login", () => {
   it.each([
     ["OTP_INVALID", "الرمز غير صحيح."],
     ["OTP_EXPIRED", "انتهت صلاحية الرمز. اطلب رمزًا جديدًا."],
-    ["OTP_TOO_MANY_ATTEMPTS", "تجاوزت عدد المحاولات. اطلب رمزًا جديدًا."],
+    ["OTP_RATE_LIMITED", "محاولات كثيرة. حاول بعد قليل."],
   ])("surfaces the %s state from the server", async (code, message) => {
     loginWithOtp.mockRejectedValue(apiError(code, message));
     const user = userEvent.setup();
@@ -163,10 +165,10 @@ describe("passwordless login", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("shows remaining attempts when the server reports them", async () => {
-    loginWithOtp.mockRejectedValue(
-      apiError("OTP_INVALID", "الرمز غير صحيح.", { remainingAttempts: 3 }),
-    );
+  it("never shows a remaining-attempts count", async () => {
+    // A wrong code no longer consumes an allowance, so there is nothing to
+    // count down and nothing to display.
+    loginWithOtp.mockRejectedValue(apiError("OTP_INVALID", "الرمز غير صحيح."));
     const user = userEvent.setup();
     render(<PasswordlessLoginForm />);
     await user.type(screen.getByTestId("otp-email-input"), "a@b.com");
@@ -175,8 +177,24 @@ describe("passwordless login", () => {
     await user.type(screen.getByTestId("otp-digit-0"), "000000");
 
     await waitFor(() =>
-      expect(screen.getByTestId("otp-error")).toHaveTextContent("3"),
+      expect(screen.getByTestId("otp-error")).toHaveTextContent("الرمز غير صحيح."),
     );
+    expect(screen.getByTestId("otp-error")).not.toHaveTextContent("المتبقية");
+  });
+
+  it("keeps the code entry usable after a wrong code", async () => {
+    loginWithOtp.mockRejectedValue(apiError("OTP_INVALID", "الرمز غير صحيح."));
+    const user = userEvent.setup();
+    render(<PasswordlessLoginForm />);
+    await user.type(screen.getByTestId("otp-email-input"), "a@b.com");
+    await user.click(screen.getByTestId("otp-request-button"));
+    await waitFor(() => screen.getByTestId("otp-digit-0"));
+    await user.type(screen.getByTestId("otp-digit-0"), "000000");
+    await waitFor(() => screen.getByTestId("otp-error"));
+
+    // Still enterable: the challenge is alive, so the user retypes rather than
+    // being told to start over.
+    expect(screen.getByTestId("otp-digit-0")).not.toBeDisabled();
   });
 
   it("counts down before offering a resend", async () => {

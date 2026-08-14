@@ -24,7 +24,6 @@ class MemoryChallengeRepository implements OtpChallengeRepository {
     identifierType: 'email' | 'phone';
     codeHash: string;
     expiresAt: Date;
-    maxAttempts: number;
     issuedAt: Date;
     issuanceCount: number;
     requestIp: string | null;
@@ -46,8 +45,6 @@ class MemoryChallengeRepository implements OtpChallengeRepository {
       purpose: 'login',
       codeHash: input.codeHash,
       expiresAt: input.expiresAt,
-      attempts: 0,
-      maxAttempts: input.maxAttempts,
       consumedAt: null,
       invalidatedAt: null,
       issuedAt: input.issuedAt,
@@ -78,13 +75,6 @@ class MemoryChallengeRepository implements OtpChallengeRepository {
     if (!row || row.consumedAt) return false;
     row.consumedAt = consumedAt;
     return true;
-  }
-
-  async recordFailedAttempt(id: string) {
-    const row = this.rows.find((r) => r.id === id);
-    if (!row) return Number.MAX_SAFE_INTEGER;
-    row.attempts += 1;
-    return row.attempts;
   }
 }
 
@@ -118,6 +108,7 @@ describe('passwordless OTP flow', () => {
   let email: CapturingEmailProvider;
   let limiter: OtpRateLimiter;
   let codes: OtpCodeService;
+  let otpConfig: OtpConfig;
   let request: RequestOtp;
   let verify: VerifyOtp;
   let users: {
@@ -136,7 +127,7 @@ describe('passwordless OTP flow', () => {
     email = new CapturingEmailProvider();
     limiter = new OtpRateLimiter();
     codes = new OtpCodeService(config({ OTP_HASH_PEPPER: 'test-pepper' }));
-    const otpConfig = new OtpConfig(config());
+    otpConfig = new OtpConfig(config());
     request = new RequestOtp(
       challenges,
       codes,
@@ -162,6 +153,7 @@ describe('passwordless OTP flow', () => {
       users as never,
       { sign: () => 'signed.jwt.token' } as never,
       limiter,
+      otpConfig,
     );
   });
 
@@ -218,10 +210,10 @@ describe('passwordless OTP flow', () => {
       // The superseded row is marked, and only the newest code opens the door.
       expect(challenges.rows[1].invalidatedAt).not.toBeNull();
       await expect(
-        verify.execute({ identifier: EMAIL, code: first }),
+        verify.execute({ ip: null, identifier: EMAIL, code: first }),
       ).rejects.toMatchObject({ response: { code: 'OTP_INVALID' } });
       await expect(
-        verify.execute({ identifier: EMAIL, code: lastCode() }),
+        verify.execute({ ip: null, identifier: EMAIL, code: lastCode() }),
       ).resolves.toMatchObject({ accessToken: 'signed.jwt.token' });
     });
 
@@ -264,6 +256,7 @@ describe('passwordless OTP flow', () => {
 
     it('accepts the correct code and issues the existing token shape', async () => {
       const result = await verify.execute({
+        ip: null,
         identifier: EMAIL,
         code: lastCode(),
       });
@@ -273,45 +266,80 @@ describe('passwordless OTP flow', () => {
       expect(result.isNewUser).toBe(true);
     });
 
-    it('increments attempts on a wrong code', async () => {
+    /**
+     * The product decision: an OTP is not spent by getting it wrong. Someone
+     * mistyping a digit on a phone keyboard should be able to correct it, so
+     * the challenge survives any number of wrong codes and brute force is held
+     * off by request throttling instead.
+     */
+    it('leaves the challenge usable after a wrong code', async () => {
       await expect(
-        verify.execute({ identifier: EMAIL, code: '000000' }),
+        verify.execute({ ip: null, identifier: EMAIL, code: '000000' }),
       ).rejects.toMatchObject({ response: { code: 'OTP_INVALID' } });
 
-      expect(challenges.rows[0].attempts).toBe(1);
+      expect(challenges.rows[0].consumedAt).toBeNull();
+      expect(challenges.rows[0].invalidatedAt).toBeNull();
     });
 
-    it('rejects the sixth attempt', async () => {
-      for (let attempt = 0; attempt < 4; attempt += 1) {
+    it('never reports a remaining-attempts allowance', async () => {
+      const failure = await verify
+        .execute({ ip: null, identifier: EMAIL, code: '000000' })
+        .catch(
+          (error: { response: Record<string, unknown> }) => error.response,
+        );
+
+      expect(failure).not.toHaveProperty('remainingAttempts');
+      expect(failure).toMatchObject({ code: 'OTP_INVALID' });
+    });
+
+    it('still accepts the correct code after several wrong ones', async () => {
+      for (const wrong of ['000000', '111111', '222222', '333333', '444444']) {
         await expect(
-          verify.execute({ identifier: EMAIL, code: '000000' }),
+          verify.execute({ ip: null, identifier: EMAIL, code: wrong }),
         ).rejects.toMatchObject({ response: { code: 'OTP_INVALID' } });
       }
-      // Fifth wrong guess exhausts the allowance.
+
+      // Six wrong guesses would previously have locked this out entirely.
       await expect(
-        verify.execute({ identifier: EMAIL, code: '000000' }),
-      ).rejects.toMatchObject({ response: { code: 'OTP_TOO_MANY_ATTEMPTS' } });
-      // Sixth is refused before the code is even compared, so even the correct
-      // code cannot rescue an exhausted challenge.
+        verify.execute({ ip: null, identifier: EMAIL, code: lastCode() }),
+      ).resolves.toMatchObject({ accessToken: 'signed.jwt.token' });
+    });
+
+    it('throttles high-frequency guessing without ending the challenge', async () => {
+      // Ten per identifier per minute is the ceiling; the eleventh is paused.
+      for (let guess = 0; guess < 10; guess += 1) {
+        await verify
+          .execute({ ip: '9.9.9.9', identifier: EMAIL, code: '000000' })
+          .catch(() => undefined);
+      }
       await expect(
-        verify.execute({ identifier: EMAIL, code: lastCode() }),
-      ).rejects.toMatchObject({ response: { code: 'OTP_TOO_MANY_ATTEMPTS' } });
+        verify.execute({ ip: '9.9.9.9', identifier: EMAIL, code: '000000' }),
+      ).rejects.toMatchObject({
+        response: {
+          code: 'OTP_RATE_LIMITED',
+          retryAfterSeconds: expect.any(Number),
+        },
+      });
+
+      // Throttled, not burned: the code is still the valid one.
+      expect(challenges.rows[0].consumedAt).toBeNull();
+      expect(challenges.rows[0].invalidatedAt).toBeNull();
     });
 
     it('rejects an expired code', async () => {
       challenges.rows[0].expiresAt = new Date(Date.now() - 1_000);
 
       await expect(
-        verify.execute({ identifier: EMAIL, code: lastCode() }),
+        verify.execute({ ip: null, identifier: EMAIL, code: lastCode() }),
       ).rejects.toMatchObject({ response: { code: 'OTP_EXPIRED' } });
     });
 
     it('refuses to reuse a consumed code', async () => {
       const code = lastCode();
-      await verify.execute({ identifier: EMAIL, code });
+      await verify.execute({ ip: null, identifier: EMAIL, code });
 
       await expect(
-        verify.execute({ identifier: EMAIL, code }),
+        verify.execute({ ip: null, identifier: EMAIL, code }),
       ).rejects.toMatchObject({
         response: { code: 'OTP_INVALID_OR_EXPIRED' },
       });
@@ -321,8 +349,8 @@ describe('passwordless OTP flow', () => {
       const code = lastCode();
 
       const results = await Promise.allSettled([
-        verify.execute({ identifier: EMAIL, code }),
-        verify.execute({ identifier: EMAIL, code }),
+        verify.execute({ ip: null, identifier: EMAIL, code }),
+        verify.execute({ ip: null, identifier: EMAIL, code }),
       ]);
 
       expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
@@ -338,6 +366,7 @@ describe('passwordless OTP flow', () => {
       });
 
       const result = await verify.execute({
+        ip: null,
         identifier: EMAIL,
         code: lastCode(),
       });
@@ -352,6 +381,7 @@ describe('passwordless OTP flow', () => {
 
     it('creates the account on a first successful verification', async () => {
       const result = await verify.execute({
+        ip: null,
         identifier: EMAIL,
         code: lastCode(),
       });
@@ -365,7 +395,11 @@ describe('passwordless OTP flow', () => {
 
     it('matches a differently-cased identifier to the same challenge', async () => {
       await expect(
-        verify.execute({ identifier: 'PLAYER@EXAMPLE.COM', code: lastCode() }),
+        verify.execute({
+          ip: null,
+          identifier: 'PLAYER@EXAMPLE.COM',
+          code: lastCode(),
+        }),
       ).resolves.toMatchObject({ accessToken: 'signed.jwt.token' });
     });
   });

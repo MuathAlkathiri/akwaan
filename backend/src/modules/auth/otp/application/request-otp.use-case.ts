@@ -91,7 +91,6 @@ export class RequestOtp {
       identifierType: identifier.type,
       codeHash: this.codes.hash(code, identifier.value),
       expiresAt,
-      maxAttempts: this.config.maxAttempts,
       issuedAt: now,
       issuanceCount: (previous?.issuanceCount ?? 0) + 1,
       requestIp: input.ip,

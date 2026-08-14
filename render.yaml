@@ -91,8 +91,12 @@ services:
         value: "300"
       - key: OTP_RESEND_COOLDOWN_SECONDS
         value: "60"
-      - key: OTP_MAX_ATTEMPTS
-        value: "5"
+      # No per-code attempt limit by design; these throttle verification
+      # instead, so a mistyped digit never burns a valid code.
+      - key: OTP_MAX_VERIFY_PER_IDENTIFIER_MINUTE
+        value: "10"
+      - key: OTP_MAX_VERIFY_PER_IP_MINUTE
+        value: "20"
       # Separate key for hashing OTPs. Falls back to JWT_SECRET when unset.
       - key: OTP_HASH_PEPPER
         sync: false

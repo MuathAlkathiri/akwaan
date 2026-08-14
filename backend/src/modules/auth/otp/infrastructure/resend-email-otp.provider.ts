@@ -57,7 +57,25 @@ export class ResendEmailOtpProvider implements OtpDeliveryProvider {
           to: [request.destination],
           subject: otpEmailSubject(),
           html: otpEmailHtml(request.code, request.expiresInSeconds),
+          // Both parts, always. A multipart message with a real text
+          // alternative reads better to filters than HTML alone, and it is the
+          // version some clients actually show.
           text: otpEmailText(request.code, request.expiresInSeconds),
+          // Open/click tracking is a *domain* setting in the Resend dashboard,
+          // not a per-request flag, so it cannot be switched off from here.
+          // What this message can do is give tracking nothing to attach to: the
+          // body carries no links to rewrite and no images, so the only thing
+          // open-tracking could add is a remote pixel — which is why the
+          // dashboard toggle still has to be off for this domain.
+          tags: [{ name: 'category', value: 'otp' }],
+          headers: {
+            // Groups retries of the same login in Gmail instead of threading
+            // them into a clipped conversation. Not a deliverability trick.
+            'X-Entity-Ref-ID': 'akwaan-otp',
+            // Transactional, not bulk. Deliberately no List-Unsubscribe: this
+            // is not a mailing list, and offering to unsubscribe from your own
+            // login codes would be meaningless.
+          },
         }),
         signal: controller.signal,
       });

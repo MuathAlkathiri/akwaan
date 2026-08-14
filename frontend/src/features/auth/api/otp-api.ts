@@ -25,7 +25,6 @@ export type OtpErrorCode =
   | "OTP_INVALID"
   | "OTP_EXPIRED"
   | "OTP_INVALID_OR_EXPIRED"
-  | "OTP_TOO_MANY_ATTEMPTS"
   | "OTP_RESEND_COOLDOWN"
   | "OTP_RATE_LIMITED"
   | "SMS_OTP_NOT_AVAILABLE"
@@ -37,7 +36,6 @@ export interface OtpError {
   code: OtpErrorCode;
   message: string;
   retryAfterSeconds?: number;
-  remainingAttempts?: number;
 }
 
 const FALLBACK_MESSAGE = "حدث خطأ غير متوقع. حاول مرة أخرى.";
@@ -57,10 +55,6 @@ export function toOtpError(cause: unknown): OtpError {
     retryAfterSeconds:
       typeof body?.retryAfterSeconds === "number"
         ? body.retryAfterSeconds
-        : undefined,
-    remainingAttempts:
-      typeof body?.remainingAttempts === "number"
-        ? body.remainingAttempts
         : undefined,
   };
 }

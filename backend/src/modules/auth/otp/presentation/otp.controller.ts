@@ -43,11 +43,16 @@ export class OtpController {
   })
   @ApiResponse({ status: 201, type: AuthResponseDto })
   @ApiResponse({ status: 401, description: 'OTP_INVALID / OTP_EXPIRED' })
-  @ApiResponse({ status: 429, description: 'OTP_TOO_MANY_ATTEMPTS' })
-  verify(@Body() body: VerifyOtpDto) {
+  @ApiResponse({
+    status: 429,
+    description:
+      'OTP_RATE_LIMITED. A throttle, not a lockout — the code stays valid.',
+  })
+  verify(@Body() body: VerifyOtpDto, @Req() request: Request) {
     return this.verifyOtp.execute({
       identifier: body.identifier,
       code: body.code,
+      ip: clientIp(request),
     });
   }
 }

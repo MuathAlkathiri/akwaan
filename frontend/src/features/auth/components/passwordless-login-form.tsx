@@ -80,6 +80,10 @@ export function PasswordlessLoginForm() {
         const otpError = toOtpError(cause);
         setError(otpError);
         setCode("");
+        // A throttle is a pause, not a lockout — the code stays valid. Showing
+        // the server's retry delay is the only honest thing to display, since
+        // there is no attempt allowance to count down any more.
+        if (otpError.retryAfterSeconds) setCooldown(otpError.retryAfterSeconds);
       } finally {
         setBusy(false);
       }
@@ -88,7 +92,6 @@ export function PasswordlessLoginForm() {
   );
 
   const smsUnavailable = error?.code === "SMS_OTP_NOT_AVAILABLE";
-  const attemptsExhausted = error?.code === "OTP_TOO_MANY_ATTEMPTS";
   const expired =
     error?.code === "OTP_EXPIRED" || error?.code === "OTP_INVALID_OR_EXPIRED";
 
@@ -212,7 +215,7 @@ export function PasswordlessLoginForm() {
               value={code}
               onChange={setCode}
               onComplete={(entered) => void verify(entered)}
-              disabled={busy || attemptsExhausted}
+              disabled={busy}
               invalid={Boolean(error)}
             />
 
@@ -223,19 +226,13 @@ export function PasswordlessLoginForm() {
                 className="text-center text-sm text-destructive"
               >
                 {error.message}
-                {typeof error.remainingAttempts === "number" &&
-                  error.remainingAttempts > 0 && (
-                    <span className="block text-muted-foreground">
-                      المحاولات المتبقية: {error.remainingAttempts}
-                    </span>
-                  )}
               </p>
             )}
 
             <Button
               type="button"
               className="w-full"
-              disabled={busy || code.length < OTP_LENGTH || attemptsExhausted}
+              disabled={busy || code.length < OTP_LENGTH}
               onClick={() => void verify(code)}
               data-testid="otp-verify-button"
             >
@@ -271,9 +268,7 @@ export function PasswordlessLoginForm() {
                   disabled={busy}
                   onClick={() => void send(identifier)}
                 >
-                  {expired || attemptsExhausted
-                    ? "إرسال رمز جديد"
-                    : "إعادة الإرسال"}
+                  {expired ? "إرسال رمز جديد" : "إعادة الإرسال"}
                 </button>
               )}
             </div>
