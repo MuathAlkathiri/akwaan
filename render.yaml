@@ -86,6 +86,26 @@ services:
       - key: WIGOLO_CACHE_FILE
         value: /app/.cache/entity-verification.json
 
+      # --- Passwordless OTP login ---
+      - key: OTP_EXPIRES_SECONDS
+        value: "300"
+      - key: OTP_RESEND_COOLDOWN_SECONDS
+        value: "60"
+      - key: OTP_MAX_ATTEMPTS
+        value: "5"
+      # Separate key for hashing OTPs. Falls back to JWT_SECRET when unset.
+      - key: OTP_HASH_PEPPER
+        sync: false
+      # Email OTP does not work until both of these are set.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: OTP_MAIL_FROM
+        sync: false
+      # No SMS provider is integrated; phone requests return
+      # SMS_OTP_NOT_AVAILABLE. The flag is here so enabling it later is config.
+      - key: SMS_OTP_ENABLED
+        value: "false"
+
       # Set only if you turn AI generation on later.
       - key: GEMINI_API_KEY
         sync: false

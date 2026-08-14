@@ -7,6 +7,7 @@ import { QuestionsModule } from './modules/questions/questions.module';
 import { AiAgentModule } from './modules/ai-agent/ai-agent.module';
 import { GamesModule } from './modules/games/games.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { OtpModule } from './modules/auth/otp/otp.module';
 import { UsersModule } from './modules/users/users.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { LiveGameSessionsModule } from './modules/live-game-sessions/live-game-sessions.module';
@@ -28,6 +29,7 @@ import { MatchModule } from './modules/match/match.module';
     MediaStorageModule,
     UsersModule,
     AuthModule,
+    OtpModule,
     CatalogsModule,
     CategoriesModule,
     ScoringModule,

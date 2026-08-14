@@ -11,6 +11,15 @@ export class UserRepository {
     return this.model.findOne({ email }).select('+password').exec();
   }
 
+  findByEmail(email: string) {
+    return this.model.findOne({ email }).exec();
+  }
+
+  /** Lookup is on the canonical E.164 value, never on raw input. */
+  findByPhone(phone: string) {
+    return this.model.findOne({ phone }).exec();
+  }
+
   findById(id: string | Types.ObjectId) {
     return this.model.findById(id).exec();
   }

@@ -1,4 +1,5 @@
-import { LoginForm } from "@/features/auth";
+import { PasswordlessLoginForm } from "@/features/auth";
+
 export default function LoginPage() {
-  return <LoginForm />;
+  return <PasswordlessLoginForm />;
 }

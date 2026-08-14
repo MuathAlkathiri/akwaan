@@ -42,6 +42,8 @@ import { PasswordHasherService } from './infrastructure/password-hasher.service'
     JwtTokenProvider,
     PasswordHasherService,
   ],
-  exports: [AuthService, JwtModule],
+  // JwtTokenProvider is exported so the OTP module can mint the very same
+  // token password login mints, instead of a second issuing path.
+  exports: [AuthService, JwtModule, JwtTokenProvider],
 })
 export class AuthModule {}

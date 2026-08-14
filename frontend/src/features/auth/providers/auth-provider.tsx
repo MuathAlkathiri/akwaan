@@ -24,6 +24,7 @@ import {
   toRegisterRequest,
 } from "../mappers/auth-request.mapper";
 import { authStorage } from "../storage/auth-storage";
+import { verifyOtp } from "../api/otp-api";
 
 interface AuthContextValue {
   user: User | null;
@@ -31,6 +32,8 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isAdmin: boolean;
   login: (data: LoginPayload) => Promise<AuthResponse>;
+  /** Passwordless sign-in. Establishes exactly the same session as `login`. */
+  loginWithOtp: (identifier: string, code: string) => Promise<AuthResponse>;
   register: (data: RegisterPayload) => Promise<void>;
   refreshUser: () => Promise<void>;
   logout: () => void;
@@ -67,6 +70,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [client, loginMutation],
   );
 
+  const loginWithOtp = useCallback(
+    async (identifier: string, code: string) => {
+      const response = await verifyOtp(identifier, code);
+      // Deliberately the same three lines as `login`: one place decides what a
+      // session is, so guards, interceptors and refresh keep working untouched.
+      authStorage.setToken(response.accessToken);
+      authStorage.setUser(response.user);
+      client.setQueryData(authKeys.currentUser, response.user);
+      return response;
+    },
+    [client],
+  );
+
   const register = useCallback(
     async (data: RegisterPayload) => {
       await registerMutation.mutateAsync(toRegisterRequest(data));
@@ -95,11 +111,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: Boolean(user),
       isAdmin: user?.role === "admin",
       login,
+      loginWithOtp,
       register,
       refreshUser,
       logout,
     }),
     [
+      loginWithOtp,
       user,
       hydrated,
       currentUser.isLoading,

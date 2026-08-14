@@ -20,8 +20,39 @@ export class User extends Document {
   @Prop({ required: true, unique: true, lowercase: true, trim: true })
   email: string;
 
-  @Prop({ required: true, select: false })
-  password: string;
+  /**
+   * Canonical E.164, e.g. `+9665xxxxxxxx`.
+   *
+   * `sparse` matters: without it every password-era user would collide on
+   * `null` under the unique index. Optional and independent of `email` so one
+   * account can hold both identifiers later without a second account type.
+   */
+  @Prop({
+    type: String,
+    required: false,
+    unique: true,
+    sparse: true,
+    trim: true,
+    default: undefined,
+  })
+  phone?: string;
+
+  /** When control of the identifier was last proven by a verified OTP. */
+  @Prop({ type: Date, required: false })
+  emailVerifiedAt?: Date;
+
+  @Prop({ type: Date, required: false })
+  phoneVerifiedAt?: Date;
+
+  /**
+   * Optional since passwordless login.
+   *
+   * Existing users keep their hash and can still sign in with it; accounts
+   * created by OTP simply have none. Making this required again would lock out
+   * every passwordless account.
+   */
+  @Prop({ required: false, select: false })
+  password?: string;
 
   @Prop({
     type: String,
