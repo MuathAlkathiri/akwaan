@@ -1,4 +1,3 @@
-import { PasswordHasherService } from './modules/auth/infrastructure/password-hasher.service';
 import * as dotenv from 'dotenv';
 import mongoose, { Model, Types } from 'mongoose';
 import {
@@ -14,12 +13,6 @@ import {
   QuestionStatus,
   QuestionType,
 } from './modules/questions/schemas/question.schema';
-import {
-  SubscriptionStatus,
-  User,
-  UserRole,
-  UserSchema,
-} from './modules/users/schemas/user.schema';
 
 dotenv.config();
 
@@ -196,39 +189,22 @@ const questionSeeds: Record<
   ],
 };
 
-async function seedAdmin(userModel: Model<User>): Promise<void> {
-  const configuredEmail = process.env.ADMIN_EMAIL;
-  const password = process.env.ADMIN_PASSWORD;
-  if (!configuredEmail || !password) {
-    console.log(
-      'Admin seed skipped: ADMIN_EMAIL and ADMIN_PASSWORD are required',
-    );
-    return;
-  }
-  const email = configuredEmail.toLowerCase().trim();
-  const fullName = process.env.ADMIN_FULL_NAME ?? 'Akwaan Admin';
-
-  const existingAdmin = await userModel
-    .findOne({ email })
-    .select('+password')
-    .exec();
-
-  if (existingAdmin) {
-    console.log('Admin user already exists');
-    return;
-  }
-
-  const passwordHasher = new PasswordHasherService();
-  await userModel.create({
-    fullName,
-    email,
-    password: await passwordHasher.hash(password),
-    role: UserRole.ADMIN,
-    freeGamesUsed: 0,
-    subscriptionStatus: SubscriptionStatus.NONE,
-  });
-
-  console.log('Created administrator user');
+/**
+ * Deliberately not an admin seeder.
+ *
+ * `ADMIN_EMAIL`/`ADMIN_PASSWORD` used to create a privileged account here and
+ * on every application boot. The product decision is that nothing automated
+ * grants admin: users register normally and the role is set by hand. Leaving a
+ * script that could do it — pointed at whatever MONGODB_URI happens to be
+ * exported — would put the same hole back.
+ */
+function explainAdminGrant(): void {
+  console.log(
+    [
+      'Admin users are not seeded. Register normally, then grant the role:',
+      '  db.users.updateOne({ email: "you@example.com" }, { $set: { role: "admin" } })',
+    ].join('\n'),
+  );
 }
 
 async function seedCategories(
@@ -310,11 +286,10 @@ async function bootstrap(): Promise<void> {
 
   await mongoose.connect(mongodbUri);
 
-  const userModel = mongoose.model(User.name, UserSchema);
   const categoryModel = mongoose.model(Category.name, CategorySchema);
   const questionModel = mongoose.model(Question.name, QuestionSchema);
 
-  await seedAdmin(userModel);
+  explainAdminGrant();
   const categoriesBySlug = await seedCategories(categoryModel);
   await seedQuestions(questionModel, categoriesBySlug);
 

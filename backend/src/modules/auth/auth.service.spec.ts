@@ -31,7 +31,6 @@ describe('AuthService', () => {
         users as never,
         tokens as never,
         passwords as never,
-        config as never,
       ),
       users,
       tokens,
@@ -65,15 +64,30 @@ describe('AuthService', () => {
     },
   );
 
-  it('does not overwrite or re-hash an existing seeded administrator', async () => {
-    const { service, users, passwords, config } = setup();
-    const configValues: Record<string, string> = {
-      ADMIN_EMAIL: user.email,
-      ADMIN_PASSWORD: 'configured',
-    };
-    config.get.mockImplementation((key: string) => configValues[key]);
-    await service.onModuleInit();
-    expect(users.create).not.toHaveBeenCalled();
-    expect(passwords.hash).not.toHaveBeenCalled();
+  it('has no lifecycle hook that could create an account at boot', () => {
+    // The service used to seed an administrator from ADMIN_EMAIL /
+    // ADMIN_PASSWORD in `onModuleInit`, so every boot could mint a privileged
+    // account with a password known to anyone who could read the environment.
+    // Admin is now granted by hand in MongoDB and nothing here can grant it.
+    const { service } = setup();
+    expect(
+      (service as unknown as { onModuleInit?: unknown }).onModuleInit,
+    ).toBeUndefined();
+  });
+
+  it('only ever registers a plain user', async () => {
+    const { service, users } = setup();
+    await service.register({
+      fullName: 'Player',
+      email: 'player@example.com',
+      password: 'secret',
+    } as never);
+
+    expect(users.create).toHaveBeenCalledWith(
+      expect.objectContaining({ role: UserRole.USER }),
+    );
+    expect(users.create).not.toHaveBeenCalledWith(
+      expect.objectContaining({ role: UserRole.ADMIN }),
+    );
   });
 });
