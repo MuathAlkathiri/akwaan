@@ -94,11 +94,32 @@ describe('OTP email — direction and structure', () => {
     expect(markup).toContain('Arial');
   });
 
-  it('states explicit background and text colours for dark mode', () => {
+  it('uses the intended fixed dark palette', () => {
     const markup = html();
-    expect(markup).toContain('color-scheme');
-    expect(markup).toContain('background:#f6f4ef');
-    expect(markup).toContain('#1f2340');
+    expect(markup).toContain('#15131c');
+    expect(markup).toContain('#20223a');
+    expect(markup).toContain('#242640');
+    expect(markup).toContain('#f5f1e8');
+    expect(markup).toContain('#bbb6ce');
+    expect(markup).toContain('#d8d1ee');
+    expect(markup).toContain('#777189');
+  });
+
+  it('does not advertise client-selected light/dark variants', () => {
+    const markup = html();
+    expect(markup).not.toContain('color-scheme');
+    expect(markup).not.toContain('supported-color-schemes');
+    expect(markup).not.toContain('@media');
+  });
+
+  it('duplicates critical backgrounds as legacy HTML attributes', () => {
+    const markup = html();
+    expect(markup).toContain('<body bgcolor="#15131c"');
+    expect(markup).toContain('bgcolor="#20223a"');
+    expect(markup).toContain('bgcolor="#242640"');
+    expect(markup).toContain('background-color:#15131c');
+    expect(markup).toContain('background-color:#20223a');
+    expect(markup).toContain('background-color:#242640');
   });
 
   it('carries the required Arabic copy and a subtle footer', () => {
@@ -125,6 +146,7 @@ describe('OTP email — nothing to track', () => {
     expect(markup).not.toContain('http://');
     expect(markup).not.toContain('https://');
     expect(markup).not.toContain('<img');
+    expect(markup).not.toContain('<script');
   });
 
   it('adds no marketing or list headers to the body', () => {

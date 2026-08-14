@@ -18,15 +18,19 @@
 
 const BRAND = 'أكوان';
 
-/** Night navy, warm cream, and a muted grey. Explicit so dark-mode clients
- * that invert backgrounds still get a readable pairing. */
+/**
+ * Fixed dark palette. Every critical colour is repeated directly on the
+ * relevant table or cell (and backgrounds also use legacy `bgcolor`) so Gmail
+ * and Outlook do not have to infer a light/dark variant from client settings.
+ */
 const COLORS = {
-  ink: '#1f2340',
-  body: '#4a4f6a',
-  muted: '#8b8fa6',
-  cream: '#f6f4ef',
-  card: '#ffffff',
-  hairline: '#e8e5dd',
+  canvas: '#15131c',
+  card: '#20223a',
+  digit: '#242640',
+  primary: '#f5f1e8',
+  secondary: '#bbb6ce',
+  brand: '#d8d1ee',
+  border: '#777189',
 } as const;
 
 const FONT_STACK = "Arial, 'Helvetica Neue', Helvetica, Tahoma, sans-serif";
@@ -86,9 +90,10 @@ function digitCells(code: string): string {
                      width="100%" style="width:100%;border-collapse:separate;">
                 <tr>
                   <td align="center" valign="middle" height="48"
-                      style="height:48px;background:${COLORS.cream};border:1px solid ${COLORS.hairline};
+                      bgcolor="${COLORS.digit}"
+                      style="height:48px;background-color:${COLORS.digit};border:1px solid ${COLORS.border};
                              border-radius:10px;font-family:${FONT_STACK};font-size:22px;line-height:48px;
-                             font-weight:bold;color:${COLORS.ink};white-space:nowrap;">${digit}</td>
+                             font-weight:bold;color:${COLORS.primary};white-space:nowrap;">${digit}</td>
                 </tr>
               </table>
             </td>`,
@@ -104,42 +109,46 @@ export function otpEmailHtml(code: string, expiresInSeconds: number): string {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="supported-color-schemes" content="light dark" />
     <title>${otpEmailSubject()}</title>
   </head>
-  <body style="margin:0;padding:0;background:${COLORS.cream};">
+  <body bgcolor="${COLORS.canvas}" style="margin:0;padding:0;background-color:${COLORS.canvas};">
     <!-- Preview text: shown in the inbox list, hidden in the open message. -->
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">
       ${otpEmailPreheader(expiresInSeconds)}
     </div>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
-           style="width:100%;background:${COLORS.cream};margin:0;padding:0;">
+           bgcolor="${COLORS.canvas}"
+           style="width:100%;background-color:${COLORS.canvas};margin:0;padding:0;">
       <tr>
-        <td align="center" style="padding:32px 16px;">
+        <td align="center" valign="top" bgcolor="${COLORS.canvas}"
+            style="padding:32px 16px;background-color:${COLORS.canvas};">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520"
-                 style="width:100%;max-width:520px;background:${COLORS.card};
-                        border:1px solid ${COLORS.hairline};border-radius:16px;">
+                 align="center" bgcolor="${COLORS.card}" dir="rtl"
+                 style="width:100%;max-width:520px;background-color:${COLORS.card};
+                        border:1px solid ${COLORS.border};border-radius:16px;">
             <tr>
-              <td align="center" style="padding:36px 28px 8px 28px;
+              <td align="center" valign="middle" bgcolor="${COLORS.card}"
+                  style="padding:36px 28px 8px 28px;background-color:${COLORS.card};
                   font-family:${FONT_STACK};font-size:24px;font-weight:bold;
-                  color:${COLORS.ink};letter-spacing:0.5px;">${BRAND}</td>
+                  color:${COLORS.brand};letter-spacing:0.5px;">${BRAND}</td>
             </tr>
             <tr>
-              <td align="center" style="padding:16px 28px 0 28px;
-                  font-family:${FONT_STACK};font-size:17px;color:${COLORS.body};">
+              <td align="center" valign="middle" bgcolor="${COLORS.card}"
+                  style="padding:16px 28px 0 28px;background-color:${COLORS.card};
+                  font-family:${FONT_STACK};font-size:17px;color:${COLORS.secondary};">
                 رمز الدخول الخاص بك
               </td>
             </tr>
             <tr>
-              <td align="center" style="padding:24px 8px;">
+              <td align="center" valign="middle" bgcolor="${COLORS.card}"
+                  style="padding:24px 8px;background-color:${COLORS.card};">
                 <!--
                   dir="ltr" and nowrap: the code reads left to right even inside
                   an RTL message, and the row cannot break onto a second line.
                 -->
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0"
-                       dir="ltr" align="center"
-                       style="border-collapse:separate;white-space:nowrap;margin:0 auto;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="264"
+                       dir="ltr" align="center" bgcolor="${COLORS.card}"
+                       style="width:264px;border-collapse:separate;white-space:nowrap;margin:0 auto;background-color:${COLORS.card};">
                   <tr>
             ${digitCells(code)}
                   </tr>
@@ -147,33 +156,37 @@ export function otpEmailHtml(code: string, expiresInSeconds: number): string {
               </td>
             </tr>
             <tr>
-              <td align="center" style="padding:4px 28px 0 28px;
-                  font-family:${FONT_STACK};font-size:15px;line-height:1.8;color:${COLORS.body};">
+              <td align="center" valign="middle" bgcolor="${COLORS.card}"
+                  style="padding:4px 28px 0 28px;background-color:${COLORS.card};
+                  font-family:${FONT_STACK};font-size:15px;line-height:1.8;color:${COLORS.secondary};">
                 استخدم هذا الرمز لإكمال تسجيل الدخول إلى ${BRAND}.
               </td>
             </tr>
             <tr>
-              <td align="center" style="padding:12px 28px 0 28px;
-                  font-family:${FONT_STACK};font-size:15px;color:${COLORS.ink};font-weight:bold;">
+              <td align="center" valign="middle" bgcolor="${COLORS.card}"
+                  style="padding:12px 28px 0 28px;background-color:${COLORS.card};
+                  font-family:${FONT_STACK};font-size:15px;color:${COLORS.primary};font-weight:bold;">
                 ينتهي هذا الرمز خلال ${expiry}.
               </td>
             </tr>
             <tr>
-              <td style="padding:28px 28px 0 28px;">
+              <td bgcolor="${COLORS.card}" style="padding:28px 28px 0 28px;background-color:${COLORS.card};">
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                  <tr><td style="border-top:1px solid ${COLORS.hairline};font-size:0;line-height:0;">&nbsp;</td></tr>
+                  <tr><td style="border-top:1px solid ${COLORS.border};font-size:0;line-height:0;">&nbsp;</td></tr>
                 </table>
               </td>
             </tr>
             <tr>
-              <td align="center" style="padding:20px 28px 0 28px;
-                  font-family:${FONT_STACK};font-size:13px;line-height:1.8;color:${COLORS.muted};">
+              <td align="center" valign="middle" bgcolor="${COLORS.card}"
+                  style="padding:20px 28px 0 28px;background-color:${COLORS.card};
+                  font-family:${FONT_STACK};font-size:13px;line-height:1.8;color:${COLORS.secondary};">
                 إذا لم تطلب هذا الرمز، يمكنك تجاهل هذه الرسالة بأمان.
               </td>
             </tr>
             <tr>
-              <td align="center" style="padding:20px 28px 32px 28px;
-                  font-family:${FONT_STACK};font-size:12px;color:${COLORS.muted};">
+              <td align="center" valign="middle" bgcolor="${COLORS.card}"
+                  style="padding:20px 28px 32px 28px;background-color:${COLORS.card};
+                  font-family:${FONT_STACK};font-size:12px;color:${COLORS.secondary};">
                 © ${BRAND}
               </td>
             </tr>
