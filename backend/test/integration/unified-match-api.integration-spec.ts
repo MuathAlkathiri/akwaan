@@ -20,6 +20,7 @@ import {
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
 import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
+import { productionMechanicFixture } from '../fixtures/production-mechanic.fixture';
 import {
   MatchSetupMode,
   MatchSlotStatus,
@@ -184,11 +185,7 @@ describe('Unified Match API integration', () => {
         status: WorldContentStatus.ACTIVE,
       }),
       ryo: await create({
-        name: 'اقرأ خصمك',
-        slug: RYO_MODE_KEY,
-        family: ChallengeFamily.RYO,
-        answerMode: ChallengeAnswerMode.RYO,
-        scoringRuleId: SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
+        ...productionMechanicFixture(RYO_MODE_KEY),
         status: WorldContentStatus.ACTIVE,
       }),
       ryoNumbers: await create({
@@ -333,7 +330,13 @@ describe('Unified Match API integration', () => {
         role: 'team-player',
         credentialVersion: 1,
       };
-      await presence.connected(sessionId, joined.participantId);
+      await presence.connected(
+        sessionId,
+        joined.participantId,
+        // One simulated socket per participant. Presence is keyed by
+        // connection now, so a test phone needs an identity like a real one.
+        `test-socket-${joined.participantId}`,
+      );
       await readiness.execute({
         actor,
         ready: true,
@@ -498,6 +501,29 @@ describe('Unified Match API integration', () => {
       .serialize()
       .occurrences.find((entry) => entry.index === occurrenceIndex)!;
     return occurrence.slots[slotKey]?.contentItemIds ?? [];
+  };
+
+  const abortRuntime = async (
+    sessionId: string,
+    commandId = crypto.randomUUID(),
+    expectedRuntimeRevision?: number,
+    expectedSessionRevision?: number,
+  ) => {
+    const runtime = (await app
+      .get<GameplayRuntimeRepository>(GAMEPLAY_RUNTIME_REPOSITORY)
+      .findBySessionId(sessionId))!;
+    const response = await bearer(
+      http().post(`/live-game-sessions/${sessionId}/runtime/cancel`),
+    )
+      .send({
+        commandId,
+        expectedRuntimeRevision:
+          expectedRuntimeRevision ?? runtime.serialize().revision,
+        expectedSessionRevision:
+          expectedSessionRevision ?? (await sessionRevision(sessionId)),
+      })
+      .expect(201);
+    return unwrap<MatchBearingSnapshot>(response);
   };
 
   /** Drives one RYO item to resolution through real participant submissions. */
@@ -806,6 +832,82 @@ describe('Unified Match API integration', () => {
       expect(occurrenceTwoScopeItems.has(id)).toBe(false);
     }
   });
+
+  it('aborts authoritatively, replays the abort safely, and launches again without score or ownership residue', async () => {
+    const { sessionId } = await startSession();
+    const created = await createUnified(sessionId);
+    const selectingTeamId = created.match.unified.selectingTeamId;
+    const firstPosition = {
+      occurrenceIndex: 0,
+      slotKey: WorldChallengeSlotKey.SLOT_2,
+      selectingTeamId,
+    };
+
+    const launchedA = await launchUnified(sessionId, firstPosition);
+    const runtimeA = (await app
+      .get<GameplayRuntimeRepository>(GAMEPLAY_RUNTIME_REPOSITORY)
+      .findBySessionId(sessionId))!;
+    const runtimeAState = runtimeA.serialize();
+    expect(['completed', 'cancelled']).not.toContain(runtimeAState.status);
+    expect(launchedA.match.currentChallenge?.runtimeId).toBe(runtimeA.id);
+
+    const abortCommandId = crypto.randomUUID();
+    const abortSessionRevision = await sessionRevision(sessionId);
+    await abortRuntime(
+      sessionId,
+      abortCommandId,
+      runtimeAState.revision,
+      abortSessionRevision,
+    );
+    // The same logical request is a command replay, as it would be after an
+    // acknowledgement is lost. It must not produce a second transition.
+    await abortRuntime(
+      sessionId,
+      abortCommandId,
+      runtimeAState.revision,
+      abortSessionRevision,
+    );
+
+    const afterAbort = await snapshotOf(sessionId);
+    expect(afterAbort.match.stage.key).toBe(MatchStage.BOARD);
+    expect(afterAbort.match.currentChallenge).toBeUndefined();
+    expect(afterAbort.match.challengeResult).toBeUndefined();
+    expect(afterAbort.match.pendingResult).toBeUndefined();
+    expect(afterAbort.match.challengeHistory).toHaveLength(0);
+    expect(afterAbort.match.unified.board.completedPositionCount).toBe(0);
+    expect(positionOf(afterAbort, '0#slot_2').status).toBe(
+      MatchSlotStatus.AVAILABLE,
+    );
+    expect(
+      (await app
+        .get<GameplayRuntimeRepository>(GAMEPLAY_RUNTIME_REPOSITORY)
+        .findById(runtimeA.id))!.serialize().status,
+    ).toBe('cancelled');
+    const storedAfterAbort = (await app
+      .get<MatchRepository>(MATCH_REPOSITORY)
+      .findActiveBySessionId(sessionId))!;
+    expect(storedAfterAbort.serialize().scoreEvents).toHaveLength(0);
+
+    // Refresh is the reconnect contract: persisted state owns the UI, and the
+    // cancelled runtime is non-blocking. The exact same board occurrence can be
+    // launched again because abort restored it to available.
+    const relaunchedA = await launchUnified(sessionId, firstPosition);
+    expect(relaunchedA.match.currentChallenge?.runtimeId).not.toBe(runtimeA.id);
+    await abortRuntime(sessionId);
+
+    // A different occurrence can launch immediately too, proving no Mongo-side
+    // cleanup or test-only lifecycle reset is needed between challenges.
+    const afterSecondAbort = await snapshotOf(sessionId);
+    const launchedB = await launchUnified(sessionId, {
+      occurrenceIndex: 1,
+      slotKey: WorldChallengeSlotKey.SLOT_2,
+      selectingTeamId: afterSecondAbort.match.unified.selectingTeamId,
+    });
+    expect(launchedB.match.currentChallenge).toMatchObject({
+      occurrenceIndex: 1,
+      slotKey: WorldChallengeSlotKey.SLOT_2,
+    });
+  }, 120_000);
 
   describe('the unified launch contract', () => {
     it('refuses a request that names its own ContentItems', async () => {

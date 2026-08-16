@@ -49,11 +49,11 @@ describe('Match module architecture', () => {
     const launchers = matchFiles.filter((path) =>
       path.endsWith('.launcher.ts'),
     );
-    expect(launchers).toHaveLength(5);
+    expect(launchers).toHaveLength(6);
     for (const path of launchers) {
       const content = read(path);
       expect(content).toMatch(
-        /StartRyoGameplay|StartTop5|StartDistributedInformation|StartClosestGameplay|StartOneClueGameplay/,
+        /StartRyoGameplay|StartTop5|StartDistributedInformation|StartClosestGameplay|StartOneClueGameplay|StartBombGameplayFromContent/,
       );
       // No launcher may build a runtime, a round, or an interaction itself.
       expect(content).not.toMatch(
@@ -238,6 +238,10 @@ describe('Match module architecture', () => {
       'live-game-sessions/application/start-distributed-information.use-case',
       'live-game-sessions/application/start-closest-gameplay.use-case',
       'live-game-sessions/application/start-one-clue-gameplay.use-case',
+      // Releasing a challenge is the same class of published surface as
+      // starting one: the Match aborts a runtime it owns through the runtime's
+      // own cancel use case rather than reaching into its state.
+      'live-game-sessions/application/gameplay-runtime.lifecycle',
       'live-game-sessions/application/gameplay-observer.registry',
       'live-game-sessions/application/get-live-game-session.use-case',
       'live-game-sessions/application/live-game-session.snapshot',
@@ -257,6 +261,8 @@ describe('Match module architecture', () => {
       'live-game-sessions/domain/distributed-information.plugin',
       'live-game-sessions/domain/closest-gameplay.plugin',
       'live-game-sessions/domain/one-clue-gameplay.plugin',
+      'live-game-sessions/domain/bomb-gameplay.plugin',
+      'live-game-sessions/application/start-bomb-from-content.use-case',
       'live-game-sessions/domain/team-action-assignment',
       'live-game-sessions/presentation/participant-auth',
       'live-game-sessions/live-game-sessions.module',

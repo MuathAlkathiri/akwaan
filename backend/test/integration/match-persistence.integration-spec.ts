@@ -248,6 +248,7 @@ describe('Match persistence integration', () => {
       runtimeId: 'runtime-1',
       contentItemIds: ['item-1', 'item-2', 'item-3'],
       startedAt: now(20),
+      doubledTeamIds: [],
     });
     expect(loaded.occurrences[0].slots[WorldChallengeSlotKey.SLOT_2]).toEqual({
       status: MatchSlotStatus.IN_PROGRESS,
@@ -443,6 +444,7 @@ describe('Match persistence integration', () => {
         runtimeId: 'runtime-occurrence-0',
         contentItemIds: ['y1', 'y2', 'y3'],
         startedAt: now(12),
+        doubledTeamIds: [],
       });
       const board = loaded.unifiedBoard();
       const status = (positionKey: string) =>

@@ -5,6 +5,33 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .node-ryo { left: 5%; top: 18%; }
+  .node-top { right: 4%; top: 25%; }
+  .node-bomb { left: 4%; bottom: 20%; }
+  .node-closest { right: 5%; bottom: 16%; }
+  .node-clue { left: 47%; bottom: 1%; transform: translateX(-50%); }
+
+  @media (min-width: 1024px) {
+    .akwaan-home-hero { border-radius: 0 0 1.5rem 1.5rem; }
+    .node-ryo { left: 10%; top: 13%; }
+    .node-top { right: 9%; top: 20%; }
+    .node-bomb { left: 9%; bottom: 17%; }
+    .node-closest { right: 10%; bottom: 13%; }
+    .node-clue { left: 48%; bottom: 1%; }
+  }
+
+  @media (max-width: 640px) {
+    .akwaan-universe-stage { margin-inline: -0.75rem; }
+    .challenge-orbit-node { transform: scale(.84); }
+    .node-ryo { left: -3%; top: 15%; }
+    .node-top { right: -3%; top: 21%; }
+    .node-bomb { left: -4%; bottom: 20%; }
+    .node-closest { right: -5%; bottom: 14%; }
+    .node-clue { bottom: -1%; transform: translateX(-50%) scale(.84); }
+  }
+}
+
 /**
  * Akwaan design tokens.
  *

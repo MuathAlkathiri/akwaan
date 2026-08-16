@@ -242,8 +242,8 @@ describe('player catalog HTTP integration', () => {
     );
   });
 
-  it('serves active Worlds to a normal authenticated user', async () => {
-    const response = await player(http().get('/worlds')).expect(200);
+  it('serves active Worlds to an anonymous visitor', async () => {
+    const response = await http().get('/worlds').expect(200);
     const worlds = response.body.data as Array<Record<string, unknown>>;
 
     expect(worlds.map((world) => world.id)).toEqual([activeWorldId]);
@@ -261,9 +261,7 @@ describe('player catalog HTTP integration', () => {
   });
 
   it('serves one active World without authoring fields', async () => {
-    const response = await player(
-      http().get(`/worlds/${activeWorldId}`),
-    ).expect(200);
+    const response = await http().get(`/worlds/${activeWorldId}`).expect(200);
     expect(response.body.data).toMatchObject({
       id: activeWorldId,
       name: 'كرة قدم',
@@ -275,10 +273,10 @@ describe('player catalog HTTP integration', () => {
     expect(response.body.data).not.toHaveProperty('readiness');
   });
 
-  it('serves active Scopes of an active World to a normal authenticated user', async () => {
-    const response = await player(
-      http().get(`/worlds/${activeWorldId}/scopes`),
-    ).expect(200);
+  it('serves active Scopes of an active World to an anonymous visitor', async () => {
+    const response = await http()
+      .get(`/worlds/${activeWorldId}/scopes`)
+      .expect(200);
     const scopes = response.body.data as Array<Record<string, unknown>>;
 
     expect(scopes.map((scope) => scope.id).sort()).toEqual(
@@ -295,8 +293,9 @@ describe('player catalog HTTP integration', () => {
   });
 
   it('hides authoring internals from the public projections', async () => {
-    const worlds = (await player(http().get('/worlds')).expect(200)).body
-      .data as Array<Record<string, unknown>>;
+    const worlds = (await http().get('/worlds').expect(200)).body.data as Array<
+      Record<string, unknown>
+    >;
     for (const field of [
       'readiness',
       'contentItemCount',
@@ -308,7 +307,7 @@ describe('player catalog HTTP integration', () => {
     }
 
     const scopes = (
-      await player(http().get(`/worlds/${activeWorldId}/scopes`)).expect(200)
+      await http().get(`/worlds/${activeWorldId}/scopes`).expect(200)
     ).body.data as Array<Record<string, unknown>>;
     for (const field of [
       'compatibility',
@@ -322,35 +321,42 @@ describe('player catalog HTTP integration', () => {
     >) {
       expect(slot).toMatchObject({
         slotKey: expect.any(String),
-        challengeTypeId: expect.any(String),
         challengeTypeSlug: expect.any(String),
         family: expect.any(String),
         displayName: expect.any(String),
-        itemStructure: expect.any(String),
-        answerMode: expect.any(String),
-        scoringRuleId: expect.any(String),
         sortOrder: expect.any(Number),
       });
-      for (const field of ['configurationId', 'blockers', 'warnings']) {
+      for (const field of [
+        'configurationId',
+        'challengeTypeId',
+        'itemStructure',
+        'answerMode',
+        'scoringRuleId',
+        'blockers',
+        'warnings',
+        'answerPayload',
+        'acceptedAnswers',
+        'correctOptionId',
+      ]) {
         expect(slot).not.toHaveProperty(field);
       }
     }
   });
 
   it('does not expose a draft World to a player, by list or by id', async () => {
-    const worlds = (await player(http().get('/worlds')).expect(200)).body
+    const worlds = (await http().get('/worlds').expect(200)).body
       .data as Array<{ id: string }>;
     expect(worlds.map((world) => world.id)).not.toContain(draftWorldId);
 
     // A draft is indistinguishable from a missing World.
-    await player(http().get(`/worlds/${draftWorldId}/scopes`)).expect(404);
-    await player(http().get(`/worlds/${draftWorldId}`)).expect(404);
-    await player(http().get('/worlds/000000000000000000000000')).expect(404);
+    await http().get(`/worlds/${draftWorldId}/scopes`).expect(404);
+    await http().get(`/worlds/${draftWorldId}`).expect(404);
+    await http().get('/worlds/000000000000000000000000').expect(404);
   });
 
-  it('requires authentication', async () => {
-    await http().get('/worlds').expect(401);
-    await http().get(`/worlds/${activeWorldId}`).expect(401);
-    await http().get(`/worlds/${activeWorldId}/scopes`).expect(401);
+  it('keeps admin and Match mutations protected for anonymous visitors', async () => {
+    await http().get('/admin/worlds').expect(401);
+    await http().post('/admin/worlds').send({ name: 'مرفوض' }).expect(401);
+    await http().post('/live-game-sessions').send({}).expect(401);
   });
 });

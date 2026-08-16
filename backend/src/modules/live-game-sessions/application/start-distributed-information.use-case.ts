@@ -36,7 +36,6 @@ import {
   StartGameplayRound,
   StartGameplayRuntime,
 } from './gameplay-runtime.lifecycle';
-import { GameplayDeadlineScheduler } from './gameplay-deadline.scheduler';
 
 function shuffled<T>(values: readonly T[]): T[] {
   const result = [...values];
@@ -70,7 +69,6 @@ export class StartDistributedInformation {
     private readonly createRound: CreateGameplayRound,
     private readonly startRound: StartGameplayRound,
     private readonly getRuntime: GetGameplayRuntime,
-    private readonly deadlines: GameplayDeadlineScheduler,
   ) {}
 
   async execute(input: {
@@ -197,7 +195,6 @@ export class StartDistributedInformation {
       expectedRuntimeRevision: runtime.revision,
     });
     // The race must resolve at the deadline even if nobody sends a command.
-    await this.deadlines.schedule(input.sessionId);
     return this.getRuntime.execute(input.sessionId, actor);
   }
 

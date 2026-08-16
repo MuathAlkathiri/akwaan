@@ -39,7 +39,6 @@ import {
   StartGameplayRound,
   StartGameplayRuntime,
 } from './gameplay-runtime.lifecycle';
-import { GameplayDeadlineScheduler } from './gameplay-deadline.scheduler';
 
 @Injectable()
 export class StartClosestGameplay {
@@ -56,7 +55,6 @@ export class StartClosestGameplay {
     private readonly createRound: CreateGameplayRound,
     private readonly startRound: StartGameplayRound,
     private readonly getRuntime: GetGameplayRuntime,
-    private readonly deadlines: GameplayDeadlineScheduler,
   ) {}
 
   async execute(input: {
@@ -94,7 +92,9 @@ export class StartClosestGameplay {
       input.slotKey,
     );
     const mechanic = configuration
-      ? await this.challengeTypes.findById(String(configuration.challengeTypeId))
+      ? await this.challengeTypes.findById(
+          String(configuration.challengeTypeId),
+        )
       : null;
     if (!configuration || !mechanic || mechanic.slug !== CLOSEST_MODE_KEY) {
       throw new LiveSessionDomainError(
@@ -164,10 +164,12 @@ export class StartClosestGameplay {
             id: String(item!._id),
             prompt: item!.prompt,
             media: item!.media ?? null,
-            correctValue: (item!.answerPayload as {
-              mode: ChallengeAnswerMode.CLOSEST;
-              correctValue: number;
-            }).correctValue,
+            correctValue: (
+              item!.answerPayload as {
+                mode: ChallengeAnswerMode.CLOSEST;
+                correctValue: number;
+              }
+            ).correctValue,
           })),
         ),
         teamIdsJson: JSON.stringify(teams),
@@ -208,7 +210,6 @@ export class StartClosestGameplay {
       expectedSessionRevision: session.revision,
       expectedRuntimeRevision: runtime.revision,
     });
-    await this.deadlines.schedule(input.sessionId);
     return this.getRuntime.execute(input.sessionId, actor);
   }
 }

@@ -537,6 +537,14 @@ export const DISTRIBUTED_INFORMATION_PLUGIN: GameplayModePlugin = {
   key: DISTRIBUTED_INFORMATION_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  // "ركّبها" keeps `deadlineAt` populated after the race ends — its own state
+  // validation requires the field — so the live phase has to be named or a
+  // finished race would re-arm itself.
+  deadline: {
+    source: 'runtime-state',
+    commandType: 'expire-race',
+    activePhases: ['active'],
+  },
   createInitialRuntimeState: (context) =>
     validateRuntime(context.initialState ?? {}),
   createInitialRoundState: () => validateRound({ phase: 'active' }),

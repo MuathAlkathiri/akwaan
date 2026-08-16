@@ -37,6 +37,7 @@ const sent = {
 describe("passwordless login", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.sessionStorage.clear();
     requestOtp.mockResolvedValue(sent);
     loginWithOtp.mockResolvedValue({ user: { role: "user" } });
   });
@@ -80,6 +81,24 @@ describe("passwordless login", () => {
       expect(loginWithOtp).toHaveBeenCalledWith("a@b.com", "123456"),
     );
     await waitFor(() => expect(push).toHaveBeenCalledWith("/"));
+  });
+
+  it("resumes the protected Match setup path after authentication", async () => {
+    window.sessionStorage.setItem(
+      "akwaan:post-auth-destination",
+      "/matches/new",
+    );
+    const user = userEvent.setup();
+    render(<PasswordlessLoginForm />);
+    await user.type(screen.getByTestId("otp-email-input"), "a@b.com");
+    await user.click(screen.getByTestId("otp-request-button"));
+    await waitFor(() => screen.getByTestId("otp-digit-0"));
+    await user.type(screen.getByTestId("otp-digit-0"), "123456");
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/matches/new"));
+    expect(
+      window.sessionStorage.getItem("akwaan:post-auth-destination"),
+    ).toBeNull();
   });
 
   it("routes an admin to the admin area, as password login did", async () => {

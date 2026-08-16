@@ -27,15 +27,11 @@ export interface PlayableWorld {
 /** A board position as the player sees it. */
 export interface PlayableBoardSlot {
   slotKey: string;
-  challengeTypeId: string;
   challengeTypeSlug: string;
   family: string;
   displayName: string;
   description?: string;
   instructions?: string;
-  itemStructure: string;
-  answerMode: string;
-  scoringRuleId: string;
   sortOrder: number;
 }
 

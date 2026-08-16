@@ -20,6 +20,7 @@ import {
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
 import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
+import { productionMechanicFixture } from '../fixtures/production-mechanic.fixture';
 import {
   MatchSetupMode,
   MatchSlotStatus,
@@ -159,11 +160,7 @@ describe('Match API integration', () => {
     // The mechanic key is the slug: the launcher registry and the runtime plugin
     // both key on it, so nothing maps names anywhere.
     const ryo = await challengeType({
-      name: 'اقرأ خصمك',
-      slug: RYO_MODE_KEY,
-      family: ChallengeFamily.RYO,
-      answerMode: ChallengeAnswerMode.RYO,
-      scoringRuleId: SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
+      ...productionMechanicFixture(RYO_MODE_KEY),
       status: WorldContentStatus.ACTIVE,
     });
     const signature = await challengeType({
@@ -332,7 +329,13 @@ describe('Match API integration', () => {
         role: 'team-player',
         credentialVersion: 1,
       };
-      await presence.connected(sessionId, joined.participantId);
+      await presence.connected(
+        sessionId,
+        joined.participantId,
+        // One simulated socket per participant. Presence is keyed by
+        // connection now, so a test phone needs an identity like a real one.
+        `test-socket-${joined.participantId}`,
+      );
       await readiness.execute({
         actor,
         ready: true,

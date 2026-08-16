@@ -12,6 +12,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.constants';
+import { MATCH_LAUNCH_CONTENT_ITEM_MAX } from '../domain/match.constants';
 
 /** Every Match command carries its own id and the revision it was decided on. */
 export class MatchCommandDto {
@@ -56,7 +57,10 @@ export class LaunchMatchChallengeDto extends MatchCommandDto {
   })
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(3)
+  // A transport bound, not a mechanic rule. Three was the widest any mechanic
+  // needed until "القنبلة" arrived with a run of 10–15 pictures; the exact
+  // count each mechanic accepts is still enforced by its own launcher.
+  @ArrayMaxSize(MATCH_LAUNCH_CONTENT_ITEM_MAX)
   @IsString({ each: true })
   contentItemIds!: string[];
 

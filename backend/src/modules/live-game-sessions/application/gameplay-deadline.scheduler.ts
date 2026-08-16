@@ -5,6 +5,7 @@ import {
   Logger,
   OnApplicationBootstrap,
   OnModuleDestroy,
+  OnModuleInit,
 } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import {
@@ -15,36 +16,47 @@ import {
   LIVE_GAME_SESSION_REPOSITORY,
   LiveGameSessionRepository,
 } from '../domain/live-game-session.repository';
-import { DISTRIBUTED_INFORMATION_MODE_KEY } from '../domain/distributed-information.plugin';
 import {
   isTerminalRuntimeStatus,
   type GameplayRuntimeState,
 } from '../domain/gameplay-runtime';
-import { CLOSEST_MODE_KEY } from '../domain/closest-gameplay.plugin';
-import { ONE_CLUE_MODE_KEY } from '../domain/one-clue-gameplay.plugin';
+import { GameplayDeadlineDeclaration } from '../domain/gameplay-mode.plugin';
+import { GameplayModeRegistry } from '../domain/gameplay-mode.registry';
+import {
+  GameplayObserverRegistry,
+  GameplayTerminalObserver,
+} from './gameplay-observer.registry';
+import { GameplayDeadlineSynchronizer } from './gameplay-deadline.port';
 
 /**
- * A pending server deadline and how it is resolved.
+ * A pending server deadline, how it is resolved, and which exact deadline it is.
  *
  * Two shapes exist because mechanics express a deadline in two places:
  *
- * - `mode-command` — the deadline lives on the runtime state and a mode command
- *   resolves it. "ركّبها", "مين اقرب" and "بدليل واحد" work this way.
+ * - `mode-command` — the deadline lives outside the interaction and a mode
+ *   command resolves it. The mechanic declares this on its plugin
+ *   (`GameplayDeadlineDeclaration`); nothing here switches on a mode key.
  * - `interaction` — the deadline lives on the open interaction's prompt and is
- *   resolved by the ordinary interaction resolution path. "اقرأ خصمك" works
- *   this way, and it is the only kind of deadline that mechanic has.
+ *   resolved by the ordinary interaction resolution path. Deliberately not
+ *   declared and not keyed by mode: any mechanic that publishes
+ *   `prompt.deadlineAt` is telling clients to run a countdown, and a countdown
+ *   the server does not also enforce is the freeze this branch exists to
+ *   prevent. "اقرأ خصمك" is enforced entirely by this branch.
  *
- * Top 5 deliberately has neither: a card waits for its assigned player, and a
- * player who leaves is handed off rather than timed out.
+ * `key` is the deadline's identity, not just its instant. A timer carries the
+ * key it was armed for and refuses to act unless the state it wakes up to still
+ * presents the same one, which is what makes a timer belonging to a finished
+ * item harmless to the item that replaced it.
  */
-type PendingDeadline =
-  | { kind: 'mode-command'; deadlineAt: string; commandType: string }
+type PendingDeadline = { key: string; deadlineAt: string } & (
+  | { kind: 'mode-command'; commandType: string }
   | {
       kind: 'interaction';
-      deadlineAt: string;
+      roundId: string;
       interactionRevision: number;
       interactionStatus: string;
-    };
+    }
+);
 
 /**
  * Interaction states a deadline can still resolve. The terminal three
@@ -58,77 +70,151 @@ const OPEN_INTERACTION_STATUSES = new Set([
   'adjudicating',
 ]);
 
-function pendingDeadline(
+/**
+ * The active team's remaining Bomb clock, as an absolute instant.
+ *
+ * Bomb is the one mechanic whose deadline is not written on the runtime: it
+ * burns the *session's* team clock, so the instant has to be derived from the
+ * clock that is currently running. Its plugin says so by declaring
+ * `source: 'session-clock'`.
+ */
+function sessionClockDeadline(
+  session: ClockBearingSession | undefined,
+): string | undefined {
+  const state = session?.serialize();
+  if (!state || state.status !== 'active') return undefined;
+  const team = state.teams.find(
+    (candidate) => candidate.id === state.activeTeamId,
+  );
+  if (!team?.clock.running || !team.clock.startedAt) return undefined;
+  // Absolute, not "now + remaining". A deadline recomputed against the clock
+  // moves every time it is read, and the staleness guard would then reject its
+  // own timer as belonging to a different deadline — so it would never fire.
+  const startedAt = new Date(team.clock.startedAt).getTime();
+  const budgetMs = Math.max(0, team.clock.allocatedMs - team.clock.consumedMs);
+  return new Date(startedAt + budgetMs).toISOString();
+}
+
+/** Only the shape this module reads, so the scheduler stays decoupled. */
+interface ClockBearingSession {
+  serialize(): {
+    status: string;
+    activeTeamId?: string;
+    teams: Array<{
+      id: string;
+      clock: {
+        running: boolean;
+        startedAt?: Date | string;
+        allocatedMs: number;
+        consumedMs: number;
+      };
+    }>;
+  };
+}
+
+/**
+ * The single derivation of "what deadline, if any, does committed state carry".
+ *
+ * Pure, and the only place that answers the question — the timer that is armed,
+ * the check the timer makes when it wakes, and restart recovery all read this
+ * one function, so they cannot disagree about whether a deadline exists.
+ */
+export function pendingDeadline(
   state: GameplayRuntimeState | undefined,
+  declaration?: GameplayDeadlineDeclaration,
+  session?: ClockBearingSession,
 ): PendingDeadline | undefined {
   const round = state?.activeRound;
   if (!state || !round || round.status !== 'active') return undefined;
   if (isTerminalRuntimeStatus(state.status)) return undefined;
-  if (
-    state.modeKey === DISTRIBUTED_INFORMATION_MODE_KEY &&
-    state.status === 'round-active' &&
-    state.runtimeState.phase === 'active' &&
-    typeof state.runtimeState.deadlineAt === 'string'
-  ) {
-    return {
-      kind: 'mode-command',
-      deadlineAt: state.runtimeState.deadlineAt,
-      commandType: 'expire-race',
-    };
+  const identity = `${state.id}|${round.id}`;
+
+  // The mechanic's own declaration wins when it has one, which preserves the
+  // existing precedence for a mechanic that carries both kinds of deadline.
+  if (declaration?.source === 'session-clock') {
+    const deadlineAt = sessionClockDeadline(session);
+    return deadlineAt
+      ? {
+          kind: 'mode-command',
+          key: `${identity}|mode|${declaration.commandType}|${deadlineAt}`,
+          deadlineAt,
+          commandType: declaration.commandType,
+        }
+      : undefined;
   }
   if (
-    state.modeKey === CLOSEST_MODE_KEY &&
-    state.status === 'round-active' &&
-    state.runtimeState.phase === 'collecting' &&
-    typeof state.runtimeState.deadlineAt === 'string'
+    declaration?.source === 'runtime-state' &&
+    typeof state.runtimeState.deadlineAt === 'string' &&
+    state.runtimeState.deadlineAt &&
+    declaration.activePhases.includes(String(state.runtimeState.phase))
   ) {
+    const deadlineAt = state.runtimeState.deadlineAt;
     return {
       kind: 'mode-command',
-      deadlineAt: state.runtimeState.deadlineAt,
-      commandType: 'expire-closest-item',
+      key: `${identity}|mode|${declaration.commandType}|${deadlineAt}`,
+      deadlineAt,
+      commandType: declaration.commandType,
     };
   }
-  if (
-    state.modeKey === ONE_CLUE_MODE_KEY &&
-    state.status === 'round-active' &&
-    state.runtimeState.phase === 'collecting' &&
-    typeof state.runtimeState.deadlineAt === 'string'
-  ) {
-    return {
-      kind: 'mode-command',
-      deadlineAt: state.runtimeState.deadlineAt,
-      commandType: 'expire-one-clue-stage',
-    };
-  }
-  // Interaction-owned deadline. Deliberately not keyed by mode: any mechanic
-  // that publishes `prompt.deadlineAt` is telling clients to run a countdown,
-  // and a countdown the server does not also enforce is the freeze this
-  // branch exists to prevent.
+
   const interaction = round.interaction;
   if (
     interaction &&
     OPEN_INTERACTION_STATUSES.has(interaction.status) &&
     interaction.prompt.deadlineAt
   ) {
+    const deadlineAt = new Date(interaction.prompt.deadlineAt).toISOString();
     return {
       kind: 'interaction',
-      deadlineAt: new Date(interaction.prompt.deadlineAt).toISOString(),
+      // The interaction id, not its revision: a submission arriving before the
+      // deadline bumps the revision without replacing the deadline, and a timer
+      // that disowned itself on every submission would leave the item unguarded.
+      // A *new* item is a new interaction id, which is what this rejects.
+      key: `${identity}|interaction|${interaction.id}|${deadlineAt}`,
+      deadlineAt,
+      roundId: round.id,
       interactionRevision: interaction.revision,
       interactionStatus: interaction.status,
     };
   }
   return undefined;
 }
+
 import { SubmitGameplayCommand } from './submit-gameplay-command.use-case';
 import { GameplayInteractionUseCases } from './gameplay-interaction.use-cases';
 
-/** Deadline scheduler shared by reconnect-safe, mode-owned round deadlines. */
+/**
+ * The single owner of gameplay deadline timers.
+ *
+ * It is a *reconciler*, not a service that callers drive: it is told only that a
+ * session's state changed and it converges this process's timers to whatever the
+ * committed state now says. That inversion is the fix for the class of bug where
+ * authoritative state carried a deadline that no timer was watching — a mechanic
+ * writes its deadline and is done, and no use case has to remember to arm
+ * anything.
+ *
+ * It converges from exactly three places, all of them lifecycle boundaries
+ * rather than mechanic code:
+ *
+ * - every committed runtime mutation, as a registered terminal observer;
+ * - every committed session command, through `GameplayDeadlineSynchronizer`
+ *   (Bomb's clock is session state, so a turn starting is a deadline appearing);
+ * - process start, which rebuilds every live session's timer from persistence.
+ */
 @Injectable()
 export class GameplayDeadlineScheduler
-  implements OnModuleDestroy, OnApplicationBootstrap
+  implements
+    GameplayDeadlineSynchronizer,
+    GameplayTerminalObserver,
+    OnModuleInit,
+    OnModuleDestroy,
+    OnApplicationBootstrap
 {
+  readonly name = 'gameplay-deadline-scheduler';
   private readonly logger = new Logger(GameplayDeadlineScheduler.name);
   private readonly timers = new Map<string, NodeJS.Timeout>();
+  /** The deadline key each armed timer belongs to, for cheap idempotence. */
+  private readonly armed = new Map<string, string>();
   /**
    * Consecutive failures per session. A deadline already in the past re-arms
    * with a ~0ms delay, so an error that repeats — a stale revision that never
@@ -145,8 +231,10 @@ export class GameplayDeadlineScheduler
    */
   private readonly lastResolved = new Map<
     string,
-    { deadlineAt: string; revision: number }
+    { key: string; revision: number }
   >();
+  /** Set on shutdown so nothing armed earlier can still reach persistence. */
+  private stopped = false;
   private static readonly MAX_RETRIES = 5;
   private static readonly RETRY_BACKOFF_MS = 250;
 
@@ -155,8 +243,96 @@ export class GameplayDeadlineScheduler
     private readonly sessions: LiveGameSessionRepository,
     @Inject(GAMEPLAY_RUNTIME_REPOSITORY)
     private readonly runtimes: GameplayRuntimeRepository,
+    private readonly modes: GameplayModeRegistry,
+    private readonly observers: GameplayObserverRegistry,
     private readonly moduleRef: ModuleRef,
   ) {}
+
+  /**
+   * Subscribe to every committed runtime mutation.
+   *
+   * This is the wiring that makes the guarantee hold without mechanic-specific
+   * code: `notifyRuntimeMutated` already runs after every runtime write that
+   * gameplay performs, so a mechanic that opens an item with a deadline gets a
+   * timer as a consequence of committing, not as a consequence of remembering.
+   */
+  onModuleInit(): void {
+    this.stopped = false;
+    this.observers.registerTerminalObserver(this);
+  }
+
+  /** Committed runtime mutation — converge. Failures here never fail gameplay. */
+  async onRuntimeMutated(input: { sessionId: string }): Promise<void> {
+    await this.synchronize(input.sessionId);
+  }
+
+  /**
+   * Converge this process's timer for one session with its committed state.
+   *
+   * Idempotent in both directions: state with a deadline leaves exactly one
+   * armed timer for it, state without one leaves none.
+   */
+  async synchronize(sessionId: string): Promise<void> {
+    // A timer that survives shutdown must not touch a closed connection. This
+    // is the same reasoning as the staleness key, one level up: convergence is
+    // only meaningful while this process is still the one running the game.
+    if (this.stopped) return;
+    const session = await this.sessions.findById(sessionId);
+    const runtime = await this.runtimes.findBySessionId(sessionId);
+    const state = runtime?.serialize();
+    const pending = state
+      ? pendingDeadline(state, this.declarationFor(state), session as never)
+      : undefined;
+    if (!session || !runtime || !pending) {
+      // No deadline in authoritative state means no timer may survive, which is
+      // the half of the invariant that keeps a resolved item from being expired.
+      //
+      // `forget` rather than `clear`, because this is also where a session
+      // stops needing to be remembered at all. A challenge that finished, a
+      // runtime that went terminal, a session that no longer exists — all
+      // arrive here, and the bookkeeping that guards *re-resolving* a deadline
+      // is meaningless once there is no deadline. Leaving it behind was a slow
+      // leak: `lastResolved` gained an entry for every session that ever timed
+      // an item out and never lost one for the whole life of the process.
+      //
+      // Deliberately not a cleanup call bolted onto session completion: the
+      // owner of a timer's existence is the same convergence that created it,
+      // exactly as in the arming path.
+      this.forget(sessionId);
+      return;
+    }
+    const resolved = this.lastResolved.get(sessionId);
+    if (
+      resolved &&
+      resolved.key === pending.key &&
+      resolved.revision === runtime.revision
+    ) {
+      // Already resolved this exact deadline and nothing moved. Arming again
+      // would just re-resolve it.
+      this.clear(sessionId);
+      return;
+    }
+    if (this.armed.get(sessionId) === pending.key && this.timers.has(sessionId))
+      return;
+    this.clear(sessionId);
+    const delay = Math.max(0, Date.parse(pending.deadlineAt) - Date.now());
+    this.armed.set(sessionId, pending.key);
+    this.timers.set(
+      sessionId,
+      setTimeout(() => {
+        void this.expire(sessionId, pending.key);
+      }, delay + 25),
+    );
+  }
+
+  /**
+   * Kept as the public name the start-of-challenge paths and tests already use.
+   * It is exactly `synchronize`; there has never been a reason for a caller to
+   * describe the deadline it wants.
+   */
+  schedule(sessionId: string): Promise<void> {
+    return this.synchronize(sessionId);
+  }
 
   /**
    * Rebuild every in-flight deadline after a restart.
@@ -165,15 +341,23 @@ export class GameplayDeadlineScheduler
    * or a free-tier instance waking from sleep silently dropped them all and the
    * challenges they belonged to hung until somebody abandoned the game. Nothing
    * re-armed them, which is why a lost timer was permanent.
+   *
+   * It converges through the same `synchronize` every runtime mutation uses, so
+   * a recovered timer and a freshly armed one are the same timer by
+   * construction.
    */
   async onApplicationBootstrap(): Promise<void> {
+    // Booting is the opposite of shutting down, and a process that comes back
+    // must converge again — including in a redeploy simulation, where destroy
+    // and bootstrap happen against the same instance.
+    this.stopped = false;
     try {
       const sessionIds = await this.runtimes.findSessionIdsWithLiveRuntimes();
       if (!sessionIds.length) return;
       // allSettled, not all: one unreadable runtime must not stop every other
       // session from getting its clock back.
       const results = await Promise.allSettled(
-        sessionIds.map((id) => this.schedule(id)),
+        sessionIds.map((id) => this.synchronize(id)),
       );
       const failed = results.filter((r) => r.status === 'rejected').length;
       this.logger.log(
@@ -192,59 +376,48 @@ export class GameplayDeadlineScheduler
     }
   }
 
-  async schedule(sessionId: string): Promise<void> {
-    this.clear(sessionId);
-    const session = await this.sessions.findById(sessionId);
-    const runtime = await this.runtimes.findBySessionId(sessionId);
-    const state = runtime?.serialize();
-    const pending = pendingDeadline(state);
-    if (!session || !runtime || !pending) return;
-    const resolved = this.lastResolved.get(sessionId);
-    if (
-      resolved &&
-      resolved.deadlineAt === pending.deadlineAt &&
-      resolved.revision === runtime.revision
-    ) {
-      // Already resolved this exact deadline and nothing moved. Arming again
-      // would just re-resolve it.
-      return;
-    }
-    const delay = Math.max(0, Date.parse(pending.deadlineAt) - Date.now());
-    this.timers.set(
-      sessionId,
-      setTimeout(
-        () => void this.expire(sessionId, pending.deadlineAt),
-        delay + 25,
-      ),
-    );
-  }
-
   onModuleDestroy(): void {
+    this.stopped = true;
     for (const timer of this.timers.values()) clearTimeout(timer);
     this.timers.clear();
+    this.armed.clear();
     this.failures.clear();
     this.lastResolved.clear();
   }
 
-  private async expire(
-    sessionId: string,
-    expectedDeadline: string,
-  ): Promise<void> {
+  private declarationFor(
+    state: GameplayRuntimeState,
+  ): GameplayDeadlineDeclaration | undefined {
+    try {
+      return this.modes.resolve(state.modeKey, state.modeVersion).deadline;
+    } catch {
+      // An unregistered plugin cannot be expired by us; the runtime would fail
+      // to restore on its own path and say so there.
+      return undefined;
+    }
+  }
+
+  private async expire(sessionId: string, expectedKey: string): Promise<void> {
     this.timers.delete(sessionId);
+    this.armed.delete(sessionId);
     try {
       const session = await this.sessions.findById(sessionId);
       const runtime = await this.runtimes.findBySessionId(sessionId);
       const state = runtime?.serialize();
-      const pending = pendingDeadline(state);
+      const pending = state
+        ? pendingDeadline(state, this.declarationFor(state), session as never)
+        : undefined;
       const round = state?.activeRound;
-      // A deadline that moved, or a race already resolved, needs nothing: the
-      // plugin's own terminal state is the authority, so this stays idempotent.
+      // The identity check that makes a stale timer harmless. A deadline that
+      // moved on — a new item, a new round, a new runtime, an answer that
+      // resolved this one — presents a different key, and this timer belongs to
+      // none of them. The plugin's own terminal state stays the authority.
       if (
         !session ||
         !runtime ||
         !round ||
         !pending ||
-        pending.deadlineAt !== expectedDeadline
+        pending.key !== expectedKey
       ) {
         return;
       }
@@ -268,7 +441,7 @@ export class GameplayDeadlineScheduler
         if (pending.interactionStatus === 'open') {
           await interactions.close({
             sessionId,
-            roundId: round.id,
+            roundId: pending.roundId,
             actor,
             commandId: randomUUID(),
             expectedSessionRevision: session.revision,
@@ -307,14 +480,15 @@ export class GameplayDeadlineScheduler
           payload: {},
         });
       }
-      // The mechanic may have opened the next item's interaction inside that
-      // resolution, and its deadline needs a timer of its own.
       this.failures.delete(sessionId);
       this.lastResolved.set(sessionId, {
-        deadlineAt: pending.deadlineAt,
+        key: pending.key,
         revision: runtime.revision,
       });
-      await this.schedule(sessionId);
+      // The mechanic may have opened the next item's interaction inside that
+      // resolution. Its own commit already converged us through the observer;
+      // this makes the recovery path self-sufficient too.
+      await this.synchronize(sessionId);
     } catch (error) {
       const attempts = (this.failures.get(sessionId) ?? 0) + 1;
       this.failures.set(sessionId, attempts);
@@ -332,10 +506,25 @@ export class GameplayDeadlineScheduler
       this.logger.warn(
         `Gameplay deadline retry ${attempts} for ${sessionId}: ${message}`,
       );
-      setTimeout(
-        () => void this.schedule(sessionId),
-        GameplayDeadlineScheduler.RETRY_BACKOFF_MS * attempts,
-      ).unref?.();
+      const retry = setTimeout(() => {
+        // Every other entry point catches for itself — the observer registry
+        // logs and swallows, the session-command boundary wraps its call. A
+        // timer callback has no caller to catch it, so an unhandled rejection
+        // here would take the process down with it.
+        void this.synchronize(sessionId).catch((retryError: unknown) =>
+          this.logger.error(
+            `Gameplay deadline retry for ${sessionId} could not converge: ${
+              retryError instanceof Error
+                ? retryError.message
+                : String(retryError)
+            }`,
+          ),
+        );
+      }, GameplayDeadlineScheduler.RETRY_BACKOFF_MS * attempts);
+      retry.unref?.();
+      // Tracked like any other timer so `clear` and shutdown can cancel it;
+      // an untracked retry is a timer that outlives the session it belonged to.
+      this.timers.set(sessionId, retry);
     }
   }
 
@@ -343,6 +532,39 @@ export class GameplayDeadlineScheduler
     const timer = this.timers.get(sessionId);
     if (timer) clearTimeout(timer);
     this.timers.delete(sessionId);
+    this.armed.delete(sessionId);
+  }
+
+  /**
+   * The deadline this process currently has a timer for, if any.
+   *
+   * Read-only introspection. It exists so "is a deadline actually being
+   * watched?" is answerable — by an operator looking at a stuck game, and by
+   * the tests that hold the lifecycle to its guarantee without reaching into
+   * private state or arming anything themselves.
+   */
+  armedKeyFor(sessionId: string): string | undefined {
+    return this.armed.get(sessionId);
+  }
+
+  /**
+   * Every session this process still holds anything for, across all of its
+   * bookkeeping.
+   *
+   * Read-only introspection, for the same reason as `armedKeyFor`: "is this
+   * scheduler still carrying sessions that finished hours ago?" should be
+   * answerable — by an operator reading a memory graph, and by the tests that
+   * hold cleanup to its guarantee — without reaching into private maps.
+   */
+  retainedSessionIds(): string[] {
+    return [
+      ...new Set([
+        ...this.timers.keys(),
+        ...this.armed.keys(),
+        ...this.failures.keys(),
+        ...this.lastResolved.keys(),
+      ]),
+    ];
   }
 
   /** Forget a finished session so the maps do not grow without bound. */

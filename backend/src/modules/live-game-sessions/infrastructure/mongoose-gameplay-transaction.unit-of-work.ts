@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Connection, Model } from 'mongoose';
 import {
@@ -16,8 +16,13 @@ import {
   LiveGameSessionState,
 } from '../domain/live-game-session';
 import { LiveSessionConcurrencyError } from '../domain/live-session.errors';
+import {
+  PARTICIPANT_PRESENCE,
+  ParticipantPresence,
+} from '../application/participant-presence.port';
 import { GameplayRuntimeDocument } from './gameplay-runtime.schema';
 import { LiveGameSessionDocument } from './live-game-session.schema';
+import { toPersistedState } from './live-session-state.persistence';
 
 @Injectable()
 export class MongooseGameplayTransactionUnitOfWork implements GameplayTransactionUnitOfWork {
@@ -33,6 +38,8 @@ export class MongooseGameplayTransactionUnitOfWork implements GameplayTransactio
     private readonly runtimes: Model<GameplayRuntimeDocument>,
     private readonly sessionModes: LiveGameModeRegistry,
     private readonly gameplayModes: GameplayModeRegistry,
+    @Inject(PARTICIPANT_PRESENCE)
+    private readonly presence: ParticipantPresence,
   ) {}
 
   async execute<T>(
@@ -79,10 +86,16 @@ export class MongooseGameplayTransactionUnitOfWork implements GameplayTransactio
           .exec();
         if (!document) return null;
         const state = document.state as LiveGameSessionState;
-        return LiveGameSession.restore(
+        const session = LiveGameSession.restore(
           state,
           this.sessionModes.resolve(state.modeKey, state.modeVersion),
         );
+        // Read outside the transaction on purpose. Presence is not part of what
+        // this transaction is making consistent, and pulling it into the read
+        // set would let an unrelated heartbeat abort a gameplay command with a
+        // write conflict.
+        session.applyPresence(await this.presence.read(sessionId));
+        return session;
       },
       findRuntime: async (sessionId) => {
         const document = await this.runtimes
@@ -114,7 +127,9 @@ export class MongooseGameplayTransactionUnitOfWork implements GameplayTransactio
               controllerActorId: state.controllerActorId,
               revision: state.revision,
               expiresAt: state.expiresAt,
-              state,
+              // Same strip as the repository: a gameplay transaction commits
+              // teams, turns and readiness, and writes nothing a socket owns.
+              state: toPersistedState(state),
             },
             { session: mongoSession },
           )

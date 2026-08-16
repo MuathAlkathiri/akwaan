@@ -22,6 +22,7 @@ import {
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
 import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
+import { productionMechanicFixture } from '../fixtures/production-mechanic.fixture';
 import {
   MatchStage,
   MatchStatus,
@@ -62,7 +63,7 @@ type MatchSnapshot = LiveGameSessionSnapshot & {
   };
 };
 
-type Phone = LiveSessionActor & { teamId: string };
+type Phone = LiveSessionActor & { teamId: string; connectionId: string };
 
 describe('Unified Match preflight integration', () => {
   let app: INestApplication;
@@ -153,19 +154,11 @@ describe('Unified Match preflight integration', () => {
       );
 
     const distributed = await challengeType({
-      name: 'ركّبها',
-      slug: DISTRIBUTED_INFORMATION_MODE_KEY,
-      family: ChallengeFamily.COOP,
-      answerMode: ChallengeAnswerMode.DISTRIBUTED,
-      scoringRuleId: SCORING_RULE_IDS.COOP_ITEM_SUCCESS,
+      ...productionMechanicFixture(DISTRIBUTED_INFORMATION_MODE_KEY),
       status: WorldContentStatus.ACTIVE,
     });
     const ryo = await challengeType({
-      name: 'اقرأ خصمك',
-      slug: RYO_MODE_KEY,
-      family: ChallengeFamily.RYO,
-      answerMode: ChallengeAnswerMode.RYO,
-      scoringRuleId: SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
+      ...productionMechanicFixture(RYO_MODE_KEY),
       status: WorldContentStatus.ACTIVE,
     });
     const filler = [];
@@ -378,9 +371,10 @@ describe('Unified Match preflight integration', () => {
       requestedTeamId: teamId,
       joinRequestId: uuid(),
     });
+    const connectionId = `preflight-socket-${joined.participantId}`;
     await app
       .get(UpdateParticipantPresence)
-      .connected(sessionId, joined.participantId);
+      .connected(sessionId, joined.participantId, connectionId);
     return {
       kind: 'participant',
       actorId: joined.participantId,
@@ -389,6 +383,7 @@ describe('Unified Match preflight integration', () => {
       role: 'team-player',
       credentialVersion: 1,
       teamId,
+      connectionId,
     };
   };
 
@@ -713,7 +708,11 @@ describe('Unified Match preflight integration', () => {
       // One phone leaves the room.
       await app
         .get(UpdateParticipantPresence)
-        .disconnected(sessionId, alpha[0].participantId!);
+        .disconnected(
+          sessionId,
+          alpha[0].participantId!,
+          alpha[0].connectionId,
+        );
 
       const dropped = (await snapshotOf(sessionId)).match.unified.preflight!;
       expect(dropped.readyToLaunch).toBe(false);
@@ -738,7 +737,7 @@ describe('Unified Match preflight integration', () => {
       // It comes back when the phone does, without a duplicate participant.
       await app
         .get(UpdateParticipantPresence)
-        .connected(sessionId, alpha[0].participantId!);
+        .connected(sessionId, alpha[0].participantId!, alpha[0].connectionId);
       const recovered = (await snapshotOf(sessionId)).match.unified.preflight!;
       expect(recovered.readyToLaunch).toBe(true);
       expect(recovered.teams.flatMap((team) => team.participants)).toHaveLength(

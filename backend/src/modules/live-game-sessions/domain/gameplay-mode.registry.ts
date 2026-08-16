@@ -59,6 +59,17 @@ export class GameplayModeRegistry {
     ],
   ]);
 
+  /**
+   * Every registered mechanic.
+   *
+   * Exists so lifecycle guarantees can be asserted across the whole registry
+   * rather than mechanic by mechanic — a new plugin is then covered the moment
+   * it is registered, instead of when somebody remembers to extend a list.
+   */
+  all(): GameplayModePlugin[] {
+    return [...this.plugins.values()];
+  }
+
   resolve(key: string, version: number): GameplayModePlugin {
     const plugin = this.plugins.get(this.registryKey(key, version));
     if (!plugin) {

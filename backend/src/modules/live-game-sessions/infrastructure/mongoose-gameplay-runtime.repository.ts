@@ -22,6 +22,11 @@ export class MongooseGameplayRuntimeRepository implements GameplayRuntimeReposit
     await this.model.create(this.toDocument(runtime.serialize()));
   }
 
+  async findStateById(runtimeId: string): Promise<GameplayRuntimeState | null> {
+    const document = await this.model.findOne({ runtimeId }).lean().exec();
+    return document ? (document.state as GameplayRuntimeState) : null;
+  }
+
   async findById(runtimeId: string): Promise<GameplayRuntime | null> {
     return this.restore(await this.model.findOne({ runtimeId }).lean().exec());
   }

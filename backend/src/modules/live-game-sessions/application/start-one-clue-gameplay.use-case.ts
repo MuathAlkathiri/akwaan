@@ -41,7 +41,6 @@ import {
   StartGameplayRound,
   StartGameplayRuntime,
 } from './gameplay-runtime.lifecycle';
-import { GameplayDeadlineScheduler } from './gameplay-deadline.scheduler';
 
 @Injectable()
 export class StartOneClueGameplay {
@@ -58,7 +57,6 @@ export class StartOneClueGameplay {
     private readonly createRound: CreateGameplayRound,
     private readonly startRound: StartGameplayRound,
     private readonly getRuntime: GetGameplayRuntime,
-    private readonly deadlines: GameplayDeadlineScheduler,
   ) {}
 
   async execute(input: {
@@ -208,7 +206,6 @@ export class StartOneClueGameplay {
       expectedSessionRevision: session.revision,
       expectedRuntimeRevision: runtime.revision,
     });
-    await this.deadlines.schedule(input.sessionId);
     return this.getRuntime.execute(input.sessionId, actor);
   }
 }

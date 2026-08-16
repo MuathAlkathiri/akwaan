@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LiveSessionContext } from "@/features/live-game-session/hooks/live-session-context";
@@ -25,13 +26,18 @@ import type { LiveSessionSnapshot } from "@/features/live-game-session/model";
 const WORLD = "world-anime";
 const SLOTS: MatchSlotKey[] = ["slot_1", "slot_2", "slot_3", "slot_4"];
 
-const mocks = vi.hoisted(() => ({ resync: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  resync: vi.fn(),
+  adoptSnapshot: vi.fn(),
+  abortActiveChallenge: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
 }));
 
 vi.mock("@/features/match-setup", () => ({
+  abortActiveChallenge: mocks.abortActiveChallenge,
   prepareUnifiedChallenge: vi.fn(),
   launchUnifiedChallenge: vi.fn(),
   cancelUnifiedPreflight: vi.fn(),
@@ -180,6 +186,7 @@ function renderRouter(
       ? {
           gameplay: {
             runtimeId: "runtime-1",
+            revision: 7,
             mode: { key: options.runtimeModeKey, version: 1 },
             status: "active",
             modeState: {},
@@ -198,6 +205,7 @@ function renderRouter(
             connection: "connected",
             error: undefined,
             resync: mocks.resync,
+            adoptSnapshot: mocks.adoptSnapshot,
             sessionId: "session-1",
           } as never
         }
@@ -218,6 +226,8 @@ const running = {
 
 beforeEach(() => {
   mocks.resync.mockReset();
+  mocks.adoptSnapshot.mockReset();
+  mocks.abortActiveChallenge.mockReset();
 });
 
 describe("a running challenge is routed by its runtime mode key", () => {
@@ -292,6 +302,25 @@ describe("a running challenge is routed by its runtime mode key", () => {
     expect(header.textContent).toContain("العالم الثاني · انمي");
     expect(header.textContent).toContain("الخانة 2");
     expect(header.textContent).toContain("اقرأ خصمك 1-1");
+  });
+
+  it("returns to the board only after the authoritative abort succeeds", async () => {
+    const user = userEvent.setup();
+    const boardSnapshot = { marker: "authoritative-board" };
+    mocks.abortActiveChallenge.mockResolvedValue(boardSnapshot);
+    renderRouter(match({ stage: "challenge", currentChallenge: running }), {
+      runtimeModeKey: "read-your-opponent",
+    });
+
+    await user.click(screen.getByRole("button", { name: "العودة إلى اللوحة" }));
+
+    expect(mocks.abortActiveChallenge).toHaveBeenCalledWith({
+      sessionId: "session-1",
+      expectedSessionRevision: 4,
+      expectedRuntimeRevision: 7,
+      commandId: expect.any(String),
+    });
+    expect(mocks.adoptSnapshot).toHaveBeenCalledWith(boardSnapshot);
   });
 });
 

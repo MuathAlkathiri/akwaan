@@ -47,6 +47,11 @@ import {
   createTeamActionAssignmentState,
 } from '../../live-game-sessions/domain/team-action-assignment';
 import { LiveSessionActor } from '../../live-game-sessions/application/live-session-actor';
+import { CancelGameplayRuntime } from '../../live-game-sessions/application/gameplay-runtime.lifecycle';
+import {
+  GAMEPLAY_RUNTIME_REPOSITORY,
+  GameplayRuntimeRepository,
+} from '../../live-game-sessions/domain/gameplay-runtime.repository';
 
 interface MatchCommand {
   sessionId: string;
@@ -78,6 +83,9 @@ export class MatchUseCases {
     private readonly readiness: MatchChallengeReadinessService,
     private readonly joinAccess: GetSessionJoinAccess,
     private readonly createJoinAccess: CreateSessionJoinAccess,
+    @Inject(GAMEPLAY_RUNTIME_REPOSITORY)
+    private readonly runtimes: GameplayRuntimeRepository,
+    private readonly cancelRuntime: CancelGameplayRuntime,
   ) {}
 
   /**
@@ -518,6 +526,7 @@ export class MatchUseCases {
     const launcher: MatchChallengeLauncher = this.launchers.require({
       challengeTypeSlug: slot.challengeTypeSlug,
     });
+    await this.recoverUnboundRuntime(match, command);
     const contentItemIds = await resolveContent({ match, occurrence, slot });
     const context = {
       sessionId: command.sessionId,
@@ -549,7 +558,12 @@ export class MatchUseCases {
         ? { selectingTeamId: command.selectingTeamId }
         : {}),
     });
-    await this.matches.save(match, revision);
+    try {
+      await this.matches.save(match, revision);
+    } catch (error) {
+      await this.compensateUnboundRuntime(command, runtimeId);
+      throw error;
+    }
     this.transitions.publish(match, 'challenge-launched');
     this.logger.log({
       event: 'match_challenge_launched',
@@ -564,6 +578,59 @@ export class MatchUseCases {
       contentItemCount: contentItemIds.length,
     });
     return match;
+  }
+
+  /**
+   * A non-terminal runtime with no Match binding is provably orphaned while the
+   * Match is on board/preflight. It can occur if the process died after runtime
+   * creation or if the subsequent optimistic Match save failed. Cancelling it is
+   * safe and auditable; a bound active runtime is never touched here.
+   */
+  private async recoverUnboundRuntime(
+    match: Match,
+    command: MatchCommand,
+  ): Promise<void> {
+    if (match.currentChallenge) return;
+    const runtime = await this.runtimes.findBySessionId(command.sessionId);
+    if (!runtime || runtime.isTerminal) return;
+    this.logger.error({
+      event: 'match_orphan_runtime_recovery',
+      matchId: match.id,
+      sessionId: command.sessionId,
+      runtimeId: runtime.id,
+      runtimeStatus: runtime.status,
+      matchStage: match.stage,
+      recoveryAction: 'cancel-runtime',
+      reason: 'non_terminal_runtime_without_current_challenge',
+    });
+    await this.cancelRuntime.execute({
+      sessionId: command.sessionId,
+      actor: { kind: 'user', actorId: command.actorId },
+      commandId: `recover-orphan:${runtime.id}`,
+      expectedSessionRevision: (
+        await this.requireControlledSession(command.sessionId, command.actorId)
+      ).revision,
+      expectedRuntimeRevision: runtime.revision,
+    });
+  }
+
+  private async compensateUnboundRuntime(
+    command: MatchCommand,
+    runtimeId: string,
+  ): Promise<void> {
+    const runtime = await this.runtimes.findById(runtimeId);
+    if (!runtime || runtime.isTerminal) return;
+    const session = await this.requireControlledSession(
+      command.sessionId,
+      command.actorId,
+    );
+    await this.cancelRuntime.execute({
+      sessionId: command.sessionId,
+      actor: { kind: 'user', actorId: command.actorId },
+      commandId: `compensate-launch:${runtimeId}`,
+      expectedSessionRevision: session.revision,
+      expectedRuntimeRevision: runtime.revision,
+    });
   }
 
   cancel(command: MatchCommand): Promise<Match> {

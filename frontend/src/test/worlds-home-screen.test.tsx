@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import type { PlayableWorld } from "@/features/worlds/types";
+import { fireEvent, render, screen } from "@testing-library/react";
+import type { PlayableScope, PlayableWorld } from "@/features/worlds/types";
 
 /**
  * The public World surfaces.
@@ -13,6 +13,7 @@ import type { PlayableWorld } from "@/features/worlds/types";
 
 const mocks = vi.hoisted(() => ({
   worlds: { data: [] as PlayableWorld[], isLoading: false, isError: false },
+  scopes: [] as PlayableScope[],
   isAuthenticated: true,
   push: vi.fn(),
 }));
@@ -21,6 +22,14 @@ vi.mock("@/features/worlds/hooks/use-player-catalog", () => ({
   usePlayableWorlds: () => ({
     ...mocks.worlds,
     isSuccess: !mocks.worlds.isLoading && !mocks.worlds.isError,
+    refetch: vi.fn(),
+    isFetching: false,
+  }),
+  usePlayableScopes: (worldId?: string) => ({
+    data: mocks.scopes.filter((scope) => scope.worldId === worldId),
+    isLoading: false,
+    isError: false,
+    isSuccess: true,
     refetch: vi.fn(),
     isFetching: false,
   }),
@@ -55,6 +64,24 @@ function world(slug: string, name: string, sortOrder: number): PlayableWorld {
 
 const football = world("football", "كرة القدم", 1);
 
+const scope = (index: number): PlayableScope => ({
+  id: `scope-${index}`,
+  worldId: football.id,
+  name: `نطاق ${index}`,
+  slug: `scope-${index}`,
+  sortOrder: index,
+  readyContentItemCount: 3,
+  usableSlots: [
+    {
+      slotKey: "slot_1",
+      challengeTypeSlug: "read-your-opponent",
+      family: "ryo",
+      displayName: "اقرأ خصمك",
+      sortOrder: 0,
+    },
+  ],
+});
+
 beforeEach(() => {
   mocks.isAuthenticated = true;
   mocks.worlds = {
@@ -68,70 +95,49 @@ beforeEach(() => {
     isError: false,
   };
   mocks.push.mockReset();
+  mocks.scopes = Array.from({ length: 5 }, (_, index) => scope(index + 1));
 });
 
 describe("home is a dashboard of Worlds", () => {
-  it("leads with the product action rather than duplicating account identity", () => {
+  it("leads with the approved product explanation and real World controls", () => {
     render(<WorldsHome />);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "اختر عالمك وابدأ التحدي",
+      "عالم تختارونه، وتحديات تغيّر كل جولة.",
     );
-    expect(screen.getByText("عوالم مختلفة، تحديات مختلفة، وكل مباراة لها قصتها.")).toBeInTheDocument();
-    expect(screen.queryByText(/أهلاً معاذ/)).toBeNull();
-    expect(screen.queryByRole("link", { name: "تصفّح كل العوالم" })).toBeNull();
-    expect(screen.queryByText("أكوان", { selector: "p" })).toBeNull();
-    expect(screen.getByRole("link", { name: "ابدأ مباراة جديدة" })).toHaveAttribute(
-      "href",
-      "/matches/new",
-    );
-    expect(document.body.textContent).not.toContain("لعبة أسئلة جماعية");
-
-    const featured = screen.getByRole("region", { name: "عوالم مختارة" });
-    expect(
-      within(featured)
-        .getAllByRole("link")
-        .map((link) => link.getAttribute("href")),
-    ).toEqual([
-      "/matches/new?worldId=id-football",
-      "/matches/new?worldId=id-anime",
-      "/matches/new?worldId=id-video-games",
-    ]);
-
-    const all = screen.getByRole("region", { name: "كل العوالم" });
-    expect(within(all).getAllByRole("link")).toHaveLength(4);
+    expect(screen.getByRole("button", { name: "كرة القدم" })).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "العوالم المختارة" })).toBeInTheDocument();
+    expect(screen.getByText("القنبلة")).toBeInTheDocument();
   });
 
-  it("activates a side World before allowing it to navigate", () => {
+  it("opens Scope selection on the homepage instead of navigating", () => {
     render(<WorldsHome />);
-    const carousel = within(screen.getByTestId("featured-worlds-carousel"));
-
+    fireEvent.click(screen.getByRole("button", { name: "كرة القدم" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("عالم كرة القدم")).toBeInTheDocument();
     expect(
-      carousel.getByRole("link", { name: "ادخل عالم كرة القدم" }),
+      screen.getByText("اختر النطاقات اللي تبغاها في المباراة"),
     ).toBeInTheDocument();
-    const anime = carousel.getByRole("link", { name: "اعرض عالم أنمي" });
-    fireEvent.click(anime);
-
-    expect(
-      carousel.getByRole("link", { name: "ادخل عالم أنمي" }),
-    ).toHaveAttribute("href", "/matches/new?worldId=id-anime");
-    expect(screen.getByTestId("featured-world-position")).toHaveTextContent(
-      "2 من 3",
-    );
+    expect(mocks.push).not.toHaveBeenCalled();
   });
 
-  it("rotates the featured World every five seconds", () => {
-    vi.useFakeTimers();
+  it("builds a guest selection locally and updates the selected Worlds rail", () => {
     render(<WorldsHome />);
+    fireEvent.click(screen.getByRole("button", { name: "كرة القدم" }));
+    for (let index = 1; index <= 4; index += 1) {
+      fireEvent.click(
+        screen.getByRole("button", { name: new RegExp(`نطاق ${index}$`) }),
+      );
+    }
+    fireEvent.click(screen.getByRole("button", { name: "تأكيد الاختيار" }));
 
-    expect(screen.getByTestId("featured-world-position")).toHaveTextContent(
-      "1 من 3",
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "كرة القدم" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
     );
-    act(() => vi.advanceTimersByTime(5_000));
-    expect(screen.getByTestId("featured-world-position")).toHaveTextContent(
-      "2 من 3",
-    );
-    vi.useRealTimers();
+    expect(screen.getByText("نطاق 1، نطاق 2، نطاق 3، نطاق 4")).toBeInTheDocument();
+    expect(mocks.push).not.toHaveBeenCalled();
   });
 
   it("does not infer an active Match from local browser state", () => {

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/components/auth/auth-provider";
 import {
   adminNavigation,
@@ -20,10 +19,8 @@ const userNavItems = [
 
 export function Header() {
   const pathname = usePathname();
-  const { user, isAdmin, isAuthenticated, logout } = useAuth();
+  const { isAdmin, isAuthenticated, logout } = useAuth();
   const visibleItems = isAdmin ? adminNavigation : userNavItems;
-  const displayName = user?.fullName || "لاعب";
-  const initial = displayName.trim().charAt(0) || "ل";
 
   // One header, one surface. It shares the page canvas instead of floating in a
   // second card, so the brand, navigation and Home content read as one system.
@@ -78,31 +75,14 @@ export function Header() {
 
         <div className="flex items-center gap-3">
           {isAuthenticated ? (
-            <>
-              <div className="hidden items-center gap-2 rounded-lg border border-border/70 bg-card/45 px-2.5 py-1.5 sm:flex">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-accent text-accent-foreground">
-                    {initial}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="leading-tight">
-                  <span className="block text-sm font-black">
-                    {displayName}
-                  </span>
-                  <span className="block text-xs font-bold text-muted-foreground">
-                    مرحبًا بك
-                  </span>
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={logout}
-                className="text-muted-foreground hover:text-primary"
-              >
-                خروج
-              </Button>
-            </>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={logout}
+              className="text-muted-foreground hover:text-primary"
+            >
+              خروج
+            </Button>
           ) : (
             <>
               <Link

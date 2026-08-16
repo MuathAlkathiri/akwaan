@@ -104,10 +104,7 @@ export function ryoAnsweringTeam(
  * Falls back to the id only when the option can no longer be found — a recap
  * that says something odd is still better than one that says nothing at all.
  */
-function optionLabel(
-  item: { options?: unknown },
-  optionId: string,
-): string {
+function optionLabel(item: { options?: unknown }, optionId: string): string {
   const options = Array.isArray(item.options) ? item.options : [];
   const match = options.find(
     (option): option is { id: string; label?: unknown } =>
@@ -119,7 +116,11 @@ function optionLabel(
   if (typeof label === 'string' && label.trim()) return label.trim();
   if (label && typeof label === 'object') {
     const authored = label as Record<string, unknown>;
-    for (const value of [authored.ar, authored.en, ...Object.values(authored)]) {
+    for (const value of [
+      authored.ar,
+      authored.en,
+      ...Object.values(authored),
+    ]) {
       if (typeof value === 'string' && value.trim()) return value.trim();
     }
   }
@@ -279,6 +280,9 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: RYO_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  // No `deadline` declaration on purpose: "اقرأ خصمك" puts its clock on the
+  // interaction prompt (`RYO_TIMER_SECONDS`), and every interaction deadline is
+  // enforced by the reducer without being declared.
   createInitialRuntimeState: (context) =>
     validateRuntime(context.initialState ?? {}),
   createInitialRoundState(context) {

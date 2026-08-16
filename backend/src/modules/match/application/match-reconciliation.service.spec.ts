@@ -137,6 +137,7 @@ describe('MatchReconciliationService', () => {
       findById: () => Promise.resolve(load()),
       findActiveBySessionId: () => Promise.resolve(load()),
       findLatestBySessionId: () => Promise.resolve(load()),
+      findAwaitingConvergence: () => Promise.resolve([]),
       save: (match, expectedRevision) => {
         saves.push(expectedRevision);
         if (remainingConflicts > 0) {
@@ -249,6 +250,30 @@ describe('MatchReconciliationService', () => {
     // Nothing about the content or the scoring travels on the notification.
     expect(JSON.stringify(published)).not.toContain('TRUST_CORRECT');
     expect(JSON.stringify(published)).not.toContain('itemsPlayed');
+  });
+
+  it('releases a cancelled runtime to the board without score or result', async () => {
+    const { service, published, current } = setup(inChallenge());
+    const cancelled = {
+      ...runtimeState('active', [scoreEvent('must-not-import', 9)]),
+      status: 'cancelled',
+    } as GameplayRuntimeState;
+
+    await expect(notify(service, cancelled)).resolves.toMatchObject({
+      outcome: 'aborted',
+      importedScoreEvents: 0,
+    });
+
+    const match = current()!;
+    expect(match.stage).toBe(MatchStage.BOARD);
+    expect(match.currentChallenge).toBeUndefined();
+    expect(match.pendingResult).toBeUndefined();
+    expect(match.challengeResults).toHaveLength(0);
+    expect(match.teamScore('team-alpha').signedTotal).toBe(0);
+    expect(match.occurrences[0].slots[WorldChallengeSlotKey.SLOT_2]).toEqual({
+      status: MatchSlotStatus.AVAILABLE,
+    });
+    expect(published.at(-1)?.payload.reason).toBe('challenge-aborted');
   });
 
   it('reports a runtime that has not finished without touching the Match', async () => {

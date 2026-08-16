@@ -8,6 +8,7 @@ import {
   ChallengeFamily,
   ChallengeItemStructure,
 } from '../modules/world-content/domain/world-content.constants';
+import { BOMB_MODE_KEY } from '../modules/live-game-sessions/domain/bomb-gameplay.plugin';
 import { RYO_MODE_KEY } from '../modules/live-game-sessions/domain/ryo-gameplay.plugin';
 import { DISTRIBUTED_INFORMATION_MODE_KEY } from '../modules/live-game-sessions/domain/distributed-information.plugin';
 import { TOP5_MODE_KEY } from '../modules/live-game-sessions/domain/top5-keep-or-give.plugin';
@@ -87,6 +88,7 @@ describe('canonical mechanic slug migration', () => {
     // Every entry must correspond to a real launcher, or the migration would
     // rename a ChallengeType to a slug nothing resolves.
     const launcherKeys = [
+      BOMB_MODE_KEY,
       RYO_MODE_KEY,
       TOP5_MODE_KEY,
       DISTRIBUTED_INFORMATION_MODE_KEY,

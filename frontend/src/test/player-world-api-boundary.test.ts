@@ -155,6 +155,10 @@ describe("player World API boundary", () => {
       // Leaving the result is its own explicit command; the stage never expires
       // on a timer and the client never advances it locally.
       "/live-game-sessions/${input.sessionId}/match/unified/challenges/continue",
+      // Back to Board aborts the running challenge authoritatively before any
+      // navigation happens. Leaving a challenge is a server transition, not a
+      // client-side route change.
+      "/live-game-sessions/${input.sessionId}/runtime/cancel",
       "/live-game-sessions/${input.sessionId}/match/unified/challenges/launch",
       "/live-game-sessions/${sessionId}/ready",
       "/live-game-sessions/${sessionId}/start",

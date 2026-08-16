@@ -3,6 +3,7 @@
 import { ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "./auth-provider";
+import { rememberPostAuthDestination } from "@/features/auth/navigation/post-auth-destination";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -10,6 +11,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
+      rememberPostAuthDestination("/matches/new");
       router.replace("/login");
     }
   }, [isAuthenticated, isLoading, router]);

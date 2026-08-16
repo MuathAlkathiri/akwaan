@@ -507,6 +507,11 @@ export const ONE_CLUE_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: ONE_CLUE_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  deadline: {
+    source: 'runtime-state',
+    commandType: 'expire-one-clue-stage',
+    activePhases: ['collecting'],
+  },
   createInitialRuntimeState: (context) =>
     validateRuntime(context.initialState ?? {}),
   createInitialRoundState(context) {

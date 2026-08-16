@@ -168,7 +168,20 @@ export class LiveGameSessionsGateway
   handleDisconnect(client: LiveSocket): void {
     for (const [sessionId, participantId] of client.data
       .subscribedParticipants ?? []) {
-      void this.presence.disconnected(sessionId, participantId);
+      void this.presence
+        .disconnected(sessionId, participantId, client.id)
+        .catch((error: unknown) =>
+          // A disconnect has nobody left to report to, so a failure here can
+          // only be logged. Left unhandled it was a rejected promise with no
+          // catch anywhere above it.
+          this.logger.error({
+            event: 'participant_disconnect_failed',
+            sessionId,
+            participantId,
+            connectionId: client.id,
+            message: error instanceof Error ? error.message : String(error),
+          }),
+        );
     }
   }
 
@@ -193,9 +206,14 @@ export class LiveGameSessionsGateway
       }
       await client.join(this.room(body.sessionId));
       client.data.subscribedParticipants.set(body.sessionId, participantId);
+      // `client.id` is the connection identity presence is keyed by, so a
+      // reconnect is a different connection rather than a second count on the
+      // same one, and this socket's eventual disconnect removes exactly this
+      // entry.
       const connected = await this.presence.connected(
         body.sessionId,
         participantId,
+        client.id,
       );
       if (!connected) {
         await client.leave(this.room(body.sessionId));
@@ -234,7 +252,11 @@ export class LiveGameSessionsGateway
     );
     client.data.subscribedParticipants.delete(body.sessionId);
     if (participantId) {
-      await this.presence.disconnected(body.sessionId, participantId);
+      await this.presence.disconnected(
+        body.sessionId,
+        participantId,
+        client.id,
+      );
     }
   }
 

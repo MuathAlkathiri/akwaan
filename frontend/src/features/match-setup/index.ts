@@ -31,6 +31,7 @@ export {
   type ConfiguredMatchCreation,
 } from "./api/create-configured-match";
 export {
+  abortActiveChallenge,
   cancelUnifiedPreflight,
   continueFromChallengeResult,
   createUnifiedMatch,

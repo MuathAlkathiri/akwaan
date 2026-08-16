@@ -20,6 +20,7 @@ import {
   LIVE_SESSION_TRANSITION_PUBLISHER,
   LiveSessionTransitionPublisher,
 } from './live-session-transition.publisher';
+import { LiveSessionConcurrencyError } from '../domain/live-session.errors';
 import { eligibleParticipantsOf } from './start-top5.use-case';
 
 /**
@@ -38,6 +39,8 @@ import { eligibleParticipantsOf } from './start-top5.use-case';
 @Injectable()
 export class ReassignTeamActions {
   private readonly logger = new Logger(ReassignTeamActions.name);
+  /** Bounded: a handoff that keeps losing is a busy game, not a stuck one. */
+  private static readonly MAX_ATTEMPTS = 3;
 
   constructor(
     @Inject(LIVE_GAME_SESSION_REPOSITORY)
@@ -50,7 +53,48 @@ export class ReassignTeamActions {
     private readonly publisher: LiveSessionTransitionPublisher,
   ) {}
 
+  /**
+   * Hands every action held by an absent player to somebody who is here.
+   *
+   * Retried, because it competes with gameplay. The write is guarded on the
+   * runtime revision exactly like a gameplay command, so it can never overwrite
+   * a mutation that landed first — but losing that race used to mean the
+   * handoff was simply dropped, leaving the action with the player who left and
+   * nobody to take it. Each attempt re-reads runtime *and* presence, so a retry
+   * decides against what is true now rather than replaying a stale verdict.
+   *
+   * Converges rather than insists: if the mutation that won the race already
+   * reassigned the action — a resolution opening the next item does exactly
+   * that — the recomputation finds nothing to change and this writes nothing.
+   */
   async forSession(sessionId: string): Promise<TeamActionAssignment[]> {
+    for (
+      let attempt = 1;
+      attempt <= ReassignTeamActions.MAX_ATTEMPTS;
+      attempt += 1
+    ) {
+      try {
+        return await this.attempt(sessionId);
+      } catch (error) {
+        if (!(error instanceof LiveSessionConcurrencyError)) throw error;
+        this.logger.warn({
+          event: 'team_action_reassignment_retry',
+          sessionId,
+          attempt,
+        });
+      }
+    }
+    // Gameplay is moving fast enough that every attempt lost. The next command
+    // or disconnect converges; saying so beats a silent drop.
+    this.logger.error({
+      event: 'team_action_reassignment_abandoned',
+      sessionId,
+      attempts: ReassignTeamActions.MAX_ATTEMPTS,
+    });
+    return [];
+  }
+
+  private async attempt(sessionId: string): Promise<TeamActionAssignment[]> {
     const runtime = await this.runtimes.findBySessionId(sessionId);
     const session = await this.sessions.findById(sessionId);
     if (!runtime || !session) return [];

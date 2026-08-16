@@ -49,8 +49,8 @@ describe('Games HTTP lifecycle integration', () => {
   const gamePayload = (name = 'لعبة دورة حياة') => ({
     name,
     teams: [
-      { name: 'الفريق الأول', members: ['أحمد'] },
-      { name: 'الفريق الثاني', members: ['سارة'] },
+      { name: 'الفريق الأول', members: ['أحمد'], color: 'blue' },
+      { name: 'الفريق الثاني', members: ['سارة'], color: 'red' },
     ],
     categoryIds: [categoryId],
   });
@@ -65,7 +65,10 @@ describe('Games HTTP lifecycle integration', () => {
     await request(app.getHttpServer())
       .post('/games')
       .set(auth())
-      .send({ ...gamePayload(), teams: [{ name: 'واحد', members: [] }] })
+      .send({
+        ...gamePayload(),
+        teams: [{ name: 'واحد', members: [], color: 'blue' }],
+      })
       .expect(400);
     await request(app.getHttpServer())
       .post('/games')

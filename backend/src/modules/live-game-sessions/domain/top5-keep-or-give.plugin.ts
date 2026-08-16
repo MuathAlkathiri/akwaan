@@ -464,6 +464,8 @@ export const TOP5_KEEP_OR_GIVE_PLUGIN: GameplayModePlugin = {
   key: TOP5_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  // No `deadline` declaration on purpose: a Top 5 card waits for the player it
+  // was handed to, and a player who leaves is handed off rather than timed out.
   createInitialRuntimeState: (context) =>
     validateRuntime(context.initialState ?? {}),
   createInitialRoundState(context) {

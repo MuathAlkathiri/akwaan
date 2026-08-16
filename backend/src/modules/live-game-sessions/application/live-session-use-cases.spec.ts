@@ -88,6 +88,7 @@ describe('live session application use cases', () => {
       clock,
       snapshots,
       publisher,
+      { synchronize: jest.fn().mockResolvedValue(undefined) },
     );
   });
 

@@ -69,6 +69,7 @@ describe('MatchUseCases transitions', () => {
       findById: () => Promise.resolve(load()),
       findActiveBySessionId: () => Promise.resolve(load()),
       findLatestBySessionId: () => Promise.resolve(load()),
+      findAwaitingConvergence: () => Promise.resolve([]),
       save: (match, expectedRevision) => {
         if (options.conflict)
           return Promise.reject(new MatchConcurrencyError());
@@ -143,6 +144,13 @@ describe('MatchUseCases transitions', () => {
       {
         execute: () => Promise.resolve({ joinCode: 'JOIN01' }),
       } as unknown as CreateSessionJoinAccess,
+      {
+        findBySessionId: () => Promise.resolve(null),
+        findById: () => Promise.resolve(null),
+      } as unknown as import('../../live-game-sessions/domain/gameplay-runtime.repository').GameplayRuntimeRepository,
+      {
+        execute: () => Promise.resolve({}),
+      } as unknown as import('../../live-game-sessions/application/gameplay-runtime.lifecycle').CancelGameplayRuntime,
     );
     return { useCases, published, current: load };
   };

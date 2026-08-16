@@ -1,8 +1,10 @@
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { GameplayAuthorization } from './gameplay-authorization';
 import { GameplayModeRegistry } from '../domain/gameplay-mode.registry';
 import {
   GameplayCommandPayload,
+  GameplayCommandResult,
+  GameplayModePlugin,
   GameplaySessionEffect,
 } from '../domain/gameplay-mode.plugin';
 import {
@@ -32,7 +34,6 @@ import {
   PARENT_GAME_ACCESS,
   ParentGameAccess,
 } from './parent-game-access.port';
-import { BombExpirationScheduler } from './bomb-expiration.scheduler';
 import { ScoringService } from '../../scoring/application/scoring.service';
 import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 import {
@@ -41,14 +42,60 @@ import {
   Top5Result,
 } from '../domain/top5-keep-or-give.plugin';
 import { eligibleParticipantsOf } from './start-top5.use-case';
-import { GameplayDeadlineScheduler } from './gameplay-deadline.scheduler';
 import {
   DISTRIBUTED_INFORMATION_MODE_KEY,
   DistributedResult,
 } from '../domain/distributed-information.plugin';
 import { GameplayObserverRegistry } from './gameplay-observer.registry';
+import { BOMB_MODE_KEY } from '../domain/bomb-gameplay.plugin';
 import { CLOSEST_MODE_KEY } from '../domain/closest-gameplay.plugin';
 import { ONE_CLUE_MODE_KEY } from '../domain/one-clue-gameplay.plugin';
+
+/**
+ * The authority behind `expire-team`, against the server clock and the
+ * persisted team clock.
+ *
+ * Exported and pure because it *is* the deadline: whoever sends the command —
+ * the scheduler, a host, a hand-crafted socket frame — has to pass this, so it
+ * needs to be readable and testable on its own rather than buried in a private
+ * method nothing can reach.
+ *
+ * Both refusals matter. A clock with time left is the obvious one. A session
+ * where no team holds the turn is the subtle one: there is no clock to be past,
+ * so "expired" is not a verdict anybody may claim. That case used to fall
+ * through to `remaining = 0` and be accepted, which let an `expire-team` sent
+ * after the host ended the turn decide a Bomb challenge at a moment of the
+ * sender's choosing.
+ *
+ * A clock that is stopped but genuinely spent still expires: the deadline
+ * really did pass, and only the ticking stopped.
+ */
+export function assertBombClockExpired(
+  state: LiveGameSessionState,
+  now: Date,
+): void {
+  const active = state.teams.find((team) => team.id === state.activeTeamId);
+  if (!active) {
+    throw new LiveSessionDomainError(
+      'BOMB_NO_ACTIVE_TEAM',
+      'No team holds the turn, so no clock can have expired',
+    );
+  }
+  const elapsed =
+    active.clock.running && active.clock.startedAt
+      ? Math.max(0, now.getTime() - active.clock.startedAt.getTime())
+      : 0;
+  const remaining = Math.max(
+    0,
+    active.clock.allocatedMs - active.clock.consumedMs - elapsed,
+  );
+  if (remaining > 0) {
+    throw new LiveSessionDomainError(
+      'BOMB_CLOCK_NOT_EXPIRED',
+      'The active team clock has not expired',
+    );
+  }
+}
 
 @Injectable()
 export class SubmitGameplayCommand {
@@ -66,11 +113,7 @@ export class SubmitGameplayCommand {
     private readonly publisher: LiveSessionTransitionPublisher,
     @Inject(PARENT_GAME_ACCESS)
     private readonly parentGames: ParentGameAccess,
-    @Inject(forwardRef(() => BombExpirationScheduler))
-    private readonly expiration: BombExpirationScheduler,
     private readonly scoring: ScoringService,
-    @Inject(forwardRef(() => GameplayDeadlineScheduler))
-    private readonly deadlines: GameplayDeadlineScheduler,
     private readonly observers: GameplayObserverRegistry,
   ) {}
 
@@ -242,6 +285,14 @@ export class SubmitGameplayCommand {
       }
       const previousSessionRevision = session.revision;
       const sessionChanged = this.applyEffects(handled.effects, session, now);
+      handled = this.resolveBombOnDrainedClock(
+        runtime.modeKey,
+        plugin,
+        session,
+        handled,
+        round,
+        now,
+      );
       if (sessionChanged) session.completeCommand(command.commandId, now);
       const previousRuntimeRevision = runtime.revision;
       runtime.applyModeState({
@@ -336,10 +387,9 @@ export class SubmitGameplayCommand {
       runtimeId: result.runtime.id,
       runtimeState: result.runtime.serialize(),
     });
-    if (!result.terminal) {
-      await this.expiration.schedule(command.sessionId);
-      await this.deadlines.schedule(command.sessionId);
-    }
+    // No deadline wiring here. `notifyRuntimeMutated` above already converged
+    // this session's timer against what was just committed — including clearing
+    // it when the command was the one that resolved the deadline.
     this.logger.log({
       event: 'gameplay_command_accepted',
       sessionId: command.sessionId,
@@ -352,46 +402,58 @@ export class SubmitGameplayCommand {
     return this.observers.enrichSnapshot(snapshot, command.actor);
   }
 
+  /**
+   * Close a Bomb challenge without closing the live session.
+   *
+   * Bomb used to end the whole session on a spent clock, which is what a
+   * standalone game does. As a board Challenge it has to behave like every
+   * other mechanic: finish its own runtime, record who won, and leave the
+   * session active so the Match can award the point and open the board again.
+   *
+   * The internal rules are untouched. Items exhausted still means the team with
+   * the most clock left wins; a spent clock still means the other team wins.
+   * Only what happens *after* that verdict has changed.
+   */
   private completeBombIfTerminal(
     session: LiveGameSession,
     runtime: import('../domain/gameplay-runtime').GameplayRuntime,
     command: GameplayRuntimeCommand,
     now: Date,
   ): boolean {
-    if (runtime.modeKey !== 'bomb') return false;
-    let state = session.serialize();
+    if (runtime.modeKey !== BOMB_MODE_KEY) return false;
     const runtimeState = runtime.serialize();
     const round = runtimeState.activeRound;
-    const itemsCompleted = round?.modeState.phase === 'completed';
-    if (state.status === 'active' && itemsCompleted) {
-      const remaining = (teamId: string) => {
-        const team = state.teams.find((candidate) => candidate.id === teamId);
-        if (!team) return 0;
-        const elapsed =
-          team.clock.running && team.clock.startedAt
-            ? Math.max(0, now.getTime() - team.clock.startedAt.getTime())
-            : 0;
-        return Math.max(
-          0,
-          team.clock.allocatedMs - team.clock.consumedMs - elapsed,
-        );
-      };
-      const winner = [...state.teams]
-        .filter((team) => team.active)
-        .sort((left, right) => remaining(right.id) - remaining(left.id))[0];
-      session.finish('items_completed', winner?.id, undefined, now);
-      session.completeCommand(`${command.commandId}:terminal`, now);
-      state = session.serialize();
-    }
-    if (state.status !== 'finished' || !round) return false;
+    if (!round || round.modeState.phase !== 'completed') return false;
+
+    const state = session.serialize();
+    const winnerTeamId = this.bombWinner(state, round.modeState, now);
+    const expired = round.modeState.endedBy === 'clock-expired';
+
+    // Write the verdict onto the runtime while a round is still active —
+    // `applyModeState` requires one, and completing the round discards its
+    // body. This is the copy the Match launcher reads.
+    runtime.applyModeState({
+      commandId: `${command.commandId}:bomb-result`,
+      actorId: command.actor.actorId,
+      runtimeState: {
+        ...runtime.serialize().runtimeState,
+        resultJson: JSON.stringify({
+          winnerTeamId: winnerTeamId ?? null,
+          endedBy: expired ? 'clock-expired' : 'items-completed',
+        }),
+      },
+      roundState: round.modeState,
+      eventType: 'bomb-challenge-resolved',
+      eventPayload: { endedBy: expired ? 'clock-expired' : 'items-completed' },
+      now,
+      sessionRevision: session.revision,
+    });
+
     runtime.completeRound({
       roundId: round.id,
       commandId: `${command.commandId}:round-complete`,
       actorId: command.actor.actorId,
-      reason:
-        state.result?.reason === 'bomb-clock-expired'
-          ? 'time_expired'
-          : 'items_completed',
+      reason: expired ? 'time_expired' : 'items_completed',
       now,
     });
     runtime.complete(
@@ -400,6 +462,44 @@ export class SubmitGameplayCommand {
       now,
     );
     return true;
+  }
+
+  /**
+   * Bomb's own verdict, unchanged from the legacy rules.
+   *
+   * A spent clock loses outright: whoever was active when it ran out hands the
+   * challenge to the other team. Otherwise every item was played, and the team
+   * with the most time left wins — equal clocks are a real tie.
+   */
+  private bombWinner(
+    state: ReturnType<LiveGameSession['serialize']>,
+    round: Record<string, unknown>,
+    now: Date,
+  ): string | null {
+    const active = state.teams.filter((team) => team.active);
+    if (round.endedBy === 'clock-expired') {
+      const loserId = state.activeTeamId;
+      return active.find((team) => team.id !== loserId)?.id ?? null;
+    }
+    const remaining = (teamId: string) => {
+      const team = state.teams.find((candidate) => candidate.id === teamId);
+      if (!team) return 0;
+      const elapsed =
+        team.clock.running && team.clock.startedAt
+          ? Math.max(0, now.getTime() - team.clock.startedAt.getTime())
+          : 0;
+      return Math.max(
+        0,
+        team.clock.allocatedMs - team.clock.consumedMs - elapsed,
+      );
+    };
+    const ranked = [...active].sort(
+      (left, right) => remaining(right.id) - remaining(left.id),
+    );
+    if (ranked.length < 2) return ranked[0]?.id ?? null;
+    return remaining(ranked[0].id) === remaining(ranked[1].id)
+      ? null
+      : ranked[0].id;
   }
 
   /**
@@ -518,6 +618,71 @@ export class SubmitGameplayCommand {
     return true;
   }
 
+  /**
+   * Ends the Bomb *challenge* when a command spends the last of the clock.
+   *
+   * Bomb's skip costs the active team five seconds, and that penalty can be the
+   * thing that empties their clock. A spent Bomb clock is a Bomb verdict — the
+   * other team takes the challenge — and it used to be read as the end of the
+   * whole live session instead, which finished the Match from inside one board
+   * position and left every remaining challenge unplayable.
+   *
+   * The rule is not restated here. The mechanic's own `expire-team` reducer is
+   * asked to produce the terminal round, so a clock emptied by a skip and a
+   * clock emptied by the deadline scheduler resolve through one code path and
+   * cannot disagree about the winner. Everything after this — the verdict, the
+   * round completion, the runtime completion, the Match awarding the point and
+   * reopening the board — is the ordinary terminal flow.
+   */
+  private resolveBombOnDrainedClock(
+    modeKey: string,
+    plugin: GameplayModePlugin,
+    session: LiveGameSession,
+    handled: GameplayCommandResult,
+    round: { id: string; activeTeamId?: string; activeParticipantId?: string },
+    now: Date,
+  ): GameplayCommandResult {
+    if (modeKey !== BOMB_MODE_KEY) return handled;
+    // Only while the round is still asking a question. A command that already
+    // exhausted the items has produced its own terminal state, and Bomb's
+    // "most time left wins" rule reaches the same verdict there anyway.
+    if (handled.roundState.phase !== 'presenting') return handled;
+    if (!this.activeClockSpent(session.serialize(), now)) return handled;
+    const expired = plugin.handleCommand(
+      {
+        sessionId: session.id,
+        runtimeId: round.id,
+        roundId: round.id,
+        activeTeamId: round.activeTeamId,
+        activeParticipantId: round.activeParticipantId,
+        now,
+      },
+      {
+        type: 'expire-team',
+        payload: {},
+        runtimeState: handled.runtimeState,
+        roundState: handled.roundState,
+      },
+    );
+    return {
+      ...expired,
+      // The originating command's own session effects were already applied;
+      // expiry adds none of its own, and re-applying these would double the
+      // clock penalty that caused this in the first place.
+      effects: [],
+    };
+  }
+
+  /** True when the team holding the turn has no clock left, by the server. */
+  private activeClockSpent(state: LiveGameSessionState, now: Date): boolean {
+    try {
+      assertBombClockExpired(state, now);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   private applyEffects(
     effects: GameplaySessionEffect[],
     session: LiveGameSession,
@@ -530,16 +695,12 @@ export class SubmitGameplayCommand {
       if (effect.type === 'switch-active-team') {
         session.switchTurn(effect.teamId || undefined, effect.reason, now);
       } else if (effect.type === 'adjust-active-team-time') {
-        const loserId = session.serialize().activeTeamId;
-        const remaining = session.adjustActiveTeamTime(effect.deltaMs, now);
-        if (remaining === 0) {
-          session.finish(
-            'bomb-clock-expired',
-            this.otherTeam(session.serialize(), loserId),
-            undefined,
-            now,
-          );
-        }
+        // Spends the clock and stops there. Running it to zero is a verdict for
+        // the *mechanic* — handled by `resolveBombOnDrainedClock` — not the end
+        // of the live session, which a board position has no authority to
+        // declare. Ending the session here finished the whole Match from inside
+        // one Bomb challenge.
+        session.adjustActiveTeamTime(effect.deltaMs, now);
       } else if (effect.type === 'stop-active-turn') {
         session.endTurn(effect.reason, now);
       } else if (effect.type === 'finish-live-session') {
@@ -562,23 +723,7 @@ export class SubmitGameplayCommand {
   }
 
   private assertClockExpired(state: LiveGameSessionState, now: Date): void {
-    const active = state.teams.find((team) => team.id === state.activeTeamId);
-    const elapsed =
-      active?.clock.running && active.clock.startedAt
-        ? Math.max(0, now.getTime() - active.clock.startedAt.getTime())
-        : 0;
-    const remaining = active
-      ? Math.max(
-          0,
-          active.clock.allocatedMs - active.clock.consumedMs - elapsed,
-        )
-      : 0;
-    if (remaining > 0) {
-      throw new LiveSessionDomainError(
-        'BOMB_CLOCK_NOT_EXPIRED',
-        'The active team clock has not expired',
-      );
-    }
+    assertBombClockExpired(state, now);
   }
 
   private otherTeam(

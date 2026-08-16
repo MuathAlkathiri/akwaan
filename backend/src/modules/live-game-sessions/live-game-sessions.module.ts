@@ -30,6 +30,11 @@ import { LiveGameSessionSnapshotMapper } from './application/live-game-session.s
 import { LIVE_SESSION_TRANSITION_PUBLISHER } from './application/live-session-transition.publisher';
 import { PARENT_GAME_ACCESS } from './application/parent-game-access.port';
 import { PARTICIPANT_PRESENCE } from './application/participant-presence.port';
+import { MongooseParticipantPresenceRepository } from './infrastructure/mongoose-participant-presence.repository';
+import {
+  LiveSessionPresenceDocument,
+  LiveSessionPresenceSchema,
+} from './infrastructure/live-session-presence.schema';
 import { UpdateParticipantPresence } from './application/update-participant-presence.use-case';
 import {
   CreateSessionJoinAccess,
@@ -106,7 +111,7 @@ import {
   GameplayParticipantInteractionController,
 } from './presentation/gameplay-interaction.controller';
 import { StartBombGameplay } from './application/start-bomb-gameplay.use-case';
-import { BombExpirationScheduler } from './application/bomb-expiration.scheduler';
+import { StartBombGameplayFromContent } from './application/start-bomb-from-content.use-case';
 import { BombCountdownScheduler } from './application/bomb-countdown.scheduler';
 import { LiveSessionSnapshotComposer } from './application/live-session-snapshot.composer';
 import { ScoringModule } from '../scoring/scoring.module';
@@ -116,6 +121,7 @@ import { StartTop5 } from './application/start-top5.use-case';
 import { ReassignTeamActions } from './application/reassign-team-actions.use-case';
 import { StartDistributedInformation } from './application/start-distributed-information.use-case';
 import { GameplayDeadlineScheduler } from './application/gameplay-deadline.scheduler';
+import { GAMEPLAY_DEADLINE_SYNCHRONIZER } from './application/gameplay-deadline.port';
 import { GameplayObserverRegistry } from './application/gameplay-observer.registry';
 import { StartClosestGameplay } from './application/start-closest-gameplay.use-case';
 import { StartOneClueGameplay } from './application/start-one-clue-gameplay.use-case';
@@ -166,7 +172,7 @@ const applicationProviders = [
   GameplayRuntimeSocketFacade,
   GameplayInteractionUseCases,
   StartBombGameplay,
-  BombExpirationScheduler,
+  StartBombGameplayFromContent,
   BombCountdownScheduler,
   StartRyoGameplay,
   StartTop5,
@@ -197,6 +203,10 @@ const applicationProviders = [
         name: GameplayRuntimeDocument.name,
         schema: GameplayRuntimeSchema,
       },
+      {
+        name: LiveSessionPresenceDocument.name,
+        schema: LiveSessionPresenceSchema,
+      },
     ]),
   ],
   controllers: [
@@ -219,7 +229,15 @@ const applicationProviders = [
       provide: LIVE_SESSION_CLOCK,
       useExisting: SystemLiveSessionClock,
     },
+    // The session-command boundary depends on the narrow synchronizer contract,
+    // not on the scheduler class, so converging a deadline stays one call with
+    // no knowledge of timers on the calling side.
+    {
+      provide: GAMEPLAY_DEADLINE_SYNCHRONIZER,
+      useExisting: GameplayDeadlineScheduler,
+    },
     MongooseLiveGameSessionRepository,
+    MongooseParticipantPresenceRepository,
     MongooseLiveSessionJoinAccessRepository,
     MongooseGameplayRuntimeRepository,
     MongooseGameplayTransactionUnitOfWork,
@@ -241,7 +259,7 @@ const applicationProviders = [
     },
     {
       provide: PARTICIPANT_PRESENCE,
-      useExisting: MongooseLiveGameSessionRepository,
+      useExisting: MongooseParticipantPresenceRepository,
     },
     ClassicGameAccessAdapter,
     {
@@ -261,9 +279,11 @@ const applicationProviders = [
   // Exported so the Match layer can register itself without this module
   // ever needing to know that a Match exists.
   exports: [
+    CancelGameplayRuntime,
     GameplayObserverRegistry,
     GetLiveGameSession,
     GameplayModeRegistry,
+    StartBombGameplayFromContent,
     StartRyoGameplay,
     StartTop5,
     StartClosestGameplay,

@@ -24,7 +24,7 @@ export interface ProductionMechanicDefinition {
     description: string;
     defaultPresentation: {
       inputType: string;
-      timerSeconds: number;
+      timerSeconds: number | null;
       soundPack: null;
       revealStyle: null;
     };
@@ -54,6 +54,28 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
       defaultPresentation: {
         inputType: 'phone-choice',
         timerSeconds: 25,
+        soundPack: null,
+        revealStyle: null,
+      },
+    },
+  }),
+  definition({
+    // "القنبلة" — a timed run of 10–15 pictures shared by both teams. One
+    // continuous unit occupying a single board slot, like Top 5, rather than a
+    // discrete triple: its internal item count is the mechanic's business.
+    slug: 'bomb',
+    family: ChallengeFamily.SIGNATURE,
+    itemStructure: ChallengeItemStructure.CONTINUOUS,
+    answerMode: ChallengeAnswerMode.MATCH,
+    seed: {
+      name: 'القنبلة',
+      description:
+        'سباق على الوقت: كل إجابة صحيحة تنقل القنبلة إلى الفريق الآخر.',
+      defaultPresentation: {
+        // Null, not zero: Bomb has no per-item timer at all — the clock it
+        // runs on is the team clock the live session already owns.
+        inputType: 'phone-text',
+        timerSeconds: null,
         soundPack: null,
         revealStyle: null,
       },

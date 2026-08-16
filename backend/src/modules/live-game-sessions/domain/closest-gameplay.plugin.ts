@@ -122,7 +122,9 @@ function validateRound(state: GameplayModeState): GameplayModeState {
   return state;
 }
 
-function numericPayload(payload: GameplayCommandPayload): GameplayCommandPayload {
+function numericPayload(
+  payload: GameplayCommandPayload,
+): GameplayCommandPayload {
   if (
     Object.keys(payload).some(
       (key) => !['value', 'assignmentSequence'].includes(key),
@@ -242,7 +244,9 @@ function resolve(
     },
     itemIndex: Number(runtime.currentItemIndex),
     resolutionReason: reason,
-    resolvedAt: (context.now ?? fail('Server command time is missing')).toISOString(),
+    resolvedAt: (
+      context.now ?? fail('Server command time is missing')
+    ).toISOString(),
   });
   let cleared = assignments;
   for (const teamId of teams) {
@@ -432,7 +436,9 @@ function publicState(
     deadlineAt: valid.deadlineAt ?? null,
     teamIdsJson: JSON.stringify(teams),
     submissionStatusJson: JSON.stringify(
-      Object.fromEntries(teams.map((teamId) => [teamId, answers[teamId] !== undefined])),
+      Object.fromEntries(
+        teams.map((teamId) => [teamId, answers[teamId] !== undefined]),
+      ),
     ),
     assignedParticipantIdsJson: JSON.stringify(assignedIds(assignments, teams)),
     ...(visibleOwnAnswer !== undefined
@@ -448,7 +454,9 @@ function publicState(
           ),
         }
       : {}),
-    ...(revealed && latest ? { revealedResultJson: JSON.stringify(latest) } : {}),
+    ...(revealed && latest
+      ? { revealedResultJson: JSON.stringify(latest) }
+      : {}),
     resultsJson: JSON.stringify(
       resultsOf(valid).map((result) =>
         revealed || result.itemIndex < Number(valid.currentItemIndex)
@@ -463,7 +471,15 @@ export const CLOSEST_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: CLOSEST_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
-  createInitialRuntimeState: (context) => validateRuntime(context.initialState ?? {}),
+  // `deadlineAt` is cleared when an item resolves, but the phase is named anyway
+  // so the reducer never has to infer liveness from a nullable field.
+  deadline: {
+    source: 'runtime-state',
+    commandType: 'expire-closest-item',
+    activePhases: ['collecting'],
+  },
+  createInitialRuntimeState: (context) =>
+    validateRuntime(context.initialState ?? {}),
   createInitialRoundState(context) {
     const runtime = validateRuntime(context.runtimeState ?? {});
     return validateRound({

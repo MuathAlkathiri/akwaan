@@ -104,8 +104,10 @@ describe('RYO gameplay plugin', () => {
     expect(payload.correct).toBe(false);
     // The graded ids are untouched: only what is shown was resolved.
     const scoring = JSON.parse(
-      String((answered.outcome.privatePayload as Record<string, unknown>)
-        .scoringInputJson),
+      String(
+        (answered.outcome.privatePayload as Record<string, unknown>)
+          .scoringInputJson,
+      ),
     ) as Record<string, unknown>;
     expect(scoring.selectedAnswer).toBe('option-2');
     expect(scoring.correctAnswer).toBe('option-1');
@@ -277,7 +279,11 @@ describe('RYO gameplay plugin', () => {
         secrets: ['trust'],
       },
       {
-        payload: { kind: 'answer', mode: 'multiple_choice', optionId: 'option-2' },
+        payload: {
+          kind: 'answer',
+          mode: 'multiple_choice',
+          optionId: 'option-2',
+        },
         kind: 'answer',
         secrets: ['option-2', 'multiple_choice'],
       },
@@ -311,7 +317,11 @@ describe('RYO gameplay plugin', () => {
     // A status that tracked correctness would leak the outcome one tick early.
     for (const actor of ACTORS) {
       const pending = interaction.projectSubmission(
-        submissionOf({ kind: 'answer', mode: 'multiple_choice', optionId: 'x' }),
+        submissionOf({
+          kind: 'answer',
+          mode: 'multiple_choice',
+          optionId: 'x',
+        }),
         actor,
       );
       const accepted = interaction.projectSubmission(
@@ -321,7 +331,10 @@ describe('RYO gameplay plugin', () => {
         ),
         actor,
       );
-      expect(pending).toEqual({ status: 'pending-adjudication', kind: 'answer' });
+      expect(pending).toEqual({
+        status: 'pending-adjudication',
+        kind: 'answer',
+      });
       expect(accepted).toEqual({ status: 'accepted', kind: 'answer' });
     }
   });
@@ -347,12 +360,13 @@ describe('RYO gameplay plugin', () => {
     // withdrawn one is no longer projected. So a side is either absent or present
     // once, and the array length carries nothing.
     const projected = [
-      submissionOf({ kind: 'answer', mode: 'closest', value: 1 }, { status: 'withdrawn' }),
+      submissionOf(
+        { kind: 'answer', mode: 'closest', value: 1 },
+        { status: 'withdrawn' },
+      ),
       submissionOf({ kind: 'answer', mode: 'closest', value: 2 }, { id: '2' }),
     ]
-      .map((submission) =>
-        interaction.projectSubmission(submission, ACTORS[1]),
-      )
+      .map((submission) => interaction.projectSubmission(submission, ACTORS[1]))
       .filter(Boolean);
     expect(projected).toEqual([
       { status: 'pending-adjudication', kind: 'answer' },

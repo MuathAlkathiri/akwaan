@@ -23,6 +23,7 @@ import {
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
 import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
+import { productionMechanicFixture } from '../fixtures/production-mechanic.fixture';
 import { LiveGameSessionSnapshot } from '../../src/modules/live-game-sessions/application/live-game-session.snapshot';
 import { LiveSessionActor } from '../../src/modules/live-game-sessions/application/live-session-actor';
 import {
@@ -157,11 +158,7 @@ describe('distributed-information race integration', () => {
       );
 
     const distributed = await challengeType({
-      name: 'ركّبها',
-      slug: DISTRIBUTED_INFORMATION_SLUG,
-      family: ChallengeFamily.COOP,
-      answerMode: ChallengeAnswerMode.DISTRIBUTED,
-      scoringRuleId: SCORING_RULE_IDS.DISTRIBUTED_INFORMATION_RACE_RESULT,
+      ...productionMechanicFixture(DISTRIBUTED_INFORMATION_SLUG),
       status: WorldContentStatus.ACTIVE,
     });
 
@@ -352,7 +349,13 @@ describe('distributed-information race integration', () => {
           credentialVersion: 1,
           teamId,
         };
-        await presence.connected(sessionId, joined.participantId);
+        await presence.connected(
+          sessionId,
+          joined.participantId,
+          // One simulated socket per participant. Presence is keyed by
+          // connection now, so a test phone needs an identity like a real one.
+          `test-socket-${joined.participantId}`,
+        );
         await readiness.execute({
           actor,
           ready: true,

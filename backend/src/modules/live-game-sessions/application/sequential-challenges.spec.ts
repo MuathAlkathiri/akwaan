@@ -52,6 +52,11 @@ class MemorySessionRepository implements LiveGameSessionRepository {
 
 /** Keeps every runtime, newest first, the way the Mongo repository does. */
 class MemoryRuntimeRepository implements GameplayRuntimeRepository {
+  async findStateById(runtimeId: string) {
+    const runtime = await this.findById(runtimeId);
+    return runtime ? runtime.serialize() : null;
+  }
+
   readonly all: GameplayRuntime[] = [];
   async create(runtime: GameplayRuntime) {
     this.all.unshift(runtime);
@@ -139,6 +144,7 @@ describe('a live session plays challenges in sequence', () => {
       clock,
       snapshots,
       publisher as never,
+      { synchronize: jest.fn().mockResolvedValue(undefined) },
     );
     const ready = await new MarkSessionReady(commands).execute({
       sessionId,
@@ -208,6 +214,17 @@ describe('a live session plays challenges in sequence', () => {
     expect(runtimes.all.filter((runtime) => runtime.isTerminal)).toHaveLength(
       1,
     );
+  });
+
+  it('treats an explicitly cancelled runtime as terminal and non-blocking', async () => {
+    await startChallenge('challenge-a');
+    const first = runtimes.all[0];
+    first.cancel('abort-a', 'host', now);
+
+    await expect(startChallenge('challenge-b')).resolves.toBeDefined();
+    expect(runtimes.all).toHaveLength(2);
+    expect(first.status).toBe('cancelled');
+    expect(first.isTerminal).toBe(true);
   });
 
   it('leaves no active runtime for the session after a challenge finishes', async () => {

@@ -34,6 +34,7 @@ import {
 import { UpdateParticipantPresence } from '../../src/modules/live-game-sessions/application/update-participant-presence.use-case';
 import { GetGameplayRuntime } from '../../src/modules/live-game-sessions/application/gameplay-runtime.queries';
 import { GameplayDeadlineScheduler } from '../../src/modules/live-game-sessions/application/gameplay-deadline.scheduler';
+import { GameplayObserverRegistry } from '../../src/modules/live-game-sessions/application/gameplay-observer.registry';
 import { GameplayInteractionUseCases } from '../../src/modules/live-game-sessions/application/gameplay-interaction.use-cases';
 import {
   GAMEPLAY_RUNTIME_REPOSITORY,
@@ -292,7 +293,13 @@ describe('RYO deadline lifecycle integration', () => {
         role: 'team-player',
         credentialVersion: 1,
       };
-      await presence.connected(sessionId, joined.participantId);
+      await presence.connected(
+        sessionId,
+        joined.participantId,
+        // One simulated socket per participant. Presence is keyed by
+        // connection now, so a test phone needs an identity like a real one.
+        `test-socket-${joined.participantId}`,
+      );
       await readiness.execute({
         actor,
         ready: true,
@@ -396,12 +403,87 @@ describe('RYO deadline lifecycle integration', () => {
   const settle = async (ms = 1200) =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
+  /**
+   * Announce a committed runtime mutation, exactly as gameplay does.
+   *
+   * These tests rewrite the persisted deadline behind the lifecycle's back to
+   * avoid waiting out a real 25 seconds, so something has to stand in for the
+   * commit that would normally accompany a state change. This is that commit's
+   * announcement and nothing more — the same single call `SubmitGameplayCommand`
+   * and `GameplayInteractionUseCases` make after they save. Notably it is *not*
+   * `scheduler.schedule()`: if the scheduler ever stops subscribing to this
+   * hook, every test below fails, which is the wiring these used to assume.
+   */
+  const converge = async (sessionId: string) => {
+    const runtime = await runtimes().findBySessionId(sessionId);
+    await app.get(GameplayObserverRegistry).notifyRuntimeMutated({
+      sessionId,
+      runtimeId: runtime!.id,
+      runtimeState: runtime!.serialize(),
+    });
+  };
+
+  it('arms the first item deadline from the launch alone', async () => {
+    // The regression, stated directly. Launching RYO is the only thing that
+    // happens here: no scheduler call, no observer nudge, no test helper. If
+    // the production lifecycle does not arm the deadline by itself, the
+    // authoritative state carries a clock nobody is watching — which is the
+    // freeze this whole suite exists for.
+    const { sessionId } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+
+    const runtime = (await rawRuntime(sessionId))!;
+    const interaction = runtime.state.activeRound.interaction;
+    expect(interaction.status).toBe('open');
+    expect(interaction.prompt.deadlineAt).toBeTruthy();
+
+    const armed = app.get(GameplayDeadlineScheduler).armedKeyFor(sessionId);
+    expect(armed).toBeDefined();
+    // Armed for *this* item: the identity is what makes the timer harmless to
+    // whatever replaces it.
+    expect(armed).toContain(String(interaction.id));
+    expect(armed).toContain(String(runtime.state.id));
+  }, 120_000);
+
+  it('arms the next item deadline when the previous item resolves', async () => {
+    // The other half of the audit gap. Fixing only the launch would leave every
+    // item after the first unwatched, so this asserts the armed identity
+    // actually *moves* to the new interaction as the challenge progresses.
+    const { sessionId } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+    const scheduler = app.get(GameplayDeadlineScheduler);
+
+    const first = (await rawRuntime(sessionId))!;
+    const firstArmed = scheduler.armedKeyFor(sessionId);
+    expect(firstArmed).toContain(
+      String(first.state.activeRound.interaction.id),
+    );
+
+    await expireDeadlineInMongo(sessionId);
+    await converge(sessionId);
+    await settle();
+
+    const second = (await rawRuntime(sessionId))!;
+    if (['completed', 'cancelled'].includes(String(second.status))) {
+      // A challenge that finished instead of advancing must leave nothing armed.
+      expect(scheduler.armedKeyFor(sessionId)).toBeUndefined();
+      return;
+    }
+    const nextInteraction = second.state.activeRound?.interaction;
+    expect(nextInteraction).toBeDefined();
+    const secondArmed = scheduler.armedKeyFor(sessionId);
+    expect(secondArmed).toBeDefined();
+    expect(secondArmed).not.toEqual(firstArmed);
+    expect(secondArmed).toContain(String(nextInteraction.id));
+  }, 120_000);
+
   it('resolves an expired RYO item, advances, and finishes the challenge', async () => {
     const { sessionId } = await startSession();
     await createUnified(sessionId);
     await launchRyo(sessionId);
 
-    const scheduler = app.get(GameplayDeadlineScheduler);
     const before = await rawRuntime(sessionId);
     expect(before!.modeKey).toBe(RYO_MODE_KEY);
     expect(before!.status).toBe('round-active');
@@ -420,7 +502,7 @@ describe('RYO deadline lifecycle integration', () => {
         break;
       }
       await expireDeadlineInMongo(sessionId);
-      await scheduler.schedule(sessionId);
+      await converge(sessionId);
       await settle();
     }
 
@@ -450,7 +532,7 @@ describe('RYO deadline lifecycle integration', () => {
         break;
       }
       await expireDeadlineInMongo(sessionId);
-      await app.get(GameplayDeadlineScheduler).schedule(sessionId);
+      await converge(sessionId);
       await settle();
     }
     expect(['completed', 'cancelled']).toContain(
@@ -484,7 +566,7 @@ describe('RYO deadline lifecycle integration', () => {
     expect(beforeSnapshot).toBeDefined();
 
     await expireDeadlineInMongo(sessionId);
-    await app.get(GameplayDeadlineScheduler).schedule(sessionId);
+    await converge(sessionId);
     await settle();
 
     const afterSnapshot = JSON.stringify(

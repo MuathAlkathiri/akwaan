@@ -7,6 +7,7 @@ import { WorldContentModule } from '../world-content/world-content.module';
 import { ChallengeLauncherRegistry } from './application/challenge-launcher.registry';
 import { MATCH_CLOCK, SystemMatchClock } from './application/match-clock';
 import { MatchReconciliationService } from './application/match-reconciliation.service';
+import { MatchConvergenceSweeper } from './application/match-convergence.sweeper';
 import { MatchChallengeReadinessService } from './application/match-challenge-readiness.service';
 import { MatchContentPool } from './application/match-content-pool.service';
 import { MatchContentSelector } from './application/match-content-selection.service';
@@ -19,6 +20,7 @@ import { RyoChallengeLauncher } from './application/ryo-challenge.launcher';
 import { RuntimeScoreEventCollector } from './application/runtime-score-event.collector';
 import { Top5ChallengeLauncher } from './application/top5-challenge.launcher';
 import { UnifiedMatchSetupValidator } from './application/unified-match-setup.validator';
+import { BombChallengeLauncher } from './application/bomb-challenge.launcher';
 import { ClosestChallengeLauncher } from './application/closest-challenge.launcher';
 import {
   UnifiedMatchBoardPolicy,
@@ -82,9 +84,11 @@ import { ChallengeTypeMatchUsageGuard } from './application/challenge-type-match
     RyoChallengeLauncher,
     Top5ChallengeLauncher,
     DistributedInformationChallengeLauncher,
+    BombChallengeLauncher,
     ClosestChallengeLauncher,
     OneClueChallengeLauncher,
     MatchReconciliationService,
+    MatchConvergenceSweeper,
     MatchSnapshotComposer,
     ChallengeTypeMatchUsageGuard,
   ],

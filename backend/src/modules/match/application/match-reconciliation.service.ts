@@ -27,6 +27,7 @@ export type MatchReconciliationOutcome =
   | 'runtime_mismatch'
   | 'not_terminal'
   | 'reconciled'
+  | 'aborted'
   | 'already_reconciled'
   | 'deferred_revision_conflict';
 
@@ -127,6 +128,9 @@ export class MatchReconciliationService
     if (current.runtimeId !== input.runtimeId) {
       return { outcome: 'runtime_mismatch', matchId: match.id };
     }
+    if (input.runtimeState.status === 'cancelled') {
+      return this.reconcileAbort(match, current, input, attempt);
+    }
     const launcher = this.launchers.byKey(current.challengeKey);
     if (!launcher || !launcher.detectTerminal(input.runtimeState)) {
       return { outcome: 'not_terminal', matchId: match.id };
@@ -223,6 +227,39 @@ export class MatchReconciliationService
     };
   }
 
+  private async reconcileAbort(
+    match: Match,
+    current: NonNullable<Match['currentChallenge']>,
+    input: {
+      sessionId: string;
+      runtimeId: string;
+      runtimeState: GameplayRuntimeState;
+    },
+    attempt: number,
+  ): Promise<MatchReconciliationResult> {
+    const revision = match.revision;
+    const stageBefore = match.stage;
+    const { aborted } = match.abortChallenge({
+      commandId: abortReconciliationCommandId(input.runtimeId),
+      now: this.clock.now(),
+      runtimeId: input.runtimeId,
+    });
+    if (!aborted) return { outcome: 'already_reconciled', matchId: match.id };
+    try {
+      await this.matches.save(match, revision);
+    } catch (error) {
+      return this.defer(
+        { match, stage: stageBefore, slotKey: current.slotKey },
+        input,
+        revision,
+        attempt,
+        error,
+      );
+    }
+    this.transitions.publish(match, 'challenge-aborted');
+    return { outcome: 'aborted', matchId: match.id, importedScoreEvents: 0 };
+  }
+
   /**
    * Losing the optimistic save is not a gameplay failure: the challenge really
    * did finish, and the next mutation or snapshot read reconciles it. It is
@@ -276,4 +313,8 @@ export class MatchReconciliationService
     if (typeof response?.code === 'string') return response.code;
     return error instanceof Error ? error.name : 'UNKNOWN';
   }
+}
+
+export function abortReconciliationCommandId(runtimeId: string): string {
+  return `abort:${runtimeId}`;
 }

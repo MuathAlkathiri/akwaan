@@ -110,6 +110,7 @@ describe('World Content architecture', () => {
     // Everything left is the legacy question bridge or an existing challenge
     // launcher reading the content a mechanic is about to play.
     expect(legacyImporters.sort()).toEqual([
+      'modules/live-game-sessions/application/start-bomb-from-content.use-case.ts',
       'modules/live-game-sessions/application/start-closest-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-distributed-information.use-case.ts',
       'modules/live-game-sessions/application/start-one-clue-gameplay.use-case.ts',

@@ -83,6 +83,14 @@ export enum WorldSelectionMethod {
 /** Roadmap 3: every Match plays exactly three World occurrences. */
 export const MATCH_WORLD_OCCURRENCE_COUNT = 3;
 
+/**
+ * Defensive transport ceiling for an explicitly supplied content selection.
+ *
+ * This is intentionally a Match-layer limit, not any mechanic's cardinality:
+ * launchers remain responsible for enforcing their own exact item contracts.
+ */
+export const MATCH_LAUNCH_CONTENT_ITEM_MAX = 15;
+
 /** Item cardinality each launchable mechanic requires from content selection. */
 export const MATCH_CONTENT_CARDINALITY: Readonly<Record<string, number>> = {
   'read-your-opponent': 3,

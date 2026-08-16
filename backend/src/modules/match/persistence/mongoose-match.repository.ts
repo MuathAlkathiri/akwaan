@@ -5,7 +5,7 @@ import { ScoringService } from '../../scoring/application/scoring.service';
 import { Match, MatchState } from '../domain/match';
 import { MatchSetupMode, MatchStatus } from '../domain/match.constants';
 import { MatchDocument } from './match.schema';
-import { MatchRepository } from './match.repository';
+import { MatchRepository, PendingMatchConvergence } from './match.repository';
 
 export class MatchConcurrencyError extends ConflictException {
   constructor() {
@@ -51,6 +51,34 @@ export class MongooseMatchRepository implements MatchRepository {
         .lean()
         .exec(),
     );
+  }
+
+  /**
+   * Every active Match still naming a bound runtime.
+   *
+   * The projection is deliberately narrow — three ids — because this runs on a
+   * sweep and the aggregate is large. Restoring full Matches here would make
+   * recovery cost proportional to Match history rather than to outstanding
+   * work.
+   */
+  async findAwaitingConvergence(): Promise<PendingMatchConvergence[]> {
+    const rows = await this.model
+      .find(
+        {
+          status: { $in: ACTIVE_STATUSES },
+          'currentChallenge.runtimeId': { $type: 'string' },
+        },
+        { matchId: 1, liveSessionId: 1, 'currentChallenge.runtimeId': 1 },
+      )
+      .lean()
+      .exec();
+    return rows.map((row) => ({
+      matchId: row.matchId,
+      sessionId: row.liveSessionId,
+      runtimeId: String(
+        (row.currentChallenge as { runtimeId: string }).runtimeId,
+      ),
+    }));
   }
 
   /**

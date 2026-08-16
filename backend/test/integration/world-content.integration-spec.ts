@@ -647,7 +647,7 @@ describe('World Management HTTP integration', () => {
     expect(readiness.board.slots).toHaveLength(1);
   });
 
-  it('refuses to delete a mechanic that a World still configures', async () => {
+  it('cascades authoring references when deleting a mechanic not used by a Match', async () => {
     const challengeTypes = (
       await bearer(authed().get('/admin/challenge-types')).expect(200)
     ).body.data;
@@ -655,9 +655,16 @@ describe('World Management HTTP integration', () => {
       (challengeType: { slug: string }) => challengeType.slug === 'ryo-shared',
     );
     expect(sharedRyo.worldConfigurationCount).toBeGreaterThan(0);
-    const conflict = await bearer(
+    await bearer(
       authed().delete(`/admin/challenge-types/${sharedRyo.id}`),
-    ).expect(409);
-    expect(JSON.stringify(conflict.body)).toContain('CHALLENGE_TYPE_IN_USE');
+    ).expect(200);
+    const remaining = (
+      await bearer(authed().get('/admin/challenge-types')).expect(200)
+    ).body.data;
+    expect(
+      remaining.some(
+        (challengeType: { id: string }) => challengeType.id === sharedRyo.id,
+      ),
+    ).toBe(false);
   });
 });

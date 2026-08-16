@@ -861,6 +861,58 @@ export class Match {
   }
 
   /**
+   * Releases a legitimately launched challenge without completing it.
+   *
+   * Runtime cancellation is the durable fact that drives this transition. The
+   * position becomes playable again, no result or score is recorded, and any
+   * Double consumed only by this abandoned attempt is returned to its available
+   * state. A stale cancellation for another runtime cannot release the current
+   * challenge.
+   */
+  abortChallenge(input: { commandId: string; now: Date; runtimeId: string }): {
+    aborted: boolean;
+  } {
+    if (this.replay(input.commandId)) return { aborted: false };
+    const current = this.state.currentChallenge;
+    if (!current || current.runtimeId !== input.runtimeId) {
+      return { aborted: false };
+    }
+    this.assertStage([MatchStage.CHALLENGE]);
+    const occurrence = this.requireLaunchableOccurrence(
+      current.occurrenceIndex,
+    );
+    const slot = occurrence.slots[current.slotKey];
+    if (
+      !slot ||
+      slot.status !== MatchSlotStatus.IN_PROGRESS ||
+      slot.runtimeId !== input.runtimeId
+    ) {
+      throw new MatchDomainError(
+        'MATCH_CHALLENGE_BINDING_INVALID',
+        'The active challenge binding does not match its board position',
+      );
+    }
+    occurrence.slots[current.slotKey] = {
+      status: MatchSlotStatus.AVAILABLE,
+    };
+    const consumed = new Set(current.doubledTeamIds);
+    this.state.teamDoubles = this.state.teamDoubles.map((token) =>
+      token.status === 'consumed' &&
+      token.consumedPositionKey ===
+        MatchBoardPositionKey.of(current.occurrenceIndex, current.slotKey)
+          .value &&
+      consumed.has(token.teamId)
+        ? { teamId: token.teamId, status: 'available' }
+        : token,
+    );
+    this.state.currentChallenge = undefined;
+    this.state.pendingResultId = undefined;
+    this.enterStage(MatchStage.BOARD, input.now);
+    this.commit(input.commandId);
+    return { aborted: true };
+  }
+
+  /**
    * Leaves the result screen: back to the board, or to the end of the Match.
    *
    * The only thing that moves a Match off `challenge_result`. It awards nothing

@@ -1,5 +1,8 @@
 import { GameplayDeadlineScheduler } from './gameplay-deadline.scheduler';
+import { GameplayObserverRegistry } from './gameplay-observer.registry';
+import { GameplayModeRegistry } from '../domain/gameplay-mode.registry';
 import { RYO_MODE_KEY } from '../domain/ryo-gameplay.plugin';
+import { BOMB_MODE_KEY } from '../domain/bomb-gameplay.plugin';
 import { CLOSEST_MODE_KEY } from '../domain/closest-gameplay.plugin';
 import type { GameplayRuntimeState } from '../domain/gameplay-runtime';
 
@@ -65,17 +68,50 @@ function harness(state: GameplayRuntimeState | undefined) {
   const close = jest.fn().mockResolvedValue(undefined);
   const resolve = jest.fn().mockResolvedValue(undefined);
   const submit = jest.fn().mockResolvedValue(undefined);
-  const sessions = {
-    findById: jest
-      .fn()
-      .mockResolvedValue({ controllerActorId: 'host-1', revision: 11 }),
+  // The real registry, so a mechanic's own deadline declaration is what drives
+  // these tests rather than a fixture's idea of one.
+  const modes = new GameplayModeRegistry();
+  const observers = new GameplayObserverRegistry();
+  const sessionState = {
+    status: 'active',
+    activeTeamId: 'team-1',
+    teams: [
+      {
+        id: 'team-1',
+        clock: {
+          running: true,
+          startedAt: new Date(NOW),
+          allocatedMs: 30_000,
+          consumedMs: 0,
+        },
+      },
+      {
+        id: 'team-2',
+        clock: {
+          running: false,
+          allocatedMs: 30_000,
+          consumedMs: 0,
+        },
+      },
+    ],
   };
+  const sessions = {
+    findById: jest.fn().mockResolvedValue({
+      controllerActorId: 'host-1',
+      revision: 11,
+      serialize: () => sessionState,
+    }),
+  };
+  let current = state;
   const runtimes = {
-    findBySessionId: jest
-      .fn()
-      .mockResolvedValue(
-        state ? { revision: state.revision, serialize: () => state } : null,
+    findBySessionId: jest.fn(() =>
+      Promise.resolve(
+        current
+          ? { revision: current.revision, serialize: () => current }
+          : null,
       ),
+    ),
+    findSessionIdsWithLiveRuntimes: jest.fn().mockResolvedValue(['session-1']),
   };
   const moduleRef = {
     get: (token: { name?: string }) =>
@@ -86,9 +122,23 @@ function harness(state: GameplayRuntimeState | undefined) {
   const scheduler = new GameplayDeadlineScheduler(
     sessions as never,
     runtimes as never,
+    modes,
+    observers,
     moduleRef as never,
   );
-  return { scheduler, close, resolve, submit, runtimes };
+  /** Replace what the repository returns, as a committed mutation would. */
+  const commit = (next: GameplayRuntimeState | undefined) => {
+    current = next;
+  };
+  return {
+    scheduler,
+    close,
+    resolve,
+    submit,
+    runtimes,
+    observers,
+    commit,
+  };
 }
 
 describe('GameplayDeadlineScheduler interaction deadlines', () => {
@@ -225,6 +275,118 @@ describe('GameplayDeadlineScheduler interaction deadlines', () => {
     scheduler.onModuleDestroy();
   });
 
+  it('a timer armed for item A cannot expire item B', async () => {
+    // The stale-timer case, and the reason a deadline carries an identity and
+    // not just an instant. Item A's timer is still pending when A resolves and
+    // B opens; if it only checked "is there a deadline now", it would resolve
+    // B's interaction on A's schedule.
+    const { scheduler, resolve, commit } = harness(
+      runtimeState({}, openInteraction()),
+    );
+    await scheduler.schedule('session-1');
+
+    // A resolves early and B opens: a new interaction id, and a deadline far
+    // enough out that A's timer is the only one that can fire in this window.
+    commit(
+      runtimeState({ revision: 9 }, {
+        ...openInteraction(),
+        id: 'interaction-B',
+        prompt: {
+          id: 'prompt-2',
+          deadlineAt: new Date(NOW + 300_000).toISOString(),
+        },
+      } as never),
+    );
+
+    await jest.advanceTimersByTimeAsync(30_100);
+
+    expect(resolve).not.toHaveBeenCalled();
+    scheduler.onModuleDestroy();
+  });
+
+  it('a timer armed for one runtime cannot expire the next challenge', async () => {
+    // The same guard one level up: a Match plays several runtimes per session,
+    // and a timer from the previous challenge must not reach into the new one
+    // even when both happen to carry a deadline at the same instant.
+    const { scheduler, resolve, commit } = harness(
+      runtimeState({}, openInteraction()),
+    );
+    await scheduler.schedule('session-1');
+
+    commit(runtimeState({ id: 'runtime-2', revision: 2 }, openInteraction()));
+
+    await jest.advanceTimersByTimeAsync(30_100);
+
+    expect(resolve).not.toHaveBeenCalled();
+    scheduler.onModuleDestroy();
+  });
+
+  it('an answer that resolves the item leaves no timer able to resolve it again', async () => {
+    // Answer-before-timeout. The interaction is already resolved by the time
+    // the timer wakes, so the expiration must be a no-op rather than a second
+    // resolution — one resolution, one score effect, one progression.
+    const { scheduler, resolve, commit } = harness(
+      runtimeState({}, openInteraction()),
+    );
+    await scheduler.schedule('session-1');
+
+    commit(runtimeState({ revision: 9 }, openInteraction('resolved')));
+
+    await jest.advanceTimersByTimeAsync(60_000);
+
+    expect(resolve).not.toHaveBeenCalled();
+    scheduler.onModuleDestroy();
+  });
+
+  it('converging on state without a deadline disarms the pending timer', async () => {
+    // The other half of the invariant: state that no longer carries a deadline
+    // must leave nothing capable of resolving anything.
+    const { scheduler, resolve, commit } = harness(
+      runtimeState({}, openInteraction()),
+    );
+    await scheduler.schedule('session-1');
+
+    commit(runtimeState({ revision: 9 }, openInteraction('open', null)));
+    await scheduler.synchronize('session-1');
+
+    await jest.advanceTimersByTimeAsync(60_000);
+
+    expect(resolve).not.toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(0);
+    scheduler.onModuleDestroy();
+  });
+
+  it('converging repeatedly on the same deadline arms exactly one timer', async () => {
+    // Every committed mutation converges, so this runs constantly in
+    // production. Re-arming per call would multiply timers per item.
+    const { scheduler, resolve } = harness(runtimeState({}, openInteraction()));
+
+    await scheduler.synchronize('session-1');
+    await scheduler.synchronize('session-1');
+    await scheduler.synchronize('session-1');
+    expect(jest.getTimerCount()).toBe(1);
+
+    await jest.advanceTimersByTimeAsync(30_100);
+
+    expect(resolve).toHaveBeenCalledTimes(1);
+    scheduler.onModuleDestroy();
+  });
+
+  it('rearms live sessions from persistence at startup', async () => {
+    // Restart recovery, through the same convergence normal progression uses.
+    const { scheduler, resolve, runtimes } = harness(
+      runtimeState({}, openInteraction()),
+    );
+
+    await scheduler.onApplicationBootstrap();
+    expect(runtimes.findSessionIdsWithLiveRuntimes).toHaveBeenCalled();
+
+    await jest.advanceTimersByTimeAsync(30_100);
+
+    expect(resolve).toHaveBeenCalledTimes(1);
+    scheduler.onModuleDestroy();
+  });
+
   it('gives up after repeated failures instead of spinning on a past deadline', async () => {
     const { scheduler, resolve } = harness(runtimeState({}, openInteraction()));
     resolve.mockRejectedValue(new Error('stale revision'));
@@ -236,6 +398,65 @@ describe('GameplayDeadlineScheduler interaction deadlines', () => {
     // hammers the database for as long as the session exists.
     expect(resolve.mock.calls.length).toBeLessThanOrEqual(6);
     expect(resolve).toHaveBeenCalled();
+    scheduler.onModuleDestroy();
+  });
+});
+
+/**
+ * Bomb burns the session's team clock rather than a deadline written on the
+ * runtime, which is why it used to need its own scheduler. Folding it in here
+ * is what gives it the restart recovery and retry bounds the other mechanics
+ * already had.
+ */
+describe('GameplayDeadlineScheduler and the Bomb clock', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(NOW);
+  });
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  });
+
+  it('expires the active team when its clock runs out', async () => {
+    const { scheduler, submit } = harness(
+      runtimeState({ modeKey: BOMB_MODE_KEY, runtimeState: {} }),
+    );
+
+    await scheduler.schedule('session-1');
+    await jest.advanceTimersByTimeAsync(30_100);
+
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({ commandType: 'expire-team' }),
+    );
+    scheduler.onModuleDestroy();
+  });
+
+  it('does not fire before the clock is spent', async () => {
+    const { scheduler, submit } = harness(
+      runtimeState({ modeKey: BOMB_MODE_KEY, runtimeState: {} }),
+    );
+
+    await scheduler.schedule('session-1');
+    await jest.advanceTimersByTimeAsync(20_000);
+
+    expect(submit).not.toHaveBeenCalled();
+    scheduler.onModuleDestroy();
+  });
+
+  it('arms nothing once the Bomb runtime is terminal', async () => {
+    const { scheduler, submit } = harness(
+      runtimeState({
+        modeKey: BOMB_MODE_KEY,
+        runtimeState: {},
+        status: 'completed',
+      }),
+    );
+
+    await scheduler.schedule('session-1');
+    await jest.advanceTimersByTimeAsync(60_000);
+
+    expect(submit).not.toHaveBeenCalled();
     scheduler.onModuleDestroy();
   });
 });

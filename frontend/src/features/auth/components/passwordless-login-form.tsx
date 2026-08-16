@@ -13,6 +13,7 @@ import {
   type OtpError,
 } from "../api/otp-api";
 import { OTP_LENGTH, OtpCodeInput } from "./otp-code-input";
+import { consumePostAuthDestination } from "../navigation/post-auth-destination";
 
 type Step = "identifier" | "code";
 
@@ -73,9 +74,11 @@ export function PasswordlessLoginForm() {
       setError(null);
       try {
         const result = await loginWithOtp(identifier, entered);
-        // Same destination the password flow used, so nothing downstream of
-        // login had to change.
-        router.push(result.user.role === "admin" ? "/admin" : "/");
+        router.push(
+          result.user.role === "admin"
+            ? "/admin"
+            : consumePostAuthDestination("/"),
+        );
       } catch (cause) {
         const otpError = toOtpError(cause);
         setError(otpError);

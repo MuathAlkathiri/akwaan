@@ -27,20 +27,16 @@ export interface PlayableWorld {
 
 /**
  * A board position as a player sees it: what it is called and where it sits.
- * The configuration id, challenge type id, scoring rule, answer mode and item
- * structure stay server-side — a client never needs them to render a board.
+ * Configuration ids, challenge type ids, scoring rules, answer modes and item
+ * structures stay server-side. Guests receive only presentation metadata.
  */
 export interface PlayableBoardSlot {
   slotKey: BoardSlot['slotKey'];
-  challengeTypeId: string;
   challengeTypeSlug: string;
   family: BoardSlot['family'];
   displayName: string;
   description?: string;
   instructions?: string;
-  itemStructure: BoardSlot['itemStructure'];
-  answerMode: BoardSlot['answerMode'];
-  scoringRuleId: string;
   sortOrder: number;
 }
 
@@ -140,15 +136,11 @@ function toPlayableScope(scope: ScopeSummary): PlayableScope {
 function toPlayableSlot(slot: BoardSlot): PlayableBoardSlot {
   return {
     slotKey: slot.slotKey,
-    challengeTypeId: slot.challengeTypeId,
     challengeTypeSlug: slot.challengeTypeSlug,
     family: slot.family,
     displayName: slot.displayName,
     ...(slot.description ? { description: slot.description } : {}),
     ...(slot.instructions ? { instructions: slot.instructions } : {}),
-    itemStructure: slot.itemStructure,
-    answerMode: slot.answerMode,
-    scoringRuleId: slot.scoringRuleId,
     sortOrder: slot.sortOrder,
   };
 }

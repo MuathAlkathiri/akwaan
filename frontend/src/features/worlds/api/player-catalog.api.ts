@@ -1,7 +1,7 @@
 import apiClient from "@/lib/api/client";
 import type { PlayableScope, PlayableWorld } from "../types";
 
-/** Authenticated player read surface, kept separate from content authoring. */
+/** Public, player-safe read surface kept separate from content authoring. */
 
 async function unwrap<T>(request: Promise<{ data: { data: T } }>): Promise<T> {
   return (await request).data.data;

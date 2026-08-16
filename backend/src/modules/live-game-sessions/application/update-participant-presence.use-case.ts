@@ -34,28 +34,58 @@ export class UpdateParticipantPresence {
     private readonly reassignTeamActions: ReassignTeamActions,
   ) {}
 
-  async connected(sessionId: string, participantId: string): Promise<boolean> {
-    const connected = await this.presence.connect(
+  async connected(
+    sessionId: string,
+    participantId: string,
+    connectionId: string,
+  ): Promise<boolean> {
+    const connected = await this.presence.connect({
       sessionId,
       participantId,
-      this.clock.now(),
-    );
+      connectionId,
+      now: this.clock.now(),
+    });
     if (connected) {
       this.logger.log({
         event: 'participant_connected',
         sessionId,
         participantId,
+        connectionId,
       });
     }
     return connected;
   }
 
-  async disconnected(sessionId: string, participantId: string): Promise<void> {
+  async disconnected(
+    sessionId: string,
+    participantId: string,
+    connectionId: string,
+  ): Promise<void> {
     const now = this.clock.now();
-    await this.presence.disconnect(sessionId, participantId, now);
-    // Before anything else: if this phone was the one holding a team action, the
-    // action moves on. A challenge must not stall on somebody's wifi.
-    await this.reassignTeamActions.forSession(sessionId);
+    await this.presence.disconnect({
+      sessionId,
+      participantId,
+      connectionId,
+      now,
+    });
+    // If this phone was the one holding a team action, the action moves on. A
+    // challenge must not stall on somebody's wifi.
+    //
+    // Contained, because it is not the only thing this disconnect owes anyone:
+    // an exception thrown here used to skip the Bomb countdown cancellation
+    // below, so one unlucky reassignment left a countdown running for a team
+    // that no longer had a ready player.
+    try {
+      await this.reassignTeamActions.forSession(sessionId);
+    } catch (error) {
+      this.logger.error({
+        event: 'team_action_reassignment_failed',
+        sessionId,
+        participantId,
+        connectionId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
     const session = await this.sessions.findById(sessionId);
     if (session) {
       const state = session.serialize();
@@ -92,6 +122,7 @@ export class UpdateParticipantPresence {
       event: 'participant_disconnected',
       sessionId,
       participantId,
+      connectionId,
     });
   }
 

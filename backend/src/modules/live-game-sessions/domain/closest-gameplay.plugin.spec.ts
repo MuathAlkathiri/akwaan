@@ -38,8 +38,8 @@ describe('Closest gameplay', () => {
   );
 
   it('rejects malformed, NaN, and infinite estimates', () => {
-    const validate = CLOSEST_GAMEPLAY_PLUGIN.command('submit-estimate')!
-      .validatePayload;
+    const validate =
+      CLOSEST_GAMEPLAY_PLUGIN.command('submit-estimate')!.validatePayload;
     for (const value of ['20', Number.NaN, Infinity, -Infinity]) {
       expect(() => validate({ value } as never)).toThrow(
         'finite numeric estimate',
@@ -63,7 +63,11 @@ describe('Closest gameplay', () => {
       }).state;
     }
     const state = {
-      itemsJson: JSON.stringify([item, { ...item, id: 'item-2' }, { ...item, id: 'item-3' }]),
+      itemsJson: JSON.stringify([
+        item,
+        { ...item, id: 'item-2' },
+        { ...item, id: 'item-3' },
+      ]),
       teamIdsJson: '["a","b"]',
       currentItemIndex: 0,
       phase: 'collecting',
@@ -117,15 +121,18 @@ describe('Closest gameplay', () => {
       teamActionJson: serializeTeamActionAssignments(assignments),
       deadlineAt: '2026-01-01T00:00:45.000Z',
     };
-    const first = CLOSEST_GAMEPLAY_PLUGIN.handleCommand!({
-      now: new Date('2026-01-01T00:00:10.000Z'),
-      submitterParticipantId: 'a1',
-    } as never, {
-      type: 'submit-estimate',
-      payload: { value: 19 },
-      runtimeState: base,
-      roundState: { phase: 'collecting', itemIndex: 0 },
-    });
+    const first = CLOSEST_GAMEPLAY_PLUGIN.handleCommand!(
+      {
+        now: new Date('2026-01-01T00:00:10.000Z'),
+        submitterParticipantId: 'a1',
+      } as never,
+      {
+        type: 'submit-estimate',
+        payload: { value: 19 },
+        runtimeState: base,
+        roundState: { phase: 'collecting', itemIndex: 0 },
+      },
+    );
     const afterFirst = first.runtimeState;
     expect(
       assignmentFor(
@@ -134,16 +141,21 @@ describe('Closest gameplay', () => {
       ),
     ).toBeUndefined();
 
-    const second = CLOSEST_GAMEPLAY_PLUGIN.handleCommand!({
-      now: new Date('2026-01-01T00:00:20.000Z'),
-      submitterParticipantId: 'b1',
-    } as never, {
-      type: 'submit-estimate',
-      payload: { value: 22 },
-      runtimeState: afterFirst,
-      roundState: { phase: 'collecting', itemIndex: 0 },
-    });
-    expect(JSON.parse(String(second.runtimeState.resultsJson))[0]).toMatchObject({
+    const second = CLOSEST_GAMEPLAY_PLUGIN.handleCommand!(
+      {
+        now: new Date('2026-01-01T00:00:20.000Z'),
+        submitterParticipantId: 'b1',
+      } as never,
+      {
+        type: 'submit-estimate',
+        payload: { value: 22 },
+        runtimeState: afterFirst,
+        roundState: { phase: 'collecting', itemIndex: 0 },
+      },
+    );
+    expect(
+      JSON.parse(String(second.runtimeState.resultsJson))[0],
+    ).toMatchObject({
       assignedParticipantIds: { a: 'a1', b: 'b1' },
     });
   });

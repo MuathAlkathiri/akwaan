@@ -236,6 +236,32 @@ describe('Match aggregate', () => {
   });
 
   describe('board and launching', () => {
+    it('aborts an active challenge back to the available board without score or history', () => {
+      const match = newMatch();
+      launch(match, 0, WorldChallengeSlotKey.SLOT_2, 'runtime-abort');
+      const beforeEvents = match.serialize().scoreEvents.length;
+      const beforeResults = match.challengeResults.length;
+
+      expect(
+        match.abortChallenge({
+          commandId: 'abort-runtime-abort',
+          now: new Date('2026-01-01T00:01:00.000Z'),
+          runtimeId: 'runtime-abort',
+        }),
+      ).toEqual({ aborted: true });
+
+      expect(match.stage).toBe(MatchStage.BOARD);
+      expect(match.currentChallenge).toBeUndefined();
+      expect(match.occurrences[0].slots[WorldChallengeSlotKey.SLOT_2]).toEqual({
+        status: MatchSlotStatus.AVAILABLE,
+      });
+      expect(match.serialize().scoreEvents).toHaveLength(beforeEvents);
+      expect(match.challengeResults).toHaveLength(beforeResults);
+
+      launch(match, 0, WorldChallengeSlotKey.SLOT_2, 'runtime-retry');
+      expect(match.currentChallenge?.runtimeId).toBe('runtime-retry');
+    });
+
     it('binds a slot to a runtime and moves into the challenge stage', () => {
       const match = newMatch(['football', 'anime', 'football']);
       launch(match, 0, WorldChallengeSlotKey.SLOT_2, 'runtime-1', {

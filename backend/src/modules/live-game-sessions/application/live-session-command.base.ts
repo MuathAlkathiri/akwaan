@@ -17,6 +17,10 @@ import {
   LIVE_SESSION_TRANSITION_PUBLISHER,
   LiveSessionTransitionPublisher,
 } from './live-session-transition.publisher';
+import {
+  GAMEPLAY_DEADLINE_SYNCHRONIZER,
+  GameplayDeadlineSynchronizer,
+} from './gameplay-deadline.port';
 
 export interface LiveSessionCommand {
   sessionId: string;
@@ -37,6 +41,8 @@ export class LiveSessionCommandExecutor {
     private readonly snapshots: LiveGameSessionSnapshotMapper,
     @Inject(LIVE_SESSION_TRANSITION_PUBLISHER)
     private readonly publisher: LiveSessionTransitionPublisher,
+    @Inject(GAMEPLAY_DEADLINE_SYNCHRONIZER)
+    private readonly deadlines: GameplayDeadlineSynchronizer,
   ) {}
 
   async execute(
@@ -81,6 +87,27 @@ export class LiveSessionCommandExecutor {
       commandId: command.commandId,
       actorId: command.actorId,
     });
+    // A session command is the other half of the deadline lifecycle: Bomb's
+    // clock is session state, so starting, switching, pausing or ending a turn
+    // is a deadline appearing or disappearing. Converging here is what removes
+    // the need for a start-of-challenge use case to arm anything itself.
+    //
+    // After the command is durably committed and announced, and never able to
+    // fail it: a timer that could not be armed must not undo a turn that has
+    // already happened. The next mutation or a restart converges again.
+    await this.synchronizeDeadlines(command.sessionId);
     return snapshot;
+  }
+
+  private async synchronizeDeadlines(sessionId: string): Promise<void> {
+    try {
+      await this.deadlines.synchronize(sessionId);
+    } catch (error) {
+      this.logger.error({
+        event: 'gameplay_deadline_synchronization_failed',
+        sessionId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 }

@@ -83,13 +83,11 @@ export function BombGameplayPanel({
   const { snapshot, gameplayCommand, connection } = useLiveSession();
   const [answer, setAnswer] = useState("");
   const answerInputRef = useRef<HTMLInputElement>(null);
-  const expirySentFor = useRef<string>();
   const round = runtime.activeRound;
   const activeTeamId = runtime.activeTeamId ?? round?.activeTeamId;
   const clock = useTeamClockDisplay(activeTeamId ?? "");
   const canSubmit = runtime.availableActions.includes("mode:submit-answer");
   const canSkip = runtime.availableActions.includes("mode:skip");
-  const canExpire = runtime.availableActions.includes("mode:expire-team");
   const phase = String(round?.modeState.phase ?? "");
   const resolvingExpiration =
     Boolean(round && activeTeamId) &&
@@ -112,31 +110,16 @@ export function BombGameplayPanel({
     }
   }, [answerEnabled, activeTeamId]);
 
-  useEffect(() => {
-    if (
-      !round ||
-      !activeTeamId ||
-      !clock.expired ||
-      !canExpire ||
-      phase !== "presenting" ||
-      expirySentFor.current === `${round.id}:${activeTeamId}`
-    ) {
-      return;
-    }
-    expirySentFor.current = `${round.id}:${activeTeamId}`;
-    gameplayCommand("gameplay-command", {
-      roundId: round.id,
-      commandType: "expire-team",
-      payload: {},
-    });
-  }, [
-    activeTeamId,
-    canExpire,
-    clock.expired,
-    gameplayCommand,
-    phase,
-    round,
-  ]);
+  // No expiration is sent from here, deliberately.
+  //
+  // This countdown is a projection of the team clock the server already owns:
+  // it is anchored to `serverTimestamp` and ticks locally between snapshots, so
+  // a backgrounded tab, a throttled timer or a skewed device clock all move it.
+  // Deciding that the clock is spent is therefore not something this component
+  // can be trusted with, and it no longer tries — `GameplayDeadlineScheduler`
+  // derives the same instant from persisted state and expires the team from the
+  // server. `clock.expired` is still read below to stop offering an answer
+  // input for a clock that has visibly run out, which is presentation.
 
   const submitAnswer = useCallback(
     (value: string) => {

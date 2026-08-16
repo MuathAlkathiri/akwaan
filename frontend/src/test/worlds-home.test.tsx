@@ -34,13 +34,9 @@ function slot(
 ): PlayableBoardSlot {
   return {
     slotKey,
-    challengeTypeId: `type-${challengeTypeSlug}`,
     challengeTypeSlug,
     family: "ryo",
     displayName,
-    answerMode: "ryo",
-    itemStructure: "discrete_triple",
-    scoringRuleId: "ryo.payoff-matrix",
     sortOrder,
   };
 }

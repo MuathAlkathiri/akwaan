@@ -94,6 +94,42 @@ export interface GameplayCommandDefinition {
   validatePayload(payload: GameplayCommandPayload): GameplayCommandPayload;
 }
 
+/**
+ * How a mechanic's own deadline is expired, declared by the mechanic itself.
+ *
+ * This exists so the deadline reducer is not a list of mode keys that somebody
+ * has to remember to extend. A mechanic that keeps a clock says so here; the
+ * lifecycle infrastructure reads the declaration and guarantees a timer. A
+ * mechanic that has no clock declares nothing and is never armed.
+ *
+ * Interaction deadlines are deliberately *not* declared: any mechanic that
+ * publishes `prompt.deadlineAt` is already telling clients to run a countdown,
+ * and the reducer enforces every one of those without being told. Declare here
+ * only when the deadline instant lives outside the interaction.
+ */
+export type GameplayDeadlineDeclaration =
+  | {
+      /** The instant lives on `runtimeState.deadlineAt` as an ISO string. */
+      readonly source: 'runtime-state';
+      /** The mode command that expires it. `command()` must answer to it. */
+      readonly commandType: string;
+      /**
+       * The `runtimeState.phase` values in which the deadline is live. A
+       * mechanic that keeps `deadlineAt` populated after the clock stops
+       * mattering — "ركّبها" does — relies on this to stay unarmed.
+       */
+      readonly activePhases: readonly string[];
+    }
+  | {
+      /**
+       * The instant is the active team's remaining session clock rather than
+       * anything on the runtime. Bomb is the only mechanic that burns the
+       * session's own clock, so it is the only one that answers this way.
+       */
+      readonly source: 'session-clock';
+      readonly commandType: string;
+    };
+
 export interface GameplayCommandResult {
   runtimeState: GameplayModeState;
   roundState: GameplayModeState;
@@ -142,6 +178,13 @@ export interface GameplayModePlugin {
   ): GameplayModeState;
   projectRoundState(state: GameplayModeState): GameplayModeState;
   readonly interaction?: GameplayInteractionPlugin;
+  /**
+   * This mechanic's own deadline contract, when it keeps a clock outside its
+   * interaction. Absent means "this mechanic has no runtime-owned deadline" —
+   * which is a real answer, not an oversight, and `gameplay-deadline.wiring.spec`
+   * makes every mechanic state it explicitly.
+   */
+  readonly deadline?: GameplayDeadlineDeclaration;
 }
 
 const phases = ['waiting', 'presenting', 'resolving', 'completed'] as const;

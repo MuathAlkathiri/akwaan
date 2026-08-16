@@ -102,6 +102,27 @@ export async function continueFromChallengeResult(input: {
 }
 
 /**
+ * Aborts a legitimately active challenge and returns the authoritative board
+ * snapshot. Navigation never releases gameplay ownership by itself.
+ */
+export async function abortActiveChallenge(input: {
+  sessionId: string;
+  expectedSessionRevision: number;
+  expectedRuntimeRevision: number;
+  commandId?: string;
+}): Promise<LiveSessionSnapshot> {
+  const response = await apiClient.post<LiveSessionSnapshot>(
+    `/live-game-sessions/${input.sessionId}/runtime/cancel`,
+    {
+      commandId: input.commandId ?? crypto.randomUUID(),
+      expectedSessionRevision: input.expectedSessionRevision,
+      expectedRuntimeRevision: input.expectedRuntimeRevision,
+    },
+  );
+  return response.data;
+}
+
+/**
  * Launches one board position.
  *
  * The request names a position and nothing else — no ContentItem id, because the

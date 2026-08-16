@@ -13,6 +13,12 @@ interface BombRuntimeQuestion {
   prompt: string;
   items: Array<{
     id: string;
+    /**
+     * The item's own prompt. Optional so legacy Bomb questions — which carry a
+     * single prompt for the whole run — keep working unchanged; the canonical
+     * ContentItem path supplies one per item.
+     */
+    prompt?: string;
     imageUrl: string;
     altText?: string;
     acceptedAnswers: string[];
@@ -47,6 +53,13 @@ function validateRuntime(state: GameplayModeState): GameplayModeState {
     phase: 'ready',
     questionIndex: Math.trunc(state.questionIndex),
     questionsJson: JSON.stringify(list),
+    // The challenge verdict, written once at completion. It has to live on the
+    // runtime rather than the round: completing a round keeps only a summary
+    // (id, sequence, reason) and discards the round body, so a winner recorded
+    // there would vanish before the Match could read it.
+    ...(typeof state.resultJson === 'string'
+      ? { resultJson: state.resultJson }
+      : {}),
   };
 }
 
@@ -64,6 +77,9 @@ function validateRound(state: GameplayModeState): GameplayModeState {
     );
   }
   return {
+    // How the round ended, once it has. `clock-expired` is what tells the
+    // completion step to award the other team rather than compare clocks.
+    ...(typeof state.endedBy === 'string' ? { endedBy: state.endedBy } : {}),
     phase: state.phase,
     questionId: state.questionId,
     prompt: state.prompt,
@@ -92,7 +108,9 @@ function initialRound(context: GameplayPluginContext): GameplayModeState {
   return validateRound({
     phase: 'presenting',
     questionId: question.id,
-    prompt: question.prompt,
+    // Per-item where authored, falling back to the question-level prompt so a
+    // legacy Bomb run behaves exactly as before.
+    prompt: item.prompt ?? question.prompt,
     itemIndex: 0,
     itemCount: question.items.length,
     imageUrl: item.imageUrl,
@@ -132,6 +150,9 @@ function advance(
     roundState: validateRound({
       ...round,
       itemIndex: nextIndex,
+      // The prompt travels with the item, so advancing changes the question
+      // being asked and not just the picture.
+      prompt: item.prompt ?? round.prompt,
       imageUrl: item.imageUrl,
       altText: item.altText ?? '',
       answersJson: JSON.stringify(item.acceptedAnswers),
@@ -149,10 +170,16 @@ function emptyPayload(payload: GameplayCommandPayload) {
   return {};
 }
 
+/** Stable runtime key. Persisted state and tests depend on it. */
+export const BOMB_MODE_KEY = 'bomb';
+
 export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
-  key: 'bomb',
+  key: BOMB_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  // Bomb is the one mechanic whose clock is the *session's* team clock rather
+  // than anything on its own runtime, so it names the source instead of a phase.
+  deadline: { source: 'session-clock', commandType: 'expire-team' },
   createInitialRuntimeState: (context) =>
     validateRuntime(context.initialState ?? {}),
   createInitialRoundState: initialRound,
@@ -206,13 +233,22 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       );
     }
     if (command.type === 'expire-team') {
+      // Bomb is a board Challenge, not a whole game: a spent clock ends this
+      // challenge and hands the win to the other team, while the live session
+      // stays active so the Match can score it and open the board again.
+      // The winning team is resolved at completion, where the session — and
+      // therefore who was active when the clock ran out — is known.
       return {
         runtimeState: command.runtimeState,
-        roundState: round,
+        roundState: validateRound({
+          ...round,
+          phase: 'completed',
+          endedBy: 'clock-expired',
+        }),
         eventType: 'bomb-clock-expired',
         eventPayload: { itemIndex: round.itemIndex },
         effects: [
-          { type: 'finish-live-session', reason: 'bomb-clock-expired' },
+          { type: 'emit-runtime-event', eventType: 'bomb-clock-expired' },
         ],
       };
     }
@@ -254,11 +290,15 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       phase: valid.phase,
       questionIndex: valid.questionIndex,
       questionCount: questions(valid).length,
+      // Safe to project: the verdict is public once the challenge is over, and
+      // it carries no answers.
+      ...(valid.resultJson ? { resultJson: valid.resultJson } : {}),
     };
   },
   projectRoundState(state) {
     const valid = validateRound(state);
     return {
+      ...(valid.endedBy ? { endedBy: valid.endedBy } : {}),
       phase: valid.phase,
       questionId: valid.questionId,
       prompt: valid.prompt,

@@ -27,7 +27,6 @@ import {
   StartLiveGameSession,
 } from './live-session-lifecycle.use-cases';
 import { EndActiveTurn, StartTeamTurn } from './live-session-turn.use-cases';
-import { BombExpirationScheduler } from './bomb-expiration.scheduler';
 
 @Injectable()
 export class StartBombGameplay {
@@ -45,7 +44,6 @@ export class StartBombGameplay {
     private readonly startRound: StartGameplayRound,
     private readonly startTurn: StartTeamTurn,
     private readonly getRuntime: GetGameplayRuntime,
-    private readonly expiration: BombExpirationScheduler,
   ) {}
 
   async startAfterCountdown(sessionId: string) {
@@ -220,7 +218,6 @@ export class StartBombGameplay {
       });
     }
 
-    await this.expiration.schedule(sessionId);
     return this.getRuntime.execute(sessionId, actor);
   }
 

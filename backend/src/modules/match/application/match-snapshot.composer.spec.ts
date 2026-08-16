@@ -48,6 +48,7 @@ describe('MatchSnapshotComposer', () => {
       findById: () => Promise.resolve(match),
       findActiveBySessionId: () => Promise.resolve(match),
       findLatestBySessionId: () => Promise.resolve(match),
+      findAwaitingConvergence: () => Promise.resolve([]),
       save: () => Promise.resolve(),
     };
     const runtimes = {
@@ -55,6 +56,7 @@ describe('MatchSnapshotComposer', () => {
       findById: () => Promise.resolve(null),
       // No runtime in flight, so read-side convergence has nothing to reconcile.
       findBySessionId: () => Promise.resolve(null),
+      findStateById: () => Promise.resolve(null),
       save: () => Promise.resolve(),
       findSessionIdsWithLiveRuntimes: () => Promise.resolve([]),
     };

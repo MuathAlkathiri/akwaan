@@ -4,6 +4,7 @@ import {
   LiveSessionDomainError,
   StaleLiveSessionRevisionError,
 } from './live-session.errors';
+import { ParticipantPresenceProjection } from './participant-presence';
 import { TeamClock, TeamClockState } from './team-clock';
 
 export type LiveSessionStatus =
@@ -44,6 +45,14 @@ export interface LiveSessionParticipantState {
   reconnectTokenHash?: string;
   ready: boolean;
   joinedAt: Date;
+  /**
+   * Presence, merged in when the session is read and never written back.
+   *
+   * These three are a *projection* of `live_session_presence`, not aggregate
+   * state: the repository hydrates them on load and strips them on save, so a
+   * gameplay save carrying a stale copy cannot revert a newer connection. See
+   * `participant-presence.ts` for why they cannot live in the persisted blob.
+   */
   connected: boolean;
   connectedDeviceCount: number;
   lastSeenAt: Date;
@@ -216,7 +225,15 @@ export class LiveGameSession {
           joinedAt: participant.joinedAt
             ? new Date(participant.joinedAt)
             : new Date(state.createdAt),
-          lastSeenAt: new Date(participant.lastSeenAt),
+          // Presence is stripped before persistence, so a document restored
+          // from Mongo carries none of it. `restore` also backs `serialize()`,
+          // which runs on an already-hydrated aggregate — hence preserve what
+          // is there rather than resetting it.
+          connected: participant.connected ?? false,
+          connectedDeviceCount: participant.connectedDeviceCount ?? 0,
+          lastSeenAt: participant.lastSeenAt
+            ? new Date(participant.lastSeenAt)
+            : new Date(participant.joinedAt ?? state.createdAt),
           credentialVersion: participant.credentialVersion ?? 1,
           removedAt: participant.removedAt
             ? new Date(participant.removedAt)
@@ -445,19 +462,16 @@ export class LiveGameSession {
     }
     participant.removedAt = now;
     participant.ready = false;
-    participant.connected = false;
-    participant.connectedDeviceCount = 0;
+    // No presence write here. Removal is enforced by `removedAt` and the bumped
+    // credential — which every reader already honours — and the socket this
+    // participant still holds clears its own presence entry when it closes.
     participant.credentialVersion += 1;
-    participant.lastSeenAt = now;
     this.state.lastTransitionAt = now;
   }
 
   revokeParticipantCredential(participantId: string, now: Date): number {
     const participant = this.activeParticipant(participantId);
     participant.credentialVersion += 1;
-    participant.connected = false;
-    participant.connectedDeviceCount = 0;
-    participant.lastSeenAt = now;
     this.state.lastTransitionAt = now;
     return participant.credentialVersion;
   }
@@ -574,6 +588,15 @@ export class LiveGameSession {
     this.transitionTo('cancelled', now);
   }
 
+  /**
+   * Rotates the participant's reconnect token.
+   *
+   * Only the token, which is durable identity the aggregate genuinely owns.
+   * It used to also assert `connected = true`, which was a guess: holding a
+   * valid reconnect token says the participant may come back, not that a socket
+   * is open right now. The socket layer reports that, and the presence store
+   * records it.
+   */
   reconnectParticipant(
     actorId: string,
     reconnectTokenHash: string,
@@ -581,23 +604,26 @@ export class LiveGameSession {
   ): void {
     const participant = this.participantForActor(actorId);
     participant.reconnectTokenHash = reconnectTokenHash;
-    participant.connected = true;
-    participant.connectedDeviceCount = Math.max(
-      1,
-      participant.connectedDeviceCount,
-    );
-    participant.lastSeenAt = now;
     this.state.lastTransitionAt = now;
   }
 
-  setParticipantConnection(actorId: string, connected: boolean, now: Date) {
-    const participant = this.participantForActor(actorId);
-    participant.connectedDeviceCount = Math.max(
-      0,
-      participant.connectedDeviceCount + (connected ? 1 : -1),
-    );
-    participant.connected = participant.connectedDeviceCount > 0;
-    participant.lastSeenAt = now;
+  /**
+   * Merges observed presence onto the participants for readers.
+   *
+   * Called by the repository right after restoring, and by nothing else. There
+   * is no inverse: presence never travels back out through a save.
+   */
+  applyPresence(
+    presence: ReadonlyMap<string, ParticipantPresenceProjection>,
+  ): void {
+    for (const participant of this.state.participants) {
+      const observed = participant.removedAt
+        ? undefined
+        : presence.get(participant.id);
+      participant.connected = observed?.connected ?? false;
+      participant.connectedDeviceCount = observed?.connectedDeviceCount ?? 0;
+      if (observed?.lastSeenAt) participant.lastSeenAt = observed.lastSeenAt;
+    }
   }
 
   completeCommand(commandId: string, now: Date): void {

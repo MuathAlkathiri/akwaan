@@ -1,10 +1,14 @@
 "use client";
 
-import { RefreshCw } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { abortActiveChallenge } from "@/features/match-setup";
 import { occurrenceLabel } from "@/features/match-setup";
 import { useLiveSession } from "../../hooks/live-session-context";
 import { MatchGameplayRenderer } from "../match-stage-router";
 import { slotLabels, teamName } from "../presentation";
+import { localizeMatchError } from "../errors/match-errors";
 import type { MatchActor, MatchTeamStanding } from "../types";
 
 /**
@@ -16,7 +20,31 @@ import type { MatchActor, MatchTeamStanding } from "../types";
  * component never reaches into runtime state or moves the Match along.
  */
 export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
-  const { snapshot, resync } = useLiveSession();
+  const { snapshot, resync, adoptSnapshot } = useLiveSession();
+  const [aborting, setAborting] = useState(false);
+  const [abortError, setAbortError] = useState<string>();
+  const abortCommandId = useRef<string>();
+  const abort = useCallback(async () => {
+    if (!snapshot?.gameplay || aborting) return;
+    setAborting(true);
+    setAbortError(undefined);
+    abortCommandId.current ??= crypto.randomUUID();
+    try {
+      const next = await abortActiveChallenge({
+        sessionId: snapshot.sessionId,
+        expectedSessionRevision: snapshot.revision,
+        expectedRuntimeRevision: snapshot.gameplay.revision,
+        commandId: abortCommandId.current,
+      });
+      abortCommandId.current = undefined;
+      adoptSnapshot?.(next);
+    } catch (cause) {
+      setAbortError(localizeMatchError(cause).message);
+      resync?.();
+    } finally {
+      setAborting(false);
+    }
+  }, [aborting, adoptSnapshot, resync, snapshot]);
   const match = snapshot?.match;
   if (!snapshot || !match) return null;
 
@@ -87,9 +115,27 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
       )}
 
       {actor === "controller" && (
-        <p className="text-center text-sm text-muted-foreground">
-          ستعود اللوحة بعد لحظات.
-        </p>
+        <div className="flex flex-col items-center gap-2 text-center">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={aborting || !snapshot.gameplay}
+            onClick={abort}
+            className="font-black"
+          >
+            {aborting ? (
+              <RefreshCw className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <ArrowLeft className="size-4" aria-hidden />
+            )}
+            {aborting ? "جارٍ إلغاء التحدي…" : "العودة إلى اللوحة"}
+          </Button>
+          {abortError && (
+            <p role="alert" className="text-sm font-bold text-destructive">
+              {abortError}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

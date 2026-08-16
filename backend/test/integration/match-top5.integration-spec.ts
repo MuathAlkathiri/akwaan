@@ -15,12 +15,12 @@ import { loginForToken } from '../helpers/auth-helper';
 import {
   ChallengeAnswerMode,
   ChallengeFamily,
-  ChallengeItemStructure,
   ContentItemStatus,
   WorldChallengeSlotKey,
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
 import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
+import { productionMechanicFixture } from '../fixtures/production-mechanic.fixture';
 import {
   MatchSetupMode,
   MatchSlotStatus,
@@ -170,20 +170,11 @@ describe('Match Top 5 integration', () => {
       );
 
     const top5 = await challengeType({
-      name: 'أفضل 5',
-      slug: TOP5_MODE_KEY,
-      family: ChallengeFamily.SIGNATURE,
-      answerMode: ChallengeAnswerMode.TOP_5,
-      itemStructure: ChallengeItemStructure.CONTINUOUS,
-      scoringRuleId: SCORING_RULE_IDS.TOP5_RESULT,
+      ...productionMechanicFixture(TOP5_MODE_KEY),
       status: WorldContentStatus.ACTIVE,
     });
     const ryo = await challengeType({
-      name: 'اقرأ خصمك',
-      slug: RYO_MODE_KEY,
-      family: ChallengeFamily.RYO,
-      answerMode: ChallengeAnswerMode.RYO,
-      scoringRuleId: SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
+      ...productionMechanicFixture(RYO_MODE_KEY),
       status: WorldContentStatus.ACTIVE,
     });
     const secondary = await challengeType({
@@ -405,7 +396,13 @@ describe('Match Top 5 integration', () => {
           credentialVersion: 1,
           teamId,
         };
-        await presence.connected(sessionId, joined.participantId);
+        await presence.connected(
+          sessionId,
+          joined.participantId,
+          // One simulated socket per participant. Presence is keyed by
+          // connection now, so a test phone needs an identity like a real one.
+          `test-socket-${joined.participantId}`,
+        );
         await readiness.execute({
           actor,
           ready: true,
@@ -716,7 +713,7 @@ describe('Match Top 5 integration', () => {
       challengeKey: TOP5_MODE_KEY,
       winnerTeamId: pluginResult.winnerTeamId,
     });
-    expect(result.teamPoints).toEqual(
+    expect(result.matchPoints).toEqual(
       expect.arrayContaining([
         { teamId: pluginResult.winnerTeamId, points: 1 },
       ]),
@@ -740,7 +737,7 @@ describe('Match Top 5 integration', () => {
     const stored = (await matches.findLatestBySessionId(sessionId))!;
     const events = stored.serialize().scoreEvents;
     expect(events).toHaveLength(1);
-    expect(events[0].scoringRuleId).toBe(SCORING_RULE_IDS.TOP5_RESULT);
+    expect(events[0].scoringRuleId).toBe(SCORING_RULE_IDS.CHALLENGE_WIN);
     expect(events[0].delta).toBe(1);
     expect(events[0].challengeSessionId).toBe(runtimeId);
 
