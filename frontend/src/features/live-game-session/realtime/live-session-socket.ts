@@ -6,6 +6,13 @@ import type {
   LiveSessionSnapshot,
 } from "../model";
 import type { MatchChangedEvent } from "../match/types";
+import {
+  claimedRevisions,
+  isAlreadyAdopted,
+  isRegression,
+  revisionsOf,
+  type SnapshotRevisions,
+} from "./snapshot-revisions";
 
 type SnapshotListener = (snapshot: LiveSessionSnapshot) => void;
 
@@ -54,6 +61,17 @@ export class LiveSessionSocket {
     this.socket = socket;
     let connectedBefore = false;
     let resyncPending = false;
+    /** Revisions of the snapshot currently on screen. */
+    let adopted: SnapshotRevisions = {};
+    /**
+     * A newer revision was announced while a request was already out.
+     *
+     * Without this, an event arriving mid-flight was dropped entirely: the
+     * reply in flight had been composed before that change existed, so the
+     * client adopted the older state and then sat on it until something else
+     * happened to knock it loose.
+     */
+    let requestAgain = false;
     socket.on("connect", () => {
       input.onConnection("connected");
       socket.emit(
@@ -77,6 +95,7 @@ export class LiveSessionSocket {
     socket.io.on("reconnect_attempt", () => input.onConnection("reconnecting"));
     socket.on("disconnect", () => {
       resyncPending = false;
+      requestAgain = false;
       input.onConnection("disconnected");
     });
     socket.on("connect_error", (error) => {
@@ -86,15 +105,43 @@ export class LiveSessionSocket {
     socket.on("live-session:error", input.onError);
     socket.on("live-session:snapshot", (snapshot: LiveSessionSnapshot) => {
       resyncPending = false;
-      input.onSnapshot(snapshot);
+      const next = revisionsOf(snapshot);
+      // A reply that lost a race must not roll the game backwards.
+      if (!isRegression(next, adopted)) {
+        adopted = { ...adopted, ...next };
+        input.onSnapshot(snapshot);
+      }
+      if (requestAgain) {
+        requestAgain = false;
+        recoverSnapshot();
+      }
     });
     const recoverSnapshot = () => {
-      if (!socket.connected || resyncPending) return;
+      if (!socket.connected) return;
+      if (resyncPending) {
+        // Do not stack a second request; remember that one is owed instead.
+        requestAgain = true;
+        return;
+      }
       resyncPending = true;
       input.onResyncing?.();
       socket.emit("live-session:request-snapshot", {
         sessionId: input.sessionId,
       });
+    };
+    /**
+     * Fetch only if the announcement carries something we do not already hold.
+     *
+     * One authoritative change fans out as several events — a resolved item
+     * publishes an interaction change, a round change and a Match change — and
+     * each of them used to cost a full snapshot composition on the server. They
+     * all name the same revisions, so the second and third are provably
+     * redundant. An event that names no revision is never suppressed.
+     */
+    const refreshIfNewer = (payload: unknown) => {
+      const claim = claimedRevisions(payload);
+      if (claim && isAlreadyAdopted(claim, adopted)) return;
+      recoverSnapshot();
     };
     this.recoverSnapshot = recoverSnapshot;
     [
@@ -127,10 +174,10 @@ export class LiveSessionSocket {
       "live-session:submission-changed",
       "live-session:interaction-resolved",
       "live-session:interaction-expired",
-    ].forEach((event) => socket.on(event, recoverSnapshot));
+    ].forEach((event) => socket.on(event, refreshIfNewer));
     socket.on("live-session:match-changed", (event: MatchChangedEvent) => {
       if (input.shouldRecoverMatch?.(event) === false) return;
-      recoverSnapshot();
+      refreshIfNewer(event);
     });
     socket.on("live-session:gameplay-error", (error: LiveSessionError) => {
       input.onError(error);

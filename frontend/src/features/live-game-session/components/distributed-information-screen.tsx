@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLiveSessionClock } from "../hooks/live-session-clock-context";
 import { useLiveSession } from "../hooks/live-session-context";
 import type { GameplayRuntimeSnapshot } from "../model";
 import {
@@ -27,7 +28,8 @@ export function DistributedInformationScreen({
 }: {
   runtime: GameplayRuntimeSnapshot;
 }) {
-  const { snapshot, nowMs } = useLiveSession();
+  const { snapshot } = useLiveSession();
+  const nowMs = useLiveSessionClock();
   const state = runtime.modeState;
   const progress = useMemo(
     () => parseDistributedProgress(state.progressJson),

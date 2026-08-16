@@ -18,6 +18,7 @@ import { LiveSessionProvider } from "@/features/live-game-session/components/liv
 import { ParticipantLobby } from "@/features/live-game-session/components/participant-lobby";
 import { SessionConnectionStatus } from "@/features/live-game-session/components/session-connection-status";
 import { TeamClockList } from "@/features/live-game-session/components/team-clock-list";
+import { useLiveSessionClock } from "@/features/live-game-session/hooks/live-session-clock-context";
 import { useLiveSession } from "@/features/live-game-session/hooks/live-session-context";
 
 interface BombQuestionLaunchProps {
@@ -87,7 +88,8 @@ function BombHostLaunchFlow({
   categoryName,
   points,
 }: Omit<BombQuestionLaunchProps, "gameQuestionId">) {
-  const { snapshot, connection, error, nowMs } = useLiveSession();
+  const { snapshot, connection, error } = useLiveSession();
+  const nowMs = useLiveSessionClock();
   const queryClient = useQueryClient();
   const recoveryAttempt = useRef("");
   const startBomb = useMutation({

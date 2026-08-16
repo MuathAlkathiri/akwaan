@@ -83,7 +83,6 @@ describe("gameplay runtime frontend", () => {
           value={{
             snapshot,
             connection: "connected",
-            nowMs: Date.now(),
             command: vi.fn(),
             gameplayCommand,
           }}
@@ -133,7 +132,6 @@ describe("gameplay runtime frontend", () => {
               gameplay: { ...snapshot.gameplay!, availableActions: [] },
             },
             connection: "connected",
-            nowMs: Date.now(),
             command: vi.fn(),
             gameplayCommand: vi.fn(),
           }}

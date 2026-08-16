@@ -1,6 +1,7 @@
 "use client";
 
 import type { LiveSessionClockSnapshot } from "../model";
+import { useLiveSessionClock } from "./live-session-clock-context";
 import { useLiveSession } from "./live-session-context";
 
 export function deriveRemainingMs(
@@ -27,7 +28,8 @@ export function deriveRemainingMs(
 }
 
 export function useTeamClockDisplay(teamId: string) {
-  const { snapshot, nowMs, snapshotReceivedAtMs } = useLiveSession();
+  const { snapshot, snapshotReceivedAtMs } = useLiveSession();
+  const nowMs = useLiveSessionClock();
   const team = snapshot?.teams.find((candidate) => candidate.id === teamId);
   const receivedAtMs = snapshotReceivedAtMs ?? nowMs;
   const remainingMs =

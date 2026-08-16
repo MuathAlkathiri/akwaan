@@ -122,7 +122,6 @@ describe("live session frontend state", () => {
         value={{
           snapshot,
           connection: "connected",
-          nowMs: Date.parse(snapshot.serverTimestamp),
           command,
           gameplayCommand: vi.fn(),
         }}

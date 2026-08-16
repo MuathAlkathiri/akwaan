@@ -98,7 +98,6 @@ describe("live session phase two frontend", () => {
         value={{
           snapshot,
           connection: "connected",
-          nowMs: Date.now(),
           command,
           gameplayCommand: vi.fn(),
         }}

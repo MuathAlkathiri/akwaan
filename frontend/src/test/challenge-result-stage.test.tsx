@@ -264,7 +264,6 @@ function renderRouter(
         value={{
           snapshot: snapshotOf(value),
           connection: "connected",
-          nowMs: Date.parse("2026-08-07T10:05:00.000Z"),
           command: vi.fn(),
           gameplayCommand: vi.fn(),
           resync: mocks.resync,
@@ -292,7 +291,6 @@ function renderShell(value: LiveSessionMatchSnapshot) {
         value={{
           snapshot: snapshotOf(value),
           connection: "connected",
-          nowMs: Date.parse("2026-08-07T10:05:00.000Z"),
           command: vi.fn(),
           gameplayCommand: vi.fn(),
           resync: mocks.resync,

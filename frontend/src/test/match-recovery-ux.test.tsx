@@ -7,7 +7,6 @@ function renderBanner(overrides: Partial<LiveSessionContextValue> = {}) {
   const resync = vi.fn();
   const value: LiveSessionContextValue = {
     connection: "connected",
-    nowMs: Date.now(),
     syncState: "idle",
     command: vi.fn(),
     gameplayCommand: vi.fn(),

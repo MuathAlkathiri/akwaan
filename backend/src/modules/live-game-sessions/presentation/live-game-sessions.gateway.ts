@@ -78,6 +78,54 @@ type LiveSocket = Socket<
   LiveSocketData
 >;
 
+/**
+ * What a command's sender gets back once the command has committed.
+ *
+ * Deliberately not the snapshot. Authoritative state reaches this client the
+ * same way it reaches every other client — `live-session:snapshot` for a
+ * gameplay command, the broadcast-then-resync path for a session command — so
+ * returning it here too only put a second copy of the same document on the
+ * wire, which no caller read. The client's own contract is narrow: it needs to
+ * know the command was accepted and against which revisions, and on failure it
+ * needs the error code its stale-revision retry keys on. That failure shape is
+ * unchanged.
+ */
+export interface LiveSessionCommandAck {
+  ok: true;
+  sessionId: string;
+  revision: number;
+  runtimeRevision?: number;
+}
+
+/**
+ * Narrows a committed snapshot to the acknowledgement above.
+ *
+ * Anything that is not a recognisable snapshot is passed through untouched: a
+ * handler that already answers with something small (the heartbeat's server
+ * timestamp) must keep answering with exactly that.
+ */
+function commandAck(result: unknown): unknown {
+  if (!result || typeof result !== 'object') return result;
+  const snapshot = result as {
+    sessionId?: unknown;
+    revision?: unknown;
+    gameplay?: { revision?: unknown } | null;
+  };
+  if (
+    typeof snapshot.sessionId !== 'string' ||
+    typeof snapshot.revision !== 'number'
+  ) {
+    return result;
+  }
+  const runtimeRevision = snapshot.gameplay?.revision;
+  return {
+    ok: true,
+    sessionId: snapshot.sessionId,
+    revision: snapshot.revision,
+    ...(typeof runtimeRevision === 'number' ? { runtimeRevision } : {}),
+  } satisfies LiveSessionCommandAck;
+}
+
 @UsePipes(
   new ValidationPipe({
     whitelist: true,
@@ -648,18 +696,29 @@ export class LiveGameSessionsGateway
     body: T,
     action: (command: T & { actorId: string }) => Promise<unknown>,
   ): Promise<unknown> {
-    return this.respond(client, () => {
-      this.assertCommandRate(client);
-      return action({ ...body, actorId: client.data.actor.actorId });
-    });
+    return this.respond(
+      client,
+      () => {
+        this.assertCommandRate(client);
+        return action({ ...body, actorId: client.data.actor.actorId });
+      },
+      commandAck,
+    );
   }
 
   private async respond(
     client: LiveSocket,
     action: () => Promise<unknown>,
+    /**
+     * How the caller's acknowledgement is derived from the result.
+     *
+     * Applied on success only, so the failure acknowledgement below stays
+     * byte-identical — it is the shape the client's stale-revision retry reads.
+     */
+    toAck: (result: unknown) => unknown = (result) => result,
   ): Promise<unknown> {
     try {
-      return await action();
+      return toAck(await action());
     } catch (error) {
       const details =
         error instanceof Error
@@ -685,20 +744,27 @@ export class LiveGameSessionsGateway
     client: LiveSocket,
     action: () => Promise<unknown>,
   ): Promise<unknown> {
-    return this.runtimeRespond(client, () => {
-      this.assertCommandRate(client);
-      return action();
-    });
+    return this.runtimeRespond(
+      client,
+      () => {
+        this.assertCommandRate(client);
+        return action();
+      },
+      commandAck,
+    );
   }
 
   private async runtimeRespond(
     client: LiveSocket,
     action: () => Promise<unknown>,
+    toAck: (result: unknown) => unknown = (result) => result,
   ): Promise<unknown> {
     try {
       const snapshot = await action();
+      // The authoritative state still reaches this client in full, on the same
+      // channel every other client uses. Only the acknowledgement is trimmed.
       client.emit('live-session:snapshot', snapshot);
-      return snapshot;
+      return toAck(snapshot);
     } catch (error) {
       const details =
         error instanceof Error

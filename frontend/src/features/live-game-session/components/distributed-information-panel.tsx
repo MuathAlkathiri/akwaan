@@ -8,6 +8,7 @@ import { BidiText } from "@/components/akwaan/bidi-text";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useLiveSessionClock } from "../hooks/live-session-clock-context";
 import { useLiveSession } from "../hooks/live-session-context";
 import type { GameplayRuntimeSnapshot } from "../model";
 import {
@@ -34,7 +35,8 @@ export function DistributedInformationPanel({
 }: {
   runtime: GameplayRuntimeSnapshot;
 }) {
-  const { snapshot, gameplayCommand, connection, nowMs } = useLiveSession();
+  const { snapshot, gameplayCommand, connection } = useLiveSession();
+  const nowMs = useLiveSessionClock();
   const [answer, setAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const state = runtime.modeState;

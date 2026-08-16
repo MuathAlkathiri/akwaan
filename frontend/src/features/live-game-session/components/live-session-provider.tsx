@@ -18,6 +18,7 @@ import {
   type GameplayCommandOptions,
   type LiveSessionCommandOptions,
 } from "../hooks/live-session-context";
+import { LiveSessionClockContext } from "../hooks/live-session-clock-context";
 import { LiveSessionSocket } from "../realtime/live-session-socket";
 import { liveSessionReducer } from "../state/live-session-reducer";
 
@@ -204,6 +205,11 @@ export function LiveSessionProvider({
     [sessionId, state.snapshot],
   );
 
+  // Deliberately without `nowMs`. The clock ticks four times a second, and
+  // while it was part of this object every tick handed all ~29 consumers a new
+  // value and rerendered them for a change none of them had asked about. It is
+  // published on its own context below, so a tick now reaches only the
+  // components that draw time.
   const value = useMemo(
     () => ({
       snapshot: state.snapshot,
@@ -213,7 +219,6 @@ export function LiveSessionProvider({
         (initial.error
           ? { code: "LOAD_FAILED", message: "Unable to load live session" }
           : undefined),
-      nowMs,
       snapshotReceivedAtMs: state.snapshotReceivedAtMs,
       syncState,
       command,
@@ -227,7 +232,6 @@ export function LiveSessionProvider({
       gameplayCommand,
       adoptSnapshot,
       initial.error,
-      nowMs,
       state.connection,
       state.error,
       state.snapshot,
@@ -238,22 +242,29 @@ export function LiveSessionProvider({
     ],
   );
 
+  // Memoised for the same reason: this provider still rerenders on every tick
+  // because it owns the clock, and an unmemoised style object would hand the
+  // wrapper below a new prop each time and undo the isolation.
+  const teamColors = useMemo(
+    () => teamColorVariables(state.snapshot?.teams ?? []),
+    [state.snapshot?.teams],
+  );
+
   return (
     <LiveSessionContext.Provider value={value}>
-      {/**
-       * The teams' colours, applied once for every screen inside a session.
-       *
-       * Both clients read the same two ids off the same snapshot, so the shared
-       * screen and every phone resolve `--team-{n}-*` to the same hues without
-       * exchanging anything. Placing this here rather than in each surface is what
-       * stops one screen from picking its own colours again.
-       */}
-      <div
-        data-testid="team-colour-scope"
-        style={teamColorVariables(state.snapshot?.teams ?? [])}
-      >
-        {children}
-      </div>
+      <LiveSessionClockContext.Provider value={nowMs}>
+        {/**
+         * The teams' colours, applied once for every screen inside a session.
+         *
+         * Both clients read the same two ids off the same snapshot, so the shared
+         * screen and every phone resolve `--team-{n}-*` to the same hues without
+         * exchanging anything. Placing this here rather than in each surface is what
+         * stops one screen from picking its own colours again.
+         */}
+        <div data-testid="team-colour-scope" style={teamColors}>
+          {children}
+        </div>
+      </LiveSessionClockContext.Provider>
     </LiveSessionContext.Provider>
   );
 }

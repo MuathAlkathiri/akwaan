@@ -1,12 +1,14 @@
 "use client";
 
+import { useLiveSessionClock } from "./live-session-clock-context";
 import { useLiveSession } from "./live-session-context";
 
 export function useInteractionDeadline(
   deadlineAt?: string,
   terminal = false,
 ): number | undefined {
-  const { snapshot, nowMs, snapshotReceivedAtMs } = useLiveSession();
+  const { snapshot, snapshotReceivedAtMs } = useLiveSession();
+  const nowMs = useLiveSessionClock();
   if (!deadlineAt || terminal || !snapshot) return undefined;
   const serverAtReceipt =
     new Date(snapshot.serverTimestamp).getTime() +

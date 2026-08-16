@@ -136,6 +136,7 @@ function harness(state: GameplayRuntimeState | undefined) {
     resolve,
     submit,
     runtimes,
+    sessions,
     observers,
     commit,
   };
@@ -457,6 +458,177 @@ describe('GameplayDeadlineScheduler and the Bomb clock', () => {
     await jest.advanceTimersByTimeAsync(60_000);
 
     expect(submit).not.toHaveBeenCalled();
+    scheduler.onModuleDestroy();
+  });
+});
+
+/**
+ * Batch B: what a committed mutation costs in repository reads.
+ *
+ * The scheduler is told about a commit and is handed the exact state that
+ * commit wrote, so re-reading it was work with a known answer. These count only
+ * the repositories the scheduler itself owns — nothing about *when* it
+ * synchronizes changed, only what it spends doing so.
+ */
+describe('GameplayDeadlineScheduler committed-state reuse', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  });
+
+  it('reads neither repository for an interaction deadline it was handed', async () => {
+    const state = runtimeState({}, openInteraction());
+    const { scheduler, runtimes, sessions } = harness(state);
+
+    await scheduler.onRuntimeMutated({
+      sessionId: 'session-1',
+      runtimeId: 'runtime-1',
+      runtimeState: state,
+    });
+
+    expect(runtimes.findBySessionId).not.toHaveBeenCalled();
+    expect(sessions.findById).not.toHaveBeenCalled();
+    expect(scheduler.armedKeyFor('session-1')).toContain('interaction');
+    scheduler.onModuleDestroy();
+  });
+
+  it('arms the same deadline it would have armed from persistence', async () => {
+    // The shortcut is only sound if it is indistinguishable in effect. Same
+    // state, both routes, same armed identity.
+    const state = runtimeState({}, openInteraction());
+    const fromRead = harness(state);
+    await fromRead.scheduler.synchronize('session-1');
+    const armedFromRead = fromRead.scheduler.armedKeyFor('session-1');
+    fromRead.scheduler.onModuleDestroy();
+
+    const fromHint = harness(state);
+    await fromHint.scheduler.onRuntimeMutated({
+      sessionId: 'session-1',
+      runtimeId: 'runtime-1',
+      runtimeState: state,
+    });
+
+    expect(fromHint.scheduler.armedKeyFor('session-1')).toBe(armedFromRead);
+    fromHint.scheduler.onModuleDestroy();
+  });
+
+  it('still reads the session for a Bomb deadline, which is derived from it', async () => {
+    // Bomb burns the session's team clock. The runtime read is saved; the
+    // session read is not, because the answer does not exist without it.
+    const state = runtimeState({ modeKey: BOMB_MODE_KEY, runtimeState: {} });
+    const { scheduler, runtimes, sessions } = harness(state);
+
+    await scheduler.onRuntimeMutated({
+      sessionId: 'session-1',
+      runtimeId: 'runtime-1',
+      runtimeState: state,
+    });
+
+    expect(runtimes.findBySessionId).not.toHaveBeenCalled();
+    expect(sessions.findById).toHaveBeenCalledTimes(1);
+    expect(scheduler.armedKeyFor('session-1')).toContain('mode');
+    scheduler.onModuleDestroy();
+  });
+
+  it('reads both repositories when it is given nothing', async () => {
+    // The persistence path is what bootstrap, session commands and recovery
+    // use, and it has to keep behaving exactly as it did.
+    const state = runtimeState({}, openInteraction());
+    const { scheduler, runtimes, sessions } = harness(state);
+
+    await scheduler.synchronize('session-1');
+
+    expect(runtimes.findBySessionId).toHaveBeenCalledTimes(1);
+    expect(sessions.findById).toHaveBeenCalledTimes(1);
+    scheduler.onModuleDestroy();
+  });
+
+  it('forgets the timer when the committed state it was handed is terminal', async () => {
+    const active = runtimeState({}, openInteraction());
+    const { scheduler } = harness(active);
+    await scheduler.onRuntimeMutated({
+      sessionId: 'session-1',
+      runtimeId: 'runtime-1',
+      runtimeState: active,
+    });
+    expect(scheduler.armedKeyFor('session-1')).toBeDefined();
+
+    const done = runtimeState({ status: 'completed', revision: 8 });
+    await scheduler.onRuntimeMutated({
+      sessionId: 'session-1',
+      runtimeId: 'runtime-1',
+      runtimeState: done,
+    });
+
+    expect(scheduler.armedKeyFor('session-1')).toBeUndefined();
+    expect(scheduler.retainedSessionIds()).not.toContain('session-1');
+    scheduler.onModuleDestroy();
+  });
+
+  it('re-arms for the next item from the state that opened it', async () => {
+    const first = runtimeState({}, openInteraction());
+    const { scheduler } = harness(first);
+    await scheduler.onRuntimeMutated({
+      sessionId: 'session-1',
+      runtimeId: 'runtime-1',
+      runtimeState: first,
+    });
+    const firstKey = scheduler.armedKeyFor('session-1');
+
+    const next = runtimeState(
+      { revision: 9 },
+      {
+        ...openInteraction(),
+        prompt: { id: 'prompt-2', deadlineAt: '2026-08-14T00:01:00.000Z' },
+      },
+    );
+    await scheduler.onRuntimeMutated({
+      sessionId: 'session-1',
+      runtimeId: 'runtime-1',
+      runtimeState: next,
+    });
+
+    expect(scheduler.armedKeyFor('session-1')).not.toBe(firstKey);
+    expect(scheduler.armedKeyFor('session-1')).toContain('00:01:00');
+    scheduler.onModuleDestroy();
+  });
+
+  it('falls back to persistence when handed a superseded revision', async () => {
+    // Two commands commit against one session and their observers interleave.
+    // The older observer must not arm from state a newer commit has replaced.
+    const newer = runtimeState(
+      { revision: 9 },
+      {
+        ...openInteraction(),
+        prompt: { id: 'prompt-2', deadlineAt: '2026-08-14T00:01:00.000Z' },
+      },
+    );
+    const { scheduler, runtimes, sessions, commit } = harness(newer);
+
+    await scheduler.onRuntimeMutated({
+      sessionId: 'session-1',
+      runtimeId: 'runtime-1',
+      runtimeState: newer,
+    });
+    const armedForNewer = scheduler.armedKeyFor('session-1');
+    runtimes.findBySessionId.mockClear();
+    sessions.findById.mockClear();
+    commit(newer);
+
+    // The stale observer arrives late, carrying revision 7.
+    await scheduler.onRuntimeMutated({
+      sessionId: 'session-1',
+      runtimeId: 'runtime-1',
+      runtimeState: runtimeState({ revision: 7 }, openInteraction()),
+    });
+
+    expect(runtimes.findBySessionId).toHaveBeenCalledTimes(1);
+    expect(scheduler.armedKeyFor('session-1')).toBe(armedForNewer);
     scheduler.onModuleDestroy();
   });
 });

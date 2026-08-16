@@ -57,6 +57,15 @@ class MemoryRuntimeRepository implements GameplayRuntimeRepository {
     return runtime ? runtime.serialize() : null;
   }
 
+  async findStatusesByIds(runtimeIds: string[]) {
+    const statuses = new Map<string, never>();
+    for (const runtimeId of runtimeIds) {
+      const found = await this.findById(runtimeId);
+      if (found) statuses.set(runtimeId, found.serialize().status as never);
+    }
+    return statuses;
+  }
+
   readonly all: GameplayRuntime[] = [];
   async create(runtime: GameplayRuntime) {
     this.all.unshift(runtime);

@@ -29,7 +29,11 @@ export interface LiveSessionContextValue {
   snapshot?: LiveSessionSnapshot;
   connection: LiveSessionConnectionState;
   error?: LiveSessionError;
-  nowMs: number;
+  /**
+   * When the current snapshot was adopted, for aligning server timestamps with
+   * the client clock. Changes once per snapshot, not on every tick — the tick
+   * itself lives in `useLiveSessionClock`.
+   */
   snapshotReceivedAtMs?: number;
   syncState?: "idle" | "resynchronizing" | "restored";
   command: (action: string, options?: LiveSessionCommandOptions) => void;

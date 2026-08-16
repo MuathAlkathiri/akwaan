@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLiveSessionClock } from "../hooks/live-session-clock-context";
 import { useLiveSession } from "../hooks/live-session-context";
 import { SessionConnectionStatus } from "./session-connection-status";
 import { GameplayRuntimePanel } from "./gameplay-runtime-panel";
@@ -11,7 +12,8 @@ import { BombGameplayPanel } from "./bomb-gameplay-panel";
 import { ParticipantMatchView } from "../match/views";
 
 export function PlayerLobby({ participantId }: { participantId: string }) {
-  const { snapshot, command, connection, error, nowMs } = useLiveSession();
+  const { snapshot, command, connection, error } = useLiveSession();
+  const nowMs = useLiveSessionClock();
   const participant = snapshot?.participants.find(
     (item) => item.id === participantId,
   );

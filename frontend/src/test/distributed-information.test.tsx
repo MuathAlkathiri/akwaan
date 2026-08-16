@@ -9,6 +9,10 @@ const mocks = vi.hoisted(() => ({
   nowMs: Date.parse("2026-01-01T00:00:10.000Z"),
 }));
 
+vi.mock("@/features/live-game-session/hooks/live-session-clock-context", () => ({
+  useLiveSessionClock: () => mocks.nowMs,
+}));
+
 vi.mock("@/features/live-game-session/hooks/live-session-context", () => ({
   useLiveSession: () => ({
     snapshot: {
@@ -20,7 +24,6 @@ vi.mock("@/features/live-game-session/hooks/live-session-context", () => ({
     gameplayCommand: mocks.gameplayCommand,
     connection: mocks.connection,
     error: mocks.error,
-    nowMs: mocks.nowMs,
   }),
 }));
 

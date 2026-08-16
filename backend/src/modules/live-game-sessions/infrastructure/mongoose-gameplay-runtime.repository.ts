@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import {
   GameplayRuntime,
   GameplayRuntimeState,
+  GameplayRuntimeStatus,
 } from '../domain/gameplay-runtime';
 import { GameplayModeRegistry } from '../domain/gameplay-mode.registry';
 import { GameplayRuntimeRepository } from '../domain/gameplay-runtime.repository';
@@ -25,6 +26,22 @@ export class MongooseGameplayRuntimeRepository implements GameplayRuntimeReposit
   async findStateById(runtimeId: string): Promise<GameplayRuntimeState | null> {
     const document = await this.model.findOne({ runtimeId }).lean().exec();
     return document ? (document.state as GameplayRuntimeState) : null;
+  }
+
+  async findStatusesByIds(
+    runtimeIds: string[],
+  ): Promise<Map<string, GameplayRuntimeStatus>> {
+    if (!runtimeIds.length) return new Map();
+    // Projected to the two fields the answer needs. The alternative — one full
+    // document per obligation — was reading every abandoned challenge's whole
+    // state on every sweep to learn it had not moved.
+    const rows = await this.model
+      .find({ runtimeId: { $in: runtimeIds } }, { runtimeId: 1, status: 1 })
+      .lean()
+      .exec();
+    return new Map(
+      rows.map((row) => [row.runtimeId, row.status as GameplayRuntimeStatus]),
+    );
   }
 
   async findById(runtimeId: string): Promise<GameplayRuntime | null> {

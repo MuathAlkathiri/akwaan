@@ -16,6 +16,10 @@ import {
   LiveSessionUnifiedPreflight,
 } from '../../live-game-sessions/application/live-session-match.projection';
 import {
+  isTerminalRuntimeStatus,
+  type GameplayRuntimeStatus,
+} from '../../live-game-sessions/domain/gameplay-runtime';
+import {
   GAMEPLAY_RUNTIME_REPOSITORY,
   GameplayRuntimeRepository,
 } from '../../live-game-sessions/domain/gameplay-runtime.repository';
@@ -86,16 +90,71 @@ export class MatchSnapshotComposer
     snapshot: LiveGameSessionSnapshot,
     actor: LiveSessionActor,
   ): Promise<void> {
-    // Convergence point: a reconciliation deferred by a revision conflict is
-    // retried here, before anyone is shown a stale Match.
+    const match = await this.matches.findLatestBySessionId(snapshot.sessionId);
+    // A session without a Match keeps exactly the snapshot it had before.
+    if (!match) return;
+    snapshot.match = await this.project(
+      (await this.reconcileIfPending(snapshot, match)) ?? match,
+      actor,
+    );
+  }
+
+  /**
+   * Whether a snapshot could be showing a Match that has fallen behind its
+   * runtime — and if so, catch it up before projecting.
+   *
+   * This is the read-your-writes half of convergence, and the only half that
+   * lives here. Durability is Batch 4's: the post-commit observer converges
+   * normally and `MatchConvergenceSweeper` recovers anything it missed, across
+   * restarts. What a snapshot adds is immediacy — a host whose reconciliation
+   * deferred must not be shown a finished challenge until the next sweep.
+   *
+   * It stays cheap by answering the question from state this snapshot already
+   * holds. `snapshot.gameplay` was projected from the runtime the live-session
+   * composer had already loaded, so the guard costs no reads of its own.
+   *
+   * Returns the reconciled Match when it ran and changed something, so the
+   * projection below describes the state the caller is about to be told about
+   * rather than the one from before.
+   */
+  private async reconcileIfPending(
+    snapshot: LiveGameSessionSnapshot,
+    match: Match,
+  ): Promise<Match | undefined> {
+    if (!this.mayNeedReconciliation(snapshot, match)) return undefined;
     await this.reconciliation.ensureReconciled(
       snapshot.sessionId,
       (await this.runtimes.findBySessionId(snapshot.sessionId))?.serialize(),
     );
-    const match = await this.matches.findLatestBySessionId(snapshot.sessionId);
-    // A session without a Match keeps exactly the snapshot it had before.
-    if (!match) return;
-    snapshot.match = await this.project(match, actor);
+    return (
+      (await this.matches.findLatestBySessionId(snapshot.sessionId)) ??
+      undefined
+    );
+  }
+
+  /**
+   * The condition under which reconciliation could still have work to do.
+   *
+   * Deliberately conservative in both directions. It says "no" only when the
+   * loaded state proves the answer — no bound challenge, or a bound challenge
+   * whose own runtime is still running — and says "yes" to everything it cannot
+   * account for, including a runtime that is missing from the snapshot or is not
+   * the one this Match bound. Those are invariant questions rather than fast
+   * paths, and the reconciliation service is what reports them.
+   */
+  private mayNeedReconciliation(
+    snapshot: LiveGameSessionSnapshot,
+    match: Match,
+  ): boolean {
+    const current = match.currentChallenge;
+    // Nothing is bound, so there is no obligation left to discharge. Orphan
+    // recovery is the launch path's job and stays there.
+    if (!current) return false;
+    const gameplay = snapshot.gameplay;
+    if (!gameplay || gameplay.runtimeId !== current.runtimeId) return true;
+    // The shared lifecycle definition, not a second list: a mechanic added
+    // later inherits this answer instead of needing a case here.
+    return isTerminalRuntimeStatus(gameplay.status as GameplayRuntimeStatus);
   }
 
   private async project(

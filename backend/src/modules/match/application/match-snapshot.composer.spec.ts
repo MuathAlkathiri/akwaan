@@ -57,6 +57,7 @@ describe('MatchSnapshotComposer', () => {
       // No runtime in flight, so read-side convergence has nothing to reconcile.
       findBySessionId: () => Promise.resolve(null),
       findStateById: () => Promise.resolve(null),
+      findStatusesByIds: () => Promise.resolve(new Map()),
       save: () => Promise.resolve(),
       findSessionIdsWithLiveRuntimes: () => Promise.resolve([]),
     };
@@ -452,6 +453,214 @@ describe('MatchSnapshotComposer', () => {
       expect(serialized).not.toContain('TRUST_CORRECT');
       expect(serialized).not.toContain('scoringRuleId');
       expect(serialized).not.toContain('contentItemIds');
+    });
+  });
+  /**
+   * Batch C: what a snapshot spends on reconciliation.
+   *
+   * Durability belongs to Batch 4 — the post-commit observer converges, and the
+   * sweeper recovers anything it missed. What a snapshot uniquely adds is
+   * immediacy, and it is only ever needed when the Match is still bound to a
+   * runtime that has already finished. These pin both halves: the healthy case
+   * costs nothing, and the pending case still repairs.
+   */
+  describe('reconciliation on the snapshot path', () => {
+    /** A composer whose reconciliation and repository calls are counted. */
+    const instrumented = (
+      match: Match | null,
+      options: { runtimeState?: Record<string, unknown> } = {},
+    ) => {
+      const ensureReconciled = jest
+        .fn()
+        .mockResolvedValue({ outcome: 'not_terminal' as const });
+      const findLatestBySessionId = jest.fn(() => Promise.resolve(match));
+      const findBySessionId = jest.fn(() =>
+        Promise.resolve(
+          options.runtimeState
+            ? { serialize: () => options.runtimeState }
+            : null,
+        ),
+      );
+      const composer = composerFor(match);
+      // Swap in the counted collaborators; everything else stays as built.
+      (composer as never as { reconciliation: unknown }).reconciliation = {
+        ensureReconciled,
+      };
+      (composer as never as { matches: unknown }).matches = {
+        findLatestBySessionId,
+        findActiveBySessionId: () => Promise.resolve(match),
+      };
+      (composer as never as { runtimes: unknown }).runtimes = {
+        findBySessionId,
+      };
+      return {
+        composer,
+        ensureReconciled,
+        findLatestBySessionId,
+        findBySessionId,
+      };
+    };
+
+    /** A snapshot carrying the gameplay projection the live composer builds. */
+    const withGameplay = (
+      runtimeId: string,
+      status: string,
+    ): LiveGameSessionSnapshot =>
+      ({
+        sessionId: 'live-session-1',
+        gameplay: { runtimeId, status },
+      }) as unknown as LiveGameSessionSnapshot;
+
+    const launched = () => {
+      const match = unifiedMatch();
+      match.launchChallenge({
+        commandId: 'launch',
+        now,
+        occurrenceIndex: 0,
+        slotKey: WorldChallengeSlotKey.SLOT_2,
+        challengeKey: RYO,
+        runtimeId: 'runtime-1',
+        contentItemIds: ['a'],
+        launchability: MatchSlotLaunchability.LAUNCHABLE,
+      });
+      return match;
+    };
+
+    it('does not reconcile while the bound challenge is still being played', async () => {
+      const { composer, ensureReconciled, findBySessionId } =
+        instrumented(launched());
+
+      await composer.enrich(
+        withGameplay('runtime-1', 'round-active'),
+        controller,
+      );
+
+      expect(ensureReconciled).not.toHaveBeenCalled();
+      // And the guard did not buy its answer with the read it saved.
+      expect(findBySessionId).not.toHaveBeenCalled();
+    });
+
+    it('reads the Match once for a healthy active snapshot', async () => {
+      const { composer, findLatestBySessionId } = instrumented(launched());
+
+      await composer.enrich(
+        withGameplay('runtime-1', 'round-active'),
+        controller,
+      );
+
+      expect(findLatestBySessionId).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not reconcile when the Match holds no challenge', async () => {
+      const { composer, ensureReconciled, findBySessionId } =
+        instrumented(unifiedMatch());
+
+      await composer.enrich(snapshot(), controller);
+
+      expect(ensureReconciled).not.toHaveBeenCalled();
+      expect(findBySessionId).not.toHaveBeenCalled();
+    });
+
+    it('reconciles a completed runtime the Match has not caught up with', async () => {
+      // The freshness guarantee: the observer deferred, no sweep has run, and a
+      // client asks for state. It must not be shown the finished challenge.
+      const { composer, ensureReconciled, findBySessionId } = instrumented(
+        launched(),
+        { runtimeState: { id: 'runtime-1', status: 'completed' } },
+      );
+
+      await composer.enrich(withGameplay('runtime-1', 'completed'), controller);
+
+      expect(ensureReconciled).toHaveBeenCalledTimes(1);
+      expect(findBySessionId).toHaveBeenCalledTimes(1);
+      expect(ensureReconciled).toHaveBeenCalledWith(
+        'live-session-1',
+        expect.objectContaining({ status: 'completed' }),
+      );
+    });
+
+    it('reconciles a cancelled runtime the Match has not caught up with', async () => {
+      const { composer, ensureReconciled } = instrumented(launched(), {
+        runtimeState: { id: 'runtime-1', status: 'cancelled' },
+      });
+
+      await composer.enrich(withGameplay('runtime-1', 'cancelled'), controller);
+
+      expect(ensureReconciled).toHaveBeenCalledTimes(1);
+    });
+
+    it('projects the Match as it stands after reconciling, not before', async () => {
+      // Reconciliation mutates the Match. Projecting the copy loaded before it
+      // ran would show the caller the state it just stopped being in.
+      const before = launched();
+      const after = unifiedMatch();
+      const ensureReconciled = jest
+        .fn()
+        .mockResolvedValue({ outcome: 'reconciled' as const });
+      const composer = composerFor(before);
+      (composer as never as { reconciliation: unknown }).reconciliation = {
+        ensureReconciled,
+      };
+      let call = 0;
+      (composer as never as { matches: unknown }).matches = {
+        findLatestBySessionId: () =>
+          Promise.resolve(call++ === 0 ? before : after),
+        findActiveBySessionId: () => Promise.resolve(before),
+      };
+      (composer as never as { runtimes: unknown }).runtimes = {
+        findBySessionId: () =>
+          Promise.resolve({
+            serialize: () => ({ id: 'runtime-1', status: 'completed' }),
+          }),
+      };
+
+      const value = withGameplay('runtime-1', 'completed');
+      await composer.enrich(value, controller);
+
+      expect(ensureReconciled).toHaveBeenCalledTimes(1);
+      // `after` never had a challenge launched, so a stale projection would
+      // still be advertising one.
+      expect(value.match!.currentChallenge).toBeUndefined();
+    });
+
+    it('reconciles rather than assuming, when the bound runtime is missing', async () => {
+      // A Match bound to a runtime the snapshot has no gameplay for is an
+      // invariant question. The fast path must not answer it "nothing to do".
+      const { composer, ensureReconciled } = instrumented(launched());
+
+      await composer.enrich(snapshot(), controller);
+
+      expect(ensureReconciled).toHaveBeenCalledTimes(1);
+    });
+
+    it('reconciles rather than assuming, when the runtime is a different one', async () => {
+      const { composer, ensureReconciled } = instrumented(launched(), {
+        runtimeState: { id: 'runtime-2', status: 'round-active' },
+      });
+
+      await composer.enrich(
+        withGameplay('runtime-2', 'round-active'),
+        controller,
+      );
+
+      expect(ensureReconciled).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays at zero reconciliations however many clients ask', async () => {
+      // Snapshot builds are still one per client until Batch D. The
+      // reconciliation work they each used to trigger is what goes away here.
+      const { composer, ensureReconciled, findBySessionId } =
+        instrumented(launched());
+
+      for (let client = 0; client < 8; client += 1) {
+        await composer.enrich(
+          withGameplay('runtime-1', 'round-active'),
+          controller,
+        );
+      }
+
+      expect(ensureReconciled).not.toHaveBeenCalled();
+      expect(findBySessionId).not.toHaveBeenCalled();
     });
   });
 });

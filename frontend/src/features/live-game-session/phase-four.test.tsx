@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { GameplayInteractionPanel } from "./components/gameplay-interaction-panel";
+import { LiveSessionClockContext } from "./hooks/live-session-clock-context";
 import { LiveSessionContext } from "./hooks/live-session-context";
 import type { GameplayRuntimeSnapshot } from "./model";
 
@@ -68,13 +69,16 @@ function renderPanel(
           expiresAt: "2026-01-02T00:00:00.000Z",
         },
         connection: "connected",
-        nowMs: new Date("2026-01-01T00:00:03.000Z").getTime(),
         snapshotReceivedAtMs: new Date("2026-01-01T00:00:00.000Z").getTime(),
         command: vi.fn(),
         gameplayCommand,
       }}
     >
-      <GameplayInteractionPanel runtime={value} />
+      <LiveSessionClockContext.Provider
+        value={new Date("2026-01-01T00:00:03.000Z").getTime()}
+      >
+        <GameplayInteractionPanel runtime={value} />
+      </LiveSessionClockContext.Provider>
     </LiveSessionContext.Provider>,
   );
   return gameplayCommand;

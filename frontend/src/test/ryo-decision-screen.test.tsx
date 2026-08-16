@@ -23,6 +23,10 @@ const TEAMS = [
   { id: "team-b", name: "نجوم جدة", active: true },
 ];
 
+vi.mock("@/features/live-game-session/hooks/live-session-clock-context", () => ({
+  useLiveSessionClock: () => Date.parse("2026-08-07T00:00:00.000Z"),
+}));
+
 vi.mock("@/features/live-game-session/hooks/live-session-context", () => ({
   useLiveSession: () => ({
     snapshot: {
@@ -33,7 +37,6 @@ vi.mock("@/features/live-game-session/hooks/live-session-context", () => ({
     },
     gameplayCommand: vi.fn(),
     connection: "connected",
-    nowMs: Date.parse("2026-08-07T00:00:00.000Z"),
     snapshotReceivedAtMs: Date.parse("2026-08-07T00:00:00.000Z"),
   }),
 }));

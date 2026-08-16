@@ -5,6 +5,7 @@ import {
   OnApplicationBootstrap,
   OnModuleDestroy,
 } from '@nestjs/common';
+import { isTerminalRuntimeStatus } from '../../live-game-sessions/domain/gameplay-runtime';
 import {
   GAMEPLAY_RUNTIME_REPOSITORY,
   GameplayRuntimeRepository,
@@ -107,9 +108,29 @@ export class MatchConvergenceSweeper
     this.running = true;
     try {
       const pending = await this.matches.findAwaitingConvergence();
+      // One projected round trip answers "which of these has actually
+      // finished?" for every obligation at once. Without it each pass loaded
+      // the full state of every abandoned challenge only to be told it was
+      // still being played — work that grew with every game anyone walked away
+      // from, and that could never produce a result.
+      const statuses = await this.runtimes.findStatusesByIds(
+        pending.map((obligation) => obligation.runtimeId),
+      );
       let converged = 0;
       for (const obligation of pending) {
         if (this.stopped) break;
+        const status = statuses.get(obligation.runtimeId);
+        if (!status) {
+          // Absent, not unfinished. A Match bound to a runtime that does not
+          // exist is an invariant violation, and staying quiet about it would
+          // trade visibility for cheapness.
+          this.report(obligation, trigger, 'runtime_missing');
+          continue;
+        }
+        // Still being played. Nothing to converge, and — crucially — nothing
+        // about *age* was consulted to decide that: an obligation is skipped
+        // because its runtime is unfinished, never because it is old.
+        if (!isTerminalRuntimeStatus(status)) continue;
         if (await this.converge(obligation, trigger)) converged += 1;
       }
       this.forgetSettled(pending);

@@ -1,4 +1,8 @@
-import { GameplayRuntime, GameplayRuntimeState } from './gameplay-runtime';
+import {
+  GameplayRuntime,
+  GameplayRuntimeState,
+  GameplayRuntimeStatus,
+} from './gameplay-runtime';
 
 export const GAMEPLAY_RUNTIME_REPOSITORY = Symbol(
   'GAMEPLAY_RUNTIME_REPOSITORY',
@@ -16,6 +20,19 @@ export interface GameplayRuntimeRepository {
    * dischargeable, and the reconciler consumes exactly this shape anyway.
    */
   findStateById(runtimeId: string): Promise<GameplayRuntimeState | null>;
+  /**
+   * Just the lifecycle status of many runtimes, in one round trip.
+   *
+   * The convergence sweeper only ever needs to know which of its outstanding
+   * obligations belong to a runtime that has actually finished. Answering that
+   * by loading each full runtime meant reading every abandoned challenge's
+   * entire state, every pass, to be told it was still being played. A runtime
+   * absent from the returned map does not exist, which the caller must keep
+   * treating as an invariant violation rather than as "not terminal".
+   */
+  findStatusesByIds(
+    runtimeIds: string[],
+  ): Promise<Map<string, GameplayRuntimeStatus>>;
   create(runtime: GameplayRuntime): Promise<void>;
   findById(runtimeId: string): Promise<GameplayRuntime | null>;
   findBySessionId(sessionId: string): Promise<GameplayRuntime | null>;

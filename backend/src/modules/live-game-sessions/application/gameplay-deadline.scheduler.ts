@@ -233,6 +233,15 @@ export class GameplayDeadlineScheduler
     string,
     { key: string; revision: number }
   >();
+  /**
+   * The newest runtime revision this scheduler has converged, per session.
+   *
+   * Only ever used to refuse a stale shortcut: a post-commit hint older than
+   * this means another commit has already been converged, so that hint is not
+   * current and the caller reads persistence instead. Cleared by `forget`
+   * alongside the rest of the per-session bookkeeping.
+   */
+  private readonly applied = new Map<string, number>();
   /** Set on shutdown so nothing armed earlier can still reach persistence. */
   private stopped = false;
   private static readonly MAX_RETRIES = 5;
@@ -262,8 +271,12 @@ export class GameplayDeadlineScheduler
   }
 
   /** Committed runtime mutation — converge. Failures here never fail gameplay. */
-  async onRuntimeMutated(input: { sessionId: string }): Promise<void> {
-    await this.synchronize(input.sessionId);
+  async onRuntimeMutated(input: {
+    sessionId: string;
+    runtimeId?: string;
+    runtimeState?: GameplayRuntimeState;
+  }): Promise<void> {
+    await this.synchronize(input.sessionId, input.runtimeState);
   }
 
   /**
@@ -271,19 +284,92 @@ export class GameplayDeadlineScheduler
    *
    * Idempotent in both directions: state with a deadline leaves exactly one
    * armed timer for it, state without one leaves none.
+   *
+   * `committed` is an optional shortcut, not a second source of truth. It is
+   * only ever the state a commit just wrote — see `usableCommitted` for the two
+   * conditions under which it is trusted — and it feeds the same
+   * `pendingDeadline` every other path uses. Without it, or when it cannot be
+   * shown to be current, this reads persistence exactly as it always did, which
+   * is what keeps bootstrap and recovery honest.
    */
-  async synchronize(sessionId: string): Promise<void> {
+  async synchronize(
+    sessionId: string,
+    committed?: GameplayRuntimeState,
+  ): Promise<void> {
     // A timer that survives shutdown must not touch a closed connection. This
     // is the same reasoning as the staleness key, one level up: convergence is
     // only meaningful while this process is still the one running the game.
     if (this.stopped) return;
+    const usable = this.usableCommitted(sessionId, committed);
+    if (usable) {
+      const declaration = this.declarationFor(usable);
+      // The session is loaded only when the deadline is actually derived from
+      // it. `session-clock` (Bomb) burns the session's team clock and cannot be
+      // answered without it; every other declaration, and every interaction
+      // deadline, reads nothing but the runtime.
+      //
+      // The existence check the persistence path gets for free is not lost
+      // here: this branch runs only after a command committed against this
+      // session, which is itself proof the session was there.
+      const session =
+        declaration?.source === 'session-clock'
+          ? await this.sessions.findById(sessionId)
+          : undefined;
+      this.converge(
+        sessionId,
+        usable,
+        pendingDeadline(usable, declaration, session as never),
+      );
+      return;
+    }
     const session = await this.sessions.findById(sessionId);
     const runtime = await this.runtimes.findBySessionId(sessionId);
     const state = runtime?.serialize();
-    const pending = state
-      ? pendingDeadline(state, this.declarationFor(state), session as never)
-      : undefined;
-    if (!session || !runtime || !pending) {
+    const pending =
+      state && session
+        ? pendingDeadline(state, this.declarationFor(state), session as never)
+        : undefined;
+    this.converge(sessionId, session && runtime ? state : undefined, pending);
+  }
+
+  /**
+   * Whether a supplied committed state may stand in for a read.
+   *
+   * Two commands can commit against one session with their post-commit
+   * observers interleaved, so "this state was committed" does not by itself mean
+   * "this state is current". A hint older than a revision this scheduler has
+   * already converged is therefore refused, and the caller falls back to
+   * persistence — never worse than the behaviour before this existed.
+   *
+   * The remaining window is bounded and self-healing: an observer that runs
+   * after a newer commit but before that newer commit's own observer can arm the
+   * older deadline, and the newer observer — already in flight on the awaited
+   * path that committed it — immediately converges over it. The armed-key check
+   * in `expire` is the second line: a timer that wakes to state presenting a
+   * different key does nothing.
+   */
+  private usableCommitted(
+    sessionId: string,
+    committed?: GameplayRuntimeState,
+  ): GameplayRuntimeState | undefined {
+    if (!committed) return undefined;
+    const applied = this.applied.get(sessionId);
+    if (applied !== undefined && committed.revision < applied) return undefined;
+    return committed;
+  }
+
+  /**
+   * Arm, re-arm or drop this session's timer for the deadline just derived.
+   *
+   * Shared by both paths above so there is exactly one place that decides what
+   * a timer does, whichever way the state reached it.
+   */
+  private converge(
+    sessionId: string,
+    state: GameplayRuntimeState | undefined,
+    pending: PendingDeadline | undefined,
+  ): void {
+    if (!state || !pending) {
       // No deadline in authoritative state means no timer may survive, which is
       // the half of the invariant that keeps a resolved item from being expired.
       //
@@ -301,11 +387,12 @@ export class GameplayDeadlineScheduler
       this.forget(sessionId);
       return;
     }
+    this.applied.set(sessionId, state.revision);
     const resolved = this.lastResolved.get(sessionId);
     if (
       resolved &&
       resolved.key === pending.key &&
-      resolved.revision === runtime.revision
+      resolved.revision === state.revision
     ) {
       // Already resolved this exact deadline and nothing moved. Arming again
       // would just re-resolve it.
@@ -383,6 +470,7 @@ export class GameplayDeadlineScheduler
     this.armed.clear();
     this.failures.clear();
     this.lastResolved.clear();
+    this.applied.clear();
   }
 
   private declarationFor(
@@ -572,5 +660,6 @@ export class GameplayDeadlineScheduler
     this.clear(sessionId);
     this.failures.delete(sessionId);
     this.lastResolved.delete(sessionId);
+    this.applied.delete(sessionId);
   }
 }

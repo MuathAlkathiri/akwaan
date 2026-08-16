@@ -36,6 +36,7 @@ function harness(options: {
   outcomes?: MatchReconciliationOutcome[];
   runtimeMissing?: boolean;
   findThrows?: boolean;
+  status?: string;
 }) {
   const outcomes = [...(options.outcomes ?? ['reconciled'])];
   const onRuntimeMutated = jest.fn(() =>
@@ -52,9 +53,18 @@ function harness(options: {
         : Promise.resolve(options.pending ?? [OBLIGATION]),
     ),
   };
+  const status = options.status ?? 'completed';
   const runtimes = {
     findStateById: jest.fn(() =>
       Promise.resolve(options.runtimeMissing ? null : runtimeState()),
+    ),
+    // The cheap batch the sweeper now uses to decide what is even worth reading.
+    findStatusesByIds: jest.fn((ids: string[]) =>
+      Promise.resolve(
+        options.runtimeMissing
+          ? new Map<string, string>()
+          : new Map<string, string>(ids.map((id) => [id, status])),
+      ),
     ),
   };
   const sweeper = new MatchConvergenceSweeper(
@@ -158,7 +168,11 @@ describe('match convergence sweeper', () => {
     };
     const sweeper = new MatchConvergenceSweeper(
       matches as never,
-      { findStateById: () => Promise.resolve(runtimeState()) } as never,
+      {
+        findStateById: () => Promise.resolve(runtimeState()),
+        findStatusesByIds: (ids: string[]) =>
+          Promise.resolve(new Map(ids.map((id) => [id, 'completed']))),
+      } as never,
       {
         onRuntimeMutated: () => Promise.resolve({ outcome: 'reconciled' }),
       } as unknown as MatchReconciliationService,
@@ -199,5 +213,183 @@ describe('match convergence sweeper', () => {
 
     expect(await sweeper.sweep('manual')).toBe(0);
     expect(matches.findAwaitingConvergence).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Batch E: what a sweep spends on obligations it cannot discharge.
+ *
+ * Every abandoned game leaves a Match holding a challenge whose runtime will
+ * never finish, and each pass used to load that runtime in full to be told so.
+ * The bound is deliberately *not* an age rule — age cannot distinguish an
+ * abandoned game from a finished one nobody collected — but the runtime's own
+ * lifecycle status, asked for every obligation in a single projected read.
+ */
+describe('match convergence sweeper bounding', () => {
+  const obligations = (count: number): PendingMatchConvergence[] =>
+    Array.from({ length: count }, (_, index) => ({
+      matchId: `match-${index}`,
+      sessionId: `session-${index}`,
+      runtimeId: `runtime-${index}`,
+    }));
+
+  /** A sweeper over `count` obligations, all of the given runtime status. */
+  function bounded(count: number, status: string) {
+    const onRuntimeMutated = jest
+      .fn()
+      .mockResolvedValue({ outcome: 'reconciled' as const });
+    const findStateById = jest.fn(() =>
+      Promise.resolve({ id: 'r', status } as never),
+    );
+    const findStatusesByIds = jest.fn((ids: string[]) =>
+      Promise.resolve(new Map(ids.map((id) => [id, status]))),
+    );
+    const sweeper = new MatchConvergenceSweeper(
+      {
+        findAwaitingConvergence: jest.fn(() =>
+          Promise.resolve(obligations(count)),
+        ),
+      } as never,
+      { findStateById, findStatusesByIds } as never,
+      { onRuntimeMutated } as unknown as MatchReconciliationService,
+    );
+    return { sweeper, findStateById, findStatusesByIds, onRuntimeMutated };
+  }
+
+  it('reads no runtime state for obligations still being played', async () => {
+    // The measured case: 39 abandoned challenges, every pass, for ever.
+    const { sweeper, findStateById, findStatusesByIds, onRuntimeMutated } =
+      bounded(39, 'round-active');
+
+    expect(await sweeper.sweep('interval')).toBe(0);
+
+    expect(findStatusesByIds).toHaveBeenCalledTimes(1);
+    expect(findStateById).not.toHaveBeenCalled();
+    expect(onRuntimeMutated).not.toHaveBeenCalled();
+  });
+
+  it('asks about every obligation in one round trip', async () => {
+    const { sweeper, findStatusesByIds } = bounded(39, 'round-active');
+
+    await sweeper.sweep('interval');
+
+    expect(findStatusesByIds).toHaveBeenCalledTimes(1);
+    expect(findStatusesByIds.mock.calls[0][0]).toHaveLength(39);
+  });
+
+  it('still discharges a finished challenge, however old the obligation is', async () => {
+    // Age is never consulted, so an obligation that has waited days is
+    // recovered on exactly the same terms as one from a second ago.
+    const { sweeper, findStateById, onRuntimeMutated } = bounded(
+      3,
+      'completed',
+    );
+
+    expect(await sweeper.sweep('interval')).toBe(3);
+
+    expect(findStateById).toHaveBeenCalledTimes(3);
+    expect(onRuntimeMutated).toHaveBeenCalledTimes(3);
+  });
+
+  it('still discharges a cancelled challenge', async () => {
+    const { sweeper, onRuntimeMutated } = bounded(2, 'cancelled');
+
+    expect(await sweeper.sweep('interval')).toBe(2);
+    expect(onRuntimeMutated).toHaveBeenCalledTimes(2);
+  });
+
+  it('recovers an obligation the moment its runtime becomes terminal', async () => {
+    // A challenge skipped for many passes because it was unfinished must not
+    // stay skipped once it finishes. Nothing was remembered about it, so there
+    // is nothing to expire or reactivate.
+    let status = 'round-active';
+    const onRuntimeMutated = jest
+      .fn()
+      .mockResolvedValue({ outcome: 'reconciled' as const });
+    const sweeper = new MatchConvergenceSweeper(
+      {
+        findAwaitingConvergence: jest.fn(() => Promise.resolve(obligations(1))),
+      } as never,
+      {
+        findStateById: jest.fn(() =>
+          Promise.resolve({ id: 'r', status } as never),
+        ),
+        findStatusesByIds: jest.fn((ids: string[]) =>
+          Promise.resolve(new Map(ids.map((id) => [id, status]))),
+        ),
+      } as never,
+      { onRuntimeMutated } as unknown as MatchReconciliationService,
+    );
+
+    for (let pass = 0; pass < 5; pass += 1) {
+      expect(await sweeper.sweep('interval')).toBe(0);
+    }
+    expect(onRuntimeMutated).not.toHaveBeenCalled();
+
+    status = 'completed';
+
+    expect(await sweeper.sweep('interval')).toBe(1);
+    expect(onRuntimeMutated).toHaveBeenCalledTimes(1);
+  });
+
+  it('mutates nothing for an obligation that is merely unfinished', async () => {
+    // Bounding is about what the sweeper reads, never about ending someone's
+    // game. No cancellation, no release, no reconciliation call at all.
+    const { sweeper, onRuntimeMutated } = bounded(10, 'round-paused');
+
+    await sweeper.sweep('interval');
+
+    expect(onRuntimeMutated).not.toHaveBeenCalled();
+    expect(sweeper.outstandingRuntimeIds()).toEqual([]);
+  });
+
+  it('keeps a Match bound to a runtime that does not exist visible', async () => {
+    // Cheapness must not cost observability: absent is not the same as
+    // unfinished, and it stays reported.
+    const onRuntimeMutated = jest.fn();
+    const sweeper = new MatchConvergenceSweeper(
+      {
+        findAwaitingConvergence: jest.fn(() => Promise.resolve(obligations(1))),
+      } as never,
+      {
+        findStateById: jest.fn(() => Promise.resolve(null)),
+        findStatusesByIds: jest.fn(() => Promise.resolve(new Map())),
+      } as never,
+      { onRuntimeMutated } as unknown as MatchReconciliationService,
+    );
+
+    expect(await sweeper.sweep('interval')).toBe(0);
+
+    expect(onRuntimeMutated).not.toHaveBeenCalled();
+    expect(sweeper.outstandingRuntimeIds()).toEqual(['runtime-0']);
+  });
+
+  it('keeps retrying a finished challenge whose Match write failed', async () => {
+    // Batch 4's durability property, unchanged by the bound: a failed
+    // convergence leaves the obligation exactly where it was.
+    const outcomes = ['deferred_revision_conflict', 'reconciled'];
+    const onRuntimeMutated = jest.fn(() =>
+      Promise.resolve({ outcome: outcomes.shift() ?? 'reconciled' }),
+    );
+    const sweeper = new MatchConvergenceSweeper(
+      {
+        findAwaitingConvergence: jest.fn(() => Promise.resolve(obligations(1))),
+      } as never,
+      {
+        findStateById: jest.fn(() =>
+          Promise.resolve({ id: 'r', status: 'completed' } as never),
+        ),
+        findStatusesByIds: jest.fn((ids: string[]) =>
+          Promise.resolve(new Map(ids.map((id) => [id, 'completed']))),
+        ),
+      } as never,
+      { onRuntimeMutated } as unknown as MatchReconciliationService,
+    );
+
+    expect(await sweeper.sweep('interval')).toBe(0);
+    expect(sweeper.outstandingRuntimeIds()).toEqual(['runtime-0']);
+
+    expect(await sweeper.sweep('interval')).toBe(1);
+    expect(sweeper.outstandingRuntimeIds()).toEqual([]);
   });
 });
