@@ -39,11 +39,43 @@ SCOPE_IDS = {
     "video-games.overwatch": "6a7261c94c19c862fcb4c659",
     "video-games.fifa": "6a7261d54c19c862fcb4c68b",
     "video-games.call-of-duty": "6a71130a4d411d708f981aa1",
+    "series.game-of-thrones": "6a7662cf46f02091be9c96c5",
+    "series.breaking-bad": "6a81f2037787a244d05f4933",
+    "series.from": "6a81f2037787a244d05f4941",
+    "series.series-mix": "6a81f2037787a244d05f494f",
     "puzzles.numbers-arithmetic": "6a7a224b4cfb4a6a8738d66e",
     "puzzles.logic-deduction": "6a7a22674cfb4a6a8738d6a5",
     "puzzles.letters-words": "6a7a229f4cfb4a6a8738d6dd",
     "puzzles.symbols-codes": "6a7a22ab4cfb4a6a8738d716",
     "puzzles.general-knowledge": "6a7a22e44cfb4a6a8738d750",
+    "movies.harry-potter": "6a8203877787a244d05f89a0",
+    "movies.marvel": "6a8203877787a244d05f89ae",
+    "movies.disney-pixar": "6a8203877787a244d05f89bc",
+    "movies.movies-mix": "6a8203877787a244d05f89ca",
+    "music.saudi-music": "6a8203877787a244d05f89d8",
+    "music.gulf-music": "6a8203877787a244d05f89e6",
+    "music.arabic-music": "6a8203877787a244d05f89f4",
+    "music.international-music": "6a8203877787a244d05f8a02",
+    "saudi-arabia.cities-landmarks": "6a8220cf7787a244d06055f4",
+    "saudi-arabia.saudi-history": "6a8220cf7787a244d0605602",
+    "saudi-arabia.culture-heritage": "6a8220cf7787a244d0605610",
+    "saudi-arabia.saudi-today": "6a8220cf7787a244d060561e",
+    "world.countries-flags": "6a8220cf7787a244d060562c",
+    "world.cities-landmarks": "6a8220cf7787a244d060563a",
+    "world.geography": "6a8220cf7787a244d0605648",
+    "world.peoples-cultures": "6a8220cf7787a244d0605656",
+    "cars.japanese-cars": "6a8313aed1d78cb6e7454b39",
+    "cars.german-cars": "6a8313aed1d78cb6e7454b47",
+    "cars.supercars": "6a8313aed1d78cb6e7454b55",
+    "cars.cars-mix": "6a8313aed1d78cb6e7454b63",
+    "sports.formula-1": "6a8313aed1d78cb6e7454b71",
+    "sports.ufc": "6a8313aed1d78cb6e7454b7f",
+    "sports.wwe": "6a8313aed1d78cb6e7454b8d",
+    "sports.nba": "6a8313aed1d78cb6e7454b9b",
+    "general-knowledge.science": "6a831d4ad1d78cb6e7463cfc",
+    "general-knowledge.history": "6a831d4bd1d78cb6e7463d0a",
+    "general-knowledge.inventions-discoveries": "6a831d4bd1d78cb6e7463d18",
+    "general-knowledge.human-body-nature": "6a831d4bd1d78cb6e7463d26",
 }
 
 CHALLENGE_TYPE_IDS = {
@@ -54,12 +86,7 @@ CHALLENGE_TYPE_IDS = {
     "top-5": "6a71107b0cfcf2052be32ed7",
 }
 
-DEFAULT_PACKS = [
-    "output/gap-packs-2026-08-13/football-pack.json",
-    "output/gap-packs-2026-08-13/anime-pack.json",
-    "output/gap-packs-2026-08-13/video-games-pack.json",
-    "output/gap-packs-2026-08-13/puzzles-pack.json",
-]
+DEFAULT_PACKS = []  # Historical Wave packs cleaned up; pass explicit pack paths.
 
 OUT = Path(__file__).resolve().parents[1]
 
@@ -93,6 +120,105 @@ def item_kind(item: dict) -> str:
     return "read-your-opponent"
 
 
+def _norm_label(label) -> str:
+    """Normalise a label that may be a plain string or {ar: ...} to its text."""
+    if isinstance(label, dict):
+        return str(label.get("ar") or label.get("en") or "")
+    return str(label)
+
+
+def _canonical_fields(item: dict, kind: str) -> dict:
+    """Extract a shared semantic fingerprint independent of authoring/runtime shape.
+
+    Both the authored pack (interactionPayload/resolutionPayload) and the runtime
+    ContentItem (single answerPayload) reduce to the same canonical dict here, so
+    a re-pushed authored item is recognised against the runtime DB by exact match.
+    """
+    ap = item.get("answerPayload") or {}
+    if kind == "read-your-opponent":
+        inter = item.get("interactionPayload") or {}
+        opts = inter.get("options") or ap.get("options") or []
+        if inter and "options" in inter and "correctOptionId" not in inter:
+            correct = (item.get("resolutionPayload") or {}).get("correctOptionId")
+        else:
+            correct = ap.get("correctOptionId")
+        return {
+            "kind": "ryo",
+            "prompt": item["prompt"]["ar"],
+            "options": [{"id": o.get("id"), "label": _norm_label(o.get("label"))} for o in opts],
+            "correct": correct,
+        }
+    if kind == "one-clue":
+        return {
+            "kind": "oc",
+            "prompt": item["prompt"]["ar"],
+            "answers": ap.get("acceptedAnswers") or [],
+            "clues": [
+                {"order": c.get("order"), "value": c.get("value"), "text": _norm_label((c.get("text") or {}).get("ar") if isinstance(c.get("text"), dict) else c.get("text"))}
+                for c in ((item.get("mechanicPayload") or {}).get("clues") or [])
+            ],
+        }
+    if kind == "distributed-information":
+        return {"kind": "di", "prompt": item["prompt"]["ar"], "answer": ap}
+    if kind == "top-5":
+        return {"kind": "top5", "prompt": item["prompt"]["ar"], "answer": ap, "mechanic": item.get("mechanicPayload")}
+    # guess-your-teammate / closest
+    res = item.get("resolutionPayload") or {}
+    return {
+        "kind": "closest",
+        "prompt": item["prompt"]["ar"],
+        "value": res.get("correctValue", ap.get("correctValue")),
+        "tolerance": res.get("acceptedTolerance", ap.get("acceptedTolerance")),
+    }
+
+
+def content_fingerprint(item: dict, kind: str) -> str:
+    import hashlib
+    canonical = _canonical_fields(item, kind)
+    raw = json.dumps(canonical, ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def runtime_fingerprint(it: dict) -> str:
+    import hashlib
+    # Runtime items store challenge-type ObjectIds, not authoring slugs.
+    rt_ids = it.get("compatibleChallengeTypeIds") or []
+    ct_id = rt_ids[0] if rt_ids else ""
+    kind = {
+        CHALLENGE_TYPE_IDS["read-your-opponent"]: "read-your-opponent",
+        CHALLENGE_TYPE_IDS["one-clue"]: "one-clue",
+        CHALLENGE_TYPE_IDS["distributed-information"]: "distributed-information",
+        CHALLENGE_TYPE_IDS["top-5"]: "top-5",
+        CHALLENGE_TYPE_IDS["guess-your-teammate"]: "guess-your-teammate",
+    }.get(str(ct_id), "read-your-opponent")
+    canonical = _canonical_fields(it, kind)
+    raw = json.dumps(canonical, ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def fetch_existing_fingerprints(token: str, scope_id: str) -> set:
+    """Return the set of content fingerprints already present in a scope.
+
+    Prefers a persisted `metadata.source` fingerprint when present, otherwise
+    recomputes it from the stored payload. Exact match only.
+    """
+    result: set = set()
+    code, body = api("GET", f"/admin/content-items?scopeId={scope_id}", token)
+    if code != 200:
+        return result
+    for it in body.get("data") or []:
+        meta = it.get("metadata") if isinstance(it.get("metadata"), dict) else {}
+        stored = meta.get("source", "")
+        if stored:
+            result.add(stored)
+        else:
+            try:
+                result.add(runtime_fingerprint(it))
+            except Exception:
+                continue
+    return result
+
+
 def to_backend(item: dict, kind: str) -> dict:
     scope_id = SCOPE_IDS[item["scopeId"]]
     ct_id = CHALLENGE_TYPE_IDS[kind]
@@ -102,6 +228,9 @@ def to_backend(item: dict, kind: str) -> dict:
         "prompt": {"ar": item["prompt"]["ar"]},
         "isReusableAcrossSessions": item["isReusableAcrossSessions"],
         "status": "ready",
+        # Stable content fingerprint persisted in the valid `source` metadata
+        # field. Enables --skip-existing to recognise re-pushed authored items.
+        "metadata": {"source": content_fingerprint(item, kind)},
     }
     if kind in ("one-clue", "distributed-information"):
         payload["answerPayload"] = item["answerPayload"]
@@ -145,12 +274,21 @@ def to_backend(item: dict, kind: str) -> dict:
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     dry = "--dry-run" in sys.argv
+    skip_existing = "--skip-existing" in sys.argv
     packs = args or DEFAULT_PACKS
 
     token = login()
     print("login ok")
 
-    stats = {"ok": 0, "fail": 0, "skip": 0, "total": 0}
+    # Cache of existing fingerprints per runtime scope id.
+    existing_by_scope: dict = {}
+
+    def existing_fp(scope_id: str) -> set:
+        if scope_id not in existing_by_scope:
+            existing_by_scope[scope_id] = fetch_existing_fingerprints(token, scope_id)
+        return existing_by_scope[scope_id]
+
+    stats = {"ok": 0, "fail": 0, "skip": 0, "total": 0, "existing": 0, "would_dup": 0}
     for p in packs:
         path = Path(p)
         if not path.is_absolute():
@@ -160,8 +298,19 @@ def main():
         for item in pack["items"]:
             kind = item_kind(item)
             stats["total"] += 1
+            fp = content_fingerprint(item, kind)
+            scope_id = SCOPE_IDS.get(item["scopeId"])
             if dry:
-                print(f"  DRY  {item['id']} scope={item['scopeId']} kind={kind}")
+                if skip_existing and scope_id and fp in existing_fp(scope_id):
+                    stats["would_dup"] += 1
+                    print(f"  DRY  {item['id']} scope={item['scopeId']} kind={kind} -> EXISTING (would skip)")
+                else:
+                    stats["existing"] += 1
+                    print(f"  DRY  {item['id']} scope={item['scopeId']} kind={kind} -> NEW")
+                continue
+            if skip_existing and scope_id and fp in existing_fp(scope_id):
+                stats["skip"] += 1
+                print(f"  SKIP {item['id']} scope={item['scopeId']} kind={kind} (already present)")
                 continue
             payload = to_backend(item, kind)
             code, body = api("POST", "/admin/content-items", token, json=payload)
@@ -180,6 +329,8 @@ def main():
                 print(f"  OK   {item['id']} -> {new_id} (ready)")
 
     print(f"\n=== RESULT {stats['ok']} ok / {stats['skip']} skip / {stats['fail']} fail / {stats['total']} total ===")
+    if dry:
+        print(f"  dry-run preflight: would-insert={stats['existing']} would-skip(existing)={stats['would_dup']}")
 
 
 if __name__ == "__main__":

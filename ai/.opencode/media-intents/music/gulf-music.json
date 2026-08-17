@@ -1,0 +1,145 @@
+{
+  "world": "music",
+  "scope": "gulf-music",
+  "runtime_scope_id": "6a8203877787a244d05f89e6",
+  "total_intents": 9,
+  "intents": [
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f987f",
+      "pack_item_id": "wave2-gm-oc-001",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "عبدالله الرويشد سفير الأغنية الخليجية",
+        "targetName": "عبدالله الرويشد",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f988e",
+      "pack_item_id": "wave2-gm-oc-002",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "بشرة خير حسين الجسمي",
+        "targetName": "بشرة خير",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "حسين الجسمي"
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f989d",
+      "pack_item_id": "wave2-gm-oc-003",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "سكة سفر نبيل شعيل",
+        "targetName": "سكة سفر",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "نبيل شعيل"
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f98ac",
+      "pack_item_id": "wave2-gm-oc-004",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "أحلام فنانة الخليج",
+        "targetName": "أحلام",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f98bb",
+      "pack_item_id": "wave2-gm-oc-005",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "فهد الكبيسي مطرب قطري",
+        "targetName": "فهد الكبيسي",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f98ca",
+      "pack_item_id": "wave2-gm-oc-006",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "خالد الشيخ موسيقار البحرين",
+        "targetName": "خالد الشيخ",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f98d9",
+      "pack_item_id": "wave2-gm-oc-007",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "عيضة المنهالي شلات تراثية",
+        "targetName": "عيضة المنهالي",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f98e8",
+      "pack_item_id": "wave2-gm-oc-008",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "بلقيس مطربة خليجية",
+        "targetName": "بلقيس",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f98f7",
+      "pack_item_id": "wave2-gm-oc-009",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "صالح زعل مطرب عماني",
+        "targetName": "صالح زعل",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    }
+  ]
+}

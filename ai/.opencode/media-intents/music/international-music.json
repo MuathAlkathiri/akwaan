@@ -1,0 +1,151 @@
+{
+  "world": "music",
+  "scope": "international-music",
+  "runtime_scope_id": "6a8203877787a244d05f8a02",
+  "total_intents": 9,
+  "intents": [
+    {
+      "runtime_content_item_id": "6a820f177787a244d05f9ba9",
+      "pack_item_id": "wave2-im-oc-001",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "Thriller مايكل جاكسون",
+        "targetName": "Thriller",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "مايكل جاكسون"
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f177787a244d05f9bb8",
+      "pack_item_id": "wave2-im-oc-002",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "Bohemian Rhapsody كوين",
+        "targetName": "Bohemian Rhapsody",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "كوين"
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f177787a244d05f9bc7",
+      "pack_item_id": "wave2-im-oc-003",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "Rolling in the Deep أديل",
+        "targetName": "Rolling in the Deep",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "أديل"
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f177787a244d05f9bd6",
+      "pack_item_id": "wave2-im-oc-004",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "Lose Yourself إيمينم",
+        "targetName": "Lose Yourself",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "إيمينم"
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f177787a244d05f9be5",
+      "pack_item_id": "wave2-im-oc-005",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "Love Story تايلور سويفت",
+        "targetName": "Love Story",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "تايلور سويفت"
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f177787a244d05f9bf4",
+      "pack_item_id": "wave2-im-oc-006",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "Imagine جون لينون",
+        "targetName": "Imagine",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "جون لينون"
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f177787a244d05f9c03",
+      "pack_item_id": "wave2-im-oc-007",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "إلفيس بريسلي ملك الروك",
+        "targetName": "إلفيس بريسلي",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f177787a244d05f9c12",
+      "pack_item_id": "wave2-im-oc-008",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "We Will Rock You كوين",
+        "targetName": "We Will Rock You",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "كوين"
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f177787a244d05f9c21",
+      "pack_item_id": "wave2-im-oc-009",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "Umbrella ريهانا",
+        "targetName": "Umbrella",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "ريهانا"
+      }
+    }
+  ]
+}

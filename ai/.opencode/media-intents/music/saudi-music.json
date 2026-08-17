@@ -1,0 +1,145 @@
+{
+  "world": "music",
+  "scope": "saudi-music",
+  "runtime_scope_id": "6a8203877787a244d05f89d8",
+  "total_intents": 9,
+  "intents": [
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f96ea",
+      "pack_item_id": "wave2-sm-oc-001",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "محمد عبده فنان العرب",
+        "targetName": "محمد عبده",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f96f9",
+      "pack_item_id": "wave2-sm-oc-002",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "طلال مداح قيثارة الشرق",
+        "targetName": "طلال مداح",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9708",
+      "pack_item_id": "wave2-sm-oc-003",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "عبدالمجيد عبدالله أمير الطرب",
+        "targetName": "عبدالمجيد عبدالله",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9717",
+      "pack_item_id": "wave2-sm-oc-004",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "خالد عبدالرحمن ملك الفن",
+        "targetName": "خالد عبدالرحمن",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9726",
+      "pack_item_id": "wave2-sm-oc-005",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "رابح صقر موسيقار الخليج",
+        "targetName": "رابح صقر",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9735",
+      "pack_item_id": "wave2-sm-oc-006",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "عبادي الجوهر ملحن مطرب",
+        "targetName": "عبادي الجوهر",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9744",
+      "pack_item_id": "wave2-sm-oc-007",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "راشد الماجد وينك",
+        "targetName": "راشد الماجد",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9753",
+      "pack_item_id": "wave2-sm-oc-008",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "أبعتذر محمد عبده",
+        "targetName": "أبعتذر",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "محمد عبده"
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9762",
+      "pack_item_id": "wave2-sm-oc-009",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "وينك راشد الماجد",
+        "targetName": "وينك",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "راشد الماجد"
+      }
+    }
+  ]
+}

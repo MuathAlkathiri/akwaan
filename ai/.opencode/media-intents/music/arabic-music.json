@@ -1,0 +1,147 @@
+{
+  "world": "music",
+  "scope": "arabic-music",
+  "runtime_scope_id": "6a8203877787a244d05f89f4",
+  "total_intents": 9,
+  "intents": [
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9a14",
+      "pack_item_id": "wave2-am-oc-001",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "ألف ليلة وليلة أم كلثوم",
+        "targetName": "ألف ليلة وليلة",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "أم كلثوم"
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9a23",
+      "pack_item_id": "wave2-am-oc-002",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "عبدالحليم حافظ العندليب الأسمر",
+        "targetName": "عبدالحليم حافظ",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9a32",
+      "pack_item_id": "wave2-am-oc-003",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "فيروز صوت لبنان",
+        "targetName": "فيروز",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9a41",
+      "pack_item_id": "wave2-am-oc-004",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "عمرو دياب الهضبة",
+        "targetName": "عمرو دياب",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9a50",
+      "pack_item_id": "wave2-am-oc-005",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "جورج وسوف سلطان الطرب",
+        "targetName": "جورج وسوف",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9a5f",
+      "pack_item_id": "wave2-am-oc-006",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "لمعلم سعد لمجرد",
+        "targetName": "لمعلم",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "سعد لمجرد"
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9a6e",
+      "pack_item_id": "wave2-am-oc-007",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "دي دي الشاب خالد",
+        "targetName": "دي دي",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "الشاب خالد"
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9a7d",
+      "pack_item_id": "wave2-am-oc-008",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_song",
+        "searchQuery": "أه ونص نانسي عجرم",
+        "targetName": "أه ونص",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15,
+        "sourceTitle": "نانسي عجرم"
+      }
+    },
+    {
+      "runtime_content_item_id": "6a820f167787a244d05f9a8c",
+      "pack_item_id": "wave2-am-oc-009",
+      "mechanic": [
+        "one-clue"
+      ],
+      "audio_request": {
+        "kind": "identify_artist",
+        "searchQuery": "وردة الجزائرية مطربة عربية",
+        "targetName": "وردة الجزائرية",
+        "language": "ar",
+        "preferredStartSeconds": 20,
+        "preferredDurationSeconds": 15
+      }
+    }
+  ]
+}

@@ -125,18 +125,90 @@
         "overwatch"
       ]
     },
-    {
-      "slug": "puzzles",
-      "scopes": [
-        "general-knowledge",
-        "letters-words",
-        "numbers-arithmetic",
-        "logic-deduction",
-        "shapes-patterns",
-        "symbols-codes"
-      ]
-    }
-  ],
+{
+   "slug": "puzzles",
+   "scopes": [
+    "general-knowledge",
+    "letters-words",
+    "numbers-arithmetic",
+    "logic-deduction",
+    "shapes-patterns",
+    "symbols-codes"
+   ]
+  },
+  {
+   "slug": "series",
+   "scopes": [
+    "breaking-bad",
+    "from",
+    "game-of-thrones",
+    "series-mix"
+   ]
+  },
+  {
+   "slug": "movies",
+   "scopes": [
+    "harry-potter",
+    "marvel",
+    "disney-pixar",
+    "movies-mix"
+   ]
+  },
+  {
+   "slug": "music",
+   "scopes": [
+    "saudi-music",
+    "gulf-music",
+    "arabic-music",
+    "international-music"
+   ]
+  },
+  {
+   "slug": "saudi-arabia",
+   "scopes": [
+    "cities-landmarks",
+    "saudi-history",
+    "culture-heritage",
+    "saudi-today"
+   ]
+  },
+  {
+   "slug": "world",
+   "scopes": [
+    "countries-flags",
+    "cities-landmarks",
+    "geography",
+    "peoples-cultures"
+   ]
+  },
+  {
+   "slug": "cars",
+   "scopes": [
+    "japanese-cars",
+    "german-cars",
+    "supercars",
+    "cars-mix"
+   ]
+  },
+  {
+   "slug": "sports",
+   "scopes": [
+    "formula-1",
+    "ufc",
+    "wwe",
+    "nba"
+   ]
+  },
+  {
+   "slug": "general-knowledge",
+   "scopes": [
+    "science",
+    "history",
+    "inventions-discoveries",
+    "human-body-nature"
+   ]
+  }
+ ],
   "validators": [
     "audit_active_architecture.py",
     "test_one_clue_fixtures.py",

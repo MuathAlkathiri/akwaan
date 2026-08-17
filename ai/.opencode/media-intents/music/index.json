@@ -1,0 +1,29 @@
+{
+  "world": "music",
+  "description": "Audio media intents for future Music Media Enrichment Pass. Compatible with QuestionAudioRequestDto.",
+  "scopes": {
+    "arabic-music": {
+      "file": "music/arabic-music.json",
+      "runtime_scope_id": "6a8203877787a244d05f89f4",
+      "intent_count": 9
+    },
+    "gulf-music": {
+      "file": "music/gulf-music.json",
+      "runtime_scope_id": "6a8203877787a244d05f89e6",
+      "intent_count": 9
+    },
+    "international-music": {
+      "file": "music/international-music.json",
+      "runtime_scope_id": "6a8203877787a244d05f8a02",
+      "intent_count": 9
+    },
+    "saudi-music": {
+      "file": "music/saudi-music.json",
+      "runtime_scope_id": "6a8203877787a244d05f89d8",
+      "intent_count": 9
+    }
+  },
+  "total_intents": 36,
+  "audio_request_schema": "QuestionAudioRequestDto",
+  "kind_enum": "AudioQuestionKind (identify_song, identify_artist)"
+}
