@@ -1,6 +1,206 @@
-# [Working Title] — New System Roadmap
+# Akwaan — Game System Roadmap
 
-> Naming is not finalized. Candidates under consideration: Kawn (كَون), Shalla (شَلّة), Falak (فَلَك), Akwan (أكوان — heavier, deprioritized). This document is architecture-first and name-agnostic; replace `[Working Title]` once decided. Do not name-brand any code identifiers after candidate names — use neutral internal names throughout (see §13).
+> **This document is the authoritative source of truth for the Akwaan game system.**
+> It carries both the product/architecture design (§0–§15, largely unchanged since the original build) and the
+> current implementation status (status legend, baseline, current state and the Master Checklist below, plus §16–§20). Where a design section has been overtaken by a
+> later decision it is marked `SUPERSEDED` in place rather than deleted, so the reasoning survives.
+>
+> The name is settled: **Akwaan**. The earlier candidate list (Kawn, Shalla, Falak) is closed. Internal code
+> identifiers remain neutral and are *not* brand-named — that rule from §13 still stands.
+
+**Companion document:** [`docs/WORLD_CONTENT_EXPANSION_PLAN.md`](docs/WORLD_CONTENT_EXPANSION_PLAN.md) is the
+authoritative record for the **shared content catalog** — target Worlds/Scopes, wave audits, duplicate
+remediation, and the Final Catalog Audit. This roadmap references it; it does not duplicate it.
+
+---
+
+## Status legend
+
+Used consistently throughout this document. **A design decision being approved is not implementation.**
+
+| Marker | Meaning |
+|---|---|
+| ✅ **IMPLEMENTED & VERIFIED** | Exists in code/runtime **and** has been validated by tests or audit |
+| 🚧 **IN PROGRESS** | Implementation genuinely exists and is actively incomplete |
+| 🟡 **DESIGN APPROVED — NOT IMPLEMENTED** | Product decision made; implementation not started or incomplete |
+| ⬜ **NOT STARTED** | No meaningful implementation, or no decision yet |
+| ⚠️ **KNOWN DEBT / FOLLOW-UP** | Non-blocking technical or product work that remains |
+
+---
+
+## Baseline reference
+
+Recovery points for future sessions. Both are on `origin/main`.
+
+| Baseline | Commit | Subject |
+|---|---|---|
+| **Shared Content Catalog** *(current)* | `302bc37` | `feat(content): establish Akwaan shared-content catalog baseline` |
+| Deployment / performance | `4f33704` | `perf: optimize live game runtime and realtime synchronization` |
+| Lifecycle / anti-freeze | `0961082` | `game lifecycle fixed` |
+
+Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
+
+---
+
+## Current state — verified against the repository
+
+Everything in this section was confirmed by reading code and querying the runtime database read-only on
+2026-08-18. Nothing here is asserted from memory.
+
+### Mechanics implemented in the runtime
+
+Seven gameplay plugins are registered; six have Match-side challenge launchers.
+
+| Mechanic | Runtime key | Plugin | Launcher | ChallengeType in catalog |
+|---|---|---|---|---|
+| Read Your Opponent / اقرأ خصمك | `read-your-opponent` | ✅ | ✅ | ✅ `active` |
+| Closest / مين أقرب | `closest` | ✅ | ✅ | ✅ `active` |
+| One Clue / بدليل واحد | `one-clue` | ✅ | ✅ | ✅ `active` |
+| Top 5 / أفضل 5 | `top-5` (keep-or-give) | ✅ | ✅ | ✅ `active` |
+| Distributed Information / ركّبها | `distributed-information` | ✅ | ✅ | ✅ `active` |
+| **Bomb / القنبلة** | `bomb` | ✅ | ✅ | ⬜ **no ChallengeType, no catalog content** |
+| Core round runtime | `core-round-runtime` | ✅ | — | *(infrastructure)* |
+
+**The Bomb row is the single most important fact in this table.** Bomb is a fully implemented *gameplay*
+mechanic, but it has no ChallengeType registered and no authored content in the catalog. The decision to make
+it a Shared Core mechanic (§16.1) is therefore design-only.
+
+### Runtime catalog inventory
+
+| Measure | Verified value |
+|---|---|
+| Worlds — `active` | **4** — كرة قدم · انمي · فيديو قيمز · عالم الالغاز |
+| Worlds — `draft` | **8** — مسلسلات · الأفلام · الأغاني · السعودية · العالم · السيارات · الرياضة · معلومات عامة |
+| Scopes | **49** |
+| Ready content items | **1954** |
+| Scopes meeting ≥9 ready on **all three** shared mechanics | **49 / 49** |
+| Board configurations | **20** — 5 Worlds × 4 slots (4 active + مسلسلات draft) |
+| Draft Worlds with **no** board configuration | **7** |
+
+Per-mechanic ready content: `closest` 557 · `one-clue` 549 · `read-your-opponent` 546 ·
+`distributed-information` 213 · `top-5` 53. Two archived legacy mechanics retain 36 residual items
+(⚠️ see §19 item 9).
+
+### Authoring-side assets preserved
+
+| Asset | Location | Verified |
+|---|---|---|
+| Music media intents | `ai/.opencode/media-intents/music/` | **36** — 9 each for Saudi / Gulf / Arabic / International |
+| Push tooling | `ai/scripts/push_gap_packs_2026_08_13.py` | Fingerprinting, `--skip-existing`, `--dry-run`, `DEFAULT_PACKS = []` |
+| Canonical authoring structures | `ai/.opencode/skills/` | `WORLD.md` / `SCOPE.md` / `KNOWLEDGE.md`, manifest, validators |
+
+The media intents are **not** in the runtime database. They are the tracked input for future media enrichment
+and must not be deleted.
+
+---
+
+## Akwaan Master Checklist
+
+The day-to-day view. Detail lives in the referenced sections; this stays short enough to be useful.
+
+### A. Core runtime / lifecycle — ✅ COMPLETE
+
+- [x] Server-authoritative deadline ownership — one owner, state-derived arming, stale-timer identity guards
+- [x] Presence isolated from gameplay aggregate state; reconnect and multi-socket safe
+- [x] Mechanics own mechanic completion; Match owns global Match completion
+- [x] Durable Runtime → Match convergence (`Match.currentChallenge` as the obligation; one applier)
+- [x] Authoritative challenge Abort / Back-to-Board; cancelled runtime is terminal and non-blocking
+- [x] No score or result awarded on abort; aborted slot returns to available
+- [x] Partial-launch compensation and orphan-runtime recovery
+- [x] Abort race safety (vs answer / timeout / skip / natural completion) under revision CAS
+- [x] Restart recovery for interrupted convergence
+- [x] Lifecycle regression coverage — 11 real-Mongo lifecycle suites green
+
+### B. Performance — ✅ COMPLETE *(baseline `4f33704`)*
+
+- [x] **Batch A** — lightweight command ack; frontend clock isolated from the session context
+- [x] **Batch B** — deadline synchronization reuses committed state (3 DB ops → 0; Bomb 3 → 2)
+- [x] **Batch C** — snapshot skips reconciliation when state proves nothing pending (3 ops → 1)
+- [x] **Batch D** — realtime revision dedupe and stale-response protection; participant-private projections
+      deliberately **retained** rather than unsafely globalized
+- [x] **Batch E** — convergence sweeper bounded by runtime lifecycle status (~925 KB / 78 trips → ~3 KB / 1)
+
+### C. Shared content catalog — ✅ COMPLETE *(baseline `302bc37`)*
+
+- [x] Waves 1–5 authored and accepted
+- [x] Final Catalog Audit ✅
+- [x] Duplicate remediation — historical inflation cleaned, final target duplicate scan = 0
+- [x] Shared-mechanic catalog QA ✅ — RYO, One Clue and Closest all PASS
+- [x] Structural RYO defects corrected; minimum RYO gap replacements authored
+- [x] Answer-leakage corrected; contamination = 0
+- [x] Architecture audit PASS
+- [x] Repository cleanup — generated wave packs and one-off scripts removed; music media intents preserved
+- [x] Push tooling hardened — fingerprinting, `--skip-existing`, `--dry-run`, `DEFAULT_PACKS` cleared
+- [x] Content baseline committed and pushed to `origin/main`
+
+### D. Shared mechanic migration — ⬜ NOT STARTED
+
+New product decision (§16.1): the Shared Core becomes **RYO + Closest + Bomb**. One Clue leaves the Shared Core.
+
+- [ ] Register a `bomb` ChallengeType and define the Bomb content contract
+- [ ] Author and validate Bomb coverage across the target Worlds/Scopes
+- [ ] Reconcile board/slot configuration for the new Shared Core
+- [ ] Verify every target World against the new Shared Core
+- [ ] Re-point One Clue to its new owner (Movies Signature — §16.2)
+
+### E. Signature mechanics — product design
+
+- [x] Football / كرة القدم → **Top 5** *(mechanic implemented)*
+- [x] Puzzles / عالم الالغاز → **Distributed Information / ركّبها** *(mechanic implemented)*
+- [x] Movies / الأفلام → **One Clue / بدليل واحد** *(design approved)*
+- [x] Music / الأغاني → **من أول نغمة** *(design approved)*
+- [x] World / العالم → **على الخريطة** *(design approved)*
+- [x] Series / المسلسلات → **وش صار بعدها؟** *(design approved)*
+- [x] Video Games / فيديو قيمز → **المرحلة** *(design + external prototype approved — §17)*
+- [ ] Anime / الأنمي → **undecided**
+- [ ] Saudi Arabia / السعودية → **undecided**
+- [ ] Cars / السيارات → **undecided**
+- [ ] Sports / الرياضة → **undecided**
+
+### F. Signature mechanics — implementation
+
+Design approval above does **not** imply any of these. Full matrix in §16.
+
+- [ ] Movies → One Clue as the Movies Signature (re-ownership + Movies-specific form)
+- [ ] Music → من أول نغمة *(depends on audio enrichment — checklist H)*
+- [ ] World → على الخريطة *(map interaction; no map primitive exists yet)*
+- [ ] Series → وش صار بعدها؟ *(sequential/ordering mechanic)*
+- [ ] Video Games → المرحلة *(production implementation not started)*
+- [ ] Football → Top 5 World-specific rollout reconciled
+- [ ] Puzzles → ركّبها World-specific rollout reconciled
+
+### G. Taxonomy / catalog changes — 🟡 APPROVED DIRECTION, NOT IMPLEMENTED
+
+- [ ] General Knowledge / معلومات عامة consolidated into عالم الالغاز as a Scope (§18.3)
+- [ ] Arabic Movies scopes/content added under the existing Movies World (§18.2)
+- [ ] Arabic Series scopes/content added under the existing Series World (§18.2)
+
+### H. Media — ⬜ NOT STARTED
+
+- [ ] Music audio enrichment from the 36 canonical intents (Wigolo-backed discovery → snippets)
+- [ ] Cars visual enrichment
+- [ ] Banners / logos / imagery backlog across Worlds
+
+### I. Board configuration — 🚧 PARTIAL
+
+- [x] 4 active Worlds configured (4 slots each)
+- [x] مسلسلات configured while still draft
+- [ ] Remaining 7 draft Worlds: الأفلام · الأغاني · السعودية · العالم · السيارات · الرياضة · معلومات عامة
+- [ ] Re-reconcile every board after the Shared Core migration (phase D) lands
+
+### J. Activation — 🚧 PARTIAL
+
+- [x] Active: كرة قدم · انمي · فيديو قيمز · عالم الالغاز
+- [ ] Promote the 8 draft Worlds once Signature + board configuration + content gates are met
+- [ ] Enforce the §4.2 launch gate: no World ships without a defined Signature mechanic
+
+### K. Final QA / release — ⬜ NOT STARTED
+
+- [ ] Full runtime QA against a build that actually contains the current baseline
+- [ ] Deployment smoke test on a rebuilt stack *(see §19 item 10 — the last attempt could not run)*
+- [ ] Multiplayer playtesting
+- [ ] Balance validation (pacing, scoring, المرحلة special-tile distribution)
+- [ ] Deployment / release acceptance
 
 ---
 
@@ -85,9 +285,18 @@ Total: 3 × 4 = 12 challenges per match
 
 ### 3.1 Per-World board composition
 
+> **⚠️ PARTIALLY SUPERSEDED — reconcile before the Shared Core migration.**
+> The table below is the *original* composition design. What actually shipped is **4 configured slots per
+> World** (verified: 20 configurations across 5 Worlds), and the catalog was authored against **three shared
+> mechanics** — RYO, One Clue, Closest — rather than the RYO×2 + Flex split described here. The
+> Co-op/Relational families were never built as separate slot families.
+>
+> The Shared Core is now changing again (§16.1: One Clue → Bomb). **Board composition must be re-decided as
+> part of that migration**, at which point this table should be rewritten to match reality rather than intent.
+
 | Slots | Family | Notes |
 |---|---|---|
-| 1 | **Signature (exclusive)** | Unique to this World, never in any other. Always played. See §4. |
+| 1 | **Signature (exclusive)** | Unique to this World, never in any other. Always played. See §4 and §16. |
 | 2 | **RYO** | The backbone. Two slots, not one — see rationale below. |
 | 1 | **Flex: Co-op or Relational** | Authored per World, not randomized. |
 
@@ -141,11 +350,18 @@ If playtests surface repetition fatigue, the intended response is the flexibilit
 
 ---
 
-## 4. Signature Mechanics — Concept Only (deliberately unspecified)
+## 4. Signature Mechanics — Requirements *(assignment now in §16)*
+
+> **SUPERSEDED IN PART.** When this section was written no Signature mechanic had been assigned. **Assignments
+> now exist for 7 of 11 Worlds** — see the authoritative matrix in **§16**. The *requirements* below (§4.1) and
+> the *launch gate* (§4.2) remain fully in force and are still the acceptance criteria for any new Signature.
 
 **Every World must own exactly one exclusive mechanic that appears in no other World.** It is the World's mechanical and visual fingerprint, always played, never substituted — it is the reason the player chose that World.
 
-**The specific mechanic assigned to each World is not fixed in this document and is expected to change.** Candidates have been explored (list-ranking, live drawing, buzzer-race, rapid-fire chain) but none are committed. Do not implement any until assignment is decided.
+~~**The specific mechanic assigned to each World is not fixed in this document and is expected to change.** Candidates have been explored (list-ranking, live drawing, buzzer-race, rapid-fire chain) but none are committed. Do not implement any until assignment is decided.~~
+
+**Resolved.** Assignments are recorded in **§16**. Two mechanics are implemented (Top 5, Distributed
+Information), five are design-approved and unimplemented, and four Worlds remain undecided.
 
 ### 4.1 Requirements
 
@@ -496,3 +712,225 @@ Working notes, not commitments.
 **Dependency:** this feature requires a library of alternates to swap into, so it cannot ship until more than 4 challenges per World are authored. It sequences naturally after content expansion.
 
 **Why this outranks §15.1:** it is far cheaper (UI plus configuration versus 12+ new mechanics), and it *partially achieves* full differentiation anyway — once players can swap, Worlds become differentiated by the player's own configuration. It also doubles as a retention feature, giving returning players a new layer to explore around session five, which is exactly when a party game normally goes stale.
+
+---
+
+## 16. Signature & Shared Mechanic Assignment *(authoritative)*
+
+This section supersedes the "deliberately unspecified" framing of §4. The requirements in §4.1 and the launch
+gate in §4.2 still govern every entry here.
+
+### 16.1 Shared Core — product decision changed
+
+**Previous Shared Core:** RYO + One Clue + Closest. This is what the entire content catalog was authored
+against, and it is `SUPERSEDED` as a *forward* plan.
+
+**New Shared Core — 🟡 DESIGN APPROVED, MIGRATION NOT STARTED:**
+
+1. **Read Your Opponent / اقرأ خصمك** — unchanged
+2. **Closest / مين أقرب** — unchanged
+3. **Bomb / القنبلة** — **replaces One Clue**
+
+**Two clearly separate things — do not conflate them.**
+
+**✅ ALREADY IMPLEMENTED — Bomb gameplay.** Bomb is a working mechanic in the runtime today, and its established
+identity is preserved as-is. It is *not* being redesigned:
+
+- One **continuous session clock** (~30s), not a per-item timer. Bomb declares
+  `deadline: { source: 'session-clock', commandType: 'expire-team' }` — the deadline *is* the active team's
+  clock, which is why Bomb is the one mechanic whose deadline is derived from session rather than runtime state.
+- The current team/player receives a question; a **correct answer passes the turn/pressure to the opponent**.
+- **The timer does not reset on a correct answer.** `TeamClock` accumulates `consumedMs` and reports
+  `allocatedMs - consumedMs - liveElapsed`, so the bomb stays under continuous time pressure.
+- **Skip** uses the existing Bomb rules (`skip` command), and `adjust-active-team-time` supports time
+  adjustment. A drained clock resolves through `expire-team`.
+- Text and **voice** interaction already exist in the player-facing implementation.
+- Lifecycle correctness is covered: a Bomb skip ends the *challenge*, never the whole live session, and the
+  Bomb clock path is exercised by the real-Mongo `bomb-board-lifecycle` suite.
+
+**⬜ NOT IMPLEMENTED — Bomb as a Shared Core mechanic.** None of the following exists:
+
+- No `bomb` **ChallengeType** is registered (verified: the catalog holds `read-your-opponent`, `one-clue`,
+  `closest`, `top-5`, `distributed-information` — and no `bomb`).
+- No **catalog ownership** — Bomb has zero authored content items.
+- No **cross-World Bomb content coverage** — the 49 scopes are authored to ≥9 on RYO / One Clue / Closest, and
+  none of that content is Bomb content.
+- No **board/slot reconciliation** for a Shared Core that includes Bomb.
+
+So Bomb is *playable* but not *shared*. Nothing about the migration has begun.
+
+**The existing One Clue catalog is not deleted or wasted.** 549 ready One Clue items remain in the runtime and
+keep their value — One Clue's *ownership* changes from shared to the Movies Signature (§16.2), it does not
+disappear. Any migration plan must preserve that content.
+
+### 16.2 Signature matrix
+
+| World | Signature mechanic | Mechanic implemented? | World rollout | Status |
+|---|---|---|---|---|
+| **Football / كرة القدم** | Top 5 / أفضل 5 | ✅ `top-5` plugin, launcher, ChallengeType | 🚧 active in football + video-games; ownership needs reconciling to football-exclusive | ✅ mechanic / 🚧 rollout |
+| **Puzzles / عالم الالغاز** | Distributed Information / ركّبها | ✅ `distributed-information` plugin, launcher, ChallengeType, 213 items | 🚧 exclusivity and board rollout not finalized | ✅ mechanic / 🚧 rollout |
+| **Movies / الأفلام** | One Clue / بدليل واحد | ✅ mechanic exists (`one-clue`) | ⬜ not re-owned as the Movies Signature; Movies-specific form undefined | 🟡 design approved |
+| **Music / الأغاني** | من أول نغمة | ⬜ | ⬜ | 🟡 design approved |
+| **World / العالم** | على الخريطة | ⬜ | ⬜ | 🟡 design approved |
+| **Series / المسلسلات** | وش صار بعدها؟ | ⬜ | ⬜ | 🟡 design approved |
+| **Video Games / فيديو قيمز** | المرحلة | ⬜ external visual prototype only (§17) | ⬜ | 🟡 design + prototype approved |
+| **Anime / الأنمي** | *undecided* | — | — | ⬜ design not started |
+| **Saudi Arabia / السعودية** | *undecided* | — | — | ⬜ |
+| **Cars / السيارات** | *undecided* | — | — | ⬜ |
+| **Sports / الرياضة** | *undecided* | — | — | ⬜ |
+
+**Do not invent Signature mechanics for the four undecided Worlds.** They are blocked on product design, and
+by §4.2 none of them can ship without one.
+
+### 16.3 Approved Signature concepts — one line each
+
+- **من أول نغمة** (Music) — recognise the song or artist from a very short audio segment. Future direction:
+  revealing more audio is possible at a cost / reduced reward. Depends on the audio enrichment pipeline (checklist H).
+- **على الخريطة** (World) — geography answered by placing or selecting a location on a map, rather than
+  ordinary text trivia. No map interaction primitive exists in the codebase today.
+- **وش صار بعدها؟** (Series) — exploits the sequential nature of series events/scenes: identify, order, or
+  predict what happens next.
+- **المرحلة** (Video Games) — board race; full spec in §17.
+
+---
+
+## 17. المرحلة — Video Games Signature design spec
+
+🟡 **DESIGN + EXTERNAL PROTOTYPE APPROVED — PRODUCTION IMPLEMENTATION NOT STARTED.**
+A visual prototype exists outside the runtime at `prototypes/marhala.html` (untracked). No Akwaan runtime code
+has been written.
+
+### 17.1 Core fantasy
+
+> Two teams race across a short game-board level toward the finish.
+> Knowledge controls whether they move. Difficulty controls the possible movement range.
+> Board state determines whether taking the harder question is strategically smart.
+
+This is explicitly **not** "quiz → random dice". The intended loop is:
+
+`READ BOARD → CHOOSE RISK → ANSWER → MOVE → RESOLVE BOOST/TRAP`
+
+### 17.2 Board
+
+- 16 numbered positions
+- Compact **4×4 serpentine** layout, borrowing the readability of Snakes & Ladders
+- Styled as a **Video Games level**, never as literal snakes and ladders
+- Position **16 = Finish / Exit**; reaching *or passing* 16 wins
+
+### 17.3 Difficulty → movement range
+
+| Difficulty | Movement |
+|---|---|
+| Easy | 1–2 |
+| Medium | 2–4 |
+| Hard | 4–6 |
+
+### 17.4 Answer behaviour
+
+- **Correct** — random movement inside the selected range; token advances; landing effect resolves
+- **Wrong** — no movement; turn passes
+
+Design intent: **Hard must not automatically be the best choice.** Players inspect the possible landing tiles
+before selecting difficulty, so a wide range can be a liability near a trap cluster.
+
+### 17.5 Special tiles — V4 playtest candidate
+
+> ⚠️ **These values are a PLAYTEST CANDIDATE, not locked balance.** Expect them to change after real content
+> and gameplay testing.
+
+| Boosts | | Traps | |
+|---|---|---|---|
+| 3 → 7 | 5 → 7 | 4 → 1 | 6 → 2 |
+| 8 → 13 | 10 → 13 | 9 → 7 | 11 → 7 |
+| 12 → 16 | 14 → 16 | 15 → 13 | |
+
+**Safe / destination positions:** 1, 2, 7, 13, 16
+
+**Hard design rule:** each numbered tile has exactly **one** identity — Normal, Boost, Trap, or Finish. A
+special *destination* must never also be a special *source*.
+
+### 17.6 Visual direction
+
+- 4×4 serpentine board with two team tokens physically present on it
+- Video-games / arcade styling; boosts read as jump pads, warps or energy; traps read as glitch, corruption or
+  hazard — **not** literal snakes and ladders
+- Possible landing tiles highlighted from the selected difficulty
+- Lucky-movement reveal after a correct answer
+- Movement animates tile by tile; Boost/Trap resolution plays *after* landing
+
+---
+
+## 18. Taxonomy decisions *(product direction)*
+
+### 18.1 Status
+
+All three decisions below are 🟡 **APPROVED DIRECTION — NOT IMPLEMENTED**. The runtime catalog at `302bc37`
+remains the implementation truth until a dedicated migration is approved and executed. **No World was
+deleted, renamed, moved or altered while this roadmap was updated.**
+
+### 18.2 Movies and Series stay separate Worlds
+
+Movies and Series remain **two distinct Worlds**. Each carries both Arabic and international/foreign content:
+
+- **Movies / الأفلام** — Arabic movies *and* international movies
+- **Series / المسلسلات** — Arabic series *and* international series
+
+**Explicitly rejected:** splitting screen content into a "Hollywood World" and an "Arabic World". Language and
+cultural origin are handled by **Scopes and content organisation**, not by creating parallel Worlds for the
+same medium.
+
+*Remaining work:* Arabic Movies and Arabic Series scopes/content do not exist yet and are future authoring work.
+
+### 18.3 General Knowledge → a Scope of عالم الالغاز
+
+🟡 **TAXONOMY / PRODUCT DIRECTION — NOT IMPLEMENTED.** Nothing has been merged, deleted, renamed or migrated.
+معلومات عامة **still exists as its own draft World** in the runtime and remains the implementation truth.
+
+The standalone **General Knowledge / معلومات عامة World** is a candidate for consolidation into
+**عالم الالغاز** as a Scope, rather than remaining its own World.
+
+Current runtime state: معلومات عامة exists as a **draft World** with its own scopes, *and* عالم الالغاز
+already contains a distinct معلومات عامة scope. Consolidation would need to reconcile the two without losing
+content.
+
+Not implemented. Not scheduled.
+
+---
+
+## 19. Known debt & follow-up register
+
+⚠️ All non-blocking. None of these gates the current baseline.
+
+| # | Item | Class | Note |
+|---|---|---|---|
+| 1 | Plugin-invalid runtime can yield a snapshot with **no Match projection** | Hardening | `enrich` throws, the enricher registry catches and logs, and the client silently loses `snapshot.match`. The sweeper already avoids this class via `findStateById`. Surfaced during Performance Batch C. |
+| 2 | Abandoned non-terminal Matches never expire | Product policy | 39 Matches hold a challenge indefinitely. Batch E made them nearly free to sweep but deliberately does **not** end them. Needs a product decision, not an optimization. |
+| 3 | Music integration tests depend on ffmpeg/ffprobe | Test environment | The default integration container lacks both; the repo's own `media` compose profile exists to supply them. Tests are being run under the wrong profile. |
+| 4 | Manual AI test expects `503`, route documents `400` | Stale test expectation | `AdminAiGeneratorController.generateReviewed` never had the up-front guard; its own `@ApiResponse` documents 400. Needs an AI-module owner decision. |
+| 5 | `participantMutation` and read handlers still return full snapshots as acks | Optional performance | The Batch A transform would cover them. |
+| 6 | Session-command deadline path still fully persistence-backed (3 ops) | Optional performance | Holds committed *session* state but no runtime state, so it cannot use Batch B's hint API without its own freshness proof. |
+| 7 | Per-snapshot content-scope lookups (2 ops per distinct World) | Optional performance | Purely to resolve display names that never change for a Match. Not viewer-sensitive, so safe to cache. |
+| 8 | Compound `{status, currentChallenge.runtimeId}` index on `matches` | Optional performance | Measured: would cut the sweeper candidate scan from 118 examined docs to 39. Declined as a schema change taxing every Match write. |
+| 9 | Two archived legacy ChallengeTypes retain **36 residual ready items** | Catalog hygiene | `mechanic-1785789172264` (12) and `mechanic-1785872224173` (24). Harmless but should be reconciled or purged. |
+| 10 | **Deployment smoke test never executed against the current baseline** | Verification gap | The local dev stack runs an image built 2026-08-15, predating both `0961082` and `4f33704`; Batch A/D/E code was verified absent inside the running containers. A rebuild is required before any smoke test result can be trusted. |
+
+---
+
+## 20. Recommended next phase
+
+**Shared Core migration — Master Checklist phase D, detail in §16.1.**
+
+It is the correct next step because it blocks almost everything downstream: board composition (checklist I) cannot be
+finalised while the Shared Core is changing, World activation (checklist J) depends on board configuration, and the
+Movies Signature (§16.2) is waiting for One Clue to be released from the Shared Core.
+
+Sequence, roughly:
+
+1. Register a `bomb` ChallengeType and define the Bomb content contract
+2. Decide the new board composition (§3.1 needs rewriting to match reality)
+3. Author and validate Bomb coverage across target Worlds/Scopes
+4. Re-point One Clue as the Movies Signature
+5. Reconcile board configuration, then resume activation
+
+⚠️ Item 10 in §19 is worth clearing first and is cheap: rebuild the dev stack so it actually contains
+`302bc37` before any further runtime verification is attempted.
