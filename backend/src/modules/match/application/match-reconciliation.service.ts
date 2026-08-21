@@ -15,6 +15,11 @@ import {
 import { ScoringService } from '../../scoring/application/scoring.service';
 import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 import { ChallengeLauncherRegistry } from './challenge-launcher.registry';
+import { ContentExposureService } from './content-exposure.service';
+import {
+  LIVE_GAME_SESSION_REPOSITORY,
+  LiveGameSessionRepository,
+} from '../../live-game-sessions/domain/live-game-session.repository';
 import { MATCH_CLOCK, MatchClock } from './match-clock';
 import { MatchTransitionNotifier } from './match-transition.notifier';
 import { reconciliationCommandId } from './match.use-cases';
@@ -67,6 +72,9 @@ export class MatchReconciliationService
     private readonly scoring: ScoringService,
     @Inject(MATCH_CLOCK) private readonly clock: MatchClock,
     private readonly transitions: MatchTransitionNotifier,
+    private readonly exposures: ContentExposureService,
+    @Inject(LIVE_GAME_SESSION_REPOSITORY)
+    private readonly sessions: LiveGameSessionRepository,
   ) {}
 
   onModuleInit(): void {
@@ -78,6 +86,12 @@ export class MatchReconciliationService
     runtimeId: string;
     runtimeState: GameplayRuntimeState;
   }): Promise<MatchReconciliationResult> {
+    // Spend whatever this mutation put in front of a player, before deciding
+    // whether the challenge is over. Recording rides on this observer rather than
+    // its own because this is already the one place that resolves a runtime to its
+    // Match and its mechanic — and because a completion pass runs it too, which is
+    // what repairs a write that failed on an earlier mutation.
+    await this.recordPresentedContent(input);
     let result: MatchReconciliationResult = {
       outcome: 'deferred_revision_conflict',
     };
@@ -204,6 +218,9 @@ export class MatchReconciliationService
         error,
       );
     }
+    // Whatever this challenge drew but never showed goes back to the account.
+    // Only `reserved` rows are released, so nothing a player saw is un-seen.
+    await this.releaseUnseenContent(match.id);
     // Announced only after the Match is durably completed, and exactly once: a
     // replayed terminal state never reaches this line.
     this.transitions.publish(match, this.transitions.completionReason(match));
@@ -227,6 +244,101 @@ export class MatchReconciliationService
     };
   }
 
+  /**
+   * Spend the content this runtime has authoritatively presented.
+   *
+   * The server owns this truth: it reads the state *as committed* and asks the
+   * mechanic which of the challenge's items that state has shown. A browser
+   * claiming it rendered something is never consulted.
+   *
+   * The two failure modes are deliberately asymmetric. Recording something a
+   * player never saw is impossible, because the state being read has already
+   * committed. Failing to record something shown is possible for one mutation, and
+   * self-heals: the mechanic reports its *cumulative* presented set, so the next
+   * mutation — or the completion pass — writes the missed item, and the ledger is
+   * idempotent so the repeat costs nothing. Under-recording may show a question
+   * once more; over-recording would destroy content the account never received.
+   *
+   * Never allowed to fail gameplay that already committed.
+   */
+  private async recordPresentedContent(input: {
+    sessionId: string;
+    runtimeId: string;
+    runtimeState: GameplayRuntimeState;
+  }): Promise<void> {
+    try {
+      const match = await this.matches.findActiveBySessionId(input.sessionId);
+      const challenge = match?.currentChallenge;
+      // Only the challenge this runtime belongs to: a stale runtime cannot spend
+      // content a newer challenge drew.
+      if (!match || !challenge || challenge.runtimeId !== input.runtimeId)
+        return;
+      const ordered = challenge.contentItemIds ?? [];
+      const launcher = this.launchers.find({
+        challengeTypeSlug: challenge.challengeKey,
+      });
+      // A mechanic that does not report presentation never burns content.
+      if (!launcher?.presentedContentItemIds) return;
+      // An on-demand mechanic has no launch binding by design — "المرحلة" draws
+      // one question per turn — so there is nothing to filter against and its own
+      // report is the only record of what was shown. That report is still
+      // server-authoritative: those ids were drawn by the server and committed
+      // through controller-only commands, never supplied by a player. Every other
+      // mechanic keeps the stricter rule below.
+      const onDemand = launcher.launchRequirements.contentItemCount === 0;
+      if (!ordered.length && !onDemand) return;
+
+      const presented = launcher
+        .presentedContentItemIds({
+          runtime: input.runtimeState,
+          orderedContentItemIds: ordered,
+        })
+        // Never spend anything outside this challenge's own binding.
+        .filter((id) => onDemand || ordered.includes(id));
+      if (!presented.length) return;
+
+      const session = await this.sessions.findById(input.sessionId);
+      if (!session) return;
+
+      await this.exposures.recordPresented(
+        {
+          // The account that owns the Match — never a phone participant.
+          ownerAccountId: session.controllerActorId,
+          challengeTypeKey: challenge.challengeKey,
+          matchId: match.id,
+        },
+        presented,
+        this.clock.now(),
+      );
+    } catch (error) {
+      this.logger.error({
+        event: 'content_exposure_record_failed',
+        sessionId: input.sessionId,
+        runtimeId: input.runtimeId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Hand back the current challenge's unseen reservations.
+   *
+   * Never allowed to fail a reconciliation that already committed: a stranded
+   * reservation expires on its own, whereas throwing here would leave a durably
+   * completed Match reported as unreconciled.
+   */
+  private async releaseUnseenContent(matchId: string): Promise<void> {
+    try {
+      await this.exposures.releaseUnseen(matchId);
+    } catch (error) {
+      this.logger.error({
+        event: 'content_reservation_release_failed',
+        matchId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   private async reconcileAbort(
     match: Match,
     current: NonNullable<Match['currentChallenge']>,
@@ -247,6 +359,7 @@ export class MatchReconciliationService
     if (!aborted) return { outcome: 'already_reconciled', matchId: match.id };
     try {
       await this.matches.save(match, revision);
+      await this.releaseUnseenContent(match.id);
     } catch (error) {
       return this.defer(
         { match, stage: stageBefore, slotKey: current.slotKey },

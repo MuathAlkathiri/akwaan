@@ -28,3 +28,10 @@ description: >-
 3. **Content Contract Compliance**:
    - Verify media attachment format adheres to the target mechanic's policy (e.g., `media.assets` containing `{ url, altText }` for Bomb).
    - Ensure media payloads do not duplicate runtime-owned fields.
+
+4. **Bomb Semantic Alignment (Strict Invariant)**:
+   - **Never** associate media to Bomb content items by array position, index, or assumed numerical ordering.
+   - Always pair media using stable item identity (`id`), canonical authored `mediaIntent.subject`, and `acceptedAnswers`.
+   - QA must validate the complete semantic tuple:
+     $$\text{Prompt Type} \longleftrightarrow \text{Authored Subject} \longleftrightarrow \text{Accepted Answers} \longleftrightarrow \text{Actual Visual Subject}$$
+     All four elements must identify the **exact same entity**.

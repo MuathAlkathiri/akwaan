@@ -98,6 +98,19 @@ describe('challenge abort lifecycle integration', () => {
     ({ worldId, scopeIds } = await seedWorld());
   }, 240_000);
 
+  /**
+   * A fresh content history for every scenario.
+   *
+   * These scenarios relaunch the same board position repeatedly as one fixture
+   * account, so the per-account no-repeat rule would legitimately exhaust the
+   * seeded content partway through. That rule has its own suite; this one is about
+   * abort and launch-time recovery, so each scenario starts as a first-time
+   * account would.
+   */
+  beforeEach(async () => {
+    await database.collection('content_exposures').deleteMany({});
+  });
+
   afterAll(async () => {
     app?.get(GameplayDeadlineScheduler).onModuleDestroy();
     await app?.close();

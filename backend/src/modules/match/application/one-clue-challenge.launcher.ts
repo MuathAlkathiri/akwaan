@@ -9,6 +9,7 @@ import {
   ONE_CLUE_ITEM_COUNT,
   ONE_CLUE_MODE_KEY,
   OneClueItemResult,
+  ONE_CLUE_GAMEPLAY_PLUGIN,
 } from '../../live-game-sessions/domain/one-clue-gameplay.plugin';
 import { ChallengeAnswerMode } from '../../world-content/domain/world-content.constants';
 import { MatchDomainError } from '../domain/match.errors';
@@ -84,6 +85,21 @@ export class OneClueChallengeLauncher
       );
     }
     return { runtimeId: runtime.id };
+  }
+
+  /** Delegated to the mechanic, which alone knows what it has presented. */
+  presentedContentItemIds(input: {
+    runtime: GameplayRuntimeState;
+    orderedContentItemIds: readonly string[];
+  }): string[] {
+    const runtimeState = input.runtime.runtimeState;
+    if (!runtimeState || !ONE_CLUE_GAMEPLAY_PLUGIN.presentedContentItemIds)
+      return [];
+    return ONE_CLUE_GAMEPLAY_PLUGIN.presentedContentItemIds({
+      runtimeState,
+      roundState: input.runtime.activeRound?.modeState ?? {},
+      orderedContentItemIds: input.orderedContentItemIds,
+    });
   }
 
   detectTerminal(runtime: GameplayRuntimeState): boolean {

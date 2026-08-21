@@ -5,7 +5,10 @@ import {
   GameplayRuntimeRepository,
 } from '../../live-game-sessions/domain/gameplay-runtime.repository';
 import { GameplayRuntimeState } from '../../live-game-sessions/domain/gameplay-runtime';
-import { RYO_MODE_KEY } from '../../live-game-sessions/domain/ryo-gameplay.plugin';
+import {
+  RYO_MODE_KEY,
+  RYO_GAMEPLAY_PLUGIN,
+} from '../../live-game-sessions/domain/ryo-gameplay.plugin';
 import { ChallengeAnswerMode } from '../../world-content/domain/world-content.constants';
 import { MATCH_CONTENT_CARDINALITY } from '../domain/match.constants';
 import { MatchDomainError } from '../domain/match.errors';
@@ -116,6 +119,21 @@ export class RyoChallengeLauncher
   }
 
   /** The plugin sets phase `completed` once the third item has resolved. */
+  /** Delegated to the mechanic, which alone knows what it has presented. */
+  presentedContentItemIds(input: {
+    runtime: GameplayRuntimeState;
+    orderedContentItemIds: readonly string[];
+  }): string[] {
+    const runtimeState = input.runtime.runtimeState;
+    if (!runtimeState || !RYO_GAMEPLAY_PLUGIN.presentedContentItemIds)
+      return [];
+    return RYO_GAMEPLAY_PLUGIN.presentedContentItemIds({
+      runtimeState,
+      roundState: input.runtime.activeRound?.modeState ?? {},
+      orderedContentItemIds: input.orderedContentItemIds,
+    });
+  }
+
   detectTerminal(runtime: GameplayRuntimeState): boolean {
     return runtime.runtimeState?.phase === 'completed';
   }

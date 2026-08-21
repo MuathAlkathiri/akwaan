@@ -575,6 +575,39 @@ export const DISTRIBUTED_INFORMATION_PLUGIN: GameplayModePlugin = {
     if (command.type === 'expire-race') return expire(context, command);
     return submit(context, command);
   },
+  /**
+   * Every puzzle either team has reached, as one set.
+   *
+   * The two teams race through the same three puzzles in their **own** orders, so
+   * a puzzle is presented once the first team reaches it. A team's current
+   * position counts: it is on screen being solved, not merely queued.
+   *
+   * One ContentItem, one exposure. The mechanic hands each teammate a different
+   * private segment of the same item, and that is one item seen by the account —
+   * not several, and never participant-scoped. Returning a de-duplicated set of
+   * ContentItem ids is what keeps the privacy model out of the ledger.
+   */
+  presentedContentItemIds({ runtimeState }) {
+    try {
+      const items = puzzles(runtimeState);
+      const reached = new Set<string>();
+      for (const plan of plans(runtimeState)) {
+        const progress = progressOf(runtimeState).find(
+          (entry) => entry.teamId === plan.teamId,
+        );
+        // The puzzle in progress is presented; the ones after it are not.
+        const seen = Math.min((progress?.solved ?? 0) + 1, plan.order.length);
+        for (const position of plan.order.slice(0, seen)) {
+          const item = items[position];
+          if (item?.contentItemId) reached.add(item.contentItemId);
+        }
+      }
+      return [...reached];
+    } catch {
+      // Never throws: the observer would swallow it and silently skip exposure.
+      return [];
+    }
+  },
   projectRuntimeState: publicRuntime,
   projectRuntimeStateForActor: actorRuntime,
   projectRoundState: publicRound,

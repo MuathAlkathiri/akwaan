@@ -9,6 +9,7 @@ import {
   CLOSEST_ITEM_COUNT,
   CLOSEST_MODE_KEY,
   ClosestItemResult,
+  CLOSEST_GAMEPLAY_PLUGIN,
 } from '../../live-game-sessions/domain/closest-gameplay.plugin';
 import { ChallengeAnswerMode } from '../../world-content/domain/world-content.constants';
 import { MatchDomainError } from '../domain/match.errors';
@@ -86,6 +87,21 @@ export class ClosestChallengeLauncher
       );
     }
     return { runtimeId: runtime.id };
+  }
+
+  /** Delegated to the mechanic, which alone knows what it has presented. */
+  presentedContentItemIds(input: {
+    runtime: GameplayRuntimeState;
+    orderedContentItemIds: readonly string[];
+  }): string[] {
+    const runtimeState = input.runtime.runtimeState;
+    if (!runtimeState || !CLOSEST_GAMEPLAY_PLUGIN.presentedContentItemIds)
+      return [];
+    return CLOSEST_GAMEPLAY_PLUGIN.presentedContentItemIds({
+      runtimeState,
+      roundState: input.runtime.activeRound?.modeState ?? {},
+      orderedContentItemIds: input.orderedContentItemIds,
+    });
   }
 
   detectTerminal(runtime: GameplayRuntimeState): boolean {

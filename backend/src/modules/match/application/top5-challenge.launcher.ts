@@ -8,6 +8,7 @@ import { GameplayRuntimeState } from '../../live-game-sessions/domain/gameplay-r
 import {
   TOP5_MODE_KEY,
   Top5Result,
+  TOP5_KEEP_OR_GIVE_PLUGIN,
 } from '../../live-game-sessions/domain/top5-keep-or-give.plugin';
 import {
   ChallengeAnswerMode,
@@ -115,6 +116,21 @@ export class Top5ChallengeLauncher
   }
 
   /** Terminal once the tenth card has been decided. */
+  /** Delegated to the mechanic, which alone knows what it has presented. */
+  presentedContentItemIds(input: {
+    runtime: GameplayRuntimeState;
+    orderedContentItemIds: readonly string[];
+  }): string[] {
+    const runtimeState = input.runtime.runtimeState;
+    if (!runtimeState || !TOP5_KEEP_OR_GIVE_PLUGIN.presentedContentItemIds)
+      return [];
+    return TOP5_KEEP_OR_GIVE_PLUGIN.presentedContentItemIds({
+      runtimeState,
+      roundState: input.runtime.activeRound?.modeState ?? {},
+      orderedContentItemIds: input.orderedContentItemIds,
+    });
+  }
+
   detectTerminal(runtime: GameplayRuntimeState): boolean {
     return (
       runtime.runtimeState?.phase === 'completed' ||

@@ -11,7 +11,13 @@ import { ClosestGameplayPanel } from "../components/closest-gameplay-panel";
 import { OneClueGameplayPanel } from "../components/one-clue-gameplay-panel";
 import { DistributedInformationPanel } from "../components/distributed-information-panel";
 import { DistributedInformationScreen } from "../components/distributed-information-screen";
+import { ComboGameplayPanel } from "../components/combo-gameplay-panel";
+import { BombGameplayPanel } from "../components/bomb-gameplay-panel";
+import { MarhalaScreen } from "../components/marhala-screen";
+import { MarhalaPhonePanel } from "../components/marhala-phone-panel";
 import { DISTRIBUTED_INFORMATION_MODE_KEY } from "./distributed-information.presentation";
+import { COMBO_MODE_KEY } from "./combo.presentation";
+import { MARHALA_MODE_KEY } from "./marhala.presentation";
 import { useLiveSession } from "../hooks/live-session-context";
 import { MatchConnectionBanner } from "./components/match-connection-banner";
 import { UnifiedBoard } from "./components/unified-board";
@@ -259,6 +265,23 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
       ) : (
         <DistributedInformationScreen runtime={runtime} />
       );
+    // One panel for all three actors: the server sends each a different
+    // projection, so the screen a viewer gets is decided there, not here.
+    case COMBO_MODE_KEY:
+      return <ComboGameplayPanel runtime={runtime} />;
+    // Bomb runs on the session clock and shows the same screen to everyone; the
+    // panel reads the active team from the snapshot rather than from the actor.
+    case "bomb":
+      return <BombGameplayPanel runtime={runtime} />;
+    // The board is the shared screen's whole job, and a phone's job is one tap or
+    // one typed answer — two different information roles, so two views rather than
+    // one responsive component pretending to serve both.
+    case MARHALA_MODE_KEY:
+      return actor === "participant" ? (
+        <MarhalaPhonePanel runtime={runtime} />
+      ) : (
+        <MarhalaScreen runtime={runtime} />
+      );
     default:
       // The server started a mechanic this client has no screen for. Saying so is
       // the only honest option: the runtime is real and running.
@@ -273,8 +296,8 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
             لا توجد شاشة لهذا التحدي في هذا التطبيق
           </p>
           <p className="text-sm text-muted-foreground">
-            هذا التحدي يحتاج إصدارًا أحدث من اللعبة. حدِّث الصفحة، أو ألغِ التحدي
-            وواصلوا اللعب.
+            هذا التحدي يحتاج إصدارًا أحدث من اللعبة. حدِّث الصفحة، أو ألغِ
+            التحدي وواصلوا اللعب.
           </p>
           <p className="text-xs font-bold text-muted-foreground">
             آلية اللعب: <span dir="ltr">{runtime.mode.key}</span>

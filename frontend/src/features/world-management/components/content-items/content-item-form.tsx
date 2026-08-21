@@ -29,12 +29,16 @@ import {
   selectCompatibleContentPattern,
   toContentItemForm,
   type ContentItemFormValues,
+  hasComboMechanic,
+  hasMarhalaMechanic,
 } from "../../services/content-item-form.service";
 import { FormIssueList } from "../shared";
 import { AnswerPayloadFields } from "./answer-payload-fields";
 import { Top5Fields } from "./top5-fields";
 import { DistributedInformationFields } from "./distributed-information-fields";
 import { OneClueFields } from "./one-clue-fields";
+import { ComboFields } from "./combo-fields";
+import { MarhalaFields } from "./marhala-fields";
 import {
   CONTENT_STATUSES,
   CONTENT_STATUS_LABEL,
@@ -114,6 +118,8 @@ export function ContentItemForm({
     (configuration) =>
       patternOf(configuration.challengeType.answerMode) === "one_clue",
   );
+  const comboSelected = hasComboMechanic(selectedChallengeTypes);
+  const marhalaSelected = hasMarhalaMechanic(selectedChallengeTypes);
   // Keep the payload flag in step with the selection, so deselecting the
   // mechanic stops emitting its payload.
   useEffect(() => {
@@ -142,6 +148,31 @@ export function ContentItemForm({
       };
     });
   }, [oneClueSelected]);
+
+  // Keep the payload flag in step with the selection. Deselecting Combo stops
+  // emitting `comboStage` without touching any other mechanic's payload, and the
+  // chosen stage is kept so re-selecting does not silently lose the author's work.
+  useEffect(() => {
+    setValues((current) =>
+      current.combo.enabled === comboSelected
+        ? current
+        : { ...current, combo: { ...current.combo, enabled: comboSelected } },
+    );
+  }, [comboSelected]);
+
+  // The same convention for المرحلة, including keeping the chosen band: a Scope
+  // change clears the mechanic selection, and re-selecting المرحلة must not have
+  // quietly cost the author their difficulty — nor may the Scope imply one.
+  useEffect(() => {
+    setValues((current) =>
+      current.marhala.enabled === marhalaSelected
+        ? current
+        : {
+            ...current,
+            marhala: { ...current.marhala, enabled: marhalaSelected },
+          },
+    );
+  }, [marhalaSelected]);
 
   const formSubmit = useEntityFormSubmit<ContentItem>({
     entityId: contentItem?.id,
@@ -295,6 +326,20 @@ export function ContentItemForm({
 
       {values.answer.mode === "top_5" && (
         <Top5Fields value={values.top5} onChange={(top5) => set({ top5 })} />
+      )}
+
+      {values.combo.enabled && (
+        <ComboFields
+          value={values.combo}
+          onChange={(combo) => set({ combo })}
+        />
+      )}
+
+      {values.marhala.enabled && (
+        <MarhalaFields
+          value={values.marhala}
+          onChange={(marhala) => set({ marhala })}
+        />
       )}
 
       {values.distributed.enabled && (

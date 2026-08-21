@@ -49,11 +49,11 @@ describe('Match module architecture', () => {
     const launchers = matchFiles.filter((path) =>
       path.endsWith('.launcher.ts'),
     );
-    expect(launchers).toHaveLength(6);
+    expect(launchers).toHaveLength(8);
     for (const path of launchers) {
       const content = read(path);
       expect(content).toMatch(
-        /StartRyoGameplay|StartTop5|StartDistributedInformation|StartClosestGameplay|StartOneClueGameplay|StartBombGameplayFromContent/,
+        /StartRyoGameplay|StartTop5|StartDistributedInformation|StartClosestGameplay|StartOneClueGameplay|StartBombGameplayFromContent|StartComboGameplay|StartMarhalaGameplay/,
       );
       // No launcher may build a runtime, a round, or an interaction itself.
       expect(content).not.toMatch(
@@ -237,6 +237,7 @@ describe('Match module architecture', () => {
       'live-game-sessions/application/start-top5.use-case',
       'live-game-sessions/application/start-distributed-information.use-case',
       'live-game-sessions/application/start-closest-gameplay.use-case',
+      'live-game-sessions/application/start-combo-gameplay.use-case',
       'live-game-sessions/application/start-one-clue-gameplay.use-case',
       // Releasing a challenge is the same class of published surface as
       // starting one: the Match aborts a runtime it owns through the runtime's
@@ -260,8 +261,18 @@ describe('Match module architecture', () => {
       'live-game-sessions/domain/top5-keep-or-give.plugin',
       'live-game-sessions/domain/distributed-information.plugin',
       'live-game-sessions/domain/closest-gameplay.plugin',
+      'live-game-sessions/domain/combo-gameplay.plugin',
       'live-game-sessions/domain/one-clue-gameplay.plugin',
       'live-game-sessions/domain/bomb-gameplay.plugin',
+      'live-game-sessions/domain/marhala-gameplay.plugin',
+      // المرحلة draws content on demand, so the Match layer reads the board's own
+      // vocabulary to decide what a difficulty is worth.
+      'live-game-sessions/domain/marhala-board',
+      'live-game-sessions/application/start-marhala-gameplay.use-case',
+      // المرحلة draws on demand, so the runtime declares what it needs through a
+      // registry and the Match layer registers something that can answer — the
+      // same one-way pattern as the gameplay observer registry.
+      'live-game-sessions/application/marhala-question-source.registry',
       'live-game-sessions/application/start-bomb-from-content.use-case',
       'live-game-sessions/domain/team-action-assignment',
       'live-game-sessions/presentation/participant-auth',

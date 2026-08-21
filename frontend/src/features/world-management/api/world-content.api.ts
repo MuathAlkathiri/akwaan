@@ -6,6 +6,8 @@ import type {
   Scope,
   World,
   WorldBoard,
+  WorldSlotRemovalPreview,
+  WorldSlotRemovalResult,
   WorldChallengeConfiguration,
   WorldContentMetadata,
 } from "../types";
@@ -32,7 +34,8 @@ async function unwrap<T>(request: Promise<{ data: { data: T } }>): Promise<T> {
 
 /* Worlds */
 
-export const fetchWorlds = () => unwrap<World[]>(apiClient.get("/admin/worlds"));
+export const fetchWorlds = () =>
+  unwrap<World[]>(apiClient.get("/admin/worlds"));
 
 export const createWorld = (data: Payload, file?: File) =>
   unwrap<World>(apiClient.post("/admin/worlds", body("world", data, file)));
@@ -53,7 +56,10 @@ export const fetchScopes = (worldId: string) =>
 
 export const createScope = (worldId: string, data: Payload, file?: File) =>
   unwrap<Scope>(
-    apiClient.post(`/admin/worlds/${worldId}/scopes`, body("scope", data, file)),
+    apiClient.post(
+      `/admin/worlds/${worldId}/scopes`,
+      body("scope", data, file),
+    ),
   );
 
 export const updateScope = (scopeId: string, data: Payload, file?: File) =>
@@ -71,7 +77,9 @@ export const fetchChallengeTypes = () =>
   unwrap<ChallengeType[]>(apiClient.get("/admin/challenge-types"));
 
 export const fetchWorldContentMetadata = () =>
-  unwrap<WorldContentMetadata>(apiClient.get("/admin/challenge-types/metadata"));
+  unwrap<WorldContentMetadata>(
+    apiClient.get("/admin/challenge-types/metadata"),
+  );
 
 export const createChallengeType = (data: Payload, file?: File) =>
   unwrap<ChallengeType>(
@@ -96,9 +104,7 @@ export const deleteChallengeType = async (challengeTypeId: string) => {
 
 export const fetchChallengeTypeDeletionPreview = (challengeTypeId: string) =>
   unwrap<ChallengeTypeDeletionPreview>(
-    apiClient.get(
-      `/admin/challenge-types/${challengeTypeId}/deletion-preview`,
-    ),
+    apiClient.get(`/admin/challenge-types/${challengeTypeId}/deletion-preview`),
   );
 
 /* World-specific challenge configurations */
@@ -138,14 +144,37 @@ export const deleteWorldChallengeConfiguration = async (
   await apiClient.delete(`/admin/challenge-configurations/${configurationId}`);
 };
 
+/** What releasing one board position would cost, counted by the server. */
+export const fetchWorldSlotRemovalPreview = (configurationId: string) =>
+  unwrap<WorldSlotRemovalPreview>(
+    apiClient.get(
+      `/admin/challenge-configurations/${configurationId}/removal-preview`,
+    ),
+  );
+
+/**
+ * Release one board position and dispose of that World's content for the
+ * mechanic — one request, so the browser never orchestrates the two destructive
+ * halves separately. `expectedChallengeTypeId` is rejected if the slot moved on.
+ */
+export const releaseWorldSlot = (
+  configurationId: string,
+  expectedChallengeTypeId: string,
+) =>
+  unwrap<WorldSlotRemovalResult>(
+    apiClient.post(
+      `/admin/challenge-configurations/${configurationId}/release`,
+      { expectedChallengeTypeId },
+    ),
+  );
+
 /* Content items */
 
 export const fetchContentItems = (params: {
   worldId?: string;
   scopeId?: string;
   challengeTypeId?: string;
-}) =>
-  unwrap<ContentItem[]>(apiClient.get("/admin/content-items", { params }));
+}) => unwrap<ContentItem[]>(apiClient.get("/admin/content-items", { params }));
 
 export const createContentItem = (data: Payload) =>
   unwrap<ContentItem>(apiClient.post("/admin/content-items", data));

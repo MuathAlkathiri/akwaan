@@ -520,6 +520,30 @@ export const CLOSEST_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     return undefined;
   },
   handleCommand: handle,
+  /**
+   * Items up to and including the one on screen.
+   *
+   * `currentItemIndex` always names the item being played — advancing moves to
+   * the next and presents it immediately — so a challenge abandoned at item 1
+   * leaves items 2 and 3 unspent even though all three were drawn at launch.
+   */
+  presentedContentItemIds({ runtimeState }) {
+    if (typeof runtimeState.itemsJson !== 'string') return [];
+    let items: Array<{ contentItemId?: unknown }> = [];
+    try {
+      const parsed: unknown = JSON.parse(runtimeState.itemsJson);
+      if (!Array.isArray(parsed)) return [];
+      items = parsed as Array<{ contentItemId?: unknown }>;
+    } catch {
+      return [];
+    }
+    const index = Number(runtimeState.currentItemIndex);
+    if (!Number.isInteger(index) || index < 0) return [];
+    return items
+      .slice(0, Math.min(index + 1, items.length))
+      .map((item) => String(item?.contentItemId ?? ''))
+      .filter(Boolean);
+  },
   projectRuntimeState: (state) => publicState(state),
   projectRuntimeStateForActor: (state, actor) => publicState(state, actor),
   projectRoundState: validateRound,

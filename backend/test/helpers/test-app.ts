@@ -9,6 +9,8 @@ export async function createIntegrationTestApp(options?: {
   env?: Record<string, string>;
 }): Promise<INestApplication> {
   process.env.NODE_ENV = 'test';
+  // The `_test` safety guard, and the base every suite starts from. A suite that
+  // wants its own database overrides this through `options.env` below.
   process.env.MONGODB_URI = requireSafeTestDatabaseUri();
   process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'integration-test-secret';
   delete process.env.ADMIN_EMAIL;

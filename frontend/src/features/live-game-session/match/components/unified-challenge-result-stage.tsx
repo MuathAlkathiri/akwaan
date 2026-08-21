@@ -14,11 +14,13 @@ import {
 } from "@/features/match-setup";
 import { useLiveSession } from "../../hooks/live-session-context";
 import { localizeMatchError } from "../errors/match-errors";
-import { slotLabels, teamName } from "../presentation";
+import { teamName } from "../presentation";
 import { RyoResultRecap } from "./ryo-result-recap";
 import { ClosestResultRecap } from "./closest-result-recap";
 import { Top5ResultReveal } from "./top5-result-reveal";
 import { OneClueResultRecap } from "./one-clue-result-recap";
+import { ComboResultRecap } from "./combo-result-recap";
+import { MarhalaResultRecap } from "./marhala-result-recap";
 import type { MatchActor, MatchChallengeResult } from "../types";
 
 /**
@@ -80,9 +82,7 @@ export function UnifiedChallengeResultStage({ actor }: { actor: MatchActor }) {
           تعذّر عرض نتيجة التحدي
         </AlertTitle>
         <AlertDescription className="space-y-3">
-          <p className="text-sm">
-            انتهى التحدي، لكن تفاصيل نتيجته لم تصل بعد.
-          </p>
+          <p className="text-sm">انتهى التحدي، لكن تفاصيل نتيجته لم تصل بعد.</p>
           <Button
             type="button"
             onClick={() => resync?.()}
@@ -106,25 +106,30 @@ export function UnifiedChallengeResultStage({ actor }: { actor: MatchActor }) {
 
   return (
     <div
-      className="stage-center mx-auto max-w-5xl space-y-5"
+      className="stage-center mx-auto max-w-5xl space-y-3.5"
       data-testid="unified-challenge-result"
     >
       <header className="surface-card overflow-hidden">
         <WorldMedia
           name={result.worldName ?? "عالم"}
-          eyebrow={`${occurrenceLabel(result.occurrenceIndex)} · ${slotLabels[result.slotKey]}`}
+          eyebrow={occurrenceLabel(result.occurrenceIndex)}
           variant="strip"
           {...(worldImageUrl ? { imageUrl: worldImageUrl } : {})}
-          className="rounded-none"
+          // A finished challenge is about its result, not its World: the strip
+          // stays for identity and gives most of its height back to the record.
+          className="rounded-none aspect-[16/2.4] sm:aspect-[16/2]"
         />
-        <div className="px-5 py-3.5">
-          <h1 className="text-xl font-black text-foreground sm:text-2xl">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-4 py-2.5">
+          <h1 className="text-lg font-black text-foreground sm:text-xl">
             {result.challengeName ?? "نتيجة التحدي"}
           </h1>
+          <p className="text-xs font-bold text-muted-foreground">
+            اكتمل التحدي
+          </p>
         </div>
       </header>
 
-      <section className="surface-card p-5 sm:p-6">
+      <section className="surface-card p-4 sm:p-5">
         <ChallengeResultBody result={result} />
       </section>
 
@@ -176,6 +181,10 @@ function ChallengeResultBody({ result }: { result: MatchChallengeResult }) {
       return <ClosestResultRecap result={result} snapshot={snapshot} />;
     case "one-clue":
       return <OneClueResultRecap result={result} snapshot={snapshot} />;
+    case "combo":
+      return <ComboResultRecap result={result} snapshot={snapshot} />;
+    case "marhala":
+      return <MarhalaResultRecap result={result} snapshot={snapshot} />;
     default:
       return (
         <div

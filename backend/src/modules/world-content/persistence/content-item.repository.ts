@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, Model, Types } from 'mongoose';
+import { ClientSession, FilterQuery, Model, Types } from 'mongoose';
 import { ContentItemStatus } from '../domain/world-content.constants';
 import { ContentItem } from '../schemas/content-item.schema';
 
@@ -84,6 +84,79 @@ export class ContentItemRepository {
     return this.model
       .countDocuments({ worldId: new Types.ObjectId(worldId) })
       .exec();
+  }
+
+  /**
+   * One World's items for one mechanic, with only what a removal decision needs.
+   *
+   * Scoped by `worldId` as well as the mechanic, because the same mechanic is
+   * configured in many Worlds and removing it from one must not see, count, or
+   * touch another World's content.
+   */
+  listForWorldMechanic(
+    worldId: string,
+    challengeTypeId: string,
+  ): Promise<
+    Array<{
+      _id: Types.ObjectId;
+      status: ContentItemStatus;
+      compatibleChallengeTypeIds: Types.ObjectId[];
+    }>
+  > {
+    return this.model
+      .find(
+        {
+          worldId: new Types.ObjectId(worldId),
+          compatibleChallengeTypeIds: new Types.ObjectId(challengeTypeId),
+        },
+        { status: 1, compatibleChallengeTypeIds: 1 },
+      )
+      .lean<
+        Array<{
+          _id: Types.ObjectId;
+          status: ContentItemStatus;
+          compatibleChallengeTypeIds: Types.ObjectId[];
+        }>
+      >()
+      .exec();
+  }
+
+  /** Removes whole items. Used only for items no other mechanic can still play. */
+  async deleteByIds(ids: string[], session?: ClientSession): Promise<number> {
+    if (!ids.length) return 0;
+    const result = await this.model
+      .deleteMany(
+        { _id: { $in: ids.map((id) => new Types.ObjectId(id)) } },
+        session ? { session } : {},
+      )
+      .exec();
+    return result.deletedCount ?? 0;
+  }
+
+  /**
+   * Drops one mechanic's compatibility and keeps the item.
+   *
+   * The safe half of a removal: an item another mechanic can still play is that
+   * mechanic's content too, so it survives with one fewer relationship.
+   */
+  async detachChallengeType(
+    ids: string[],
+    challengeTypeId: string,
+    session?: ClientSession,
+  ): Promise<number> {
+    if (!ids.length) return 0;
+    const result = await this.model
+      .updateMany(
+        { _id: { $in: ids.map((id) => new Types.ObjectId(id)) } },
+        {
+          $pull: {
+            compatibleChallengeTypeIds: new Types.ObjectId(challengeTypeId),
+          },
+        },
+        session ? { session } : {},
+      )
+      .exec();
+    return result.modifiedCount ?? 0;
   }
 
   countByChallengeType(challengeTypeId: string): Promise<number> {

@@ -307,6 +307,36 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       'RYO uses blind interaction submissions',
     );
   },
+  /**
+   * The prompts a team has actually been shown.
+   *
+   * Keyed on the **round's** `itemIndex` rather than the runtime's
+   * `currentItemIndex`: the runtime counter increments the moment an item
+   * resolves, so between items it already names an item nobody has seen. The
+   * round is the item in play.
+   *
+   * Burned at presentation, not at reveal — once the prompt has been read, the
+   * item is spent whatever happens next. Both teams see one prompt, and the
+   * private halves of an RYO decision are two views of one ContentItem, so this
+   * is one exposure.
+   */
+  presentedContentItemIds({ runtimeState, roundState }) {
+    if (typeof runtimeState.itemsJson !== 'string') return [];
+    let items: Array<{ id?: unknown }> = [];
+    try {
+      const parsed: unknown = JSON.parse(runtimeState.itemsJson);
+      if (!Array.isArray(parsed)) return [];
+      items = parsed as Array<{ id?: unknown }>;
+    } catch {
+      return [];
+    }
+    const index = Number(roundState.itemIndex);
+    if (!Number.isInteger(index) || index < 0) return [];
+    return items
+      .slice(0, Math.min(index + 1, items.length))
+      .map((item) => String(item?.id ?? ''))
+      .filter(Boolean);
+  },
   projectRuntimeState(state) {
     const valid = validateRuntime(state);
     return {

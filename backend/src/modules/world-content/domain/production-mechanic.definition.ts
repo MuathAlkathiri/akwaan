@@ -6,6 +6,9 @@ import {
   DISTRIBUTED_INFORMATION_SLUG,
   ONE_CLUE_SLUG,
   TOP5_SLUG,
+  COMBO_SLUG,
+  BOMB_SLUG,
+  MARHALA_SLUG,
 } from './world-content.constants';
 
 /**
@@ -63,8 +66,12 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
     // "القنبلة" — a timed run of 10–15 pictures shared by both teams. One
     // continuous unit occupying a single board slot, like Top 5, rather than a
     // discrete triple: its internal item count is the mechanic's business.
-    slug: 'bomb',
-    family: ChallengeFamily.SIGNATURE,
+    slug: BOMB_SLUG,
+    // Shared Core, not a Signature (§16.1). The family axis is the *answer
+    // system*, not shared-vs-exclusive: COOP is the family of automatically
+    // resolved team mechanics, which is exactly what "مين اقرب" already is and
+    // what Bomb is. Signature would claim an exclusivity Bomb must not have.
+    family: ChallengeFamily.COOP,
     itemStructure: ChallengeItemStructure.CONTINUOUS,
     answerMode: ChallengeAnswerMode.MATCH,
     seed: {
@@ -130,6 +137,29 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
     },
   }),
   definition({
+    // "الكومبو" — the Anime Signature. Two Runs of four questions of rising
+    // stage, one Run per team. One continuous unit occupying a single board
+    // slot, like Bomb and Top 5: its internal question count is the mechanic's
+    // business, and its stage progression lives on each item's
+    // `mechanicPayload.comboStage`.
+    slug: COMBO_SLUG,
+    family: ChallengeFamily.SIGNATURE,
+    itemStructure: ChallengeItemStructure.CONTINUOUS,
+    answerMode: ChallengeAnswerMode.MATCH,
+    seed: {
+      name: 'الكومبو',
+      description:
+        'ثبت النقاط أو كمل الكومبو وخاطر بكل الرصيد، وخصمك يقدر يكسره عليك.',
+      defaultPresentation: {
+        inputType: 'phone-text',
+        // Every question, every stage. The clock is not the difficulty lever.
+        timerSeconds: 30,
+        soundPack: null,
+        revealStyle: null,
+      },
+    },
+  }),
+  definition({
     slug: ONE_CLUE_SLUG,
     family: ChallengeFamily.COOP,
     itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
@@ -140,6 +170,28 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
       defaultPresentation: {
         inputType: 'phone-text',
         timerSeconds: 7,
+        soundPack: null,
+        revealStyle: null,
+      },
+    },
+  }),
+  definition({
+    // "المرحلة" — the Video Games Signature (§17). Continuous because a race runs
+    // for however many questions it takes: its length is the mechanic's business,
+    // not a board item budget, and it draws every one of them on demand.
+    slug: MARHALA_SLUG,
+    family: ChallengeFamily.SIGNATURE,
+    itemStructure: ChallengeItemStructure.CONTINUOUS,
+    answerMode: ChallengeAnswerMode.MATCH,
+    seed: {
+      name: 'المرحلة',
+      description:
+        'سباق على لوحة المرحلة: اختر مستوى الخطر، وأجب، وتحرّك — والقفزات والفخاخ تقرر الباقي.',
+      defaultPresentation: {
+        inputType: 'phone-text',
+        // One clock for every difficulty. The risk a team elects is the movement
+        // range, never the time, so the timer must not become a second lever.
+        timerSeconds: 30,
         soundPack: null,
         revealStyle: null,
       },

@@ -59,6 +59,8 @@ const DEADLINE_CONTRACT: Record<
   'distributed-information': { kind: 'runtime-state' },
   closest: { kind: 'runtime-state' },
   'one-clue': { kind: 'runtime-state' },
+  combo: { kind: 'runtime-state' },
+  marhala: { kind: 'runtime-state' },
 };
 
 /** A live runtime carrying whatever the mechanic uses to express a deadline. */

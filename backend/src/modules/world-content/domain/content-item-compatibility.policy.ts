@@ -18,11 +18,20 @@ import {
   TOP5_TRAP_COUNT,
   TOP5_VARIANT,
   ONE_CLUE_SLUG,
+  COMBO_SLUG,
+  BOMB_SLUG,
+  MARHALA_SLUG,
   ONE_CLUE_VALUES,
   VoteConsensusRule,
   WorldContentStatus,
 } from './world-content.constants';
 import { issue } from './world-content.errors';
+import { COMBO_STAGES, isComboStage } from './combo-content.policy';
+import { readBombItem } from './bomb-content.policy';
+import {
+  isMarhalaDifficulty,
+  MARHALA_DIFFICULTY_LABELS,
+} from './marhala-content.policy';
 import {
   ContentAnswerOption,
   ContentAnswerPayload,
@@ -90,9 +99,109 @@ export class ContentItemCompatibilityPolicy {
       ...this.validateDistributedInformationPayload(input.item, referenced),
     );
     blockers.push(...this.validateOneCluePayload(input.item, referenced));
+    blockers.push(...this.validateComboPayload(input.item, referenced));
+    blockers.push(...this.validateBombItem(input.item, referenced));
+    blockers.push(...this.validateMarhalaPayload(input.item, referenced));
     warnings.push(...this.reuseWarnings(input.item, referenced));
 
     return buildReadinessReport(blockers, warnings);
+  }
+
+  /**
+   * "الكومبو" needs one thing no shared field carries: which question of the run
+   * the item is for. A Run rises through four stages in a fixed order, so an item
+   * with no stage — or a stage outside the four — has no position to be played at.
+   *
+   * Checked here, at authoring time, against the same predicate the plan builder
+   * uses. Without this an item saves cleanly and then fails at launch, which is
+   * the worst possible moment to discover it.
+   */
+  private validateComboPayload(
+    item: ContentItemView,
+    challengeTypes: ChallengeTypeView[],
+  ): WorldContentIssue[] {
+    if (!challengeTypes.some((type) => type.slug === COMBO_SLUG)) return [];
+    const raw = (item.mechanicPayload as { comboStage?: unknown } | undefined)
+      ?.comboStage;
+    if (!isComboStage(raw)) {
+      return [
+        issue(
+          'COMBO_ITEM_STAGE_INVALID',
+          `الكومبو requires mechanicPayload.comboStage to be one of ${COMBO_STAGES.join(', ')}`,
+          { contentItemId: item.id, comboStage: raw ?? null },
+        ),
+      ];
+    }
+    return [];
+  }
+
+  /**
+   * "القنبلة" needs no payload of its own — a Bomb item is an ordinary picture
+   * question — but it does need a *shape*: one image, an Arabic prompt, and
+   * match-graded accepted answers.
+   *
+   * Checked here against the very same per-item function the launch path runs, so
+   * an item this form accepts cannot fail a Bomb launch on its own shape. The
+   * run-level rules (10–15 ordered distinct items) are deliberately not checked
+   * here: one item can never satisfy them, and content shortage is a launch
+   * concern the selector already reports.
+   */
+  private validateBombItem(
+    item: ContentItemView,
+    challengeTypes: ChallengeTypeView[],
+  ): WorldContentIssue[] {
+    if (!challengeTypes.some((type) => type.slug === BOMB_SLUG)) return [];
+    const { problems } = readBombItem(
+      {
+        id: item.id,
+        ...(item.prompt ? { prompt: item.prompt } : {}),
+        ...(item.media ? { media: item.media as never } : {}),
+        // The payload is a discriminated union; only its match variant carries
+        // accepted answers, and a non-match mode is itself one of the problems
+        // this function reports.
+        answerPayload: item.answerPayload as {
+          mode?: string;
+          acceptedAnswers?: string[];
+        },
+        status: item.status,
+      },
+      1,
+    );
+    return problems.map((problem) =>
+      issue(problem.code, problem.message, { contentItemId: item.id }),
+    );
+  }
+
+  /**
+   * "المرحلة" needs the risk band of a question, because the team elects a
+   * difficulty *before* the question is drawn and that choice decides how far a
+   * correct answer can move them. An item with no difficulty has no pool to be
+   * drawn from.
+   *
+   * Checked here against the same predicate the runtime draw uses, so an item this
+   * form accepts cannot be one the draw refuses. Difficulty is Marhala's own
+   * metadata — it says nothing about the item's Scope, and no Scope implies it.
+   */
+  private validateMarhalaPayload(
+    item: ContentItemView,
+    challengeTypes: ChallengeTypeView[],
+  ): WorldContentIssue[] {
+    if (!challengeTypes.some((type) => type.slug === MARHALA_SLUG)) return [];
+    const raw = (
+      item.mechanicPayload as { marhalaDifficulty?: unknown } | undefined
+    )?.marhalaDifficulty;
+    if (!isMarhalaDifficulty(raw)) {
+      return [
+        issue(
+          'MARHALA_ITEM_DIFFICULTY_INVALID',
+          `المرحلة requires mechanicPayload.marhalaDifficulty to be one of ${Object.keys(
+            MARHALA_DIFFICULTY_LABELS,
+          ).join(', ')}`,
+          { contentItemId: item.id, marhalaDifficulty: (raw as never) ?? null },
+        ),
+      ];
+    }
+    return [];
   }
 
   private validateOneCluePayload(

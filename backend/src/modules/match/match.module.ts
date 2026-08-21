@@ -22,6 +22,9 @@ import { Top5ChallengeLauncher } from './application/top5-challenge.launcher';
 import { UnifiedMatchSetupValidator } from './application/unified-match-setup.validator';
 import { BombChallengeLauncher } from './application/bomb-challenge.launcher';
 import { ClosestChallengeLauncher } from './application/closest-challenge.launcher';
+import { MarhalaChallengeLauncher } from './application/marhala-challenge.launcher';
+import { MarhalaQuestionSourceProvider } from './application/marhala-question-source';
+import { ComboChallengeLauncher } from './application/combo-challenge.launcher';
 import {
   UnifiedMatchBoardPolicy,
   unifiedMatchBoardPolicy,
@@ -31,6 +34,12 @@ import {
   unifiedMatchSetupPolicy,
 } from './domain/unified-match-setup.policy';
 import { MATCH_REPOSITORY } from './persistence/match.repository';
+import {
+  ContentExposureDocument,
+  ContentExposureSchema,
+} from './persistence/content-exposure.schema';
+import { ContentExposureRepository } from './persistence/content-exposure.repository';
+import { ContentExposureService } from './application/content-exposure.service';
 import { MatchDocument, MatchSchema } from './persistence/match.schema';
 import { MongooseMatchRepository } from './persistence/mongoose-match.repository';
 import { MatchController } from './presentation/match.controller';
@@ -56,6 +65,10 @@ import { ChallengeTypeMatchUsageGuard } from './application/challenge-type-match
     LiveGameSessionsModule,
     MongooseModule.forFeature([
       { name: MatchDocument.name, schema: MatchSchema },
+      {
+        name: ContentExposureDocument.name,
+        schema: ContentExposureSchema,
+      },
     ]),
   ],
   controllers: [
@@ -69,6 +82,8 @@ import { ChallengeTypeMatchUsageGuard } from './application/challenge-type-match
     MongooseMatchRepository,
     { provide: MATCH_REPOSITORY, useExisting: MongooseMatchRepository },
     ChallengeLauncherRegistry,
+    ContentExposureRepository,
+    ContentExposureService,
     RuntimeScoreEventCollector,
     MatchTransitionNotifier,
     MatchContentPool,
@@ -86,6 +101,9 @@ import { ChallengeTypeMatchUsageGuard } from './application/challenge-type-match
     DistributedInformationChallengeLauncher,
     BombChallengeLauncher,
     ClosestChallengeLauncher,
+    ComboChallengeLauncher,
+    MarhalaChallengeLauncher,
+    MarhalaQuestionSourceProvider,
     OneClueChallengeLauncher,
     MatchReconciliationService,
     MatchConvergenceSweeper,

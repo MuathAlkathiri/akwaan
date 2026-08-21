@@ -12,8 +12,10 @@ import { BOMB_MODE_KEY } from '../modules/live-game-sessions/domain/bomb-gamepla
 import { RYO_MODE_KEY } from '../modules/live-game-sessions/domain/ryo-gameplay.plugin';
 import { DISTRIBUTED_INFORMATION_MODE_KEY } from '../modules/live-game-sessions/domain/distributed-information.plugin';
 import { TOP5_MODE_KEY } from '../modules/live-game-sessions/domain/top5-keep-or-give.plugin';
+import { COMBO_MODE_KEY } from '../modules/live-game-sessions/domain/combo-gameplay.plugin';
 import { CLOSEST_MODE_KEY } from '../modules/live-game-sessions/domain/closest-gameplay.plugin';
 import { ONE_CLUE_MODE_KEY } from '../modules/live-game-sessions/domain/one-clue-gameplay.plugin';
+import { MARHALA_MODE_KEY } from '../modules/live-game-sessions/domain/marhala-board';
 
 /**
  * Deciding which ChallengeType is a canonical mechanic wearing the wrong slug.
@@ -94,6 +96,8 @@ describe('canonical mechanic slug migration', () => {
       DISTRIBUTED_INFORMATION_MODE_KEY,
       CLOSEST_MODE_KEY,
       ONE_CLUE_MODE_KEY,
+      COMBO_MODE_KEY,
+      MARHALA_MODE_KEY,
     ];
     for (const entry of CANONICAL_MECHANICS) {
       expect(launcherKeys).toContain(entry.slug);

@@ -13,6 +13,8 @@ import { Top5Panel } from "./top5-panel";
 import { RyoGameplayPanel } from "./ryo-gameplay-panel";
 import { ClosestGameplayPanel } from "./closest-gameplay-panel";
 import { OneClueGameplayPanel } from "./one-clue-gameplay-panel";
+import { ComboGameplayPanel } from "./combo-gameplay-panel";
+import { COMBO_MODE_KEY } from "../match/combo.presentation";
 
 const labels: Record<string, string> = {
   "runtime:start": "Start runtime",
@@ -64,6 +66,9 @@ export function GameplayRuntimePanel() {
   }
   if (runtime.mode.key === "one-clue") {
     return <OneClueGameplayPanel runtime={runtime} />;
+  }
+  if (runtime.mode.key === COMBO_MODE_KEY) {
+    return <ComboGameplayPanel runtime={runtime} />;
   }
   const round = runtime.activeRound;
   const activeTeam = snapshot.teams.find(

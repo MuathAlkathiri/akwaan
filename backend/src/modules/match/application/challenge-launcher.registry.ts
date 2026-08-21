@@ -22,6 +22,10 @@ export interface MatchSelectableContentItem {
   mechanicVariant?: string;
   /** `mechanicPayload.authorSafetyConfirmation`, when the mechanic requires it. */
   authorSafetyConfirmation?: boolean;
+  /** `mechanicPayload.comboStage`, when the mechanic authored a Combo stage. */
+  comboStage?: number;
+  /** "المرحلة" risk band, from `mechanicPayload.marhalaDifficulty`. */
+  marhalaDifficulty?: string;
 }
 
 /**
@@ -45,6 +49,26 @@ export interface MatchChallengeLaunchRequirements {
    * `requiresPhones` is true, and authoritative: a launch re-checks it server side.
    */
   readiness?: MatchChallengeReadinessRequirement;
+  /**
+   * Stratified selection, for a mechanic whose items are not interchangeable.
+   *
+   * Most mechanics draw N items and treat them as equivalent, so the Scope
+   * spread is the only balancing rule needed. "الكومبو" cannot: its Run rises
+   * through four authored stages and it needs exactly two items at each, one per
+   * team. Declaring the strata here keeps that in the one component that owns
+   * content selection instead of giving the mechanic a private draw.
+   *
+   * The Scope spread still applies *within* each stratum.
+   */
+  selectionStrata?: {
+    /** Which stratum an item belongs to, or undefined if none. */
+    stratumOf(item: MatchSelectableContentItem): string | number | undefined;
+    /** Every stratum that must be satisfied. */
+    strata: ReadonlyArray<string | number>;
+    /** How many items to draw from each stratum. */
+    perStratum: number;
+  };
+
   /**
    * Eligibility beyond "ready, in this World, in this occurrence's Scopes, and
    * compatible with this mechanic" — the mechanic's own payload contract.
@@ -101,6 +125,23 @@ export interface MatchChallengeLauncher {
   validateLaunch(context: MatchChallengeLaunchContext): Promise<void>;
   launch(context: MatchChallengeLaunchContext): Promise<{ runtimeId: string }>;
   detectTerminal(runtime: GameplayRuntimeState): boolean;
+  /**
+   * Which of this challenge's content items a player has actually been shown.
+   *
+   * Optional and additive: a launcher that does not answer never spends content,
+   * which is the safe default. It delegates to its own plugin — the mechanic is
+   * the only thing that knows the difference between a plan and a presentation,
+   * and **selection is not exposure**. A Combo run that ends at Q2 leaves six
+   * planned questions unseen; a Bomb clock that expires at item 7 leaves the rest
+   * unseen. Only what was reached may be burned.
+   *
+   * `orderedContentItemIds` is the Match's own ordered binding, for mechanics
+   * whose runtime deliberately carries no content ids and answers by position.
+   */
+  presentedContentItemIds?(input: {
+    runtime: GameplayRuntimeState;
+    orderedContentItemIds: readonly string[];
+  }): string[];
   buildCompletionSummary(
     runtime: GameplayRuntimeState,
   ): MatchChallengeCompletionSummary;

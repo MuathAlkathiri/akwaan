@@ -284,6 +284,21 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
         : [{ type: 'emit-runtime-event', eventType: 'bomb-answer-incorrect' }],
     };
   },
+  /**
+   * Items up to and including the one on screen.
+   *
+   * Bomb plays its selection in order, so position is identity. `itemIndex` is
+   * set to `itemCount` when the run is exhausted, which clamps to the whole
+   * selection — every item really was shown in that case.
+   */
+  presentedContentItemIds({ roundState, orderedContentItemIds }) {
+    const index = Number(roundState.itemIndex);
+    if (!Number.isFinite(index) || index < 0) return [];
+    return orderedContentItemIds.slice(
+      0,
+      Math.min(index + 1, orderedContentItemIds.length),
+    );
+  },
   projectRuntimeState(state) {
     const valid = validateRuntime(state);
     return {

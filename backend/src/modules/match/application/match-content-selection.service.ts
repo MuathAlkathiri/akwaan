@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ContentItemRepository } from '../../world-content/persistence/content-item.repository';
 import { MatchBoardPositionKey } from '../domain/match-board-position-key';
+import {
+  ContentExposureScope,
+  ContentExposureService,
+  MatchContentExhaustedError,
+} from './content-exposure.service';
 import { MatchDomainError } from '../domain/match.errors';
 import {
   MatchChallengeLaunchRequirements,
@@ -22,7 +27,10 @@ import {
  */
 @Injectable()
 export class MatchContentSelector {
-  constructor(private readonly items: ContentItemRepository) {}
+  constructor(
+    private readonly items: ContentItemRepository,
+    private readonly exposures: ContentExposureService,
+  ) {}
 
   async select(input: {
     matchId: string;
@@ -35,6 +43,17 @@ export class MatchContentSelector {
     requirements: MatchChallengeLaunchRequirements;
     /** Items this occurrence has already played. */
     usedContentItemIds: string[];
+    /**
+     * Whose content history to respect, when the caller could resolve an owner.
+     *
+     * An additional eligibility constraint, applied after every existing one —
+     * World, Scope, compatibility, readiness and the mechanic's own payload rules
+     * all still decide first, and exposure only removes what survived them. The
+     * ledger is asked here rather than by the caller because the candidate set is
+     * already in hand, so the check costs one indexed read over a bounded list.
+     */
+    exposureScope?: ContentExposureScope;
+    now?: Date;
   }): Promise<string[]> {
     const required = input.requirements.contentItemCount;
     const documents = await this.items.listPlayableForOccurrence({
@@ -44,7 +63,7 @@ export class MatchContentSelector {
     });
 
     const used = new Set(input.usedContentItemIds);
-    const playable = documents
+    const eligible = documents
       .map((document) => this.toSelectable(document))
       .filter((item) => !used.has(item.id))
       .filter(
@@ -54,20 +73,96 @@ export class MatchContentSelector {
           !input.requirements.isPlayableItem ||
           input.requirements.isPlayableItem(item),
       );
+    const unseen = new Set(
+      input.exposureScope
+        ? await this.exposures.selectable(
+            input.exposureScope,
+            eligible.map((item) => item.id),
+            input.now ?? new Date(),
+          )
+        : eligible.map((item) => item.id),
+    );
+    const seen = input.exposureScope
+      ? new Set(eligible.map((item) => item.id).filter((id) => !unseen.has(id)))
+      : new Set<string>();
+    // Kept separate from `eligible` so a shortage can say *why*: a catalog that
+    // never had enough is a different problem from an account that has seen it
+    // all, and only the second is a per-account product state.
+    const playable = eligible.filter((item) => !seen.has(item.id));
+    const spentByAccount = eligible.length - playable.length;
 
-    if (playable.length < required) {
+    /**
+     * Never silently repeat. A pool that only falls short once exposure is
+     * applied is reported as account exhaustion, with the numbers a product
+     * surface would need, rather than being quietly topped up with seen content.
+     */
+    const refuse = (need: number, have: number): never => {
+      if (spentByAccount > 0 && have + spentByAccount >= need) {
+        throw new MatchContentExhaustedError(
+          `This account has already seen every remaining item for this mechanic in World occurrence ${input.occurrenceIndex}: ${have} unseen of ${need} needed, ${spentByAccount} already seen`,
+          {
+            challengeTypeKey: input.exposureScope!.challengeTypeKey,
+            required: need,
+            unseenAvailable: have,
+            alreadySeen: spentByAccount,
+          },
+        );
+      }
       throw new MatchDomainError(
         'MATCH_INSUFFICIENT_PLAYABLE_CONTENT',
-        `World occurrence ${input.occurrenceIndex} has ${playable.length} playable ContentItems left for this challenge, which needs ${required}`,
+        `World occurrence ${input.occurrenceIndex} has ${have} playable ContentItems left for this challenge, which needs ${need}`,
       );
+    };
+
+    const positionKey = MatchBoardPositionKey.of(
+      input.occurrenceIndex,
+      input.slotKey,
+    ).value;
+    const strata = input.requirements.selectionStrata;
+    if (strata) {
+      // Each stratum is drawn independently, and a stratum that cannot be
+      // filled fails the launch with the same shortage error as any other —
+      // before a runtime exists, so nothing is left half-owned.
+      const chosen: string[] = [];
+      for (const stratum of strata.strata) {
+        const bucket = playable.filter(
+          (item) => strata.stratumOf(item) === stratum,
+        );
+        if (bucket.length < strata.perStratum) {
+          const seenInStratum = eligible.filter(
+            (item) => seen.has(item.id) && strata.stratumOf(item) === stratum,
+          ).length;
+          if (seenInStratum > 0) {
+            throw new MatchContentExhaustedError(
+              `This account has already seen the remaining stage ${stratum} content for this mechanic: ${bucket.length} unseen of ${strata.perStratum} needed, ${seenInStratum} already seen`,
+              {
+                challengeTypeKey: input.exposureScope!.challengeTypeKey,
+                required: strata.perStratum,
+                unseenAvailable: bucket.length,
+                alreadySeen: seenInStratum,
+              },
+            );
+          }
+          throw new MatchDomainError(
+            'MATCH_INSUFFICIENT_PLAYABLE_CONTENT',
+            `World occurrence ${input.occurrenceIndex} has ${bucket.length} playable ContentItems for stage ${stratum}, which needs ${strata.perStratum}`,
+          );
+        }
+        chosen.push(
+          ...this.draw(
+            bucket,
+            strata.perStratum,
+            `${positionKey}#${stratum}`,
+            input.matchId,
+          ),
+        );
+      }
+      return chosen;
     }
 
-    return this.draw(
-      playable,
-      required,
-      MatchBoardPositionKey.of(input.occurrenceIndex, input.slotKey).value,
-      input.matchId,
-    );
+    if (playable.length < required) refuse(required, playable.length);
+
+    return this.draw(playable, required, positionKey, input.matchId);
   }
 
   /**
@@ -130,6 +225,12 @@ export class MatchContentSelector {
       worldId: String(document.worldId),
       scopeId: String(document.scopeId),
       answerMode: document.answerPayload.mode,
+      ...(typeof payload.comboStage === 'number'
+        ? { comboStage: payload.comboStage }
+        : {}),
+      ...(typeof payload.marhalaDifficulty === 'string'
+        ? { marhalaDifficulty: payload.marhalaDifficulty }
+        : {}),
       ...(typeof payload.variant === 'string'
         ? { mechanicVariant: payload.variant }
         : {}),

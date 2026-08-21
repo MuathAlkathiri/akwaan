@@ -26,7 +26,10 @@ export function ConfigurationCard({
   const timer = challengeType.defaultPresentation.timerSeconds;
 
   return (
-    <div className="rounded-xl border p-3">
+    <div
+      className="rounded-xl border p-3"
+      data-testid={`configuration-${configuration.slotKey}`}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -36,8 +39,12 @@ export function ConfigurationCard({
             <Badge variant="outline">
               {SLOT_KEY_LABEL[configuration.slotKey]}
             </Badge>
-            <Badge variant="outline">{FAMILY_LABEL[challengeType.family]}</Badge>
-            {!configuration.isEnabled && <Badge variant="secondary">غير مفعّل</Badge>}
+            <Badge variant="outline">
+              {FAMILY_LABEL[challengeType.family]}
+            </Badge>
+            {!configuration.isEnabled && (
+              <Badge variant="secondary">غير مفعّل</Badge>
+            )}
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
             المكانيكا: {challengeType.name} ·{" "}

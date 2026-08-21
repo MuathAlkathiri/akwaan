@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowDownUp, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +17,13 @@ import {
   useDeleteContentItem,
   useScopes,
 } from "../../hooks/use-world-content";
-import { EntityFormDialog, RowSkeleton } from "../shared";
+import { EntityFormDialog, RowSkeleton, CountBadge } from "../shared";
+import {
+  difficultyCoverage,
+  difficultyDimensionsOf,
+  filterByDifficulty,
+  sortByDifficulty,
+} from "../../services/mechanic-difficulty.presentation";
 import { ContentItemCard } from "./content-item-card";
 import { ContentItemForm } from "./content-item-form";
 import type { ContentItem } from "../../types";
@@ -29,6 +35,48 @@ export function ContentItemSection({ worldId }: { worldId: string }) {
     worldId,
     scopeId: scopeFilter,
   });
+  /**
+   * Independent dimensions, composed rather than conflated.
+   *
+   * Scope narrows the query server-side. Difficulty is a mechanic's own metadata
+   * on the returned items — الكومبو's stage, المرحلة's band — so each mechanic that
+   * authors one gets its own filter, all of them compose with the Scope selection
+   * and with each other, and none of them implies anything about another.
+   */
+  const [difficultyFilters, setDifficultyFilters] = useState<
+    Record<string, string | number>
+  >({});
+  const [sortedBy, setSortedBy] = useState<string | null>(null);
+
+  // Only the mechanics actually represented in this list get controls.
+  const dimensions = useMemo(() => difficultyDimensionsOf(items), [items]);
+  const visible = useMemo(() => {
+    const filtered = dimensions.reduce(
+      (rows, dimension) =>
+        filterByDifficulty(
+          dimension,
+          rows,
+          difficultyFilters[dimension.key] ?? "all",
+        ),
+      items,
+    );
+    const sortDimension = dimensions.find(
+      (dimension) => dimension.key === sortedBy,
+    );
+    return sortDimension
+      ? sortByDifficulty(sortDimension, filtered)
+      : [...filtered];
+  }, [items, dimensions, difficultyFilters, sortedBy]);
+  // Counted across the Scope selection but *not* the difficulty filters: narrowing
+  // to صعب would otherwise zero the others and hide the shortage this is for.
+  const coverage = useMemo(
+    () =>
+      dimensions.map((dimension) => ({
+        dimension,
+        entries: difficultyCoverage(dimension, items),
+      })),
+    [dimensions, items],
+  );
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<ContentItem | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ContentItem | null>(null);
@@ -71,20 +119,104 @@ export function ContentItemSection({ worldId }: { worldId: string }) {
         </div>
       )}
 
+      {coverage.map(({ dimension, entries }) => {
+        const active = difficultyFilters[dimension.key] ?? "all";
+        return (
+          <div
+            key={dimension.key}
+            className="space-y-2"
+            data-testid={`${dimension.key}-difficulty-controls`}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                الصعوبة — {dimension.mechanicName}
+              </span>
+              <Button
+                size="sm"
+                variant={active === "all" ? "default" : "outline"}
+                onClick={() =>
+                  setDifficultyFilters((current) => {
+                    const next = { ...current };
+                    delete next[dimension.key];
+                    return next;
+                  })
+                }
+              >
+                الكل
+              </Button>
+              {dimension.values.map((entry) => (
+                <Button
+                  key={entry.value}
+                  size="sm"
+                  variant={active === entry.value ? "default" : "outline"}
+                  onClick={() =>
+                    setDifficultyFilters((current) => ({
+                      ...current,
+                      [dimension.key]: entry.value,
+                    }))
+                  }
+                >
+                  {entry.label}
+                </Button>
+              ))}
+              <Button
+                size="sm"
+                variant={sortedBy === dimension.key ? "default" : "outline"}
+                aria-pressed={sortedBy === dimension.key}
+                onClick={() =>
+                  setSortedBy((current) =>
+                    current === dimension.key ? null : dimension.key,
+                  )
+                }
+                data-testid={`${dimension.key}-difficulty-sort`}
+              >
+                <ArrowDownUp className="me-1.5 size-4" />
+                ترتيب حسب الصعوبة
+              </Button>
+            </div>
+            {/* Authoring information, not a rule: the counts need not match, and a
+                Scope need not cover every difficulty. There is no approved
+                threshold, so nothing here calls a difficulty complete — it exists
+                so a shortage is visible before a launch trips over it. The first
+                number is what a game could draw today; drafts are named apart. */}
+            <div
+              className="flex flex-wrap items-center gap-2"
+              data-testid={`${dimension.key}-difficulty-coverage`}
+            >
+              {entries.map((entry) => (
+                <CountBadge
+                  key={entry.value}
+                  count={entry.ready}
+                  label={
+                    entry.count === entry.ready
+                      ? `${entry.label} جاهز`
+                      : `${entry.label} جاهز من ${entry.count}`
+                  }
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
       {isLoading ? (
         <RowSkeleton rows={3} />
-      ) : !items.length ? (
+      ) : !visible.length ? (
         <EmptyState
-          title="لا يوجد محتوى بعد"
+          title={
+            items.length ? "لا يوجد محتوى بهذه الصعوبة" : "لا يوجد محتوى بعد"
+          }
           description={
-            scopes.length
-              ? "أضف أول عنصر محتوى لهذا العالم."
-              : "أضف نطاقاً أولاً قبل إضافة المحتوى."
+            items.length
+              ? "جرّب صعوبة أخرى أو اختر الكل."
+              : scopes.length
+                ? "أضف أول عنصر محتوى لهذا العالم."
+                : "أضف نطاقاً أولاً قبل إضافة المحتوى."
           }
         />
       ) : (
         <div className="space-y-3">
-          {items.map((item) => (
+          {visible.map((item) => (
             <ContentItemCard
               key={item.id}
               item={item}

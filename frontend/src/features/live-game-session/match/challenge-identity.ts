@@ -1,5 +1,7 @@
 import {
+  Bomb,
   Eye,
+  Flame,
   Gamepad2,
   Lightbulb,
   ListOrdered,
@@ -32,6 +34,8 @@ export const CHALLENGE_ICONS: Readonly<Record<string, LucideIcon>> = {
   closest: Target,
   "one-clue": Lightbulb,
   "distributed-information": Puzzle,
+  combo: Flame,
+  bomb: Bomb,
 };
 
 /** The icon for anything not in the registry. Never shared with a known type. */

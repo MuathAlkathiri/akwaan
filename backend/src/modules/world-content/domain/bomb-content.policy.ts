@@ -73,6 +73,110 @@ function imageOf(
   return { url: asset.url.trim(), altText: asset.altText?.trim() ?? '' };
 }
 
+/** One coded reason an authored Bomb item cannot be played. */
+export interface BombItemProblem {
+  code: string;
+  message: string;
+}
+
+/**
+ * The **per-item** half of the Bomb contract, and the only home for it.
+ *
+ * Authoring validates one item at a time; a launch validates the ordered run.
+ * Both ask this same function, which is what guarantees the invariant that
+ * matters: an item the admin form accepted cannot later fail a launch because of
+ * its own shape. Only the run-level rules — the 10–15 count and distinctness —
+ * live in `buildBombRuntimeItems`, because a single item cannot satisfy them.
+ *
+ * Returns the runtime projection when the item is playable, so the launch path
+ * derives its values from the same pass that validated them.
+ */
+export function readBombItem(
+  item: BombAuthoredItem,
+  position: number,
+): { problems: BombItemProblem[]; value: BombRuntimeItem | null } {
+  const problem = (code: string, message: string) => ({
+    problems: [{ code, message }],
+    value: null,
+  });
+
+  if (item.status && item.status !== ContentItemStatus.READY) {
+    return problem(
+      'BOMB_ITEM_NOT_READY',
+      `Item ${position} is not ready and cannot be played.`,
+    );
+  }
+
+  const image = imageOf(item);
+  if (!image) {
+    return problem(
+      'BOMB_ITEM_MEDIA_REQUIRED',
+      `Item ${position} needs one image; Bomb is played by looking at a picture.`,
+    );
+  }
+
+  if (
+    item.answerPayload?.mode &&
+    item.answerPayload.mode !== ChallengeAnswerMode.MATCH
+  ) {
+    return problem(
+      'BOMB_ITEM_ANSWER_MODE_INVALID',
+      `Item ${position} must use a match answer; Bomb grades typed text.`,
+    );
+  }
+
+  const authored = item.answerPayload?.acceptedAnswers ?? [];
+  if (!authored.length || authored.length > BOMB_MAX_ANSWERS) {
+    return problem(
+      'BOMB_ITEM_ANSWERS_INVALID',
+      `Item ${position} needs 1–${BOMB_MAX_ANSWERS} accepted answers.`,
+    );
+  }
+
+  // Normalized here, once, so gameplay compares like with like. Two spellings
+  // that normalize to the same string are a duplicate, not two answers.
+  const seen = new Set<string>();
+  const acceptedAnswers: string[] = [];
+  for (const raw of authored) {
+    const display = String(raw ?? '').trim();
+    const normalized = normalizeAnswer(display);
+    if (!normalized || display.length > BOMB_MAX_ANSWER_LENGTH) {
+      return problem(
+        'BOMB_ITEM_ANSWER_INVALID',
+        `Item ${position} has an answer that is empty or longer than ${BOMB_MAX_ANSWER_LENGTH} characters.`,
+      );
+    }
+    if (seen.has(normalized)) {
+      return problem(
+        'BOMB_ITEM_ANSWER_DUPLICATE',
+        `Item ${position} repeats the same answer.`,
+      );
+    }
+    seen.add(normalized);
+    acceptedAnswers.push(display);
+  }
+
+  const prompt = item.prompt?.ar?.trim();
+  if (!prompt) {
+    return problem(
+      'BOMB_ITEM_PROMPT_REQUIRED',
+      `Item ${position} needs an Arabic prompt.`,
+    );
+  }
+
+  // Exactly the four fields gameplay needs. Nothing else about the authored
+  // ContentItem — ids, status, English text, metadata — reaches the runtime.
+  return {
+    problems: [],
+    value: {
+      prompt,
+      imageUrl: image.url,
+      altText: image.altText,
+      acceptedAnswers,
+    },
+  };
+}
+
 /**
  * Validate an ordered Bomb selection and reduce it to the runtime item list.
  *
@@ -97,79 +201,8 @@ export function buildBombRuntimeItems(
   }
 
   return items.map((item, index) => {
-    const position = index + 1;
-
-    if (item.status && item.status !== ContentItemStatus.READY) {
-      reject(
-        'BOMB_ITEM_NOT_READY',
-        `Item ${position} is not ready and cannot be played.`,
-      );
-    }
-
-    const image = imageOf(item);
-    if (!image) {
-      reject(
-        'BOMB_ITEM_MEDIA_REQUIRED',
-        `Item ${position} needs one image; Bomb is played by looking at a picture.`,
-      );
-    }
-
-    if (
-      item.answerPayload?.mode &&
-      item.answerPayload.mode !== ChallengeAnswerMode.MATCH
-    ) {
-      reject(
-        'BOMB_ITEM_ANSWER_MODE_INVALID',
-        `Item ${position} must use a match answer; Bomb grades typed text.`,
-      );
-    }
-
-    const authored = item.answerPayload?.acceptedAnswers ?? [];
-    if (!authored.length || authored.length > BOMB_MAX_ANSWERS) {
-      reject(
-        'BOMB_ITEM_ANSWERS_INVALID',
-        `Item ${position} needs 1–${BOMB_MAX_ANSWERS} accepted answers.`,
-      );
-    }
-
-    // Normalized here, once, so gameplay compares like with like. Two spellings
-    // that normalize to the same string are a duplicate, not two answers.
-    const seen = new Set<string>();
-    const acceptedAnswers: string[] = [];
-    for (const raw of authored) {
-      const display = String(raw ?? '').trim();
-      const normalized = normalizeAnswer(display);
-      if (!normalized || display.length > BOMB_MAX_ANSWER_LENGTH) {
-        reject(
-          'BOMB_ITEM_ANSWER_INVALID',
-          `Item ${position} has an answer that is empty or longer than ${BOMB_MAX_ANSWER_LENGTH} characters.`,
-        );
-      }
-      if (seen.has(normalized)) {
-        reject(
-          'BOMB_ITEM_ANSWER_DUPLICATE',
-          `Item ${position} repeats the same answer.`,
-        );
-      }
-      seen.add(normalized);
-      acceptedAnswers.push(display);
-    }
-
-    const prompt = item.prompt?.ar?.trim();
-    if (!prompt) {
-      reject(
-        'BOMB_ITEM_PROMPT_REQUIRED',
-        `Item ${position} needs an Arabic prompt.`,
-      );
-    }
-
-    // Exactly the four fields gameplay needs. Nothing else about the authored
-    // ContentItem — ids, status, English text, metadata — reaches the runtime.
-    return {
-      prompt,
-      imageUrl: image.url,
-      altText: image.altText,
-      acceptedAnswers,
-    };
+    const { problems, value } = readBombItem(item, index + 1);
+    if (!value) reject(problems[0].code, problems[0].message);
+    return value;
   });
 }

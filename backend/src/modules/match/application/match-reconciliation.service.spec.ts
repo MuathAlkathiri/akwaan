@@ -24,6 +24,7 @@ import {
   MatchTransitionNotifier,
 } from './match-transition.notifier';
 import { RuntimeScoreEventCollector } from './runtime-score-event.collector';
+import { ContentExposureService } from './content-exposure.service';
 
 const CHALLENGE_KEY = 'read-your-opponent';
 const RUNTIME_ID = 'runtime-1';
@@ -165,6 +166,15 @@ describe('MatchReconciliationService', () => {
         publishEvent: (_sessionId, event, payload) =>
           published.push({ event, payload }),
       }),
+      // Releasing unseen reservations has its own suites; these assert
+      // reconciliation, and a release must never influence its outcome.
+      {
+        releaseUnseen: () => Promise.resolve(0),
+        recordPresented: () => Promise.resolve(0),
+      } as unknown as ContentExposureService,
+      // No session lookup needed: the launcher used here reports no presentation,
+      // so recording returns before it would be consulted.
+      { findById: () => Promise.resolve(null) } as never,
     );
     return { service, saves, published, current: load };
   };
@@ -423,5 +433,97 @@ describe('MatchReconciliationService', () => {
 
     expect(result.outcome).toBe('no_current_challenge');
     expect(published).toEqual([]);
+  });
+  /**
+   * Spending content is keyed to *presentation*, and a mechanic that draws on
+   * demand has no launch binding to check the presented ids against.
+   */
+  describe('recording what was presented', () => {
+    const presenting = (options: {
+      contentItemCount: number;
+      presented: string[];
+    }): MatchChallengeLauncher => ({
+      ...launcher(),
+      launchRequirements: {
+        contentItemCount: options.contentItemCount,
+        requiresPhones: true,
+      },
+      presentedContentItemIds: () => [...options.presented],
+    });
+
+    const recording = (
+      bound: string[],
+      launcherOverride: MatchChallengeLauncher,
+    ) => {
+      const match = inChallenge();
+      // Rebind the position with the binding this case is about.
+      const state = match.serialize();
+      state.currentChallenge = {
+        ...state.currentChallenge!,
+        contentItemIds: [...bound],
+      };
+      const rebound = Match.restore(
+        state,
+        scoring.restoreEvents(state.scoreEvents),
+      );
+      const recorded: string[][] = [];
+      const launchers = new ChallengeLauncherRegistry();
+      launchers.register(launcherOverride);
+      const service = new MatchReconciliationService(
+        new GameplayObserverRegistry(),
+        {
+          create: () => Promise.resolve(),
+          findById: () => Promise.resolve(rebound),
+          findActiveBySessionId: () => Promise.resolve(rebound),
+          findLatestBySessionId: () => Promise.resolve(rebound),
+          findAwaitingConvergence: () => Promise.resolve([]),
+          save: () => Promise.resolve(),
+        } as MatchRepository,
+        launchers,
+        new RuntimeScoreEventCollector(scoring),
+        scoring,
+        { now: () => now },
+        new MatchTransitionNotifier({
+          publish: () => undefined,
+          publishEvent: () => undefined,
+        }),
+        {
+          releaseUnseen: () => Promise.resolve(0),
+          recordPresented: (_scope: unknown, ids: string[]) => {
+            recorded.push([...ids]);
+            return Promise.resolve(ids.length);
+          },
+        } as unknown as ContentExposureService,
+        {
+          findById: () => Promise.resolve({ controllerActorId: 'account-1' }),
+        } as never,
+      );
+      return { service, recorded };
+    };
+
+    it('spends what an on-demand mechanic showed, with no binding to check', async () => {
+      const { service, recorded } = recording(
+        [],
+        presenting({ contentItemCount: 0, presented: ['drawn-1', 'drawn-2'] }),
+      );
+
+      await notify(service, runtimeState('question'));
+
+      // The ids came from the server's own draw, committed through a
+      // controller-only command — there is nothing else they could be checked
+      // against, and not recording them would silently break no-repeat.
+      expect(recorded).toEqual([['drawn-1', 'drawn-2']]);
+    });
+
+    it('still refuses anything outside a bound mechanic’s own deck', async () => {
+      const { service, recorded } = recording(
+        ['a', 'b', 'c'],
+        presenting({ contentItemCount: 3, presented: ['a', 'stranger'] }),
+      );
+
+      await notify(service, runtimeState('revealing'));
+
+      expect(recorded).toEqual([['a']]);
+    });
   });
 });

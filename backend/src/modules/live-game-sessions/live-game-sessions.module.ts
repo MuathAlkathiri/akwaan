@@ -124,6 +124,10 @@ import { GameplayDeadlineScheduler } from './application/gameplay-deadline.sched
 import { GAMEPLAY_DEADLINE_SYNCHRONIZER } from './application/gameplay-deadline.port';
 import { GameplayObserverRegistry } from './application/gameplay-observer.registry';
 import { StartClosestGameplay } from './application/start-closest-gameplay.use-case';
+import { StartMarhalaGameplay } from './application/start-marhala-gameplay.use-case';
+import { MarhalaQuestionSourceRegistry } from './application/marhala-question-source.registry';
+import { MarhalaTurnSupplier } from './application/marhala-turn.supplier';
+import { StartComboGameplay } from './application/start-combo-gameplay.use-case';
 import { StartOneClueGameplay } from './application/start-one-clue-gameplay.use-case';
 
 const applicationProviders = [
@@ -180,6 +184,7 @@ const applicationProviders = [
   StartDistributedInformation,
   GameplayDeadlineScheduler,
   StartClosestGameplay,
+  StartComboGameplay,
   StartOneClueGameplay,
 ];
 
@@ -218,6 +223,9 @@ const applicationProviders = [
     GameplayParticipantInteractionController,
   ],
   providers: [
+    StartMarhalaGameplay,
+    MarhalaQuestionSourceRegistry,
+    MarhalaTurnSupplier,
     LiveGameModeRegistry,
     LiveGameSessionSnapshotMapper,
     GameplayModeRegistry,
@@ -279,6 +287,10 @@ const applicationProviders = [
   // Exported so the Match layer can register itself without this module
   // ever needing to know that a Match exists.
   exports: [
+    // The Match layer registers its content source here; the supplier itself
+    // is internal and is driven by the observer registry.
+    MarhalaQuestionSourceRegistry,
+    StartMarhalaGameplay,
     CancelGameplayRuntime,
     GameplayObserverRegistry,
     GetLiveGameSession,
@@ -287,6 +299,7 @@ const applicationProviders = [
     StartRyoGameplay,
     StartTop5,
     StartClosestGameplay,
+    StartComboGameplay,
     StartOneClueGameplay,
     StartDistributedInformation,
     GAMEPLAY_RUNTIME_REPOSITORY,

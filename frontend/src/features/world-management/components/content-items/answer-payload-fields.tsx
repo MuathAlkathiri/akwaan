@@ -25,7 +25,11 @@ interface AnswerPayloadFieldsProps {
   availableModes: ChallengeAnswerMode[];
 }
 
-const CONSENSUS_RULES: VoteConsensusRule[] = ["exact", "majority", "team_match"];
+const CONSENSUS_RULES: VoteConsensusRule[] = [
+  "exact",
+  "majority",
+  "team_match",
+];
 
 /**
  * One editor for all six answer modes, driven by the payload discriminator.
@@ -36,7 +40,8 @@ export function AnswerPayloadFields({
   onChange,
   availableModes,
 }: AnswerPayloadFieldsProps) {
-  const set = (patch: Partial<AnswerFormState>) => onChange({ ...value, ...patch });
+  const set = (patch: Partial<AnswerFormState>) =>
+    onChange({ ...value, ...patch });
   const modes = availableModes.length ? availableModes : [value.mode];
   const usesOptions =
     value.mode === "multiple_choice" ||
@@ -44,7 +49,8 @@ export function AnswerPayloadFields({
     value.mode === "ryo";
   const usesNumeric =
     value.mode === "closest" ||
-    (value.mode === "ryo" && !value.options.some((option) => option.label.trim()));
+    (value.mode === "ryo" &&
+      !value.options.some((option) => option.label.trim()));
   const usesAcceptedAnswers = value.mode === "match" || value.mode === "split";
 
   const setOption = (index: number, label: string) =>
@@ -155,7 +161,9 @@ export function AnswerPayloadFields({
               type="number"
               min={0}
               value={value.acceptedTolerance}
-              onChange={(event) => set({ acceptedTolerance: event.target.value })}
+              onChange={(event) =>
+                set({ acceptedTolerance: event.target.value })
+              }
             />
           </div>
         </div>
@@ -172,7 +180,8 @@ export function AnswerPayloadFields({
             onChange={(event) => set({ acceptedAnswers: event.target.value })}
           />
           <p className="mt-1 text-xs text-muted-foreground">
-            تُقارن آلياً بعد تطبيع النص العربي، فلا حاجة لتكرار صيغ الألف والهمزة.
+            تُقارن آلياً بعد تطبيع النص العربي، فلا حاجة لتكرار صيغ الألف
+            والهمزة.
           </p>
         </div>
       )}

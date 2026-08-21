@@ -9,6 +9,12 @@ import {
 import { WorldContentStatus } from '../modules/world-content/domain/world-content.constants';
 
 const APPLY = process.argv.includes('--apply');
+const ONLY = process.argv
+  .find((argument) => argument.startsWith('--only='))
+  ?.slice('--only='.length)
+  .split(',')
+  .map((slug) => slug.trim())
+  .filter(Boolean);
 const MONGO_URI =
   process.env.MONGODB_URI ?? 'mongodb://localhost:27017/lammah-quiz';
 
@@ -34,6 +40,8 @@ export function canonicalProvisionedDocument(
 
 export interface ProductionMechanicProvisionReport {
   apply: boolean;
+  /** Slugs this run was restricted to, when it was scoped. */
+  only?: string[];
   entries: Array<{
     slug: string;
     outcome: 'create' | 'update' | 'unchanged' | 'intentionally-deleted';
@@ -43,16 +51,40 @@ export interface ProductionMechanicProvisionReport {
 }
 
 export class ProductionMechanicProvisioner {
+  /**
+   * @param only Restrict the run to these slugs. Rolling one mechanic out is a
+   *   scoped operation: the full sweep would also provision every *other*
+   *   mechanic that happens to be missing, which turns a single rollout into an
+   *   unrelated catalog change. Omit to sweep everything, as before.
+   */
   constructor(
     private readonly db: Db,
     private readonly apply: boolean,
-  ) {}
+    private readonly only?: readonly string[],
+  ) {
+    const unknown = (only ?? []).filter(
+      (slug) => !PRODUCTION_MECHANICS.some((entry) => entry.slug === slug),
+    );
+    if (unknown.length) {
+      throw new Error(
+        `Not a production mechanic slug: ${unknown.join(', ')}. ` +
+          `Known: ${PRODUCTION_MECHANICS.map((entry) => entry.slug).join(', ')}`,
+      );
+    }
+  }
+
+  private get selected(): readonly ProductionMechanicDefinition[] {
+    if (!this.only?.length) return PRODUCTION_MECHANICS;
+    return PRODUCTION_MECHANICS.filter((entry) =>
+      this.only!.includes(entry.slug),
+    );
+  }
 
   async run(): Promise<ProductionMechanicProvisionReport> {
     const collection = this.db.collection('challenge_types');
     const lifecycle = this.db.collection('production_mechanic_lifecycle');
     const entries: ProductionMechanicProvisionReport['entries'] = [];
-    for (const definition of PRODUCTION_MECHANICS) {
+    for (const definition of this.selected) {
       const existing = await collection.findOne({ slug: definition.slug });
       const deletedByAdmin = await lifecycle.findOne({
         slug: definition.slug,
@@ -104,7 +136,11 @@ export class ProductionMechanicProvisioner {
         changedFields,
       });
     }
-    return { apply: this.apply, entries };
+    return {
+      apply: this.apply,
+      ...(this.only?.length ? { only: [...this.only] } : {}),
+      entries,
+    };
   }
 }
 
@@ -112,7 +148,7 @@ async function main(): Promise<void> {
   await mongoose.connect(MONGO_URI);
   const db = mongoose.connection.db;
   if (!db) throw new Error('MongoDB connection is not ready');
-  const report = await new ProductionMechanicProvisioner(db, APPLY).run();
+  const report = await new ProductionMechanicProvisioner(db, APPLY, ONLY).run();
   console.log(JSON.stringify(report, null, 2));
   await mongoose.disconnect();
 }

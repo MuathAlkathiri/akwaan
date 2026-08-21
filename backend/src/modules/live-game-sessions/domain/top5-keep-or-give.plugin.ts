@@ -468,6 +468,20 @@ export const TOP5_KEEP_OR_GIVE_PLUGIN: GameplayModePlugin = {
   // was handed to, and a player who leaves is handed off rather than timed out.
   createInitialRuntimeState: (context) =>
     validateRuntime(context.initialState ?? {}),
+  /**
+   * The single ContentItem this challenge is built from.
+   *
+   * "أفضل 5" is not a run of items: one authored item carries the whole ranked
+   * list, and its cards are entries inside that item rather than separate
+   * ContentItems. So there is exactly one exposure, and it happens as soon as a
+   * runtime exists — the list is on screen from the first turn.
+   */
+  presentedContentItemIds({ runtimeState }) {
+    const contentItemId = runtimeState.contentItemId;
+    return typeof contentItemId === 'string' && contentItemId
+      ? [contentItemId]
+      : [];
+  },
   createInitialRoundState(context) {
     const runtime = validateRuntime(context.runtimeState ?? {});
     const assignments = parseTeamActionAssignments(runtime.teamActionJson);

@@ -33,6 +33,7 @@ import {
 import { MatchChallengeReadinessService } from './match-challenge-readiness.service';
 import { MATCH_CLOCK, MatchClock } from './match-clock';
 import { MatchContentSelector } from './match-content-selection.service';
+import { ContentExposureService } from './content-exposure.service';
 import { MatchContentPool } from './match-content-pool.service';
 import {
   MatchTransitionNotifier,
@@ -80,6 +81,7 @@ export class MatchUseCases {
     private readonly contentPool: MatchContentPool,
     private readonly unifiedSetup: UnifiedMatchSetupValidator,
     private readonly contentSelector: MatchContentSelector,
+    private readonly exposureLedger: ContentExposureService,
     private readonly readiness: MatchChallengeReadinessService,
     private readonly joinAccess: GetSessionJoinAccess,
     private readonly createJoinAccess: CreateSessionJoinAccess,
@@ -416,9 +418,25 @@ export class MatchUseCases {
             launcher.launchRequirements.readiness ?? pending.readiness,
         });
       }
+      // Whose history applies. The Match's owner is the account that controls the
+      // live session — never a phone participant, so who is holding a phone this
+      // evening cannot change what the account has already been shown.
+      const session = await this.sessions.findById(command.sessionId);
+      const exposureScope = session
+        ? {
+            ownerAccountId: session.controllerActorId,
+            // The mechanic's slug: the same key the launcher registry and the
+            // presentation observer dispatch on, so both ends of the ledger
+            // agree without either resolving an ObjectId.
+            challengeTypeKey: context.slot.challengeTypeSlug,
+            matchId: context.match.id,
+          }
+        : undefined;
+      const now = this.clock.now();
+
       // Deterministic in the Match and the position, so a retry that gets this
       // far draws exactly the set the first attempt drew.
-      return this.contentSelector.select({
+      const selected = await this.contentSelector.select({
         matchId: context.match.id,
         occurrenceIndex: context.occurrence.index,
         worldId: context.occurrence.worldId,
@@ -431,7 +449,26 @@ export class MatchUseCases {
         usedContentItemIds: context.match.usedContentItemIds(
           context.occurrence.index,
         ),
+        ...(exposureScope ? { exposureScope, now } : {}),
       });
+
+      // Claim the draw before anything is started. A concurrent Match of the same
+      // account that reached the same items first wins them, and this launch fails
+      // rather than showing one account the same question twice.
+      if (exposureScope) {
+        const { lost } = await this.exposureLedger.reserve(
+          exposureScope,
+          selected,
+          now,
+        );
+        if (lost.length) {
+          throw new MatchDomainError(
+            'MATCH_CONTENT_RESERVED_ELSEWHERE',
+            `${lost.length} of the drawn items were claimed by another Match of this account; retry the launch`,
+          );
+        }
+      }
+      return selected;
     });
   }
 
@@ -562,6 +599,11 @@ export class MatchUseCases {
       await this.matches.save(match, revision);
     } catch (error) {
       await this.compensateUnboundRuntime(command, runtimeId);
+      // The draw claimed content before the runtime started. If the binding never
+      // saved, nothing was ever shown, so the claim must go back — otherwise the
+      // compensating relaunch is blocked by its own predecessor's reservation
+      // until the TTL expires.
+      await this.exposureLedger.releaseUnseen(match.id).catch(() => undefined);
       throw error;
     }
     this.transitions.publish(match, 'challenge-launched');

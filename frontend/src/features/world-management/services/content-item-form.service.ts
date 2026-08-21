@@ -35,6 +35,8 @@ export interface ContentItemFormValues {
   top5: Top5FormState;
   distributed: DistributedFormState;
   oneClue: OneClueFormState;
+  combo: ComboFormState;
+  marhala: MarhalaFormState;
 }
 
 /** A ContentItem cannot carry two different mechanic-owned payload shapes. */
@@ -50,6 +52,126 @@ export function selectCompatibleContentPattern(
     ),
     nextId,
   ];
+}
+
+/**
+ * "صعوبة السؤال" as an author picks it, and the stage it means.
+ *
+ * The label is authoring copy; `stage` is the canonical value that persists. A
+ * Combo run rises through these four in order, so the stage *is* the question's
+ * position in the run — which is why it is Combo's own metadata and not a shared
+ * `difficulty` field other mechanics would inherit a meaning for.
+ */
+export const COMBO_DIFFICULTIES = [
+  { stage: 1, label: "متوسط" },
+  { stage: 2, label: "متوسط صعب" },
+  { stage: 3, label: "صعب" },
+  { stage: 4, label: "صعب جدًا" },
+] as const;
+
+export type ComboStageValue = (typeof COMBO_DIFFICULTIES)[number]["stage"];
+
+export const COMBO_CHALLENGE_SLUG = "combo";
+
+/**
+ * Whether the author has selected الكومبو.
+ *
+ * By slug, deliberately: Combo answers in the generic `match` mode that every
+ * typed-answer mechanic shares, so neither the answer mode nor its content
+ * pattern can single it out.
+ */
+export function hasComboMechanic(
+  selected: ReadonlyArray<{ challengeType: { slug: string } }>,
+): boolean {
+  return selected.some(
+    (configuration) =>
+      configuration.challengeType.slug === COMBO_CHALLENGE_SLUG,
+  );
+}
+
+export interface ComboFormState {
+  enabled: boolean;
+  /** Empty until the author chooses; never defaulted to a stage on their behalf. */
+  stage: ComboStageValue | "";
+}
+
+function emptyComboState(): ComboFormState {
+  return { enabled: false, stage: "" };
+}
+
+/** The stage on a saved item, or empty when it carries none. */
+export function toComboFormState(
+  payload: { comboStage?: unknown } | undefined,
+): ComboFormState {
+  const stage = payload?.comboStage;
+  const known = COMBO_DIFFICULTIES.find((entry) => entry.stage === stage);
+  return known ? { enabled: true, stage: known.stage } : emptyComboState();
+}
+
+/**
+ * "صعوبة السؤال" for المرحلة, and the band it means.
+ *
+ * The values are the backend's own vocabulary verbatim — a team elects one of
+ * these *before* the question is drawn, and the band decides how far a correct
+ * answer can move them. Deliberately not Combo's stage: a stage is a position in
+ * a fixed progression, a band is a risk the players choose, and sharing one field
+ * would let a rebalance of either silently change the other's gameplay.
+ */
+export const MARHALA_DIFFICULTIES = [
+  { value: "easy", label: "سهل" },
+  { value: "medium", label: "متوسط" },
+  { value: "hard", label: "صعب" },
+] as const;
+
+export type MarhalaDifficultyValue =
+  (typeof MARHALA_DIFFICULTIES)[number]["value"];
+
+export const MARHALA_CHALLENGE_SLUG = "marhala";
+
+/**
+ * Whether the author has selected المرحلة.
+ *
+ * By slug, like Combo and for the same reason: Marhala answers in the generic
+ * `match` mode every typed-answer mechanic shares, so neither the answer mode nor
+ * the content pattern can single it out.
+ */
+export function hasMarhalaMechanic(
+  selected: ReadonlyArray<{ challengeType: { slug: string } }>,
+): boolean {
+  return selected.some(
+    (configuration) =>
+      configuration.challengeType.slug === MARHALA_CHALLENGE_SLUG,
+  );
+}
+
+export interface MarhalaFormState {
+  enabled: boolean;
+  /** Empty until the author chooses; never defaulted to a band on their behalf. */
+  difficulty: MarhalaDifficultyValue | "";
+  /**
+   * Set when the saved item carries a difficulty this contract does not define.
+   *
+   * Such an item is unplayable — the runtime draw reads the same predicate the
+   * form does — so the author is told the stored value is unusable and asked to
+   * choose. Nothing is guessed on their behalf: inventing سهل for a broken value
+   * would silently change what the item does in a race.
+   */
+  unknownStored?: string;
+}
+
+function emptyMarhalaState(): MarhalaFormState {
+  return { enabled: false, difficulty: "" };
+}
+
+/** The band on a saved item, empty when it carries none, flagged when unusable. */
+export function toMarhalaFormState(
+  payload: { marhalaDifficulty?: unknown } | undefined,
+): MarhalaFormState {
+  const raw = payload?.marhalaDifficulty;
+  const known = MARHALA_DIFFICULTIES.find((entry) => entry.value === raw);
+  if (known) return { enabled: true, difficulty: known.value };
+  if (raw === undefined || raw === null) return emptyMarhalaState();
+  return { enabled: true, difficulty: "", unknownStored: String(raw) };
 }
 
 export const ONE_CLUE_VALUES = [5, 4, 3, 2, 1] as const;
@@ -214,6 +336,8 @@ export function emptyContentItemForm(scopeId: string): ContentItemFormValues {
     top5: emptyTop5State(),
     distributed: emptyDistributedState(),
     oneClue: emptyOneClueState(),
+    combo: emptyComboState(),
+    marhala: emptyMarhalaState(),
   };
 }
 
@@ -276,6 +400,12 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
     status: item.status,
     isReusableAcrossSessions: item.isReusableAcrossSessions,
     notes: item.metadata?.notes ?? "",
+    combo: toComboFormState(
+      item.mechanicPayload as { comboStage?: unknown } | undefined,
+    ),
+    marhala: toMarhalaFormState(
+      item.mechanicPayload as { marhalaDifficulty?: unknown } | undefined,
+    ),
     answer: {
       ...emptyAnswerState(payload.mode),
       mode: payload.mode,
@@ -503,6 +633,40 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
         })),
       }
     : undefined;
+  // Only the canonical stage is persisted — never the Arabic label.
+  const comboMechanicPayload =
+    values.combo.enabled && values.combo.stage !== ""
+      ? { comboStage: values.combo.stage }
+      : undefined;
+  // Same rule for المرحلة: the canonical band, never its Arabic label.
+  const marhalaMechanicPayload =
+    values.marhala.enabled && values.marhala.difficulty !== ""
+      ? { marhalaDifficulty: values.marhala.difficulty }
+      : undefined;
+  /**
+   * One payload holding every selected mechanic's own keys.
+   *
+   * An item may be compatible with more than one mechanic, and each owns a
+   * different part of this object — الكومبو its stage, المرحلة its band, ركّبها its
+   * segments. Merging rather than overwriting is what lets that be true: a
+   * mechanic contributes its keys or contributes nothing, and no mechanic can
+   * silently erase another's. The wrapper payloads remain mutually exclusive by
+   * content pattern, so they never actually meet.
+   */
+  const mechanicPayload =
+    (top5MechanicPayload ??
+    distributedMechanicPayload ??
+    oneClueMechanicPayload ??
+    comboMechanicPayload ??
+    marhalaMechanicPayload)
+      ? {
+          ...top5MechanicPayload,
+          ...distributedMechanicPayload,
+          ...oneClueMechanicPayload,
+          ...comboMechanicPayload,
+          ...marhalaMechanicPayload,
+        }
+      : undefined;
   const answerPayload = values.oneClue.enabled
     ? {
         mode: "match" as const,
@@ -530,13 +694,7 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
           },
         }),
     answerPayload,
-    ...(top5MechanicPayload ? { mechanicPayload: top5MechanicPayload } : {}),
-    ...(distributedMechanicPayload
-      ? { mechanicPayload: distributedMechanicPayload }
-      : {}),
-    ...(oneClueMechanicPayload
-      ? { mechanicPayload: oneClueMechanicPayload }
-      : {}),
+    ...(mechanicPayload ? { mechanicPayload } : {}),
     isReusableAcrossSessions: values.isReusableAcrossSessions,
     status: values.status,
     ...(values.notes.trim()
@@ -585,6 +743,14 @@ export function findLocalFormProblems(values: ContentItemFormValues): string[] {
   if (values.distributed.enabled) {
     problems.push(...findDistributedProblems(values));
   }
+  if (values.combo.enabled && values.combo.stage === "") {
+    problems.push("اختر صعوبة السؤال.");
+  }
+  if (values.marhala.enabled && values.marhala.difficulty === "") {
+    // Also the path a saved-but-unusable value takes: the author must choose one,
+    // and nothing is filled in for them.
+    problems.push("اختر صعوبة السؤال.");
+  }
   if (values.oneClue.enabled) {
     if (!values.oneClue.targetAnswer.trim())
       problems.push("الإجابة المستهدفة مطلوبة.");
@@ -599,5 +765,7 @@ export function findLocalFormProblems(values: ContentItemFormValues): string[] {
     if (new Set(clues).size !== clues.length)
       problems.push("لا يمكن تكرار نص الدليل نفسه.");
   }
-  return problems;
+  // Two mechanics can ask the author for the same thing — both take a صعوبة —
+  // and saying it twice reads as two different problems.
+  return [...new Set(problems)];
 }

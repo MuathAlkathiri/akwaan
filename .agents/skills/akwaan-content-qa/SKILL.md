@@ -48,7 +48,14 @@ description: >-
    - Verify the item matches the runtime content policy (`backend/src/modules/world-content/domain/*-content.policy.ts` and `ai/.opencode/validators/`).
    - Confirm required fields (e.g., image assets for Bomb, `clues` array for One Clue, `comboStage` for Combo).
 
-8. **Difficulty Calibration (When Relevant)**:
+8. **Bomb Semantic Alignment Invariant**:
+   - For every Bomb item, QA must independently verify that:
+     - The `prompt` type matches the subject category (`من هذا اللاعب؟`, `ما اسم هذا الملعب؟`, `لأي نادي يعود هذا الشعار؟`).
+     - `mediaIntent.subject` matches the entity.
+     - `acceptedAnswers` identify that exact entity.
+     - The actual image attached in `media.assets[0]` visually represents that same entity.
+   - Mismatches between visual media and accepted answers constitute a critical blocker.
+
+9. **Difficulty Calibration (When Relevant)**:
    - For staged mechanics like Combo (stages 1–4) or ladders like One Clue, verify the progression is monotonic and calibrated.
    - Ensure Scope and difficulty remain independent (never treat a whole Scope as inherently "easy" or "hard").
-

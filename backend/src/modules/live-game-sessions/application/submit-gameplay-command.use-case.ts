@@ -48,6 +48,7 @@ import {
 } from '../domain/distributed-information.plugin';
 import { GameplayObserverRegistry } from './gameplay-observer.registry';
 import { BOMB_MODE_KEY } from '../domain/bomb-gameplay.plugin';
+import { COMBO_MODE_KEY } from '../domain/combo-gameplay.plugin';
 import { CLOSEST_MODE_KEY } from '../domain/closest-gameplay.plugin';
 import { ONE_CLUE_MODE_KEY } from '../domain/one-clue-gameplay.plugin';
 
@@ -326,6 +327,7 @@ export class SubmitGameplayCommand {
         command,
         now,
       );
+      const comboTerminal = this.completeComboIfTerminal(runtime, command, now);
       if (sessionChanged) {
         await context.saveSession(session, previousSessionRevision);
       }
@@ -334,7 +336,8 @@ export class SubmitGameplayCommand {
         session,
         runtime,
         now,
-        terminal: terminal || closestTerminal || oneClueTerminal,
+        terminal:
+          terminal || closestTerminal || oneClueTerminal || comboTerminal,
       };
     });
 
@@ -580,6 +583,40 @@ export class SubmitGameplayCommand {
         actorId: command.actor.actorId,
         reason: 'closest-three-items-completed',
         result: { resultsJson: state.runtimeState.resultsJson },
+        now,
+      });
+    }
+    runtime.complete(
+      `${command.commandId}:runtime-complete`,
+      command.actor.actorId,
+      now,
+    );
+    return true;
+  }
+
+  /**
+   * Finalize a Combo runtime once both Runs have banked.
+   *
+   * The mode phase reaching `completed` is the mechanic's own conclusion; the
+   * runtime still has to be closed so the Match sees a terminal runtime and the
+   * board can move on. Same shape as the other mechanics' hooks.
+   */
+  private completeComboIfTerminal(
+    runtime: import('../domain/gameplay-runtime').GameplayRuntime,
+    command: GameplayRuntimeCommand,
+    now: Date,
+  ): boolean {
+    if (runtime.modeKey !== COMBO_MODE_KEY) return false;
+    const state = runtime.serialize();
+    if (state.runtimeState.phase !== 'completed') return false;
+    const round = state.activeRound;
+    if (round) {
+      runtime.completeRound({
+        roundId: round.id,
+        commandId: `${command.commandId}:round-complete`,
+        actorId: command.actor.actorId,
+        reason: 'combo-both-runs-complete',
+        result: { runResultsJson: state.runtimeState.runResultsJson },
         now,
       });
     }

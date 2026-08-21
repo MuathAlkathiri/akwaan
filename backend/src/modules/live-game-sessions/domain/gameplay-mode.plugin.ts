@@ -85,6 +85,22 @@ export const MODE_COMMAND_TYPES: readonly string[] = [
   'submit-one-clue-answer',
   'advance-one-clue-item',
   'expire-one-clue-stage',
+  // الكومبو.
+  'submit-combo-answer',
+  'cash-out-combo',
+  'continue-combo',
+  'arm-combo-break',
+  'advance-combo-run',
+  'expire-combo-question',
+  // المرحلة: a difficulty choice, the server-supplied question, the answer, the
+  // clock, the turn, and the honest end when no content remains.
+  'choose-marhala-difficulty',
+  'open-marhala-question',
+  'submit-marhala-answer',
+  'expire-marhala-question',
+  'advance-marhala-turn',
+  'refresh-marhala-availability',
+  'exhaust-marhala-content',
 ];
 
 export interface GameplayCommandDefinition {
@@ -177,6 +193,33 @@ export interface GameplayModePlugin {
     actor: InteractionActorProjection,
   ): GameplayModeState;
   projectRoundState(state: GameplayModeState): GameplayModeState;
+  /**
+   * Which content items this runtime has authoritatively **presented** so far.
+   *
+   * Optional and additive: a mechanic that does not answer simply never burns
+   * content, which is the safe default.
+   *
+   * The distinction this exists to draw is that **selection is not exposure**. A
+   * mechanic may draw, plan, or reserve far more content than a team reaches —
+   * Combo plans eight questions for a run that may end at two, Bomb selects up to
+   * fifteen items for a clock that may expire at seven. Only what a player was
+   * actually shown may be spent. So this returns the *cumulative* presented set
+   * for the state as committed, never the plan.
+   *
+   * Cumulative rather than incremental on purpose: re-reporting the same items is
+   * harmless because the ledger is idempotent, and it means a write that failed on
+   * an earlier mutation is repaired by the next one.
+   *
+   * `orderedContentItemIds` is the Match's own ordered binding for this
+   * challenge, for mechanics whose runtime deliberately does not carry content
+   * ids — Bomb strips them so the plugin never learns what a ContentItem is, and
+   * answers by position instead.
+   */
+  presentedContentItemIds?(input: {
+    runtimeState: GameplayModeState;
+    roundState: GameplayModeState;
+    orderedContentItemIds: readonly string[];
+  }): string[];
   readonly interaction?: GameplayInteractionPlugin;
   /**
    * This mechanic's own deadline contract, when it keeps a clock outside its

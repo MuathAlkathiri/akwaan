@@ -4,6 +4,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReadinessBadge, ReadinessChecklist } from "../shared";
+import { difficultyBadgeOf } from "../../services/mechanic-difficulty.presentation";
 import {
   ANSWER_MODE_LABEL,
   CONTENT_STATUS_LABEL,
@@ -22,6 +23,10 @@ export function ContentItemCard({
   onEdit,
   onDelete,
 }: ContentItemCardProps) {
+  // The difficulty the author saved on the item, for whichever mechanic asked for
+  // one. Never derived from the item's Scope, which says nothing about difficulty,
+  // and absent entirely for content no mechanic authored a difficulty for.
+  const difficulty = difficultyBadgeOf(item);
   return (
     <div className="space-y-2 rounded-xl border p-3">
       <div className="flex items-start gap-3">
@@ -29,6 +34,14 @@ export function ContentItemCard({
           <p className="font-medium">{item.prompt.ar}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <Badge variant="outline">{CONTENT_STATUS_LABEL[item.status]}</Badge>
+            {difficulty && (
+              <Badge
+                className="font-normal"
+                data-testid={`${difficulty.dimension.key}-difficulty-badge`}
+              >
+                الصعوبة: {difficulty.label}
+              </Badge>
+            )}
             <Badge variant="outline" className="font-normal">
               {ANSWER_MODE_LABEL[item.answerPayload.mode]}
             </Badge>

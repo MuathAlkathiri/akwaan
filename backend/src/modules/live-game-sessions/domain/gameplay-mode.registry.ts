@@ -8,8 +8,10 @@ import { BOMB_GAMEPLAY_PLUGIN } from './bomb-gameplay.plugin';
 import { RYO_GAMEPLAY_PLUGIN } from './ryo-gameplay.plugin';
 import { TOP5_KEEP_OR_GIVE_PLUGIN } from './top5-keep-or-give.plugin';
 import { DISTRIBUTED_INFORMATION_PLUGIN } from './distributed-information.plugin';
+import { COMBO_GAMEPLAY_PLUGIN } from './combo-gameplay.plugin';
 import { CLOSEST_GAMEPLAY_PLUGIN } from './closest-gameplay.plugin';
 import { ONE_CLUE_GAMEPLAY_PLUGIN } from './one-clue-gameplay.plugin';
+import { MARHALA_GAMEPLAY_PLUGIN } from './marhala-gameplay.plugin';
 
 @Injectable()
 export class GameplayModeRegistry {
@@ -52,10 +54,24 @@ export class GameplayModeRegistry {
     ],
     [
       this.registryKey(
+        COMBO_GAMEPLAY_PLUGIN.key,
+        COMBO_GAMEPLAY_PLUGIN.version,
+      ),
+      COMBO_GAMEPLAY_PLUGIN,
+    ],
+    [
+      this.registryKey(
         ONE_CLUE_GAMEPLAY_PLUGIN.key,
         ONE_CLUE_GAMEPLAY_PLUGIN.version,
       ),
       ONE_CLUE_GAMEPLAY_PLUGIN,
+    ],
+    [
+      this.registryKey(
+        MARHALA_GAMEPLAY_PLUGIN.key,
+        MARHALA_GAMEPLAY_PLUGIN.version,
+      ),
+      MARHALA_GAMEPLAY_PLUGIN,
     ],
   ]);
 

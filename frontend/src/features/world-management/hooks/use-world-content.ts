@@ -26,8 +26,13 @@ export function useWorlds() {
 export function useCreateWorld() {
   const invalidate = useInvalidateWorldContent();
   return useMutation({
-    mutationFn: ({ data, file }: { data: Record<string, unknown>; file?: File }) =>
-      api.createWorld(data, file),
+    mutationFn: ({
+      data,
+      file,
+    }: {
+      data: Record<string, unknown>;
+      file?: File;
+    }) => api.createWorld(data, file),
     onSuccess: invalidate,
   });
 }
@@ -69,8 +74,13 @@ export function useScopes(worldId?: string) {
 export function useCreateScope(worldId: string) {
   const invalidate = useInvalidateWorldContent();
   return useMutation({
-    mutationFn: ({ data, file }: { data: Record<string, unknown>; file?: File }) =>
-      api.createScope(worldId, data, file),
+    mutationFn: ({
+      data,
+      file,
+    }: {
+      data: Record<string, unknown>;
+      file?: File;
+    }) => api.createScope(worldId, data, file),
     onSuccess: invalidate,
   });
 }
@@ -120,8 +130,13 @@ export function useWorldContentMetadata() {
 export function useCreateChallengeType() {
   const invalidate = useInvalidateWorldContent();
   return useMutation({
-    mutationFn: ({ data, file }: { data: Record<string, unknown>; file?: File }) =>
-      api.createChallengeType(data, file),
+    mutationFn: ({
+      data,
+      file,
+    }: {
+      data: Record<string, unknown>;
+      file?: File;
+    }) => api.createChallengeType(data, file),
     onSuccess: invalidate,
   });
 }
@@ -171,8 +186,13 @@ export function useWorldBoard(worldId?: string) {
 export function useCreateWorldChallengeConfiguration(worldId: string) {
   const invalidate = useInvalidateWorldContent();
   return useMutation({
-    mutationFn: ({ data, file }: { data: Record<string, unknown>; file?: File }) =>
-      api.createWorldChallengeConfiguration(worldId, data, file),
+    mutationFn: ({
+      data,
+      file,
+    }: {
+      data: Record<string, unknown>;
+      file?: File;
+    }) => api.createWorldChallengeConfiguration(worldId, data, file),
     onSuccess: invalidate,
   });
 }
@@ -198,6 +218,37 @@ export function useDeleteWorldChallengeConfiguration() {
   return useMutation({
     mutationFn: (configurationId: string) =>
       api.deleteWorldChallengeConfiguration(configurationId),
+    onSuccess: invalidate,
+  });
+}
+
+/**
+ * The removal impact, fetched only while a confirmation dialog is open.
+ *
+ * Never cached across dialogs: the count is the basis for a destructive decision,
+ * so it is re-read from the server each time rather than reused.
+ */
+export function useWorldSlotRemovalPreview(configurationId?: string) {
+  return useQuery({
+    queryKey: ["world-slot-removal-preview", configurationId],
+    queryFn: () => api.fetchWorldSlotRemovalPreview(configurationId!),
+    enabled: Boolean(configurationId),
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+export function useReleaseWorldSlot() {
+  const invalidate = useInvalidateWorldContent();
+  return useMutation({
+    mutationFn: (input: {
+      configurationId: string;
+      expectedChallengeTypeId: string;
+    }) =>
+      api.releaseWorldSlot(
+        input.configurationId,
+        input.expectedChallengeTypeId,
+      ),
     onSuccess: invalidate,
   });
 }

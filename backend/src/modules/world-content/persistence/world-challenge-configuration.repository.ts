@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { ClientSession, Model, Types } from 'mongoose';
 import { WorldChallengeConfiguration } from '../schemas/world-challenge-configuration.schema';
 
 @Injectable()
@@ -90,6 +90,17 @@ export class WorldChallengeConfigurationRepository {
     return this.model
       .countDocuments({ worldId: new Types.ObjectId(worldId) })
       .exec();
+  }
+
+  /** Releases one board position, leaving the slot unbound. */
+  async deleteByIdInSession(
+    id: string,
+    session?: ClientSession,
+  ): Promise<boolean> {
+    const result = await this.model
+      .deleteOne({ _id: new Types.ObjectId(id) }, session ? { session } : {})
+      .exec();
+    return (result.deletedCount ?? 0) === 1;
   }
 
   async deleteByChallengeType(challengeTypeId: string): Promise<number> {

@@ -40,6 +40,47 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
+### Where things stand — 2026-08-21
+
+Distinctions kept apart on purpose. Each row is one claim about one thing.
+
+| Item | Status |
+|---|---|
+| **Permanent owner-account / per-ChallengeType no-repeat** (§5.5) | ✅ **IMPLEMENTED & VERIFIED** |
+| **المرحلة mechanic** — backend, Admin authoring, player frontend (§17) | ✅ **IMPLEMENTED & VERIFIED** |
+| **المرحلة local Video Games rollout** (§17.16) | ✅ **IMPLEMENTED & VERIFIED LOCALLY** |
+| **المرحلة production content** (§17.17) | ⚠️ **OUTSTANDING** |
+| **المرحلة balance** (§17.18) | ⚠️ **PLAYTEST FOLLOW-UP** |
+| **12-Scope content expansion — authoring** (§C.1) | ✅ **COMPLETE** — 513 items authored, non-Bomb QA passed |
+| **12-Scope taxonomy + zero-leakage QA workflow — Git** | ✅ **PUSHED** (`4fdab19`, `25141bd`, `fcf70ee`) |
+| **Anime expansion — local/dev runtime promotion** (§C.1) | ✅ **IMPLEMENTED & VERIFIED LOCALLY** — 3 Scopes, 135 items |
+| **Anime expansion — Bomb media** | ✅ **COMPLETE LOCALLY** — 45/45 attached, on disk and served |
+| **Football expansion — local/dev runtime promotion** (§C.1) | ✅ **IMPLEMENTED & VERIFIED LOCALLY** — 3 Scopes, 126 items |
+| **Football expansion — Bomb media** | ✅ **COMPLETE LOCALLY** — 45/45 attached and served, product-reviewed |
+| **Video Games / Puzzles expansion — runtime promotion** | ⬜ **NOT PROMOTED** — Bomb media pending (§C.1) |
+| Public production database | ⬜ **NOT PROMOTED** |
+| Production deployment | ⬜ **NOT DEPLOYED** |
+
+**Git, database and deployment are three different things and this document keeps them apart.**
+
+*Git*, as of 2026-08-21: `HEAD` is **`fcf70ee`**, level with `origin/main`. Three commits landed for the content
+milestone — `4fdab19` (authoring workflows + the zero-leakage QA policy), `25141bd` (12-Scope canonical taxonomy
+and knowledge bases), `fcf70ee` (Anime Bomb/Combo promotion tooling). Together they touched **31 files** under
+`ai/.opencode`, `.agents/skills`, `ai/scripts`, `AGENTS.md` and `.gitignore`. **They carry taxonomy, knowledge
+bases and tooling — not content documents:** the 135 runtime items were *not* reproduced by the push, the
+authored expansion packs and review galleries under `ai/output` remain local gitignored deliverables, and the
+managed media binaries under `uploads/question-assets/images/` are deliberately untracked runtime media.
+
+The working tree is still **dirty**: the exposure system, the المرحلة implementation and the Admin authoring work
+are **uncommitted** — no المرحلة file is tracked yet.
+
+*The local developer runtime database* holds changes that exist nowhere else: the canonical `marhala`
+ChallengeType, 19 المرحلة dev fixtures, the Video Games `slot_4` binding, the `content_exposures` collection, a
+local smoke account, gameplay records from playing — and, from the content milestones, **six** new Scopes with
+**261** promoted items and **90** Bomb media files (Anime 3/135/45, Football 3/126/45). **Those are local runtime
+mutations. They are not Git changes and not a deployment** — no runtime promotion in this document was a "push",
+and `HEAD` has not moved since `fcf70ee`.
+
 ---
 
 ## Current state — verified against the repository
@@ -49,7 +90,8 @@ Everything in this section was confirmed by reading code and querying the runtim
 
 ### Mechanics implemented in the runtime
 
-Seven gameplay plugins are registered; six have Match-side challenge launchers.
+Nine gameplay plugins are registered; eight have Match-side challenge launchers *(count re-verified
+2026-08-20, after المرحلة)*.
 
 | Mechanic | Runtime key | Plugin | Launcher | ChallengeType in catalog |
 |---|---|---|---|---|
@@ -58,12 +100,36 @@ Seven gameplay plugins are registered; six have Match-side challenge launchers.
 | One Clue / بدليل واحد | `one-clue` | ✅ | ✅ | ✅ `active` |
 | Top 5 / أفضل 5 | `top-5` (keep-or-give) | ✅ | ✅ | ✅ `active` |
 | Distributed Information / ركّبها | `distributed-information` | ✅ | ✅ | ✅ `active` |
-| **Bomb / القنبلة** | `bomb` | ✅ | ✅ | ⬜ **no ChallengeType, no catalog content** |
+| **الكومبو / Combo** | `combo` | ✅ | ✅ | ✅ `active` *(local/dev — §16.4)* |
+| **Bomb / القنبلة** | `bomb` | ✅ | ✅ | ✅ `active` *(local/dev)* — ✅ Anime + Football production content with media; ⚠️ other Worlds pending (§16.1) |
+| **المرحلة / Marhala** | `marhala` | ✅ | ✅ | ✅ `active` *(local/dev — §17)* — ⚠️ content is 19 dev fixtures |
 | Core round runtime | `core-round-runtime` | ✅ | — | *(infrastructure)* |
 
-**The Bomb row is the single most important fact in this table.** Bomb is a fully implemented *gameplay*
-mechanic, but it has no ChallengeType registered and no authored content in the catalog. The decision to make
-it a Shared Core mechanic (§16.1) is therefore design-only.
+**The Bomb row changed on 2026-08-19 and needs reading in two halves.** Bomb's *mechanic* integration is
+done: a canonical `bomb` ChallengeType is provisioned and `active` in the local runtime, Admin can select it,
+author for it, and bind it to a World slot, and a real Match resolves it as launchable. What is **not** done is
+its *content*. So the Shared Core decision (§16.1) is no longer design-only at the mechanic level, and is still
+unmet at the content level. Full state in §16.1.
+
+> `SUPERSEDED (2026-08-21)` — this paragraph previously stated that "the catalog holds 10 items stamped
+> `local-dev-bomb-smoke-fixture` and no production Bomb content exists". Both halves are now wrong. **No items
+> carry the fixture stamp**, and Bomb *does* have authored production content for Anime: **60 items with media**
+> in the local runtime — 15 stamped `bomb-anime-production-section-1-2026-08-20` across the four original Anime
+> Scopes, plus 15 in each of the three new expansion Scopes (§C.1). What remains outstanding is Bomb content for
+> **every other World**, and none of this is in the public production database.
+
+**The الكومبو row was added on 2026-08-19.** Its ChallengeType and its Anime board binding exist in the
+**local/dev runtime only** — nothing is committed, pushed or deployed. Full state in §16.4.
+
+**The المرحلة row was added on 2026-08-20** and reads in the same two halves as Bomb's. The *mechanic* is done
+and verified end to end — backend, Admin authoring, player frontend — and the Video Games board carries it in the
+local runtime. What is **not** done is *production content*: the catalog holds 19 items stamped
+`local-dev-marhala-smoke-fixture`. Full state in §17.
+
+**⚠️ Content counts in this section are no longer trustworthy without re-measurement.** The 2026-08-18 sweep
+below is preserved as the historical baseline, but a read-only query on **2026-08-20** found the local catalog
+materially different — including the Bomb and الكومبو fixture stamps this document cites. Those changes were made
+outside this work and are not attributed here; see the observation block below and §19 item 19.
 
 ### Runtime catalog inventory
 
@@ -80,6 +146,110 @@ it a Shared Core mechanic (§16.1) is therefore design-only.
 Per-mechanic ready content: `closest` 557 · `one-clue` 549 · `read-your-opponent` 546 ·
 `distributed-information` 213 · `top-5` 53. Two archived legacy mechanics retain 36 residual items
 (⚠️ see §19 item 9).
+
+#### Current local/dev runtime observation — 2026-08-21 *(not a baseline, not `origin/main`)*
+
+Read-only query taken after the Anime expansion promotion. **The table above is the 2026-08-18 baseline and is
+deliberately left intact**; this is a separate observation of one developer machine, and the two disagree.
+
+| Measure | 2026-08-18 baseline | Local runtime 2026-08-21 *(post-Football)* | Explained by |
+|---|---|---|---|
+| Ready content items | 1954 | **1782** | partly — see below |
+| Scopes | 49 | **55** | ✅ the 6 promoted expansion Scopes (§C.1) |
+| ChallengeTypes | 9 | **10** | ✅ `marhala` (§17) |
+| `read-your-opponent` ready | 546 | **600** | ✅ +27 Anime, +27 Football |
+| `closest` ready | 557 | **610** | ✅ +27 Anime, +27 Football (556 before them) |
+| `top-5` ready | 53 | **40** | 🚧 +27 Football expansion, over a base that had dropped to 13 ⚠️ |
+| `combo` ready | 12 *(then called dev fixtures)* | **84** | ✅ 48 `combo-anime` + 36 Anime expansion |
+| `bomb` ready | 10 *(then called dev fixtures)* | **106** | ✅ 15 original Anime + 45 Anime expansion + 45 Football expansion + 1 المرحلة fixture |
+| `marhala` ready | — | **19** *(dev fixtures, §17.17)* | ✅ this repo's المرحلة rollout |
+| `one-clue` ready | 549 | **288** | ⚠️ unexplained |
+| `distributed-information` ready | 213 | **0** | ⚠️ unexplained |
+| Board configurations | 20 | 20 | Video Games `slot_4` now bound (§17.16) |
+
+The Bomb, الكومبو and Top 5 rows are accounted for by authored expansion content (§C.1, §16.1, §16.4). Two rows
+are still unexplained: `one-clue` more than halved and `distributed-information` reached **zero**, neither from
+the exposure, المرحلة or expansion work. Top 5's base had also dropped from 53 to 13 before the Football wave
+added 27 — the drop itself is part of the same unexplained drift. Not attributed here, and still open
+(§19 item 19).
+
+### Content expansion — 12 new Scopes *(milestone recorded 2026-08-21)*
+
+A 12-Scope expansion was authored across four Worlds: **513 items total**. Non-Bomb content passed product QA.
+Statuses differ per World and must not be collapsed.
+
+| World | New Scopes | Authoring | Bomb media | Local/dev runtime |
+|---|---|---|---|---|
+| **Anime / الأنمي** | `dragon-ball` · `demon-slayer` · `jujutsu-kaisen` | ✅ complete | ✅ **45/45 complete** | ✅ **PROMOTED & VERIFIED LOCALLY** |
+| **Football / كرة القدم** | `la-liga` · `serie-a` · `football-legends` | ✅ complete | ✅ **45/45 complete** | ✅ **PROMOTED & VERIFIED LOCALLY** |
+| **Video Games / فيديو قيمز** | `minecraft` · `god-of-war` · `resident-evil` | ✅ complete | 🟡 **45 pending** | ⬜ **not promoted** |
+| **Puzzles / عالم الالغاز** | `patterns-sequences` · `lateral-thinking` · `visual-puzzles` | ✅ complete | 🟡 **45 pending** | ⬜ **not promoted** |
+
+⚠️ **Six of the twelve are promoted; six are source-only.** Anime and Football are in the runtime database
+(3 Scopes each). The remaining **six** — Video Games `minecraft` · `god-of-war` · `resident-evil` and Puzzles
+`patterns-sequences` · `lateral-thinking` · `visual-puzzles` — exist at source/authoring level only: canonical
+`SCOPE.md` / `KNOWLEDGE.md` assets are committed and pushed and their content is authored, but **no runtime
+Scope has been created and no content promoted**. They are therefore **not** implemented, **not** active,
+**not** Admin-visible, **not** runtime-ready and **not** DB-promoted, and this document must not describe them
+as any of those.
+
+#### Anime expansion — ✅ IMPLEMENTED & VERIFIED LOCALLY
+
+Verified read-only against the local runtime on 2026-08-21. Anime now has **7 active Scopes** (4 original + 3
+new). Per new Scope, **45 items**:
+
+| Mechanic | Per Scope | Expansion total |
+|---|---|---|
+| RYO / اقرأ خصمك | 9 | **27** |
+| Closest / مين أقرب | 9 | **27** |
+| الكومبو / Combo | 12 *(3 per stage, 1→4)* | **36** |
+| القنبلة / Bomb | 15 | **45** |
+| **Total** | **45** | **135** |
+
+Verification recorded with the milestone: duplicate source markers **0** *(confirmed — 135 items, 135 distinct
+markers, all stamped `anime-scope-expansion-2026-08-20`)*, invalid/blocked items **0**, each new Scope
+`isReady` with **45/45 ready**, and RYO / Closest / الكومبو / القنبلة runtime smokes **PASS**.
+
+**Bomb media — ✅ complete locally.** 45/45 items carry image media with 45 distinct URLs; independently
+re-checked on 2026-08-21: **45/45 files present** in the backend container and **45/45 served over local HTTP
+200 with an image content type**. Manual visual review of the media is reported complete.
+
+Environment for all of the above, explicitly: Mongo `127.0.0.1:27018`, database `lammah-quiz`, backend
+`http://localhost:3002` — **LOCAL/DEV ONLY. The public production database was untouched.**
+
+The Anime board also now stands at the §3.1 target composition in the local runtime — `slot_1`
+`read-your-opponent`, `slot_2` `combo`, `slot_3` `closest`, `slot_4` `bomb`, with `blockers: []` and
+`warnings: []`.
+
+#### Football expansion — ✅ IMPLEMENTED & VERIFIED LOCALLY
+
+Verified read-only against the local runtime on 2026-08-21. Football now has **7 active Scopes** (4 original + 3
+new: الدوري الإسباني `la-liga`, الدوري الإيطالي `serie-a`, أساطير كرة القدم `football-legends`), all active,
+Admin-visible and ready. Per new Scope, **42 items**:
+
+| Mechanic | Per Scope | Expansion total |
+|---|---|---|
+| RYO / اقرأ خصمك | 9 | **27** |
+| Closest / مين أقرب | 9 | **27** |
+| Top 5 / أفضل 5 | 9 | **27** |
+| القنبلة / Bomb | 15 | **45** |
+| **Total** | **42** | **126** |
+
+Verification recorded with the milestone: RYO / Closest / Top 5 / القنبلة runtime smokes **PASS**, invalid or
+blocked content **0** *(confirmed — 126 items, all `ready`, 126 distinct source markers, all stamped
+`football-scope-expansion-2026-08-20`)*.
+
+**Bomb media — ✅ complete locally and product-approved.** Semantic alignment 45/45, media attached 45/45;
+independently re-checked on 2026-08-21: **45/45 files present** in the backend container and **45/45 served over
+local HTTP 200 with an image content type**.
+
+⚠️ **A media-mapping defect was found before promotion and repaired** — media had been paired to Bomb items by
+position rather than by subject. That is what the **Bomb semantic alignment** invariant in §5.6 now forbids
+permanently.
+
+The Football board also stands at the §3.1 target composition in the local runtime — `slot_1` `top-5`, `slot_2`
+`closest`, `slot_3` `bomb`, `slot_4` `read-your-opponent`, with `blockers: []` and `warnings: []`. Top 5 is now
+**football-exclusive** in this runtime: all 40 of its items sit in Football and no other board binds it.
 
 ### Authoring-side assets preserved
 
@@ -133,15 +303,46 @@ The day-to-day view. Detail lives in the referenced sections; this stays short e
 - [x] Push tooling hardened — fingerprinting, `--skip-existing`, `--dry-run`, `DEFAULT_PACKS` cleared
 - [x] Content baseline committed and pushed to `origin/main`
 
-### D. Shared mechanic migration — ⬜ NOT STARTED
+#### C.1 12-Scope expansion — 🚧 IN PROGRESS *(authoring complete, rollout World-by-World)*
 
-New product decision (§16.1): the Shared Core becomes **RYO + Closest + Bomb**. One Clue leaves the Shared Core.
+- [x] **513 items authored** across 12 new Scopes in 4 Worlds; non-Bomb content passed product QA
+- [x] **Zero answer leakage** and **Bomb semantic alignment** invariants defined and applied (§5.6)
+- [x] Canonical `SCOPE.md` / `KNOWLEDGE.md` assets for all 12 Scopes **committed and pushed** — `25141bd`,
+      with the authoring workflows in `4fdab19` and promotion tooling in `fcf70ee`
+- [x] **Anime**: 3 Scopes created in the local/dev runtime, 135 items promoted, Bomb media 45/45, all four
+      mechanic smokes PASS *(details in "Content expansion — 12 new Scopes")*
+- [x] **Football**: Bomb media 45/45 + product review, 3 Scopes created in the local/dev runtime, 126 items
+      promoted, all four mechanic smokes PASS *(details in "Content expansion — 12 new Scopes")*
+- [ ] **Video Games**: Bomb media 45 → manual review → runtime promotion
+- [ ] **Puzzles**: Bomb media 45 → manual review → runtime promotion
+- [ ] Promotion of any of it to the **public production database** *(not started; explicitly out of scope so far)*
 
-- [ ] Register a `bomb` ChallengeType and define the Bomb content contract
-- [ ] Author and validate Bomb coverage across the target Worlds/Scopes
-- [ ] Reconcile board/slot configuration for the new Shared Core
-- [ ] Verify every target World against the new Shared Core
-- [ ] Re-point One Clue to its new owner (Movies Signature — §16.2)
+### D. Shared Core migration — 🚧 IN PROGRESS
+
+The Shared Core is **RYO + Closest + Bomb** (§16.1). One Clue leaves the Shared Core and becomes the Movies
+Signature. The mechanic-level work is done. The content and board work is **two Worlds in**: Anime and Football
+both have authored Bomb content with media and boards at the target composition in the local runtime. Video
+Games, Puzzles and the draft Worlds still need both (§C.1).
+
+- [x] Shared Core composition locked: **RYO + Closest + Bomb** — and the forward board model settled (§3.1)
+- [x] Bomb gameplay implemented and verified *(pre-existing; `bomb-board-lifecycle` 16/16)*
+- [x] Canonical `bomb` ChallengeType operational — provisioned through the shared provisioner, idempotent
+- [x] Bomb content contract wired into **Admin authoring**, sharing one rule with launch validation
+- [x] Bomb Match routing and launchability verified through the real launcher registry
+- [x] Local World-slot assignment verified — Bomb bound to an Anime slot with no special casing
+- [x] Author **production** Bomb content for **Anime** — ✅ local/dev: **60 items with media** (15 original
+      Scopes + 45 expansion Scopes)
+- [x] Author **production** Bomb content for **Football** — ✅ local/dev: **45 items with media**, semantically
+      aligned and product-reviewed (§5.6)
+- [ ] Author production Bomb content for the **remaining** target Worlds *(every item needs an image)* — the
+      authored Video Games and Puzzles expansions each await their 45 Bomb media (§C.1)
+- [x] **Anime board reconciled** to Signature + RYO + Closest + Bomb — `slot_1` RYO, `slot_2` `combo`, `slot_3`
+      `closest`, `slot_4` `bomb`, `blockers: []` — ⚠️ **local/dev runtime only**
+- [x] **Football board reconciled** to Signature + RYO + Closest + Bomb — `slot_1` `top-5`, `slot_2` `closest`,
+      `slot_3` `bomb`, `slot_4` RYO, `blockers: []` — ⚠️ **local/dev runtime only**
+- [ ] Reconcile the **remaining** target World boards to **Signature + RYO + Closest + Bomb**
+- [ ] Verify every target World against final Shared Core readiness
+- [ ] Re-point One Clue to the Movies Signature (§16.2)
 
 ### E. Signature mechanics — product design
 
@@ -151,8 +352,8 @@ New product decision (§16.1): the Shared Core becomes **RYO + Closest + Bomb**.
 - [x] Music / الأغاني → **من أول نغمة** *(design approved)*
 - [x] World / العالم → **على الخريطة** *(design approved)*
 - [x] Series / المسلسلات → **وش صار بعدها؟** *(design approved)*
-- [x] Video Games / فيديو قيمز → **المرحلة** *(design + external prototype approved — §17)*
-- [ ] Anime / الأنمي → **undecided**
+- [x] Video Games / فيديو قيمز → **المرحلة** *(design approved and implemented — §17)*
+- [x] Anime / الأنمي → **الكومبو** *(design approved and implemented — §16.4)*
 - [ ] Saudi Arabia / السعودية → **undecided**
 - [ ] Cars / السيارات → **undecided**
 - [ ] Sports / الرياضة → **undecided**
@@ -165,8 +366,9 @@ Design approval above does **not** imply any of these. Full matrix in §16.
 - [ ] Music → من أول نغمة *(depends on audio enrichment — checklist H)*
 - [ ] World → على الخريطة *(map interaction; no map primitive exists yet)*
 - [ ] Series → وش صار بعدها؟ *(sequential/ordering mechanic)*
-- [ ] Video Games → المرحلة *(production implementation not started)*
-- [ ] Football → Top 5 World-specific rollout reconciled
+- [x] Video Games → المرحلة *(✅ mechanic implemented & verified; ✅ local/dev World rollout verified; ⚠️ production content outstanding; ⬜ not deployed — §17)*
+- [x] Anime → الكومبو *(✅ mechanic implemented & verified; local/dev World rollout verified; ⚠️ production content outstanding — §16.4)*
+- [x] Football → Top 5 World-specific rollout reconciled — ✅ football-exclusive in the local/dev runtime; ⬜ not deployed (§C.1)
 - [ ] Puzzles → ركّبها World-specific rollout reconciled
 
 ### G. Taxonomy / catalog changes — 🟡 APPROVED DIRECTION, NOT IMPLEMENTED
@@ -185,6 +387,9 @@ Design approval above does **not** imply any of these. Full matrix in §16.
 
 - [x] 4 active Worlds configured (4 slots each)
 - [x] مسلسلات configured while still draft
+- [x] انمي `slot_2` rebound `one-clue` → `combo` — ⚠️ **local/dev runtime only, not committed or deployed** (§16.4)
+- [x] فيديو قيمز `slot_4` bound to `marhala` — ⚠️ **local/dev runtime only, not committed or deployed** (§17.16).
+      Board readiness `blockers: [] warnings: []`; composition, not slot number, remains authoritative
 - [ ] Remaining 7 draft Worlds: الأفلام · الأغاني · السعودية · العالم · السيارات · الرياضة · معلومات عامة
 - [ ] Re-reconcile every board after the Shared Core migration (phase D) lands
 
@@ -199,8 +404,12 @@ Design approval above does **not** imply any of these. Full matrix in §16.
 - [ ] Full runtime QA against a build that actually contains the current baseline
 - [ ] Deployment smoke test on a rebuilt stack *(see §19 item 10 — the last attempt could not run)*
 - [ ] Multiplayer playtesting
-- [ ] Balance validation (pacing, scoring, المرحلة special-tile distribution)
+- [ ] Balance validation (pacing, scoring, المرحلة special-tile distribution and race length, الكومبو difficulty calibration and survival bonus) — ⚠️ المرحلة observations recorded in §17.18; **no balance decision approved**
 - [ ] Deployment / release acceptance
+
+Partial credit worth recording without moving the gate: a **local** rebuilt-stack gameplay smoke has now been
+completed for الكومبو (2026-08-19) and for المرحلة (2026-08-20, §17.15). Neither is a *deployment* smoke, and
+nothing above is satisfied by them.
 
 ---
 
@@ -283,28 +492,53 @@ Total: 3 × 4 × 3 = 36 items per match
 Total: 3 × 4 = 12 challenges per match
 ```
 
-### 3.1 Per-World board composition
+### 3.1 Per-World board composition *(authoritative)*
 
-> **⚠️ PARTIALLY SUPERSEDED — reconcile before the Shared Core migration.**
-> The table below is the *original* composition design. What actually shipped is **4 configured slots per
-> World** (verified: 20 configurations across 5 Worlds), and the catalog was authored against **three shared
-> mechanics** — RYO, One Clue, Closest — rather than the RYO×2 + Flex split described here. The
-> Co-op/Relational families were never built as separate slot families.
->
-> The Shared Core is now changing again (§16.1: One Clue → Bomb). **Board composition must be re-decided as
-> part of that migration**, at which point this table should be rewritten to match reality rather than intent.
+**Four slots per World, one composition, settled.** The Shared Core is **RYO + Closest + Bomb** (§16.1), and
+every World fills its fourth position with its own exclusive Signature.
 
-| Slots | Family | Notes |
+| Slot role | Mechanic | Ownership |
 |---|---|---|
-| 1 | **Signature (exclusive)** | Unique to this World, never in any other. Always played. See §4 and §16. |
-| 2 | **RYO** | The backbone. Two slots, not one — see rationale below. |
-| 1 | **Flex: Co-op or Relational** | Authored per World, not randomized. |
+| **Signature** | The World's own exclusive mechanic | One World only, never shared (§4, §16) |
+| **Shared** | Read Your Opponent / اقرأ خصمك | Shared Core |
+| **Shared** | Closest / مين أقرب | Shared Core |
+| **Shared** | Bomb / القنبلة | Shared Core |
 
-**Why RYO gets two slots:** RYO is the full replacement for traditional trivia — the spine of the game. At one slot per World it would be 9 of 36 items (25%) of a match. At two, it is 18 of 36 (50%), which matches its role. The flex slot then carries rhythm-breaking rather than load-bearing duty, which is what Co-op and Relational are for.
+**The invariant is the composition, not the slot numbers.** `slot_1..slot_4` are generic positions and which
+number holds which mechanic is configuration, not design — Anime currently runs RYO, الكومبو, مين أقرب, القنبلة
+across slots 1–4, and another World may order them differently. Nothing in the product may key on a slot number.
 
-**Hard constraint:** every match must contain **at least one Relational challenge** across its three Worlds. Relational content is the only family immune to depletion and the only one that generates shareable moments (§6.4, §12). A match with zero Relational challenges is a misconfiguration.
+Each World therefore teaches **three shared mechanics once** and one new Signature per World, which is the
+learning budget §15.1 argues for.
 
-**Alternative composition (documented, not chosen):** one slot per family (Signature + RYO + Co-op + Relational). Balanced and simpler to reason about, but caps RYO at 25% and makes every World's family composition identical. Switching to it is a one-line change here.
+> **SUPERSEDED — the original composition.** Kept because its reasoning is still worth reading, not because it
+> is the plan. The forward model is the table above.
+>
+> | Slots | Family | Notes |
+> |---|---|---|
+> | 1 | **Signature (exclusive)** | Unique to this World, never in any other. |
+> | 2 | **RYO** | "The backbone. Two slots, not one." |
+> | 1 | **Flex: Co-op or Relational** | Authored per World, not randomized. |
+>
+> *Why RYO got two slots:* RYO is the replacement for traditional trivia — the spine of the game. At one slot
+> per World it is 9 of 36 items (25%) of a match; at two it is 50%, matching its role. The flex slot then
+> carried rhythm-breaking rather than load-bearing duty.
+>
+> **Why it was superseded:** the Co-op and Relational families were never built as separate slot families, the
+> catalog was authored against three shared mechanics rather than an RYO×2 + Flex split, and the Shared Core
+> decision (§16.1) settled on three named shared mechanics. One RYO slot plus Closest plus Bomb gives the same
+> shared-mechanic weight with mechanics that actually exist.
+>
+> **SUPERSEDED — the Relational minimum.** The old hard constraint that *"every match must contain at least one
+> Relational challenge across its three Worlds"* is no longer a design requirement: no World board carries a
+> Relational slot, and the forward composition has no Relational position to satisfy it.
+>
+> ⚠️ **The code has not caught up.** Match selection validation still emits
+> `MATCH_WITHOUT_RELATIONAL_CHALLENGE` as a *warning* (not a blocker), so every three-World selection currently
+> reports it. Harmless today, but it is a live warning for a rule the design has dropped — see §19 item 17.
+>
+> **Alternative once considered:** one slot per family (Signature + RYO + Co-op + Relational). Balanced, but
+> capped RYO at 25% and made every World's family composition identical.
 
 ### 3.2 Signature item structure
 
@@ -343,25 +577,39 @@ Secondary benefit: 12 transitions instead of 18, which is cleaner pacing.
 Because the board is fixed and system-determined, **every match within the same World is structurally identical.** This is accepted deliberately in exchange for pacing, zero wasted authored content, and a far lighter UX (§7.1).
 
 Variety must therefore come from two levers, both mandatory:
-1. **Content rotation** — the 3 items per challenge draw from a pool large enough that repeats are rare, and must not repeat across consecutive sessions for the same group. **Exception: the Relational family is exempt** (§6.4).
-2. **Order variation** — the presentation sequence of the 4 challenges varies per match, so rhythm differs even when the set does not.
 
-If playtests surface repetition fatigue, the intended response is the flexibility system (§15.2), not a return to random removal (§7.1).
+1. **Content rotation** — ✅ **IMPLEMENTED & VERIFIED**, and now far stronger than this section originally
+   required. A ContentItem that has actually been presented to the **Match owner's account** is **never**
+   presented to that account again **inside the same ChallengeType**. Not "rare"; never. The mechanism is the
+   shared content-exposure ledger in **§5.5**, which is also where the exemption question is answered.
+   > `SUPERSEDED (2026-08-20)` — the original rule read: *"the 3 items per challenge draw from a pool large
+   > enough that repeats are rare, and must not repeat across consecutive sessions for the same group.
+   > **Exception: the Relational family is exempt** (§6.4)."* Two parts of that are gone. Repetition is no
+   > longer merely *rare*, and the unit of memory is no longer *the group in consecutive sessions* — it is the
+   > **owning account, permanently, per ChallengeType**. A group is not identifiable across sessions; the
+   > account that owns the Match is. The Relational exemption survives as **product design** (§6.4) but is not
+   > wired into the ledger, because no Relational mechanic exists in the runtime to exempt yet.
+2. **Order variation** — the presentation sequence of the 4 challenges varies per match, so rhythm differs even
+   when the set does not. Unchanged, and still a separate lever: it varies *rhythm*, never *whether an item may
+   reappear*.
+
+If playtests surface repetition fatigue, the intended response is the flexibility system (§15.2), not a return
+to random removal (§7.1).
 
 ---
 
 ## 4. Signature Mechanics — Requirements *(assignment now in §16)*
 
 > **SUPERSEDED IN PART.** When this section was written no Signature mechanic had been assigned. **Assignments
-> now exist for 7 of 11 Worlds** — see the authoritative matrix in **§16**. The *requirements* below (§4.1) and
+> now exist for 8 of 11 Worlds** — see the authoritative matrix in **§16**. The *requirements* below (§4.1) and
 > the *launch gate* (§4.2) remain fully in force and are still the acceptance criteria for any new Signature.
 
 **Every World must own exactly one exclusive mechanic that appears in no other World.** It is the World's mechanical and visual fingerprint, always played, never substituted — it is the reason the player chose that World.
 
 ~~**The specific mechanic assigned to each World is not fixed in this document and is expected to change.** Candidates have been explored (list-ranking, live drawing, buzzer-race, rapid-fire chain) but none are committed. Do not implement any until assignment is decided.~~
 
-**Resolved.** Assignments are recorded in **§16**. Two mechanics are implemented (Top 5, Distributed
-Information), five are design-approved and unimplemented, and four Worlds remain undecided.
+**Resolved.** Assignments are recorded in **§16**. Three mechanics are implemented (Top 5, Distributed
+Information, الكومبو), five are design-approved and unimplemented, and three Worlds remain undecided.
 
 ### 4.1 Requirements
 
@@ -394,6 +642,13 @@ World (Football)
 
 A Content Item belongs to a **Scope**, not a Challenge Type. The same underlying fact can play as an RYO prompt, a Co-op split clue, or a Relational prompt. The data is reused; the experience differs. This is what keeps content production cost sane.
 
+One item may therefore declare **several** compatible ChallengeTypes, and the exposure history that governs
+repeats is **scoped per ChallengeType** (§5.5). A fact spent in القنبلة is still unseen in اقرأ خصمك for the same
+account, because the mechanic — not the fact — is what the player experienced. Verified at runtime during the
+المرحلة rollout: one item authored for both المرحلة and القنبلة was played in المرحلة and afterwards carried an
+exposure row for `marhala` and none for `bomb`. Burning an item globally would throw most of the catalog's value
+away for no product gain.
+
 ### 5.2 Scope-level exclusions
 
 Not every Scope is compatible with every mechanic. A Religious Knowledge Scope must be excluded from Relational mechanics (built on teasing) and from split-clue mechanics (fragmenting religious text is inappropriate).
@@ -419,6 +674,102 @@ A shallow reskin (same name, different accent color) fools no one. The rename an
 > **New content identity = data. New mechanic = code.**
 
 Classify before building. A reskin, timing change, media change, or prompt change of something existing is **configuration** and ships as data. Only genuinely novel interaction models get new code. This rule is what allows a 5th, 6th, and 7th World to launch for the cost of one exclusive mechanic each instead of four.
+
+---
+
+### 5.5 Content exposure — permanent owner-account / per-ChallengeType no-repeat
+
+✅ **IMPLEMENTED & VERIFIED.** This is the mechanism behind §3.5 lever 1. One shared ledger serves every
+mechanic; **no mechanic owns a private seen-question store.**
+
+**The rule.** A ContentItem that has been presented to the account that owns the Match must never be presented
+to that account again within the **same** ChallengeType.
+
+**Canonical identity** — the triple the ledger is keyed and uniquely indexed on:
+
+```
+ownerAccountId + contentItemId + challengeTypeKey
+```
+
+**The owner is the account that owns the Match.** Deliberately *not* a participant phone, a device, a player
+identity, or an individual teammate. Two different groups playing on one account share that account's history;
+the same group on a different account does not. This is the only identity that is stable across sessions and
+cannot be spoofed by rejoining.
+
+**The same item stays eligible in another ChallengeType.** Account A seeing item X in اقرأ خصمك closes
+`A + X + read-your-opponent` forever and leaves `A + X + bomb` open until X is actually shown there. This is
+**not** global ContentItem burning, and must not be described as such.
+
+#### selected ≠ exposed
+
+An item becomes permanently spent **only at authoritative server-side presentation**. Three states that are
+routinely confused are kept apart:
+
+| State | Meaning | Permanent? |
+|---|---|---|
+| *selected / planned* | The server chose it for a challenge | No |
+| *reserved* | Claimed so a concurrent Match of the same account cannot draw it; TTL-backed | No |
+| *exposed* | A player was authoritatively shown it | **Yes** |
+
+What that buys, per mechanic:
+
+- **الكومبو** — the prebuilt 8-question plan reserves; questions the Run never reaches stay eligible.
+- **القنبلة** — items selected but never reached in the run stay eligible.
+- **المرحلة** — nothing is selected at launch at all; one question is drawn on demand after the difficulty is
+  elected, and is spent when it is opened.
+- **Reconnect, duplicate command, retry** — cannot double-spend; the ledger read-back is idempotent per triple.
+- **Abort before presentation** — releases the reservation; nothing is spent.
+- **Abort after presentation** — what was shown stays spent. Seeing a question is not undone by abandoning the
+  challenge.
+
+#### Coverage
+
+All eight content-backed mechanics report presentation into the one ledger: `read-your-opponent`, `closest`,
+`one-clue`, `top-5`, `distributed-information`, `bomb`, `combo`, and `marhala` — المرحلة reuses this system
+rather than introducing anything of its own.
+
+#### Explicit depletion
+
+When an account has no eligible unseen content left, the runtime **does not silently repeat**. Depletion is a
+first-class outcome, and the system distinguishes **account-specific exhaustion** (this account has seen
+everything this position could offer) from **catalog-wide insufficiency** (the content does not exist yet).
+المرحلة's terminal behaviour is the worked example — §17.
+
+### 5.6 Content & media QA invariants
+
+Two rules that hold at **authoring time**, because neither is detectable at runtime. Both are in force and both
+came out of the 12-Scope expansion.
+
+#### Zero answer leakage
+
+✅ **IN FORCE** as of the 12-Scope expansion (§ *Content expansion*), and part of the committed authoring
+workflow (`4fdab19`).
+
+> **If a player who does not know the domain fact can still derive or compute the answer from the prompt wording
+> alone, the item fails authoring QA and must be rewritten.**
+
+This is stricter than "don't put the answer in the question". It also fails an item whose phrasing gives the
+answer away structurally — a number stated in the prompt that only needs arithmetic, a grammatical form that
+narrows the answer to one option, a clue that identifies its own target. The point of the catalog is to test
+knowledge; an item that rewards reading comprehension instead is content that looks fine and measures nothing.
+
+Applied to the authored 12-Scope expansion and to the المرحلة pilot content. It is an **authoring/QA gate**, not a
+runtime check — the runtime cannot detect it, which is exactly why it has to hold at authoring time.
+
+#### Bomb semantic alignment
+
+✅ **IN FORCE** as of the Football Bomb media wave, which is where its absence was caught.
+
+> **Prompt type ↔ authored subject ↔ accepted answers ↔ actual visual subject must all identify the same
+> entity.**
+>
+> **Media must never be paired to Bomb items by positional index or assumed item-number ordering.** Pairing is by
+> subject, item by item.
+
+القنبلة is played by looking at a picture, so a mismatch is not a cosmetic defect — the item asks about one
+entity and shows another, and every answer to it is wrong for reasons no player can see. Position-based pairing
+produces exactly that, silently, at scale: the files and the items both look complete. A defect of this kind was
+found in the Football wave before promotion and repaired; the wave was then re-verified subject by subject.
 
 ---
 
@@ -471,7 +822,25 @@ Scoring is based on agreement or prediction between teammates, not correctness a
 
 ### 6.4 Why Relational content is exempt from repeat-prevention
 
-A trivia item dies after one use. A relational prompt does not — the answer changes with the group, and even with the same group over time. **Relational items are intentionally reusable across sessions** and are excluded from the duplicate-prevention rule in §3.5. This is what makes the content library effectively infinite.
+🟡 **PRODUCT DESIGN — NOT IMPLEMENTED AS A RUNTIME EXEMPTION.**
+
+The reasoning stands and is worth keeping: a trivia item dies after one use, a relational prompt does not — the
+answer changes with the group, and even with the same group over time. **Relational items are intentionally
+reusable across sessions**, which is what would make the content library effectively infinite, and it is why a
+mechanic can still be valuable while repeating its prompts.
+
+What the code actually does today, verified on 2026-08-20:
+
+- `ContentItem.isReusableAcrossSessions` **exists** as an authoring field, defaults to `false`, and is documented
+  in the schema as "true for Relational content, which survives repeated sessions (6.4)".
+- **Nothing in the Match or exposure layer reads it.** The exposure ledger (§5.5) has no reuse switch: it spends
+  every presented item for its `(owner, ChallengeType)` pair, whatever the flag says.
+- No Relational mechanic is registered in the runtime, so there is presently nothing for an exemption to apply
+  to. The two archived legacy ChallengeTypes are the closest thing, and they are archived (§19 item 9).
+
+So this is a design commitment with a catalog field reserved for it, **not** a live runtime policy. Wiring it —
+if and when a Relational mechanic ships — means teaching §5.5 to honour the flag, and that work has not been
+done or scheduled.
 
 ### 6.5 Automatic validation
 
@@ -603,7 +972,7 @@ Mandatory for every Relational prompt in every World.
 
 ## 12. Sharing / Growth Hook
 
-Auto-generated vertical result card at match end: both teams' colors, final score, standout challenge, fastest correct answer, one share button. A one-day build targeting the discovery channel (TikTok, Snapchat, Stories) that every competitor in this category currently ignores. Relational challenges produce most of the shareable moments, which is a second reason for the §3.1 minimum-one-Relational constraint.
+Auto-generated vertical result card at match end: both teams' colors, final score, standout challenge, fastest correct answer, one share button. A one-day build targeting the discovery channel (TikTok, Snapchat, Stories) that every competitor in this category currently ignores. Relational challenges produce most of the shareable moments — which used to be a second argument for the §3.1 minimum-one-Relational constraint. That constraint is now **superseded** (§3.1) and no board carries a Relational slot, so the share card can no longer rely on Relational content being present.
 
 ---
 
@@ -725,7 +1094,7 @@ gate in §4.2 still govern every entry here.
 **Previous Shared Core:** RYO + One Clue + Closest. This is what the entire content catalog was authored
 against, and it is `SUPERSEDED` as a *forward* plan.
 
-**New Shared Core — 🟡 DESIGN APPROVED, MIGRATION NOT STARTED:**
+**New Shared Core — ✅ DECISION APPROVED · mechanic layer operational · content and boards outstanding:**
 
 1. **Read Your Opponent / اقرأ خصمك** — unchanged
 2. **Closest / مين أقرب** — unchanged
@@ -748,38 +1117,131 @@ identity is preserved as-is. It is *not* being redesigned:
 - Lifecycle correctness is covered: a Bomb skip ends the *challenge*, never the whole live session, and the
   Bomb clock path is exercised by the real-Mongo `bomb-board-lifecycle` suite.
 
-**⬜ NOT IMPLEMENTED — Bomb as a Shared Core mechanic.** None of the following exists:
+**✅ IMPLEMENTED & VERIFIED — Bomb as a canonical shared mechanic (2026-08-19).** The statement that used to
+sit here — that no ChallengeType, no content contract and no catalog integration existed — is superseded, and
+one part of it was wrong when written: the **content contract already existed** in `bomb-content.policy.ts`.
+What was genuinely missing was that it was never wired into Admin authoring, so malformed Bomb content saved
+cleanly and only failed at launch. That gap is closed.
 
-- No `bomb` **ChallengeType** is registered (verified: the catalog holds `read-your-opponent`, `one-clue`,
-  `closest`, `top-5`, `distributed-information` — and no `bomb`).
-- No **catalog ownership** — Bomb has zero authored content items.
-- No **cross-World Bomb content coverage** — the 49 scopes are authored to ≥9 on RYO / One Clue / Closest, and
-  none of that content is Bomb content.
-- No **board/slot reconciliation** for a Shared Core that includes Bomb.
+Status is split four ways. **Do not collapse it.**
 
-So Bomb is *playable* but not *shared*. Nothing about the migration has begun.
+| Concern | Status |
+|---|---|
+| Shared Core product decision | ✅ **APPROVED** |
+| RYO · Closest mechanics | ✅ **IMPLEMENTED & VERIFIED** |
+| Bomb gameplay | ✅ **IMPLEMENTED & VERIFIED** |
+| Bomb ChallengeType · Admin · catalog integration | ✅ **IMPLEMENTED & VERIFIED** *(local/dev)* |
+| Shared Core architecture, mechanic level | ✅ **OPERATIONAL** |
+| Production Bomb content | 🚧 **PARTIAL** — ✅ Anime (60 items) and Football (45 items) authored with media, local/dev; ⚠️ every other World outstanding (§C.1) |
+| Cross-World Bomb content coverage | ⬜ **NOT YET AUTHORED** |
+| Cross-World board migration | 🚧 **NOT COMPLETE** — pending content readiness |
+| One Clue → Movies Signature | ⚠️ **STILL OUTSTANDING** |
+| Git state | ⬜ **NOT COMMITTED / NOT PUSHED** |
+| Deployment | ⬜ **NOT DEPLOYED** |
 
-**The existing One Clue catalog is not deleted or wasted.** 549 ready One Clue items remain in the runtime and
-keep their value — One Clue's *ownership* changes from shared to the Movies Signature (§16.2), it does not
-disappear. Any migration plan must preserve that content.
+#### Canonical Bomb ChallengeType
+
+| Field | Value |
+|---|---|
+| slug / runtime key | `bomb` |
+| display name | القنبلة |
+| family | `COOP` |
+| itemStructure | `continuous` |
+| answerMode | `match` |
+| scoringRuleId | `challenge.win` |
+| inputType | `phone-text` |
+| timerSeconds | `null` |
+
+**On `COOP`.** That is the current ChallengeType *family enum* value, and the family axis is the **answer
+system** — not shared-versus-exclusive. `COOP` is the family of automatically resolved team mechanics, which
+already holds مين أقرب. It does **not** mean Bomb is World-exclusive: Bomb is Shared Core and is meant to sit on
+many boards. `SIGNATURE` was the previous value and was wrong for exactly that reason — it claims an exclusivity
+Bomb must not have. **No new `shared` family enum exists and none should be invented.**
+
+`timerSeconds: null` is deliberate: Bomb has no per-item timer, because its clock is the session's team clock.
+
+#### Bomb content contract
+
+Bomb uses **generic ContentItem fields only. There is no `bombPayload`.** One valid Bomb item requires:
+
+- `status` ready for play
+- **exactly one image** in `media.assets`
+- an **Arabic prompt**
+- `answerPayload.mode = match`
+- **1–10** accepted answers, each **≤120 characters**
+- no duplicate accepted answers after canonical answer normalization
+
+**Run level, not item level:** a Bomb challenge selects an ordered set of **10–15 distinct playable items**. Do
+not confuse the two — one item can never satisfy the run rule, and applying it per item would make Bomb
+unauthorable.
+
+Authoring and launch now share **one** item reader, so an item Admin accepts cannot later fail a launch on its
+own shape. Verified live: a missing image, a blank Arabic prompt, no accepted answers, and duplicate answers
+each return `400` with the matching `BOMB_ITEM_*` code.
+
+#### Continuous clock — unchanged canonical identity
+
+Bomb is **not** a per-question-timer mechanic and must not be rewritten as one.
+
+- One continuous team/session clock; `deadline: { source: 'session-clock', commandType: 'expire-team' }`.
+- A correct answer **passes the pressure and the turn** to the opponent.
+- **The clock does not reset on a correct answer** — consumed time keeps accumulating.
+- Skip follows the existing Bomb rules; a drained clock resolves through `expire-team`.
+
+A direct regression assertion for the non-resetting clock was added on 2026-08-19. Nothing had pinned it before:
+the existing test proved the item advanced and the team switched, but not that the clock survived the hand-over.
+
+#### Admin and catalog integration
+
+Bomb's visibility comes from the backend catalog — **no frontend mechanic slug whitelist was introduced.** The
+ChallengeType is provisioned and `active`, the Admin ChallengeType list exposes القنبلة, ordinary World-slot
+assignment can select it, ordinary ContentItem authoring can select it, its authoring validation is active,
+`MatchStageRouter` renders it, and the challenge-identity icon registry covers it.
+
+#### Shared-mechanic semantics
+
+One Bomb plugin, one Bomb ChallengeType, one authoring contract — and **each World/Scope owns its own Bomb
+questions**. It does *not* mean a global question pool, cloned Bomb code per World, or any cross-World content
+leakage. Verified: the same Bomb ChallengeType bound to two Worlds while their content counts stayed separate.
+
+#### Local runtime state — local/dev only, not repository or deployment state
+
+⚠️ Everything here is developer-machine runtime data. None of it is a commit and none of it is deployed.
+
+- Bomb ChallengeType `6a86276c215dc4d4bed0cfe0`, `active`, exactly one record.
+- **10** content items stamped `metadata.source = local-dev-bomb-smoke-fixture`. **Not production content.**
+  > `SUPERSEDED (2026-08-21)` — historical. Those fixtures are gone. Bomb now has **105 authored production
+  > items with media in the local/dev runtime**: Anime 60 (15 original Scopes + 45 expansion) and Football 45
+  > (expansion, semantically aligned and product-reviewed). Bomb content for Video Games, Puzzles and the draft
+  > Worlds is still outstanding — see §C.1 for the pending media waves.
+- Anime board: RYO · الكومبو · مين أقرب · **القنبلة**, with `boardReady: true`. Bomb occupies the slot that was
+  already empty.
+
+**This does not mean the Worlds have been migrated.** The Anime binding proves the complete local World-slot
+path end to end; every other World still needs production content readiness and board reconciliation.
+
+**The existing One Clue catalog is not deleted or wasted.** One Clue's *ownership* changes from shared to the
+Movies Signature (§16.2); the content does not disappear, and any migration plan must preserve it.
+⚠️ The count has moved: 549 ready items at the 2026-08-18 baseline, **288** in the local runtime on 2026-08-21,
+unexplained — §19 item 19. Preserving the catalog means first establishing which figure is right.
 
 ### 16.2 Signature matrix
 
 | World | Signature mechanic | Mechanic implemented? | World rollout | Status |
 |---|---|---|---|---|
-| **Football / كرة القدم** | Top 5 / أفضل 5 | ✅ `top-5` plugin, launcher, ChallengeType | 🚧 active in football + video-games; ownership needs reconciling to football-exclusive | ✅ mechanic / 🚧 rollout |
+| **Football / كرة القدم** | Top 5 / أفضل 5 | ✅ `top-5` plugin, launcher, ChallengeType | ✅ **football-exclusive in the local/dev runtime** — `slot_1` on the Football board, no other board binds it, all 40 items in Football; 7 active Scopes after the expansion; ⬜ not deployed | ✅ mechanic / ✅ local rollout (§C.1) |
 | **Puzzles / عالم الالغاز** | Distributed Information / ركّبها | ✅ `distributed-information` plugin, launcher, ChallengeType, 213 items | 🚧 exclusivity and board rollout not finalized | ✅ mechanic / 🚧 rollout |
 | **Movies / الأفلام** | One Clue / بدليل واحد | ✅ mechanic exists (`one-clue`) | ⬜ not re-owned as the Movies Signature; Movies-specific form undefined | 🟡 design approved |
 | **Music / الأغاني** | من أول نغمة | ⬜ | ⬜ | 🟡 design approved |
 | **World / العالم** | على الخريطة | ⬜ | ⬜ | 🟡 design approved |
 | **Series / المسلسلات** | وش صار بعدها؟ | ⬜ | ⬜ | 🟡 design approved |
-| **Video Games / فيديو قيمز** | المرحلة | ⬜ external visual prototype only (§17) | ⬜ | 🟡 design + prototype approved |
-| **Anime / الأنمي** | *undecided* | — | — | ⬜ design not started |
+| **Video Games / فيديو قيمز** | المرحلة | ✅ `marhala` plugin, launcher, on-demand supplier, content policy, ChallengeType | ✅ `slot_4` bound to `marhala` in the **local/dev** runtime; ⚠️ content is 19 dev fixtures, not authored | ✅ mechanic / ✅ local rollout / ⚠️ content / ⬜ not deployed (§17) |
+| **Anime / الأنمي** | الكومبو | ✅ `combo` plugin, launcher, content policy, ChallengeType | ✅ `slot_2` bound to `combo` and ✅ **84 authored الكومبو items across all 7 Anime Scopes** in the **local/dev** runtime; ⬜ not deployed | ✅ mechanic / ✅ local rollout / ✅ local content (§16.4) |
 | **Saudi Arabia / السعودية** | *undecided* | — | — | ⬜ |
 | **Cars / السيارات** | *undecided* | — | — | ⬜ |
 | **Sports / الرياضة** | *undecided* | — | — | ⬜ |
 
-**Do not invent Signature mechanics for the four undecided Worlds.** They are blocked on product design, and
+**Do not invent Signature mechanics for the three undecided Worlds.** They are blocked on product design, and
 by §4.2 none of them can ship without one.
 
 ### 16.3 Approved Signature concepts — one line each
@@ -790,15 +1252,247 @@ by §4.2 none of them can ship without one.
   ordinary text trivia. No map interaction primitive exists in the codebase today.
 - **وش صار بعدها؟** (Series) — exploits the sequential nature of series events/scenes: identify, order, or
   predict what happens next.
-- **المرحلة** (Video Games) — board race; full spec in §17.
+- **المرحلة** (Video Games) — board race whose central decision is *which risk band to elect from this tile*;
+  full spec **and implementation record** in §17.
+- **الكومبو** (Anime) — push-your-luck knowledge run built around the team's **cash out or continue** decision, with direct opponent pressure through **كسر الكومبو**; full approved design in §16.4.
+
+
+### 16.4 الكومبو — Anime Signature design spec and implementation
+
+**Status is deliberately split four ways. Do not collapse it into one marker.**
+
+| Concern | Status |
+|---|---|
+| Product design | ✅ **APPROVED** |
+| Mechanic implementation | ✅ **IMPLEMENTED & VERIFIED** *(local/dev code and runtime)* |
+| World rollout | 🚧 **LOCAL/DEV ROLLOUT VERIFIED** — see *Local runtime state* below |
+| Production content | ✅ **AUTHORED — local/dev only** — 84 items across all 7 Anime Scopes, 12 per Scope, 3 per stage |
+| Git state | ⬜ **NOT COMMITTED / NOT PUSHED** |
+| Deployment | ⬜ **NOT DEPLOYED** |
+
+The rules below are no longer proposals: they are the behaviour the runtime enforces, and this section is their
+canonical statement. Anything downstream that contradicts them is stale.
+
+#### Core loop
+
+The mechanic is built around **Knowledge + Push-your-luck + Team discussion + Opponent pressure**. It must not
+collapse into ordinary trivia with a cosmetic multiplier; the recurring **"نوقف أو نكمل؟"** decision is the
+heart of the experience.
+
+One challenge is **two Runs**: Team A's Run, then Team B's Run, then challenge completion. Each team plays
+**one Run** of at most **4 questions**.
+
+Implemented rules:
+
+- Every question gets a **fresh 30-second timer** — the clock is not a difficulty lever.
+- A **correct answer** adds **+1** to the Run's **unbanked** balance.
+- A **wrong answer** is an immediate **Combo Break**. A **timeout** is treated identically.
+- A Combo Break loses **the entire unbanked balance** of that Run.
+- After a correct answer on **Q1–Q3** the team must decide:
+  - **Cash Out / ثبت** — bank the Run balance and end the Run.
+  - **Continue / كمل** — play on with the whole unbanked balance at risk.
+- A correct **Q4 banks the Run automatically**. There is **no Continue decision after Q4** — offering one would
+  be a decision with a single legal answer.
+
+Banked Combo points are the mechanic's own margin. They are reported as provenance for the Match point and are
+**never added to the Match scoreboard** (§8).
+
+#### Difficulty progression — fixed and load-bearing
+
+Every Run rises through four difficulties in this exact order, for **both** teams:
+
+| Question | Difficulty | Canonical value |
+|---|---|---|
+| Q1 | متوسط | `mechanicPayload.comboStage: 1` |
+| Q2 | متوسط صعب | `mechanicPayload.comboStage: 2` |
+| Q3 | صعب | `mechanicPayload.comboStage: 3` |
+| Q4 | صعب جدًا | `mechanicPayload.comboStage: 4` |
+
+The order is **never** randomised, reordered, skipped, or substituted. If a required stage is under-supplied the
+**launch fails cleanly** through the ordinary insufficient-playable-content path, before any runtime exists —
+there is **no difficulty substitution** and no silent downgrade.
+
+`comboStage` is Combo's own metadata. It is deliberately **not** a shared `ContentItem.difficulty` field: the
+World Content domain carries no points and no difficulty, and a Combo stage is a position in Combo's own
+progression, meaningful only to Combo.
+
+#### Scope and difficulty are independent dimensions
+
+A **Scope** answers *"what is this question about?"*. A **stage** answers *"how hard is it inside the Run?"*
+They are orthogonal, and **no mapping between them exists or may be introduced.**
+
+A single Scope legitimately holds questions at every difficulty:
+
+- ناروتو → متوسط · متوسط صعب · صعب · صعب جدًا
+- هجوم العمالقة → متوسط · صعب جدًا
+- بليتش → متوسط صعب · صعب
+
+**This is wrong and must never be written:** *Naruto = medium, Attack on Titan = hard, Bleach = very hard.*
+
+A Run therefore moves freely across Scopes while its difficulty still climbs 1 → 2 → 3 → 4, for example:
+
+- Q1 → Naruto → متوسط
+- Q2 → Attack on Titan → متوسط صعب
+- Q3 → Naruto → صعب
+- Q4 → One Piece → صعب جدًا
+
+Scope diversity is a **selection preference applied within a stage**, expressed as a tie-break. It never
+reorders stages and never rejects otherwise valid content.
+
+#### Opponent ability — كسر الكومبو
+
+Each team has access to **كسر الكومبو**, an opponent-pressure ability aimed at the rival team's **Cash Out
+decision**, not at question difficulty.
+
+Implemented rules:
+
+- **One charge per team per Combo challenge.** Once spent it does not return.
+- It may be armed **only while a valid next question exists** — so before Q1, Q2 or Q3, and **never at Q4**,
+  because the effect is to force an additional question.
+- **Activation is secret from the target team.** The arming team gets a private acknowledgement; the target team
+  and the shared screen receive no form of it. Whether a charge has been *spent at all* is public; *when* it is
+  armed is the secret.
+- The ability never changes difficulty. It attacks the **Cash Out decision**, not the question.
+- The charge is consumed by the **attempt**, not by the outcome.
+
+Resolution:
+
+1. The running team answers the current question normally.
+2. **Wrong or timeout** → ordinary **Combo Break**; the full unbanked balance is lost and the ability is spent.
+3. **Correct** → the team scores its ordinary **+1**, the break is **revealed to everyone**, **Cash Out is
+   blocked**, and the next question is **forced**.
+4. On that forced question:
+   - **Wrong or timeout** → **Combo Break**; the full unbanked balance is lost.
+   - **Correct** → **+2 TOTAL** for that question: +1 for the correct answer plus a **+1 survival bonus**.
+     **It is +2 in total, not +2 on top of +1, and never +3.**
+   - If the forced question is **Q4** and correct → +2 total, then the Run **banks automatically**.
+
+Surviving a break attempt is **not** recorded as having been broken: the Run result attributes a breaker only
+when the break actually landed.
+
+#### Previously-open values, now decided
+
+The earlier approval deliberately left these unlocked. They are now implemented and are **no longer TBD**:
+maximum Run length (**4 questions**), per-question timer (**30 seconds**), base scoring (**+1**, forced-question
+survival **+2 total**), difficulty progression (**1 → 2 → 3 → 4**, fixed), and the كسر الكومبو charge policy
+(**one per team per challenge**).
+
+#### Still open — calibration, not contract
+
+- **Difficulty calibration.** Whether an author's متوسط ↔ صعب جدًا spread actually produces the intended
+  cash-out tension is unvalidated, and can only be judged from authored production content.
+- **Balance of the survival bonus** and of the 4-question Run length against real play.
+- **Multiplayer playtesting** with real phones across both Runs.
+
+These are playtest questions. They do not reopen the rules above.
+
+#### Implementation state — ✅ IMPLEMENTED & VERIFIED
+
+**Backend**
+
+- `combo` GameplayModePlugin, registered in the mode registry.
+- `ComboChallengeLauncher`, registered in the challenge-launcher registry — which is what makes the board slot
+  launchable; launchability is derived from that registry and from no slug allowlist.
+- Combo content policy owning the stage contract and the 8-item plan builder.
+- Runtime-state deadline declaration, so the question clock is server-owned.
+- Server-authoritative actor projections: the arming team, the target team and the shared screen each receive a
+  different payload, and the secret exists in none but the arming team's.
+- Completion summary carrying each team's banked points, how each Run ended, and who broke it.
+- Match scoring untouched: Combo's internal points stay separate from the Match scoreboard.
+
+**Selection**
+
+- Stage authored as `mechanicPayload.comboStage: 1|2|3|4`.
+- Drawn through the **generic** `selectionStrata` on the shared `MatchContentSelector` — Combo does not select
+  content for itself.
+- 8 distinct items per challenge, **2 per stage**; each Run receives one item per stage as 1 → 2 → 3 → 4.
+- No item is reused between the two Runs.
+- A stage shortage fails the launch; no stage is ever substituted.
+
+**Frontend**
+
+- Match runtime routing renders Combo (both the Match stage router and the standalone live-session panel).
+- Combo gameplay panel: question, decision, break reveal, forced question, run hand-over, completion.
+- Completed-challenge recap showing both Runs side by side with each team's banked total and how its Run ended.
+- The recap keeps **banked Combo points visually separate from the Match reward**, and states outright that
+  Combo points are not added to the Match result.
+
+**Admin authoring**
+
+- Combo is authored through the ordinary ContentItem form — no separate Combo editor.
+- Required **صعوبة السؤال** dropdown: متوسط / متوسط صعب / صعب / صعب جدًا, persisting the canonical stage and
+  never the Arabic label. Edit hydrates the saved stage.
+- The backend rejects a missing or malformed `comboStage` at authoring time, through the same predicate the plan
+  builder uses at launch — so an item Admin accepts cannot fail at launch for its stage.
+- Content cards show **الصعوبة**, with difficulty filtering, sorting (1 → 2 → 3 → 4) and per-difficulty coverage
+  counts. Scope filtering and difficulty filtering are independent and compose.
+
+**Verification**
+
+- Backend unit suite green — **161 suites / 1409 tests**.
+- Frontend suites green — **73 files / 649 tests**.
+- Combo real-Mongo lifecycle integration **30/30**, covering the persisted plan, both hand-over paths, the
+  privacy projections, the +2 total, reconnect identity, and a clean stage-shortage launch failure.
+- The local Docker stack was rebuilt on 2026-08-19 and verified to contain this code.
+- A **local gameplay smoke was completed successfully** on 2026-08-19, confirmed by the product owner. This is
+  operator confirmation of real play, not an automated result.
+
+#### Local runtime state — local/dev only, not repository or deployment state
+
+⚠️ **Everything in this subsection is a change to the developer machine's runtime database.** None of it is
+represented by a Git commit, and none of it is deployed anywhere.
+
+- The `combo` ChallengeType exists and is `active` in the local runtime catalog.
+- The Anime board's **`slot_2` was rebound: `one-clue` → `combo`.**
+- The Anime board remains structurally valid: four slots, four distinct mechanics, `boardReady: true`, and Anime
+  still passes Match preflight.
+- Combo is launchable through the real launcher registry, verified on a real Match board.
+- Both changes were applied **through the Admin API**, so the full board policy ran — not by raw DB mutation.
+
+Displacing One Clue from Anime is consistent with §16.2, which reassigns One Clue as the **Movies** Signature.
+That re-ownership itself remains outstanding (checklist F).
+
+#### Content status — ✅ AUTHORED (local/dev only)
+
+الكومبو is no longer fixture-backed. The local/dev runtime holds **84 authored items across all 7 Anime Scopes** —
+**12 per Scope, 3 per stage** — from the original `combo-anime` authoring across the four original Scopes (48)
+plus the three new expansion Scopes (36, §C.1). No item carries the old `local-dev-combo-smoke-fixture` stamp.
+
+Still **local/dev only**: the public production database holds none of it, and none of the content is committed
+(§19 items 12 and 27).
+
+> **Historical (2026-08-19), superseded 2026-08-21.** When الكومبو shipped, its only content was **12 local/dev
+> smoke fixtures** — 3 per `comboStage`, spread across the Anime Scopes, every item stamped
+> `metadata.source = local-dev-combo-smoke-fixture`, existing so one Combo challenge could launch and be played
+> on a developer machine. The rule stated alongside them still holds for any future fixture: **dev fixtures must
+> never be described, promoted, or counted as production content.**
+
+Remaining content work:
+
+- Playtest difficulty calibration and balance across the four stages (checklist K).
+- Preserve Scope/difficulty independence when authoring more (§16.4).
+- Get the content and its runtime state out of local-only (§19 items 12 and 27).
 
 ---
 
-## 17. المرحلة — Video Games Signature design spec
+## 17. المرحلة — Video Games Signature design spec and implementation
 
-🟡 **DESIGN + EXTERNAL PROTOTYPE APPROVED — PRODUCTION IMPLEMENTATION NOT STARTED.**
-A visual prototype exists outside the runtime at `prototypes/marhala.html` (untracked). No Akwaan runtime code
-has been written.
+**Status is deliberately split four ways. Do not collapse it into one marker.**
+
+| Aspect | Status |
+|---|---|
+| Mechanic implementation (backend, Admin, player frontend) | ✅ **IMPLEMENTED & VERIFIED** |
+| Local/dev Video Games rollout | ✅ **IMPLEMENTED & VERIFIED LOCALLY** |
+| Production content | ⚠️ **OUTSTANDING** |
+| Deployment | ⬜ **NOT DEPLOYED** |
+
+> `SUPERSEDED (2026-08-20)` — this section previously read: *"🟡 DESIGN + EXTERNAL PROTOTYPE APPROVED —
+> PRODUCTION IMPLEMENTATION NOT STARTED. A visual prototype exists outside the runtime at
+> `prototypes/marhala.html` (untracked). No Akwaan runtime code has been written."* The prototype remains the
+> visual reference it always was; the runtime implementation now exists and has been played end to end locally.
+
+§17.1–§17.6 below are the **approved product design**, kept as approved. §17.7 onward record what was actually
+built.
 
 ### 17.1 Core fantasy
 
@@ -858,6 +1552,232 @@ special *destination* must never also be a special *source*.
 - Lucky-movement reveal after a correct answer
 - Movement animates tile by tile; Boost/Trap resolution plays *after* landing
 
+
+### 17.7 Canonical mechanic identity — ✅ IMPLEMENTED & VERIFIED
+
+| Field | Value |
+|---|---|
+| Runtime key | `marhala` |
+| Display name | المرحلة |
+| Family | Signature |
+| Item structure | `continuous` |
+| Answer mode | `match` (phone text, canonical Arabic normalization) |
+| Scoring rule | `challenge.win` |
+| Question timer | **30s**, configurable — a playtest value, not a locked product decision |
+
+Provisioned through the shared production-mechanic provisioner, not by hand, and idempotent on re-run.
+
+### 17.8 Implemented core loop
+
+```
+READ BOARD → CHOOSE DIFFICULTY → DRAW ONE UNSEEN QUESTION ON DEMAND
+→ ANSWER → MOVE IF CORRECT → RESOLVE TILE → PASS TURN
+```
+
+**There is no launch-time question deck.** The launcher binds zero content; the server draws exactly one
+question *after* a difficulty is elected, which is what makes the risk decision real — the room commits to a
+movement range before it knows what it is being asked.
+
+| Difficulty | Movement |
+|---|---|
+| سهل / Easy | 1–2 |
+| متوسط / Medium | 2–4 |
+| صعب / Hard | 4–6 |
+
+Difficulty is **question metadata**, authored as `mechanicPayload.marhalaDifficulty` with exactly
+`easy` \| `medium` \| `hard`. It is independent of Scope in both directions: one Scope legitimately holds all
+three bands, and **no Scope maps to a difficulty**. There is no global `ContentItem.difficulty` field, and
+Combo's `comboStage` is a different concept that is never read in its place.
+
+### 17.9 On-demand content selection
+
+Selection happens per turn, through the shared `MatchContentSelector` and the shared exposure ledger (§5.5).
+Eligibility is the intersection of:
+
+- the Video Games World and the Match occurrence's **selected Scopes**
+- المرحلة compatibility on the item
+- the **authored band** matching the band the team elected — a hard filter, never a silent downgrade
+- `ready` status
+- the owner account's **unseen** history for `marhala`
+- reservation / concurrency rules, so two concurrent Matches on one account cannot draw the same item
+
+**No fixed per-game question quota exists.** المرحلة consumes as many questions as the race lasts. How much
+production content to author is a content-planning decision (§17.13) — no number in this section is a runtime
+requirement.
+
+### 17.10 Implemented board — V4 playtest configuration
+
+16 positions, 4×4 serpentine, start **1**, finish **16**; reaching *or passing* 16 wins.
+
+> ⚠️ **PLAYTEST CONFIGURATION — BALANCE NOT LOCKED.** The tile map below is the V4 candidate from §17.5, now
+> implemented as configuration. Implementing it did not promote it to a locked product decision.
+
+| Boosts | | Traps | |
+|---|---|---|---|
+| 3 → 7 | 5 → 7 | 4 → 1 | 6 → 2 |
+| 8 → 13 | 10 → 13 | 9 → 7 | 11 → 7 |
+| 12 → 16 | 14 → 16 | 15 → 13 | |
+
+**Safe / destination positions:** 1, 2, 7, 13, 16 — every boost and trap lands on one, which is what guarantees
+a single effect can never chain.
+
+### 17.11 Implemented runtime behaviour
+
+- **Server-authoritative** throughout: the board, the roll, the landing, the tile effect and the winner are all
+  decided server side. No client resolves gameplay.
+- Teams **alternate**; المرحلة owns its own turn order in its runtime state.
+- **Wrong answer or timeout** — the question is spent, **nothing moves**, the turn passes. No punishment movement.
+- **Correct answer** — deterministic movement inside the elected range, then **at most one** tile effect.
+  No recursive Boost/Trap chaining, by board construction.
+- Reaching or passing 16 **completes the challenge immediately**; no later turn opens.
+- The question **deadline is server-owned** (runtime-state deadline declaration); stale deadlines and stale
+  revisions are rejected under CAS.
+- Normal Match convergence and scoring are reused unchanged: `challenge.win` is awarded **once**, and the race's
+  internal board progress is never mixed into the Match scoreboard.
+- **No host judgment** anywhere: grading is the canonical Arabic normalizer every `match` mechanic uses.
+
+*Implementation detail, not product design:* movement is a deterministic seeded roll derived from the runtime,
+turn, team and band, so a replay of the same committed state reproduces the same movement. The specific hash is
+an implementation choice and is deliberately not elevated to a product decision.
+
+### 17.12 Implemented content depletion
+
+- One band exhausted for the account → **only that band becomes unavailable**. The other bands stay playable,
+  and the withdrawn band is refused server side (`MARHALA_DIFFICULTY_UNAVAILABLE`) rather than quietly
+  downgraded to an easier question.
+- All three bands exhausted → the challenge ends as an explicit, safe terminal state:
+
+  ```
+  winner   = none
+  endedBy  = content-exhausted
+  ```
+
+  **No `challenge.win` is awarded**, no repeated question is served, and the runtime does not freeze or error.
+  The player-facing recap says so in product language (§17.14), never in runtime vocabulary.
+
+### 17.13 Admin authoring — ✅ IMPLEMENTED & VERIFIED
+
+- Authored through the **ordinary ContentItem form** — no المرحلة-specific editor, no separate answer editor.
+- Selecting المرحلة reveals a **required** `صعوبة السؤال` field offering exactly **سهل / متوسط / صعب**, persisting
+  the canonical value and never the Arabic label. Create and edit both hydrate correctly; a saved value outside
+  the contract is surfaced to the author rather than silently defaulted.
+- The backend refuses a missing or malformed band through the same predicate the runtime draw uses, so an item
+  Admin accepts cannot be one the draw rejects. A client posting the Arabic label instead of the canonical value
+  is refused.
+- Catalog: Arabic **الصعوبة** badge, difficulty filtering, canonical ordering (سهل → متوسط → صعب, never
+  lexicographic), and READY coverage counts per band. **Scope and difficulty filters compose independently.**
+- The mechanic is only offered where the World's board actually plays it, which the server enforces
+  (`CHALLENGE_TYPE_NOT_CONFIGURED_FOR_WORLD`) — the Admin UI reflects that rule rather than owning a softer copy.
+
+### 17.14 Player-facing frontend — ✅ IMPLEMENTED & VERIFIED
+
+**Shared screen** — the 4×4 board is the visual hero, not decoration around a trivia card:
+
+- both team tokens physically present, readable when they share a tile, active team emphasised
+- server-provided band availability, with a spent band shown as spent rather than hidden
+- **risk-band landing previews** from the team's current tile, marking boosts, traps and the finish
+- the question, the elected band and the server-owned countdown, with the board still visible
+- possible-landing highlights while the question is open
+- movement reveal, then **tile-by-tile** cosmetic replay, then the Boost/Trap reaction, then the final tile
+- Finish state, a المرحلة-specific completion recap, and a distinct **content-exhausted** recap
+
+**Phones** are input surfaces, not miniature boards: the active team elects the band and submits the answer, the
+opposing team gets a waiting state, and **server authorization is authoritative** — the client's disabled state
+is never the guarantee.
+
+No second realtime provider, timer, or answer architecture was introduced; المرحلة routes through the existing
+runtime renderer, the existing countdown, the existing command client and the existing completion registry.
+
+### 17.15 Implementation verification notes
+
+**An authorization defect was found by real local smoke and fixed.** Before the fix, any *connected* opposing
+participant could invoke `choose-marhala-difficulty` or `submit-marhala-answer`, because the runtime only
+required `connected-player` and the plugin did not check the submitter's team. Observed live: the opposing
+phone successfully elected صعب for the team on the clock. The plugin now resolves the submitter's team from the
+authenticated participant against the live roster and compares it with the mechanic's own active team; an
+unidentifiable submitter is refused, not waved through. After rebuild, the same command returns
+**`MARHALA_NOT_YOUR_TURN`** with runtime state unchanged. Covered by four regression tests, and the plugin spec's
+harness now supplies a real submitter — it had been exercising a caller the runtime never produces.
+
+**Latest verified gates** *(final local rollout, 2026-08-20)*
+
+| Side | Result |
+|---|---|
+| المرحلة plugin units | **43/43** |
+| المرحلة real-Mongo lifecycle integration | **24/24** |
+| Backend unit suite | **167 suites / 1577 tests** |
+| Exposure + الكومبو + القنبلة integration | **69/69** |
+| Backend typecheck / build / lint | clean |
+| Frontend suites | **79 files / 808 tests** |
+| Frontend typecheck / production build / lint | clean |
+| Runtime E2E smoke specs against the running stack | **3 green** |
+
+**Real local smoke — ✅ VERIFIED LOCALLY.** Exercised through the actual product stack, not by invoking plugin
+methods: rebuilt backend and frontend containers, the canonical ChallengeType, a real Match on a real board, the
+real session-join flow, two real phone participants over Socket.IO, on-demand Easy/Medium/Hard selection, correct
+and wrong answers, a server-driven timeout, Boost, Trap, reconnect mid-question, no-repeat across races, the
+cross-ChallengeType exposure boundary, one-band depletion, all-band depletion, Finish, `challenge.win` awarded
+once, Match result reconciliation, return to board, Admin runtime smoke and a live privacy inspection of the
+participant projections (no accepted answers, no grading payloads reach a phone).
+
+This classifies the mechanic as **implemented and verified locally**. It is **not** a deployed production state.
+
+### 17.16 Local/dev rollout state — not repository or deployment state
+
+⚠️ **Everything here is developer-machine runtime state.** No commit, no push, no deployment.
+
+- Canonical `marhala` ChallengeType provisioned **idempotently** and `active` in the local catalog.
+- Video Games board, applied through the Admin API so the full board policy ran:
+
+  | Slot | Mechanic |
+  |---|---|
+  | `slot_1` | `read-your-opponent` |
+  | `slot_2` | `closest` |
+  | `slot_3` | `bomb` |
+  | `slot_4` | `marhala` |
+
+  Readiness: `blockers: []`, `warnings: []`.
+
+- **The authoritative rule is still composition, not slot number** (§5.4). المرحلة occupies `slot_4` because that
+  position happened to be free; nothing in the code treats `slot_4` as "the Signature slot".
+
+### 17.17 Local smoke content — ⚠️ NOT PRODUCTION CONTENT
+
+**19 local/dev fixtures**, every one stamped `metadata.source = local-dev-marhala-smoke-fixture`:
+
+| Band | Items | | Scope | Items |
+|---|---|---|---|---|
+| easy | 7 | | GTA | 6 |
+| medium | 6 | | كود | 4 |
+| hard | 6 | | فيفا | 4 |
+| | | | اوفرواتش | 5 |
+
+All `ready`. Every Scope carries more than one band, deliberately — a Scope must never imply a difficulty. One
+fixture is multi-compatible (المرحلة + القنبلة) purely to verify the per-ChallengeType exposure boundary at
+runtime.
+
+**They must not be described, promoted, or counted as production content.** The smoke owner account has now been
+shown all 19, so that account sees `content-exhausted`; a fresh account still sees all 19 — which is the
+permanent no-repeat rule (§5.5) behaving correctly, not a defect.
+
+### 17.18 Remaining work
+
+- ⚠️ **Production content** — author mechanic-native المرحلة questions across the Video Games Scopes and all
+  three bands, enough to support repeated play under the permanent no-repeat rule (§5.5). **No fixed target
+  number is approved**; quantity is a content-planning decision.
+  *Related, but not the same work:* the 12-Scope expansion (§C.1) authored three **new** Video Games Scopes —
+  `minecraft`, `god-of-war`, `resident-evil` — which are **not yet in the runtime** and whose authored content is
+  RYO / Closest / الكومبو / القنبلة. Neither that content nor those Scopes provide المرحلة content; المرحلة needs its
+  own banded authoring, and it will want the new Scopes once they are promoted.
+- ⚠️ **Balance / playtest follow-up** *(observations from the smoke, no decision approved, nothing changed)*:
+  1. Both completed smoke races finished in roughly **7 turns**.
+  2. **Easy (1–2) currently looks strategically weaker** than Medium and Hard.
+  3. Six forward boosts — **14 → 16 especially** — make the board fast and aggressive.
+  4. **30s** felt fine for short smoke questions; it needs validating against real production prompts.
+  5. The **V4 tile distribution remains a playtest configuration**.
+- Remove the 19 dev fixtures once production coverage exists; optionally remove the local smoke admin account
+  created for the rollout.
+- Git commit / push / deployment — only when explicitly requested.
 ---
 
 ## 18. Taxonomy decisions *(product direction)*
@@ -912,25 +1832,80 @@ Not implemented. Not scheduled.
 | 7 | Per-snapshot content-scope lookups (2 ops per distinct World) | Optional performance | Purely to resolve display names that never change for a Match. Not viewer-sensitive, so safe to cache. |
 | 8 | Compound `{status, currentChallenge.runtimeId}` index on `matches` | Optional performance | Measured: would cut the sweeper candidate scan from 118 examined docs to 39. Declined as a schema change taxing every Match write. |
 | 9 | Two archived legacy ChallengeTypes retain **36 residual ready items** | Catalog hygiene | `mechanic-1785789172264` (12) and `mechanic-1785872224173` (24). Harmless but should be reconciled or purged. |
-| 10 | **Deployment smoke test never executed against the current baseline** | Verification gap | The local dev stack runs an image built 2026-08-15, predating both `0961082` and `4f33704`; Batch A/D/E code was verified absent inside the running containers. A rebuild is required before any smoke test result can be trusted. |
+| 10 | **Deployment smoke test never executed** | Verification gap | The stale-image half of this item is cleared: the local stack was rebuilt on 2026-08-19 and verified to contain the current working tree, and a local gameplay smoke has since been completed. The gap that remains is a genuine **deployment** smoke — nothing has been committed, pushed or deployed, so no release-side result exists. |
+| 11 | ~~**الكومبو has no production content**~~ | Resolved 2026-08-21 | Closed. الكومبو has **84 authored items across all 7 Anime Scopes** in the local/dev runtime — 12 per Scope, 3 per stage — and no item carries the old fixture stamp. What remains is not content: it is that none of it is committed or deployed (item 12). §16.4. |
+| 12 | **الكومبو exists only in the local runtime** | Release gap | ChallengeType, Anime `slot_2` binding and content live on the developer machine. No commit, no push, no deployment. Reproducing this on any other environment currently requires re-running the rollout by hand. §16.4. |
+| 13 | **One Clue still needs its Movies re-ownership** | Product | Anime `slot_2` was rebound to `combo`, so One Clue is no longer on the Anime board — but it is still a Shared Core mechanic rather than the Movies Signature §16.2 assigns it. Unchanged by the Combo work; simply now more visible. |
+| 14 | **Bomb production content exists for Anime and Football only** | Product / content | Done for Anime (**60** items) and Football (**45** items) — **105 authored Bomb items with media** in the local/dev runtime. Still outstanding for every other World; the authored Video Games and Puzzles expansions are each blocked on **45 Bomb media items** before they can be promoted. Every Bomb item needs an image, so this stays a media-bearing effort. §16.1, §C.1. |
+| 15 | ~~**The only Bomb content is 10 dev fixtures**~~ | Resolved 2026-08-21 | Closed — no item carries that stamp. The hygiene rule it expressed (dev fixtures must never be counted as coverage) still applies, and now applies only to the 19 المرحلة fixtures (item 20). |
+| 16 | **Cross-World board migration unfinished** | Product / config | Only Anime carries Bomb, and only in the local runtime. Every other World still needs reconciling to Signature + RYO + Closest + Bomb, which is gated on content readiness rather than on effort. |
+| 17 | **`MATCH_WITHOUT_RELATIONAL_CHALLENGE` outlived its design rule** | Stale validation | §3.1 superseded the Relational-minimum requirement, but match selection validation still emits this warning, so every three-World selection reports it. A warning rather than a blocker, so nothing is broken — but it now warns about a rule the design has dropped. |
+| 18 | **Bomb implementation and its runtime data are uncommitted** | Release gap | The Bomb work is working-tree only: no commit, no push, no deployment. The ChallengeType, the fixtures and the Anime board binding are local runtime state that no other environment has. |
+| 19 | **Three catalog counts still diverge from the documented baseline** | Catalog hygiene / verification | Narrowed on 2026-08-21: the الكومبو and القنبلة gaps are explained (authored Anime content, §C.1). Still unexplained against the 2026-08-18 baseline: `distributed-information` 213 → **0**, `one-clue` 549 → **288**, `top-5` 53 → **13**. `distributed-information` reaching zero means the Puzzles Signature currently has no content in this runtime at all. Not produced by the exposure, المرحلة or expansion work, and not attributed here — someone needs to decide whether the runtime or the baseline is wrong. |
+| 20 | **المرحلة has no production content** | Product / content | The only content is 19 dev fixtures (`metadata.source = local-dev-marhala-smoke-fixture`), 7/6/6 across the bands. Authored coverage across the Video Games Scopes and all three bands is required before Video Games can ship, and the fixtures must then be removed. **No target quantity is approved.** §17.17. |
+| 21 | **المرحلة exists only in the local runtime** | Release gap | ChallengeType, the Video Games `slot_4` binding, the fixtures and the exposure rows all live on the developer machine. No commit, no push, no deployment; reproducing this elsewhere currently means re-running the rollout by hand. §17.16. |
+| 22 | **المرحلة balance is unvalidated** | Product / playtest | Smoke races finished in ~7 turns, Easy (1–2) looks strategically weak, and six forward boosts (14 → 16 especially) make the board fast. The V4 tile map is a playtest configuration. Observations only — **no balance change is approved**, and none was made. §17.18. |
+| 23 | **Rollout leftovers on the developer machine** | Hygiene | The 19 المرحلة fixtures and the local `marhala-smoke@local.invalid` admin account created for the rollout smoke both exist only locally and should be removed once no longer needed. |
+| 24 | **The Relational repeat-prevention exemption is unwired** | Product / design | §6.4 remains approved design, and `ContentItem.isReusableAcrossSessions` exists as a catalog field, but the exposure ledger (§5.5) never reads it. Harmless today — no Relational mechanic is registered — and it must be wired before one ships with reusable prompts. |
+| 25 | **Six authored Scopes are not in any runtime** | Product / content rollout | Video Games (`minecraft`, `god-of-war`, `resident-evil`) and Puzzles (`patterns-sequences`, `lateral-thinking`, `visual-puzzles`) have committed taxonomy assets and authored content, but **no runtime Scope and no promoted content**. Each World is gated on its 45 Bomb media items first. Must not be described as implemented, active, Admin-visible, runtime-ready or DB-promoted. *(Was nine; Football's three were promoted on 2026-08-21.)* §C.1. |
+| 26 | **Bomb media outstanding for two Worlds** | Content / media | 45 items each for Video Games and Puzzles — **90** media items — each needing production, subject-by-subject pairing (§5.6), attachment and manual product review before its World can be promoted. Video Games is the immediate next content phase (§20). *(Was 135 across three Worlds; Football's 45 are complete.)* |
+| 27 | **The whole content expansion is local/dev only** | Release gap | **261** promoted items across **six** runtime Scopes (Anime 135, Football 126) and **90** media binaries exist on one developer machine. The push (`4fdab19`, `25141bd`, `fcf70ee`) carried **taxonomy, knowledge bases and tooling only** — not content documents, not `ai/output` packs (gitignored), not the media binaries under `uploads/question-assets/images/` (deliberately untracked). Reproducing the runtime state elsewhere means re-running the promotions. |
 
 ---
 
 ## 20. Recommended next phase
 
-**Shared Core migration — Master Checklist phase D, detail in §16.1.**
+**Video Games Bomb Media Wave.**
 
-It is the correct next step because it blocks almost everything downstream: board composition (checklist I) cannot be
-finalised while the Shared Core is changing, World activation (checklist J) depends on board configuration, and the
-Movies Signature (§16.2) is waiting for One Clue to be released from the Shared Core.
+The previous phase — the Football Bomb media wave — is **complete**: media produced, a mapping defect caught and
+repaired, product review passed, and the three Football Scopes promoted and verified in the local/dev runtime
+(§C.1). Two of the four expansion Worlds are now in; the same gate stands in front of the remaining two, and it
+is still media rather than authoring or engineering.
 
-Sequence, roughly:
+Immediate phase — **45 Bomb media items** for the authored Video Games Scopes:
 
-1. Register a `bomb` ChallengeType and define the Bomb content contract
-2. Decide the new board composition (§3.1 needs rewriting to match reality)
-3. Author and validate Bomb coverage across target Worlds/Scopes
-4. Re-point One Clue as the Movies Signature
-5. Reconcile board configuration, then resume activation
+| Scope | Bomb items needing media |
+|---|---|
+| `minecraft` | 15 |
+| `god-of-war` | 15 |
+| `resident-evil` | 15 |
+| **Total** | **45** |
 
-⚠️ Item 10 in §19 is worth clearing first and is cheap: rebuild the dev stack so it actually contains
-`302bc37` before any further runtime verification is attempted.
+⚠️ **None of these three Scopes exists in the runtime yet** — they are authored and their taxonomy is pushed,
+nothing more (§19 item 25).
+
+Then, in order:
+
+1. **Video Games Bomb media — 45**, paired subject by subject and never by position (§5.6) → manual product review
+2. Create/reuse the 3 Video Games runtime Scopes, promote their approved content → runtime smoke per mechanic
+3. **Puzzles Bomb media — 45** → manual product review → local/dev promotion
+4. Only then: final Shared Core / board reconciliation, driven by complete coverage rather than by effort
+
+⚠️ **This is content and media progression, not board migration.** Anime and Football boards reaching the target
+composition covers those two Worlds and nothing else.
+
+Two cheap things worth clearing alongside: the stale `MATCH_WITHOUT_RELATIONAL_CHALLENGE` warning (§19 item 17),
+and getting the Bomb, الكومبو and المرحلة implementation work committed so it stops being local-only (§19 items
+12, 18, 21 and 27). `distributed-information` currently having **zero** content in this runtime (§19 item 19)
+needs resolving **before** Puzzles is promoted — it is the Puzzles Signature, and a Puzzles promotion on top of
+an empty Signature catalog would be promoting half a World.
+
+### Running alongside — المرحلة close-out
+
+The Video Games Signature is implemented and verified locally (§17); what remains is not engineering:
+
+1. Author **production** المرحلة content across the Video Games Scopes and all three bands — enough to sustain
+   repeated play under the permanent no-repeat rule (§5.5). No target quantity is approved; that is a
+   content-planning decision.
+2. Playtest with real production-quality prompts, then decide on balance: race length, Easy's value, the six
+   forward boosts, and the 30s clock (§17.18). Nothing about the V4 map or the timer changes without that.
+3. Delete the 19 dev fixtures, and the local rollout smoke account, once neither is needed.
+4. Commit / push / deploy only when explicitly requested — everything from this work is still working-tree and
+   local-runtime state.
+
+### Also newly settled — the permanent no-repeat rule
+
+§5.5 is implemented and verified across all eight content-backed mechanics, which changes one planning
+assumption: **content depth is now a hard requirement per account, not a nice-to-have.** An account that plays a
+mechanic repeatedly will eventually exhaust it and see an honest `content-exhausted` outcome rather than a
+repeat. Any per-mechanic content target should be set with that in mind.

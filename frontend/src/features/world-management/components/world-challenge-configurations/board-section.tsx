@@ -4,24 +4,39 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  ConfirmationDialog,
-  EmptyState,
-  SectionCard,
-} from "@/components/shared";
+import { EmptyState, SectionCard } from "@/components/shared";
 import { showToast } from "@/components/ui/toast";
 import { getApiErrorMessage } from "@/lib/utils";
 
 import {
-  useDeleteWorldChallengeConfiguration,
+  useReleaseWorldSlot,
   useWorldBoard,
   useWorldContentMetadata,
 } from "../../hooks/use-world-content";
 import { EntityFormDialog, RowSkeleton } from "../shared";
 import { ReadinessPanel } from "../readiness";
+import { SLOT_KEY_LABEL } from "../../utils/world-content.labels";
 import { ConfigurationCard } from "./configuration-card";
 import { ConfigurationForm } from "./configuration-form";
-import type { WorldChallengeConfiguration } from "../../types";
+import { SlotRemovalDialog } from "./slot-removal-dialog";
+import type {
+  WorldChallengeConfiguration,
+  WorldChallengeSlotKey,
+} from "../../types";
+
+/**
+ * The four board positions always exist as positions.
+ *
+ * Releasing a mechanic unbinds a slot; it does not remove the slot. Rendering the
+ * fixed four means an empty position stays visible and directly assignable rather
+ * than silently vanishing from the board.
+ */
+const BOARD_SLOT_KEYS: WorldChallengeSlotKey[] = [
+  "slot_1",
+  "slot_2",
+  "slot_3",
+  "slot_4",
+];
 
 export function BoardSection({ worldId }: { worldId: string }) {
   const { data, isLoading } = useWorldBoard(worldId);
@@ -32,12 +47,20 @@ export function BoardSection({ worldId }: { worldId: string }) {
   );
   const [pendingDelete, setPendingDelete] =
     useState<WorldChallengeConfiguration | null>(null);
-  const deleteConfiguration = useDeleteWorldChallengeConfiguration();
+  const [assigningSlot, setAssigningSlot] =
+    useState<WorldChallengeSlotKey | null>(null);
+  const releaseSlot = useReleaseWorldSlot();
 
   const configurations = data?.configurations ?? [];
   const enabledCount = configurations.filter(
     (configuration) => configuration.isEnabled,
   ).length;
+  const bySlot = new Map(
+    configurations.map((configuration) => [
+      configuration.slotKey,
+      configuration,
+    ]),
+  );
 
   return (
     <SectionCard
@@ -59,14 +82,42 @@ export function BoardSection({ worldId }: { worldId: string }) {
         />
       ) : (
         <div className="space-y-3">
-          {configurations.map((configuration) => (
-            <ConfigurationCard
-              key={configuration.id}
-              configuration={configuration}
-              onEdit={() => setEditing(configuration)}
-              onDelete={() => setPendingDelete(configuration)}
-            />
-          ))}
+          {BOARD_SLOT_KEYS.map((slotKey) => {
+            const configuration = bySlot.get(slotKey);
+            if (configuration) {
+              return (
+                <ConfigurationCard
+                  key={slotKey}
+                  configuration={configuration}
+                  onEdit={() => setEditing(configuration)}
+                  onDelete={() => setPendingDelete(configuration)}
+                />
+              );
+            }
+            return (
+              <div
+                key={slotKey}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed p-3"
+                data-testid={`empty-slot-${slotKey}`}
+              >
+                <div>
+                  <p className="font-medium">{SLOT_KEY_LABEL[slotKey]}</p>
+                  <p className="text-sm text-muted-foreground">
+                    لا توجد ميكانيكا
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setAssigningSlot(slotKey)}
+                  data-testid={`assign-slot-${slotKey}`}
+                >
+                  <Plus className="me-1.5 size-4" />
+                  تعيين ميكانيكا
+                </Button>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -114,29 +165,52 @@ export function BoardSection({ worldId }: { worldId: string }) {
         )}
       </EntityFormDialog>
 
-      <ConfirmationDialog
+      <EntityFormDialog
+        open={Boolean(assigningSlot)}
+        onOpenChange={(open) => {
+          if (!open) setAssigningSlot(null);
+        }}
+        title="تعيين ميكانيكا للخانة"
+      >
+        {assigningSlot && (
+          <ConfigurationForm
+            key={assigningSlot}
+            worldId={worldId}
+            defaultSlotKey={assigningSlot}
+            onSuccess={() => setAssigningSlot(null)}
+          />
+        )}
+      </EntityFormDialog>
+
+      <SlotRemovalDialog
+        configuration={pendingDelete}
         open={Boolean(pendingDelete)}
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null);
         }}
-        title="إزالة من العالم"
-        description={`هل تريد إزالة "${pendingDelete?.displayName ?? ""}" من لوحة هذا العالم؟`}
-        confirmLabel="إزالة من العالم"
-        destructive
-        disabled={deleteConfiguration.isPending}
-        onConfirm={() => {
-          if (!pendingDelete) return;
-          deleteConfiguration.mutate(pendingDelete.id, {
-            onSuccess: () => setPendingDelete(null),
-            onError: (error) => {
-              showToast({
-                type: "error",
-                message: getApiErrorMessage(error, "تعذر إزالة الميكانيكا من العالم."),
-              });
-              setPendingDelete(null);
+        pending={releaseSlot.isPending}
+        onConfirm={(configuration) =>
+          releaseSlot.mutate(
+            {
+              configurationId: configuration.id,
+              expectedChallengeTypeId: configuration.challengeTypeId,
             },
-          });
-        }}
+            {
+              onSuccess: () => setPendingDelete(null),
+              onError: (error) => {
+                // The dialog stays open on failure: the board is unchanged, and
+                // closing it would imply the removal happened.
+                showToast({
+                  type: "error",
+                  message: getApiErrorMessage(
+                    error,
+                    "تعذر إزالة الميكانيكا من العالم.",
+                  ),
+                });
+              },
+            },
+          )
+        }
       />
     </SectionCard>
   );

@@ -135,6 +135,12 @@ export const DISTRIBUTED_INFORMATION_ANSWER_MODES = [
 
 /** "بدليل واحد": a core mechanic that wraps deterministic text matching. */
 export const ONE_CLUE_SLUG = 'one-clue';
+/** The Anime Signature: two Runs of four rising-stage questions. */
+export const COMBO_SLUG = 'combo';
+
+export const BOMB_SLUG = 'bomb';
+
+export const MARHALA_SLUG = 'marhala';
 export const ONE_CLUE_ITEM_COUNT = 3;
 export const ONE_CLUE_STAGE_SECONDS = 7;
 export const ONE_CLUE_VALUES = [5, 4, 3, 2, 1] as const;

@@ -7,6 +7,7 @@ import { ContentItemService } from './application/content-item.service';
 import { PlayerCatalogService } from './application/player-catalog.service';
 import { ScopeService } from './application/scope.service';
 import { WorldChallengeConfigurationService } from './application/world-challenge-configuration.service';
+import { WorldSlotMechanicRemovalService } from './application/world-slot-mechanic-removal.service';
 import { WorldContentAssetMutator } from './application/world-content-asset.mutator';
 import { WorldContentClassificationService } from './application/world-content-classification.service';
 import { WorldContentReferenceRegistry } from './application/world-content-reference.registry';
@@ -93,6 +94,7 @@ import { World, WorldSchema } from './schemas/world.schema';
     ScopeService,
     ChallengeTypeService,
     WorldChallengeConfigurationService,
+    WorldSlotMechanicRemovalService,
     ContentItemService,
     PlayerCatalogService,
     WorldReadinessService,

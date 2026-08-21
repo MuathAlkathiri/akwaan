@@ -8,7 +8,10 @@ import {
   GameplayRuntimeState,
   isTerminalRuntimeStatus,
 } from '../../live-game-sessions/domain/gameplay-runtime';
-import { BOMB_MODE_KEY } from '../../live-game-sessions/domain/bomb-gameplay.plugin';
+import {
+  BOMB_GAMEPLAY_PLUGIN,
+  BOMB_MODE_KEY,
+} from '../../live-game-sessions/domain/bomb-gameplay.plugin';
 import {
   BOMB_MAX_ITEMS,
   BOMB_MIN_ITEMS,
@@ -114,6 +117,21 @@ export class BombChallengeLauncher
    * carries the phase — so terminality comes from the runtime status the
    * completion step sets, not from a mode field.
    */
+  /** Delegated to the mechanic, which alone knows what it has presented. */
+  presentedContentItemIds(input: {
+    runtime: GameplayRuntimeState;
+    orderedContentItemIds: readonly string[];
+  }): string[] {
+    const state = input.runtime.runtimeState;
+    const roundState = input.runtime.activeRound?.modeState;
+    if (!state || !BOMB_GAMEPLAY_PLUGIN.presentedContentItemIds) return [];
+    return BOMB_GAMEPLAY_PLUGIN.presentedContentItemIds({
+      runtimeState: state,
+      roundState: roundState ?? {},
+      orderedContentItemIds: input.orderedContentItemIds,
+    });
+  }
+
   detectTerminal(runtime: GameplayRuntimeState): boolean {
     return isTerminalRuntimeStatus(runtime.status);
   }

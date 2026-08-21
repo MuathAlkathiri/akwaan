@@ -25,6 +25,7 @@ import {
 import { MatchChallengeReadinessService } from './match-challenge-readiness.service';
 import { MatchContentPool } from './match-content-pool.service';
 import { MatchContentSelector } from './match-content-selection.service';
+import { ContentExposureService } from './content-exposure.service';
 import { MatchWorldCatalog } from './match-world.catalog';
 import { MatchUseCases } from './match.use-cases';
 import { UnifiedMatchSetupValidator } from './unified-match-setup.validator';
@@ -137,6 +138,14 @@ describe('MatchUseCases transitions', () => {
       {
         select: () => Promise.resolve(['i1', 'i2', 'i3']),
       } as unknown as MatchContentSelector,
+      // The exposure ledger has its own suites; a draw that always wins its
+      // reservation keeps these assertions about the Match transitions.
+      {
+        reserve: (_scope: unknown, ids: string[]) =>
+          Promise.resolve({ claimed: ids, lost: [] }),
+        recordPresented: () => Promise.resolve(0),
+        releaseUnseen: () => Promise.resolve(0),
+      } as unknown as ContentExposureService,
       new MatchChallengeReadinessService(),
       {
         execute: () => Promise.resolve(null),

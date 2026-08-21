@@ -25,7 +25,11 @@ import {
 import { useEntityFormSubmit } from "../../hooks/use-entity-form-submit";
 import { buildConfigurationPayload } from "../../services/world-content-forms";
 import { FormIssueList } from "../shared";
-import { ANSWER_MODE_LABEL, FAMILY_LABEL, SLOT_KEY_LABEL } from "../../utils/world-content.labels";
+import {
+  ANSWER_MODE_LABEL,
+  FAMILY_LABEL,
+  SLOT_KEY_LABEL,
+} from "../../utils/world-content.labels";
 import type {
   ChallengeType,
   WorldChallengeConfiguration,
@@ -35,6 +39,8 @@ import type {
 interface ConfigurationFormProps {
   worldId: string;
   configuration?: WorldChallengeConfiguration;
+  /** Pre-selects the position when assigning into a specific empty slot. */
+  defaultSlotKey?: WorldChallengeSlotKey;
   onSuccess: () => void;
 }
 
@@ -47,6 +53,7 @@ interface ConfigurationFormProps {
 export function ConfigurationForm({
   worldId,
   configuration,
+  defaultSlotKey,
   onSuccess,
 }: ConfigurationFormProps) {
   const { data: challengeTypes = [], isLoading: loadingChallengeTypes } =
@@ -58,11 +65,17 @@ export function ConfigurationForm({
     configuration?.challengeTypeId ?? "",
   );
   const [slotKey, setSlotKey] = useState<WorldChallengeSlotKey>(
-    configuration?.slotKey ?? "slot_1",
+    configuration?.slotKey ?? defaultSlotKey ?? "slot_1",
   );
-  const [displayName, setDisplayName] = useState(configuration?.displayName ?? "");
-  const [description, setDescription] = useState(configuration?.description ?? "");
-  const [instructions, setInstructions] = useState(configuration?.instructions ?? "");
+  const [displayName, setDisplayName] = useState(
+    configuration?.displayName ?? "",
+  );
+  const [description, setDescription] = useState(
+    configuration?.description ?? "",
+  );
+  const [instructions, setInstructions] = useState(
+    configuration?.instructions ?? "",
+  );
   const [sortOrder, setSortOrder] = useState(configuration?.sortOrder ?? 0);
   const [isEnabled, setIsEnabled] = useState(configuration?.isEnabled ?? true);
   const [localProblems, setLocalProblems] = useState<string[]>([]);
@@ -134,7 +147,12 @@ export function ConfigurationForm({
         <label className="mb-2 block text-sm font-medium">
           <span className="akwaan-numeral">1</span>. الموضع
         </label>
-        <Select value={slotKey} onValueChange={(value: string) => setSlotKey(value as WorldChallengeSlotKey)}>
+        <Select
+          value={slotKey}
+          onValueChange={(value: string) =>
+            setSlotKey(value as WorldChallengeSlotKey)
+          }
+        >
           <SelectTrigger aria-label="الموضع في اللوحة">
             <SelectValue />
           </SelectTrigger>
@@ -147,7 +165,8 @@ export function ConfigurationForm({
           </SelectContent>
         </Select>
         <p className="mt-1 text-xs text-muted-foreground">
-          كل عالم يملك أربع خانات متساوية. نوع التحدي الذي تختاره هو ما يحدد طريقة اللعب.
+          كل عالم يملك أربع خانات متساوية. نوع التحدي الذي تختاره هو ما يحدد
+          طريقة اللعب.
         </p>
       </div>
 
@@ -174,7 +193,8 @@ export function ConfigurationForm({
 
         {!loadingChallengeTypes && !selectable.length && !configuration && (
           <p className="mt-1 text-xs text-destructive">
-            لا توجد مكانيكا نشطة أخرى متاحة. فعّل مكانيكا عامة أو استبدل أحد تحديات اللوحة.
+            لا توجد مكانيكا نشطة أخرى متاحة. فعّل مكانيكا عامة أو استبدل أحد
+            تحديات اللوحة.
           </p>
         )}
       </div>

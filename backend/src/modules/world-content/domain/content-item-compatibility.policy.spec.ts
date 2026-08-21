@@ -593,4 +593,228 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
     ]);
     expect(policy.findLegacyFields({ prompt: { ar: 'سؤال' } })).toEqual([]);
   });
+
+  describe('الكومبو content contract', () => {
+    // Combo plays a run of four questions of rising difficulty, so the stage is
+    // the item's position in that run. It is validated here, at authoring time,
+    // by the same predicate the plan builder uses at launch.
+    const comboType = () =>
+      challengeType({
+        id: 'challenge-combo',
+        slug: 'combo',
+        answerMode: ChallengeAnswerMode.MATCH,
+      });
+
+    const comboItem = (comboStage: unknown) =>
+      contentItem({
+        compatibleChallengeTypeIds: ['challenge-combo'],
+        answerPayload: {
+          mode: ChallengeAnswerMode.MATCH,
+          acceptedAnswers: ['ناروتو'],
+        },
+        ...(comboStage === undefined
+          ? {}
+          : { mechanicPayload: { comboStage } }),
+      });
+
+    const comboCodes = (comboStage: unknown) =>
+      codes({
+        item: comboItem(comboStage),
+        challengeTypes: typeMap(comboType()),
+      });
+
+    it.each([1, 2, 3, 4])('accepts stage %s', (stage) => {
+      expect(comboCodes(stage)).not.toContain('COMBO_ITEM_STAGE_INVALID');
+    });
+
+    it('rejects an item authored with no stage at all', () => {
+      // Saving cleanly and failing at launch is the worst time to find this.
+      expect(comboCodes(undefined)).toContain('COMBO_ITEM_STAGE_INVALID');
+    });
+
+    it.each([0, 5, -1, 1.5, '3', 'hard', null, true])(
+      'rejects %p as a stage',
+      (stage) => {
+        expect(comboCodes(stage)).toContain('COMBO_ITEM_STAGE_INVALID');
+      },
+    );
+
+    it('leaves other mechanics alone', () => {
+      // An RYO item has no business carrying a Combo stage, and must not be
+      // asked for one.
+      expect(codes()).not.toContain('COMBO_ITEM_STAGE_INVALID');
+    });
+  });
+
+  describe('القنبلة content contract', () => {
+    // Bomb has no payload of its own: a Bomb item is an ordinary picture question.
+    // What it needs is a shape, and it is checked here with the same function the
+    // launch path runs, so nothing the form accepts can fail a launch on shape.
+    const bombType = () =>
+      challengeType({
+        id: 'challenge-bomb',
+        slug: 'bomb',
+        family: ChallengeFamily.COOP,
+        answerMode: ChallengeAnswerMode.MATCH,
+      });
+
+    const bombItem = (overrides: Record<string, unknown> = {}) =>
+      contentItem({
+        compatibleChallengeTypeIds: ['challenge-bomb'],
+        prompt: { ar: 'من هذا اللاعب؟' },
+        media: {
+          type: ContentMediaType.IMAGE,
+          assets: [{ url: 'https://example.test/a.jpg' }],
+        },
+        answerPayload: {
+          mode: ChallengeAnswerMode.MATCH,
+          acceptedAnswers: ['ميسي'],
+        },
+        status: ContentItemStatus.READY,
+        ...overrides,
+      });
+
+    const bombCodes = (overrides: Record<string, unknown> = {}) =>
+      codes({
+        item: bombItem(overrides),
+        challengeTypes: typeMap(bombType()),
+      });
+
+    it('accepts a picture question with match answers', () => {
+      expect(bombCodes()).toEqual([]);
+    });
+
+    it('requires the picture Bomb is played by looking at', () => {
+      expect(bombCodes({ media: undefined })).toContain(
+        'BOMB_ITEM_MEDIA_REQUIRED',
+      );
+    });
+
+    it('requires an Arabic prompt', () => {
+      expect(bombCodes({ prompt: { ar: '   ' } })).toContain(
+        'BOMB_ITEM_PROMPT_REQUIRED',
+      );
+    });
+
+    it('requires at least one accepted answer', () => {
+      expect(
+        bombCodes({
+          answerPayload: {
+            mode: ChallengeAnswerMode.MATCH,
+            acceptedAnswers: [],
+          },
+        }),
+      ).toContain('BOMB_ITEM_ANSWERS_INVALID');
+    });
+
+    it('rejects two spellings that normalize to the same answer', () => {
+      expect(
+        bombCodes({
+          answerPayload: {
+            mode: ChallengeAnswerMode.MATCH,
+            acceptedAnswers: ['ميسي', 'ميسي '],
+          },
+        }),
+      ).toContain('BOMB_ITEM_ANSWER_DUPLICATE');
+    });
+
+    it('does not impose the run-level count on a single item', () => {
+      // 10–15 items is a property of a *challenge*, not of an item. Applying it
+      // here would make every Bomb item unauthorable.
+      expect(bombCodes()).not.toContain('BOMB_ITEM_COUNT_INVALID');
+    });
+
+    it('leaves other mechanics alone', () => {
+      // An RYO item has no image and must not be asked for one.
+      expect(codes()).not.toContain('BOMB_ITEM_MEDIA_REQUIRED');
+    });
+  });
+
+  describe('المرحلة content contract', () => {
+    // Difficulty is the risk band a team elects before the question is drawn, so
+    // an item without one has no pool to be drawn from. It is Marhala's own
+    // metadata: never a shared `difficulty`, and never Combo's `comboStage`.
+    const marhalaType = () =>
+      challengeType({
+        id: 'challenge-marhala',
+        slug: 'marhala',
+        family: ChallengeFamily.SIGNATURE,
+        answerMode: ChallengeAnswerMode.MATCH,
+      });
+
+    const marhalaItem = (marhalaDifficulty: unknown) =>
+      contentItem({
+        compatibleChallengeTypeIds: ['challenge-marhala'],
+        answerPayload: {
+          mode: ChallengeAnswerMode.MATCH,
+          acceptedAnswers: ['ماريو'],
+        },
+        ...(marhalaDifficulty === undefined
+          ? {}
+          : { mechanicPayload: { marhalaDifficulty } }),
+      });
+
+    const marhalaCodes = (marhalaDifficulty: unknown) =>
+      codes({
+        item: marhalaItem(marhalaDifficulty),
+        challengeTypes: typeMap(marhalaType()),
+      });
+
+    it.each(['easy', 'medium', 'hard'])('accepts %s', (difficulty) => {
+      expect(marhalaCodes(difficulty)).not.toContain(
+        'MARHALA_ITEM_DIFFICULTY_INVALID',
+      );
+    });
+
+    it('rejects an item authored with no difficulty', () => {
+      expect(marhalaCodes(undefined)).toContain(
+        'MARHALA_ITEM_DIFFICULTY_INVALID',
+      );
+    });
+
+    // 'سهل' is the label the Admin form shows; the value it must persist is
+    // 'easy'. A client that sends the label instead is refused here, so the form's
+    // own validation is a convenience rather than the guarantee.
+    it.each([
+      null,
+      '',
+      'EASY',
+      'Easy',
+      'impossible',
+      'سهل',
+      'متوسط',
+      'صعب',
+      1,
+      0,
+      true,
+      {},
+      ['hard'],
+    ])('rejects %p as a difficulty', (difficulty) => {
+      expect(marhalaCodes(difficulty)).toContain(
+        'MARHALA_ITEM_DIFFICULTY_INVALID',
+      );
+    });
+
+    it('does not accept a Combo stage in its place', () => {
+      // The two are different concepts; sharing the field would let one
+      // mechanic's rebalance change the other's gameplay.
+      expect(
+        codes({
+          item: contentItem({
+            compatibleChallengeTypeIds: ['challenge-marhala'],
+            answerPayload: {
+              mode: ChallengeAnswerMode.MATCH,
+              acceptedAnswers: ['ماريو'],
+            },
+            mechanicPayload: { comboStage: 2 },
+          }),
+          challengeTypes: typeMap(marhalaType()),
+        }),
+      ).toContain('MARHALA_ITEM_DIFFICULTY_INVALID');
+    });
+
+    it('leaves other mechanics alone', () => {
+      expect(codes()).not.toContain('MARHALA_ITEM_DIFFICULTY_INVALID');
+    });
+  });
 });

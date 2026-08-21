@@ -49,14 +49,21 @@ vi.mock("@/features/match-setup", () => ({
 vi.mock("@/features/live-game-session/components/ryo-gameplay-panel", () => ({
   RyoGameplayPanel: () => <div data-testid="renderer-ryo" />,
 }));
-vi.mock(
-  "@/features/live-game-session/components/top5-panel",
-  () => ({ Top5Panel: () => <div data-testid="renderer-top5" /> }),
-);
+vi.mock("@/features/live-game-session/components/top5-panel", () => ({
+  Top5Panel: () => <div data-testid="renderer-top5" />,
+}));
 vi.mock(
   "@/features/live-game-session/components/closest-gameplay-panel",
-  () => ({ ClosestGameplayPanel: () => <div data-testid="renderer-closest" /> }),
+  () => ({
+    ClosestGameplayPanel: () => <div data-testid="renderer-closest" />,
+  }),
 );
+vi.mock("@/features/live-game-session/components/combo-gameplay-panel", () => ({
+  ComboGameplayPanel: () => <div data-testid="renderer-combo" />,
+}));
+vi.mock("@/features/live-game-session/components/bomb-gameplay-panel", () => ({
+  BombGameplayPanel: () => <div data-testid="renderer-bomb" />,
+}));
 vi.mock(
   "@/features/live-game-session/components/distributed-information-panel",
   () => ({
@@ -235,6 +242,8 @@ describe("a running challenge is routed by its runtime mode key", () => {
     ["read-your-opponent", "renderer-ryo"],
     ["closest", "renderer-closest"],
     ["top-5", "renderer-top5"],
+    ["combo", "renderer-combo"],
+    ["bomb", "renderer-bomb"],
   ])("renders %s with its own screen", (modeKey, testId) => {
     renderRouter(match({ stage: "challenge", currentChallenge: running }), {
       runtimeModeKey: modeKey,
@@ -260,6 +269,26 @@ describe("a running challenge is routed by its runtime mode key", () => {
         runtimeModeKey: "distributed-information",
       });
       expect(screen.getByTestId("renderer-distributed-screen")).toBeTruthy();
+      view.unmount();
+    }
+  });
+
+  it("gives every actor the same Combo panel, because the server splits the view", () => {
+    // Combo has no per-actor component: the running team, the team holding a
+    // break charge and the shared screen all render from their own projection.
+    // A Match must not fall through to "no screen for this challenge" — that is
+    // exactly the regression this covers.
+    for (const actor of [
+      "participant",
+      "controller",
+      "shared-screen",
+    ] as const) {
+      const view = renderRouter(
+        match({ stage: "challenge", currentChallenge: running }),
+        { actor, runtimeModeKey: "combo" },
+      );
+      expect(screen.getByTestId("renderer-combo")).toBeTruthy();
+      expect(screen.queryByTestId("runtime-renderer-missing")).toBeNull();
       view.unmount();
     }
   });
@@ -363,19 +392,29 @@ describe("reconciliation returns to the board", () => {
     expect(finished.textContent).toContain("3");
     // Scores and the turn are the server's, updated in the same snapshot.
     expect(screen.getByTestId("board-progress").textContent).toBe("1/12");
-    expect(screen.getByTestId("selecting-team-board").textContent).toContain("صقور الرياض");
+    expect(screen.getByTestId("selecting-team-board").textContent).toContain(
+      "صقور الرياض",
+    );
     expect(screen.getByTestId("unified-board").textContent).toContain("3");
   });
 
   it("leaves the finished position unselectable without hiding it", () => {
     renderRouter(
-      match({ stage: "board", positions: completed, completedPositionCount: 1 }),
+      match({
+        stage: "board",
+        positions: completed,
+        completedPositionCount: 1,
+      }),
     );
 
     const finished = screen.getByTestId("unified-position-1#slot_2");
     expect(finished.textContent).not.toContain("اختيار هذا التحدي");
     // The eleven others are still offered.
-    expect(screen.getAllByTestId(/^unified-position-/).filter((node) => node.tagName === "BUTTON")).toHaveLength(11);
+    expect(
+      screen
+        .getAllByTestId(/^unified-position-/)
+        .filter((node) => node.tagName === "BUTTON"),
+    ).toHaveLength(11);
   });
 });
 
@@ -467,7 +506,10 @@ describe("a refresh restores whatever stage the snapshot names", () => {
             }
           : {}),
       }),
-      { runtimeModeKey: stage === "challenge" ? "read-your-opponent" : undefined },
+      {
+        runtimeModeKey:
+          stage === "challenge" ? "read-your-opponent" : undefined,
+      },
     );
 
     expect(screen.getByTestId(testId)).toBeTruthy();
@@ -475,8 +517,6 @@ describe("a refresh restores whatever stage the snapshot names", () => {
 
   it("marks the rendered stage on the surface for a reload to land on", () => {
     renderRouter(match({ stage: "board" }));
-    expect(
-      document.querySelector("[data-match-stage='board']"),
-    ).toBeTruthy();
+    expect(document.querySelector("[data-match-stage='board']")).toBeTruthy();
   });
 });

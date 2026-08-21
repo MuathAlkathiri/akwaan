@@ -120,7 +120,10 @@ describe('Bomb board lifecycle integration', () => {
     const bomb = await challengeType({
       name: 'القنبلة',
       slug: BOMB_MODE_KEY,
-      family: ChallengeFamily.SIGNATURE,
+      // Shared Core, not a Signature (§16.1). A canonical slug must match its
+      // code definition or the drift guard rejects it, which is exactly how this
+      // fixture caught the family change.
+      family: ChallengeFamily.COOP,
       itemStructure: 'continuous',
       answerMode: ChallengeAnswerMode.MATCH,
       scoringRuleId: SCORING_RULE_IDS.CHALLENGE_WIN,
@@ -609,6 +612,50 @@ describe('Bomb board lifecycle integration', () => {
     const runtime = (await rawRuntime(sessionId))!;
     expect(runtime.state.activeRound.modeState.itemIndex).toBe(1);
     expect((await rawSession(sessionId))!.state.activeTeamId).not.toBe(before);
+  }, 180_000);
+
+  it('6b: a correct answer passes the bomb without resetting the clock', async () => {
+    // The whole tension of Bomb is that time never comes back. A correct answer
+    // hands the bomb over; it does not hand over a fresh clock. Nothing else in
+    // this suite pins that, and it is the mechanic's defining property.
+    const { sessionId, participants } = await startSession();
+    await bombRunning(sessionId);
+
+    const teamsOf = async () =>
+      (await rawSession(sessionId))!.state.teams as unknown as Array<{
+        id: string;
+        clock: { allocatedMs: number; consumedMs: number };
+      }>;
+
+    const before = await teamsOf();
+    const passingTeamId = (await rawSession(sessionId))!.state.activeTeamId;
+    // Spend a measurable slice of the passing team's clock first.
+    await leaveActiveClockAlmostSpent(sessionId, 20_000);
+    const spent = (await teamsOf()).find(
+      (team) => team.id === passingTeamId,
+    )!.clock;
+    expect(spent.consumedMs).toBeGreaterThan(0);
+
+    await command(
+      sessionId,
+      await activeActor(sessionId, participants),
+      'submit-answer',
+      { answer: answerFor(0) },
+    );
+
+    const after = await teamsOf();
+    const passer = after.find((team) => team.id === passingTeamId)!.clock;
+    // Time only ever accrues. The team that answered keeps every millisecond it
+    // had already burned — never fewer — and the figure stays where it was rather
+    // than dropping back toward zero, which is what a reset would look like.
+    expect(passer.consumedMs).toBeGreaterThanOrEqual(spent.consumedMs);
+    expect(passer.consumedMs).toBeLessThan(spent.consumedMs + 10_000);
+    expect(passer.consumedMs).toBeGreaterThan(0);
+    // And no team's allocation was topped back up by the hand-over.
+    for (const team of after) {
+      const original = before.find((entry) => entry.id === team.id)!;
+      expect(team.clock.allocatedMs).toBe(original.clock.allocatedMs);
+    }
   }, 180_000);
 
   it('7: a wrong answer changes nothing', async () => {

@@ -174,6 +174,35 @@ export interface WorldChallengeConfiguration {
   >;
 }
 
+/** Server-counted impact of releasing one World board position. */
+export interface WorldSlotRemovalPreview {
+  worldId: string;
+  worldName: string;
+  slotKey: WorldChallengeSlotKey;
+  challengeTypeId: string;
+  challengeTypeSlug: string;
+  challengeTypeName: string;
+  content: {
+    total: number;
+    ready: number;
+    /** Items no other mechanic can play; these are deleted. */
+    exclusive: number;
+    /** Items another mechanic can still play; these only lose a relationship. */
+    shared: number;
+  };
+  boardWillBecomeIncomplete: boolean;
+}
+
+export interface WorldSlotRemovalResult {
+  worldId: string;
+  slotKey: WorldChallengeSlotKey;
+  challengeTypeId: string;
+  deletedContentItems: number;
+  detachedSharedItems: number;
+  slotNowEmpty: boolean;
+  boardReady: boolean;
+}
+
 export interface WorldBoard {
   worldId: string;
   configurations: WorldChallengeConfiguration[];

@@ -59,3 +59,19 @@ export class CreateWorldChallengeConfigurationDto {
 export class UpdateWorldChallengeConfigurationDto extends PartialType(
   CreateWorldChallengeConfigurationDto,
 ) {}
+
+/**
+ * Confirming a board-position release.
+ *
+ * `expectedChallengeTypeId` is the concurrency check: the operator confirmed a
+ * dialog about one specific mechanic, and if the slot has since been rebound the
+ * command must fail rather than remove whatever is there now.
+ */
+export class ReleaseWorldSlotDto {
+  @ApiProperty({
+    description:
+      'The ChallengeType the operator confirmed removing. Rejected if the slot now holds a different one.',
+  })
+  @IsMongoId()
+  expectedChallengeTypeId: string;
+}

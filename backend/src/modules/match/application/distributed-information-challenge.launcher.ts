@@ -8,6 +8,7 @@ import { GameplayRuntimeState } from '../../live-game-sessions/domain/gameplay-r
 import {
   DISTRIBUTED_INFORMATION_MODE_KEY,
   DistributedResult,
+  DISTRIBUTED_INFORMATION_PLUGIN,
 } from '../../live-game-sessions/domain/distributed-information.plugin';
 import {
   DISTRIBUTED_INFORMATION_ANSWER_MODES,
@@ -120,6 +121,24 @@ export class DistributedInformationChallengeLauncher
   }
 
   /** Terminal once the race resolved, by a finish or by the deadline. */
+  /** Delegated to the mechanic, which alone knows what it has presented. */
+  presentedContentItemIds(input: {
+    runtime: GameplayRuntimeState;
+    orderedContentItemIds: readonly string[];
+  }): string[] {
+    const runtimeState = input.runtime.runtimeState;
+    if (
+      !runtimeState ||
+      !DISTRIBUTED_INFORMATION_PLUGIN.presentedContentItemIds
+    )
+      return [];
+    return DISTRIBUTED_INFORMATION_PLUGIN.presentedContentItemIds({
+      runtimeState,
+      roundState: input.runtime.activeRound?.modeState ?? {},
+      orderedContentItemIds: input.orderedContentItemIds,
+    });
+  }
+
   detectTerminal(runtime: GameplayRuntimeState): boolean {
     return runtime.runtimeState?.phase === 'completed';
   }

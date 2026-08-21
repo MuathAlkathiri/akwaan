@@ -110,14 +110,24 @@ describe('World Content architecture', () => {
     // Everything left is the legacy question bridge or an existing challenge
     // launcher reading the content a mechanic is about to play.
     expect(legacyImporters.sort()).toEqual([
+      // المرحلة's difficulty vocabulary is content metadata, so the runtime's
+      // question port and supplier read it from World Content rather than
+      // declaring a second copy of it.
+      'modules/live-game-sessions/application/marhala-question-source.registry.ts',
+      'modules/live-game-sessions/application/marhala-turn.supplier.ts',
       'modules/live-game-sessions/application/start-bomb-from-content.use-case.ts',
       'modules/live-game-sessions/application/start-closest-gameplay.use-case.ts',
+      'modules/live-game-sessions/application/start-combo-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-distributed-information.use-case.ts',
+      'modules/live-game-sessions/application/start-marhala-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-one-clue-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-ryo-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-top5.use-case.ts',
       // The Top 5 plugin reads the content contract's own constants rather than
       // restating ten, five, and the rank set a second time.
+      // المرحلة's difficulty vocabulary is content metadata, so the board reads it
+      // from World Content rather than declaring a second copy.
+      'modules/live-game-sessions/domain/marhala-board.ts',
       'modules/live-game-sessions/domain/one-clue-gameplay.plugin.ts',
       'modules/live-game-sessions/domain/top5-keep-or-give.plugin.ts',
       'modules/live-game-sessions/live-game-sessions.module.ts',
