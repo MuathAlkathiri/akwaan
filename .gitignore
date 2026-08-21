@@ -23,7 +23,9 @@ temp/
 test-storage/
 test-uploads/
 test-media/
+uploads/
 .cache/
+
 
 # Environment
 .env
