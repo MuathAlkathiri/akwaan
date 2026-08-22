@@ -4,6 +4,42 @@ import {
   GameplayRuntimeCommand,
   GameplayRuntimeExecutor,
 } from './gameplay-runtime.executor';
+import {
+  findEligibleTeamParticipant,
+  isEligibleTeamParticipant,
+  type TeamParticipantEligibilityCandidate,
+} from '../domain/team-participant-eligibility';
+
+export function resolveGameplayRoundParticipant<
+  T extends TeamParticipantEligibilityCandidate,
+>(
+  participants: readonly T[],
+  input: {
+    teamId: string;
+    modeKey: string;
+    explicitParticipantId?: string;
+  },
+): T | undefined {
+  if (input.explicitParticipantId) {
+    const explicit = participants.find(
+      (candidate) => candidate.id === input.explicitParticipantId,
+    );
+    return explicit &&
+      isEligibleTeamParticipant(explicit, {
+        teamId: input.teamId,
+        requiresConnectedPresence: input.modeKey === 'bomb',
+      })
+      ? explicit
+      : undefined;
+  }
+  return findEligibleTeamParticipant(participants, {
+    teamId: input.teamId,
+    requiresConnectedPresence: true,
+    // This fallback is the legacy readiness-driven selection path. Unified
+    // Match Bomb supplies an explicit representative selected by preflight.
+    requiresReady: true,
+  });
+}
 
 @Injectable()
 export class StartGameplayRuntime {
@@ -58,36 +94,28 @@ export class CreateGameplayRound {
             'Active team does not belong to this session',
           );
         }
+        const activeTeamId =
+          command.activeTeamId ?? state.activeTeamId ?? state.teams[0]?.id;
+        const resolvedParticipant = resolveGameplayRoundParticipant(
+          state.participants,
+          {
+            teamId: activeTeamId ?? '',
+            modeKey: runtime.modeKey,
+            ...(command.activeParticipantId
+              ? { explicitParticipantId: command.activeParticipantId }
+              : {}),
+          },
+        );
         if (command.activeParticipantId) {
-          const participant = state.participants.find(
-            (candidate) =>
-              candidate.id === command.activeParticipantId &&
-              !candidate.removedAt,
-          );
-          if (
-            !participant ||
-            participant.role !== 'team-player' ||
-            (command.activeTeamId &&
-              participant.teamId !== command.activeTeamId)
-          ) {
+          if (!resolvedParticipant) {
             throw new LiveSessionDomainError(
               'INVALID_ACTIVE_PARTICIPANT',
               'Active participant is not eligible for this round',
             );
           }
         }
-        const activeTeamId =
-          command.activeTeamId ?? state.activeTeamId ?? state.teams[0]?.id;
         const activeParticipantId =
-          command.activeParticipantId ??
-          state.participants.find(
-            (participant) =>
-              participant.role === 'team-player' &&
-              participant.teamId === activeTeamId &&
-              participant.ready &&
-              participant.connected &&
-              !participant.removedAt,
-          )?.id;
+          command.activeParticipantId ?? resolvedParticipant?.id;
         if (runtime.modeKey === 'bomb' && !activeParticipantId) {
           throw new LiveSessionDomainError(
             'BOMB_REPRESENTATIVE_REQUIRED',

@@ -6,6 +6,9 @@ import {
 import { DistributedInformationChallengeLauncher } from './distributed-information-challenge.launcher';
 import { RyoChallengeLauncher } from './ryo-challenge.launcher';
 import { Top5ChallengeLauncher } from './top5-challenge.launcher';
+import { BombChallengeLauncher } from './bomb-challenge.launcher';
+import { resolveUnifiedBombRepresentative } from '../../live-game-sessions/application/start-bomb-from-content.use-case';
+import { resolveGameplayRoundParticipant } from '../../live-game-sessions/application/gameplay-runtime.lifecycle';
 
 const TEAM_A = { id: 'team-a', name: 'البنفسجي', active: true };
 const TEAM_B = { id: 'team-b', name: 'الأخضر', active: true };
@@ -28,6 +31,8 @@ const distributed = construct(DistributedInformationChallengeLauncher)
 const ryo = construct(RyoChallengeLauncher).launchRequirements
   .readiness as MatchChallengeReadinessRequirement;
 const top5 = construct(Top5ChallengeLauncher).launchRequirements
+  .readiness as MatchChallengeReadinessRequirement;
+const bomb = construct(BombChallengeLauncher).launchRequirements
   .readiness as MatchChallengeReadinessRequirement;
 
 const player = (
@@ -231,6 +236,41 @@ describe('MatchChallengeReadinessService', () => {
       expect(evaluate(session({ a: 2, b: 0 }), requirement).allTeamsReady).toBe(
         false,
       );
+    });
+  });
+
+  describe('Bomb — Unified Match connected-presence contract', () => {
+    it('marks connected assigned ready=false players launch-ready', () => {
+      const view = session({ a: 0, b: 0 }, [
+        player('a-reconnected', TEAM_A.id, { ready: false }),
+        player('b-reconnected', TEAM_B.id, { ready: false }),
+      ]);
+      expect(evaluate(view, bomb)).toMatchObject({
+        allTeamsReady: true,
+        blockingReasons: [],
+      });
+      const representative = resolveUnifiedBombRepresentative(
+        view.participants,
+        TEAM_A.id,
+      );
+      expect(representative?.id).toBe('a-reconnected');
+      expect(
+        resolveGameplayRoundParticipant(view.participants, {
+          teamId: TEAM_A.id,
+          modeKey: 'bomb',
+          explicitParticipantId: representative?.id,
+        })?.id,
+      ).toBe('a-reconnected');
+    });
+
+    it('still rejects a disconnected active-team player', () => {
+      const view = session({ a: 0, b: 1 }, [
+        player('a-away', TEAM_A.id, {
+          ready: false,
+          connected: false,
+        }),
+      ]);
+      expect(evaluate(view, bomb).allTeamsReady).toBe(false);
     });
   });
 

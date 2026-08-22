@@ -18,6 +18,19 @@ import {
 } from '../domain/live-game-session.repository';
 import { LiveSessionDomainError } from '../domain/live-session.errors';
 import { BOMB_MODE_KEY } from '../domain/bomb-gameplay.plugin';
+import {
+  findEligibleTeamParticipant,
+  type TeamParticipantEligibilityCandidate,
+} from '../domain/team-participant-eligibility';
+
+export function resolveUnifiedBombRepresentative<
+  T extends TeamParticipantEligibilityCandidate,
+>(participants: readonly T[], teamId: string): T | undefined {
+  return findEligibleTeamParticipant(participants, {
+    teamId,
+    requiresConnectedPresence: true,
+  });
+}
 import { StartTeamTurn } from './live-session-turn.use-cases';
 import {
   CreateGameplayRuntime,
@@ -177,6 +190,16 @@ export class StartBombGameplayFromContent {
     });
 
     runtime = (await this.runtimes.findBySessionId(input.sessionId))!;
+    const representative = resolveUnifiedBombRepresentative(
+      sessionState.participants,
+      teams[0],
+    );
+    if (!representative) {
+      throw new LiveSessionDomainError(
+        'BOMB_REPRESENTATIVE_REQUIRED',
+        'The active Bomb team requires a connected representative',
+      );
+    }
     await this.createRound.execute({
       sessionId: input.sessionId,
       actor,
@@ -184,6 +207,7 @@ export class StartBombGameplayFromContent {
       expectedSessionRevision: session.revision,
       expectedRuntimeRevision: runtime.revision,
       activeTeamId: teams[0],
+      activeParticipantId: representative.id,
     });
 
     runtime = (await this.runtimes.findBySessionId(input.sessionId))!;

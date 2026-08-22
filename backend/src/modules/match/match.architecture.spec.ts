@@ -256,6 +256,9 @@ describe('Match module architecture', () => {
       'live-game-sessions/domain/gameplay-runtime',
       'live-game-sessions/domain/gameplay-runtime.repository',
       'live-game-sessions/domain/live-game-session.repository',
+      // Match preflight and live gameplay must use one participant eligibility
+      // contract so an unchanged roster cannot pass one and fail the other.
+      'live-game-sessions/domain/team-participant-eligibility',
       'live-game-sessions/presentation/live-session-http-exception.filter',
       'live-game-sessions/domain/ryo-gameplay.plugin',
       'live-game-sessions/domain/top5-keep-or-give.plugin',

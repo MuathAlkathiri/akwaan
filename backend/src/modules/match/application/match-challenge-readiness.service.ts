@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { isEligibleTeamParticipant } from '../../live-game-sessions/domain/team-participant-eligibility';
 import { MatchChallengeReadinessRequirement } from '../domain/match-challenge-readiness';
 
 /** What the preflight needs to know about one team's phones. */
@@ -46,6 +47,8 @@ export interface ReadinessSessionView {
     displayName: string;
     role: string;
     teamId?: string;
+    /** Observed for parity with the session; Unified readiness does not require it. */
+    ready?: boolean;
     connected: boolean;
     removedAt?: Date;
   }>;
@@ -84,7 +87,12 @@ export class MatchChallengeReadinessService {
             : true),
       );
       const counted = requirement.requiresConnectedPresence
-        ? players.filter((participant) => participant.connected)
+        ? players.filter((participant) =>
+            isEligibleTeamParticipant(participant, {
+              teamId: team.id,
+              requiresConnectedPresence: true,
+            }),
+          )
         : players;
       const connectedCount = counted.length;
       const belowMinimum = connectedCount < requirement.minParticipantsPerTeam;

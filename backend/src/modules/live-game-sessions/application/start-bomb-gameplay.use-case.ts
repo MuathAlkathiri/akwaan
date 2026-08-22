@@ -27,6 +27,7 @@ import {
   StartLiveGameSession,
 } from './live-session-lifecycle.use-cases';
 import { EndActiveTurn, StartTeamTurn } from './live-session-turn.use-cases';
+import { findEligibleTeamParticipant } from '../domain/team-participant-eligibility';
 
 @Injectable()
 export class StartBombGameplay {
@@ -53,13 +54,12 @@ export class StartBombGameplay {
     const representativesReady = state.teams
       .filter((team) => team.active)
       .every((team) =>
-        state.participants.some(
-          (participant) =>
-            participant.role === 'team-player' &&
-            participant.teamId === team.id &&
-            participant.ready &&
-            participant.connected &&
-            !participant.removedAt,
+        Boolean(
+          findEligibleTeamParticipant(state.participants, {
+            teamId: team.id,
+            requiresConnectedPresence: true,
+            requiresReady: true,
+          }),
         ),
       );
     if (
@@ -163,13 +163,13 @@ export class StartBombGameplay {
           'Bomb requires an active initial team',
         );
       }
-      const representative = sessionState.participants.find(
-        (participant) =>
-          participant.role === 'team-player' &&
-          participant.teamId === initialTeam.id &&
-          participant.ready &&
-          participant.connected &&
-          !participant.removedAt,
+      const representative = findEligibleTeamParticipant(
+        sessionState.participants,
+        {
+          teamId: initialTeam.id,
+          requiresConnectedPresence: true,
+          requiresReady: true,
+        },
       );
       if (!representative) {
         throw new LiveSessionDomainError(
