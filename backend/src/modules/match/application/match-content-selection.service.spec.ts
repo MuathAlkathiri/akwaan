@@ -80,6 +80,13 @@ const RYO_REQUIREMENTS: MatchChallengeLaunchRequirements = {
     candidate.answerMode === ChallengeAnswerMode.CLOSEST,
 };
 
+const BOMB_REQUIREMENTS: MatchChallengeLaunchRequirements = {
+  contentItemCount: 10,
+  requiresPhones: true,
+  isPlayableItem: (candidate) =>
+    candidate.answerMode === ChallengeAnswerMode.MATCH,
+};
+
 const POOL_0 = ['s0', 's1', 's2', 's3'];
 const POOL_2 = ['s4', 's5', 's6', 's7'];
 
@@ -179,6 +186,84 @@ describe('MatchContentSelector', () => {
     const scopes = selected.map((id) => id.split('-')[0]);
 
     expect(new Set(scopes).size).toBe(3);
+  });
+
+  describe('Bomb balanced Scope interleaving', () => {
+    const bombItem = (scopeId: string, copy: number) =>
+      item(`${scopeId}:${copy}`, scopeId, {
+        answerPayload: { mode: ChallengeAnswerMode.MATCH },
+      });
+    const bombLibrary = (scopeIds: string[], copies: number) =>
+      scopeIds.flatMap((scopeId) =>
+        Array.from({ length: copies }, (_, copy) => bombItem(scopeId, copy)),
+      );
+    const scopesOf = (ids: string[]) => ids.map((id) => id.split(':')[0]);
+
+    it('interleaves ten items across four usable selected Scopes', async () => {
+      const scopes = ['naruto', 'demon-slayer', 'jujutsu-kaisen', 'bleach'];
+      const selected = await select(bombLibrary(scopes, 4), {
+        selectedScopeIds: scopes,
+        requirements: BOMB_REQUIREMENTS,
+      }).result;
+      const sequence = scopesOf(selected);
+      const counts = scopes.map(
+        (scopeId) => sequence.filter((value) => value === scopeId).length,
+      );
+
+      expect(new Set(selected).size).toBe(10);
+      expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);
+      expect(
+        sequence
+          .slice(1)
+          .every((scopeId, index) => scopeId !== sequence[index]),
+      ).toBe(true);
+    });
+
+    it('uses remaining Scopes safely after one is exhausted', async () => {
+      const scopes = ['scope-a', 'scope-b', 'scope-c'];
+      const selected = await select(
+        [bombItem('scope-a', 0), ...bombLibrary(scopes.slice(1), 6)],
+        { selectedScopeIds: scopes, requirements: BOMB_REQUIREMENTS },
+      ).result;
+      const sequence = scopesOf(selected);
+
+      expect(sequence.filter((scopeId) => scopeId === 'scope-a')).toHaveLength(
+        1,
+      );
+      expect(new Set(selected).size).toBe(10);
+    });
+
+    it('allows repetition when only one selected Scope is usable', async () => {
+      const selected = await select(bombLibrary(['naruto'], 10), {
+        selectedScopeIds: ['naruto'],
+        requirements: BOMB_REQUIREMENTS,
+      }).result;
+
+      expect(scopesOf(selected)).toEqual(Array(10).fill('naruto'));
+      expect(new Set(selected).size).toBe(10);
+    });
+
+    it('never borrows an unselected Scope or an item failing Bomb eligibility', async () => {
+      const selectedScopes = ['naruto', 'bleach'];
+      const invalid = Array.from({ length: 10 }, (_, copy) =>
+        item(`naruto-invalid:${copy}`, 'naruto', {
+          answerPayload: { mode: ChallengeAnswerMode.MULTIPLE_CHOICE },
+        }),
+      );
+      const selected = await select(
+        [
+          ...bombLibrary(selectedScopes, 5),
+          ...bombLibrary(['unselected'], 10),
+          ...invalid,
+        ],
+        { selectedScopeIds: selectedScopes, requirements: BOMB_REQUIREMENTS },
+      ).result;
+
+      expect(
+        scopesOf(selected).every((scope) => selectedScopes.includes(scope)),
+      ).toBe(true);
+      expect(selected.some((id) => id.includes('invalid'))).toBe(false);
+    });
   });
 
   it('never replays content this occurrence already used', async () => {

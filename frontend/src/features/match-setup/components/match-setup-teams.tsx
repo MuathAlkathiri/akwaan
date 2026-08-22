@@ -49,7 +49,7 @@ export function MatchSetupTeams({
     <JourneySection
       id="match-teams"
       title="الفريقان"
-      description="اسم ولون لكل فريق. تنضم الجوالات لاحقًا قبل أول تحدٍ يحتاجها."
+      description="اسم ولون لكل فريق. الجوالات تنضم بعدين قبل أول تحدي يحتاجها."
     >
       <div
         className="space-y-5"

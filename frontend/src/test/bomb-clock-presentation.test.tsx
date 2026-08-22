@@ -1,6 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { GameplayRuntimeSnapshot } from "@/features/live-game-session/model";
+import type {
+  GameplayRuntimeSnapshot,
+  LiveSessionSnapshot,
+} from "@/features/live-game-session/model";
 
 /**
  * Bomb's countdown is presentation. It is not allowed to end a challenge.
@@ -23,6 +26,7 @@ const snapshot = {
     {
       id: "team-1",
       name: "صقور الرياض",
+      active: true,
       clock: {
         allocatedMs: 60_000,
         consumedMs: 0,
@@ -33,14 +37,28 @@ const snapshot = {
       },
     },
   ],
-  participants: [{ id: "player-1", displayName: "معاذ" }],
-};
+  participants: [
+    {
+      id: "player-1",
+      displayName: "معاذ",
+      role: "team-player",
+      teamId: "team-1",
+      ready: false,
+      joinedAt: "2026-08-14T00:00:00.000Z",
+      connected: true,
+      connectedDeviceCount: 1,
+      lastSeenAt: "2026-08-14T00:01:00.000Z",
+      presence: "connected",
+    },
+  ],
+} as unknown as LiveSessionSnapshot;
+let currentSnapshot: LiveSessionSnapshot = snapshot;
 
 vi.mock("@/features/live-game-session/hooks/live-session-context", () => ({
   useLiveSession: () => ({
     connection: "connected",
     gameplayCommand: mocks.gameplayCommand,
-    snapshot,
+    snapshot: currentSnapshot,
     // The clock ran out a full minute ago by the client's reckoning.
     nowMs: Date.parse("2026-08-14T00:01:00.000Z"),
     snapshotReceivedAtMs: Date.parse("2026-08-14T00:01:00.000Z"),
@@ -99,7 +117,10 @@ const runtime = {
 } as unknown as GameplayRuntimeSnapshot;
 
 describe("bomb countdown is presentation only", () => {
-  beforeEach(() => mocks.gameplayCommand.mockClear());
+  beforeEach(() => {
+    mocks.gameplayCommand.mockClear();
+    currentSnapshot = snapshot;
+  });
 
   it("sends no expire-team when its own countdown has run out", () => {
     render(<BombGameplayPanel runtime={runtime} />);
@@ -126,5 +147,64 @@ describe("bomb countdown is presentation only", () => {
     render(<BombGameplayPanel runtime={runtime} />);
     expect(screen.getByText(/Time is up/i)).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
+  it("prominently renders the authoritative active-team clock", () => {
+    render(<BombGameplayPanel runtime={runtime} />);
+    expect(
+      screen.getByRole("status", {
+        name: /صقور الرياض remaining Bomb time/i,
+      }),
+    ).toHaveTextContent("0:00");
+  });
+
+  it("follows each team's authoritative remaining clock across handovers", () => {
+    currentSnapshot = {
+      ...snapshot,
+      activeTeamId: "team-1",
+      teams: [
+        {
+          ...snapshot.teams[0],
+          clock: {
+            ...snapshot.teams[0].clock,
+            consumedMs: 42_000,
+            remainingMs: 18_000,
+            startedAt: undefined,
+            running: false,
+            expired: false,
+          },
+        },
+        {
+          id: "team-2",
+          name: "نسور جدة",
+          active: true,
+          clock: {
+            allocatedMs: 60_000,
+            consumedMs: 36_000,
+            remainingMs: 24_000,
+            running: false,
+            expired: false,
+          },
+        },
+      ],
+    };
+    const view = render(<BombGameplayPanel runtime={runtime} />);
+    expect(screen.getByText("0:18")).toBeInTheDocument();
+
+    currentSnapshot = { ...currentSnapshot, activeTeamId: "team-2" };
+    view.rerender(
+      <BombGameplayPanel
+        runtime={{ ...runtime, activeTeamId: "team-2", revision: 4 }}
+      />,
+    );
+    expect(screen.getByText("0:24")).toBeInTheDocument();
+
+    currentSnapshot = { ...currentSnapshot, activeTeamId: "team-1" };
+    view.rerender(
+      <BombGameplayPanel
+        runtime={{ ...runtime, activeTeamId: "team-1", revision: 5 }}
+      />,
+    );
+    expect(screen.getByText("0:18")).toBeInTheDocument();
   });
 });

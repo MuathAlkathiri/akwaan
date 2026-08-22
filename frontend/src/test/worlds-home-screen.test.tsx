@@ -102,12 +102,17 @@ describe("home is a dashboard of Worlds", () => {
   it("leads with the approved product explanation and real World controls", () => {
     render(<WorldsHome />);
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "عالم تختارونه، وتحديات تغيّر كل جولة.",
-    );
+    const headline = screen.getByRole("heading", { level: 1 });
+    expect(headline).toHaveTextContent("اختر 3 عوالم");
+    expect(headline).toHaveTextContent("التحدي!");
     expect(screen.getByRole("button", { name: "كرة القدم" })).toBeInTheDocument();
-    expect(screen.getByRole("complementary", { name: "العوالم المختارة" })).toBeInTheDocument();
-    expect(screen.getByText("القنبلة")).toBeInTheDocument();
+    // The ordered selection bar and its way into setup replace the old rail.
+    expect(screen.getByTestId("selection-order-bar")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /متابعة إعداد المباراة/ }),
+    ).toBeInTheDocument();
+    // A headline mechanic orbits the hero (and may also label a World's card).
+    expect(screen.getAllByText("الكومبو").length).toBeGreaterThan(0);
   });
 
   it("opens Scope selection on the homepage instead of navigating", () => {

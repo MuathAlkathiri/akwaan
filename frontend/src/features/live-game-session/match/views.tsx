@@ -1,6 +1,5 @@
 "use client";
 
-import { ThemeToggle } from "@/components/akwaan/theme-toggle";
 import { MatchHostScreen } from "./components/match-host-screen";
 import { MatchStageRouter } from "./match-stage-router";
 
@@ -28,10 +27,6 @@ export function ParticipantMatchView({
 }) {
   return (
     <div className="min-h-screen bg-background px-3 py-4">
-      {/* A phone keeps its own theme for the whole Match, not just the join screen. */}
-      <div className="mb-2 flex justify-end">
-        <ThemeToggle />
-      </div>
       <MatchStageRouter
         actor="participant"
         {...(participantId ? { participantId } : {})}

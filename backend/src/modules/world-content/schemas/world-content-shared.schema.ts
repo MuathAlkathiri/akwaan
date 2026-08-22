@@ -32,12 +32,28 @@ export const ContentAssetSubSchema = new MongooseSchema(
  * How a mechanic presents itself. Media is not here: it belongs to the
  * ContentItem, so one mechanic plays every medium without reconfiguration.
  */
+/** Player-facing mechanic explanation, authored on the ChallengeType. */
+export const PlayerInstructionsDefinition = new MongooseSchema(
+  {
+    summary: { type: String, trim: true, default: '' },
+    steps: { type: [String], default: [] },
+    highlights: { type: [String], default: undefined },
+  },
+  { _id: false },
+);
+
 export const ChallengePresentationDefinition = new MongooseSchema(
   {
     inputType: { type: String, required: true, trim: true },
     timerSeconds: { type: Number, default: null },
     soundPack: { type: String, trim: true, default: null },
     revealStyle: { type: String, trim: true, default: null },
+    // Absent on records authored before this field; the reader normalizes it.
+    playerInstructions: {
+      type: PlayerInstructionsDefinition,
+      _id: false,
+      default: undefined,
+    },
   },
   { _id: false },
 );

@@ -113,7 +113,7 @@ export function describeDistributedError(error: unknown): string {
     ERROR_COPY[code] ??
     (typeof error === "object" && error && "message" in error
       ? String((error as { message?: string }).message)
-      : "تعذّر تنفيذ الإجراء. حاول مرة أخرى.")
+      : "ما ضبط. جرّب مرة ثانية.")
   );
 }
 

@@ -6,6 +6,17 @@
  * pointing match -> live-game-sessions and avoids a second client protocol.
  */
 
+/**
+ * The mechanic's player-facing "how this works", authored on the ChallengeType and
+ * carried verbatim. Public presentation metadata only — never answers or any
+ * ContentItem internals. Absent on a mechanic authored before it existed.
+ */
+export interface LiveSessionPlayerInstructions {
+  summary: string;
+  steps: string[];
+  highlights?: string[];
+}
+
 export interface LiveSessionMatchStageProjection {
   key: string;
   enteredAt: string;
@@ -46,6 +57,8 @@ export interface LiveSessionUnifiedBoardPosition {
   challengeName: string;
   description?: string;
   instructions?: string;
+  /** Mechanic-canonical player instructions, World-invariant. */
+  playerInstructions?: LiveSessionPlayerInstructions;
   /**
    * Whether the mechanic needs private input from player phones. Declared by the
    * mechanic's launcher — never inferred from a slug.
@@ -133,6 +146,8 @@ export interface LiveSessionUnifiedPreflight {
   challengeName: string;
   description?: string;
   instructions?: string;
+  /** Mechanic-canonical player instructions, World-invariant. */
+  playerInstructions?: LiveSessionPlayerInstructions;
   requiresPhones: boolean;
   /** The occurrence's four Scopes, by public name. */
   selectedScopes: LiveSessionMatchScope[];

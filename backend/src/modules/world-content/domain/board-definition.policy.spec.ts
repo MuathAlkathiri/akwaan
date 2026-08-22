@@ -99,4 +99,44 @@ describe('BoardDefinitionPolicy', () => {
     });
     expect(codesFor(input)).toContain('CHALLENGE_TYPE_NOT_ACTIVE');
   });
+
+  it('carries the mechanic-canonical player instructions onto its board slot', () => {
+    const input = validBoard();
+    const ryo = input.challengeTypes.get('challenge-ryo')!;
+    input.challengeTypes.set('challenge-ryo', {
+      ...ryo,
+      defaultPresentation: {
+        ...ryo.defaultPresentation,
+        playerInstructions: {
+          summary: 'اقرأ خصمك.',
+          steps: ['اختر توقعك', 'اكشفوا معًا'],
+          highlights: ['لا تكشف مبكرًا'],
+        },
+      },
+    });
+    const slot = policy
+      .build(input)
+      .slots.find((entry) => entry.challengeTypeId === 'challenge-ryo');
+    expect(slot?.playerInstructions).toEqual({
+      summary: 'اقرأ خصمك.',
+      steps: ['اختر توقعك', 'اكشفوا معًا'],
+      highlights: ['لا تكشف مبكرًا'],
+    });
+  });
+
+  it('leaves a slot without player instructions when the mechanic authored none', () => {
+    const input = validBoard();
+    const ryo = input.challengeTypes.get('challenge-ryo')!;
+    input.challengeTypes.set('challenge-ryo', {
+      ...ryo,
+      defaultPresentation: {
+        ...ryo.defaultPresentation,
+        playerInstructions: null,
+      },
+    });
+    const slot = policy
+      .build(input)
+      .slots.find((entry) => entry.challengeTypeId === 'challenge-ryo');
+    expect(slot?.playerInstructions).toBeUndefined();
+  });
 });

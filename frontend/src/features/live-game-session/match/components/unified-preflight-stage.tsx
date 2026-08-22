@@ -184,8 +184,8 @@ function PreflightWaiting({
       </ul>
       <p className="text-sm text-muted-foreground">
         {preflight.readyToLaunch
-          ? "جاهزون. بانتظار المتحكّم لبدء التحدي."
-          : "بانتظار انضمام اللاعبين."}
+          ? "جاهزين. ننتظر المتحكّم يبدأ التحدي."
+          : "ننتظر اللاعبين ينضمون."}
       </p>
     </div>
   );
@@ -291,8 +291,8 @@ function ParticipantPreflight({
 
       <p className="text-sm font-bold text-muted-foreground">
         {readyToLaunch
-          ? "جاهزون — التحدي على وشك أن يبدأ."
-          : "بانتظار بقية اللاعبين. أبقِ جوالك مفتوحًا."}
+          ? "جاهزين — التحدي بيبدأ الحين."
+          : "ننتظر بقية اللاعبين. خلّ جوالك مفتوح."}
       </p>
     </section>
   );

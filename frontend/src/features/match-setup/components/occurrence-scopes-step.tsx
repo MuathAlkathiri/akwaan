@@ -105,8 +105,8 @@ export function OccurrenceScopesStep({
           </div>
         ) : query.isError ? (
           <JourneyError
-            title="تعذر تحميل النطاقات"
-            description="تحقّق من اتصالك ثم حاول مرة أخرى."
+            title="ما قدرنا نحمّل النطاقات"
+            description="تأكد من اتصالك وجرّب مرة ثانية."
             onRetry={() => void query.refetch()}
             retrying={query.isFetching}
           />

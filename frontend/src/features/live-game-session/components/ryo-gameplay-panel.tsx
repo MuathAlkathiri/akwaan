@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HeartHandshake, Lock, Swords, Unlock } from "lucide-react";
+import { HelpCircle, Lock, Swords, Unlock } from "lucide-react";
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
 import { AnswerOption } from "../match/components/answer-option";
@@ -13,6 +13,10 @@ import { Input } from "@/components/ui/input";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
 import { authoredText, type AuthoredText } from "../authored-text";
+import {
+  RYO_DECISION_PRESENTATION,
+  ryoDecisionRevealLabel,
+} from "../match/ryo-decision.presentation";
 import type { GameplayRuntimeSnapshot } from "../model";
 
 /**
@@ -44,6 +48,9 @@ export function RyoGameplayPanel({
 }) {
   const { snapshot, gameplayCommand, connection } = useLiveSession();
   const [number, setNumber] = useState("");
+  // This phone's own decision, echoed back after it locks in. It is the local
+  // player's own choice — never the opponent's — so showing it leaks nothing.
+  const [myDecision, setMyDecision] = useState<string>();
   const round = runtime.activeRound;
   const interaction = round?.interaction;
   const prompt = interaction?.prompt;
@@ -209,17 +216,28 @@ export function RyoGameplayPanel({
                 className="grid w-full grid-cols-2 gap-3"
                 data-testid="ryo-decision-controls"
               >
-                {DECISIONS.map(({ decision, label, Icon }) => (
+                {DECISIONS.map(({ decision, label, description, Icon }) => (
                   <Button
                     key={decision}
                     size="lg"
                     variant="outline"
                     data-decision={decision}
-                    className="h-auto min-h-[4rem] flex-col gap-1.5 border-2 bg-card py-3 text-base font-black hover:bg-accent active:scale-[0.99]"
-                    onClick={() => submit({ kind: "decision", decision })}
+                    className="h-auto min-h-[4rem] flex-col items-center gap-1 whitespace-normal border-2 bg-card px-3 py-3 text-center hover:bg-accent active:scale-[0.99]"
+                    onClick={() => {
+                      setMyDecision(decision);
+                      submit({ kind: "decision", decision });
+                    }}
                   >
                     <Icon className="size-6" aria-hidden />
-                    {label}
+                    <span className="text-base font-black leading-tight">
+                      {label}
+                    </span>
+                    {/* Static instructional copy: what this choice means, before
+                        the tap. Secondary in weight, still readable on a phone, and
+                        it says nothing about the other side's private choice. */}
+                    <span className="text-xs font-medium leading-snug text-muted-foreground">
+                      {description}
+                    </span>
                   </Button>
                 ))}
               </div>
@@ -230,10 +248,12 @@ export function RyoGameplayPanel({
                 data-testid="ryo-waiting"
               >
                 {alreadySubmitted
-                  ? "تم استلام اختيارك. بانتظار الطرف الآخر…"
+                  ? myDecision
+                    ? `اخترت «${ryoDecisionRevealLabel(myDecision)}». ننتظر الطرف الثاني…`
+                    : "وصل اختيارك. ننتظر الطرف الثاني…"
                   : !isAssignedActor && role !== "spectator" && assignedName
                     ? `${assignedName} هو صاحب القرار في هذه الفقرة. ناقشوها معه.`
-                    : "بانتظار اختيارات الفريقين…"}
+                    : "ننتظر اختيارات الفريقين…"}
               </p>
             )}
           </section>
@@ -269,9 +289,9 @@ export function RyoGameplayPanel({
             </p>
             <p className="text-sm font-bold opacity-90">
               قرار الخصم:{" "}
-              {interaction.outcome.payload.decision === "steal"
-                ? "سرقة"
-                : "ثقة"}
+              {ryoDecisionRevealLabel(
+                String(interaction.outcome.payload.decision),
+              )}
             </p>
           </div>
         )}
@@ -285,12 +305,24 @@ export function RyoGameplayPanel({
  *
  * Kept as data rather than two hand-written buttons so the pair cannot drift apart:
  * one of them gaining a variant, a size or a colour is the defect this whole screen
- * was rebuilt to remove. A team is addressed in the plural — "أثق بإجابتكم", never
- * "بإجابته".
+ * was rebuilt to remove. The wording is the psychological read of the opponent, not
+ * the mechanic's `trust`/`steal` — it comes from the single presentation source so
+ * every RYO surface says the same thing. The icons stay neutral and symmetric: at
+ * this moment nothing on screen is correct or wrong yet.
  */
 const DECISIONS = [
-  { decision: "trust", label: "نثق بإجابتكم", Icon: HeartHandshake },
-  { decision: "steal", label: "نسرق النقاط", Icon: Swords },
+  {
+    decision: "trust",
+    label: RYO_DECISION_PRESENTATION.trust.title,
+    description: RYO_DECISION_PRESENTATION.trust.description,
+    Icon: HelpCircle,
+  },
+  {
+    decision: "steal",
+    label: RYO_DECISION_PRESENTATION.steal.title,
+    description: RYO_DECISION_PRESENTATION.steal.description,
+    Icon: Swords,
+  },
 ] as const;
 
 /**

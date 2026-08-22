@@ -230,9 +230,9 @@ describe("a phone waits instead of showing the host board", () => {
     renderPhone(match({ stage: "board" }));
 
     const waiting = screen.getByTestId("participant-waiting");
-    expect(waiting.textContent).toContain("لا يوجد تحدٍ يحتاج الجوال حالياً");
+    expect(waiting.textContent).toContain("ما فيه تحدي يحتاج الجوال الحين");
     expect(waiting.textContent).toContain(
-      "سنفتح التحدي القادم هنا. أبقِ جوالك معك.",
+      "بنفتح التحدي الجاي هنا. خلّ جوالك معك.",
     );
     expect(waiting.textContent).toContain("أسود الشمال");
     // Never the host's screen.

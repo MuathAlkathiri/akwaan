@@ -1,0 +1,1506 @@
+{
+  "artifactType": "marhala-production-candidate-batch",
+  "title": "Akwaan Video Games Signature Mechanic (المرحلة) — R2.2 Final Factual Set",
+  "version": "2.2-final-signoff-ready",
+  "generatedAt": "2026-08-22",
+  "world": "video-games",
+  "worldId": "6a70e8820f201ac138fa4f8b",
+  "scopeCount": 7,
+  "questionCount": 63,
+  "distribution": {
+    "perScope": 9,
+    "perDifficultyPerScope": 3,
+    "totalEasy": 21,
+    "totalMedium": 21,
+    "totalHard": 21,
+    "totalText": 63,
+    "totalMediaIntent": 0
+  },
+  "reviewSummary": {
+    "totalItems": 63,
+    "humanApprovedCount": 63,
+    "productReviewPendingCount": 0
+  },
+  "questions": [
+    {
+      "id": "marhala-prod-vg-cod-001",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "كول أوف ديوتي",
+      "category": "weapon",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم أشهر سلاح قنص بطلقة واحدة في Modern Warfare 2 الكلاسيكية، والمتميز بصوته الرنان وسرعة الإطلاق؟"
+      },
+      "correctAnswer": "إنترفينشن",
+      "acceptedAnswers": [
+        "انترفينشن",
+        "انترفنشن",
+        "إنترفينشن",
+        "Intervention",
+        "CheyTac Intervention"
+      ],
+      "difficultyRationale": "سلاح القنص الأيقوني الأشهر في تاريخ اللعبة والمستخدم في مقاطع الكويك سكوب في MW2 (2009).",
+      "factBasis": "The CheyTac Intervention .408 bolt-action sniper rifle is the definitive sniper in MW2.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-002",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "كول أوف ديوتي",
+      "category": "killstreak",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم مكافأة القتل (Killstreak) الموجهة من شاشة حاسوب محمول لاستهداف وإسقاط صاروخ من السماء على منطقة محددة؟"
+      },
+      "correctAnswer": "صاروخ بريديتور",
+      "acceptedAnswers": [
+        "بريديتور",
+        "بريداتور",
+        "صاروخ بريديتور",
+        "صاروخ بريداتور",
+        "Predator Missile",
+        "Predator"
+      ],
+      "difficultyRationale": "مكافأة قتل كلاسيكية أساسية (5 قتلات) معروفة لجميع لاعبي السلسلة بشاشة اللاب توب والصاروخ الموجه.",
+      "factBasis": "The Predator Missile killstreak gives the player a top-down camera control of a guided missile.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-003",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "كول أوف ديوتي",
+      "category": "map",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم الماب الصحراوي الدائري الصغير الشهير في Modern Warfare 2 الذي تدور معاركه حول برج ومروحية سقطت في الوسط؟"
+      },
+      "correctAnswer": "رست",
+      "acceptedAnswers": [
+        "رست",
+        "راست",
+        "Rust"
+      ],
+      "difficultyRationale": "أشهر ماب لتحديات 1v1 في تاريخ كود والألعاب التنافسية عمومًا.",
+      "factBasis": "Rust is the iconic small oil yard map featured prominently in MW2 multiplayer and campaign climax.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-004",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "كول أوف ديوتي",
+      "category": "perk",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم البيرك الأخضر الشهير في Modern Warfare 2 الذي يمنح اللاعب سرعة ركض لا نهائية دون توقف؟"
+      },
+      "correctAnswer": "ماراثون",
+      "acceptedAnswers": [
+        "ماراثون",
+        "الماراثون",
+        "Marathon"
+      ],
+      "difficultyRationale": "يتطلب معرفة مسميات شجرة البيركات؛ بيرك Marathon كان حجر الأساس في كلاسات السرعة والطعن.",
+      "factBasis": "Marathon is a Tier 1 blue/green perk in MW2 granting unlimited sprint endurance.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-005",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "كول أوف ديوتي",
+      "category": "zombies_wonder_weapon",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم السلاح الخارق (Wonder Weapon) في زومبي Black Ops 1 الذي يُطلق عاصفة هوائية تدفع وتفتت حشود الزومبي فورًا؟"
+      },
+      "correctAnswer": "ثاندرغن",
+      "acceptedAnswers": [
+        "ثاندرغن",
+        "ثاندر غن",
+        "ثاندر جن",
+        "Thundergun"
+      ],
+      "difficultyRationale": "سلاح الزومبي العجيب الأشهر في خريطة Kino der Toten؛ معروف لمعظم لاعبي الزومبي (مستوى متوسط).",
+      "factBasis": "The Thundergun is a legendary wonder weapon in Black Ops Zombies releasing a massive blast of compressed air.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-006",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "كول أوف ديوتي",
+      "category": "campaign_faction",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم وحدة العمليات الخاصة الأمريكية ذات العتاد الأسود التي قادها الجنرال شيبرد في MW2 وغدرت بفريق برايس وجوست؟"
+      },
+      "correctAnswer": "شادو كومباني",
+      "acceptedAnswers": [
+        "شادو كومباني",
+        "شركة الظل",
+        "شادو كمباني",
+        "Shadow Company"
+      ],
+      "difficultyRationale": "الفصيل العسكري لشيبرد في مهام ختام MW2؛ معروف للاعبين الذين أنهوا القصة (مستوى متوسط).",
+      "factBasis": "Shadow Company is the elite private military unit serving directly under General Shepherd in MW2.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-007",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "كول أوف ديوتي",
+      "category": "campaign_character",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "في قصة Call of Duty 4: Modern Warfare، ما اسم ابن زعيم القوميين الروس عمران زاخاييف الذي طارده فريق الكوماندوز وانتحر فوق سطح المبنى؟"
+      },
+      "correctAnswer": "فيكتور زاخاييف",
+      "acceptedAnswers": [
+        "فيكتور زاخاييف",
+        "فيكتور زاخايف",
+        "فكتور زاخاييف",
+        "Victor Zakhaev",
+        "Viktor Zakhaev"
+      ],
+      "difficultyRationale": "يتطلب معرفة الاسم الدقيق لابن زاخاييف ومحور مهمة المطاردة الشهيرة \"The Sins of the Father\".",
+      "factBasis": "Viktor Zakhaev is the son of Imran Zakhaev who shoots himself on a rooftop when cornered by Task Force 141/SAS.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-008",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "كول أوف ديوتي",
+      "category": "campaign_character",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "في حملة Black Ops 1، ما اسم عالم الكيمياء البريطاني الذي استجوبه ماسون وهدسن في أسطح مباني كولون بهونغ كونغ لمعرفة تركيب غاز نوفا 6؟"
+      },
+      "correctAnswer": "دانيال كلارك",
+      "acceptedAnswers": [
+        "دانيال كلارك",
+        "دكتور كلارك",
+        "كلارك",
+        "Daniel Clarke",
+        "Dr. Clarke"
+      ],
+      "difficultyRationale": "شخصية فرعية لكنها محورية في مهمة \"Numbers\" في هونغ كونغ؛ يتذكر اسمه عشاق القصة المتعمقون فقط.",
+      "factBasis": "Dr. Daniel Clarke is the British chemical engineer who stabilized Nova 6, interrogated in Kowloon.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-009",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "كول أوف ديوتي",
+      "category": "campaign_vehicle_lore",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "في ختام حملة Black Ops 1، ما اسم سفينة الشحن الروسية الراسية في خليج الخنازير والتي كانت تبث أرقام الهجوم الكيميائي ودمرها ماسون؟"
+      },
+      "correctAnswer": "روسالكا",
+      "acceptedAnswers": [
+        "روسالكا",
+        "سفينة روسالكا",
+        "الروسالكا",
+        "Rusalka"
+      ],
+      "difficultyRationale": "اسم سفينة البث السوفيتية ومسرح المهمة الأخيرة الأسطورية \"Redemption\" في خليج الخنازير.",
+      "factBasis": "The Rusalka is the Soviet commercial freighter serving as the broadcast ship for the numbers station in the Gulf of Mexico.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-001",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "فيفا",
+      "category": "fut_mechanic",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم ميزة تعزيز التفاهم وربط الخطوط بين لاعبي نفس النادي أو الدوري أو الجنسية في ألتيميت تيم؟"
+      },
+      "correctAnswer": "التناغم",
+      "acceptedAnswers": [
+        "التناغم",
+        "تناغم",
+        "كيمستري",
+        "الكيمستري",
+        "Chemistry"
+      ],
+      "difficultyRationale": "المفهوم التأسيسي الأبرز لبناء أي تشكيلة في طور ألتيميت تيم منذ انطلاقه.",
+      "factBasis": "Chemistry links players based on shared club, league, and nationality to boost attributes.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-002",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "فيفا",
+      "category": "game_mode",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم الطور التنافسي الذي يتحكم فيه كل لاعب بفرد واحد داخل فريق مكون من 11 لاعبًا عبر الشبكة؟"
+      },
+      "correctAnswer": "برو كلوبس",
+      "acceptedAnswers": [
+        "برو كلوبس",
+        "برو كلوب",
+        "الأندية المحترفة",
+        "الاندية المحترفة",
+        "Pro Clubs",
+        "Clubs"
+      ],
+      "difficultyRationale": "طور اللعب الجماعي 11 ضد 11 الأقدم والأشهر في السلسلة والمفضل في اللعب مع الأصدقاء.",
+      "factBasis": "Pro Clubs (Clubs) allows players to create a virtual pro and compete in an 11v11 online team.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-003",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "فيفا",
+      "category": "fut_event",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم التشكيلة السنوية الأقوى في ألتيميت تيم ذات البطاقات الزرقاء اللامعة والمطروحة في شهر يناير؟"
+      },
+      "correctAnswer": "فريق السنة",
+      "acceptedAnswers": [
+        "فريق السنة",
+        "توتي",
+        "TOTY",
+        "Team of the Year"
+      ],
+      "difficultyRationale": "الحدث السنوي الأضخم في اللعبة بالبطاقات الزرقاء ذات التقييمات القصوى.",
+      "factBasis": "Team of the Year (TOTY) is the annual January event releasing the highest-rated blue cards.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-004",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "فيفا",
+      "category": "competitive_mode",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم الطور الأسبوعي في ألتيميت تيم الذي يتطلب خوض تصفيات ثم لعب عدد محدد من المباريات خلال عطلة نهاية الأسبوع؟"
+      },
+      "correctAnswer": "فوت تشامبيونز",
+      "acceptedAnswers": [
+        "فوت تشامبيونز",
+        "فوت شامبيونز",
+        "تشامبيونز",
+        "شامبيونز",
+        "FUT Champions",
+        "Weekend League",
+        "الويكند ليغ"
+      ],
+      "difficultyRationale": "الطور التنافسي النخبوي الأسبوعي المعروف بين لاعبي الأونلاين بـ FUT Champions أو دوري نهاية الأسبوع.",
+      "factBasis": "FUT Champions (Weekend League) is the premier competitive weekend competition in Ultimate Team.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-005",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "فيفا",
+      "category": "chemistry_style",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم بطاقة أسلوب التناغم (Chemistry Style) الهجومية الأكثر شهرة المخصصة لتعزيز سرعتي التسارع والإنهاء لدى المهاجمين؟"
+      },
+      "correctAnswer": "هانتر",
+      "acceptedAnswers": [
+        "هانتر",
+        "الهانتر",
+        "القناص",
+        "Hunter"
+      ],
+      "difficultyRationale": "بطاقة التناغم الهجومية الأشهر المخصصة للسرعة والتسديد (خالية من الأرقام المؤقتة).",
+      "factBasis": "Hunter chemistry style boosts Pace and Shooting attributes in Ultimate Team.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-006",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "فيفا",
+      "category": "gameplay_mechanic",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم ميزة التسديد المتقدمة التي تتطلب ضغط زر التسديد مرة ثانية بتوقيت دقيق قبل ركل الكرة لزيادة دقتها وقوتها؟"
+      },
+      "correctAnswer": "إنهاء التوقيت الأخضر",
+      "acceptedAnswers": [
+        "تايم فينشينغ",
+        "تايم فينش",
+        "التوقيت الاخضر",
+        "التوقيت الأخضر",
+        "Timed Finishing",
+        "Green Timing"
+      ],
+      "difficultyRationale": "ميكانيكية لعب متقدمة معروفة لجميع اللاعبين الذين يتابعون مجتمع اللعبة (مستوى متوسط).",
+      "factBasis": "Timed Finishing requires a second tap of the shoot button right before contact to maximize shot accuracy and power.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-007",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "فيفا",
+      "category": "gameplay_system_history",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "في لعبة FIFA 12، ما اسم نظام الدفاع الثوري الجديد الذي اعتمد على التمركز والتوقيت اليدوي لقطع الكرات بدلاً من الضغط التلقائي القديم؟"
+      },
+      "correctAnswer": "الدفاع التكتيكي",
+      "acceptedAnswers": [
+        "الدفاع التكتيكي",
+        "دفاع تكتيكي",
+        "تاكتيكال ديفيندنج",
+        "تاكتيكال ديفيندينغ",
+        "Tactical Defending"
+      ],
+      "difficultyRationale": "التحول الجذري الأكبر في تاريخ تحكم وأسلوب اللعب التنافسي لسلسلة فيفا، يعرف اسمه التقني الرسمي اللاعبون المخضرمون.",
+      "factBasis": "FIFA 12 introduced Tactical Defending, fundamentally overhauling defending to require manual positioning and timed tackling over Legacy Defending.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-008",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "فيفا",
+      "category": "career_mode_mechanic",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "في نمط المهنة (Career Mode)، ما المصطلح الذي يُطلق على اللاعبين الشباب المُنشئين تلقائيًا كبدلاء للأساطير بعد اعتزالهم بنفس الجنسية والموقع؟"
+      },
+      "correctAnswer": "ريجينز",
+      "acceptedAnswers": [
+        "ريجين",
+        "ريجينز",
+        "الريجين",
+        "Regens",
+        "Regen"
+      ],
+      "difficultyRationale": "مصطلح تخصصي دقيق في مجتمع Career Mode لوصف اللاعبين المولدين بعد اعتزال النجوم.",
+      "factBasis": "Regens are generated youth players in Career Mode who replace retired players with identical nationality, position, and potential.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-009",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "فيفا",
+      "category": "story_mode_character",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "في قصة نمط الرحلة (The Journey)، ما اسم جد البطل أليكس هانتر، وهو أسطورة كرة قدم إنجليزية سابقة في الستينيات ومرشده الدائم؟"
+      },
+      "correctAnswer": "جيم هانتر",
+      "acceptedAnswers": [
+        "جيم هانتر",
+        "جيم",
+        "Jim Hunter"
+      ],
+      "difficultyRationale": "شخصية لور قصصية مميزة في طور The Journey؛ يتذكر اسمه من أنهى فصول القصة الثلاثة فقط.",
+      "factBasis": "Jim Hunter is Alex Hunter's grandfather and mentor in FIFA's The Journey story mode.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-001",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "category": "protagonist",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم بطل GTA Vice City ذو القميص الأزرق الاستوائي الذي سيطر على تجارة الجريمة في المدينة في الثمانينات؟"
+      },
+      "correctAnswer": "تومي فيرسيتي",
+      "acceptedAnswers": [
+        "تومي فيرسيتي",
+        "تومي",
+        "Tommy Vercetti",
+        "Tommy"
+      ],
+      "difficultyRationale": "بطل فايس سيتي الأيقوني بقميصه الهاواي الأزرق؛ معروف لجميع من لعب السلسلة.",
+      "factBasis": "Tommy Vercetti is the protagonist of Grand Theft Auto: Vice City voiced by Ray Liotta.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-002",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "category": "protagonist",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم بطل GTA San Andreas الذي يعود إلى لوس سانتوس بعد مقتل والدته لقيادة عصابة غروف ستريت؟"
+      },
+      "correctAnswer": "سي جي",
+      "acceptedAnswers": [
+        "سي جي",
+        "كارل جونسون",
+        "CJ",
+        "Carl Johnson"
+      ],
+      "difficultyRationale": "أشهر بطل في تاريخ ألعاب العالم المفتوح ومحور أحداث سان أندرياس.",
+      "factBasis": "Carl \"CJ\" Johnson is the central character of GTA San Andreas.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-003",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "category": "protagonist",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم الشخصية المجنونة والطيار العسكري السابق صاحب شركة المشاريع في الصحراء وأحد أبطال GTA V الثلاثة؟"
+      },
+      "correctAnswer": "تريفور فيليبس",
+      "acceptedAnswers": [
+        "تريفور",
+        "تريفور فيليبس",
+        "Trevor",
+        "Trevor Philips"
+      ],
+      "difficultyRationale": "الشخصية الأكثر جنونًا وشهرة في GTA V والمحبوبة لدى اللاعبين.",
+      "factBasis": "Trevor Philips is one of the three playable protagonists in Grand Theft Auto V.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-004",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "category": "antagonist",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم ضابط الشرطة الفاسد في سان أندرياس وقائد وحدة C.R.A.S.H. الذي ورط سي جي بالجرائم منذ وصوله للمطار؟"
+      },
+      "correctAnswer": "فرانك تينبيني",
+      "acceptedAnswers": [
+        "تينبيني",
+        "فرانك تينبيني",
+        "الضابط تينبيني",
+        "Tenpenny",
+        "Frank Tenpenny"
+      ],
+      "difficultyRationale": "الشرير الرئيسي في سان أندرياس بصوت صامويل جاكسون (مستوى متوسط لمعرفته كخصم القصة).",
+      "factBasis": "Officer Frank Tenpenny is the corrupt LSPD CRASH officer serving as the primary antagonist of GTA San Andreas.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-005",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "category": "gang_faction",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم العصابة المعادية لغروف ستريت في لوس سانتوس والتي يرتدي أفرادها الملابس ذات اللون البنفسجي؟"
+      },
+      "correctAnswer": "البالاس",
+      "acceptedAnswers": [
+        "البالاس",
+        "بالاس",
+        "عصابة بالاس",
+        "Ballas",
+        "The Ballas"
+      ],
+      "difficultyRationale": "العصابة الغريمة الأساسية لغروف ستريت باللون البنفسجي في سان أندرياس و GTA V.",
+      "factBasis": "The Ballas are the primary rival street gang to the Grove Street Families.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-006",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "category": "character",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "في GTA San Andreas، ما اسم العجوز الهيبي غريب الأطوار المؤمن بنظريات المؤامرة الذي يعيش في مزرعة ريفية في مقاطعة فلينت؟"
+      },
+      "correctAnswer": "ذا تروث",
+      "acceptedAnswers": [
+        "ذا تروث",
+        "تروث",
+        "الحقيقة",
+        "The Truth",
+        "Truth"
+      ],
+      "difficultyRationale": "شخصية فرعية غريبة الأطوار في مهمات الريف وسرقة الجيت باك من المنطقة 69 (مستوى متوسط).",
+      "factBasis": "The Truth is an eccentric conspiracy theorist living in Flint County in GTA San Andreas.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-007",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "category": "story_character",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "في قصة GTA IV، ما اسم الشخص الذي خان فرقة نيكو بيليك العسكرية في حرب البلقان وباعهم للأعداء مقابل ألف دولار وجاء نيكو لأمريكا للانتقام منه؟"
+      },
+      "correctAnswer": "داركو بريفيتش",
+      "acceptedAnswers": [
+        "داركو بريفيتش",
+        "داركو بريفك",
+        "داركو",
+        "Darko Brevic",
+        "Darko"
+      ],
+      "difficultyRationale": "محور الدافع الشخصي لنيكو بيليك في GTA IV واللحظة الدرامية الأقوى في مطار ليبرتي سيتي.",
+      "factBasis": "Darko Brevic is the traitor who sold out Niko's 15-man unit for $1,000 during the Yugoslav Wars.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-008",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "category": "vehicle_lore",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "ما اسم سفينة الشحن البحرية التي وصل على متنها نيكو بيليك إلى ميناء ليبرتي سيتي في بداية أحداث GTA IV؟"
+      },
+      "correctAnswer": "بلاتيبوس",
+      "acceptedAnswers": [
+        "بلاتيبوس",
+        "سفينة بلاتيبوس",
+        "Platypus"
+      ],
+      "difficultyRationale": "تفصيلة افتتاحية دقيقة في مهمة البداية \"The Cousins Bellic\" في ميناء ليبرتي سيتي.",
+      "factBasis": "The Platypus is the merchant cargo ship that brings Niko Bellic into Liberty City at the start of GTA IV.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-009",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "category": "mission_lore",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "ما اسم المهمة الشهيرة في GTA San Andreas التي يتسلل فيها سي جي إلى المنطقة 69 المحظورة لسرقة حزام الطيران (Jetpack) لصالح ذا تروث؟"
+      },
+      "correctAnswer": "بلاك بروجكت",
+      "acceptedAnswers": [
+        "بلاك بروجكت",
+        "المشروع الاسود",
+        "المشروع الأسود",
+        "Black Project"
+      ],
+      "difficultyRationale": "اسم المهمة التجسسية الأسطورية لاقتحام قاعدة المنطقة 69 المحظورة في صحراء سان أندرياس.",
+      "factBasis": "Black Project is the stealth mission given by The Truth where CJ infiltrates Area 69 to steal the Jetpack.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-001",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "أوفرواتش",
+      "category": "hero",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "من هي البطلة البريطانية سريعة الحركة وواجهة لعبة أوفرواتش القادرة على الرجوع بالزمن عبر قفزات وميضية؟"
+      },
+      "correctAnswer": "تريسر",
+      "acceptedAnswers": [
+        "تريسر",
+        "لينا اوكستون",
+        "Tracer",
+        "Lena Oxton"
+      ],
+      "difficultyRationale": "البطلة الأيقونية الرئيسية على غلاف اللعبة وصاحبة مهارة Blink و Recall.",
+      "factBasis": "Tracer (Lena Oxton) is the flagship cover hero of Overwatch.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-002",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "أوفرواتش",
+      "category": "hero",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "من هو بطل النينجا السايبورغ الياباني وشقيق هانزو المسلح بسيف التنين الأخضر والشوريكين؟"
+      },
+      "correctAnswer": "غينجي",
+      "acceptedAnswers": [
+        "غينجي",
+        "جينجي",
+        "غينجي شيمادا",
+        "Genji",
+        "Genji Shimada"
+      ],
+      "difficultyRationale": "أحد أشهر أبطال اللعبة وأكثرهم اختيارًا في فئة الهجوم وسيف التنين (Dragonblade).",
+      "factBasis": "Genji Shimada is the cybernetic ninja brother of Hanzo.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-003",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "أوفرواتش",
+      "category": "hero",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم البطلة الكورية وبطلة الرياضات الإلكترونية السابقة التي تقود مركبة آلية مدرعة (Mech) ذات لون وردي؟"
+      },
+      "correctAnswer": "دي فا",
+      "acceptedAnswers": [
+        "دي فا",
+        "ديفا",
+        "هانا سونغ",
+        "D.Va",
+        "DVa",
+        "Hana Song"
+      ],
+      "difficultyRationale": "تانك محوري مشهور جدًا بقدرة الدفاع وتفجير الميكا (Self-Destruct) — سهل جدًا.",
+      "factBasis": "D.Va (Hana Song) is a former pro gamer piloting a pink MEKA armored mech.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-004",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "أوفرواتش",
+      "category": "map",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم الخريطة الإنجليزية الكلاسيكية في لندن التي يرافق فيها الفريق عربة EMP عبر شوارع ممطرة حتى المصنع السفلي؟"
+      },
+      "correctAnswer": "كينغز رو",
+      "acceptedAnswers": [
+        "كينغز رو",
+        "كينجز رو",
+        "كينج رو",
+        "King's Row",
+        "Kings Row"
+      ],
+      "difficultyRationale": "الخريطة التنافسية المحبوبة والأكثر شهرة في لندن من نوع Hybrid.",
+      "factBasis": "King's Row is a hybrid payload map set in the rainy streets of London.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-005",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "أوفرواتش",
+      "category": "faction",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم المنظمة الإرهابية شبه العسكرية السرية المعادية لأوفرواتش والتي ينتمي إليها دومفيست ومويرا وسومبرا؟"
+      },
+      "correctAnswer": "تالون",
+      "acceptedAnswers": [
+        "تالون",
+        "منظمة تالون",
+        "Talon"
+      ],
+      "difficultyRationale": "الفصيل الشرير الرئيسي المعادي لمنظمة أوفرواتش في قصة اللعبة وعروض الأنيميشن.",
+      "factBasis": "Talon is the primary paramilitary terrorist organization opposing Overwatch.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-006",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "أوفرواتش",
+      "category": "faction_antagonist",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم فصيل المتمردين الآليين (Omnics) المتطرف الذي يقوده راماترا وشن هجومًا على لندن في حدث Uprising؟"
+      },
+      "correctAnswer": "نول سكتور",
+      "acceptedAnswers": [
+        "نول سكتور",
+        "نول سيكتور",
+        "Null Sector"
+      ],
+      "difficultyRationale": "الفصيل الأومنيك المتطرف والخصم الأساسي في مهمات PvE وحدث الملك كينغز رو (مستوى متوسط).",
+      "factBasis": "Null Sector is the extremist omnic liberation terrorist group led by Ramattra.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-007",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "أوفرواتش",
+      "category": "lore_identity",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "ما الاسم الحقيقي للبطلة الهندية سميترا (Symmetra) المهندسة المعمارية في شركة فيشكار للضوء الصلب؟"
+      },
+      "correctAnswer": "ساتيا فاسواني",
+      "acceptedAnswers": [
+        "ساتيا فاسواني",
+        "ساتيا",
+        "Satya Vaswani",
+        "Satya"
+      ],
+      "difficultyRationale": "معرفة الاسم الحقيقي لسميترا في قصة شركة Vishkar Corporation؛ مخصص لعشاق اللور الدقيق.",
+      "factBasis": "Satya Vaswani is the real name of Symmetra, an architech working for the Vishkar Corporation.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-008",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "أوفرواتش",
+      "category": "lore_character",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "في قصة اللعبة، ما اسم العالم البشري وكبير الباحثين في مستعمرة هورايزن القمرية الذي ربى الغوريلا وينستون وأهداه نظارته واسمه؟"
+      },
+      "correctAnswer": "دكتور هارولد وينستون",
+      "acceptedAnswers": [
+        "دكتور هارولد وينستون",
+        "هارولد وينستون",
+        "هارولد ونستون",
+        "Harold Winston",
+        "Dr. Harold Winston"
+      ],
+      "difficultyRationale": "الشخصية التأسيسية المحورية في قصة وينستون والسبب في حمل وينستون لاسمه ونظاراته المميزة.",
+      "factBasis": "Dr. Harold Winston was the chief scientist on Horizon Lunar Colony who raised Winston.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-009",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "أوفرواتش",
+      "category": "lore_founder",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "من هي العالمة السنغافورية وأحد الأعضاء الستة المؤسسين لمنظمة أوفرواتش وخبيرة الذكاء الاصطناعي التي صنعت الروبوت إيكو (Echo)؟"
+      },
+      "correctAnswer": "دكتورة مينا لياو",
+      "acceptedAnswers": [
+        "دكتورة مينا لياو",
+        "مينا لياو",
+        "لياو",
+        "Mina Liao",
+        "Dr. Mina Liao"
+      ],
+      "difficultyRationale": "العضو المؤسس السادس لمنظمة أوفرواتش ومبتكرة إيكو في اللور المتقدم.",
+      "factBasis": "Dr. Mina Liao was one of the six founding members of Overwatch and the creator of Echo.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-mc-001",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "minecraft",
+      "scopeNameAr": "ماينكرافت",
+      "category": "mob",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم الوحش الأيقوني الأخضر الصامت الذي يقترب من اللاعب ويُحدث فحيحًا قبل أن ينفجر؟"
+      },
+      "correctAnswer": "الكريبر",
+      "acceptedAnswers": [
+        "كريبر",
+        "الكريبر",
+        "Creeper"
+      ],
+      "difficultyRationale": "الوحش الأكثر شهرة ورمزية في تاريخ ماينكرافت.",
+      "factBasis": "Creepers are the signature exploding hostile mob in Minecraft.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-mc-002",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "minecraft",
+      "scopeNameAr": "ماينكرافت",
+      "category": "mineral_item",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم المعدن الأزرق النادر في باطن الأرض المستخدم في صناعة أقوى الأدوات والدروع الكلاسيكية؟"
+      },
+      "correctAnswer": "الألماس",
+      "acceptedAnswers": [
+        "الماس",
+        "الدايموند",
+        "دايموند",
+        "Diamond",
+        "Diamonds"
+      ],
+      "difficultyRationale": "المعدن الأكثر سعيًا خلفه في تجربة البقاء الكلاسيكية.",
+      "factBasis": "Diamond is the iconic precious mineral found deep underground.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-mc-003",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "minecraft",
+      "scopeNameAr": "ماينكرافت",
+      "category": "block",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم الصخرة البركانية البنفسجية الداكنة الصلبة الناتجة عن التقاء الحمم البركانية بالماء وتُبنى بها بوابة النيذر؟"
+      },
+      "correctAnswer": "أوبسيديان",
+      "acceptedAnswers": [
+        "اوبسيديان",
+        "أوبسيديان",
+        "حجر الاوبسيديان",
+        "Obsidian"
+      ],
+      "difficultyRationale": "الحجر الأساسي لبناء بوابة النيذر ولا يُكسر إلا بفأس ألماس.",
+      "factBasis": "Obsidian forms when water meets lava source blocks and is required for Nether Portals.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-mc-004",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "minecraft",
+      "scopeNameAr": "ماينكرافت",
+      "category": "equipment",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم الجناحين النادرين الموجودين في سفن مدينة الإند واللذين يتيحان للاعب الطيران والانزلاق في الهواء؟"
+      },
+      "correctAnswer": "إليترا",
+      "acceptedAnswers": [
+        "اليترا",
+        "إليترا",
+        "الايليترا",
+        "Elytra"
+      ],
+      "difficultyRationale": "أداة الطيران الأكثر قيمة في مرحلة ما بعد التنين وتتطلب استكشاف End Ships.",
+      "factBasis": "The Elytra are rare wings found in End Ships allowing glide flight.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-mc-005",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "minecraft",
+      "scopeNameAr": "ماينكرافت",
+      "category": "boss_mob",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم الوحش الأعمى المرعب الذي يستشعر الاهتزازات الصوتية ويخرج من أعماق الـ Deep Dark لحماية المدن القديمة؟"
+      },
+      "correctAnswer": "الواردن",
+      "acceptedAnswers": [
+        "الواردن",
+        "واردن",
+        "Warden",
+        "The Warden"
+      ],
+      "difficultyRationale": "الوحش الأعمى الشهير لحصون الديب دارك؛ معروف لمعظم المتابعين (مستوى متوسط).",
+      "factBasis": "The Warden is a blind subterranean boss-tier mob summoned by Sculk Shriekers.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-mc-006",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "minecraft",
+      "scopeNameAr": "ماينكرافت",
+      "category": "mineral_ore",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم الخامة القديمة النادرة جدًا الموجودة في أعماق النيذر والتي يتم صهرها ودمجها بالذهب لصنع معدن النيذرايت؟"
+      },
+      "correctAnswer": "الحطام القديم",
+      "acceptedAnswers": [
+        "انشنت ديبري",
+        "الحطام القديم",
+        "انشنت دبري",
+        "حطام قديم",
+        "Ancient Debris"
+      ],
+      "difficultyRationale": "خامة النيذرايت الخام في النيذر؛ معروفة للاعبي البقاء المتمرسين (مستوى متوسط).",
+      "factBasis": "Ancient Debris is the rare blast-resistant ore found in the Nether used to produce Netherite.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-mc-007",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "minecraft",
+      "scopeNameAr": "ماينكرافت",
+      "category": "rare_treasure",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "ما اسم الجوهرة الزرقاء النادرة الموجودة فقط في صناديق الكنوز المدفونة تحت الرمال واللازمة لصناعة منشأة الكونديت المائية؟"
+      },
+      "correctAnswer": "قلب البحر",
+      "acceptedAnswers": [
+        "قلب البحر",
+        "هارت اوف ذا سي",
+        "Heart of the Sea"
+      ],
+      "difficultyRationale": "يتطلب معرفة الكنز الحصري لخرائط الكنوز المائية واللازم لصناعة الكونديت.",
+      "factBasis": "Heart of the Sea is a rare item found exclusively in Buried Treasure chests, used to craft Conduits.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-mc-008",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "minecraft",
+      "scopeNameAr": "ماينكرافت",
+      "category": "advanced_brewing",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "ما المادة السحرية الوردية الناتجة عن جمع سحابة هجوم تنين الإند في زجاجات فارغة واللازمة لصناعة الجرعات المستدامة (Lingering Potions)؟"
+      },
+      "correctAnswer": "نَفَس التنين",
+      "acceptedAnswers": [
+        "نفس التنين",
+        "نَفَس التنين",
+        "دراجون بريث",
+        "دراجونز بريث",
+        "Dragon's Breath",
+        "Dragons Breath"
+      ],
+      "difficultyRationale": "ميكانيكية تحضير جرعات متقدمة تتطلب جمع الغاز الوردي للتنين أثناء معركة الإند لصنع الجرعات المستدامة والسهام السحرية.",
+      "factBasis": "Dragon's Breath is collected by using an empty glass bottle on the purple breath clouds of the Ender Dragon, used to brew Lingering Potions.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-mc-009",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "minecraft",
+      "scopeNameAr": "ماينكرافت",
+      "category": "advanced_navigation_block",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "ما اسم الكتلة اللي إذا استخدمت عليها بوصلة، ترتبط فيها وتصير تشير لموقعها بدل نقطة البداية، حتى في النيذر أو الإند طالما البوصلة والكتلة في نفس البُعد؟"
+      },
+      "correctAnswer": "لودستون",
+      "acceptedAnswers": [
+        "لودستون",
+        "اللودستون",
+        "حجر المغناطيس",
+        "Lodestone"
+      ],
+      "difficultyRationale": "كتلة ملاحة متقدمة توفر ربطًا مباشرًا للبوصلة بإحداثياتها داخل نفس البُعد (العالم العادي أو النيذر أو الإند).",
+      "factBasis": "A Lodestone alters a compass used on it to point directly to its location as long as both compass and lodestone remain in the same dimension.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gow-001",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "god-of-war",
+      "scopeNameAr": "إله الحرب",
+      "category": "weapon",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم السلاح المزدوج المربوط بالسلاسل النارية في ذراعي كريتوس والمصنوع بأمر من إله الحرب آريس؟"
+      },
+      "correctAnswer": "نصال الفوضى",
+      "acceptedAnswers": [
+        "نصال الفوضى",
+        "سيوف الفوضى",
+        "بليدز اوف كايوس",
+        "نصل الفوضى",
+        "Blades of Chaos"
+      ],
+      "difficultyRationale": "السلاح الأيقوني الخالد لكريتوس في جميع الأجزاء الإغريقية والإسكندنافية.",
+      "factBasis": "The Blades of Chaos are Kratos' signature chained fire blades forged by Ares.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gow-002",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "god-of-war",
+      "scopeNameAr": "إله الحرب",
+      "category": "character",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم ابن كريتوس الذي يرافقه في رحلته ويحمل قوسًا سحريًا ويُعرف في نبوءة العمالقة باسم لوكي؟"
+      },
+      "correctAnswer": "أتريوس",
+      "acceptedAnswers": [
+        "أتريوس",
+        "اتريوس",
+        "Atreus"
+      ],
+      "difficultyRationale": "الابن والشريك في القتال في السلسلة الإسكندنافية (2018 و Ragnarök).",
+      "factBasis": "Atreus is Kratos' son, revealed to be Loki in Norse myth prophecy.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gow-003",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "god-of-war",
+      "scopeNameAr": "إله الحرب",
+      "category": "weapon",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم الفأس الجليدية السحرية التي صاغها القزمان بروك وسندري ويستطيع كريتوس استدعاؤها ليده في أي لحظة؟"
+      },
+      "correctAnswer": "فأس ليفياثان",
+      "acceptedAnswers": [
+        "فأس ليفياثان",
+        "ليفياثان",
+        "فاس ليفياثان",
+        "Leviathan Axe",
+        "Leviathan"
+      ],
+      "difficultyRationale": "السلاح الرئيسي في God of War (2018) المشحون بجليد يوتنهايم.",
+      "factBasis": "The Leviathan Axe was forged by Brok and Sindri for Laufey and wielded by Kratos.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gow-004",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "god-of-war",
+      "scopeNameAr": "إله الحرب",
+      "category": "character",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم الإله الإسكندنافي الحكيم المقطوع الرأس والمعلق على خصر كريتوس ليروي له قصص العوالم والتاريخ؟"
+      },
+      "correctAnswer": "ميمير",
+      "acceptedAnswers": [
+        "ميمير",
+        "مميير",
+        "Mimir"
+      ],
+      "difficultyRationale": "الشخصية الأبرز والأكثر حضورًا في الحوارات والقصص المعلقة على حزام كريتوس.",
+      "factBasis": "Mimir is the smartest man alive whose reanimated head travels with Kratos.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gow-005",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "god-of-war",
+      "scopeNameAr": "إله الحرب",
+      "category": "optional_boss",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم ملكة الفالكيري الأسطورية والأقوى في God of War 2018 المحبوسة في مجلس الفالكيري والتي تتطلب هزيمة جميع أخواتها؟"
+      },
+      "correctAnswer": "سيغرون",
+      "acceptedAnswers": [
+        "سيغرون",
+        "سجرون",
+        "Sigrun"
+      ],
+      "difficultyRationale": "ملكة الفالكيري الشهيرة في لعبة 2018؛ معروفة لمعظم لاعبي اللعبة كأقوى تحد اختياري (مستوى متوسط).",
+      "factBasis": "Sigrún is the Valkyrie Queen and supreme optional endgame boss in God of War (2018).",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gow-006",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "god-of-war",
+      "scopeNameAr": "إله الحرب",
+      "category": "artifact_lore",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "في ختام الجزء الأول من God of War، ما اسم الصندوق الأسطوري المحروس داخل معبد على ظهر كرونوس والذي فتحه كريتوس لاكتساب القوة الإلهية لهزيمة آريس؟"
+      },
+      "correctAnswer": "صندوق باندورا",
+      "acceptedAnswers": [
+        "صندوق باندورا",
+        "باندورا",
+        "صندوق بندورا",
+        "Pandora's Box",
+        "Pandora Box"
+      ],
+      "difficultyRationale": "الهدف والمحور الأساسي لرحلة كريتوس في God of War 1 لهزيمة آريس (دقة تاريخية تامة دون خلط مع GoW3).",
+      "factBasis": "In the original God of War (2005), Kratos retrieves Pandora's Box from the Temple of Pandora on Cronos' back to acquire god-slaying power against Ares.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gow-007",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "god-of-war",
+      "scopeNameAr": "إله الحرب",
+      "category": "greek_lore_character",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "ما اسم شقيق كريتوس الأصغر ذو الوحمة الحمراء الذي اختطفه آريس وأثينا وحُبس في مملكة ثاناتوس في قصة Ghost of Sparta؟"
+      },
+      "correctAnswer": "ديموس",
+      "acceptedAnswers": [
+        "ديموس",
+        "دايموس",
+        "Deimos"
+      ],
+      "difficultyRationale": "شخصية لور تأسيسية في أجزاء السلسلة الإغريقية توضح أصل الوشم الأحمر على جسد كريتوس.",
+      "factBasis": "Deimos is Kratos' younger brother whose capture inspired Kratos' red body tattoo.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gow-008",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "god-of-war",
+      "scopeNameAr": "إله الحرب",
+      "category": "greek_lore_character",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "في قصة Ghost of Sparta، ما اسم والدة كريتوس التي أخبرته بهوية والده الحقيقي زيوس في مدينة أتلانتس قبل أن تتحول لوحش ويضطر لقتلها؟"
+      },
+      "correctAnswer": "كاليستو",
+      "acceptedAnswers": [
+        "كاليستو",
+        "كاليستوا",
+        "Callisto"
+      ],
+      "difficultyRationale": "لور تراجيدي عميق يوضح أصل أسرة كريتوس في سبارتا وسر لعنة والده زيوس.",
+      "factBasis": "Callisto is Kratos' mother who is cursed and transformed into a monster when revealing Zeus' paternity.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gow-009",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "god-of-war",
+      "scopeNameAr": "إله الحرب",
+      "category": "mythic_artifact",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "في God of War III، ما اسم الحجر الأسطوري المقدس المخبأ داخل أحشاء الجبار كرونوس والذي طلبه الحداد هيفايستوس لصنع سلاح Nemesis Whip؟"
+      },
+      "correctAnswer": "حجر أومفالوس",
+      "acceptedAnswers": [
+        "حجر أومفالوس",
+        "حجر الاومفالوس",
+        "أومفالوس",
+        "اومفالوس",
+        "Omphalos Stone",
+        "Omphalos"
+      ],
+      "difficultyRationale": "العنصر السحري المحوري ومحرك معركة كرونوس الملحمية في GoW III.",
+      "factBasis": "The Omphalos Stone is swallowed by Cronos and retrieved by Kratos to forge the Nemesis Whip.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-re-001",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "resident-evil",
+      "scopeNameAr": "ريزيدنت إيفل",
+      "category": "corporation",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم شركة الأدوية والأسلحة البيولوجية الشريرة صاحبة الشعار المظلي الأحمر والأبيض المتسببة في كارثة راكون سيتي؟"
+      },
+      "correctAnswer": "شركة أمبريلا",
+      "acceptedAnswers": [
+        "امبريلا",
+        "أمبريلا",
+        "شركة امبريلا",
+        "شركة أمبريلا",
+        "Umbrella Corporation",
+        "Umbrella"
+      ],
+      "difficultyRationale": "المنظمة الشريرة الأيقونية الأبرز في تاريخ ألعاب الرعب.",
+      "factBasis": "Umbrella Corporation is the primary corporate antagonist behind the biohazard viral outbreaks.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-re-002",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "resident-evil",
+      "scopeNameAr": "ريزيدنت إيفل",
+      "category": "protagonist",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم الشرطي المبتدئ في قسم شرطة راكون سيتي (RPD) وبطل Resident Evil 2 و Resident Evil 4؟"
+      },
+      "correctAnswer": "ليون كينيدي",
+      "acceptedAnswers": [
+        "ليون",
+        "ليون كينيدي",
+        "ليون كندي",
+        "Leon Kennedy",
+        "Leon S. Kennedy",
+        "Leon"
+      ],
+      "difficultyRationale": "بطل السلسلة الأكثر شهرة وشعبية عالميًا.",
+      "factBasis": "Leon S. Kennedy is the iconic rookie cop turned government special agent.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-re-003",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "resident-evil",
+      "scopeNameAr": "ريزيدنت إيفل",
+      "category": "boss_monster",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "ما اسم الوحش والمطارد الضخم التابع لأمبريلا في Resident Evil 3 المسلح بقاذف صواريخ ويلاحق أعضاء فرقة STARS؟"
+      },
+      "correctAnswer": "نمسيس",
+      "acceptedAnswers": [
+        "نمسيس",
+        "النمسيس",
+        "نيمسيس",
+        "Nemesis",
+        "Nemesis T-Type"
+      ],
+      "difficultyRationale": "الوحش المطارد الأشهر في تاريخ السلسلة؛ أيقونة مرعبة يعرفها كل عشاق ألعاب الفيديو (سهل جدًا).",
+      "factBasis": "The Nemesis-T Type is the relentless Tyrant hunter pursuing Jill Valentine in Resident Evil 3.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-re-004",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "resident-evil",
+      "scopeNameAr": "ريزيدنت إيفل",
+      "category": "pathogen",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم الطفيليات القديمة المتحكمة بالعقول التي استخدمتها طائفة لوس إلومينادوس للسيطرة على القرويين في Resident Evil 4؟"
+      },
+      "correctAnswer": "لاس بلاجاس",
+      "acceptedAnswers": [
+        "لاس بلاجاس",
+        "لاس بلاغاس",
+        "بلاجاس",
+        "بلاغاس",
+        "Las Plagas",
+        "Plagas"
+      ],
+      "difficultyRationale": "الطفيلي البيولوجي الجديد الذي استبدل الزومبي في إسبانيا؛ محور أحداث RE4 (مستوى متوسط).",
+      "factBasis": "Las Plagas is the parasitic organism discovered in rural Spain featured in RE4.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-re-005",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "resident-evil",
+      "scopeNameAr": "ريزيدنت إيفل",
+      "category": "pathogen_lore",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم الفيروس المطور الذي ابتكره ويليام بيركين وحقن به نفسه في RE2 قبل أن يتحول لوحش متحول بعيون عملاقة؟"
+      },
+      "correctAnswer": "G-Virus",
+      "acceptedAnswers": [
+        "فيروس جي",
+        "جي فيروس",
+        "الفيروس G",
+        "G-Virus",
+        "G Virus"
+      ],
+      "difficultyRationale": "الفيروس الشهير لويليام بيركين وتحولاته الخمسة في RE2 (مستوى متوسط).",
+      "factBasis": "The Golgotha Virus (G-Virus) was developed by William Birkin leading to continuous aggressive mutations.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-re-006",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "resident-evil",
+      "scopeNameAr": "ريزيدنت إيفل",
+      "category": "monster",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "ما اسم الوحش البشري المتحول الأعمى في ريزيدنت إيفل ذو الدماغ المكشوف واللسان الطويل والمخالب الحادة الذي يهاجم بالصوت؟"
+      },
+      "correctAnswer": "ليكر",
+      "acceptedAnswers": [
+        "ليكر",
+        "الليكر",
+        "وحش الليكر",
+        "Licker"
+      ],
+      "difficultyRationale": "أحد أكثر الأعداء شهرة ورعبًا في مركز شرطة RPD؛ يتطلب التحرك ببطء لتجنب لفت انتباهه.",
+      "factBasis": "Lickers are blind mutated zombies with exposed brains, crawling agility, and elongated tongues.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-re-007",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "resident-evil",
+      "scopeNameAr": "ريزيدنت إيفل",
+      "category": "classic_lore_character",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "في Resident Evil الأولى، ما اسم قائد فريق Bravo في STARS اللي يُعثر عليه مصاب في الكهوف ويحذر من وجود خائن قبل ما ينقتل؟"
+      },
+      "correctAnswer": "إنريكو ماريني",
+      "acceptedAnswers": [
+        "انريكو ماريني",
+        "إنريكو ماريني",
+        "انريكو",
+        "إنريكو",
+        "Enrico Marini",
+        "Enrico"
+      ],
+      "difficultyRationale": "قائد فرقة برافو وشخصية محورية في كشف مؤامرة وخيانة ويسكر في كهوف الجزء الأول؛ تفصيلة لور كلاسيكية يعرفها عشاق السلسلة المخضرمون.",
+      "factBasis": "Enrico Marini is the captain of S.T.A.R.S. Bravo Team discovered in the Arklay underground tunnels in Resident Evil (1996) before being shot by Albert Wesker.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-re-008",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "resident-evil",
+      "scopeNameAr": "ريزيدنت إيفل",
+      "category": "boss_monster",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "في Resident Evil 4، ما اسم الحارس الشخصي المتحول ذي الرداء الأحمر والذيل العقربي والتابع لسادلر والذي يتطلب تجميده بأنابيب النيتروجين السائل؟"
+      },
+      "correctAnswer": "فيردوجو",
+      "acceptedAnswers": [
+        "فيردوجو",
+        "فيردوغو",
+        "Verdugo"
+      ],
+      "difficultyRationale": "الزعيم الأيقوني المرعب \"Right Hand\" لسادلر في معركة الصرف الصحي؛ يحتاج معرفة الاسم الإسباني الدقيق للكائن.",
+      "factBasis": "Verdugo is the insect-like mutated bodyguard of Osmund Saddler in RE4 fought in the sewers.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-re-009",
+      "worldId": "6a70e8820f201ac138fa4f8b",
+      "worldSlug": "video-games",
+      "scopeSlug": "resident-evil",
+      "scopeNameAr": "ريزيدنت إيفل",
+      "category": "founder_lore",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "من هو أحد المؤسسين الثلاثة لشركة أمبريلا وأول مدير لمعهد التدريب الذي ابتكر الفيروس T الأولي عبر العلقات (Leeches) في Resident Evil Zero؟"
+      },
+      "correctAnswer": "جيمس ماركوس",
+      "acceptedAnswers": [
+        "جيمس ماركوس",
+        "دكتور ماركوس",
+        "ماركوس",
+        "James Marcus",
+        "Dr. James Marcus"
+      ],
+      "difficultyRationale": "الشخصية التأسيسية في لور أمبريلا وشرير Resident Evil 0 المحوري.",
+      "factBasis": "Dr. James Marcus was a co-founder of Umbrella and the creator of the initial T-Virus strain using leeches.",
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    }
+  ]
+}

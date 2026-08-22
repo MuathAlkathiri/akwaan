@@ -91,12 +91,12 @@ export function ParticipantWaiting({
           <h1 className="text-lg font-black text-foreground">
             {matchComplete
               ? "انتهت المباراة"
-              : "لا يوجد تحدٍ يحتاج الجوال حالياً"}
+              : "ما فيه تحدي يحتاج الجوال الحين"}
           </h1>
           <p className="text-sm leading-6 text-muted-foreground">
             {matchComplete
-              ? "شكرًا لكم. لا حاجة لإبقاء الجوال مفتوحًا."
-              : "سنفتح التحدي القادم هنا. أبقِ جوالك معك."}
+              ? "تمام، ما تحتاجون تخلون الجوال مفتوح."
+              : "بنفتح التحدي الجاي هنا. خلّ جوالك معك."}
           </p>
         </>
       )}

@@ -228,7 +228,7 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
                         // Any available position, from any occurrence, at any time.
                         canSelect={isController && playable && selectionOpen}
                         {...(isController && playable && !selectionOpen
-                          ? { blockedReason: "اختيار التحديات غير متاح الآن." }
+                          ? { blockedReason: "ما تقدرون تختارون تحدي الحين." }
                           : {})}
                         pending={pending === position.positionKey}
                         standings={standings}

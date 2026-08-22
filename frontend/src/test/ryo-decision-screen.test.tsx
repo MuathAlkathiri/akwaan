@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RyoGameplayPanel } from "@/features/live-game-session/components/ryo-gameplay-panel";
 import type { GameplayRuntimeSnapshot } from "@/features/live-game-session/model";
 
@@ -27,6 +27,8 @@ vi.mock("@/features/live-game-session/hooks/live-session-clock-context", () => (
   useLiveSessionClock: () => Date.parse("2026-08-07T00:00:00.000Z"),
 }));
 
+const mocks = vi.hoisted(() => ({ gameplayCommand: vi.fn() }));
+
 vi.mock("@/features/live-game-session/hooks/live-session-context", () => ({
   useLiveSession: () => ({
     snapshot: {
@@ -35,11 +37,13 @@ vi.mock("@/features/live-game-session/hooks/live-session-context", () => ({
       teams: TEAMS,
       participants: [],
     },
-    gameplayCommand: vi.fn(),
+    gameplayCommand: mocks.gameplayCommand,
     connection: "connected",
     snapshotReceivedAtMs: Date.parse("2026-08-07T00:00:00.000Z"),
   }),
 }));
+
+beforeEach(() => mocks.gameplayCommand.mockReset());
 
 /** The blind window, from the point of view of one of the two acting phones. */
 function ryoRuntime(options: {
@@ -136,8 +140,99 @@ describe("the Steal / Trust decision", () => {
   it("addresses the team in the plural", () => {
     render(<RyoGameplayPanel runtime={ryoRuntime({ role: "opposing" })} />);
     // A team is plural: "أثق بإجابته" spoke to one player about one player.
-    expect(screen.getByText("نثق بإجابتكم")).toBeTruthy();
     expect(document.body.textContent).not.toContain("أثق بإجابته");
+  });
+});
+
+describe("the read-your-opponent choice terminology", () => {
+  it("names the choices by the psychological read, not trust/steal", () => {
+    render(<RyoGameplayPanel runtime={ryoRuntime({ role: "opposing" })} />);
+    const controls = screen.getByTestId("ryo-decision-controls");
+    expect(within(controls).getByText("شاكك فيهم")).toBeTruthy();
+    expect(within(controls).getByText("متأكد منهم")).toBeTruthy();
+    // The retired labels are gone from the active choice surface.
+    expect(controls.textContent).not.toContain("ثق فيهم");
+    expect(controls.textContent).not.toContain("اسرق النقاط");
+    expect(controls.textContent).not.toContain("نثق بإجابتكم");
+    expect(controls.textContent).not.toContain("نسرق النقاط");
+  });
+
+  it("shows the supporting copy directly under each choice", () => {
+    render(<RyoGameplayPanel runtime={ryoRuntime({ role: "opposing" })} />);
+    const controls = screen.getByTestId("ryo-decision-controls");
+    expect(
+      within(controls).getByText("مو متأكد إنهم يعرفون الجواب."),
+    ).toBeTruthy();
+    expect(
+      within(controls).getByText(
+        "متأكد إنهم بيعرفون الجواب — بسرق نقاطهم، بس لو غلطوا أخسر نقطة.",
+      ),
+    ).toBeTruthy();
+    // The description sits inside the same button as its title.
+    const trustButton = controls.querySelector('[data-decision="trust"]');
+    const stealButton = controls.querySelector('[data-decision="steal"]');
+    expect(trustButton?.textContent).toContain("شاكك فيهم");
+    expect(trustButton?.textContent).toContain("مو متأكد إنهم يعرفون الجواب.");
+    expect(stealButton?.textContent).toContain("متأكد منهم");
+    expect(stealButton?.textContent).toContain("بسرق نقاطهم");
+  });
+
+  it("submits the canonical trust value when «شاكك فيهم» is tapped", () => {
+    render(<RyoGameplayPanel runtime={ryoRuntime({ role: "opposing" })} />);
+    fireEvent.click(
+      screen
+        .getByTestId("ryo-decision-controls")
+        .querySelector('[data-decision="trust"]') as HTMLElement,
+    );
+    expect(mocks.gameplayCommand).toHaveBeenCalledWith("interaction-submit", {
+      roundId: "round-1",
+      payload: { kind: "decision", decision: "trust" },
+    });
+  });
+
+  it("submits the canonical steal value when «متأكد منهم» is tapped", () => {
+    render(<RyoGameplayPanel runtime={ryoRuntime({ role: "opposing" })} />);
+    fireEvent.click(
+      screen
+        .getByTestId("ryo-decision-controls")
+        .querySelector('[data-decision="steal"]') as HTMLElement,
+    );
+    expect(mocks.gameplayCommand).toHaveBeenCalledWith("interaction-submit", {
+      roundId: "round-1",
+      payload: { kind: "decision", decision: "steal" },
+    });
+  });
+
+  it("never renders the raw canonical values on the choice surface", () => {
+    render(<RyoGameplayPanel runtime={ryoRuntime({ role: "opposing" })} />);
+    const controls = screen.getByTestId("ryo-decision-controls");
+    // The words are only ever the data-attribute, never visible text.
+    expect(controls.textContent).not.toContain("trust");
+    expect(controls.textContent).not.toContain("steal");
+  });
+
+  it("echoes the new label back after this phone locks its choice in", () => {
+    const { rerender } = render(
+      <RyoGameplayPanel runtime={ryoRuntime({ role: "opposing" })} />,
+    );
+    fireEvent.click(
+      screen
+        .getByTestId("ryo-decision-controls")
+        .querySelector('[data-decision="steal"]') as HTMLElement,
+    );
+    // The same instance re-renders with the server now reporting this side's
+    // decision as locked; the local choice it just made is echoed back.
+    rerender(
+      <RyoGameplayPanel
+        runtime={ryoRuntime({
+          role: "opposing",
+          submissions: [{ kind: "decision" }],
+        })}
+      />,
+    );
+    const waiting = screen.getByTestId("ryo-waiting");
+    expect(waiting.textContent).toContain("اخترت «متأكد منهم»");
+    expect(waiting.textContent).not.toContain("steal");
   });
 });
 

@@ -13,7 +13,11 @@ import {
   productionMechanicSystemFields,
 } from './production-mechanic.definition';
 import { issue } from './world-content.errors';
-import { ChallengeTypeView, WorldContentIssue } from './world-content.types';
+import {
+  ChallengeTypeView,
+  hasCompletePlayerInstructions,
+  WorldContentIssue,
+} from './world-content.types';
 
 /**
  * Rules that make a mechanic definition coherent on its own, before any World
@@ -113,18 +117,35 @@ export class ChallengeTypePolicy {
 
   /** Warnings do not block activation but are surfaced to the admin. */
   warnings(challengeType: ChallengeTypeView): WorldContentIssue[] {
-    if (!this.scoringRules.isRegistered(challengeType.scoringRuleId)) return [];
-    const declaration = this.scoringRules.declaration(
-      challengeType.scoringRuleId,
-    );
-    if (!declaration.requiresMechanicBinding) return [];
-    return [
-      issue(
-        'SCORING_RULE_AWAITING_MECHANIC',
-        `Scoring rule "${declaration.id}" is declared but has no bound calculator yet, so this challenge is not playable until its mechanic ships`,
-        { scoringRuleId: declaration.id },
-      ),
-    ];
+    const warnings: WorldContentIssue[] = [];
+    // Player instructions are authored data, and a mechanic on a live board
+    // without them shows players a fallback rather than an explanation. That is
+    // a coverage gap to surface, never a reason to block the listing — a legacy
+    // record must still read and a draft is allowed to be incomplete.
+    if (!hasCompletePlayerInstructions(challengeType.defaultPresentation)) {
+      warnings.push(
+        issue(
+          'CHALLENGE_TYPE_PLAYER_INSTRUCTIONS_MISSING',
+          `Challenge type "${challengeType.name}" has no player instructions; players will see the fallback until a summary and at least one step are authored`,
+          { challengeTypeId: challengeType.id },
+        ),
+      );
+    }
+    if (this.scoringRules.isRegistered(challengeType.scoringRuleId)) {
+      const declaration = this.scoringRules.declaration(
+        challengeType.scoringRuleId,
+      );
+      if (declaration.requiresMechanicBinding) {
+        warnings.push(
+          issue(
+            'SCORING_RULE_AWAITING_MECHANIC',
+            `Scoring rule "${declaration.id}" is declared but has no bound calculator yet, so this challenge is not playable until its mechanic ships`,
+            { scoringRuleId: declaration.id },
+          ),
+        );
+      }
+    }
+    return warnings;
   }
 
   assertUsableInBoard(challengeType: ChallengeTypeView): WorldContentIssue[] {

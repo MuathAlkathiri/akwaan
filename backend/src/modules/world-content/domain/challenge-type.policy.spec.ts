@@ -150,6 +150,7 @@ describe('ChallengeTypePolicy', () => {
       timerSeconds: null,
       soundPack: null,
       revealStyle: null,
+      playerInstructions: null,
     });
   });
 

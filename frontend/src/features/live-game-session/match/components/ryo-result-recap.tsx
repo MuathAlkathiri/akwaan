@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
 import { teamName } from "../presentation";
+import { ryoDecisionRevealLabel } from "../ryo-decision.presentation";
 import type { LiveSessionSnapshot } from "../../model";
 import type { MatchChallengeResult } from "../types";
 
@@ -42,11 +43,6 @@ export interface RyoResultDetails {
   mechanicTotals?: Record<string, number>;
   tie?: boolean;
 }
-
-const DECISION_LABEL: Record<string, string> = {
-  trust: "وثق",
-  steal: "سرق",
-};
 
 /**
  * The three-item recap.
@@ -125,7 +121,7 @@ export function RyoResultRecap({
                 ? ` (${person(item.deciderParticipantId)})`
                 : ""}
               {": "}
-              {DECISION_LABEL[String(item.decision)] ?? String(item.decision ?? "—")}
+              {ryoDecisionRevealLabel(item.decision)}
             </p>
             {(item.mechanicPoints ?? [])
               .filter((entry) => entry.points !== 0)

@@ -23,10 +23,12 @@ import { useEntityFormSubmit } from "../../hooks/use-entity-form-submit";
 import {
   buildChallengeTypePayload,
   EMPTY_PRESENTATION,
+  normalizePlayerInstructions,
 } from "../../services/world-content-forms";
 import {
   AdvancedSlugField,
   FormIssueList,
+  PlayerInstructionsFields,
   PresentationFields,
   StatusSelect,
   UploadField,
@@ -293,6 +295,17 @@ export function ChallengeTypeForm({
 
       <PresentationFields value={presentation} onChange={setPresentation} />
 
+      <PlayerInstructionsFields
+        value={
+          presentation.playerInstructions ?? { summary: "", steps: [] }
+        }
+        onChange={(playerInstructions) =>
+          setPresentation((current) => ({ ...current, playerInstructions }))
+        }
+      />
+
+      <PlayerInstructionsPreview value={presentation.playerInstructions} />
+
       <UploadField
         label="أيقونة المكانيكا"
         existingUrl={challengeType?.icon?.url}
@@ -325,5 +338,48 @@ export function ChallengeTypeForm({
             : "إضافة مكانيكا"}
       </Button>
     </form>
+  );
+}
+
+/**
+ * "معاينة شرح اللاعبين" — the authored instructions as a player would meet them,
+ * so an author sees the shape they are writing without leaving the form. It reads
+ * from the same normalizer the payload uses, so a field that would be dropped on
+ * save is dropped here too.
+ */
+function PlayerInstructionsPreview({
+  value,
+}: {
+  value: ChallengePresentation["playerInstructions"];
+}) {
+  const normalized = normalizePlayerInstructions(value);
+  if (!normalized) return null;
+  return (
+    <div
+      className="space-y-3 rounded-xl border bg-muted/30 p-3"
+      data-testid="player-instructions-preview"
+    >
+      <p className="text-xs font-semibold text-muted-foreground">
+        معاينة شرح اللاعبين
+      </p>
+      {normalized.summary && <p className="text-sm">{normalized.summary}</p>}
+      {normalized.steps.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-sm font-medium">كيف تلعبون؟</p>
+          <ol className="list-inside list-decimal space-y-1 text-sm">
+            {normalized.steps.map((step, index) => (
+              <li key={index}>{step}</li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {normalized.highlights && normalized.highlights.length > 0 && (
+        <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+          {normalized.highlights.map((highlight, index) => (
+            <li key={index}>{highlight}</li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

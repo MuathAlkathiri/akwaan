@@ -14,7 +14,6 @@ import {
   teamColorPool,
   teamColorViolations,
   teamPairViolations,
-  THEME_BACKGROUNDS,
 } from "@/lib/team-palette";
 
 /**
@@ -111,9 +110,9 @@ describe("reserved colours", () => {
  */
 describe("the token layer matches the palette module", () => {
   const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
-  const declaration = (token: string, scope: "root" | "dark") => {
-    const block = scope === "root" ? css.split(".dark")[0] : css.slice(css.indexOf(".dark {"));
-    const match = block.match(
+  const declaration = (token: string, scope: "root" = "root") => {
+    void scope;
+    const match = css.match(
       new RegExp(`${token}:\\s*([\\d.]+)\\s+([\\d.]+)%\\s+([\\d.]+)%`),
     );
     expect(match, `${token} missing from the ${scope} scope`).not.toBeNull();
@@ -152,10 +151,6 @@ describe("the token layer matches the palette module", () => {
     // shadcn's primitives keep working by aliasing, not by holding a second value.
     expect(css).toMatch(/--success:\s*var\(--sem-success\)/);
     expect(css).toMatch(/--destructive:\s*var\(--sem-error\)/);
-  });
-
-  it("uses the dark room the palette was verified against", () => {
-    expect(declaration("--background", "dark")).toEqual(THEME_BACKGROUNDS.dark);
   });
 
   it("keeps the reserved hue distance true of the tokens actually shipped", () => {

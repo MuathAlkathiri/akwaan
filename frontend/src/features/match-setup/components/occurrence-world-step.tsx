@@ -42,7 +42,7 @@ export function OccurrenceWorldStep({
     <JourneySection
       id="occurrence-world"
       title={`اختر ${occurrenceLabel(occurrenceIndex)}`}
-      description="بعد اختيار العالم تختار نطاقاته الأربعة. يمكن تكرار العالم نفسه في محطة أخرى."
+      description="بعد ما تختار العالم تختار نطاقاته الأربعة. تقدر تكرّر نفس العالم في محطة ثانية."
     >
       {query.isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -55,8 +55,8 @@ export function OccurrenceWorldStep({
         </div>
       ) : query.isError ? (
         <JourneyError
-          title="تعذر تحميل العوالم"
-          description="تحقّق من اتصالك ثم حاول مرة أخرى."
+          title="ما قدرنا نحمّل العوالم"
+          description="تأكد من اتصالك وجرّب مرة ثانية."
           onRetry={() => void query.refetch()}
           retrying={query.isFetching}
         />

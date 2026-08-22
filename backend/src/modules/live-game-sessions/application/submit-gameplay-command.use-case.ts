@@ -51,6 +51,7 @@ import { BOMB_MODE_KEY } from '../domain/bomb-gameplay.plugin';
 import { COMBO_MODE_KEY } from '../domain/combo-gameplay.plugin';
 import { CLOSEST_MODE_KEY } from '../domain/closest-gameplay.plugin';
 import { ONE_CLUE_MODE_KEY } from '../domain/one-clue-gameplay.plugin';
+import { findEligibleTeamParticipant } from '../domain/team-participant-eligibility';
 
 /**
  * The authority behind `expire-team`, against the server clock and the
@@ -96,6 +97,21 @@ export function assertBombClockExpired(
       'The active team clock has not expired',
     );
   }
+}
+
+export function resolveGameplayCommandRepresentative(
+  state: LiveGameSessionState,
+  modeKey: string,
+): string | undefined {
+  if (!state.activeTeamId) return undefined;
+  return findEligibleTeamParticipant(state.participants, {
+    teamId: state.activeTeamId,
+    requiresConnectedPresence: true,
+    // Active Unified Match Bomb admits connected team players even though
+    // lobby readiness is no longer mutable. Other legacy fallback paths keep
+    // their explicit readiness contract.
+    requiresReady: modeKey !== BOMB_MODE_KEY,
+  })?.id;
 }
 
 @Injectable()
@@ -311,7 +327,10 @@ export class SubmitGameplayCommand {
         // exists for mechanics that have no such concept.
         activeParticipantId:
           handled.assignment?.participantId ??
-          this.activeRepresentative(session.serialize()),
+          resolveGameplayCommandRepresentative(
+            session.serialize(),
+            runtime.modeKey,
+          ),
       });
       const terminal =
         this.completeBombIfTerminal(session, runtime, command, now) ||
@@ -768,18 +787,5 @@ export class SubmitGameplayCommand {
     excluded?: string,
   ): string | undefined {
     return state.teams.find((team) => team.active && team.id !== excluded)?.id;
-  }
-
-  private activeRepresentative(
-    state: LiveGameSessionState,
-  ): string | undefined {
-    return state.participants.find(
-      (participant) =>
-        participant.role === 'team-player' &&
-        participant.teamId === state.activeTeamId &&
-        participant.ready &&
-        participant.connected &&
-        !participant.removedAt,
-    )?.id;
   }
 }

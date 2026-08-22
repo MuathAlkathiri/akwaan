@@ -29,7 +29,18 @@ describe('production mechanic provisioning', () => {
       expect(created).toMatchObject(productionMechanicSystemFields(definition));
       expect(created.scoringRuleId).toBe(SCORING_RULE_IDS.CHALLENGE_WIN);
       expect(policy.validate({ ...created, id: 'new' } as never)).toEqual([]);
-      expect(policy.warnings({ ...created, id: 'new' } as never)).toEqual([]);
+      // Provisioning establishes the runtime identity, not the player-facing copy:
+      // player instructions are authored by product afterwards, so the only
+      // readiness warning a freshly provisioned mechanic carries is that they are
+      // still missing. Everything else about it must already be clean.
+      expect(
+        policy
+          .warnings({ ...created, id: 'new' } as never)
+          .map((problem) => problem.code)
+          .filter(
+            (code) => code !== 'CHALLENGE_TYPE_PLAYER_INSTRUCTIONS_MISSING',
+          ),
+      ).toEqual([]);
     },
   );
 

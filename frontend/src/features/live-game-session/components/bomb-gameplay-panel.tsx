@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  FormEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Bomb, Loader2, Mic, Send, SkipForward, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,13 +13,7 @@ import {
 import { useTeamClockDisplay } from "../hooks/use-team-clock-display";
 import type { GameplayRuntimeSnapshot } from "../model";
 
-function BombItemImage({
-  url,
-  altText,
-}: {
-  url: string;
-  altText: string;
-}) {
+function BombItemImage({ url, altText }: { url: string; altText: string }) {
   const [state, setState] = useState<"loading" | "loaded" | "unavailable">(
     url ? "loading" : "unavailable",
   );
@@ -67,12 +55,12 @@ const VOICE_MESSAGES: Partial<Record<BombVoiceState, string>> = {
   listening: "أستمع الآن… تكلّم بوضوح",
   processing: "جارٍ التعرّف على الإجابة…",
   recognized: "تم التعرّف على الإجابة وإرسالها",
-  "no-speech": "لم أسمع إجابة. اضغط الميكروفون وحاول مرة أخرى.",
+  "no-speech": "ما سمعت إجابة. اضغط المايك وجرّب مرة ثانية.",
   "permission-denied":
     "لم يتم السماح باستخدام الميكروفون. فعّل الإذن أو استخدم الكتابة.",
   unsupported: "التعرّف الصوتي غير مدعوم في هذا المتصفح. استخدم الكتابة.",
   reconnecting: "جارٍ إعادة الاتصال. سيتاح الميكروفون بعد الاتصال.",
-  error: "تعذر تشغيل الميكروفون. حاول مرة أخرى أو استخدم الكتابة.",
+  error: "ما قدرت أشغّل المايك. جرّب مرة ثانية أو اكتب الإجابة.",
 };
 
 export function BombGameplayPanel({
@@ -167,8 +155,7 @@ export function BombGameplayPanel({
   const prompt = runtime.prompt ?? String(round.modeState.prompt ?? "");
   const currentItemImage = {
     url: getMediaUrl(
-      runtime.currentItem?.image.url ??
-        String(round.modeState.imageUrl ?? ""),
+      runtime.currentItem?.image.url ?? String(round.modeState.imageUrl ?? ""),
     ),
     altText:
       runtime.currentItem?.image.altText?.trim() ||
@@ -186,6 +173,14 @@ export function BombGameplayPanel({
           <Bomb className="size-5 text-destructive" aria-hidden />
           Bomb
         </h3>
+        <output
+          className="akwaan-numeral inline-flex items-center gap-2 rounded-full border border-destructive/30 bg-destructive/10 px-5 py-2 text-3xl font-black tabular-nums text-destructive"
+          aria-label={`${activeTeam?.name ?? "Active team"} remaining Bomb time`}
+          aria-live="off"
+        >
+          <Bomb className="size-7" aria-hidden />
+          {clock.formatted}
+        </output>
         <p className="text-sm text-muted-foreground">
           Item {Math.min(itemIndex + 1, itemCount)} of {itemCount}
         </p>
@@ -226,7 +221,9 @@ export function BombGameplayPanel({
                 type="button"
                 size="lg"
                 className="size-20 rounded-full"
-                variant={voice.state === "listening" ? "destructive" : "default"}
+                variant={
+                  voice.state === "listening" ? "destructive" : "default"
+                }
                 disabled={
                   !answerEnabled ||
                   voice.state === "processing" ||
@@ -261,7 +258,11 @@ export function BombGameplayPanel({
                 </span>
               )}
               {voice.transcript && (
-                <p className="text-lg font-semibold" dir="rtl" aria-live="polite">
+                <p
+                  className="text-lg font-semibold"
+                  dir="rtl"
+                  aria-live="polite"
+                >
                   «{voice.transcript}»
                 </p>
               )}

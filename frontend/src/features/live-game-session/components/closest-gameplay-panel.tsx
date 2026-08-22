@@ -167,7 +167,7 @@ export function ClosestGameplayPanel({
         {!revealed && !canAnswer && actorTeamId && (
           <p className="rounded-[var(--radius)] bg-muted p-4 text-center font-bold text-muted-foreground">
             {ownSubmitted
-              ? "تم إرسال إجابتكم. بانتظار الفريق الآخر…"
+              ? "انرسلت إجابتكم. ننتظر الفريق الثاني…"
               : `${nameOf(assigned[actorTeamId])} يرسل إجابة الفريق`}
           </p>
         )}

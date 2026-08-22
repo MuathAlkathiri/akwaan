@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
-import { Connection } from 'mongoose';
+import { Connection, Types } from 'mongoose';
 import { createIntegrationTestApp } from '../helpers/test-app';
 import {
   connectTestDatabase,
@@ -229,7 +229,10 @@ describe('Bomb board lifecycle integration', () => {
       const created = (
         await bearer(http().post('/admin/content-items'))
           .send({
-            scopeId: scopes[0].id,
+            // A real selected-Scope mix. The ordered run alternates Scopes, so
+            // both normal advance and Skip exercise the production diversity
+            // contract instead of a single-Scope fixture deck.
+            scopeId: scopes[index % scopes.length].id,
             prompt: { ar: `صورة رقم ${index + 1}` },
             compatibleChallengeTypeIds: [bomb.id],
             media: {
@@ -688,6 +691,8 @@ describe('Bomb board lifecycle integration', () => {
         clock: { consumedMs: number; startedAt: Date };
       }>
     ).find((team) => team.id === activeTeamId)!.clock;
+    const itemBefore = (await rawRuntime(sessionId))!.state.activeRound
+      .modeState;
 
     await command(
       sessionId,
@@ -702,10 +707,23 @@ describe('Bomb board lifecycle integration', () => {
         clock: { consumedMs: number; startedAt: Date };
       }>
     ).find((team) => team.id === activeTeamId)!.clock;
+    const itemAfter = (await rawRuntime(sessionId))!.state.activeRound
+      .modeState;
 
     expect(
       (await rawRuntime(sessionId))!.state.activeRound.modeState.itemIndex,
     ).toBe(1);
+    expect(itemAfter.prompt).not.toBe(itemBefore.prompt);
+    expect(itemAfter.imageUrl).not.toBe(itemBefore.imageUrl);
+    const firstTwo = await database
+      .collection('content_items')
+      .find({
+        _id: {
+          $in: bombItemIds.slice(0, 2).map((id) => new Types.ObjectId(id)),
+        },
+      })
+      .toArray();
+    expect(new Set(firstTwo.map((item) => String(item.scopeId))).size).toBe(2);
     // TeamClock.adjust first persists naturally elapsed wall time, resets
     // startedAt to the command instant, then applies the mechanic adjustment.
     // Subtracting that independently persisted elapsed interval proves the

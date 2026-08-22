@@ -391,6 +391,43 @@ describe('MatchSnapshotComposer', () => {
       expect(value.match?.unified.board.positions).toHaveLength(12);
     });
 
+    it('projects the mechanic-canonical player instructions the client renders', async () => {
+      const positions = boardPositions().map((position) =>
+        position.slotKey === WorldChallengeSlotKey.SLOT_2
+          ? {
+              ...position,
+              playerInstructions: {
+                summary: 'اقرأ خصمك.',
+                steps: ['اختر توقعك', 'اكشفوا معًا'],
+                highlights: ['لا تكشف مبكرًا'],
+              },
+            }
+          : position,
+      );
+      const value = snapshot();
+      await composerFor(unifiedMatch({ positions })).enrich(value, controller);
+
+      const projected = value.match!.unified!.board.positions.filter(
+        (position) => position.slotKey === WorldChallengeSlotKey.SLOT_2,
+      );
+      expect(projected).not.toHaveLength(0);
+      for (const position of projected) {
+        expect(position.playerInstructions).toEqual({
+          summary: 'اقرأ خصمك.',
+          steps: ['اختر توقعك', 'اكشفوا معًا'],
+          highlights: ['لا تكشف مبكرًا'],
+        });
+      }
+      // A mechanic that authored none carries no field at all — never an empty
+      // object the client would have to special-case.
+      const others = value.match!.unified!.board.positions.filter(
+        (position) => position.slotKey !== WorldChallengeSlotKey.SLOT_2,
+      );
+      for (const position of others) {
+        expect(position.playerInstructions).toBeUndefined();
+      }
+    });
+
     it('marks only the completed position and counts it once', async () => {
       const match = unifiedMatch();
       match.launchChallenge({

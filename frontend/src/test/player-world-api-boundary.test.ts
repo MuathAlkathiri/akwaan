@@ -80,12 +80,24 @@ const REMOVED_LEGACY_SYMBOLS = [
   "ScopeSelection",
   "BoardScreen",
   "/worlds/${worldId}/board",
-  // Placeholder language for mechanics that are, in fact, either playable or
-  // permanently unavailable — never merely "being prepared".
-  "قيد التجهيز",
-  "قريبًا",
-  "قريباً",
 ] as const;
+
+/**
+ * Placeholder language for a World or a mechanic that is, in fact, either
+ * playable or permanently unavailable — never merely "being prepared". This is a
+ * rule about *Worlds and mechanics*, not about the home page's curated roadmap
+ * teaser, which advertises future *content categories* (films, series, songs)
+ * that are not Worlds in the system at all.
+ */
+const WORLD_PREPARATION_PLACEHOLDERS = ["قيد التجهيز", "قريبًا", "قريباً"] as const;
+
+/**
+ * The one production file allowed to say "قريباً": the home roadmap teaser, whose
+ * cards are content-category promises, not Worlds. Every other file must still be
+ * clean, so a real World or mechanic can never be labelled as being prepared.
+ */
+const ROADMAP_TEASER_FILE =
+  "src/features/worlds/components/worlds-home.tsx";
 
 /** Production source only: the tests themselves may name what they forbid. */
 function productionSources(): string[] {
@@ -187,6 +199,20 @@ describe("no sequential Match journey survives in production source", () => {
       .map((file) => file.path);
     expect(offenders).toEqual([]);
   });
+
+  it.each(WORLD_PREPARATION_PLACEHOLDERS)(
+    "never labels a World or mechanic as %s",
+    (phrase) => {
+      // The roadmap teaser advertises future content categories, not Worlds, so
+      // it alone may carry this word; everywhere else it would wrongly imply a
+      // World or mechanic is merely being prepared.
+      const offenders = sources
+        .filter((file) => file.path !== ROADMAP_TEASER_FILE)
+        .filter((file) => file.text.includes(phrase))
+        .map((file) => file.path);
+      expect(offenders).toEqual([]);
+    },
+  );
 
   it("keeps exactly one Match API client", () => {
     const clients = sources

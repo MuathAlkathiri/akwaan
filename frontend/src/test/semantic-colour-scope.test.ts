@@ -139,7 +139,7 @@ describe("a persistent status may still be legible", () => {
       "src/features/live-game-session/match/components/challenge-preflight.tsx",
     );
     expect(preflight).toContain("text-success");
-    expect(preflight).toContain("اللاعبون مرتبطون وجاهزون");
+    expect(preflight).toContain("اللاعبين متصلين وجاهزين");
   });
 
   it("escalates the connection pill from calm to amber to red", () => {

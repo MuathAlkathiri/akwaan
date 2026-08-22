@@ -65,6 +65,9 @@ export class UnifiedMatchSetupValidator {
           displayName: slot.displayName,
           ...(slot.description ? { description: slot.description } : {}),
           ...(slot.instructions ? { instructions: slot.instructions } : {}),
+          ...(slot.playerInstructions
+            ? { playerInstructions: slot.playerInstructions }
+            : {}),
         })),
       );
       await this.contentPool.assertOccurrencePool({

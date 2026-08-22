@@ -116,7 +116,7 @@ export function useMatchSetup(
           : new MatchSetupFailure(
               {
                 code: "UNKNOWN_ERROR",
-                message: "تعذر إنشاء المباراة. حاول مرة أخرى.",
+                message: "ما ضبط إنشاء المباراة. جرّب مرة ثانية.",
                 retryable: true,
               },
               false,

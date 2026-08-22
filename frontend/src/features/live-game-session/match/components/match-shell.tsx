@@ -2,12 +2,10 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ExternalLink, MousePointerClick, Trophy, Wifi, WifiOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { MousePointerClick, Wifi, WifiOff } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { TeamScoreboard } from "@/components/akwaan/team-score";
-import { ThemeToggle } from "@/components/akwaan/theme-toggle";
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { useLiveSession } from "../../hooks/live-session-context";
@@ -27,10 +25,12 @@ import type { MatchActor } from "../types";
  * vertical space that the reveal needs.
  */
 export function MatchShell({
-  actor,
   children,
 }: {
-  actor: MatchActor;
+  // `actor` remains part of the contract (callers pass it), but the header no
+  // longer branches on it since the controller-only shared-screen link was
+  // removed. Accepted and intentionally unbound.
+  actor?: MatchActor;
   children: React.ReactNode;
 }) {
   const { snapshot, connection } = useLiveSession();
@@ -72,7 +72,7 @@ export function MatchShell({
       )
     : undefined;
   const activeLabel =
-    match?.stage.key === "board" ? "دوركم الآن — اختاروا تحديًا" : "دوركم الآن";
+    match?.stage.key === "board" ? "دوركم الحين — اختاروا تحدي" : "دوركم الحين";
 
   return (
     <div dir="rtl" className="min-h-dvh" data-testid="match-shell">
@@ -98,12 +98,7 @@ export function MatchShell({
           {teams.length > 0 && (
             <div className="order-3 flex w-full items-center gap-2 sm:order-none sm:w-auto sm:flex-1">
               {/* The Match score is a count of challenge *wins*, not the sum of
-                  any mechanic's internal points. Saying so once, quietly, is
-                  what stops a 3-2 challenge reading as a 3-2 Match. */}
-              <span className="hidden shrink-0 items-center gap-1 text-[0.7rem] font-black text-muted-foreground lg:inline-flex">
-                <Trophy className="size-3.5" aria-hidden />
-                تحديات مكسوبة
-              </span>
+                  any mechanic's internal points. */}
               <TeamScoreboard teams={teams} size="sm" className="flex-1" />
             </div>
           )}
@@ -125,24 +120,7 @@ export function MatchShell({
           )}
 
           <div className="ms-auto flex items-center gap-2">
-            <ThemeToggle />
             <ConnectionPill connection={connection} />
-            {actor === "controller" && snapshot && (
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="hidden font-black sm:inline-flex"
-              >
-                <Link
-                  href={`/live-sessions/${snapshot.sessionId}/screen`}
-                  target="_blank"
-                >
-                  <ExternalLink className="size-4" aria-hidden />
-                  الشاشة المشتركة
-                </Link>
-              </Button>
-            )}
           </div>
         </div>
 

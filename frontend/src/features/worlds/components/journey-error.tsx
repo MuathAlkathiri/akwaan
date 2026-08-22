@@ -15,7 +15,7 @@ export function JourneyError({
   description,
   onRetry,
   retrying = false,
-  retryLabel = "حاول مرة أخرى",
+  retryLabel = "جرّب مرة ثانية",
 }: {
   title: string;
   description?: string;

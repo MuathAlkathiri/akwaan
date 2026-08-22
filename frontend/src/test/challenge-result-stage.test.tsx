@@ -517,9 +517,9 @@ describe("RYO result recap", () => {
     const first = screen.getByTestId("ryo-result-item-0");
     expect(first.textContent).toContain("أحمد");
     expect(first.textContent).toContain("خالد");
-    expect(first.textContent).toContain("وثق");
+    expect(first.textContent).toContain("شاكك فيهم");
     const second = screen.getByTestId("ryo-result-item-1");
-    expect(second.textContent).toContain("سرق");
+    expect(second.textContent).toContain("متأكد منهم");
     expect(second.textContent).toContain("خطأ");
     expect(screen.getByTestId("ryo-result-winner").textContent).toContain(
       "صقور الرياض",
@@ -551,7 +551,7 @@ describe("phone lifecycle across a challenge result", () => {
     });
     const waiting = screen.getByTestId("participant-waiting");
     expect(waiting.dataset.showingResult).toBe("false");
-    expect(waiting.textContent).toContain("لا يوجد تحدٍ يحتاج الجوال");
+    expect(waiting.textContent).toContain("ما فيه تحدي يحتاج الجوال");
   });
 
   it("says the Match is over when it is", () => {

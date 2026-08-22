@@ -35,11 +35,40 @@ export interface ContentAssetRef {
  * the ContentItem alone, so one mechanic plays text, image, audio, and video
  * content without any per-World or per-mechanic media configuration.
  */
+/**
+ * How a mechanic is explained to players, authored on the ChallengeType.
+ *
+ * Belongs to the mechanic and nothing below it: a Scope changes the *content* a
+ * challenge draws, never how the challenge works, so Bomb + Naruto and Bomb +
+ * Dragon Ball read the same instructions. It rides inside presentation because
+ * presentation is already the mechanic-canonical, World-invariant object
+ * (`ChallengePresentationPolicy`: "a World cannot override the timer, input, or
+ * reveal behaviour"); instructions obey the same rule.
+ *
+ * Deliberately prose about *rules*, not tunable numbers. A step says "a wrong
+ * answer hands the pressure to the other team", never "the timer is 30 seconds" —
+ * the second would go stale the moment `timerSeconds` is retuned, and that value
+ * is already canonical config the UI can render live.
+ */
+export interface PlayerInstructions {
+  /** One line: the whole idea of the mechanic. */
+  summary: string;
+  /** Ordered "how to play" steps, in the order authored. */
+  steps: string[];
+  /** Optional rules players must not miss. Absent, never an empty array. */
+  highlights?: string[];
+}
+
 export interface ChallengePresentation {
   inputType: string;
   timerSeconds: number | null;
   soundPack?: string | null;
   revealStyle?: string | null;
+  /**
+   * Player-facing explanation, or absent on a legacy record authored before this
+   * field existed. Absent is a readiness concern (below), never a crash.
+   */
+  playerInstructions?: PlayerInstructions | null;
 }
 
 /**
@@ -60,7 +89,47 @@ export function normalizePresentation(
     timerSeconds: presentation?.timerSeconds ?? null,
     soundPack: presentation?.soundPack ?? null,
     revealStyle: presentation?.revealStyle ?? null,
+    playerInstructions: normalizePlayerInstructions(
+      presentation?.playerInstructions,
+    ),
   };
+}
+
+/**
+ * A player-instructions object trimmed to what is real, or null when nothing was
+ * authored. Whitespace-only rows collapse away rather than reaching a player as
+ * an empty bullet, so a half-filled form normalizes to "not authored yet" and is
+ * caught by the readiness guard rather than shown.
+ */
+export function normalizePlayerInstructions(
+  value: Partial<PlayerInstructions> | undefined | null,
+): PlayerInstructions | null {
+  if (!value) return null;
+  const summary = (value.summary ?? '').trim();
+  const steps = (value.steps ?? [])
+    .map((step) => (step ?? '').trim())
+    .filter(Boolean);
+  const highlights = (value.highlights ?? [])
+    .map((entry) => (entry ?? '').trim())
+    .filter(Boolean);
+  if (!summary && steps.length === 0 && highlights.length === 0) return null;
+  return {
+    summary,
+    steps,
+    ...(highlights.length ? { highlights } : {}),
+  };
+}
+
+/** True when a mechanic carries player instructions complete enough to show. */
+export function hasCompletePlayerInstructions(
+  presentation: Partial<ChallengePresentation> | undefined | null,
+): boolean {
+  const instructions = normalizePlayerInstructions(
+    presentation?.playerInstructions,
+  );
+  return Boolean(
+    instructions && instructions.summary && instructions.steps.length > 0,
+  );
 }
 
 export interface WorldView {

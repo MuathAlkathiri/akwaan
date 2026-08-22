@@ -121,7 +121,7 @@ export function MarhalaPhonePanel({
         ) : (
           <WaitingCard
             title="دور الفريق الآخر"
-            body="شاهدوا الشاشة — سيختارون مستوى الخطر الآن."
+            body="شوفوا الشاشة — بيختارون مستوى الخطر الحين."
           />
         ))}
 
@@ -174,7 +174,7 @@ export function MarhalaPhonePanel({
         ) : (
           <WaitingCard
             title="الفريق الآخر يجيب"
-            body="لا تتدخّلوا — دوركم بعد هذا السؤال."
+            body="لا تتدخّلون — دوركم بعد هذا السؤال."
           />
         ))}
 

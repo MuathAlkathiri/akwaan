@@ -11,7 +11,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+import { ScannableQr } from "@/components/akwaan/scannable-qr";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -99,7 +99,7 @@ export function ChallengePreflight({
           onClick={onCancel}
           className="border-transparent bg-transparent font-black text-muted-foreground shadow-none hover:bg-muted hover:text-foreground"
         >
-          {cancelling ? "جارٍ الإلغاء…" : "رجوع إلى اللوحة"}
+          {cancelling ? "جارٍ الإلغاء…" : "ارجع للوحة"}
         </Button>
       </footer>
     </div>
@@ -149,6 +149,8 @@ function ChallengeBrief({
             </p>
           )}
         </header>
+
+        <PlayerInstructionsBrief instructions={preflight.playerInstructions} />
 
         {preflight.instructions && (
           <p className="rounded-[var(--radius)] bg-muted p-3 text-sm leading-6 text-foreground/85">
@@ -275,7 +277,7 @@ function PairingPanel({
             className="flex items-center gap-2 text-sm font-black text-success"
           >
             <Check className="size-4 shrink-0" aria-hidden />
-            اللاعبون مرتبطون وجاهزون
+            اللاعبين متصلين وجاهزين
           </p>
           <Button
             type="button"
@@ -296,8 +298,11 @@ function PairingPanel({
           </p>
           {showQr && joinUrl && (
             <div className="flex items-center gap-3 rounded-[var(--radius)] bg-muted/55 p-2.5">
-              <span className="rounded-xl border border-border bg-white p-1.5">
-                <QRCodeSVG value={joinUrl} size={88} level="M" />
+              <span className="flex shrink-0 flex-col items-center gap-1">
+                <ScannableQr value={joinUrl} size={88} />
+                <span className="text-[0.6rem] font-bold text-muted-foreground">
+                  اضغط على الكود عشان تكبّره
+                </span>
               </span>
               <span className="min-w-0 flex-1 space-y-1">
                 <span className="block text-[0.65rem] font-black text-muted-foreground">
@@ -454,11 +459,67 @@ function TeamReadinessCard({
           <Smartphone className="size-3.5 shrink-0" aria-hidden />
         )}
         {team.ready
-          ? "جاهزون"
+          ? "جاهزين"
           : team.connectedCount < team.minimum
-            ? "بانتظار لاعب"
-            : "بانتظار اكتمال الجاهزية"}
+            ? "ناقص لاعب"
+            : "ناقص جاهزية"}
       </p>
+    </div>
+  );
+}
+
+/**
+ * "كيف يُلعب هذا التحدي" — the mechanic's own player-facing explanation.
+ *
+ * Authored on the ChallengeType and carried verbatim through the Match projection;
+ * this component renders it and never invents copy. A mechanic authored before
+ * instructions existed simply has none, and gets a short, honest placeholder
+ * rather than a blank — the real copy is data the admins fill in, not a string
+ * hardcoded here.
+ */
+function PlayerInstructionsBrief({
+  instructions,
+}: {
+  instructions: UnifiedPreflight["playerInstructions"];
+}) {
+  const summary = instructions?.summary?.trim();
+  const steps = (instructions?.steps ?? []).filter((step) => step.trim());
+  const highlights = (instructions?.highlights ?? []).filter((h) => h.trim());
+
+  if (!summary && steps.length === 0) {
+    return (
+      <p
+        data-testid="preflight-instructions-fallback"
+        className="rounded-[var(--radius)] bg-muted p-3 text-sm leading-6 text-muted-foreground"
+      >
+        شرح التحدي بيتضاف قريب. اسألوا المضيف لو تبون تفاصيل أكثر.
+      </p>
+    );
+  }
+
+  return (
+    <div
+      data-testid="preflight-player-instructions"
+      className="space-y-3 rounded-[var(--radius)] bg-muted p-3.5 text-foreground/85"
+    >
+      {summary && <p className="text-sm leading-6">{summary}</p>}
+      {steps.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-black text-muted-foreground">كيف تلعبون؟</p>
+          <ol className="list-inside list-decimal space-y-1 text-sm leading-6">
+            {steps.map((step, index) => (
+              <li key={index}>{step}</li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {highlights.length > 0 && (
+        <ul className="list-inside list-disc space-y-1 text-sm leading-6 text-foreground/75">
+          {highlights.map((highlight, index) => (
+            <li key={index}>{highlight}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -485,6 +546,6 @@ function playerRequirementLabel(
 
 function blockingSummary(preflight: UnifiedPreflight): string {
   const waiting = preflight.teams.filter((team) => !team.ready);
-  if (!waiting.length) return "بانتظار الجاهزية…";
+  if (!waiting.length) return "ننتظر الجاهزية…";
   return `بانتظار ${waiting.map((team) => team.teamName).join(" و")}`;
 }

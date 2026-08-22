@@ -365,7 +365,7 @@ describe("distributed-information presentation helpers", () => {
 
   it("falls back to readable Arabic for an unknown refusal", () => {
     expect(describeDistributedError({ code: "SOMETHING_NEW" })).toBe(
-      "تعذّر تنفيذ الإجراء. حاول مرة أخرى.",
+      "ما ضبط. جرّب مرة ثانية.",
     );
   });
 });

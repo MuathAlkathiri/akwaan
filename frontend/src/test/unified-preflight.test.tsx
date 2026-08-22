@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -316,6 +316,9 @@ describe("challenge preflight", () => {
     const qr = view.querySelector("svg[height]");
     expect(qr).toBeTruthy();
     expect(view.textContent).not.toContain("/join/live-session/ABC123");
+    // The QR is now the tap-to-enlarge trigger, with its conversational hint.
+    expect(screen.getByTestId("qr-enlarge-trigger")).toBeInTheDocument();
+    expect(view.textContent).toContain("اضغط على الكود عشان تكبّره");
     // The requirement in words, from the numbers the server sent.
     expect(screen.getByTestId("preflight-requirement").textContent).toContain(
       "2 أو 3 لاعبين في كل فريق",
@@ -339,6 +342,29 @@ describe("challenge preflight", () => {
     expect(screen.getByTestId("preflight-selecting-team").textContent).toBe(
       "دور الاختيار: أسود الشمال",
     );
+  });
+
+  it("enlarges the join QR to the same payload, and closes again", () => {
+    renderRouter(match({ stage: "preflight", preflight: preflight() }));
+    const view = screen.getByTestId("challenge-preflight");
+    const inline = view
+      .querySelector('[data-testid="qr-enlarge-trigger"] svg path[d]')
+      ?.getAttribute("d");
+
+    fireEvent.click(screen.getByTestId("qr-enlarge-trigger"));
+    const dialog = screen.getByRole("dialog");
+    const enlarged = dialog
+      .querySelector('[data-testid="qr-enlarged-image"] path[d]')
+      ?.getAttribute("d");
+    // Same code, bigger — never a re-encoded or different join URL.
+    expect(inline).toBeTruthy();
+    expect(enlarged).toBe(inline);
+
+    // The join code and copy control the room relies on are still there.
+    expect(screen.getByTestId("preflight-join-code").textContent).toBe("ABC123");
+
+    fireEvent.keyDown(dialog, { key: "Escape", code: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("keeps Start disabled until the server says ready", () => {
@@ -422,7 +448,7 @@ describe("challenge preflight", () => {
 
     expect(
       screen.getByTestId("preflight-players-paired").textContent,
-    ).toContain("اللاعبون مرتبطون وجاهزون");
+    ).toContain("اللاعبين متصلين وجاهزين");
     // No QR taking over the screen, but the code is one tap away.
     expect(screen.queryByTestId("preflight-join-code")).toBeNull();
     await user.click(
@@ -437,7 +463,7 @@ describe("challenge preflight", () => {
     const user = userEvent.setup();
     renderRouter(match({ stage: "preflight", preflight: preflight() }));
 
-    await user.click(screen.getByRole("button", { name: "رجوع إلى اللوحة" }));
+    await user.click(screen.getByRole("button", { name: "ارجع للوحة" }));
 
     await waitFor(() => expect(mocks.cancel).toHaveBeenCalledTimes(1));
     expect(mocks.cancel.mock.calls[0][0]).toMatchObject({
@@ -559,5 +585,86 @@ describe("challenge preflight", () => {
       expect(screen.queryByTestId("unified-board")).toBeNull();
       view.unmount();
     }
+  });
+
+  describe("player instructions", () => {
+    const withInstructions = () =>
+      preflight({
+        playerInstructions: {
+          summary: "اقرأ خصمك قبل ما يقرأك.",
+          steps: ["اختر توقعك بسرية", "اكشفوا في نفس اللحظة", "قارنوا النتيجة"],
+          highlights: ["لا تكشف توقعك بدري"],
+        },
+      });
+
+    it("renders the authored summary, ordered steps and highlights", () => {
+      renderRouter(
+        match({ stage: "preflight", preflight: withInstructions() }),
+      );
+      const block = screen.getByTestId("preflight-player-instructions");
+      expect(block.textContent).toContain("اقرأ خصمك قبل ما يقرأك.");
+      expect(block.textContent).toContain("كيف تلعبون؟");
+
+      // The steps read top to bottom in exactly the authored order.
+      const steps = within(block)
+        .getAllByRole("listitem")
+        .map((node) => node.textContent);
+      expect(steps).toEqual([
+        "اختر توقعك بسرية",
+        "اكشفوا في نفس اللحظة",
+        "قارنوا النتيجة",
+        "لا تكشف توقعك بدري",
+      ]);
+      // The honest placeholder is only for records with none.
+      expect(
+        screen.queryByTestId("preflight-instructions-fallback"),
+      ).toBeNull();
+    });
+
+    it("shows a short honest placeholder when a mechanic authored none", () => {
+      renderRouter(
+        match({
+          stage: "preflight",
+          preflight: preflight({ playerInstructions: undefined }),
+        }),
+      );
+      expect(
+        screen.getByTestId("preflight-instructions-fallback").textContent,
+      ).toContain("شرح التحدي بيتضاف قريب");
+      expect(
+        screen.queryByTestId("preflight-player-instructions"),
+      ).toBeNull();
+    });
+
+    it("renders instructions without disturbing the QR, scopes, or launch", () => {
+      renderRouter(
+        match({ stage: "preflight", preflight: withInstructions() }),
+      );
+      const view = screen.getByTestId("challenge-preflight");
+      // The join flow is untouched by the new block.
+      expect(screen.getByTestId("preflight-join-code").textContent).toBe(
+        "ABC123",
+      );
+      expect(screen.getByTestId("qr-enlarge-trigger")).toBeInTheDocument();
+      expect(view.textContent).not.toContain("/join/live-session/ABC123");
+      // Scope names and the World display name still read as before.
+      expect(view.textContent).toContain("نطاق أول");
+      expect(view.textContent).toContain("العالم الثالث");
+      // Launch is still governed only by the server's readiness.
+      expect(
+        screen.getByTestId("preflight-start").hasAttribute("disabled"),
+      ).toBe(true);
+    });
+
+    it("keeps the per-World instructions override as a distinct line", () => {
+      // The single-string `instructions` is a World-level override, a different
+      // concept from the mechanic-canonical block. Both may appear.
+      renderRouter(
+        match({ stage: "preflight", preflight: withInstructions() }),
+      );
+      const view = screen.getByTestId("challenge-preflight");
+      expect(view.textContent).toContain("اجمعوا المقاطع ثم أجيبوا");
+      expect(view.textContent).toContain("اقرأ خصمك قبل ما يقرأك.");
+    });
   });
 });

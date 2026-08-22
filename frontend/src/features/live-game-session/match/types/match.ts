@@ -7,6 +7,17 @@
  * because the server no longer has one.
  */
 
+/**
+ * How a mechanic is explained to players. Authored on the ChallengeType, carried
+ * verbatim through the Match projection — the frontend renders it, never invents
+ * it. Absent on a legacy mechanic authored before instructions existed.
+ */
+export interface PlayerInstructions {
+  summary: string;
+  steps: string[];
+  highlights?: string[];
+}
+
 export type MatchStageKey =
   /** All twelve positions, any of them selectable. */
   | "board"
@@ -83,6 +94,7 @@ export interface UnifiedBoardPosition {
   challengeName: string;
   description?: string;
   instructions?: string;
+  playerInstructions?: PlayerInstructions;
   /**
    * Declared by the mechanic's server-side launcher. Never inferred here from a
    * slug — the frontend has no business knowing which mechanics need phones.
@@ -149,6 +161,7 @@ export interface UnifiedPreflight {
   challengeName: string;
   description?: string;
   instructions?: string;
+  playerInstructions?: PlayerInstructions;
   requiresPhones: boolean;
   selectedScopes: MatchScopeSummary[];
   join?: {

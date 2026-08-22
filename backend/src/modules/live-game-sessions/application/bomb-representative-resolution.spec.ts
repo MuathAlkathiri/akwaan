@@ -1,5 +1,6 @@
 import { resolveUnifiedBombRepresentative } from './start-bomb-from-content.use-case';
 import { resolveGameplayRoundParticipant } from './gameplay-runtime.lifecycle';
+import { resolveGameplayCommandRepresentative } from './submit-gameplay-command.use-case';
 
 const player = (overrides: Record<string, unknown> = {}) => ({
   id: 'player-a',
@@ -11,6 +12,18 @@ const player = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('Bomb gameplay round representative resolution', () => {
+  it('keeps the same ready=false Unified representative after a command', () => {
+    expect(
+      resolveGameplayCommandRepresentative(
+        {
+          activeTeamId: 'team-a',
+          participants: [player()],
+        } as never,
+        'bomb',
+      ),
+    ).toBe('player-a');
+  });
+
   it('revalidates an explicit Unified representative without requiring ready', () => {
     expect(
       resolveGameplayRoundParticipant([player()], {

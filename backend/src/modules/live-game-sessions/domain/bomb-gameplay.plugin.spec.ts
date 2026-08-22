@@ -111,6 +111,9 @@ describe('Bomb gameplay rules', () => {
 
       expect(result.eventType).toBe('bomb-item-skipped');
       expect(result.roundState.itemIndex).toBe(1);
+      expect(result.roundState.imageUrl).toBe(items[1].imageUrl);
+      expect(result.roundState.prompt).toBe(items[1].prompt);
+      expect(result.runtimeState).toEqual(runtimeState);
       expect(result.effects).toContainEqual({
         type: 'adjust-active-team-time',
         deltaMs: -5_000,

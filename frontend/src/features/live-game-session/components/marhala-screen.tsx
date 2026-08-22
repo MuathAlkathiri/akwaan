@@ -240,7 +240,7 @@ function DecisionPanel({
           <span className="akwaan-numeral">
             {marhalaPositionOf(view, view.activeTeamId)}
           </span>{" "}
-          — الاختيار من هواتفكم.
+          — الاختيار من جوالاتكم.
         </p>
       </div>
       <ul className="space-y-2">
@@ -367,7 +367,7 @@ function QuestionPanel({ view }: { view: MarhalaView }) {
       data-testid="marhala-question"
     >
       <p className="text-xs font-black text-muted-foreground">
-        السؤال — الإجابة من هواتف الفريق
+        السؤال — الإجابة من جوالات الفريق
       </p>
       <p className="text-xl font-black leading-snug text-foreground sm:text-2xl">
         <BidiText>{marhalaPromptText(view)}</BidiText>

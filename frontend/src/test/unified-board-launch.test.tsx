@@ -302,7 +302,7 @@ describe("unified board", () => {
     renderBoard(unifiedMatch());
 
     const locked = tile("0#slot_1");
-    expect(locked.textContent).toContain("هذا التحدي غير مفعّل في أكوان");
+    expect(locked.textContent).toContain("هذا التحدي مو مفعّل في أكوان");
     // The old detail named our internals at a room full of players.
     expect(locked.textContent).not.toContain("الخادم");
     // None of the "nearly ready" language this phase exists to remove.
@@ -320,7 +320,7 @@ describe("unified board", () => {
     const locked = tile("0#slot_1");
     expect(locked.dataset.status).toBe("available");
     expect(locked.dataset.launchability).toBe("configured_but_unimplemented");
-    expect(locked.textContent).not.toContain("متاح للاختيار");
+    expect(locked.textContent).not.toContain("جاهز للاختيار");
     expect(tile("0#slot_2").tagName).toBe("BUTTON");
   });
 
@@ -341,11 +341,11 @@ describe("unified board", () => {
     renderBoard(unifiedMatch({ positions }));
 
     const broken = tile("0#slot_4");
-    expect(broken.textContent).toContain("ليست ضمن إعداد هذه المباراة");
+    expect(broken.textContent).toContain("مو داخلة في إعداد المباراة");
     // And the unimplemented-mechanic tile still reads the other way round: the
     // server's two reasons stay two different sentences on the board.
     expect(broken.textContent).not.toContain("غير مفعّل في أكوان");
-    expect(tile("0#slot_1").textContent).toContain("هذا التحدي غير مفعّل في أكوان");
+    expect(tile("0#slot_1").textContent).toContain("هذا التحدي مو مفعّل في أكوان");
     expect(tile("0#slot_1").textContent).not.toContain("ليست ضمن إعداد");
   });
 

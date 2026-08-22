@@ -11,3 +11,4 @@ export * from "./row-skeleton";
 export * from "./form-issue-list";
 export * from "./status-select";
 export * from "./presentation-fields";
+export * from "./player-instructions-fields";

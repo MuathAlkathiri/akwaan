@@ -13,7 +13,7 @@ export const slotLabels: Record<MatchSlotKey, string> = {
 };
 
 export const slotStatusLabels: Record<MatchSlotStatus, string> = {
-  available: "متاح للاختيار",
+  available: "جاهز للاختيار",
   in_progress: "قيد اللعب",
   completed: "مكتمل",
   unavailable: "غير متاح",
@@ -37,11 +37,11 @@ export const unavailableReasons: Record<
   // not, and this one is not.
   launcher_not_implemented: {
     label: "غير متاح",
-    detail: "هذا التحدي غير مفعّل في أكوان.",
+    detail: "هذا التحدي مو مفعّل في أكوان.",
   },
   invalid_configuration: {
     label: "غير مُعدّ",
-    detail: "هذه الخانة ليست ضمن إعداد هذه المباراة.",
+    detail: "هذه الخانة مو داخلة في إعداد المباراة.",
   },
 };
 

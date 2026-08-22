@@ -6,29 +6,27 @@
 @tailwind utilities;
 
 @layer components {
-  .node-ryo { left: 5%; top: 18%; }
-  .node-top { right: 4%; top: 25%; }
-  .node-bomb { left: 4%; bottom: 20%; }
-  .node-closest { right: 5%; bottom: 16%; }
-  .node-clue { left: 47%; bottom: 1%; transform: translateX(-50%); }
+  /* The four mechanic labels orbiting the hero planet, one per corner. */
+  .hero-node-tl { left: -4%; top: 12%; }
+  .hero-node-tr { right: -4%; top: 6%; }
+  .hero-node-bl { left: -2%; bottom: 16%; }
+  .hero-node-br { right: -3%; bottom: 10%; }
 
   @media (min-width: 1024px) {
-    .akwaan-home-hero { border-radius: 0 0 1.5rem 1.5rem; }
-    .node-ryo { left: 10%; top: 13%; }
-    .node-top { right: 9%; top: 20%; }
-    .node-bomb { left: 9%; bottom: 17%; }
-    .node-closest { right: 10%; bottom: 13%; }
-    .node-clue { left: 48%; bottom: 1%; }
+    .akwaan-home-hero { border-radius: 0 0 1.75rem 1.75rem; }
+    .hero-node-tl { left: 2%; top: 14%; }
+    .hero-node-tr { right: 2%; top: 8%; }
+    .hero-node-bl { left: 4%; bottom: 18%; }
+    .hero-node-br { right: 3%; bottom: 12%; }
   }
 
   @media (max-width: 640px) {
     .akwaan-universe-stage { margin-inline: -0.75rem; }
-    .challenge-orbit-node { transform: scale(.84); }
-    .node-ryo { left: -3%; top: 15%; }
-    .node-top { right: -3%; top: 21%; }
-    .node-bomb { left: -4%; bottom: 20%; }
-    .node-closest { right: -5%; bottom: 14%; }
-    .node-clue { bottom: -1%; transform: translateX(-50%) scale(.84); }
+    .hero-node { transform: scale(.82); }
+    .hero-node-tl { left: -8%; top: 10%; }
+    .hero-node-tr { right: -8%; top: 4%; }
+    .hero-node-bl { left: -8%; bottom: 14%; }
+    .hero-node-br { right: -8%; bottom: 8%; }
   }
 }
 
@@ -181,77 +179,6 @@
     --sidebar-accent-foreground: 219 45% 20%;
     --sidebar-border: 40 22% 86%;
     --sidebar-ring: 219 60% 38%;
-  }
-
-  /**
-   * The dark room — an opt-in, not the default.
-   *
-   * The warm off-white room above is Akwaan's identity and is what every client starts
-   * in. This exists for a viewer who wants it: a large panel in a dimly lit living
-   * room across a 40-minute match is a real glare case, and it is theirs to decide.
-   * Each client remembers its own choice — see `src/providers/theme-provider.tsx`.
-   *
-   * Held to the same standard as the light room rather than treated as a fallback:
-   * only the tokens that must change are redefined, and every team and semantic colour
-   * was verified against this exact background (see `src/lib/team-palette.ts`).
-   */
-  .dark {
-    --background: 236 42% 7%;
-    --foreground: 43 30% 95%;
-    --card: 236 30% 13%;
-    --card-foreground: 43 30% 95%;
-    --popover: 236 30% 13%;
-    --popover-foreground: 43 30% 95%;
-    --primary: 43 30% 95%;
-    --primary-foreground: 236 42% 10%;
-    --secondary: 236 22% 20%;
-    --secondary-foreground: 43 30% 95%;
-    --muted: 236 22% 17%;
-    --muted-foreground: 240 14% 72%;
-    --accent: 236 22% 20%;
-    --accent-foreground: 43 30% 95%;
-    /* Form status only. The reveal keeps `--sem-*`, which does not move: it covers
-       the room rather than sitting in it. These two are the *text* forms, lightened
-       so validation copy stays readable on a dark surface. */
-    --destructive: 351 72% 68%;
-    --success: 160 55% 58%;
-    /* Lightened enough to read as *text* on a dark surface, which means anything
-       filled with them needs dark ink rather than the near-white the light room uses:
-       near-white on a 68%-lightness red is 2.9:1. The reveal keeps `--sem-*` and its
-       own foreground, so it is unaffected either way. */
-    --destructive-foreground: 236 42% 10%;
-    --success-foreground: 236 42% 10%;
-    --success-subtle: 160 32% 16%;
-    --warning: 33 80% 62%;
-    --warning-subtle: 33 40% 16%;
-    --selected: 232 65% 70%;
-    --selected-subtle: 232 32% 20%;
-    --completed: 160 45% 56%;
-    --completed-subtle: 160 28% 15%;
-    --disabled-foreground: 240 10% 55%;
-    /* Teams keep their base — a team's colour is the same colour in both rooms —
-       and swap which resolved variant carries text and fills. */
-    --team-1-text: var(--team-1-on-dark);
-    --team-1-fill: var(--team-1-on-dark);
-    --team-1-fill-foreground: 236 42% 7%;
-    /* 12% of a mid-tone hue over a 7% background is a 2-point step and reads as
-       nothing; the dark room needs a heavier tint to show the same pill. */
-    --team-1-tint: hsl(var(--team-1-base) / 0.24);
-    --team-2-text: var(--team-2-on-dark);
-    --team-2-fill: var(--team-2-on-dark);
-    --team-2-fill-foreground: 236 42% 7%;
-    --team-2-tint: hsl(var(--team-2-base) / 0.24);
-    --border: 236 20% 22%;
-    --input: 236 20% 22%;
-    --ring: 232 65% 70%;
-    --sidebar: 236 30% 13%;
-    --sidebar-foreground: 43 30% 95%;
-    --sidebar-primary: 43 30% 95%;
-    --sidebar-primary-foreground: 236 42% 10%;
-    --sidebar-accent: 236 22% 20%;
-    --sidebar-accent-foreground: 43 30% 95%;
-    --sidebar-border: 236 20% 22%;
-    --sidebar-ring: 232 65% 70%;
   }
 
   * {

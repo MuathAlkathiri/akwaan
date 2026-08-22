@@ -28,75 +28,75 @@ const ISSUES: Record<string, SetupIssue> = {
     scope: "match",
   },
   UNIFIED_OCCURRENCE_INDEX_DUPLICATED: {
-    message: "تكرر ترتيب أحد العوالم. أعد ضبط الإعداد.",
+    message: "تكرّر ترتيب أحد العوالم. أعد ضبط الإعداد.",
     scope: "match",
   },
   UNIFIED_OCCURRENCE_WORLD_REQUIRED: {
-    message: "اختر عالمًا لهذه المحطة.",
+    message: "اختار عالم لهذه المحطة.",
     scope: "occurrence",
   },
   UNIFIED_WORLD_REPEATED: {
-    message: "لا يمكن تكرار العالم نفسه في هذه المباراة. اختر عالمًا آخر.",
+    message: "ما تقدر تكرّر نفس العالم في هذه المباراة. اختار عالم ثاني.",
     scope: "occurrence",
   },
   SCOPE_SELECTION_COUNT_INVALID: {
-    message: "اختر 4 نطاقات بالضبط لهذا العالم.",
+    message: "اختار 4 نطاقات بالضبط لهذا العالم.",
     scope: "occurrence",
   },
   SCOPE_SELECTION_DUPLICATED: {
-    message: "لا يمكن اختيار النطاق نفسه مرتين لهذا العالم.",
+    message: "ما تقدر تختار نفس النطاق مرتين لهذا العالم.",
     scope: "occurrence",
   },
 
   // World Content facts, per occurrence.
   MATCH_WORLD_NOT_FOUND: {
-    message: "هذا العالم لم يعد موجودًا. اختر عالمًا آخر لهذه المحطة.",
+    message: "هذا العالم ما عاد موجود. اختار عالم ثاني لهذه المحطة.",
     scope: "occurrence",
   },
   MATCH_WORLD_NOT_ACTIVE: {
-    message: "هذا العالم لم يعد متاحًا. اختر عالمًا آخر لهذه المحطة.",
+    message: "هذا العالم ما عاد متاح. اختار عالم ثاني لهذه المحطة.",
     scope: "occurrence",
   },
   MATCH_WORLD_BOARD_NOT_READY: {
-    message: "لوحة هذا العالم غير مكتملة. اختر عالمًا آخر لهذه المحطة.",
+    message: "لوحة هذا العالم مو مكتملة. اختار عالم ثاني لهذه المحطة.",
     scope: "occurrence",
   },
   SCOPE_NOT_FOUND: {
-    message: "أحد النطاقات المختارة لم يعد موجودًا. اختر بديلاً.",
+    message: "أحد النطاقات المختارة ما عاد موجود. اختار بديل.",
     scope: "occurrence",
   },
   SCOPE_NOT_IN_OCCURRENCE_WORLD: {
-    message: "أحد النطاقات لا ينتمي إلى هذا العالم. أعد اختيار نطاقات هذا العالم.",
+    message: "أحد النطاقات مو تابع لهذا العالم. أعد اختيار نطاقات هذا العالم.",
     scope: "occurrence",
   },
   SCOPE_NOT_ACTIVE: {
-    message: "أحد النطاقات لم يعد متاحًا. اختر بديلاً.",
+    message: "أحد النطاقات ما عاد متاح. اختار بديل.",
     scope: "occurrence",
   },
   SCOPE_HAS_NO_READY_CONTENT: {
-    message: "أحد النطاقات لا يحتوي محتوى جاهزًا. اختر بديلاً.",
+    message: "أحد النطاقات ما فيه محتوى جاهز. اختار بديل.",
     scope: "occurrence",
   },
   SCOPE_HAS_NO_USABLE_SLOT: {
-    message: "أحد النطاقات لا يصلح لأي تحدٍ في هذا العالم. اختر بديلاً.",
+    message: "أحد النطاقات ما يصلح لأي تحدي في هذا العالم. اختار بديل.",
     scope: "occurrence",
   },
   SCOPE_NOT_SELECTABLE: {
-    message: "أحد النطاقات غير متاح للاختيار. اختر بديلاً.",
+    message: "أحد النطاقات مو متاح للاختيار. اختار بديل.",
     scope: "occurrence",
   },
   UNIFIED_BOARD_SLOT_COUNT_INVALID: {
-    message: "لوحة هذا العالم غير مكتملة. اختر عالمًا آخر لهذه المحطة.",
+    message: "لوحة هذا العالم مو مكتملة. اختار عالم ثاني لهذه المحطة.",
     scope: "occurrence",
   },
   UNIFIED_BOARD_SLOT_MISSING: {
-    message: "لوحة هذا العالم ناقصة تحديًا. اختر عالمًا آخر لهذه المحطة.",
+    message: "لوحة هذا العالم ناقصة تحدي. اختار عالم ثاني لهذه المحطة.",
     scope: "occurrence",
   },
 
   // The Match and its session.
   MATCH_ALREADY_IN_PROGRESS: {
-    message: "توجد مباراة قائمة لهذه الجلسة بالفعل.",
+    message: "فيه مباراة قائمة لهذه الجلسة أصلاً.",
     scope: "match",
   },
   MATCH_REQUIRES_TWO_TEAMS: {
@@ -104,34 +104,34 @@ const ISSUES: Record<string, SetupIssue> = {
     scope: "match",
   },
   MATCH_FORBIDDEN: {
-    message: "إنشاء المباراة متاح لمتحكّم الجلسة فقط.",
+    message: "إنشاء المباراة للمتحكّم بس.",
     scope: "match",
   },
   SESSION_FORBIDDEN: {
-    message: "لا تملك صلاحية التحكّم في هذه الجلسة.",
+    message: "ما عندك صلاحية تحكّم بهذه الجلسة.",
     scope: "match",
   },
   SESSION_NOT_ACTIVE: {
-    message: "تعذر تجهيز الجلسة قبل إنشاء المباراة. حاول مرة أخرى.",
+    message: "ما قدرنا نجهّز الجلسة قبل إنشاء المباراة. جرّب مرة ثانية.",
     scope: "match",
   },
   SESSION_NOT_READY: {
-    message: "تعذر تجهيز الجلسة. تأكد من وجود فريقين ثم حاول مرة أخرى.",
+    message: "ما قدرنا نجهّز الجلسة. تأكد من وجود فريقين وجرّب مرة ثانية.",
     scope: "match",
   },
   STALE_REVISION: {
-    message: "تغيّرت الجلسة أثناء التجهيز. حاول مرة أخرى.",
+    message: "تغيّرت الجلسة أثناء التجهيز. جرّب مرة ثانية.",
     scope: "match",
   },
   MATCH_STALE_REVISION: {
-    message: "تغيّرت المباراة أثناء التجهيز. حاول مرة أخرى.",
+    message: "تغيّرت المباراة أثناء التجهيز. جرّب مرة ثانية.",
     scope: "match",
   },
 };
 
 const NETWORK_MESSAGE =
-  "انقطع الاتصال. إعدادك محفوظ — تحقق من الشبكة وحاول مرة أخرى.";
-const UNKNOWN_MESSAGE = "تعذر إنشاء المباراة. تحقق من اختياراتك وحاول مرة أخرى.";
+  "انقطع الاتصال. إعدادك محفوظ — تأكد من الشبكة وجرّب مرة ثانية.";
+const UNKNOWN_MESSAGE = "ما ضبط إنشاء المباراة. تأكد من اختياراتك وجرّب مرة ثانية.";
 
 export interface MatchSetupError {
   code: string;

@@ -28,6 +28,12 @@ export function presentation(
     timerSeconds: 25,
     soundPack: null,
     revealStyle: null,
+    // A ready mechanic explains itself. Specs about the missing-instructions
+    // warning override this back to null.
+    playerInstructions: {
+      summary: 'اقرأ خصمك قبل ما يقرأك.',
+      steps: ['اختر توقعك بسرية', 'اكشفوا في نفس اللحظة'],
+    },
     ...overrides,
   };
 }

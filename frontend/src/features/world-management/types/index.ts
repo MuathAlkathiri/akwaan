@@ -52,11 +52,24 @@ export interface ReadinessReport {
 }
 
 /** Owned by the mechanic. Media is absent here: it belongs to the ContentItem. */
+/**
+ * How a mechanic explains itself to players — authored once on the ChallengeType,
+ * canonical across every World. Absent on legacy mechanics authored before it
+ * existed.
+ */
+export interface PlayerInstructions {
+  summary: string;
+  steps: string[];
+  highlights?: string[];
+}
+
 export interface ChallengePresentation {
   inputType: string;
   timerSeconds: number | null;
   soundPack?: string | null;
   revealStyle?: string | null;
+  /** Player-facing "how this challenge works". Mechanic-canonical, World-invariant. */
+  playerInstructions?: PlayerInstructions | null;
 }
 
 export interface BoardSlot {

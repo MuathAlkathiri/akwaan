@@ -1,6 +1,7 @@
 import type {
   ChallengePresentation,
   ChallengeType,
+  PlayerInstructions,
   World,
   WorldChallengeConfiguration,
 } from "../types";
@@ -20,6 +21,29 @@ export const EMPTY_PRESENTATION: ChallengePresentation = {
 function optionalText(value: string | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
+}
+
+/**
+ * Trims the authored instructions and drops every empty field. Returns `null`
+ * when nothing meaningful was written, so a mechanic with a blank form persists
+ * "no instructions" rather than an object the API would reject. Highlights are
+ * omitted entirely when none survive — they are optional, never an empty array.
+ */
+export function normalizePlayerInstructions(
+  value: PlayerInstructions | null | undefined,
+): PlayerInstructions | null {
+  if (!value) return null;
+  const summary = value.summary?.trim() ?? "";
+  const steps = (value.steps ?? []).map((step) => step.trim()).filter(Boolean);
+  const highlights = (value.highlights ?? [])
+    .map((h) => h.trim())
+    .filter(Boolean);
+  if (!summary && steps.length === 0 && highlights.length === 0) return null;
+  return {
+    summary,
+    steps,
+    ...(highlights.length ? { highlights } : {}),
+  };
 }
 
 export interface WorldFormValues {
@@ -84,7 +108,12 @@ export function buildChallengeTypePayload(values: ChallengeTypeFormValues) {
     answerMode: values.answerMode,
     scoringRuleId: values.scoringRuleId,
     status: values.status,
-    defaultPresentation: values.defaultPresentation,
+    defaultPresentation: {
+      ...values.defaultPresentation,
+      playerInstructions: normalizePlayerInstructions(
+        values.defaultPresentation.playerInstructions,
+      ),
+    },
   };
 }
 
