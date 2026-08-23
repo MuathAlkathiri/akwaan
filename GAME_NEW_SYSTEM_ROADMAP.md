@@ -1950,14 +1950,18 @@ Completed three distinct authoring playtests validating the Question Craft archi
 
 ⚠️ **Status Discipline:** These 48 items are **authoring review playtest deliverables**; they are **NOT** runtime catalog coverage, not DB-promoted, not media-retrieved, and not deployed.
 
-### 21.5 Repository, Git, and Deployment State
+### 21.5 Repository, Git, and Public Deployment State
 - **Question Craft Authoring System & Knowledge Assets:** ✅ **COMMITTED & PUSHED** (`1f497eb` — `.agents/skills/akwaan-content`, `.agents/skills/akwaan-content-qa`, `ai/.opencode/knowledge/architecture/*`, 12 World palettes, `validate_question_craft.py`).
-- **Multimodal Bomb Implementation:** ✅ **COMMITTED, PUSHED & DEPLOYED** (`dcc0ff4` — Backend policy & runtime snapshot, Frontend typography & audio components, comprehensive unit tests, production containers rebuilt from clean worktree at `1041bab`).
-- **Production Verification:** ✅ **HEALTH & COMPATIBILITY VERIFIED** (`/health` 200, DB connected, Frontend HTTP 200, backward compatibility verified with 106 existing Image Bomb catalog items).
-- **Text / Audio Smoke Status:** ⚠️ **TEXT/AUDIO CONTENT SMOKE PENDING FIRST APPROVED MULTIMODAL CONTENT PROMOTION** (Multimodal runtime deployed; catalog text/audio smoke pending future content batch promotion).
+- **Multimodal Bomb Implementation:** ✅ **COMMITTED & PUSHED** (`dcc0ff4` — Backend policy & runtime snapshot, Frontend typography & audio components, comprehensive unit tests).
+- **Public Frontend (Vercel):** ✅ **DEPLOYED & VERIFIED** (`https://akwaan-frontend.vercel.app` — deployed bundle chunk `5497-9914ec7d99185ce7.js` verified containing `BombItemAudio`, `BombItemText`, `BombItemImage`, and audio playback controls).
+- **Public Backend (Render):** ✅ **DEPLOYED & VERIFIED** (`https://akwaan-api.onrender.com` — `/health` returns `200 OK` `{"status":"ok","database":"connected"}`, `/worlds` returns active playable worlds).
+- **Local Isolated Container Build:** ✅ **VERIFIED** (Docker production containers built from clean detached worktree at `1041bab`).
+- **Production Backward Compatibility:** ✅ **VERIFIED** (Existing 106 Image Bomb catalog items render and function with zero regression).
+- **Text / Audio Smoke Status:** ⚠️ **TEXT/AUDIO CONTENT SMOKE PENDING FIRST APPROVED MULTIMODAL CONTENT PROMOTION** (Runtime capability live on Vercel + Render; production catalog text/audio smoke pending future content promotion).
 - **Git State:** ✅ **PUSHED TO MAIN** (`origin/main` level with `HEAD`).
 - **Database State:** ⬜ **ZERO MUTATIONS** (Zero DB writes; no content promoted in this milestone).
-- **Deployment State:** ✅ **DEPLOYED & VERIFIED** (Production stack running clean remote main build).
+- **Deployment State:** ✅ **PUBLIC PRODUCTION DEPLOYMENT VERIFIED** (Vercel + Render live and verified).
+
 
 
 
