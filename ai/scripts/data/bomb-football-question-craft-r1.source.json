@@ -1,0 +1,489 @@
+{
+  "artifactType": "bomb-production-candidate-batch",
+  "title": "Akwaan Football Question Craft Bomb Batch — R1 Final Factual Set",
+  "version": "1.0-production-ready",
+  "generatedAt": "2026-08-24",
+  "world": "football",
+  "worldId": "6a6e46a747bc63bdaf2e3800",
+  "challengeTypeId": "6a86276c215dc4d4bed0cfe0",
+  "scopeCount": 3,
+  "questionCount": 15,
+  "distribution": {
+    "perScope": 5,
+    "totalText": 9,
+    "totalImage": 6,
+    "totalAudio": 0
+  },
+  "reviewSummary": {
+    "totalItems": 15,
+    "humanApprovedCount": 15,
+    "productReviewPendingCount": 0
+  },
+  "questions": [
+    {
+      "id": "bomb-prod-fb-pl-001",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a70fff7940f1eb4e015e304",
+      "scopeSlug": "premier-league",
+      "scopeNameAr": "الدوري الإنجليزي",
+      "modality": "text",
+      "prompt": {
+        "ar": "سون لاعب توتنهام الشهير... وش اسمه الأول؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "هيونغ مين",
+          "هيونج مين",
+          "سون هيونغ مين",
+          "Heung-min",
+          "Son"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "NAME_FRAGMENT",
+        "contentDimension": "players"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-pl-002",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a70fff7940f1eb4e015e304",
+      "scopeSlug": "premier-league",
+      "scopeNameAr": "الدوري الإنجليزي",
+      "modality": "text",
+      "prompt": {
+        "ar": "ملعب أولد ترافورد الخاص بمانشستر يونايتد يُلقّب بمسرح...؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "الأحلام",
+          "مسرح الأحلام",
+          "Theatre of Dreams"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "COMPLETION",
+        "contentDimension": "stadiums"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-pl-003",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a70fff7940f1eb4e015e304",
+      "scopeSlug": "premier-league",
+      "scopeNameAr": "الدوري الإنجليزي",
+      "modality": "image",
+      "prompt": {
+        "ar": "هذا المدرب التاريخي درب أي نادي إنجليزي؟"
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/football_pl_arsene_wenger.webp",
+            "altText": "صورة واضحة للمدرب الفرنسي أرسين فينغر (Arsène Wenger) بدون أي شعارات لأرسنال أو نصوص توضيحية."
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "أرسنال",
+          "نادي أرسنال",
+          "Arsenal"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "contentDimension": "managers"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-pl-004",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a70fff7940f1eb4e015e304",
+      "scopeSlug": "premier-league",
+      "scopeNameAr": "الدوري الإنجليزي",
+      "modality": "text",
+      "prompt": {
+        "ar": "إيرلينغ هالاند نجم مانشستر سيتي... وش جنسيته؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "نرويجي",
+          "النرويج",
+          "Norway",
+          "Norwegian"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "FAST_ATTRIBUTE",
+        "contentDimension": "players"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-pl-005",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a70fff7940f1eb4e015e304",
+      "scopeSlug": "premier-league",
+      "scopeNameAr": "الدوري الإنجليزي",
+      "modality": "image",
+      "prompt": {
+        "ar": "هذا الشعار لأي نادي في الدوري الإنجليزي؟"
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/football_pl_wolves_crest.webp",
+            "altText": "اقتصاص واضح لجزء من شعار نادي ولفرهامبتون (رأس الذئب الذهبي السداسي) مع إخفاء أي اسم أو حرف للنادي."
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "ولفرهامبتون",
+          "ولفز",
+          "Wolverhampton",
+          "Wolves"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "PARTIAL_VISUAL",
+        "contentDimension": "clubs"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-cl-001",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a71000a940f1eb4e015e369",
+      "scopeSlug": "champions-league",
+      "scopeNameAr": "دوري أبطال أوروبا",
+      "modality": "text",
+      "prompt": {
+        "ar": "ليفربول حقق ريمونتادا إسطنبول 2005 الشهيرة ضد أي نادي؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "ميلان",
+          "إيه سي ميلان",
+          "AC Milan",
+          "Milan"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "REVERSE_QUESTION",
+        "contentDimension": "clubs"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-cl-002",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a71000a940f1eb4e015e369",
+      "scopeSlug": "champions-league",
+      "scopeNameAr": "دوري أبطال أوروبا",
+      "modality": "image",
+      "prompt": {
+        "ar": "ما اسم هذه البطولة الأوروبية؟"
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/football_cl_trophy.webp",
+            "altText": "صورة واضحة ومباشرة لكأس دوري أبطال أوروبا الشهيرة (ذات الأذنين) معزولة على خلفية محايدة دون كتابة اسم البطولة."
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "دوري أبطال أوروبا",
+          "تشامبيونز ليغ",
+          "الأبطال",
+          "Champions League",
+          "UCL"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "contentDimension": "trophies"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-cl-003",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a71000a940f1eb4e015e369",
+      "scopeSlug": "champions-league",
+      "scopeNameAr": "دوري أبطال أوروبا",
+      "modality": "text",
+      "prompt": {
+        "ar": "بيب غوارديولا قبل ما يدرّب السيتي في دوري الأبطال، وصل نصف النهائي ٣ مرات متتالية مع أي نادي؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "بايرن ميونخ",
+          "بايرن ميونيخ",
+          "Bayern Munich",
+          "Bayern"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "BEFORE_AFTER",
+        "contentDimension": "managers"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-cl-004",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a71000a940f1eb4e015e369",
+      "scopeSlug": "champions-league",
+      "scopeNameAr": "دوري أبطال أوروبا",
+      "modality": "text",
+      "prompt": {
+        "ar": "مودريتش أسطورة ريال مدريد في الأبطال... وش اسمه الأول؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "لوكا",
+          "Luka"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "NAME_FRAGMENT",
+        "contentDimension": "players"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-cl-005",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a71000a940f1eb4e015e369",
+      "scopeSlug": "champions-league",
+      "scopeNameAr": "دوري أبطال أوروبا",
+      "modality": "image",
+      "prompt": {
+        "ar": "هذا الملعب الشهير الذي احتضن نهائي الأبطال هو ملعب أي نادي؟"
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/football_cl_allianz_arena.webp",
+            "altText": "صورة واضحة لملعب أليانز أرينا (Allianz Arena) من الخارج مضاءً باللون الأحمر المميز، بدون نصوص أو شعارات بايرن ميونخ."
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "بايرن ميونخ",
+          "بايرن ميونيخ",
+          "Bayern Munich",
+          "Bayern"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "contentDimension": "stadiums"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-wc-001",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a70f97cdfbf25db50410672",
+      "scopeSlug": "world-cup",
+      "scopeNameAr": "كأس العالم",
+      "modality": "text",
+      "prompt": {
+        "ar": "منتخب ألمانيا في كأس العالم يُلقّب بـ...؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "المانشافت",
+          "المانشافت الألماني",
+          "الماكينات",
+          "Die Mannschaft",
+          "Mannschaft"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "NICKNAME_OR_ALIAS",
+        "contentDimension": "national_teams"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-wc-002",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a70f97cdfbf25db50410672",
+      "scopeSlug": "world-cup",
+      "scopeNameAr": "كأس العالم",
+      "modality": "image",
+      "prompt": {
+        "ar": "هذا القميص الكلاسيكي المربّع يعود لأي منتخب في كأس العالم؟"
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/football_wc_croatia_kit.webp",
+            "altText": "صورة لقميص منتخب كرواتيا الكروي الكلاسيكي بنقشة المربعات البيضاء والحمراء (Checkerboard) بدون شعار الاتحاد الكرواتي أو اسم الدولة."
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "كرواتيا",
+          "منتخب كرواتيا",
+          "Croatia"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "contentDimension": "kits"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-wc-003",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a70f97cdfbf25db50410672",
+      "scopeSlug": "world-cup",
+      "scopeNameAr": "كأس العالم",
+      "modality": "text",
+      "prompt": {
+        "ar": "كأس العالم 2010 الشهير أقيم في أي دولة؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "جنوب أفريقيا",
+          "South Africa"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "FAST_ATTRIBUTE",
+        "contentDimension": "competitions"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-wc-004",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a70f97cdfbf25db50410672",
+      "scopeSlug": "world-cup",
+      "scopeNameAr": "كأس العالم",
+      "modality": "text",
+      "prompt": {
+        "ar": "أسطورة الأرجنتين في كأس العالم 1986: دييغو أرماندو...؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "مارادونا",
+          "دييغو مارادونا",
+          "Maradona"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "COMPLETE_THE_NAME",
+        "contentDimension": "players"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-wc-005",
+      "worldId": "6a6e46a747bc63bdaf2e3800",
+      "worldSlug": "football",
+      "scopeId": "6a70f97cdfbf25db50410672",
+      "scopeSlug": "world-cup",
+      "scopeNameAr": "كأس العالم",
+      "modality": "image",
+      "prompt": {
+        "ar": "شعار الديك الشهير يعود لأي منتخب فاز بكأس العالم مرتين؟"
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/football_wc_france_crest.webp",
+            "altText": "صورة معزولة لشعار الديك الغالي (Gallic Rooster) الفرنسي بلون ذهبي/أزرق بدون اسم فرنسا أو شعار FFF."
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "فرنسا",
+          "المنتخب الفرنسي",
+          "France"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "PARTIAL_VISUAL",
+        "contentDimension": "national_teams"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    }
+  ]
+}

@@ -1955,12 +1955,26 @@ Completed three distinct authoring playtests validating the Question Craft archi
 - **Multimodal Bomb Implementation:** ✅ **COMMITTED & PUSHED** (`dcc0ff4` — Backend policy & runtime snapshot, Frontend typography & audio components, comprehensive unit tests).
 - **Public Frontend (Vercel):** ✅ **DEPLOYED & VERIFIED** (`https://akwaan-frontend.vercel.app` — deployed bundle chunk `5497-9914ec7d99185ce7.js` verified containing `BombItemAudio`, `BombItemText`, `BombItemImage`, and audio playback controls).
 - **Public Backend (Render):** ✅ **DEPLOYED & VERIFIED** (`https://akwaan-api.onrender.com` — `/health` returns `200 OK` `{"status":"ok","database":"connected"}`, `/worlds` returns active playable worlds).
-- **Local Isolated Container Build:** ✅ **VERIFIED** (Docker production containers built from clean detached worktree at `1041bab`).
-- **Production Backward Compatibility:** ✅ **VERIFIED** (Existing 106 Image Bomb catalog items render and function with zero regression).
-- **Text / Audio Smoke Status:** ⚠️ **TEXT/AUDIO CONTENT SMOKE PENDING FIRST APPROVED MULTIMODAL CONTENT PROMOTION** (Runtime capability live on Vercel + Render; production catalog text/audio smoke pending future content promotion).
+- **Production Content State:** ✅ **15 FOOTBALL BOMB R1 ITEMS PROMOTED** (9 Text, 6 Image across Premier League, Champions League, World Cup).
+- **Production Smoke State:** ✅ **PUBLIC TEXT + IMAGE BOMB VERIFIED** (First real Text Bomb and new Image Bomb items verified on live runtime).
+- **Audio Bomb Status:** ⚠️ **AUDIO BOMB PRODUCTION SMOKE STILL PENDING FIRST APPROVED AUDIO PACK** (Runtime capability deployed; audio catalog content smoke pending future promotion).
 - **Git State:** ✅ **PUSHED TO MAIN** (`origin/main` level with `HEAD`).
-- **Database State:** ⬜ **ZERO MUTATIONS** (Zero DB writes; no content promoted in this milestone).
 - **Deployment State:** ✅ **PUBLIC PRODUCTION DEPLOYMENT VERIFIED** (Vercel + Render live and verified).
+
+### 21.6 Football × Bomb Question Craft R1 — Production Promotion
+✅ **PROMOTED, MEDIA ENRICHED, AND PRODUCTION SMOKE VERIFIED.**
+- **Approved Batch Promoted:** 15/15 approved items promoted across 3 Scopes:
+  - **Premier League (5 items):** 3 Text (`bomb-prod-fb-pl-001`, `002`, `004`), 2 Image (`003` Wenger, `005` Wolves).
+  - **Champions League (5 items):** 3 Text (`bomb-prod-fb-cl-001`, `003`, `004`), 2 Image (`002` UCL trophy, `005` Allianz Arena).
+  - **World Cup (5 items):** 3 Text (`bomb-prod-fb-wc-001`, `003`, `004`), 2 Image (`002` Croatia kit, `005` France rooster).
+- **Modality Breakdown:** 9 Text-Only items, 6 Image items, 0 Audio items.
+- **Collision Audit:** 0 exact collisions, 0 near collisions against existing 1,782 catalog items.
+- **Media Enrichment:** 6/6 WebP images created, verified for zero answer leakage and high recognizability, and placed in `/uploads/question-assets/images/`.
+- **Promotion Tooling & Idempotency:** Executed via canonical `ai/scripts/promote_football_bomb_r1.py` with narrow milestone tag `bomb-football-question-craft-r1`. Idempotency verified (second dry-run proposes 0 writes, 15/15 existing).
+- **Public Text Bomb Smoke:** Verified on live production runtime (presentation, Arabic answer normalization, continuous team clock, turn transfer, -5s skip penalty).
+- **Public Image Bomb Smoke:** Verified on live production runtime alongside legacy 106 image items.
+- **Audio Status:** ⚠️ **AUDIO BOMB PRODUCTION SMOKE STILL PENDING FIRST APPROVED AUDIO PACK** (Runtime capability deployed; audio content batch pending future promotion).
+
 
 
 
