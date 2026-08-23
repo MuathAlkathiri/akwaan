@@ -1,7 +1,18 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { Bomb, Loader2, Mic, Send, SkipForward, Square } from "lucide-react";
+import {
+  Bomb,
+  Loader2,
+  Mic,
+  Pause,
+  Play,
+  RotateCcw,
+  Send,
+  SkipForward,
+  Square,
+  Volume2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getMediaUrl } from "@/lib/api/media-url";
@@ -47,6 +58,145 @@ function BombItemImage({ url, altText }: { url: string; altText: string }) {
           The image for this Bomb item is unavailable.
         </p>
       )}
+    </div>
+  );
+}
+
+function BombItemAudio({ url }: { url: string }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setIsPlaying(false);
+    setHasError(false);
+    if (!audioRef.current || !url) return;
+
+    try {
+      if (typeof audioRef.current.load === "function") {
+        audioRef.current.load();
+      }
+      if (typeof audioRef.current.play === "function") {
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => setIsPlaying(true))
+            .catch(() => {
+              // Autoplay blocked by browser policy - user can press play manually
+              setIsPlaying(false);
+            });
+        }
+      }
+    } catch {
+      // Audio element not supported in test environment or error loading
+    }
+  }, [url]);
+
+  const togglePlay = () => {
+    if (!audioRef.current || hasError) return;
+    if (isPlaying) {
+      if (typeof audioRef.current.pause === "function") {
+        audioRef.current.pause();
+      }
+      setIsPlaying(false);
+    } else {
+      if (typeof audioRef.current.play === "function") {
+        try {
+          const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => setIsPlaying(true))
+              .catch(() => setIsPlaying(false));
+          }
+        } catch {
+          setIsPlaying(false);
+        }
+      }
+    }
+  };
+
+  const restartAudio = () => {
+    if (!audioRef.current || hasError) return;
+    try {
+      audioRef.current.currentTime = 0;
+      if (typeof audioRef.current.play === "function") {
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => setIsPlaying(true))
+            .catch(() => setIsPlaying(false));
+        }
+      }
+    } catch {
+      setIsPlaying(false);
+    }
+  };
+
+  return (
+    <div className="relative mx-auto flex w-full max-w-2xl flex-col items-center justify-center gap-4 rounded-[var(--radius)] border border-primary/20 bg-primary/5 p-8 text-center">
+      <audio
+        ref={audioRef}
+        src={url}
+        preload="auto"
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => setIsPlaying(false)}
+        onError={() => setHasError(true)}
+      />
+
+      <div className="flex items-center justify-center gap-4">
+        <Button
+          type="button"
+          size="lg"
+          variant={isPlaying ? "default" : "outline"}
+          className="size-20 rounded-full shadow-md"
+          onClick={togglePlay}
+          disabled={hasError || !url}
+          aria-label={isPlaying ? "إيقاف الصوت" : "تشغيل الصوت"}
+        >
+          {isPlaying ? (
+            <Pause className="size-8" aria-hidden />
+          ) : (
+            <Play className="size-8 fill-current" aria-hidden />
+          )}
+        </Button>
+
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="size-12 rounded-full"
+          onClick={restartAudio}
+          disabled={hasError || !url}
+          aria-label="إعادة تشغيل الصوت"
+        >
+          <RotateCcw className="size-5" aria-hidden />
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <Volume2
+          className={`size-5 ${isPlaying ? "animate-pulse text-primary" : ""}`}
+          aria-hidden
+        />
+        <span>{isPlaying ? "جارٍ تشغيل المقطع الصوتي…" : "اضغط للتشغيل أو الاستماع مجددًا"}</span>
+      </div>
+
+      {hasError && (
+        <p role="alert" className="text-xs text-destructive">
+          تعذر تشغيل المقطع الصوتي. يمكنك كتابة الإجابة أو تخطي السؤال.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function BombItemText({ prompt }: { prompt: string }) {
+  return (
+    <div className="relative mx-auto flex min-h-[140px] w-full max-w-2xl items-center justify-center rounded-[var(--radius)] border border-muted bg-muted/40 p-6 text-center shadow-inner">
+      <p className="text-2xl font-black leading-snug tracking-tight text-foreground sm:text-3xl">
+        {prompt}
+      </p>
     </div>
   );
 }
@@ -98,17 +248,6 @@ export function BombGameplayPanel({
     }
   }, [answerEnabled, activeTeamId]);
 
-  // No expiration is sent from here, deliberately.
-  //
-  // This countdown is a projection of the team clock the server already owns:
-  // it is anchored to `serverTimestamp` and ticks locally between snapshots, so
-  // a backgrounded tab, a throttled timer or a skewed device clock all move it.
-  // Deciding that the clock is spent is therefore not something this component
-  // can be trusted with, and it no longer tries — `GameplayDeadlineScheduler`
-  // derives the same instant from persisted state and expires the team from the
-  // server. `clock.expired` is still read below to stop offering an answer
-  // input for a clock that has visibly run out, which is presentation.
-
   const submitAnswer = useCallback(
     (value: string) => {
       const trimmed = value.trim();
@@ -153,15 +292,27 @@ export function BombGameplayPanel({
   if (!round) return null;
   if (snapshot?.bombResult) return null;
   const prompt = runtime.prompt ?? String(round.modeState.prompt ?? "");
-  const currentItemImage = {
-    url: getMediaUrl(
-      runtime.currentItem?.image.url ?? String(round.modeState.imageUrl ?? ""),
-    ),
-    altText:
-      runtime.currentItem?.image.altText?.trim() ||
-      String(round.modeState.altText ?? "").trim() ||
-      prompt,
-  };
+
+  const mediaType =
+    runtime.currentItem?.media?.type ??
+    (round.modeState.mediaType as "none" | "image" | "audio" | undefined) ??
+    (runtime.currentItem?.image?.url || round.modeState.imageUrl
+      ? "image"
+      : "none");
+
+  const rawMediaUrl =
+    runtime.currentItem?.media?.url ||
+    (round.modeState.mediaUrl as string) ||
+    runtime.currentItem?.image?.url ||
+    (round.modeState.imageUrl as string) ||
+    "";
+
+  const altText =
+    runtime.currentItem?.media?.altText?.trim() ||
+    runtime.currentItem?.image?.altText?.trim() ||
+    String(round.modeState.altText ?? "").trim() ||
+    prompt;
+
   const itemCount =
     runtime.currentItem?.totalItems ?? Number(round.modeState.itemCount ?? 0);
   const activeTeam = snapshot?.teams.find((team) => team.id === activeTeamId);
@@ -185,18 +336,48 @@ export function BombGameplayPanel({
           Item {Math.min(itemIndex + 1, itemCount)} of {itemCount}
         </p>
       </header>
-      <div className="space-y-2 text-center">
-        <p className="text-2xl font-bold">{prompt}</p>
-        <p className="text-sm text-muted-foreground">
-          Active team: {activeTeam?.name ?? "—"}
-        </p>
-      </div>
+
       {phase === "presenting" ? (
-        <BombItemImage
-          key={currentItemImage.url}
-          url={currentItemImage.url}
-          altText={currentItemImage.altText}
-        />
+        mediaType === "image" && rawMediaUrl ? (
+          <div className="space-y-4">
+            <div className="space-y-1 text-center">
+              <p className="text-2xl font-bold">{prompt}</p>
+              <p className="text-sm text-muted-foreground">
+                Active team: {activeTeam?.name ?? "—"}
+              </p>
+            </div>
+            <BombItemImage
+              key={rawMediaUrl}
+              url={getMediaUrl(rawMediaUrl)}
+              altText={altText}
+            />
+          </div>
+        ) : mediaType === "audio" && rawMediaUrl ? (
+          <div className="space-y-4">
+            <div className="space-y-1 text-center">
+              <p className="text-2xl font-bold">{prompt}</p>
+              <p className="text-sm text-muted-foreground">
+                Active team: {activeTeam?.name ?? "—"}
+              </p>
+            </div>
+            <BombItemAudio
+              key={rawMediaUrl}
+              url={getMediaUrl(rawMediaUrl)}
+            />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">
+                Active team: {activeTeam?.name ?? "—"}
+              </p>
+            </div>
+            <BombItemText
+              key={prompt}
+              prompt={prompt}
+            />
+          </div>
+        )
       ) : (
         <p className="rounded-lg bg-muted p-6 text-center font-medium">
           This Bomb question is complete. The host can complete the round and

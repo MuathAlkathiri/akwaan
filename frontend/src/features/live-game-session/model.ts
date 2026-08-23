@@ -155,7 +155,12 @@ export interface GameplayRuntimeSnapshot {
     id: string;
     index: number;
     totalItems: number;
-    image: { url: string; altText?: string };
+    media?: {
+      type: "none" | "image" | "audio";
+      url?: string;
+      altText?: string;
+    };
+    image?: { url: string; altText?: string };
   };
   prompt?: string;
   activeTeamId?: string;

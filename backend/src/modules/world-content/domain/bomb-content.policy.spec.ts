@@ -88,20 +88,48 @@ describe('Bomb authored content', () => {
   });
 
   describe('media', () => {
-    it('rejects an item with no media at all', () => {
+    it('accepts an item with no media at all (text-only)', () => {
       const items = list(10);
       items[3] = item(4, { media: undefined });
-      expect(() => buildBombRuntimeItems(items)).toThrow(
-        /Item 4 needs one image/,
-      );
+      const built = buildBombRuntimeItems(items);
+      expect(built[3].media).toEqual({ type: 'none' });
+      expect(built[3].imageUrl).toBe('');
     });
 
-    it('rejects a non-image medium', () => {
+    it('accepts an item with explicit type none', () => {
+      const items = list(10);
+      items[2] = item(3, { media: { type: ContentMediaType.NONE, assets: [] } });
+      const built = buildBombRuntimeItems(items);
+      expect(built[2].media).toEqual({ type: 'none' });
+      expect(built[2].imageUrl).toBe('');
+    });
+
+    it('accepts an audio medium with valid asset URL', () => {
       const items = list(10);
       items[0] = item(1, {
-        media: { type: ContentMediaType.AUDIO, assets: [{ url: '/a.mp3' }] },
+        media: {
+          type: ContentMediaType.AUDIO,
+          assets: [{ url: '/audio/track.mp3', altText: 'مقطع صوتي' }],
+        },
       });
-      expect(() => buildBombRuntimeItems(items)).toThrow(/needs one image/);
+      const built = buildBombRuntimeItems(items);
+      expect(built[0].media).toEqual({
+        type: 'audio',
+        url: '/audio/track.mp3',
+        altText: 'مقطع صوتي',
+      });
+      expect(built[0].imageUrl).toBe('');
+    });
+
+    it('accepts an image medium with valid asset URL', () => {
+      const items = list(10);
+      const built = buildBombRuntimeItems(items);
+      expect(built[0].media).toEqual({
+        type: 'image',
+        url: '/uploads/bomb/1.webp',
+        altText: 'صورة 1',
+      });
+      expect(built[0].imageUrl).toBe('/uploads/bomb/1.webp');
     });
 
     it('rejects an image asset with a blank url', () => {
@@ -109,7 +137,32 @@ describe('Bomb authored content', () => {
       items[0] = item(1, {
         media: { type: ContentMediaType.IMAGE, assets: [{ url: '  ' }] },
       });
-      expect(() => buildBombRuntimeItems(items)).toThrow(/needs one image/);
+      expect(() => buildBombRuntimeItems(items)).toThrow(
+        /missing a valid image URL/,
+      );
+    });
+
+    it('rejects an audio asset with a blank url', () => {
+      const items = list(10);
+      items[0] = item(1, {
+        media: { type: ContentMediaType.AUDIO, assets: [{ url: '  ' }] },
+      });
+      expect(() => buildBombRuntimeItems(items)).toThrow(
+        /missing a valid audio URL/,
+      );
+    });
+
+    it('rejects an unsupported media type', () => {
+      const items = list(10);
+      items[0] = item(1, {
+        media: {
+          type: ContentMediaType.VIDEO,
+          assets: [{ url: '/video/intro.mp4' }],
+        },
+      });
+      expect(() => buildBombRuntimeItems(items)).toThrow(
+        /not supported in Bomb/,
+      );
     });
   });
 
@@ -175,12 +228,11 @@ describe('Bomb authored content', () => {
     it('reduces to exactly what the Bomb plugin expects', () => {
       const [first] = buildBombRuntimeItems(list(10));
 
-      // No ContentItem ids, no status, no media envelope: the domain plugin
-      // never learns what a ContentItem is.
       expect(Object.keys(first).sort()).toEqual([
         'acceptedAnswers',
         'altText',
         'imageUrl',
+        'media',
         'prompt',
       ]);
     });

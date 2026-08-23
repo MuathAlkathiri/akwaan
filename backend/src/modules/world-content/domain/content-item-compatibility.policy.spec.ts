@@ -684,10 +684,52 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
       expect(bombCodes()).toEqual([]);
     });
 
-    it('requires the picture Bomb is played by looking at', () => {
-      expect(bombCodes({ media: undefined })).toContain(
-        'BOMB_ITEM_MEDIA_REQUIRED',
-      );
+    it('accepts a text-only question with match answers', () => {
+      expect(bombCodes({ media: undefined })).toEqual([]);
+    });
+
+    it('accepts an audio question with match answers', () => {
+      expect(
+        bombCodes({
+          media: {
+            type: ContentMediaType.AUDIO,
+            assets: [{ url: '/a.mp3', altText: 'صوت' }],
+          },
+        }),
+      ).toEqual([]);
+    });
+
+    it('rejects an image asset with empty URL', () => {
+      expect(
+        bombCodes({
+          media: {
+            type: ContentMediaType.IMAGE,
+            assets: [{ url: ' ' }],
+          },
+        }),
+      ).toContain('BOMB_ITEM_IMAGE_URL_REQUIRED');
+    });
+
+    it('rejects an audio asset with empty URL', () => {
+      expect(
+        bombCodes({
+          media: {
+            type: ContentMediaType.AUDIO,
+            assets: [{ url: ' ' }],
+          },
+        }),
+      ).toContain('BOMB_ITEM_AUDIO_URL_REQUIRED');
+    });
+
+    it('rejects an unsupported media type in Bomb', () => {
+      expect(
+        bombCodes({
+          media: {
+            type: ContentMediaType.VIDEO,
+            assets: [{ url: '/v.mp4' }],
+          },
+        }),
+      ).toContain('BOMB_ITEM_MEDIA_UNSUPPORTED');
     });
 
     it('requires an Arabic prompt', () => {

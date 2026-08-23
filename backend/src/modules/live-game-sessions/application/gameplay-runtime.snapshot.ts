@@ -112,17 +112,27 @@ export class GameplayRuntimeSnapshotMapper {
       ? plugin.projectRoundState(state.activeRound.modeState)
       : undefined;
     const currentItem =
-      state.modeKey === 'bomb' &&
-      projectedRound?.phase === 'presenting' &&
-      typeof projectedRound.imageUrl === 'string'
+      state.modeKey === 'bomb' && projectedRound?.phase === 'presenting'
         ? {
             id: `${String(projectedRound.questionId)}:${String(
               projectedRound.itemIndex,
             )}`,
             index: Number(projectedRound.itemIndex),
             totalItems: Number(projectedRound.itemCount),
+            media: {
+              type:
+                (projectedRound.mediaType as 'none' | 'image' | 'audio') ??
+                (projectedRound.imageUrl ? 'image' : 'none'),
+              url: String(
+                projectedRound.mediaUrl ?? projectedRound.imageUrl ?? '',
+              ),
+              ...(typeof projectedRound.altText === 'string' &&
+              projectedRound.altText
+                ? { altText: projectedRound.altText }
+                : {}),
+            },
             image: {
-              url: projectedRound.imageUrl,
+              url: String(projectedRound.imageUrl ?? ''),
               ...(typeof projectedRound.altText === 'string' &&
               projectedRound.altText
                 ? { altText: projectedRound.altText }

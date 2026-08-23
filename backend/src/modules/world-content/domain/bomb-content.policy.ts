@@ -50,9 +50,20 @@ export interface BombAuthoredItem {
   status?: string;
 }
 
+export interface BombRuntimeMedia {
+  type: 'none' | 'image' | 'audio';
+  url?: string;
+  altText?: string;
+}
+
 export interface BombRuntimeItem {
   /** This item's own question, not the run's. */
   prompt: string;
+  media?: BombRuntimeMedia;
+  /**
+   * Kept for backward compatibility with older Bomb runtime consumers.
+   * Equal to image URL when media type is image, or empty string otherwise.
+   */
   imageUrl: string;
   altText: string;
   acceptedAnswers: string[];
@@ -63,14 +74,66 @@ function reject(code: string, message: string): never {
   throw new WorldContentValidationError([{ code, message }], message);
 }
 
-/** The single image a Bomb item shows, or nothing if it has none. */
-function imageOf(
+/** Resolves and validates media according to Bomb's multimodal contract. */
+function mediaOf(
   item: BombAuthoredItem,
-): { url: string; altText: string } | null {
-  if (item.media?.type !== ContentMediaType.IMAGE) return null;
-  const asset = item.media.assets?.[0];
-  if (!asset?.url?.trim()) return null;
-  return { url: asset.url.trim(), altText: asset.altText?.trim() ?? '' };
+  position: number,
+): { problem?: BombItemProblem; media: BombRuntimeMedia } {
+  const type = item.media?.type ?? ContentMediaType.NONE;
+
+  if (type === ContentMediaType.NONE || !item.media) {
+    return { media: { type: 'none' } };
+  }
+
+  if (type === ContentMediaType.IMAGE) {
+    const asset = item.media.assets?.[0];
+    const url = asset?.url?.trim();
+    if (!url) {
+      return {
+        problem: {
+          code: 'BOMB_ITEM_IMAGE_URL_REQUIRED',
+          message: `Item ${position} has image media type but is missing a valid image URL.`,
+        },
+        media: { type: 'image' },
+      };
+    }
+    return {
+      media: {
+        type: 'image',
+        url,
+        altText: asset?.altText?.trim() ?? '',
+      },
+    };
+  }
+
+  if (type === ContentMediaType.AUDIO) {
+    const asset = item.media.assets?.[0];
+    const url = asset?.url?.trim();
+    if (!url) {
+      return {
+        problem: {
+          code: 'BOMB_ITEM_AUDIO_URL_REQUIRED',
+          message: `Item ${position} has audio media type but is missing a valid audio URL.`,
+        },
+        media: { type: 'audio' },
+      };
+    }
+    return {
+      media: {
+        type: 'audio',
+        url,
+        altText: asset?.altText?.trim() ?? '',
+      },
+    };
+  }
+
+  return {
+    problem: {
+      code: 'BOMB_ITEM_MEDIA_UNSUPPORTED',
+      message: `Item ${position} has media type '${type}' which is not supported in Bomb (supported: none, image, audio).`,
+    },
+    media: { type: 'none' },
+  };
 }
 
 /** One coded reason an authored Bomb item cannot be played. */
@@ -107,12 +170,9 @@ export function readBombItem(
     );
   }
 
-  const image = imageOf(item);
-  if (!image) {
-    return problem(
-      'BOMB_ITEM_MEDIA_REQUIRED',
-      `Item ${position} needs one image; Bomb is played by looking at a picture.`,
-    );
+  const { problem: mediaProblem, media } = mediaOf(item, position);
+  if (mediaProblem) {
+    return { problems: [mediaProblem], value: null };
   }
 
   if (
@@ -164,14 +224,13 @@ export function readBombItem(
     );
   }
 
-  // Exactly the four fields gameplay needs. Nothing else about the authored
-  // ContentItem — ids, status, English text, metadata — reaches the runtime.
   return {
     problems: [],
     value: {
       prompt,
-      imageUrl: image.url,
-      altText: image.altText,
+      media,
+      imageUrl: media.type === 'image' ? (media.url ?? '') : '',
+      altText: media.altText ?? '',
       acceptedAnswers,
     },
   };

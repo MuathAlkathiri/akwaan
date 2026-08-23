@@ -12,14 +12,21 @@ interface BombRuntimeQuestion {
   id: string;
   prompt: string;
   items: Array<{
-    id: string;
+    id?: string;
     /**
      * The item's own prompt. Optional so legacy Bomb questions — which carry a
      * single prompt for the whole run — keep working unchanged; the canonical
      * ContentItem path supplies one per item.
      */
     prompt?: string;
-    imageUrl: string;
+    media?: {
+      type: 'none' | 'image' | 'audio';
+      url?: string;
+      altText?: string;
+    };
+    mediaType?: string;
+    mediaUrl?: string;
+    imageUrl?: string;
     altText?: string;
     acceptedAnswers: string[];
   }>;
@@ -64,7 +71,7 @@ function validateRuntime(state: GameplayModeState): GameplayModeState {
 }
 
 function validateRound(state: GameplayModeState): GameplayModeState {
-  const requiredStrings = ['phase', 'questionId', 'prompt', 'imageUrl'];
+  const requiredStrings = ['phase', 'questionId', 'prompt'];
   if (
     requiredStrings.some((key) => typeof state[key] !== 'string') ||
     typeof state.itemIndex !== 'number' ||
@@ -76,6 +83,26 @@ function validateRound(state: GameplayModeState): GameplayModeState {
       'Bomb round state is incomplete',
     );
   }
+  const mediaType =
+    typeof state.mediaType === 'string'
+      ? state.mediaType
+      : state.imageUrl
+        ? 'image'
+        : 'none';
+  const mediaUrl =
+    typeof state.mediaUrl === 'string'
+      ? state.mediaUrl
+      : typeof state.imageUrl === 'string'
+        ? state.imageUrl
+        : '';
+  const imageUrl =
+    typeof state.imageUrl === 'string'
+      ? state.imageUrl
+      : mediaType === 'image'
+        ? mediaUrl
+        : '';
+  const altText = typeof state.altText === 'string' ? state.altText : '';
+
   return {
     // How the round ended, once it has. `clock-expired` is what tells the
     // completion step to award the other team rather than compare clocks.
@@ -85,8 +112,10 @@ function validateRound(state: GameplayModeState): GameplayModeState {
     prompt: state.prompt,
     itemIndex: Math.trunc(state.itemIndex),
     itemCount: Math.trunc(state.itemCount),
-    imageUrl: state.imageUrl,
-    altText: typeof state.altText === 'string' ? state.altText : '',
+    mediaType,
+    mediaUrl,
+    imageUrl,
+    altText,
     answersJson: state.answersJson,
   };
 }
@@ -105,6 +134,11 @@ function initialRound(context: GameplayPluginContext): GameplayModeState {
       'No prepared Bomb question is available for this round',
     );
   }
+  const mediaType =
+    item.media?.type ?? item.mediaType ?? (item.imageUrl ? 'image' : 'none');
+  const mediaUrl = item.media?.url ?? item.mediaUrl ?? item.imageUrl ?? '';
+  const altText = item.media?.altText ?? item.altText ?? '';
+
   return validateRound({
     phase: 'presenting',
     questionId: question.id,
@@ -113,8 +147,10 @@ function initialRound(context: GameplayPluginContext): GameplayModeState {
     prompt: item.prompt ?? question.prompt,
     itemIndex: 0,
     itemCount: question.items.length,
-    imageUrl: item.imageUrl,
-    altText: item.altText ?? '',
+    mediaType,
+    mediaUrl,
+    imageUrl: item.imageUrl ?? (mediaType === 'image' ? mediaUrl : ''),
+    altText,
     answersJson: JSON.stringify(item.acceptedAnswers),
   });
 }
@@ -139,12 +175,19 @@ function advance(
         ...round,
         phase: 'completed',
         itemIndex: Number(round.itemCount),
+        mediaType: 'none',
+        mediaUrl: '',
         imageUrl: '',
         altText: '',
         answersJson: '[]',
       }),
     };
   }
+  const mediaType =
+    item.media?.type ?? item.mediaType ?? (item.imageUrl ? 'image' : 'none');
+  const mediaUrl = item.media?.url ?? item.mediaUrl ?? item.imageUrl ?? '';
+  const altText = item.media?.altText ?? item.altText ?? '';
+
   return {
     runtimeState: runtime,
     roundState: validateRound({
@@ -153,8 +196,10 @@ function advance(
       // The prompt travels with the item, so advancing changes the question
       // being asked and not just the picture.
       prompt: item.prompt ?? round.prompt,
-      imageUrl: item.imageUrl,
-      altText: item.altText ?? '',
+      mediaType,
+      mediaUrl,
+      imageUrl: item.imageUrl ?? (mediaType === 'image' ? mediaUrl : ''),
+      altText,
       answersJson: JSON.stringify(item.acceptedAnswers),
     }),
   };
@@ -270,7 +315,7 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       .includes(normalizeAnswer(String(command.payload.answer)));
     return {
       runtimeState: correct ? next.runtimeState : command.runtimeState,
-      roundState: correct ? next.roundState : round,
+      roundState: correct ? next.roundState : command.roundState,
       eventType: correct ? 'bomb-answer-correct' : 'bomb-answer-incorrect',
       eventPayload: { correct, itemIndex: round.itemIndex },
       effects: correct
@@ -319,6 +364,8 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       prompt: valid.prompt,
       itemIndex: valid.itemIndex,
       itemCount: valid.itemCount,
+      mediaType: valid.mediaType,
+      mediaUrl: valid.mediaUrl,
       imageUrl: valid.imageUrl,
       altText: valid.altText,
     };

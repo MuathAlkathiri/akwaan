@@ -204,4 +204,116 @@ describe('Bomb gameplay rules', () => {
       expect(BOMB_GAMEPLAY_PLUGIN.command!('mark-correct')).toBeUndefined();
     });
   });
+
+  describe('multimodal support', () => {
+    const multimodalItems = [
+      {
+        prompt: 'بيلينغهام... وش اسمه الأول؟',
+        media: { type: 'none' as const },
+        imageUrl: '',
+        altText: '',
+        acceptedAnswers: ['جود'],
+      },
+      {
+        prompt: 'من صاحب هذه الأغنية؟',
+        media: { type: 'audio' as const, url: '/audio/track.mp3', altText: 'أغنية' },
+        imageUrl: '',
+        altText: 'أغنية',
+        acceptedAnswers: ['محمد عبده'],
+      },
+      {
+        prompt: 'ما هذا الشعار؟',
+        media: { type: 'image' as const, url: '/img/crest.webp', altText: 'شعار' },
+        imageUrl: '/img/crest.webp',
+        altText: 'شعار',
+        acceptedAnswers: ['ريال مدريد'],
+      },
+    ];
+
+    const multiRuntimeState = {
+      phase: 'ready',
+      questionIndex: 0,
+      questionsJson: JSON.stringify([
+        { id: 'q_multi', prompt: multimodalItems[0].prompt, items: multimodalItems },
+      ]),
+    };
+
+    it('initializes round with text-only item correctly', () => {
+      const initial = BOMB_GAMEPLAY_PLUGIN.createInitialRoundState!({
+        runtimeState: multiRuntimeState,
+      } as never);
+
+      expect(initial).toMatchObject({
+        phase: 'presenting',
+        prompt: 'بيلينغهام... وش اسمه الأول؟',
+        mediaType: 'none',
+        mediaUrl: '',
+        imageUrl: '',
+        itemIndex: 0,
+        itemCount: 3,
+      });
+    });
+
+    it('advances from text-only to audio item on correct answer', () => {
+      const initial = BOMB_GAMEPLAY_PLUGIN.createInitialRoundState!({
+        runtimeState: multiRuntimeState,
+      } as never);
+
+      const result = BOMB_GAMEPLAY_PLUGIN.handleCommand!(
+        {} as never,
+        {
+          type: 'submit-answer',
+          payload: { answer: 'جود' },
+          runtimeState: multiRuntimeState,
+          roundState: initial,
+        } as never,
+      );
+
+      expect(result.eventType).toBe('bomb-answer-correct');
+      expect(result.roundState).toMatchObject({
+        itemIndex: 1,
+        prompt: 'من صاحب هذه الأغنية؟',
+        mediaType: 'audio',
+        mediaUrl: '/audio/track.mp3',
+        imageUrl: '',
+      });
+    });
+
+    it('advances from audio to image item on skip', () => {
+      const audioRound = {
+        phase: 'presenting',
+        questionId: 'q_multi',
+        prompt: multimodalItems[1].prompt,
+        itemIndex: 1,
+        itemCount: 3,
+        mediaType: 'audio',
+        mediaUrl: '/audio/track.mp3',
+        imageUrl: '',
+        altText: 'أغنية',
+        answersJson: JSON.stringify(multimodalItems[1].acceptedAnswers),
+      };
+
+      const result = BOMB_GAMEPLAY_PLUGIN.handleCommand!(
+        {} as never,
+        {
+          type: 'skip',
+          payload: {},
+          runtimeState: multiRuntimeState,
+          roundState: audioRound,
+        } as never,
+      );
+
+      expect(result.eventType).toBe('bomb-item-skipped');
+      expect(result.effects).toContainEqual(
+        expect.objectContaining({ type: 'adjust-active-team-time', deltaMs: -5_000 }),
+      );
+      expect(result.roundState).toMatchObject({
+        itemIndex: 2,
+        prompt: 'ما هذا الشعار؟',
+        mediaType: 'image',
+        mediaUrl: '/img/crest.webp',
+        imageUrl: '/img/crest.webp',
+      });
+    });
+  });
 });
