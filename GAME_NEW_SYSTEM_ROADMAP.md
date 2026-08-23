@@ -1909,3 +1909,52 @@ The Video Games Signature is implemented and verified locally (§17); what remai
 assumption: **content depth is now a hard requirement per account, not a nice-to-have.** An account that plays a
 mechanic repeatedly will eventually exhaust it and see an honest `content-exhausted` outcome rather than a
 repeat. Any per-mechanic content target should be set with that in mind.
+
+---
+
+## 21. Question Craft Authoring System & Multimodal Presentation (2026-08-24)
+
+### 21.1 Canonical Product Decision: Question Craft Adoption
+✅ **ADOPTED AS MANDATORY AUTHORING WORKFLOW.**
+
+All future Akwaan question authoring across all Worlds and mechanics must enter through the **Question Craft** system. Content design begins with player interaction shapes rather than raw trivia facts:
+- **Interaction First:** "What question shape/interaction is fun to play under this mechanic?" → Find a fair, recognizable, defensible canonical fact.
+- **7-Step Authoring Flow:**
+  1. Global Question Craft (`QUESTION-CRAFT.md`)
+  2. Question Archetype Selection (`QUESTION-ARCHETYPES.md`)
+  3. World Palette Guidance (`WORLD.md`)
+  4. Scope & Knowledge Guidance (`SCOPE.md` + `KNOWLEDGE.md`)
+  5. Mechanic Compatibility (`MECHANIC-COMPATIBILITY.md`)
+  6. Batch Variety Review (`BATCH-VARIETY.md`)
+  7. Factual, Answer & Zero-Leakage QA (`akwaan-content-qa/SKILL.md` + `validate_question_craft.py`)
+
+### 21.2 The 4 Canonical QA Gates
+Proven across 3 authoring playtests and codified in `.agents/skills/akwaan-content-qa/SKILL.md`:
+1. **Scope-Native Alignment:** Knowledge targets must authentically belong to the selected Scope, not merely the overarching World.
+2. **Unique-Answer Defensibility:** Every item must point deterministically to exactly one defensible answer; `acceptedAnswers` cannot be used to patch an ambiguous prompt.
+3. **Media Earns Its Place:** For `IMAGE` and `AUDIO` items, the media asset must carry the core gameplay challenge. Prompts must not leak the answer via nicknames or giveaways.
+4. **Difficulty Trust:** For risk-choice mechanics (e.g. Marhala), difficulty labels must be genuinely calibrated (Hard = deeper recognizable fandom knowledge, not obscure wiki minutiae or bad wording).
+
+### 21.3 Multimodal Bomb Content Presentation
+✅ **IMPLEMENTED & VERIFIED LOCALLY.**
+- **Presentation Modalities:** Backend and frontend support `none` (Text-Only), `image`, and `audio` using the canonical generic `ContentItem.media` schema.
+- **Continuous Clock Invariant:** Server-authoritative continuous team clock, turn transfer on correct answer, skip penalty (-5s) keeping active team, and scoring remain 100% untouched.
+- **Media Invariant:** Reuses existing generic `ContentItem` media; zero second discriminators or Bomb-specific media schemas. Backward compatible with legacy image items.
+- **Authoring Guidelines:** Text prompts are concise (<70 chars advisory target); audio intents target 3–5 second recognizable clips with zero vocal answer leakage.
+
+### 21.4 Authoring Playtest Evidence (48/48 Approved)
+Completed three distinct authoring playtests validating the Question Craft architecture across mechanics and modalities:
+- **Playtest 01 (Football × Bomb):** 15 items across Premier League, Champions League, and World Cup (15/15 `HUMAN_PRODUCT_APPROVED`). Proved rapid text + image variety.
+- **Playtest 02 (Music × Bomb):** 15 items across Saudi, Gulf, Arabic, and International Music (15/15 `HUMAN_PRODUCT_APPROVED`). Proved audio-native intents (3–5s clips), real names, and duets.
+- **Playtest 03 (Video Games × Marhala):** 18 items across GTA (3 Easy, 3 Medium, 3 Hard) and Minecraft (3 Easy, 3 Medium, 3 Hard) (18/18 `HUMAN_PRODUCT_APPROVED`). Proved Question Craft coexists with calibrated risk-choice difficulty ladders and zero collision against approved R2.2.
+
+⚠️ **Status Discipline:** These 48 items are **authoring review playtest deliverables**; they are **NOT** runtime catalog coverage, not DB-promoted, not media-retrieved, and not deployed.
+
+### 21.5 Repository, Git, and Deployment State
+- **Question Craft Authoring System & Knowledge Assets:** ✅ **COMMITTED & PUSHED** (`1f497eb` — `.agents/skills/akwaan-content`, `.agents/skills/akwaan-content-qa`, `ai/.opencode/knowledge/architecture/*`, 12 World palettes, `validate_question_craft.py`).
+- **Multimodal Bomb Implementation:** ✅ **COMMITTED & PUSHED** (`dcc0ff4` — Backend policy & runtime snapshot, Frontend typography & audio components, comprehensive unit tests).
+- **Git State:** ✅ **PUSHED TO MAIN** (`origin/main` level with `HEAD`).
+- **Database State:** ⬜ **ZERO MUTATIONS** (Zero DB writes; no content promoted in this milestone).
+- **Deployment State:** ⬜ **NOT YET DEPLOYED** (Local/origin codebase updated; production deployment pending).
+
+
