@@ -1936,7 +1936,7 @@ Proven across 3 authoring playtests and codified in `.agents/skills/akwaan-conte
 4. **Difficulty Trust:** For risk-choice mechanics (e.g. Marhala), difficulty labels must be genuinely calibrated (Hard = deeper recognizable fandom knowledge, not obscure wiki minutiae or bad wording).
 
 ### 21.3 Multimodal Bomb Content Presentation
-✅ **IMPLEMENTED & VERIFIED LOCALLY.**
+✅ **IMPLEMENTED, COMMITTED, PUSHED & PRODUCTION DEPLOYMENT VERIFIED.**
 - **Presentation Modalities:** Backend and frontend support `none` (Text-Only), `image`, and `audio` using the canonical generic `ContentItem.media` schema.
 - **Continuous Clock Invariant:** Server-authoritative continuous team clock, turn transfer on correct answer, skip penalty (-5s) keeping active team, and scoring remain 100% untouched.
 - **Media Invariant:** Reuses existing generic `ContentItem` media; zero second discriminators or Bomb-specific media schemas. Backward compatible with legacy image items.
@@ -1952,9 +1952,12 @@ Completed three distinct authoring playtests validating the Question Craft archi
 
 ### 21.5 Repository, Git, and Deployment State
 - **Question Craft Authoring System & Knowledge Assets:** ✅ **COMMITTED & PUSHED** (`1f497eb` — `.agents/skills/akwaan-content`, `.agents/skills/akwaan-content-qa`, `ai/.opencode/knowledge/architecture/*`, 12 World palettes, `validate_question_craft.py`).
-- **Multimodal Bomb Implementation:** ✅ **COMMITTED & PUSHED** (`dcc0ff4` — Backend policy & runtime snapshot, Frontend typography & audio components, comprehensive unit tests).
+- **Multimodal Bomb Implementation:** ✅ **COMMITTED, PUSHED & DEPLOYED** (`dcc0ff4` — Backend policy & runtime snapshot, Frontend typography & audio components, comprehensive unit tests, production containers rebuilt from clean worktree at `1041bab`).
+- **Production Verification:** ✅ **HEALTH & COMPATIBILITY VERIFIED** (`/health` 200, DB connected, Frontend HTTP 200, backward compatibility verified with 106 existing Image Bomb catalog items).
+- **Text / Audio Smoke Status:** ⚠️ **TEXT/AUDIO CONTENT SMOKE PENDING FIRST APPROVED MULTIMODAL CONTENT PROMOTION** (Multimodal runtime deployed; catalog text/audio smoke pending future content batch promotion).
 - **Git State:** ✅ **PUSHED TO MAIN** (`origin/main` level with `HEAD`).
 - **Database State:** ⬜ **ZERO MUTATIONS** (Zero DB writes; no content promoted in this milestone).
-- **Deployment State:** ⬜ **NOT YET DEPLOYED** (Local/origin codebase updated; production deployment pending).
+- **Deployment State:** ✅ **DEPLOYED & VERIFIED** (Production stack running clean remote main build).
+
 
 
