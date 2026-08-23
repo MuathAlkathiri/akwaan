@@ -2,114 +2,79 @@
 
 ## Purpose
 
-Akwaan is a social party game. Content exists to create interaction: bluffing,
-trust, prediction, cooperation, classification, coordination, laughter, and
-memorable reveals. Knowledge supports those moments; it is not the product's
-primary goal.
+Akwaan is a social party game. Content exists to create interaction: bluffing, trust, prediction, cooperation, classification, coordination, laughter, and memorable reveals. Knowledge supports those moments; it is not the product's primary goal.
 
-## Experience First
+## Canonical Authoring Principle
 
-Canonical generation order:
+> **"Never begin by asking what trivia facts can I write.**
+> **Begin by asking what interaction/question shape would be fun to play.**
+> **Then find a recognizable, fair fact that fits that shape."**
+
+## Experience-First Generation Order
+
+Before generating any ContentItem, agents must strictly follow the canonical 7-step pipeline:
 
 ```text
-ChallengeType → Interaction Design → Content Pattern → World → Scope
-→ Scope Knowledge → ContentItem
+1. GLOBAL QUESTION CRAFT (.opencode/knowledge/architecture/QUESTION-CRAFT.md)
+   ↓
+2. QUESTION ARCHETYPE SELECTION (.opencode/knowledge/architecture/QUESTION-ARCHETYPES.md)
+   ↓
+3. WORLD GUIDANCE (.opencode/skills/worlds/<world>/WORLD.md)
+   ↓
+4. SCOPE & KNOWLEDGE GUIDANCE (.opencode/skills/worlds/<world>/scopes/<scope>/KNOWLEDGE.md)
+   ↓
+5. MECHANIC COMPATIBILITY (.opencode/knowledge/architecture/MECHANIC-COMPATIBILITY.md)
+   ↓
+6. BATCH VARIETY REVIEW (.opencode/knowledge/architecture/BATCH-VARIETY.md)
+   ↓
+7. FACT, ANSWER & ZERO LEAKAGE QA (.agents/skills/akwaan-content-qa/SKILL.md)
 ```
 
-A technically accurate item is not good unless it creates the interaction
-promised by its ChallengeType. Factual obscurity is never a quality target.
-
 Judge quality by asking:
-
-- Does it create a decision, discussion, bluff, prediction, or cooperation?
-- Is the interaction quickly understandable?
-- Is resolution deterministic and automatic?
+- Does it create an active play shape (bluff, rapid recognition, completion, reverse deduction)?
+- Is the interaction immediately understandable in <3 seconds?
+- Is resolution deterministic, fair, and automatic?
 - Does it fit the ChallengeType, World, and Scope?
-- Is uncertainty intentional and fair?
-- Does it avoid human judgment and private-information leakage?
+- Is the prompt short, mobile-friendly, and phrased in natural conversational Arabic?
+- Does it strictly obey the Zero Answer Leakage Rule?
 - Will the reveal create a memorable group moment?
 
 Factual accuracy remains mandatory whenever the item makes a factual claim.
 
 ## Ownership Model
 
-- ChallengeType owns mechanic behavior, interaction, input, resolution,
-  structure, Patterns, safety, media compatibility, and validation.
-- Content Pattern belongs to exactly one ChallengeType.
-- World owns theme, tone, sound, presentation profile, and exactly one future
-  exclusive Signature mechanic.
-- Scope belongs to one World and owns tagging boundaries, exclusions, and
-  durable knowledge.
-- ContentItem belongs to exactly one Scope and may list several compatible
-  ChallengeTypes.
-- Media is optional data owned only by the ContentItem.
-
-Worlds and Scopes never define mechanic behavior or authoritative Pattern
-allowlists. Shared ChallengeTypes are global and reusable across Worlds.
+- **ChallengeType** owns mechanic behavior, interaction, input, resolution, structure, Patterns, safety, media compatibility, and validation.
+- **Content Pattern** belongs to exactly one ChallengeType.
+- **Question Archetypes** (.opencode/knowledge/architecture/QUESTION-ARCHETYPES.md) define the 20 global play shapes (e.g. `NAME_FRAGMENT`, `CAREER_PATH`, `REVERSE_QUESTION`).
+- **World** owns theme, tone, presentation profile, Question Palette, and signature mechanic.
+- **Scope** belongs to one World and owns tagging boundaries, exclusions, and durable knowledge.
+- **ContentItem** belongs to exactly one Scope and lists compatible ChallengeTypes.
+- **Media** is optional data owned only by the ContentItem via canonical media intents.
 
 ## ContentItem Standard
 
 Every active output is a ContentItem with:
-
 - stable `id` and `scopeId`;
 - `compatibleChallengeTypeIds`;
 - one owned `patternId`;
 - concise player-facing `prompt`;
 - `interactionPayload` appropriate to the mechanic;
-- deterministic `resolutionPayload`;
+- deterministic `resolutionPayload` (`answerPayload` with canonical mode and `acceptedAnswers`);
 - optional `media`;
 - `isReusableAcrossSessions`;
-- provenance and validation metadata.
+- provenance, authoring archetype (`questionArchetype`), and validation metadata.
 
-The runtime may support `ryo`, `multiple_choice`, `closest`, `match`, `vote`,
-`split`, `top_5`, and `distributed`. Every mode resolves without a human referee.
-Accepted-text matching uses the project's single Arabic normalization utility,
-except `distributed-information` `match`, which the runtime compares after simple
-trim, lowercase, and whitespace collapse.
-
-## Core Families
-
-- Read Your Opponent: simultaneous private answer plus Steal/Trust prediction.
-- Split: rapid deterministic classification into two or three groups.
-- Top 5: alternating KEEP/GIVE decisions across a hidden ten-card deck with
-  five real ranks and five traps.
-- Co-op: partial information forces verbal dependency between teammates.
-- Distributed Information / ركّبها: cooperative shared-puzzle challenge where two teams race to combine secret fragments plus a team instruction into one answer; owned by Puzzle World.
-- One Clue / بدليل واحد: cooperative knowledge-recognition challenge where a
-  hidden answer is revealed through exactly five progressively easier clues and
-  teams lock a text answer each stage; the shared `normalizeAnswer` utility
-  resolves exact matching; global across Worlds.
-- Relational: agreement, consensus, or teammate prediction; no external truth.
-- Signature: one exclusive, auto-resolvable mechanic per World, defined later.
-
-Relational ContentItems are reusable because results change with the group.
-Objective items should not repeat in consecutive sessions for the same group.
-
-## Safety
-
-Relational content must avoid money or income, body shape or weight, religion,
-romantic relationships, intelligence, and anything likely to create an awkward
-family-group silence. Prefer harmless habits, reactions, preferences, quirks,
-and World-framed behavior.
+The runtime may support `ryo`, `multiple_choice`, `closest`, `match`, `vote`, `split`, `top_5`, and `distributed`. Every mode resolves without a human referee using canonical Arabic normalization.
 
 ## Media and Leakage
 
-Media is optional and must materially enable the interaction. The final asset
-must carry the evidence needed by the player. Reject leakage through prompts,
-options, filenames, visible text, subtitles, HUD text, captions, audio,
-overlays, alt text, metadata, search terms, premature explanations, or private
-payloads sent to the wrong team.
-
-Private values are withheld server-side; hiding shipped data in the interface
-is not protection.
+Media is optional and must materially enable the interaction. The final asset must carry the evidence needed by the player. Reject leakage through prompts, options, filenames, visible text, subtitles, HUD text, captions, audio, overlays, alt text, metadata, search terms, premature explanations, or private payloads.
 
 ## Hard Rejections
 
-Reject any item that is ambiguous without intention, cannot resolve
-automatically, violates Scope exclusions, uses decorative or insufficient
-media, leaks its outcome, duplicates the tested interaction, relies on obscure
-facts without social payoff, or fails the selected ChallengeType's experience.
-
-Validation order: ChallengeType contract, Pattern contract, Scope compatibility,
-payload shape, factual support, automatic resolution, safety, leakage, media,
-duplication, set diversity, and interaction value.
+Reject any item that:
+1. Violates the **Zero Answer Leakage Rule** (any prompt/media hint that allows deducing the answer without domain knowledge).
+2. Exhibits any of the 10 Question Quality Anti-Patterns (`ANTI_FACT_FIRST`, `ANTI_OBSCURE`, `ANTI_WIKIPEDIA`, `ANTI_LEAKAGE`, `ANTI_FAKE_DIFF`, `ANTI_SAME_SHAPE`, `ANTI_HOST_AMBIG`, `ANTI_OVER_SPEC`, `ANTI_UNDER_SPEC`, `ANTI_WALL_TEXT`).
+3. Repeats a single archetype $>35\%$ in a batch or produces monolithic prompt openings ($>40\%$ starting with `"من / ما"`).
+4. Is ambiguous without intention or cannot resolve automatically.
+5. Violates Scope exclusions or relies on obscure facts without social payoff.

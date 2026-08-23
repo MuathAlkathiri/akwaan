@@ -17,3 +17,26 @@
 - Signature mechanic: unassigned; the World is not launch-ready.
 
 This World supplies presentation context only.
+
+## Question Palette
+
+- **High-Value Archetypes**:
+  - `AUDIO_RECOGNITION` (Song intro chords, melodic hooks, distinctive voice timbre)
+  - `COMPLETION` (Very short iconic title/phrase completion: `"الأماكن كلها...؟" -> مشتاقة لك`)
+  - `COMPLETE_THE_NAME` (Iconic duo names, album titles: `"محمد...؟" -> عبده`)
+  - `REAL_NAME` (Famous stage names -> real first/full name: `"ليدي غاغا" -> ستيفاني`)
+  - `CONNECTION` (Shared collaboration, famous duet, shared lyricist/composer)
+  - `WORK_TO_CHARACTER` & `CHARACTER_TO_WORK` (Album <-> Song, Singer <-> Signature Track)
+  - `VISUAL_RECOGNITION` (Album cover arts with text removed, artist portraits)
+- **Usable Archetypes**:
+  - `NICKNAME_OR_ALIAS` (e.g. `"فنان العرب" -> محمد عبده`, `"صوت الأرض" -> طلال مداح`)
+  - `FAST_ATTRIBUTE` (Artist nationality, primary instrument)
+  - `BEFORE_AFTER` (Classic album release sequence)
+- **Archetypes to Limit**:
+  - Long lyrics: Verbatim lyrics longer than 4 words are strictly forbidden.
+  - Volatile streaming numbers: Views, follower counts, and monthly Spotify listeners are forbidden.
+  - Studio engineer / secondary producer trivia.
+- **Content Dimensions to Rotate Through**:
+  - Saudi Music, Gulf Classics, Arab Pop/Classics, International Hits, Signature Albums, Legendary Melodies, Iconic Collabs.
+- **World-Specific Anti-Patterns**:
+  - *Parallel Audio Pipelines*: Audio must only be specified as media intents for downstream retrieval; never download YouTube clips directly during authoring.

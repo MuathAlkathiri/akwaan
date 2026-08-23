@@ -24,3 +24,21 @@
 
 This file supplies presentation context only. It does not own mechanic behavior
 or Content Patterns.
+
+## Question Palette
+
+- **High-Value Archetypes**:
+  - `PUZZLE_FAMILY` (Shared fragments, complementary halves, lateral thinking, sequence logic)
+  - `SEQUENCE` (Mathematical, visual, or alphabetic pattern progression)
+  - `CONNECTION` (Word association, double meanings, riddle logic)
+  - `ODD_ONE_OUT` (Geometric or logical outliers)
+  - `DETAIL_RECOGNITION` (Visual puzzle clues, anagram decoders)
+- **Usable Archetypes**:
+  - `CATEGORY_IDENTIFICATION` (Riddle deduction)
+  - `COMPLETION` (Word/cipher completion)
+- **Archetypes to Limit**:
+  - Fact-recall trivia (Puzzles must test deductive reasoning, pattern recognition, and lateral thinking—not general trivia).
+- **Content Dimensions to Rotate Through**:
+  - Letters & Words, Numbers & Arithmetic, Logic & Deduction, Shapes & Patterns, Symbols & Codes, Lateral Thinking.
+- **World-Specific Anti-Patterns**:
+  - *Trivia disguise*: Never author standard encyclopedic trivia in Puzzles World.

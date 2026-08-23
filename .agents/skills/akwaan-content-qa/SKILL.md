@@ -1,61 +1,43 @@
 ---
 name: akwaan-content-qa
 description: >-
-  Workflow skill for reviewing, verifying, and quality-assuring authored Akwaan game content.
-  Use when validating facts, checking ambiguity, detecting duplicates, and testing mechanic contracts.
+  Master workflow skill for reviewing, verifying, and quality-assuring authored Akwaan game content.
+  Use when validating facts, checking ambiguity, detecting duplicates, auditing batch variety, and testing mechanic contracts.
 ---
 
 # Akwaan Content QA Workflow
 
-## Responsibilities
-- Validate authored content items against factual truth, canon, and gameplay quality standards.
-- Enforce strict boundaries: no silent fixes, no runtime DB mutations, and no importing without explicit approval.
+## 0. Responsibilities & Validation Philosophy
 
-## QA Validation Gates
+QA evaluates content across three distinct tiers:
 
-1. **Factual & Canon Verification**:
-   - Verify every factual claim against canonical references (`ai/.opencode/skills/worlds/<world>/scopes/<scope>/KNOWLEDGE.md`) and reliable external sources.
-   - Reject disputed, unverifiable, or speculative assertions.
+1. **HARD ERRORS (Hard Invariants)**: Violations of factual truth, Zero Answer Leakage, schema, runtime contracts, or prompt length limits (>250 chars). These **block** review and must be fixed.
+2. **ADVISORY WARNINGS (Quality Targets)**: Highlights batch diversity concerns (archetype concentration >35%, repetitive prompt openings >40%, clustering). These are guidance for authoring optimization and do not automatically invalidate mechanic-native batches.
+3. **DIVERSITY SCORE (Advisory Product QA)**: A holistic metric ($D \ge 0.65$) assessing set texture.
 
-2. **Ambiguity & Single Truth**:
-   - Verify that prompts and clues lead to a clear, unambiguous answer.
-   - Eliminate misleading wording or subjective superlatives ("الأشهر", "الأفضل") unless anchored to verifiable metrics.
+---
 
-3. **Duplication & Near-Duplicate Review**:
-   - Scan for semantic overlap, identical target entities, or repeated clues across the target Scope and existing catalog.
+## 1. Hard QA Gates (Errors)
 
-4. **Accepted-Answer Quality & Arabic Normalization**:
-   - Ensure accepted answers cover all legitimate Arabic variants, spellings, and transliterations.
-   - Verify compatibility with canonical Arabic normalization (stripping tashkeel, normalizing alef/hamza/ya, collapsing whitespace).
-   - Ensure individual accepted answer strings are within length limits (≤120 chars) and free of internal duplicates.
+- **Gate 1: Zero Answer Leakage**: Prompt text, media assets, or quote excerpts must never contain or trivially leak the answer target.
+- **Gate 2: Archetype Validity**: If specified, `authoring.questionArchetype` or `questionArchetype` must be a recognized canonical ID from `QUESTION-ARCHETYPES.md`.
+- **Gate 3: Factual & Canon Truth**: 100% verified against canonical Scope references (`KNOWLEDGE.md`) and authoritative sources.
+- **Gate 4: Normalization & Collision-Free Answers**: `acceptedAnswers` must contain all legitimate Arabic spelling variants; zero collisions within the same Scope.
+- **Gate 5: Prompt Length**: Must not exceed 250 characters (`ANTI_WALL_TEXT`).
+- **Gate 6: Mechanic Schema Compliance**: Must adhere strictly to the target runtime content policy (`bomb`, `combo`, `marhala`, `one-clue`, `ryo`, `closest`, `top-5`, `distributed-information`).
+- **Gate 7: Bomb Semantic Alignment**: Verify identity across prompt type, authored subject, accepted answers, and actual visual subject.
+- **Gate 8: Scope-Native Alignment**: The core fact and question target must meaningfully belong to the selected Scope, not merely to the broader World (e.g. a generic career fact must not be placed in Champions League without an authentic Champions League anchor).
+- **Gate 9: Unique-Answer Defensibility**: The question must have exactly one defensible target answer. If a knowledgeable player could give another equally valid answer (e.g. under-specified nickname with multiple candidates), the question must be rewritten or replaced.
+- **Gate 10: Media-Earns-Its-Place**: For IMAGE and AUDIO items, the media must carry the core gameplay challenge. If the prompt contains an identifying nickname, title, or verbal giveaway that allows answering without seeing/hearing the media, the prompt must be stripped of the giveaway clue.
+- **Gate 11: Difficulty Trust**: For risk-choice mechanics (especially Marhala), difficulty labels must be genuinely calibrated. Hard must require deeper recognizable fandom recall, not obscure wiki minutiae, tiny crops, or confusing wording. Evaluate comparatively (Easy vs Medium, Medium vs Hard) from the player's risk/reward perspective.
 
-5. **Zero Answer Leakage Rule (Strict QA Gate)**:
-   - A question must **NEVER leak its own answer**. Reject or rewrite any item where a player can derive the answer directly from the wording instead of actual knowledge.
-   - **Checklist**:
-     1. The answer must not appear explicitly in the prompt.
-     2. No near-verbatim phrasing of the answer in the prompt.
-     3. Famous quotes/catchphrases must not be included if the quote itself contains the answer target (e.g. no "Over 9000" in prompt for answer 9000).
-     4. No arithmetic or direct computation embedded in prompt (e.g. no "8 universes × 10 fighters" for answer 80).
-     5. Clue chains must not make the answer trivial without real domain knowledge.
-     6. For Bomb: visual recognition only; character items must use neutral prompts (`"من هذه الشخصية؟"`).
-     7. For RYO: prompt stem must not state or include the correct option text.
-   - **Core Test**: *If a player does not know the fact, but can still deduce the answer from prompt wording alone, the item FAILS QA.*
+---
 
-6. **Scope Correctness & Theme Fidelity**:
-   - Confirm that the item's core subject and solving operation belong strictly to the declared Scope, not merely mentioning an entity tangential to the Scope.
+## 2. Advisory Quality Gates (Warnings & Diversity Score)
 
-7. **Mechanic Compatibility & Contract Adherence**:
-   - Verify the item matches the runtime content policy (`backend/src/modules/world-content/domain/*-content.policy.ts` and `ai/.opencode/validators/`).
-   - Confirm required fields (e.g., image assets for Bomb, `clues` array for One Clue, `comboStage` for Combo).
-
-8. **Bomb Semantic Alignment Invariant**:
-   - For every Bomb item, QA must independently verify that:
-     - The `prompt` type matches the subject category (`من هذا اللاعب؟`, `ما اسم هذا الملعب؟`, `لأي نادي يعود هذا الشعار؟`).
-     - `mediaIntent.subject` matches the entity.
-     - `acceptedAnswers` identify that exact entity.
-     - The actual image attached in `media.assets[0]` visually represents that same entity.
-   - Mismatches between visual media and accepted answers constitute a critical blocker.
-
-9. **Difficulty Calibration (When Relevant)**:
-   - For staged mechanics like Combo (stages 1–4) or ladders like One Clue, verify the progression is monotonic and calibrated.
-   - Ensure Scope and difficulty remain independent (never treat a whole Scope as inherently "easy" or "hard").
+- **Archetype Concentration**: Single archetype $\le 35\%$ of batch (mechanic-native exceptions allowed).
+- **Archetype Spread**: $\ge 4$ distinct archetypes for batches $\ge 9$ items.
+- **Prompt Opening Spread**: $\le 40\%$ starting with generic `"من / ما"`.
+- **Clustering**: $\le 2$ consecutive items sharing the exact same archetype.
+- **Diversity Score ($D$)**: Evaluated using `validate_question_craft.py`:
+  - Target: $D \ge 0.65$ (Passing target $\ge 0.80$).

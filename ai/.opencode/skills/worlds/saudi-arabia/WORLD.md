@@ -17,3 +17,22 @@
   and Scopes draft; do not activate or configure boards.
 
 This World supplies presentation context only.
+
+## Question Palette
+
+- **High-Value Archetypes**:
+  - `DETAIL_RECOGNITION` (Historical landmarks, archaeological monuments, traditional crafts)
+  - `NICKNAME_OR_ALIAS` (City epithets: `"عروس البحر الأحمر" -> جدة`, `"مدينة الورود" -> الطائف`)
+  - `CATEGORY_IDENTIFICATION` (Region + Landmark + Product -> Province/City)
+  - `VISUAL_RECOGNITION` (Heritage sites, modern architectural icons, geographic wonders)
+  - `FAST_ATTRIBUTE` (Geographic region, historical founding dates of major institutions)
+- **Usable Archetypes**:
+  - `NAME_FRAGMENT` & `COMPLETE_THE_NAME` (Historical figures, national mega-projects)
+  - `SEQUENCE` (Saudi historical eras, kingdom milestones)
+  - `CONNECTION` (Shared provincial features, agricultural products)
+- **Archetypes to Limit**:
+  - Obscure municipal code numbers or temporary highway numbers.
+- **Content Dimensions to Rotate Through**:
+  - Cities & Geography, Saudi History & Heritage, Culture & Cuisine, Vision 2030 & Modern Mega-Projects, Traditional Architecture.
+- **World-Specific Anti-Patterns**:
+  - *Tribal / Sensitive Topics*: Strictly adhere to project safety boundaries. Focus on cultural heritage, geography, and national achievements.

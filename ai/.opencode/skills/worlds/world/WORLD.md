@@ -16,3 +16,22 @@
   and Scopes draft; do not activate or configure boards.
 
 This World supplies presentation context only.
+
+## Question Palette
+
+- **High-Value Archetypes**:
+  - `FAST_ATTRIBUTE` (National capitals, official languages, world currencies)
+  - `VISUAL_RECOGNITION` & `PARTIAL_VISUAL` (National flags, famous landmarks, geographic map outlines)
+  - `CATEGORY_IDENTIFICATION` (Continent + Capital + Bordering Ocean -> Country)
+  - `DETAIL_RECOGNITION` (World wonders, geographic straits, mountain ranges, landmark rivers)
+  - `ODD_ONE_OUT` (Landlocked countries, non-coastal capitals, island nations)
+- **Usable Archetypes**:
+  - `NAME_FRAGMENT` & `COMPLETE_THE_NAME` (Famous straits, landmark names)
+  - `BEFORE_AFTER` / `SEQUENCE` (Geographic area ranking, river length order)
+  - `CONNECTION` (Countries sharing a specific border or mountain range)
+- **Archetypes to Limit**:
+  - Obscure population census figures to the exact unit.
+- **Content Dimensions to Rotate Through**:
+  - Countries & Flags, Cities & Landmarks, Physical Geography (Rivers, Mountains, Oceans), Peoples & Global Cultures.
+- **World-Specific Anti-Patterns**:
+  - *Disputed Borders / Political Sensitivities*: Stick to globally recognized geography and cultural landmarks.
