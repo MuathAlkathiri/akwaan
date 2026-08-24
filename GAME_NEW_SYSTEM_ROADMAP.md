@@ -1976,9 +1976,20 @@ Completed three distinct authoring playtests validating the Question Craft archi
 - **Public Text Bomb Smoke:** ✅ Verified on live production runtime (no missing-image box, prominent text question, Arabic answer normalization, continuous team clock, turn transfer, -5s skip penalty).
 - **Public Image Bomb Smoke:** ✅ Verified on live production runtime (R2 image delivery, correct visual render, media-native prompt, accepted answer matching).
 - **Historical Root Cause & Note:** An earlier attempt only hit local runtime because legacy `promote_football_bomb_r1.py` hard-coded local Mongo ObjectIds. The promotion tooling has been corrected to use canonical slug resolution in `promote_approved_content.py` with full safety guards and unit test coverage.
-- **Audio Status:** ⚠️ **AUDIO BOMB PRODUCTION SMOKE STILL PENDING FIRST APPROVED AUDIO PACK** (Runtime capability deployed; audio content batch pending future promotion).
+### 21.7 Music World & Scopes — Production Taxonomy Provisioning
+✅ **PRODUCTION TAXONOMY PROVISIONED (WORLD + 4 CANONICAL SCOPES).**
 
-
-
-
+- **Authorization:** Approved Akwaan World §3 / §4 (`music` / `الأغاني`) and 4 canonical scopes.
+- **Production World Provisioned:** ✅ `music` (`الأغاني`, ObjectId `6a8ca5af45494d8b8490b1e1`, status: `draft`).
+- **Production Scopes Provisioned:** ✅ 4 canonical scopes under Music World:
+  - `saudi-music` (`Saudi Music`, ObjectId `6a8ca5b045494d8b8490b1ee`, status: `draft`)
+  - `gulf-music` (`Gulf Music`, ObjectId `6a8ca5b145494d8b8490b1fc`, status: `draft`)
+  - `arabic-music` (`Arabic Music`, ObjectId `6a8ca5b345494d8b8490b20a`, status: `draft`)
+  - `international-music` (`International Music`, ObjectId `6a8ca5b445494d8b8490b218`, status: `draft`)
+- **Tooling & Safety:** Executed via canonical `ai/scripts/provision_music_taxonomy.py` with deterministic plan hash `fe8093f6f2d1cffe6cc5f16c47eeb193571e2af015f007880683dc15ec9fbb09`.
+- **Idempotency:** ✅ Verified (subsequent dry-run yields `EXISTS_IDENTICAL` across World and all 4 Scopes; 0 proposed writes).
+- **Match Availability / Playability:** ⬜ **NOT PLAYABLE.** Music status is `draft`, readiness is `not_ready` (no board slots bound, 0 content items). It is not selectable for matches.
+- **Content State:** ⬜ **0/15 Music × Bomb R1 items promoted.** (Content promotion pending downstream step).
+- **Media State:** ⬜ **0/7 Production assets ingested.**
+- **Audio Smoke State:** ⚠️ **PENDING.**
 
