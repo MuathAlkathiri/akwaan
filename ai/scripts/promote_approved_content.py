@@ -154,6 +154,21 @@ MILESTONES: dict[str, Milestone] = {
         },
         expected_items=126,
     ),
+    # The final, human-approved Football Bomb Question Craft R1 batch. Fifteen items
+    # across 3 original Football Scopes (Premier League, Champions League, World Cup).
+    # Modality is mixed: 9 text-only, 6 image. This is the first batch to exercise the
+    # multimodal Bomb capability in production. Read from its reviewed repository file.
+    "football-bomb-r1": Milestone(
+        key="football-bomb-r1",
+        label="Football Bomb Question Craft R1 (15 items: 9 text, 6 image)",
+        scope_slugs=("premier-league", "champions-league", "world-cup"),
+        source_prefix="bomb-football-question-craft-r1",
+        expected_by_mechanic={"bomb": 15},
+        expected_items=15,
+        source_file="ai/scripts/data/bomb-football-question-craft-r1.source.json",
+        world_slug="football",
+        per_scope_items=5,
+    ),
     # The final, human-approved R2.2 Marhala batch for the Video Games Signature.
     # This is the ONE milestone permitted to carry the `marhala` mechanic and the
     # `marhalaDifficulty` payload key — the global bans still hold everywhere else.
@@ -471,6 +486,33 @@ def resolve_token(role: str, base_url: str, *, interactive: bool = True,
 # Runtime lookups — everything resolves by slug, never by a foreign ObjectId
 # --------------------------------------------------------------------------- #
 
+CANONICAL_WORLD_ALIASES: dict[str, tuple[str, ...]] = {
+    "football": ("football", "test", "عالم كرة القدم", "كرة قدم"),
+    "anime": ("anime", "world-1785615381449", "عالم الانمي", "عالم الأنمي"),
+    "video-games": ("video-games", "world-1785784447249", "عالم الالعاب الالكترونية", "عالم الألعاب الإلكترونية", "فيديو قيمز"),
+    "puzzles": ("puzzles", "world-1786388973542", "عالم الالغاز", "عالم الألغاز"),
+    "series": ("series", "world-1786143410891", "مسلسلات"),
+    "movies": ("movies", "world-1787503885931", "عالم الافلام", "عالم الأفلام"),
+    "cars": ("cars", "world-1787503872700", "عالم السيارات"),
+    "general-knowledge": ("general-knowledge", "world-1787503939420", "عالم المعلومات"),
+}
+
+CANONICAL_SCOPE_ALIASES: dict[str, tuple[str, ...]] = {
+    "premier-league": ("premier-league", "scope-1785790447091", "الدوري الانجليزي", "الدوري الإنجليزي"),
+    "champions-league": ("champions-league", "scope-1785790471367", "ابطال اوروبا", "أبطال أوروبا", "دوري أبطال أوروبا"),
+    "world-cup": ("world-cup", "scope-1785788790909", "كأس العالم"),
+    "saudi-league": ("saudi-league", "scope-1785790461277", "الدوري السعودي"),
+    "naruto": ("naruto", "scope-1785880972070", "ناروتو"),
+    "one-piece": ("one-piece", "scope-1785795316988", "ون بيس"),
+    "attack-on-titan": ("attack-on-titan", "scope-1785880979981", "هجوم العمالقة"),
+    "bleach": ("bleach", "scope-1785880986570", "بليتش"),
+    "call-of-duty": ("call-of-duty", "scope-1785795334994", "كول اوف ديوتي"),
+    "fifa": ("fifa", "scope-1785881042167", "فيفا"),
+    "gta": ("gta", "scope-1785881026837", "قراند"),
+    "overwatch": ("overwatch", "scope-1785881026837", "اوفر ووتش"),
+}
+
+
 @dataclass
 class RuntimeIndex:
     worlds_by_slug: dict[str, dict]
@@ -481,15 +523,37 @@ class RuntimeIndex:
     def load(cls, api: AdminApi) -> "RuntimeIndex":
         worlds = api.get("/admin/worlds") or []
         types = api.get("/admin/challenge-types") or []
+        worlds_by_slug: dict[str, dict] = {}
+        for w in worlds:
+            worlds_by_slug[w["slug"]] = w
+            w_name = (w.get("name") or "").strip()
+            for canonical, aliases in CANONICAL_WORLD_ALIASES.items():
+                if w["slug"] in aliases or w_name in aliases:
+                    worlds_by_slug[canonical] = w
+
+        challenge_types_by_slug: dict[str, dict] = {}
+        challenge_type_slug_by_id: dict[str, str] = {}
+        for t in types:
+            challenge_types_by_slug[t["slug"]] = t
+            challenge_type_slug_by_id[str(t["id"])] = t["slug"]
+
         return cls(
-            worlds_by_slug={w["slug"]: w for w in worlds},
-            challenge_types_by_slug={t["slug"]: t for t in types},
-            challenge_type_slug_by_id={str(t["id"]): t["slug"] for t in types},
+            worlds_by_slug=worlds_by_slug,
+            challenge_types_by_slug=challenge_types_by_slug,
+            challenge_type_slug_by_id=challenge_type_slug_by_id,
         )
 
 
 def scopes_of_world(api: AdminApi, world_id: str) -> dict[str, dict]:
-    return {s["slug"]: s for s in (api.get(f"/admin/worlds/{world_id}/scopes") or [])}
+    raw_scopes = api.get(f"/admin/worlds/{world_id}/scopes") or []
+    result: dict[str, dict] = {}
+    for s in raw_scopes:
+        result[s["slug"]] = s
+        s_name = (s.get("name") or "").strip()
+        for canonical, aliases in CANONICAL_SCOPE_ALIASES.items():
+            if s["slug"] in aliases or s_name in aliases:
+                result[canonical] = s
+    return result
 
 
 def content_of_scope(api: AdminApi, world_id: str, scope_id: str) -> list[dict]:
@@ -660,6 +724,11 @@ def build_manifest_from_file(milestone: Milestone) -> Manifest:
     yield. No runtime is read or mutated. Every item's stable `id` becomes part of
     its `metadata.source`, so identity survives repeated promotion runs and the
     idempotency check can recognise an already-promoted item.
+
+    Supports two source formats:
+    - Marhala: `correctAnswer`/`acceptedAnswers` lists, `marhalaDifficulty`, no media.
+    - Bomb (multimodal): `answerPayload` with mode+acceptedAnswers, optional `media`
+      block with `type` and `assets`. Text-only items have `media.type == "none"`.
     """
     if not milestone.source_file or not milestone.world_slug:
         raise PromotionError(
@@ -676,19 +745,42 @@ def build_manifest_from_file(milestone: Milestone) -> Manifest:
     for question in data.get("questions", []):
         qid = str(question.get("id") or "")
         marker = f"{milestone.source_prefix}:{qid}"
-        # Accepted answers = canonical first, then variants, de-duplicated by exact
-        # string with order preserved. Spelling variants are kept intentionally;
-        # the runtime's own normaliser collapses them at grade time.
-        accepted: list[str] = []
-        for candidate in [question.get("correctAnswer")] + list(question.get("acceptedAnswers") or []):
-            text = (candidate or "").strip()
-            if text and text not in accepted:
-                accepted.append(text)
+
+        # Answer payload: prefer the pre-built `answerPayload` when the source
+        # carries it (bomb-style). Fall back to the marhala convention
+        # (`correctAnswer` + `acceptedAnswers` as separate fields).
+        raw_answer = question.get("answerPayload")
+        if raw_answer and raw_answer.get("mode"):
+            answer_payload = raw_answer
+        else:
+            accepted: list[str] = []
+            for candidate in [question.get("correctAnswer")] + list(question.get("acceptedAnswers") or []):
+                text = (candidate or "").strip()
+                if text and text not in accepted:
+                    accepted.append(text)
+            answer_payload = {"mode": "match", "acceptedAnswers": accepted}
+
+        # Mechanic payload: only set for mechanics that need it.
+        mechanic_payload: dict | None = None
+        if mechanic == "marhala":
+            mechanic_payload = {"marhalaDifficulty": question.get("marhalaDifficulty")}
+
+        # Media: read from the source when present and non-trivial. A `type: "none"`
+        # entry means the item is text-only, which is valid for multimodal Bomb.
+        raw_media = question.get("media") or {}
+        media_payload: dict | None = None
+        media_path: str | None = None
+        if raw_media.get("type") and raw_media["type"] != "none" and raw_media.get("assets"):
+            media_payload, media_problem = canonical_media(raw_media)
+            if media_payload:
+                media_path = media_payload["assets"][0]["url"]
+            # A media problem is recorded on the ManifestItem and validated later.
+
         payload = {
             "prompt": {"ar": (question.get("prompt") or {}).get("ar")},
-            "answerPayload": {"mode": "match", "acceptedAnswers": accepted},
-            "mechanicPayload": {"marhalaDifficulty": question.get("marhalaDifficulty")},
-            "media": None,
+            "answerPayload": answer_payload,
+            "mechanicPayload": mechanic_payload,
+            "media": media_payload,
             "isReusableAcrossSessions": False,
             "status": "ready",
             "metadata": {"source": marker, "notes": None, "tags": None},
@@ -699,7 +791,9 @@ def build_manifest_from_file(milestone: Milestone) -> Manifest:
                 world_slug=milestone.world_slug,
                 scope_slug=str(question.get("scopeSlug") or ""),
                 mechanic_slugs=(mechanic,),
-                media_path=None,
+                media_path=media_path,
+                media_problem=(media_problem if raw_media.get("type") and
+                               raw_media["type"] != "none" and not media_payload else None),
                 payload=payload,
             )
         )
@@ -709,6 +803,7 @@ def build_manifest_from_file(milestone: Milestone) -> Manifest:
         scope_slugs=milestone.scope_slugs,
         items=items,
     )
+
 
 
 def assert_manifest_is_clean(manifest: Manifest) -> None:
@@ -819,8 +914,9 @@ def validate_item(item: ManifestItem, target_index: RuntimeIndex) -> str | None:
     if "top-5" in item.mechanic_slugs and (payload.get("variant") != "keep-or-give"
                                           or len(payload.get("entries") or []) == 0):
         return "top-5 item without its ranked deck"
-    if "bomb" in item.mechanic_slugs and not item.media_path:
-        return "bomb item without media"
+    # Bomb items may be text-only (multimodal bomb is deployed — BombItemText,
+    # BombItemImage, BombItemAudio). Media is validated when present but is not
+    # required for every item.
     if "marhala" in item.mechanic_slugs and payload.get("marhalaDifficulty") not in (
         "easy", "medium", "hard"
     ):

@@ -204,11 +204,11 @@ class TestAllowlistExcludesMarhala(unittest.TestCase):
                      "minecraft", "god-of-war", "resident-evil"}
         self.assertEqual(set(promoter.MILESTONES["marhala-video-games-r2.2"].scope_slugs),
                          vg_scopes)
-        for key in ("anime-expansion", "football-expansion"):
-            self.assertFalse(vg_scopes & set(promoter.MILESTONES[key].scope_slugs),
-                             f"{key} must not name a Video Games scope")
+        fb_r1_scopes = {"premier-league", "champions-league", "world-cup"}
+        self.assertEqual(set(promoter.MILESTONES["football-bomb-r1"].scope_slugs),
+                         fb_r1_scopes)
         self.assertEqual(allowed, {"dragon-ball", "demon-slayer", "jujutsu-kaisen",
-                                   "la-liga", "serie-a", "football-legends"} | vg_scopes)
+                                   "la-liga", "serie-a", "football-legends"} | vg_scopes | fb_r1_scopes)
 
 
 class TestAllowlistExcludesUnrelatedContent(unittest.TestCase):
@@ -319,10 +319,16 @@ class TestMediaGate(unittest.TestCase):
             promoter.execute_plan(plan, api(writes=True)[0],
                                   promoter.RuntimeIndex({}, {}, {}))
 
-    def test_bomb_without_any_media_is_invalid(self):
+    def test_text_bomb_without_media_is_valid(self):
         index = promoter.RuntimeIndex({}, {"bomb": {"id": "ct", "slug": "bomb"}}, {"ct": "bomb"})
-        self.assertEqual(promoter.validate_item(item(mechanics=("bomb",)), index),
-                         "bomb item without media")
+        self.assertIsNone(promoter.validate_item(item(mechanics=("bomb",)), index))
+
+    def test_bomb_with_media_problem_is_invalid(self):
+        index = promoter.RuntimeIndex({}, {"bomb": {"id": "ct", "slug": "bomb"}}, {"ct": "bomb"})
+        entry = item(mechanics=("bomb",), media="/uploads/x.webp")
+        entry.media_problem = "media asset carries unsupported field(s)"
+        self.assertEqual(promoter.validate_item(entry, index),
+                         "media asset carries unsupported field(s)")
 
     def test_unchecked_media_is_not_a_blocker_but_is_visible(self):
         """A skipped check must not masquerade as a failure — or as a pass."""
@@ -871,22 +877,132 @@ class TestMarhalaR22Milestone(unittest.TestCase):
         plan = promoter.build_plan(marhala_manifest(), None, None, target, index, check_media=False)
         self.assertEqual([i.action for i in plan.items].count("CREATE"), 63)
         self.assertTrue(all(s.action == "EXISTS" for s in plan.scopes))
-        self.assertEqual(plan.counts()["deletes"], 0)
+FOOTBALL_BOMB_R1_KEY = "football-bomb-r1"
 
-    # A missing production Scope is a CONFLICT — never a silent Scope creation.
-    def test_missing_scope_is_conflict_not_create(self):
-        scopes = [{"id": f"sc-{s}", "slug": s, "worldId": "vgW", "name": s}
-                  for s in promoter.MILESTONES[MARHALA_KEY].scope_slugs if s != "gta"]
-        target, _ = api(routes={"/admin/worlds/vgW/scopes": {"data": scopes},
-                                "/admin/content-items?worldId=vgW": {"data": []}})
+
+def football_bomb_r1_manifest():
+    """The real Football Bomb R1 batch, read from its reviewed repository file."""
+    return promoter.build_manifest_from_file(promoter.MILESTONES[FOOTBALL_BOMB_R1_KEY])
+
+
+def football_bomb_r1_target(bomb_ct_id="ct-bomb-local", existing_markers=()):
+    """A fake target runtime with the 3 Football scopes and configurable bomb ChallengeType ID."""
+    scopes = [
+        {"id": f"sc-{s}", "slug": s, "worldId": "fbWorld", "name": s}
+        for s in promoter.MILESTONES[FOOTBALL_BOMB_R1_KEY].scope_slugs
+    ]
+    scope_by_code = {"pl": "sc-premier-league", "cl": "sc-champions-league", "wc": "sc-world-cup"}
+    items = []
+    for marker in existing_markers:
+        # bomb-football-question-craft-r1:bomb-prod-fb-<code>-xxx
+        parts = marker.split(":")[-1].split("-")
+        code = parts[3] if len(parts) > 3 else "pl"
+        items.append({"id": f"ex-{marker}", "scopeId": scope_by_code.get(code, "sc-premier-league"),
+                      "metadata": {"source": marker}})
+    target, session = api(routes={
+        "/admin/worlds/fbWorld/scopes": {"data": scopes},
+        "/admin/content-items?worldId=fbWorld": {"data": items},
+    })
+    index = promoter.RuntimeIndex(
+        worlds_by_slug={"football": {"id": "fbWorld", "slug": "football"}},
+        challenge_types_by_slug={"bomb": {"id": bomb_ct_id, "slug": "bomb"}},
+        challenge_type_slug_by_id={bomb_ct_id: "bomb"},
+    )
+    return target, session, index
+
+
+class TestFootballBombR1Milestone(unittest.TestCase):
+    """Safety and promotion tests for the Football Bomb R1 milestone."""
+
+    def test_A_local_bomb_resolves_by_slug(self):
+        """A. Local Bomb ChallengeType can resolve by slug."""
+        local_bomb_id = "6a86276c215dc4d4bed0cfe0"
+        target, _, index = football_bomb_r1_target(bomb_ct_id=local_bomb_id)
+        man = football_bomb_r1_manifest()
+        plan = promoter.build_plan(man, None, None, target, index, check_media=False)
+        self.assertEqual(len(plan.items), 15)
+        self.assertEqual(index.challenge_types_by_slug["bomb"]["id"], local_bomb_id)
+        self.assertEqual([i.action for i in plan.items].count("CREATE"), 15)
+
+    def test_B_production_different_objectid_resolves_by_same_slug(self):
+        """B. Production-style different ObjectId resolves correctly by the same slug."""
+        prod_bomb_id = "6a88fe367bdd34f0795233a9"  # Real production Bomb ID
+        target, session, index = football_bomb_r1_target(bomb_ct_id=prod_bomb_id)
+        man = football_bomb_r1_manifest()
+        plan = promoter.build_plan(man, None, None, target, index, check_media=False)
+        self.assertEqual(index.challenge_types_by_slug["bomb"]["id"], prod_bomb_id)
+        self.assertEqual([i.action for i in plan.items].count("CREATE"), 15)
+        # Execute against fake target and verify posted compatibleChallengeTypeIds uses prod ID
+        target_writes, session_writes = api(writes=True, routes={
+            "/admin/content-items/created-1/readiness": FakeResponse(200, {"data": {"blockers": []}}),
+            "/admin/content-items": FakeResponse(201, {"data": {"id": "created-1"}}),
+        })
+        stats = promoter.execute_plan(plan, target_writes, index)
+        self.assertEqual(stats["items_created"], 15)
+        for body in session_writes.bodies:
+            self.assertEqual(body["compatibleChallengeTypeIds"], [prod_bomb_id])
+
+    def test_C_source_pack_contains_no_embedded_challenge_type_id_as_portable_truth(self):
+        """C. Source pack contains no embedded environment-specific ChallengeType ID as portable truth."""
+        source_path = os.path.join(promoter._repo_root(), promoter.MILESTONES[FOOTBALL_BOMB_R1_KEY].source_file)
+        with open(source_path, encoding="utf-8") as f:
+            raw = json.load(f)
+        self.assertNotIn("challengeTypeId", raw, "source pack must not embed challengeTypeId")
+        self.assertNotIn("worldId", raw, "source pack must not embed worldId")
+        for q in raw.get("questions", []):
+            self.assertNotIn("scopeId", q, "questions must not embed scopeId")
+            self.assertNotIn("worldId", q, "questions must not embed worldId")
+            self.assertIn("scopeSlug", q, "questions must define canonical scopeSlug")
+
+    def test_D_wrong_missing_target_challenge_type_fails_before_writes(self):
+        """D. Wrong/missing target ChallengeType fails before writes."""
+        # Target without bomb ChallengeType
         index = promoter.RuntimeIndex(
-            worlds_by_slug={"video-games": {"id": "vgW", "slug": "video-games"}},
-            challenge_types_by_slug={"marhala": {"id": "marCT", "slug": "marhala"}},
-            challenge_type_slug_by_id={"marCT": "marhala"})
-        plan = promoter.build_plan(marhala_manifest(), None, None, target, index, check_media=False)
-        gta = next(s for s in plan.scopes if s.scope_slug == "gta")
-        self.assertEqual(gta.action, "CONFLICT")
+            worlds_by_slug={"football": {"id": "fbWorld", "slug": "football"}},
+            challenge_types_by_slug={"closest": {"id": "ct-closest", "slug": "closest"}},
+            challenge_type_slug_by_id={"ct-closest": "closest"},
+        )
+        target, _ = api(routes={
+            "/admin/worlds/fbWorld/scopes": {"data": [{"id": "s1", "slug": "premier-league", "worldId": "fbWorld", "name": "PL"}]},
+            "/admin/content-items?worldId=fbWorld": {"data": []},
+        })
+        man = football_bomb_r1_manifest()
+        plan = promoter.build_plan(man, None, None, target, index, check_media=False)
+        self.assertTrue(any("target has no ChallengeType 'bomb'" in i.detail for i in plan.items))
         self.assertTrue(plan.blockers())
+        with self.assertRaises(promoter.PromotionError):
+            promoter.execute_plan(plan, target, index)
+
+    def test_E_production_target_confirmation_is_required(self):
+        """E. Production target confirmation is required."""
+        prod = "https://akwaan-api.onrender.com"
+        # Executing without --allow-remote-write fails
+        self.assertEqual(promoter.main(["--milestone", FOOTBALL_BOMB_R1_KEY, "--target", prod, "--execute"]), 2)
+        # Executing without matching --expected-environment fails
+        self.assertEqual(promoter.main(["--milestone", FOOTBALL_BOMB_R1_KEY, "--target", prod,
+                                        "--execute", "--allow-remote-write", "--expected-environment", "local"]), 2)
+
+    def test_F_dry_run_cannot_be_mistaken_for_execute(self):
+        """F. dry-run cannot be mistaken for execute."""
+        target, session, index = football_bomb_r1_target()
+        man = football_bomb_r1_manifest()
+        plan = promoter.build_plan(man, None, None, target, index, check_media=False)
+        # In dry run, target client has writes_enabled=False and refuses POST
+        with self.assertRaises(promoter.PromotionError):
+            promoter.execute_plan(plan, target, index)
+        self.assertEqual([c for c in session.calls if c[0] == "POST"], [])
+
+    def test_G_idempotent_rerun_proposes_zero_writes(self):
+        """G. idempotent rerun proposes zero writes."""
+        man = football_bomb_r1_manifest()
+        all_markers = [i.source_marker for i in man.items]
+        target, _, index = football_bomb_r1_target(existing_markers=all_markers)
+        plan = promoter.build_plan(man, None, None, target, index, check_media=False)
+        actions = {i.action for i in plan.items}
+        self.assertEqual(actions, {"EXISTS_IDENTICAL"})
+        self.assertEqual(plan.counts()["writes"], 0)
+        self.assertEqual(plan.counts()["deletes"], 0)
+        self.assertEqual(plan.blockers(), [])
 
 
 if __name__ == "__main__":

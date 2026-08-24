@@ -4,8 +4,6 @@
   "version": "1.0-production-ready",
   "generatedAt": "2026-08-24",
   "world": "football",
-  "worldId": "6a6e46a747bc63bdaf2e3800",
-  "challengeTypeId": "6a86276c215dc4d4bed0cfe0",
   "scopeCount": 3,
   "questionCount": 15,
   "distribution": {
@@ -22,9 +20,7 @@
   "questions": [
     {
       "id": "bomb-prod-fb-pl-001",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a70fff7940f1eb4e015e304",
       "scopeSlug": "premier-league",
       "scopeNameAr": "الدوري الإنجليزي",
       "modality": "text",
@@ -52,9 +48,7 @@
     },
     {
       "id": "bomb-prod-fb-pl-002",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a70fff7940f1eb4e015e304",
       "scopeSlug": "premier-league",
       "scopeNameAr": "الدوري الإنجليزي",
       "modality": "text",
@@ -80,9 +74,7 @@
     },
     {
       "id": "bomb-prod-fb-pl-003",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a70fff7940f1eb4e015e304",
       "scopeSlug": "premier-league",
       "scopeNameAr": "الدوري الإنجليزي",
       "modality": "image",
@@ -114,9 +106,7 @@
     },
     {
       "id": "bomb-prod-fb-pl-004",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a70fff7940f1eb4e015e304",
       "scopeSlug": "premier-league",
       "scopeNameAr": "الدوري الإنجليزي",
       "modality": "text",
@@ -143,9 +133,7 @@
     },
     {
       "id": "bomb-prod-fb-pl-005",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a70fff7940f1eb4e015e304",
       "scopeSlug": "premier-league",
       "scopeNameAr": "الدوري الإنجليزي",
       "modality": "image",
@@ -178,9 +166,7 @@
     },
     {
       "id": "bomb-prod-fb-cl-001",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a71000a940f1eb4e015e369",
       "scopeSlug": "champions-league",
       "scopeNameAr": "دوري أبطال أوروبا",
       "modality": "text",
@@ -207,9 +193,7 @@
     },
     {
       "id": "bomb-prod-fb-cl-002",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a71000a940f1eb4e015e369",
       "scopeSlug": "champions-league",
       "scopeNameAr": "دوري أبطال أوروبا",
       "modality": "image",
@@ -243,9 +227,7 @@
     },
     {
       "id": "bomb-prod-fb-cl-003",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a71000a940f1eb4e015e369",
       "scopeSlug": "champions-league",
       "scopeNameAr": "دوري أبطال أوروبا",
       "modality": "text",
@@ -272,9 +254,7 @@
     },
     {
       "id": "bomb-prod-fb-cl-004",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a71000a940f1eb4e015e369",
       "scopeSlug": "champions-league",
       "scopeNameAr": "دوري أبطال أوروبا",
       "modality": "text",
@@ -299,9 +279,7 @@
     },
     {
       "id": "bomb-prod-fb-cl-005",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a71000a940f1eb4e015e369",
       "scopeSlug": "champions-league",
       "scopeNameAr": "دوري أبطال أوروبا",
       "modality": "image",
@@ -334,9 +312,7 @@
     },
     {
       "id": "bomb-prod-fb-wc-001",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a70f97cdfbf25db50410672",
       "scopeSlug": "world-cup",
       "scopeNameAr": "كأس العالم",
       "modality": "text",
@@ -364,9 +340,7 @@
     },
     {
       "id": "bomb-prod-fb-wc-002",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a70f97cdfbf25db50410672",
       "scopeSlug": "world-cup",
       "scopeNameAr": "كأس العالم",
       "modality": "image",
@@ -398,9 +372,7 @@
     },
     {
       "id": "bomb-prod-fb-wc-003",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a70f97cdfbf25db50410672",
       "scopeSlug": "world-cup",
       "scopeNameAr": "كأس العالم",
       "modality": "text",
@@ -425,9 +397,7 @@
     },
     {
       "id": "bomb-prod-fb-wc-004",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a70f97cdfbf25db50410672",
       "scopeSlug": "world-cup",
       "scopeNameAr": "كأس العالم",
       "modality": "text",
@@ -453,9 +423,7 @@
     },
     {
       "id": "bomb-prod-fb-wc-005",
-      "worldId": "6a6e46a747bc63bdaf2e3800",
       "worldSlug": "football",
-      "scopeId": "6a70f97cdfbf25db50410672",
       "scopeSlug": "world-cup",
       "scopeNameAr": "كأس العالم",
       "modality": "image",
