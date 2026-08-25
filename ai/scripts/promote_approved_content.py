@@ -169,6 +169,19 @@ MILESTONES: dict[str, Milestone] = {
         world_slug="football",
         per_scope_items=5,
     ),
+    # The final, human-approved Saudi League Bomb Question Craft R1 batch. Fifteen items
+    # across Saudi League Scope. Modality: 10 text-only, 5 image.
+    "saudi-league-bomb-r1": Milestone(
+        key="saudi-league-bomb-r1",
+        label="Saudi League Bomb Question Craft R1 (15 items: 10 text, 5 image)",
+        scope_slugs=("saudi-league",),
+        source_prefix="bomb-saudi-league-question-craft-r1",
+        expected_by_mechanic={"bomb": 15},
+        expected_items=15,
+        source_file="ai/scripts/data/bomb-saudi-league-question-craft-r1.source.json",
+        world_slug="football",
+        per_scope_items=15,
+    ),
     # The final, human-approved R2.2 Marhala batch for the Video Games Signature.
     # This is the ONE milestone permitted to carry the `marhala` mechanic and the
     # `marhalaDifficulty` payload key — the global bans still hold everywhere else.
@@ -193,6 +206,8 @@ MILESTONES: dict[str, Milestone] = {
         per_scope_difficulty={"easy": 3, "medium": 3, "hard": 3},
     ),
 }
+
+
 
 
 class PromotionError(RuntimeError):

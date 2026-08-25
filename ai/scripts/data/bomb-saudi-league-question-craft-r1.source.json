@@ -1,0 +1,471 @@
+{
+  "artifactType": "bomb-production-candidate-batch",
+  "title": "Akwaan Saudi League Question Craft Bomb Batch — R1 Final Set",
+  "version": "1.0-production-ready",
+  "generatedAt": "2026-08-25",
+  "world": "football",
+  "scopeCount": 1,
+  "questionCount": 15,
+  "distribution": {
+    "perScope": 15,
+    "totalText": 10,
+    "totalImage": 5,
+    "totalAudio": 0
+  },
+  "reviewSummary": {
+    "totalItems": 15,
+    "humanApprovedCount": 15,
+    "productReviewPendingCount": 0
+  },
+  "questions": [
+    {
+      "id": "bomb-prod-fb-spl-001",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "text",
+      "prompt": {
+        "ar": "«فارس الدّهناء» لقب يشتهر به أي نادٍ في المنطقة الشرقية؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "الاتفاق",
+          "نادي الاتفاق",
+          "الاتفاق السعودي",
+          "Ettifaq",
+          "Al Ettifaq"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "NICKNAME_OR_ALIAS",
+        "contentDimension": "club_nicknames"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-spl-002",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "text",
+      "prompt": {
+        "ar": "قائد وسط الهلال البرتغالي «نيفيز»... وش اسمه الأول؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "روبن",
+          "روبين",
+          "Ruben"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "NAME_FRAGMENT",
+        "contentDimension": "foreign_stars"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-spl-003",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "image",
+      "prompt": {
+        "ar": "وش اسم هذا الملعب في جدة؟"
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/football_spl_al_jawhara_stadium.webp",
+            "altText": "صورة ليلية واضحة للهيكل المعماري المتوهج لملعب مدينة الملك عبدالله الرياضية (الجوهرة المشعة) بجدة دون نصوص"
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "الجوهرة المشعة",
+          "الجوهرة",
+          "مدينة الملك عبدالله الرياضية",
+          "ملعب الجوهرة",
+          "King Abdullah Sports City",
+          "Al Jawhara"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "contentDimension": "stadiums"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-spl-004",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "text",
+      "prompt": {
+        "ar": "نادي الفتح حقق معجزة التتويج بلقب الدوري 2013 تحت قيادة أي مدرب تونسي؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "فتحي الجبال",
+          "الجبال",
+          "فتحي جبال",
+          "Fathi Al Jabal",
+          "Fathi Jabal"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "REVERSE_QUESTION",
+        "contentDimension": "coaches"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-spl-005",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "text",
+      "prompt": {
+        "ar": "محمد الدعيع يُلقّب بأخطبوط الـ...؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "الحراسة",
+          "حراسة المرمى",
+          "أخطبوط الحراسة"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "NICKNAME_OR_ALIAS",
+        "contentDimension": "saudi_legends"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-spl-006",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "image",
+      "prompt": {
+        "ar": "هذا الرمز واللون الكلاسيكي يمثل أي نادٍ في الدوري السعودي؟"
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/football_spl_al_shabab_crest_crop.webp",
+            "altText": "اقتصاص جزئي نظيف لرمز وألوان الأبيض والأسود والبرتقالي لهوية نادي الشباب دون كتابة اسم النادي"
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "الشباب",
+          "نادي الشباب",
+          "الليث",
+          "Al Shabab",
+          "Shabab"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "PARTIAL_VISUAL",
+        "contentDimension": "visual_identity"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-spl-007",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "text",
+      "prompt": {
+        "ar": "القادسية ← الهلال ← العين الإماراتي ← الهلال... من المهاجم السعودي الشهير؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "ياسر القحطاني",
+          "ياسر",
+          "القحطاني",
+          "الكاسر",
+          "القناص",
+          "Yasser Al Qahtani",
+          "Al Qahtani"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "CAREER_PATH",
+        "contentDimension": "career_paths"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-spl-008",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "text",
+      "prompt": {
+        "ar": "«ديربي القصيم» الشهير يجمع بين التعاون وأي نادٍ آخر؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "الرائد",
+          "نادي الرائد",
+          "رائد التحدي",
+          "Al Raed",
+          "Raed"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "CONNECTION",
+        "contentDimension": "derbies"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-spl-009",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "text",
+      "prompt": {
+        "ar": "هداف الأهلي التاريخي السابق عمر السومة... وش جنسيته؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "سوري",
+          "سوريا",
+          "سورية",
+          "جمهورية سوريا",
+          "Syrian",
+          "Syria"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "FAST_ATTRIBUTE",
+        "contentDimension": "foreign_stars"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-spl-010",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "image",
+      "prompt": {
+        "ar": "مين هذا النجم الفرنسي بقميص نادي الاتحاد؟"
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/football_spl_ngolo_kante.webp",
+            "altText": "صورة واضحة ومبتسمة للنجم الفرنسي نغولو كانتي بقميص الاتحاد دون كتابة اسمه"
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "كانتي",
+          "نجولو كانتي",
+          "نغولو كانتي",
+          "N'Golo Kante",
+          "Kante"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "contentDimension": "foreign_stars"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-spl-011",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "text",
+      "prompt": {
+        "ar": "التعاون يُعرف بلقب سكري الـ...؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "القصيم",
+          "سكري القصيم",
+          "Al Qassim",
+          "Qassim"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "COMPLETION",
+        "contentDimension": "club_nicknames"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-spl-012",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "image",
+      "prompt": {
+        "ar": "مين هذا المدرب؟"
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/football_spl_jorge_jesus.webp",
+            "altText": "لقطة واضحة لانفعالات المدرب جورجي جيسوس بشعره الأبيض الشهير على دكة البدلاء في الدوري السعودي دون كتابة اسمه"
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "جورجي جيسوس",
+          "جيسوس",
+          "خيسوس",
+          "خورخي خيسوس",
+          "خورخي جيسوس",
+          "Jorge Jesus",
+          "Jesus"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "contentDimension": "coaches"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-spl-013",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "text",
+      "prompt": {
+        "ar": "الهداف التاريخي للدوري السعودي ماجد عبدالله... في أي نادٍ قضى كامل مسيرته؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "النصر",
+          "نادي النصر",
+          "العالمي",
+          "Al Nassr"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "CONNECTION",
+        "contentDimension": "saudi_legends"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-spl-014",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "text",
+      "prompt": {
+        "ar": "النجم رياض محرز انتقل للأهلي السعودي قادماً من أي نادٍ إنجليزي؟"
+      },
+      "media": {
+        "type": "none"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "مانشستر سيتي",
+          "السيتي",
+          "مان سيتي",
+          "Manchester City",
+          "Man City"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "BEFORE_AFTER",
+        "contentDimension": "transfers"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "bomb-prod-fb-spl-015",
+      "worldSlug": "football",
+      "scopeSlug": "saudi-league",
+      "scopeNameAr": "الدوري السعودي",
+      "modality": "image",
+      "prompt": {
+        "ar": "وش اسم هذا الملعب في الرياض؟"
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/football_spl_kingdom_arena.webp",
+            "altText": "صورة واضحة ومبهرة للهيكل المعماري والإنارة لملعب المملكة أرينا بالرياض دون كتابة اسم الملعب"
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "كينغدوم أرينا",
+          "المملكة أرينا",
+          "كينجدوم ارينا",
+          "Kingdom Arena"
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "contentDimension": "stadiums"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    }
+  ]
+}

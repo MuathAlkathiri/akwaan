@@ -1955,9 +1955,10 @@ Completed three distinct authoring playtests validating the Question Craft archi
 - **Multimodal Bomb Implementation:** ✅ **COMMITTED & PUSHED** (`dcc0ff4` — Backend policy & runtime snapshot, Frontend typography & audio components, comprehensive unit tests).
 - **Public Frontend (Vercel):** ✅ **DEPLOYED & VERIFIED** (`https://akwaan-frontend.vercel.app` — deployed bundle chunk `5497-9914ec7d99185ce7.js` verified containing `BombItemAudio`, `BombItemText`, `BombItemImage`, and audio playback controls).
 - **Public Backend (Render):** ✅ **DEPLOYED & VERIFIED** (`https://akwaan-api.onrender.com` — `/health` returns `200 OK` `{"status":"ok","database":"connected"}`, `/worlds` returns active playable worlds).
-- **Production Content State:** ✅ **15 FOOTBALL BOMB R1 ITEMS PROMOTED TO REAL PRODUCTION** (9 Text, 6 Image across Premier League, Champions League, World Cup; resolved via canonical slug architecture).
-- **Production Smoke State:** ✅ **PUBLIC TEXT + IMAGE BOMB VERIFIED** (Text Bomb and new R1 Image Bomb items verified on live public production).
-- **Audio Bomb Status:** ⚠️ **AUDIO BOMB PRODUCTION SMOKE STILL PENDING FIRST APPROVED AUDIO PACK** (Runtime capability deployed; audio catalog content smoke pending future promotion).
+- **Production Content State:** ✅ **30 QUESTION CRAFT BOMB R1 ITEMS PROMOTED TO REAL PRODUCTION** (15 Football R1 across PL/CL/WC + 15 Saudi League R1; 19 Text, 11 Image across 4 Scopes; resolved via canonical slug architecture).
+- **Production Catalog Baseline:** **491 Total Production ContentItems** across 28 Scopes; **120 Total Bomb items** (19 Text-Only, 101 Image, 0 Audio).
+- **Production Smoke State:** ✅ **PUBLIC TEXT + IMAGE BOMB VERIFIED** (Text Bomb and Image Bomb items verified on live public production across Football R1 and Saudi League R1).
+- **Audio Bomb Status:** ⚠️ **AUDIO BOMB PRODUCTION SMOKE STILL PENDING FIRST APPROVED AUDIO PACK** (0 Production Bomb Audio items; runtime capability deployed; audio catalog content smoke pending future promotion).
 - **Git State:** ✅ **PUSHED TO MAIN** (`origin/main` level with `HEAD`).
 - **Deployment State:** ✅ **PUBLIC PRODUCTION DEPLOYMENT VERIFIED** (Vercel + Render live and verified).
 
@@ -1992,4 +1993,23 @@ Completed three distinct authoring playtests validating the Question Craft archi
 - **Content State:** ⬜ **0/15 Music × Bomb R1 items promoted.** (Content promotion pending downstream step).
 - **Media State:** ⬜ **0/7 Production assets ingested.**
 - **Audio Smoke State:** ⚠️ **PENDING.**
+
+### 21.8 Saudi League × Bomb Question Craft R1 — Direct Production Promotion
+✅ **HUMAN PRODUCT APPROVED, MEDIA ENRICHED, DIRECTLY PROMOTED TO REAL PRODUCTION, AND SMOKE VERIFIED.**
+
+- **New Canonical Content Workflow:** Fresh authoring $\rightarrow$ QA $\rightarrow$ Human Product Approval $\rightarrow$ Media enrichment $\rightarrow$ Production dry-run $\rightarrow$ DIRECT Production promotion $\rightarrow$ Idempotency verification $\rightarrow$ Public smoke. (Local DB is optional for isolated technical tests only; it is NOT a mandatory staging hop).
+- **Approved Batch Promoted:** 15/15 approved items for Saudi League (`saudi-league` / `scope-1785790461277` under `football` / `6a6e46a747bc63bdaf2e3800`):
+  - **10 Text-Only Items:** `bomb-prod-fb-spl-001` (Al-Ettifaq nickname), `002` (Ruben Neves first name), `004` (Fathi Al-Jabal & Al-Fateh), `005` (Mohammad Al-Deayea nickname), `007` (Yasser Al-Qahtani career path), `008` (Derby Al-Qassim), `009` (Omar Al-Somah nationality), `011` (Al-Taawoun moniker), `013` (Majed Abdullah one-club career), `014` (Riyad Mahrez transfer from Man City).
+  - **5 Image Items:** `003` (Al-Jawhara Stadium, `football_spl_al_jawhara_stadium.webp`), `006` (Al-Shabab crest/identity partial visual, `football_spl_al_shabab_crest_crop.webp`), `010` (N'Golo Kanté in Al-Ittihad kit, `football_spl_ngolo_kante.webp`), `012` (Jorge Jesus touchline context, `football_spl_jorge_jesus.webp`), `015` (Kingdom Arena covered stadium, `football_spl_kingdom_arena.webp`).
+- **Media QA & Ingest:** ✅ 5/5 WebP images generated, reviewed for zero text leakage, and uploaded to Cloudflare R2 bucket `akwaan-beta-media` under `question-assets/images/`. HTTP 200 and `image/webp` verified on both R2 CDN (`https://pub-6db8177278dd4bffacfc18c1307f7b7e.r2.dev`) and backend proxy (`https://akwaan-api.onrender.com/uploads/...`).
+- **Production DB Promotion:** ✅ 15/15 items promoted directly to live Production database via canonical `promote_approved_content.py` using milestone `saudi-league-bomb-r1` and source marker prefix `bomb-saudi-league-question-craft-r1:*`. All items carry status `ready` and zero readiness blockers. Zero scope creates, zero deletes, zero board mutations.
+- **Idempotency:** ✅ Verified via second dry-run (15/15 `EXISTS_IDENTICAL`, 0 proposed writes).
+- **Public Text Bomb Smoke:** ✅ Verified on live production runtime (presentation, normalized Arabic matching, continuous team clock, turn transfer, -5s skip penalty).
+- **Public Image Bomb Smoke:** ✅ Verified on live production runtime (R2 media delivery, responsive mobile framing, zero answer leakage, answer matching).
+- **Production Catalog Recount:**
+  - **Saudi League Scope:** 33 total items (18 legacy + 15 Bomb [10 Text, 5 Image]).
+  - **Global Production Catalog:** 491 total ContentItems across 28 Scopes.
+  - **Global Production Bomb Catalog:** 120 items (19 Text-Only, 101 Image, 0 Audio).
+- **Audio Bomb Status:** ⬜ **0 Production Audio Bomb items** (Audio capability active; audio content promotion pending Music R1).
+
 

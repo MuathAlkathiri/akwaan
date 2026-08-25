@@ -207,8 +207,12 @@ class TestAllowlistExcludesMarhala(unittest.TestCase):
         fb_r1_scopes = {"premier-league", "champions-league", "world-cup"}
         self.assertEqual(set(promoter.MILESTONES["football-bomb-r1"].scope_slugs),
                          fb_r1_scopes)
+        spl_r1_scopes = {"saudi-league"}
+        self.assertEqual(set(promoter.MILESTONES["saudi-league-bomb-r1"].scope_slugs),
+                         spl_r1_scopes)
         self.assertEqual(allowed, {"dragon-ball", "demon-slayer", "jujutsu-kaisen",
-                                   "la-liga", "serie-a", "football-legends"} | vg_scopes | fb_r1_scopes)
+                                   "la-liga", "serie-a", "football-legends"} | vg_scopes | fb_r1_scopes | spl_r1_scopes)
+
 
 
 class TestAllowlistExcludesUnrelatedContent(unittest.TestCase):
