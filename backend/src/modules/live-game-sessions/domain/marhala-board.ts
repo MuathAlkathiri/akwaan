@@ -1,4 +1,9 @@
-import { MarhalaDifficulty } from '../../world-content/domain/marhala-content.policy';
+import {
+  MarhalaDifficulty,
+  MarhalaRuntimeMedia,
+} from '../../world-content/domain/marhala-content.policy';
+
+export type { MarhalaRuntimeMedia };
 
 /**
  * "المرحلة" — the board, its tiles, and what a difficulty is worth.

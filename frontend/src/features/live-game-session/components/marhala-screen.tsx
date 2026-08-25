@@ -1,8 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BidiText } from "@/components/akwaan/bidi-text";
-import { AlertTriangle, Loader2, Rocket, Zap } from "lucide-react";
+import {
+  AlertTriangle,
+  Loader2,
+  Pause,
+  Play,
+  Rocket,
+  RotateCcw,
+  Volume2,
+  Zap,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { getMediaUrl } from "@/lib/api/media-url";
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
@@ -360,15 +371,219 @@ function PendingPanel({ view }: { view: MarhalaView }) {
   );
 }
 
-function QuestionPanel({ view }: { view: MarhalaView }) {
+export function MarhalaQuestionImage({
+  url,
+  altText,
+}: {
+  url: string;
+  altText?: string;
+}) {
+  const [state, setState] = useState<"loading" | "loaded" | "unavailable">(
+    url ? "loading" : "unavailable",
+  );
+  const resolvedUrl = getMediaUrl(url);
+
   return (
     <div
-      className="surface-card space-y-2 p-3 sm:p-4"
+      data-testid="marhala-question-image"
+      className="relative mx-auto flex aspect-video w-full max-w-xl items-center justify-center overflow-hidden rounded-[var(--radius)] border border-border/50 bg-muted/60"
+    >
+      {state === "loading" && (
+        <div
+          role="status"
+          className="absolute inset-0 flex animate-pulse items-center justify-center text-xs font-bold text-muted-foreground"
+        >
+          جارٍ تحميل الصورة…
+        </div>
+      )}
+      {resolvedUrl && state !== "unavailable" && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={resolvedUrl}
+          alt={altText || "صورة السؤال"}
+          className={cn(
+            "h-full w-full object-contain transition-opacity duration-300",
+            state === "loaded" ? "opacity-100" : "opacity-0",
+          )}
+          onLoad={() => setState("loaded")}
+          onError={() => setState("unavailable")}
+        />
+      )}
+      {state === "unavailable" && (
+        <p
+          role="status"
+          data-testid="marhala-image-unavailable"
+          className="p-4 text-center text-xs font-bold text-muted-foreground"
+        >
+          تعذّر تحميل صورة السؤال
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function MarhalaQuestionAudio({ url }: { url: string }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const resolvedUrl = getMediaUrl(url);
+
+  useEffect(() => {
+    setIsPlaying(false);
+    setHasError(false);
+    if (!audioRef.current || !resolvedUrl) return;
+
+    try {
+      if (typeof audioRef.current.load === "function") {
+        audioRef.current.load();
+      }
+      if (typeof audioRef.current.play === "function") {
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => setIsPlaying(true))
+            .catch(() => {
+              // Autoplay blocked by browser policy - user can press play manually
+              setIsPlaying(false);
+            });
+        }
+      }
+    } catch {
+      // Audio element not supported in test environment or error loading
+    }
+  }, [resolvedUrl]);
+
+  const togglePlay = () => {
+    if (!audioRef.current || hasError) return;
+    if (isPlaying) {
+      if (typeof audioRef.current.pause === "function") {
+        audioRef.current.pause();
+      }
+      setIsPlaying(false);
+    } else {
+      if (typeof audioRef.current.play === "function") {
+        try {
+          const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => setIsPlaying(true))
+              .catch(() => setIsPlaying(false));
+          }
+        } catch {
+          setIsPlaying(false);
+        }
+      }
+    }
+  };
+
+  const restartAudio = () => {
+    if (!audioRef.current || hasError) return;
+    try {
+      audioRef.current.currentTime = 0;
+      if (typeof audioRef.current.play === "function") {
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => setIsPlaying(true))
+            .catch(() => setIsPlaying(false));
+        }
+      }
+    } catch {
+      setIsPlaying(false);
+    }
+  };
+
+  return (
+    <div
+      data-testid="marhala-question-audio"
+      className="relative mx-auto flex w-full max-w-xl flex-col items-center justify-center gap-3 rounded-[var(--radius)] border border-primary/25 bg-primary/5 p-4 text-center"
+    >
+      <audio
+        ref={audioRef}
+        src={resolvedUrl}
+        preload="auto"
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => setIsPlaying(false)}
+        onError={() => setHasError(true)}
+      />
+
+      <div className="flex items-center gap-2">
+        <Volume2 className="size-5 text-primary" aria-hidden />
+        <span className="text-xs font-black text-foreground">
+          مقطع صوتي للسؤال
+        </span>
+      </div>
+
+      {hasError ? (
+        <p
+          data-testid="marhala-audio-error"
+          role="status"
+          className="text-xs font-bold text-destructive"
+        >
+          تعذّر تشغيل المقطع الصوتي
+        </p>
+      ) : (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={togglePlay}
+            className="flex items-center gap-1.5 font-bold"
+            data-testid="marhala-audio-play-button"
+            aria-label={isPlaying ? "إيقاف الصوت مؤقتاً" : "تشغيل الصوت"}
+          >
+            {isPlaying ? (
+              <>
+                <Pause className="size-4" aria-hidden />
+                إيقاف مؤقت
+              </>
+            ) : (
+              <>
+                <Play className="size-4" aria-hidden />
+                تشغيل المقطع
+              </>
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={restartAudio}
+            className="flex items-center gap-1.5 font-bold text-muted-foreground hover:text-foreground"
+            data-testid="marhala-audio-restart-button"
+            aria-label="إعادة تشغيل المقطع"
+          >
+            <RotateCcw className="size-4" aria-hidden />
+            إعادة
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QuestionPanel({ view }: { view: MarhalaView }) {
+  const media = view.media;
+
+  return (
+    <div
+      className="surface-card space-y-3 p-3 sm:p-4"
       data-testid="marhala-question"
     >
       <p className="text-xs font-black text-muted-foreground">
         السؤال — الإجابة من جوالات الفريق
       </p>
+
+      {media?.type === "image" && media.url && (
+        <MarhalaQuestionImage url={media.url} altText={media.altText} />
+      )}
+
+      {media?.type === "audio" && media.url && (
+        <MarhalaQuestionAudio url={media.url} />
+      )}
+
       <p className="text-xl font-black leading-snug text-foreground sm:text-2xl">
         <BidiText>{marhalaPromptText(view)}</BidiText>
       </p>

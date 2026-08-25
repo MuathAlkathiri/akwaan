@@ -626,4 +626,128 @@ describe('المرحلة gameplay', () => {
       expect(JSON.stringify([active, waiting])).not.toContain('روكستار');
     });
   });
+
+  describe('multimodal media presentation & privacy', () => {
+    it('projects image media with type, url, and altText safely without answers', () => {
+      const imgQ: MarhalaRuntimeQuestion = {
+        contentItemId: 'item-img-1',
+        scopeId: 'scope-overwatch',
+        difficulty: 'medium',
+        prompt: { ar: 'من هذه الشخصية؟' },
+        media: {
+          type: 'image',
+          url: 'https://media.akwaan.com/images/overwatch-tracer.webp',
+          altText: 'صورة شخصية',
+        },
+        acceptedAnswers: ['ترايسر', 'تريسر'],
+      };
+
+      const chosen = send(MARHALA_COMMANDS.chooseDifficulty, runtime(), {
+        difficulty: 'medium',
+      }).runtimeState;
+      const openedState = send(MARHALA_COMMANDS.openQuestion, chosen, {
+        questionJson: JSON.stringify(imgQ),
+      }).runtimeState;
+
+      const projected =
+        MARHALA_GAMEPLAY_PLUGIN.projectRuntimeState(openedState);
+
+      expect(projected.questionMediaJson).toBeDefined();
+      const media = JSON.parse(String(projected.questionMediaJson));
+      expect(media).toEqual({
+        type: 'image',
+        url: 'https://media.akwaan.com/images/overwatch-tracer.webp',
+        altText: 'صورة شخصية',
+      });
+
+      // Zero answer leakage
+      expect(JSON.stringify(projected)).not.toContain('ترايسر');
+      expect(JSON.stringify(projected)).not.toContain('acceptedAnswers');
+      expect(projected.answersJson).toBeUndefined();
+    });
+
+    it('projects audio media with type and url without answers', () => {
+      const audioQ: MarhalaRuntimeQuestion = {
+        contentItemId: 'item-aud-1',
+        scopeId: 'scope-overwatch',
+        difficulty: 'hard',
+        prompt: { ar: 'صوت أي شخصية هذا؟' },
+        media: {
+          type: 'audio',
+          url: 'https://media.akwaan.com/audio/high-noon.mp3',
+        },
+        acceptedAnswers: ['كاسيدي', 'ماكري'],
+      };
+
+      const chosen = send(MARHALA_COMMANDS.chooseDifficulty, runtime(), {
+        difficulty: 'hard',
+      }).runtimeState;
+      const openedState = send(MARHALA_COMMANDS.openQuestion, chosen, {
+        questionJson: JSON.stringify(audioQ),
+      }).runtimeState;
+
+      const projected =
+        MARHALA_GAMEPLAY_PLUGIN.projectRuntimeState(openedState);
+
+      expect(projected.questionMediaJson).toBeDefined();
+      const media = JSON.parse(String(projected.questionMediaJson));
+      expect(media).toEqual({
+        type: 'audio',
+        url: 'https://media.akwaan.com/audio/high-noon.mp3',
+      });
+
+      // Zero answer leakage
+      expect(JSON.stringify(projected)).not.toContain('كاسيدي');
+      expect(JSON.stringify(projected)).not.toContain('ماكري');
+    });
+
+    it('omits questionMediaJson for text-only questions', () => {
+      const textQ = question('easy', 'item-text-1');
+      const chosen = send(MARHALA_COMMANDS.chooseDifficulty, runtime(), {
+        difficulty: 'easy',
+      }).runtimeState;
+      const openedState = send(MARHALA_COMMANDS.openQuestion, chosen, {
+        questionJson: JSON.stringify(textQ),
+      }).runtimeState;
+
+      const projected =
+        MARHALA_GAMEPLAY_PLUGIN.projectRuntimeState(openedState);
+
+      expect(projected.questionMediaJson).toBeUndefined();
+      expect(projected.questionPrompt).toBeDefined();
+    });
+
+    it('clears media upon resolving turn or passing to next turn', () => {
+      const imgQ: MarhalaRuntimeQuestion = {
+        contentItemId: 'item-img-1',
+        scopeId: 'scope-overwatch',
+        difficulty: 'easy',
+        prompt: { ar: 'من هذه الشخصية؟' },
+        media: {
+          type: 'image',
+          url: 'https://media.akwaan.com/images/tracer.webp',
+        },
+        acceptedAnswers: ['ترايسر'],
+      };
+
+      const chosen = send(MARHALA_COMMANDS.chooseDifficulty, runtime(), {
+        difficulty: 'easy',
+      }).runtimeState;
+      const openedState = send(MARHALA_COMMANDS.openQuestion, chosen, {
+        questionJson: JSON.stringify(imgQ),
+      }).runtimeState;
+
+      // Submit answer (incorrect or correct) resolves turn and passes to next team
+      const resolved = send(MARHALA_COMMANDS.submitAnswer, openedState, {
+        answer: 'إجابة خاطئة',
+      }).runtimeState;
+
+      const projected =
+        MARHALA_GAMEPLAY_PLUGIN.projectRuntimeState(resolved);
+
+      expect(projected.questionMediaJson).toBeUndefined();
+      expect(projected.questionPrompt).toBeUndefined();
+      expect(projected.phase).toBe('difficulty-choice');
+    });
+  });
 });

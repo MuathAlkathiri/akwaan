@@ -1,5 +1,13 @@
 import { act, render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+beforeAll(() => {
+  window.HTMLMediaElement.prototype.load = vi.fn();
+  window.HTMLMediaElement.prototype.play = vi
+    .fn()
+    .mockImplementation(() => Promise.resolve());
+  window.HTMLMediaElement.prototype.pause = vi.fn();
+});
 
 const mocks = vi.hoisted(() => ({
   gameplay: undefined as unknown,
@@ -916,3 +924,143 @@ describe("the opposing team's phone", () => {
     expect(screen.getByTestId("marhala-band-choices")).toBeInTheDocument();
   });
 });
+
+describe("multimodal question presentation (image, audio, text)", () => {
+  it("renders pure text question without image or audio container", () => {
+    const textState = questionState({
+      questionPrompt: JSON.stringify({ ar: "ما اسم بطل لعبة GTA San Andreas؟" }),
+    });
+
+    render(<MarhalaScreen runtime={runtime(textState)} />);
+
+    expect(screen.getByTestId("marhala-question")).toHaveTextContent(
+      "ما اسم بطل لعبة GTA San Andreas؟",
+    );
+    expect(screen.queryByTestId("marhala-question-image")).toBeNull();
+    expect(screen.queryByTestId("marhala-question-audio")).toBeNull();
+  });
+
+  it("renders image question with img element, alt text, and prompt on screen and phone", () => {
+    const imageState = questionState({
+      questionPrompt: JSON.stringify({ ar: "من هذه الشخصية؟" }),
+      questionMediaJson: JSON.stringify({
+        type: "image",
+        url: "https://media.akwaan.com/images/tracer.webp",
+        altText: "صورة ترايسر",
+      }),
+    });
+
+    const { unmount } = render(<MarhalaScreen runtime={runtime(imageState)} />);
+
+    expect(screen.getByTestId("marhala-question-image")).toBeInTheDocument();
+    const img = screen.getByRole("img");
+    expect(img).toHaveAttribute("src", "https://media.akwaan.com/images/tracer.webp");
+    expect(img).toHaveAttribute("alt", "صورة ترايسر");
+    expect(screen.getByTestId("marhala-question")).toHaveTextContent("من هذه الشخصية؟");
+
+    unmount();
+
+    // Also renders on phone panel
+    render(
+      <MarhalaPhonePanel
+        runtime={runtime(
+          { ...imageState, actorTeamId: "team-alpha", isActiveTeam: true },
+          ["mode:submit-marhala-answer"],
+        )}
+      />,
+    );
+    expect(screen.getByTestId("marhala-question-image")).toBeInTheDocument();
+    expect(screen.getByRole("img")).toHaveAttribute("src", "https://media.akwaan.com/images/tracer.webp");
+  });
+
+  it("handles image error gracefully without crashing", () => {
+    const brokenImageState = questionState({
+      questionPrompt: JSON.stringify({ ar: "من هذه الشخصية؟" }),
+      questionMediaJson: JSON.stringify({
+        type: "image",
+        url: "https://media.akwaan.com/images/broken.webp",
+      }),
+    });
+
+    render(<MarhalaScreen runtime={runtime(brokenImageState)} />);
+
+    const img = screen.getByRole("img");
+    act(() => {
+      img.dispatchEvent(new Event("error"));
+    });
+
+    expect(screen.getByTestId("marhala-image-unavailable")).toHaveTextContent(
+      "تعذّر تحميل صورة السؤال",
+    );
+  });
+
+  it("renders audio question with playback controls on screen and phone", () => {
+    const audioState = questionState({
+      questionPrompt: JSON.stringify({ ar: "صوت أي شخصية هذا؟" }),
+      questionMediaJson: JSON.stringify({
+        type: "audio",
+        url: "https://media.akwaan.com/audio/high-noon.mp3",
+      }),
+    });
+
+    const { unmount } = render(<MarhalaScreen runtime={runtime(audioState)} />);
+
+    expect(screen.getByTestId("marhala-question-audio")).toBeInTheDocument();
+    expect(screen.getByTestId("marhala-audio-play-button")).toBeInTheDocument();
+    expect(screen.getByTestId("marhala-audio-restart-button")).toBeInTheDocument();
+    expect(screen.getByTestId("marhala-question")).toHaveTextContent("صوت أي شخصية هذا؟");
+
+    unmount();
+
+    // Also renders on phone panel
+    render(
+      <MarhalaPhonePanel
+        runtime={runtime(
+          { ...audioState, actorTeamId: "team-alpha", isActiveTeam: true },
+          ["mode:submit-marhala-answer"],
+        )}
+      />,
+    );
+    expect(screen.getByTestId("marhala-question-audio")).toBeInTheDocument();
+  });
+
+  it("clears old media when changing to a new text-only question", () => {
+    const imageState = questionState({
+      questionPrompt: JSON.stringify({ ar: "سؤال صورة" }),
+      questionMediaJson: JSON.stringify({
+        type: "image",
+        url: "https://media.akwaan.com/images/pic.webp",
+      }),
+    });
+
+    const { rerender } = render(<MarhalaScreen runtime={runtime(imageState)} />);
+    expect(screen.getByTestId("marhala-question-image")).toBeInTheDocument();
+
+    const nextTextState = questionState({
+      questionPrompt: JSON.stringify({ ar: "سؤال نصي جديد" }),
+      questionMediaJson: undefined,
+    });
+
+    rerender(<MarhalaScreen runtime={runtime(nextTextState)} />);
+    expect(screen.queryByTestId("marhala-question-image")).toBeNull();
+    expect(screen.getByTestId("marhala-question")).toHaveTextContent("سؤال نصي جديد");
+  });
+
+  it("preserves zero answer leakage in DOM elements", () => {
+    const imageState = questionState({
+      questionPrompt: JSON.stringify({ ar: "من هذه الشخصية؟" }),
+      questionMediaJson: JSON.stringify({
+        type: "image",
+        url: "https://media.akwaan.com/images/asset-123.webp",
+        altText: "شخصية مميزة",
+      }),
+    });
+
+    const { container } = render(<MarhalaScreen runtime={runtime(imageState)} />);
+
+    // Ensure hidden filenames or answers are never in text content
+    expect(container.textContent).not.toContain("asset-123.webp");
+    expect(container.textContent).not.toContain("https://");
+  });
+});
+

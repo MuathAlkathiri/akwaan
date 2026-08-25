@@ -20,6 +20,10 @@ import {
   type MarhalaDifficulty,
   type MarhalaView,
 } from "../match/marhala.presentation";
+import {
+  MarhalaQuestionAudio,
+  MarhalaQuestionImage,
+} from "./marhala-screen";
 import type { GameplayRuntimeSnapshot } from "../model";
 
 /**
@@ -148,6 +152,15 @@ export function MarhalaPhonePanel({
             className="surface-card space-y-3 p-4"
             data-testid="marhala-answer-form"
           >
+            {view.media?.type === "image" && view.media.url && (
+              <MarhalaQuestionImage
+                url={view.media.url}
+                altText={view.media.altText}
+              />
+            )}
+            {view.media?.type === "audio" && view.media.url && (
+              <MarhalaQuestionAudio url={view.media.url} />
+            )}
             <p className="text-lg font-black leading-snug text-foreground">
               <BidiText>{marhalaPromptText(view)}</BidiText>
             </p>

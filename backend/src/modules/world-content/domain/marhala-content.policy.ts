@@ -67,3 +67,59 @@ export function marhalaDifficultyOf(
     ?.marhalaDifficulty;
   return isMarhalaDifficulty(raw) ? raw : undefined;
 }
+
+export interface MarhalaRuntimeMedia {
+  type: 'none' | 'image' | 'audio';
+  url?: string;
+  altText?: string;
+}
+
+/**
+ * Normalizes ContentItem media into the runtime presentation shape for Marhala.
+ * Supported types: 'none', 'image', 'audio'.
+ * Malformed or missing URLs fall back safely to { type: 'none' }.
+ */
+export function normalizeMarhalaMedia(media: unknown): MarhalaRuntimeMedia {
+  if (!media || typeof media !== 'object') {
+    return { type: 'none' };
+  }
+  const raw = media as {
+    type?: string;
+    assets?: Array<{ url?: string; altText?: string }>;
+    url?: string;
+    altText?: string;
+    imageUrl?: string;
+  };
+  const type = (raw.type ?? (raw.imageUrl ? 'image' : 'none')).toLowerCase();
+
+  if (type === 'image') {
+    const asset = Array.isArray(raw.assets) ? raw.assets[0] : undefined;
+    const url = (asset?.url ?? raw.url ?? raw.imageUrl ?? '').trim();
+    const altText = (asset?.altText ?? raw.altText ?? '').trim();
+    if (url) {
+      return {
+        type: 'image',
+        url,
+        ...(altText ? { altText } : {}),
+      };
+    }
+    return { type: 'none' };
+  }
+
+  if (type === 'audio') {
+    const asset = Array.isArray(raw.assets) ? raw.assets[0] : undefined;
+    const url = (asset?.url ?? raw.url ?? '').trim();
+    const altText = (asset?.altText ?? raw.altText ?? '').trim();
+    if (url) {
+      return {
+        type: 'audio',
+        url,
+        ...(altText ? { altText } : {}),
+      };
+    }
+    return { type: 'none' };
+  }
+
+  return { type: 'none' };
+}
+

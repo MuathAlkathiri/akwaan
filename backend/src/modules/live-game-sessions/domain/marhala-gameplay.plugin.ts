@@ -15,6 +15,7 @@ import {
   MARHALA_MOVEMENT_RANGES,
   MARHALA_QUESTION_SECONDS,
   MarhalaDifficulty,
+  MarhalaRuntimeMedia,
   MarhalaTileKind,
   marhalaMovementRoll,
   marhalaPossibleLandings,
@@ -61,6 +62,7 @@ export interface MarhalaRuntimeQuestion {
   scopeId: string;
   difficulty: MarhalaDifficulty;
   prompt: unknown;
+  media?: MarhalaRuntimeMedia;
   acceptedAnswers: string[];
 }
 
@@ -636,12 +638,23 @@ function publicState(
     ...(valid.deadlineAt ? { deadlineAt: valid.deadlineAt } : {}),
     ...(valid.lastTurnJson ? { lastTurnJson: valid.lastTurnJson } : {}),
     ...(valid.resultJson ? { resultJson: valid.resultJson } : {}),
-    // The prompt, never the accepted answers.
+    // The prompt and media, never the accepted answers or private authoring metadata.
     ...(question
       ? {
           questionPrompt: JSON.stringify(question.prompt),
           questionScopeId: question.scopeId,
           questionContentItemId: question.contentItemId,
+          ...(question.media && question.media.type !== 'none'
+            ? {
+                questionMediaJson: JSON.stringify({
+                  type: question.media.type,
+                  url: question.media.url,
+                  ...(question.media.altText
+                    ? { altText: question.media.altText }
+                    : {}),
+                }),
+              }
+            : {}),
         }
       : {}),
   };

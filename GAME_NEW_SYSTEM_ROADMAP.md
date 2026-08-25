@@ -2031,5 +2031,29 @@ Completed three distinct authoring playtests validating the Question Craft archi
 - **Content Policy:** Old local-only expansion batches will NOT be migrated into Production merely to populate these Scopes. Fresh content will follow canonical Question Craft authoring $\rightarrow$ QA $\rightarrow$ Human Product Review $\rightarrow$ Direct Production promotion.
 - **Tooling & Idempotency:** Executed via canonical `ai/scripts/provision_active_world_scopes.py` with plan hash `66840ed331344e33478610348f0ad8169cabea554af144857c2eb2e4a0e0c46c`. Idempotency verified on second dry-run (6/6 `EXISTS_IDENTICAL`, 0 proposed writes).
 
+### 21.10 Marhala Multimodal Question Presentation
+✅ **IMPLEMENTED & VERIFIED AT SOURCE / LOCAL RUNTIME.**
+
+- **Capabilities Supported:** Full end-to-end support for `none` (Text-Only), `image`, and `audio` question presentation in المرحلة (Marhala).
+- **Canonical Media Model Reused:** Reuses existing generic `ContentItem.media` schema (`type`, `assets[0].url`, `assets[0].altText`). Zero Marhala-specific media schemas or parallel storage pipelines.
+- **Backend Hydration & State Machine:**
+  - `marhala-question-source.ts` retains and normalizes canonical media into `MarhalaRuntimeQuestion`.
+  - `marhala-gameplay.plugin.ts` serializes only player-visible media (`type`, `url`, `altText`) into `questionMediaJson`.
+  - **Zero Answer Leakage:** Authoring metadata, `acceptedAnswers`, and private evidence are strictly excluded from public state projections.
+  - Advancing turns or completing questions clears active media from the projection.
+- **Frontend Presentation Model:**
+  - `marhala.presentation.ts` parses `questionMediaJson` into typed `view.media`.
+  - `MarhalaQuestionImage` renders responsive mobile/screen images with loading skeletons and graceful error fallbacks.
+  - `MarhalaQuestionAudio` renders accessible audio controls (play/pause toggle, restart/replay button, and non-blocking error states).
+  - Both shared screen and phone answer surfaces render multimodal assets alongside prompt text.
+  - Reconnecting restores active question media seamlessly; audio playback is treated as local presentation without artificial server-side timer delays.
+- **Invariant Guarantees (No Gameplay Semantics Changed):**
+  - Continuous movement ranges (Easy 1–2, Medium 2–4, Hard 4–6) remain untouched.
+  - 16-tile serpentine board, Boosts, Traps, and destination safety remain 100% unchanged.
+  - Risk-choice pre-question difficulty election invariant preserved.
+  - Canonical Arabic answer normalization and scoring remain identical.
+- **Test Matrix:** ✅ 88 backend Marhala tests PASS; ✅ 150 frontend Marhala tests PASS (238 total, 0 failures).
+
+
 
 

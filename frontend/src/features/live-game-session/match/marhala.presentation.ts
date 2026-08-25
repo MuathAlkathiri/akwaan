@@ -278,6 +278,12 @@ export function marhalaFramePosition(
  * answer: the projection carries a prompt and never carries answers, so a phone
  * has nothing to leak even if a component asked.
  */
+export interface MarhalaMedia {
+  type: "none" | "image" | "audio";
+  url?: string;
+  altText?: string;
+}
+
 export interface MarhalaView {
   phase: MarhalaPhase;
   activeTeamId: string;
@@ -292,6 +298,7 @@ export interface MarhalaView {
   lastTurn?: MarhalaTurn;
   result?: MarhalaResult;
   prompt?: AuthoredText;
+  media?: MarhalaMedia;
   actorTeamId?: string | null;
   /** The server's word on whether this actor's team is the one playing. */
   isActiveTeam: boolean;
@@ -388,9 +395,36 @@ export function readMarhalaView(state: Record<string, unknown>): MarhalaView {
           ),
         }
       : {}),
+    ...(parseMarhalaMedia(state.questionMediaJson)
+      ? { media: parseMarhalaMedia(state.questionMediaJson) }
+      : {}),
     actorTeamId: text(state.actorTeamId) ?? null,
     isActiveTeam: state.isActiveTeam === true,
   };
+}
+
+function parseMarhalaMedia(value: unknown): MarhalaMedia | undefined {
+  const raw = parseJson<Partial<MarhalaMedia> | undefined>(value, undefined);
+  if (
+    raw &&
+    (raw.type === "image" || raw.type === "audio") &&
+    typeof raw.url === "string" &&
+    raw.url.trim().length > 0
+  ) {
+    return {
+      type: raw.type,
+      url: raw.url.trim(),
+      ...(typeof raw.altText === "string" && raw.altText.trim().length > 0
+        ? { altText: raw.altText.trim() }
+        : {}),
+    };
+  }
+  return undefined;
+}
+
+/** The active question's media, if any. */
+export function marhalaMedia(view: MarhalaView): MarhalaMedia | undefined {
+  return view.media;
 }
 
 /** The prompt, ready to render, or the line shown while the server draws one. */

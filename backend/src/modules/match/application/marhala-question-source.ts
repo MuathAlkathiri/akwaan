@@ -15,6 +15,7 @@ import {
   MARHALA_DIFFICULTIES,
   MarhalaDifficulty,
   marhalaDifficultyOf,
+  normalizeMarhalaMedia,
 } from '../../world-content/domain/marhala-content.policy';
 import { ContentItemRepository } from '../../world-content/persistence/content-item.repository';
 import { WorldChallengeConfigurationRepository } from '../../world-content/persistence/world-challenge-configuration.repository';
@@ -225,11 +226,13 @@ export class MarhalaQuestionSourceProvider
     const accepted = (item.answerPayload as { acceptedAnswers?: string[] })
       .acceptedAnswers;
     if (!accepted?.length) return undefined;
+    const media = normalizeMarhalaMedia(item.media);
     return {
       contentItemId,
       scopeId: String(item.scopeId),
       difficulty,
       prompt: item.prompt,
+      ...(media.type !== 'none' ? { media } : {}),
       acceptedAnswers: accepted,
     };
   }
