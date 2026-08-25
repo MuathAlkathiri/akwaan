@@ -1956,7 +1956,7 @@ Completed three distinct authoring playtests validating the Question Craft archi
 - **Public Frontend (Vercel):** ✅ **DEPLOYED & VERIFIED** (`https://akwaan-frontend.vercel.app` — deployed bundle chunk `5497-9914ec7d99185ce7.js` verified containing `BombItemAudio`, `BombItemText`, `BombItemImage`, and audio playback controls).
 - **Public Backend (Render):** ✅ **DEPLOYED & VERIFIED** (`https://akwaan-api.onrender.com` — `/health` returns `200 OK` `{"status":"ok","database":"connected"}`, `/worlds` returns active playable worlds).
 - **Production Content State:** ✅ **30 QUESTION CRAFT BOMB R1 ITEMS PROMOTED TO REAL PRODUCTION** (15 Football R1 across PL/CL/WC + 15 Saudi League R1; 19 Text, 11 Image across 4 Scopes; resolved via canonical slug architecture).
-- **Production Catalog Baseline:** **491 Total Production ContentItems** across 28 Scopes; **120 Total Bomb items** (19 Text-Only, 101 Image, 0 Audio).
+- **Production Catalog Baseline:** **491 Total Production ContentItems** across **34 Scopes** (9 Worlds); **120 Total Bomb items** (19 Text-Only, 101 Image, 0 Audio).
 - **Production Smoke State:** ✅ **PUBLIC TEXT + IMAGE BOMB VERIFIED** (Text Bomb and Image Bomb items verified on live public production across Football R1 and Saudi League R1).
 - **Audio Bomb Status:** ⚠️ **AUDIO BOMB PRODUCTION SMOKE STILL PENDING FIRST APPROVED AUDIO PACK** (0 Production Bomb Audio items; runtime capability deployed; audio catalog content smoke pending future promotion).
 - **Git State:** ✅ **PUSHED TO MAIN** (`origin/main` level with `HEAD`).
@@ -2008,8 +2008,28 @@ Completed three distinct authoring playtests validating the Question Craft archi
 - **Public Image Bomb Smoke:** ✅ Verified on live production runtime (R2 media delivery, responsive mobile framing, zero answer leakage, answer matching).
 - **Production Catalog Recount:**
   - **Saudi League Scope:** 33 total items (18 legacy + 15 Bomb [10 Text, 5 Image]).
-  - **Global Production Catalog:** 491 total ContentItems across 28 Scopes.
+  - **Global Production Catalog:** 491 total ContentItems across 34 Scopes.
   - **Global Production Bomb Catalog:** 120 items (19 Text-Only, 101 Image, 0 Audio).
 - **Audio Bomb Status:** ⬜ **0 Production Audio Bomb items** (Audio capability active; audio content promotion pending Music R1).
+
+### 21.9 Active-World Scope Expansion — Production Taxonomy Provisioning
+✅ **PRODUCTION TAXONOMY PROVISIONED (6 APPROVED SCOPES ACROSS VIDEO GAMES & PUZZLES).**
+
+- **Authorization:** Approved 12-Scope expansion plan (§C.1) for active playable Worlds.
+- **Scopes Provisioned in Production:**
+  - **Video Games (`video-games` / `world-1785784447249` / `6a70e8820f201ac138fa4f8b`):**
+    - `minecraft` (`ماينكرافت`, ObjectId `6a8def5d6465112df8e64540`, status: `active`)
+    - `god-of-war` (`قود اوف وار`, ObjectId `6a8def5f6465112df8e6454e`, status: `active`)
+    - `resident-evil` (`ريزدنت إيفل`, ObjectId `6a8def616465112df8e6455c`, status: `active`)
+    - *Scope Count:* 4 $\rightarrow$ **7 Scopes**
+  - **Puzzles (`puzzles` / `world-1786388973542` / `6a7a21fd4cfb4a6a8738d5ed`):**
+    - `patterns-sequences` (`أنماط ومتتاليات`, ObjectId `6a8def626465112df8e6456a`, status: `active`)
+    - `lateral-thinking` (`تفكير جانبي`, ObjectId `6a8def646465112df8e64578`, status: `active`)
+    - `visual-puzzles` (`ألغاز بصرية`, ObjectId `6a8def656465112df8e64586`, status: `active`)
+    - *Scope Count:* 5 $\rightarrow$ **8 Scopes**
+- **Taxonomy Provisioning vs Content Readiness:** ⚠️ **Taxonomy nodes created only; Content count = 0 each.** Empty scopes are not drawn during matches; Video Games and Puzzles continue to play existing ready content without regression. Zero board mutations, zero World status changes.
+- **Content Policy:** Old local-only expansion batches will NOT be migrated into Production merely to populate these Scopes. Fresh content will follow canonical Question Craft authoring $\rightarrow$ QA $\rightarrow$ Human Product Review $\rightarrow$ Direct Production promotion.
+- **Tooling & Idempotency:** Executed via canonical `ai/scripts/provision_active_world_scopes.py` with plan hash `66840ed331344e33478610348f0ad8169cabea554af144857c2eb2e4a0e0c46c`. Idempotency verified on second dry-run (6/6 `EXISTS_IDENTICAL`, 0 proposed writes).
+
 
 
