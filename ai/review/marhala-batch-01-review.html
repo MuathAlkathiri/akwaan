@@ -1,0 +1,2336 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مراجعة أسئلة المرحلة — Batch 01 (Video Games Rework)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #131b2e;
+      --card-border: #232f48;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --accent: #ec4899;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --easy-bg: rgba(16, 185, 129, 0.15);
+      --easy-border: #10b981;
+      --med-bg: rgba(245, 158, 11, 0.15);
+      --med-border: #f59e0b;
+      --hard-bg: rgba(239, 68, 68, 0.15);
+      --hard-border: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Tajawal', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 860px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .brand h1 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .brand span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: block;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Tajawal', sans-serif;
+      font-weight: 700;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 8px 14px;
+      font-size: 0.9rem;
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--primary);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      padding: 10px 20px;
+      font-size: 1rem;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
+    /* Controls Panel */
+    .controls-panel {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-group label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    select {
+      background: #0f172a;
+      color: var(--text);
+      border: 1px solid var(--card-border);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    select:focus {
+      border-color: var(--primary);
+    }
+
+    /* Progress bar */
+    .progress-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .progress-bar-bg {
+      height: 8px;
+      background: #1e293b;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    /* Main Card */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+
+    .card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 14px;
+    }
+
+    .badges-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      padding: 4px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .badge-scope {
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      color: #a5b4fc;
+    }
+
+    .badge-easy {
+      background: var(--easy-bg);
+      border: 1px solid var(--easy-border);
+      color: #34d399;
+    }
+
+    .badge-medium {
+      background: var(--med-bg);
+      border: 1px solid var(--med-border);
+      color: #fbbf24;
+    }
+
+    .badge-hard {
+      background: var(--hard-bg);
+      border: 1px solid var(--hard-border);
+      color: #f87171;
+    }
+
+    .badge-archetype {
+      background: #1e293b;
+      color: #cbd5e1;
+      font-family: 'Inter', monospace;
+      font-size: 0.75rem;
+    }
+
+    .badge-rework {
+      background: rgba(236, 72, 153, 0.15);
+      border: 1px solid rgba(236, 72, 153, 0.4);
+      color: #f472b6;
+    }
+
+    .badge-modality {
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    .badge-mod-image {
+      background: rgba(14, 165, 233, 0.2);
+      border: 1px solid rgba(14, 165, 233, 0.4);
+      color: #38bdf8;
+    }
+
+    .badge-mod-audio {
+      background: rgba(168, 85, 247, 0.2);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      color: #c084fc;
+    }
+
+    .badge-mod-text {
+      background: rgba(100, 116, 139, 0.2);
+      border: 1px solid rgba(100, 116, 139, 0.4);
+      color: #94a3b8;
+    }
+
+    .real-media-container {
+      margin: 12px 0 16px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .real-media-image {
+      max-width: 100%;
+      max-height: 380px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      object-fit: contain;
+      background: #020617;
+    }
+
+    .real-media-audio-card {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .real-media-audio-player {
+      width: 100%;
+      max-width: 460px;
+      outline: none;
+    }
+
+    .media-intent-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      border-radius: 12px;
+      padding: 16px;
+      margin: 12px 0 16px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      text-align: right;
+    }
+
+    .media-intent-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 8px;
+    }
+
+    .media-intent-body {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: #e2e8f0;
+    }
+
+    .media-intent-meta {
+      font-size: 0.82rem;
+      color: #94a3b8;
+      background: rgba(30, 41, 59, 0.6);
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .item-counter {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--text-muted);
+    }
+
+    .prompt-box {
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 20px 10px;
+    }
+
+    .prompt-text {
+      font-size: 1.65rem;
+      font-weight: 800;
+      line-height: 1.5;
+      color: #ffffff;
+    }
+
+    /* Answer Area */
+    .answer-section {
+      background: #0f172a;
+      border: 1px dashed var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .reveal-btn-container {
+      display: flex;
+      justify-content: center;
+      padding: 10px 0;
+    }
+
+    .answer-hidden {
+      display: none;
+    }
+
+    .answer-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .answer-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .canonical-answer {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #38bdf8;
+    }
+
+    .accepted-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .accepted-pill {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .media-meta-card {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+
+    .media-meta-item {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .media-meta-label {
+      color: var(--text-muted);
+      font-weight: 700;
+      white-space: nowrap;
+      min-width: 120px;
+    }
+
+    .media-meta-value {
+      color: #e2e8f0;
+      line-height: 1.4;
+    }
+
+    .media-meta-code {
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      direction: ltr;
+      display: inline-block;
+    }
+
+    .evidence-box {
+      margin-top: 6px;
+      font-size: 0.8rem;
+      color: #64748b;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .evidence-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .evidence-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Review Form */
+    .review-panel {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .verdict-options {
+      display: flex;
+      gap: 10px;
+    }
+
+    .verdict-btn {
+      flex: 1;
+      padding: 12px;
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      font-size: 0.95rem;
+      border-radius: 12px;
+    }
+
+    .verdict-btn:hover {
+      border-color: var(--primary);
+    }
+
+    .verdict-btn.selected-approve {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: var(--success);
+      color: #34d399;
+    }
+
+    .verdict-btn.selected-modify {
+      background: rgba(245, 158, 11, 0.2);
+      border-color: var(--warning);
+      color: #fbbf24;
+    }
+
+    .verdict-btn.selected-replace {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: var(--danger);
+      color: #f87171;
+    }
+
+    .rating-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .stars {
+      display: flex;
+      gap: 6px;
+      direction: ltr;
+    }
+
+    .star {
+      cursor: pointer;
+      font-size: 20px;
+      color: #334155;
+      transition: color 0.15s;
+    }
+
+    .star.active, .star:hover {
+      color: #facc15;
+    }
+
+    .note-input {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: white;
+      font-size: 0.95rem;
+      outline: none;
+      resize: vertical;
+      min-height: 48px;
+    }
+
+    .note-input:focus {
+      border-color: var(--primary);
+    }
+
+    /* Navigation */
+    .nav-bar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .nav-btn {
+      flex: 1;
+      padding: 14px;
+      font-size: 1rem;
+    }
+
+    /* Summary Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 720px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 12px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .stat-card {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .stat-val {
+      font-size: 1.6rem;
+      font-weight: 800;
+    }
+
+    .stat-lbl {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .json-export-area {
+      width: 100%;
+      height: 140px;
+      background: #090d16;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      color: #94a3b8;
+      font-family: monospace;
+      font-size: 0.8rem;
+      padding: 10px;
+      direction: ltr;
+      text-align: left;
+    }
+
+    .flagged-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .flagged-item {
+      background: #0f172a;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="brand">
+      <div class="brand-icon">م</div>
+      <div>
+        <h1>مراجعة أسئلة المرحلة — Batch 01</h1>
+        <span>Video Games (36 أسئلة — Rework Edition)</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-outline" onclick="openSummaryModal()">📊 ملخص المراجعة</button>
+      <button class="btn-outline" onclick="resetAllReviews()">🔄 إعادة الضبط</button>
+    </div>
+  </header>
+
+  <!-- Controls Panel -->
+  <div class="controls-panel">
+    <div class="filter-group">
+      <label>النطاق:</label>
+      <select id="scopeFilter" onchange="applyFilters()">
+        <option value="all">كل العوالم (36)</option>
+        <option value="gta">GTA (9)</option>
+        <option value="fifa">FIFA / EA FC (9)</option>
+        <option value="call-of-duty">Call of Duty (9)</option>
+        <option value="overwatch">Overwatch (9)</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>الصعوبة:</label>
+      <select id="difficultyFilter" onchange="applyFilters()">
+        <option value="all">كل المستويات</option>
+        <option value="easy">سهل (Easy)</option>
+        <option value="medium">متوسط (Medium)</option>
+        <option value="hard">صعب (Hard)</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>حالة المراجعة:</label>
+      <select id="statusFilter" onchange="applyFilters()">
+        <option value="all">الكل</option>
+        <option value="unreviewed">لم يُراجع بعد</option>
+        <option value="approved">✅ ممتاز</option>
+        <option value="modified">🟡 يحتاج تعديل</option>
+        <option value="replace">❌ استبدال</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Progress Bar -->
+  <div class="progress-wrap">
+    <div class="progress-meta">
+      <span>نسبة إنجاز المراجعة</span>
+      <span id="progressText">0 / 36 (0%)</span>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+  </div>
+
+  <!-- Main Question Card -->
+  <div class="card" id="questionCard">
+    <div class="card-meta">
+      <div class="badges-row">
+        <span class="badge badge-scope" id="scopeBadge">GTA</span>
+        <span class="badge" id="diffBadge">سهل</span>
+        <span class="badge badge-archetype" id="archetypeBadge">NAME_FRAGMENT</span>
+        <span class="badge badge-modality" id="modalityBadge" style="display: none;">📷 IMAGE</span>
+        <span class="badge badge-rework" id="reworkBadge" style="display: none;">تحديث جديد</span>
+      </div>
+      <div class="item-counter" id="itemCounter">1 / 36</div>
+    </div>
+
+    <!-- Media Intent Details (For Image / Audio questions) -->
+    <div id="mediaIntentContainer" style="display: none;"></div>
+
+    <div class="prompt-box">
+      <div class="prompt-text" id="promptText">تحميل السؤال...</div>
+    </div>
+
+    <!-- Hidden / Revealed Answer Section -->
+    <div class="answer-section">
+      <div class="reveal-btn-container" id="revealBtnContainer">
+        <button class="btn-primary" onclick="revealAnswer()">🔍 إظهار الإجابة</button>
+      </div>
+
+      <div class="answer-hidden" id="answerContent">
+        <div class="answer-row">
+          <span class="answer-label">الإجابة المعتمدة (Canonical):</span>
+          <div class="canonical-answer" id="canonicalAnswerText">---</div>
+        </div>
+
+        <div class="answer-row">
+          <span class="answer-label">الإجابات المقبولة (Accepted Variants):</span>
+          <div class="accepted-list" id="acceptedList"></div>
+        </div>
+
+        <div class="answer-row" id="mediaMetaRow" style="display: none;">
+          <span class="answer-label">تفاصيل الوسائط والسياق (Media & Context):</span>
+          <div class="media-meta-card" id="mediaMetaContent"></div>
+        </div>
+
+        <div class="evidence-box">
+          <span id="evidenceClaim">---</span>
+          <a class="evidence-link" id="evidenceLink" href="#" target="_blank">مصدر التوثيق ↗</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Review Controls -->
+    <div class="review-panel">
+      <div class="verdict-options">
+        <button class="verdict-btn" id="btnApprove" onclick="setVerdict('approved')">✅ ممتاز</button>
+        <button class="verdict-btn" id="btnModify" onclick="setVerdict('modified')">🟡 يحتاج تعديل</button>
+        <button class="verdict-btn" id="btnReplace" onclick="setVerdict('replace')">❌ استبدال</button>
+      </div>
+
+      <div class="rating-row">
+        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700;">التقييم:</span>
+        <div class="stars" id="starRating">
+          <span class="star" onclick="setRating(1)">★</span>
+          <span class="star" onclick="setRating(2)">★</span>
+          <span class="star" onclick="setRating(3)">★</span>
+          <span class="star" onclick="setRating(4)">★</span>
+          <span class="star" onclick="setRating(5)">★</span>
+        </div>
+      </div>
+
+      <textarea class="note-input" id="noteInput" placeholder="أضف ملاحظتك حول صياغة السؤال أو الصعوبة أو الإجابات المقبولة..." oninput="saveCurrentNote()"></textarea>
+    </div>
+  </div>
+
+  <!-- Navigation Bar -->
+  <div class="nav-bar">
+    <button class="btn-outline nav-btn" id="prevBtn" onclick="prevQuestion()">← السابق</button>
+    <button class="btn-primary nav-btn" id="nextBtn" onclick="nextQuestion()">التالي →</button>
+  </div>
+</div>
+
+<!-- Summary & Export Modal -->
+<div class="modal-overlay" id="summaryModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>ملخص المراجعة والتصدير</h2>
+      <button class="btn-outline" onclick="closeSummaryModal()">✕ إغلاق</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-val" style="color: #34d399;" id="statApproved">0</div>
+        <div class="stat-lbl">ممتاز</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" style="color: #fbbf24;" id="statModified">0</div>
+        <div class="stat-lbl">يحتاج تعديل</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" style="color: #f87171;" id="statReplace">0</div>
+        <div class="stat-lbl">استبدال</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" style="color: #94a3b8;" id="statUnreviewed">36</div>
+        <div class="stat-lbl">لم يُراجع</div>
+      </div>
+    </div>
+
+    <div class="flagged-group" id="flaggedContainer"></div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">نتائج المراجعة بتنسيق JSON:</label>
+        <button class="btn-outline" style="font-size: 0.8rem; padding: 4px 10px;" onclick="copyJsonToClipboard()">📋 نسخ إلى الحافظة</button>
+      </div>
+      <textarea class="json-export-area" id="jsonExportArea" readonly></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+const QUESTIONS_DATA = [
+  {
+    "id": "marhala-prod-vg-gta-001",
+    "scope": "gta",
+    "scopeLabel": "GTA",
+    "difficulty": "easy",
+    "difficultyLabel": "سهل",
+    "modality": "AUDIO",
+    "prompt": "صوت أي شخصية هذا في بداية رحلته بمدينة لوس سانتوس؟",
+    "answer": "سي جي",
+    "accepted": [
+      "CJ",
+      "سي جي",
+      "كارل جونسون",
+      "Carl Johnson"
+    ],
+    "archetype": "AUDIO_CHARACTER_CUE",
+    "dimension": "Playable Heroes",
+    "media": {
+      "type": "AUDIO",
+      "url": "../../backend/uploads/question-assets/audio/vg_gta_cj_here_we_go_again.mp3",
+      "label": "جملة CJ الشهيرة («Ah shit, here we go again»)"
+    },
+    "evidenceTitle": "GTA San Andreas Script: Opening Scene (Los Santos)",
+    "evidenceUrl": "https://www.rockstargames.com/sanandreas",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-gta-002",
+    "scope": "gta",
+    "scopeLabel": "GTA",
+    "difficulty": "easy",
+    "difficultyLabel": "سهل",
+    "modality": "IMAGE",
+    "prompt": "وش اسم هذا الرصيف البحري الشهير في لوس سانتوس؟",
+    "answer": "ديل بيرو",
+    "accepted": [
+      "ديل بيرو",
+      "رصيف ديل بيرو",
+      "Del Perro",
+      "Del Perro Pier"
+    ],
+    "archetype": "MAP_RECOGNITION",
+    "dimension": "Maps & Locations",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_gta_del_perro_pier.webp",
+      "alt": "رصيف ديل بيرو وعجلة الملاهي في لوس سانتوس"
+    },
+    "evidenceTitle": "GTA V Landmark Guide: Del Perro Pier",
+    "evidenceUrl": "https://www.rockstargames.com/V/world",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-gta-003",
+    "scope": "gta",
+    "scopeLabel": "GTA",
+    "difficulty": "easy",
+    "difficultyLabel": "سهل",
+    "modality": "TEXT",
+    "prompt": "في قصة GTA IV، البطل نيكو بيليك وصل إلى ليبرتي سيتي قادماً من أي قارة؟",
+    "answer": "أوروبا",
+    "accepted": [
+      "أوروبا",
+      "اوروبا",
+      "شرق أوروبا",
+      "اوروبا الشرقية",
+      "Europe",
+      "Eastern Europe"
+    ],
+    "archetype": "FAST_ATTRIBUTE",
+    "dimension": "Lore & Origin",
+    "evidenceTitle": "GTA IV Official Game Dossier: Niko Bellic",
+    "evidenceUrl": "https://www.rockstargames.com/IV",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-gta-004",
+    "scope": "gta",
+    "scopeLabel": "GTA",
+    "difficulty": "medium",
+    "difficultyLabel": "متوسط",
+    "modality": "IMAGE",
+    "prompt": "وش اسم هذه السيارة الرياضية الشهيرة لفرانكلين في GTA V؟",
+    "answer": "بافالو",
+    "accepted": [
+      "بافالو",
+      "بافالو اس",
+      "Buffalo",
+      "Bravado Buffalo",
+      "Buffalo S"
+    ],
+    "archetype": "VEHICLE_RECOGNITION",
+    "dimension": "Vehicles & Equipment",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_gta_buffalo_s.webp",
+      "alt": "سيارة Bravado Buffalo S الرياضية"
+    },
+    "evidenceTitle": "GTA V Vehicle Database: Bravado Buffalo S",
+    "evidenceUrl": "https://www.rockstargames.com/V",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-gta-005",
+    "scope": "gta",
+    "scopeLabel": "GTA",
+    "difficulty": "medium",
+    "difficultyLabel": "متوسط",
+    "modality": "AUDIO",
+    "prompt": "هذا المؤثر الصوتي الشهير في GTA V يدل على إيش؟",
+    "answer": "الموت",
+    "accepted": [
+      "الموت",
+      "Wasted",
+      "ويستد",
+      "موت اللاعب",
+      "وفاة اللاعب",
+      "رسالة Wasted"
+    ],
+    "archetype": "AUDIO_GAMEPLAY_CUE",
+    "dimension": "Core Gameplay & Sound FX",
+    "media": {
+      "type": "AUDIO",
+      "url": "../../backend/uploads/question-assets/audio/vg_gta_wasted.mp3",
+      "label": "مؤثر الموت (Wasted Sound Effect)"
+    },
+    "evidenceTitle": "GTA V Gameplay Mechanics: Wasted Death Screen",
+    "evidenceUrl": "https://www.rockstargames.com/V",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-gta-006",
+    "scope": "gta",
+    "scopeLabel": "GTA",
+    "difficulty": "medium",
+    "difficultyLabel": "متوسط",
+    "modality": "TEXT",
+    "prompt": "عميل الـ FIB الشهير ومقدم برنامج التلفزيون الذي يبتز مايكل والأبطال لتنفيذ مهام سرية في GTA V هو العميل...؟",
+    "answer": "ستيف هاينز",
+    "accepted": [
+      "ستيف هاينز",
+      "ستيف هينز",
+      "هاينز",
+      "Steve Haines",
+      "Haines"
+    ],
+    "archetype": "WORK_TO_CHARACTER",
+    "dimension": "Characters & Factions",
+    "evidenceTitle": "GTA V Character Intel: Steve Haines",
+    "evidenceUrl": "https://www.rockstargames.com/V",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-gta-007",
+    "scope": "gta",
+    "scopeLabel": "GTA",
+    "difficulty": "hard",
+    "difficultyLabel": "صعب",
+    "modality": "TEXT",
+    "prompt": "ما الاسم الكامل للبنك الاتحادي الضخم الذي يُنفذ فيه الأبطال آخر عملية سطو كبرى في قصة GTA V؟",
+    "answer": "يونيون ديبوزيتري",
+    "accepted": [
+      "يونيون ديبوزيتري",
+      "بنك يونيون ديبوزيتري",
+      "Union Depository",
+      "The Union Depository"
+    ],
+    "archetype": "DETAIL_RECOGNITION",
+    "dimension": "Lore & Campaign Events",
+    "evidenceTitle": "GTA V Heist Dossier: The Big Score",
+    "evidenceUrl": "https://www.rockstargames.com/V",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-gta-008",
+    "scope": "gta",
+    "scopeLabel": "GTA",
+    "difficulty": "hard",
+    "difficultyLabel": "صعب",
+    "modality": "IMAGE",
+    "prompt": "وش اسم هذا الكازينو الشهير في لاس فينتوراس الذي يشارك سي جي في إدارته؟",
+    "answer": "ذا فور دراغونز",
+    "accepted": [
+      "ذا فور دراغونز",
+      "فور دراغونز",
+      "كازينو فور دراجونز",
+      "كازينو التنانين الأربعة",
+      "The Four Dragons Casino",
+      "Four Dragons",
+      "Four Dragons Casino"
+    ],
+    "archetype": "MAP_RECOGNITION",
+    "dimension": "Maps & Bases",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_gta_four_dragons.webp",
+      "alt": "كازينو التنانين الأربعة (The Four Dragons) في لاس فينتوراس"
+    },
+    "evidenceTitle": "GTA SA Mission Guide: Fish in a Barrel",
+    "evidenceUrl": "https://www.rockstargames.com/sanandreas",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-gta-009",
+    "scope": "gta",
+    "scopeLabel": "GTA",
+    "difficulty": "hard",
+    "difficultyLabel": "صعب",
+    "modality": "TEXT",
+    "prompt": "في GTA: San Andreas، ضابط شرطة C.R.A.S.H. الفاسد ومساعد تينبيني الذي يُطارده ويقضي عليه سي جي في مهمة \"High Noon\" هو الضابط...؟",
+    "answer": "إيدي بولاسكي",
+    "accepted": [
+      "إيدي بولاسكي",
+      "ايدي بولاسكي",
+      "بولاسكي",
+      "Eddie Pulaski",
+      "Officer Pulaski",
+      "Pulaski"
+    ],
+    "archetype": "WORK_TO_CHARACTER",
+    "dimension": "Villains & Antagonists",
+    "evidenceTitle": "GTA SA Mission Guide: High Noon",
+    "evidenceUrl": "https://www.rockstargames.com/sanandreas",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-fifa-010",
+    "scope": "fifa",
+    "scopeLabel": "FIFA / EA FC",
+    "difficulty": "easy",
+    "difficultyLabel": "سهل",
+    "modality": "IMAGE",
+    "prompt": "وش اسم هذا الحدث؟",
+    "answer": "TOTY",
+    "accepted": [
+      "TOTY",
+      "توتي",
+      "فريق السنة",
+      "تيم أوف ذا يير",
+      "Team of the Year",
+      "Team of the year"
+    ],
+    "archetype": "EVENT_RECOGNITION",
+    "dimension": "FUT Promo Events",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_fifa_toty_card.webp",
+      "alt": "تصميم بطاقة حدث فريق السنة الأزرق والذهبي (TOTY)"
+    },
+    "evidenceTitle": "EA SPORTS FC Ultimate Team: Team of the Year (TOTY) Campaign",
+    "evidenceUrl": "https://www.ea.com/games/ea-sports-fc/ultimate-team/toty",
+    "reworked": true
+  },
+  {
+    "id": "marhala-prod-vg-fifa-011",
+    "scope": "fifa",
+    "scopeLabel": "FIFA / EA FC",
+    "difficulty": "easy",
+    "difficultyLabel": "سهل",
+    "modality": "IMAGE",
+    "prompt": "مين هذا اللاعب؟",
+    "answer": "كريستيانو رونالدو",
+    "accepted": [
+      "كريستيانو رونالدو",
+      "رونالدو",
+      "كريستيانو",
+      "Cristiano Ronaldo",
+      "Ronaldo",
+      "CR7",
+      "الدون"
+    ],
+    "archetype": "PLAYER_FROM_CARD",
+    "dimension": "Player Identification from Card",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_fifa_cr7_card.webp",
+      "alt": "بطاقة كريستيانو رونالدو الذهبية الأساسية في Ultimate Team (سهل: حجب الوجه والاسم، علم البرتغال والتقييم والإحصائيات ظاهرة)"
+    },
+    "evidenceTitle": "EA SPORTS FC Ultimate Team Database: Cristiano Ronaldo (Gold ST)",
+    "evidenceUrl": "https://www.ea.com/games/ea-sports-fc",
+    "reworked": true
+  },
+  {
+    "id": "marhala-prod-vg-fifa-012",
+    "scope": "fifa",
+    "scopeLabel": "FIFA / EA FC",
+    "difficulty": "easy",
+    "difficultyLabel": "سهل",
+    "modality": "IMAGE",
+    "prompt": "وش اسم طور كرة قدم الشوارع والملاعب المغلقة الظاهر في الصورة؟",
+    "answer": "فولتا",
+    "accepted": [
+      "فولتا",
+      "فولتا فوتبول",
+      "Volta",
+      "Volta Football",
+      "نمط فولتا",
+      "طور فولتا"
+    ],
+    "archetype": "MODE_RECOGNITION",
+    "dimension": "Gameplay Modes",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_fifa_volta_cage.webp",
+      "alt": "ملعب قفص الشوارع في طور فولتا"
+    },
+    "evidenceTitle": "EA SPORTS FIFA 20 Pitch Notes: VOLTA Football",
+    "evidenceUrl": "https://www.ea.com/games/fifa/fifa-20/news/pitch-notes-fifa-20-volta-football-features",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-fifa-013",
+    "scope": "fifa",
+    "scopeLabel": "FIFA / EA FC",
+    "difficulty": "medium",
+    "difficultyLabel": "متوسط",
+    "modality": "IMAGE",
+    "prompt": "وش اسم هذا الحدث؟",
+    "answer": "فيوتشر ستارز",
+    "accepted": [
+      "فيوتشر ستارز",
+      "Future Stars",
+      "نجوم المستقبل",
+      "فيوتشرستارز",
+      "Fut Stars",
+      "FUT Future Stars"
+    ],
+    "archetype": "EVENT_RECOGNITION",
+    "dimension": "FUT Promo Events",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_fifa_future_stars.webp",
+      "alt": "تصميم بطاقة حدث نجوم المستقبل (Future Stars)"
+    },
+    "evidenceTitle": "EA SPORTS FC Ultimate Team: Future Stars Campaign",
+    "evidenceUrl": "https://www.ea.com/games/ea-sports-fc",
+    "reworked": true
+  },
+  {
+    "id": "marhala-prod-vg-fifa-014",
+    "scope": "fifa",
+    "scopeLabel": "FIFA / EA FC",
+    "difficulty": "medium",
+    "difficultyLabel": "متوسط",
+    "modality": "IMAGE",
+    "prompt": "كم تقييم سرعة (Pace) مبابي في بطاقته الذهبية الأساسية والموضحة بـ (؟)؟",
+    "answer": "97",
+    "accepted": [
+      "97",
+      "٩٧",
+      "97 PAC",
+      "97 pac",
+      "97 سرعة",
+      "97 Pace"
+    ],
+    "archetype": "MISSING_STAT",
+    "dimension": "Card Stats & Attributes",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_fifa_mbappe_missing_pace.webp",
+      "alt": "بطاقة مبابي مع حجب إحصائية السرعة PAC بعلامة استفهام"
+    },
+    "evidenceTitle": "EA SPORTS FC 24 Official Ratings Database: Kylian Mbappé",
+    "evidenceUrl": "https://www.ea.com/games/ea-sports-fc/ratings",
+    "reworked": true
+  },
+  {
+    "id": "marhala-prod-vg-fifa-015",
+    "scope": "fifa",
+    "scopeLabel": "FIFA / EA FC",
+    "difficulty": "medium",
+    "difficultyLabel": "متوسط",
+    "modality": "IMAGE",
+    "prompt": "وش الـPlayStyle+ الناقص؟",
+    "answer": "فينيس شوت",
+    "accepted": [
+      "فينيس شوت",
+      "التسديد المقوس",
+      "Finesse Shot",
+      "فينيس",
+      "Finesse",
+      "فينيش شوت",
+      "تسديد مقوس",
+      "Finesse Shot+",
+      "PlayStyle Finesse Shot"
+    ],
+    "archetype": "MISSING_PLAYSTYLE",
+    "dimension": "PlayStyles & Gameplay Systems",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_fifa_finesse_playstyle.webp",
+      "alt": "بطاقة سون هيونغ مين مع حجب الـ PlayStyle+ الذهبي بعلامة استفهام"
+    },
+    "evidenceTitle": "EA SPORTS FC 24 Pitch Notes: PlayStyles & PlayStyles+ Deep Dive",
+    "evidenceUrl": "https://www.ea.com/games/ea-sports-fc/pitch-notes/",
+    "reworked": true
+  },
+  {
+    "id": "marhala-prod-vg-fifa-016",
+    "scope": "fifa",
+    "scopeLabel": "FIFA / EA FC",
+    "difficulty": "hard",
+    "difficultyLabel": "صعب",
+    "modality": "IMAGE",
+    "prompt": "مين هذا اللاعب؟",
+    "answer": "ديفيد بيكهام",
+    "accepted": [
+      "ديفيد بيكهام",
+      "بيكهام",
+      "ديفد بيكهام",
+      "Beckham",
+      "David Beckham"
+    ],
+    "archetype": "SPECIAL_CARD_PLAYER",
+    "dimension": "FUT Icons & Special Cards",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_fifa_beckham_card.webp",
+      "alt": "بطاقة ديفيد بيكهام الأيقونية (صعب: حجب الوجه والاسم والجنسية، التقييم 88 والمركز RM والإحصائيات ظاهرة)"
+    },
+    "evidenceTitle": "FUT.GG Secondary Database: David Beckham Icon Profile & Attributes (Player ID: 250)",
+    "evidenceUrl": "https://www.fut.gg/players/250-david-beckham/",
+    "reworked": true
+  },
+  {
+    "id": "marhala-prod-vg-fifa-017",
+    "scope": "fifa",
+    "scopeLabel": "FIFA / EA FC",
+    "difficulty": "hard",
+    "difficultyLabel": "صعب",
+    "modality": "IMAGE",
+    "prompt": "وش اسم هذا الحدث؟",
+    "answer": "شيب شيفترز",
+    "accepted": [
+      "شيب شيفترز",
+      "شيب شيفتر",
+      "Shapeshifters",
+      "Shapeshifter",
+      "شيب شفتز",
+      "المتحولون",
+      "الشيب شيفترز"
+    ],
+    "archetype": "EVENT_RECOGNITION",
+    "dimension": "FUT Promo Events",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_fifa_shapeshifters.webp",
+      "alt": "تصميم بطاقة حدث المتحولون (Shapeshifters)"
+    },
+    "evidenceTitle": "EA SPORTS FIFA Ultimate Team Campaign: Shapeshifters",
+    "evidenceUrl": "https://www.ea.com/games/ea-sports-fc",
+    "reworked": true
+  },
+  {
+    "id": "marhala-prod-vg-fifa-018",
+    "scope": "fifa",
+    "scopeLabel": "FIFA / EA FC",
+    "difficulty": "hard",
+    "difficultyLabel": "صعب",
+    "modality": "IMAGE",
+    "prompt": "مين هذا اللاعب؟",
+    "answer": "خوليت",
+    "accepted": [
+      "خوليت",
+      "رود خوليت",
+      "غوليت",
+      "رود غوليت",
+      "Gullit",
+      "Ruud Gullit"
+    ],
+    "archetype": "PLAYER_CARD_RECOGNITION",
+    "dimension": "FUT Icons & \"Gullit Gang\" Meta History",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_fifa_gullit_card.webp",
+      "alt": "بطاقة رود خوليت الأيقونية (صعب: حجب الوجه والاسم والجنسية، التقييم 90 والمركز CAM وإحصائيات Gullit Gang ظاهرة)"
+    },
+    "evidenceTitle": "FUT.GG Secondary Database: Ruud Gullit Icon Profile & Cards (ID: 214100)",
+    "evidenceUrl": "https://www.fut.gg/players/214100-ruud-gullit/",
+    "reworked": true
+  },
+  {
+    "id": "marhala-prod-vg-cod-019",
+    "scope": "call-of-duty",
+    "scopeLabel": "Call of Duty",
+    "difficulty": "easy",
+    "difficultyLabel": "سهل",
+    "modality": "IMAGE",
+    "prompt": "وش اسم هذا الماب الشهير في سلسلة Call of Duty؟",
+    "answer": "شيبمنت",
+    "accepted": [
+      "شيبمنت",
+      "شيبمنت 24/7",
+      "Shipment",
+      "ماب شيبمنت"
+    ],
+    "archetype": "MAP_RECOGNITION",
+    "dimension": "Multiplayer Maps (MP 1/7)",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_cod_shipment.webp",
+      "alt": "ماب الحاويات البحرية شيبمنت (Shipment)"
+    },
+    "evidenceTitle": "Call of Duty Multiplayer Map Intel: Shipment",
+    "evidenceUrl": "https://www.callofduty.com/blog/2019/11/Modern-Warfare-Map-Intel-Shipment",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-cod-020",
+    "scope": "call-of-duty",
+    "scopeLabel": "Call of Duty",
+    "difficulty": "easy",
+    "difficultyLabel": "سهل",
+    "modality": "AUDIO",
+    "prompt": "هذا المؤثر الصوتي الشهير في Call of Duty يدل على إيش؟",
+    "answer": "هيتماركر",
+    "accepted": [
+      "هيتماركر",
+      "هيتمارك",
+      "Hitmarker",
+      "hitmarker",
+      "إصابة الهدف",
+      "اصابة الهدف",
+      "صوت الاصابة",
+      "دمج العدو"
+    ],
+    "archetype": "AUDIO_GAMEPLAY_CUE",
+    "dimension": "Core Combat Audio FX (MP 2/7)",
+    "media": {
+      "type": "AUDIO",
+      "url": "../../backend/uploads/question-assets/audio/vg_cod_hitmarker.mp3",
+      "label": "صوت إصابة الهدف (Hitmarker Sound Effect)"
+    },
+    "evidenceTitle": "Call of Duty Audio Design & Combat Feedback: Hitmarkers",
+    "evidenceUrl": "https://www.callofduty.com/",
+    "reworked": true
+  },
+  {
+    "id": "marhala-prod-vg-cod-021",
+    "scope": "call-of-duty",
+    "scopeLabel": "Call of Duty",
+    "difficulty": "easy",
+    "difficultyLabel": "سهل",
+    "modality": "IMAGE",
+    "prompt": "وش اسم هذه الآلة الشهيرة لترقية الأسلحة في طور الزومبي؟",
+    "answer": "باك ابنش",
+    "accepted": [
+      "باك ابنش",
+      "باك آبانش",
+      "باك ا بنش",
+      "Pack-a-Punch",
+      "Pack a Punch",
+      "Pack A Punch"
+    ],
+    "archetype": "DETAIL_RECOGNITION",
+    "dimension": "Zombies Mechanics (Zombies 1/1)",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_cod_pack_a_punch.webp",
+      "alt": "آلة الترقية Pack-a-Punch في طور الزومبي"
+    },
+    "evidenceTitle": "Call of Duty Zombies Guide: Pack-a-Punch",
+    "evidenceUrl": "https://www.treyarch.com/game-intel/zombies",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-cod-022",
+    "scope": "call-of-duty",
+    "scopeLabel": "Call of Duty",
+    "difficulty": "medium",
+    "difficultyLabel": "متوسط",
+    "modality": "IMAGE",
+    "prompt": "وش اسم هذه الأداة الدفاعية في اللعب الجماعي؟",
+    "answer": "تروفي سيستم",
+    "accepted": [
+      "تروفي سيستم",
+      "تروفي",
+      "Trophy System",
+      "Trophy",
+      "التروفي",
+      "نظام تروفي",
+      "جهاز التروفي",
+      "تروفي سستم",
+      "Trophy system"
+    ],
+    "archetype": "EQUIPMENT_RECOGNITION",
+    "dimension": "Multiplayer Tactical Equipment (MP 3/7)",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_cod_trophy_system.webp",
+      "alt": "جهاز الحماية والتصدي للمقذوفات Trophy System في طور اللعب الجماعي"
+    },
+    "evidenceTitle": "Call of Duty Multiplayer Field Upgrades & Equipment: Trophy System",
+    "evidenceUrl": "https://www.callofduty.com/",
+    "reworked": true
+  },
+  {
+    "id": "marhala-prod-vg-cod-023",
+    "scope": "call-of-duty",
+    "scopeLabel": "Call of Duty",
+    "difficulty": "medium",
+    "difficultyLabel": "متوسط",
+    "modality": "TEXT",
+    "prompt": "في قصة Modern Warfare 2 الأصلية، من هو الجنرال الخائن الذي يغدر بفرقة Task Force 141 في مهمة Loose Ends؟",
+    "answer": "الجنرال شيبرد",
+    "accepted": [
+      "الجنرال شيبرد",
+      "شيبرد",
+      "General Shepherd",
+      "Shepherd"
+    ],
+    "archetype": "WORK_TO_CHARACTER",
+    "dimension": "Campaign Lore (Campaign 1/1)",
+    "evidenceTitle": "Call of Duty: MW2 Campaign \"Loose Ends\"",
+    "evidenceUrl": "https://www.callofduty.com/modernwarfare2",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-cod-024",
+    "scope": "call-of-duty",
+    "scopeLabel": "Call of Duty",
+    "difficulty": "medium",
+    "difficultyLabel": "متوسط",
+    "modality": "IMAGE",
+    "prompt": "هذا الـ Perk الشهير في اللعب الجماعي وش اسمه؟",
+    "answer": "غوست",
+    "accepted": [
+      "غوست",
+      "جوست",
+      "Ghost",
+      "Ghost Perk",
+      "بيرك غوست"
+    ],
+    "archetype": "PERK_RECOGNITION",
+    "dimension": "Multiplayer Perks (MP 4/7)",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_cod_ghost_perk.webp",
+      "alt": "أيقونة ميزة التخفي Ghost Perk"
+    },
+    "evidenceTitle": "Call of Duty: MWII Perk Packages: Ghost",
+    "evidenceUrl": "https://www.callofduty.com/blog/2022/10/call-of-duty-modern-warfare-II-perk-packages",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-cod-025",
+    "scope": "call-of-duty",
+    "scopeLabel": "Call of Duty",
+    "difficulty": "hard",
+    "difficultyLabel": "صعب",
+    "modality": "IMAGE",
+    "prompt": "ما اسم قناصة البولت-أكشن (Bolt-Action) الأسطورية هذه من Modern Warfare 2؟",
+    "answer": "انترفينشن",
+    "accepted": [
+      "انترفينشن",
+      "انترفنشن",
+      "إنترفينشن",
+      "Intervention",
+      "قناصة انترفينشن",
+      "CheyTac Intervention"
+    ],
+    "archetype": "WEAPON_RECOGNITION",
+    "dimension": "Multiplayer Weapons (MP 5/7)",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_cod_intervention.webp",
+      "alt": "قناصة CheyTac Intervention الأسطورية"
+    },
+    "evidenceTitle": "Call of Duty: Modern Warfare 2 Weapon Arsenal: Intervention",
+    "evidenceUrl": "https://www.callofduty.com/",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-cod-026",
+    "scope": "call-of-duty",
+    "scopeLabel": "Call of Duty",
+    "difficulty": "hard",
+    "difficultyLabel": "صعب",
+    "modality": "IMAGE",
+    "prompt": "وش اسم هذا التمويه النهائي (Mastery Camo) الشهير في Modern Warfare؟",
+    "answer": "دماسكوس",
+    "accepted": [
+      "دماسكوس",
+      "دمشقي",
+      "Damascus",
+      "Damascus Camo",
+      "تمويه دمشقي",
+      "تمويه دماسكوس"
+    ],
+    "archetype": "CAMO_RECOGNITION",
+    "dimension": "Weapon Mastery & Camo Progression (MP 6/7)",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_cod_damascus_camo.webp",
+      "alt": "تمويه دمشقي (Damascus Mastery Camo)"
+    },
+    "evidenceTitle": "Call of Duty: Modern Warfare Mastery Camo Guide",
+    "evidenceUrl": "https://www.callofduty.com/blog/2019/11/Modern-Warfare-Gunsmith-Camo-Progression",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-cod-027",
+    "scope": "call-of-duty",
+    "scopeLabel": "Call of Duty",
+    "difficulty": "hard",
+    "difficultyLabel": "صعب",
+    "modality": "IMAGE",
+    "prompt": "ما اسم سلاح الشوتغن الأسطوري هذا من Modern Warfare 2؟",
+    "answer": "موديل 1887",
+    "accepted": [
+      "موديل 1887",
+      "1887",
+      "Model 1887",
+      "موديل",
+      "شوتغن موديل 1887",
+      "شوتجن موديل 1887",
+      "Model 1887s",
+      "موديل 1887 اكيمبو",
+      "موديل 1887 أكيمبو",
+      "WMR 1887",
+      "1887s"
+    ],
+    "archetype": "WEAPON_RECOGNITION",
+    "dimension": "Multiplayer Weapons & Meta Legends (MP 7/7)",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_cod_model_1887.webp",
+      "alt": "سلاح الشوتغن الأسطوري Model 1887 بنظام الرافعة الكلاسيكي من MW2"
+    },
+    "evidenceTitle": "Call of Duty: Modern Warfare 2 Weapon Arsenal: Model 1887",
+    "evidenceUrl": "https://www.callofduty.com/",
+    "reworked": true
+  },
+  {
+    "id": "marhala-prod-vg-ow-028",
+    "scope": "overwatch",
+    "scopeLabel": "Overwatch",
+    "difficulty": "easy",
+    "difficultyLabel": "سهل",
+    "modality": "IMAGE",
+    "prompt": "وش اسم هذا الماب؟",
+    "answer": "كينقز رو",
+    "accepted": [
+      "كينقز رو",
+      "كينغز رو",
+      "كينجز رو",
+      "Kings Row",
+      "King's Row",
+      "ماب كينقز رو",
+      "كينقزرو"
+    ],
+    "archetype": "MAP_RECOGNITION",
+    "dimension": "Iconic Maps (Hybrid)",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_ow_kings_row.webp",
+      "alt": "ماب King's Row في لندن"
+    },
+    "evidenceTitle": "Blizzard Overwatch Maps: King's Row (Hybrid, England)",
+    "evidenceUrl": "https://overwatch.blizzard.com/en-us/maps/",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-ow-029",
+    "scope": "overwatch",
+    "scopeLabel": "Overwatch",
+    "difficulty": "easy",
+    "difficultyLabel": "سهل",
+    "modality": "IMAGE",
+    "prompt": "من هذه الشخصية؟",
+    "answer": "راينهارت",
+    "accepted": [
+      "راينهارت",
+      "رينهارت",
+      "راينهاردت",
+      "Reinhardt",
+      "رين هارت"
+    ],
+    "archetype": "CHARACTER_RECOGNITION",
+    "dimension": "Playable Heroes (Tank)",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_ow_reinhardt.webp",
+      "alt": "شخصية راينهارت في درعه الصليبي"
+    },
+    "evidenceTitle": "Blizzard Overwatch Hero Roster: Reinhardt (Tank)",
+    "evidenceUrl": "https://overwatch.blizzard.com/en-us/heroes/reinhardt/",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-ow-030",
+    "scope": "overwatch",
+    "scopeLabel": "Overwatch",
+    "difficulty": "easy",
+    "difficultyLabel": "سهل",
+    "modality": "AUDIO",
+    "prompt": "صوت الـ Ultimate هذا لأي شخصية؟",
+    "answer": "ديفا",
+    "accepted": [
+      "ديفا",
+      "دي فا",
+      "D.Va",
+      "DVa",
+      "dva",
+      "ديڤا"
+    ],
+    "archetype": "AUDIO_ULTIMATE_CUE",
+    "dimension": "Hero Ultimates & Voice Lines",
+    "media": {
+      "type": "AUDIO",
+      "url": "../../backend/uploads/question-assets/audio/vg_ow_dva_nerf_this.mp3",
+      "label": "نداء Ultimate شخصية D.Va («Nerf this!»)"
+    },
+    "evidenceTitle": "Blizzard Overwatch Voice Lines: D.Va Self-Destruct Ultimate",
+    "evidenceUrl": "https://overwatch.blizzard.com/en-us/heroes/dva/",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-ow-031",
+    "scope": "overwatch",
+    "scopeLabel": "Overwatch",
+    "difficulty": "medium",
+    "difficultyLabel": "متوسط",
+    "modality": "IMAGE",
+    "prompt": "وش اسم هذا الماب؟",
+    "answer": "إيليوس",
+    "accepted": [
+      "ايليوس",
+      "إيليوس",
+      "اليوس",
+      "Ilios",
+      "ماب ايليوس",
+      "ماب إيليوس"
+    ],
+    "archetype": "MAP_RECOGNITION",
+    "dimension": "Iconic Maps (Control)",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_ow_ilios.webp",
+      "alt": "ماب إيليوس في اليونان"
+    },
+    "evidenceTitle": "Blizzard Overwatch Maps: Ilios (Control, Greece)",
+    "evidenceUrl": "https://overwatch.blizzard.com/en-us/maps/",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-ow-032",
+    "scope": "overwatch",
+    "scopeLabel": "Overwatch",
+    "difficulty": "medium",
+    "difficultyLabel": "متوسط",
+    "modality": "AUDIO",
+    "prompt": "صوت الـ Ultimate هذا لأي شخصية؟",
+    "answer": "لوسيو",
+    "accepted": [
+      "لوسيو",
+      "لوشيو",
+      "Lucio",
+      "Lúcio",
+      "لوسيوو"
+    ],
+    "archetype": "AUDIO_ULTIMATE_CUE",
+    "dimension": "Hero Ultimates (Support)",
+    "media": {
+      "type": "AUDIO",
+      "url": "../../backend/uploads/question-assets/audio/vg_ow_lucio_break_it_down.mp3",
+      "label": "نداء Ultimate شخصية Lúcio («Let's break it down!»)"
+    },
+    "evidenceTitle": "Blizzard Overwatch Voice Lines: Lúcio Sound Barrier",
+    "evidenceUrl": "https://overwatch.blizzard.com/en-us/heroes/lucio/",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-ow-033",
+    "scope": "overwatch",
+    "scopeLabel": "Overwatch",
+    "difficulty": "medium",
+    "difficultyLabel": "متوسط",
+    "modality": "IMAGE",
+    "prompt": "هذه القدرة لأي شخصية؟",
+    "answer": "ميرسي",
+    "accepted": [
+      "ميرسي",
+      "مارسي",
+      "Mercy",
+      "ميرسى"
+    ],
+    "archetype": "ABILITY_RECOGNITION",
+    "dimension": "Hero Abilities & Roles (Support)",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_ow_mercy_resurrect.webp",
+      "alt": "أيقونة قدرة الإنعاش (Resurrect)"
+    },
+    "evidenceTitle": "Blizzard Overwatch Hero Kit: Mercy (Resurrect Ability)",
+    "evidenceUrl": "https://overwatch.blizzard.com/en-us/heroes/mercy/",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-ow-034",
+    "scope": "overwatch",
+    "scopeLabel": "Overwatch",
+    "difficulty": "hard",
+    "difficultyLabel": "صعب",
+    "modality": "AUDIO",
+    "prompt": "صوت الـ Ultimate هذا لأي شخصية؟",
+    "answer": "سومبرا",
+    "accepted": [
+      "سومبرا",
+      "سمبرا",
+      "Sombra",
+      "صومبرا"
+    ],
+    "archetype": "AUDIO_ULTIMATE_CUE",
+    "dimension": "Ultimates & Sound Cues (Hostile Voice Line)",
+    "media": {
+      "type": "AUDIO",
+      "url": "../../backend/uploads/question-assets/audio/vg_ow_sombra_emp.mp3",
+      "label": "نداء Ultimate المعادي لسومبرا («¡Apagando las luces!»)"
+    },
+    "evidenceTitle": "Blizzard Overwatch Voice Roster: Sombra EMP Ultimate Cue",
+    "evidenceUrl": "https://overwatch.blizzard.com/en-us/heroes/sombra/",
+    "reworked": false
+  },
+  {
+    "id": "marhala-prod-vg-ow-035",
+    "scope": "overwatch",
+    "scopeLabel": "Overwatch",
+    "difficulty": "hard",
+    "difficultyLabel": "صعب",
+    "modality": "IMAGE",
+    "prompt": "وش اسم هذا الماب؟",
+    "answer": "روت 66",
+    "accepted": [
+      "روت 66",
+      "روت 66",
+      "Route 66",
+      "رووت 66",
+      "ماب روت 66",
+      "طريق 66"
+    ],
+    "archetype": "MAP_RECOGNITION",
+    "dimension": "Competitive Maps & Landmarks (Escort)",
+    "media": {
+      "type": "IMAGE",
+      "url": "../../backend/uploads/question-assets/images/vg_ow_route66_landmark.webp",
+      "alt": "جسر القطار المنحرف ونفق الصخور في ماب روت 66"
+    },
+    "evidenceTitle": "Blizzard Overwatch Maps: Route 66 (Escort)",
+    "evidenceUrl": "https://overwatch.blizzard.com/en-us/maps/",
+    "reworked": true
+  },
+  {
+    "id": "marhala-prod-vg-ow-036",
+    "scope": "overwatch",
+    "scopeLabel": "Overwatch",
+    "difficulty": "hard",
+    "difficultyLabel": "صعب",
+    "modality": "AUDIO",
+    "prompt": "صوت الـ Ultimate هذا لأي شخصية؟",
+    "answer": "سيغما",
+    "accepted": [
+      "سيغما",
+      "سيجما",
+      "Sigma",
+      "سقما",
+      "البروفيسور سيغما"
+    ],
+    "archetype": "AUDIO_ULTIMATE_CUE",
+    "dimension": "Ultimates & Foreign Language Voice Lines (Dutch)",
+    "media": {
+      "type": "AUDIO",
+      "url": "../../backend/uploads/question-assets/audio/vg_ow_sigma_gravitic_flux.mp3",
+      "label": "نداء Ultimate المعادي لسيغما بالهولندية («Het universum zingt voor mij!»)"
+    },
+    "evidenceTitle": "Blizzard Overwatch Voice Roster: Sigma Gravitic Flux Ultimate Cue",
+    "evidenceUrl": "https://overwatch.blizzard.com/en-us/heroes/sigma/",
+    "reworked": true
+  }
+];
+
+let filteredIndices = [];
+let currentIndex = 0;
+let reviewsState = {};
+
+const STORAGE_KEY = "AKWAAN_MARHALA_BATCH_01_REVIEW";
+
+function init() {
+  loadReviews();
+  applyFilters();
+}
+
+const CURRENT_BATCH_VERSION = "ROUND_9_FIFA_DIFFICULTY_CONSISTENCY_FIX";
+const VERSION_KEY = "AKWAAN_MARHALA_BATCH_VERSION";
+const CHANGED_REPAIR_IDS = [
+  "marhala-prod-vg-fifa-011",
+  "marhala-prod-vg-fifa-016",
+  "marhala-prod-vg-fifa-018",
+  "marhala-prod-vg-cod-022",
+  "marhala-prod-vg-cod-027"
+];
+
+function loadReviews() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const lastVersion = localStorage.getItem(VERSION_KEY);
+    let parsed = raw ? JSON.parse(raw) : {};
+
+    // Reset ONLY changed items on version transition, preserving all other items
+    if (lastVersion !== CURRENT_BATCH_VERSION) {
+      CHANGED_REPAIR_IDS.forEach(id => {
+        if (parsed[id]) {
+          delete parsed[id].verdict;
+          delete parsed[id].rating;
+          delete parsed[id].note;
+        }
+      });
+      localStorage.setItem(VERSION_KEY, CURRENT_BATCH_VERSION);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+    }
+    reviewsState = parsed;
+  } catch (e) {
+    reviewsState = {};
+  }
+}
+
+function saveReviews() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(reviewsState));
+  updateProgress();
+}
+
+function applyFilters() {
+  const scopeVal = document.getElementById("scopeFilter").value;
+  const diffVal = document.getElementById("difficultyFilter").value;
+  const statusVal = document.getElementById("statusFilter").value;
+
+  filteredIndices = [];
+  QUESTIONS_DATA.forEach((q, idx) => {
+    if (scopeVal !== "all" && q.scope !== scopeVal) return;
+    if (diffVal !== "all" && q.difficulty !== diffVal) return;
+
+    const r = reviewsState[q.id] || {};
+    const verdict = r.verdict || "unreviewed";
+    if (statusVal !== "all" && verdict !== statusVal) return;
+
+    filteredIndices.push(idx);
+  });
+
+  currentIndex = 0;
+  renderCurrentQuestion();
+  updateProgress();
+}
+
+function renderCurrentQuestion() {
+  if (filteredIndices.length === 0) {
+    document.getElementById("promptText").textContent = "لا توجد أسئلة تطابق الفلتر المحدد.";
+    document.getElementById("itemCounter").textContent = "0 / 0";
+    document.getElementById("answerContent").className = "answer-hidden";
+    document.getElementById("revealBtnContainer").style.display = "none";
+    document.getElementById("mediaIntentContainer").style.display = "none";
+    document.getElementById("mediaIntentContainer").innerHTML = "";
+    document.getElementById("scopeBadge").textContent = "---";
+    document.getElementById("diffBadge").textContent = "---";
+    document.getElementById("archetypeBadge").textContent = "---";
+    document.getElementById("reworkBadge").style.display = "none";
+    return;
+  }
+
+  const qIndex = filteredIndices[currentIndex];
+  const q = QUESTIONS_DATA[qIndex];
+  const r = reviewsState[q.id] || {};
+
+  // Badges
+  const scopeBadge = document.getElementById("scopeBadge");
+  scopeBadge.textContent = q.scopeLabel;
+
+  const diffBadge = document.getElementById("diffBadge");
+  diffBadge.textContent = q.difficultyLabel;
+  diffBadge.className = "badge badge-" + q.difficulty;
+
+  const archBadge = document.getElementById("archetypeBadge");
+  archBadge.textContent = q.archetype;
+
+  const reworkBadge = document.getElementById("reworkBadge");
+  reworkBadge.style.display = q.reworked ? "inline-flex" : "none";
+
+  // Modality Badge
+  const modalityBadge = document.getElementById("modalityBadge");
+  if (q.modality) {
+    modalityBadge.style.display = "inline-flex";
+    if (q.modality === "IMAGE") {
+      modalityBadge.textContent = "📷 IMAGE";
+      modalityBadge.className = "badge badge-modality badge-mod-image";
+    } else if (q.modality === "AUDIO") {
+      modalityBadge.textContent = "🔊 AUDIO";
+      modalityBadge.className = "badge badge-modality badge-mod-audio";
+    } else {
+      modalityBadge.textContent = "📝 TEXT";
+      modalityBadge.className = "badge badge-modality badge-mod-text";
+    }
+  } else {
+    modalityBadge.style.display = "none";
+  }
+
+  // Real Enriched Media Container (Image / Audio) — Zero Leakage Pre-Answer
+  const mediaContainer = document.getElementById("mediaIntentContainer");
+  if (q.media) {
+    mediaContainer.style.display = "block";
+    if (q.media.type === "IMAGE") {
+      mediaContainer.innerHTML = `
+        <div class="real-media-container">
+          <img src="${q.media.url}" alt="صورة السؤال" class="real-media-image" id="questionImage" />
+        </div>
+      `;
+    } else if (q.media.type === "AUDIO") {
+      mediaContainer.innerHTML = `
+        <div class="real-media-container">
+          <div class="real-media-audio-card">
+            <div style="font-size: 0.85rem; font-weight: 700; color: #c084fc;" id="audioPlayerLabel">🔊 مقطع صوتي للسؤال</div>
+            <audio controls class="real-media-audio-player" src="${q.media.url}" preload="auto"></audio>
+          </div>
+        </div>
+      `;
+    }
+  } else if (q.mediaIntent) {
+    mediaContainer.style.display = "block";
+    const m = q.mediaIntent;
+    mediaContainer.innerHTML = `
+      <div class="media-intent-card">
+        <div class="media-intent-header">
+          <span class="badge ${m.type === 'IMAGE' ? 'badge-mod-image' : 'badge-mod-audio'}">${m.type === 'IMAGE' ? '📷 صورة مطلوبة' : '🔊 مقطع صوتي مطلوب'}</span>
+          <span style="font-size: 0.85rem; font-weight: 800; color: #cbd5e1;">وسائط السؤال</span>
+        </div>
+        <div class="media-intent-body" style="color: var(--text-muted); font-size: 0.85rem;">مواصفات وتفاصيل الوسائط محجوبة قبل كشف الإجابة لتجنب حرق الحل.</div>
+      </div>
+    `;
+  } else {
+    mediaContainer.style.display = "none";
+    mediaContainer.innerHTML = "";
+  }
+
+  // Counter
+  document.getElementById("itemCounter").textContent = `${currentIndex + 1} / ${filteredIndices.length} (رقم #${qIndex + 1})`;
+
+  // Prompt
+  document.getElementById("promptText").textContent = q.prompt;
+
+  // Answer Section (Initially Hidden)
+  document.getElementById("revealBtnContainer").style.display = "flex";
+  document.getElementById("answerContent").className = "answer-hidden";
+  document.getElementById("canonicalAnswerText").textContent = q.answer;
+
+  const acceptedContainer = document.getElementById("acceptedList");
+  acceptedContainer.innerHTML = "";
+  q.accepted.forEach(ans => {
+    const pill = document.createElement("span");
+    pill.className = "accepted-pill";
+    pill.textContent = ans;
+    acceptedContainer.appendChild(pill);
+  });
+
+  // Post-Reveal Media & Context Metadata
+  const mediaMetaRow = document.getElementById("mediaMetaRow");
+  const mediaMetaContent = document.getElementById("mediaMetaContent");
+  const metaItems = [];
+
+  if (q.dimension) {
+    metaItems.push(`
+      <div class="media-meta-item">
+        <span class="media-meta-label">البُعد المعرفي:</span>
+        <span class="media-meta-value">${q.dimension}</span>
+      </div>
+    `);
+  }
+
+  if (q.media) {
+    if (q.media.label) {
+      metaItems.push(`
+        <div class="media-meta-item">
+          <span class="media-meta-label">وصف الصوت:</span>
+          <span class="media-meta-value">${q.media.label}</span>
+        </div>
+      `);
+    }
+    if (q.media.alt) {
+      metaItems.push(`
+        <div class="media-meta-item">
+          <span class="media-meta-label">وصف الصورة:</span>
+          <span class="media-meta-value">${q.media.alt}</span>
+        </div>
+      `);
+    }
+    if (q.media.url) {
+      metaItems.push(`
+        <div class="media-meta-item">
+          <span class="media-meta-label">مسار الملف:</span>
+          <span class="media-meta-code">${q.media.url}</span>
+        </div>
+      `);
+    }
+  } else if (q.mediaIntent) {
+    metaItems.push(`
+      <div class="media-meta-item">
+        <span class="media-meta-label">مواصفات الوسائط:</span>
+        <span class="media-meta-value"><strong>${q.mediaIntent.subject || ''}</strong> — ${q.mediaIntent.description || ''}</span>
+      </div>
+    `);
+  }
+
+  if (metaItems.length > 0) {
+    mediaMetaRow.style.display = "flex";
+    mediaMetaContent.innerHTML = metaItems.join("");
+  } else {
+    mediaMetaRow.style.display = "none";
+    mediaMetaContent.innerHTML = "";
+  }
+
+  document.getElementById("evidenceClaim").textContent = q.evidenceTitle;
+  const link = document.getElementById("evidenceLink");
+  link.href = q.evidenceUrl;
+
+  // Review Controls
+  document.getElementById("btnApprove").className = "verdict-btn" + (r.verdict === "approved" ? " selected-approve" : "");
+  document.getElementById("btnModify").className = "verdict-btn" + (r.verdict === "modified" ? " selected-modify" : "");
+  document.getElementById("btnReplace").className = "verdict-btn" + (r.verdict === "replace" ? " selected-replace" : "");
+
+  renderRating(r.rating || 0);
+  document.getElementById("noteInput").value = r.note || "";
+
+  // Navigation Buttons
+  document.getElementById("prevBtn").disabled = currentIndex === 0;
+  document.getElementById("nextBtn").disabled = currentIndex === filteredIndices.length - 1;
+}
+
+function revealAnswer() {
+  document.getElementById("revealBtnContainer").style.display = "none";
+  document.getElementById("answerContent").className = "";
+
+  const qIndex = filteredIndices[currentIndex];
+  const q = QUESTIONS_DATA[qIndex];
+  if (q && q.media) {
+    if (q.media.type === "AUDIO" && q.media.label) {
+      const audioLbl = document.getElementById("audioPlayerLabel");
+      if (audioLbl) {
+        audioLbl.textContent = `🔊 مقطع صوتي للسؤال — ${q.media.label}`;
+      }
+    } else if (q.media.type === "IMAGE" && q.media.alt) {
+      const imgEl = document.getElementById("questionImage");
+      if (imgEl) {
+        imgEl.alt = q.media.alt;
+      }
+    }
+  }
+}
+
+function setVerdict(verdict) {
+  if (filteredIndices.length === 0) return;
+  const q = QUESTIONS_DATA[filteredIndices[currentIndex]];
+  if (!reviewsState[q.id]) reviewsState[q.id] = { itemId: q.id };
+
+  if (reviewsState[q.id].verdict === verdict) {
+    delete reviewsState[q.id].verdict;
+  } else {
+    reviewsState[q.id].verdict = verdict;
+  }
+  saveReviews();
+  renderCurrentQuestion();
+}
+
+function setRating(rating) {
+  if (filteredIndices.length === 0) return;
+  const q = QUESTIONS_DATA[filteredIndices[currentIndex]];
+  if (!reviewsState[q.id]) reviewsState[q.id] = { itemId: q.id };
+
+  if (reviewsState[q.id].rating === rating) {
+    delete reviewsState[q.id].rating;
+  } else {
+    reviewsState[q.id].rating = rating;
+  }
+  saveReviews();
+  renderCurrentQuestion();
+}
+
+function renderRating(rating) {
+  const stars = document.querySelectorAll(".star");
+  stars.forEach((star, idx) => {
+    if (idx < rating) {
+      star.classList.add("active");
+    } else {
+      star.classList.remove("active");
+    }
+  });
+}
+
+function saveCurrentNote() {
+  if (filteredIndices.length === 0) return;
+  const q = QUESTIONS_DATA[filteredIndices[currentIndex]];
+  if (!reviewsState[q.id]) reviewsState[q.id] = { itemId: q.id };
+
+  reviewsState[q.id].note = document.getElementById("noteInput").value;
+  saveReviews();
+}
+
+function prevQuestion() {
+  if (currentIndex > 0) {
+    currentIndex--;
+    renderCurrentQuestion();
+  }
+}
+
+function nextQuestion() {
+  if (currentIndex < filteredIndices.length - 1) {
+    currentIndex++;
+    renderCurrentQuestion();
+  }
+}
+
+function updateProgress() {
+  let reviewedCount = 0;
+  QUESTIONS_DATA.forEach(q => {
+    if (reviewsState[q.id] && reviewsState[q.id].verdict) {
+      reviewedCount++;
+    }
+  });
+
+  const total = QUESTIONS_DATA.length;
+  const pct = Math.round((reviewedCount / total) * 100);
+
+  document.getElementById("progressText").textContent = `${reviewedCount} / ${total} (${pct}%)`;
+  document.getElementById("progressBar").style.width = pct + "%";
+}
+
+function openSummaryModal() {
+  let approved = 0, modified = 0, replace = 0, unreviewed = 0;
+  const flaggedByScope = { gta: [], fifa: [], "call-of-duty": [], overwatch: [] };
+
+  QUESTIONS_DATA.forEach((q, idx) => {
+    const r = reviewsState[q.id] || {};
+    if (r.verdict === "approved") approved++;
+    else if (r.verdict === "modified") {
+      modified++;
+      flaggedByScope[q.scope].push({ num: idx + 1, q: q.prompt, v: "يحتاج تعديل", note: r.note });
+    } else if (r.verdict === "replace") {
+      replace++;
+      flaggedByScope[q.scope].push({ num: idx + 1, q: q.prompt, v: "استبدال", note: r.note });
+    } else {
+      unreviewed++;
+    }
+  });
+
+  document.getElementById("statApproved").textContent = approved;
+  document.getElementById("statModified").textContent = modified;
+  document.getElementById("statReplace").textContent = replace;
+  document.getElementById("statUnreviewed").textContent = unreviewed;
+
+  const container = document.getElementById("flaggedContainer");
+  container.innerHTML = "";
+
+  const scopeNames = { gta: "GTA", fifa: "FIFA / EA FC", "call-of-duty": "Call of Duty", overwatch: "Overwatch" };
+  let hasFlagged = false;
+
+  for (const [scopeKey, items] of Object.entries(flaggedByScope)) {
+    if (items.length > 0) {
+      hasFlagged = true;
+      const grp = document.createElement("div");
+      grp.style.display = "flex";
+      grp.style.flexDirection = "column";
+      grp.style.gap = "6px";
+      grp.innerHTML = `<span style="font-weight: 700; color: #a5b4fc; font-size: 0.9rem;">${scopeNames[scopeKey]} (${items.length}):</span>`;
+
+      items.forEach(it => {
+        const row = document.createElement("div");
+        row.className = "flagged-item";
+        row.innerHTML = `
+          <span><strong>#${it.num}</strong> ${it.q}</span>
+          <span style="color: ${it.v === 'استبدال' ? 'var(--danger)' : 'var(--warning)'}; font-weight:700;">${it.v}${it.note ? ' (' + it.note + ')' : ''}</span>
+        `;
+        grp.appendChild(row);
+      });
+      container.appendChild(grp);
+    }
+  }
+
+  if (!hasFlagged) {
+    container.innerHTML = '<span style="color: var(--text-muted); font-size: 0.85rem;">لا توجد ملاحظات تعديل أو استبدال مسجلة حتى الآن.</span>';
+  }
+
+  const exportPayload = QUESTIONS_DATA.map(q => {
+    const r = reviewsState[q.id] || {};
+    return {
+      itemId: q.id,
+      prompt: q.prompt,
+      canonicalAnswer: q.answer,
+      difficulty: q.difficulty,
+      verdict: r.verdict || "unreviewed",
+      rating: r.rating || null,
+      note: r.note || ""
+    };
+  });
+
+  document.getElementById("jsonExportArea").value = JSON.stringify(exportPayload, null, 2);
+  document.getElementById("summaryModal").className = "modal-overlay open";
+}
+
+function closeSummaryModal() {
+  document.getElementById("summaryModal").className = "modal-overlay";
+}
+
+function copyJsonToClipboard() {
+  const area = document.getElementById("jsonExportArea");
+  area.select();
+  document.execCommand("copy");
+  alert("تم نسخ تقرير المراجعة بتنسيق JSON إلى الحافظة!");
+}
+
+function resetAllReviews() {
+  if (confirm("هل أنت متأكد من رغبتك في إعادة ضبط جميع تقييمات المراجعة؟")) {
+    reviewsState = {};
+    localStorage.removeItem(STORAGE_KEY);
+    applyFilters();
+  }
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
+  if (e.key === "ArrowLeft") nextQuestion();
+  if (e.key === "ArrowRight") prevQuestion();
+  if (e.key === " ") {
+    e.preventDefault();
+    revealAnswer();
+  }
+});
+
+init();
+</script>
+
+</body>
+</html>

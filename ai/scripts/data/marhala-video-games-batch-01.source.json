@@ -1,0 +1,1334 @@
+{
+  "artifactType": "marhala-production-candidate-batch",
+  "title": "Akwaan Video Games Marhala Question Craft Batch 01 — Production Final Set",
+  "version": "1.0-production-ready",
+  "generatedAt": "2026-08-27",
+  "world": "video-games",
+  "scopeCount": 4,
+  "questionCount": 36,
+  "distribution": {
+    "perScope": 9,
+    "totalText": 5,
+    "totalImage": 24,
+    "totalAudio": 7
+  },
+  "reviewSummary": {
+    "totalItems": 36,
+    "humanApprovedCount": 36,
+    "productReviewPendingCount": 0
+  },
+  "questions": [
+    {
+      "id": "marhala-prod-vg-gta-001",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "modality": "audio",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "صوت أي شخصية هذا في بداية رحلته بمدينة لوس سانتوس؟"
+      },
+      "correctAnswer": "سي جي",
+      "acceptedAnswers": [
+        "سي جي",
+        "CJ",
+        "كارل جونسون",
+        "Carl Johnson"
+      ],
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/audio/vg_gta_cj_here_we_go_again.mp3",
+            "altText": ""
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "AUDIO_CHARACTER_CUE",
+        "contentDimension": "Playable Heroes"
+      },
+      "evidence": {
+        "title": "GTA San Andreas Script: Opening Scene (Los Santos)",
+        "url": "https://www.rockstargames.com/sanandreas"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-002",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "modality": "image",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "وش اسم هذا الرصيف البحري الشهير في لوس سانتوس؟"
+      },
+      "correctAnswer": "ديل بيرو",
+      "acceptedAnswers": [
+        "ديل بيرو",
+        "رصيف ديل بيرو",
+        "Del Perro",
+        "Del Perro Pier"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_gta_del_perro_pier.webp",
+            "altText": "رصيف ديل بيرو وعجلة الملاهي في لوس سانتوس"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "MAP_RECOGNITION",
+        "contentDimension": "Maps & Locations"
+      },
+      "evidence": {
+        "title": "GTA V Landmark Guide: Del Perro Pier",
+        "url": "https://www.rockstargames.com/V/world"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-003",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "modality": "text",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "في قصة GTA IV، البطل نيكو بيليك وصل إلى ليبرتي سيتي قادماً من أي قارة؟"
+      },
+      "correctAnswer": "أوروبا",
+      "acceptedAnswers": [
+        "أوروبا",
+        "شرق أوروبا",
+        "اوروبا الشرقية",
+        "Europe",
+        "Eastern Europe"
+      ],
+      "media": {
+        "type": "none"
+      },
+      "authoring": {
+        "questionArchetype": "FAST_ATTRIBUTE",
+        "contentDimension": "Lore & Origin"
+      },
+      "evidence": {
+        "title": "GTA IV Official Game Dossier: Niko Bellic",
+        "url": "https://www.rockstargames.com/IV"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-004",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "modality": "image",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "وش اسم هذه السيارة الرياضية الشهيرة لفرانكلين في GTA V؟"
+      },
+      "correctAnswer": "بافالو",
+      "acceptedAnswers": [
+        "بافالو",
+        "بافالو اس",
+        "Buffalo",
+        "Bravado Buffalo",
+        "Buffalo S"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_gta_buffalo_s.webp",
+            "altText": "سيارة Bravado Buffalo S الرياضية"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "VEHICLE_RECOGNITION",
+        "contentDimension": "Vehicles & Equipment"
+      },
+      "evidence": {
+        "title": "GTA V Vehicle Database: Bravado Buffalo S",
+        "url": "https://www.rockstargames.com/V"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-005",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "modality": "audio",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "هذا المؤثر الصوتي الشهير في GTA V يدل على إيش؟"
+      },
+      "correctAnswer": "الموت",
+      "acceptedAnswers": [
+        "الموت",
+        "Wasted",
+        "ويستد",
+        "موت اللاعب",
+        "وفاة اللاعب",
+        "رسالة Wasted"
+      ],
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/audio/vg_gta_wasted.mp3",
+            "altText": ""
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "AUDIO_GAMEPLAY_CUE",
+        "contentDimension": "Core Gameplay & Sound FX"
+      },
+      "evidence": {
+        "title": "GTA V Gameplay Mechanics: Wasted Death Screen",
+        "url": "https://www.rockstargames.com/V"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-006",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "عميل الـ FIB الشهير ومقدم برنامج التلفزيون الذي يبتز مايكل والأبطال لتنفيذ مهام سرية في GTA V هو العميل...؟"
+      },
+      "correctAnswer": "ستيف هاينز",
+      "acceptedAnswers": [
+        "ستيف هاينز",
+        "ستيف هينز",
+        "هاينز",
+        "Steve Haines",
+        "Haines"
+      ],
+      "media": {
+        "type": "none"
+      },
+      "authoring": {
+        "questionArchetype": "WORK_TO_CHARACTER",
+        "contentDimension": "Characters & Factions"
+      },
+      "evidence": {
+        "title": "GTA V Character Intel: Steve Haines",
+        "url": "https://www.rockstargames.com/V"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-007",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "ما الاسم الكامل للبنك الاتحادي الضخم الذي يُنفذ فيه الأبطال آخر عملية سطو كبرى في قصة GTA V؟"
+      },
+      "correctAnswer": "يونيون ديبوزيتري",
+      "acceptedAnswers": [
+        "يونيون ديبوزيتري",
+        "بنك يونيون ديبوزيتري",
+        "Union Depository"
+      ],
+      "media": {
+        "type": "none"
+      },
+      "authoring": {
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "contentDimension": "Lore & Campaign Events"
+      },
+      "evidence": {
+        "title": "GTA V Heist Dossier: The Big Score",
+        "url": "https://www.rockstargames.com/V"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-008",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "modality": "image",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "وش اسم هذا الكازينو الشهير في لاس فينتوراس الذي يشارك سي جي في إدارته؟"
+      },
+      "correctAnswer": "ذا فور دراغونز",
+      "acceptedAnswers": [
+        "ذا فور دراغونز",
+        "فور دراغونز",
+        "كازينو فور دراجونز",
+        "كازينو التنانين الأربعة",
+        "The Four Dragons Casino",
+        "Four Dragons"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_gta_four_dragons.webp",
+            "altText": "كازينو التنانين الأربعة (The Four Dragons) في لاس فينتوراس"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "MAP_RECOGNITION",
+        "contentDimension": "Maps & Bases"
+      },
+      "evidence": {
+        "title": "GTA SA Mission Guide: Fish in a Barrel",
+        "url": "https://www.rockstargames.com/sanandreas"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-gta-009",
+      "worldSlug": "video-games",
+      "scopeSlug": "gta",
+      "scopeNameAr": "GTA",
+      "modality": "text",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "في GTA: San Andreas، ضابط شرطة C.R.A.S.H. الفاسد ومساعد تينبيني الذي يُطارده ويقضي عليه سي جي في مهمة \"High Noon\" هو الضابط...؟"
+      },
+      "correctAnswer": "إيدي بولاسكي",
+      "acceptedAnswers": [
+        "إيدي بولاسكي",
+        "بولاسكي",
+        "Eddie Pulaski",
+        "Officer Pulaski",
+        "Pulaski"
+      ],
+      "media": {
+        "type": "none"
+      },
+      "authoring": {
+        "questionArchetype": "WORK_TO_CHARACTER",
+        "contentDimension": "Villains & Antagonists"
+      },
+      "evidence": {
+        "title": "GTA SA Mission Guide: High Noon",
+        "url": "https://www.rockstargames.com/sanandreas"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-010",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "FIFA / EA FC",
+      "modality": "image",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "وش اسم هذا الحدث؟"
+      },
+      "correctAnswer": "TOTY",
+      "acceptedAnswers": [
+        "TOTY",
+        "توتي",
+        "فريق السنة",
+        "تيم أوف ذا يير",
+        "Team of the Year"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_fifa_toty_card.webp",
+            "altText": "تصميم بطاقة حدث فريق السنة الأزرق والذهبي (TOTY)"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "EVENT_RECOGNITION",
+        "contentDimension": "FUT Promo Events"
+      },
+      "evidence": {
+        "title": "EA SPORTS FC Ultimate Team: Team of the Year (TOTY) Campaign",
+        "url": "https://www.ea.com/games/ea-sports-fc/ultimate-team/toty"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-011",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "FIFA / EA FC",
+      "modality": "image",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "مين هذا اللاعب؟"
+      },
+      "correctAnswer": "كريستيانو رونالدو",
+      "acceptedAnswers": [
+        "كريستيانو رونالدو",
+        "رونالدو",
+        "كريستيانو",
+        "Cristiano Ronaldo",
+        "Ronaldo",
+        "CR7",
+        "الدون"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_fifa_cr7_card.webp",
+            "altText": "بطاقة كريستيانو رونالدو الذهبية الأساسية في Ultimate Team (سهل: حجب الوجه والاسم، علم البرتغال والتقييم والإحصائيات ظاهرة)"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "PLAYER_FROM_CARD",
+        "contentDimension": "Player Identification from Card"
+      },
+      "evidence": {
+        "title": "EA SPORTS FC Ultimate Team Database: Cristiano Ronaldo (Gold ST)",
+        "url": "https://www.ea.com/games/ea-sports-fc"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-012",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "FIFA / EA FC",
+      "modality": "image",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "وش اسم طور كرة قدم الشوارع والملاعب المغلقة الظاهر في الصورة؟"
+      },
+      "correctAnswer": "فولتا",
+      "acceptedAnswers": [
+        "فولتا",
+        "فولتا فوتبول",
+        "Volta",
+        "Volta Football",
+        "نمط فولتا",
+        "طور فولتا"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_fifa_volta_cage.webp",
+            "altText": "ملعب قفص الشوارع في طور فولتا"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "MODE_RECOGNITION",
+        "contentDimension": "Gameplay Modes"
+      },
+      "evidence": {
+        "title": "EA SPORTS FIFA 20 Pitch Notes: VOLTA Football",
+        "url": "https://www.ea.com/games/fifa/fifa-20/news/pitch-notes-fifa-20-volta-football-features"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-013",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "FIFA / EA FC",
+      "modality": "image",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "وش اسم هذا الحدث؟"
+      },
+      "correctAnswer": "فيوتشر ستارز",
+      "acceptedAnswers": [
+        "فيوتشر ستارز",
+        "Future Stars",
+        "نجوم المستقبل",
+        "فيوتشرستارز",
+        "Fut Stars",
+        "FUT Future Stars"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_fifa_future_stars.webp",
+            "altText": "تصميم بطاقة حدث نجوم المستقبل (Future Stars)"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "EVENT_RECOGNITION",
+        "contentDimension": "FUT Promo Events"
+      },
+      "evidence": {
+        "title": "EA SPORTS FC Ultimate Team: Future Stars Campaign",
+        "url": "https://www.ea.com/games/ea-sports-fc"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-014",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "FIFA / EA FC",
+      "modality": "image",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "كم تقييم سرعة (Pace) مبابي في بطاقته الذهبية الأساسية والموضحة بـ (؟)؟"
+      },
+      "correctAnswer": "97",
+      "acceptedAnswers": [
+        "97",
+        "٩٧",
+        "97 PAC",
+        "97 سرعة",
+        "97 Pace"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_fifa_mbappe_missing_pace.webp",
+            "altText": "بطاقة مبابي مع حجب إحصائية السرعة PAC بعلامة استفهام"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "MISSING_STAT",
+        "contentDimension": "Card Stats & Attributes"
+      },
+      "evidence": {
+        "title": "EA SPORTS FC 24 Official Ratings Database: Kylian Mbappé",
+        "url": "https://www.ea.com/games/ea-sports-fc/ratings"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-015",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "FIFA / EA FC",
+      "modality": "image",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "وش الـPlayStyle+ الناقص؟"
+      },
+      "correctAnswer": "فينيس شوت",
+      "acceptedAnswers": [
+        "فينيس شوت",
+        "التسديد المقوس",
+        "Finesse Shot",
+        "فينيس",
+        "Finesse",
+        "فينيش شوت",
+        "تسديد مقوس",
+        "PlayStyle Finesse Shot"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_fifa_finesse_playstyle.webp",
+            "altText": "بطاقة سون هيونغ مين مع حجب الـ PlayStyle+ الذهبي بعلامة استفهام"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "MISSING_PLAYSTYLE",
+        "contentDimension": "PlayStyles & Gameplay Systems"
+      },
+      "evidence": {
+        "title": "EA SPORTS FC 24 Pitch Notes: PlayStyles & PlayStyles+ Deep Dive",
+        "url": "https://www.ea.com/games/ea-sports-fc/pitch-notes/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-016",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "FIFA / EA FC",
+      "modality": "image",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "مين هذا اللاعب؟"
+      },
+      "correctAnswer": "ديفيد بيكهام",
+      "acceptedAnswers": [
+        "ديفيد بيكهام",
+        "بيكهام",
+        "ديفد بيكهام",
+        "Beckham",
+        "David Beckham"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_fifa_beckham_card.webp",
+            "altText": "بطاقة ديفيد بيكهام الأيقونية (صعب: حجب الوجه والاسم والجنسية، التقييم 88 والمركز RM والإحصائيات ظاهرة)"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "SPECIAL_CARD_PLAYER",
+        "contentDimension": "FUT Icons & Special Cards"
+      },
+      "evidence": {
+        "title": "FUT.GG Secondary Database: David Beckham Icon Profile & Attributes (Player ID: 250)",
+        "url": "https://www.fut.gg/players/250-david-beckham/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-017",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "FIFA / EA FC",
+      "modality": "image",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "وش اسم هذا الحدث؟"
+      },
+      "correctAnswer": "شيب شيفترز",
+      "acceptedAnswers": [
+        "شيب شيفترز",
+        "شيب شيفتر",
+        "Shapeshifters",
+        "Shapeshifter",
+        "شيب شفتز",
+        "المتحولون"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_fifa_shapeshifters.webp",
+            "altText": "تصميم بطاقة حدث المتحولون (Shapeshifters)"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "EVENT_RECOGNITION",
+        "contentDimension": "FUT Promo Events"
+      },
+      "evidence": {
+        "title": "EA SPORTS FIFA Ultimate Team Campaign: Shapeshifters",
+        "url": "https://www.ea.com/games/ea-sports-fc"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-fifa-018",
+      "worldSlug": "video-games",
+      "scopeSlug": "fifa",
+      "scopeNameAr": "FIFA / EA FC",
+      "modality": "image",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "مين هذا اللاعب؟"
+      },
+      "correctAnswer": "خوليت",
+      "acceptedAnswers": [
+        "خوليت",
+        "رود خوليت",
+        "غوليت",
+        "رود غوليت",
+        "Gullit",
+        "Ruud Gullit"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_fifa_gullit_card.webp",
+            "altText": "بطاقة رود خوليت الأيقونية (صعب: حجب الوجه والاسم والجنسية، التقييم 90 والمركز CAM وإحصائيات Gullit Gang ظاهرة)"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "PLAYER_CARD_RECOGNITION",
+        "contentDimension": "FUT Icons & \"Gullit Gang\" Meta History"
+      },
+      "evidence": {
+        "title": "FUT.GG Secondary Database: Ruud Gullit Icon Profile & Cards (ID: 214100)",
+        "url": "https://www.fut.gg/players/214100-ruud-gullit/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-019",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "Call of Duty",
+      "modality": "image",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "وش اسم هذا الماب الشهير في سلسلة Call of Duty؟"
+      },
+      "correctAnswer": "شيبمنت",
+      "acceptedAnswers": [
+        "شيبمنت",
+        "شيبمنت 24/7",
+        "Shipment",
+        "ماب شيبمنت"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_cod_shipment.webp",
+            "altText": "ماب الحاويات البحرية شيبمنت (Shipment)"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "MAP_RECOGNITION",
+        "contentDimension": "Multiplayer Maps (MP 1/7)"
+      },
+      "evidence": {
+        "title": "Call of Duty Multiplayer Map Intel: Shipment",
+        "url": "https://www.callofduty.com/blog/2019/11/Modern-Warfare-Map-Intel-Shipment"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-020",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "Call of Duty",
+      "modality": "audio",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "هذا المؤثر الصوتي الشهير في Call of Duty يدل على إيش؟"
+      },
+      "correctAnswer": "هيتماركر",
+      "acceptedAnswers": [
+        "هيتماركر",
+        "هيتمارك",
+        "Hitmarker",
+        "إصابة الهدف",
+        "صوت الاصابة",
+        "دمج العدو"
+      ],
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/audio/vg_cod_hitmarker.mp3",
+            "altText": ""
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "AUDIO_GAMEPLAY_CUE",
+        "contentDimension": "Core Combat Audio FX (MP 2/7)"
+      },
+      "evidence": {
+        "title": "Call of Duty Audio Design & Combat Feedback: Hitmarkers",
+        "url": "https://www.callofduty.com/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-021",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "Call of Duty",
+      "modality": "image",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "وش اسم هذه الآلة الشهيرة لترقية الأسلحة في طور الزومبي؟"
+      },
+      "correctAnswer": "باك ابنش",
+      "acceptedAnswers": [
+        "باك ابنش",
+        "باك آبانش",
+        "باك ا بنش",
+        "Pack-a-Punch"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_cod_pack_a_punch.webp",
+            "altText": "آلة الترقية Pack-a-Punch في طور الزومبي"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "contentDimension": "Zombies Mechanics (Zombies 1/1)"
+      },
+      "evidence": {
+        "title": "Call of Duty Zombies Guide: Pack-a-Punch",
+        "url": "https://www.treyarch.com/game-intel/zombies"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-022",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "Call of Duty",
+      "modality": "image",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "وش اسم هذه الأداة الدفاعية في اللعب الجماعي؟"
+      },
+      "correctAnswer": "تروفي سيستم",
+      "acceptedAnswers": [
+        "تروفي سيستم",
+        "تروفي",
+        "Trophy System",
+        "Trophy",
+        "نظام تروفي",
+        "جهاز التروفي",
+        "تروفي سستم"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_cod_trophy_system.webp",
+            "altText": "جهاز الحماية والتصدي للمقذوفات Trophy System في طور اللعب الجماعي"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "EQUIPMENT_RECOGNITION",
+        "contentDimension": "Multiplayer Tactical Equipment (MP 3/7)"
+      },
+      "evidence": {
+        "title": "Call of Duty Multiplayer Field Upgrades & Equipment: Trophy System",
+        "url": "https://www.callofduty.com/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-023",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "Call of Duty",
+      "modality": "text",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "في قصة Modern Warfare 2 الأصلية، من هو الجنرال الخائن الذي يغدر بفرقة Task Force 141 في مهمة Loose Ends؟"
+      },
+      "correctAnswer": "الجنرال شيبرد",
+      "acceptedAnswers": [
+        "الجنرال شيبرد",
+        "شيبرد",
+        "General Shepherd",
+        "Shepherd"
+      ],
+      "media": {
+        "type": "none"
+      },
+      "authoring": {
+        "questionArchetype": "WORK_TO_CHARACTER",
+        "contentDimension": "Campaign Lore (Campaign 1/1)"
+      },
+      "evidence": {
+        "title": "Call of Duty: MW2 Campaign \"Loose Ends\"",
+        "url": "https://www.callofduty.com/modernwarfare2"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-024",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "Call of Duty",
+      "modality": "image",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "هذا الـ Perk الشهير في اللعب الجماعي وش اسمه؟"
+      },
+      "correctAnswer": "غوست",
+      "acceptedAnswers": [
+        "غوست",
+        "جوست",
+        "Ghost",
+        "Ghost Perk",
+        "بيرك غوست"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_cod_ghost_perk.webp",
+            "altText": "أيقونة ميزة التخفي Ghost Perk"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "PERK_RECOGNITION",
+        "contentDimension": "Multiplayer Perks (MP 4/7)"
+      },
+      "evidence": {
+        "title": "Call of Duty: MWII Perk Packages: Ghost",
+        "url": "https://www.callofduty.com/blog/2022/10/call-of-duty-modern-warfare-II-perk-packages"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-025",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "Call of Duty",
+      "modality": "image",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "ما اسم قناصة البولت-أكشن (Bolt-Action) الأسطورية هذه من Modern Warfare 2؟"
+      },
+      "correctAnswer": "انترفينشن",
+      "acceptedAnswers": [
+        "انترفينشن",
+        "انترفنشن",
+        "Intervention",
+        "قناصة انترفينشن",
+        "CheyTac Intervention"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_cod_intervention.webp",
+            "altText": "قناصة CheyTac Intervention الأسطورية"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "WEAPON_RECOGNITION",
+        "contentDimension": "Multiplayer Weapons (MP 5/7)"
+      },
+      "evidence": {
+        "title": "Call of Duty: Modern Warfare 2 Weapon Arsenal: Intervention",
+        "url": "https://www.callofduty.com/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-026",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "Call of Duty",
+      "modality": "image",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "وش اسم هذا التمويه النهائي (Mastery Camo) الشهير في Modern Warfare؟"
+      },
+      "correctAnswer": "دماسكوس",
+      "acceptedAnswers": [
+        "دماسكوس",
+        "دمشقي",
+        "Damascus",
+        "Damascus Camo",
+        "تمويه دمشقي",
+        "تمويه دماسكوس"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_cod_damascus_camo.webp",
+            "altText": "تمويه دمشقي (Damascus Mastery Camo)"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "CAMO_RECOGNITION",
+        "contentDimension": "Weapon Mastery & Camo Progression (MP 6/7)"
+      },
+      "evidence": {
+        "title": "Call of Duty: Modern Warfare Mastery Camo Guide",
+        "url": "https://www.callofduty.com/blog/2019/11/Modern-Warfare-Gunsmith-Camo-Progression"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-cod-027",
+      "worldSlug": "video-games",
+      "scopeSlug": "call-of-duty",
+      "scopeNameAr": "Call of Duty",
+      "modality": "image",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "ما اسم سلاح الشوتغن الأسطوري هذا من Modern Warfare 2؟"
+      },
+      "correctAnswer": "موديل 1887",
+      "acceptedAnswers": [
+        "موديل 1887",
+        "1887",
+        "Model 1887",
+        "موديل",
+        "شوتغن موديل 1887",
+        "شوتجن موديل 1887",
+        "Model 1887s",
+        "موديل 1887 اكيمبو",
+        "WMR 1887",
+        "1887s"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_cod_model_1887.webp",
+            "altText": "سلاح الشوتغن الأسطوري Model 1887 بنظام الرافعة الكلاسيكي من MW2"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "WEAPON_RECOGNITION",
+        "contentDimension": "Multiplayer Weapons & Meta Legends (MP 7/7)"
+      },
+      "evidence": {
+        "title": "Call of Duty: Modern Warfare 2 Weapon Arsenal: Model 1887",
+        "url": "https://www.callofduty.com/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-028",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "Overwatch",
+      "modality": "image",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "وش اسم هذا الماب؟"
+      },
+      "correctAnswer": "كينقز رو",
+      "acceptedAnswers": [
+        "كينقز رو",
+        "كينغز رو",
+        "كينجز رو",
+        "Kings Row",
+        "King's Row",
+        "ماب كينقز رو",
+        "كينقزرو"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_ow_kings_row.webp",
+            "altText": "ماب King's Row في لندن"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "MAP_RECOGNITION",
+        "contentDimension": "Iconic Maps (Hybrid)"
+      },
+      "evidence": {
+        "title": "Blizzard Overwatch Maps: King's Row (Hybrid, England)",
+        "url": "https://overwatch.blizzard.com/en-us/maps/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-029",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "Overwatch",
+      "modality": "image",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "من هذه الشخصية؟"
+      },
+      "correctAnswer": "راينهارت",
+      "acceptedAnswers": [
+        "راينهارت",
+        "رينهارت",
+        "راينهاردت",
+        "Reinhardt",
+        "رين هارت"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_ow_reinhardt.webp",
+            "altText": "شخصية راينهارت في درعه الصليبي"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "CHARACTER_RECOGNITION",
+        "contentDimension": "Playable Heroes (Tank)"
+      },
+      "evidence": {
+        "title": "Blizzard Overwatch Hero Roster: Reinhardt (Tank)",
+        "url": "https://overwatch.blizzard.com/en-us/heroes/reinhardt/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-030",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "Overwatch",
+      "modality": "audio",
+      "marhalaDifficulty": "easy",
+      "prompt": {
+        "ar": "صوت الـ Ultimate هذا لأي شخصية؟"
+      },
+      "correctAnswer": "ديفا",
+      "acceptedAnswers": [
+        "ديفا",
+        "دي فا",
+        "D.Va",
+        "DVa",
+        "ديڤا"
+      ],
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/audio/vg_ow_dva_nerf_this.mp3",
+            "altText": ""
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "AUDIO_ULTIMATE_CUE",
+        "contentDimension": "Hero Ultimates & Voice Lines"
+      },
+      "evidence": {
+        "title": "Blizzard Overwatch Voice Lines: D.Va Self-Destruct Ultimate",
+        "url": "https://overwatch.blizzard.com/en-us/heroes/dva/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-031",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "Overwatch",
+      "modality": "image",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "وش اسم هذا الماب؟"
+      },
+      "correctAnswer": "إيليوس",
+      "acceptedAnswers": [
+        "إيليوس",
+        "اليوس",
+        "Ilios",
+        "ماب ايليوس"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_ow_ilios.webp",
+            "altText": "ماب إيليوس في اليونان"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "MAP_RECOGNITION",
+        "contentDimension": "Iconic Maps (Control)"
+      },
+      "evidence": {
+        "title": "Blizzard Overwatch Maps: Ilios (Control, Greece)",
+        "url": "https://overwatch.blizzard.com/en-us/maps/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-032",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "Overwatch",
+      "modality": "audio",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "صوت الـ Ultimate هذا لأي شخصية؟"
+      },
+      "correctAnswer": "لوسيو",
+      "acceptedAnswers": [
+        "لوسيو",
+        "لوشيو",
+        "Lucio",
+        "لوسيوو"
+      ],
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/audio/vg_ow_lucio_break_it_down.mp3",
+            "altText": ""
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "AUDIO_ULTIMATE_CUE",
+        "contentDimension": "Hero Ultimates (Support)"
+      },
+      "evidence": {
+        "title": "Blizzard Overwatch Voice Lines: Lúcio Sound Barrier",
+        "url": "https://overwatch.blizzard.com/en-us/heroes/lucio/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-033",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "Overwatch",
+      "modality": "image",
+      "marhalaDifficulty": "medium",
+      "prompt": {
+        "ar": "هذه القدرة لأي شخصية؟"
+      },
+      "correctAnswer": "ميرسي",
+      "acceptedAnswers": [
+        "ميرسي",
+        "مارسي",
+        "Mercy"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_ow_mercy_resurrect.webp",
+            "altText": "أيقونة قدرة الإنعاش (Resurrect)"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "ABILITY_RECOGNITION",
+        "contentDimension": "Hero Abilities & Roles (Support)"
+      },
+      "evidence": {
+        "title": "Blizzard Overwatch Hero Kit: Mercy (Resurrect Ability)",
+        "url": "https://overwatch.blizzard.com/en-us/heroes/mercy/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-034",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "Overwatch",
+      "modality": "audio",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "صوت الـ Ultimate هذا لأي شخصية؟"
+      },
+      "correctAnswer": "سومبرا",
+      "acceptedAnswers": [
+        "سومبرا",
+        "سمبرا",
+        "Sombra",
+        "صومبرا"
+      ],
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/audio/vg_ow_sombra_emp.mp3",
+            "altText": ""
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "AUDIO_ULTIMATE_CUE",
+        "contentDimension": "Ultimates & Sound Cues (Hostile Voice Line)"
+      },
+      "evidence": {
+        "title": "Blizzard Overwatch Voice Roster: Sombra EMP Ultimate Cue",
+        "url": "https://overwatch.blizzard.com/en-us/heroes/sombra/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-035",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "Overwatch",
+      "modality": "image",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "وش اسم هذا الماب؟"
+      },
+      "correctAnswer": "روت 66",
+      "acceptedAnswers": [
+        "روت 66",
+        "Route 66",
+        "رووت 66",
+        "ماب روت 66",
+        "طريق 66"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_ow_route66_landmark.webp",
+            "altText": "جسر القطار المنحرف ونفق الصخور في ماب روت 66"
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "MAP_RECOGNITION",
+        "contentDimension": "Competitive Maps & Landmarks (Escort)"
+      },
+      "evidence": {
+        "title": "Blizzard Overwatch Maps: Route 66 (Escort)",
+        "url": "https://overwatch.blizzard.com/en-us/maps/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    },
+    {
+      "id": "marhala-prod-vg-ow-036",
+      "worldSlug": "video-games",
+      "scopeSlug": "overwatch",
+      "scopeNameAr": "Overwatch",
+      "modality": "audio",
+      "marhalaDifficulty": "hard",
+      "prompt": {
+        "ar": "صوت الـ Ultimate هذا لأي شخصية؟"
+      },
+      "correctAnswer": "سيغما",
+      "acceptedAnswers": [
+        "سيغما",
+        "سيجما",
+        "Sigma",
+        "سقما",
+        "البروفيسور سيغما"
+      ],
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/audio/vg_ow_sigma_gravitic_flux.mp3",
+            "altText": ""
+          }
+        ]
+      },
+      "authoring": {
+        "questionArchetype": "AUDIO_ULTIMATE_CUE",
+        "contentDimension": "Ultimates & Foreign Language Voice Lines (Dutch)"
+      },
+      "evidence": {
+        "title": "Blizzard Overwatch Voice Roster: Sigma Gravitic Flux Ultimate Cue",
+        "url": "https://overwatch.blizzard.com/en-us/heroes/sigma/"
+      },
+      "reviewStatus": "HUMAN_PRODUCT_APPROVED"
+    }
+  ]
+}

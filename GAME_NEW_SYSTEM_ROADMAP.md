@@ -2153,6 +2153,24 @@ Completed three distinct authoring playtests validating the Question Craft archi
   - Canonical Arabic answer normalization and scoring remain identical.
 - **Test Matrix:** ✅ 88 backend Marhala tests PASS; ✅ 150 frontend Marhala tests PASS (238 total, 0 failures).
 
+### 21.11 Marhala Batch 01 (Video Games Multimodal) Release Closure & Authoring Pipeline
+✅ **PROMOTED TO PRODUCTION, MEDIA INGESTED TO R2, POST-WRITE IDEMPOTENCY VERIFIED, AND PRODUCTION SMOKE PASSED.**
+
+- **Approved Batch Summary:** 36 items across 4 Video Games scopes (`gta`, `fifa`, `call-of-duty`, `overwatch`), exactly 9 items per scope (3 Easy, 3 Medium, 3 Hard). Modality mix: 24 Image, 7 Audio, 5 Text.
+- **Canonical Authoring Rules Persisted:**
+  - **Authentic Blank-Card Composition:** FIFA player-recognition questions (`مين هذا اللاعب؟`) must use clean blank-card shells composed from authentic cards. No blur, censor bars, 2D inpainting, or synthetic overlays.
+  - **Difficulty Calibration:** Easy Gold cards keep nationality visible; Hard Icon/Special cards hide nationality to test gameplay/stat profile. Rating, position, and 6 face stats remain 100% intact and aligned.
+  - **Event Visual Truth:** Neutral prompt (`وش اسم هذا الحدث؟`) + verified promo card visual. `WRONG_EVENT_ASSET_IS_FATAL`.
+  - **Media Truth:** `WRONG_ASSET_IS_FATAL` and `NO_FALSE_VISUAL_VERIFICATION`.
+  - **Future Batch Hard Gate:** Mandatory 9-step gate for all `PLAYER_FROM_CARD` items.
+  - Persisted permanently into `.agents/skills/akwaan-content/SKILL.md`, `.agents/skills/akwaan-content-qa/SKILL.md`, `.agents/skills/akwaan-media/SKILL.md`, and `ai/.opencode/knowledge/architecture/QUESTION-CRAFT.md`.
+- **Deterministic Source Pack:** ✅ Finalized at `ai/scripts/data/marhala-video-games-batch-01.source.json`.
+- **Manifest-Scoped R2 Ingestion:** ✅ `deployment/scripts/copy-media-to-r2.sh` enhanced with `--manifest` and `--dry-run` modes; 31/31 assets uploaded and individually verified HTTP 200 on Cloudflare R2 CDN (`https://pub-6db8177278dd4bffacfc18c1307f7b7e.r2.dev`). Tested by `deployment/scripts/test_copy_media_to_r2.py` (6/6 PASS).
+- **Production Content Promotion:** ✅ 36 items promoted to live Production MongoDB via `ai/scripts/promote_approved_content.py`.
+- **Post-Write Idempotency Verification:** ✅ Re-ran promotion dry-run against production: 36 `EXISTS_IDENTICAL`, 0 `CREATE`, 0 `UPDATE`, 0 `DELETE`, 0 blockers (plan hash `3bcd0c6c907aeeec58368c48119d731eda39fcae5bdb744626522ee57d1bfcff`).
+- **Production Smoke:** ✅ Verified live in Production DB (36 ready items: 9 GTA, 9 FIFA, 9 Call of Duty, 9 Overwatch; 24 Image, 7 Audio, 5 Text; 0 duplicate IDs; 0 stale references).
+- **Application Deployment:** ⬜ **NOT REQUIRED** (backend and frontend runtime code already deployed at `399e8c4`; no runtime code changed).
+
 ---
 
 ## 22. Pre-Deploy Release Candidate — product UX & QA evidence (2026-08-27)

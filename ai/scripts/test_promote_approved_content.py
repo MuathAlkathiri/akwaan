@@ -200,9 +200,8 @@ class TestAllowlistExcludesMarhala(unittest.TestCase):
             self.assertNotIn(excluded, allowed)
         # The Video Games scopes are now allowed — but ONLY through the explicit
         # approved Marhala milestone, never through Anime or Football.
-        vg_scopes = {"call-of-duty", "fifa", "gta", "overwatch",
-                     "minecraft", "god-of-war", "resident-evil"}
-        self.assertEqual(set(promoter.MILESTONES["marhala-video-games-r2.2"].scope_slugs),
+        vg_scopes = {"call-of-duty", "fifa", "gta", "overwatch"}
+        self.assertEqual(set(promoter.MILESTONES["marhala-video-games-batch-01"].scope_slugs),
                          vg_scopes)
         fb_r1_scopes = {"premier-league", "champions-league", "world-cup"}
         self.assertEqual(set(promoter.MILESTONES["football-bomb-r1"].scope_slugs),
@@ -689,23 +688,22 @@ class TestDeclaredExpectations(unittest.TestCase):
         self.assertEqual(anime.expected_scopes + football.expected_scopes, 6)
 
 
-MARHALA_KEY = "marhala-video-games-r2.2"
+MARHALA_KEY = "marhala-video-games-batch-01"
 
 
 def marhala_manifest():
-    """The real R2.2 batch, read from its reviewed repository file."""
+    """The real Batch 01, read from its reviewed repository file."""
     return promoter.build_manifest_from_file(promoter.MILESTONES[MARHALA_KEY])
 
 
 def marhala_target(existing_markers=()):
-    """A fake production target: the 7 Video Games scopes and the marhala
+    """A fake production target: the 4 Video Games scopes and the marhala
     ChallengeType already exist; `existing_markers` are items already promoted."""
     scopes = [{"id": f"sc-{s}", "slug": s, "worldId": "vgW", "name": s}
               for s in promoter.MILESTONES[MARHALA_KEY].scope_slugs]
     # Map each existing marker to the scope its stable id implies.
     slug_by_abbrev = {"cod": "call-of-duty", "fifa": "fifa", "gta": "gta",
-                      "ow": "overwatch", "mc": "minecraft", "gow": "god-of-war",
-                      "re": "resident-evil"}
+                      "ow": "overwatch"}
     items = []
     for marker in existing_markers:
         abbrev = marker.split(":")[1].split("-")[3]  # marhala-prod-vg-<abbrev>-NNN
@@ -733,18 +731,18 @@ class TestMarhalaR22Milestone(unittest.TestCase):
     # A — the exact approved batch passes.
     def test_A_exact_batch_passes(self):
         man = marhala_manifest()
-        self.assertEqual(len(man.items), 63)
+        self.assertEqual(len(man.items), 36)
         promoter.assert_manifest_is_clean(man)  # must not raise
 
     # B — one item short is rejected.
-    def test_B_sixty_two_items_fails(self):
+    def test_B_thirty_five_items_fails(self):
         man = marhala_manifest()
         man.items.pop()
         with self.assertRaises(promoter.PromotionError):
             promoter.assert_manifest_is_clean(man)
 
     # C — one item over is rejected.
-    def test_C_sixty_four_items_fails(self):
+    def test_C_thirty_seven_items_fails(self):
         man = marhala_manifest()
         extra = item(marker=f"{man.milestone.source_prefix}:marhala-prod-vg-cod-010",
                      scope="call-of-duty", mechanics=("marhala",),
@@ -875,11 +873,11 @@ class TestMarhalaR22Milestone(unittest.TestCase):
         self.assertEqual(plan.counts()["writes"], 0)
         self.assertEqual(plan.counts()["deletes"], 0)
 
-    # First clean promotion: 63 CREATE, all 7 scopes EXISTS (never created).
-    def test_first_promotion_is_63_create_scopes_exist(self):
+    # First clean promotion: 36 CREATE, all 4 scopes EXISTS (never created).
+    def test_first_promotion_is_36_create_scopes_exist(self):
         target, _, index = marhala_target()
         plan = promoter.build_plan(marhala_manifest(), None, None, target, index, check_media=False)
-        self.assertEqual([i.action for i in plan.items].count("CREATE"), 63)
+        self.assertEqual([i.action for i in plan.items].count("CREATE"), 36)
         self.assertTrue(all(s.action == "EXISTS" for s in plan.scopes))
 FOOTBALL_BOMB_R1_KEY = "football-bomb-r1"
 

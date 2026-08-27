@@ -182,22 +182,17 @@ MILESTONES: dict[str, Milestone] = {
         world_slug="football",
         per_scope_items=15,
     ),
-    # The final, human-approved R2.2 Marhala batch for the Video Games Signature.
-    # This is the ONE milestone permitted to carry the `marhala` mechanic and the
-    # `marhalaDifficulty` payload key — the global bans still hold everywhere else.
-    # The batch is reviewed as a repository file, so it is read from that file
-    # rather than from a dev runtime (no runtime is mutated to promote it).
-    "marhala-video-games-r2.2": Milestone(
-        key="marhala-video-games-r2.2",
-        label="Marhala Video Games Signature — R2.2 final (63 items)",
-        scope_slugs=(
-            "call-of-duty", "fifa", "gta", "overwatch",
-            "minecraft", "god-of-war", "resident-evil",
-        ),
-        source_prefix="marhala-video-games-r2.2-2026-08-22",
-        expected_by_mechanic={"marhala": 63},
-        expected_items=63,
-        source_file="ai/scripts/data/marhala-video-games-r2.2.source.json",
+    # The final, human-approved Marhala Batch 01 for the Video Games Signature.
+    # Exactly 36 items (24 image, 7 audio, 5 text) across 4 scopes (gta, fifa,
+    # call-of-duty, overwatch), 9 items each (3 easy, 3 medium, 3 hard).
+    "marhala-video-games-batch-01": Milestone(
+        key="marhala-video-games-batch-01",
+        label="Marhala Video Games Batch 01 (36 items: 24 image, 7 audio, 5 text)",
+        scope_slugs=("gta", "fifa", "call-of-duty", "overwatch"),
+        source_prefix="marhala-video-games-batch-01",
+        expected_by_mechanic={"marhala": 36},
+        expected_items=36,
+        source_file="ai/scripts/data/marhala-video-games-batch-01.source.json",
         world_slug="video-games",
         allow_mechanic_slugs=frozenset({"marhala"}),
         allow_payload_keys=("marhalaDifficulty",),
@@ -294,7 +289,8 @@ class AdminApi:
             return "MEDIA_MISSING"
         if response.status_code != 200:
             return "MEDIA_MISSING"
-        if not content_type.startswith("image/") or body_len == 0:
+        is_valid_type = content_type.startswith("image/") or content_type.startswith("audio/")
+        if not is_valid_type or body_len == 0:
             return "MEDIA_INVALID"
         return "MEDIA_OK"
 
@@ -527,6 +523,15 @@ CANONICAL_SCOPE_ALIASES: dict[str, tuple[str, ...]] = {
     "overwatch": ("overwatch", "scope-1785881026837", "اوفر ووتش"),
 }
 
+CANONICAL_CHALLENGE_TYPE_ALIASES: dict[str, tuple[str, ...]] = {
+    "marhala": ("marhala", "mechanic-1787503326785", "المرحلة"),
+    "bomb": ("bomb", "mechanic-1785880400000", "القنبلة"),
+    "combo": ("combo", "mechanic-1785880300000", "الكومبو"),
+    "read-your-opponent": ("read-your-opponent", "اقرأ خصمك"),
+    "closest": ("closest", "مين اقرب", "مين أقرب"),
+    "top-5": ("top-5", "أفضل 5", "افضل 5"),
+}
+
 
 @dataclass
 class RuntimeIndex:
@@ -551,6 +556,11 @@ class RuntimeIndex:
         for t in types:
             challenge_types_by_slug[t["slug"]] = t
             challenge_type_slug_by_id[str(t["id"])] = t["slug"]
+            t_name = (t.get("name") or "").strip()
+            for canonical, aliases in CANONICAL_CHALLENGE_TYPE_ALIASES.items():
+                if t["slug"] in aliases or t_name in aliases:
+                    challenge_types_by_slug[canonical] = t
+                    challenge_type_slug_by_id[str(t["id"])] = canonical
 
         return cls(
             worlds_by_slug=worlds_by_slug,
@@ -768,11 +778,30 @@ def build_manifest_from_file(milestone: Milestone) -> Manifest:
         if raw_answer and raw_answer.get("mode"):
             answer_payload = raw_answer
         else:
+            def _norm_answer(s: str) -> str:
+                import unicodedata, re
+                s = unicodedata.normalize("NFKD", s)
+                s = re.sub(r"[\u0300-\u036f\u064B-\u065F\u0670\u0640]", "", s)
+                s = re.sub(r"[أإآ]", "ا", s)
+                s = s.replace("ى", "ي").replace("ة", "ه")
+                s = re.sub(r"[\W_]+", " ", s, flags=re.UNICODE)
+                s = s.lower().strip()
+                s = re.sub(r"\s+", " ", s)
+                s = re.sub(r"^the\s+", "", s, flags=re.IGNORECASE)
+                s = re.sub(r"^ال", "", s)
+                return s.strip()
+
             accepted: list[str] = []
+            seen_norm: set[str] = set()
             for candidate in [question.get("correctAnswer")] + list(question.get("acceptedAnswers") or []):
                 text = (candidate or "").strip()
-                if text and text not in accepted:
-                    accepted.append(text)
+                if not text:
+                    continue
+                n_text = _norm_answer(text)
+                if not n_text or n_text in seen_norm:
+                    continue
+                seen_norm.add(n_text)
+                accepted.append(text)
             answer_payload = {"mode": "match", "acceptedAnswers": accepted}
 
         # Mechanic payload: only set for mechanics that need it.
