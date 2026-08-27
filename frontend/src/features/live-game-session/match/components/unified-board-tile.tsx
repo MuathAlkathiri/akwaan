@@ -149,14 +149,14 @@ export function UnifiedBoardTile({
   );
 
   const shared = cn(
-    "group flex min-h-20 w-full items-center gap-3.5 rounded-[var(--radius)] border px-3.5 py-3 text-start transition-[background-color,border-color,box-shadow,transform] duration-base ease-akwaan",
+    "group relative flex min-h-[4.5rem] w-full items-center gap-3 rounded-xl border border-b-2 px-3 py-2.5 text-start transition-[background-color,border-color,box-shadow,transform] duration-base ease-akwaan",
     completed
       ? "border-completed/25 bg-completed-subtle"
       : inProgress
         ? "border-selected/45 bg-card ring-2 ring-selected/20"
         : unplayable
           ? "border-border/60 bg-muted/45"
-          : "border-border bg-card shadow-[0_4px_16px_-14px_hsl(var(--foreground)/0.35)]",
+          : "border-border/75 bg-white/90 shadow-[0_7px_20px_-18px_hsl(var(--foreground)/.38)]",
     interactive &&
       "cursor-pointer hover:-translate-y-0.5 hover:border-selected/45 hover:shadow-[0_10px_24px_-18px_hsl(var(--foreground)/0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
   );
@@ -188,4 +188,3 @@ export function UnifiedBoardTile({
     </article>
   );
 }
-

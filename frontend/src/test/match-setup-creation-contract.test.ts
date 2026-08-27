@@ -101,7 +101,6 @@ const configuredDraft = () => {
   draft = configure(draft, 2, ANIME, ANIME_POOL_2);
   return apply(
     draft,
-    { type: "go-to-teams" },
     // Names, not colours: a team called "صقور الرياض" makes a reveal ambiguous.
     { type: "set-team-name", index: 0, name: "صقور الرياض" },
     { type: "set-team-name", index: 1, name: "نجوم جدة" },

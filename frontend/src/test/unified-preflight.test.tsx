@@ -11,6 +11,7 @@ import type {
   UnifiedPreflight,
 } from "@/features/live-game-session/match/types";
 import type { LiveSessionSnapshot } from "@/features/live-game-session/model";
+import { toast } from "sonner";
 
 /**
  * Choosing a phone-required tile, gathering the phones, and starting.
@@ -32,6 +33,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+}));
+
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
 }));
 
 vi.mock("@/features/match-setup", () => ({
@@ -229,12 +234,13 @@ function match(
 function renderRouter(
   value: LiveSessionMatchSnapshot,
   actor: "controller" | "shared-screen" = "controller",
+  sessionId = "session-1",
 ) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   const snapshot = {
-    sessionId: "session-1",
+    sessionId,
     mode: { key: "core-timed-turns", version: 1 },
     status: "active",
     revision: 4,
@@ -269,6 +275,9 @@ function renderRouter(
 
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
+  vi.mocked(toast.success).mockClear();
+  vi.mocked(toast.error).mockClear();
+  window.sessionStorage.clear();
   mocks.prepare.mockResolvedValue({ sessionId: "session-1" });
   mocks.launch.mockResolvedValue({ sessionId: "session-1" });
   mocks.cancel.mockResolvedValue({ sessionId: "session-1" });
@@ -307,8 +316,8 @@ describe("challenge preflight", () => {
     const view = screen.getByTestId("challenge-preflight");
     expect(view.textContent).toContain("ركّبها");
     expect(view.textContent).toContain("العالم الثالث");
-    expect(view.textContent).toContain("اجمعوا المقاطع ثم أجيبوا");
-    expect(view.textContent).toContain("نطاق أول");
+    expect(view.textContent).not.toContain("اجمعوا المقاطع ثم أجيبوا");
+    expect(view.textContent).not.toContain("نطاق أول");
     expect(screen.getByTestId("preflight-join-code").textContent).toBe(
       "ABC123",
     );
@@ -319,10 +328,6 @@ describe("challenge preflight", () => {
     // The QR is now the tap-to-enlarge trigger, with its conversational hint.
     expect(screen.getByTestId("qr-enlarge-trigger")).toBeInTheDocument();
     expect(view.textContent).toContain("اضغط على الكود عشان تكبّره");
-    // The requirement in words, from the numbers the server sent.
-    expect(screen.getByTestId("preflight-requirement").textContent).toContain(
-      "2 أو 3 لاعبين في كل فريق",
-    );
     // Both teams, with their counts and their chips.
     expect(screen.getByTestId("preflight-team-team-a").textContent).toContain(
       "1/3",
@@ -339,9 +344,14 @@ describe("challenge preflight", () => {
     expect(screen.getByTestId("preflight-team-team-b").dataset.ready).toBe(
       "true",
     );
-    expect(screen.getByTestId("preflight-selecting-team").textContent).toBe(
-      "دور الاختيار: أسود الشمال",
+    expect(screen.getByTestId("preflight-turn-chip").textContent).toBe(
+      "أسود الشمال يبدأ",
     );
+    expect(
+      screen.getByTestId("preflight-readiness").compareDocumentPosition(
+        screen.getByTestId("preflight-join-toggle"),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("enlarges the join QR to the same payload, and closes again", () => {
@@ -446,17 +456,45 @@ describe("challenge preflight", () => {
     const user = userEvent.setup();
     renderRouter(match({ stage: "preflight", preflight: readyPreflight() }));
 
-    expect(
-      screen.getByTestId("preflight-players-paired").textContent,
-    ).toContain("اللاعبين متصلين وجاهزين");
+    expect(screen.getByTestId("preflight-players-paired").textContent).toContain(
+      "اللاعبين متصلين وجاهزين",
+    );
     // No QR taking over the screen, but the code is one tap away.
     expect(screen.queryByTestId("preflight-join-code")).toBeNull();
-    await user.click(
-      screen.getByRole("button", { name: /إضافة لاعب أو إدارة اللاعبين/ }),
-    );
+    await user.click(screen.getByTestId("preflight-join-toggle"));
     expect(screen.getByTestId("preflight-join-code").textContent).toBe(
       "ABC123",
     );
+  });
+
+  it("keeps the QR milestone scoped to the current Match session", () => {
+    window.sessionStorage.setItem(
+      "akwaan:preflight-join-complete:session-1",
+      "true",
+    );
+    const first = renderRouter(
+      match({ stage: "preflight", preflight: preflight() }),
+    );
+
+    expect(screen.getByTestId("preflight-join-toggle")).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(screen.queryByTestId("preflight-join-code")).toBeNull();
+
+    // A different Match gets its own first-join presentation state.
+    first.unmount();
+    window.sessionStorage.clear();
+    const view = renderRouter(
+      match({ stage: "preflight", preflight: preflight() }),
+      "controller",
+      "session-2",
+    );
+    expect(screen.getByTestId("preflight-join-toggle")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    view.unmount();
   });
 
   it("cancels back to the board", async () => {
@@ -602,19 +640,37 @@ describe("challenge preflight", () => {
         match({ stage: "preflight", preflight: withInstructions() }),
       );
       const block = screen.getByTestId("preflight-player-instructions");
-      expect(block.textContent).toContain("اقرأ خصمك قبل ما يقرأك.");
-      expect(block.textContent).toContain("كيف تلعبون؟");
+      expect(screen.getByRole("heading", { name: "ركّبها" })).toBeInTheDocument();
+      expect(screen.getByText("اقرأ خصمك قبل ما يقرأك.")).toBeInTheDocument();
+      expect(block.textContent).toContain("كيف نلعب؟");
+      const orderedElements = [
+        screen.getByRole("heading", { name: "ركّبها" }),
+        screen.getByText("اقرأ خصمك قبل ما يقرأك."),
+        screen.getByTestId("preflight-turn-chip"),
+        block,
+        screen.getByTestId("preflight-highlight"),
+        screen.getByTestId("preflight-start"),
+      ];
+      for (const [index, element] of orderedElements.entries()) {
+        for (const following of orderedElements.slice(index + 1)) {
+          expect(element.compareDocumentPosition(following)).toBe(
+            Node.DOCUMENT_POSITION_FOLLOWING,
+          );
+        }
+      }
 
       // The steps read top to bottom in exactly the authored order.
       const steps = within(block)
         .getAllByRole("listitem")
-        .map((node) => node.textContent);
+        .map((node) => node.lastElementChild?.textContent);
       expect(steps).toEqual([
         "اختر توقعك بسرية",
         "اكشفوا في نفس اللحظة",
         "قارنوا النتيجة",
-        "لا تكشف توقعك بدري",
       ]);
+      expect(screen.getByTestId("preflight-highlight").textContent).toContain(
+        "لا تكشف توقعك بدري",
+      );
       // The honest placeholder is only for records with none.
       expect(
         screen.queryByTestId("preflight-instructions-fallback"),
@@ -645,10 +701,13 @@ describe("challenge preflight", () => {
       expect(screen.getByTestId("preflight-join-code").textContent).toBe(
         "ABC123",
       );
+      expect(view.querySelectorAll(".preflight-secondary-surface")).toHaveLength(
+        4,
+      );
       expect(screen.getByTestId("qr-enlarge-trigger")).toBeInTheDocument();
       expect(view.textContent).not.toContain("/join/live-session/ABC123");
-      // Scope names and the World display name still read as before.
-      expect(view.textContent).toContain("نطاق أول");
+      // Low-value Scope metadata is intentionally not part of the briefing.
+      expect(view.textContent).not.toContain("نطاق أول");
       expect(view.textContent).toContain("العالم الثالث");
       // Launch is still governed only by the server's readiness.
       expect(
@@ -656,15 +715,114 @@ describe("challenge preflight", () => {
       ).toBe(true);
     });
 
-    it("keeps the per-World instructions override as a distinct line", () => {
-      // The single-string `instructions` is a World-level override, a different
-      // concept from the mechanic-canonical block. Both may appear.
+    it("does not present the verbose World override in the briefing", () => {
       renderRouter(
         match({ stage: "preflight", preflight: withInstructions() }),
       );
       const view = screen.getByTestId("challenge-preflight");
-      expect(view.textContent).toContain("اجمعوا المقاطع ثم أجيبوا");
+      expect(view.textContent).not.toContain("اجمعوا المقاطع ثم أجيبوا");
       expect(view.textContent).toContain("اقرأ خصمك قبل ما يقرأك.");
+    });
+  });
+
+  describe("readiness roster", () => {
+    it("is one clean roster card with authoritative counts and human status", () => {
+      renderRouter(match({ stage: "preflight", preflight: preflight() }));
+      const readiness = screen.getByTestId("preflight-readiness");
+      expect(readiness.textContent).toContain("جاهزية اللاعبين");
+      // Counts come straight from the snapshot, per team.
+      expect(screen.getByTestId("preflight-team-team-a").textContent).toContain(
+        "1/3",
+      );
+      expect(screen.getByTestId("preflight-team-team-b").textContent).toContain(
+        "3/3",
+      );
+      // The ready team says so in the semantic green status; the waiting team
+      // gets a human phrase, never a technical "ناقص" badge.
+      expect(
+        screen.getByTestId("preflight-team-status-team-b").textContent,
+      ).toContain("جاهز");
+      const waiting =
+        screen.getByTestId("preflight-team-status-team-a").textContent ?? "";
+      expect(waiting).toMatch(/باقي|بانتظار/);
+      expect(waiting).not.toContain("ناقص");
+    });
+
+    it("keeps a public player's name reachable and marks a dropped phone offline", () => {
+      renderRouter(
+        match({
+          stage: "preflight",
+          preflight: preflight({
+            teams: [
+              {
+                teamId: "team-a",
+                teamName: "أسود الشمال",
+                connectedCount: 1,
+                minimum: 2,
+                maximum: 3,
+                ready: false,
+                participants: [
+                  { participantId: "p1", displayName: "أحمد", connected: true },
+                  { participantId: "p2", displayName: "منى", connected: false },
+                ],
+              },
+            ],
+          }),
+        }),
+      );
+      const teamA = screen.getByTestId("preflight-team-team-a");
+      // The connected player's real (public) name is still reachable…
+      expect(within(teamA).getByText("أحمد")).toBeTruthy();
+      // …and the dropped phone is labelled as not connected.
+      expect(within(teamA).getByLabelText("غير متصل")).toBeTruthy();
+    });
+  });
+
+  describe("feedback states", () => {
+    it("toasts once on a successful join-link copy (invisible success)", async () => {
+      const user = userEvent.setup();
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      });
+      renderRouter(match({ stage: "preflight", preflight: preflight() }));
+
+      await user.click(screen.getByRole("button", { name: /نسخ الرابط/ }));
+      await waitFor(() =>
+        expect(toast.success).toHaveBeenCalledWith("تم نسخ الرابط"),
+      );
+      expect(toast.success).toHaveBeenCalledTimes(1);
+    });
+
+    it("cannot re-fire the launch while one is already pending", async () => {
+      const user = userEvent.setup();
+      // A launch that never resolves keeps the pending state active.
+      mocks.launch.mockReturnValue(new Promise(() => {}));
+      renderRouter(match({ stage: "preflight", preflight: readyPreflight() }));
+
+      const start = screen.getByTestId("preflight-start");
+      await user.click(start);
+      // Now pending: the CTA is busy and disabled, so a second click is inert.
+      await waitFor(() => expect(start).toHaveAttribute("aria-busy", "true"));
+      expect(start.hasAttribute("disabled")).toBe(true);
+      await user.click(start);
+      expect(mocks.launch).toHaveBeenCalledTimes(1);
+    });
+
+    it("clears the pending state when the launch is rejected", async () => {
+      const user = userEvent.setup();
+      mocks.launch.mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 400, data: { code: "MATCH_CHALLENGE_NOT_READY" } },
+      });
+      renderRouter(match({ stage: "preflight", preflight: readyPreflight() }));
+
+      const start = screen.getByTestId("preflight-start");
+      await user.click(start);
+      // After the rejection the CTA is usable again — not stuck pending.
+      await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
+      expect(start).not.toHaveAttribute("aria-busy", "true");
+      expect(start.hasAttribute("disabled")).toBe(false);
     });
   });
 });

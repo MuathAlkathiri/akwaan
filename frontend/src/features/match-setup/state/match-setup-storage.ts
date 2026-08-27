@@ -3,6 +3,7 @@ import {
   OCCURRENCE_COUNT,
   SCOPES_PER_OCCURRENCE,
   createDraft,
+  isDraftComplete,
   type MatchSetupDraft,
   type MatchSetupStep,
 } from "./match-setup-draft";
@@ -19,16 +20,18 @@ import {
  * instead of being coerced into the current one.
  */
 const STORAGE_KEY = "akwaan:match-setup-draft";
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
+const LEGACY_STORAGE_VERSION = 1;
 
 interface StoredDraft {
   version: number;
   draft: MatchSetupDraft;
 }
 
-const STEPS: readonly MatchSetupStep[] = ["world", "scopes", "review", "teams"];
+const STEPS: readonly MatchSetupStep[] = ["world", "scopes", "teams"];
+type LegacyMatchSetupStep = MatchSetupStep | "review";
 
-function isStep(value: unknown): value is MatchSetupStep {
+function isCurrentStep(value: unknown): value is MatchSetupStep {
   return typeof value === "string" && STEPS.includes(value as MatchSetupStep);
 }
 
@@ -40,11 +43,18 @@ function isStep(value: unknown): value is MatchSetupStep {
 function parseDraft(value: unknown): MatchSetupDraft | undefined {
   if (!value || typeof value !== "object") return undefined;
   const stored = value as Partial<StoredDraft>;
-  if (stored.version !== STORAGE_VERSION) return undefined;
+  const legacy = stored.version === LEGACY_STORAGE_VERSION;
+  if (!legacy && stored.version !== STORAGE_VERSION) return undefined;
   const draft = stored.draft as Partial<MatchSetupDraft> | undefined;
   if (!draft || !Array.isArray(draft.occurrences)) return undefined;
   if (draft.occurrences.length !== OCCURRENCE_COUNT) return undefined;
-  if (!isStep(draft.activeStep)) return undefined;
+  const storedStep = draft.activeStep as LegacyMatchSetupStep | undefined;
+  if (
+    !isCurrentStep(storedStep) &&
+    !(legacy && storedStep === "review")
+  ) {
+    return undefined;
+  }
   if (
     typeof draft.activeOccurrenceIndex !== "number" ||
     draft.activeOccurrenceIndex < 0 ||
@@ -76,10 +86,10 @@ function parseDraft(value: unknown): MatchSetupDraft | undefined {
       )
     : [];
   const fallback = createDraft();
-  return {
+  const normalized: MatchSetupDraft = {
     occurrences,
     activeOccurrenceIndex: draft.activeOccurrenceIndex,
-    activeStep: draft.activeStep,
+    activeStep: storedStep === "review" ? "world" : storedStep,
     teamNames:
       teamNames.length === 2
         ? [teamNames[0], teamNames[1]]
@@ -93,6 +103,25 @@ function parseDraft(value: unknown): MatchSetupDraft | undefined {
             resolveTeamColor(1, colorIds[1]).id,
           ]
         : fallback.teamColorIds,
+  };
+  if (storedStep !== "review") return normalized;
+
+  // Version 1 ended complete setup on a now-removed Review screen. Complete
+  // drafts advance to Teams; malformed/incomplete legacy drafts resume at the
+  // first occurrence that still needs a World or Scopes.
+  if (isDraftComplete(normalized)) {
+    return { ...normalized, activeStep: "teams" };
+  }
+  const pending = normalized.occurrences.find(
+    (occurrence) =>
+      !occurrence.worldId ||
+      occurrence.selectedScopeIds.length !== SCOPES_PER_OCCURRENCE,
+  );
+  if (!pending) return undefined;
+  return {
+    ...normalized,
+    activeOccurrenceIndex: pending.occurrenceIndex,
+    activeStep: pending.worldId ? "scopes" : "world",
   };
 }
 

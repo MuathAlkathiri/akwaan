@@ -160,6 +160,81 @@ function completeAll(match: Match): void {
 }
 
 describe('Match aggregate', () => {
+  describe('controller board controls', () => {
+    it('arms only the selecting team Double and binds it to the chosen position', () => {
+      const match = newMatch();
+      match.armSelectingTeamDouble({
+        commandId: 'arm-next',
+        teamId: TEAM_A.id,
+      });
+
+      expect(() =>
+        match.armSelectingTeamDouble({
+          commandId: 'arm-wrong-team',
+          teamId: TEAM_B.id,
+        }),
+      ).toThrow(MatchDomainError);
+
+      match.prepareChallenge({
+        commandId: 'prepare-armed',
+        now: NOW,
+        occurrenceIndex: 0,
+        slotKey: WorldChallengeSlotKey.SLOT_1,
+        challengeTypeId: 'challenge-type-ryo',
+        challengeTypeSlug: 'read-your-opponent',
+        requiresPhones: false,
+        selectingTeamId: TEAM_A.id,
+      });
+      launch(match, 0, WorldChallengeSlotKey.SLOT_1, 'runtime-armed', {
+        selectingTeamId: TEAM_A.id,
+      });
+
+      expect(match.currentChallenge?.doubledTeamIds).toEqual([TEAM_A.id]);
+      expect(match.teamDoubles).toContainEqual(
+        expect.objectContaining({ teamId: TEAM_A.id, status: 'consumed' }),
+      );
+    });
+
+    it('switches board authority and cancels an unbound armed Double', () => {
+      const match = newMatch();
+      match.armSelectingTeamDouble({
+        commandId: 'arm-before-switch',
+        teamId: TEAM_A.id,
+      });
+      match.switchSelectingTeam({ commandId: 'manual-turn-switch' });
+
+      expect(match.selectingTeamId).toBe(TEAM_B.id);
+      expect(match.teamDoubles).toContainEqual({
+        teamId: TEAM_A.id,
+        status: 'available',
+      });
+    });
+
+    it('imports signed manual corrections once and preserves negative totals', () => {
+      const match = newMatch();
+      const [event] = scoring.restoreEvents([
+        {
+          id: 'manual-minus:0',
+          matchId: match.id,
+          teamId: TEAM_A.id,
+          challengeSessionId: 'manual:manual-minus',
+          scoringRuleId: SCORING_RULE_IDS.MANUAL_CORRECTION,
+          delta: -1,
+          reason: 'manual-correction',
+          createdAt: NOW.toISOString(),
+        },
+      ]);
+
+      match.applyManualScoreCorrection({ commandId: 'manual-minus', event });
+      match.applyManualScoreCorrection({ commandId: 'manual-minus', event });
+
+      expect(match.teamScore(TEAM_A.id)).toEqual(
+        expect.objectContaining({ signedTotal: -1, displayTotal: 0 }),
+      );
+      expect(match.revision).toBe(1);
+    });
+  });
+
   it('consumes both independently armed Double tokens at launch', () => {
     const match = newMatch();
     match.prepareChallenge({

@@ -47,6 +47,8 @@ import { UnifiedMatchController } from './presentation/unified-match.controller'
 import { MatchParticipantController } from './presentation/match-participant.controller';
 import { OneClueChallengeLauncher } from './application/one-clue-challenge.launcher';
 import { ChallengeTypeMatchUsageGuard } from './application/challenge-type-match-usage.guard';
+import { ListMyMatches } from './application/list-my-matches.use-case';
+import { MyMatchesController } from './presentation/my-matches.controller';
 
 /**
  * Match orchestration.
@@ -75,6 +77,7 @@ import { ChallengeTypeMatchUsageGuard } from './application/challenge-type-match
     MatchController,
     UnifiedMatchController,
     MatchParticipantController,
+    MyMatchesController,
   ],
   providers: [
     SystemMatchClock,
@@ -109,6 +112,7 @@ import { ChallengeTypeMatchUsageGuard } from './application/challenge-type-match
     MatchConvergenceSweeper,
     MatchSnapshotComposer,
     ChallengeTypeMatchUsageGuard,
+    ListMyMatches,
   ],
   exports: [MatchUseCases, ChallengeLauncherRegistry],
 })

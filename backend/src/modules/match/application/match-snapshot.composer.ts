@@ -198,8 +198,10 @@ export class MatchSnapshotComposer
         : {}),
       doubles: match.teamDoubles.map((token) => ({
         teamId: token.teamId,
-        // Armed choices stay private until launch.
-        status: token.status === 'armed' ? 'available' : token.status,
+        // The controller needs its own authoritative board control state. Phone
+        // participants retain the private preflight behaviour.
+        status:
+          isController || token.status !== 'armed' ? token.status : 'available',
       })),
       scoring: {
         matchTotals: match.teams.map((team) => this.score(match, team.id)),
@@ -593,7 +595,13 @@ export class MatchSnapshotComposer
     if (match.status !== MatchStatus.ACTIVE) return [];
     switch (match.stage) {
       case MatchStage.BOARD:
-        return ['match:launch-challenge', 'match:cancel'];
+        return [
+          'match:launch-challenge',
+          'match:arm-double',
+          'match:adjust-score',
+          'match:switch-turn',
+          'match:cancel',
+        ];
       case MatchStage.CHALLENGE:
         return ['match:cancel'];
       case MatchStage.CHALLENGE_RESULT:

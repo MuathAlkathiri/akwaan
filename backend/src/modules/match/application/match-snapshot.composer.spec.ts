@@ -49,6 +49,8 @@ describe('MatchSnapshotComposer', () => {
       findActiveBySessionId: () => Promise.resolve(match),
       findLatestBySessionId: () => Promise.resolve(match),
       findAwaitingConvergence: () => Promise.resolve([]),
+      findListPageBySessionIds: () =>
+        Promise.resolve({ active: [], completed: [], completedTotal: 0 }),
       save: () => Promise.resolve(),
     };
     const runtimes = {
@@ -259,8 +261,13 @@ describe('MatchSnapshotComposer', () => {
     await composerFor(match).enrich(hostView, controller);
     await composerFor(match).enrich(playerView, player);
 
+    // The board is idle, so the controller gets its launch action plus the
+    // idle-only board recovery controls (Double, score correction, turn switch).
     expect(hostView.match?.availableActions).toEqual([
       'match:launch-challenge',
+      'match:arm-double',
+      'match:adjust-score',
+      'match:switch-turn',
       'match:cancel',
     ]);
     expect(playerView.match?.availableActions).toEqual([]);

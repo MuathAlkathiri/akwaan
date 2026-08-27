@@ -251,6 +251,7 @@ export interface MatchState {
 }
 
 const MAX_PROCESSED_COMMANDS = 200;
+const NEXT_CHALLENGE_DOUBLE_POSITION = '__next__';
 
 /**
  * The authoritative Match aggregate.
@@ -605,6 +606,15 @@ export class Match {
         ? { doubleAssignments: input.doubleAssignments }
         : {}),
     };
+    this.state.teamDoubles = this.state.teamDoubles.map((token) =>
+      token.status === 'armed' &&
+      token.armedPositionKey === NEXT_CHALLENGE_DOUBLE_POSITION
+        ? {
+            ...token,
+            armedPositionKey: this.state.pendingChallenge?.positionKey,
+          }
+        : token,
+    );
     this.enterStage(MatchStage.PREFLIGHT, input.now);
     this.commit(input.commandId);
   }
@@ -663,6 +673,62 @@ export class Match {
       token.status = 'available';
       token.armedPositionKey = undefined;
     }
+    this.commit(input.commandId);
+  }
+
+  /** Arms the selecting team's one Double for its next chosen challenge. */
+  armSelectingTeamDouble(input: { commandId: string; teamId: string }): void {
+    if (this.replay(input.commandId)) return;
+    this.assertStage([MatchStage.BOARD]);
+    this.assertSelectionAuthority(input.teamId);
+    const token = this.state.teamDoubles.find(
+      (candidate) => candidate.teamId === input.teamId,
+    );
+    if (!token || token.status !== 'available') {
+      throw new MatchDomainError(
+        'MATCH_DOUBLE_UNAVAILABLE',
+        'This team has already used or armed its Double',
+      );
+    }
+    token.status = 'armed';
+    token.armedPositionKey = NEXT_CHALLENGE_DOUBLE_POSITION;
+    this.commit(input.commandId);
+  }
+
+  /** Imports one controller correction through the canonical score ledger. */
+  applyManualScoreCorrection(input: {
+    commandId: string;
+    event: ScoreEvent;
+  }): void {
+    if (this.replay(input.commandId)) return;
+    this.assertStage([MatchStage.BOARD]);
+    this.assertTeam(input.event.teamId);
+    if (!this.state.scoreEvents.some((event) => event.id === input.event.id)) {
+      this.state.scoreEvents.push(input.event);
+    }
+    this.commit(input.commandId);
+  }
+
+  /** Switches board selection authority without entering mechanic turn logic. */
+  switchSelectingTeam(input: { commandId: string }): void {
+    if (this.replay(input.commandId)) return;
+    this.assertStage([MatchStage.BOARD]);
+    if (!this.state.selectingTeamId) {
+      throw new MatchDomainError(
+        'MATCH_SELECTING_TEAM_MISSING',
+        'This match has no selecting team to switch',
+      );
+    }
+    this.state.teamDoubles = this.state.teamDoubles.map((token) =>
+      token.status === 'armed' &&
+      token.armedPositionKey === NEXT_CHALLENGE_DOUBLE_POSITION
+        ? { teamId: token.teamId, status: 'available' }
+        : token,
+    );
+    this.state.selectingTeamId = unifiedMatchBoardPolicy.nextSelectingTeamId(
+      this.state.teams.map((team) => team.id),
+      this.state.selectingTeamId,
+    );
     this.commit(input.commandId);
   }
 

@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Header } from "./header";
 import { Toaster } from "@/components/ui/sonner";
-import { Starfield } from "@/components/akwaan/starfield";
+import { AkwaanBackground } from "@/components/akwaan/akwaan-background";
 import { cn } from "@/lib/utils";
 import { MATCH_SETUP_ROUTE } from "@/features/match-setup";
 
@@ -14,18 +14,19 @@ import { MATCH_SETUP_ROUTE } from "@/features/match-setup";
  */
 export function isJourneyPath(pathname: string) {
   return (
-    pathname === "/" ||
-    pathname.startsWith("/worlds") ||
-    isMatchPath(pathname)
+    pathname === "/" || pathname.startsWith("/worlds") || isMatchPath(pathname)
   );
 }
 
+export function isAuthPath(pathname: string) {
+  return pathname === "/login";
+}
+
 /**
- * Where the lightly cosmic layer belongs.
+ * Whether this route belongs to the player-facing visual environment.
  *
- * It is part of the Akwaan player identity, not a decoration on one route, so it
- * is mounted once here for every player-facing surface: home, a World, setup, and
- * the Match in all its stages.
+ * Standard player pages all consume the same shell-owned environment. Admin and
+ * paired/live gameplay surfaces keep their purpose-built canvases.
  *
  * It is deliberately absent from three places. Admin is a tool, not a room. A
  * paired phone is held at arm's length and gains nothing from a background it
@@ -33,14 +34,15 @@ export function isJourneyPath(pathname: string) {
  * the retired classic game keeps its own look.
  */
 export function hasCosmicBackground(pathname: string) {
-  if (pathname.startsWith("/admin") || pathname.startsWith("/join/")) {
+  if (
+    isAuthPath(pathname) ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/join/") ||
+    pathname.startsWith("/live-sessions/")
+  ) {
     return false;
   }
-  return (
-    pathname === "/" ||
-    pathname.startsWith("/worlds") ||
-    pathname.startsWith("/matches")
-  );
+  return true;
 }
 
 /**
@@ -59,31 +61,53 @@ export function isMatchPath(pathname: string) {
   );
 }
 
+export function isHostMatchPath(pathname: string) {
+  return pathname.startsWith("/matches/") && pathname !== MATCH_SETUP_ROUTE;
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isJourney = isJourneyPath(pathname);
   const isMatch = isMatchPath(pathname);
+  const isHostMatch = isHostMatchPath(pathname);
+  const isPairedMatch = pathname.startsWith("/join/");
+  const isAuth = isAuthPath(pathname);
   // The retired identity painted a dark purple canvas behind every authenticated
   // player screen. Akwaan is one warm room: the surface comes from the tokens, and
   // nothing paints over it.
-  const bare = isJourney || isMatch;
+  const bare = isJourney || isMatch || isAuth;
+  const hasBackground = hasCosmicBackground(pathname);
+  const hasPageArtwork = hasBackground;
 
   return (
-    <div className="min-h-screen">
-      {/* Mounted once, behind everything. World artwork and cards are opaque and
-          paint over it, so the artwork stays the loudest thing on the screen. */}
-      {hasCosmicBackground(pathname) && <Starfield />}
-      {/* The Match brings its own shell; a second header above it would be two
-          products stacked on one screen. */}
-      {!isMatch && <Header />}
+    <div
+      className={cn(
+        "relative flex min-h-screen flex-col",
+        hasPageArtwork && "isolate bg-white",
+      )}
+    >
+      {hasPageArtwork && <AkwaanBackground />}
+      {/* The live Match renders its own header HUD from inside the session (so the
+          score can reach it); the shell supplies the header everywhere else. */}
+      {!isAuth && !isPairedMatch && !isHostMatch && (
+        <Header merged={hasPageArtwork} />
+      )}
       <main
+        data-testid="app-main"
         className={cn(
-          !isMatch && "min-h-[calc(100vh-5.5rem)]",
+          "relative z-10 flex-1",
+          isAuth
+            ? "min-h-screen"
+            : !isPairedMatch && "min-h-[calc(100vh-5.5rem)]",
         )}
       >
-        {bare ? children : <div className="container py-8 md:py-12">{children}</div>}
+        {bare ? (
+          children
+        ) : (
+          <div className="container py-8 md:py-12">{children}</div>
+        )}
       </main>
-      <Toaster position="bottom-center" />
+      <Toaster />
     </div>
   );
 }

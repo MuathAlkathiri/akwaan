@@ -127,6 +127,7 @@ export function UnifiedPreflightStage({
   return (
     <ChallengePreflight
       preflight={preflight}
+      sessionId={snapshot.sessionId}
       {...(selectingTeamId
         ? { selectingTeamName: teamName(snapshot, selectingTeamId) }
         : {})}

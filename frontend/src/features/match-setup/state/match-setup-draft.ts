@@ -17,7 +17,7 @@ export const SCOPES_PER_OCCURRENCE = 4;
 /** Three occurrences × four positions. */
 export const BOARD_POSITION_COUNT = 12;
 
-export type MatchSetupStep = "world" | "scopes" | "review" | "teams";
+export type MatchSetupStep = "world" | "scopes" | "teams";
 
 export interface DraftOccurrence {
   occurrenceIndex: number;
@@ -78,11 +78,8 @@ export type MatchSetupAction =
   | { type: "toggle-scope"; occurrenceIndex: number; scopeId: string }
   | { type: "clear-occurrence"; occurrenceIndex: number }
   | { type: "edit-world"; occurrenceIndex: number }
-  | { type: "edit-scopes"; occurrenceIndex: number }
   | { type: "confirm-scopes" }
   | { type: "back" }
-  | { type: "go-to-review" }
-  | { type: "go-to-teams" }
   | { type: "set-team-name"; index: 0 | 1; name: string }
   | { type: "set-team-color"; index: 0 | 1; colorId: string }
   | { type: "report-issue"; occurrenceIndex?: number; message: string; code?: string }
@@ -233,14 +230,6 @@ export function matchSetupReducer(
         activeStep: "world",
       };
 
-    case "edit-scopes":
-      return {
-        ...draft,
-        issue: undefined,
-        activeOccurrenceIndex: action.occurrenceIndex,
-        activeStep: "scopes",
-      };
-
     case "confirm-scopes": {
       const active = draft.occurrences.find(
         (occurrence) =>
@@ -252,9 +241,10 @@ export function matchSetupReducer(
           occurrence.occurrenceIndex > draft.activeOccurrenceIndex &&
           !isOccurrenceComplete(occurrence),
       );
-      // The remaining occurrences come first; review is only reachable once all
-      // three are configured.
+      // The remaining occurrences come first. Teams is reachable only once all
+      // three are configured, using the same full-draft guard as Match creation.
       const pending = next ?? firstIncompleteOccurrence(draft);
+      const completed = !pending && isDraftComplete(draft);
       return {
         ...draft,
         issue: undefined,
@@ -263,22 +253,16 @@ export function matchSetupReducer(
               activeOccurrenceIndex: pending.occurrenceIndex,
               activeStep: "world" as const,
             }
-          : { activeStep: "review" as const }),
+          : completed
+            ? { activeStep: "teams" as const }
+            : {}),
       };
     }
 
     case "back": {
-      if (draft.activeStep === "teams") {
-        return { ...draft, issue: undefined, activeStep: "review" };
-      }
-      if (draft.activeStep === "review") {
-        return {
-          ...draft,
-          issue: undefined,
-          activeOccurrenceIndex: OCCURRENCE_COUNT - 1,
-          activeStep: "scopes",
-        };
-      }
+      // Team Setup leaves this route through the wizard's Homepage navigation;
+      // it never rewinds into a second World/Scope editor here.
+      if (draft.activeStep === "teams") return draft;
       if (draft.activeStep === "scopes") {
         return { ...draft, issue: undefined, activeStep: "world" };
       }
@@ -291,23 +275,6 @@ export function matchSetupReducer(
         activeStep: "scopes",
       };
     }
-
-    case "go-to-review": {
-      const pending = firstIncompleteOccurrence(draft);
-      if (pending) {
-        return {
-          ...draft,
-          activeOccurrenceIndex: pending.occurrenceIndex,
-          activeStep: pending.worldId ? "scopes" : "world",
-        };
-      }
-      return { ...draft, issue: undefined, activeStep: "review" };
-    }
-
-    case "go-to-teams":
-      return isDraftComplete(draft)
-        ? { ...draft, issue: undefined, activeStep: "teams" }
-        : draft;
 
     case "set-team-name": {
       const teamNames: [string, string] = [...draft.teamNames];

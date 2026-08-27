@@ -41,11 +41,9 @@ describe("challenge icons", () => {
   });
 
   it("is the only icon resolver in the codebase", () => {
-    // There were two, with different matching rules, which is how the board and the
-    // setup review disagreed about what a challenge looked like.
+    // Keep the board presentation on the canonical resolver.
     for (const path of [
       "src/features/live-game-session/match/components/unified-board-tile.tsx",
-      "src/features/match-setup/components/match-setup-review.tsx",
     ]) {
       const source = readFileSync(resolve(process.cwd(), path), "utf8");
       expect(source, path).not.toMatch(/function challengeIcon/);

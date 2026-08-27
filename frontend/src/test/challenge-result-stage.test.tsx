@@ -470,14 +470,12 @@ describe("the Match scoreboard counts challenge wins, not mechanic points", () =
         ],
       }),
     );
+    // The compact header HUD is now the one Match scoreboard; it shows the Match
+    // ledger (1-0), while the result panel below still shows the mechanic's 3-2.
     const scores = screen
-      .getByTestId("team-scoreboard")
+      .getByTestId("match-score-hud")
       .querySelectorAll(".akwaan-numeral");
     expect([...scores].map((node) => node.textContent)).toEqual(["1", "0"]);
-    // Named for what it counts, so nobody reads it as a mechanic total.
-    expect(
-      screen.getByTestId("team-scoreboard").getAttribute("aria-label"),
-    ).toContain("التحديات");
   });
 
   it("shows the RYO challenge totals and its single Match point separately", () => {

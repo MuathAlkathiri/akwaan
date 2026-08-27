@@ -3,11 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const auth = vi.hoisted(() => ({
   isAdmin: false,
+  isAuthenticated: true,
+  pathname: "/",
   logout: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => (auth.isAdmin ? "/admin" : "/"),
+  usePathname: () => (auth.isAdmin ? "/admin" : auth.pathname),
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -19,7 +21,7 @@ vi.mock("@/components/auth/auth-provider", () => ({
       role: auth.isAdmin ? "admin" : "user",
     },
     isAdmin: auth.isAdmin,
-    isAuthenticated: true,
+    isAuthenticated: auth.isAuthenticated,
     logout: auth.logout,
   }),
 }));
@@ -28,6 +30,8 @@ import { Header } from "@/components/layout/header";
 
 beforeEach(() => {
   auth.isAdmin = false;
+  auth.isAuthenticated = true;
+  auth.pathname = "/";
   auth.logout.mockReset();
 });
 
@@ -42,6 +46,22 @@ describe("authenticated header controls", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "خروج" }));
     expect(auth.logout).toHaveBeenCalledOnce();
+    expect(screen.getByRole("link", { name: "مبارياتي" })).toHaveAttribute(
+      "href",
+      "/matches",
+    );
+  });
+
+  it("does not expose My Games to signed-out navigation", () => {
+    auth.isAuthenticated = false;
+    render(<Header />);
+    expect(screen.queryByRole("link", { name: "مبارياتي" })).toBeNull();
+  });
+
+  it("keeps My Games out of the Match header HUD", () => {
+    render(<Header variant="match" hud={<span>النتيجة</span>} />);
+    expect(screen.getByText("النتيجة")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "مبارياتي" })).toBeNull();
   });
 
   it("preserves role-based admin navigation without exposing identity", () => {
@@ -58,5 +78,16 @@ describe("authenticated header controls", () => {
     );
     expect(screen.queryByText("لاعب أكوان")).toBeNull();
     expect(screen.getByRole("button", { name: "خروج" })).toBeInTheDocument();
+  });
+
+  it("hides the redundant login action on the login page", () => {
+    auth.isAuthenticated = false;
+    auth.pathname = "/login";
+    render(<Header merged />);
+
+    expect(screen.queryByRole("link", { name: "تسجيل الدخول" })).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "أكوان - الرئيسية" }),
+    ).toBeInTheDocument();
   });
 });

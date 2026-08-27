@@ -72,10 +72,7 @@ describe("semantic colour never becomes a team's identity", () => {
     const shell = read(
       "src/features/live-game-session/match/components/match-shell.tsx",
     );
-    const band = shell.slice(
-      shell.indexOf('data-testid="active-team-band"'),
-      shell.indexOf("</header>"),
-    );
+    const band = shell.slice(shell.indexOf('data-testid="active-team-band"'));
     // Its colours come from the identity resolver — the only thing that emits team
     // tokens — and no class is written here by hand.
     expect(band).toContain("activeIdentity.surface");
@@ -142,19 +139,17 @@ describe("a persistent status may still be legible", () => {
     expect(preflight).toContain("اللاعبين متصلين وجاهزين");
   });
 
-  it("escalates the connection pill from calm to amber to red", () => {
-    // Colour tracks how much the room needs to care. Connected is calm because
-    // "working normally" is not news; a pill that shouts all match stops being read.
+  it("keeps connection failures actionable without a persistent utility pill", () => {
     const shell = read(
       "src/features/live-game-session/match/components/match-shell.tsx",
     );
-    const pill = shell.slice(shell.indexOf("function ConnectionPill"));
-    expect(pill).toMatch(/connected:[\s\S]*?text-muted-foreground/);
-    expect(pill).toMatch(/connecting:[\s\S]*?text-warning/);
-    expect(pill).toMatch(/lost:[\s\S]*?text-destructive/);
-    // Never colour alone: every state carries an icon and a label.
-    expect(pill).toContain("Icon: Wifi");
-    expect(pill).toContain("sr-only sm:not-sr-only");
+    const banner = read(
+      "src/features/live-game-session/match/components/match-connection-banner.tsx",
+    );
+    expect(shell).not.toContain("ConnectionPill");
+    expect(banner).toContain("text-warning");
+    expect(banner).toContain("AlertTriangle");
+    expect(banner).toContain("حدِّث الآن");
   });
 
   it("lets the countdown redden as it runs out", () => {

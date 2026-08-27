@@ -6,6 +6,7 @@ import { PerfectClearBonusRule } from './application/perfect-clear-bonus.rule';
 import { RyoPayoffMatrixRule } from './application/ryo-payoff-matrix.rule';
 import { Top5ResultRule } from './application/top5-result.rule';
 import { DistributedInformationRaceRule } from './application/distributed-information-race.rule';
+import { ManualScoreCorrectionRule } from './application/manual-score-correction.rule';
 
 /**
  * The single scoring module for the new system (roadmap 0.3). The legacy
@@ -21,6 +22,7 @@ import { DistributedInformationRaceRule } from './application/distributed-inform
     RyoPayoffMatrixRule,
     Top5ResultRule,
     DistributedInformationRaceRule,
+    ManualScoreCorrectionRule,
   ],
   exports: [ScoringRuleRegistry, ScoringService],
 })
@@ -32,6 +34,7 @@ export class ScoringModule implements OnModuleInit {
     private readonly ryoPayoffMatrix: RyoPayoffMatrixRule,
     private readonly top5Result: Top5ResultRule,
     private readonly distributedRace: DistributedInformationRaceRule,
+    private readonly manualCorrection: ManualScoreCorrectionRule,
   ) {}
 
   onModuleInit(): void {
@@ -40,5 +43,6 @@ export class ScoringModule implements OnModuleInit {
     this.registry.bind(this.ryoPayoffMatrix);
     this.registry.bind(this.top5Result);
     this.registry.bind(this.distributedRace);
+    this.registry.bind(this.manualCorrection);
   }
 }

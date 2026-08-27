@@ -5,7 +5,12 @@ import { ScoringService } from '../../scoring/application/scoring.service';
 import { Match, MatchState } from '../domain/match';
 import { MatchSetupMode, MatchStatus } from '../domain/match.constants';
 import { MatchDocument } from './match.schema';
-import { MatchRepository, PendingMatchConvergence } from './match.repository';
+import {
+  MatchListPage,
+  MatchListRecord,
+  MatchRepository,
+  PendingMatchConvergence,
+} from './match.repository';
 
 export class MatchConcurrencyError extends ConflictException {
   constructor() {
@@ -79,6 +84,70 @@ export class MongooseMatchRepository implements MatchRepository {
         (row.currentChallenge as { runtimeId: string }).runtimeId,
       ),
     }));
+  }
+
+  async findListPageBySessionIds(input: {
+    sessionIds: string[];
+    page: number;
+    limit: number;
+  }): Promise<MatchListPage> {
+    if (!input.sessionIds.length) {
+      return { active: [], completed: [], completedTotal: 0 };
+    }
+    const projection = {
+      matchId: 1,
+      liveSessionId: 1,
+      status: 1,
+      stage: 1,
+      teams: 1,
+      occurrences: 1,
+      scoreEvents: 1,
+      createdAt: 1,
+      updatedAt: 1,
+      completedAt: 1,
+    } as const;
+    const ownerFilter = { liveSessionId: { $in: input.sessionIds } };
+    const [activeRows, completedRows, completedTotal] = await Promise.all([
+      this.model
+        .find({ ...ownerFilter, status: MatchStatus.ACTIVE }, projection)
+        .sort({ updatedAt: -1, matchId: -1 })
+        .lean()
+        .exec(),
+      this.model
+        .find({ ...ownerFilter, status: MatchStatus.COMPLETED }, projection)
+        .sort({ completedAt: -1, matchId: -1 })
+        .skip((input.page - 1) * input.limit)
+        .limit(input.limit)
+        .lean()
+        .exec(),
+      this.model.countDocuments({
+        ...ownerFilter,
+        status: MatchStatus.COMPLETED,
+      }),
+    ]);
+    const map = (row: Record<string, unknown>): MatchListRecord => ({
+      matchId: String(row.matchId),
+      liveSessionId: String(row.liveSessionId),
+      status: String(row.status),
+      stage: String(row.stage),
+      teams: (row.teams ?? []) as MatchListRecord['teams'],
+      occurrences: (row.occurrences ?? []) as MatchListRecord['occurrences'],
+      scoreEvents: (row.scoreEvents ?? []) as unknown[],
+      createdAt: new Date(row.createdAt as Date),
+      updatedAt: new Date((row.updatedAt ?? row.createdAt) as Date),
+      ...(row.completedAt
+        ? { completedAt: new Date(row.completedAt as Date) }
+        : {}),
+    });
+    return {
+      active: activeRows.map((row) =>
+        map(row as unknown as Record<string, unknown>),
+      ),
+      completed: completedRows.map((row) =>
+        map(row as unknown as Record<string, unknown>),
+      ),
+      completedTotal,
+    };
   }
 
   /**

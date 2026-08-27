@@ -6,7 +6,11 @@ import {
   LiveGameSession,
   LiveGameSessionState,
 } from '../domain/live-game-session';
-import { LiveGameSessionRepository } from '../domain/live-game-session.repository';
+import {
+  LiveGameSessionRepository,
+  OwnedSessionStatus,
+  OwnedSessionRef,
+} from '../domain/live-game-session.repository';
 import { LiveSessionConcurrencyError } from '../domain/live-session.errors';
 import {
   PARTICIPANT_PRESENCE,
@@ -43,6 +47,20 @@ export class MongooseLiveGameSessionRepository implements LiveGameSessionReposit
       .lean()
       .exec();
     return this.restore(document?.state as LiveGameSessionState | undefined);
+  }
+
+  async findOwnedSessionRefs(
+    controllerActorId: string,
+  ): Promise<OwnedSessionRef[]> {
+    const rows = await this.model
+      .find({ controllerActorId }, { sessionId: 1, status: 1, expiresAt: 1 })
+      .lean()
+      .exec();
+    return rows.map((row) => ({
+      sessionId: row.sessionId,
+      status: row.status as OwnedSessionStatus,
+      expiresAt: new Date(row.expiresAt),
+    }));
   }
 
   async save(

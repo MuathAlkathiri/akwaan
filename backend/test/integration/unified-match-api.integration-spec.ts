@@ -600,8 +600,13 @@ describe('Unified Match API integration', () => {
     // Straight to the board: no coin-toss, world-selection, or scope-selection
     // stage was ever entered, and no such command was sent.
     expect(created.match.stage.key).toBe(MatchStage.BOARD);
+    // The idle board offers the launch and its recovery controls (Double, ±1
+    // score correction, turn switch) alongside cancel.
     expect(created.match.availableActions).toEqual([
       'match:launch-challenge',
+      'match:arm-double',
+      'match:adjust-score',
+      'match:switch-turn',
       'match:cancel',
     ]);
     // The toss is settled server-side and simply reported.

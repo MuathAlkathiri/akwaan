@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Home, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { AkwaanLoader } from "@/components/akwaan/akwaan-loader";
 import { useLiveSession } from "../../hooks/live-session-context";
 import { MatchStageRouter } from "../match-stage-router";
 import { matchErrorCopy } from "../match-error-copy";
@@ -75,14 +75,10 @@ export function MatchHostScreen() {
       {snapshot ? (
         <MatchStageRouter actor="controller" />
       ) : (
-        <div className="space-y-4" aria-label="جارٍ تحميل المباراة">
-          <Skeleton className="h-24 w-full rounded-[var(--radius)]" />
-          <div className="grid gap-4 lg:grid-cols-3">
-            <Skeleton className="h-80 w-full rounded-[var(--radius)]" />
-            <Skeleton className="h-80 w-full rounded-[var(--radius)]" />
-            <Skeleton className="h-80 w-full rounded-[var(--radius)]" />
-          </div>
-        </div>
+        // Initial entry into an existing Match before its snapshot has hydrated
+        // (a fresh open, or a Resume from مبارياتي): no Match state is valid yet,
+        // so the branded loader owns the wait rather than blank skeleton blocks.
+        <AkwaanLoader label="نجهّز المباراة..." />
       )}
     </MatchShell>
   );

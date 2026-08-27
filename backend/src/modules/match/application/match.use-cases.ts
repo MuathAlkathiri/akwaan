@@ -53,6 +53,8 @@ import {
   GAMEPLAY_RUNTIME_REPOSITORY,
   GameplayRuntimeRepository,
 } from '../../live-game-sessions/domain/gameplay-runtime.repository';
+import { ScoringService } from '../../scoring/application/scoring.service';
+import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 
 interface MatchCommand {
   sessionId: string;
@@ -88,6 +90,7 @@ export class MatchUseCases {
     @Inject(GAMEPLAY_RUNTIME_REPOSITORY)
     private readonly runtimes: GameplayRuntimeRepository,
     private readonly cancelRuntime: CancelGameplayRuntime,
+    private readonly scoring: ScoringService,
   ) {}
 
   /**
@@ -300,6 +303,42 @@ export class MatchUseCases {
     await this.matches.save(match, revision);
     this.transitions.publish(match, 'double-updated');
     return match;
+  }
+
+  armBoardDouble(command: MatchCommand & { teamId: string }): Promise<Match> {
+    return this.mutate(command, 'double-updated', (match) =>
+      match.armSelectingTeamDouble({
+        commandId: command.commandId,
+        teamId: command.teamId,
+      }),
+    );
+  }
+
+  adjustManualScore(
+    command: MatchCommand & { teamId: string; delta: 1 | -1 },
+  ): Promise<Match> {
+    return this.mutate(command, 'score-corrected', (match, now) => {
+      const [event] = this.scoring.score(
+        SCORING_RULE_IDS.MANUAL_CORRECTION,
+        { teamId: command.teamId, delta: command.delta },
+        {
+          matchId: match.id,
+          challengeSessionId: `manual:${command.commandId}`,
+          occurredAt: now,
+          eventIdSeed: command.commandId,
+        },
+      );
+      match.applyManualScoreCorrection({
+        commandId: command.commandId,
+        event,
+      });
+    });
+  }
+
+  switchBoardTurn(command: MatchCommand): Promise<Match> {
+    return this.mutate(command, 'turn-switched', (match) =>
+      match.switchSelectingTeam({ commandId: command.commandId }),
+    );
   }
 
   /**

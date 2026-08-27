@@ -147,7 +147,7 @@ export function OccurrenceScopesStep({
             size="lg"
             disabled={!complete}
             onClick={onConfirm}
-            className="min-w-40 rounded-[var(--radius)] font-black"
+            className="akwaan-primary-action min-w-40 rounded-[var(--radius)] font-black"
           >
             متابعة
           </Button>
@@ -176,15 +176,15 @@ function ScopeChoiceCard({
       disabled={disabled}
       onClick={() => onToggle(scope.id)}
       className={cn(
-        "group relative flex h-full min-h-[15rem] w-full flex-col overflow-hidden rounded-3xl border bg-card text-right shadow-[0_10px_30px_rgba(24,16,54,.06)] transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45",
+        "group relative flex h-full min-h-[15rem] w-full flex-col overflow-hidden rounded-3xl border bg-card text-right shadow-[0_10px_30px_rgba(24,16,54,.06)] transition-[transform,box-shadow,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transform-none motion-reduce:transition-none",
         selected
-          ? "border-primary/45 ring-2 ring-primary/20"
-          : "border-border hover:-translate-y-0.5 hover:border-primary/25",
+          ? "border-[hsl(var(--brand-gold))] shadow-[0_12px_30px_-16px_hsl(var(--brand-gold)/.65)] ring-1 ring-[hsl(var(--brand-gold)/.24)]"
+          : "border-border hover:-translate-y-0.5 hover:border-[hsl(var(--brand-gold)/.4)] hover:shadow-[0_14px_32px_-18px_hsl(var(--brand-navy)/.35)]",
       )}
     >
       <ScopeCardMedia scope={scope}>
         {selected && (
-          <span className="absolute left-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground">
+          <span className="akwaan-soft-pop absolute left-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))]">
             <Check className="h-5 w-5" aria-hidden />
           </span>
         )}
@@ -201,7 +201,9 @@ function ScopeChoiceCard({
         <span className="mt-auto flex flex-wrap gap-3 pt-1 text-xs font-bold text-muted-foreground">
           <span className="inline-flex items-center gap-1.5 text-success">
             <Layers className="h-4 w-4" aria-hidden />
-            <span className="akwaan-numeral">{scope.readyContentItemCount}</span>
+            <span className="akwaan-numeral">
+              {scope.readyContentItemCount}
+            </span>
             عنصر جاهز
           </span>
           <span className="inline-flex items-center gap-1.5">

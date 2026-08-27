@@ -6,6 +6,7 @@ import {
   IsArray,
   IsEnum,
   IsInt,
+  IsIn,
   IsOptional,
   IsString,
   Max,
@@ -13,6 +14,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { MatchCommandDto } from './match.dto';
 import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.constants';
 import {
   MATCH_SCOPES_PER_OCCURRENCE,
@@ -110,4 +112,23 @@ export class LaunchUnifiedChallengeDto {
   @IsString()
   @MinLength(1)
   selectingTeamId?: string;
+}
+
+export class ArmBoardDoubleDto extends MatchCommandDto {
+  @ApiProperty({ description: 'The current selecting team' })
+  @IsString()
+  @MinLength(1)
+  teamId!: string;
+}
+
+export class AdjustMatchScoreDto extends MatchCommandDto {
+  @ApiProperty({ description: 'Team receiving the correction' })
+  @IsString()
+  @MinLength(1)
+  teamId!: string;
+
+  @ApiProperty({ enum: [-1, 1] })
+  @IsInt()
+  @IsIn([-1, 1])
+  delta!: 1 | -1;
 }

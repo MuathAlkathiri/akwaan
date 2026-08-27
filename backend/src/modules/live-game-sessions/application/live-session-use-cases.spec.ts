@@ -32,6 +32,9 @@ class MemoryRepository implements LiveGameSessionRepository {
   async findByParentQuestion() {
     return this.session ?? null;
   }
+  async findOwnedSessionRefs() {
+    return [];
+  }
   async save(session: LiveGameSession, expectedRevision: number) {
     if (!this.session || this.persistedRevision !== expectedRevision) {
       throw new LiveSessionConcurrencyError();

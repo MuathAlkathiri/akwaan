@@ -75,7 +75,6 @@ describe("the canonical Akwaan brand asset", () => {
   it("uses the primary logo on active player-facing brand surfaces", () => {
     for (const path of [
       "src/components/layout/header.tsx",
-      "src/features/live-game-session/match/components/match-shell.tsx",
       "src/features/live-game-session/components/player-join-page.tsx",
     ]) {
       const source = read(path);

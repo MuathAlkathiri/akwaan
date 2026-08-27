@@ -504,8 +504,13 @@ describe('Match API integration', () => {
     expect(created.match.unified.selectingTeamId).toBe(
       created.match.coinToss.winnerTeamId,
     );
+    // The idle board offers the launch and its recovery controls (Double, ±1
+    // score correction, turn switch) alongside cancel.
     expect(created.match.availableActions).toEqual([
       'match:launch-challenge',
+      'match:arm-double',
+      'match:adjust-score',
+      'match:switch-turn',
       'match:cancel',
     ]);
     // Three occurrences, one board of twelve independently playable positions.

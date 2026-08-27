@@ -17,6 +17,30 @@ export interface PendingMatchConvergence {
   runtimeId: string;
 }
 
+export interface MatchListRecord {
+  matchId: string;
+  liveSessionId: string;
+  status: string;
+  stage: string;
+  teams: Array<{ id: string; name: string }>;
+  occurrences: Array<{
+    index: number;
+    worldId: string;
+    selectedScopeIds: string[];
+    slots: Record<string, { status?: string } | undefined>;
+  }>;
+  scoreEvents: unknown[];
+  createdAt: Date;
+  updatedAt: Date;
+  completedAt?: Date;
+}
+
+export interface MatchListPage {
+  active: MatchListRecord[];
+  completed: MatchListRecord[];
+  completedTotal: number;
+}
+
 export interface MatchRepository {
   create(match: Match): Promise<void>;
   findById(matchId: string): Promise<Match | null>;
@@ -36,6 +60,12 @@ export interface MatchRepository {
    * one per active session.
    */
   findAwaitingConvergence(): Promise<PendingMatchConvergence[]>;
+  /** Lightweight owner-list projection; never restores Match runtimes. */
+  findListPageBySessionIds(input: {
+    sessionIds: string[];
+    page: number;
+    limit: number;
+  }): Promise<MatchListPage>;
 
   /** Optimistic save; throws when the stored revision moved on. */
   save(match: Match, expectedRevision: number): Promise<void>;

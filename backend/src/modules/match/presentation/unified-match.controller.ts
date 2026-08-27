@@ -18,6 +18,8 @@ import { LiveSessionHttpExceptionFilter } from '../../live-game-sessions/present
 import { MatchUseCases } from '../application/match.use-cases';
 import { MatchCommandDto } from './match.dto';
 import {
+  AdjustMatchScoreDto,
+  ArmBoardDoubleDto,
   CreateUnifiedMatchDto,
   LaunchUnifiedChallengeDto,
 } from './unified-match.dto';
@@ -97,6 +99,49 @@ export class UnifiedMatchController {
       ...(body.selectingTeamId
         ? { selectingTeamId: body.selectingTeamId }
         : {}),
+    });
+    return this.getSession.execute(sessionId, user.id);
+  }
+
+  @Post('unified/double')
+  @ApiOperation({
+    summary: "Arm the selecting team's Double for its next challenge",
+  })
+  async armBoardDouble(
+    @Param('sessionId') sessionId: string,
+    @Body() body: ArmBoardDoubleDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<LiveGameSessionSnapshot> {
+    await this.matches.armBoardDouble({ sessionId, actorId: user.id, ...body });
+    return this.getSession.execute(sessionId, user.id);
+  }
+
+  @Post('unified/score')
+  @ApiOperation({ summary: 'Apply a signed one-point scoreboard correction' })
+  async adjustScore(
+    @Param('sessionId') sessionId: string,
+    @Body() body: AdjustMatchScoreDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<LiveGameSessionSnapshot> {
+    await this.matches.adjustManualScore({
+      sessionId,
+      actorId: user.id,
+      ...body,
+    });
+    return this.getSession.execute(sessionId, user.id);
+  }
+
+  @Post('unified/turn')
+  @ApiOperation({ summary: 'Switch board selection to the other team' })
+  async switchTurn(
+    @Param('sessionId') sessionId: string,
+    @Body() body: MatchCommandDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<LiveGameSessionSnapshot> {
+    await this.matches.switchBoardTurn({
+      sessionId,
+      actorId: user.id,
+      ...body,
     });
     return this.getSession.execute(sessionId, user.id);
   }

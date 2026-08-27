@@ -192,57 +192,39 @@ describe("match setup draft", () => {
     expect(edited.occurrences[0].selectedScopeIds).toEqual(ANIME_POOL);
   });
 
-  it("walks to the next unconfigured occurrence, then to review", () => {
+  it("walks to the next unconfigured occurrence, then directly to teams", () => {
     let draft = configure(createDraft(), 0, ANIME, ANIME_POOL);
     expect(draft).toMatchObject({ activeOccurrenceIndex: 1, activeStep: "world" });
     draft = configure(draft, 1, FOOTBALL, FOOTBALL_POOL);
     expect(draft).toMatchObject({ activeOccurrenceIndex: 2, activeStep: "world" });
     draft = configure(draft, 2, ANIME, ANIME_POOL_2);
-    expect(draft.activeStep).toBe("review");
+    expect(draft.activeStep).toBe("teams");
   });
 
-  it("refuses review until all three occurrences are configured", () => {
-    const partial = configure(createDraft(), 0, ANIME, ANIME_POOL);
-    const attempted = apply(partial, { type: "go-to-review" });
-    expect(attempted.activeStep).not.toBe("review");
-    // It routes to the occurrence that still owes something.
-    expect(attempted.activeOccurrenceIndex).toBe(1);
-    expect(attempted.activeStep).toBe("world");
-
-    const half = apply(partial, {
-      type: "choose-world",
-      occurrenceIndex: 1,
-      worldId: FOOTBALL,
-    });
-    const stillBlocked = apply(half, { type: "go-to-review" });
-    expect(stillBlocked.activeStep).toBe("scopes");
-    expect(stillBlocked.activeOccurrenceIndex).toBe(1);
-  });
-
-  it("refuses the teams step until the draft is complete", () => {
-    const partial = configure(createDraft(), 0, ANIME, ANIME_POOL);
-    expect(apply(partial, { type: "go-to-teams" }).activeStep).not.toBe("teams");
-    expect(apply(fullDraft(), { type: "go-to-teams" }).activeStep).toBe("teams");
-  });
-
-  it("edits an occurrence from review and keeps every selection", () => {
-    const draft = apply(fullDraft(), { type: "edit-scopes", occurrenceIndex: 1 });
-    expect(draft).toMatchObject({ activeOccurrenceIndex: 1, activeStep: "scopes" });
-    expect(isDraftComplete(draft)).toBe(true);
-    expect(draft.occurrences[1].selectedScopeIds).toEqual(FOOTBALL_POOL);
+  it("does not enter teams when the active occurrence is incomplete", () => {
+    const draft = apply(
+      createDraft(),
+      { type: "choose-world", occurrenceIndex: 0, worldId: ANIME },
+      ...ANIME_POOL.slice(0, 3).map(
+        (scopeId) =>
+          ({ type: "toggle-scope", occurrenceIndex: 0, scopeId }) as MatchSetupAction,
+      ),
+      { type: "confirm-scopes" },
+    );
+    expect(draft.activeStep).toBe("scopes");
+    expect(isDraftComplete(draft)).toBe(false);
   });
 
   it("steps back through the wizard without losing valid state", () => {
-    let draft = apply(fullDraft(), { type: "go-to-teams" });
+    const complete = fullDraft();
+    expect(complete.activeStep).toBe("teams");
+    // Team Back is route navigation owned by the wizard, not a reducer rewind.
+    expect(apply(complete, { type: "back" })).toEqual(complete);
+
+    let draft = configure(createDraft(), 0, ANIME, ANIME_POOL);
     draft = apply(draft, { type: "back" });
-    expect(draft.activeStep).toBe("review");
-    draft = apply(draft, { type: "back" });
-    expect(draft).toMatchObject({ activeOccurrenceIndex: 2, activeStep: "scopes" });
-    draft = apply(draft, { type: "back" });
-    expect(draft).toMatchObject({ activeOccurrenceIndex: 2, activeStep: "world" });
-    draft = apply(draft, { type: "back" });
-    expect(draft).toMatchObject({ activeOccurrenceIndex: 1, activeStep: "scopes" });
-    expect(isDraftComplete(draft)).toBe(true);
+    expect(draft).toMatchObject({ activeOccurrenceIndex: 0, activeStep: "scopes" });
+    expect(isDraftComplete(draft)).toBe(false);
     // The very first World step has nowhere to go back to.
     const first = apply(createDraft(), { type: "back" });
     expect(first).toMatchObject({ activeOccurrenceIndex: 0, activeStep: "world" });
@@ -317,6 +299,30 @@ describe("match setup draft recovery", () => {
     expect(readStoredDraft()).toMatchObject({
       occurrences: draft.occurrences,
       activeStep: draft.activeStep,
+    });
+  });
+
+  it("migrates a complete version-1 review draft directly to teams", () => {
+    const draft = fullDraft();
+    window.sessionStorage.setItem(
+      MATCH_SETUP_DRAFT_STORAGE_KEY,
+      JSON.stringify({ version: 1, draft: { ...draft, activeStep: "review" } }),
+    );
+    expect(readStoredDraft()).toMatchObject({
+      occurrences: draft.occurrences,
+      activeStep: "teams",
+    });
+  });
+
+  it("recovers an incomplete version-1 review draft at its first safe step", () => {
+    const draft = configure(createDraft(), 0, ANIME, ANIME_POOL);
+    window.sessionStorage.setItem(
+      MATCH_SETUP_DRAFT_STORAGE_KEY,
+      JSON.stringify({ version: 1, draft: { ...draft, activeStep: "review" } }),
+    );
+    expect(readStoredDraft()).toMatchObject({
+      activeOccurrenceIndex: 1,
+      activeStep: "world",
     });
   });
 

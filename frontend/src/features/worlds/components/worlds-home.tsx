@@ -1,33 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import {
   ArrowLeft,
   Check,
-  Crown,
-  Gamepad2,
-  Puzzle,
-  Rocket,
   Smartphone,
   Sparkles,
-  Star,
   Trash2,
   Trophy,
   Users,
-  X,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { MATCH_SETUP_ROUTE } from "@/features/match-setup/routes";
 import {
   OCCURRENCE_COUNT,
@@ -53,47 +39,7 @@ import { isSelectableScope } from "../utils/scopes";
 import { worldSignatureLabel } from "../utils/world-signature";
 import type { PlayableScope, PlayableWorld } from "../types";
 
-/**
- * The four mechanics that headline the game, orbiting the hero planet. Each is a
- * label the player recognises the game by — a title and the one-line promise of
- * what that mechanic feels like — positioned at a corner of the planet.
- */
-const HERO_NODES = [
-  {
-    key: "combo",
-    title: "الكومبو",
-    subtitle: "جاوب وبراهن",
-    Icon: Users,
-    tone: "cyan",
-    position: "hero-node-br",
-  },
-  {
-    key: "top-5",
-    title: "أفضل 5",
-    subtitle: "توقع الترتيب",
-    Icon: Crown,
-    tone: "gold",
-    position: "hero-node-tl",
-  },
-  {
-    key: "distributed",
-    title: "ركّبها",
-    subtitle: "معلومات مجزأة",
-    Icon: Puzzle,
-    tone: "purple",
-    position: "hero-node-tr",
-  },
-  {
-    key: "marhala",
-    title: "المرحلة",
-    subtitle: "تحدي مراحل",
-    Icon: Gamepad2,
-    tone: "blue",
-    position: "hero-node-bl",
-  },
-] as const;
-
-type NodeTone = (typeof HERO_NODES)[number]["tone"];
+type NodeTone = "cyan" | "gold" | "purple" | "blue";
 
 const NODE_TONE: Record<NodeTone, string> = {
   cyan: "bg-[hsl(var(--brand-cyan))] text-[hsl(var(--brand-navy))]",
@@ -107,44 +53,74 @@ const FEATURES = [
   {
     key: "teams",
     title: "لعبة للفرق",
-    description: "تعاون، تنافس، وعيش المتعة مع أصدقائك.",
+    description: "تعاون، ناقش، وخذ قراراتك مع فريقك.",
     Icon: Users,
     tone: "cyan",
   },
   {
-    key: "phone",
-    title: "اللعب من جوالك",
-    description: "تجربة سلسة من جوالك دون تحميل تطبيق.",
-    Icon: Smartphone,
-    tone: "gold",
-  },
-  {
     key: "variety",
-    title: "تحديات متنوعة",
-    description: "كل عالم بتحدياته الفريدة والممتعة.",
+    title: "كل عالم له تحديه",
+    description: "كل عالم يضيف تحديًا خاصًا يعطيه تجربة لعب تميّزه.",
     Icon: Zap,
     tone: "purple",
   },
   {
-    key: "leaderboard",
-    title: "نافس على الصدارة",
-    description: "اجمع النقاط وتصدر الترتيب العام.",
+    key: "phone",
+    title: "العب من جوالك",
+    description: "شاشة مشتركة للكل، وجوالك لقراراتك الخاصة.",
+    Icon: Smartphone,
+    tone: "gold",
+  },
+  {
+    key: "decisions",
+    title: "مو كل شيء معرفة",
+    description: "بعض التحديات تكافئ القرار، التوقع وقراءة الخصم.",
     Icon: Trophy,
     tone: "gold",
   },
 ] as const;
 
 /** The categories not open yet — shown, greyed, so the roadmap reads as a promise. */
-const COMING_SOON = ["الأفلام", "المسلسلات", "الأغاني", "المزيد قريباً"] as const;
+const COMING_SOON = [
+  "الأفلام",
+  "المسلسلات",
+  "الأغاني",
+  "المزيد قريباً",
+] as const;
+
+function withViewTransition(update: () => void) {
+  const startViewTransition = (
+    document as Document & {
+      startViewTransition?: (callback: () => void) => void;
+    }
+  ).startViewTransition;
+  const reduceMotion = window.matchMedia?.(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
+
+  if (!startViewTransition || reduceMotion) {
+    update();
+    return;
+  }
+
+  startViewTransition.call(document, () => flushSync(update));
+}
 
 export function WorldsHome() {
   const query = usePlayableWorlds();
   const worlds = query.isSuccess ? playableWorlds(query.data) : [];
-  const [draft, dispatch] = useReducer(matchSetupReducer, undefined, createDraft);
+  const [draft, dispatch] = useReducer(
+    matchSetupReducer,
+    undefined,
+    createDraft,
+  );
   const [restored, setRestored] = useState(false);
-  const [dialog, setDialog] =
-    useState<{ world: PlayableWorld; occurrenceIndex: number }>();
+  const [focusedWorld, setFocusedWorld] = useState<{
+    world: PlayableWorld;
+    occurrenceIndex: number;
+  }>();
   const [pendingScopeIds, setPendingScopeIds] = useState<string[]>([]);
+  const returnFocusWorldId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const stored = readStoredDraft();
@@ -154,6 +130,18 @@ export function WorldsHome() {
   useEffect(() => {
     if (restored) writeStoredDraft(draft);
   }, [draft, restored]);
+  useEffect(() => {
+    if (focusedWorld || !returnFocusWorldId.current) return;
+    const worldId = returnFocusWorldId.current;
+    const frame = requestAnimationFrame(() => {
+      const trigger = Array.from(
+        document.querySelectorAll<HTMLButtonElement>("[data-world-id]"),
+      ).find((element) => element.dataset.worldId === worldId);
+      trigger?.focus();
+      returnFocusWorldId.current = undefined;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusedWorld]);
 
   const openWorld = (world: PlayableWorld, occurrenceIndex?: number) => {
     const existing =
@@ -162,28 +150,32 @@ export function WorldsHome() {
         : draft.occurrences[occurrenceIndex];
     const target = existing ?? draft.occurrences.find((item) => !item.worldId);
     if (!target) return;
-    setPendingScopeIds(
-      target.worldId === world.id ? target.selectedScopeIds : [],
-    );
-    setDialog({ world, occurrenceIndex: target.occurrenceIndex });
+    returnFocusWorldId.current = world.id;
+    withViewTransition(() => {
+      setPendingScopeIds(
+        target.worldId === world.id ? target.selectedScopeIds : [],
+      );
+      setFocusedWorld({ world, occurrenceIndex: target.occurrenceIndex });
+    });
   };
 
   const confirmScopes = () => {
-    if (!dialog || pendingScopeIds.length !== SCOPES_PER_OCCURRENCE) return;
-    const current = draft.occurrences[dialog.occurrenceIndex];
+    if (!focusedWorld || pendingScopeIds.length !== SCOPES_PER_OCCURRENCE)
+      return;
+    const current = draft.occurrences[focusedWorld.occurrenceIndex];
     dispatch({
       type: "choose-world",
-      occurrenceIndex: dialog.occurrenceIndex,
-      worldId: dialog.world.id,
+      occurrenceIndex: focusedWorld.occurrenceIndex,
+      worldId: focusedWorld.world.id,
     });
     const previous =
-      current.worldId === dialog.world.id ? current.selectedScopeIds : [];
+      current.worldId === focusedWorld.world.id ? current.selectedScopeIds : [];
     previous
       .filter((id) => !pendingScopeIds.includes(id))
       .forEach((scopeId) =>
         dispatch({
           type: "toggle-scope",
-          occurrenceIndex: dialog.occurrenceIndex,
+          occurrenceIndex: focusedWorld.occurrenceIndex,
           scopeId,
         }),
       );
@@ -192,12 +184,12 @@ export function WorldsHome() {
       .forEach((scopeId) =>
         dispatch({
           type: "toggle-scope",
-          occurrenceIndex: dialog.occurrenceIndex,
+          occurrenceIndex: focusedWorld.occurrenceIndex,
           scopeId,
         }),
       );
     dispatch({ type: "confirm-scopes" });
-    setDialog(undefined);
+    withViewTransition(() => setFocusedWorld(undefined));
   };
 
   const selected = draft.occurrences.flatMap((occurrence) => {
@@ -206,86 +198,119 @@ export function WorldsHome() {
   });
   const selectedCount = selected.length;
 
+  if (focusedWorld) {
+    return (
+      <JourneyShell className="max-w-[1440px]">
+        <WorldScopeFocusMode
+          state={focusedWorld}
+          selectedScopeIds={pendingScopeIds}
+          onSelectedScopeIdsChange={setPendingScopeIds}
+          onBack={() => withViewTransition(() => setFocusedWorld(undefined))}
+          onConfirm={confirmScopes}
+        />
+      </JourneyShell>
+    );
+  }
+
   return (
     <JourneyShell className="max-w-[1440px]">
-      <div className="space-y-14 pb-6">
+      <div className="relative space-y-16 pb-6">
         <AkwaanHero />
 
-        <section id="worlds" aria-labelledby="worlds-title" className="scroll-mt-24">
-          <SectionHeading id="worlds-title" title="اختر 3 عوالم للعب" />
-
-          {query.isLoading ? (
-            <CardSkeletons count={4} />
-          ) : query.isError ? (
-            <JourneyError
-              title="تعذر تحميل العوالم"
-              description="تأكد من اتصالك وجرّب مرة ثانية."
-              onRetry={() => void query.refetch()}
-              retrying={query.isFetching}
+        <section
+          id="worlds"
+          aria-labelledby="worlds-title"
+          className="relative scroll-mt-24"
+        >
+          <div
+            className="grid items-start gap-7 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-10"
+            dir="ltr"
+          >
+            <WorldSelectionSidebar
+              draft={draft}
+              worlds={worlds}
+              selectedCount={selectedCount}
+              onEdit={openWorld}
             />
-          ) : worlds.length ? (
-            <>
-              <ul className="grid list-none grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {worlds.map((world) => {
-                  const occurrence = draft.occurrences.find(
-                    (item) => item.worldId === world.id,
-                  );
-                  const order = occurrence
-                    ? draft.occurrences.findIndex(
-                        (item) => item.worldId === world.id,
-                      ) + 1
-                    : undefined;
-                  return (
-                    <li key={world.id}>
-                      <WorldSelectCard
-                        world={world}
-                        selected={Boolean(occurrence)}
-                        order={order}
-                        selectedCount={selectedCount}
-                        selectedScopeIds={occurrence?.selectedScopeIds ?? []}
-                        disabled={
-                          selectedCount >= OCCURRENCE_COUNT && !occurrence
-                        }
-                        onSelect={() =>
-                          openWorld(world, occurrence?.occurrenceIndex)
-                        }
-                        onRemove={
-                          occurrence
-                            ? () =>
-                                dispatch({
-                                  type: "clear-occurrence",
-                                  occurrenceIndex: occurrence.occurrenceIndex,
-                                })
-                            : undefined
-                        }
-                      />
-                    </li>
-                  );
-                })}
-                {COMING_SOON.map((label) => (
-                  <li key={label}>
-                    <ComingSoonCard label={label} />
-                  </li>
-                ))}
-              </ul>
 
-              <SelectionBar draft={draft} selectedCount={selectedCount} />
-            </>
-          ) : (
-            <EmptyWorlds />
-          )}
+            <div className="min-w-0" dir="rtl">
+              <SectionHeading id="worlds-title" title="اختر عوالمك" />
+              <p className="-mt-4 mb-8 text-center text-sm leading-7 text-muted-foreground sm:text-base">
+                اختر 3 عوالم. والترتيب اللي تختاره هو ترتيب اللعب.
+              </p>
+
+              {query.isLoading ? (
+                <CardSkeletons count={4} />
+              ) : query.isError ? (
+                <JourneyError
+                  title="تعذر تحميل العوالم"
+                  description="تأكد من اتصالك وجرّب مرة ثانية."
+                  onRetry={() => void query.refetch()}
+                  retrying={query.isFetching}
+                />
+              ) : worlds.length ? (
+                <>
+                  {/* Active Worlds as circular portals — all of them, still exactly-3 to select. */}
+                  <ul className="grid list-none grid-cols-2 justify-items-center gap-x-6 gap-y-10 sm:grid-cols-4">
+                    {worlds.map((world) => {
+                      const occurrence = draft.occurrences.find(
+                        (item) => item.worldId === world.id,
+                      );
+                      const order = occurrence
+                        ? draft.occurrences.findIndex(
+                            (item) => item.worldId === world.id,
+                          ) + 1
+                        : undefined;
+                      return (
+                        <li key={world.id} className="w-full">
+                          <WorldSelectCard
+                            world={world}
+                            selected={Boolean(occurrence)}
+                            order={order}
+                            selectedScopeIds={occurrence?.selectedScopeIds ?? []}
+                            disabled={
+                              selectedCount >= OCCURRENCE_COUNT && !occurrence
+                            }
+                            onSelect={() =>
+                              openWorld(world, occurrence?.occurrenceIndex)
+                            }
+                            onRemove={
+                              occurrence
+                                ? () =>
+                                    dispatch({
+                                      type: "clear-occurrence",
+                                      occurrenceIndex:
+                                        occurrence.occurrenceIndex,
+                                    })
+                                : undefined
+                            }
+                          />
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  {/* Not open yet — same portal language, plainly muted and unselectable. */}
+                  <h3 className="mb-8 mt-12 text-center text-xl font-black text-[hsl(var(--brand-navy))] sm:text-2xl">
+                    عوالم جديدة في الطريق
+                  </h3>
+                  <ul className="grid list-none grid-cols-2 justify-items-center gap-x-6 gap-y-8 sm:grid-cols-4">
+                    {COMING_SOON.map((label) => (
+                      <li key={label} className="w-full">
+                        <ComingSoonCard label={label} />
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <EmptyWorlds />
+              )}
+            </div>
+          </div>
         </section>
 
         <FeaturesSection />
       </div>
-
-      <WorldScopesDialog
-        state={dialog}
-        selectedScopeIds={pendingScopeIds}
-        onSelectedScopeIdsChange={setPendingScopeIds}
-        onClose={() => setDialog(undefined)}
-        onConfirm={confirmScopes}
-      />
     </JourneyShell>
   );
 }
@@ -295,10 +320,7 @@ function SectionHeading({ id, title }: { id?: string; title: string }) {
   return (
     <div className="mb-7 flex items-center justify-center gap-3">
       <Flourish />
-      <h2
-        id={id}
-        className="text-2xl font-black text-foreground sm:text-3xl"
-      >
+      <h2 id={id} className="text-2xl font-black text-foreground sm:text-3xl">
         {title}
       </h2>
       <Flourish flip />
@@ -323,72 +345,40 @@ function Flourish({ flip = false }: { flip?: boolean }) {
 
 function AkwaanHero() {
   return (
-    <section className="akwaan-home-hero relative isolate -mx-4 overflow-hidden bg-[hsl(var(--brand-navy))] px-6 py-10 text-white sm:-mx-6 sm:px-10 lg:-mx-8 lg:grid lg:min-h-[clamp(460px,58vh,560px)] lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-6 lg:py-14 lg:px-[max(4rem,calc((100vw-1440px)/2+4rem))]">
-      <div className="akwaan-universe-stage relative z-10 order-last mt-8 min-h-[320px] lg:order-none lg:mt-0 lg:h-full lg:min-h-[420px]">
-        <HeroOrbitGraphic />
-        <div className="akwaan-universe-core absolute left-1/2 top-1/2 grid size-[220px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-[radial-gradient(circle_at_38%_30%,#3a3676_0%,#242150_46%,#171536_100%)] shadow-[0_0_0_16px_rgba(255,255,255,.02),0_0_70px_rgba(135,116,255,.2),0_22px_60px_rgba(0,0,0,.32)] sm:size-[250px] lg:size-[280px]">
-          <span className="absolute inset-[14%] rounded-full border border-white/10" />
-          <span className="flex flex-col items-center gap-1">
-            <Sparkles
-              className="size-9 text-[hsl(var(--brand-gold))] lg:size-11"
-              strokeWidth={1.3}
-            />
-            <span className="text-xl font-black tracking-wide lg:text-2xl">
-              أكوان
-            </span>
-          </span>
-        </div>
-        {HERO_NODES.map(({ key, title, subtitle, Icon, tone, position }) => (
-          <div
-            key={key}
-            className={cn(
-              "hero-node absolute z-20 flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 backdrop-blur-sm",
-              position,
-            )}
-          >
-            <span
-              className={cn(
-                "grid size-9 shrink-0 place-items-center rounded-full shadow-[0_6px_16px_rgba(0,0,0,.28)]",
-                NODE_TONE[tone],
-              )}
-            >
-              <Icon className="size-4" strokeWidth={2} aria-hidden />
-            </span>
-            <span className="min-w-0 leading-tight">
-              <span className="block text-sm font-black">{title}</span>
-              <span className="block text-[0.7rem] font-bold text-white/60">
-                {subtitle}
-              </span>
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className="relative z-20 max-w-[34rem] text-right lg:justify-self-start">
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3.5 py-1.5 text-xs font-black text-white/80">
-          <Star
-            className="size-3.5 fill-[hsl(var(--brand-gold))] text-[hsl(var(--brand-gold))]"
-            aria-hidden
+    <section className="relative z-10 px-4 pb-8 pt-8 text-center lg:pb-10 lg:pt-10">
+      <div className="mx-auto flex max-w-3xl flex-col items-center">
+        <div className="akwaan-hero-logo-in">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/logo/akwaan-primary-logo-transparent.png"
+            alt="أكوان"
+            width={870}
+            height={310}
+            className="mx-auto h-auto w-[min(82vw,264px)] select-none sm:w-[min(76vw,410px)]"
+            draggable={false}
           />
-          لعبة فرق · تحديات · تفاعل
-        </span>
-        <h1 className="mt-5 text-[2.4rem] font-black leading-[1.2] sm:text-[3rem] lg:text-[3.4rem]">
-          اختر 3 عوالم
-          <br />
-          وابدأ <span className="text-[hsl(var(--brand-gold))]">التحدي!</span>
+        </div>
+
+        <h1 className="akwaan-hero-copy-in mt-3 text-3xl font-black leading-[1.25] text-[hsl(var(--brand-navy))] [animation-delay:50ms] sm:text-4xl lg:text-[2.9rem]">
+          3 عوالم مختلفة، منافسة واحدة
         </h1>
-        <p className="mt-5 max-w-[30rem] text-sm leading-7 text-white/70 sm:text-base">
-          لعبة جماعية مليئة بالتحديات والمنافسة. اختر عوالمك المفضلة، جاوب،
-          تعاون، وحقق أعلى النقاط!
+        <p className="akwaan-hero-copy-in mt-4 max-w-xl text-base font-bold leading-7 text-[hsl(var(--brand-navy))] [animation-delay:100ms] sm:text-lg sm:leading-8">
+          مو مجرد أسئلة. كل عالم له{" "}
+          <span className="text-[hsl(var(--brand-gold))]">تحديه الخاص</span>{" "}
+          وطريقة لعب تميّزه.
         </p>
+        <p className="akwaan-hero-copy-in mt-2 max-w-xl text-sm leading-7 text-[hsl(var(--brand-navy)/.62)] [animation-delay:150ms] sm:text-base">
+          اختاروا 3 عوالم، كوّنوا فريقين، وتنافسوا في تحديات تجمع المعرفة،
+          القرار، التعاون وقراءة الخصم.
+        </p>
+
         <Button
           asChild
           size="lg"
-          className="mt-7 rounded-full bg-white px-7 py-6 text-base font-black text-[hsl(var(--brand-navy))] shadow-[0_18px_44px_-18px_rgba(0,0,0,.6)] hover:bg-white/90"
+          className="akwaan-primary-action akwaan-hero-cta-in mt-7 rounded-full border border-[hsl(var(--brand-gold)/.32)] bg-[hsl(var(--brand-navy))] px-10 py-6 text-base font-black text-white shadow-[0_16px_34px_-18px_hsl(var(--brand-navy)/.8)] [animation-delay:200ms] hover:border-[hsl(var(--brand-gold)/.72)] hover:bg-[hsl(var(--brand-navy)/.96)] hover:shadow-[0_18px_38px_-16px_hsl(var(--brand-gold)/.42)] focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         >
           <a href="#worlds">
-            <Rocket className="ml-2 size-5" aria-hidden />
-            أنشئ مباراة جديدة
+            ابدأ مباراة
           </a>
         </Button>
       </div>
@@ -396,37 +386,10 @@ function AkwaanHero() {
   );
 }
 
-function HeroOrbitGraphic() {
-  return (
-    <div
-      aria-hidden
-      className="absolute left-1/2 top-1/2 size-[320px] -translate-x-1/2 -translate-y-1/2 opacity-90 sm:size-[360px] lg:size-[400px]"
-    >
-      <span className="absolute inset-[6%] rounded-full border border-white/10" />
-      <span className="absolute inset-[16%] rotate-[-17deg] rounded-[46%] border border-[hsl(var(--brand-purple)/.25)]" />
-      <span className="absolute left-[2%] top-[34%] h-[36%] w-[96%] rotate-12 rounded-[50%] border border-[hsl(var(--brand-gold)/.22)]" />
-      <Sparkles className="absolute left-[12%] top-[9%] size-4 text-[hsl(var(--brand-gold)/.8)]" />
-      <Sparkles className="absolute bottom-[12%] right-[8%] size-3 text-white/45" />
-      <span className="absolute right-[13%] top-[22%] size-1.5 rounded-full bg-[hsl(var(--brand-purple))]" />
-      <span className="absolute bottom-[16%] left-[18%] size-1 rounded-full bg-white/60" />
-      <span className="absolute left-[4%] top-[54%] size-1 rounded-full bg-[hsl(var(--brand-gold))]" />
-    </div>
-  );
-}
-
-/**
- * One World, as a selectable card.
- *
- * A button so it keeps its World name as its accessible name and its
- * `aria-pressed` selection state. Tapping it opens Scope selection; it never
- * navigates. Unselected, it shows the World's signature mechanic; selected, it
- * shows the four Scopes the player chose and an order badge for its slot.
- */
 function WorldSelectCard({
   world,
   selected,
   order,
-  selectedCount,
   selectedScopeIds,
   disabled,
   onSelect,
@@ -435,7 +398,6 @@ function WorldSelectCard({
   world: PlayableWorld;
   selected: boolean;
   order?: number;
-  selectedCount: number;
   selectedScopeIds: string[];
   disabled: boolean;
   onSelect: () => void;
@@ -443,58 +405,80 @@ function WorldSelectCard({
 }) {
   const signature = worldSignatureLabel(world);
   return (
-    <div className="relative">
+    <div className="relative mx-auto flex w-full max-w-[20rem] flex-col items-center gap-4">
+      {/* The World as a floating circular portal — artwork first, no card frame. */}
       <button
         type="button"
+        data-world-id={world.id}
         aria-label={world.name}
         aria-pressed={selected}
         disabled={disabled}
         onClick={onSelect}
+        style={{ viewTransitionName: `akwaan-world-${world.id}` }}
         className={cn(
-          "group flex w-full flex-col items-center gap-3 rounded-3xl border-2 bg-card p-4 text-center shadow-[0_10px_30px_rgba(24,16,54,.06)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:opacity-40",
+          "akwaan-portal group relative aspect-square w-full max-w-[17rem] rounded-full outline-none transition-[transform,filter] duration-200 focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))] focus-visible:ring-offset-4 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:saturate-[.45] disabled:opacity-55 motion-reduce:transform-none motion-reduce:transition-none",
           selected
-            ? "border-[hsl(var(--brand-gold))] shadow-[0_14px_36px_hsl(var(--brand-gold)/.18)]"
-            : "border-transparent hover:-translate-y-1 hover:shadow-[0_16px_38px_rgba(24,16,54,.12)]",
+            ? "-translate-y-1 scale-[1.02] hover:-translate-y-1.5 hover:scale-[1.025] max-sm:scale-100 max-sm:hover:-translate-y-0.5 max-sm:hover:scale-100"
+            : "hover:-translate-y-1.5 hover:scale-[1.02] max-sm:hover:-translate-y-0.5 max-sm:hover:scale-100",
         )}
       >
-        <span className="relative block aspect-square w-full max-w-[7.5rem] overflow-hidden rounded-full border-2 border-secondary bg-secondary">
-          <WorldCover
-            world={world}
-            sizes="(min-width:1024px) 130px, 30vw"
-          />
-          {selected && order && (
-            <span className="absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-[hsl(var(--brand-gold))] text-sm font-black text-[hsl(var(--brand-navy))] shadow-sm">
-              <span className="akwaan-numeral">{order}</span>
-            </span>
+        {/* Outer cream ring + accent ring + soft glow live on ::before/::after. */}
+        <span
+          className={cn(
+            "absolute inset-[6px] overflow-hidden rounded-full border-2 shadow-[0_20px_44px_-18px_rgba(24,16,54,.4)] transition-[border-color,box-shadow] duration-200 motion-reduce:transition-none",
+            selected
+              ? "border-[hsl(var(--brand-gold))] shadow-[0_24px_52px_-18px_hsl(var(--brand-navy)/.48)] ring-2 ring-[hsl(var(--brand-navy)/.18)] group-hover:border-[hsl(var(--brand-gold)/.9)] group-hover:shadow-[0_26px_56px_-16px_hsl(var(--brand-gold)/.34)]"
+              : "border-white/90 group-hover:border-[hsl(var(--brand-gold)/.52)] group-hover:shadow-[0_24px_50px_-18px_hsl(var(--brand-navy)/.45)]",
+          )}
+        >
+          <WorldCover world={world} sizes="(min-width:1024px) 260px, 44vw" />
+          {selected && (
+            <span className="akwaan-soft-pop absolute inset-0 rounded-full ring-[3px] ring-inset ring-[hsl(var(--brand-gold)/.55)]" />
           )}
         </span>
-
-        <span className="text-lg font-black text-foreground">{world.name}</span>
-
-        {selected ? (
-          <WorldCardScopes worldId={world.id} selectedScopeIds={selectedScopeIds} />
-        ) : (
-          signature && (
-            <span className="text-xs font-bold text-[hsl(var(--brand-gold))]">
-              {signature}
-            </span>
-          )
+        {/* Selection order badge. */}
+        {selected && order && (
+          <span className="akwaan-soft-pop absolute -top-1 right-3 z-10 grid size-9 place-items-center rounded-full border-2 border-[hsl(var(--brand-gold))] bg-[hsl(var(--brand-navy))] text-base font-black text-white shadow-[0_7px_18px_rgba(24,16,54,.32)] sm:size-10">
+            <span className="akwaan-numeral">{order}</span>
+          </span>
         )}
-
-        <span className="akwaan-numeral rounded-full bg-secondary px-3 py-0.5 text-xs font-black text-muted-foreground">
-          {selectedCount}
-          <span className="text-muted-foreground/60">/{OCCURRENCE_COUNT}</span>
-        </span>
+        {/* Tiny orbiting satellite for a bit of life. */}
+        <span
+          aria-hidden
+          className={cn(
+            "absolute left-4 top-6 size-2 rounded-full transition-colors",
+            selected
+              ? "bg-[hsl(var(--brand-gold))]"
+              : "bg-[hsl(var(--brand-navy)/.32)] group-hover:bg-[hsl(var(--brand-gold)/.72)]",
+          )}
+        />
       </button>
+
+      <div className="flex flex-col items-center gap-1 text-center">
+        <span className="text-xl font-black text-[hsl(var(--brand-navy))]">
+          {world.name}
+        </span>
+        {signature && (
+          <span className="text-xs font-bold text-[hsl(var(--brand-gold))]">
+            {signature}
+          </span>
+        )}
+        {selected && (
+          <WorldCardScopes
+            worldId={world.id}
+            selectedScopeIds={selectedScopeIds}
+          />
+        )}
+      </div>
 
       {selected && onRemove && (
         <button
           type="button"
           onClick={onRemove}
           aria-label={`إزالة ${world.name}`}
-          className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-card text-muted-foreground shadow-sm transition hover:text-destructive"
+          className="absolute -top-1 left-3 z-10 grid size-8 place-items-center rounded-full border border-[hsl(var(--brand-navy)/.08)] bg-white text-muted-foreground shadow-[0_6px_16px_rgba(24,16,54,.2)] transition-colors duration-200 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))] focus-visible:ring-offset-2"
         >
-          <Trash2 className="size-3.5" />
+          <Trash2 className="size-4" />
         </button>
       )}
     </div>
@@ -520,105 +504,142 @@ function WorldCardScopes({
   );
 }
 
-/** A category that is not open yet: shown, but plainly not selectable. */
+/** A category that is not open yet: same portal language, plainly muted, and not
+ *  selectable — never a playable choice. */
 function ComingSoonCard({ label }: { label: string }) {
   return (
     <div
       aria-disabled
-      className="flex w-full flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-border/70 bg-muted/40 p-4 text-center opacity-70"
+      className="mx-auto flex w-full max-w-[13rem] flex-col items-center gap-3 text-center opacity-60"
     >
-      <span className="grid aspect-square w-full max-w-[7.5rem] place-items-center rounded-full border-2 border-border/60 bg-secondary/50 text-muted-foreground/50">
-        <Sparkles className="size-7" aria-hidden />
+      <span className="grid aspect-square w-full max-w-[9.5rem] place-items-center rounded-full border-2 border-dashed border-[hsl(var(--brand-navy)/.18)] bg-[hsl(var(--brand-navy)/.04)] text-[hsl(var(--brand-navy)/.35)]">
+        <Sparkles className="size-6" aria-hidden />
       </span>
-      <span className="text-lg font-black text-muted-foreground">{label}</span>
-      <span className="rounded-full bg-secondary/70 px-3 py-0.5 text-xs font-black text-muted-foreground">
-        قريباً
+      <span className="text-base font-black text-muted-foreground">
+        {label}
+      </span>
+      <span className="rounded-full bg-secondary/70 px-2.5 py-0.5 text-[0.7rem] font-black text-muted-foreground">
+        قريبًا
       </span>
     </div>
   );
 }
 
 /**
- * The order the chosen Worlds will be played, and the way into setup.
+ * The confirmed World order and the way into setup, always visible beside the
+ * World grid rather than repeated below it.
  *
- * The three slots fill in the order the player picks them, so the bar states the
- * rule ("played in the order you choose") and shows which slots are taken.
- * Continuing is blocked until all three are chosen.
+ * It reads the reducer's occurrences directly: entering Focus Mode cannot create
+ * a row, while confirming Scopes fills the matching slot. Continuing remains
+ * blocked until all three occurrences are confirmed.
  */
-function SelectionBar({
+function WorldSelectionSidebar({
   draft,
+  worlds,
   selectedCount,
+  onEdit,
 }: {
   draft: ReturnType<typeof createDraft>;
+  worlds: PlayableWorld[];
   selectedCount: number;
+  onEdit: (world: PlayableWorld, occurrenceIndex?: number) => void;
 }) {
   const ready = selectedCount === OCCURRENCE_COUNT;
   return (
-    <div className="mt-8 flex flex-col gap-3 sm:flex-row-reverse">
-      <div
-        className="flex flex-1 items-center justify-between gap-4 rounded-2xl bg-[hsl(var(--brand-navy))] px-5 py-4 text-white"
-        data-testid="selection-order-bar"
-      >
-        <p className="text-sm font-black sm:text-base">
-          سيتم لعب العوالم بالترتيب الذي تختاره
-        </p>
-        <ol className="flex list-none items-center gap-2">
-          {draft.occurrences.map((occurrence, index) => {
-            const filled = Boolean(occurrence.worldId);
-            return (
-              <li
-                key={occurrence.occurrenceIndex}
-                className={cn(
-                  "grid size-9 place-items-center rounded-full border-2 text-sm font-black transition-colors",
-                  filled
-                    ? "border-[hsl(var(--brand-gold))] bg-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))]"
-                    : "border-white/30 text-white/60",
-                )}
-              >
-                <span className="akwaan-numeral">{index + 1}</span>
-              </li>
-            );
-          })}
-        </ol>
+    <aside
+      className="sticky top-[5.25rem] z-10 -mx-1 bg-white/95 px-2 py-3 shadow-[0_12px_28px_-24px_hsl(var(--brand-navy)/.35)] lg:top-28 lg:mx-0 lg:border-r lg:border-[hsl(var(--brand-navy)/.1)] lg:bg-transparent lg:px-0 lg:py-1 lg:pr-6 lg:shadow-none"
+      data-testid="world-selection-sidebar"
+      dir="rtl"
+      aria-label="العوالم المختارة"
+    >
+      <div className="flex items-center justify-between gap-3 lg:block">
+        <h3 className="text-sm font-black text-[hsl(var(--brand-navy))] lg:text-lg">
+          عوالمك
+        </h3>
+        <span className="akwaan-numeral text-xs font-black text-[hsl(var(--brand-navy)/.58)] lg:mt-1 lg:block lg:text-sm">
+          {selectedCount}/{OCCURRENCE_COUNT}
+        </span>
       </div>
+
+      <ol className="mt-3 flex min-w-0 list-none items-center gap-2 lg:mt-5 lg:flex-col lg:items-stretch lg:gap-3">
+        {draft.occurrences.map((occurrence, index) => {
+          const world = worlds.find((entry) => entry.id === occurrence.worldId);
+          return (
+            <li key={occurrence.occurrenceIndex} className="min-w-0 flex-1 lg:w-full">
+              {world ? (
+                <button
+                  type="button"
+                  onClick={() => onEdit(world, occurrence.occurrenceIndex)}
+                  aria-label={`تعديل ${world.name}`}
+                  className="group flex w-full min-w-0 items-center gap-2 rounded-xl py-1 text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))] lg:px-1 lg:py-1.5"
+                >
+                  <span className="relative size-8 shrink-0 overflow-hidden rounded-full border border-[hsl(var(--brand-gold)/.5)] bg-white lg:size-9">
+                    <WorldCover world={world} sizes="36px" />
+                  </span>
+                  <span className="hidden min-w-0 flex-1 truncate text-xs font-bold text-[hsl(var(--brand-navy)/.76)] group-hover:text-[hsl(var(--brand-navy))] lg:block">
+                    {world.name}
+                  </span>
+                  <span className="akwaan-numeral grid size-5 shrink-0 place-items-center rounded-full bg-[hsl(var(--brand-gold)/.14)] text-[0.65rem] font-black text-[hsl(var(--brand-navy))]">
+                    {index + 1}
+                  </span>
+                </button>
+              ) : (
+                <div className="flex min-w-0 items-center gap-2 py-1 text-[hsl(var(--brand-navy)/.3)] lg:px-1 lg:py-1.5">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full border border-dashed border-[hsl(var(--brand-navy)/.14)] bg-white/70 text-xs lg:size-9">
+                    —
+                  </span>
+                  <span className="hidden min-w-0 flex-1 text-xs font-medium lg:block">
+                    اختر عالم
+                  </span>
+                  <span className="akwaan-numeral text-[0.65rem] font-bold">
+                    {index + 1}
+                  </span>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
 
       <Button
         asChild
-        size="lg"
+        size="sm"
         className={cn(
-          "h-auto rounded-2xl px-8 py-4 text-base font-black",
-          !ready && "pointer-events-none opacity-45",
+          "akwaan-primary-action mt-3 h-10 w-full rounded-xl border border-[hsl(var(--brand-gold)/.28)] bg-[hsl(var(--brand-navy))] px-3 text-xs font-black text-white shadow-[0_10px_24px_-16px_hsl(var(--brand-navy))] hover:border-[hsl(var(--brand-gold)/.65)] lg:mt-6 lg:h-11",
+          !ready && "pointer-events-none opacity-40",
         )}
       >
         <Link href={MATCH_SETUP_ROUTE} aria-disabled={!ready}>
           متابعة إعداد المباراة
-          <ArrowLeft className="mr-2 size-5" aria-hidden />
         </Link>
       </Button>
-    </div>
+    </aside>
   );
 }
 
 function FeaturesSection() {
   return (
-    <section aria-labelledby="why-title" className="scroll-mt-24">
+    <section
+      id="why"
+      aria-labelledby="why-title"
+      className="relative scroll-mt-24"
+    >
       <SectionHeading id="why-title" title="ليش أكوان مختلفة؟" />
-      <ul className="grid list-none gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <ul className="grid list-none gap-x-6 gap-y-8 text-center sm:grid-cols-2 lg:grid-cols-4">
         {FEATURES.map(({ key, title, description, Icon, tone }) => (
-          <li
-            key={key}
-            className="flex flex-col items-center gap-3 rounded-3xl border border-border/60 bg-card p-6 text-center shadow-[0_10px_30px_rgba(24,16,54,.05)]"
-          >
+          <li key={key} className="flex flex-col items-center gap-3">
             <span
               className={cn(
-                "grid size-12 place-items-center rounded-2xl",
+                "grid size-14 place-items-center rounded-2xl shadow-[0_10px_26px_-12px_rgba(24,16,54,.4)]",
                 NODE_TONE[tone],
               )}
             >
               <Icon className="size-6" strokeWidth={2} aria-hidden />
             </span>
-            <span className="text-lg font-black text-foreground">{title}</span>
-            <span className="text-sm leading-6 text-muted-foreground">
+            <span className="text-base font-black text-[hsl(var(--brand-navy))]">
+              {title}
+            </span>
+            <span className="max-w-[15rem] text-sm leading-6 text-muted-foreground">
               {description}
             </span>
           </li>
@@ -628,20 +649,21 @@ function FeaturesSection() {
   );
 }
 
-function WorldScopesDialog({
+function WorldScopeFocusMode({
   state,
   selectedScopeIds,
   onSelectedScopeIdsChange,
-  onClose,
+  onBack,
   onConfirm,
 }: {
-  state?: { world: PlayableWorld; occurrenceIndex: number };
+  state: { world: PlayableWorld; occurrenceIndex: number };
   selectedScopeIds: string[];
   onSelectedScopeIdsChange: (ids: string[]) => void;
-  onClose: () => void;
+  onBack: () => void;
   onConfirm: () => void;
 }) {
-  const query = usePlayableScopes(state?.world.id);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const query = usePlayableScopes(state.world.id);
   const scopes = useMemo(
     () =>
       (query.data ?? [])
@@ -658,118 +680,212 @@ function WorldScopesDialog({
           ? [...selectedScopeIds, scope.id]
           : selectedScopeIds,
     );
+  const complete = selectedScopeIds.length === SCOPES_PER_OCCURRENCE;
+  const signature = worldSignatureLabel(state.world);
+
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
   return (
-    <Dialog open={Boolean(state)} onOpenChange={(open: boolean) => !open && onClose()}>
-      <DialogContent
-        showCloseButton={false}
-        className="flex max-h-[92vh] w-[min(1120px,94vw)] max-w-none flex-col overflow-hidden rounded-[1.5rem] border-primary/10 bg-card p-0 shadow-[0_30px_100px_rgba(15,12,38,.3)] sm:max-w-none"
+    <section
+      aria-labelledby="scope-focus-title"
+      data-testid="scope-focus-mode"
+      className="animate-in fade-in slide-in-from-bottom-2 py-5 duration-300 motion-reduce:animate-none lg:py-10"
+    >
+      <div
+        className="grid items-start gap-8 lg:grid-cols-[minmax(260px,28%)_minmax(0,72%)] lg:gap-10"
+        dir="ltr"
       >
-        {state && (
-          <>
-            <DialogHeader className="shrink-0 flex-row items-center gap-4 border-b px-5 py-4 text-right sm:px-8">
-              <span className="relative size-20 shrink-0 overflow-hidden rounded-full border border-border bg-secondary shadow-[0_8px_22px_rgba(24,16,54,.1)]">
-                <WorldCover world={state.world} sizes="80px" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <DialogTitle className="text-xl font-black leading-tight sm:text-2xl">
-                  عالم {state.world.name}
-                </DialogTitle>
-                <DialogDescription className="mt-1.5 text-sm">
-                  اختر النطاقات اللي تبغاها في المباراة
-                </DialogDescription>
-              </div>
-              <DialogClose asChild>
-                <button
-                  type="button"
-                  aria-label="إغلاق"
-                  className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-                >
-                  <X className="size-5" />
-                </button>
-              </DialogClose>
-            </DialogHeader>
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-8">
-              <div className="mb-4 flex items-center justify-between">
-                <p className="text-base font-black">النطاقات المتاحة</p>
-                <span
-                  data-testid="scope-count"
-                  className="akwaan-numeral rounded-full border border-border bg-secondary/65 px-2.5 py-1 text-xs font-black text-muted-foreground"
-                >
-                  {selectedScopeIds.length} / {SCOPES_PER_OCCURRENCE}
-                </span>
-              </div>
-              {query.isLoading ? (
-                <CardSkeletons count={4} />
-              ) : query.isError ? (
-                <JourneyError
-                  title="تعذر تحميل النطاقات"
-                  description="تأكد من اتصالك وجرّب مرة ثانية."
-                  onRetry={() => void query.refetch()}
-                  retrying={query.isFetching}
-                />
-              ) : (
-                <ul className="grid list-none gap-4 sm:grid-cols-2">
-                  {scopes.map((scope) => {
-                    const selected = selectedScopeIds.includes(scope.id);
-                    return (
-                      <li key={scope.id}>
-                        <button
-                          type="button"
-                          aria-pressed={selected}
-                          disabled={
-                            selectedScopeIds.length >= SCOPES_PER_OCCURRENCE &&
-                            !selected
-                          }
-                          onClick={() => toggle(scope)}
-                          className={cn(
-                            "group flex h-[190px] w-full flex-col overflow-hidden rounded-[1.25rem] border bg-card text-right shadow-[0_8px_24px_rgba(24,16,54,.05)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:opacity-40",
-                            selected
-                              ? "border-[hsl(var(--brand-gold))] bg-[hsl(var(--brand-gold)/.06)] shadow-[0_10px_28px_hsl(var(--brand-gold)/.12)]"
-                              : "border-border hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(24,16,54,.09)]",
-                          )}
-                        >
-                          <ScopeCardMedia scope={scope} className="h-[130px] sm:h-[130px]">
-                            {selected && (
-                              <span className="absolute left-3 top-3 grid size-7 place-items-center rounded-full bg-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))] shadow-sm">
-                                <Check className="size-4" />
-                              </span>
-                            )}
-                          </ScopeCardMedia>
-                          <span className="flex flex-1 items-center px-5 text-lg font-black">
-                            {scope.name}
+        <aside
+          className="akwaan-focus-context-in flex flex-col items-center text-center lg:sticky lg:top-28"
+          dir="rtl"
+        >
+          <div
+            className="akwaan-portal relative aspect-square w-[min(54vw,190px)] rounded-full sm:w-[210px] lg:w-full lg:max-w-[250px]"
+            style={{
+              viewTransitionName: `akwaan-world-${state.world.id}`,
+            }}
+          >
+            <span className="absolute inset-[7px] overflow-hidden rounded-full border-2 border-[hsl(var(--brand-gold)/.55)] bg-white shadow-[0_26px_64px_-28px_hsl(var(--brand-navy)/.58)] ring-1 ring-[hsl(var(--brand-gold)/.2)]">
+              <WorldCover
+                world={state.world}
+                sizes="(min-width: 1024px) 250px, 210px"
+              />
+            </span>
+          </div>
+          <h2 className="mt-5 text-2xl font-black text-[hsl(var(--brand-navy))] sm:text-3xl">
+            {state.world.name}
+          </h2>
+          {signature && (
+            <span className="mt-3 rounded-full bg-[hsl(var(--brand-gold)/.12)] px-4 py-1.5 text-sm font-bold text-[hsl(var(--brand-navy)/.78)]">
+              {signature}
+            </span>
+          )}
+          <span
+            data-testid="scope-count"
+            className={cn(
+              "mt-4 rounded-full px-4 py-2 text-sm font-bold",
+              complete
+                ? "bg-[hsl(var(--brand-gold)/.11)] text-[hsl(var(--brand-navy))]"
+                : "bg-[hsl(var(--brand-navy)/.045)] text-[hsl(var(--brand-navy)/.6)]",
+            )}
+          >
+            <span className="akwaan-numeral">{selectedScopeIds.length}</span>{" "}
+            من <span className="akwaan-numeral">{SCOPES_PER_OCCURRENCE}</span>{" "}
+            مختارة
+          </span>
+          <FocusActions
+            complete={complete}
+            onConfirm={onConfirm}
+            onBack={onBack}
+            className="mt-6 hidden w-full max-w-[270px] lg:flex"
+          />
+        </aside>
+
+        <div className="akwaan-focus-scopes-in min-w-0" dir="rtl">
+          <header className="mb-7 text-center lg:text-right">
+            <h1
+              ref={headingRef}
+              id="scope-focus-title"
+              tabIndex={-1}
+              className="text-2xl font-black leading-relaxed text-[hsl(var(--brand-navy))] outline-none sm:text-3xl"
+            >
+              اختر نطاقات {state.world.name}
+            </h1>
+            <p className="mt-1 text-sm leading-7 text-[hsl(var(--brand-navy)/.58)] sm:text-base">
+              حدد النطاقات اللي تبغون تدخل في المباراة.
+            </p>
+          </header>
+
+          {query.isLoading ? (
+            <ScopeCardSkeletons count={SCOPES_PER_OCCURRENCE} />
+          ) : query.isError ? (
+            <JourneyError
+              title="تعذر تحميل النطاقات"
+              description="تأكد من اتصالك وجرّب مرة ثانية."
+              onRetry={() => void query.refetch()}
+              retrying={query.isFetching}
+            />
+          ) : scopes.length ? (
+            <ul className="grid list-none gap-4 sm:grid-cols-2">
+              {scopes.map((scope, index) => {
+                const selected = selectedScopeIds.includes(scope.id);
+                return (
+                  <li
+                    key={scope.id}
+                    className="akwaan-rise"
+                    style={{ animationDelay: `${Math.min(index, 3) * 40}ms` }}
+                  >
+                    <button
+                      type="button"
+                      aria-pressed={selected}
+                      aria-label={scope.name}
+                      disabled={complete && !selected}
+                      onClick={() => toggle(scope)}
+                      data-testid="scope-choice-card"
+                      className={cn(
+                        "group relative aspect-video w-full overflow-hidden rounded-[1.15rem] border-2 bg-[hsl(var(--brand-navy)/.04)] text-right shadow-[0_8px_24px_rgba(24,16,54,.05)] transition-[transform,box-shadow,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none motion-reduce:transition-none",
+                        selected
+                          ? "border-[hsl(var(--brand-gold))] shadow-[0_12px_30px_-16px_hsl(var(--brand-gold)/.65)] ring-1 ring-[hsl(var(--brand-gold)/.24)]"
+                          : "border-[hsl(var(--brand-navy)/.1)] hover:-translate-y-[3px] hover:border-[hsl(var(--brand-gold)/.4)] hover:shadow-[0_16px_34px_-18px_hsl(var(--brand-navy)/.38)]",
+                      )}
+                    >
+                      <ScopeCardMedia
+                        scope={scope}
+                        className="absolute inset-0 m-0 h-full w-full sm:h-full"
+                      >
+                        <span className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[hsl(var(--brand-navy)/.84)] via-[hsl(var(--brand-navy)/.28)] to-transparent" />
+                        {selected && (
+                          <span className="akwaan-soft-pop absolute left-3 top-3 grid size-8 place-items-center rounded-full border border-white/80 bg-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))] shadow-[0_5px_15px_rgba(24,16,54,.2)]">
+                            <Check className="size-4" strokeWidth={3} aria-hidden />
                           </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-            <DialogFooter className="m-0 shrink-0 flex-row items-center justify-between rounded-none border-t bg-card px-5 py-4 sm:px-8">
-              <DialogClose asChild>
-                <Button
-                  variant="ghost"
-                  className="rounded-full px-6 font-black text-muted-foreground"
-                >
-                  إلغاء
-                </Button>
-              </DialogClose>
-              <Button
-                onClick={onConfirm}
-                disabled={selectedScopeIds.length !== SCOPES_PER_OCCURRENCE}
-                className="min-w-44 rounded-full bg-[hsl(var(--brand-navy))] font-black text-white hover:bg-[hsl(var(--brand-navy)/.9)] disabled:bg-[hsl(var(--brand-navy)/.1)] disabled:text-[hsl(var(--brand-navy)/.42)] disabled:opacity-100"
-              >
-                تأكيد الاختيار
-              </Button>
-            </DialogFooter>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+                        )}
+                        <span
+                          dir="auto"
+                          data-testid="scope-name-overlay"
+                          className="absolute inset-x-0 bottom-0 px-4 pb-4 text-right text-base font-black text-white drop-shadow-sm sm:px-5 sm:pb-5 sm:text-lg"
+                        >
+                          {scope.name}
+                        </span>
+                      </ScopeCardMedia>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="rounded-3xl border border-[hsl(var(--brand-navy)/.1)] bg-white/80 p-10 text-center text-sm leading-6 text-muted-foreground">
+              لا توجد نطاقات جاهزة في هذا العالم بعد.
+            </p>
+          )}
+
+          <FocusActions
+            complete={complete}
+            onConfirm={onConfirm}
+            onBack={onBack}
+            className="mt-7 rounded-2xl border border-[hsl(var(--brand-navy)/.08)] bg-white/95 p-3 shadow-[0_18px_45px_-24px_hsl(var(--brand-navy)/.42)] lg:hidden"
+          />
+        </div>
+      </div>
+    </section>
   );
 }
 
-export function CardSkeletons({ count }: { count: number; className?: string; columns?: "featured" | "grid" }) {
+function ScopeCardSkeletons({ count }: { count: number }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2" aria-hidden>
+      {Array.from({ length: count }, (_, index) => (
+        <div
+          key={index}
+          className="aspect-video animate-pulse rounded-[1.15rem] border border-[hsl(var(--brand-navy)/.08)] bg-[hsl(var(--brand-navy)/.05)]"
+        />
+      ))}
+    </div>
+  );
+}
+
+function FocusActions({
+  complete,
+  onConfirm,
+  onBack,
+  className,
+}: {
+  complete: boolean;
+  onConfirm: () => void;
+  onBack: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex flex-col gap-3", className)}>
+      <Button
+        type="button"
+        size="lg"
+        disabled={!complete}
+        onClick={onConfirm}
+        className="akwaan-primary-action h-12 w-full rounded-xl border border-[hsl(var(--brand-gold)/.32)] bg-[hsl(var(--brand-navy))] font-black text-white shadow-[0_14px_30px_-18px_hsl(var(--brand-navy)/.8)] hover:border-[hsl(var(--brand-gold)/.7)] hover:bg-[hsl(var(--brand-navy)/.93)] hover:shadow-[0_17px_34px_-16px_hsl(var(--brand-gold)/.38)] disabled:border-transparent disabled:bg-[hsl(var(--brand-navy)/.12)] disabled:text-[hsl(var(--brand-navy)/.36)] disabled:opacity-100"
+      >
+        تأكيد النطاقات
+      </Button>
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-[hsl(var(--brand-navy)/.68)] transition-colors hover:bg-[hsl(var(--brand-navy)/.05)] hover:text-[hsl(var(--brand-navy))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))]"
+      >
+        <ArrowLeft className="size-4 rotate-180" aria-hidden />
+        رجوع للعوالم
+      </button>
+    </div>
+  );
+}
+
+export function CardSkeletons({
+  count,
+}: {
+  count: number;
+  className?: string;
+  columns?: "featured" | "grid";
+}) {
   return (
     <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
       {Array.from({ length: count }, (_, index) => (
@@ -782,7 +898,11 @@ export function CardSkeletons({ count }: { count: number; className?: string; co
   );
 }
 
-export function EmptyWorlds({ isAuthenticated: _isAuthenticated }: { isAuthenticated?: boolean }) {
+export function EmptyWorlds({
+  isAuthenticated: _isAuthenticated,
+}: {
+  isAuthenticated?: boolean;
+}) {
   return (
     <div className="rounded-3xl border bg-card p-10 text-center">
       <p className="text-lg font-black">لا توجد عوالم متاحة بعد</p>

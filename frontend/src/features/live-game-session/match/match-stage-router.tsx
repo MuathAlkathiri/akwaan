@@ -137,7 +137,7 @@ export function MatchStageRouter({
   return (
     <main
       dir="rtl"
-      className={`mx-auto w-full space-y-4 ${stage === "board" ? "max-w-[80rem]" : "max-w-6xl"}`}
+      className={`mx-auto w-full space-y-4 ${stage === "board" ? "max-w-[92rem]" : "max-w-6xl"}`}
       data-match-actor={actor}
       data-match-stage={stage}
     >

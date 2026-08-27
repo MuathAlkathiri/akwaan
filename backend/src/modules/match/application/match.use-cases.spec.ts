@@ -1,8 +1,10 @@
 import { LiveGameSessionRepository } from '../../live-game-sessions/domain/live-game-session.repository';
 import { ScoringService } from '../../scoring/application/scoring.service';
 import { ScoringRuleRegistry } from '../../scoring/application/scoring-rule.registry';
+import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.constants';
 import { Match, MatchState } from '../domain/match';
+import { MatchDomainError } from '../domain/match.errors';
 import {
   MATCH_SLOT_ORDER,
   MatchSlotLaunchability,
@@ -51,7 +53,12 @@ const launcher = (): MatchChallengeLauncher => ({
 describe('MatchUseCases transitions', () => {
   const now = new Date('2026-01-01T00:00:00.000Z');
 
-  const setup = (options: { conflict?: boolean } = {}) => {
+  const setup = (
+    options: {
+      conflict?: boolean;
+      scoreResult?: ReturnType<typeof scoring.restoreEvents>;
+    } = {},
+  ) => {
     let stored: MatchState | null = null;
     const published: Array<{
       event: string;
@@ -71,6 +78,8 @@ describe('MatchUseCases transitions', () => {
       findActiveBySessionId: () => Promise.resolve(load()),
       findLatestBySessionId: () => Promise.resolve(load()),
       findAwaitingConvergence: () => Promise.resolve([]),
+      findListPageBySessionIds: () =>
+        Promise.resolve({ active: [], completed: [], completedTotal: 0 }),
       save: (match, expectedRevision) => {
         if (options.conflict)
           return Promise.reject(new MatchConcurrencyError());
@@ -160,6 +169,9 @@ describe('MatchUseCases transitions', () => {
       {
         execute: () => Promise.resolve({}),
       } as unknown as import('../../live-game-sessions/application/gameplay-runtime.lifecycle').CancelGameplayRuntime,
+      {
+        score: () => options.scoreResult ?? [],
+      } as unknown as ScoringService,
     );
     return { useCases, published, current: load };
   };
@@ -250,6 +262,106 @@ describe('MatchUseCases transitions', () => {
       matchRevision: launched.revision,
       stage: MatchStage.CHALLENGE,
       reason: 'challenge-launched',
+    });
+  });
+
+  describe('idle-board recovery controls', () => {
+    it('arms the selecting team Double, persists it, and announces it', async () => {
+      const context = setup();
+      const created = await createUnified(context);
+      const owner = created.selectingTeamId!;
+      const before = context.published.length;
+
+      const after = await context.useCases.armBoardDouble({
+        ...command('arm-double', created.revision),
+        teamId: owner,
+      });
+
+      expect(after.teamDoubles).toContainEqual(
+        expect.objectContaining({ teamId: owner, status: 'armed' }),
+      );
+      expect(context.published).toHaveLength(before + 1);
+      expect(context.published.at(-1)!.payload).toMatchObject({
+        reason: 'double-updated',
+      });
+      // Reconnect reads the same authoritative state; the token stays armed.
+      expect(context.current()!.teamDoubles).toContainEqual(
+        expect.objectContaining({ teamId: owner, status: 'armed' }),
+      );
+    });
+
+    it('refuses to arm the Double of the team that does not own the turn', async () => {
+      const context = setup();
+      const created = await createUnified(context);
+      const other = created.teams.find(
+        (team) => team.id !== created.selectingTeamId,
+      )!.id;
+
+      await expect(
+        context.useCases.armBoardDouble({
+          ...command('arm-wrong', created.revision),
+          teamId: other,
+        }),
+      ).rejects.toBeInstanceOf(MatchDomainError);
+    });
+
+    it('switches the authoritative selecting team and announces it', async () => {
+      const context = setup();
+      const created = await createUnified(context);
+      const owner = created.selectingTeamId!;
+
+      const after = await context.useCases.switchBoardTurn(
+        command('switch-turn', created.revision),
+      );
+
+      expect(after.selectingTeamId).not.toBe(owner);
+      expect(context.published.at(-1)!.payload).toMatchObject({
+        reason: 'turn-switched',
+      });
+      // Persisted: a reload reflects the switched team.
+      expect(context.current()!.selectingTeamId).toBe(after.selectingTeamId);
+    });
+
+    it('applies a signed correction through the ledger, persists it, and is idempotent', async () => {
+      const context = setup({
+        scoreResult: scoring.restoreEvents([
+          {
+            id: 'manual:score-cmd:0',
+            matchId: 'match',
+            teamId: 'team-alpha',
+            challengeSessionId: 'manual:score-cmd',
+            scoringRuleId: SCORING_RULE_IDS.MANUAL_CORRECTION,
+            delta: 1,
+            reason: 'manual-correction',
+            createdAt: now.toISOString(),
+          },
+        ]),
+      });
+      const created = await createUnified(context);
+
+      const after = await context.useCases.adjustManualScore({
+        ...command('score-cmd', created.revision),
+        teamId: 'team-alpha',
+        delta: 1,
+      });
+      expect(after.teamScore('team-alpha')).toEqual(
+        expect.objectContaining({ signedTotal: 1, displayTotal: 1 }),
+      );
+      expect(context.published.at(-1)!.payload).toMatchObject({
+        reason: 'score-corrected',
+      });
+
+      // A replayed command changes nothing — no double count, no second event.
+      const publishedBefore = context.published.length;
+      const replayed = await context.useCases.adjustManualScore({
+        ...command('score-cmd', after.revision),
+        teamId: 'team-alpha',
+        delta: 1,
+      });
+      expect(replayed.teamScore('team-alpha')).toEqual(
+        expect.objectContaining({ signedTotal: 1 }),
+      );
+      expect(context.published).toHaveLength(publishedBefore);
     });
   });
 

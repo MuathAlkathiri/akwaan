@@ -90,8 +90,17 @@ describe('Match module architecture', () => {
       ])
       .map((match) => match[1]);
     expect(routes).not.toHaveLength(0);
+    // `unified/score` is the approved *operational scoreboard correction* — a
+    // signed ±1 recovery control on the persisted ledger, not a challenge
+    // adjudication/finishing route, which is what this guard forbids. Every other
+    // complete/finish/score/resolve route stays banned.
+    const APPROVED_CORRECTION_ROUTE = 'unified/score';
     expect(
-      routes.filter((route) => /complete|finish|score|resolve/.test(route)),
+      routes.filter(
+        (route) =>
+          /complete|finish|score|resolve/.test(route) &&
+          route !== APPROVED_CORRECTION_ROUTE,
+      ),
     ).toEqual([]);
   });
 

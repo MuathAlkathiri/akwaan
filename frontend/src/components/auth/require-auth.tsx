@@ -1,20 +1,21 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./auth-provider";
 import { rememberPostAuthDestination } from "@/features/auth/navigation/post-auth-destination";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      rememberPostAuthDestination("/matches/new");
+      rememberPostAuthDestination(pathname);
       router.replace("/login");
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, pathname, router]);
 
   if (isLoading)
     return <div className="text-center py-10">جاري التحقق من الدخول...</div>;

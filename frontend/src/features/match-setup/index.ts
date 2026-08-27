@@ -32,6 +32,8 @@ export {
 } from "./api/create-configured-match";
 export {
   abortActiveChallenge,
+  adjustUnifiedMatchScore,
+  armUnifiedMatchDouble,
   cancelUnifiedPreflight,
   continueFromChallengeResult,
   createUnifiedMatch,
@@ -39,6 +41,7 @@ export {
   markLiveSessionReady,
   prepareUnifiedChallenge,
   startLiveSession,
+  switchUnifiedMatchTurn,
   type ConfiguredOccurrenceRequest,
   type CreateUnifiedMatchRequest,
 } from "./api/unified-match.api";

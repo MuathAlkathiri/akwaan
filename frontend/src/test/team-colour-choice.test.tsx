@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { MatchSetupTeams } from "@/features/match-setup/components/match-setup-teams";
@@ -8,6 +8,10 @@ import {
   type MatchSetupDraft,
 } from "@/features/match-setup/state/match-setup-draft";
 import { teamColorPool, teamColorVariables } from "@/lib/team-palette";
+
+vi.mock("@/features/worlds/hooks/use-player-catalog", () => ({
+  usePlayableWorlds: () => ({ data: [], isLoading: false }),
+}));
 
 /**
  * A team is a *name*; its colour is a second attribute the host chooses.
@@ -20,15 +24,6 @@ import { teamColorPool, teamColorVariables } from "@/lib/team-palette";
  *    the same two hues. A colour decided locally is how one team ended up green on the
  *    television and violet in someone's hand.
  */
-vi.mock("@/features/worlds/components/journey-shell", () => ({
-  JourneySection: ({ children }: { children: React.ReactNode }) => (
-    <section>{children}</section>
-  ),
-}));
-vi.mock("@/features/match-setup/components/occurrence-world-step", () => ({
-  StepFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}));
-
 describe("the constrained picker", () => {
   it("offers each team only its own pool", () => {
     expect(teamColorPool(0).map((color) => color.id)).toEqual([
@@ -121,6 +116,19 @@ describe("the team setup screen", () => {
     const { onRecolor } = renderScreen();
     await user.click(screen.getByLabelText("أزرق سماوي"));
     expect(onRecolor).toHaveBeenCalledWith(0, "azure");
+  });
+
+  it("reports team-name edits and keeps Start gated by the existing rules", async () => {
+    const { onRename } = renderScreen();
+    fireEvent.change(screen.getByLabelText("اسم الفريق الأول"), {
+      target: { value: "الصقور" },
+    });
+    expect(onRename).toHaveBeenCalledWith(0, "الصقور");
+
+    const invalid = createDraft();
+    invalid.teamNames = ["نفس الاسم", "نفس الاسم"];
+    renderScreen(invalid);
+    expect(screen.getAllByRole("button", { name: "ابدأ المباراة" })[1]).toBeDisabled();
   });
 });
 

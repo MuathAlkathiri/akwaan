@@ -139,6 +139,8 @@ describe('MatchReconciliationService', () => {
       findActiveBySessionId: () => Promise.resolve(load()),
       findLatestBySessionId: () => Promise.resolve(load()),
       findAwaitingConvergence: () => Promise.resolve([]),
+      findListPageBySessionIds: () =>
+        Promise.resolve({ active: [], completed: [], completedTotal: 0 }),
       save: (match, expectedRevision) => {
         saves.push(expectedRevision);
         if (remainingConflicts > 0) {
@@ -477,6 +479,8 @@ describe('MatchReconciliationService', () => {
           findActiveBySessionId: () => Promise.resolve(rebound),
           findLatestBySessionId: () => Promise.resolve(rebound),
           findAwaitingConvergence: () => Promise.resolve([]),
+          findListPageBySessionIds: () =>
+            Promise.resolve({ active: [], completed: [], completedTotal: 0 }),
           save: () => Promise.resolve(),
         } as MatchRepository,
         launchers,

@@ -18,6 +18,8 @@ export const SCORING_RULE_IDS = {
    * and what its recap says, and its deltas never reach the Match ledger.
    */
   CHALLENGE_WIN: 'challenge.win',
+  /** Operational recovery: an explicit signed correction to the Match ledger. */
+  MANUAL_CORRECTION: 'match.manual-correction',
   /** Roadmap 6.1 payoff matrix. Opts out of the perfect-clear bonus. */
   RYO_PAYOFF_MATRIX: 'ryo.payoff-matrix',
   /** +1 per cleared Co-op item. */
@@ -92,6 +94,14 @@ export const SCORING_RULE_DECLARATIONS: readonly ScoringRuleDeclaration[] = [
       'Awards exactly one Match point to the winner of a completed challenge, and none on a tie. The challenge decides its own winner; this rule only records it.',
     perfectClearBonusEligible: false,
     allowsNegativeDelta: false,
+    requiresMechanicBinding: false,
+  },
+  {
+    id: SCORING_RULE_IDS.MANUAL_CORRECTION,
+    description:
+      'Records a controller-requested +1 or -1 operational correction in the same immutable Match score ledger.',
+    perfectClearBonusEligible: false,
+    allowsNegativeDelta: true,
     requiresMechanicBinding: false,
   },
   {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { PlayableScope, PlayableWorld } from "@/features/worlds/types";
 
@@ -140,24 +140,6 @@ vi.mock("@/features/worlds/hooks/use-player-catalog", () => ({
     isFetching: false,
     refetch: vi.fn(),
   }),
-}));
-
-// The review screen reads names through the same public player endpoints.
-vi.mock("@tanstack/react-query", () => ({
-  useQueries: ({ queries }: { queries: Array<{ queryKey: unknown[] }> }) =>
-    queries.map((query) => {
-      const [, , worldId, leaf] = query.queryKey as string[];
-      return {
-        data:
-          leaf === "scopes"
-            ? (scopesByWorld[worldId] ?? [])
-            : [world(ANIME, "انمي"), world(FOOTBALL, "كرة القدم")].find(
-                (entry) => entry.id === worldId,
-              ),
-        isLoading: false,
-        isError: false,
-      };
-    }),
 }));
 
 import { MatchSetupWizard } from "@/features/match-setup";
@@ -330,41 +312,46 @@ describe("pre-match setup wizard", () => {
     expect(screen.getByRole("button", { name: "نطاق كرة 0" })).toBeTruthy();
   });
 
-  it("reviews three occurrences with the repeated World kept separate", async () => {
+  it("enters Team Setup directly after the third confirmed occurrence", async () => {
     const user = userEvent.setup();
     render(<MatchSetupWizard />);
 
     await configureWholeMatch(user);
 
-    expect(screen.getByRole("heading", { name: "راجع مباراتك" })).toBeTruthy();
-    expect(screen.getByText("3 عوالم · 12 نطاق · 12 تحدي")).toBeTruthy();
-    expect(screen.queryByTestId("review-summary")).toBeNull();
-    expect(screen.queryByTestId("setup-progress")).toBeNull();
-    expect(screen.getByTestId("review-world-stations").children).toHaveLength(3);
-
-    // Three cards, the first and third both Anime, with different Scopes.
-    const first = screen.getByTestId("review-occurrence-0");
-    const third = screen.getByTestId("review-occurrence-2");
-    expect(within(first).getByText("انمي")).toBeTruthy();
-    expect(within(third).getByText("انمي")).toBeTruthy();
-    expect(within(first).getByText("نطاق أنمي 0")).toBeTruthy();
-    expect(within(third).getByText("نطاق أنمي 4")).toBeTruthy();
-    expect(within(first).queryByText("نطاق أنمي 4")).toBeNull();
-    expect(within(third).queryByText("نطاق أنمي 0")).toBeNull();
+    expect(screen.getByTestId("match-setup-wizard").dataset.step).toBe("teams");
+    expect(screen.getByRole("heading", { name: "جهزوا الفريقين" })).toBeTruthy();
+    expect(screen.getByText("آخر خطوة")).toBeTruthy();
     expect(
-      within(screen.getByTestId("review-occurrence-1")).getByText("كرة القدم"),
+      screen.getByText("سمّوا فريقكم، اختاروا ألوانكم، وبعدها تبدأ المنافسة."),
     ).toBeTruthy();
-    expect(within(first).getAllByRole("listitem")).toHaveLength(8);
-    expect(within(first).getByText("اقرأ خصمك")).toBeTruthy();
-    expect(within(first).getByText("مين أقرب")).toBeTruthy();
-    expect(within(first).getByText("معلومات مقسمة")).toBeTruthy();
-    expect(within(first).getByText("توب 5")).toBeTruthy();
-    expect(within(first).getByText("جاهز")).toBeTruthy();
-    expect(within(first).getByRole("button", { name: "تعديل النطاقات" })).toBeTruthy();
-    expect(within(first).getByRole("button", { name: "تغيير العالم" })).toBeTruthy();
-
-    // Still no QR, no session code, and no server call.
+    const selectedWorlds = screen.getByTestId("selected-worlds-summary");
+    expect(selectedWorlds.children).toHaveLength(3);
+    expect(selectedWorlds.children[0].textContent).toContain("01");
+    expect(selectedWorlds.children[0].textContent).toContain("انمي");
+    expect(selectedWorlds.children[1].textContent).toContain("02");
+    expect(selectedWorlds.children[1].textContent).toContain("كرة القدم");
+    expect(selectedWorlds.children[2].textContent).toContain("03");
+    expect(selectedWorlds.children[2].textContent).toContain("انمي");
+    expect(screen.queryByTestId("setup-progress")).toBeNull();
+    expect(screen.queryByText("راجع مباراتك")).toBeNull();
+    // Entering Teams creates nothing.
     expect(screen.queryByText(/رمز الانضمام|QR/)).toBeNull();
+    expect(serverCalls()).toBe(0);
+  });
+
+  it("returns from Team Setup to Homepage without clearing the stored draft", async () => {
+    const user = userEvent.setup();
+    render(<MatchSetupWizard />);
+    await configureWholeMatch(user);
+    await waitFor(() =>
+      expect(window.sessionStorage.getItem(MATCH_SETUP_DRAFT_STORAGE_KEY)).not.toBeNull(),
+    );
+    const before = window.sessionStorage.getItem(MATCH_SETUP_DRAFT_STORAGE_KEY);
+
+    await user.click(screen.getByRole("button", { name: "تعديل العوالم" }));
+
+    expect(mocks.push).toHaveBeenCalledWith("/");
+    expect(window.sessionStorage.getItem(MATCH_SETUP_DRAFT_STORAGE_KEY)).toBe(before);
     expect(serverCalls()).toBe(0);
   });
 
@@ -373,7 +360,6 @@ describe("pre-match setup wizard", () => {
     render(<MatchSetupWizard />);
 
     await configureWholeMatch(user);
-    await user.click(screen.getByRole("button", { name: "متابعة إلى الفريقين" }));
     // Setup is finished and the server has still not been touched.
     expect(serverCalls()).toBe(0);
 
@@ -446,7 +432,6 @@ describe("pre-match setup wizard", () => {
     render(<MatchSetupWizard />);
 
     await configureWholeMatch(user);
-    await user.click(screen.getByRole("button", { name: "متابعة إلى الفريقين" }));
     const start = screen.getByRole("button", { name: "ابدأ المباراة" });
     await user.click(start);
     await user.click(start);
@@ -480,9 +465,6 @@ describe("pre-match setup wizard", () => {
       render(<MatchSetupWizard />);
 
       await configureWholeMatch(user);
-      await user.click(
-        screen.getByRole("button", { name: "متابعة إلى الفريقين" }),
-      );
       await user.click(screen.getByRole("button", { name: "ابدأ المباراة" }));
 
       await waitFor(() =>
@@ -512,9 +494,6 @@ describe("pre-match setup wizard", () => {
       render(<MatchSetupWizard />);
 
       await configureWholeMatch(user);
-      await user.click(
-        screen.getByRole("button", { name: "متابعة إلى الفريقين" }),
-      );
       await user.click(screen.getByRole("button", { name: "ابدأ المباراة" }));
 
       await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
@@ -551,9 +530,6 @@ describe("pre-match setup wizard", () => {
       render(<MatchSetupWizard />);
 
       await configureWholeMatch(user);
-      await user.click(
-        screen.getByRole("button", { name: "متابعة إلى الفريقين" }),
-      );
       await user.click(screen.getByRole("button", { name: "ابدأ المباراة" }));
 
       await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());

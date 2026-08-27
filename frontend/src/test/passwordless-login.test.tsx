@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PasswordlessLoginForm } from "@/features/auth/components/passwordless-login-form";
 
@@ -45,6 +45,42 @@ describe("passwordless login", () => {
     vi.useRealTimers();
   });
 
+  it("renders the approved login copy and text-first request action", () => {
+    render(<PasswordlessLoginForm />);
+
+    expect(screen.getByText("ياهلا فيك، نورت أكوان")).toBeInTheDocument();
+    expect(
+      screen.getByText("سجّل دخولك وكمل لعبك من حيث وقفت."),
+    ).toBeInTheDocument();
+    const homeLink = screen.getByRole("link", { name: "الرجوع للرئيسية" });
+    expect(homeLink).toHaveAttribute("href", "/");
+    expect(homeLink).not.toHaveClass("underline");
+    const requestButton = screen.getByTestId("otp-request-button");
+    expect(requestButton).toHaveTextContent("أرسل رمز الدخول");
+    expect(within(requestButton).queryByRole("img", { hidden: true })).toBeNull();
+    expect(requestButton.querySelector("svg")).toBeNull();
+  });
+
+  it("switches between the existing email and phone methods", async () => {
+    const user = userEvent.setup();
+    render(<PasswordlessLoginForm />);
+
+    expect(screen.getByTestId("otp-email-input")).toBeInTheDocument();
+    await user.click(screen.getByTestId("otp-channel-phone"));
+    expect(screen.getByTestId("otp-phone-input")).toBeInTheDocument();
+    expect(screen.queryByTestId("otp-email-input")).toBeNull();
+  });
+
+  it("enables the existing request flow for a valid email", async () => {
+    const user = userEvent.setup();
+    render(<PasswordlessLoginForm />);
+
+    const requestButton = screen.getByTestId("otp-request-button");
+    expect(requestButton).toBeDisabled();
+    await user.type(screen.getByTestId("otp-email-input"), "player@example.com");
+    expect(requestButton).toBeEnabled();
+  });
+
   it("requests a code for an email and moves to the code step", async () => {
     const user = userEvent.setup();
     render(<PasswordlessLoginForm />);
@@ -59,6 +95,21 @@ describe("passwordless login", () => {
     await waitFor(() =>
       expect(screen.getByTestId("otp-digit-0")).toBeInTheDocument(),
     );
+    expect(screen.getByText("أرسلنا لك الرمز")).toBeInTheDocument();
+    expect(
+      screen.getByText("دخل رمز الدخول اللي وصلك على بريدك."),
+    ).toBeInTheDocument();
+    const verifyButton = screen.getByTestId("otp-verify-button");
+    expect(verifyButton).toHaveTextContent("تأكيد");
+    expect(verifyButton.querySelector("svg")).toBeNull();
+    const changeEmail = screen.getByRole("button", {
+      name: "تغيير البريد الإلكتروني",
+    });
+    expect(changeEmail).toBeInTheDocument();
+    expect(changeEmail.querySelector("svg")).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "الرجوع للرئيسية" }).querySelector("svg"),
+    ).toBeInTheDocument();
   });
 
   it("never sends a password field", async () => {
@@ -129,6 +180,67 @@ describe("passwordless login", () => {
     );
   });
 
+  it.each([
+    ["Arabic-Indic", "١٢٣٤٥٦"],
+    ["Persian", "۱۲۳۴۵۶"],
+  ])("accepts a pasted %s verification code", async (_name, localizedCode) => {
+    const user = userEvent.setup();
+    render(<PasswordlessLoginForm />);
+    await user.type(screen.getByTestId("otp-email-input"), "a@b.com");
+    await user.click(screen.getByTestId("otp-request-button"));
+    await waitFor(() => screen.getByTestId("otp-digit-0"));
+
+    const first = screen.getByTestId("otp-digit-0") as HTMLInputElement;
+    first.focus();
+    await user.paste(localizedCode);
+
+    await waitFor(() =>
+      expect(loginWithOtp).toHaveBeenCalledWith("a@b.com", "123456"),
+    );
+  });
+
+  it.each([
+    ["Arabic-Indic", "١٢٣٤٥٦"],
+    ["Persian", "۱۲۳۴۵۶"],
+  ])("accepts %s digits typed into the OTP field", async (_name, digits) => {
+    const user = userEvent.setup();
+    render(<PasswordlessLoginForm />);
+    await user.type(screen.getByTestId("otp-email-input"), "a@b.com");
+    await user.click(screen.getByTestId("otp-request-button"));
+    await waitFor(() => screen.getByTestId("otp-digit-0"));
+
+    await user.type(screen.getByTestId("otp-digit-0"), digits);
+
+    await waitFor(() =>
+      expect(loginWithOtp).toHaveBeenCalledWith("a@b.com", "123456"),
+    );
+  });
+
+  it("ignores non-numeric OTP input under the existing six-digit rule", async () => {
+    const user = userEvent.setup();
+    render(<PasswordlessLoginForm />);
+    await user.type(screen.getByTestId("otp-email-input"), "a@b.com");
+    await user.click(screen.getByTestId("otp-request-button"));
+    await waitFor(() => screen.getByTestId("otp-digit-0"));
+
+    await user.type(screen.getByTestId("otp-digit-0"), "abc-!");
+
+    expect(screen.getByTestId("otp-digit-0")).toHaveValue("");
+    expect(loginWithOtp).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["Arabic-Indic", "٠٥١٢٣٤٥٦٧٨"],
+    ["Persian", "۰۵۱۲۳۴۵۶۷۸"],
+  ])("normalizes %s digits while typing a phone number", async (_name, phone) => {
+    const user = userEvent.setup();
+    render(<PasswordlessLoginForm />);
+    await user.click(screen.getByTestId("otp-channel-phone"));
+    await user.type(screen.getByTestId("otp-phone-input"), phone);
+
+    expect(screen.getByTestId("otp-phone-input")).toHaveValue("0512345678");
+  });
+
   it("uses a numeric keypad on mobile", async () => {
     const user = userEvent.setup();
     render(<PasswordlessLoginForm />);
@@ -139,6 +251,7 @@ describe("passwordless login", () => {
     const digit = screen.getByTestId("otp-digit-0");
     expect(digit).toHaveAttribute("inputMode", "numeric");
     expect(digit).toHaveAttribute("autoComplete", "one-time-code");
+    expect(digit).toHaveAttribute("lang", "en");
   });
 
   it("shows the phone channel as unavailable rather than pretending", async () => {
@@ -196,7 +309,9 @@ describe("passwordless login", () => {
     await user.type(screen.getByTestId("otp-digit-0"), "000000");
 
     await waitFor(() =>
-      expect(screen.getByTestId("otp-error")).toHaveTextContent("الرمز غير صحيح."),
+      expect(screen.getByTestId("otp-error")).toHaveTextContent(
+        "الرمز غير صحيح.",
+      ),
     );
     expect(screen.getByTestId("otp-error")).not.toHaveTextContent("المتبقية");
   });
@@ -227,6 +342,23 @@ describe("passwordless login", () => {
     );
     // The resend affordance is withheld until the cooldown lapses.
     expect(screen.queryByTestId("otp-resend-button")).toBeNull();
+  });
+
+  it("preserves the existing resend request behavior", async () => {
+    requestOtp.mockResolvedValue({
+      ...sent,
+      resendAvailableInSeconds: 0,
+    });
+    const user = userEvent.setup();
+    render(<PasswordlessLoginForm />);
+    await user.type(screen.getByTestId("otp-email-input"), "a@b.com");
+    await user.click(screen.getByTestId("otp-request-button"));
+    await waitFor(() => screen.getByTestId("otp-resend-button"));
+
+    await user.click(screen.getByTestId("otp-resend-button"));
+
+    await waitFor(() => expect(requestOtp).toHaveBeenCalledTimes(2));
+    expect(requestOtp).toHaveBeenLastCalledWith("a@b.com");
   });
 
   it("lets the user go back and change the identifier", async () => {

@@ -101,6 +101,57 @@ export async function continueFromChallengeResult(input: {
   return response.data;
 }
 
+async function sendBoardCommand(
+  sessionId: string,
+  path: "double" | "score" | "turn",
+  body: Record<string, unknown>,
+): Promise<LiveSessionSnapshot> {
+  const response = await apiClient.post<LiveSessionSnapshot>(
+    `/live-game-sessions/${sessionId}/match/unified/${path}`,
+    body,
+  );
+  return response.data;
+}
+
+export function armUnifiedMatchDouble(input: {
+  sessionId: string;
+  expectedMatchRevision: number;
+  teamId: string;
+  commandId?: string;
+}): Promise<LiveSessionSnapshot> {
+  return sendBoardCommand(input.sessionId, "double", {
+    commandId: input.commandId ?? crypto.randomUUID(),
+    expectedMatchRevision: input.expectedMatchRevision,
+    teamId: input.teamId,
+  });
+}
+
+export function adjustUnifiedMatchScore(input: {
+  sessionId: string;
+  expectedMatchRevision: number;
+  teamId: string;
+  delta: 1 | -1;
+  commandId?: string;
+}): Promise<LiveSessionSnapshot> {
+  return sendBoardCommand(input.sessionId, "score", {
+    commandId: input.commandId ?? crypto.randomUUID(),
+    expectedMatchRevision: input.expectedMatchRevision,
+    teamId: input.teamId,
+    delta: input.delta,
+  });
+}
+
+export function switchUnifiedMatchTurn(input: {
+  sessionId: string;
+  expectedMatchRevision: number;
+  commandId?: string;
+}): Promise<LiveSessionSnapshot> {
+  return sendBoardCommand(input.sessionId, "turn", {
+    commandId: input.commandId ?? crypto.randomUUID(),
+    expectedMatchRevision: input.expectedMatchRevision,
+  });
+}
+
 /**
  * Aborts a legitimately active challenge and returns the authoritative board
  * snapshot. Navigation never releases gameplay ownership by itself.

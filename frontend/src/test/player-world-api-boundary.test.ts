@@ -27,7 +27,6 @@ const PLAYER_JOURNEY_FILES = [
   "src/features/match-setup/components/match-setup-wizard.tsx",
   "src/features/match-setup/components/occurrence-world-step.tsx",
   "src/features/match-setup/components/occurrence-scopes-step.tsx",
-  "src/features/match-setup/components/match-setup-review.tsx",
   "src/features/match-setup/components/match-setup-teams.tsx",
   "src/features/match-setup/state/match-setup-draft.ts",
   "src/features/match-setup/state/match-setup-storage.ts",
@@ -167,6 +166,9 @@ describe("player World API boundary", () => {
       // Leaving the result is its own explicit command; the stage never expires
       // on a timer and the client never advances it locally.
       "/live-game-sessions/${input.sessionId}/match/unified/challenges/continue",
+      // Idle-board recovery controls (Double, ±1 score correction, turn switch)
+      // share one authoritative board-command endpoint; the path names the action.
+      "/live-game-sessions/${sessionId}/match/unified/${path}",
       // Back to Board aborts the running challenge authoritatively before any
       // navigation happens. Leaving a challenge is a server transition, not a
       // client-side route change.

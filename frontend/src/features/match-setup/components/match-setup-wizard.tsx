@@ -1,12 +1,12 @@
 "use client";
 
 import { RequireAuth } from "@/components/auth/require-auth";
-import {
-  JourneyShell,
-} from "@/features/worlds/components/journey-shell";
-import { MatchSetupReview } from "./match-setup-review";
+import { useRouter } from "next/navigation";
+import { AkwaanLoader } from "@/components/akwaan/akwaan-loader";
+import { useDelayedVisible } from "@/lib/use-delayed-visible";
+import { JourneyShell } from "@/features/worlds/components/journey-shell";
 import { MatchSetupTeams } from "./match-setup-teams";
-import { OccurrenceScopesStep, } from "./occurrence-scopes-step";
+import { OccurrenceScopesStep } from "./occurrence-scopes-step";
 import { OccurrenceWorldStep, StepFooter } from "./occurrence-world-step";
 import { SetupProgress } from "./setup-progress";
 import { useMatchSetup } from "../state/use-match-setup";
@@ -26,8 +26,13 @@ import { withLamPrefix } from "@/lib/arabic-plural";
  * it in one atomic call.
  */
 export function MatchSetupWizard({ initialWorldId }: { initialWorldId?: string }) {
+  const router = useRouter();
   const { draft, act, start, submitting, rolledBack } =
     useMatchSetup(initialWorldId);
+  // The CTA enters pending immediately (below); the branded loader only takes over
+  // once the multi-request creation is genuinely still running, so a fast run — or
+  // a fast failure that restores the form — never flashes a full-screen loader.
+  const creating = useDelayedVisible(submitting, 350);
   const active = draft.occurrences.find(
     (occurrence) => occurrence.occurrenceIndex === draft.activeOccurrenceIndex,
   );
@@ -38,11 +43,23 @@ export function MatchSetupWizard({ initialWorldId }: { initialWorldId?: string }
 
   return (
     <RequireAuth>
+      {creating && (
+        <div
+          data-testid="match-creation-loader"
+          className="fixed inset-0 z-50 grid place-items-center bg-[hsl(var(--background))]"
+        >
+          <AkwaanLoader label="نجهز المباراة..." />
+        </div>
+      )}
       <JourneyShell
         trail={[{ label: "العوالم", href: "/" }, { label: "مباراة جديدة" }]}
       >
-        <div className="space-y-8" data-testid="match-setup-wizard" data-step={draft.activeStep}>
-          {draft.activeStep !== "review" && (
+        <div
+          className="space-y-8"
+          data-testid="match-setup-wizard"
+          data-step={draft.activeStep}
+        >
+          {draft.activeStep !== "teams" && (
             <>
               <header>
                 <p className="text-sm font-black text-success">إعداد المباراة</p>
@@ -130,20 +147,6 @@ export function MatchSetupWizard({ initialWorldId }: { initialWorldId?: string }
             />
           )}
 
-          {draft.activeStep === "review" && (
-            <MatchSetupReview
-              draft={draft}
-              onEditWorld={(occurrenceIndex) =>
-                act({ type: "edit-world", occurrenceIndex })
-              }
-              onEditScopes={(occurrenceIndex) =>
-                act({ type: "edit-scopes", occurrenceIndex })
-              }
-              onBack={() => act({ type: "back" })}
-              onContinue={() => act({ type: "go-to-teams" })}
-            />
-          )}
-
           {draft.activeStep === "teams" && (
             <MatchSetupTeams
               draft={draft}
@@ -155,7 +158,7 @@ export function MatchSetupWizard({ initialWorldId }: { initialWorldId?: string }
               onRecolor={(index, colorId) =>
                 act({ type: "set-team-color", index, colorId })
               }
-              onBack={() => act({ type: "back" })}
+              onBack={() => router.push("/")}
               onStart={() => void start()}
             />
           )}

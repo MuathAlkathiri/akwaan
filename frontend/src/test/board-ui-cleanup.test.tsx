@@ -10,7 +10,7 @@ import type { LiveSessionSnapshot } from "@/features/live-game-session/model";
  *
  * Three controls were removed from the room's header — the shared-screen link,
  * the "تحديات مكسوبة" label, and the dark-mode toggle — while the things the room
- * actually reads (the score, the connection state) stay. These tests fail if any
+ * actually reads (the score and turn) stay. These tests fail if any
  * of the three comes back, and fail just as loudly if the score leaves with them.
  */
 
@@ -106,12 +106,15 @@ describe("Board header keeps what the room needs", () => {
     expect(shell.textContent).toContain("1");
   });
 
-  it("still shows completion progress and the turn band", () => {
+  it("shows the compact turn indicator without repeating progress", () => {
     renderShell();
     const shell = screen.getByTestId("match-shell");
-    expect(shell.textContent).toContain("تحديات مكتملة");
-    // The conversational copy from the earlier pass is intact.
-    expect(shell.textContent).toContain("دوركم الحين");
+    expect(shell.textContent).not.toContain("تحديات مكتملة");
+    expect(shell.textContent).toContain("دور ألفا");
+    expect(screen.getByTestId("active-team-band")).toHaveAttribute(
+      "data-team-id",
+      "team-alpha",
+    );
   });
 
   it("renders its board body children", () => {

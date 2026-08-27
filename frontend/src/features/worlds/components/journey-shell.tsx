@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
  * The surface every step of the player journey sits on.
  *
  * Home, World, Scope, and Board are one continuous space, so they share one
- * warm-white canvas and one width. Each screen only supplies its own content and
+ * white canvas and one width. Each screen only supplies its own content and
  * the trail that got the player here.
  */
 export function JourneyShell({
@@ -21,8 +21,8 @@ export function JourneyShell({
   className?: string;
 }) {
   return (
-    <div className="min-h-[calc(100vh-5.5rem)] bg-background px-4 pb-20 pt-5 text-foreground sm:px-6 lg:px-8">
-      <div className={cn("mx-auto max-w-7xl", className)}>
+    <div className="relative min-h-[calc(100vh-5.5rem)] bg-transparent px-4 pb-20 pt-5 text-foreground sm:px-6 lg:px-8">
+      <div className={cn("relative z-10 mx-auto max-w-7xl", className)}>
         {trail?.length ? <JourneyTrail trail={trail} /> : null}
         {children}
       </div>

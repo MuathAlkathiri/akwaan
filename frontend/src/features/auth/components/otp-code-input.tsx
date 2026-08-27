@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { normalizeDigits } from "@/lib/normalize-digits";
 
 const LENGTH = 6;
 
@@ -36,13 +37,13 @@ export function OtpCodeInput({
   }, [autoFocus]);
 
   const commit = (next: string) => {
-    const cleaned = next.replace(/\D/g, "").slice(0, LENGTH);
+    const cleaned = normalizeDigits(next).replace(/\D/g, "").slice(0, LENGTH);
     onChange(cleaned);
     if (cleaned.length === LENGTH) onComplete?.(cleaned);
   };
 
   const handleChange = (index: number, raw: string) => {
-    const typed = raw.replace(/\D/g, "");
+    const typed = normalizeDigits(raw).replace(/\D/g, "");
     if (!typed) return;
     // A paste lands in one box; spread it across the rest rather than
     // truncating, because pasting the code from a mail app is the common path.
@@ -81,7 +82,7 @@ export function OtpCodeInput({
   };
 
   return (
-    <div className="flex justify-center gap-2" dir="ltr">
+    <div className="flex justify-center gap-1.5 sm:gap-2" dir="ltr">
       {digits.map((digit, index) => (
         <input
           key={index}
@@ -96,17 +97,19 @@ export function OtpCodeInput({
             handleChange(0, event.clipboardData.getData("text"));
           }}
           disabled={disabled}
+          type="text"
           inputMode="numeric"
           autoComplete="one-time-code"
+          lang="en"
           maxLength={LENGTH}
           aria-label={`الرقم ${index + 1} من ${LENGTH}`}
           data-testid={`otp-digit-${index}`}
           className={[
-            "h-14 w-11 rounded-xl border-2 text-center text-2xl font-bold",
-            "focus:outline-none focus:ring-2 focus:ring-offset-1",
+            "h-14 min-w-0 flex-1 rounded-xl border bg-white text-center text-xl font-bold text-[hsl(var(--brand-navy))] sm:w-12 sm:flex-none sm:text-2xl",
+            "focus:outline-none focus:ring-2 focus:ring-offset-0",
             invalid
-              ? "border-destructive focus:ring-destructive"
-              : "border-input focus:border-primary focus:ring-primary",
+              ? "border-destructive focus:ring-destructive/25"
+              : "border-[hsl(var(--brand-navy)/.16)] focus:border-[hsl(var(--brand-navy)/.55)] focus:ring-[hsl(var(--brand-gold)/.28)]",
             disabled ? "opacity-50" : "",
           ].join(" ")}
         />
