@@ -28,6 +28,8 @@ import {
 import { presentWorldReadiness } from "@/features/world-management/utils/world-readiness.presenter";
 import {
   ANSWER_MODE_LABEL,
+  isScoringRuleAvailableForFamily,
+  scoringRuleLabel,
   worldChallengeConfigurationName,
 } from "@/features/world-management/utils/world-content.labels";
 import { adminNavigation } from "@/config/admin-navigation";
@@ -507,5 +509,36 @@ describe("readiness presentation", () => {
       complete: false,
       actionTarget: "content",
     });
+  });
+});
+
+describe("Admin scoring-rule catalog", () => {
+  it("A. offers challenge.win when authoring any family, including signature", () => {
+    for (const family of [
+      "signature",
+      "ryo",
+      "coop",
+      "relational",
+    ] as const) {
+      expect(isScoringRuleAvailableForFamily("challenge.win", family)).toBe(
+        true,
+      );
+    }
+  });
+
+  it("B. gives challenge.win a generic label, not a Top-5-specific one", () => {
+    const label = scoringRuleLabel("challenge.win");
+    expect(label).toBe("نقطة للفريق الفائز بالتحدي");
+    expect(label).not.toContain("أفضل 5");
+  });
+
+  it("C. keeps top-5.result distinct and family-scoped, never cross-family", () => {
+    expect(scoringRuleLabel("top-5.result")).not.toBe(
+      scoringRuleLabel("challenge.win"),
+    );
+    expect(isScoringRuleAvailableForFamily("top-5.result", "signature")).toBe(
+      true,
+    );
+    expect(isScoringRuleAvailableForFamily("top-5.result", "ryo")).toBe(false);
   });
 });

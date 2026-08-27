@@ -135,7 +135,16 @@ export class ChallengeTypePolicy {
       const declaration = this.scoringRules.declaration(
         challengeType.scoringRuleId,
       );
-      if (declaration.requiresMechanicBinding) {
+      // Derive from the runtime registry, never the static declaration flag: a
+      // rule that declares `requiresMechanicBinding` is only genuinely awaiting a
+      // mechanic while no calculator is bound. Once the mechanic ships and binds
+      // one (as RYO/Top-5/Distributed do), the challenge is playable — so Admin
+      // must stop calling it "not programmed". This keeps the readiness heuristic
+      // from drifting from actual runtime capability.
+      if (
+        declaration.requiresMechanicBinding &&
+        !this.scoringRules.hasCalculator(challengeType.scoringRuleId)
+      ) {
         warnings.push(
           issue(
             'SCORING_RULE_AWAITING_MECHANIC',

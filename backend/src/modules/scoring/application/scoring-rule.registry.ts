@@ -25,6 +25,18 @@ export class ScoringRuleRegistry {
     return this.declarations.has(ruleId);
   }
 
+  /**
+   * Whether a calculator is actually bound for this rule in the runtime.
+   *
+   * The authoritative "is this mechanic's scoring shipped" signal: a declaration
+   * with `requiresMechanicBinding` is only truly awaiting a mechanic while no
+   * calculator has been bound. Readers derive from this rather than the static
+   * declaration flag so Admin never diverges from real runtime capability.
+   */
+  hasCalculator(ruleId: string): boolean {
+    return this.calculators.has(ruleId);
+  }
+
   declaration(ruleId: string): ScoringRuleDeclaration {
     const declaration = this.declarations.get(ruleId);
     if (!declaration) throw new ScoringRuleNotRegisteredError(ruleId);

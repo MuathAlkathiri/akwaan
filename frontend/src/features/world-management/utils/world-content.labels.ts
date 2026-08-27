@@ -61,12 +61,23 @@ export const ITEM_STRUCTURE_LABEL: Record<ChallengeItemStructure, string> = {
 
 export const SCORING_RULE_PRESENTATION: Record<
   string,
-  { label: string; description: string; family?: ChallengeFamily }
+  {
+    label: string;
+    description: string;
+    // The family a family-specific rule belongs to (Read Your Opponent, Co-op…).
+    family?: ChallengeFamily;
+    // The canonical Match rule (`challenge.win`) is not family-specific: it is the
+    // single rule that moves the Match scoreboard and every implemented mechanic
+    // scores through it, so it must be offered under every family, not hidden
+    // behind a `family` tag it can never carry.
+    sharedAcrossFamilies?: boolean;
+  }
 > = {
   "challenge.win": {
-    label: "نقطة للفائز بالتحدي",
+    label: "نقطة للفريق الفائز بالتحدي",
     description:
       "يسجل النظام نقطة مباراة واحدة للفريق الفائز بالتحدي، ولا يسجل نقطة عند التعادل.",
+    sharedAcrossFamilies: true,
   },
   "ryo.payoff-matrix": {
     label: "نظام اقرأ خصمك",
@@ -102,6 +113,24 @@ export const SCORING_RULE_PRESENTATION: Record<
     family: "signature",
   },
 };
+
+/**
+ * Whether a scoring rule may be selected while authoring a challenge of `family`.
+ *
+ * The one place this decision lives, so the authoring form never grows a second
+ * rule list or a per-mechanic whitelist. A rule is offered when it is the shared
+ * canonical Match rule (available to every family) or when it is the rule that
+ * belongs to this specific family.
+ */
+export function isScoringRuleAvailableForFamily(
+  ruleId: string,
+  family: ChallengeFamily,
+): boolean {
+  const presentation = SCORING_RULE_PRESENTATION[ruleId];
+  return Boolean(
+    presentation?.sharedAcrossFamilies || presentation?.family === family,
+  );
+}
 
 export function scoringRuleLabel(ruleId: string): string {
   return SCORING_RULE_PRESENTATION[ruleId]?.label ?? "طريقة احتساب النقاط";

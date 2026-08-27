@@ -36,8 +36,8 @@ import {
 import {
   ANSWER_MODE_LABEL,
   FAMILY_LABEL,
+  isScoringRuleAvailableForFamily,
   ITEM_STRUCTURE_LABEL,
-  SCORING_RULE_PRESENTATION,
   scoringRuleDescription,
   scoringRuleLabel,
 } from "../../utils/world-content.labels";
@@ -101,7 +101,7 @@ export function ChallengeTypeForm({
   const scoringRules = (metadata.data?.scoringRules ?? []).filter((rule) =>
     productionDefinition
       ? rule.id === productionDefinition.matchScoringRuleId
-      : SCORING_RULE_PRESENTATION[rule.id]?.family === family,
+      : isScoringRuleAvailableForFamily(rule.id, family),
   );
 
   useEffect(() => {
