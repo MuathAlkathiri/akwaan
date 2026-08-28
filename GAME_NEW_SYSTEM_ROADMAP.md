@@ -2263,9 +2263,11 @@ evidence (§16.1), never upgraded here.
   be clear; (5) no ordinary trivia; (6) no raw-fact partitioning; (7) reject the "each player solves an unrelated
   mini-puzzle → combine clues" default; (8) content should create discussion, uncertainty, coordination, and
   possible misunderstanding.
-- **Status:** 🟡 **PRODUCT / CONTENT DESIGN APPROVED.** Not marked implemented — see follow-up §23.7 to audit
-  whether the current `distributed-information` runtime/UI/schema actually supports per-player distinct private
-  views and one shared final action.
+- **Status:** 🟡 **PRODUCT / CONTENT DESIGN APPROVED** (the full multi-family contract). The first slice —
+  **Rich Private Views V1** (per-view text + image + audio on one shared puzzle) — is now **✅ implemented &
+  verified in source** (§23.9); it is **not deployed** and the richer families (candidate boards, structured
+  non-answer actions) remain design-approved only. The §23.7 runtime/UI/schema audit that gated this was answered
+  by the compatibility audit (verdict: reuse + extend).
 
 ### 23.2 Media-first authoring direction (product-approved)
 
@@ -2361,6 +2363,34 @@ evidence (§16.1), never upgraded here.
   working-tree parallel of those files was an **older/weaker** formulation that would have regressed them, so it
   was excluded — newer approved decision wins.
 - Runtime/plugin/ChallengeType statuses are left exactly as repository evidence records them.
+
+### 23.9 Rich Private Views V1 — ✅ IMPLEMENTED & VERIFIED IN SOURCE (2026-08-28)
+
+The first slice of the §23.1 contract, reusing the existing `distributed-information` mechanic — **no
+replacement, no parallel runtime**. Compatibility audit verdict: extend, not replace.
+
+- **✅ Existing core (already implemented before V1, reused unchanged):** `distributed-information`
+  plugin/launcher/ChallengeType, **server-side per-participant private projection**, 2-player 2+1 and 3-player
+  1+1+1 assignment, reconnect stability, single-designated-answerer ownership, deadline/idempotency/cancel
+  lifecycle, and the Match-win/race scoring.
+- **✅ Rich Private Views V1 (implemented & verified in source):** per-segment **image** and **audio** and the
+  shared/public per-team media, carried end-to-end (content type → validation → runtime → per-actor projection →
+  phone render → authoring). Private media is **server-projected to the holding participant only**; the
+  shared/public board rides the **per-team** view (never the cross-team public projection, so a player never
+  learns the opponent's current puzzle). Legacy text-only items and string-shaped runtime state keep working with
+  no migration. Final answer stays the existing `match` / `multiple_choice` / `closest`. Media reuses the
+  canonical `ContentItemMedia` contract and the existing phone image/audio renderer — no second media pipeline.
+- **Verification:** backend 104 DI/privacy tests (incl. 3-player/2-player own-media-only, opponent/host none,
+  answer never projected, reconnect-stable media, legacy text-only) + frontend 44 DI tests (private image/audio
+  render, public board, reconnect) + three compatibility fixtures (missing-piece, conditional-wire,
+  construction); backend + frontend typecheck/build/lint green.
+- **Status:** ✅ **source implementation verified** · ⬜ **not deployed / no Production runtime verification** ·
+  ⬜ playerInstructions DB sync not run · ⬜ no human-reviewed Rakkibha content authored.
+- **Deferred by design (not V1, not playtest blockers):** native candidate-board schema, structured cut-wire
+  action, drag/drop assembly, path/ordering commands, a generic action engine. Candidate choice uses
+  `multiple_choice`, word/code uses `match`, wire choice uses `multiple_choice`.
+- **Follow-ups:** playerInstructions dry-run then guarded sync; real human-reviewed Rakkibha validation content;
+  deployment + runtime smoke; Puzzles World rollout/content readiness (tracked separately, incl. §19 #19).
 
 
 
