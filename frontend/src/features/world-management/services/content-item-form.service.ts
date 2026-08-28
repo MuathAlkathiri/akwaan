@@ -196,7 +196,10 @@ export interface DistributedSegmentFormState {
   id: "A" | "B" | "C";
   contentAr: string;
   contentEn: string;
+  /** Optional private visual for this view. Image takes precedence over audio. */
   imageUrl: string;
+  /** Optional private audio cue for this view, used when no image is set. */
+  audioUrl: string;
 }
 
 export type DistributedMergeKey = "AB_C" | "AC_B" | "BC_A";
@@ -237,6 +240,7 @@ function emptyDistributedState(): DistributedFormState {
       contentAr: "",
       contentEn: "",
       imageUrl: "",
+      audioUrl: "",
     })),
     mergeKeys: [],
     safetyConfirmed: false,
@@ -368,11 +372,17 @@ export function toDistributedFormState(
       const authored = payload.segments?.find(
         (candidate: { id: string }) => candidate.id === segment.id,
       );
+      const media = authored?.media as
+        | { type?: string; assets?: Array<{ url?: string }> }
+        | undefined;
+      const mediaUrl = media?.assets?.[0]?.url ?? "";
+      const isAudio = media?.type === "audio";
       return {
         ...segment,
         contentAr: authored?.content?.ar ?? "",
         contentEn: authored?.content?.en ?? "",
-        imageUrl: authored?.media?.assets?.[0]?.url ?? "",
+        imageUrl: isAudio ? "" : mediaUrl,
+        audioUrl: isAudio ? mediaUrl : "",
       };
     }),
     mergeKeys: (payload.twoPlayerMergeOptions ?? [])
@@ -611,7 +621,14 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
                   assets: [{ url: segment.imageUrl.trim() }],
                 },
               }
-            : {}),
+            : segment.audioUrl.trim()
+              ? {
+                  media: {
+                    type: "audio",
+                    assets: [{ url: segment.audioUrl.trim() }],
+                  },
+                }
+              : {}),
         })),
         twoPlayerMergeOptions: values.distributed.mergeKeys.map((key) => ({
           firstParticipantSegmentIds: DISTRIBUTED_MERGES[key].first,

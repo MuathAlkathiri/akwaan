@@ -3,6 +3,7 @@ import {
   ChallengeAnswerMode,
   ChallengeFamily,
   ContentItemStatus,
+  ContentMediaType,
   DISTRIBUTED_INFORMATION_SLUG,
   DISTRIBUTED_INFORMATION_TIMER_SECONDS,
   DISTRIBUTED_INFORMATION_VARIANT,
@@ -288,5 +289,196 @@ describe('distributed-information content validation', () => {
     expect(
       codes({ mechanicPayload: undefined } as Partial<ContentItemView>),
     ).toEqual([]);
+  });
+
+  describe('rich private views (V1)', () => {
+    // A legacy text-only item is exactly the base fixture: it must stay valid.
+    it('keeps a legacy text-only item valid', () => {
+      expect(codes()).toEqual([]);
+    });
+
+    it('accepts a per-segment image and audio', () => {
+      expect(
+        codes(
+          {},
+          {
+            segments: [
+              {
+                id: 'A',
+                content: { ar: 'الجزء أ' },
+                media: {
+                  type: ContentMediaType.IMAGE,
+                  assets: [{ url: 'https://x.invalid/a.png' }],
+                },
+              },
+              {
+                id: 'B',
+                content: { ar: 'الجزء ب' },
+                media: {
+                  type: ContentMediaType.AUDIO,
+                  assets: [{ url: 'https://x.invalid/b.mp3' }],
+                },
+              },
+              { id: 'C', content: { ar: 'الجزء ج' } },
+            ],
+          },
+        ),
+      ).toEqual([]);
+    });
+
+    it('rejects a segment media with an unsupported modality', () => {
+      expect(
+        codes(
+          {},
+          {
+            segments: [
+              {
+                id: 'A',
+                content: { ar: 'الجزء أ' },
+                media: {
+                  type: 'gif' as never,
+                  assets: [{ url: 'https://x.invalid/a.gif' }],
+                },
+              },
+              { id: 'B', content: { ar: 'الجزء ب' } },
+              { id: 'C', content: { ar: 'الجزء ج' } },
+            ],
+          },
+        ),
+      ).toContain('INVALID_CONTENT_MEDIA_TYPE');
+    });
+
+    it('rejects a segment media asset with no URL', () => {
+      expect(
+        codes(
+          {},
+          {
+            segments: [
+              {
+                id: 'A',
+                content: { ar: 'الجزء أ' },
+                media: {
+                  type: ContentMediaType.IMAGE,
+                  assets: [{ url: '  ' }],
+                },
+              },
+              { id: 'B', content: { ar: 'الجزء ب' } },
+              { id: 'C', content: { ar: 'الجزء ج' } },
+            ],
+          },
+        ),
+      ).toContain('CONTENT_MEDIA_ASSET_URL_REQUIRED');
+    });
+
+    // The three representative V1 families, encoded honestly against the current
+    // schema: shared media is the item's global media, private views are segment
+    // text/media, and the final answer stays in answerPayload.
+    it('A. missing-piece: global image board + private images + a selection answer', () => {
+      expect(
+        codes(
+          {
+            media: {
+              type: ContentMediaType.IMAGE,
+              assets: [{ url: 'https://x.invalid/board-6-pieces.png' }],
+            },
+            // The final "select candidate #4" resolves through the existing match
+            // answer (a multiple_choice challenge type would resolve it identically).
+            answerPayload: {
+              mode: ChallengeAnswerMode.MATCH,
+              acceptedAnswers: ['4'],
+            },
+          } as Partial<ContentItemView>,
+          {
+            publicPrompt: { ar: 'أي قطعة تكمل الشكل؟' },
+            segments: [
+              {
+                id: 'A',
+                content: { ar: 'الشكل الناقص' },
+                media: {
+                  type: ContentMediaType.IMAGE,
+                  assets: [{ url: 'https://x.invalid/partial.png' }],
+                },
+              },
+              {
+                id: 'B',
+                content: { ar: 'مرشحتان' },
+                media: {
+                  type: ContentMediaType.IMAGE,
+                  assets: [{ url: 'https://x.invalid/candidates-b.png' }],
+                },
+              },
+              {
+                id: 'C',
+                content: { ar: 'مرشحة مضللة وأخرى صحيحة' },
+                media: {
+                  type: ContentMediaType.IMAGE,
+                  assets: [{ url: 'https://x.invalid/candidates-c.png' }],
+                },
+              },
+            ],
+          },
+        ),
+      ).toEqual([]);
+    });
+
+    it('B. conditional-wire: two text rules + a private device image + a selection answer', () => {
+      expect(
+        codes(
+          {
+            // "Cut which wire?" resolves through the existing match answer.
+            answerPayload: {
+              mode: ChallengeAnswerMode.MATCH,
+              acceptedAnswers: ['الأحمر'],
+            },
+          } as Partial<ContentItemView>,
+          {
+            publicPrompt: { ar: 'أي سلك نقطع؟' },
+            segments: [
+              { id: 'A', content: { ar: 'إن كان الأسود خاطئًا فاقطع الأحمر' } },
+              {
+                id: 'B',
+                content: { ar: 'إن كان الرقم أكبر من ٦ فاقطع الأبيض' },
+              },
+              {
+                id: 'C',
+                content: { ar: 'حالة الجهاز' },
+                media: {
+                  type: ContentMediaType.IMAGE,
+                  assets: [{ url: 'https://x.invalid/device-state.png' }],
+                },
+              },
+            ],
+          },
+        ),
+      ).toEqual([]);
+    });
+
+    it('C. distributed construction: private text/image fragments + a match answer', () => {
+      expect(
+        codes(
+          {
+            answerPayload: {
+              mode: ChallengeAnswerMode.MATCH,
+              acceptedAnswers: ['الرياض'],
+            },
+          } as Partial<ContentItemView>,
+          {
+            publicPrompt: { ar: 'ركّبوا اسم المدينة' },
+            segments: [
+              { id: 'A', content: { ar: 'الحرف الأول: ا' } },
+              {
+                id: 'B',
+                content: { ar: 'الحرفان التاليان' },
+                media: {
+                  type: ContentMediaType.IMAGE,
+                  assets: [{ url: 'https://x.invalid/fragment-ريا.png' }],
+                },
+              },
+              { id: 'C', content: { ar: 'الحرفان الأخيران: ض + —' } },
+            ],
+          },
+        ),
+      ).toEqual([]);
+    });
   });
 });

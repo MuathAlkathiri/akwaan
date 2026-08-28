@@ -14,11 +14,31 @@ export const DISTRIBUTED_INFORMATION_PUZZLE_COUNT = 3;
 /** How a team's answer is checked. Mirrors the ContentItem answer contract. */
 export type DistributedAnswerMode = 'closest' | 'match' | 'multiple_choice';
 
+/**
+ * A media reference carried in runtime state: a URL and its modality, never the
+ * bytes. This is the compact shape a phone renders — the same `{type,url,altText}`
+ * a Marhala question media uses — derived from the ContentItem's canonical
+ * `ContentItemMedia` at launch.
+ */
+export interface DistributedSegmentMedia {
+  type: 'image' | 'audio' | 'video';
+  url: string;
+  altText?: string;
+}
+
+/** One private segment as held in runtime state: its text and optional media. */
+export interface DistributedSegmentView {
+  content: string;
+  media?: DistributedSegmentMedia;
+}
+
 export interface DistributedPuzzle {
   contentItemId: string;
   publicPrompt: string;
-  /** Private text, keyed by segment id. Never projected wholesale. */
-  segments: Record<string, string>;
+  /** The shared/public media every teammate may see (the ContentItem's own media). */
+  publicMedia?: DistributedSegmentMedia;
+  /** Private view, keyed by segment id. Never projected wholesale — see actorRuntime. */
+  segments: Record<string, DistributedSegmentView>;
   answer: {
     mode: DistributedAnswerMode;
     correctValue?: number;
@@ -77,6 +97,20 @@ function parse<T>(value: unknown, label: string): T {
   } catch {
     return fail('INVALID_DISTRIBUTED_STATE', `${label} is invalid`);
   }
+}
+
+/**
+ * Reads a stored segment as `{ content, media? }`, tolerating a legacy segment
+ * that was persisted as a bare string. This keeps in-flight races and any
+ * text-only runtime state written before rich media working exactly as before.
+ */
+function readSegmentView(raw: unknown): DistributedSegmentView {
+  if (typeof raw === 'string') return { content: raw };
+  const view = (raw ?? {}) as Partial<DistributedSegmentView>;
+  return {
+    content: typeof view.content === 'string' ? view.content : '',
+    ...(view.media ? { media: view.media } : {}),
+  };
 }
 
 function puzzles(state: GameplayModeState): DistributedPuzzle[] {
@@ -509,6 +543,12 @@ function actorRuntime(
     myTeamFinished: false,
     contentItemId: puzzle.contentItemId,
     publicPrompt: puzzle.publicPrompt,
+    // The shared/public media of the team's current puzzle. It rides the per-team
+    // actor projection (not publicRuntime), so a player never learns which puzzle
+    // the *opponent* is on, but every teammate sees the same public board.
+    ...(puzzle.publicMedia
+      ? { publicMediaJson: JSON.stringify(puzzle.publicMedia) }
+      : {}),
     puzzlePosition: position + 1,
     mySolved: progress.solved,
     myLockUntil: progress.lockUntil,
@@ -519,11 +559,18 @@ function actorRuntime(
     optionsJson: puzzle.answer.options
       ? JSON.stringify(puzzle.answer.options)
       : null,
+    // Only the actor's own held segments — text and media — are serialized here.
+    // A teammate's, the opponent's, and every unheld segment's media stay out.
+    // A legacy segment persisted as a bare string still reads as text-only.
     mySegmentsJson: JSON.stringify(
-      mine.map((segmentId) => ({
-        id: segmentId,
-        content: puzzle.segments[segmentId] ?? '',
-      })),
+      mine.map((segmentId) => {
+        const segment = readSegmentView(puzzle.segments[segmentId]);
+        return {
+          id: segmentId,
+          content: segment.content,
+          ...(segment.media ? { media: segment.media } : {}),
+        };
+      }),
     ),
   };
 }

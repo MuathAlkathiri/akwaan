@@ -369,3 +369,121 @@ describe("distributed-information presentation helpers", () => {
     );
   });
 });
+
+describe("distributed-information rich private views", () => {
+  it("renders a private image for the segment this player holds", () => {
+    render(
+      <DistributedInformationPanel
+        runtime={runtime(
+          participantState({
+            mySegmentsJson: JSON.stringify([
+              {
+                id: "B",
+                content: "الجزء الذي تراه",
+                media: {
+                  type: "image",
+                  url: "https://example.invalid/piece-b.png",
+                  altText: "قطعة",
+                },
+              },
+            ]),
+          }),
+        )}
+      />,
+    );
+    const holder = screen.getByTestId("distributed-segment-media-B");
+    expect(within(holder).getByTestId("marhala-question-image")).toBeTruthy();
+  });
+
+  it("renders a private audio control for an audio segment", () => {
+    render(
+      <DistributedInformationPanel
+        runtime={runtime(
+          participantState({
+            mySegmentsJson: JSON.stringify([
+              {
+                id: "B",
+                content: "استمع",
+                media: { type: "audio", url: "https://example.invalid/cue-b.mp3" },
+              },
+            ]),
+          }),
+        )}
+      />,
+    );
+    const holder = screen.getByTestId("distributed-segment-media-B");
+    expect(within(holder).getByTestId("marhala-question-audio")).toBeTruthy();
+  });
+
+  it("renders the shared/public puzzle media above the private view", () => {
+    render(
+      <DistributedInformationPanel
+        runtime={runtime(
+          participantState({
+            publicMediaJson: JSON.stringify({
+              type: "image",
+              url: "https://example.invalid/board.png",
+            }),
+          })
+        )}
+      />,
+    );
+    expect(screen.getByTestId("distributed-public-media")).toBeTruthy();
+  });
+
+  it("renders each assigned segment's media independently for a two-holder player", () => {
+    render(
+      <DistributedInformationPanel
+        runtime={runtime(
+          participantState({
+            mySegmentsJson: JSON.stringify([
+              { id: "A", content: "قاعدة", media: { type: "image", url: "https://example.invalid/a.png" } },
+              { id: "B", content: "لغز", media: { type: "audio", url: "https://example.invalid/b.mp3" } },
+            ]),
+          }),
+        )}
+      />,
+    );
+    expect(
+      within(screen.getByTestId("distributed-segment-media-A")).getByTestId(
+        "marhala-question-image",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByTestId("distributed-segment-media-B")).getByTestId(
+        "marhala-question-audio",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("renders a legacy text-only segment with no media node", () => {
+    render(
+      <DistributedInformationPanel
+        runtime={runtime(
+          participantState({
+            mySegmentsJson: JSON.stringify([{ id: "B", content: "نص فقط" }]),
+          }),
+        )}
+      />,
+    );
+    expect(screen.getByText("نص فقط")).toBeTruthy();
+    expect(screen.queryByTestId("distributed-segment-media-B")).toBeNull();
+    expect(screen.queryByTestId("distributed-public-media")).toBeNull();
+  });
+
+  it("restores the same private media on a resync", () => {
+    const state = participantState({
+      mySegmentsJson: JSON.stringify([
+        { id: "B", content: "الجزء", media: { type: "image", url: "https://example.invalid/piece-b.png" } },
+      ]),
+    });
+    const view = render(
+      <DistributedInformationPanel runtime={runtime(state)} />,
+    );
+    const before = screen.getByTestId("distributed-segment-media-B").innerHTML;
+    view.rerender(<DistributedInformationPanel runtime={runtime({ ...state })} />);
+    expect(screen.getByTestId("distributed-segment-media-B").innerHTML).toBe(
+      before,
+    );
+  });
+});

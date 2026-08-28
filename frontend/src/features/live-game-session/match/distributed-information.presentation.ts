@@ -11,9 +11,17 @@ export const DISTRIBUTED_INFORMATION_MODE_KEY = "distributed-information";
 export const DISTRIBUTED_CHALLENGE_NAME = "ركّبها";
 export const DISTRIBUTED_PUZZLE_COUNT = 3;
 
+/** A private/public media reference the server projected: a URL and its modality. */
+export interface DistributedMedia {
+  type: "image" | "audio" | "video";
+  url: string;
+  altText?: string;
+}
+
 export interface DistributedSegment {
   id: string;
   content: string;
+  media?: DistributedMedia;
 }
 
 export interface DistributedOption {
@@ -44,6 +52,14 @@ export function parseDistributedSegments(value: unknown): DistributedSegment[] {
 
 export function parseDistributedOptions(value: unknown): DistributedOption[] {
   return parseJson<DistributedOption[]>(value, []);
+}
+
+/** The shared/public media of the team's current puzzle, or null when text-only. */
+export function parseDistributedPublicMedia(
+  value: unknown,
+): DistributedMedia | null {
+  const media = parseJson<DistributedMedia | null>(value, null);
+  return media && typeof media.url === "string" && media.url ? media : null;
 }
 
 export function parseDistributedProgress(value: unknown): DistributedProgress[] {

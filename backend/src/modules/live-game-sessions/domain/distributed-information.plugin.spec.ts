@@ -590,4 +590,157 @@ describe('distributed-information plugin', () => {
       expect(projected.mySegmentsJson).toBeUndefined();
     });
   });
+
+  describe('rich private media projection', () => {
+    const actor = (participantId?: string, controller = false) => ({
+      controller,
+      participantId,
+      teamId: undefined,
+    });
+
+    // Puzzle 0 with per-segment media and a shared public board. Media is a URL
+    // reference, never bytes.
+    const MEDIA_PUZZLES = [
+      {
+        contentItemId: 'item-1',
+        publicPrompt: 'ركّبوا القطعة',
+        publicMedia: { type: 'image', url: 'https://x.invalid/board.png' },
+        segments: {
+          A: {
+            content: 'الجزء أ',
+            media: { type: 'image', url: 'https://x.invalid/a.png' },
+          },
+          B: {
+            content: 'الجزء ب',
+            media: { type: 'audio', url: 'https://x.invalid/b.mp3' },
+          },
+          C: {
+            content: 'الجزء ج',
+            media: { type: 'image', url: 'https://x.invalid/c.png' },
+          },
+        },
+        answer: { mode: 'match' as const, acceptedAnswers: ['حل'] },
+      },
+      PUZZLES[1],
+      PUZZLES[2],
+    ];
+    const mediaRuntime = (plans: DistributedTeamPlan[]) =>
+      runtime(plans, { puzzlesJson: JSON.stringify(MEDIA_PUZZLES) });
+    // Two teams are required; ALPHA sits on the media puzzle (index 0), BETA on a
+    // text-only one (index 1), which makes the opponent-isolation checks concrete.
+    const bothThree = (): DistributedTeamPlan[] => [
+      threePlayerPlan(ALPHA, 'alpha', [0, 1, 2]),
+      threePlayerPlan(BETA, 'beta', [1, 2, 0]),
+    ];
+    const bothTwo = (): DistributedTeamPlan[] => [
+      twoPlayerPlan(ALPHA, 'alpha', [0, 1, 2]),
+      twoPlayerPlan(BETA, 'beta', [1, 2, 0]),
+    ];
+    const project = (state: GameplayModeState, id?: string) =>
+      DISTRIBUTED_INFORMATION_PLUGIN.projectRuntimeStateForActor!(
+        state,
+        actor(id),
+      );
+    const segmentsOf = (state: GameplayModeState, id: string) =>
+      JSON.parse(String(project(state, id).mySegmentsJson)) as Array<{
+        id: string;
+        content: string;
+        media?: { type: string; url: string };
+      }>;
+
+    it('A. gives each of three players only their own segment media', () => {
+      const state = mediaRuntime(bothThree());
+      expect(segmentsOf(state, 'alpha-1')).toEqual([
+        {
+          id: 'A',
+          content: 'الجزء أ',
+          media: { type: 'image', url: 'https://x.invalid/a.png' },
+        },
+      ]);
+      expect(segmentsOf(state, 'alpha-2')).toEqual([
+        {
+          id: 'B',
+          content: 'الجزء ب',
+          media: { type: 'audio', url: 'https://x.invalid/b.mp3' },
+        },
+      ]);
+      expect(segmentsOf(state, 'alpha-3')).toEqual([
+        {
+          id: 'C',
+          content: 'الجزء ج',
+          media: { type: 'image', url: 'https://x.invalid/c.png' },
+        },
+      ]);
+      // No teammate's media url leaks into another teammate's projection.
+      expect(JSON.stringify(project(state, 'alpha-1'))).not.toContain('b.mp3');
+      expect(JSON.stringify(project(state, 'alpha-1'))).not.toContain('c.png');
+      expect(JSON.stringify(project(state, 'alpha-2'))).not.toContain('a.png');
+    });
+
+    it('B. gives a two-player holder both of their segment media, the other only theirs', () => {
+      const state = mediaRuntime(bothTwo());
+      const held = segmentsOf(state, 'alpha-1').map((s) => s.id);
+      expect(held).toEqual(['A', 'C']);
+      expect(segmentsOf(state, 'alpha-1').map((s) => s.media?.url)).toEqual([
+        'https://x.invalid/a.png',
+        'https://x.invalid/c.png',
+      ]);
+      // The 1-segment holder gets only B, and never A/C media.
+      expect(segmentsOf(state, 'alpha-2')).toEqual([
+        {
+          id: 'B',
+          content: 'الجزء ب',
+          media: { type: 'audio', url: 'https://x.invalid/b.mp3' },
+        },
+      ]);
+      expect(JSON.stringify(project(state, 'alpha-2'))).not.toContain('a.png');
+    });
+
+    it('C+D. never projects any private segment media to a host/controller (no participant)', () => {
+      const state = mediaRuntime(bothThree());
+      const host = JSON.stringify(project(state, undefined));
+      expect(host).not.toContain('a.png');
+      expect(host).not.toContain('b.mp3');
+      expect(host).not.toContain('c.png');
+      expect(project(state, undefined).mySegmentsJson).toBeUndefined();
+      // C. An opponent (BETA, on a different, text-only puzzle) never receives the
+      // active team's private media either.
+      const opponent = JSON.stringify(project(state, 'beta-1'));
+      expect(opponent).not.toContain('a.png');
+      expect(opponent).not.toContain('b.mp3');
+      expect(opponent).not.toContain('c.png');
+    });
+
+    it('E. never projects the correct answer', () => {
+      const state = mediaRuntime(bothThree());
+      // Puzzle 0 is a match answer; its accepted text must not appear anywhere.
+      expect(JSON.stringify(project(state, 'alpha-1'))).not.toContain('حل');
+    });
+
+    it('shares the public board media on the per-team view but not the cross-team public view', () => {
+      const state = mediaRuntime(bothThree());
+      expect(String(project(state, 'alpha-1').publicMediaJson)).toContain(
+        'board.png',
+      );
+      // The public (host/no-participant) projection carries no puzzle media, so a
+      // player never learns which puzzle the opponent is on.
+      expect(project(state, undefined).publicMediaJson).toBeUndefined();
+    });
+
+    it('F. restores identical private media to the same participant on a resync', () => {
+      const state = mediaRuntime(bothThree());
+      expect(project(state, 'alpha-2').mySegmentsJson).toEqual(
+        project(state, 'alpha-2').mySegmentsJson,
+      );
+    });
+
+    it('G. leaves a legacy text-only puzzle projecting exactly as before', () => {
+      // PUZZLES use bare-string segments; a text-only holder gets {id,content}.
+      const state = runtime(bothThree());
+      expect(segmentsOf(state, 'alpha-1')).toEqual([
+        { id: 'A', content: 'لعب في إسبانيا' },
+      ]);
+      expect(project(state, 'alpha-1').publicMediaJson).toBeUndefined();
+    });
+  });
 });

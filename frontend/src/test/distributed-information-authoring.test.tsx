@@ -25,9 +25,9 @@ function authored(
     publicPromptAr: "من هو اللاعب؟",
     publicPromptEn: "",
     segments: [
-      { id: "A", contentAr: "لعب في إسبانيا", contentEn: "", imageUrl: "" },
-      { id: "B", contentAr: "كرة ذهبية واحدة", contentEn: "", imageUrl: "" },
-      { id: "C", contentAr: "اعتزل 2019", contentEn: "", imageUrl: "" },
+      { id: "A", contentAr: "لعب في إسبانيا", contentEn: "", imageUrl: "", audioUrl: "" },
+      { id: "B", contentAr: "كرة ذهبية واحدة", contentEn: "", imageUrl: "", audioUrl: "" },
+      { id: "C", contentAr: "اعتزل 2019", contentEn: "", imageUrl: "", audioUrl: "" },
     ],
     mergeKeys: ["AC_B"],
     safetyConfirmed: true,
@@ -116,6 +116,65 @@ describe("ركّبها authoring payload", () => {
       assets: [{ url: "https://example.invalid/a.png" }],
     });
     expect(mechanic.segments[1].media).toBeUndefined();
+  });
+
+  it("carries optional segment audio through the existing media shape", () => {
+    const payload = buildContentItemPayload(
+      formValues(
+        authored({
+          segments: authored().segments.map((segment) =>
+            segment.id === "C"
+              ? { ...segment, audioUrl: "https://example.invalid/c.mp3" }
+              : segment,
+          ),
+        }),
+      ),
+    );
+    const mechanic = payload.mechanicPayload as DistributedInformationPayload;
+
+    expect(mechanic.segments[2].media).toEqual({
+      type: "audio",
+      assets: [{ url: "https://example.invalid/c.mp3" }],
+    });
+  });
+
+  it("prefers image over audio when a segment carries both", () => {
+    const payload = buildContentItemPayload(
+      formValues(
+        authored({
+          segments: authored().segments.map((segment) =>
+            segment.id === "A"
+              ? {
+                  ...segment,
+                  imageUrl: "https://example.invalid/a.png",
+                  audioUrl: "https://example.invalid/a.mp3",
+                }
+              : segment,
+          ),
+        }),
+      ),
+    );
+    const mechanic = payload.mechanicPayload as DistributedInformationPayload;
+    expect(mechanic.segments[0].media?.type).toBe("image");
+  });
+
+  it("round-trips a segment audio url back into the form for editing", () => {
+    const payload = buildContentItemPayload(
+      formValues(
+        authored({
+          segments: authored().segments.map((segment) =>
+            segment.id === "B"
+              ? { ...segment, audioUrl: "https://example.invalid/b.mp3" }
+              : segment,
+          ),
+        }),
+      ),
+    ).mechanicPayload as DistributedInformationPayload;
+
+    const form = toDistributedFormState(payload);
+    const segmentB = form.segments.find((segment) => segment.id === "B");
+    expect(segmentB?.audioUrl).toBe("https://example.invalid/b.mp3");
+    expect(segmentB?.imageUrl).toBe("");
   });
 
   it("round-trips an authored item back into the form for editing", () => {

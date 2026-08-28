@@ -11,7 +11,10 @@ import {
   DISTRIBUTED_INFORMATION_VARIANT,
   WorldChallengeSlotKey,
 } from '../../world-content/domain/world-content.constants';
-import { DistributedInformationPayload } from '../../world-content/domain/world-content.types';
+import {
+  ContentItemMedia,
+  DistributedInformationPayload,
+} from '../../world-content/domain/world-content.types';
 import {
   GAMEPLAY_RUNTIME_REPOSITORY,
   GameplayRuntimeRepository,
@@ -25,6 +28,7 @@ import {
   DISTRIBUTED_INFORMATION_MODE_KEY,
   DistributedAssignment,
   DistributedPuzzle,
+  DistributedSegmentMedia,
   DistributedTeamPlan,
 } from '../domain/distributed-information.plugin';
 import {
@@ -44,6 +48,32 @@ function shuffled<T>(values: readonly T[]): T[] {
     [result[index], result[target]] = [result[target], result[index]];
   }
   return result;
+}
+
+/**
+ * The compact runtime form of a canonical `ContentItemMedia`: its modality and the
+ * first asset's URL/alt text, never the bytes. Text-only content (no media, `none`,
+ * or an empty asset list) yields `undefined`, so a legacy item stays media-free and
+ * the snapshot never carries an empty media block.
+ */
+function compactSegmentMedia(
+  media: ContentItemMedia | undefined,
+): DistributedSegmentMedia | undefined {
+  if (!media || media.type === 'none') return undefined;
+  if (
+    media.type !== 'image' &&
+    media.type !== 'audio' &&
+    media.type !== 'video'
+  )
+    return undefined;
+  const asset = media.assets?.[0];
+  const url = asset?.url?.trim();
+  if (!url) return undefined;
+  return {
+    type: media.type,
+    url,
+    ...(asset?.altText ? { altText: asset.altText } : {}),
+  };
 }
 
 /**
@@ -265,8 +295,17 @@ export class StartDistributedInformation {
       return {
         contentItemId: String(item._id),
         publicPrompt: payload.publicPrompt.ar,
+        ...(compactSegmentMedia(item.media)
+          ? { publicMedia: compactSegmentMedia(item.media) }
+          : {}),
         segments: Object.fromEntries(
-          payload.segments.map((segment) => [segment.id, segment.content.ar]),
+          payload.segments.map((segment) => {
+            const media = compactSegmentMedia(segment.media);
+            return [
+              segment.id,
+              { content: segment.content.ar, ...(media ? { media } : {}) },
+            ];
+          }),
         ),
         answer: this.answerContract(item.answerPayload),
       };

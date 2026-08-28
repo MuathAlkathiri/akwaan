@@ -35,6 +35,7 @@ import {
 import {
   ContentAnswerOption,
   ContentAnswerPayload,
+  ContentItemMedia,
   ContentItemView,
   ScopeView,
   ChallengeTypeView,
@@ -301,6 +302,17 @@ export class ContentItemCompatibilityPolicy {
         issue(
           'DISTRIBUTED_SEGMENT_CONTENT_REQUIRED',
           'Every segment needs its private content',
+        ),
+      );
+    }
+    // A private segment may carry its own media (a partial image, an audio cue).
+    // It is validated by the same canonical rules as any content media, so an
+    // invalid modality or a URL-less asset is rejected before it can reach a phone.
+    for (const segment of segments) {
+      issues.push(
+        ...this.mediaBlockIssues(
+          segment?.media,
+          `distributed segment ${segment?.id ?? '?'}`,
         ),
       );
     }
@@ -687,37 +699,50 @@ export class ContentItemCompatibilityPolicy {
   }
 
   private validateMedia(item: ContentItemView): WorldContentIssue[] {
-    const issues: WorldContentIssue[] = [];
-    const media = item.media;
-    if (media) {
-      if (!Object.values(ContentMediaType).includes(media.type)) {
-        issues.push(
-          issue('INVALID_CONTENT_MEDIA_TYPE', 'Media type is not supported', {
-            mediaType: media.type,
-          }),
-        );
-      }
-      if (media.type !== ContentMediaType.NONE && !media.assets?.length) {
-        issues.push(
-          issue(
-            'CONTENT_MEDIA_ASSETS_REQUIRED',
-            `Media type "${media.type}" requires at least one asset`,
-            { mediaType: media.type },
-          ),
-        );
-      }
-      if (media.assets?.some((asset) => !asset.url?.trim())) {
-        issues.push(
-          issue(
-            'CONTENT_MEDIA_ASSET_URL_REQUIRED',
-            'Every media asset needs a URL',
-          ),
-        );
-      }
-    }
-
     // No challenge-side media requirement exists: media belongs to the
     // ContentItem, so one mechanic plays text, image, audio, and video alike.
+    return this.mediaBlockIssues(item.media, 'content media');
+  }
+
+  /**
+   * The one canonical media check, reused for the item's own media and for any
+   * per-view media a mechanic attaches (e.g. a ركّبها private segment). `where`
+   * only labels the issue detail; the rules are identical everywhere.
+   */
+  private mediaBlockIssues(
+    media: ContentItemMedia | undefined,
+    where: string,
+  ): WorldContentIssue[] {
+    const issues: WorldContentIssue[] = [];
+    if (!media) return issues;
+    if (!Object.values(ContentMediaType).includes(media.type)) {
+      issues.push(
+        issue('INVALID_CONTENT_MEDIA_TYPE', 'Media type is not supported', {
+          mediaType: media.type,
+          where,
+        }),
+      );
+    }
+    if (media.type !== ContentMediaType.NONE && !media.assets?.length) {
+      issues.push(
+        issue(
+          'CONTENT_MEDIA_ASSETS_REQUIRED',
+          `Media type "${media.type}" requires at least one asset`,
+          { mediaType: media.type, where },
+        ),
+      );
+    }
+    if (media.assets?.some((asset) => !asset.url?.trim())) {
+      issues.push(
+        issue(
+          'CONTENT_MEDIA_ASSET_URL_REQUIRED',
+          'Every media asset needs a URL',
+          {
+            where,
+          },
+        ),
+      );
+    }
     return issues;
   }
 

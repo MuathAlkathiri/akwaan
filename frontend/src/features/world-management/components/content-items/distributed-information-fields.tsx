@@ -123,7 +123,20 @@ export function DistributedInformationFields({
                 aria-label={`صورة ${SEGMENT_LABEL[segment.id]}`}
                 placeholder="رابط صورة اختياري"
               />
+              <Input
+                value={segment.audioUrl}
+                onChange={(event) =>
+                  setSegment(segment.id, { audioUrl: event.target.value })
+                }
+                aria-label={`صوت ${SEGMENT_LABEL[segment.id]}`}
+                placeholder="رابط صوت اختياري"
+              />
             </div>
+            {segment.imageUrl.trim() && segment.audioUrl.trim() && (
+              <p className="text-xs text-muted-foreground">
+                عند وجود صورة وصوت معًا، تُعرض الصورة.
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -198,8 +211,9 @@ function DistributedPreview({
       : merge
         ? [merge.first, merge.second]
         : [];
-  const contentOf = (id: "A" | "B" | "C") =>
-    value.segments.find((segment) => segment.id === id)?.contentAr ?? "";
+  const segmentOf = (id: "A" | "B" | "C") =>
+    value.segments.find((segment) => segment.id === id);
+  const contentOf = (id: "A" | "B" | "C") => segmentOf(id)?.contentAr ?? "";
 
   return (
     <div className="space-y-3 rounded-lg border bg-background p-3">
@@ -241,14 +255,38 @@ function DistributedPreview({
                 معلوماتك الخاصة
               </p>
               <ul className="space-y-1">
-                {held.map((id) => (
-                  <li
-                    key={id}
-                    className="rounded bg-white p-2 text-xs font-bold shadow-sm"
-                  >
-                    {contentOf(id) || `المعلومة ${id}`}
-                  </li>
-                ))}
+                {held.map((id) => {
+                  const segment = segmentOf(id);
+                  const hasImage = Boolean(segment?.imageUrl.trim());
+                  const hasAudio = !hasImage && Boolean(segment?.audioUrl.trim());
+                  return (
+                    <li
+                      key={id}
+                      className="space-y-1 rounded bg-white p-2 text-xs font-bold shadow-sm"
+                    >
+                      {hasImage && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={segment!.imageUrl.trim()}
+                          alt=""
+                          data-testid={`distributed-preview-image-${id}`}
+                          className="h-16 w-full rounded object-cover"
+                        />
+                      )}
+                      {hasAudio && (
+                        <span
+                          data-testid={`distributed-preview-audio-${id}`}
+                          className="inline-block rounded bg-violet-100 px-2 py-0.5 text-[10px] text-violet-700"
+                        >
+                          مقطع صوتي خاص
+                        </span>
+                      )}
+                      <span className="block">
+                        {contentOf(id) || `المعلومة ${id}`}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
               {index === 0 ? (
                 <p className="rounded bg-violet-600 p-2 text-center text-[11px] font-black text-white">

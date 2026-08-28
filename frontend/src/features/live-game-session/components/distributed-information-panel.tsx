@@ -12,15 +12,36 @@ import { useLiveSessionClock } from "../hooks/live-session-clock-context";
 import { useLiveSession } from "../hooks/live-session-context";
 import type { GameplayRuntimeSnapshot } from "../model";
 import {
+  MarhalaQuestionAudio,
+  MarhalaQuestionImage,
+} from "./marhala-screen";
+import {
   DISTRIBUTED_CHALLENGE_NAME,
   describeDistributedError,
   parseDistributedSegments,
   parseDistributedOptions,
   parseDistributedProgress,
+  parseDistributedPublicMedia,
   remainingLockSeconds,
   remainingRaceSeconds,
+  type DistributedMedia,
   type DistributedProgress,
 } from "../match/distributed-information.presentation";
+
+/**
+ * Renders a projected ركّبها media reference using the canonical phone question
+ * media components — the same image/audio treatment Marhala uses, so there is one
+ * media renderer, not a mechanic-specific duplicate.
+ */
+function DistributedMediaView({ media }: { media: DistributedMedia }) {
+  if (media.type === "image" && media.url) {
+    return <MarhalaQuestionImage url={media.url} altText={media.altText} />;
+  }
+  if (media.type === "audio" && media.url) {
+    return <MarhalaQuestionAudio url={media.url} />;
+  }
+  return null;
+}
 
 /**
  * "ركّبها" on a player's phone.
@@ -49,6 +70,10 @@ export function DistributedInformationPanel({
   const options = useMemo(
     () => parseDistributedOptions(state.optionsJson),
     [state.optionsJson],
+  );
+  const publicMedia = useMemo(
+    () => parseDistributedPublicMedia(state.publicMediaJson),
+    [state.publicMediaJson],
   );
   const progress = useMemo(
     () => parseDistributedProgress(state.progressJson),
@@ -134,6 +159,11 @@ export function DistributedInformationPanel({
               <p className="mt-1 text-lg font-black">
                 {String(state.publicPrompt ?? "")}
               </p>
+              {publicMedia && (
+                <div className="mt-3" data-testid="distributed-public-media">
+                  <DistributedMediaView media={publicMedia} />
+                </div>
+              )}
             </section>
 
             <section
@@ -147,9 +177,14 @@ export function DistributedInformationPanel({
                 {segments.map((segment) => (
                   <li
                     key={segment.id}
-                    className="rounded-lg bg-card p-3 text-base font-bold shadow-sm"
+                    className="space-y-2 rounded-lg bg-card p-3 text-base font-bold shadow-sm"
                   >
-                    {segment.content}
+                    {segment.media && (
+                      <div data-testid={`distributed-segment-media-${segment.id}`}>
+                        <DistributedMediaView media={segment.media} />
+                      </div>
+                    )}
+                    {segment.content && <p>{segment.content}</p>}
                   </li>
                 ))}
               </ul>
