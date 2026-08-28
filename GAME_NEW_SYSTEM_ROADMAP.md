@@ -2227,6 +2227,133 @@ The scoped commit **excludes**, at minimum:
 - **Completed-Match history + `العب مرة ثانية` (Replay)** full browser E2E (no completed Match exists locally, and completing one needs a fully-played 12-Challenge Match).
 - The full **production deployment smoke** (§19 item 10, §K).
 
+---
+
+## 23. Approved Content Direction Reconciliation (2026-08-28)
+
+Records approved **product/content-authoring** decisions into the roadmap. Detailed authoring rules live in the
+canonical Skills (`.agents/skills/akwaan-content`, `akwaan-content-qa`, `akwaan-media`) and §21 / `QUESTION-CRAFT.md`
+— this section summarises direction and points there, it does not duplicate them. Status discipline throughout:
+**product/content design approved ≠ runtime-implemented**; runtime/plugin states are preserved from repository
+evidence (§16.1), never upgraded here.
+
+### 23.1 ركّبها — refined shared-puzzle / private-view content contract (product-approved)
+
+- **Product name:** ركّبها. **Internal runtime key:** `distributed-information` (unchanged — no rename or
+  architecture change in this documentation pass; runtime/plugin/ChallengeType state stays as §16.1 records).
+- **SUPERSEDED:** the earlier creative interpretation "three raw pieces of information / three independent facts,
+  intersected" is retired as the identity. History is preserved; the *content* model below is now authoritative.
+- **Approved identity:** ONE shared puzzle → different **private views** on players' phones → players cannot see
+  each other's screens → describe / compare / reason **by voice** → one shared final solution or action. Each
+  player sees a different part/view of **the same** puzzle; communication itself is the mechanic ("I can see
+  something you can't, you can see something I can't — we assemble the full solution").
+- **Approved content families (non-exhaustive):** missing-piece / geometric assembly; distributed construction
+  (fragments → word/name/pattern); distributed conditional logic (rules split across players + one actionable
+  state, e.g. which wire to cut); visual description / matching; distributed ordering; path / navigation;
+  symbol / code reconstruction; partial-image assembly.
+- **Hard content rules:** (1) all private views belong to ONE shared puzzle; (2) no single player holds the
+  complete solution; (3) verbal description/comparison must be genuinely necessary; (4) the final objective must
+  be clear; (5) no ordinary trivia; (6) no raw-fact partitioning; (7) reject the "each player solves an unrelated
+  mini-puzzle → combine clues" default; (8) content should create discussion, uncertainty, coordination, and
+  possible misunderstanding.
+- **Status:** 🟡 **PRODUCT / CONTENT DESIGN APPROVED.** Not marked implemented — see follow-up §23.7 to audit
+  whether the current `distributed-information` runtime/UI/schema actually supports per-player distinct private
+  views and one shared final action.
+
+### 23.2 Media-first authoring direction (product-approved)
+
+- **Media-first target:** ≈ **≥90% media-bearing** content (image/audio/video/meaningful visual interaction)
+  per batch **where the mechanic naturally supports media**; media must carry **gameplay information** —
+  decorative media does not count. Intent: stop the catalog degrading into trivia + cosmetic gimmick.
+- **Text-native exceptions remain valid:** Top-5, intentional Football Bomb name-fragment items, and any
+  mechanic where text itself is the interaction.
+- **Wigolo-first authentic media:** when authentic real media exists (footballers, moments/stadiums, anime
+  characters/scenes, game characters/maps/weapons/UI, real audio cues), source it via the established Wigolo
+  MCP/media workflow — do **not** generate synthetic replacements merely because it is easier. Programmatic /
+  generated visuals stay appropriate only when **the visual itself is the authored puzzle** (geometry diagrams,
+  visual sequences, custom spatial puzzles). One media architecture — do not invent a second pipeline.
+- **Minimal-but-unambiguous wording:** use the shortest wording that still poses one clear, factually defensible
+  question. No extra explanation, no in-prompt mechanic tutorials, no descriptive clues when the media already
+  carries the clue (`مين هذا اللاعب؟` / `وش هذا الصوت؟`, not `من هذا اللاعب البرتغالي الشهير الذي…`). Necessary
+  qualifiers stay only where required to remove factual ambiguity. Answer-leakage protection is **semantic**, not
+  just exact-string matching.
+- **Media QA is player-facing:** a file on disk does not prove playability. Images — browser-facing asset loads,
+  non-zero rendered dimensions, no broken path, correct asset bound to correct content. Audio — source resolves,
+  decodes/plays, valid non-zero duration, human listening review. QA validates the full chain
+  Prompt ↔ intended subject ↔ accepted answer ↔ actual asset ↔ evidence; **wrong asset = fatal**. Review tooling
+  must not expose filenames / mediaIntent / source URL / transcripts / answer-bearing metadata before reveal.
+- **Difficulty trust:** difficulty comes from recognition depth, framing/crop, reasoning depth, exact media cue,
+  or mechanic-native complexity — never from verbose wording, obscure-for-obscure trivia, or tiny/unreadable
+  visuals. **ICONIC ≠ HARD.**
+- **Status:** authoring **direction approved**; already partially persisted in the canonical Skills (repository
+  evidence: content-qa Gate 10/11/12, FIFA invariants, `ai/FIFA-CARD-MASKING-REFERENCE.md`). Reconciled into the
+  existing §21 authoring system rather than a duplicate architecture.
+
+### 23.3 Top-5 authoring contract (product-approved)
+
+- Top-5 is **KEEP-OR-GIVE**, not a player-facing ranking exercise.
+- **Visible challenge = topic only** (e.g. `أكثر 5 لاعبين تسجيلًا للأهداف في تاريخ البريميرليغ`). No `رتب…`, no
+  `تجنب الفخاخ…`, no mechanic tutorial in the prompt.
+- **Candidate cards before reveal = ENTITY NAME ONLY** (`ألان شيرر`), never `ألان شيرر — 260 هدف` /
+  `(المركز الأول)` / `— الهداف التاريخي`. Rank, metric, cutoff date, evidence stay **hidden metadata** for
+  runtime/post-reveal use.
+- **Status:** runtime top-5 already implemented (§16.1); this adds only the missing **authoring/presentation**
+  contract.
+
+### 23.4 Bomb content direction (product-approved)
+
+- Bomb must not collapse into repeated text trivia or repeated name completion.
+- **Football Bomb:** ≈ 1/3 clever name-fragment/completion + ≈ 2/3 media recognition. Name completion uses the
+  recognized surname and asks the less-recalled component (`وش الاسم الأول لمودريتش؟` → `لوكا`); avoid obvious
+  missing names, obscure players, and ambiguous surnames. Remaining items prefer `[authentic image] من هذا اللاعب؟`.
+- **Anime / Video Games Bomb:** media-native recognition (character/org/object/place; character/weapon/map/audio).
+- **Puzzles Bomb:** fast visual micro-puzzle, not trivia.
+- Do **not** generalise Football's name-fragment ratio to every World.
+
+### 23.5 Puzzles World content identity (product-approved)
+
+- **`PUZZLES_WORLD_NO_TRIVIA` / `PUZZLE_ITSELF_IS_THE_CHALLENGE`** — no ordinary trivia; the puzzle is the challenge.
+- **RYO in Puzzles:** a real puzzle + plausible answer choices (RYO adds the opponent-reading layer).
+- **Closest in Puzzles:** visual estimation (angle, proportion, count, area, volume, spatial/numeric), not
+  factual-stat trivia.
+- **Bomb in Puzzles:** fast visual micro-puzzle. **ركّبها:** per the §23.1 shared-puzzle / private-view contract.
+
+### 23.6 Older approved decisions reconciled
+
+- **Combo (الكومبو):** opponent-pressure ability **«كمّل غصب»**; failure state **«انكسر الكومبو»**. Product/design
+  copy approved; keep actual implementation status per repository evidence (§16.1) — not marked UI-implemented
+  without frontend evidence.
+- **RYO mobile copy:** Option 1 **«شاكك فيهم»** (helper «مو متأكد من معرفتهم بالجواب»); Option 2 **«متأكد منهم»**
+  (helper «متأكد أنهم يعرفون الجواب»). Design-approved labels; **not** implemented unless current frontend proves it.
+- **Challenge details / preflight** should explain the mechanic before play — approved **backlog** direction (the
+  Preflight briefing exists per §22.1; deeper in-preflight mechanic explanation remains backlog).
+- **Player QR** should be tappable/enlargeable — approved **backlog** (Match-scoped QR exists §10.2/§22.1;
+  tap-to-enlarge is design/backlog).
+- **Question Craft** retains its mandatory authoring status (§21); the media-first / minimal-wording rules above
+  are reconciled **into** it, not duplicated.
+- **Direct Production content promotion** follows: authoring → QA → Human Product Review → production-safe
+  dry-run/plan hash → explicit promotion → idempotency verification → Production smoke (Marhala Batch 01 §21.11 is
+  the worked evidence). Rejected local-only batches must not be used to populate Production.
+- **FIFA player-card masking** (authentic blank-card composition; no blur/censor/inpainting; portrait + name
+  hidden; Easy may keep nationality, Hard may hide it; visible card values must match the authentic card) is
+  already persisted on `main` (content Skills + `ai/FIFA-CARD-MASKING-REFERENCE.md`); recorded here as a pointer,
+  detail stays in its canonical reference.
+
+### 23.7 Follow-ups (added to the §19 register spirit)
+
+- **Audit `distributed-information` (ركّبها) runtime/UI/schema** against the §23.1 private-view content contract:
+  does the runtime support per-player **distinct private views** of one shared puzzle and a single shared final
+  action, and does authoring/review tooling model it? Until proven, §23.1 stays 🟡 design-approved.
+- (Pre-existing: `distributed-information` zero-content-in-runtime divergence remains open at §19 #19.)
+
+### 23.8 Intentionally NOT changed (insufficient/contrary evidence)
+
+- **No edits to the content Skills or `QUESTION-CRAFT.md` in this pass.** `main` (via the Marhala Batch 01 release)
+  already carries the **newer** approved content governance (FIFA `AUTHENTIC_BLANK_CARD_COMPOSITION`,
+  `WRONG_ASSET_IS_FATAL`, `NO_FALSE_VISUAL_VERIFICATION`, `FUTURE_BATCH_HARD_GATE`, content-qa Gate 12). A local
+  working-tree parallel of those files was an **older/weaker** formulation that would have regressed them, so it
+  was excluded — newer approved decision wins.
+- Runtime/plugin/ChallengeType statuses are left exactly as repository evidence records them.
 
 
 
