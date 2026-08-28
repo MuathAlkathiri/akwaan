@@ -2181,6 +2181,13 @@ summarised in checklist **§L** and the "Where things stand — 2026-08-27" snap
 deployed. It changes no gameplay/scoring/lifecycle/socket/backend contract — the product-flow, HUD, board
 recovery controls, My Games read model, Preflight presentation, and feedback layer are the RC.
 
+> **Deployment update (2026-08-28):** the pre-deploy framing above is preserved as the original evidence. Since
+> it was written, the RC **was** committed (`399e8c4`), pushed to `origin/main`, and **deployed** — Vercel
+> (frontend) + Render (backend) — and it **passed the Production deployment smoke on 2026-08-27** (verdict:
+> healthy; the manual release-acceptance follow-ups in §22.4 remain open). The scattered "PRE-DEPLOY" /
+> "deployment pending" labels in §K, §L, §20 and §19 #10 predate this deployment; this note is the current
+> deployment-status source of truth and they are left in place only as historical pre-deploy context.
+
 ### 22.1 Workstream status (all ✅ implemented & verified locally)
 
 | Workstream | What shipped | Key guarantee |
