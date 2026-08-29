@@ -2263,11 +2263,10 @@ evidence (§16.1), never upgraded here.
   be clear; (5) no ordinary trivia; (6) no raw-fact partitioning; (7) reject the "each player solves an unrelated
   mini-puzzle → combine clues" default; (8) content should create discussion, uncertainty, coordination, and
   possible misunderstanding.
-- **Status:** 🟡 **PRODUCT / CONTENT DESIGN APPROVED** (the full multi-family contract). The first slice —
-  **Rich Private Views V1** (per-view text + image + audio on one shared puzzle) — is now **✅ implemented &
-  verified in source** (§23.9); it is **not deployed** and the richer families (candidate boards, structured
-  non-answer actions) remain design-approved only. The §23.7 runtime/UI/schema audit that gated this was answered
-  by the compatibility audit (verdict: reuse + extend).
+- **Status:** 🟡 **PRODUCT / CONTENT DESIGN APPROVED** (the full multi-family contract). Rich Private Views V1
+  (§23.9) is superseded in the runtime by **Rakkibha Asymmetric Visual Assembly**, now **✅ implemented & verified
+  in source** — see **§23.10**. The runtime key was renamed `distributed-information` → **`rakkibha`** there (the
+  "unchanged" note above is historical). It is **not deployed**; other families remain design-approved only.
 
 ### 23.2 Media-first authoring direction (product-approved)
 
@@ -2391,6 +2390,44 @@ replacement, no parallel runtime**. Compatibility audit verdict: extend, not rep
   `multiple_choice`, word/code uses `match`, wire choice uses `multiple_choice`.
 - **Follow-ups:** playerInstructions dry-run then guarded sync; real human-reviewed Rakkibha validation content;
   deployment + runtime smoke; Puzzles World rollout/content readiness (tracked separately, incl. §19 #19).
+
+### 23.10 Rakkibha Asymmetric Visual Assembly — ✅ IMPLEMENTED & VERIFIED IN SOURCE (2026-08-29)
+
+The V1 "rich private views" slice (§23.9) is superseded in the runtime by the approved **asymmetric visual
+assembly** interaction, and the mechanic was **renamed** `distributed-information` → **`rakkibha`** in source
+(plugin, launcher, use-case, scoring rule, ChallengeType slug, answer mode, content policy, frontend panel/screen/
+authoring). The `distributed-information` runtime/source is **removed**; historical authoring material is preserved
+under `ai/.opencode/legacy/`. Earlier prototype models are **SUPERSEDED**: the common-shape-on-all-phones
+intersection model, the three-segment / shared-fragment model, and the public/shared missing-board model.
+
+- **Final product contract:** one shared puzzle, split into **private asymmetric roles** — one **reference holder**
+  (sees the incomplete reference, no candidate controls) and one-or-two **candidate holders** (each sees a private
+  set of 2–3 candidate pieces). **Exactly one** candidate globally matches `correctCanonicalIdentity`; other views
+  may be distractor-only, and the true piece need not appear on every phone. The team describes what each privately
+  sees, agrees who holds the match, and any candidate holder submits one of *their* local candidates. Correct →
+  next puzzle; wrong → the existing five-second team lock. The shared/host screen stays neutral (no reference,
+  candidates, owner, or answer).
+- **Answer ownership (privacy fix):** correctness is **actor-aware and server-resolved** — `submit-candidate`
+  carries `{ contentItemId, localCandidateId }`, and the server maps `(participant, localId) → canonicalIdentity`.
+  A local "option one" from the wrong holder is wrong even when the true piece is also "option one" elsewhere. No
+  single answerer, so the UI never reveals who owns the match. `canonicalIdentity` is never projected to a phone.
+- **Two-player safe merge:** the reference holder and the true-candidate view are never assigned to the same
+  participant (proven by an integration test).
+- **Verified:** backend **176 unit suites / 1648 tests**; integration on an **isolated replica-set** DB —
+  `rakkibha` (private roles, actor-local correctness, penalty, progression, reconnect; 2-player safe merge) and the
+  restored `unified-match-preflight` **pass**; the only integration reds are the pre-existing `music` and
+  `manual-question-architecture` debt (§19 #3/#4), unrelated. Frontend **88 files / 894 tests**; new rakkibha
+  content-policy (14) + authoring (9) specs. Backend + frontend typecheck / build / lint green. Authoring tooling
+  (`validate_rakkibha.py`, `RAKKIBHA.md`, `RAKKIBHA_AUTHORING.md`, skill `SKILL.md` + schema, manifest) reconciled
+  to the visual-assembly contract.
+- **Status:** ✅ **IMPLEMENTED & VERIFIED IN SOURCE** · ⬜ **PRODUCTION DEPLOYMENT PENDING** (no deploy, no DB
+  write, no R2, no playerInstructions sync in this task).
+- **Deferred by design:** native candidate-board schema, structured cut-wire action, drag/drop assembly,
+  path/ordering commands, a generic action engine — candidate/wire choice resolves through the existing
+  `match`/`multiple_choice` answer.
+- **Follow-ups:** production content pack (Gemini-authored, human-reviewed), R2 media upload, guarded promotion +
+  playerInstructions sync, deployment + runtime smoke, Puzzles World board rollout; and a pass over the remaining
+  `ai/.opencode/knowledge|roles|workflows` authoring prose that still carries old-model wording.
 
 
 
