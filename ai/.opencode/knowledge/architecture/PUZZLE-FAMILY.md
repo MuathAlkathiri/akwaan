@@ -2,7 +2,7 @@
 
 Canonical lightweight vocabulary for naming the solving operation behind a
 ركّبها puzzle. A family names HOW the fragments combine, not WHAT the material
-is about. Every distributed-information item is tagged with exactly one family;
+is about. Every Rakkibha item records one actual interaction pattern;
 one family per item, and a three-item Challenge prefers three distinct families.
 
 ## Scope, Family, and ChallengeType
@@ -13,12 +13,10 @@ one family per item, and a three-item Challenge prefers three distinct families.
   what material belongs, the knowledge/content domain the puzzle uses, routing,
   authoring boundaries, and review expectations, but it never owns mechanic
   behavior.
-- Puzzle family defines the solving operation or construction used to turn that
-  material into a puzzle. It is a lightweight authoring tag, recorded optionally
-  in `mechanicPayload.puzzleFamily`, and it never changes the content shape.
-- ChallengeType defines the gameplay behavior. For ركّبها that is the shared
-  puzzle: one instruction plus two fragments plus one answer, 2P/3P
-  distribution, and host secrecy.
+- Interaction pattern defines what players discuss and do. It is authoring
+  metadata and never changes the runtime payload shape.
+- ChallengeType defines the gameplay behavior. For ركّبها that is asymmetric
+  private reference/candidate selection and host secrecy.
 
 ## Canonical Family Names
 

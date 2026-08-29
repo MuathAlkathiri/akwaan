@@ -39,8 +39,8 @@ Archetypes and difficulty tiers are **separate axes**:
 | | **Uncertainty Calibration:** Plausible options/estimates optimizing bluff/trust tension. | **C. Authoring Recommendation** | `skills/challenge-types/read-your-opponent/SKILL.md` |
 | **`top-5`** | **Payload Structure:** Exactly 10 cards (5 real ranks 1..5, 5 traps) in top-5 format. | **A. Runtime Contract** | `content-item-compatibility.policy.ts` (lines 950–990) |
 | | **Answer Mode:** `mode: 'top_5'`. | **A. Runtime Contract** | `content-item-compatibility.policy.ts` |
-| **`distributed-information`** | **Payload Structure:** Team instruction + 2 secret complementary fragments, `puzzleFamily`. | **A. Runtime Contract** | `backend/src/modules/world-content/domain/distributed-information-content.policy.ts` |
-| | **Challenge Structure:** Exactly 3 shared puzzles per challenge. | **B. Approved Product Contract** | `ai/.opencode/knowledge/architecture/PUZZLE-FAMILY.md` |
+| **`rakkibha`** | **Payload Structure:** private reference + candidate-holder views, `authoring.rakkibha.interactionPattern`. | **A. Runtime Contract** | `backend/src/modules/world-content/domain/content-item-compatibility.policy.ts` |
+| | **Challenge Structure:** Exactly 3 shared puzzles per challenge. | **B. Approved Product Contract** | `ai/.opencode/knowledge/architecture/RAKKIBHA.md` |
 
 ---
 

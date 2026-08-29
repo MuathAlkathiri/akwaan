@@ -17,7 +17,13 @@
       "slug": "rakkibha",
       "name": "challenge-type-rakkibha",
       "patterns": [
-        "visual-assembly"
+        "route-navigation",
+        "symbol-code-reconstruction",
+        "constraint-satisfaction",
+        "defuse-logic",
+        "missing-piece",
+        "distributed-arabic-name-bank",
+        "odd-scene-matching-pair"
       ],
       "skill": ".opencode/skills/challenge-types/rakkibha/SKILL.md"
     },

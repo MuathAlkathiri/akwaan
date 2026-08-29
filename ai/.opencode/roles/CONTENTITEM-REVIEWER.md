@@ -56,9 +56,8 @@ item for family diversity — repair it so the declared Scope's material is
 genuinely primary, or reject or move it. Confirm Scope Knowledge never supplies
 required solving material; when `mechanicPayload.puzzleFamily` is present,
 confirm it is a canonical family name that matches the actual solving operation.
-Confirm `mechanicPayload.authorSafetyConfirmation` when
-a future ready status is claimed and that the item stays authoring-only while the
-shared-fragments runtime contract is pending.
+Confirm `mechanicPayload.authorSafetyConfirmation`, the declared interaction
+pattern, expected conversation, and any extension-only runtime blocker.
 
 For One Clue, verify canonical IDs, the exact five-clue ladder (`order` 1..5,
 `value` 5, 4, 3, 2, 1, nonblank Arabic text, no duplicate text), truth only in

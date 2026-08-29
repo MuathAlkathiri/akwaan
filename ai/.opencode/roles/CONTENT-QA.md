@@ -38,9 +38,8 @@ each accepted item's scope routing (its primary material and solving operation
 genuinely belong to the declared Scope; an item whose core is, for example,
 symbol value-decoding is routed to `symbols-codes`, not kept for family
 diversity), and recompute difficulty, family, and answer-format counts from final
-item metadata instead of hand-written totals. Verify a three-item Challenge
-spans three distinct puzzle families. Every item must
-remain authoring-only while the shared-fragments runtime contract is pending.
+item metadata instead of hand-written totals. Verify Rakkibha batch interaction
+patterns and expected conversations; extension-only patterns remain authoring-only.
 
 One Clue must pass `validators/validate_one_clue.py` and its fixtures. QA must
 re-run the manual monotonic ladder gate on every item (record `ladderTransitions`

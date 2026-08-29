@@ -1,91 +1,40 @@
-# ركّبها — authoring contract (`rakkibha`, visual-assembly)
+# ركّبها authoring
 
-Backend-to-authoring handoff. Everything below is taken from the implemented and
-tested backend (`rakkibha.plugin.ts`, `validateRakkibhaPayload`), not a design
-sketch. It is the source of truth for the content Skill and its validator.
+Rakkibha uses private information and spoken comparison. Its implemented
+candidate-selection runtime is a delivery format, not its only interaction.
+Never count different visual themes as different mechanics.
 
-Do not create a second copy of these rules. Extend the existing Skill.
+Declare authoring metadata under `authoring.rakkibha`:
 
-## Canonical identity
-
-| | |
-| --- | --- |
-| ChallengeType slug | `rakkibha` |
-| Runtime / plugin key | `rakkibha` |
-| `mechanicPayload.variant` | `visual-assembly` |
-| Answer mode | `rakkibha` (challenge type); the item's `answerPayload` stays a machine mode, e.g. `match` |
-| Puzzles per launch | 3 |
-| Team sizes | `[2, 3]` |
-
-## The interaction
-
-One shared visual puzzle, split into **private, asymmetric roles**:
-
-- **Reference holder** — sees one incomplete reference (`reference.media`); no
-  candidate controls. Describes the missing shape out loud.
-- **Candidate holders** — each sees a private `candidateView` of 2–3 candidate
-  pieces. Exactly **one** candidate globally is the true match; the other view may
-  be distractor-only. The correct piece need not appear on every phone.
-
-The team talks, decides which piece fits and who holds it, and that holder submits
-it. Correct → next puzzle. Wrong → the existing five-second team lock.
-
-This is **not** the retired three-segment / shared-fragment / intersection model.
-There are no `segments`, no `fragments`, no `twoPlayerMergeOptions`, no
-`publicPrompt`.
-
-## `mechanicPayload` shape
-
-```jsonc
+```json
 {
-  "variant": "visual-assembly",
-  "family": "visual-assembly",
-  "instruction": { "ar": "صفوا الشكل ثم اختاروا القطعة المطابقة" },
-  "reference": { "media": { "type": "image", "assets": [{ "url": "/reference.png" }] } },
-  "candidateViews": [
-    { "id": "holder-1", "candidates": [
-      { "localId": "one", "canonicalIdentity": "match",   "media": { "type": "image", "assets": [{ "url": "/t1.png" }] } },
-      { "localId": "two", "canonicalIdentity": "wrong-1", "media": { "type": "image", "assets": [{ "url": "/t2.png" }] } }
-    ] },
-    { "id": "holder-2", "candidates": [
-      { "localId": "one", "canonicalIdentity": "wrong-2", "media": { "type": "image", "assets": [{ "url": "/d1.png" }] } },
-      { "localId": "two", "canonicalIdentity": "wrong-3", "media": { "type": "image", "assets": [{ "url": "/d2.png" }] } }
-    ] }
-  ],
-  "correctCanonicalIdentity": "match",
-  "supportedTeamSizes": [2, 3],
-  "authorSafetyConfirmation": true
+  "interactionPattern": "ROUTE_NAVIGATION",
+  "runtimeCompatibility": "CURRENT_RUNTIME_COMPATIBLE",
+  "scopeSlug": "logic-deduction",
+  "expectedConversation": "بعد البداية عندي حاجز يمين... مساري ينعطف يمين، إذن نستبعده..."
 }
 ```
 
-The `answerPayload` stays where every mechanic's answer lives (e.g.
-`{ "mode": "match", "acceptedAnswers": ["…"] }`). The real resolution is
-candidate-based via `canonicalIdentity`.
+Current-runtime patterns are `ROUTE_NAVIGATION`, `SYMBOL_CODE_RECONSTRUCTION`,
+`CONSTRAINT_SATISFACTION`, `DEFUSE_LOGIC`, and `MISSING_PIECE`. The final two
+patterns in the library — `DISTRIBUTED_ARABIC_NAME_BANK` and
+`ODD_SCENE_MATCHING_PAIR` — require a runtime extension. They must be marked
+authoring-only with a blocker and are never production-ready claims.
 
-## Rules the backend enforces
+## Guardrails
 
-- `instruction.ar` non-empty.
-- `reference.media` is valid media with a non-empty asset URL.
-- `candidateViews`: at least two, unique `id`s.
-- Each view: 2–3 candidates, unique `localId`s; each candidate has a non-empty
-  `canonicalIdentity` and valid media.
-- **Exactly one** candidate across all views matches `correctCanonicalIdentity`.
-- `supportedTeamSizes` is exactly `[2, 3]`.
-- `authorSafetyConfirmation: true` before an item is `ready`.
+- `SYMBOL_CODE_RECONSTRUCTION` needs a real decoding, transformation, derivation, mapping, sequencing, or reconstruction. Include a `symbolReconstruction` proof with input, rule, operation, and derived candidate. Direct visual copying of a final sequence is rejected.
+- `DEFUSE_LOGIC` has one shared device and one actionable state. Include a `defuseLogic` proof whose private contributions all reference the same device; independent device or panel states are rejected.
+- `interactionPattern` is how the team plays; `scopeSlug` is the Puzzles content domain. Choose only an existing canonical Puzzles scope. Never invent `device-logic`, `logic-mazes`, `logic-grids`, or another pattern-shaped scope; if no scope fits, flag `SCOPE_COVERAGE_BLOCKER`.
 
-## Privacy & anti-leakage
+For batches of 10+, plan patterns before items: at least five patterns, no more
+than two per pattern without an explicit exception, and Missing Piece ≤20%.
+Every item includes a simulated conversation demonstrating real comparison and
+deduction.
 
-- `canonicalIdentity` / `correctCanonicalIdentity` are **server-side only** and
-  never projected to a phone. Never write them into `instruction`, `prompt`, a
-  view's `content`, or a candidate's `content`.
-- The media must not encode the solution: no arrows, coordinate labels, `T/X/Y`
-  metadata, "correct" markers, or written geometric descriptions. Solving comes
-  from the geometry and the players' spoken descriptions.
-- The mechanic payload carries no answer/truth or runtime field.
+Validate source drafts with:
 
-## Art direction
-
-Vary the visual family across items — honeycomb clusters, tangram/crystal
-silhouettes, pipe/conduit networks, tile clusters — while keeping the interaction
-identical (describe → compare → identify the matching piece). Distractors must be
-close enough to force discussion but readable on a phone.
+```bash
+python3 ai/.opencode/validators/validate_rakkibha.py path/to/item-or-batch.json
+python3 ai/.opencode/validators/test_rakkibha_patterns.py
+```

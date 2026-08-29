@@ -27,17 +27,12 @@ exact answer, and the two complementary fragments before drafting. Resolve the
 Scope and load its `KNOWLEDGE.md` to fix the puzzle's primary content/material
 domain. Choose a puzzle family from
 `.opencode/knowledge/architecture/PUZZLE-FAMILY.md` and tag it in
-`mechanicPayload.puzzleFamily`; design ONE complete puzzle; write the
-instruction (the task); fix the answer; split the puzzle into exactly two
-complementary fragments; verify neither fragment alone solves; verify the
-two-participant shape; verify the three-participant shape (two fragments plus an
-instruction-only third holder); verify host-screen independence; and confirm the
-puzzle is fun to describe aloud. Fragments are literal puzzle pieces — never
-semantic clues to a separate fact — and never a fake third fragment for a
-three-player team. Never author runtime state, hints, participant identities, or
-in-race reveals. Record the safety in `mechanicPayload.authorSafetyConfirmation`
-and keep the item `authoring_only` while the shared-fragments runtime contract
-is pending. A three-item Challenge uses three distinct puzzle families.
+`authoring.rakkibha.interactionPattern`; design the private reference/candidate
+conversation before media; verify nobody sees the whole solution; verify 2P/3P
+privacy; and record an expected player exchange. Never author runtime state,
+hints, participant identities, or visible truth. Record safety in
+`mechanicPayload.authorSafetyConfirmation`. Extension-only patterns stay
+`authoring_only`; a three-item challenge varies actual interaction patterns.
 
 For One Clue, resolve the Scope and fix ONE deterministic answer target inside
 its candidate field. Order the clues monotonically hardest to easiest

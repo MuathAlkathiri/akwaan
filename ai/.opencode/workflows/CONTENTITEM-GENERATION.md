@@ -25,24 +25,12 @@ Generate only blocked authoring drafts using dynamic roster binding. Do not
 produce review-ready or production content while the runtime status is
 `runtime_contract_missing`.
 
-For `distributed-information` with `shared-fragments`, load its dedicated
-schema and validator. Plan exactly three independent ContentItems, each with
-native `answerPayload` and `mechanicPayload`. Each item is one shared puzzle: a
-localized team `instruction`, exactly two complementary `fragments`, and one
-machine-resolvable answer. Choose a puzzle family from
-`.opencode/knowledge/architecture/PUZZLE-FAMILY.md`, tag it in
-`mechanicPayload.puzzleFamily`, and use three distinct families across the three
-items; design one complete puzzle;
-write the instruction; fix the answer; split it into two complementary
-fragments; verify neither fragment alone solves; verify the two-participant
-shape (fragments split, instruction attached to one holder) and the
-three-participant shape (two fragments plus an instruction-only third). Never
-author a fake third fragment, runtime state, hints, participant identities, or
-in-race reveals. Runtime owns both team orders, answerer schedules, the
-135-second clock, five-second locks, progress, and score events. The host screen
-carries no puzzle material. While the shared-fragments runtime contract is
-pending, every item stays `authoring_only` with a nonempty `runtimeBlocker`, and
-no item may be marked ready.
+For `rakkibha`, load its dedicated schema and validator. Plan exactly three
+independent ContentItems with native visual-assembly `mechanicPayload`. Before
+content, choose actual interaction patterns from the Rakkibha library and record
+the pattern, runtime compatibility, and expected player exchange in authoring
+metadata. Do not count visual themes as interaction variety; validate private
+reference/candidate privacy and the two- and three-participant shapes.
 
 For `one-clue` with `progressive-clues`, load its dedicated schema and
 validator. Plan exactly three independent ContentItems, each with native

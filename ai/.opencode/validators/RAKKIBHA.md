@@ -3,6 +3,15 @@
 Run `python3 .opencode/validators/validate_rakkibha.py <paths>`.
 A well-formed item passes and may be `ready` — the runtime is implemented.
 
+The authoring layer also requires `authoring.rakkibha.interactionPattern`, its
+declared runtime compatibility, and an expected player conversation. Batch files
+use `{ "items": [...] }`; batches of 10+ enforce five patterns, a two-item
+per-pattern cap, and `MISSING_PIECE` ≤20%. `DISTRIBUTED_ARABIC_NAME_BANK` and
+`ODD_SCENE_MATCHING_PAIR` must be `authoring_only` with a runtime blocker.
+Valid `scopeSlug` values are derived from the canonical Puzzles `SCOPE.md`
+manifests. Symbol reconstruction requires input/rule/operation/derived-candidate
+proof; Defuse Logic requires one shared device/state across all contributions.
+
 The validator enforces the canonical challenge type, the native object payload,
 the visual-assembly structure, exactly one globally-correct candidate, exact team
 sizes, the safety confirmation, correct-identity leakage, and rejects any truth,
@@ -41,3 +50,9 @@ runtime, or retired three-segment field smuggled into the mechanic payload.
 `canonical_identity_required`, `candidate_media_invalid`, `true_candidate_invalid`,
 `team_sizes_invalid`, `safety_confirmation_missing`, `correct_identity_leaked`,
 `truth_duplicated_in_mechanic`, `runtime_field_in_mechanic`, `retired_mechanic_field`.
+Authoring errors include `interaction_pattern_unknown`,
+`runtime_compatibility_mismatch`, `expected_conversation_required`, and the
+`name_bank_*`/`batch_*` families. Guardrail errors are
+`scope_coverage_blocker`, `symbol_reconstruction_proof_required`,
+`symbol_reconstruction_direct_copy`, `defuse_shared_device_proof_required`, and
+`defuse_split_device_state`.

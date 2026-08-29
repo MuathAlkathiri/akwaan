@@ -10,7 +10,7 @@ from pathlib import Path
 
 from validate_top_5 import validate as validate_top_5
 from validate_who_among_us import validate as validate_who_among_us
-from validate_distributed_information import validate as validate_distributed_information
+from validate_rakkibha import validate as validate_rakkibha
 from validate_one_clue import validate as validate_one_clue
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -193,18 +193,18 @@ if who_fixture.exists():
 else:
     errors.append("missing Who Among Us authoring fixture")
 
-# Distributed Information backend-synchronized contract.
-distributed_root = challenge_root / "distributed-information"
-distributed_required = [
-    distributed_root / "SKILL.md",
-    distributed_root / "patterns" / "shared-fragments" / "PATTERN.md",
-    distributed_root / "distributed-information.schema.json",
-    ACTIVE / "validators" / "DISTRIBUTED-INFORMATION.md",
-    ACTIVE / "validators" / "validate_distributed_information.py",
+# Rakkibha backend-synchronized contract.
+rakkibha_root = challenge_root / "rakkibha"
+rakkibha_required = [
+    rakkibha_root / "SKILL.md",
+    rakkibha_root / "patterns" / "visual-assembly" / "PATTERN.md",
+    rakkibha_root / "rakkibha.patterns.schema.json",
+    ACTIVE / "validators" / "RAKKIBHA.md",
+    ACTIVE / "validators" / "validate_rakkibha.py",
 ]
-for path in distributed_required:
+for path in rakkibha_required:
     if not path.exists():
-        errors.append(f"missing Distributed Information contract: {path.relative_to(ROOT)}")
+        errors.append(f"missing Rakkibha contract: {path.relative_to(ROOT)}")
 
 # One Clue production-ready contract and full fixture suite.
 one_clue_root = challenge_root / "one-clue"

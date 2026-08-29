@@ -18,20 +18,13 @@
 Only the selected Pattern may refine the two payload objects. Explanations and
 source notes belong in metadata and are never exposed before resolution.
 
-## Native Distributed Information Shape
+## Native Rakkibha Shape
 
-`distributed-information` uses the implementation-native separation:
-`answerPayload` stores the one machine-resolvable truth and `mechanicPayload`
-stores `shared-fragments` gameplay material: the localized team `instruction`,
-exactly two private `fragments`, `[2,3]`, the author safety confirmation, and an
-optional `puzzleFamily` tag naming the solving operation. It
-does not duplicate these into the conceptual interaction/resolution pair. Each
-ContentItem is one shared puzzle. Distribution is runtime-owned: two
-participants hold one fragment each with the instruction randomly attached to
-one holder; three participants hold the two fragments plus an instruction-only
-third. The host screen carries no puzzle material. The runtime contract is
-`authoring_only` until the product backend migrates from the retired
-`three-segment-race` payload; see the canonical ركّبها definition.
+`rakkibha` uses `mechanicPayload.variant: visual-assembly`: neutral instruction,
+one private reference, private candidate views, server-only canonical identities,
+`[2,3]`, and author safety confirmation. Authoring metadata records the actual
+interaction pattern and expected player exchange; it does not branch runtime.
+The host screen carries no puzzle material. See the canonical ركّبها definition.
 
 ## Native One Clue Shape
 

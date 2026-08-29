@@ -1,136 +1,55 @@
-# ركّبها / Distributed Information — Canonical Product Definition
+# ركّبها / Rakkibha — Canonical Authoring Definition
 
-This is the canonical reference for the cooperative Puzzle World challenge
-ركّبها. It governs the Skill, Pattern, schema, validator, roles, and workflows.
-Authoring agents resolve this document before any distributed-information work.
+Rakkibha is a cooperative Puzzle World mechanic: **private information → verbal
+description/comparison → shared reasoning → team solution**. It is not ordinary
+trivia and it is not synonymous with a missing geometric piece.
 
-## 1. Identity
+## Current runtime representation
 
-ركّبها is a cooperative Puzzle World Challenge where one puzzle is divided into
-secret participant fragments plus a team instruction. With two participants,
-fragments are split between them and the instruction is randomly attached to one
-holder. With three participants, two participants hold the fragments and the
-third holds the instruction. The host screen reveals no puzzle-solving
-information. Players solve by verbally combining what they see.
+The active `rakkibha` runtime uses asymmetric visual candidate selection:
 
-The canonical product statement, kept verbatim as the equivalence target for all
-active guidance: ركّبها is a cooperative Puzzle World Challenge where one puzzle
-is divided into secret participant fragments plus a team instruction. With two
-participants, fragments are split between them and the instruction is randomly
-attached to one holder. With three participants, two participants hold the
-fragments and the third holds the instruction. The host screen reveals no
-puzzle-solving information. Players solve by verbally combining what they see.
+- one reference holder receives an incomplete/private reference and cannot submit;
+- one or two candidate holders receive 2–3 local candidates;
+- exactly one candidate globally resolves to the server-only canonical identity;
+- players compare their private views aloud; the appropriate candidate holder
+  submits a local candidate; and
+- the shared screen remains neutral.
 
-## 2. Puzzle World Ownership
+This runtime representation supports several distinct interaction patterns.
+The content must label the actual player operation in authoring metadata; visual
+themes do not create a new interaction pattern.
 
-Distributed Information belongs specifically to عالم الألغاز / Puzzle World. It
-is NOT a generic ChallengeType intended to run across Anime, Football, Video
-Games, or other Worlds. This is an exception to the general rule that
-ChallengeTypes are global. Scope defines the puzzle's primary content/material
-domain; it constrains what material belongs, the knowledge/content domain the
-puzzle uses, routing, authoring boundaries, and review expectations but never
-owns mechanic behavior. Puzzles stay self-contained: solving never requires
-material beyond the instruction and fragments.
+## Canonical authoring patterns
 
-## 3. Content Model
+`ROUTE_NAVIGATION`, `SYMBOL_CODE_RECONSTRUCTION`, `CONSTRAINT_SATISFACTION`,
+`DEFUSE_LOGIC`, and `MISSING_PIECE` are `CURRENT_RUNTIME_COMPATIBLE`.
+`DISTRIBUTED_ARABIC_NAME_BANK` and `ODD_SCENE_MATCHING_PAIR` are product-approved
+but `NEEDS_RUNTIME_EXTENSION`; they remain authoring-only and cannot be claimed
+as runtime-playable.
 
-One ContentItem is one shared puzzle. The conceptual shape is
-`PuzzleItem { instruction, fragments[], answer }`:
+`SYMBOL_CODE_RECONSTRUCTION` must show a real decoding, transformation, derivation, mapping, sequencing, or reconstruction operation. A final sequence already visible for direct candidate matching is not this pattern. `DEFUSE_LOGIC` has exactly one shared device and one actionable state: every private contribution refers to that same device, never independent panel states.
 
-- `instruction` — the localized task the team must perform (for
-  example, "combine what you see to form a single word").
-- `fragments[]` — literal puzzle pieces: text, letters, numbers, shapes, images,
-  matrices, partial equations, rules, symbols, sequences, visual patterns,
-  partial diagrams, answer choices, ordering information, map fragments, or
-  transformation rules. Fragments are pieces of the puzzle itself, never semantic
-  clues to a separate fact.
-- `answer` — the accepted solution. Multiple accepted solutions are allowed only
-  when every accepted value is recorded explicitly.
+`MISSING_PIECE` is valid but is not the default Rakkibha identity. In a 10+ item
+batch it is ≤20%; at least five patterns are represented and no pattern has more
+than two items unless explicitly requested.
 
-Default authored shape: instruction + two fragments + answer. The author never
-authors a fake third fragment for a three-player team. In the active workspace
-this maps to native `answerPayload` (machine truth) and `mechanicPayload`
-(instruction + fragments + team sizes + safety confirmation), pattern
-`shared-fragments`, wrapper answer mode `distributed`.
+## Required authoring proof
 
-## 4. Two-Participant Distribution
+Every item records an expected player exchange that demonstrates material
+description, clarification/comparison, elimination or disagreement, and shared
+deduction. Reject fake variety where different pictures lead to the same
+“describe the gap → I have it” conversation.
 
-With two participants the two fragments are split one per participant and the
-instruction is randomly attached to one of the two holders. Assignments are
-shuffled; authors never encode which participant holds which piece.
+For `DISTRIBUTED_ARABIC_NAME_BANK`, names are evaluated independently: letters
+are reusable between proposed names but never beyond their combined multiplicity
+within one name. The source solution pool is ≥12 recognizable Arabic names while
+the default objective is 9.
 
-## 5. Three-Participant Distribution
+## Boundaries
 
-With three participants the two fragments go to two participants and the third
-participant holds the instruction only. There is no third content fragment.
-Assignments are shuffled; authors never encode identities or schedules.
+No player sees the whole solution, private views are never cosmetic, and no
+authoring source encodes runtime state, correct owner, or visible answer leakage.
+Do not infer new canonical patterns: use `PROPOSED_PATTERN` until Product
+approves one.
 
-## 6. Host-Screen Secrecy
-
-The host/shared screen reveals no puzzle-solving information. It shows only
-neutral match state: the challenge name, the timer, team status, readiness,
-progress, and waiting/resolution states. All puzzle material (instruction and
-fragments) lives on participant phones and is never projected.
-
-## 7. Puzzle-Family Taxonomy
-
-A family names the solving operation or construction used to turn material into
-a puzzle, never the material itself. Canonical family names live in
-`.opencode/knowledge/architecture/PUZZLE-FAMILY.md` and are tagged optionally in
-`mechanicPayload.puzzleFamily`. Puzzle World has six scopes
-(`general-knowledge`, `letters-words`, `numbers-arithmetic`, `logic-deduction`,
-`shapes-patterns`, `symbols-codes`); a scope defines the puzzle's primary
-content/material domain and never replaces a family. No rigid per-family schema
-exists; the shared instruction + fragments + answer shape covers every family.
-
-## 8. Authoring Principles
-
-The Writer's fixed order:
-
-1. Choose a puzzle family.
-2. Design ONE complete puzzle.
-3. Write the instruction (the task).
-4. Fix the answer.
-5. Split the puzzle into two complementary fragments.
-6. Verify neither fragment alone solves the puzzle.
-7. Verify the two-participant shape.
-8. Verify the three-participant shape (two fragments + instruction-only third).
-9. Verify host-screen independence.
-10. Confirm the puzzle is fun to describe aloud.
-
-## 9. Anti-Patterns
-
-Rejected constructions: a fragment that leaks or contains the full answer; the
-full puzzle duplicated on both phones; a fake third fragment for a three-player
-team; trivia masquerading as a distributed puzzle; answer choices as the main
-architecture instead of a genuine puzzle; host-dependent content; unclear
-instructions; ambiguous or non-deterministic answers without an explicit
-accepted-solution policy; phone-unrenderable layouts; puzzles requiring
-information not present in the instruction and fragments; inaccessible image or
-text assumptions; and any authored runtime state.
-
-## 10. Quality Checklist
-
-A ready item must satisfy: one coherent puzzle; complementary fragments; no
-accidentally sufficient fragment; the instruction is necessary; works with two
-participants; works with three participants; verbal communication matters;
-deterministic answer (or an explicit multi-accepted-solution policy);
-understandable under time pressure; no host-screen dependency; variety against
-nearby content; and it feels like ركّبها rather than a quiz.
-
-## 11. Difficulty
-
-Difficulty is a puzzle-solving experience: fragment complexity, the amount of
-verbal communication required, reasoning steps, ambiguity before combining,
-visual/spatial complexity, arithmetic complexity, memory burden, and
-transformation depth. Trivia knowledge is never a difficulty axis for ركّبها.
-
-## 12. Extensibility and Unresolved Cases
-
-The instruction + fragments + answer model is extensible to the future families
-in point 7 without changing the content shape. Explicitly unresolved
-participant-count cases, left unresolved by product direction and therefore not
-invented in active guidance: one-participant play, four-or-more-participant
-distribution, spectator behavior, and mixed fragment duplication between
-participants. If canonical product documentation ever defines these cases, this
-document must be updated to match before any related content is authored.
+`interactionPattern` describes team behavior while `scopeSlug` describes the Puzzles content domain. Select only an existing canonical Puzzles Scope; never invent a pattern-shaped scope. If none fits, flag `SCOPE_COVERAGE_BLOCKER`.

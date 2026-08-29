@@ -8,19 +8,19 @@
 - Media anchors: diagrams, matrices, shapes, symbol grids, partial figures, and
   letter/number tiles that render on a phone screen.
 - Safety: no trivia-dependent solving; every puzzle must be self-contained in its
-  instruction and fragments. No money, body shape or weight, religion, romantic
+  private views and instruction. No money, body shape or weight, religion, romantic
   relationships, intelligence, or awkward family-group topics.
 - Presentation: distinctive puzzle-grid frame and concise Arabic instruction
   vocabulary.
 - Ownership: this World is the exclusive home of the
-  `distributed-information` ChallengeType (ركّبها). That mechanic is not intended
+  `rakkibha` ChallengeType (ركّبها). That mechanic is not intended
   to run across Anime, Football, or Video Games.
 - Scopes: `general-knowledge`, `letters-words`, `numbers-arithmetic`,
   `logic-deduction`, `shapes-patterns`, and `symbols-codes`. A Scope defines the
   puzzle's primary content/material domain and constrains what material belongs,
   routing, authoring boundaries, and review expectations; it never owns mechanic
   behavior. No Puzzle World item may be authored `ready` until the
-  shared-fragments runtime contract exists.
+  Rakkibha authoring/runtime contract exists.
 
 This file supplies presentation context only. It does not own mechanic behavior
 or Content Patterns.
