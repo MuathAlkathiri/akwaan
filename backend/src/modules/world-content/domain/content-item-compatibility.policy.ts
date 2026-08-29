@@ -2,10 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
 import { ScopeCompatibilityPolicy } from './scope-compatibility.policy';
 import {
-  DISTRIBUTED_INFORMATION_ANSWER_MODES,
-  DISTRIBUTED_INFORMATION_SEGMENT_IDS,
-  DISTRIBUTED_INFORMATION_TEAM_SIZES,
-  DISTRIBUTED_INFORMATION_VARIANT,
+  RAKKIBHA_TEAM_SIZES,
+  RAKKIBHA_VARIANT,
   ContentItemStatus,
   ANSWER_MODE_COMPATIBLE_ITEM_MODES,
   ChallengeAnswerMode,
@@ -42,7 +40,7 @@ import {
   WorldContentIssue,
   buildReadinessReport,
   ReadinessReport,
-  DistributedInformationPayload,
+  RakkibhaPayload,
   Top5Payload,
   OneCluePayload,
 } from './world-content.types';
@@ -96,9 +94,7 @@ export class ContentItemCompatibilityPolicy {
     blockers.push(...this.validateChallengeCompatibility(input, referenced));
     blockers.push(...this.validateMedia(input.item));
     blockers.push(...this.validateTop5Payload(input.item));
-    blockers.push(
-      ...this.validateDistributedInformationPayload(input.item, referenced),
-    );
+    blockers.push(...this.validateRakkibhaPayload(input.item, referenced));
     blockers.push(...this.validateOneCluePayload(input.item, referenced));
     blockers.push(...this.validateComboPayload(input.item, referenced));
     blockers.push(...this.validateBombItem(input.item, referenced));
@@ -237,117 +233,91 @@ export class ContentItemCompatibilityPolicy {
    * the two supported team sizes, and a recorded author safety confirmation.
    * Whether the split is *genuinely* unsolvable alone is the author's judgement.
    */
-  private validateDistributedInformationPayload(
+  private validateRakkibhaPayload(
     item: ContentItemView,
     challengeTypes: ChallengeTypeView[],
   ): WorldContentIssue[] {
     const raw = item.mechanicPayload as
-      | (Partial<DistributedInformationPayload> & { variant?: string })
-      | undefined;
-    const requiresDistributed = challengeTypes.some(
-      (type) => type.answerMode === ChallengeAnswerMode.DISTRIBUTED,
+      (Partial<RakkibhaPayload> & { variant?: string }) | undefined;
+    const requiresRakkibha = challengeTypes.some(
+      (type) => type.answerMode === ChallengeAnswerMode.RAKKIBHA,
     );
-    if (
-      !requiresDistributed &&
-      raw?.variant !== DISTRIBUTED_INFORMATION_VARIANT
-    )
-      return [];
-    if (raw?.variant !== DISTRIBUTED_INFORMATION_VARIANT) {
+    if (!requiresRakkibha && raw?.variant !== RAKKIBHA_VARIANT) return [];
+    if (raw?.variant !== RAKKIBHA_VARIANT) {
       return [
         issue(
-          'DISTRIBUTED_INFORMATION_STRUCTURE_REQUIRED',
-          'ركّبها requires its three-segment content pattern',
+          'RAKKIBHA_STRUCTURE_REQUIRED',
+          'ركّبها requires the visual-assembly content pattern',
         ),
       ];
     }
     const issues: WorldContentIssue[] = [];
 
-    if (!raw.publicPrompt?.ar?.trim()) {
+    if (!raw.instruction?.ar?.trim()) {
       issues.push(
         issue(
-          'DISTRIBUTED_PUBLIC_PROMPT_REQUIRED',
-          'A public prompt every teammate can see is required',
+          'RAKKIBHA_INSTRUCTION_REQUIRED',
+          'A neutral instruction is required',
         ),
       );
     }
 
-    const segments = Array.isArray(raw.segments) ? raw.segments : [];
-    const segmentIds = segments.map((segment) => segment?.id);
-    if (segments.length !== DISTRIBUTED_INFORMATION_SEGMENT_IDS.length) {
+    issues.push(
+      ...this.mediaBlockIssues(raw.reference?.media, 'Rakkibha reference'),
+    );
+    const views = Array.isArray(raw.candidateViews) ? raw.candidateViews : [];
+    if (views.length < 2) {
       issues.push(
         issue(
-          'DISTRIBUTED_SEGMENT_COUNT_INVALID',
-          `Exactly ${DISTRIBUTED_INFORMATION_SEGMENT_IDS.length} private segments are required`,
+          'RAKKIBHA_CANDIDATE_VIEWS_REQUIRED',
+          'At least two candidate-holder views are required',
         ),
       );
     }
-    if (
-      new Set(segmentIds).size !== segmentIds.length ||
-      segmentIds.some(
-        (id) =>
-          !DISTRIBUTED_INFORMATION_SEGMENT_IDS.includes(
-            id as (typeof DISTRIBUTED_INFORMATION_SEGMENT_IDS)[number],
-          ),
-      )
-    ) {
+    if (new Set(views.map((view) => view?.id)).size !== views.length) {
       issues.push(
         issue(
-          'DISTRIBUTED_SEGMENT_IDS_INVALID',
-          `Segments must be exactly ${DISTRIBUTED_INFORMATION_SEGMENT_IDS.join(', ')}, each once`,
+          'RAKKIBHA_CANDIDATE_VIEW_IDS_INVALID',
+          'Candidate-holder view ids must be unique',
         ),
       );
     }
-    if (segments.some((segment) => !segment?.content?.ar?.trim())) {
-      issues.push(
-        issue(
-          'DISTRIBUTED_SEGMENT_CONTENT_REQUIRED',
-          'Every segment needs its private content',
-        ),
-      );
-    }
-    // A private segment may carry its own media (a partial image, an audio cue).
-    // It is validated by the same canonical rules as any content media, so an
-    // invalid modality or a URL-less asset is rejected before it can reach a phone.
-    for (const segment of segments) {
-      issues.push(
-        ...this.mediaBlockIssues(
-          segment?.media,
-          `distributed segment ${segment?.id ?? '?'}`,
-        ),
-      );
-    }
-
-    const merges = Array.isArray(raw.twoPlayerMergeOptions)
-      ? raw.twoPlayerMergeOptions
-      : [];
-    if (!merges.length) {
-      issues.push(
-        issue(
-          'DISTRIBUTED_MERGE_OPTION_REQUIRED',
-          'At least one safe two-player split is required',
-        ),
-      );
-    }
-    for (const merge of merges) {
-      const first = merge?.firstParticipantSegmentIds ?? [];
-      const second = merge?.secondParticipantSegmentIds ?? [];
-      const combined = [...first, ...second];
-      const coversOnce =
-        combined.length === DISTRIBUTED_INFORMATION_SEGMENT_IDS.length &&
-        new Set(combined).size === combined.length &&
-        DISTRIBUTED_INFORMATION_SEGMENT_IDS.every((id) =>
-          combined.includes(id),
-        );
-      // One player takes two segments and the other takes one; anything else
-      // either leaks the whole puzzle or leaves a segment unread.
-      const splitIsTwoAndOne =
-        (first.length === 2 && second.length === 1) ||
-        (first.length === 1 && second.length === 2);
-      if (!coversOnce || !splitIsTwoAndOne) {
+    let trueCandidates = 0;
+    for (const view of views) {
+      const candidates = Array.isArray(view?.candidates) ? view.candidates : [];
+      if (candidates.length < 2 || candidates.length > 3) {
         issues.push(
           issue(
-            'DISTRIBUTED_MERGE_OPTION_INVALID',
-            'Each two-player split must give one player two segments and the other the remaining one',
+            'RAKKIBHA_CANDIDATE_COUNT_INVALID',
+            'Each candidate holder needs two or three local candidates',
+          ),
+        );
+      }
+      if (
+        new Set(candidates.map((candidate) => candidate?.localId)).size !==
+        candidates.length
+      ) {
+        issues.push(
+          issue(
+            'RAKKIBHA_LOCAL_IDS_INVALID',
+            'Local candidate ids must be unique within their holder view',
+          ),
+        );
+      }
+      for (const candidate of candidates) {
+        if (!candidate?.canonicalIdentity?.trim())
+          issues.push(
+            issue(
+              'RAKKIBHA_CANONICAL_IDENTITY_REQUIRED',
+              'Every candidate needs a server-side canonical identity',
+            ),
+          );
+        if (candidate?.canonicalIdentity === raw.correctCanonicalIdentity)
+          trueCandidates += 1;
+        issues.push(
+          ...this.mediaBlockIssues(
+            candidate?.media,
+            `Rakkibha candidate ${candidate?.localId ?? '?'}`,
           ),
         );
       }
@@ -357,29 +327,22 @@ export class ContentItemCompatibilityPolicy {
       ? [...raw.supportedTeamSizes].sort()
       : [];
     if (
-      teamSizes.length !== DISTRIBUTED_INFORMATION_TEAM_SIZES.length ||
-      teamSizes.some(
-        (size, index) => size !== DISTRIBUTED_INFORMATION_TEAM_SIZES[index],
-      )
+      teamSizes.length !== RAKKIBHA_TEAM_SIZES.length ||
+      teamSizes.some((size, index) => size !== RAKKIBHA_TEAM_SIZES[index])
     ) {
       issues.push(
         issue(
-          'DISTRIBUTED_TEAM_SIZES_INVALID',
-          `Supported team sizes must be exactly ${DISTRIBUTED_INFORMATION_TEAM_SIZES.join(' and ')}`,
+          'RAKKIBHA_TEAM_SIZES_INVALID',
+          `Supported team sizes must be exactly ${RAKKIBHA_TEAM_SIZES.join(' and ')}`,
         ),
       );
     }
 
-    if (
-      !DISTRIBUTED_INFORMATION_ANSWER_MODES.includes(
-        item.answerPayload
-          ?.mode as (typeof DISTRIBUTED_INFORMATION_ANSWER_MODES)[number],
-      )
-    ) {
+    if (!raw.correctCanonicalIdentity?.trim() || trueCandidates !== 1) {
       issues.push(
         issue(
-          'DISTRIBUTED_ANSWER_MODE_UNSUPPORTED',
-          'The answer must be a number, a short text, or a multiple choice',
+          'RAKKIBHA_TRUE_CANDIDATE_INVALID',
+          'Exactly one candidate globally must match the correct canonical identity',
         ),
       );
     }
@@ -391,7 +354,7 @@ export class ContentItemCompatibilityPolicy {
     ) {
       issues.push(
         issue(
-          'DISTRIBUTED_SAFETY_CONFIRMATION_REQUIRED',
+          'RAKKIBHA_SAFETY_CONFIRMATION_REQUIRED',
           'Confirm that no single player can solve the puzzle alone',
         ),
       );

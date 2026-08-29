@@ -175,7 +175,7 @@ export class ContentItemService {
       report.blockers.filter((problem) =>
         [
           'ONE_CLUE_STRUCTURE_INVALID',
-          'DISTRIBUTED_INFORMATION_STRUCTURE_REQUIRED',
+          'RAKKIBHA_STRUCTURE_REQUIRED',
         ].includes(problem.code),
       ),
       'The selected mechanic content pattern is invalid',

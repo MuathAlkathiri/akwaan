@@ -7,7 +7,7 @@ import { LiveSessionDomainError } from './live-session.errors';
 import { BOMB_GAMEPLAY_PLUGIN } from './bomb-gameplay.plugin';
 import { RYO_GAMEPLAY_PLUGIN } from './ryo-gameplay.plugin';
 import { TOP5_KEEP_OR_GIVE_PLUGIN } from './top5-keep-or-give.plugin';
-import { DISTRIBUTED_INFORMATION_PLUGIN } from './distributed-information.plugin';
+import { RAKKIBHA_PLUGIN } from './rakkibha.plugin';
 import { COMBO_GAMEPLAY_PLUGIN } from './combo-gameplay.plugin';
 import { CLOSEST_GAMEPLAY_PLUGIN } from './closest-gameplay.plugin';
 import { ONE_CLUE_GAMEPLAY_PLUGIN } from './one-clue-gameplay.plugin';
@@ -39,11 +39,8 @@ export class GameplayModeRegistry {
       TOP5_KEEP_OR_GIVE_PLUGIN,
     ],
     [
-      this.registryKey(
-        DISTRIBUTED_INFORMATION_PLUGIN.key,
-        DISTRIBUTED_INFORMATION_PLUGIN.version,
-      ),
-      DISTRIBUTED_INFORMATION_PLUGIN,
+      this.registryKey(RAKKIBHA_PLUGIN.key, RAKKIBHA_PLUGIN.version),
+      RAKKIBHA_PLUGIN,
     ],
     [
       this.registryKey(

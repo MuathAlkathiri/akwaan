@@ -1,6 +1,5 @@
 import type {
-  DistributedInformationMergeOption,
-  DistributedInformationPayload,
+  RakkibhaPayload,
   ChallengeAnswerMode,
   ContentAnswerPayload,
   ContentItem,
@@ -33,7 +32,7 @@ export interface ContentItemFormValues {
   notes: string;
   answer: AnswerFormState;
   top5: Top5FormState;
-  distributed: DistributedFormState;
+  rakkibha: RakkibhaFormState;
   oneClue: OneClueFormState;
   combo: ComboFormState;
   marhala: MarhalaFormState;
@@ -192,57 +191,45 @@ function emptyOneClueState(): OneClueFormState {
 }
 
 /** One of the three fixed private segments of a "ركّبها" item. */
-export interface DistributedSegmentFormState {
-  id: "A" | "B" | "C";
-  contentAr: string;
-  contentEn: string;
-  /** Optional private visual for this view. Image takes precedence over audio. */
+export interface RakkibhaCandidateFormState {
+  localId: string;
+  canonicalIdentity: string;
   imageUrl: string;
-  /** Optional private audio cue for this view, used when no image is set. */
-  audioUrl: string;
+  contentAr: string;
 }
-
-export type DistributedMergeKey = "AB_C" | "AC_B" | "BC_A";
-
-export interface DistributedFormState {
-  /** Set when a selected mechanic is the ركّبها wrapper. */
+export interface RakkibhaCandidateViewFormState {
+  id: string;
+  contentAr: string;
+  candidates: RakkibhaCandidateFormState[];
+}
+export interface RakkibhaFormState {
   enabled: boolean;
-  publicPromptAr: string;
-  publicPromptEn: string;
-  segments: DistributedSegmentFormState[];
-  /** The author-approved two-player splits, at least one. */
-  mergeKeys: DistributedMergeKey[];
+  instructionAr: string;
+  referenceImageUrl: string;
+  referenceContentAr: string;
+  candidateViews: RakkibhaCandidateViewFormState[];
+  correctCanonicalIdentity: string;
   safetyConfirmed: boolean;
   explanation: string;
 }
-
-/** Each split gives one player two segments and the other the remaining one. */
-export const DISTRIBUTED_MERGES: Record<
-  DistributedMergeKey,
-  {
-    label: string;
-    first: Array<"A" | "B" | "C">;
-    second: Array<"A" | "B" | "C">;
-  }
-> = {
-  AB_C: { label: "A+B | C", first: ["A", "B"], second: ["C"] },
-  AC_B: { label: "A+C | B", first: ["A", "C"], second: ["B"] },
-  BC_A: { label: "B+C | A", first: ["B", "C"], second: ["A"] },
-};
-
-function emptyDistributedState(): DistributedFormState {
+function emptyRakkibhaState(): RakkibhaFormState {
+  const candidates = (prefix: string): RakkibhaCandidateFormState[] =>
+    [1, 2, 3].map((number) => ({
+      localId: `option-${number}`,
+      canonicalIdentity: `${prefix}-${number}`,
+      imageUrl: "",
+      contentAr: "",
+    }));
   return {
     enabled: false,
-    publicPromptAr: "",
-    publicPromptEn: "",
-    segments: (["A", "B", "C"] as const).map((id) => ({
-      id,
-      contentAr: "",
-      contentEn: "",
-      imageUrl: "",
-      audioUrl: "",
-    })),
-    mergeKeys: [],
+    instructionAr: "واحد يشوف الشكل الناقص والباقين يشوفون قطع مختلفة.",
+    referenceImageUrl: "",
+    referenceContentAr: "",
+    candidateViews: [
+      { id: "holder-1", contentAr: "", candidates: candidates("holder-1") },
+      { id: "holder-2", contentAr: "", candidates: candidates("holder-2") },
+    ],
+    correctCanonicalIdentity: "",
     safetyConfirmed: false,
     explanation: "",
   };
@@ -338,56 +325,33 @@ export function emptyContentItemForm(scopeId: string): ContentItemFormValues {
     notes: "",
     answer: emptyAnswerState(),
     top5: emptyTop5State(),
-    distributed: emptyDistributedState(),
+    rakkibha: emptyRakkibhaState(),
     oneClue: emptyOneClueState(),
     combo: emptyComboState(),
     marhala: emptyMarhalaState(),
   };
 }
 
-function mergeKeyOf(option: {
-  firstParticipantSegmentIds?: string[];
-  secondParticipantSegmentIds?: string[];
-}): DistributedMergeKey | undefined {
-  const pair = [...(option.firstParticipantSegmentIds ?? [])].sort().join("");
-  const single = (option.secondParticipantSegmentIds ?? []).join("");
-  const entry = Object.entries(DISTRIBUTED_MERGES).find(
-    ([, value]) =>
-      value.first.slice().sort().join("") === pair &&
-      value.second.join("") === single,
-  );
-  return entry?.[0] as DistributedMergeKey | undefined;
-}
-
-export function toDistributedFormState(
-  payload: DistributedInformationPayload | undefined,
-): DistributedFormState {
-  if (payload?.variant !== "three-segment-race") return emptyDistributedState();
-  const base = emptyDistributedState();
+export function toRakkibhaFormState(
+  payload: RakkibhaPayload | undefined,
+): RakkibhaFormState {
+  if (payload?.variant !== "visual-assembly") return emptyRakkibhaState();
   return {
     enabled: true,
-    publicPromptAr: payload.publicPrompt?.ar ?? "",
-    publicPromptEn: payload.publicPrompt?.en ?? "",
-    segments: base.segments.map((segment) => {
-      const authored = payload.segments?.find(
-        (candidate: { id: string }) => candidate.id === segment.id,
-      );
-      const media = authored?.media as
-        | { type?: string; assets?: Array<{ url?: string }> }
-        | undefined;
-      const mediaUrl = media?.assets?.[0]?.url ?? "";
-      const isAudio = media?.type === "audio";
-      return {
-        ...segment,
-        contentAr: authored?.content?.ar ?? "",
-        contentEn: authored?.content?.en ?? "",
-        imageUrl: isAudio ? "" : mediaUrl,
-        audioUrl: isAudio ? mediaUrl : "",
-      };
-    }),
-    mergeKeys: (payload.twoPlayerMergeOptions ?? [])
-      .map((option: DistributedInformationMergeOption) => mergeKeyOf(option))
-      .filter((key): key is DistributedMergeKey => Boolean(key)),
+    instructionAr: payload.instruction?.ar ?? "",
+    referenceImageUrl: payload.reference?.media?.assets?.[0]?.url ?? "",
+    referenceContentAr: payload.reference?.content?.ar ?? "",
+    candidateViews: (payload.candidateViews ?? []).map((view) => ({
+      id: view.id,
+      contentAr: view.content?.ar ?? "",
+      candidates: view.candidates.map((candidate) => ({
+        localId: candidate.localId,
+        canonicalIdentity: candidate.canonicalIdentity,
+        imageUrl: candidate.media?.assets?.[0]?.url ?? "",
+        contentAr: candidate.content?.ar ?? "",
+      })),
+    })),
+    correctCanonicalIdentity: payload.correctCanonicalIdentity ?? "",
     safetyConfirmed: payload.authorSafetyConfirmation === true,
     explanation: payload.explanation ?? "",
   };
@@ -439,8 +403,8 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
         clue: fragment.clue.ar,
       })),
     },
-    distributed: toDistributedFormState(
-      item.mechanicPayload as DistributedInformationPayload | undefined,
+    rakkibha: toRakkibhaFormState(
+      item.mechanicPayload as RakkibhaPayload | undefined,
     ),
     oneClue: oneCluePayload?.clues
       ? {
@@ -595,49 +559,43 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
             : {}),
         }
       : undefined;
-  // "ركّبها" carries only the distributed parts; the answer stays in
-  // answerPayload, the one validated home every mechanic already uses.
-  const distributedMechanicPayload = values.distributed.enabled
+  const rakkibhaMechanicPayload = values.rakkibha.enabled
     ? {
-        variant: "three-segment-race",
-        publicPrompt: {
-          ar: values.distributed.publicPromptAr.trim(),
-          ...(values.distributed.publicPromptEn.trim()
-            ? { en: values.distributed.publicPromptEn.trim() }
+        variant: "visual-assembly",
+        family: "visual-assembly",
+        instruction: { ar: values.rakkibha.instructionAr.trim() },
+        reference: {
+          ...(values.rakkibha.referenceContentAr.trim()
+            ? { content: { ar: values.rakkibha.referenceContentAr.trim() } }
             : {}),
-        },
-        segments: values.distributed.segments.map((segment) => ({
-          id: segment.id,
-          content: {
-            ar: segment.contentAr.trim(),
-            ...(segment.contentEn.trim()
-              ? { en: segment.contentEn.trim() }
-              : {}),
+          media: {
+            type: "image",
+            assets: [{ url: values.rakkibha.referenceImageUrl.trim() }],
           },
-          ...(segment.imageUrl.trim()
-            ? {
-                media: {
-                  type: "image",
-                  assets: [{ url: segment.imageUrl.trim() }],
-                },
-              }
-            : segment.audioUrl.trim()
-              ? {
-                  media: {
-                    type: "audio",
-                    assets: [{ url: segment.audioUrl.trim() }],
-                  },
-                }
+        },
+        candidateViews: values.rakkibha.candidateViews.map((view) => ({
+          id: view.id.trim(),
+          ...(view.contentAr.trim()
+            ? { content: { ar: view.contentAr.trim() } }
+            : {}),
+          candidates: view.candidates.map((candidate) => ({
+            localId: candidate.localId.trim(),
+            canonicalIdentity: candidate.canonicalIdentity.trim(),
+            ...(candidate.contentAr.trim()
+              ? { content: { ar: candidate.contentAr.trim() } }
               : {}),
+            media: {
+              type: "image",
+              assets: [{ url: candidate.imageUrl.trim() }],
+            },
+          })),
         })),
-        twoPlayerMergeOptions: values.distributed.mergeKeys.map((key) => ({
-          firstParticipantSegmentIds: DISTRIBUTED_MERGES[key].first,
-          secondParticipantSegmentIds: DISTRIBUTED_MERGES[key].second,
-        })),
+        correctCanonicalIdentity:
+          values.rakkibha.correctCanonicalIdentity.trim(),
         supportedTeamSizes: [2, 3],
-        authorSafetyConfirmation: values.distributed.safetyConfirmed,
-        ...(values.distributed.explanation.trim()
-          ? { explanation: values.distributed.explanation.trim() }
+        authorSafetyConfirmation: values.rakkibha.safetyConfirmed,
+        ...(values.rakkibha.explanation.trim()
+          ? { explanation: values.rakkibha.explanation.trim() }
           : {}),
       }
     : undefined;
@@ -672,13 +630,13 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
    */
   const mechanicPayload =
     (top5MechanicPayload ??
-    distributedMechanicPayload ??
+    rakkibhaMechanicPayload ??
     oneClueMechanicPayload ??
     comboMechanicPayload ??
     marhalaMechanicPayload)
       ? {
           ...top5MechanicPayload,
-          ...distributedMechanicPayload,
+          ...rakkibhaMechanicPayload,
           ...oneClueMechanicPayload,
           ...comboMechanicPayload,
           ...marhalaMechanicPayload,
@@ -725,26 +683,44 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
  * The machine-checkable half of the "ركّبها" contract, mirrored from the backend
  * policy so an author sees the problem before saving rather than after.
  */
-export function findDistributedProblems(
-  values: ContentItemFormValues,
-): string[] {
+export function findRakkibhaProblems(values: ContentItemFormValues): string[] {
   const problems: string[] = [];
-  const { distributed } = values;
-  if (!distributed.publicPromptAr.trim()) {
-    problems.push("السؤال العام مطلوب، ويراه كل أفراد الفريق.");
+  const { rakkibha } = values;
+  if (!rakkibha.instructionAr.trim()) {
+    problems.push("تعليمات ركّبها مطلوبة.");
   }
-  if (distributed.segments.some((segment) => !segment.contentAr.trim())) {
-    problems.push("اكتب محتوى المعلومات الثلاث (أ، ب، ج).");
+  if (!rakkibha.referenceImageUrl.trim()) {
+    problems.push("صورة الشكل الناقص مطلوبة.");
   }
-  if (!distributed.mergeKeys.length) {
-    problems.push("اختر توزيعاً آمناً واحداً على الأقل لفريق من لاعبين.");
+  if (
+    rakkibha.candidateViews.length < 2 ||
+    rakkibha.candidateViews.some(
+      (view) => view.candidates.length < 2 || view.candidates.length > 3,
+    )
+  ) {
+    problems.push("أضف حاملَي قطع على الأقل، ولكل حامل قطعتان أو ثلاث.");
   }
-  if (!["match", "closest", "multiple_choice"].includes(values.answer.mode)) {
-    problems.push(
-      "طريقة الإجابة يجب أن تكون نصاً قصيراً أو رقماً أو اختياراً من متعدد.",
-    );
+  const candidates = rakkibha.candidateViews.flatMap((view) => view.candidates);
+  if (
+    candidates.some(
+      (candidate) =>
+        !candidate.localId.trim() ||
+        !candidate.canonicalIdentity.trim() ||
+        !candidate.imageUrl.trim(),
+    )
+  ) {
+    problems.push("كل قطعة تحتاج معرفاً محلياً وهوية وصورة.");
   }
-  if (values.status === "ready" && !distributed.safetyConfirmed) {
+  if (
+    !rakkibha.correctCanonicalIdentity.trim() ||
+    candidates.filter(
+      (candidate) =>
+        candidate.canonicalIdentity === rakkibha.correctCanonicalIdentity,
+    ).length !== 1
+  ) {
+    problems.push("يجب أن تطابق قطعة واحدة فقط الهوية الصحيحة.");
+  }
+  if (values.status === "ready" && !rakkibha.safetyConfirmed) {
     problems.push("أكّد أنك راجعت التوزيع قبل جعل العنصر جاهزاً.");
   }
   return problems;
@@ -757,8 +733,8 @@ export function findLocalFormProblems(values: ContentItemFormValues): string[] {
   if (!values.compatibleChallengeTypeIds.length) {
     problems.push("اختر نوع تحدٍ واحداً متوافقاً على الأقل.");
   }
-  if (values.distributed.enabled) {
-    problems.push(...findDistributedProblems(values));
+  if (values.rakkibha.enabled) {
+    problems.push(...findRakkibhaProblems(values));
   }
   if (values.combo.enabled && values.combo.stage === "") {
     problems.push("اختر صعوبة السؤال.");

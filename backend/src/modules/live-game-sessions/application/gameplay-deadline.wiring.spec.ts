@@ -56,7 +56,7 @@ const DEADLINE_CONTRACT: Record<
   bomb: { kind: 'session-clock' },
   'read-your-opponent': { kind: 'interaction' },
   'top-5': { kind: 'none' },
-  'distributed-information': { kind: 'runtime-state' },
+  rakkibha: { kind: 'runtime-state' },
   closest: { kind: 'runtime-state' },
   'one-clue': { kind: 'runtime-state' },
   combo: { kind: 'runtime-state' },

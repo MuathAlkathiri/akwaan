@@ -8,13 +8,13 @@ import { useLiveSessionClock } from "../hooks/live-session-clock-context";
 import { useLiveSession } from "../hooks/live-session-context";
 import type { GameplayRuntimeSnapshot } from "../model";
 import {
-  DISTRIBUTED_CHALLENGE_NAME,
-  DISTRIBUTED_PUZZLE_COUNT,
-  DISTRIBUTED_STATUS_LABEL,
-  parseDistributedProgress,
+  RAKKIBHA_CHALLENGE_NAME,
+  RAKKIBHA_PUZZLE_COUNT,
+  RAKKIBHA_STATUS_LABEL,
+  parseRakkibhaProgress,
   remainingRaceSeconds,
   teamStatus,
-} from "../match/distributed-information.presentation";
+} from "../match/rakkibha.presentation";
 
 /**
  * "ركّبها" on the shared screen, and the same view the controller watches.
@@ -23,7 +23,7 @@ import {
  * The server never puts a segment, an answer, an answerer, or a team's private
  * order in this projection, so there is nothing here to redact.
  */
-export function DistributedInformationScreen({
+export function RakkibhaScreen({
   runtime,
 }: {
   runtime: GameplayRuntimeSnapshot;
@@ -32,7 +32,7 @@ export function DistributedInformationScreen({
   const nowMs = useLiveSessionClock();
   const state = runtime.modeState;
   const progress = useMemo(
-    () => parseDistributedProgress(state.progressJson),
+    () => parseRakkibhaProgress(state.progressJson),
     [state.progressJson],
   );
   const teams = useMemo(
@@ -50,7 +50,7 @@ export function DistributedInformationScreen({
       return undefined;
     }
   }, [state.resultJson]);
-  const puzzleCount = Number(state.puzzleCount ?? DISTRIBUTED_PUZZLE_COUNT);
+  const puzzleCount = Number(state.puzzleCount ?? RAKKIBHA_PUZZLE_COUNT);
   const completed = state.phase === "completed";
 
   return (
@@ -58,7 +58,7 @@ export function DistributedInformationScreen({
       <CardHeader className="bg-muted/50">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle className="text-2xl font-black">
-            {DISTRIBUTED_CHALLENGE_NAME}
+            {RAKKIBHA_CHALLENGE_NAME}
           </CardTitle>
           {!completed && (
             <ChallengeCountdown
@@ -80,9 +80,11 @@ export function DistributedInformationScreen({
                   </span>
                   <span className="flex items-center gap-2">
                     <Badge
-                      variant={status === "locked" ? "destructive" : "secondary"}
+                      variant={
+                        status === "locked" ? "destructive" : "secondary"
+                      }
                     >
-                      {DISTRIBUTED_STATUS_LABEL[status]}
+                      {RAKKIBHA_STATUS_LABEL[status]}
                     </Badge>
                     <span className="font-black akwaan-numeral">
                       {entry.solved}/{puzzleCount}
@@ -112,9 +114,7 @@ export function DistributedInformationScreen({
                 : `فاز ${teams.get(String(result?.winnerTeamId)) ?? ""}`}
             </p>
             {!result?.tie && result?.winnerTeamId && (
-              <p className="mt-1 font-bold text-success">
-                +1 نقطة مباراة
-              </p>
+              <p className="mt-1 font-bold text-success">+1 نقطة مباراة</p>
             )}
           </div>
         )}

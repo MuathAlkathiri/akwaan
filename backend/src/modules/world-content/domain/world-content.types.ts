@@ -1,5 +1,4 @@
 import {
-  DistributedInformationSegmentId,
   ChallengeAnswerMode,
   ChallengeFamily,
   ChallengeItemStructure,
@@ -273,27 +272,26 @@ export interface Top5Payload {
  * place every mechanic's machine-resolvable answer already lives, so there is
  * never a second source of truth for what is correct.
  */
-export interface DistributedInformationSegment {
-  id: DistributedInformationSegmentId;
-  content: LocalizedText;
-  media?: ContentItemMedia;
+export interface RakkibhaCandidate {
+  localId: string;
+  canonicalIdentity: string;
+  content?: LocalizedText;
+  media: ContentItemMedia;
 }
 
-/**
- * How three segments are split across a two-player team: one player takes two,
- * the other takes one. Every option must cover all three segments exactly once.
- */
-export interface DistributedInformationMergeOption {
-  firstParticipantSegmentIds: DistributedInformationSegmentId[];
-  secondParticipantSegmentIds: DistributedInformationSegmentId[];
+export interface RakkibhaCandidateView {
+  id: string;
+  content?: LocalizedText;
+  candidates: RakkibhaCandidate[];
 }
 
-export interface DistributedInformationPayload {
-  variant: 'three-segment-race';
-  publicPrompt: LocalizedText;
-  segments: DistributedInformationSegment[];
-  /** At least one author-approved two-player split. */
-  twoPlayerMergeOptions: DistributedInformationMergeOption[];
+export interface RakkibhaPayload {
+  variant: 'visual-assembly';
+  family: 'visual-assembly';
+  instruction: LocalizedText;
+  reference: { content?: LocalizedText; media: ContentItemMedia };
+  candidateViews: RakkibhaCandidateView[];
+  correctCanonicalIdentity: string;
   supportedTeamSizes: number[];
   /**
    * The author's confirmation that no single player can solve the puzzle from
@@ -323,7 +321,7 @@ export interface ContentItemView {
   mechanicPayload?:
     | Record<string, unknown>
     | Top5Payload
-    | DistributedInformationPayload
+    | RakkibhaPayload
     | OneCluePayload;
   isReusableAcrossSessions: boolean;
   status: ContentItemStatus;

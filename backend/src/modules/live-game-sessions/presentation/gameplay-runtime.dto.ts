@@ -46,7 +46,7 @@ export class GameplayRuntimeMutationDto {
   clientTimestamp?: string;
 }
 
-export class StartDistributedInformationDto {
+export class StartRakkibhaDto {
   @IsString()
   worldId!: string;
 

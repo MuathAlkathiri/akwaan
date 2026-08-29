@@ -33,7 +33,7 @@ export const CHALLENGE_ICONS: Readonly<Record<string, LucideIcon>> = {
   "top-5": ListOrdered,
   closest: Target,
   "one-clue": Lightbulb,
-  "distributed-information": Puzzle,
+  rakkibha: Puzzle,
   combo: Flame,
   bomb: Bomb,
 };

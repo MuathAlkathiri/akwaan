@@ -125,19 +125,21 @@ describe("الكومبو difficulty authoring", () => {
   });
 
   it("leaves another mechanic's payload untouched", () => {
-    // A "ركّبها" item keeps its own segments; Combo's stage never displaces them.
+    // A "ركّبها" item keeps its own visual-assembly payload; Combo's stage never
+    // displaces its reference/candidate views.
     const base = emptyContentItemForm("scope-1");
-    const distributed = {
+    const rakkibha = {
       ...base,
       promptAr: "سؤال",
-      compatibleChallengeTypeIds: ["ct-di"],
-      distributed: { ...base.distributed, enabled: true },
+      compatibleChallengeTypeIds: ["ct-rakkibha"],
+      rakkibha: { ...base.rakkibha, enabled: true },
       combo: { enabled: false, stage: 3 as const },
     };
-    const payload = buildContentItemPayload(distributed);
+    const payload = buildContentItemPayload(rakkibha);
     expect(payload.mechanicPayload).toBeDefined();
     expect(payload.mechanicPayload).not.toHaveProperty("comboStage");
-    expect(payload.mechanicPayload).toHaveProperty("segments");
+    expect(payload.mechanicPayload).toHaveProperty("candidateViews");
+    expect(payload.mechanicPayload).toHaveProperty("variant", "visual-assembly");
   });
 });
 
@@ -158,6 +160,6 @@ describe("which mechanics ask for a Combo difficulty", () => {
     expect(hasComboMechanic(configured())).toBe(false);
     expect(hasComboMechanic(configured("read-your-opponent"))).toBe(false);
     expect(hasComboMechanic(configured("one-clue", "closest"))).toBe(false);
-    expect(hasComboMechanic(configured("distributed-information"))).toBe(false);
+    expect(hasComboMechanic(configured("rakkibha"))).toBe(false);
   });
 });

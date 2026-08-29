@@ -10,7 +10,7 @@ import {
 } from '../modules/world-content/domain/world-content.constants';
 import { BOMB_MODE_KEY } from '../modules/live-game-sessions/domain/bomb-gameplay.plugin';
 import { RYO_MODE_KEY } from '../modules/live-game-sessions/domain/ryo-gameplay.plugin';
-import { DISTRIBUTED_INFORMATION_MODE_KEY } from '../modules/live-game-sessions/domain/distributed-information.plugin';
+import { RAKKIBHA_MODE_KEY } from '../modules/live-game-sessions/domain/rakkibha.plugin';
 import { TOP5_MODE_KEY } from '../modules/live-game-sessions/domain/top5-keep-or-give.plugin';
 import { COMBO_MODE_KEY } from '../modules/live-game-sessions/domain/combo-gameplay.plugin';
 import { CLOSEST_MODE_KEY } from '../modules/live-game-sessions/domain/closest-gameplay.plugin';
@@ -73,11 +73,11 @@ const bystanders: ChallengeTypeRecord[] = [
   },
   {
     _id: 'distributed',
-    slug: DISTRIBUTED_INFORMATION_MODE_KEY,
+    slug: RAKKIBHA_MODE_KEY,
     name: 'ركّبها',
     family: ChallengeFamily.COOP,
     itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
-    answerMode: ChallengeAnswerMode.DISTRIBUTED,
+    answerMode: ChallengeAnswerMode.RAKKIBHA,
   },
 ];
 
@@ -93,7 +93,7 @@ describe('canonical mechanic slug migration', () => {
       BOMB_MODE_KEY,
       RYO_MODE_KEY,
       TOP5_MODE_KEY,
-      DISTRIBUTED_INFORMATION_MODE_KEY,
+      RAKKIBHA_MODE_KEY,
       CLOSEST_MODE_KEY,
       ONE_CLUE_MODE_KEY,
       COMBO_MODE_KEY,

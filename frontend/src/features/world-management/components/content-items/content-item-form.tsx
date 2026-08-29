@@ -35,7 +35,7 @@ import {
 import { FormIssueList } from "../shared";
 import { AnswerPayloadFields } from "./answer-payload-fields";
 import { Top5Fields } from "./top5-fields";
-import { DistributedInformationFields } from "./distributed-information-fields";
+import { RakkibhaFields } from "./rakkibha-fields";
 import { OneClueFields } from "./one-clue-fields";
 import { ComboFields } from "./combo-fields";
 import { MarhalaFields } from "./marhala-fields";
@@ -111,8 +111,8 @@ export function ContentItemForm({
         )
     : [];
 
-  const distributedSelected = selectedChallengeTypes.some(
-    (configuration) => configuration.challengeType.answerMode === "distributed",
+  const rakkibhaSelected = selectedChallengeTypes.some(
+    (configuration) => configuration.challengeType.answerMode === "rakkibha",
   );
   const oneClueSelected = selectedChallengeTypes.some(
     (configuration) =>
@@ -124,17 +124,17 @@ export function ContentItemForm({
   // mechanic stops emitting its payload.
   useEffect(() => {
     setValues((current) =>
-      current.distributed.enabled === distributedSelected
+      current.rakkibha.enabled === rakkibhaSelected
         ? current
         : {
             ...current,
-            distributed: {
-              ...current.distributed,
-              enabled: distributedSelected,
+            rakkibha: {
+              ...current.rakkibha,
+              enabled: rakkibhaSelected,
             },
           },
     );
-  }, [distributedSelected]);
+  }, [rakkibhaSelected]);
 
   useEffect(() => {
     setValues((current) => {
@@ -342,11 +342,10 @@ export function ContentItemForm({
         />
       )}
 
-      {values.distributed.enabled && (
-        <DistributedInformationFields
-          value={values.distributed}
-          onChange={(distributed) => set({ distributed })}
-          answerMode={values.answer.mode}
+      {values.rakkibha.enabled && (
+        <RakkibhaFields
+          value={values.rakkibha}
+          onChange={(rakkibha) => set({ rakkibha })}
         />
       )}
 

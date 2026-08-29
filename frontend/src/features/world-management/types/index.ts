@@ -22,12 +22,11 @@ export type ChallengeAnswerMode =
   | "split"
   | "top_5"
   | "one_clue"
-  /** The ركّبها wrapper: the item keeps its own answer contract. */
-  | "distributed";
+  /** The canonical ركّبها answer mode. */
+  | "rakkibha";
 export type ChallengeItemStructure = "discrete_triple" | "continuous";
 export type VoteConsensusRule = "exact" | "majority" | "team_match";
-export type ContentPattern =
-  "generic" | "top_5" | "distributed_information" | "one_clue";
+export type ContentPattern = "generic" | "top_5" | "rakkibha" | "one_clue";
 
 export interface ContentAsset {
   url: string;
@@ -268,22 +267,26 @@ export interface Top5Entry {
 }
 
 /** "ركّبها" content. The answer lives in answerPayload, never here. */
-export interface DistributedInformationSegment {
-  id: "A" | "B" | "C";
-  content: LocalizedText;
-  media?: { type: ContentMediaType; assets: ContentAsset[] };
+export interface RakkibhaCandidate {
+  localId: string;
+  canonicalIdentity: string;
+  content?: LocalizedText;
+  media: { type: ContentMediaType; assets: ContentAsset[] };
 }
-
-export interface DistributedInformationMergeOption {
-  firstParticipantSegmentIds: Array<"A" | "B" | "C">;
-  secondParticipantSegmentIds: Array<"A" | "B" | "C">;
-}
-
-export interface DistributedInformationPayload {
-  variant: "three-segment-race";
-  publicPrompt: LocalizedText;
-  segments: DistributedInformationSegment[];
-  twoPlayerMergeOptions: DistributedInformationMergeOption[];
+export interface RakkibhaPayload {
+  variant: "visual-assembly";
+  family: "visual-assembly";
+  instruction: LocalizedText;
+  reference: {
+    content?: LocalizedText;
+    media: { type: ContentMediaType; assets: ContentAsset[] };
+  };
+  candidateViews: Array<{
+    id: string;
+    content?: LocalizedText;
+    candidates: RakkibhaCandidate[];
+  }>;
+  correctCanonicalIdentity: string;
   supportedTeamSizes: number[];
   authorSafetyConfirmation: boolean;
   explanation?: string;

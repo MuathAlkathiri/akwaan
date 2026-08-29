@@ -64,22 +64,12 @@ vi.mock("@/features/live-game-session/components/combo-gameplay-panel", () => ({
 vi.mock("@/features/live-game-session/components/bomb-gameplay-panel", () => ({
   BombGameplayPanel: () => <div data-testid="renderer-bomb" />,
 }));
-vi.mock(
-  "@/features/live-game-session/components/distributed-information-panel",
-  () => ({
-    DistributedInformationPanel: () => (
-      <div data-testid="renderer-distributed-phone" />
-    ),
-  }),
-);
-vi.mock(
-  "@/features/live-game-session/components/distributed-information-screen",
-  () => ({
-    DistributedInformationScreen: () => (
-      <div data-testid="renderer-distributed-screen" />
-    ),
-  }),
-);
+vi.mock("@/features/live-game-session/components/rakkibha-panel", () => ({
+  RakkibhaPanel: () => <div data-testid="renderer-rakkibha-phone" />,
+}));
+vi.mock("@/features/live-game-session/components/rakkibha-screen", () => ({
+  RakkibhaScreen: () => <div data-testid="renderer-rakkibha-screen" />,
+}));
 
 const position = (
   occurrenceIndex: number,
@@ -258,17 +248,17 @@ describe("a running challenge is routed by its runtime mode key", () => {
 
     const phone = renderRouter(state, {
       actor: "participant",
-      runtimeModeKey: "distributed-information",
+      runtimeModeKey: "rakkibha",
     });
-    expect(screen.getByTestId("renderer-distributed-phone")).toBeTruthy();
+    expect(screen.getByTestId("renderer-rakkibha-phone")).toBeTruthy();
     phone.unmount();
 
     for (const actor of ["controller", "shared-screen"] as const) {
       const view = renderRouter(state, {
         actor,
-        runtimeModeKey: "distributed-information",
+        runtimeModeKey: "rakkibha",
       });
-      expect(screen.getByTestId("renderer-distributed-screen")).toBeTruthy();
+      expect(screen.getByTestId("renderer-rakkibha-screen")).toBeTruthy();
       view.unmount();
     }
   });

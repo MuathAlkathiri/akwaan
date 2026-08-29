@@ -3,7 +3,7 @@ import {
   MatchChallengeReadinessService,
   ReadinessSessionView,
 } from './match-challenge-readiness.service';
-import { DistributedInformationChallengeLauncher } from './distributed-information-challenge.launcher';
+import { RakkibhaChallengeLauncher } from './rakkibha-challenge.launcher';
 import { RyoChallengeLauncher } from './ryo-challenge.launcher';
 import { Top5ChallengeLauncher } from './top5-challenge.launcher';
 import { BombChallengeLauncher } from './bomb-challenge.launcher';
@@ -26,7 +26,7 @@ const service = new MatchChallengeReadinessService();
 const construct = <T>(Launcher: new (...args: never[]) => T): T =>
   new Launcher(...([undefined, undefined, undefined] as never[]));
 
-const distributed = construct(DistributedInformationChallengeLauncher)
+const distributed = construct(RakkibhaChallengeLauncher)
   .launchRequirements.readiness as MatchChallengeReadinessRequirement;
 const ryo = construct(RyoChallengeLauncher).launchRequirements
   .readiness as MatchChallengeReadinessRequirement;

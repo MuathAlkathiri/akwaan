@@ -16,8 +16,8 @@ import {
   ChallengeAnswerMode,
   ChallengeFamily,
   ContentItemStatus,
-  DISTRIBUTED_INFORMATION_TIMER_SECONDS,
-  DISTRIBUTED_INFORMATION_VARIANT,
+  RAKKIBHA_TIMER_SECONDS,
+  RAKKIBHA_VARIANT,
   WorldChallengeSlotKey,
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
@@ -27,7 +27,7 @@ import {
   MatchStage,
   MatchStatus,
 } from '../../src/modules/match/domain/match.constants';
-import { DISTRIBUTED_INFORMATION_MODE_KEY } from '../../src/modules/live-game-sessions/domain/distributed-information.plugin';
+import { RAKKIBHA_MODE_KEY } from '../../src/modules/live-game-sessions/domain/rakkibha.plugin';
 import { RYO_MODE_KEY } from '../../src/modules/live-game-sessions/domain/ryo-gameplay.plugin';
 import {
   JoinLiveSession,
@@ -142,7 +142,7 @@ describe('Unified Match preflight integration', () => {
   const seedWorld = async () => {
     const presentation = {
       inputType: 'phone-text',
-      timerSeconds: DISTRIBUTED_INFORMATION_TIMER_SECONDS,
+      timerSeconds: RAKKIBHA_TIMER_SECONDS,
       soundPack: null,
       revealStyle: null,
     };
@@ -154,7 +154,7 @@ describe('Unified Match preflight integration', () => {
       );
 
     const distributed = await challengeType({
-      ...productionMechanicFixture(DISTRIBUTED_INFORMATION_MODE_KEY),
+      ...productionMechanicFixture(RAKKIBHA_MODE_KEY),
       status: WorldContentStatus.ACTIVE,
     });
     const ryo = await challengeType({
@@ -210,27 +210,74 @@ describe('Unified Match preflight integration', () => {
         .expect(201);
     }
 
-    // One ركّبها puzzle per Scope.
+    // One ركّبها visual-assembly puzzle per Scope: a private reference and two
+    // candidate views, exactly one of which (`true-<index>`, local id `one`) owns
+    // the matching piece; the other view holds only distractors.
     for (const [index, puzzle] of puzzles().entries()) {
       await bearer(http().post('/admin/content-items'))
         .send({
           scopeId: scopes[index],
           prompt: { ar: puzzle.prompt },
           compatibleChallengeTypeIds: [distributed.id],
-          answerPayload: puzzle.answer,
+          answerPayload: {
+            mode: ChallengeAnswerMode.MATCH,
+            acceptedAnswers: [`answer-${index}`],
+          },
           mechanicPayload: {
-            variant: DISTRIBUTED_INFORMATION_VARIANT,
-            publicPrompt: { ar: puzzle.prompt },
-            segments: ['A', 'B', 'C'].map((id, segmentIndex) => ({
-              id,
-              content: { ar: puzzle.segments[segmentIndex] },
-            })),
-            twoPlayerMergeOptions: [
+            variant: RAKKIBHA_VARIANT,
+            family: RAKKIBHA_VARIANT,
+            instruction: { ar: 'صفوا الشكل ثم اختاروا القطعة المطابقة' },
+            reference: {
+              media: {
+                type: 'image',
+                assets: [{ url: `/reference-${index}.png` }],
+              },
+            },
+            candidateViews: [
               {
-                firstParticipantSegmentIds: ['A', 'C'],
-                secondParticipantSegmentIds: ['B'],
+                id: `true-${index}`,
+                candidates: [
+                  {
+                    localId: 'one',
+                    canonicalIdentity: `true-${index}`,
+                    media: {
+                      type: 'image',
+                      assets: [{ url: `/true-${index}.png` }],
+                    },
+                  },
+                  {
+                    localId: 'two',
+                    canonicalIdentity: `wrong-${index}-1`,
+                    media: {
+                      type: 'image',
+                      assets: [{ url: `/w-${index}-1.png` }],
+                    },
+                  },
+                ],
+              },
+              {
+                id: `distractor-${index}`,
+                candidates: [
+                  {
+                    localId: 'one',
+                    canonicalIdentity: `wrong-${index}-2`,
+                    media: {
+                      type: 'image',
+                      assets: [{ url: `/w-${index}-2.png` }],
+                    },
+                  },
+                  {
+                    localId: 'two',
+                    canonicalIdentity: `wrong-${index}-3`,
+                    media: {
+                      type: 'image',
+                      assets: [{ url: `/w-${index}-3.png` }],
+                    },
+                  },
+                ],
               },
             ],
+            correctCanonicalIdentity: `true-${index}`,
             supportedTeamSizes: [2, 3],
             authorSafetyConfirmation: true,
           },
@@ -391,40 +438,53 @@ describe('Unified Match preflight integration', () => {
     (await app.get(GetGameplayRuntime).execute(sessionId, actor)).gameplay!
       .modeState as Record<string, string | number | boolean | null>;
 
-  const answerFor = (prompt: string): string | number => {
-    const puzzle = puzzles().find((entry) => entry.prompt === prompt)!;
-    if (puzzle.answer.mode === ChallengeAnswerMode.CLOSEST) {
-      return puzzle.answer.correctValue!;
-    }
-    if (puzzle.answer.mode === ChallengeAnswerMode.MULTIPLE_CHOICE) {
-      return puzzle.answer.correctOptionId!;
-    }
-    return puzzle.answer.acceptedAnswers![0];
-  };
-
-  /** Plays one puzzle for a team through whichever phone was made answerer. */
+  /**
+   * Plays one ركّبها puzzle for a team: reads the persisted plan to find the
+   * candidate holder who owns the matching piece (`true-*` view), then submits
+   * that holder's correct local candidate. Correctness is actor-aware, so this
+   * uses the server's own mapping rather than any client-visible signal.
+   */
   const solveOnePuzzle = async (sessionId: string, team: Phone[]) => {
-    for (const phone of team) {
-      const view = await viewOf(sessionId, phone);
-      if (view.isAnswerer !== true) continue;
-      const runtime = (await runtimes().findBySessionId(
-        sessionId,
-      ))!.serialize();
-      return app.get(SubmitGameplayCommand).execute({
-        sessionId,
-        actor: phone,
-        commandId: uuid(),
-        expectedSessionRevision: await sessionRevision(sessionId),
-        expectedRuntimeRevision: runtime.revision,
-        roundId: runtime.activeRound!.id,
-        commandType: 'submit-answer',
-        payload: {
-          contentItemId: String(view.contentItemId),
-          answer: answerFor(String(view.publicPrompt)),
-        },
-      });
-    }
-    throw new Error('No assigned answerer found for this team');
+    const teamId = team[0].teamId;
+    const runtime = (await runtimes().findBySessionId(sessionId))!.serialize();
+    const state = runtime.runtimeState as Record<string, string>;
+    const plans = JSON.parse(String(state.plansJson)) as Array<{
+      teamId: string;
+      order: number[];
+      assignments: Array<
+        Array<{
+          participantId: string;
+          hasReference: boolean;
+          candidateViewId?: string;
+        }>
+      >;
+    }>;
+    const puzzleList = JSON.parse(String(state.puzzlesJson)) as Array<{
+      contentItemId: string;
+    }>;
+    const progress = JSON.parse(String(state.progressJson)) as Array<{
+      teamId: string;
+      solved: number;
+    }>;
+    const plan = plans.find((entry) => entry.teamId === teamId)!;
+    const solved = progress.find((entry) => entry.teamId === teamId)!.solved;
+    const puzzle = puzzleList[plan.order[solved]];
+    const trueHolder = plan.assignments[solved].find((entry) =>
+      entry.candidateViewId?.startsWith('true-'),
+    )!;
+    const actor = team.find(
+      (phone) => phone.participantId === trueHolder.participantId,
+    )!;
+    return app.get(SubmitGameplayCommand).execute({
+      sessionId,
+      actor,
+      commandId: uuid(),
+      expectedSessionRevision: await sessionRevision(sessionId),
+      expectedRuntimeRevision: runtime.revision,
+      roundId: runtime.activeRound!.id,
+      commandType: 'submit-candidate',
+      payload: { contentItemId: puzzle.contentItemId, localCandidateId: 'one' },
+    });
   };
 
   it('prepares without starting anything, then launches only once phones are ready', async () => {
@@ -448,7 +508,7 @@ describe('Unified Match preflight integration', () => {
       positionKey: '2#slot_1',
       occurrenceIndex: 2,
       slotKey: WorldChallengeSlotKey.SLOT_1,
-      challengeKey: DISTRIBUTED_INFORMATION_MODE_KEY,
+      challengeKey: RAKKIBHA_MODE_KEY,
       requiresPhones: true,
       readyToLaunch: false,
     });
@@ -522,43 +582,53 @@ describe('Unified Match preflight integration', () => {
     expect(launched.match.currentChallenge).toMatchObject({
       occurrenceIndex: 2,
       slotKey: WorldChallengeSlotKey.SLOT_1,
-      challengeKey: DISTRIBUTED_INFORMATION_MODE_KEY,
+      challengeKey: RAKKIBHA_MODE_KEY,
     });
     // Exactly one runtime, and it is the bound one.
     const runtime = (await runtimes().findBySessionId(sessionId))!;
     expect(runtime.id).toBe(launched.match.currentChallenge!.runtimeId);
 
-    // Every phone sees only its own segments.
-    const segmentsOf = (view: Record<string, unknown>) =>
-      JSON.parse(String(view.mySegmentsJson)) as Array<{
-        id: string;
-        content: string;
-      }>;
+    // Private asymmetric roles: exactly one reference holder and two candidate
+    // holders, and no phone can read another phone's private media.
+    const collectUrls = (view: Record<string, unknown>) =>
+      JSON.stringify(view).match(/\/[\w-]+\.png/g) ?? [];
     const alphaViews = await Promise.all(
       alpha.map((phone) => viewOf(sessionId, phone)),
     );
-    for (const view of alphaViews) {
-      expect(segmentsOf(view).length).toBeGreaterThan(0);
-      // No phone holds the whole puzzle, which is the point of the mechanic.
-      expect(segmentsOf(view).length).toBeLessThan(3);
+    const referenceHolders = alphaViews.filter(
+      (view) => view.hasReference === true,
+    );
+    const candidateHolders = alphaViews.filter((view) =>
+      Boolean(view.myCandidatesJson),
+    );
+    // Exactly one reference holder; every other teammate is a candidate holder.
+    expect(referenceHolders).toHaveLength(1);
+    expect(candidateHolders).toHaveLength(alpha.length - 1);
+    expect(referenceHolders.length + candidateHolders.length).toBe(
+      alpha.length,
+    );
+    // The reference holder is never handed candidates, and a candidate holder is
+    // never handed the reference.
+    expect(referenceHolders[0].myCandidatesJson).toBeUndefined();
+    expect(String(referenceHolders[0].myReferenceJson)).toContain(
+      '/reference-',
+    );
+    for (const holder of candidateHolders) {
+      expect(holder.myReferenceJson).toBeUndefined();
     }
-    // Between the two of them the team holds all three segments.
-    expect(
-      new Set(
-        alphaViews.flatMap((view) => segmentsOf(view)).map((entry) => entry.id),
-      ).size,
-    ).toBe(3);
-    // And no phone can read a teammate's segment.
+    // The correct identity never leaves the server, and no phone's serialized view
+    // contains another phone's private media URLs.
     for (const [index, view] of alphaViews.entries()) {
-      const others = alphaViews
-        .filter((_, other) => other !== index)
-        .flatMap((other) => segmentsOf(other))
-        .map((entry) => entry.content);
       const serialized = JSON.stringify(view);
-      for (const content of others) {
-        if (segmentsOf(view).some((entry) => entry.content === content))
-          continue;
-        expect(serialized).not.toContain(content);
+      expect(serialized).not.toContain('correctCanonicalIdentity');
+      expect(serialized).not.toContain('canonicalIdentity');
+      const mine = collectUrls(view);
+      for (const [other, otherView] of alphaViews.entries()) {
+        if (other === index) continue;
+        for (const url of collectUrls(otherView)) {
+          if (mine.includes(url)) continue;
+          expect(serialized).not.toContain(url);
+        }
       }
     }
 

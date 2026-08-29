@@ -76,6 +76,7 @@ export const MODE_COMMAND_TYPES: readonly string[] = [
   'decide-card',
   'skip-card',
   // ركّبها.
+  'submit-candidate',
   'expire-race',
   // مين أقرب.
   'submit-estimate',

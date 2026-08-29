@@ -15,7 +15,7 @@ import { MatchSnapshotComposer } from './application/match-snapshot.composer';
 import { MatchTransitionNotifier } from './application/match-transition.notifier';
 import { MatchWorldCatalog } from './application/match-world.catalog';
 import { MatchUseCases } from './application/match.use-cases';
-import { DistributedInformationChallengeLauncher } from './application/distributed-information-challenge.launcher';
+import { RakkibhaChallengeLauncher } from './application/rakkibha-challenge.launcher';
 import { RyoChallengeLauncher } from './application/ryo-challenge.launcher';
 import { RuntimeScoreEventCollector } from './application/runtime-score-event.collector';
 import { Top5ChallengeLauncher } from './application/top5-challenge.launcher';
@@ -101,7 +101,7 @@ import { MyMatchesController } from './presentation/my-matches.controller';
     MatchUseCases,
     RyoChallengeLauncher,
     Top5ChallengeLauncher,
-    DistributedInformationChallengeLauncher,
+    RakkibhaChallengeLauncher,
     BombChallengeLauncher,
     ClosestChallengeLauncher,
     ComboChallengeLauncher,

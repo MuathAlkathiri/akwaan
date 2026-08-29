@@ -49,7 +49,7 @@ export const ANSWER_MODE_LABEL: Record<ChallengeAnswerMode, string> = {
   match: "مطابقة نصية",
   vote: "تصويت",
   split: "معلومة مقسّمة",
-  distributed: "ركّبها (معلومات موزّعة)",
+  rakkibha: "ركّبها (تجميع بصري)",
   top_5: "أفضل 5",
   one_clue: "بدليل واحد",
 };

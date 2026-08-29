@@ -53,7 +53,7 @@ describe('Match module architecture', () => {
     for (const path of launchers) {
       const content = read(path);
       expect(content).toMatch(
-        /StartRyoGameplay|StartTop5|StartDistributedInformation|StartClosestGameplay|StartOneClueGameplay|StartBombGameplayFromContent|StartComboGameplay|StartMarhalaGameplay/,
+        /StartRyoGameplay|StartTop5|StartRakkibha|StartClosestGameplay|StartOneClueGameplay|StartBombGameplayFromContent|StartComboGameplay|StartMarhalaGameplay/,
       );
       // No launcher may build a runtime, a round, or an interaction itself.
       expect(content).not.toMatch(
@@ -244,7 +244,7 @@ describe('Match module architecture', () => {
     const allowed = [
       'live-game-sessions/application/start-ryo-gameplay.use-case',
       'live-game-sessions/application/start-top5.use-case',
-      'live-game-sessions/application/start-distributed-information.use-case',
+      'live-game-sessions/application/start-rakkibha.use-case',
       'live-game-sessions/application/start-closest-gameplay.use-case',
       'live-game-sessions/application/start-combo-gameplay.use-case',
       'live-game-sessions/application/start-one-clue-gameplay.use-case',
@@ -271,7 +271,7 @@ describe('Match module architecture', () => {
       'live-game-sessions/presentation/live-session-http-exception.filter',
       'live-game-sessions/domain/ryo-gameplay.plugin',
       'live-game-sessions/domain/top5-keep-or-give.plugin',
-      'live-game-sessions/domain/distributed-information.plugin',
+      'live-game-sessions/domain/rakkibha.plugin',
       'live-game-sessions/domain/closest-gameplay.plugin',
       'live-game-sessions/domain/combo-gameplay.plugin',
       'live-game-sessions/domain/one-clue-gameplay.plugin',

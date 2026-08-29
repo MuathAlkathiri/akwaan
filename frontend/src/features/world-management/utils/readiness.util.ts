@@ -87,19 +87,14 @@ const ISSUE_COPY: Record<string, string> = {
   CHALLENGE_INPUT_TYPE_REQUIRED: "حدّد طريقة الإدخال على هاتف اللاعب.",
   MATCH_WITHOUT_RELATIONAL_CHALLENGE:
     "مباراة النشر تحتاج تحدياً علائقياً واحداً على الأقل بين عوالمها.",
-  DISTRIBUTED_PUBLIC_PROMPT_REQUIRED: "اكتب السؤال العام الذي يراه كل الفريق.",
-  DISTRIBUTED_SEGMENT_COUNT_INVALID: "أضف ثلاث معلومات خاصة بالضبط.",
-  DISTRIBUTED_SEGMENT_IDS_INVALID: "المعلومات يجب أن تكون أ و ب و ج، كل واحدة مرة.",
-  DISTRIBUTED_SEGMENT_CONTENT_REQUIRED: "اكتب محتوى كل معلومة من الثلاث.",
-  DISTRIBUTED_MERGE_OPTION_REQUIRED:
-    "اختر توزيعاً آمناً واحداً على الأقل لفريق من لاعبين.",
-  DISTRIBUTED_MERGE_OPTION_INVALID:
-    "كل توزيع يعطي لاعباً معلومتين والآخر المعلومة الباقية.",
-  DISTRIBUTED_TEAM_SIZES_INVALID: "أحجام الفرق المدعومة هي لاعبان أو ثلاثة.",
-  DISTRIBUTED_ANSWER_MODE_UNSUPPORTED:
-    "طريقة الإجابة يجب أن تكون نصاً قصيراً أو رقماً أو اختياراً من متعدد.",
-  DISTRIBUTED_SAFETY_CONFIRMATION_REQUIRED:
-    "أكّد أنك راجعت التوزيع ولا يستطيع لاعب واحد حل اللغز بمفرده.",
+  RAKKIBHA_INSTRUCTION_REQUIRED: "اكتب تعليمات ركّبها المحايدة.",
+  RAKKIBHA_CANDIDATE_VIEWS_REQUIRED: "أضف حاملَي قطع على الأقل.",
+  RAKKIBHA_CANDIDATE_COUNT_INVALID: "كل حامل يحتاج قطعتين أو ثلاثاً.",
+  RAKKIBHA_LOCAL_IDS_INVALID: "معرفات القطع المحلية يجب أن تكون فريدة.",
+  RAKKIBHA_CANONICAL_IDENTITY_REQUIRED: "كل قطعة تحتاج هوية داخلية.",
+  RAKKIBHA_TRUE_CANDIDATE_INVALID: "يجب أن توجد قطعة صحيحة واحدة فقط.",
+  RAKKIBHA_TEAM_SIZES_INVALID: "أحجام الفرق المدعومة هي لاعبان أو ثلاثة.",
+  RAKKIBHA_SAFETY_CONFIRMATION_REQUIRED: "أكّد مراجعة فصل المرجع عن القطعة الصحيحة.",
 };
 
 export type ReadinessCheckState = "ok" | "warning" | "blocker";

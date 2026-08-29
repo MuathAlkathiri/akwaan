@@ -42,10 +42,7 @@ import {
   Top5Result,
 } from '../domain/top5-keep-or-give.plugin';
 import { eligibleParticipantsOf } from './start-top5.use-case';
-import {
-  DISTRIBUTED_INFORMATION_MODE_KEY,
-  DistributedResult,
-} from '../domain/distributed-information.plugin';
+import { RAKKIBHA_MODE_KEY, RakkibhaResult } from '../domain/rakkibha.plugin';
 import { GameplayObserverRegistry } from './gameplay-observer.registry';
 import { BOMB_MODE_KEY } from '../domain/bomb-gameplay.plugin';
 import { COMBO_MODE_KEY } from '../domain/combo-gameplay.plugin';
@@ -264,15 +261,15 @@ export class SubmitGameplayCommand {
         };
       }
       if (
-        runtime.modeKey === DISTRIBUTED_INFORMATION_MODE_KEY &&
+        runtime.modeKey === RAKKIBHA_MODE_KEY &&
         handled.runtimeState.phase === 'completed' &&
         !handled.runtimeState.scoreEventsJson
       ) {
         const result = JSON.parse(
           String(handled.runtimeState.resultJson),
-        ) as DistributedResult;
+        ) as RakkibhaResult;
         const events = this.scoring.score(
-          SCORING_RULE_IDS.DISTRIBUTED_INFORMATION_RACE_RESULT,
+          SCORING_RULE_IDS.RAKKIBHA_RACE_RESULT,
           {
             teamIds: Object.keys(result.solved) as [string, string],
             winnerTeamId: result.winnerTeamId,
@@ -335,7 +332,7 @@ export class SubmitGameplayCommand {
       const terminal =
         this.completeBombIfTerminal(session, runtime, command, now) ||
         this.completeTop5IfTerminal(runtime, command, now) ||
-        this.completeDistributedIfTerminal(runtime, command, now);
+        this.completeRakkibhaIfTerminal(runtime, command, now);
       const closestTerminal = this.completeClosestIfTerminal(
         runtime,
         command,
@@ -528,12 +525,12 @@ export class SubmitGameplayCommand {
    * "ركّبها" resolves inside the plugin — first finisher or deadline — so the
    * runtime is closed as soon as its own state says the race is over.
    */
-  private completeDistributedIfTerminal(
+  private completeRakkibhaIfTerminal(
     runtime: import('../domain/gameplay-runtime').GameplayRuntime,
     command: GameplayRuntimeCommand,
     now: Date,
   ): boolean {
-    if (runtime.modeKey !== DISTRIBUTED_INFORMATION_MODE_KEY) return false;
+    if (runtime.modeKey !== RAKKIBHA_MODE_KEY) return false;
     const state = runtime.serialize();
     if (state.runtimeState.phase !== 'completed') return false;
     const round = state.activeRound;
@@ -542,7 +539,7 @@ export class SubmitGameplayCommand {
         roundId: round.id,
         commandId: `${command.commandId}:round-complete`,
         actorId: command.actor.actorId,
-        reason: 'distributed-information-resolved',
+        reason: 'rakkibha-resolved',
         result: {
           resultJson: state.runtimeState.resultJson,
           scoreEventsJson: state.runtimeState.scoreEventsJson,

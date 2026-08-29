@@ -5,7 +5,7 @@ import { ChallengeWinRule } from './application/challenge-win.rule';
 import { PerfectClearBonusRule } from './application/perfect-clear-bonus.rule';
 import { RyoPayoffMatrixRule } from './application/ryo-payoff-matrix.rule';
 import { Top5ResultRule } from './application/top5-result.rule';
-import { DistributedInformationRaceRule } from './application/distributed-information-race.rule';
+import { RakkibhaRaceRule } from './application/rakkibha-race.rule';
 import { ManualScoreCorrectionRule } from './application/manual-score-correction.rule';
 
 /**
@@ -21,7 +21,7 @@ import { ManualScoreCorrectionRule } from './application/manual-score-correction
     PerfectClearBonusRule,
     RyoPayoffMatrixRule,
     Top5ResultRule,
-    DistributedInformationRaceRule,
+    RakkibhaRaceRule,
     ManualScoreCorrectionRule,
   ],
   exports: [ScoringRuleRegistry, ScoringService],
@@ -33,7 +33,7 @@ export class ScoringModule implements OnModuleInit {
     private readonly perfectClearBonus: PerfectClearBonusRule,
     private readonly ryoPayoffMatrix: RyoPayoffMatrixRule,
     private readonly top5Result: Top5ResultRule,
-    private readonly distributedRace: DistributedInformationRaceRule,
+    private readonly rakkibhaRace: RakkibhaRaceRule,
     private readonly manualCorrection: ManualScoreCorrectionRule,
   ) {}
 
@@ -42,7 +42,7 @@ export class ScoringModule implements OnModuleInit {
     this.registry.bind(this.perfectClearBonus);
     this.registry.bind(this.ryoPayoffMatrix);
     this.registry.bind(this.top5Result);
-    this.registry.bind(this.distributedRace);
+    this.registry.bind(this.rakkibhaRace);
     this.registry.bind(this.manualCorrection);
   }
 }

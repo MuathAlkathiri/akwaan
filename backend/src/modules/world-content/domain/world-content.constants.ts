@@ -47,7 +47,7 @@ export enum ChallengeAnswerMode {
    * supplies the private split, and the item keeps whichever answer contract it
    * already had.
    */
-  DISTRIBUTED = 'distributed',
+  RAKKIBHA = 'rakkibha',
 }
 
 /** A generic board position. Gameplay meaning comes from its Challenge Type. */
@@ -107,31 +107,24 @@ export const TOP5_TRAP_COUNT = TOP5_ENTRY_COUNT - TOP5_RANKED_COUNT;
 export const TOP5_TURN_SECONDS = 15;
 
 /**
- * "ركّبها" (distributed-information): three private segments per item, one
- * public prompt, and a race between two teams.
+ * "ركّبها" — asymmetric visual assembly. Each puzzle has one private reference
+ * view and two-or-three private candidate views; exactly one candidate holder
+ * owns the matching piece, and the team races another team by describing what
+ * each privately sees and selecting the correct candidate.
  */
-export const DISTRIBUTED_INFORMATION_SLUG = 'distributed-information';
-export const DISTRIBUTED_INFORMATION_VARIANT = 'three-segment-race';
-export const DISTRIBUTED_INFORMATION_SEGMENT_IDS = ['A', 'B', 'C'] as const;
-export type DistributedInformationSegmentId =
-  (typeof DISTRIBUTED_INFORMATION_SEGMENT_IDS)[number];
+export const RAKKIBHA_SLUG = 'rakkibha';
+export const RAKKIBHA_VARIANT = 'visual-assembly';
 /** Exactly three puzzles per challenge launch. */
-export const DISTRIBUTED_INFORMATION_ITEM_COUNT = 3;
+export const RAKKIBHA_ITEM_COUNT = 3;
 /** Two or three connected players per team; no solo and no four in V1. */
-export const DISTRIBUTED_INFORMATION_TEAM_SIZES = [2, 3] as const;
+export const RAKKIBHA_TEAM_SIZES = [2, 3] as const;
 /** A wrong answer locks that team's input for exactly this long. */
-export const DISTRIBUTED_INFORMATION_LOCK_MS = 5_000;
+export const RAKKIBHA_LOCK_MS = 5_000;
 /**
  * The whole race. Derived from the Co-op family budget (45s per item) across the
  * three puzzles rather than invented: 3 x 45 = 135.
  */
-export const DISTRIBUTED_INFORMATION_TIMER_SECONDS = 135;
-/** The answer modes a distributed-information item may resolve with. */
-export const DISTRIBUTED_INFORMATION_ANSWER_MODES = [
-  'closest',
-  'match',
-  'multiple_choice',
-] as const;
+export const RAKKIBHA_TIMER_SECONDS = 135;
 
 /** "بدليل واحد": a core mechanic that wraps deterministic text matching. */
 export const ONE_CLUE_SLUG = 'one-clue';
@@ -145,16 +138,14 @@ export const ONE_CLUE_ITEM_COUNT = 3;
 export const ONE_CLUE_STAGE_SECONDS = 7;
 export const ONE_CLUE_VALUES = [5, 4, 3, 2, 1] as const;
 
-export type ContentPattern =
-  'generic' | 'top_5' | 'distributed_information' | 'one_clue';
+export type ContentPattern = 'generic' | 'top_5' | 'rakkibha' | 'one_clue';
 
 /** Mechanic-owned authoring structure, distinct from its answer contract. */
 export function contentPatternForChallengeAnswerMode(
   mode: ChallengeAnswerMode,
 ): ContentPattern {
   if (mode === ChallengeAnswerMode.TOP_5) return 'top_5';
-  if (mode === ChallengeAnswerMode.DISTRIBUTED)
-    return 'distributed_information';
+  if (mode === ChallengeAnswerMode.RAKKIBHA) return 'rakkibha';
   if (mode === ChallengeAnswerMode.ONE_CLUE) return 'one_clue';
   return 'generic';
 }
@@ -185,7 +176,7 @@ export const FAMILY_ALLOWED_ANSWER_MODES: Readonly<
   [ChallengeFamily.RYO]: [ChallengeAnswerMode.RYO],
   [ChallengeFamily.COOP]: [
     ChallengeAnswerMode.ONE_CLUE,
-    ChallengeAnswerMode.DISTRIBUTED,
+    ChallengeAnswerMode.RAKKIBHA,
     ChallengeAnswerMode.SPLIT,
     ChallengeAnswerMode.MATCH,
     ChallengeAnswerMode.MULTIPLE_CHOICE,
@@ -219,7 +210,7 @@ export const ANSWER_MODE_COMPATIBLE_ITEM_MODES: Readonly<
   [ChallengeAnswerMode.SPLIT]: [ChallengeAnswerMode.SPLIT],
   [ChallengeAnswerMode.TOP_5]: [ChallengeAnswerMode.TOP_5],
   [ChallengeAnswerMode.ONE_CLUE]: [ChallengeAnswerMode.MATCH],
-  [ChallengeAnswerMode.DISTRIBUTED]: [
+  [ChallengeAnswerMode.RAKKIBHA]: [
     ChallengeAnswerMode.MATCH,
     ChallengeAnswerMode.MULTIPLE_CHOICE,
     ChallengeAnswerMode.CLOSEST,

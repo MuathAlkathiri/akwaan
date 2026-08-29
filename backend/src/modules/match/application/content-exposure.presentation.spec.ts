@@ -5,7 +5,7 @@ import { RYO_GAMEPLAY_PLUGIN } from '../../live-game-sessions/domain/ryo-gamepla
 import { CLOSEST_GAMEPLAY_PLUGIN } from '../../live-game-sessions/domain/closest-gameplay.plugin';
 import { ONE_CLUE_GAMEPLAY_PLUGIN } from '../../live-game-sessions/domain/one-clue-gameplay.plugin';
 import { TOP5_KEEP_OR_GIVE_PLUGIN } from '../../live-game-sessions/domain/top5-keep-or-give.plugin';
-import { DISTRIBUTED_INFORMATION_PLUGIN } from '../../live-game-sessions/domain/distributed-information.plugin';
+import { RAKKIBHA_PLUGIN } from '../../live-game-sessions/domain/rakkibha.plugin';
 
 /**
  * What each mechanic considers *presented*.
@@ -305,7 +305,7 @@ describe('presented content, per mechanic', () => {
       progress: Array<{ teamId: string; solved: number }>,
       orders?: Record<string, number[]>,
     ) =>
-      DISTRIBUTED_INFORMATION_PLUGIN.presentedContentItemIds!({
+      RAKKIBHA_PLUGIN.presentedContentItemIds!({
         runtimeState: state(progress, orders),
         roundState: {},
         orderedContentItemIds: PUZZLES.map((p) => p.contentItemId),
@@ -357,7 +357,7 @@ describe('presented content, per mechanic', () => {
       // A throw here would be swallowed by the observer and silently skip
       // exposure, which is the one failure that loses content quietly.
       expect(
-        DISTRIBUTED_INFORMATION_PLUGIN.presentedContentItemIds!({
+        RAKKIBHA_PLUGIN.presentedContentItemIds!({
           runtimeState: {},
           roundState: {},
           orderedContentItemIds: [],

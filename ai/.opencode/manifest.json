@@ -10,16 +10,16 @@
     "vote",
     "split",
     "top_5",
-    "distributed"
+    "rakkibha"
   ],
   "challengeTypes": [
     {
-      "slug": "distributed-information",
-      "name": "challenge-type-distributed-information",
+      "slug": "rakkibha",
+      "name": "challenge-type-rakkibha",
       "patterns": [
-        "shared-fragments"
+        "visual-assembly"
       ],
-      "skill": ".opencode/skills/challenge-types/distributed-information/SKILL.md"
+      "skill": ".opencode/skills/challenge-types/rakkibha/SKILL.md"
     },
     {
       "slug": "guess-your-teammate",

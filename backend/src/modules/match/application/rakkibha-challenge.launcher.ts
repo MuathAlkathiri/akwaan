@@ -1,19 +1,18 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { StartDistributedInformation } from '../../live-game-sessions/application/start-distributed-information.use-case';
+import { StartRakkibha } from '../../live-game-sessions/application/start-rakkibha.use-case';
 import {
   GAMEPLAY_RUNTIME_REPOSITORY,
   GameplayRuntimeRepository,
 } from '../../live-game-sessions/domain/gameplay-runtime.repository';
 import { GameplayRuntimeState } from '../../live-game-sessions/domain/gameplay-runtime';
 import {
-  DISTRIBUTED_INFORMATION_MODE_KEY,
-  DistributedResult,
-  DISTRIBUTED_INFORMATION_PLUGIN,
-} from '../../live-game-sessions/domain/distributed-information.plugin';
+  RAKKIBHA_MODE_KEY,
+  RakkibhaResult,
+  RAKKIBHA_PLUGIN,
+} from '../../live-game-sessions/domain/rakkibha.plugin';
 import {
-  DISTRIBUTED_INFORMATION_ANSWER_MODES,
-  DISTRIBUTED_INFORMATION_ITEM_COUNT,
-  DISTRIBUTED_INFORMATION_VARIANT,
+  RAKKIBHA_ITEM_COUNT,
+  RAKKIBHA_VARIANT,
 } from '../../world-content/domain/world-content.constants';
 import { MatchDomainError } from '../domain/match.errors';
 import {
@@ -24,21 +23,21 @@ import {
   MatchSelectableContentItem,
 } from './challenge-launcher.registry';
 
-const REQUIRED_ITEMS = DISTRIBUTED_INFORMATION_ITEM_COUNT;
+const REQUIRED_ITEMS = RAKKIBHA_ITEM_COUNT;
 
 /**
  * "ركّبها", as a Match board slot.
  *
  * Both teams race the same three ContentItems simultaneously, so there is no
  * starting team to rotate. Startup is delegated wholesale to
- * StartDistributedInformation; this adapter only binds the runtime and reads the
+ * StartRakkibha; this adapter only binds the runtime and reads the
  * safe aggregate result back out.
  */
 @Injectable()
-export class DistributedInformationChallengeLauncher
+export class RakkibhaChallengeLauncher
   implements MatchChallengeLauncher, OnModuleInit
 {
-  readonly key = DISTRIBUTED_INFORMATION_MODE_KEY;
+  readonly key = RAKKIBHA_MODE_KEY;
 
   /**
    * Three items, and phones on both teams.
@@ -48,9 +47,9 @@ export class DistributedInformationChallengeLauncher
    * team outside that range, so this is a hard requirement, not a preference.
    */
   readonly launchRequirements = {
-    contentItemCount: DISTRIBUTED_INFORMATION_ITEM_COUNT,
+    contentItemCount: RAKKIBHA_ITEM_COUNT,
     requiresPhones: true,
-    // Exactly the range StartDistributedInformation.eligibleTeams enforces: two or
+    // Exactly the range StartRakkibha.eligibleTeams enforces: two or
     // three connected team-players on each of the two teams.
     readiness: {
       minParticipantsPerTeam: 2,
@@ -60,17 +59,14 @@ export class DistributedInformationChallengeLauncher
       requiresConnectedPresence: true,
     },
     isPlayableItem: (item: MatchSelectableContentItem) =>
-      item.mechanicVariant === DISTRIBUTED_INFORMATION_VARIANT &&
+      item.mechanicVariant === RAKKIBHA_VARIANT &&
       // Fragmenting authored content is only safe where the author said so.
-      item.authorSafetyConfirmation === true &&
-      DISTRIBUTED_INFORMATION_ANSWER_MODES.includes(
-        item.answerMode as (typeof DISTRIBUTED_INFORMATION_ANSWER_MODES)[number],
-      ),
+      item.authorSafetyConfirmation === true,
   };
 
   constructor(
     private readonly registry: ChallengeLauncherRegistry,
-    private readonly startChallenge: StartDistributedInformation,
+    private readonly startChallenge: StartRakkibha,
     @Inject(GAMEPLAY_RUNTIME_REPOSITORY)
     private readonly runtimes: GameplayRuntimeRepository,
   ) {}
@@ -81,8 +77,8 @@ export class DistributedInformationChallengeLauncher
 
   supports(input: { challengeTypeSlug: string; runtimeKey?: string }): boolean {
     return (
-      input.runtimeKey === DISTRIBUTED_INFORMATION_MODE_KEY ||
-      input.challengeTypeSlug === DISTRIBUTED_INFORMATION_MODE_KEY
+      input.runtimeKey === RAKKIBHA_MODE_KEY ||
+      input.challengeTypeSlug === RAKKIBHA_MODE_KEY
     );
   }
 
@@ -92,7 +88,7 @@ export class DistributedInformationChallengeLauncher
       new Set(context.contentItemIds).size !== REQUIRED_ITEMS
     ) {
       throw new MatchDomainError(
-        'DISTRIBUTED_REQUIRES_THREE_ITEMS',
+        'RAKKIBHA_REQUIRES_THREE_ITEMS',
         `ركّبها needs exactly ${REQUIRED_ITEMS} distinct content items`,
       );
     }
@@ -113,7 +109,7 @@ export class DistributedInformationChallengeLauncher
     const runtime = await this.runtimes.findBySessionId(context.sessionId);
     if (!runtime) {
       throw new MatchDomainError(
-        'DISTRIBUTED_RUNTIME_NOT_CREATED',
+        'RAKKIBHA_RUNTIME_NOT_CREATED',
         'The ركّبها runtime was not created',
       );
     }
@@ -129,10 +125,10 @@ export class DistributedInformationChallengeLauncher
     const runtimeState = input.runtime.runtimeState;
     if (
       !runtimeState ||
-      !DISTRIBUTED_INFORMATION_PLUGIN.presentedContentItemIds
+      !RAKKIBHA_PLUGIN.presentedContentItemIds
     )
       return [];
-    return DISTRIBUTED_INFORMATION_PLUGIN.presentedContentItemIds({
+    return RAKKIBHA_PLUGIN.presentedContentItemIds({
       runtimeState,
       roundState: input.runtime.activeRound?.modeState ?? {},
       orderedContentItemIds: input.orderedContentItemIds,
@@ -154,9 +150,9 @@ export class DistributedInformationChallengeLauncher
     if (typeof raw !== 'string' || !raw) {
       return { challengeKey: this.key, details: {} };
     }
-    let result: DistributedResult | undefined;
+    let result: RakkibhaResult | undefined;
     try {
-      result = JSON.parse(raw) as DistributedResult;
+      result = JSON.parse(raw) as RakkibhaResult;
     } catch {
       return { challengeKey: this.key, details: {} };
     }

@@ -63,7 +63,7 @@ const messages: Record<string, string> = {
   // Mechanic-specific startup refusals.
   RYO_REQUIRES_THREE_ITEMS: "تحدي اقرأ خصمك يحتاج 3 عناصر محتوى مختلفة بالضبط.",
   TOP5_REQUIRES_ONE_ITEM: "تحدي أفضل 5 يحتاج عنصر محتوى واحدًا بالضبط.",
-  DISTRIBUTED_REQUIRES_THREE_ITEMS:
+  RAKKIBHA_REQUIRES_THREE_ITEMS:
     "تحدي ركّبها يحتاج 3 عناصر محتوى مختلفة بالضبط.",
   TOP5_VARIANT_INVALID: "عنصر المحتوى المختار غير مُعد لتحدي أفضل 5.",
   RYO_STARTING_TEAM_INVALID: "الفريق المحدد للبدء مو مشارك في المباراة.",

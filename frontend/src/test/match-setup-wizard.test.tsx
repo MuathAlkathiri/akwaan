@@ -87,8 +87,8 @@ const scope = (id: string, name: string, worldId: string): PlayableScope => ({
     },
     {
       slotKey: "slot_3",
-      challengeTypeSlug: "distributed-information",
-      family: "distributed-information",
+      challengeTypeSlug: "rakkibha",
+      family: "rakkibha",
       displayName: "معلومات مقسمة",
       sortOrder: 2,
     },

@@ -202,14 +202,14 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
       family: ChallengeFamily.COOP,
       answerMode: ChallengeAnswerMode.ONE_CLUE,
     });
-    const distributed = challengeType({
-      id: 'distributed',
-      slug: 'distributed-information',
+    const rakkibha = challengeType({
+      id: 'rakkibha',
+      slug: 'rakkibha',
       family: ChallengeFamily.COOP,
-      answerMode: ChallengeAnswerMode.DISTRIBUTED,
+      answerMode: ChallengeAnswerMode.RAKKIBHA,
     });
     const oneClueItem = contentItem({
-      compatibleChallengeTypeIds: ['one-clue', 'distributed'],
+      compatibleChallengeTypeIds: ['one-clue', 'rakkibha'],
       answerPayload: {
         mode: ChallengeAnswerMode.MATCH,
         acceptedAnswers: ['الهلال'],
@@ -225,9 +225,9 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
     expect(
       codes({
         item: oneClueItem,
-        challengeTypes: typeMap(oneClue, distributed),
+        challengeTypes: typeMap(oneClue, rakkibha),
       }),
-    ).toContain('DISTRIBUTED_INFORMATION_STRUCTURE_REQUIRED');
+    ).toContain('RAKKIBHA_STRUCTURE_REQUIRED');
 
     expect(
       codes({
@@ -237,7 +237,7 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
             mode: ChallengeAnswerMode.MATCH,
             acceptedAnswers: ['الهلال'],
           },
-          mechanicPayload: { variant: 'three-segment-race' },
+          mechanicPayload: { variant: 'visual-assembly' },
         }),
         challengeTypes: typeMap(oneClue),
       }),

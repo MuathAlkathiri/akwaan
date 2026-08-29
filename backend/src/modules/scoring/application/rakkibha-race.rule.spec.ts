@@ -2,24 +2,21 @@ import { ScoringRuleRegistry } from './scoring-rule.registry';
 import { ScoringService } from './scoring.service';
 import { SCORING_RULE_IDS } from '../domain/scoring-rule';
 import { ScoreLedger } from '../domain/score-ledger';
-import {
-  DistributedInformationRaceInput,
-  DistributedInformationRaceRule,
-} from './distributed-information-race.rule';
+import { RakkibhaRaceInput, RakkibhaRaceRule } from './rakkibha-race.rule';
 
 const ALPHA = 'team-alpha';
 const BETA = 'team-beta';
 
-describe('distributed-information.race-result', () => {
+describe('rakkibha.race-result', () => {
   const scoring = () => {
     const registry = new ScoringRuleRegistry();
-    registry.bind(new DistributedInformationRaceRule());
+    registry.bind(new RakkibhaRaceRule());
     return new ScoringService(registry);
   };
 
   const input = (
-    overrides: Partial<DistributedInformationRaceInput> = {},
-  ): DistributedInformationRaceInput => ({
+    overrides: Partial<RakkibhaRaceInput> = {},
+  ): RakkibhaRaceInput => ({
     teamIds: [ALPHA, BETA],
     winnerTeamId: ALPHA,
     tie: false,
@@ -37,9 +34,9 @@ describe('distributed-information.race-result', () => {
     occurredAt: new Date('2026-01-01T00:00:00.000Z'),
   };
 
-  const score = (overrides: Partial<DistributedInformationRaceInput> = {}) =>
+  const score = (overrides: Partial<RakkibhaRaceInput> = {}) =>
     scoring().score(
-      SCORING_RULE_IDS.DISTRIBUTED_INFORMATION_RACE_RESULT,
+      SCORING_RULE_IDS.RAKKIBHA_RACE_RESULT,
       input(overrides),
       context,
     );
@@ -51,7 +48,7 @@ describe('distributed-information.race-result', () => {
     expect(events[0]).toMatchObject({
       teamId: ALPHA,
       delta: 1,
-      scoringRuleId: SCORING_RULE_IDS.DISTRIBUTED_INFORMATION_RACE_RESULT,
+      scoringRuleId: SCORING_RULE_IDS.RAKKIBHA_RACE_RESULT,
       challengeSessionId: 'runtime-1',
     });
   });
@@ -70,7 +67,7 @@ describe('distributed-information.race-result', () => {
       expect(events).toHaveLength(1);
       expect(events[0].delta).toBe(1);
       // The reason travels with the event so a result screen can explain it.
-      expect(events[0].reason).toBe(`distributed-information.${reason}`);
+      expect(events[0].reason).toBe(`rakkibha.${reason}`);
     }
   });
 

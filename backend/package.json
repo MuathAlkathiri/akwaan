@@ -41,8 +41,6 @@
     "migrate:top5:dist": "node dist/scripts/migrate-top10-to-top5.js",
     "migrate:gameplay-runtime-indexes": "ts-node -r tsconfig-paths/register src/scripts/migrate-gameplay-runtime-indexes.ts",
     "migrate:gameplay-runtime-indexes:dist": "node dist/scripts/migrate-gameplay-runtime-indexes.js",
-    "migrate:distributed-information": "ts-node -r tsconfig-paths/register src/scripts/migrate-distributed-information.ts",
-    "migrate:distributed-information:dist": "node dist/scripts/migrate-distributed-information.js",
     "migrate:canonical-mechanic-slugs": "ts-node -r tsconfig-paths/register src/scripts/migrate-canonical-mechanic-slugs.ts",
     "migrate:canonical-mechanic-slugs:dist": "node dist/scripts/migrate-canonical-mechanic-slugs.js",
     "provision:production-mechanics": "ts-node -r tsconfig-paths/register src/scripts/provision-production-mechanics.ts",

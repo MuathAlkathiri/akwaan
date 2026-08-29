@@ -3,7 +3,7 @@ import {
   ChallengeAnswerMode,
   ChallengeFamily,
   ChallengeItemStructure,
-  DISTRIBUTED_INFORMATION_SLUG,
+  RAKKIBHA_SLUG,
   ONE_CLUE_SLUG,
   TOP5_SLUG,
   COMBO_SLUG,
@@ -121,13 +121,13 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
     },
   }),
   definition({
-    slug: DISTRIBUTED_INFORMATION_SLUG,
+    slug: RAKKIBHA_SLUG,
     family: ChallengeFamily.COOP,
     itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
-    answerMode: ChallengeAnswerMode.DISTRIBUTED,
+    answerMode: ChallengeAnswerMode.RAKKIBHA,
     seed: {
       name: 'ركّبها',
-      description: 'معلومات موزعة بين أعضاء الفريق في سباق لحل ثلاثة ألغاز.',
+      description: 'تجميع بصري تعاوني بين حامل الشكل الناقص وحاملي القطع.',
       defaultPresentation: {
         inputType: 'phone-text',
         timerSeconds: 45,

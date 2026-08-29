@@ -5,7 +5,7 @@ import {
   ScoringRuleCalculator,
 } from '../domain/scoring-rule';
 
-export interface DistributedInformationRaceInput {
+export interface RakkibhaRaceInput {
   teamIds: [string, string];
   winnerTeamId: string | null;
   tie: boolean;
@@ -22,17 +22,17 @@ export interface DistributedInformationRaceInput {
  * answer costs only the five-second lock, so there is no negative delta here.
  */
 @Injectable()
-export class DistributedInformationRaceRule implements ScoringRuleCalculator<DistributedInformationRaceInput> {
-  readonly ruleId = SCORING_RULE_IDS.DISTRIBUTED_INFORMATION_RACE_RESULT;
+export class RakkibhaRaceRule implements ScoringRuleCalculator<RakkibhaRaceInput> {
+  readonly ruleId = SCORING_RULE_IDS.RAKKIBHA_RACE_RESULT;
 
-  calculate(input: DistributedInformationRaceInput): ScoreEventDraft[] {
+  calculate(input: RakkibhaRaceInput): ScoreEventDraft[] {
     if (input.tie || !input.winnerTeamId) return [];
     if (!input.teamIds.includes(input.winnerTeamId)) return [];
     return [
       {
         teamId: input.winnerTeamId,
         delta: 1,
-        reason: `distributed-information.${input.reason}`,
+        reason: `rakkibha.${input.reason}`,
         metadata: {
           solved: input.solved,
           wrongAttempts: input.wrongAttempts,

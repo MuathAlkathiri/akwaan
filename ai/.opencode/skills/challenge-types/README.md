@@ -7,7 +7,7 @@ Resolve mechanics here before World and Scope material.
 | `read-your-opponent` | RYO | `multiple-choice`, `closest` | `.opencode/skills/challenge-types/read-your-opponent/SKILL.md` |
 | `split` | Co-op classification | `two-groups`, `three-groups`, `ordered-groups` | `.opencode/skills/challenge-types/split/SKILL.md` |
 | `split-clue` | Co-op partial information | `complementary-halves` | `.opencode/skills/challenge-types/split-clue/SKILL.md` |
-| `distributed-information` | Co-op Puzzle World shared-puzzle | `shared-fragments` | `.opencode/skills/challenge-types/distributed-information/SKILL.md` |
+| `rakkibha` | Co-op Puzzle World asymmetric visual assembly | `visual-assembly` | `.opencode/skills/challenge-types/rakkibha/SKILL.md` |
 | `twenty-inquiries` | Co-op deduction | `bounded-identity` | `.opencode/skills/challenge-types/twenty-inquiries/SKILL.md` |
 | `same-wavelength` | Relational | `exact-match` | `.opencode/skills/challenge-types/same-wavelength/SKILL.md` |
 | `who-among-us` | Relational private roster vote; authoring-only | `team-consensus` | `.opencode/skills/challenge-types/who-among-us/SKILL.md` |

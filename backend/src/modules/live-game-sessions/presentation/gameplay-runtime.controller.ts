@@ -36,7 +36,7 @@ import {
   CreateGameplayRuntimeDto,
   GameplayRuntimeMutationDto,
   SubmitGameplayCommandDto,
-  StartDistributedInformationDto,
+  StartRakkibhaDto,
   StartRyoGameplayDto,
   StartTop5Dto,
 } from './gameplay-runtime.dto';
@@ -44,7 +44,7 @@ import { LiveSessionHttpExceptionFilter } from './live-session-http-exception.fi
 import { StartBombGameplay } from '../application/start-bomb-gameplay.use-case';
 import { StartRyoGameplay } from '../application/start-ryo-gameplay.use-case';
 import { StartTop5 } from '../application/start-top5.use-case';
-import { StartDistributedInformation } from '../application/start-distributed-information.use-case';
+import { StartRakkibha } from '../application/start-rakkibha.use-case';
 
 @ApiTags('live-gameplay-runtime')
 @ApiBearerAuth()
@@ -68,7 +68,7 @@ export class GameplayRuntimeController {
     private readonly startBomb: StartBombGameplay,
     private readonly startRyo: StartRyoGameplay,
     private readonly startTop5: StartTop5,
-    private readonly startDistributed: StartDistributedInformation,
+    private readonly startRakkibha: StartRakkibha,
   ) {}
 
   @Post()
@@ -93,13 +93,13 @@ export class GameplayRuntimeController {
     return this.startTop5.execute({ sessionId, actorId: user.id, ...body });
   }
 
-  @Post('development/distributed-information/start')
-  distributedInformationStart(
+  @Post('development/rakkibha/start')
+  rakkibhaStart(
     @Param('sessionId') sessionId: string,
-    @Body() body: StartDistributedInformationDto,
+    @Body() body: StartRakkibhaDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.startDistributed.execute({
+    return this.startRakkibha.execute({
       sessionId,
       actorId: user.id,
       ...body,

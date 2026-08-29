@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://akwaan.local/schemas/rakkibha-contentitem.schema.json",
+  "title": "Akwaan Rakkibha ContentItem (visual-assembly)",
+  "type": "object",
+  "required": [
+    "compatibleChallengeTypeIds",
+    "prompt",
+    "answerPayload",
+    "mechanicPayload",
+    "status"
+  ],
+  "properties": {
+    "compatibleChallengeTypeIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "contains": { "const": "rakkibha" },
+      "items": { "type": "string" }
+    },
+    "prompt": { "$ref": "#/$defs/localized" },
+    "answerPayload": { "type": "object" },
+    "status": { "enum": ["draft", "ready", "archived"] },
+    "mechanicPayload": {
+      "type": "object",
+      "required": [
+        "variant",
+        "instruction",
+        "reference",
+        "candidateViews",
+        "correctCanonicalIdentity",
+        "supportedTeamSizes",
+        "authorSafetyConfirmation"
+      ],
+      "not": {
+        "anyOf": [
+          { "required": ["segments"] },
+          { "required": ["fragments"] },
+          { "required": ["twoPlayerMergeOptions"] },
+          { "required": ["publicPrompt"] }
+        ]
+      },
+      "properties": {
+        "variant": { "const": "visual-assembly" },
+        "family": { "const": "visual-assembly" },
+        "instruction": { "$ref": "#/$defs/localized" },
+        "reference": {
+          "type": "object",
+          "required": ["media"],
+          "properties": {
+            "content": { "$ref": "#/$defs/localized" },
+            "media": { "$ref": "#/$defs/media" }
+          }
+        },
+        "candidateViews": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["id", "candidates"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "content": { "$ref": "#/$defs/localized" },
+              "candidates": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 3,
+                "items": {
+                  "type": "object",
+                  "required": ["localId", "canonicalIdentity", "media"],
+                  "properties": {
+                    "localId": { "type": "string", "minLength": 1 },
+                    "canonicalIdentity": { "type": "string", "minLength": 1 },
+                    "content": { "$ref": "#/$defs/localized" },
+                    "media": { "$ref": "#/$defs/media" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "correctCanonicalIdentity": { "type": "string", "minLength": 1 },
+        "supportedTeamSizes": {
+          "type": "array",
+          "items": { "enum": [2, 3] },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "authorSafetyConfirmation": { "type": "boolean" },
+        "explanation": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "localized": {
+      "type": "object",
+      "required": ["ar"],
+      "properties": {
+        "ar": { "type": "string", "minLength": 1 },
+        "en": { "type": "string" }
+      }
+    },
+    "media": {
+      "type": "object",
+      "required": ["type", "assets"],
+      "properties": {
+        "type": { "enum": ["image", "audio", "video"] },
+        "assets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["url"],
+            "properties": { "url": { "type": "string", "minLength": 1 } }
+          }
+        }
+      }
+    }
+  }
+}

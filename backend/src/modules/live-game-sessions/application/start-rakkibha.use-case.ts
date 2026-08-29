@@ -5,15 +5,15 @@ import { ChallengeTypeRepository } from '../../world-content/persistence/challen
 import { WorldChallengeConfigurationRepository } from '../../world-content/persistence/world-challenge-configuration.repository';
 import {
   ContentItemStatus,
-  DISTRIBUTED_INFORMATION_ANSWER_MODES,
-  DISTRIBUTED_INFORMATION_ITEM_COUNT,
-  DISTRIBUTED_INFORMATION_TIMER_SECONDS,
-  DISTRIBUTED_INFORMATION_VARIANT,
+  RAKKIBHA_ITEM_COUNT,
+  RAKKIBHA_TEAM_SIZES,
+  RAKKIBHA_TIMER_SECONDS,
+  RAKKIBHA_VARIANT,
   WorldChallengeSlotKey,
 } from '../../world-content/domain/world-content.constants';
 import {
   ContentItemMedia,
-  DistributedInformationPayload,
+  RakkibhaPayload,
 } from '../../world-content/domain/world-content.types';
 import {
   GAMEPLAY_RUNTIME_REPOSITORY,
@@ -25,12 +25,13 @@ import {
 } from '../domain/live-game-session.repository';
 import { LiveSessionDomainError } from '../domain/live-session.errors';
 import {
-  DISTRIBUTED_INFORMATION_MODE_KEY,
-  DistributedAssignment,
-  DistributedPuzzle,
-  DistributedSegmentMedia,
-  DistributedTeamPlan,
-} from '../domain/distributed-information.plugin';
+  RAKKIBHA_MODE_KEY,
+  RakkibhaCandidateView,
+  RakkibhaMedia,
+  RakkibhaParticipantAssignment,
+  RakkibhaPuzzle,
+  RakkibhaTeamPlan,
+} from '../domain/rakkibha.plugin';
 import {
   CreateGameplayRuntime,
   GetGameplayRuntime,
@@ -49,43 +50,22 @@ function shuffled<T>(values: readonly T[]): T[] {
   }
   return result;
 }
-
-/**
- * The compact runtime form of a canonical `ContentItemMedia`: its modality and the
- * first asset's URL/alt text, never the bytes. Text-only content (no media, `none`,
- * or an empty asset list) yields `undefined`, so a legacy item stays media-free and
- * the snapshot never carries an empty media block.
- */
-function compactSegmentMedia(
+function compactMedia(
   media: ContentItemMedia | undefined,
-): DistributedSegmentMedia | undefined {
-  if (!media || media.type === 'none') return undefined;
-  if (
-    media.type !== 'image' &&
-    media.type !== 'audio' &&
-    media.type !== 'video'
-  )
+): RakkibhaMedia | undefined {
+  if (!media || !['image', 'audio', 'video'].includes(media.type))
     return undefined;
   const asset = media.assets?.[0];
-  const url = asset?.url?.trim();
-  if (!url) return undefined;
+  if (!asset?.url?.trim()) return undefined;
   return {
-    type: media.type,
-    url,
-    ...(asset?.altText ? { altText: asset.altText } : {}),
+    type: media.type as RakkibhaMedia['type'],
+    url: asset.url.trim(),
+    ...(asset.altText ? { altText: asset.altText } : {}),
   };
 }
 
-/**
- * Starts a "ركّبها" race.
- *
- * Every random choice — each team's puzzle order, who answers which puzzle, and
- * who holds which segments — is made here, once, and persisted in the runtime.
- * Nothing is recomputed on a snapshot read, so a reconnect restores the exact
- * same private distribution.
- */
 @Injectable()
-export class StartDistributedInformation {
+export class StartRakkibha {
   constructor(
     @Inject(LIVE_GAME_SESSION_REPOSITORY)
     private readonly sessions: LiveGameSessionRepository,
@@ -109,29 +89,26 @@ export class StartDistributedInformation {
     contentItemIds: string[];
   }) {
     if (
-      input.contentItemIds.length !== DISTRIBUTED_INFORMATION_ITEM_COUNT ||
-      new Set(input.contentItemIds).size !== DISTRIBUTED_INFORMATION_ITEM_COUNT
+      input.contentItemIds.length !== RAKKIBHA_ITEM_COUNT ||
+      new Set(input.contentItemIds).size !== RAKKIBHA_ITEM_COUNT
     ) {
       throw new LiveSessionDomainError(
-        'DISTRIBUTED_REQUIRES_THREE_ITEMS',
-        `Select exactly ${DISTRIBUTED_INFORMATION_ITEM_COUNT} distinct ContentItems`,
+        'RAKKIBHA_REQUIRES_THREE_ITEMS',
+        `Select exactly ${RAKKIBHA_ITEM_COUNT} distinct ContentItems`,
       );
     }
     const session = await this.sessions.findById(input.sessionId);
-    if (!session || session.controllerActorId !== input.actorId) {
+    if (!session || session.controllerActorId !== input.actorId)
       throw new LiveSessionDomainError(
-        'DISTRIBUTED_LAUNCH_FORBIDDEN',
+        'RAKKIBHA_LAUNCH_FORBIDDEN',
         'Only the session controller can launch this challenge',
       );
-    }
     const sessionState = session.serialize();
-    if (sessionState.status !== 'active') {
+    if (sessionState.status !== 'active')
       throw new LiveSessionDomainError(
         'SESSION_NOT_ACTIVE',
         'Start the live session before launching this challenge',
       );
-    }
-
     const configuration = await this.configurations.findByWorldAndSlot(
       input.worldId,
       input.slotKey,
@@ -145,39 +122,34 @@ export class StartDistributedInformation {
       !configuration ||
       !configuration.isEnabled ||
       !mechanic ||
-      mechanic.slug !== DISTRIBUTED_INFORMATION_MODE_KEY
+      mechanic.slug !== RAKKIBHA_MODE_KEY
     ) {
       throw new LiveSessionDomainError(
-        'DISTRIBUTED_SLOT_INVALID',
+        'RAKKIBHA_SLOT_INVALID',
         'The selected board position must use the canonical ركّبها mechanic',
       );
     }
-
     const teams = this.eligibleTeams(sessionState);
     const puzzles = await this.loadPuzzles(
       input.contentItemIds,
       input.worldId,
       String(mechanic._id),
     );
-
     const now = new Date();
-    const deadlineAt = new Date(
-      now.getTime() + DISTRIBUTED_INFORMATION_TIMER_SECONDS * 1000,
-    );
+    const deadlineAt = new Date(now.getTime() + RAKKIBHA_TIMER_SECONDS * 1000);
     const plans = teams.map((team) =>
       this.planFor(team.teamId, team.participantIds, puzzles),
     );
-
     const actor = { kind: 'user' as const, actorId: input.actorId };
     await this.createRuntime.execute({
       sessionId: input.sessionId,
       actor,
       commandId: randomUUID(),
       expectedSessionRevision: session.revision,
-      modeKey: DISTRIBUTED_INFORMATION_MODE_KEY,
+      modeKey: RAKKIBHA_MODE_KEY,
       modeVersion: 1,
       initialState: {
-        variant: DISTRIBUTED_INFORMATION_VARIANT,
+        variant: RAKKIBHA_VARIANT,
         worldId: input.worldId,
         slotKey: input.slotKey,
         phase: 'active',
@@ -197,7 +169,6 @@ export class StartDistributedInformation {
         deadlineAt: deadlineAt.toISOString(),
       },
     });
-
     let runtime = (await this.runtimes.findBySessionId(input.sessionId))!;
     await this.startRuntime.execute({
       sessionId: input.sessionId,
@@ -215,32 +186,28 @@ export class StartDistributedInformation {
       expectedRuntimeRevision: runtime.revision,
     });
     runtime = (await this.runtimes.findBySessionId(input.sessionId))!;
-    const roundId = runtime.serialize().activeRound!.id;
     await this.startRound.execute({
       sessionId: input.sessionId,
-      roundId,
+      roundId: runtime.serialize().activeRound!.id,
       actor,
       commandId: randomUUID(),
       expectedSessionRevision: session.revision,
       expectedRuntimeRevision: runtime.revision,
     });
-    // The race must resolve at the deadline even if nobody sends a command.
     return this.getRuntime.execute(input.sessionId, actor);
   }
 
-  /** Both teams, each with its connected players. Two or three each, no more. */
   private eligibleTeams(
     sessionState: ReturnType<
       import('../domain/live-game-session').LiveGameSession['serialize']
     >,
-  ): Array<{ teamId: string; participantIds: string[] }> {
+  ) {
     const teams = sessionState.teams.filter((team) => team.active);
-    if (teams.length !== 2) {
+    if (teams.length !== 2)
       throw new LiveSessionDomainError(
-        'DISTRIBUTED_REQUIRES_TWO_TEAMS',
-        'This challenge is a race between exactly two teams',
+        'RAKKIBHA_REQUIRES_TWO_TEAMS',
+        'Rakkibha is a race between exactly two teams',
       );
-    }
     return teams.map((team) => {
       const participantIds = sessionState.participants
         .filter(
@@ -251,28 +218,25 @@ export class StartDistributedInformation {
             !participant.removedAt,
         )
         .map((participant) => participant.id);
-      if (participantIds.length < 2 || participantIds.length > 3) {
+      if (participantIds.length < 2 || participantIds.length > 3)
         throw new LiveSessionDomainError(
-          'DISTRIBUTED_TEAM_SIZE_UNSUPPORTED',
+          'RAKKIBHA_TEAM_SIZE_UNSUPPORTED',
           'Each team needs two or three connected players',
         );
-      }
       return { teamId: team.id, participantIds };
     });
   }
 
-  /** The three puzzles, read from authored content and never from a guess. */
   private async loadPuzzles(
     contentItemIds: string[],
     worldId: string,
     challengeTypeId: string,
-  ): Promise<DistributedPuzzle[]> {
+  ): Promise<RakkibhaPuzzle[]> {
     const documents = await Promise.all(
       contentItemIds.map((id) => this.items.findById(id)),
     );
     return documents.map((item) => {
-      const payload = item?.mechanicPayload as
-        DistributedInformationPayload | undefined;
+      const payload = item?.mechanicPayload as RakkibhaPayload | undefined;
       if (
         !item ||
         item.status !== ContentItemStatus.READY ||
@@ -280,123 +244,166 @@ export class StartDistributedInformation {
         !item.compatibleChallengeTypeIds.some(
           (id) => String(id) === challengeTypeId,
         ) ||
-        payload?.variant !== DISTRIBUTED_INFORMATION_VARIANT ||
-        payload.authorSafetyConfirmation !== true ||
-        !DISTRIBUTED_INFORMATION_ANSWER_MODES.includes(
-          item.answerPayload
-            .mode as (typeof DISTRIBUTED_INFORMATION_ANSWER_MODES)[number],
+        payload?.variant !== RAKKIBHA_VARIANT ||
+        payload.family !== RAKKIBHA_VARIANT ||
+        !payload.instruction?.ar?.trim() ||
+        !payload.reference?.media ||
+        !Array.isArray(payload.candidateViews) ||
+        payload.authorSafetyConfirmation !== true
+      ) {
+        throw new LiveSessionDomainError(
+          'RAKKIBHA_CONTENT_INVALID',
+          'Every item must be ready, compatible, and a validated visual-assembly item',
+        );
+      }
+      const candidateViews = payload.candidateViews;
+      if (
+        candidateViews.length < 2 ||
+        new Set(candidateViews.map((view) => view.id)).size !==
+          candidateViews.length ||
+        candidateViews.some(
+          (view) =>
+            !view.id?.trim() ||
+            view.candidates.length < 2 ||
+            view.candidates.length > 3 ||
+            new Set(view.candidates.map((candidate) => candidate.localId))
+              .size !== view.candidates.length,
         )
       ) {
         throw new LiveSessionDomainError(
-          'DISTRIBUTED_CONTENT_INVALID',
-          'Every item must be ready, in the World, compatible, confirmed safe, and machine-checkable',
+          'RAKKIBHA_CONTENT_INVALID',
+          'Rakkibha needs unique candidate views with two or three candidates each',
         );
       }
+      const trueCandidates = candidateViews
+        .flatMap((view) => view.candidates)
+        .filter(
+          (candidate) =>
+            candidate.canonicalIdentity === payload.correctCanonicalIdentity,
+        );
+      if (
+        !payload.correctCanonicalIdentity?.trim() ||
+        trueCandidates.length !== 1 ||
+        !Array.isArray(payload.supportedTeamSizes) ||
+        [...payload.supportedTeamSizes].sort().join(',') !==
+          [...RAKKIBHA_TEAM_SIZES].sort().join(',')
+      ) {
+        throw new LiveSessionDomainError(
+          'RAKKIBHA_CONTENT_INVALID',
+          'Rakkibha needs exactly one true candidate and supports only two or three players',
+        );
+      }
+      const referenceMedia = compactMedia(payload.reference.media);
+      if (!referenceMedia)
+        throw new LiveSessionDomainError(
+          'RAKKIBHA_CONTENT_INVALID',
+          'Reference media is required',
+        );
       return {
         contentItemId: String(item._id),
-        publicPrompt: payload.publicPrompt.ar,
-        ...(compactSegmentMedia(item.media)
-          ? { publicMedia: compactSegmentMedia(item.media) }
-          : {}),
-        segments: Object.fromEntries(
-          payload.segments.map((segment) => {
-            const media = compactSegmentMedia(segment.media);
-            return [
-              segment.id,
-              { content: segment.content.ar, ...(media ? { media } : {}) },
-            ];
+        instruction: payload.instruction.ar,
+        reference: {
+          ...(payload.reference.content?.ar
+            ? { content: payload.reference.content.ar }
+            : {}),
+          media: referenceMedia,
+        },
+        candidateViews: candidateViews.map((view) => ({
+          id: view.id,
+          ...(view.content?.ar ? { content: view.content.ar } : {}),
+          candidates: view.candidates.map((candidate) => {
+            const media = compactMedia(candidate.media);
+            if (!media)
+              throw new LiveSessionDomainError(
+                'RAKKIBHA_CONTENT_INVALID',
+                'Every candidate needs media',
+              );
+            return {
+              localId: candidate.localId,
+              canonicalIdentity: candidate.canonicalIdentity,
+              ...(candidate.content?.ar
+                ? { content: candidate.content.ar }
+                : {}),
+              media,
+            };
           }),
-        ),
-        answer: this.answerContract(item.answerPayload),
+        })),
+        correctCanonicalIdentity: payload.correctCanonicalIdentity,
       };
     });
   }
 
-  private answerContract(
-    answerPayload: import('../../world-content/domain/world-content.types').ContentAnswerPayload,
-  ): DistributedPuzzle['answer'] {
-    if (answerPayload.mode === 'closest') {
-      return {
-        mode: 'closest',
-        correctValue: answerPayload.correctValue,
-        tolerance: answerPayload.acceptedTolerance ?? 0,
-      };
-    }
-    if (answerPayload.mode === 'multiple_choice') {
-      return {
-        mode: 'multiple_choice',
-        correctOptionId: answerPayload.correctOptionId,
-        options: answerPayload.options.map((option) => ({
-          id: option.id,
-          label: option.label.ar,
-        })),
-      };
-    }
-    if (answerPayload.mode === 'match') {
-      return { mode: 'match', acceptedAnswers: answerPayload.acceptedAnswers };
-    }
-    // The content policy already refuses any other mode for this mechanic.
-    throw new LiveSessionDomainError(
-      'DISTRIBUTED_CONTENT_INVALID',
-      'The answer must be a number, a short text, or a multiple choice',
-    );
-  }
-
-  /**
-   * One team's plan: its own puzzle order, a fair randomized answerer sequence,
-   * and a segment distribution per puzzle. Three players hold one segment each;
-   * two players use one of the author-approved merges.
-   */
   private planFor(
     teamId: string,
     participantIds: string[],
-    puzzles: DistributedPuzzle[],
-  ): DistributedTeamPlan {
+    puzzles: RakkibhaPuzzle[],
+  ): RakkibhaTeamPlan {
     const order = shuffled(puzzles.map((_, index) => index));
-    const answererIds = this.answererSchedule(participantIds, puzzles.length);
-    const assignments = order.map((puzzleIndex) =>
-      this.distribute(
-        participantIds,
-        Object.keys(puzzles[puzzleIndex].segments),
+    return {
+      teamId,
+      participantIds,
+      order,
+      assignments: order.map((puzzleIndex) =>
+        this.assign(
+          participantIds,
+          puzzles[puzzleIndex].candidateViews,
+          puzzles[puzzleIndex].correctCanonicalIdentity,
+        ),
+      ),
+    };
+  }
+  private assign(
+    participantIds: string[],
+    views: RakkibhaCandidateView[],
+    correctIdentity: string,
+  ): RakkibhaParticipantAssignment[] {
+    const trueView = views.find((view) =>
+      view.candidates.some(
+        (candidate) => candidate.canonicalIdentity === correctIdentity,
       ),
     );
-    return { teamId, participantIds, order, answererIds, assignments };
-  }
-
-  /**
-   * Three players each answer exactly one puzzle, in a random order. Two players
-   * alternate from a random start, giving A-B-A or B-A-B.
-   */
-  private answererSchedule(
-    participantIds: string[],
-    puzzleCount: number,
-  ): string[] {
-    if (participantIds.length >= puzzleCount) {
-      return shuffled(participantIds).slice(0, puzzleCount);
-    }
-    const start = randomInt(participantIds.length);
-    return Array.from(
-      { length: puzzleCount },
-      (_, index) => participantIds[(start + index) % participantIds.length],
+    const distractorView = views.find(
+      (view) =>
+        !view.candidates.some(
+          (candidate) => candidate.canonicalIdentity === correctIdentity,
+        ),
     );
-  }
-
-  /** One segment each for three players; an approved 2+1 split for two. */
-  private distribute(
-    participantIds: string[],
-    segmentIds: string[],
-  ): DistributedAssignment[] {
-    const shuffledSegments = shuffled(segmentIds);
-    if (participantIds.length === segmentIds.length) {
-      return shuffled(participantIds).map((participantId, index) => ({
-        participantId,
-        segmentIds: [shuffledSegments[index]],
-      }));
+    if (!trueView)
+      throw new LiveSessionDomainError(
+        'RAKKIBHA_CONTENT_INVALID',
+        'A true-holder view is required',
+      );
+    const participants = shuffled(participantIds);
+    if (participants.length === 2) {
+      return [
+        { participantId: participants[0], hasReference: true },
+        {
+          participantId: participants[1],
+          hasReference: false,
+          candidateViewId: trueView.id,
+        },
+      ];
     }
-    const [first, second] = shuffled(participantIds);
+    const distractorId =
+      distractorView?.id ??
+      (() => {
+        throw new LiveSessionDomainError(
+          'RAKKIBHA_CONTENT_INVALID',
+          'A distractor-only view is required',
+        );
+      })();
     return [
-      { participantId: first, segmentIds: shuffledSegments.slice(0, 2) },
-      { participantId: second, segmentIds: shuffledSegments.slice(2) },
+      { participantId: participants[0], hasReference: true },
+      {
+        participantId: participants[1],
+        hasReference: false,
+        candidateViewId: trueView.id,
+      },
+      {
+        participantId: participants[2],
+        hasReference: false,
+        candidateViewId: distractorId,
+      },
     ];
   }
 }

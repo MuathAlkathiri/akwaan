@@ -9,13 +9,13 @@ import { RyoGameplayPanel } from "../components/ryo-gameplay-panel";
 import { Top5Panel } from "../components/top5-panel";
 import { ClosestGameplayPanel } from "../components/closest-gameplay-panel";
 import { OneClueGameplayPanel } from "../components/one-clue-gameplay-panel";
-import { DistributedInformationPanel } from "../components/distributed-information-panel";
-import { DistributedInformationScreen } from "../components/distributed-information-screen";
+import { RakkibhaPanel } from "../components/rakkibha-panel";
+import { RakkibhaScreen } from "../components/rakkibha-screen";
 import { ComboGameplayPanel } from "../components/combo-gameplay-panel";
 import { BombGameplayPanel } from "../components/bomb-gameplay-panel";
 import { MarhalaScreen } from "../components/marhala-screen";
 import { MarhalaPhonePanel } from "../components/marhala-phone-panel";
-import { DISTRIBUTED_INFORMATION_MODE_KEY } from "./distributed-information.presentation";
+import { RAKKIBHA_MODE_KEY } from "./rakkibha.presentation";
 import { COMBO_MODE_KEY } from "./combo.presentation";
 import { MARHALA_MODE_KEY } from "./marhala.presentation";
 import { useLiveSession } from "../hooks/live-session-context";
@@ -259,11 +259,11 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
       return <ClosestGameplayPanel runtime={runtime} />;
     case "one-clue":
       return <OneClueGameplayPanel runtime={runtime} />;
-    case DISTRIBUTED_INFORMATION_MODE_KEY:
+    case RAKKIBHA_MODE_KEY:
       return actor === "participant" ? (
-        <DistributedInformationPanel runtime={runtime} />
+        <RakkibhaPanel runtime={runtime} />
       ) : (
-        <DistributedInformationScreen runtime={runtime} />
+        <RakkibhaScreen runtime={runtime} />
       );
     // One panel for all three actors: the server sends each a different
     // projection, so the screen a viewer gets is decided there, not here.

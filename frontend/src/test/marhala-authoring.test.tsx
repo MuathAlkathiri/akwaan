@@ -443,11 +443,11 @@ describe("an item compatible with more than one mechanic", () => {
     const payload = buildContentItemPayload({
       ...base,
       promptAr: "سؤال",
-      compatibleChallengeTypeIds: ["ct-di"],
-      distributed: { ...base.distributed, enabled: true },
+      compatibleChallengeTypeIds: ["ct-rakkibha"],
+      rakkibha: { ...base.rakkibha, enabled: true },
       marhala: { enabled: false, difficulty: "easy" },
     });
-    expect(payload.mechanicPayload).toHaveProperty("segments");
+    expect(payload.mechanicPayload).toHaveProperty("candidateViews");
     expect(payload.mechanicPayload).not.toHaveProperty("marhalaDifficulty");
   });
 

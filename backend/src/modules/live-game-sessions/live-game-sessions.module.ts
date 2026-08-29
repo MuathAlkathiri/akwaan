@@ -119,7 +119,7 @@ import { WorldContentModule } from '../world-content/world-content.module';
 import { StartRyoGameplay } from './application/start-ryo-gameplay.use-case';
 import { StartTop5 } from './application/start-top5.use-case';
 import { ReassignTeamActions } from './application/reassign-team-actions.use-case';
-import { StartDistributedInformation } from './application/start-distributed-information.use-case';
+import { StartRakkibha } from './application/start-rakkibha.use-case';
 import { GameplayDeadlineScheduler } from './application/gameplay-deadline.scheduler';
 import { GAMEPLAY_DEADLINE_SYNCHRONIZER } from './application/gameplay-deadline.port';
 import { GameplayObserverRegistry } from './application/gameplay-observer.registry';
@@ -181,7 +181,7 @@ const applicationProviders = [
   StartRyoGameplay,
   StartTop5,
   ReassignTeamActions,
-  StartDistributedInformation,
+  StartRakkibha,
   GameplayDeadlineScheduler,
   StartClosestGameplay,
   StartComboGameplay,
@@ -301,7 +301,7 @@ const applicationProviders = [
     StartClosestGameplay,
     StartComboGameplay,
     StartOneClueGameplay,
-    StartDistributedInformation,
+    StartRakkibha,
     GAMEPLAY_RUNTIME_REPOSITORY,
     LIVE_GAME_SESSION_REPOSITORY,
     // The Match layer announces its transitions on the session's own channel.

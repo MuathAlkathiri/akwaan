@@ -134,7 +134,7 @@ describe("One Clue ContentItem authoring", () => {
   it("replaces an incompatible Rakkibha selection instead of cross-selecting it", () => {
     const patterns = {
       "one-clue-id": "one_clue",
-      "rakkibha-id": "distributed_information",
+      "rakkibha-id": "rakkibha",
       "another-one-clue": "one_clue",
     } as const;
     expect(

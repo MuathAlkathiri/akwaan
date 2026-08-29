@@ -118,9 +118,9 @@ describe('World Content architecture', () => {
       'modules/live-game-sessions/application/start-bomb-from-content.use-case.ts',
       'modules/live-game-sessions/application/start-closest-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-combo-gameplay.use-case.ts',
-      'modules/live-game-sessions/application/start-distributed-information.use-case.ts',
       'modules/live-game-sessions/application/start-marhala-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-one-clue-gameplay.use-case.ts',
+      'modules/live-game-sessions/application/start-rakkibha.use-case.ts',
       'modules/live-game-sessions/application/start-ryo-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-top5.use-case.ts',
       // The Top 5 plugin reads the content contract's own constants rather than
