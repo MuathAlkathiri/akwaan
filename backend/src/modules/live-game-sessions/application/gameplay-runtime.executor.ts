@@ -41,6 +41,13 @@ export interface GameplayRuntimeCommand {
    * to the exact acking connection so a disconnect can withdraw it.
    */
   connectionId?: string;
+  /**
+   * The server-issued recurring presentation generation this acknowledgement is
+   * for. The client echoes the generation the server projected; it never creates
+   * or advances one. Required only when the runtime has a recurring presentation
+   * checkpoint (a legacy/initial acknowledgement omits it and is unaffected).
+   */
+  presentationGeneration?: number;
 }
 
 @Injectable()

@@ -203,6 +203,7 @@ export class LiveSessionSocket {
     expectedSessionRevision: number;
     expectedRuntimeRevision: number;
     commandId: string;
+    presentationGeneration?: number;
   }): void {
     if (!this.socket?.connected) {
       throw new Error("Live session connection is not available");
@@ -213,6 +214,9 @@ export class LiveSessionSocket {
       expectedRuntimeRevision: input.expectedRuntimeRevision,
       commandId: input.commandId,
       clientTimestamp: new Date().toISOString(),
+      ...(input.presentationGeneration !== undefined
+        ? { presentationGeneration: input.presentationGeneration }
+        : {}),
     });
   }
 

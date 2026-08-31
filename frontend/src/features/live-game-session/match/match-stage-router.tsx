@@ -246,7 +246,7 @@ function MatchAbsent({ actor }: { actor: MatchActor }) {
  * projection, a screen and the host get the public one.
  */
 export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
-  const { snapshot, presentationReady, presentationReadySocket } =
+  const { snapshot, presentationReady, presentationReadySocket, connectionEpoch } =
     useLiveSession();
   const gameplay = snapshot?.gameplay;
   // Fair-start: while a mechanic that opted into presentation activation is
@@ -274,12 +274,31 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
     if (!awaiting || !gameplay || !snapshot) return;
     const ack = multiSurface ? presentationReadySocket : presentationReady;
     if (!ack) return;
-    const key = `${gameplay.mode.key}:${gameplay.revision}`;
+    // Recurring fair-start: the server projects a `generation` on the surface only
+    // while a recurring presentation is prepared. Its acknowledgement identity is
+    // SEMANTIC — the runtime, that generation, this surface's capability, and the
+    // socket connection epoch — never the runtime revision. So a success for
+    // generation N never suppresses N+1, an ordinary revision bump on the same live
+    // connection does not re-acknowledge (no storm), and a reconnect (new epoch,
+    // after which the server withdrew the old readiness) does re-acknowledge. The
+    // client only echoes what the server projected and never invents a generation.
+    // Initial fair-start has no generation and keeps its existing revision identity.
+    const generation = gameplay.presentationSurface?.generation;
+    const capability = gameplay.presentationSurface?.capability;
+    const key =
+      generation !== undefined
+        ? `${gameplay.mode.key}:gen${generation}:${capability ?? "single"}:conn${
+            connectionEpoch ?? 0
+          }`
+        : `${gameplay.mode.key}:${gameplay.revision}:initial`;
     if (ackedRef.current === key || inFlightRef.current === key) return;
     inFlightRef.current = key;
     ack({
       expectedSessionRevision: snapshot.revision,
       expectedRuntimeRevision: gameplay.revision,
+      ...(generation !== undefined
+        ? { presentationGeneration: generation }
+        : {}),
     })
       .then(() => {
         ackedRef.current = key;
@@ -290,7 +309,15 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
       .finally(() => {
         if (inFlightRef.current === key) inFlightRef.current = null;
       });
-  }, [awaiting, gameplay, snapshot, presentationReady, presentationReadySocket, multiSurface]);
+  }, [
+    awaiting,
+    gameplay,
+    snapshot,
+    presentationReady,
+    presentationReadySocket,
+    multiSurface,
+    connectionEpoch,
+  ]);
 
   if (!gameplay) return null;
   if (awaiting) {

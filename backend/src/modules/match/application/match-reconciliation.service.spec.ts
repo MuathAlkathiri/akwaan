@@ -529,5 +529,56 @@ describe('MatchReconciliationService', () => {
 
       expect(recorded).toEqual([['a']]);
     });
+
+    // A3 recurring fair-start: exposure follows the recurring presentation
+    // checkpoint. A prepared generation has shown nobody anything yet.
+    const withPresentation = (
+      phase: string,
+      presentation: Record<string, unknown>,
+    ): GameplayRuntimeState =>
+      ({
+        id: RUNTIME_ID,
+        runtimeState: { phase, scoreEventsJson: '[]' },
+        currentPresentation: presentation,
+      }) as unknown as GameplayRuntimeState;
+
+    it('records no exposure while a recurring presentation is only prepared', async () => {
+      const { service, recorded } = recording(
+        ['a', 'b', 'c'],
+        presenting({ contentItemCount: 3, presented: ['a'] }),
+      );
+
+      await notify(
+        service,
+        withPresentation('revealing', {
+          generation: 2,
+          status: 'prepared',
+          preparedAt: '2026-01-01T00:00:00.000Z',
+          readiness: [],
+        }),
+      );
+
+      expect(recorded).toEqual([]);
+    });
+
+    it('records the current item once a recurring generation is activated', async () => {
+      const { service, recorded } = recording(
+        ['a', 'b', 'c'],
+        presenting({ contentItemCount: 3, presented: ['a'] }),
+      );
+
+      await notify(
+        service,
+        withPresentation('revealing', {
+          generation: 2,
+          status: 'activated',
+          preparedAt: '2026-01-01T00:00:00.000Z',
+          activatedAt: '2026-01-01T00:00:12.000Z',
+          readiness: [],
+        }),
+      );
+
+      expect(recorded).toEqual([['a']]);
+    });
   });
 });

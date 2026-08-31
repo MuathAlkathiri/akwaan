@@ -114,6 +114,17 @@ export interface GameplayRuntimeState {
     capability: PresentationSurfaceCapability;
     connectionId: string;
   }>;
+  /** Additive checkpoint for recurring presentations; absent on legacy runtimes. */
+  currentPresentation?: {
+    generation: number;
+    status: 'prepared' | 'activated';
+    preparedAt: string;
+    activatedAt?: string;
+    readiness: Array<{
+      capability: PresentationSurfaceCapability;
+      connectionId: string;
+    }>;
+  };
   runtimeState: GameplayModeState;
   activeRound?: GameplayRoundState;
   completedRounds: CompletedGameplayRoundSummary[];
@@ -430,6 +441,151 @@ export class GameplayRuntime {
       : [];
   }
 
+  prepareNextPresentation(
+    commandId: string,
+    actorId: string,
+    now: Date,
+  ): number {
+    const generation = (this.state.currentPresentation?.generation ?? 0) + 1;
+    this.state.currentPresentation = {
+      generation,
+      status: 'prepared',
+      preparedAt: now.toISOString(),
+      readiness: [],
+    };
+    this.commit(
+      'presentation-prepared',
+      commandId,
+      actorId,
+      now,
+      this.state.activeRound?.id,
+    );
+    return generation;
+  }
+
+  recordCurrentPresentationReady(input: {
+    generation: number;
+    capability: PresentationSurfaceCapability;
+    connectionId: string;
+    commandId: string;
+    actorId: string;
+    now: Date;
+  }): void {
+    const checkpoint = this.state.currentPresentation;
+    if (
+      !checkpoint ||
+      checkpoint.status !== 'prepared' ||
+      checkpoint.generation !== input.generation
+    ) {
+      throw new LiveSessionDomainError(
+        'STALE_PRESENTATION_GENERATION',
+        'Presentation generation is not current',
+      );
+    }
+    if (
+      checkpoint.readiness.some(
+        (entry) =>
+          entry.capability === input.capability &&
+          entry.connectionId === input.connectionId,
+      )
+    )
+      return;
+    checkpoint.readiness.push({
+      capability: input.capability,
+      connectionId: input.connectionId,
+    });
+    this.commit(
+      'presentation-surface-ready',
+      input.commandId,
+      input.actorId,
+      input.now,
+      this.state.activeRound?.id,
+    );
+  }
+
+  withdrawCurrentPresentationReadiness(connectionId: string): void {
+    const checkpoint = this.state.currentPresentation;
+    if (!checkpoint || checkpoint.status !== 'prepared') return;
+    const next = checkpoint.readiness.filter(
+      (entry) => entry.connectionId !== connectionId,
+    );
+    if (next.length === checkpoint.readiness.length) return;
+    checkpoint.readiness = next;
+    this.commit(
+      'presentation-readiness-withdrawn',
+      'system',
+      'system',
+      new Date(),
+    );
+  }
+
+  /**
+   * Activate the current prepared recurring presentation generation.
+   *
+   * Mirrors the INITIAL `activatePresentation`: the mechanic's own hook re-anchors
+   * this generation's playable deadline from `now` (activation time), and returns
+   * any session effects to apply in the same transaction. The activation context
+   * carries `presentationKind: 'recurring'` and the generation, so a plugin never
+   * has to infer the kind from `presentationActivatedAt` — which stays the
+   * immutable INITIAL activation truth and is never touched here. Idempotent once
+   * activated; validates the generation is still current.
+   */
+  activateCurrentPresentation(
+    generation: number,
+    commandId: string,
+    actorId: string,
+    now: Date,
+  ): readonly GameplaySessionEffect[] {
+    const checkpoint = this.state.currentPresentation;
+    if (!checkpoint || checkpoint.generation !== generation)
+      throw new LiveSessionDomainError(
+        'STALE_PRESENTATION_GENERATION',
+        'Presentation generation is not current',
+      );
+    if (checkpoint.status === 'activated') return [];
+    const reanchored = this.plugin.activatePresentation?.(
+      this.state.runtimeState,
+      now,
+      {
+        sessionId: this.state.sessionId,
+        runtimeId: this.state.id,
+        roundId: this.state.activeRound?.id,
+        activeTeamId: this.state.activeRound?.activeTeamId,
+        activeParticipantId: this.state.activeRound?.activeParticipantId,
+        runtimeState: this.state.runtimeState,
+        presentationKind: 'recurring',
+        presentationGeneration: generation,
+      },
+    );
+    let effects: readonly GameplaySessionEffect[] = [];
+    if (reanchored) {
+      const runtimeState = isPresentationActivationResult(reanchored)
+        ? reanchored.runtimeState
+        : reanchored;
+      if (
+        isPresentationActivationResult(reanchored) &&
+        reanchored.interaction
+      ) {
+        this.applyActivationInteraction(reanchored.interaction, now);
+      }
+      this.state.runtimeState = this.plugin.validateRuntimeState(runtimeState);
+      effects = isPresentationActivationResult(reanchored)
+        ? (reanchored.effects ?? [])
+        : [];
+    }
+    checkpoint.status = 'activated';
+    checkpoint.activatedAt = now.toISOString();
+    checkpoint.readiness = [];
+    this.commit(
+      'presentation-activated',
+      commandId,
+      actorId,
+      now,
+      this.state.activeRound?.id,
+    );
+    return effects;
+  }
+
   /**
    * Open and deadline-re-anchor the prepared interaction at activation.
    *
@@ -529,6 +685,40 @@ export class GameplayRuntime {
     if (!required || required.length === 0) return false;
     const ready = new Set(
       this.state.presentationReady?.map((entry) => entry.capability) ?? [],
+    );
+    return required.every((surface) => ready.has(surface.capability));
+  }
+
+  /**
+   * The current recurring presentation's generation and status, or `undefined`
+   * when no recurring presentation has ever been prepared (a legacy/initial-only
+   * runtime). Lets the lifecycle route a generation-scoped acknowledgement without
+   * a full serialize.
+   */
+  currentPresentationCheckpoint():
+    { generation: number; status: 'prepared' | 'activated' } | undefined {
+    const checkpoint = this.state.currentPresentation;
+    return checkpoint
+      ? { generation: checkpoint.generation, status: checkpoint.status }
+      : undefined;
+  }
+
+  /**
+   * Whether every currently required surface has acknowledged the CURRENT prepared
+   * recurring presentation. Required surfaces are rederived from committed state
+   * (so a reassignment changes them), and readiness is read from the recurring
+   * checkpoint — never the initial `presentationReady` set. A single-surface
+   * mechanic (no declared surfaces) is satisfied by any one recorded readiness.
+   */
+  areAllRequiredSurfacesReadyForCurrentPresentation(): boolean {
+    const checkpoint = this.state.currentPresentation;
+    if (!checkpoint || checkpoint.status !== 'prepared') return false;
+    const required = this.requiredPresentationSurfaces();
+    if (!required || required.length === 0) {
+      return checkpoint.readiness.length > 0;
+    }
+    const ready = new Set(
+      checkpoint.readiness.map((entry) => entry.capability),
     );
     return required.every((surface) => ready.has(surface.capability));
   }

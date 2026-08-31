@@ -222,4 +222,58 @@ describe("اقرأ خصمك — the phone's fair-start surface", () => {
       expect(mocks.presentationReadySocket).toHaveBeenCalledTimes(1),
     );
   });
+
+  it("echoes the projected recurring generation on the phone acknowledgement", async () => {
+    mocks.presentationReadySocket.mockResolvedValue(undefined);
+    const recurring = {
+      ...awaitingRuntime,
+      presentationSurface: {
+        running: true,
+        capability: "decision",
+        generation: 2,
+      },
+    } as unknown as GameplayRuntimeSnapshot;
+    render(<RyoGameplayPanel runtime={recurring} />);
+    await waitFor(() =>
+      expect(mocks.presentationReadySocket).toHaveBeenCalledTimes(1),
+    );
+    expect(mocks.presentationReadySocket).toHaveBeenCalledWith({
+      expectedSessionRevision: 4,
+      expectedRuntimeRevision: 7,
+      presentationGeneration: 2,
+    });
+  });
+
+  it("acknowledges a new generation even when the runtime revision is unchanged", async () => {
+    mocks.presentationReadySocket.mockResolvedValue(undefined);
+    const gen2 = {
+      ...awaitingRuntime,
+      presentationSurface: {
+        running: true,
+        capability: "decision",
+        generation: 2,
+      },
+    } as unknown as GameplayRuntimeSnapshot;
+    const { rerender } = render(<RyoGameplayPanel runtime={gen2} />);
+    await waitFor(() =>
+      expect(mocks.presentationReadySocket).toHaveBeenCalledTimes(1),
+    );
+    const gen3 = {
+      ...awaitingRuntime,
+      presentationSurface: {
+        running: true,
+        capability: "decision",
+        generation: 3,
+      },
+    } as unknown as GameplayRuntimeSnapshot;
+    rerender(<RyoGameplayPanel runtime={gen3} />);
+    await waitFor(() =>
+      expect(mocks.presentationReadySocket).toHaveBeenCalledTimes(2),
+    );
+    expect(mocks.presentationReadySocket).toHaveBeenLastCalledWith({
+      expectedSessionRevision: 4,
+      expectedRuntimeRevision: 7,
+      presentationGeneration: 3,
+    });
+  });
 });

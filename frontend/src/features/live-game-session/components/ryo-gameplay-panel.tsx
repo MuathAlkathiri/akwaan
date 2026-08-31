@@ -47,8 +47,13 @@ export function RyoGameplayPanel({
 }: {
   runtime: GameplayRuntimeSnapshot;
 }) {
-  const { snapshot, gameplayCommand, connection, presentationReadySocket } =
-    useLiveSession();
+  const {
+    snapshot,
+    gameplayCommand,
+    connection,
+    presentationReadySocket,
+    connectionEpoch,
+  } = useLiveSession();
   const [number, setNumber] = useState("");
   // This phone's own decision, echoed back after it locks in. It is the local
   // player's own choice — never the opponent's — so showing it leaks nothing.
@@ -74,12 +79,27 @@ export function RyoGameplayPanel({
   const inFlightRef = useRef<string | null>(null);
   useEffect(() => {
     if (!awaiting || !runtime || !snapshot || !presentationReadySocket) return;
-    const key = `${runtime.mode.key}:${runtime.revision}`;
+    // Recurring fair-start: echo the server-projected generation, with a SEMANTIC
+    // identity (generation + capability + socket connection epoch) so an ordinary
+    // revision bump does not re-acknowledge, a reconnect (new epoch) does, and a
+    // success for one generation never suppresses the next. Initial fair-start has
+    // no generation and keeps its existing revision-keyed identity.
+    const generation = runtime.presentationSurface?.generation;
+    const capability = runtime.presentationSurface?.capability;
+    const key =
+      generation !== undefined
+        ? `${runtime.mode.key}:gen${generation}:${capability ?? "single"}:conn${
+            connectionEpoch ?? 0
+          }`
+        : `${runtime.mode.key}:${runtime.revision}:initial`;
     if (ackedRef.current === key || inFlightRef.current === key) return;
     inFlightRef.current = key;
     presentationReadySocket({
       expectedSessionRevision: snapshot.revision,
       expectedRuntimeRevision: runtime.revision,
+      ...(generation !== undefined
+        ? { presentationGeneration: generation }
+        : {}),
     })
       .then(() => {
         ackedRef.current = key;
@@ -90,7 +110,7 @@ export function RyoGameplayPanel({
       .finally(() => {
         if (inFlightRef.current === key) inFlightRef.current = null;
       });
-  }, [awaiting, runtime, snapshot, presentationReadySocket]);
+  }, [awaiting, runtime, snapshot, presentationReadySocket, connectionEpoch]);
   const remainingMs = useInteractionDeadline(prompt?.deadlineAt, terminal);
   // Which *side* has locked in, from the server's redacted projection: it publishes
   // that a submission exists and its kind, never the choice inside it. `kind`

@@ -36,6 +36,13 @@ export interface LiveSessionContextValue {
    */
   snapshotReceivedAtMs?: number;
   syncState?: "idle" | "resynchronizing" | "restored";
+  /**
+   * Monotonic counter bumped on every socket (re)connect. A recurring fair-start
+   * acknowledgement binds to this so a reconnect — after which the server has
+   * withdrawn the old connection's readiness — forces a fresh acknowledgement,
+   * while an ordinary runtime revision bump on the same connection does not.
+   */
+  connectionEpoch?: number;
   command: (action: string, options?: LiveSessionCommandOptions) => void;
   gameplayCommand: (action: string, options?: GameplayCommandOptions) => void;
   /**
@@ -49,6 +56,7 @@ export interface LiveSessionContextValue {
   presentationReady?: (input: {
     expectedSessionRevision: number;
     expectedRuntimeRevision: number;
+    presentationGeneration?: number;
   }) => Promise<void>;
   /**
    * Fair-start acknowledgement over the socket for the multi-surface contract
@@ -59,6 +67,7 @@ export interface LiveSessionContextValue {
   presentationReadySocket?: (input: {
     expectedSessionRevision: number;
     expectedRuntimeRevision: number;
+    presentationGeneration?: number;
   }) => Promise<void>;
   adoptSnapshot?: (snapshot: LiveSessionSnapshot) => void;
   resync?: () => void;

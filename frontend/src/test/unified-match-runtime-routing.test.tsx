@@ -521,12 +521,14 @@ describe("fair-start presentation acknowledgement", () => {
     sessionRevision = 4,
     modeKey = "combo",
     presentationSurface = false,
+    generation,
   }: {
     awaiting?: boolean;
     runtimeRevision?: number;
     sessionRevision?: number;
     modeKey?: string;
     presentationSurface?: boolean;
+    generation?: number;
   } = {}) =>
     ({
       sessionId: "session-1",
@@ -540,8 +542,14 @@ describe("fair-start presentation acknowledgement", () => {
         mode: { key: modeKey, version: 1 },
         status: "active",
         modeState: awaiting ? { awaitingPresentation: true } : {},
-        ...(presentationSurface
-          ? { presentationSurface: { running: true, capability: "shared" as const } }
+        ...(presentationSurface || generation !== undefined
+          ? {
+              presentationSurface: {
+                running: true,
+                capability: "shared" as const,
+                ...(generation !== undefined ? { generation } : {}),
+              },
+            }
           : {}),
         transitions: [],
         availableActions: [],
@@ -552,12 +560,14 @@ describe("fair-start presentation acknowledgement", () => {
     snapshot: LiveSessionSnapshot,
     presentationReady: ReturnType<typeof vi.fn>,
     presentationReadySocket?: ReturnType<typeof vi.fn>,
+    connectionEpoch = 1,
   ) => (
     <LiveSessionContext.Provider
       value={
         {
           snapshot,
           connection: "connected",
+          connectionEpoch,
           presentationReady,
           presentationReadySocket,
           sessionId: "session-1",
@@ -580,8 +590,10 @@ describe("fair-start presentation acknowledgement", () => {
       ack: presentationReady,
       socketAck: presentationReadySocket,
       unmount: view.unmount,
-      rerenderWith: (next: LiveSessionSnapshot) =>
-        view.rerender(tree(next, presentationReady, presentationReadySocket)),
+      rerenderWith: (next: LiveSessionSnapshot, connectionEpoch = 1) =>
+        view.rerender(
+          tree(next, presentationReady, presentationReadySocket, connectionEpoch),
+        ),
     };
   };
 
@@ -775,5 +787,183 @@ describe("fair-start presentation acknowledgement", () => {
     rerenderWith(gameplaySnapshot({ presentationSurface: true }));
     await waitFor(() => expect(onSocket).toHaveBeenCalledTimes(2));
     expect(ack).not.toHaveBeenCalled();
+  });
+
+  // ── Recurring generation-aware acknowledgement (Batch B) ──────────────────
+  const recurring = (
+    generation: number,
+    over: { runtimeRevision?: number; sessionRevision?: number; awaiting?: boolean } = {},
+  ) =>
+    gameplaySnapshot({
+      modeKey: "read-your-opponent",
+      generation,
+      runtimeRevision: over.runtimeRevision ?? 20 + generation,
+      sessionRevision: over.sessionRevision ?? 10 + generation,
+      awaiting: over.awaiting ?? true,
+    });
+
+  const socketHarness = (snapshot: LiveSessionSnapshot) => {
+    const socketAck = vi.fn().mockResolvedValue(undefined);
+    const httpAck = vi.fn().mockResolvedValue(undefined);
+    return {
+      ...renderWith(snapshot, httpAck, socketAck),
+      socketAck,
+      httpAck,
+    };
+  };
+
+  it("acknowledges a prepared recurring generation with the exact projected generation", async () => {
+    const { socketAck, httpAck } = socketHarness(recurring(1));
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+    expect(socketAck).toHaveBeenCalledWith({
+      expectedSessionRevision: 11,
+      expectedRuntimeRevision: 21,
+      presentationGeneration: 1,
+    });
+    // The generation is echoed verbatim — never invented, never incremented.
+    expect(httpAck).not.toHaveBeenCalled();
+  });
+
+  it("a generation-1 success does not suppress generation 2", async () => {
+    const { socketAck, rerenderWith } = socketHarness(recurring(1));
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+    rerenderWith(recurring(2));
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(2));
+    expect(socketAck).toHaveBeenLastCalledWith({
+      expectedSessionRevision: 12,
+      expectedRuntimeRevision: 22,
+      presentationGeneration: 2,
+    });
+  });
+
+  it("a generation-2 success does not suppress generation 3", async () => {
+    const { socketAck, rerenderWith } = socketHarness(recurring(2));
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+    rerenderWith(recurring(3));
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(2));
+    expect(socketAck).toHaveBeenLastCalledWith({
+      expectedSessionRevision: 13,
+      expectedRuntimeRevision: 23,
+      presentationGeneration: 3,
+    });
+  });
+
+  it("does not resend for the same generation across rerenders", async () => {
+    const { socketAck, rerenderWith } = socketHarness(recurring(2));
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+    rerenderWith(recurring(2));
+    rerenderWith(recurring(2));
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+  });
+
+  it("a late generation-1 success cannot mark generation 2 acknowledged", async () => {
+    let resolveGen1: (() => void) | undefined;
+    const socketAck = vi
+      .fn()
+      .mockImplementationOnce(
+        () => new Promise<void>((resolve) => (resolveGen1 = () => resolve())),
+      )
+      .mockResolvedValue(undefined);
+    const httpAck = vi.fn().mockResolvedValue(undefined);
+    const view = renderWith(recurring(1), httpAck, socketAck);
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+    // The server advances to generation 2 while generation 1 is still in flight.
+    view.rerenderWith(recurring(2));
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(2));
+    // Generation 1 resolves late; it must not pin generation 2 as acknowledged.
+    resolveGen1?.();
+    await Promise.resolve();
+    view.rerenderWith(recurring(2));
+    // Generation 2 stays pinned by its own success — no extra send, no corruption.
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(2));
+    expect(socketAck).toHaveBeenLastCalledWith({
+      expectedSessionRevision: 12,
+      expectedRuntimeRevision: 22,
+      presentationGeneration: 2,
+    });
+  });
+
+  it("keeps the current generation retryable after a transient failure", async () => {
+    const socketAck = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("transient"))
+      .mockResolvedValue(undefined);
+    const view = renderWith(recurring(2), vi.fn(), socketAck);
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1)); // failed
+    view.rerenderWith(recurring(2));
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(2)); // retried
+    view.rerenderWith(recurring(2));
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(2)); // pinned
+  });
+
+  it("does not spin on a stale-generation rejection; it waits for a newer snapshot", async () => {
+    const socketAck = vi.fn().mockRejectedValue(new Error("stale generation"));
+    const view = renderWith(recurring(1), vi.fn(), socketAck);
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+    // No new snapshot arrives: the effect is snapshot-driven, so it does not loop.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(socketAck).toHaveBeenCalledTimes(1);
+    // The authoritative newer snapshot (generation 2) drives the next attempt.
+    view.rerenderWith(recurring(2));
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(2));
+  });
+
+  it("cold-opens straight into a prepared generation 2 and acknowledges it", async () => {
+    const { socketAck } = socketHarness(recurring(2));
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+    expect(socketAck).toHaveBeenCalledWith({
+      expectedSessionRevision: 12,
+      expectedRuntimeRevision: 22,
+      presentationGeneration: 2,
+    });
+  });
+
+  it("does not acknowledge a cold-open on an already-activated generation", async () => {
+    const { socketAck, httpAck } = socketHarness(
+      recurring(2, { awaiting: false }),
+    );
+    expect(screen.queryByTestId("challenge-preparing")).toBeNull();
+    await Promise.resolve();
+    expect(socketAck).not.toHaveBeenCalled();
+    expect(httpAck).not.toHaveBeenCalled();
+  });
+
+  it("does not re-acknowledge the same prepared generation on ordinary revision bumps (no storm)", async () => {
+    // The dedupe identity is semantic (generation + capability + connection epoch),
+    // NOT the runtime revision — so unrelated revision updates while the same
+    // generation stays prepared over the same live connection never re-acknowledge.
+    const { socketAck, rerenderWith } = socketHarness(
+      recurring(2, { runtimeRevision: 30 }),
+    );
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+    rerenderWith(recurring(2, { runtimeRevision: 31 }), 1); // same epoch
+    rerenderWith(recurring(2, { runtimeRevision: 32 }), 1);
+    rerenderWith(recurring(2, { runtimeRevision: 33 }), 1);
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+  });
+
+  it("re-acknowledges the same generation after a socket reconnect (new connection epoch)", async () => {
+    // A reconnect starts a new connection epoch; the server has withdrawn the old
+    // connection's readiness, so the surface must acknowledge the same generation
+    // again on the new connection — distinguishable from an ordinary revision bump.
+    const { socketAck, rerenderWith } = socketHarness(
+      recurring(2, { runtimeRevision: 30 }),
+    );
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+    // Same generation, but a NEW connection epoch (2) — a reconnect.
+    rerenderWith(recurring(2, { runtimeRevision: 31 }), 2);
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(2));
+    expect(socketAck).toHaveBeenLastCalledWith({
+      expectedSessionRevision: 12,
+      expectedRuntimeRevision: 31,
+      presentationGeneration: 2,
+    });
+  });
+
+  it("shows only the safe preparing shell while a recurring generation is prepared", async () => {
+    socketHarness(recurring(2));
+    expect(screen.getByTestId("challenge-preparing")).toBeTruthy();
+    expect(screen.queryByTestId("renderer-ryo")).toBeNull();
   });
 });

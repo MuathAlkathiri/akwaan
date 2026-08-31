@@ -32,6 +32,9 @@ import {
   StaleLiveSessionRevisionError,
   StaleGameplayRuntimeRevisionError,
 } from '../domain/live-session.errors';
+import { GameplayModeRegistry } from '../domain/gameplay-mode.registry';
+import { GameplayAuthorization } from './gameplay-authorization';
+import { GameplayRuntimeSnapshotMapper } from './gameplay-runtime.snapshot';
 
 /**
  * The multi-surface presentation acknowledgement use case: for RYO, activation
@@ -592,5 +595,381 @@ describe('PresentationReady (RYO multi-surface)', () => {
       expect(sessionArg).toBe(h.session);
       expect(runtimeArg).toBe(h.runtime);
     });
+  });
+});
+
+/**
+ * A2 recurring fair-start: once the runtime has PREPARED a recurring presentation
+ * (A1's `currentPresentation` checkpoint), every acknowledgement is scoped to that
+ * server-issued generation. The same multi-surface barrier, identity, CAS, and
+ * disconnect model apply — held on the recurring checkpoint — and the final ack
+ * activates that exact generation once, never touching the immutable INITIAL
+ * activation. Reuses the RYO harness above; fake unit of work, controlled clock.
+ */
+describe('PresentationReady (recurring generation)', () => {
+  const T_PREP = new Date(LAUNCH.getTime() + 60_000);
+  const T_ACT = new Date(LAUNCH.getTime() + 90_000);
+
+  async function preparedHarness(): Promise<{
+    h: Harness;
+    generation: number;
+  }> {
+    const h = makeHarness();
+    // Close the INITIAL barrier so the runtime is initial fair-start activated.
+    await ack(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-init-shared');
+    await ack(h, ANSWERER_ACTOR, CONN_ANSWER, 'cmd-init-answer');
+    await ack(h, DECIDER_ACTOR, CONN_DECISION, 'cmd-init-decide');
+    expect(h.runtime.serialize().presentationActivatedAt).toBeDefined();
+    const generation = h.runtime.prepareNextPresentation(
+      'cmd-prepare-recurring',
+      CONTROLLER,
+      T_PREP,
+    );
+    return { h, generation };
+  }
+
+  function recurAck(
+    h: Harness,
+    actor: LiveSessionActor,
+    connectionId: string | undefined,
+    commandId: string,
+    generation: number | undefined,
+  ) {
+    h.setNow(T_ACT);
+    return h.useCase.execute({
+      sessionId: SESSION_ID,
+      actor,
+      commandId,
+      expectedRuntimeRevision: h.runtime.revision,
+      expectedSessionRevision: h.session.revision,
+      connectionId,
+      presentationGeneration: generation,
+    });
+  }
+
+  async function recurBarrier(h: Harness, generation: number) {
+    await recurAck(
+      h,
+      CONTROLLER_ACTOR,
+      CONN_SHARED,
+      'cmd-r-shared',
+      generation,
+    );
+    await recurAck(h, ANSWERER_ACTOR, CONN_ANSWER, 'cmd-r-answer', generation);
+    await recurAck(h, DECIDER_ACTOR, CONN_DECISION, 'cmd-r-decide', generation);
+  }
+
+  const currentPresentation = (h: Harness) =>
+    h.runtime.serialize().currentPresentation!;
+
+  // ── GENERATION ────────────────────────────────────────────────────────────
+  it('accepts an acknowledgement for the current generation', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-r1', generation);
+    expect(currentPresentation(h).readiness).toEqual([
+      { capability: 'shared', connectionId: CONN_SHARED },
+    ]);
+    expect(currentPresentation(h).status).toBe('prepared');
+  });
+
+  it('rejects a stale generation', async () => {
+    const { h, generation } = await preparedHarness();
+    await expect(
+      recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-stale', generation - 1),
+    ).rejects.toMatchObject({ code: 'STALE_PRESENTATION_GENERATION' });
+  });
+
+  it('rejects a future generation', async () => {
+    const { h, generation } = await preparedHarness();
+    await expect(
+      recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-future', generation + 1),
+    ).rejects.toMatchObject({ code: 'STALE_PRESENTATION_GENERATION' });
+  });
+
+  it('requires a generation once a recurring presentation exists', async () => {
+    const { h } = await preparedHarness();
+    await expect(
+      recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-nogen', undefined),
+    ).rejects.toMatchObject({ code: 'PRESENTATION_GENERATION_REQUIRED' });
+  });
+
+  it('does not carry prior-generation readiness into a new generation', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-g1', generation);
+    const next = h.runtime.prepareNextPresentation(
+      'cmd-prep-2',
+      CONTROLLER,
+      T_ACT,
+    );
+    expect(next).toBe(generation + 1);
+    expect(currentPresentation(h).readiness).toEqual([]);
+    // The prior-generation acknowledgement can no longer satisfy the new one.
+    await expect(
+      recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-g1-again', generation),
+    ).rejects.toMatchObject({ code: 'STALE_PRESENTATION_GENERATION' });
+  });
+
+  // ── BARRIER ───────────────────────────────────────────────────────────────
+  it('holds prepared while readiness is partial', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-p1', generation);
+    await recurAck(h, ANSWERER_ACTOR, CONN_ANSWER, 'cmd-p2', generation);
+    expect(currentPresentation(h).status).toBe('prepared');
+    expect(currentPresentation(h).activatedAt).toBeUndefined();
+    expect(currentPresentation(h).readiness).toHaveLength(2);
+  });
+
+  it('activates the current generation only on the final surface', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurBarrier(h, generation);
+    expect(currentPresentation(h).status).toBe('activated');
+    expect(currentPresentation(h).activatedAt).toBe(T_ACT.toISOString());
+    expect(currentPresentation(h).readiness).toEqual([]);
+  });
+
+  // ── ATOMICITY / IDEMPOTENCY ───────────────────────────────────────────────
+  it('activates a generation exactly once; a later ack is a safe no-op', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurBarrier(h, generation);
+    const revisionAfter = h.runtime.revision;
+    const activatedAt = currentPresentation(h).activatedAt;
+    const snap = await recurAck(
+      h,
+      CONTROLLER_ACTOR,
+      CONN_SHARED,
+      'cmd-late',
+      generation,
+    );
+    expect(snap).toBeDefined();
+    expect(h.runtime.revision).toBe(revisionAfter);
+    expect(currentPresentation(h).activatedAt).toBe(activatedAt);
+  });
+
+  it('is idempotent for a duplicate surface acknowledgement', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-d1', generation);
+    await recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-d2', generation);
+    expect(currentPresentation(h).readiness).toEqual([
+      { capability: 'shared', connectionId: CONN_SHARED },
+    ]);
+  });
+
+  it('a final ack that lost the CAS race cannot double-activate', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-c1', generation);
+    await recurAck(h, ANSWERER_ACTOR, CONN_ANSWER, 'cmd-c2', generation);
+    // Two concurrent "final" deciders carrying the same pre-activation revision:
+    // the first activates, the second is stale and refused — one activation only.
+    const staleRevision = h.runtime.revision;
+    await recurAck(h, DECIDER_ACTOR, CONN_DECISION, 'cmd-c3', generation);
+    expect(currentPresentation(h).status).toBe('activated');
+    await expect(
+      h.useCase.execute({
+        sessionId: SESSION_ID,
+        actor: DECIDER_ACTOR,
+        commandId: 'cmd-c3-retry',
+        expectedRuntimeRevision: staleRevision,
+        expectedSessionRevision: h.session.revision,
+        connectionId: CONN_DECISION,
+        presentationGeneration: generation,
+      }),
+    ).rejects.toBeInstanceOf(StaleGameplayRuntimeRevisionError);
+  });
+
+  // ── REQUIREMENT VALIDITY ──────────────────────────────────────────────────
+  it('rederives required surfaces so a displaced surface no longer satisfies', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-rr1', generation);
+    await recurAck(h, ANSWERER_ACTOR, CONN_ANSWER, 'cmd-rr2', generation);
+    const reassigned = openedAssignments('p-decider-2', TEAM_B);
+    h.runtime.applyModeState({
+      commandId: 'cmd-reassign',
+      actorId: 'system',
+      runtimeState: ryoRuntimeState(reassigned),
+      roundState: h.runtime.serialize().activeRound!.modeState,
+      eventType: 'decision-reassigned',
+      eventPayload: {},
+      now: T_ACT,
+      sessionRevision: h.session.revision,
+    });
+    await expect(
+      recurAck(
+        h,
+        DECIDER_ACTOR,
+        CONN_DECISION,
+        'cmd-stale-decider',
+        generation,
+      ),
+    ).rejects.toMatchObject({ code: 'PRESENTATION_SURFACE_INVALID' });
+    await recurAck(
+      h,
+      teamPlayerActor('p-decider-2'),
+      'conn-decider-2',
+      'cmd-new-decider',
+      generation,
+    );
+    expect(currentPresentation(h).status).toBe('activated');
+  });
+
+  // ── CONNECTION ────────────────────────────────────────────────────────────
+  it('withdraws a disconnected surface readiness before activation', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-w1', generation);
+    await recurAck(h, ANSWERER_ACTOR, CONN_ANSWER, 'cmd-w2', generation);
+    h.runtime.withdrawCurrentPresentationReadiness(CONN_SHARED);
+    expect(
+      currentPresentation(h).readiness.map((entry) => entry.capability),
+    ).toEqual(['answering']);
+    // The barrier no longer closes on the decider alone.
+    await recurAck(h, DECIDER_ACTOR, CONN_DECISION, 'cmd-w3', generation);
+    expect(currentPresentation(h).status).toBe('prepared');
+  });
+
+  it('requires a fresh acknowledgement from a reconnecting surface', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-re1', generation);
+    h.runtime.withdrawCurrentPresentationReadiness(CONN_SHARED);
+    await recurAck(h, ANSWERER_ACTOR, CONN_ANSWER, 'cmd-re2', generation);
+    await recurAck(h, DECIDER_ACTOR, CONN_DECISION, 'cmd-re3', generation);
+    expect(currentPresentation(h).status).toBe('prepared');
+    // The reconnecting shared surface acks again over a NEW connection id.
+    await recurAck(h, CONTROLLER_ACTOR, 'conn-shared-2', 'cmd-re4', generation);
+    expect(currentPresentation(h).status).toBe('activated');
+  });
+
+  it('a disconnect after activation does not revert the presentation', async () => {
+    const { h, generation } = await preparedHarness();
+    const initialActivatedAt = h.runtime.serialize().presentationActivatedAt;
+    await recurBarrier(h, generation);
+    const activatedAt = currentPresentation(h).activatedAt;
+    h.runtime.withdrawCurrentPresentationReadiness(CONN_SHARED);
+    expect(currentPresentation(h).status).toBe('activated');
+    expect(currentPresentation(h).activatedAt).toBe(activatedAt);
+    expect(h.runtime.serialize().presentationActivatedAt).toBe(
+      initialActivatedAt,
+    );
+  });
+
+  // ── ABORT / CAS ───────────────────────────────────────────────────────────
+  it('refuses to activate a terminal runtime (post-abort)', async () => {
+    const { h, generation } = await preparedHarness();
+    h.runtime.cancel('cmd-abort', CONTROLLER, T_ACT);
+    await expect(
+      recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-after-abort', generation),
+    ).rejects.toMatchObject({ code: 'PRESENTATION_SURFACE_INVALID' });
+  });
+
+  it('never overwrites the initial fair-start activation timestamp', async () => {
+    const { h, generation } = await preparedHarness();
+    const initial = h.runtime.serialize().presentationActivatedAt;
+    await recurBarrier(h, generation);
+    expect(h.runtime.serialize().presentationActivatedAt).toBe(initial);
+    expect(currentPresentation(h).activatedAt).not.toBe(initial);
+  });
+
+  // ── RESTORE ───────────────────────────────────────────────────────────────
+  it('restores a prepared generation', async () => {
+    const { h, generation } = await preparedHarness();
+    const restored = GameplayRuntime.restore(
+      h.runtime.serialize(),
+      RYO_GAMEPLAY_PLUGIN,
+    );
+    expect(restored.currentPresentationCheckpoint()).toEqual({
+      generation,
+      status: 'prepared',
+    });
+  });
+
+  it('restores partial recurring readiness', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-rp', generation);
+    const restored = GameplayRuntime.restore(
+      h.runtime.serialize(),
+      RYO_GAMEPLAY_PLUGIN,
+    );
+    expect(restored.serialize().currentPresentation!.readiness).toEqual([
+      { capability: 'shared', connectionId: CONN_SHARED },
+    ]);
+    expect(restored.areAllRequiredSurfacesReadyForCurrentPresentation()).toBe(
+      false,
+    );
+  });
+
+  it('restores an activated generation without restamping', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurBarrier(h, generation);
+    const activatedAt = currentPresentation(h).activatedAt;
+    const restored = GameplayRuntime.restore(
+      h.runtime.serialize(),
+      RYO_GAMEPLAY_PLUGIN,
+    );
+    expect(restored.currentPresentationCheckpoint()).toEqual({
+      generation,
+      status: 'activated',
+    });
+    expect(restored.serialize().currentPresentation!.activatedAt).toBe(
+      activatedAt,
+    );
+  });
+
+  // ── PROJECTION ────────────────────────────────────────────────────────────
+  const mapper = () =>
+    new GameplayRuntimeSnapshotMapper(
+      new GameplayModeRegistry(),
+      new GameplayAuthorization(),
+    );
+
+  it('projects awaitingPresentation and a safe generation while prepared', async () => {
+    const { h, generation } = await preparedHarness();
+    const snap = mapper().toSnapshot(
+      h.runtime,
+      h.session,
+      CONTROLLER_ACTOR,
+      T_PREP,
+    );
+    expect(
+      (snap.modeState as { awaitingPresentation?: boolean })
+        .awaitingPresentation,
+    ).toBe(true);
+    expect(
+      (snap.presentationSurface as { generation?: number }).generation,
+    ).toBe(generation);
+    expect(
+      (snap.presentationSurface as { capability?: string }).capability,
+    ).toBe('shared');
+  });
+
+  it('hides playable content and readiness/connection detail while prepared', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-proj', generation);
+    const snap = mapper().toSnapshot(
+      h.runtime,
+      h.session,
+      ANSWERER_ACTOR,
+      T_PREP,
+    );
+    const json = JSON.stringify(snap);
+    expect(json).not.toContain(CONN_SHARED);
+    expect(json).not.toContain('readiness');
+    expect(json).not.toContain('correctOptionId');
+    // The answerer sees only its own safe surface capability.
+    expect(
+      (snap.presentationSurface as { capability?: string }).capability,
+    ).toBe('answering');
+  });
+
+  it('resumes normal projection once the recurring presentation activates', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurBarrier(h, generation);
+    const snap = mapper().toSnapshot(
+      h.runtime,
+      h.session,
+      CONTROLLER_ACTOR,
+      T_ACT,
+    );
+    expect(
+      (snap.modeState as { awaitingPresentation?: boolean })
+        .awaitingPresentation,
+    ).toBeUndefined();
   });
 });

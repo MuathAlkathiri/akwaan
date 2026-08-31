@@ -140,6 +140,14 @@ export function pendingDeadline(
     return undefined;
   }
 
+  // A2 compatibility guard (recurring fair-start): while a recurring presentation
+  // is prepared, content is hidden again and no deadline may arm — mirroring the
+  // initial gate above. Recurring deadline re-anchoring at activation is A3; this
+  // only prevents A2 from arming a stale deadline during the awaiting window.
+  if (state.currentPresentation?.status === 'prepared') {
+    return undefined;
+  }
+
   // The mechanic's own declaration wins when it has one, which preserves the
   // existing precedence for a mechanic that carries both kinds of deadline.
   if (declaration?.source === 'session-clock') {

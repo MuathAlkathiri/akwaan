@@ -48,6 +48,12 @@ export function LiveSessionProvider({
     connection: "connecting",
   });
   const [nowMs, setNowMs] = useState(() => Date.now());
+  // Monotonic per-connection counter, bumped every time the socket (re)connects.
+  // A recurring fair-start acknowledgement is bound to the connection epoch so a
+  // reconnect — after which the server has withdrawn the old connection's
+  // readiness — forces a fresh acknowledgement, while an ordinary runtime revision
+  // bump on the same live connection does not.
+  const [connectionEpoch, setConnectionEpoch] = useState(0);
   const [syncState, setSyncState] = useState<
     "idle" | "resynchronizing" | "restored"
   >("idle");
@@ -117,8 +123,12 @@ export function LiveSessionProvider({
           }
         }
       },
-      onConnection: (connection) =>
-        dispatch({ type: "connection", connection }),
+      onConnection: (connection) => {
+        dispatch({ type: "connection", connection });
+        // A fresh live connection (initial connect or a reconnect) starts a new
+        // epoch; the server treats it as a new socket that must acknowledge again.
+        if (connection === "connected") setConnectionEpoch((epoch) => epoch + 1);
+      },
       onError: (error) => dispatch({ type: "error", error }),
       onResyncing: () =>
         setSyncState(snapshotRef.current ? "resynchronizing" : "idle"),
@@ -221,11 +231,15 @@ export function LiveSessionProvider({
     (input: {
       expectedSessionRevision: number;
       expectedRuntimeRevision: number;
+      presentationGeneration?: number;
     }) =>
       acknowledgePresentationReady(sessionId, {
         commandId: crypto.randomUUID(),
         expectedSessionRevision: input.expectedSessionRevision,
         expectedRuntimeRevision: input.expectedRuntimeRevision,
+        ...(input.presentationGeneration !== undefined
+          ? { presentationGeneration: input.presentationGeneration }
+          : {}),
       }).then((next) => {
         adoptSnapshot(next);
       }),
@@ -246,6 +260,7 @@ export function LiveSessionProvider({
     (input: {
       expectedSessionRevision: number;
       expectedRuntimeRevision: number;
+      presentationGeneration?: number;
     }) => {
       const socket = socketRef.current;
       if (!socket) return Promise.reject(new Error("No live session connection"));
@@ -255,6 +270,9 @@ export function LiveSessionProvider({
           commandId: crypto.randomUUID(),
           expectedSessionRevision: input.expectedSessionRevision,
           expectedRuntimeRevision: input.expectedRuntimeRevision,
+          ...(input.presentationGeneration !== undefined
+            ? { presentationGeneration: input.presentationGeneration }
+            : {}),
         });
         return Promise.resolve();
       } catch (error) {
@@ -280,6 +298,7 @@ export function LiveSessionProvider({
           : undefined),
       snapshotReceivedAtMs: state.snapshotReceivedAtMs,
       syncState,
+      connectionEpoch,
       command,
       gameplayCommand,
       presentationReady,
@@ -300,6 +319,7 @@ export function LiveSessionProvider({
       state.snapshot,
       state.snapshotReceivedAtMs,
       syncState,
+      connectionEpoch,
       resync,
       updateMatchDouble,
     ],

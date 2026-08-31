@@ -29,7 +29,11 @@ export class WithdrawPresentationReadiness {
     const runtime = await this.runtimes.findBySessionId(sessionId);
     if (!runtime) return;
     const previousRevision = runtime.revision;
+    // Withdraw from both the INITIAL barrier and any CURRENT prepared recurring
+    // presentation. An already-activated presentation (initial or recurring)
+    // holds no readiness, so a disconnect there is a no-op and never reverts it.
     runtime.clearSurfaceReadiness(connectionId);
+    runtime.withdrawCurrentPresentationReadiness(connectionId);
     if (runtime.revision === previousRevision) return;
     await this.runtimes.save(runtime, previousRevision);
     this.logger.log({

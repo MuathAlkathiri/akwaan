@@ -112,6 +112,12 @@ export interface GameplayRuntimeSnapshot {
   presentationSurface?: {
     running: boolean;
     capability?: "shared" | "answering" | "decision";
+    /**
+     * The server-issued recurring presentation generation, present only while a
+     * recurring presentation is prepared. The surface echoes it verbatim on its
+     * acknowledgement; the client never invents or increments a generation.
+     */
+    generation?: number;
   };
   activeRound?: {
     id: string;

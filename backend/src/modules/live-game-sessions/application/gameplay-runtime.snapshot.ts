@@ -127,10 +127,15 @@ export class GameplayRuntimeSnapshotMapper {
     // any client. This covers both the existing single-surface mechanics (a
     // declared `requiresPresentationActivation` deadline) and the multi-surface
     // contract (a mechanic declaring `requiredPresentationSurfaces`, e.g. RYO).
+    // A prepared recurring presentation re-enters the awaiting state even though
+    // the INITIAL activation already happened: content is hidden again and the
+    // surfaces must acknowledge the new generation before it activates.
+    const recurringPreparing = state.currentPresentation?.status === 'prepared';
     const awaitingPresentation =
-      !state.presentationActivatedAt &&
-      (plugin.deadline?.requiresPresentationActivation === true ||
-        plugin.requiredPresentationSurfaces !== undefined);
+      recurringPreparing ||
+      (!state.presentationActivatedAt &&
+        (plugin.deadline?.requiresPresentationActivation === true ||
+          plugin.requiredPresentationSurfaces !== undefined));
     const requiredSurfaces =
       awaitingPresentation && plugin.requiredPresentationSurfaces
         ? plugin.requiredPresentationSurfaces({
@@ -143,6 +148,11 @@ export class GameplayRuntimeSnapshotMapper {
     const presentationSurface = awaitingPresentation
       ? {
           running: true,
+          // Safe, server-issued identity the client echoes back on its recurring
+          // acknowledgement. Never any readiness/connection/count detail.
+          ...(recurringPreparing && state.currentPresentation
+            ? { generation: state.currentPresentation.generation }
+            : {}),
           ...(requiredSurfaces
             ? (() => {
                 const capability = requiredSurfaces.find((surface) => {

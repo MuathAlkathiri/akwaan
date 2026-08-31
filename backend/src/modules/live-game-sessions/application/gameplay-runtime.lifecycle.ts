@@ -370,6 +370,124 @@ export class PresentationReady {
       const previousSessionRevision = session.revision;
       const previousRuntimeRevision = runtime.revision;
 
+      // Recurring contract: once a recurring presentation has been prepared, every
+      // acknowledgement is generation-scoped. The client echoes the generation the
+      // server projected; a stale or future generation, or a missing one, is
+      // refused. Required surfaces are rederived from current state, readiness is
+      // held on the recurring checkpoint, and the final ack activates that exact
+      // generation once — never touching the immutable INITIAL activation. Recurring
+      // deadline/exposure re-anchoring is deferred to A3, so no session effects are
+      // applied and no deadline is synchronised here.
+      const checkpoint = runtime.currentPresentationCheckpoint();
+      if (checkpoint) {
+        let recurringSessionChanged = false;
+        if (command.presentationGeneration === undefined) {
+          throw new LiveSessionDomainError(
+            'PRESENTATION_GENERATION_REQUIRED',
+            'This runtime requires a recurring presentation generation',
+          );
+        }
+        if (command.presentationGeneration !== checkpoint.generation) {
+          throw new LiveSessionDomainError(
+            'STALE_PRESENTATION_GENERATION',
+            'Presentation generation is not current',
+          );
+        }
+        if (checkpoint.status === 'activated') {
+          // Idempotent: this generation already activated (a duplicate or a
+          // retry that lost the concurrent race). No mutation, safe snapshot.
+          return {
+            session,
+            runtime,
+            previousRuntimeRevision,
+            sessionChanged: false,
+            runtimeChanged: false,
+          };
+        }
+        if (runtime.isTerminal) {
+          // An aborted/completed runtime can never activate a presentation. CAS
+          // already blocks a final ack that raced an abort; this refuses the case
+          // where the readiness arrives after the challenge is already gone.
+          throw new LiveSessionDomainError(
+            'PRESENTATION_SURFACE_INVALID',
+            'The challenge is no longer active',
+          );
+        }
+        const requiredRecurring = runtime.requiredPresentationSurfaces();
+        if (requiredRecurring && requiredRecurring.length > 0) {
+          if (!command.connectionId) {
+            throw new LiveSessionDomainError(
+              'PRESENTATION_SURFACE_INVALID',
+              'A multi-surface acknowledgement must come over a socket connection',
+            );
+          }
+          const capability = this.resolveSurfaceCapability(
+            actor,
+            isController,
+            requiredRecurring,
+          );
+          if (!capability) {
+            throw new LiveSessionDomainError(
+              'PRESENTATION_SURFACE_INVALID',
+              'This connection is not an acknowledged required surface',
+            );
+          }
+          runtime.recordCurrentPresentationReady({
+            generation: checkpoint.generation,
+            capability,
+            connectionId: command.connectionId,
+            commandId: command.commandId,
+            actorId: actor.actorId,
+            now,
+          });
+          if (runtime.areAllRequiredSurfacesReadyForCurrentPresentation()) {
+            const effects = runtime.activateCurrentPresentation(
+              checkpoint.generation,
+              command.commandId,
+              actor.actorId,
+              now,
+            );
+            recurringSessionChanged = applyGameplaySessionEffects(
+              effects,
+              session,
+              now,
+            );
+          }
+        } else {
+          // Single-surface recurring: any valid controller/actionable ack
+          // activates this generation immediately.
+          const effects = runtime.activateCurrentPresentation(
+            checkpoint.generation,
+            command.commandId,
+            actor.actorId,
+            now,
+          );
+          recurringSessionChanged = applyGameplaySessionEffects(
+            effects,
+            session,
+            now,
+          );
+        }
+        // Content exposure for this generation is recorded post-commit by the
+        // same match-reconciliation seam the initial activation uses (the
+        // presented-content gate is lifted once the generation is activated);
+        // the deadline re-anchor commits with the runtime here.
+        if (recurringSessionChanged) {
+          session.completeCommand(command.commandId, now);
+        }
+        await context.saveRuntime(runtime, previousRuntimeRevision);
+        if (recurringSessionChanged) {
+          await context.saveSession(session, previousSessionRevision);
+        }
+        return {
+          session,
+          runtime,
+          previousRuntimeRevision,
+          sessionChanged: recurringSessionChanged,
+          runtimeChanged: true,
+        };
+      }
+
       // Multi-surface contract: a mechanic that declares required surfaces holds
       // activation until every surface has acknowledged readiness. Each ack is
       // validated against the actor's current binding and recorded against the

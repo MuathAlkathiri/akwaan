@@ -84,6 +84,17 @@ export interface GameplayPluginContext {
   awaitingPresentationActivation?: boolean;
   /** Server-owned command time; reducers must never consult the wall clock. */
   now?: Date;
+  /**
+   * Which presentation activation is running when `activatePresentation` is
+   * invoked. `initial` (the default when omitted) is the one-time launch
+   * activation whose truth is `presentationActivatedAt`; `recurring` is a later
+   * `currentPresentation` generation. A plugin re-anchors its playable deadline
+   * from `now` either way, but must read this — never `presentationActivatedAt` —
+   * to tell a recurring activation from the initial one.
+   */
+  presentationKind?: 'initial' | 'recurring';
+  /** The recurring presentation generation being activated (recurring only). */
+  presentationGeneration?: number;
 }
 
 /**

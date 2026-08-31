@@ -109,4 +109,110 @@ describe('GameplayRuntime', () => {
     expect(bounded.transitions).toHaveLength(100);
     expect(bounded.events).toHaveLength(100);
   });
+
+  it('models recurring presentation checkpoints without changing initial activation', () => {
+    const runtime = create();
+    const initial = new Date('2026-01-01T00:00:01.000Z');
+    runtime.activatePresentation('activate-1', 'host-1', initial);
+    const first = runtime.serialize().presentationActivatedAt;
+    const gen = runtime.prepareNextPresentation(
+      'prepare-2',
+      'host-1',
+      new Date('2026-01-01T00:00:02.000Z'),
+    );
+    expect(gen).toBe(1);
+    expect(runtime.serialize().currentPresentation).toMatchObject({
+      generation: 1,
+      status: 'prepared',
+      readiness: [],
+    });
+    runtime.recordCurrentPresentationReady({
+      generation: 1,
+      capability: 'shared',
+      connectionId: 'socket-1',
+      commandId: 'ready-2',
+      actorId: 'p-1',
+      now: new Date('2026-01-01T00:00:03.000Z'),
+    });
+    runtime.recordCurrentPresentationReady({
+      generation: 1,
+      capability: 'shared',
+      connectionId: 'socket-1',
+      commandId: 'ready-2-dup',
+      actorId: 'p-1',
+      now: new Date('2026-01-01T00:00:03.000Z'),
+    });
+    expect(runtime.serialize().currentPresentation?.readiness).toHaveLength(1);
+    runtime.activateCurrentPresentation(
+      1,
+      'activate-2',
+      'host-1',
+      new Date('2026-01-01T00:00:04.000Z'),
+    );
+    expect(runtime.serialize().presentationActivatedAt).toBe(first);
+    const activatedAt = runtime.serialize().currentPresentation?.activatedAt;
+    runtime.activateCurrentPresentation(
+      1,
+      'activate-2-dup',
+      'host-1',
+      new Date('2026-01-01T00:00:05.000Z'),
+    );
+    expect(runtime.serialize().currentPresentation?.activatedAt).toBe(
+      activatedAt,
+    );
+  });
+
+  it('increments generations, scopes readiness, and restores checkpoints', () => {
+    const runtime = create();
+    runtime.prepareNextPresentation('prepare-1', 'host-1', now);
+    runtime.recordCurrentPresentationReady({
+      generation: 1,
+      capability: 'shared',
+      connectionId: 'socket-1',
+      commandId: 'ready-1',
+      actorId: 'p-1',
+      now,
+    });
+    runtime.prepareNextPresentation(
+      'prepare-2',
+      'host-1',
+      new Date(now.getTime() + 1000),
+    );
+    expect(runtime.serialize().currentPresentation).toMatchObject({
+      generation: 2,
+      status: 'prepared',
+      readiness: [],
+    });
+    expect(() =>
+      runtime.recordCurrentPresentationReady({
+        generation: 1,
+        capability: 'shared',
+        connectionId: 'socket-1',
+        commandId: 'stale',
+        actorId: 'p-1',
+        now,
+      }),
+    ).toThrow(
+      expect.objectContaining({ code: 'STALE_PRESENTATION_GENERATION' }),
+    );
+    runtime.withdrawCurrentPresentationReadiness('missing');
+    runtime.recordCurrentPresentationReady({
+      generation: 2,
+      capability: 'shared',
+      connectionId: 'socket-2',
+      commandId: 'ready-2',
+      actorId: 'p-2',
+      now,
+    });
+    runtime.withdrawCurrentPresentationReadiness('socket-2');
+    const restored = GameplayRuntime.restore(
+      runtime.serialize(),
+      CORE_ROUND_RUNTIME_PLUGIN,
+    );
+    expect(restored.serialize().currentPresentation).toMatchObject({
+      generation: 2,
+      status: 'prepared',
+      readiness: [],
+    });
+  });
 });

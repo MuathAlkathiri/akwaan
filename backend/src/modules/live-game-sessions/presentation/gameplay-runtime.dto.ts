@@ -44,6 +44,16 @@ export class GameplayRuntimeMutationDto {
   @IsOptional()
   @IsString()
   clientTimestamp?: string;
+
+  /**
+   * The recurring presentation generation this acknowledgement is for, echoed
+   * from what the server projected. Required only when the runtime carries a
+   * recurring presentation; a legacy/initial acknowledgement omits it.
+   */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  presentationGeneration?: number;
 }
 
 export class StartRakkibhaDto {

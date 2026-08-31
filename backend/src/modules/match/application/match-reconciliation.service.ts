@@ -267,6 +267,12 @@ export class MatchReconciliationService
     runtimeState: GameplayRuntimeState;
   }): Promise<void> {
     try {
+      // Recurring fair-start: while a presentation generation is only prepared,
+      // its content has not been shown to anyone, so nothing is exposed yet.
+      // Mirrors the initial gate each launcher already applies before activation.
+      if (input.runtimeState.currentPresentation?.status === 'prepared') {
+        return;
+      }
       const match = await this.matches.findActiveBySessionId(input.sessionId);
       const challenge = match?.currentChallenge;
       // Only the challenge this runtime belongs to: a stale runtime cannot spend

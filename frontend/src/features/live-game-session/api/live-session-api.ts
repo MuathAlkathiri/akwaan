@@ -180,6 +180,7 @@ export async function acknowledgePresentationReady(
     commandId: string;
     expectedSessionRevision: number;
     expectedRuntimeRevision: number;
+    presentationGeneration?: number;
   },
 ) {
   const response = await apiClient.post<LiveSessionSnapshot>(
