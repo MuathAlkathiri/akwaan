@@ -224,7 +224,24 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   stateSchemaVersion: 1,
   // Bomb is the one mechanic whose clock is the *session's* team clock rather
   // than anything on its own runtime, so it names the source instead of a phase.
-  deadline: { source: 'session-clock', commandType: 'expire-team' },
+  deadline: {
+    source: 'session-clock',
+    commandType: 'expire-team',
+    requiresPresentationActivation: true,
+  },
+  activatePresentation: (state, _now, context) => {
+    if (!context.activeTeamId) return state;
+    return {
+      runtimeState: state,
+      effects: [
+        {
+          type: 'start-team-turn',
+          teamId: context.activeTeamId,
+          reason: 'bomb-round-start',
+        },
+      ],
+    };
+  },
   createInitialRuntimeState: (context) =>
     validateRuntime(context.initialState ?? {}),
   createInitialRoundState: initialRound,

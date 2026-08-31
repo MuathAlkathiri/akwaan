@@ -34,6 +34,13 @@ export interface GameplayRuntimeCommand {
   expectedRuntimeRevision: number;
   expectedSessionRevision: number;
   clientTimestamp?: string;
+  /**
+   * The server-observed transport connection id that issued a presentation
+   * acknowledgement over a socket. Only required for the multi-surface contract
+   * (a mechanic declaring `requiredPresentationSurfaces`): the surface is bound
+   * to the exact acking connection so a disconnect can withdraw it.
+   */
+  connectionId?: string;
 }
 
 @Injectable()

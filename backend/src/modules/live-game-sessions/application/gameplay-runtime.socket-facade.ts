@@ -6,6 +6,7 @@ import {
   CompleteGameplayRuntime,
   CreateGameplayRound,
   PauseGameplayRound,
+  PresentationReady,
   ResumeGameplayRound,
   StartGameplayRound,
   StartGameplayRuntime,
@@ -34,6 +35,7 @@ export class GameplayRuntimeSocketFacade {
     private readonly command: SubmitGameplayCommand,
     private readonly completeRuntime: CompleteGameplayRuntime,
     private readonly cancelRuntime: CancelGameplayRuntime,
+    private readonly presentationReadyAck: PresentationReady,
   ) {}
 
   snapshot(actor: LiveSessionActor, sessionId: string) {
@@ -83,5 +85,17 @@ export class GameplayRuntimeSocketFacade {
   }
   cancel(actor: LiveSessionActor, body: GameplaySocketMutationDto) {
     return this.cancelRuntime.execute({ ...body, actor });
+  }
+  /**
+   * Fair-start acknowledgement over a socket. `connectionId` is the
+   * server-observed `client.id`, required to satisfy the multi-surface contract;
+   * it binds the ack to the exact connection so a disconnect can withdraw it.
+   */
+  presentationReady(
+    actor: LiveSessionActor,
+    body: GameplaySocketMutationDto,
+    connectionId: string,
+  ) {
+    return this.presentationReadyAck.execute({ ...body, actor, connectionId });
   }
 }

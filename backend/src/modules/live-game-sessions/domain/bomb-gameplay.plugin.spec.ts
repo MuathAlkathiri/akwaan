@@ -216,14 +216,22 @@ describe('Bomb gameplay rules', () => {
       },
       {
         prompt: 'من صاحب هذه الأغنية؟',
-        media: { type: 'audio' as const, url: '/audio/track.mp3', altText: 'أغنية' },
+        media: {
+          type: 'audio' as const,
+          url: '/audio/track.mp3',
+          altText: 'أغنية',
+        },
         imageUrl: '',
         altText: 'أغنية',
         acceptedAnswers: ['محمد عبده'],
       },
       {
         prompt: 'ما هذا الشعار؟',
-        media: { type: 'image' as const, url: '/img/crest.webp', altText: 'شعار' },
+        media: {
+          type: 'image' as const,
+          url: '/img/crest.webp',
+          altText: 'شعار',
+        },
         imageUrl: '/img/crest.webp',
         altText: 'شعار',
         acceptedAnswers: ['ريال مدريد'],
@@ -234,7 +242,11 @@ describe('Bomb gameplay rules', () => {
       phase: 'ready',
       questionIndex: 0,
       questionsJson: JSON.stringify([
-        { id: 'q_multi', prompt: multimodalItems[0].prompt, items: multimodalItems },
+        {
+          id: 'q_multi',
+          prompt: multimodalItems[0].prompt,
+          items: multimodalItems,
+        },
       ]),
     };
 
@@ -305,7 +317,10 @@ describe('Bomb gameplay rules', () => {
 
       expect(result.eventType).toBe('bomb-item-skipped');
       expect(result.effects).toContainEqual(
-        expect.objectContaining({ type: 'adjust-active-team-time', deltaMs: -5_000 }),
+        expect.objectContaining({
+          type: 'adjust-active-team-time',
+          deltaMs: -5_000,
+        }),
       );
       expect(result.roundState).toMatchObject({
         itemIndex: 2,

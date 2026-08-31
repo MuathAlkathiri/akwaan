@@ -667,10 +667,45 @@ describe('combo lifecycle integration', () => {
   };
 
   /** A launched Combo challenge with Team A on question 1. */
-  const launchedCombo = async () => {
+  /**
+   * Launch Combo but stop *before* the surface acknowledges it can present. The
+   * challenge is bound and the plan persisted, yet no clock is armed and no
+   * question is projected — the fair-start pre-activation window.
+   */
+  const launchCombo = async () => {
     const session = await startSession();
     await createUnified(session.sessionId);
     await launch(session.sessionId);
+    return session;
+  };
+
+  /**
+   * Fair-start acknowledgement: the presenting surface tells the server it has
+   * adopted this runtime, which anchors the question clock to now and arms it.
+   * Idempotent server-side.
+   */
+  const presentCombo = async (sessionId: string) => {
+    const runtime = (await runtimes().findBySessionId(sessionId))!;
+    await bearer(
+      http().post(
+        `/live-game-sessions/${sessionId}/runtime/presentation-ready`,
+      ),
+    )
+      .send({
+        commandId: uuid(),
+        expectedSessionRevision: await sessionRevision(sessionId),
+        expectedRuntimeRevision: runtime.revision,
+      })
+      .expect(201);
+  };
+
+  /**
+   * The normal path every gameplay test starts from: launched *and* presented,
+   * so the question is live and behaves exactly as it always has post-launch.
+   */
+  const launchedCombo = async () => {
+    const session = await launchCombo();
+    await presentCombo(session.sessionId);
     return session;
   };
 
@@ -1258,6 +1293,113 @@ describe('combo lifecycle integration', () => {
 
       // The armed key is still the question's, unchanged by the re-convergence.
       expect(scheduler().armedKeyFor(sessionId)).toBe(armed);
+    });
+  });
+
+  describe('fair-start presentation activation', () => {
+    const scheduler = () => app.get(GameplayDeadlineScheduler);
+    const presentationReady = async (sessionId: string, expected = 201) => {
+      const runtime = (await runtimes().findBySessionId(sessionId))!;
+      return bearer(
+        http().post(
+          `/live-game-sessions/${sessionId}/runtime/presentation-ready`,
+        ),
+      )
+        .send({
+          commandId: uuid(),
+          expectedSessionRevision: await sessionRevision(sessionId),
+          expectedRuntimeRevision: runtime.revision,
+        })
+        .expect(expected);
+    };
+
+    it('projects no question, arms no clock, and spends nothing before activation', async () => {
+      const { sessionId, participants } = await launchCombo();
+      // Server: not activated.
+      const runtime = (await runtimes().findBySessionId(
+        sessionId,
+      ))!.serialize();
+      expect(runtime.presentationActivatedAt ?? null).toBeNull();
+      // Reducer: no deadline armed while preparing.
+      expect(scheduler().armedKeyFor(sessionId)).toBeFalsy();
+      // Client: told only that it is preparing; no question/plan is projected.
+      const view = await app
+        .get(GetLiveGameSession)
+        .execute(sessionId, participants[0]);
+      expect(
+        (view.gameplay?.modeState as { awaitingPresentation?: boolean })
+          .awaitingPresentation,
+      ).toBe(true);
+      expect(JSON.stringify(view.gameplay?.modeState)).not.toContain(
+        'question',
+      );
+      // Ledger: the plan is reserved (so no rival Match can draw it), but the
+      // first question is not yet *exposed* — reserved != exposed. Nothing is
+      // spent until the surface is ready.
+      const exposures = database.collection('content_exposures');
+      expect(
+        await exposures.countDocuments({ state: 'reserved' }),
+      ).toBeGreaterThan(0);
+      expect(await exposures.countDocuments({ state: 'exposed' })).toBe(0);
+    });
+
+    it('anchors the full question clock from activation, arms it, and stays idempotent + reconnect-stable', async () => {
+      const { sessionId, participants } = await launchCombo();
+      const launchDeadline = new Date(
+        (await runtimeStateOf(sessionId)).deadlineAt as string,
+      ).getTime();
+
+      await presentationReady(sessionId);
+
+      const activated = (await runtimes().findBySessionId(
+        sessionId,
+      ))!.serialize();
+      expect(activated.presentationActivatedAt).toBeTruthy();
+      const deadline = new Date(
+        activated.runtimeState.deadlineAt as string,
+      ).getTime();
+      const activatedAt = new Date(
+        activated.presentationActivatedAt as string,
+      ).getTime();
+      // The full ~30s is measured from activation, never earlier than launch.
+      expect(deadline - activatedAt).toBeGreaterThanOrEqual(29_000);
+      expect(deadline - activatedAt).toBeLessThanOrEqual(31_000);
+      expect(deadline).toBeGreaterThanOrEqual(launchDeadline);
+      // Now the reducer arms it and the client sees the real question.
+      expect(scheduler().armedKeyFor(sessionId)).toBeTruthy();
+      const playing = await app
+        .get(GetLiveGameSession)
+        .execute(sessionId, participants[0]);
+      expect(
+        (playing.gameplay?.modeState as { awaitingPresentation?: boolean })
+          .awaitingPresentation,
+      ).toBeUndefined();
+
+      // Idempotent: a second acknowledgement never re-stamps the deadline.
+      await presentationReady(sessionId);
+      expect((await runtimeStateOf(sessionId)).deadlineAt).toBe(
+        activated.runtimeState.deadlineAt,
+      );
+
+      // Reconnect after activation: the authoritative remaining clock is unchanged.
+      const reconnected = await app
+        .get(GetLiveGameSession)
+        .execute(sessionId, participants[0]);
+      expect(reconnected.gameplay?.modeState.deadlineAt).toBe(
+        activated.runtimeState.deadlineAt,
+      );
+    });
+
+    it('an abort before activation does not spend the first question', async () => {
+      const { sessionId } = await launchCombo();
+      await abort(sessionId);
+      // Aborting a never-presented challenge exposes nothing: the first question
+      // is returned unspent (reservations may be released, exposures never made).
+      expect(
+        await database
+          .collection('content_exposures')
+          .countDocuments({ state: 'exposed' }),
+      ).toBe(0);
     });
   });
 });

@@ -1,9 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LiveSessionContext } from "@/features/live-game-session/hooks/live-session-context";
-import { MatchStageRouter } from "@/features/live-game-session/match/match-stage-router";
+import {
+  MatchGameplayRenderer,
+  MatchStageRouter,
+} from "@/features/live-game-session/match/match-stage-router";
 import type {
   LiveSessionMatchSnapshot,
   MatchActor,
@@ -508,5 +511,269 @@ describe("a refresh restores whatever stage the snapshot names", () => {
   it("marks the rendered stage on the surface for a reload to land on", () => {
     renderRouter(match({ stage: "board" }));
     expect(document.querySelector("[data-match-stage='board']")).toBeTruthy();
+  });
+});
+
+describe("fair-start presentation acknowledgement", () => {
+  const gameplaySnapshot = ({
+    awaiting = true,
+    runtimeRevision = 7,
+    sessionRevision = 4,
+    modeKey = "combo",
+    presentationSurface = false,
+  }: {
+    awaiting?: boolean;
+    runtimeRevision?: number;
+    sessionRevision?: number;
+    modeKey?: string;
+    presentationSurface?: boolean;
+  } = {}) =>
+    ({
+      sessionId: "session-1",
+      revision: sessionRevision,
+      teams: [],
+      participants: [],
+      availableActions: [],
+      gameplay: {
+        runtimeId: "runtime-1",
+        revision: runtimeRevision,
+        mode: { key: modeKey, version: 1 },
+        status: "active",
+        modeState: awaiting ? { awaitingPresentation: true } : {},
+        ...(presentationSurface
+          ? { presentationSurface: { running: true, capability: "shared" as const } }
+          : {}),
+        transitions: [],
+        availableActions: [],
+      },
+    }) as unknown as LiveSessionSnapshot;
+
+  const tree = (
+    snapshot: LiveSessionSnapshot,
+    presentationReady: ReturnType<typeof vi.fn>,
+    presentationReadySocket?: ReturnType<typeof vi.fn>,
+  ) => (
+    <LiveSessionContext.Provider
+      value={
+        {
+          snapshot,
+          connection: "connected",
+          presentationReady,
+          presentationReadySocket,
+          sessionId: "session-1",
+        } as never
+      }
+    >
+      <MatchGameplayRenderer actor="controller" />
+    </LiveSessionContext.Provider>
+  );
+
+  const renderWith = (
+    snapshot: LiveSessionSnapshot,
+    presentationReady = vi.fn().mockResolvedValue(undefined),
+    presentationReadySocket?: ReturnType<typeof vi.fn>,
+  ) => {
+    const view = render(
+      tree(snapshot, presentationReady, presentationReadySocket),
+    );
+    return {
+      ack: presentationReady,
+      socketAck: presentationReadySocket,
+      unmount: view.unmount,
+      rerenderWith: (next: LiveSessionSnapshot) =>
+        view.rerender(tree(next, presentationReady, presentationReadySocket)),
+    };
+  };
+
+  it("issues exactly one acknowledgement with the on-screen revisions while awaiting (pre-connected flow)", async () => {
+    const { ack } = renderWith(gameplaySnapshot());
+    expect(screen.getByTestId("challenge-preparing")).toBeTruthy();
+    expect(screen.queryByTestId("combo-gameplay-panel")).toBeNull();
+    await waitFor(() => expect(ack).toHaveBeenCalledTimes(1));
+    expect(ack).toHaveBeenCalledWith({
+      expectedSessionRevision: 4,
+      expectedRuntimeRevision: 7,
+    });
+  });
+
+  it("acknowledges when the FIRST rendered snapshot is already awaiting (cold open)", async () => {
+    // No prior non-awaiting snapshot ever reached this surface — the exact
+    // cold-open case that used to drop the ack. It must still be issued, using
+    // the revisions from the snapshot on screen (not any lagging provider ref).
+    const { ack } = renderWith(gameplaySnapshot({ runtimeRevision: 11 }));
+    await waitFor(() => expect(ack).toHaveBeenCalledTimes(1));
+    expect(ack).toHaveBeenCalledWith({
+      expectedSessionRevision: 4,
+      expectedRuntimeRevision: 11,
+    });
+  });
+
+  it("acknowledges on a fresh remount straight into an awaiting runtime (refresh)", async () => {
+    const first = renderWith(gameplaySnapshot());
+    await waitFor(() => expect(first.ack).toHaveBeenCalledTimes(1));
+    first.unmount();
+    const second = renderWith(gameplaySnapshot());
+    await waitFor(() => expect(second.ack).toHaveBeenCalledTimes(1));
+  });
+
+  it("does not pin the key when an attempt is not accepted, and retries on the next snapshot", async () => {
+    const ack = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("transient"))
+      .mockResolvedValue(undefined);
+    const { rerenderWith } = renderWith(gameplaySnapshot(), ack);
+    await waitFor(() => expect(ack).toHaveBeenCalledTimes(1)); // failed, not pinned
+    rerenderWith(gameplaySnapshot()); // same revision, new snapshot → retry
+    await waitFor(() => expect(ack).toHaveBeenCalledTimes(2)); // accepted, now pinned
+    rerenderWith(gameplaySnapshot());
+    await waitFor(() => expect(ack).toHaveBeenCalledTimes(2)); // no further resend
+  });
+
+  it("does not resend for the same runtime revision once accepted", async () => {
+    const { ack, rerenderWith } = renderWith(gameplaySnapshot());
+    await waitFor(() => expect(ack).toHaveBeenCalledTimes(1));
+    rerenderWith(gameplaySnapshot());
+    rerenderWith(gameplaySnapshot());
+    await waitFor(() => expect(ack).toHaveBeenCalledTimes(1));
+  });
+
+  it("acknowledges the new runtime when the revision changes", async () => {
+    const { ack, rerenderWith } = renderWith(
+      gameplaySnapshot({ runtimeRevision: 7 }),
+    );
+    await waitFor(() => expect(ack).toHaveBeenCalledTimes(1));
+    rerenderWith(gameplaySnapshot({ runtimeRevision: 8, sessionRevision: 5 }));
+    await waitFor(() => expect(ack).toHaveBeenCalledTimes(2));
+    expect(ack).toHaveBeenLastCalledWith({
+      expectedSessionRevision: 5,
+      expectedRuntimeRevision: 8,
+    });
+  });
+
+  it("does not acknowledge once activated, and a reconnect re-delivering it does not re-acknowledge", async () => {
+    const { ack, rerenderWith } = renderWith(
+      gameplaySnapshot({ awaiting: false }),
+    );
+    expect(screen.queryByTestId("challenge-preparing")).toBeNull();
+    rerenderWith(gameplaySnapshot({ awaiting: false }));
+    await Promise.resolve();
+    expect(ack).not.toHaveBeenCalled();
+  });
+
+  it("acknowledges an awaiting Bomb runtime the same way (shared foundation)", async () => {
+    const { ack } = renderWith(
+      gameplaySnapshot({ modeKey: "bomb", runtimeRevision: 3 }),
+    );
+    await waitFor(() => expect(ack).toHaveBeenCalledTimes(1));
+    expect(ack).toHaveBeenCalledWith({
+      expectedSessionRevision: 4,
+      expectedRuntimeRevision: 3,
+    });
+  });
+
+  it("acknowledges a multi-surface runtime (RYO) over the socket and never over HTTP", async () => {
+    // RYO declares `presentationSurface.running`, which is the server saying the
+    // acknowledgement must be bound to this exact socket connection so a
+    // disconnect can withdraw it. The HTTP channel carries no connection
+    // identity, so routing the ack there would be refused server-side — the
+    // renderer must pick the socket, and must not leak an HTTP ack alongside it.
+    const { ack, socketAck } = renderWith(
+      gameplaySnapshot({
+        modeKey: "read-your-opponent",
+        presentationSurface: true,
+      }),
+      vi.fn().mockResolvedValue(undefined),
+      vi.fn().mockResolvedValue(undefined),
+    );
+    // Still held on the preparing loader: no mechanic screen while any surface
+    // is still mounting, even for the shared screen.
+    expect(screen.getByTestId("challenge-preparing")).toBeTruthy();
+    expect(screen.queryByTestId("renderer-ryo")).toBeNull();
+
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+    expect(socketAck).toHaveBeenCalledWith({
+      expectedSessionRevision: 4,
+      expectedRuntimeRevision: 7,
+    });
+    expect(ack).not.toHaveBeenCalled();
+  });
+
+  it("keeps the HTTP acknowledgement for a single-surface mechanic", async () => {
+    // No `presentationSurface` means the runtime opts into the default
+    // single-surface contract, which the HTTP acknowledgement serves.
+    const { ack, socketAck } = renderWith(
+      gameplaySnapshot({ modeKey: "bomb", runtimeRevision: 3 }),
+      vi.fn().mockResolvedValue(undefined),
+      vi.fn().mockResolvedValue(undefined),
+    );
+    await waitFor(() => expect(ack).toHaveBeenCalledTimes(1));
+    expect(socketAck).not.toHaveBeenCalled();
+  });
+
+  it("never falls back to HTTP when a multi-surface runtime has no socket channel", async () => {
+    // A surface that cannot present without a connection must stay silent
+    // rather than send a single-surface HTTP ack: the server would (correctly)
+    // refuse it, and this surface has no connection identity to bind anyway.
+    const { ack } = renderWith(
+      gameplaySnapshot({
+        modeKey: "read-your-opponent",
+        presentationSurface: true,
+        runtimeRevision: 9,
+      }),
+      vi.fn().mockResolvedValue(undefined),
+    );
+    await Promise.resolve();
+    expect(screen.getByTestId("challenge-preparing")).toBeTruthy();
+    expect(ack).not.toHaveBeenCalled();
+  });
+
+  it("replaces the shared preparing loader with the mechanic once activation lands", async () => {
+    const socketAck = vi.fn().mockResolvedValue(undefined);
+    const { ack, socketAck: onSocket, rerenderWith } = renderWith(
+      gameplaySnapshot({
+        modeKey: "read-your-opponent",
+        presentationSurface: true,
+      }),
+      vi.fn().mockResolvedValue(undefined),
+      socketAck,
+    );
+    expect(screen.getByTestId("challenge-preparing")).toBeTruthy();
+    await waitFor(() => expect(onSocket).toHaveBeenCalledTimes(1));
+
+    rerenderWith(
+      gameplaySnapshot({
+        modeKey: "read-your-opponent",
+        presentationSurface: true,
+        awaiting: false,
+      }),
+    );
+    expect(screen.queryByTestId("challenge-preparing")).toBeNull();
+    expect(screen.getByTestId("renderer-ryo")).toBeTruthy();
+    await Promise.resolve();
+    // Activation cleared `awaiting`, so nothing further is sent — and nothing
+    // was sent over HTTP at any point.
+    expect(onSocket).toHaveBeenCalledTimes(1);
+    expect(ack).not.toHaveBeenCalled();
+  });
+
+  it("retries a rejected socket acknowledgement on the next snapshot and pins a success", async () => {
+    // The socket channel can reject (no live connection yet). The renderer must
+    // not pin an attempt that was never accepted, so a later authoritative
+    // snapshot retries; once accepted, the revision is pinned like any other.
+    const socketAck = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("no live connection"))
+      .mockResolvedValue(undefined);
+    const { ack, socketAck: onSocket, rerenderWith } = renderWith(
+      gameplaySnapshot({ presentationSurface: true }),
+      vi.fn().mockResolvedValue(undefined),
+      socketAck,
+    );
+    await waitFor(() => expect(onSocket).toHaveBeenCalledTimes(1));
+    rerenderWith(gameplaySnapshot({ presentationSurface: true }));
+    await waitFor(() => expect(onSocket).toHaveBeenCalledTimes(2));
+    rerenderWith(gameplaySnapshot({ presentationSurface: true }));
+    await waitFor(() => expect(onSocket).toHaveBeenCalledTimes(2));
+    expect(ack).not.toHaveBeenCalled();
   });
 });

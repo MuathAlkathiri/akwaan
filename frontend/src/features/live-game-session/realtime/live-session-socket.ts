@@ -191,6 +191,31 @@ export class LiveSessionSocket {
     this.recoverSnapshot?.();
   }
 
+  /**
+   * Fair-start acknowledgement over the socket. The server observes this
+   * connection's `client.id` as the acknowledgement's identity, which is what
+   * binds it to the exact surface (and lets a disconnect withdraw it). The RYO
+   * multi-surface contract requires this — the plain HTTP acknowledgement cannot
+   * carry a connection identity and is deliberately refused for multi-surface.
+   */
+  presentationReady(input: {
+    sessionId: string;
+    expectedSessionRevision: number;
+    expectedRuntimeRevision: number;
+    commandId: string;
+  }): void {
+    if (!this.socket?.connected) {
+      throw new Error("Live session connection is not available");
+    }
+    this.socket.emit("live-session:presentation-ready", {
+      sessionId: input.sessionId,
+      expectedSessionRevision: input.expectedSessionRevision,
+      expectedRuntimeRevision: input.expectedRuntimeRevision,
+      commandId: input.commandId,
+      clientTimestamp: new Date().toISOString(),
+    });
+  }
+
   command(
     event: string,
     command: {

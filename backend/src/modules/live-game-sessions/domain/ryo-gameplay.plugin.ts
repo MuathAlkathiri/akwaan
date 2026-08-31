@@ -356,6 +356,57 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     };
   },
   projectRoundState: validateRound,
+  /**
+   * Fair-start: the three surfaces that must acknowledge before RYO presents.
+   *
+   * The shared screen (controller), the assigned answerer, and the assigned
+   * decider all have to be mounted and ready, or the first item would burn its
+   * clock while one surface was still cold-starting. Only the *capability* is
+   * safe to project; the participant bindings stay server-side and are derived
+   * from the current assignments (which a disconnect handoff may have changed).
+   *
+   * Scope boundary: only the *initial* RYO item holds this barrier. Once the
+   * runtime has activated, subsequent items keep the canonical RYO lifecycle —
+   * prepare and open immediately with a deadline — so this barrier applies only
+   * while `presentationActivatedAt` is still absent.
+   */
+  requiredPresentationSurfaces({ runtimeState }) {
+    const current = ryoAssignedParticipants(validateRuntime(runtimeState));
+    if (!current.answererParticipantId || !current.deciderParticipantId) {
+      return undefined;
+    }
+    return [
+      { capability: 'shared' },
+      {
+        capability: 'answering',
+        participantId: current.answererParticipantId,
+      },
+      {
+        capability: 'decision',
+        participantId: current.deciderParticipantId,
+      },
+    ];
+  },
+  /**
+   * At activation, open the held first item and anchor its clock to now.
+   *
+   * The first interaction was prepared without being opened and without a
+   * deadline, so the barrier held it. Activation re-presents it: open it and set
+   * `visibleFrom`/`deadlineAt` to activation time + the configured window. The
+   * runtime applies this in the same authoritative transaction as
+   * `presentationActivatedAt`, so the playable window starts exactly at
+   * activation.
+   */
+  activatePresentation(_state, now) {
+    return {
+      runtimeState: _state,
+      interaction: {
+        status: 'open',
+        visibleFrom: now,
+        deadlineAt: new Date(now.getTime() + RYO_TIMER_SECONDS * 1000),
+      },
+    };
+  },
   interaction: {
     submissionAuthorization: 'connected-player',
     submissionPolicy: 'one-per-participant',
@@ -400,8 +451,16 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
         },
         visibility: 'public',
         metadata: {},
-        visibleFrom: now,
-        deadlineAt: new Date(now.getTime() + RYO_TIMER_SECONDS * 1000),
+        // Fair-start: while every required surface is still mounting, the first
+        // item's deadline is deliberately withheld. The interaction is held in
+        // `prepared` with no clock; activation opens it and re-anchors the
+        // deadline to activation time, so a slow cold-start on any surface never
+        // burns RYO's playable window. Once activated, subsequent items keep the
+        // canonical deadline (now + RYO_TIMER_SECONDS).
+        visibleFrom: context.awaitingPresentationActivation ? undefined : now,
+        deadlineAt: context.awaitingPresentationActivation
+          ? undefined
+          : new Date(now.getTime() + RYO_TIMER_SECONDS * 1000),
       };
     },
     validatePrompt: (prompt) => prompt,

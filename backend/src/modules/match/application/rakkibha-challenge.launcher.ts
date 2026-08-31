@@ -123,11 +123,17 @@ export class RakkibhaChallengeLauncher
     orderedContentItemIds: readonly string[];
   }): string[] {
     const runtimeState = input.runtime.runtimeState;
+    if (!runtimeState || !RAKKIBHA_PLUGIN.presentedContentItemIds) return [];
+    // Fair-start: selection is not exposure. Until gameplay is activated no puzzle
+    // has been shown to anyone, so nothing is spent — an abort before activation
+    // returns it. Keyed off the plugin's own opt-in, not a slug check.
     if (
-      !runtimeState ||
-      !RAKKIBHA_PLUGIN.presentedContentItemIds
-    )
+      RAKKIBHA_PLUGIN.deadline?.source === 'runtime-state' &&
+      RAKKIBHA_PLUGIN.deadline.requiresPresentationActivation &&
+      !input.runtime.presentationActivatedAt
+    ) {
       return [];
+    }
     return RAKKIBHA_PLUGIN.presentedContentItemIds({
       runtimeState,
       roundState: input.runtime.activeRound?.modeState ?? {},

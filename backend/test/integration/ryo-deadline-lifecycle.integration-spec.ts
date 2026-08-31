@@ -36,6 +36,7 @@ import { GetGameplayRuntime } from '../../src/modules/live-game-sessions/applica
 import { GameplayDeadlineScheduler } from '../../src/modules/live-game-sessions/application/gameplay-deadline.scheduler';
 import { GameplayObserverRegistry } from '../../src/modules/live-game-sessions/application/gameplay-observer.registry';
 import { GameplayInteractionUseCases } from '../../src/modules/live-game-sessions/application/gameplay-interaction.use-cases';
+import { PresentationReady } from '../../src/modules/live-game-sessions/application/gameplay-runtime.lifecycle';
 import {
   GAMEPLAY_RUNTIME_REPOSITORY,
   GameplayRuntimeRepository,
@@ -57,6 +58,12 @@ import { LIVE_SESSION_TRANSITION_PUBLISHER } from '../../src/modules/live-game-s
  * real scheduler. Everything downstream is genuine: the real resolution use
  * case, the real plugin outcome, the real transaction, the real Mongo document,
  * and the real snapshot a client would receive.
+ *
+ * Fair-start: RYO is a multi-surface mechanic. Launching holds the first item
+ * `prepared` with no deadline until every surface — the shared screen, the
+ * answering phone, and the deciding phone — acknowledges readiness over a
+ * socket connection. The 25-second window is anchored at that activation, never
+ * at launch, and the scheduler must arm nothing while the item is held.
  */
 type MatchBearingSnapshot = LiveGameSessionSnapshot & {
   match: NonNullable<LiveGameSessionSnapshot['match']> & {
@@ -370,6 +377,51 @@ describe('RYO deadline lifecycle integration', () => {
       contentItemIds,
     });
 
+  /**
+   * One socket-surface acknowledgement against real Mongo, exactly the call the
+   * gateway makes after receiving `live-session:presentation-ready`. The
+   * connection id is the server-observed socket identity; the use case anchors
+   * it to the surface the acknowledging actor is currently committed to.
+   */
+  const ackSurface = async (
+    sessionId: string,
+    actor: LiveSessionActor,
+    connectionId: string,
+  ) => {
+    const document = (await rawRuntime(sessionId))!;
+    return app.get(PresentationReady).execute({
+      sessionId,
+      actor,
+      connectionId,
+      commandId: uuid(),
+      expectedRuntimeRevision: Number(document.state.revision),
+      expectedSessionRevision: await sessionRevision(sessionId),
+    });
+  };
+
+  /**
+   * Every required RYO surface acknowledges, the way the three real devices
+   * would. The order is taken from the committed assignments, so partial-ack
+   * tests can still single out a specific withheld surface.
+   */
+  const activateRyo = async (
+    sessionId: string,
+    participants: LiveSessionActor[],
+  ) => {
+    const runtime = (await runtimes().findBySessionId(sessionId))!;
+    const surfaces = runtime.requiredPresentationSurfaces();
+    for (const surface of surfaces) {
+      const actor =
+        surface.capability === 'shared'
+          ? ({ kind: 'user', actorId: controllerId } as LiveSessionActor)
+          : participants.find(
+              (participant) =>
+                participant.participantId === surface.participantId,
+            )!;
+      await ackSurface(sessionId, actor, `sock-${surface.capability}`);
+    }
+  };
+
   const runtimes = () =>
     app.get<GameplayRuntimeRepository>(GAMEPLAY_RUNTIME_REPOSITORY);
 
@@ -423,36 +475,122 @@ describe('RYO deadline lifecycle integration', () => {
     });
   };
 
-  it('arms the first item deadline from the launch alone', async () => {
+  it('holds the first item unexposed and un-armed until every surface has acknowledged', async () => {
     // The regression, stated directly. Launching RYO is the only thing that
     // happens here: no scheduler call, no observer nudge, no test helper. If
-    // the production lifecycle does not arm the deadline by itself, the
-    // authoritative state carries a clock nobody is watching — which is the
-    // freeze this whole suite exists for.
-    const { sessionId } = await startSession();
+    // the production lifecycle armed a deadline at this point, a phone still
+    // cold-starting would be burning time against a clock nobody can see yet —
+    // the freeze this suite exists to prevent, now inverted into the hold.
+    const { sessionId, participants } = await startSession();
     await createUnified(sessionId);
     await launchRyo(sessionId);
 
     const runtime = (await rawRuntime(sessionId))!;
     const interaction = runtime.state.activeRound.interaction;
-    expect(interaction.status).toBe('open');
-    expect(interaction.prompt.deadlineAt).toBeTruthy();
-
+    expect(runtime.state.presentationActivatedAt).toBeUndefined();
+    expect(interaction.status).toBe('prepared');
+    expect(interaction.prompt.deadlineAt).toBeUndefined();
     const armed = app.get(GameplayDeadlineScheduler).armedKeyFor(sessionId);
-    expect(armed).toBeDefined();
+    expect(armed).toBeUndefined();
+
+    // Every surface acknowledges — and only then does the item open with a
+    // real, armed 25-second clock anchored to this moment.
+    await activateRyo(sessionId, participants);
+
+    const activated = (await rawRuntime(sessionId))!;
+    expect(activated.state.presentationActivatedAt).toBeTruthy();
+    expect(activated.state.presentationReady).toEqual([]);
+    const opened = activated.state.activeRound.interaction;
+    expect(opened.status).toBe('open');
+    const deadlineAt = new Date(opened.prompt.deadlineAt).getTime();
+    expect(deadlineAt).toBeGreaterThan(Date.now() + 24_000);
+    const armedAfter = app
+      .get(GameplayDeadlineScheduler)
+      .armedKeyFor(sessionId);
+    expect(armedAfter).toBeDefined();
     // Armed for *this* item: the identity is what makes the timer harmless to
     // whatever replaces it.
-    expect(armed).toContain(String(interaction.id));
-    expect(armed).toContain(String(runtime.state.id));
+    expect(armedAfter).toContain(String(opened.id));
+    expect(armedAfter).toContain(String(activated.state.id));
+  }, 120_000);
+
+  it('holds the clock while the decision surface withholds, then anchors a full window at activation', async () => {
+    // The multiplayer worst case, against real Mongo: the deciding phone is the
+    // last to come up. The shared screen and the answering phone are up, but if
+    // the 25 seconds started at launch the decider would inherit nothing — or,
+    // worse, the challenge would resolve before it ever renders. Under
+    // fair-start the hold is propped against real persistence, the scheduler
+    // arms nothing, and the final ack re-anchors the whole window to now.
+    const { sessionId, participants } = await startSession();
+    await createUnified(sessionId);
+    const launchSaw = Date.now();
+    await launchRyo(sessionId);
+
+    const ready = app.get(PresentationReady);
+    const scheduler = app.get(GameplayDeadlineScheduler);
+    const runtime = (await runtimes().findBySessionId(sessionId))!;
+    const surfaces = runtime.requiredPresentationSurfaces();
+    const decision = surfaces.find((s) => s.capability === 'decision')!;
+    const decisionActor = participants.find(
+      (participant) => participant.participantId === decision.participantId,
+    )!;
+
+    for (const surface of surfaces.filter((s) => s.capability !== 'decision')) {
+      const actor =
+        surface.capability === 'shared'
+          ? ({ kind: 'user', actorId: controllerId } as LiveSessionActor)
+          : participants.find(
+              (participant) =>
+                participant.participantId === surface.participantId,
+            )!;
+      await ackSurface(sessionId, actor, `sock-${surface.capability}`);
+    }
+    expect(ready).toBeDefined();
+
+    // Two surfaces up, the barrier still intact: no activation stamp, nothing
+    // open, no clock persisted anywhere, no timer armed — the decider's late
+    // arrival costs it nothing.
+    const held = (await rawRuntime(sessionId))!;
+    expect(held.state.presentationActivatedAt).toBeUndefined();
+    expect(held.state.activeRound.interaction.status).toBe('prepared');
+    expect(
+      held.state.activeRound.interaction.prompt.deadlineAt,
+    ).toBeUndefined();
+    expect(scheduler.armedKeyFor(sessionId)).toBeUndefined();
+
+    // The deciding phone finally acks, cold-starting long after launch. The
+    // full window is anchored here, so setup-and-launch latency is free time.
+    const justBeforeDecision = Date.now();
+    await ackSurface(sessionId, decisionActor, 'sock-decision');
+
+    const activated = (await rawRuntime(sessionId))!;
+    expect(activated.state.presentationActivatedAt).toBeTruthy();
+    const first = activated.state.activeRound.interaction;
+    expect(first.status).toBe('open');
+    // The BSON date comes back as a Date; stringifying it drops milliseconds,
+    // so compare the raw instant to keep the whole 25,000ms window.
+    const deadlineAt = new Date(first.prompt.deadlineAt).getTime();
+    // The whole window, not whatever remained since launch. A launch-anchored
+    // clock would have been shaved by the hold (and would long since have
+    // fired while this test waited for the third phone); this clocks in as a
+    // full run from the moment the decider arrived.
+    expect(deadlineAt - justBeforeDecision).toBeGreaterThanOrEqual(25_000);
+    expect(deadlineAt - launchSaw).toBeGreaterThan(25_000);
+
+    const armed = scheduler.armedKeyFor(sessionId);
+    expect(armed).toBeDefined();
+    expect(armed).toContain(String(first.id));
+    expect(armed).toContain(String(activated.state.id));
   }, 120_000);
 
   it('arms the next item deadline when the previous item resolves', async () => {
     // The other half of the audit gap. Fixing only the launch would leave every
     // item after the first unwatched, so this asserts the armed identity
     // actually *moves* to the new interaction as the challenge progresses.
-    const { sessionId } = await startSession();
+    const { sessionId, participants } = await startSession();
     await createUnified(sessionId);
     await launchRyo(sessionId);
+    await activateRyo(sessionId, participants);
     const scheduler = app.get(GameplayDeadlineScheduler);
 
     const first = (await rawRuntime(sessionId))!;
@@ -480,13 +618,15 @@ describe('RYO deadline lifecycle integration', () => {
   }, 120_000);
 
   it('resolves an expired RYO item, advances, and finishes the challenge', async () => {
-    const { sessionId } = await startSession();
+    const { sessionId, participants } = await startSession();
     await createUnified(sessionId);
     await launchRyo(sessionId);
+    await activateRyo(sessionId, participants);
 
     const before = await rawRuntime(sessionId);
     expect(before!.modeKey).toBe(RYO_MODE_KEY);
     expect(before!.status).toBe('round-active');
+    expect(before!.state.presentationActivatedAt).toBeTruthy();
     expect(before!.state.activeRound.interaction.status).toBe('open');
     expect(
       before!.state.activeRound.interaction.prompt.deadlineAt,
@@ -519,9 +659,10 @@ describe('RYO deadline lifecycle integration', () => {
   }, 120_000);
 
   it('lets the same session start another challenge afterwards', async () => {
-    const { sessionId } = await startSession();
+    const { sessionId, participants } = await startSession();
     await createUnified(sessionId);
     await launchRyo(sessionId);
+    await activateRyo(sessionId, participants);
 
     for (let item = 0; item < 3; item += 1) {
       const current = await rawRuntime(sessionId);
@@ -560,6 +701,7 @@ describe('RYO deadline lifecycle integration', () => {
     const { sessionId, participants } = await startSession();
     await createUnified(sessionId);
     await launchRyo(sessionId);
+    await activateRyo(sessionId, participants);
 
     const read = app.get(GetGameplayRuntime);
     const beforeSnapshot = await read.execute(sessionId, participants[0]);
@@ -579,9 +721,10 @@ describe('RYO deadline lifecycle integration', () => {
   }, 120_000);
 
   it('recovers an already-expired deadline at application bootstrap', async () => {
-    const { sessionId } = await startSession();
+    const { sessionId, participants } = await startSession();
     await createUnified(sessionId);
     await launchRyo(sessionId);
+    await activateRyo(sessionId, participants);
     const beforeIndex = Number(
       (await rawRuntime(sessionId))!.state.runtimeState.currentItemIndex,
     );
@@ -617,9 +760,10 @@ describe('RYO deadline lifecycle integration', () => {
   }, 120_000);
 
   it('lets exactly one of an answer and a timeout win the same item', async () => {
-    const { sessionId } = await startSession();
+    const { sessionId, participants } = await startSession();
     await createUnified(sessionId);
     await launchRyo(sessionId);
+    await activateRyo(sessionId, participants);
     await expireDeadlineInMongo(sessionId);
 
     const document = await rawRuntime(sessionId);

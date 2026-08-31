@@ -5,6 +5,7 @@ import { LiveGameSession } from '../domain/live-game-session';
 import { GameplayAuthorization } from './gameplay-authorization';
 import { LiveSessionActor } from './live-session-actor';
 import { canSeeVisibility } from '../domain/gameplay-interaction.plugin';
+import { PresentationSurfaceCapability } from '../domain/gameplay-mode.plugin';
 
 export interface GameplayRuntimeSnapshot {
   runtimeId: string;
@@ -13,6 +14,16 @@ export interface GameplayRuntimeSnapshot {
   revision: number;
   mode: { key: string; version: number; stateSchemaVersion: number };
   modeState: Record<string, string | number | boolean | null>;
+  /**
+   * Fair-start multi-surface shell: only ever present while a multi-surface
+   * mechanic is still awaiting activation. Carries exactly the safe surface
+   * capability for this actor (and never participant ids, teams, question text,
+   * options, the numeric target, correct answers, or Steal/Trust state).
+   */
+  presentationSurface?: {
+    running: boolean;
+    capability?: PresentationSurfaceCapability;
+  };
   activeRound?: {
     id: string;
     sequence: number;
@@ -111,6 +122,47 @@ export class GameplayRuntimeSnapshotMapper {
     const projectedRound = state.activeRound
       ? plugin.projectRoundState(state.activeRound.modeState)
       : undefined;
+    // Fair-start: while a mechanic that opted into presentation activation is
+    // still preparing, no playable content (prompt/media/private view) may reach
+    // any client. This covers both the existing single-surface mechanics (a
+    // declared `requiresPresentationActivation` deadline) and the multi-surface
+    // contract (a mechanic declaring `requiredPresentationSurfaces`, e.g. RYO).
+    const awaitingPresentation =
+      !state.presentationActivatedAt &&
+      (plugin.deadline?.requiresPresentationActivation === true ||
+        plugin.requiredPresentationSurfaces !== undefined);
+    const requiredSurfaces =
+      awaitingPresentation && plugin.requiredPresentationSurfaces
+        ? plugin.requiredPresentationSurfaces({
+            runtimeState: state.runtimeState,
+            roundState: state.activeRound?.modeState ?? {},
+          })
+        : undefined;
+    // The safe shell: only this actor's capability (or no capability for a
+    // spectator who is not part of the required set). Nothing sensitive.
+    const presentationSurface = awaitingPresentation
+      ? {
+          running: true,
+          ...(requiredSurfaces
+            ? (() => {
+                const capability = requiredSurfaces.find((surface) => {
+                  if (
+                    surface.capability === 'shared' &&
+                    projectionActor.controller
+                  ) {
+                    return true;
+                  }
+                  return (
+                    surface.participantId !== undefined &&
+                    projectionActor.participantId === surface.participantId
+                  );
+                })?.capability;
+                return capability ? { capability } : {};
+              })()
+            : {}),
+        }
+      : undefined;
+    const preparingModeState = { awaitingPresentation: true as const };
     const currentItem =
       state.modeKey === 'bomb' && projectedRound?.phase === 'presenting'
         ? {
@@ -150,13 +202,15 @@ export class GameplayRuntimeSnapshotMapper {
         version: state.modeVersion,
         stateSchemaVersion: state.stateSchemaVersion,
       },
+      presentationSurface,
       // A mechanic that owns private per-participant information projects it
       // itself; everything else keeps the one shared projection.
-      modeState:
-        plugin.projectRuntimeStateForActor?.(
-          state.runtimeState,
-          projectionActor,
-        ) ?? plugin.projectRuntimeState(state.runtimeState),
+      modeState: awaitingPresentation
+        ? preparingModeState
+        : (plugin.projectRuntimeStateForActor?.(
+            state.runtimeState,
+            projectionActor,
+          ) ?? plugin.projectRuntimeState(state.runtimeState)),
       activeRound: state.activeRound
         ? {
             id: state.activeRound.id,
@@ -164,7 +218,9 @@ export class GameplayRuntimeSnapshotMapper {
             status: state.activeRound.status,
             activeTeamId: state.activeRound.activeTeamId,
             activeParticipantId: state.activeRound.activeParticipantId,
-            modeState: projectedRound!,
+            modeState: awaitingPresentation
+              ? preparingModeState
+              : projectedRound!,
             transitionRevision: state.activeRound.transitionRevision,
             createdAt: state.activeRound.createdAt.toISOString(),
             startedAt: state.activeRound.startedAt?.toISOString(),

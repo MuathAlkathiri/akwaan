@@ -511,7 +511,24 @@ export const ONE_CLUE_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     source: 'runtime-state',
     commandType: 'expire-one-clue-stage',
     activePhases: ['collecting'],
+    // Fair-start: the first stage's clock is armed only once a presentation
+    // surface is ready (see `activatePresentation`), so a slow client cold-start
+    // never eats into the configured stage window.
+    requiresPresentationActivation: true,
   },
+  // Re-anchor the first stage's deadline to activation time. One Clue launches in
+  // the `collecting` phase, so activation re-stamps that clock from `now`; the
+  // configured window is unchanged — only its origin moves from launch to
+  // activation. Later stages already re-anchor when they open.
+  activatePresentation: (state, now) =>
+    String((state as { phase?: unknown }).phase) === 'collecting'
+      ? {
+          ...state,
+          deadlineAt: new Date(
+            now.getTime() + ONE_CLUE_STAGE_SECONDS * 1000,
+          ).toISOString(),
+        }
+      : state,
   createInitialRuntimeState: (context) =>
     validateRuntime(context.initialState ?? {}),
   createInitialRoundState(context) {

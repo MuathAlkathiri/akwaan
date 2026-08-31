@@ -588,6 +588,20 @@ describe('Unified Match preflight integration', () => {
     const runtime = (await runtimes().findBySessionId(sessionId))!;
     expect(runtime.id).toBe(launched.match.currentChallenge!.runtimeId);
 
+    // Fair-start: acknowledge presentation so the private asymmetric roles are
+    // projected — Rakkibha reveals each holder's view only once a surface is ready.
+    await bearer(
+      http().post(
+        `/live-game-sessions/${sessionId}/runtime/presentation-ready`,
+      ),
+    )
+      .send({
+        commandId: crypto.randomUUID(),
+        expectedSessionRevision: await sessionRevision(sessionId),
+        expectedRuntimeRevision: runtime.revision,
+      })
+      .expect(201);
+
     // Private asymmetric roles: exactly one reference holder and two candidate
     // holders, and no phone can read another phone's private media.
     const collectUrls = (view: Record<string, unknown>) =>

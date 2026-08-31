@@ -26,8 +26,8 @@ const service = new MatchChallengeReadinessService();
 const construct = <T>(Launcher: new (...args: never[]) => T): T =>
   new Launcher(...([undefined, undefined, undefined] as never[]));
 
-const distributed = construct(RakkibhaChallengeLauncher)
-  .launchRequirements.readiness as MatchChallengeReadinessRequirement;
+const distributed = construct(RakkibhaChallengeLauncher).launchRequirements
+  .readiness as MatchChallengeReadinessRequirement;
 const ryo = construct(RyoChallengeLauncher).launchRequirements
   .readiness as MatchChallengeReadinessRequirement;
 const top5 = construct(Top5ChallengeLauncher).launchRequirements

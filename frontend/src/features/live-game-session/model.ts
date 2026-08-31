@@ -104,6 +104,15 @@ export interface GameplayRuntimeSnapshot {
   revision: number;
   mode: { key: string; version: number; stateSchemaVersion: number };
   modeState: Record<string, string | number | boolean | null>;
+  /**
+   * Fair-start multi-surface shell: present only while a multi-surface mechanic
+   * (RYO) is still awaiting activation. Carries this actor's safe surface
+   * capability — never participant ids, teams, question content, or answers.
+   */
+  presentationSurface?: {
+    running: boolean;
+    capability?: "shared" | "answering" | "decision";
+  };
   activeRound?: {
     id: string;
     sequence: number;

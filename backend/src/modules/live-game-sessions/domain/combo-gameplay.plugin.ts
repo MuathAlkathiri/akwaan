@@ -715,7 +715,19 @@ export const COMBO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     source: 'runtime-state',
     commandType: 'expire-combo-question',
     activePhases: ['question', 'run-complete'],
+    // Fair-start: the first question's clock is armed only once a presentation
+    // surface is ready (see `activatePresentation`), so a slow client cold-start
+    // never eats into the 30-second question.
+    requiresPresentationActivation: true,
   },
+  // Re-anchor the first question's deadline to activation time. Combo launches in
+  // the `question` phase (its invariant that a question always carries a clock is
+  // preserved), so activation re-stamps that clock from `now`; the configured
+  // 30 seconds is unchanged — only its origin moves from launch to activation.
+  activatePresentation: (state, now) =>
+    String((state as { phase?: unknown }).phase) === 'question'
+      ? { ...state, deadlineAt: questionDeadline(now) }
+      : state,
   createInitialRuntimeState: (context) =>
     validateRuntime(context.initialState ?? {}),
   createInitialRoundState(context) {

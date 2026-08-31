@@ -1,5 +1,11 @@
 import { randomUUID } from 'crypto';
-import { GameplayModePlugin, GameplayModeState } from './gameplay-mode.plugin';
+import {
+  GameplayModePlugin,
+  GameplayModeState,
+  GameplayPresentationActivationResult,
+  GameplaySessionEffect,
+  PresentationSurfaceCapability,
+} from './gameplay-mode.plugin';
 import {
   LiveSessionDomainError,
   StaleGameplayRuntimeRevisionError,
@@ -86,6 +92,28 @@ export interface GameplayRuntimeState {
   stateSchemaVersion: number;
   status: GameplayRuntimeStatus;
   revision: number;
+  /**
+   * When a required presentation surface first acknowledged it could present the
+   * gameplay, or null/absent while still preparing. A mechanic that opts into
+   * fair-start (`GameplayDeadlineDeclaration.requiresPresentationActivation`)
+   * arms no deadline and projects no playable content until this is set, so
+   * client cold-start time is never charged to the gameplay clock.
+   */
+  presentationActivatedAt?: string | null;
+  /**
+   * Surfaces that have acknowledged they can present the gameplay since launch.
+   *
+   * Kept as identity-keyed provenance so a specific acknowledged connection can
+   * be withdrawn. `capability` is the safe surface keyword; `connectionId` is the
+   * server-observed socket identity that acked (the controller shared surface is
+   * bound to the controller's own socket connection id, a participant-bound
+   * surface to that participant's acking connection). Cleared once the runtime
+   * activates; a disconnected acking connection is withdrawn by id.
+   */
+  presentationReady?: Array<{
+    capability: PresentationSurfaceCapability;
+    connectionId: string;
+  }>;
   runtimeState: GameplayModeState;
   activeRound?: GameplayRoundState;
   completedRounds: CompletedGameplayRoundSummary[];
@@ -97,6 +125,16 @@ export interface GameplayRuntimeState {
   completedAt?: Date;
   cancelledAt?: Date;
   expiresAt: Date;
+}
+
+function isPresentationActivationResult(
+  value: GameplayModeState | GameplayPresentationActivationResult,
+): value is GameplayPresentationActivationResult {
+  return (
+    typeof value.runtimeState === 'object' &&
+    value.runtimeState !== null &&
+    !Array.isArray(value.runtimeState)
+  );
 }
 
 const MAX_COMMANDS = 100;
@@ -328,6 +366,171 @@ export class GameplayRuntime {
     round.resumedAt = now;
     this.state.status = 'round-active';
     this.commit('round-resumed', commandId, actorId, now, roundId);
+  }
+
+  /**
+   * One-time, server-authoritative gameplay activation.
+   *
+   * A runtime can exist and persist before its first playable content is shown.
+   * The mechanic's own `activatePresentation` hook re-anchors its deadline to
+   * activation time, so no playable time is lost to client cold-start/hydration.
+   * Idempotent by construction: once activated, a later acknowledgement records
+   * provenance but never moves the deadline.
+   */
+  activatePresentation(
+    commandId: string,
+    actorId: string,
+    now: Date,
+  ): readonly GameplaySessionEffect[] {
+    if (this.state.presentationActivatedAt) {
+      this.commit(
+        'presentation-activated',
+        commandId,
+        actorId,
+        now,
+        this.state.activeRound?.id,
+      );
+      return [];
+    }
+    const reanchored = this.plugin.activatePresentation?.(
+      this.state.runtimeState,
+      now,
+      {
+        sessionId: this.state.sessionId,
+        runtimeId: this.state.id,
+        roundId: this.state.activeRound?.id,
+        activeTeamId: this.state.activeRound?.activeTeamId,
+        activeParticipantId: this.state.activeRound?.activeParticipantId,
+        runtimeState: this.state.runtimeState,
+      },
+    );
+    if (reanchored) {
+      const runtimeState = isPresentationActivationResult(reanchored)
+        ? reanchored.runtimeState
+        : reanchored;
+      if (
+        isPresentationActivationResult(reanchored) &&
+        reanchored.interaction
+      ) {
+        this.applyActivationInteraction(reanchored.interaction, now);
+      }
+      this.state.runtimeState = this.plugin.validateRuntimeState(runtimeState);
+    }
+    this.state.presentationActivatedAt = now.toISOString();
+    this.state.presentationReady = [];
+    this.commit(
+      'presentation-activated',
+      commandId,
+      actorId,
+      now,
+      this.state.activeRound?.id,
+    );
+    return reanchored && isPresentationActivationResult(reanchored)
+      ? (reanchored.effects ?? [])
+      : [];
+  }
+
+  /**
+   * Open and deadline-re-anchor the prepared interaction at activation.
+   *
+   * The deadline is rewritten *before* `open`, because `open` rejects a now that
+   * has already passed the prompt's existing deadline — and the whole point of a
+   * held `prepared` interaction is that its eventual deadline is activation time,
+   * not launch time. Applied in the same transaction that records activation, so
+   * the playable window and the deadline commit together.
+   */
+  private applyActivationInteraction(
+    interaction: {
+      status: 'open';
+      deadlineAt?: Date;
+      visibleFrom?: Date;
+    },
+    now: Date,
+  ): void {
+    const round = this.requireActiveRound();
+    if (!round.interaction || round.interaction.status !== 'prepared') return;
+    const value = GameplayInteraction.restore(round.interaction);
+    value.setPromptTimeline({
+      visibleFrom: interaction.visibleFrom ?? now,
+      deadlineAt: interaction.deadlineAt,
+    });
+    value.open(now);
+    round.interaction = value.serialize();
+  }
+
+  /** Withdraw a specific acknowledged connection's readiness (disconnect). */
+  clearSurfaceReadiness(connectionId: string): void {
+    if (!this.state.presentationReady) return;
+    const next = this.state.presentationReady.filter(
+      (entry) => entry.connectionId !== connectionId,
+    );
+    if (next.length !== this.state.presentationReady.length) {
+      this.state.presentationReady = next;
+      this.commit(
+        'presentation-readiness-withdrawn',
+        'system',
+        'system',
+        new Date(),
+      );
+    }
+  }
+
+  /**
+   * The surface set this runtime currently requires to activate, or `undefined`
+   * when the mechanic uses the single-surface default.
+   *
+   * Derived from committed state at the moment it is asked, so a disconnect
+   * reassignment that moves the answerer/decider immediately changes what the
+   * remaining surfaces must satisfy.
+   */
+  requiredPresentationSurfaces():
+    | ReturnType<
+        NonNullable<GameplayModePlugin['requiredPresentationSurfaces']>
+      >
+    | undefined {
+    const round = this.state.activeRound;
+    return this.plugin.requiredPresentationSurfaces?.({
+      runtimeState: this.state.runtimeState,
+      roundState: round?.modeState ?? {},
+    });
+  }
+
+  /** Record that one required surface has acknowledged (idempotent). */
+  recordSurfaceReady(
+    capability: PresentationSurfaceCapability,
+    connectionId: string,
+    commandId: string,
+    actorId: string,
+    now: Date,
+  ): void {
+    const existing = this.state.presentationReady ?? [];
+    const next = [
+      ...existing.filter(
+        (entry) =>
+          entry.capability !== capability ||
+          entry.connectionId !== connectionId,
+      ),
+      { capability, connectionId },
+    ];
+    if (JSON.stringify(existing) === JSON.stringify(next)) return;
+    this.state.presentationReady = next;
+    this.commit(
+      'presentation-surface-ready',
+      commandId,
+      actorId,
+      now,
+      this.state.activeRound?.id,
+    );
+  }
+
+  /** Whether every currently required surface has acknowledged. */
+  areAllRequiredSurfacesReady(): boolean {
+    const required = this.requiredPresentationSurfaces();
+    if (!required || required.length === 0) return false;
+    const ready = new Set(
+      this.state.presentationReady?.map((entry) => entry.capability) ?? [],
+    );
+    return required.every((surface) => ready.has(surface.capability));
   }
 
   applyModeState(input: {

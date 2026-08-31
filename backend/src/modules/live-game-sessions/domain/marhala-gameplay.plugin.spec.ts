@@ -742,8 +742,7 @@ describe('المرحلة gameplay', () => {
         answer: 'إجابة خاطئة',
       }).runtimeState;
 
-      const projected =
-        MARHALA_GAMEPLAY_PLUGIN.projectRuntimeState(resolved);
+      const projected = MARHALA_GAMEPLAY_PLUGIN.projectRuntimeState(resolved);
 
       expect(projected.questionMediaJson).toBeUndefined();
       expect(projected.questionPrompt).toBeUndefined();

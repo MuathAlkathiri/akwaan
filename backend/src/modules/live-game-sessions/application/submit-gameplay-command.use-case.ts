@@ -5,7 +5,6 @@ import {
   GameplayCommandPayload,
   GameplayCommandResult,
   GameplayModePlugin,
-  GameplaySessionEffect,
 } from '../domain/gameplay-mode.plugin';
 import {
   GameplayRuntimeNotFoundError,
@@ -49,6 +48,7 @@ import { COMBO_MODE_KEY } from '../domain/combo-gameplay.plugin';
 import { CLOSEST_MODE_KEY } from '../domain/closest-gameplay.plugin';
 import { ONE_CLUE_MODE_KEY } from '../domain/one-clue-gameplay.plugin';
 import { findEligibleTeamParticipant } from '../domain/team-participant-eligibility';
+import { applyGameplaySessionEffects } from './gameplay-session-effects';
 
 /**
  * The authority behind `expire-team`, against the server clock and the
@@ -298,7 +298,11 @@ export class SubmitGameplayCommand {
         };
       }
       const previousSessionRevision = session.revision;
-      const sessionChanged = this.applyEffects(handled.effects, session, now);
+      const sessionChanged = applyGameplaySessionEffects(
+        handled.effects,
+        session,
+        now,
+      );
       handled = this.resolveBombOnDrainedClock(
         runtime.modeKey,
         plugin,
@@ -736,53 +740,7 @@ export class SubmitGameplayCommand {
     }
   }
 
-  private applyEffects(
-    effects: GameplaySessionEffect[],
-    session: LiveGameSession,
-    now: Date,
-  ): boolean {
-    let changed = false;
-    for (const effect of effects) {
-      if (effect.type === 'emit-runtime-event') continue;
-      changed = true;
-      if (effect.type === 'switch-active-team') {
-        session.switchTurn(effect.teamId || undefined, effect.reason, now);
-      } else if (effect.type === 'adjust-active-team-time') {
-        // Spends the clock and stops there. Running it to zero is a verdict for
-        // the *mechanic* — handled by `resolveBombOnDrainedClock` — not the end
-        // of the live session, which a board position has no authority to
-        // declare. Ending the session here finished the whole Match from inside
-        // one Bomb challenge.
-        session.adjustActiveTeamTime(effect.deltaMs, now);
-      } else if (effect.type === 'stop-active-turn') {
-        session.endTurn(effect.reason, now);
-      } else if (effect.type === 'finish-live-session') {
-        const loserId = session.serialize().activeTeamId;
-        session.finish(
-          effect.reason,
-          this.otherTeam(session.serialize(), loserId),
-          undefined,
-          now,
-        );
-      } else if (effect.type === 'start-team-turn') {
-        session.startTurn(effect.teamId, effect.reason, now);
-      } else if (effect.type === 'pause-active-turn') {
-        session.pauseTurn(now);
-      } else if (effect.type === 'resume-active-turn') {
-        session.resumeTurn(now);
-      }
-    }
-    return changed;
-  }
-
   private assertClockExpired(state: LiveGameSessionState, now: Date): void {
     assertBombClockExpired(state, now);
-  }
-
-  private otherTeam(
-    state: LiveGameSessionState,
-    excluded?: string,
-  ): string | undefined {
-    return state.teams.find((team) => team.active && team.id !== excluded)?.id;
   }
 }

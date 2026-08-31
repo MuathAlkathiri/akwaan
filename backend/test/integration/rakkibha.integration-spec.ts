@@ -37,13 +37,13 @@ import {
 } from '../../src/modules/live-game-sessions/application/live-participant.use-cases';
 import { UpdateParticipantPresence } from '../../src/modules/live-game-sessions/application/update-participant-presence.use-case';
 import { GetGameplayRuntime } from '../../src/modules/live-game-sessions/application/gameplay-runtime.queries';
+import { GameplayDeadlineScheduler } from '../../src/modules/live-game-sessions/application/gameplay-deadline.scheduler';
 import { SubmitGameplayCommand } from '../../src/modules/live-game-sessions/application/submit-gameplay-command.use-case';
 import {
   GameplayRuntimeRepository,
   GAMEPLAY_RUNTIME_REPOSITORY,
 } from '../../src/modules/live-game-sessions/domain/gameplay-runtime.repository';
 import { GameplayRuntimeState } from '../../src/modules/live-game-sessions/domain/gameplay-runtime';
-import { MatchStage } from '../../src/modules/match/domain/match.constants';
 
 type Phone = LiveSessionActor & { teamId: string; connectionId: string };
 type ModeState = Record<string, string | number | boolean | null>;
@@ -54,7 +54,6 @@ describe('Rakkibha race integration', () => {
   let token: string;
   let controllerId: string;
   let worldId: string;
-  let scopeIds: string[];
   let contentItemIds: string[];
 
   const uuid = () => crypto.randomUUID();
@@ -87,7 +86,7 @@ describe('Rakkibha race integration', () => {
       unwrap<{ id: string }>(await bearer(http().get('/auth/me')).expect(200))
         .id,
     );
-    ({ worldId, scopeIds, contentItemIds } = await seedWorld());
+    ({ worldId, contentItemIds } = await seedWorld());
   }, 60_000);
 
   afterAll(async () => {
@@ -325,7 +324,10 @@ describe('Rakkibha race integration', () => {
     };
   }
 
-  async function launch(sessionId: string) {
+  // Launch Rakkibha but stop BEFORE the surface acknowledges it can present: the
+  // puzzles are selected and reserved, yet no private view is projected and the
+  // race clock is not armed — the fair-start pre-activation window.
+  async function launchRakkibha(sessionId: string) {
     const started = unwrap<LiveGameSessionSnapshot>(
       await bearer(
         http().post(
@@ -339,6 +341,31 @@ describe('Rakkibha race integration', () => {
         })
         .expect(201),
     );
+    return started;
+  }
+
+  // Fair-start acknowledgement: the presenting surface adopts this runtime, which
+  // anchors the race clock to now and reveals each private view to its holder.
+  async function present(sessionId: string) {
+    const runtime = await runtimeState(sessionId);
+    await bearer(
+      http().post(
+        `/live-game-sessions/${sessionId}/runtime/presentation-ready`,
+      ),
+    )
+      .send({
+        commandId: uuid(),
+        expectedSessionRevision: await sessionRevision(sessionId),
+        expectedRuntimeRevision: runtime.revision,
+      })
+      .expect(201);
+  }
+
+  // The normal path every gameplay test starts from: launched AND presented, so
+  // the race is live and behaves exactly as it always has post-launch.
+  async function launch(sessionId: string) {
+    const started = await launchRakkibha(sessionId);
+    await present(sessionId);
     return started;
   }
 
@@ -492,5 +519,120 @@ describe('Rakkibha race integration', () => {
     expect(
       assignment.assignments.filter((entry) => !entry.hasReference),
     ).toHaveLength(1);
+  }, 120_000);
+
+  it('fair-start: hides every private view and arms no clock until activation, then reveals only to the right holder', async () => {
+    const scheduler = () => app.get(GameplayDeadlineScheduler);
+    const { sessionId, teamIds, players } = await startSession(3);
+    await launchRakkibha(sessionId); // launched, NOT presented
+
+    // Server: not activated, race clock not armed.
+    const raw = await runtimeState(sessionId);
+    expect(raw.presentationActivatedAt ?? null).toBeNull();
+    expect(scheduler().armedKeyFor(sessionId)).toBeFalsy();
+
+    // Roles come from the persisted plan (the plan exists; only its projection is
+    // gated), so we can pick a reference holder and a candidate holder to inspect.
+    const assignment = currentAssignment(raw, teamIds[0]);
+    const refEntry = assignment.assignments.find(
+      (entry) => entry.hasReference,
+    )!;
+    const candEntry = assignment.assignments.find(
+      (entry) => !entry.hasReference,
+    )!;
+    const refActor = players.find(
+      (player) => player.participantId === refEntry.participantId,
+    )!;
+    const candActor = players.find(
+      (player) => player.participantId === candEntry.participantId,
+    )!;
+    const sharedActor: LiveSessionActor = {
+      kind: 'user',
+      actorId: controllerId,
+    };
+
+    // Client: every surface — reference holder, candidate holder, and the shared
+    // screen — sees only that it is preparing. Nothing private, no identity.
+    for (const actor of [refActor, candActor, sharedActor]) {
+      const view = await viewOf(sessionId, actor);
+      expect(
+        (view as { awaitingPresentation?: boolean }).awaitingPresentation,
+      ).toBe(true);
+      const json = JSON.stringify(view);
+      for (const secret of [
+        'myReferenceJson',
+        'myCandidatesJson',
+        'canonicalIdentity',
+        'contentItemId',
+        'instruction',
+      ]) {
+        expect(json).not.toContain(secret);
+      }
+    }
+
+    // Ledger: nothing exposed before activation.
+    expect(
+      await database
+        .collection('content_exposures')
+        .countDocuments({ state: 'exposed' }),
+    ).toBe(0);
+
+    // --- Activate ---
+    await present(sessionId);
+    const activated = await runtimeState(sessionId);
+    expect(activated.presentationActivatedAt).toBeTruthy();
+    const deadline = new Date(
+      String(activated.runtimeState.deadlineAt),
+    ).getTime();
+    const activatedAt = new Date(
+      String(activated.presentationActivatedAt),
+    ).getTime();
+    // The FULL race window, anchored from activation — both the race origin
+    // (startedAtMs) and the deadline moved, and the window is unchanged.
+    expect(deadline - activatedAt).toBeGreaterThanOrEqual(
+      (RAKKIBHA_TIMER_SECONDS - 2) * 1000,
+    );
+    expect(deadline - activatedAt).toBeLessThanOrEqual(
+      RAKKIBHA_TIMER_SECONDS * 1000 + 2000,
+    );
+    expect(Number(activated.runtimeState.startedAtMs)).toBeGreaterThanOrEqual(
+      activatedAt - 2000,
+    );
+    expect(scheduler().armedKeyFor(sessionId)).toBeTruthy();
+
+    // Private views now appear only to their holders; the identity is never sent.
+    const refView = await viewOf(sessionId, refActor);
+    const candView = await viewOf(sessionId, candActor);
+    const sharedView = await viewOf(sessionId, sharedActor);
+    expect(
+      (refView as { awaitingPresentation?: boolean }).awaitingPresentation,
+    ).toBeUndefined();
+    expect(refView.hasReference).toBe(true);
+    expect(refView.myReferenceJson).toBeDefined();
+    expect(refView.myCandidatesJson).toBeUndefined();
+    expect(candView.hasReference).toBe(false);
+    expect(candView.myCandidatesJson).toBeDefined();
+    expect(candView.myReferenceJson).toBeUndefined();
+    for (const view of [refView, candView, sharedView]) {
+      expect(JSON.stringify(view)).not.toContain('canonicalIdentity');
+    }
+    // Shared screen stays neutral: no private holder data at all.
+    expect(sharedView.myReferenceJson).toBeUndefined();
+    expect(sharedView.myCandidatesJson).toBeUndefined();
+
+    // Reconnect after activation: re-reading never re-activates, re-stamps the
+    // clock, or re-exposes — the same private role is served again.
+    const reRef = await viewOf(sessionId, refActor);
+    const afterReconnect = await runtimeState(sessionId);
+    expect(afterReconnect.presentationActivatedAt).toBe(
+      activated.presentationActivatedAt,
+    );
+    expect(afterReconnect.runtimeState.deadlineAt).toBe(
+      activated.runtimeState.deadlineAt,
+    );
+    expect(afterReconnect.runtimeState.startedAtMs).toBe(
+      activated.runtimeState.startedAtMs,
+    );
+    expect(reRef.hasReference).toBe(true);
   }, 120_000);
 });

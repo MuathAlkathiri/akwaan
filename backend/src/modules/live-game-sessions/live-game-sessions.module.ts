@@ -96,6 +96,7 @@ import {
   CompleteGameplayRuntime,
   CreateGameplayRound,
   PauseGameplayRound,
+  PresentationReady,
   ResumeGameplayRound,
   StartGameplayRound,
   StartGameplayRuntime,
@@ -129,6 +130,7 @@ import { MarhalaQuestionSourceRegistry } from './application/marhala-question-so
 import { MarhalaTurnSupplier } from './application/marhala-turn.supplier';
 import { StartComboGameplay } from './application/start-combo-gameplay.use-case';
 import { StartOneClueGameplay } from './application/start-one-clue-gameplay.use-case';
+import { WithdrawPresentationReadiness } from './application/withdraw-presentation-readiness.use-case';
 
 const applicationProviders = [
   CreateLiveGameSession,
@@ -166,6 +168,7 @@ const applicationProviders = [
   StartGameplayRuntime,
   CreateGameplayRound,
   StartGameplayRound,
+  PresentationReady,
   PauseGameplayRound,
   ResumeGameplayRound,
   CompleteGameplayRound,
@@ -186,6 +189,7 @@ const applicationProviders = [
   StartClosestGameplay,
   StartComboGameplay,
   StartOneClueGameplay,
+  WithdrawPresentationReadiness,
 ];
 
 @Module({

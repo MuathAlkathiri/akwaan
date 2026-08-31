@@ -590,6 +590,35 @@ export const RAKKIBHA_PLUGIN: GameplayModePlugin = {
     source: 'runtime-state',
     commandType: 'expire-race',
     activePhases: ['active'],
+    // Fair-start: the race clock is armed only once a presentation surface is
+    // ready (see `activatePresentation`), so a slow client cold-start never eats
+    // into the configured race window — and no private puzzle is shown early.
+    requiresPresentationActivation: true,
+  },
+  // Re-anchor the race to activation time. Rakkibha's clock is BOTH `startedAtMs`
+  // (the origin every elapsed measurement is taken from) and `deadlineAt`, so both
+  // move together while the configured window (deadlineAt - startedAtMs) is kept
+  // exactly. No progress is possible before activation (the puzzle is hidden), so
+  // the per-team progress entries are already fresh. Only the initial `active`
+  // phase re-anchors.
+  activatePresentation: (state, now) => {
+    const s = state as {
+      phase?: unknown;
+      startedAtMs?: unknown;
+      deadlineAt?: unknown;
+    };
+    if (String(s.phase) !== 'active') return state;
+    const startedAtMs = Number(s.startedAtMs);
+    const previousDeadline = Date.parse(String(s.deadlineAt));
+    if (!Number.isFinite(startedAtMs) || !Number.isFinite(previousDeadline)) {
+      return state;
+    }
+    const durationMs = previousDeadline - startedAtMs;
+    return {
+      ...state,
+      startedAtMs: now.getTime(),
+      deadlineAt: new Date(now.getTime() + durationMs).toISOString(),
+    };
   },
   createInitialRuntimeState: (context) =>
     validateRuntime(context.initialState ?? {}),

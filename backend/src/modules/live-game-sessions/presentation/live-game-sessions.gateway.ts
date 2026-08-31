@@ -487,6 +487,16 @@ export class LiveGameSessionsGateway
     );
   }
 
+  @SubscribeMessage('live-session:presentation-ready')
+  presentationReady(
+    @ConnectedSocket() client: LiveSocket,
+    @MessageBody() body: GameplaySocketMutationDto,
+  ) {
+    return this.runtimeMutation(client, () =>
+      this.gameplay.presentationReady(client.data.actor, body, client.id),
+    );
+  }
+
   @SubscribeMessage('live-session:interaction-prepare')
   interactionPrepare(
     @ConnectedSocket() client: LiveSocket,

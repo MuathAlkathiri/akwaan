@@ -81,6 +81,11 @@ function liveRuntime(
     stateSchemaVersion: plugin.stateSchemaVersion,
     status: 'round-active',
     revision: 4,
+    // Presentation already activated: this suite asserts the reducer's post-launch
+    // arming wiring, which for a fair-start mechanic (combo) is only reachable once
+    // the challenge is presented. Fair-start's pre-activation gate is covered by
+    // the dedicated presentation-activation specs.
+    presentationActivatedAt: new Date(NOW).toISOString(),
     runtimeState,
     completedRounds: [],
     processedCommandIds: [],

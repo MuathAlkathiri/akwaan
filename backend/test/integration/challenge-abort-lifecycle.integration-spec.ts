@@ -413,6 +413,23 @@ describe('challenge abort lifecycle integration', () => {
   const currentRuntime = async (sessionId: string) =>
     (await runtimes().findBySessionId(sessionId))!.serialize();
 
+  // Fair-start: Closest and One Clue arm no deadline until a surface acknowledges
+  // it can present. A test that wants a live, armed challenge presents it first.
+  const present = async (sessionId: string) => {
+    const runtime = await currentRuntime(sessionId);
+    await bearer(
+      http().post(
+        `/live-game-sessions/${sessionId}/runtime/presentation-ready`,
+      ),
+    )
+      .send({
+        commandId: uuid(),
+        expectedSessionRevision: await sessionRevision(sessionId),
+        expectedRuntimeRevision: runtime.revision,
+      })
+      .expect(201);
+  };
+
   /**
    * The production abort command.
    *
@@ -674,6 +691,7 @@ describe('challenge abort lifecycle integration', () => {
       await createUnified(sessionId);
 
       await launch(sessionId, WorldChallengeSlotKey.SLOT_1);
+      await present(sessionId);
       const runtimeA = await currentRuntime(sessionId);
       const scheduler = app.get(GameplayDeadlineScheduler);
       await scheduler.schedule(sessionId);

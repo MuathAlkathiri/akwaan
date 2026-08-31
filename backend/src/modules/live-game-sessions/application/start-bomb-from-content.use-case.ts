@@ -31,7 +31,6 @@ export function resolveUnifiedBombRepresentative<
     requiresConnectedPresence: true,
   });
 }
-import { StartTeamTurn } from './live-session-turn.use-cases';
 import {
   CreateGameplayRuntime,
   GetGameplayRuntime,
@@ -56,9 +55,9 @@ import {
  * exist and needs no change to be playable from a board.
  *
  * Team clocks are not allocated here. The live session mode allocates them when
- * the session is created; Bomb only starts the active team's turn, which is
- * what sets that clock running and gives the deadline scheduler something to
- * watch.
+ * the session is created; Bomb starts the active team's turn only after the
+ * presentation surface acknowledges readiness, so cold-start cannot burn the
+ * first team's clock.
  */
 @Injectable()
 export class StartBombGameplayFromContent {
@@ -74,7 +73,6 @@ export class StartBombGameplayFromContent {
     private readonly startRuntime: StartGameplayRuntime,
     private readonly createRound: CreateGameplayRound,
     private readonly startRound: StartGameplayRound,
-    private readonly startTurn: StartTeamTurn,
     private readonly getRuntime: GetGameplayRuntime,
   ) {}
 
@@ -220,20 +218,6 @@ export class StartBombGameplayFromContent {
       expectedSessionRevision: session.revision,
       expectedRuntimeRevision: runtime.revision,
     });
-
-    // Starts the first team's clock. Until a clock is running there is no
-    // deadline for the scheduler to arm, so this has to precede scheduling.
-    const current = await this.sessions.findById(input.sessionId);
-    if (current && !current.serialize().activeTeamId) {
-      await this.startTurn.execute({
-        sessionId: input.sessionId,
-        actorId: input.actorId,
-        teamId: teams[0],
-        expectedRevision: current.revision,
-        commandId: randomUUID(),
-        reason: 'bomb-round-start',
-      });
-    }
 
     return this.getRuntime.execute(input.sessionId, actor);
   }

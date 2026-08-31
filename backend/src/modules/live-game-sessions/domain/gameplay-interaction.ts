@@ -182,6 +182,21 @@ export class GameplayInteraction {
     this.transition('interaction-opened', now);
   }
 
+  /**
+   * Rewrite the prompt's visibility and deadline timeline in place.
+   *
+   * Used by a multi-surface mechanic at activation time, when a `prepared`
+   * interaction's eventual deadline must be anchored to the activation instant
+   * rather than the launch instant. Applied before `open` so the open-time
+   * deadline assertion sees the new timeline.
+   */
+  setPromptTimeline(input: { visibleFrom?: Date; deadlineAt?: Date }): void {
+    this.assertStatus(['prepared']);
+    if (input.visibleFrom) this.state.prompt.visibleFrom = input.visibleFrom;
+    if (input.deadlineAt) this.state.prompt.deadlineAt = input.deadlineAt;
+    else this.state.prompt.deadlineAt = undefined;
+  }
+
   close(now: Date): void {
     this.assertStatus(['open']);
     this.state.status = 'closed';

@@ -26,7 +26,7 @@ import {
   MarkSessionReady,
   StartLiveGameSession,
 } from './live-session-lifecycle.use-cases';
-import { EndActiveTurn, StartTeamTurn } from './live-session-turn.use-cases';
+import { EndActiveTurn } from './live-session-turn.use-cases';
 import { findEligibleTeamParticipant } from '../domain/team-participant-eligibility';
 
 @Injectable()
@@ -43,7 +43,6 @@ export class StartBombGameplay {
     private readonly startRuntime: StartGameplayRuntime,
     private readonly createRound: CreateGameplayRound,
     private readonly startRound: StartGameplayRound,
-    private readonly startTurn: StartTeamTurn,
     private readonly getRuntime: GetGameplayRuntime,
   ) {}
 
@@ -201,21 +200,6 @@ export class StartBombGameplay {
       });
       runtime = await this.requiredRuntime(sessionId);
       runtimeState = runtime.serialize();
-    }
-
-    if (
-      runtimeState.status === 'round-active' &&
-      runtimeState.activeRound?.activeTeamId &&
-      !sessionState.activeTeamId
-    ) {
-      await this.startTurn.execute({
-        sessionId,
-        actorId,
-        teamId: runtimeState.activeRound.activeTeamId,
-        expectedRevision: session.revision,
-        commandId: randomUUID(),
-        reason: 'bomb-round-start',
-      });
     }
 
     return this.getRuntime.execute(sessionId, actor);

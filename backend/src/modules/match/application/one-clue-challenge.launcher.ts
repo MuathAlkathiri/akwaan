@@ -95,6 +95,16 @@ export class OneClueChallengeLauncher
     const runtimeState = input.runtime.runtimeState;
     if (!runtimeState || !ONE_CLUE_GAMEPLAY_PLUGIN.presentedContentItemIds)
       return [];
+    // Fair-start: selection is not exposure. Until gameplay is activated the first
+    // item has not been shown to anyone, so it is not spent — an abort before
+    // activation returns it. Keyed off the plugin's own opt-in, not a slug check.
+    if (
+      ONE_CLUE_GAMEPLAY_PLUGIN.deadline?.source === 'runtime-state' &&
+      ONE_CLUE_GAMEPLAY_PLUGIN.deadline.requiresPresentationActivation &&
+      !input.runtime.presentationActivatedAt
+    ) {
+      return [];
+    }
     return ONE_CLUE_GAMEPLAY_PLUGIN.presentedContentItemIds({
       runtimeState,
       roundState: input.runtime.activeRound?.modeState ?? {},

@@ -16,6 +16,7 @@ import {
 } from './live-session-transition.publisher';
 import { BombCountdownScheduler } from './bomb-countdown.scheduler';
 import { ReassignTeamActions } from './reassign-team-actions.use-case';
+import { WithdrawPresentationReadiness } from './withdraw-presentation-readiness.use-case';
 
 @Injectable()
 export class UpdateParticipantPresence {
@@ -32,6 +33,7 @@ export class UpdateParticipantPresence {
     private readonly publisher: LiveSessionTransitionPublisher,
     private readonly countdown: BombCountdownScheduler,
     private readonly reassignTeamActions: ReassignTeamActions,
+    private readonly withdrawReadiness: WithdrawPresentationReadiness,
   ) {}
 
   async connected(
@@ -80,6 +82,21 @@ export class UpdateParticipantPresence {
     } catch (error) {
       this.logger.error({
         event: 'team_action_reassignment_failed',
+        sessionId,
+        participantId,
+        connectionId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+    // Fair-start: if this connection had acknowledged a required presentation
+    // surface, that acknowledgement stops counting the moment it disconnects.
+    // Contained for the same reason as the reassignment above — a failure here
+    // must not skip the Bomb countdown cancellation below.
+    try {
+      await this.withdrawReadiness.forConnection(sessionId, connectionId);
+    } catch (error) {
+      this.logger.error({
+        event: 'presentation_readiness_withdraw_failed',
         sessionId,
         participantId,
         connectionId,

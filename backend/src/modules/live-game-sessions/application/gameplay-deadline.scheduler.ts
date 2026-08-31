@@ -129,6 +129,17 @@ export function pendingDeadline(
   if (isTerminalRuntimeStatus(state.status)) return undefined;
   const identity = `${state.id}|${round.id}`;
 
+  // Fair-start: an opted-in mechanic arms no deadline until the runtime has
+  // recorded its one-time presentation activation, so client cold-start never
+  // burns gameplay time. This runs before source dispatch because Bomb's
+  // deadline lives on the session clock rather than runtime state.
+  if (
+    declaration?.requiresPresentationActivation &&
+    !state.presentationActivatedAt
+  ) {
+    return undefined;
+  }
+
   // The mechanic's own declaration wins when it has one, which preserves the
   // existing precedence for a mechanic that carries both kinds of deadline.
   if (declaration?.source === 'session-clock') {

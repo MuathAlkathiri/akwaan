@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AkwaanLoader } from "@/components/akwaan/akwaan-loader";
 import { MATCH_SETUP_ROUTE } from "@/features/match-setup/routes";
 import { RyoGameplayPanel } from "../components/ryo-gameplay-panel";
 import { Top5Panel } from "../components/top5-panel";
@@ -244,12 +246,67 @@ function MatchAbsent({ actor }: { actor: MatchActor }) {
  * projection, a screen and the host get the public one.
  */
 export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
-  const { snapshot } = useLiveSession();
-  if (!snapshot?.gameplay) return null;
+  const { snapshot, presentationReady, presentationReadySocket } =
+    useLiveSession();
+  const gameplay = snapshot?.gameplay;
+  // Fair-start: while a mechanic that opted into presentation activation is
+  // preparing, the server sends no playable content — only this marker. This
+  // surface acknowledges once (per runtime revision) that it can present, which
+  // is what lets the server start the clock, and shows a preparing loader until
+  // the real gameplay arrives.
+  const awaiting =
+    (gameplay?.modeState as { awaitingPresentation?: boolean } | undefined)
+      ?.awaitingPresentation === true;
+  // A mechanic that declares multiple surfaces (RYO) must be acknowledged over
+  // the socket so the server can bind the ack to this exact connection and
+  // withdraw it on disconnect. Single-surface mechanics keep the HTTP ack.
+  const multiSurface = gameplay?.presentationSurface?.running === true;
+  // The acknowledgement is keyed to the exact runtime revision, and is pinned
+  // ONLY once the request has actually been issued and accepted. An attempt that
+  // could not be delivered (or that the server rejected) leaves the key open, so
+  // the next authoritative snapshot retries — this is what lets a cold-open or a
+  // refresh into an already-awaiting runtime acknowledge, instead of depending on
+  // provider effect ordering. `inFlightRef` keeps a still-pending attempt from
+  // being duplicated; once activated, `awaiting` is false and nothing is sent.
+  const ackedRef = useRef<string | null>(null);
+  const inFlightRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!awaiting || !gameplay || !snapshot) return;
+    const ack = multiSurface ? presentationReadySocket : presentationReady;
+    if (!ack) return;
+    const key = `${gameplay.mode.key}:${gameplay.revision}`;
+    if (ackedRef.current === key || inFlightRef.current === key) return;
+    inFlightRef.current = key;
+    ack({
+      expectedSessionRevision: snapshot.revision,
+      expectedRuntimeRevision: gameplay.revision,
+    })
+      .then(() => {
+        ackedRef.current = key;
+      })
+      .catch(() => {
+        // Not accepted: leave the key unpinned so a later snapshot retries.
+      })
+      .finally(() => {
+        if (inFlightRef.current === key) inFlightRef.current = null;
+      });
+  }, [awaiting, gameplay, snapshot, presentationReady, presentationReadySocket, multiSurface]);
+
+  if (!gameplay) return null;
+  if (awaiting) {
+    return (
+      <div
+        className="grid place-items-center py-16"
+        data-testid="challenge-preparing"
+      >
+        <AkwaanLoader label="نجهّز التحدي…" />
+      </div>
+    );
+  }
   const runtime =
     actor === "shared-screen"
-      ? { ...snapshot.gameplay, availableActions: [] }
-      : snapshot.gameplay;
+      ? { ...gameplay, availableActions: [] }
+      : gameplay;
   switch (runtime.mode.key) {
     case "read-your-opponent":
       return <RyoGameplayPanel runtime={runtime} />;

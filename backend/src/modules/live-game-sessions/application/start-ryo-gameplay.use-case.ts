@@ -253,17 +253,12 @@ export class StartRyoGameplay {
         deciderParticipantId: opened.deciderParticipantId,
       },
     });
-    runtime = (await this.runtimes.findBySessionId(input.sessionId))!;
-    await this.interactions.open({
-      sessionId: input.sessionId,
-      roundId,
-      actor,
-      commandId: randomUUID(),
-      expectedSessionRevision: session.revision,
-      expectedRuntimeRevision: runtime.revision,
-      expectedInteractionRevision:
-        runtime.serialize().activeRound!.interaction!.revision,
-    });
+    // Fair-start: the first RYO item is deliberately NOT opened here. It is held
+    // in `prepared` with no deadline until every required presentation surface
+    // (shared screen, answerer, decider) acknowledges readiness; the activation
+    // then opens it and anchors its deadline to activation time inside the same
+    // authoritative transaction (`presentationActivatedAt`). Opening it at launch
+    // would start the timer while other surfaces were still cold-starting.
     return this.getRuntime.execute(input.sessionId, actor);
   }
 }

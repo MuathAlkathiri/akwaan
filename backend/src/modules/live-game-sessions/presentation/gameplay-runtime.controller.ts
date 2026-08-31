@@ -24,6 +24,7 @@ import {
   CompleteGameplayRuntime,
   CreateGameplayRound,
   PauseGameplayRound,
+  PresentationReady,
   ResumeGameplayRound,
   StartGameplayRound,
   StartGameplayRuntime,
@@ -65,6 +66,7 @@ export class GameplayRuntimeController {
     private readonly submitCommand: SubmitGameplayCommand,
     private readonly completeRuntime: CompleteGameplayRuntime,
     private readonly cancelRuntime: CancelGameplayRuntime,
+    private readonly presentationReady: PresentationReady,
     private readonly startBomb: StartBombGameplay,
     private readonly startRyo: StartRyoGameplay,
     private readonly startTop5: StartTop5,
@@ -239,6 +241,24 @@ export class GameplayRuntimeController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.submitCommand.execute({
+      sessionId,
+      actor: this.actor(user),
+      ...body,
+    });
+  }
+
+  /**
+   * Fair-start acknowledgement: the shared screen or an actionable participant
+   * has adopted this exact runtime/revision and can present the gameplay. The
+   * server activates the challenge once and anchors the deadline to now.
+   */
+  @Post('presentation-ready')
+  presentationReadyAck(
+    @Param('sessionId') sessionId: string,
+    @Body() body: GameplayRuntimeMutationDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.presentationReady.execute({
       sessionId,
       actor: this.actor(user),
       ...body,

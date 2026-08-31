@@ -169,6 +169,26 @@ export async function startBombGameplay(sessionId: string) {
   return response.data;
 }
 
+/**
+ * Fair-start acknowledgement: tell the server this surface has adopted the exact
+ * runtime/revision and can present the gameplay. The server activates the
+ * challenge once and anchors the deadline to now.
+ */
+export async function acknowledgePresentationReady(
+  sessionId: string,
+  body: {
+    commandId: string;
+    expectedSessionRevision: number;
+    expectedRuntimeRevision: number;
+  },
+) {
+  const response = await apiClient.post<LiveSessionSnapshot>(
+    `/live-game-sessions/${sessionId}/runtime/presentation-ready`,
+    body,
+  );
+  return response.data;
+}
+
 export async function createLiveSession(input: CreateLiveSessionInput) {
   const response = await apiClient.post<{
     snapshot: LiveSessionSnapshot;

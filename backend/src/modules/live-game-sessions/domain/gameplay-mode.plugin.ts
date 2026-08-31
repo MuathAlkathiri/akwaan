@@ -10,6 +10,30 @@ export type GameplayStateValue = string | number | boolean | null;
 export type GameplayModeState = Record<string, GameplayStateValue>;
 export type GameplayCommandPayload = Record<string, GameplayStateValue>;
 
+/**
+ * The safe, capability-shaped identity of one presentation surface.
+ *
+ * This is what a client is ever told about its own role in a multi-surface
+ * fair-start: a capability keyword, never participant ids, never team ids, never
+ * an assignment. Everything sensitive stays server-side; the client only learns
+ * which of its surfaces it must acknowledge.
+ */
+export type PresentationSurfaceCapability = 'shared' | 'answering' | 'decision';
+
+/**
+ * One surface that must acknowledge before a multi-surface mechanic activates.
+ *
+ * `capability` is the only thing projected to any client. `participantId` is a
+ * server-side binding — the current answerer, the current decider — used to
+ * confirm that the ack actually came from the right actor; it is derived from
+ * committed state at the moment readiness is evaluated.
+ */
+export interface PresentationSurfaceRequirement {
+  capability: PresentationSurfaceCapability;
+  /** Server-derived binding for participant-bound surfaces. */
+  participantId?: string;
+}
+
 export type GameplayAuthorizationRequirement =
   | 'controller'
   | 'connected-player'
@@ -51,6 +75,13 @@ export interface GameplayPluginContext {
   eligibleParticipants?: readonly EligibleParticipant[];
   initialState?: GameplayModeState;
   runtimeState?: GameplayModeState;
+  /**
+   * True while a multi-surface mechanic has not yet activated its first
+   * presentation. A mechanic that holds its initial item's clock until every
+   * required surface is ready reads this to omit its playable deadline so the
+   * scheduler stays unarmed until activation re-anchors it.
+   */
+  awaitingPresentationActivation?: boolean;
   /** Server-owned command time; reducers must never consult the wall clock. */
   now?: Date;
 }
@@ -136,6 +167,13 @@ export type GameplayDeadlineDeclaration =
        * mattering — "ركّبها" does — relies on this to stay unarmed.
        */
       readonly activePhases: readonly string[];
+      /**
+       * Opt into fair-start: the deadline stays unarmed until the runtime records
+       * `presentationActivatedAt`, so slow client cold-start never burns gameplay
+       * time. A mechanic that opts in must implement `activatePresentation` to
+       * re-anchor its deadline to activation time.
+       */
+      readonly requiresPresentationActivation?: boolean;
     }
   | {
       /**
@@ -145,6 +183,7 @@ export type GameplayDeadlineDeclaration =
        */
       readonly source: 'session-clock';
       readonly commandType: string;
+      readonly requiresPresentationActivation?: boolean;
     };
 
 export interface GameplayCommandResult {
@@ -160,6 +199,26 @@ export interface GameplayCommandResult {
    * then reads — so the server, and only the server, decides who may act next.
    */
   assignment?: { teamId: string; participantId: string };
+}
+
+export interface GameplayPresentationActivationResult {
+  runtimeState: GameplayModeState;
+  effects?: readonly GameplaySessionEffect[];
+  /**
+   * Optional re-presentation of a prepared interaction at activation time.
+   *
+   * A multi-surface mechanic holds its first item's interaction in `prepared`
+   * so that nothing can be submitted and no clock runs before every required
+   * surface is ready. When activation fires, the mechanic asks to open it and
+   * (re-)anchor its deadline to the activation instant. The runtime applies
+   * this inside the same authoritative transaction as `presentationActivatedAt`,
+   * so the playable window starts exactly at activation and never at launch.
+   */
+  interaction?: {
+    status: 'open';
+    deadlineAt?: Date;
+    visibleFrom?: Date;
+  };
 }
 
 export interface GameplayModePlugin {
@@ -193,6 +252,33 @@ export interface GameplayModePlugin {
     state: GameplayModeState,
     actor: InteractionActorProjection,
   ): GameplayModeState;
+  /**
+   * Multi-surface fair-start requirement (optional, additive).
+   *
+   * A mechanic that needs *more than one* surface to have acknowledged before it
+   * may present returns the current required set, derived from committed state
+   * (who the current answerer/decider are, etc.). The gateway validates each ack
+   * against this set and the runtime activates only once every surface has acked.
+   *
+   * A mechanic that omits this keeps today's single-surface contract: any
+   * controller or actionable team-player acknowledgement activates it. Absence is
+   * the safe default; nothing about existing mechanics changes.
+   */
+  requiredPresentationSurfaces?(context: {
+    runtimeState: GameplayModeState;
+    roundState: GameplayModeState;
+  }): PresentationSurfaceRequirement[] | undefined;
+  /**
+   * Fair-start hook (optional, additive): return the mode runtime state after
+   * presentation activation. Mechanics with runtime-owned clocks can re-anchor
+   * their deadline to activation time; mechanics whose deadline lives on session
+   * state can return canonical session effects to apply in the same transaction.
+   */
+  activatePresentation?(
+    state: GameplayModeState,
+    now: Date,
+    context: GameplayPluginContext,
+  ): GameplayModeState | GameplayPresentationActivationResult;
   projectRoundState(state: GameplayModeState): GameplayModeState;
   /**
    * Which content items this runtime has authoritatively **presented** so far.

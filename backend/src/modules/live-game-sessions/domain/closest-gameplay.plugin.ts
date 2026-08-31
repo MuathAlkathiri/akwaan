@@ -477,7 +477,24 @@ export const CLOSEST_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     source: 'runtime-state',
     commandType: 'expire-closest-item',
     activePhases: ['collecting'],
+    // Fair-start: the first item's clock is armed only once a presentation
+    // surface is ready (see `activatePresentation`), so a slow client cold-start
+    // never eats into the configured window.
+    requiresPresentationActivation: true,
   },
+  // Re-anchor the first item's deadline to activation time. Closest launches in
+  // the `collecting` phase, so activation re-stamps that clock from `now`; the
+  // configured window is unchanged — only its origin moves from launch to
+  // activation. Later items already re-anchor when they open.
+  activatePresentation: (state, now) =>
+    String((state as { phase?: unknown }).phase) === 'collecting'
+      ? {
+          ...state,
+          deadlineAt: new Date(
+            now.getTime() + CLOSEST_TIMER_SECONDS * 1000,
+          ).toISOString(),
+        }
+      : state,
   createInitialRuntimeState: (context) =>
     validateRuntime(context.initialState ?? {}),
   createInitialRoundState(context) {

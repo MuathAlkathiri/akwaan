@@ -35,6 +35,7 @@ import {
 } from '../../src/modules/live-game-sessions/application/live-participant.use-cases';
 import { UpdateParticipantPresence } from '../../src/modules/live-game-sessions/application/update-participant-presence.use-case';
 import { SubmitGameplayCommand } from '../../src/modules/live-game-sessions/application/submit-gameplay-command.use-case';
+import { GetLiveGameSession } from '../../src/modules/live-game-sessions/application/get-live-game-session.use-case';
 import { GetGameplayRuntime } from '../../src/modules/live-game-sessions/application/gameplay-runtime.queries';
 import { GameplayDeadlineScheduler } from '../../src/modules/live-game-sessions/application/gameplay-deadline.scheduler';
 import {
@@ -66,8 +67,7 @@ describe('Bomb board lifecycle integration', () => {
   let bombItemIds: string[];
   let ryoItemIds: string[];
 
-  const uuid = () =>
-    `${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}`;
+  const uuid = () => randomUUID();
 
   beforeAll(async () => {
     database = await connectTestDatabase('bomb-board');
@@ -482,6 +482,29 @@ describe('Bomb board lifecycle integration', () => {
     });
   };
 
+  const presentationReady = async (
+    sessionId: string,
+    commandId = uuid(),
+    expected = 201,
+  ) => {
+    const runtime = (await runtimes().findBySessionId(sessionId))!.serialize();
+    const response = await bearer(
+      http().post(
+        `/live-game-sessions/${sessionId}/runtime/presentation-ready`,
+      ),
+    ).send({
+      commandId,
+      expectedSessionRevision: await sessionRevision(sessionId),
+      expectedRuntimeRevision: runtime.revision,
+    });
+    if (response.status !== expected) {
+      throw new Error(
+        `presentation-ready -> ${response.status} ${JSON.stringify(response.body)}`,
+      );
+    }
+    return response;
+  };
+
   /** The participant whose team currently holds the bomb. */
   const activeActor = async (
     sessionId: string,
@@ -559,9 +582,149 @@ describe('Bomb board lifecycle integration', () => {
   const bombRunning = async (sessionId: string) => {
     await createUnified(sessionId);
     await launch(sessionId, WorldChallengeSlotKey.SLOT_1, bombItemIds);
+    await presentationReady(sessionId);
   };
 
   // ---------------------------------------------------------------- scenarios
+
+  it('fair-start: launch is inert, presentation-ready starts the initial clock exactly once', async () => {
+    const scheduler = app.get(GameplayDeadlineScheduler);
+    const { sessionId, participants } = await startSession();
+    await createUnified(sessionId);
+    await launch(sessionId, WorldChallengeSlotKey.SLOT_1, bombItemIds);
+
+    const launchedRuntime = (await rawRuntime(sessionId))!;
+    const launchedSession = (await rawSession(sessionId))!;
+    expect(launchedRuntime.state.presentationActivatedAt ?? null).toBeNull();
+    expect(launchedSession.state.activeTeamId).toBeUndefined();
+    expect(
+      (
+        launchedSession.state.teams as Array<{
+          clock: { running: boolean; startedAt?: Date };
+        }>
+      ).some((team) => team.clock.running || team.clock.startedAt),
+    ).toBe(false);
+    expect(scheduler.armedKeyFor(sessionId)).toBeFalsy();
+
+    const preparing = await app
+      .get(GetLiveGameSession)
+      .execute(sessionId, participants[0]);
+    expect(
+      (preparing.gameplay?.modeState as { awaitingPresentation?: boolean })
+        .awaitingPresentation,
+    ).toBe(true);
+    expect(JSON.stringify(preparing.gameplay?.modeState)).not.toContain(
+      '/uploads/bomb/1.webp',
+    );
+    expect(
+      await database
+        .collection('content_exposures')
+        .countDocuments({ matchId: sessionId, state: 'exposed' }),
+    ).toBe(0);
+
+    const runtimeBeforeReady = (await runtimes().findBySessionId(
+      sessionId,
+    ))!.serialize();
+    const sessionRevisionBeforeReady = await sessionRevision(sessionId);
+    const commandId = uuid();
+    const racing = await Promise.all([
+      bearer(
+        http().post(
+          `/live-game-sessions/${sessionId}/runtime/presentation-ready`,
+        ),
+      ).send({
+        commandId,
+        expectedSessionRevision: sessionRevisionBeforeReady,
+        expectedRuntimeRevision: runtimeBeforeReady.revision,
+      }),
+      bearer(
+        http().post(
+          `/live-game-sessions/${sessionId}/runtime/presentation-ready`,
+        ),
+      ).send({
+        commandId: uuid(),
+        expectedSessionRevision: sessionRevisionBeforeReady,
+        expectedRuntimeRevision: runtimeBeforeReady.revision,
+      }),
+    ]);
+    expect(racing.map((response) => response.status).sort()).toEqual([
+      201, 409,
+    ]);
+
+    const activatedRuntime = (await rawRuntime(sessionId))!;
+    const activatedSession = (await rawSession(sessionId))!;
+    const activeTeamId = activatedSession.state.activeTeamId as string;
+    const activeClock = (
+      activatedSession.state.teams as Array<{
+        id: string;
+        clock: { running: boolean; startedAt?: Date; consumedMs: number };
+      }>
+    ).find((team) => team.id === activeTeamId)!.clock;
+    expect(activatedRuntime.state.presentationActivatedAt).toBeTruthy();
+    expect(activeClock.running).toBe(true);
+    expect(activeClock.startedAt).toBeTruthy();
+    expect(activeClock.consumedMs).toBe(0);
+    expect(scheduler.armedKeyFor(sessionId)).toBeTruthy();
+
+    const firstStartedAt = new Date(activeClock.startedAt!).toISOString();
+    const firstActivationAt = activatedRuntime.state.presentationActivatedAt;
+    await presentationReady(sessionId, commandId);
+    await presentationReady(sessionId);
+
+    const afterDuplicateSession = (await rawSession(sessionId))!;
+    const afterDuplicateRuntime = (await rawRuntime(sessionId))!;
+    const afterDuplicateClock = (
+      afterDuplicateSession.state.teams as Array<{
+        id: string;
+        clock: { startedAt?: Date };
+      }>
+    ).find((team) => team.id === activeTeamId)!.clock;
+    expect(new Date(afterDuplicateClock.startedAt!).toISOString()).toBe(
+      firstStartedAt,
+    );
+    expect(afterDuplicateRuntime.state.presentationActivatedAt).toBe(
+      firstActivationAt,
+    );
+
+    const reconnected = await app
+      .get(GetLiveGameSession)
+      .execute(sessionId, participants[0]);
+    expect(reconnected.activeTeamId).toBe(activeTeamId);
+    expect(
+      (reconnected.gameplay?.modeState as { awaitingPresentation?: boolean })
+        .awaitingPresentation,
+    ).toBeUndefined();
+  }, 180_000);
+
+  it('fair-start: abort before presentation activation exposes no Bomb item', async () => {
+    const { sessionId } = await startSession();
+    await createUnified(sessionId);
+    await launch(sessionId, WorldChallengeSlotKey.SLOT_1, bombItemIds);
+
+    const runtime = (await runtimes().findBySessionId(sessionId))!.serialize();
+    await bearer(http().post(`/live-game-sessions/${sessionId}/runtime/cancel`))
+      .send({
+        commandId: randomUUID(),
+        expectedRuntimeRevision: runtime.revision,
+        expectedSessionRevision: await sessionRevision(sessionId),
+      })
+      .expect(201);
+
+    const session = (await rawSession(sessionId))!;
+    expect(session.state.activeTeamId).toBeUndefined();
+    expect(
+      (
+        session.state.teams as Array<{
+          clock: { running: boolean; startedAt?: Date };
+        }>
+      ).some((team) => team.clock.running || team.clock.startedAt),
+    ).toBe(false);
+    expect(
+      await database
+        .collection('content_exposures')
+        .countDocuments({ matchId: sessionId, state: 'exposed' }),
+    ).toBe(0);
+  }, 180_000);
 
   it('1–4: places Bomb on a real board, launches it, and preserves item order', async () => {
     const { sessionId } = await startSession();

@@ -38,6 +38,28 @@ export interface LiveSessionContextValue {
   syncState?: "idle" | "resynchronizing" | "restored";
   command: (action: string, options?: LiveSessionCommandOptions) => void;
   gameplayCommand: (action: string, options?: GameplayCommandOptions) => void;
+  /**
+   * Fair-start: acknowledge this surface can present the runtime at exactly these
+   * revisions. The caller supplies the revisions from the snapshot it is looking
+   * at, so delivery does not depend on any provider-internal ref catching up.
+   * Resolves when the server accepts the acknowledgement and rejects on failure,
+   * so the caller can pin a real success and retry a genuine failure. The server
+   * activates once and is idempotent, so a duplicate acknowledgement is harmless.
+   */
+  presentationReady?: (input: {
+    expectedSessionRevision: number;
+    expectedRuntimeRevision: number;
+  }) => Promise<void>;
+  /**
+   * Fair-start acknowledgement over the socket for the multi-surface contract
+   * (RYO). The server derives the surface capability from the actor identity and
+   * binds the ack to the exact connection (`client.id`), so a disconnect withdraws
+   * it and the surface must acknowledge again. Rejects if there is no live socket.
+   */
+  presentationReadySocket?: (input: {
+    expectedSessionRevision: number;
+    expectedRuntimeRevision: number;
+  }) => Promise<void>;
   adoptSnapshot?: (snapshot: LiveSessionSnapshot) => void;
   resync?: () => void;
   setMatchDouble?: (

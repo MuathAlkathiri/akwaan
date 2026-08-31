@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HelpCircle, Lock, Swords, Unlock } from "lucide-react";
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
@@ -8,6 +8,7 @@ import { AnswerOption } from "../match/components/answer-option";
 import { teamIdentityOf, type TeamIdentity } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
 import { BidiText } from "@/components/akwaan/bidi-text";
+import { AkwaanLoader } from "@/components/akwaan/akwaan-loader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
@@ -46,7 +47,8 @@ export function RyoGameplayPanel({
 }: {
   runtime: GameplayRuntimeSnapshot;
 }) {
-  const { snapshot, gameplayCommand, connection } = useLiveSession();
+  const { snapshot, gameplayCommand, connection, presentationReadySocket } =
+    useLiveSession();
   const [number, setNumber] = useState("");
   // This phone's own decision, echoed back after it locks in. It is the local
   // player's own choice — never the opponent's — so showing it leaks nothing.
@@ -59,6 +61,36 @@ export function RyoGameplayPanel({
   const terminal = Boolean(
     interaction && ["resolved", "cancelled", "expired"].includes(interaction.status),
   );
+  // Fair-start multi-surface shell: while the first RYO item is waiting for every
+  // surface (shared screen, answerer, decider) to mount, the server exposes only
+  // this phone's capability — no question, options, target or Steal/Trust state.
+  // This surface acknowledges over the socket (bound to this connection) so the
+  // server counts it toward activation. Re-acknowledges on the next authoritative
+  // snapshot while still awaiting; once activated, `awaiting` clears.
+  const awaiting =
+    (runtime.modeState as { awaitingPresentation?: boolean } | undefined)
+      ?.awaitingPresentation === true;
+  const ackedRef = useRef<string | null>(null);
+  const inFlightRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!awaiting || !runtime || !snapshot || !presentationReadySocket) return;
+    const key = `${runtime.mode.key}:${runtime.revision}`;
+    if (ackedRef.current === key || inFlightRef.current === key) return;
+    inFlightRef.current = key;
+    presentationReadySocket({
+      expectedSessionRevision: snapshot.revision,
+      expectedRuntimeRevision: runtime.revision,
+    })
+      .then(() => {
+        ackedRef.current = key;
+      })
+      .catch(() => {
+        // Not accepted: leave the key unpinned so a later snapshot retries.
+      })
+      .finally(() => {
+        if (inFlightRef.current === key) inFlightRef.current = null;
+      });
+  }, [awaiting, runtime, snapshot, presentationReadySocket]);
   const remainingMs = useInteractionDeadline(prompt?.deadlineAt, terminal);
   // Which *side* has locked in, from the server's redacted projection: it publishes
   // that a submission exists and its kind, never the choice inside it. `kind`
@@ -108,6 +140,21 @@ export function RyoGameplayPanel({
 
   const answeringIdentity = teamIdentityOf(answeringTeamId, snapshot?.teams ?? []);
   const opposingIdentity = teamIdentityOf(opposingTeamId, snapshot?.teams ?? []);
+
+  if (awaiting) {
+    return (
+      <ChallengeFrame
+        eyebrow="اقرأ خصمك"
+        title="السؤال 1 من 3"
+        progressValue={0}
+        className="mx-auto max-w-3xl"
+      >
+        <div className="grid place-items-center py-16" data-testid="ryo-preparing">
+          <AkwaanLoader label="نجهّز التحدي…" />
+        </div>
+      </ChallengeFrame>
+    );
+  }
 
   return (
     <ChallengeFrame

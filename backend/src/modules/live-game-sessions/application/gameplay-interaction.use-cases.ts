@@ -83,6 +83,7 @@ export class GameplayInteractionUseCases {
             roundId: command.roundId,
             activeTeamId: state.activeRound?.activeTeamId,
             activeParticipantId: state.activeRound?.activeParticipantId,
+            awaitingPresentationActivation: !state.presentationActivatedAt,
           },
           command.payload,
           now,
@@ -359,6 +360,9 @@ export class GameplayInteractionUseCases {
           runtimeId: runtime.id,
           roundId: round.id,
           activeTeamId: answeringTeamId,
+          // Always the canonical lifecycle past the first activation: subsequent
+          // items are prepared then opened immediately with their deadline.
+          awaitingPresentationActivation: false,
         },
         {
           itemJson: JSON.stringify(item),

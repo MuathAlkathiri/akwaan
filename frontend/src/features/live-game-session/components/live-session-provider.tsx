@@ -12,7 +12,11 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { authStorage } from "@/features/auth/storage/auth-storage";
 import { teamColorVariables } from "@/lib/team-palette";
-import { getLiveSession, setMatchDouble } from "../api/live-session-api";
+import {
+  acknowledgePresentationReady,
+  getLiveSession,
+  setMatchDouble,
+} from "../api/live-session-api";
 import {
   LiveSessionContext,
   type GameplayCommandOptions,
@@ -205,6 +209,61 @@ export function LiveSessionProvider({
     [sessionId, state.snapshot],
   );
 
+  // Fair-start: tell the server this surface has adopted the runtime and can
+  // present it. The revisions come from the caller (the renderer, reading the
+  // exact awaiting snapshot on screen), NOT from `snapshotRef` — a cold-open or
+  // refresh into an already-awaiting runtime used to race the ref and drop the
+  // acknowledgement silently. The promise resolves once the server accepted it
+  // (and the adopted snapshot reflects the activation immediately) and rejects
+  // otherwise, so the caller pins only a real success and retries a real failure.
+  // Activation is idempotent server-side, so a duplicate is harmless.
+  const presentationReady = useCallback(
+    (input: {
+      expectedSessionRevision: number;
+      expectedRuntimeRevision: number;
+    }) =>
+      acknowledgePresentationReady(sessionId, {
+        commandId: crypto.randomUUID(),
+        expectedSessionRevision: input.expectedSessionRevision,
+        expectedRuntimeRevision: input.expectedRuntimeRevision,
+      }).then((next) => {
+        adoptSnapshot(next);
+      }),
+    [sessionId, adoptSnapshot],
+  );
+
+  /**
+   * Fair-start acknowledgement for the multi-surface contract (RYO). Unlike the
+   * HTTP path, this goes through the socket so the server can bind the ack to
+   * the exact connection (`client.id`) and withdraw it on disconnect. The server
+   * derives the surface capability from the actor identity; the client never
+   * claims a role. Emitting is fire-and-forget, like every other socket command:
+   * the server broadcasts the activation (or a withheld state) back and the
+   * surface re-acknowledges on the next authoritative snapshot if it is still
+   * awaiting. It rejects if this surface has no live connection to ack from.
+   */
+  const presentationReadySocket = useCallback(
+    (input: {
+      expectedSessionRevision: number;
+      expectedRuntimeRevision: number;
+    }) => {
+      const socket = socketRef.current;
+      if (!socket) return Promise.reject(new Error("No live session connection"));
+      try {
+        socket.presentationReady({
+          sessionId,
+          commandId: crypto.randomUUID(),
+          expectedSessionRevision: input.expectedSessionRevision,
+          expectedRuntimeRevision: input.expectedRuntimeRevision,
+        });
+        return Promise.resolve();
+      } catch (error) {
+        return Promise.reject(error);
+      }
+    },
+    [sessionId],
+  );
+
   // Deliberately without `nowMs`. The clock ticks four times a second, and
   // while it was part of this object every tick handed all ~29 consumers a new
   // value and rerendered them for a change none of them had asked about. It is
@@ -223,6 +282,8 @@ export function LiveSessionProvider({
       syncState,
       command,
       gameplayCommand,
+      presentationReady,
+      presentationReadySocket,
       adoptSnapshot,
       resync,
       setMatchDouble: updateMatchDouble,
@@ -230,6 +291,8 @@ export function LiveSessionProvider({
     [
       command,
       gameplayCommand,
+      presentationReady,
+      presentationReadySocket,
       adoptSnapshot,
       initial.error,
       state.connection,

@@ -29,6 +29,11 @@ function runtimeState(
     stateSchemaVersion: 1,
     status: 'round-active',
     revision: 7,
+    // These deadline-routing tests assert what an already-live challenge arms, so
+    // the runtime is presentation-activated by default. Fair-start (whether an
+    // opted-in mechanic arms before activation) is proved in its own specs. A
+    // mechanic that has not opted in ignores this field.
+    presentationActivatedAt: new Date(NOW).toISOString(),
     runtimeState: {},
     completedRounds: [],
     processedCommandIds: [],
