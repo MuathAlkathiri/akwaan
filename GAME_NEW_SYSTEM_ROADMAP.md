@@ -390,34 +390,35 @@ Games, Puzzles and the draft Worlds still need both (§C.1).
       `slot_3` `bomb`, `slot_4` RYO, `blockers: []` — ⚠️ **local/dev runtime only**
 - [ ] Reconcile the **remaining** target World boards to **Signature + RYO + Closest + Bomb**
 - [ ] Verify every target World against final Shared Core readiness
-- [ ] Re-point One Clue to the Movies Signature (§16.2)
+- [ ] One Clue is **no longer re-pointed to the Movies Signature** — that prior step (§16.2) is superseded; the Movies Signature is now a **new mechanic, القطها** (§16.5), unimplemented
 
 ### E. Signature mechanics — product design
 
 - [x] Football / كرة القدم → **Top 5** *(mechanic implemented)*
 - [x] Puzzles / عالم الالغاز → **Distributed Information / ركّبها** *(mechanic implemented)*
-- [x] Movies / الأفلام → **One Clue / بدليل واحد** *(design approved)*
-- [x] Music / الأغاني → **من أول نغمة** *(design approved)*
+- [x] Movies / الأفلام → **القطها** *(design approved — supersedes the earlier **One Clue / بدليل واحد** direction, §16.5)*
+- [x] Music / الأغاني → **من أول نغمة** *(design approved; runtime design upgraded to the auction model — §16.6)*
 - [x] World / العالم → **على الخريطة** *(design approved)*
 - [x] Series / المسلسلات → **وش صار بعدها؟** *(design approved)*
 - [x] Video Games / فيديو قيمز → **المرحلة** *(design approved and implemented — §17)*
 - [x] Anime / الأنمي → **الكومبو** *(design approved and implemented — §16.4)*
+- [x] Cars / السيارات → **القطعة الدخيلة** *(design approved — §16.7)*
 - [ ] Saudi Arabia / السعودية → **undecided**
-- [ ] Cars / السيارات → **undecided**
 - [ ] Sports / الرياضة → **undecided**
 
 ### F. Signature mechanics — implementation
 
 Design approval above does **not** imply any of these. Full matrix in §16.
 
-- [ ] Movies → One Clue as the Movies Signature (re-ownership + Movies-specific form)
-- [ ] Music → من أول نغمة *(depends on audio enrichment — checklist H)*
+- [ ] Movies → **القطها** *(new mechanic; no runtime key, ChallengeType, content contract or content exists — §16.5)*
+- [ ] Music → **من أول نغمة** *(auction runtime design; depends on audio enrichment — checklist H; no runtime exists — §16.6)*
 - [ ] World → على الخريطة *(map interaction; no map primitive exists yet)*
 - [ ] Series → وش صار بعدها؟ *(sequential/ordering mechanic)*
 - [x] Video Games → المرحلة *(✅ mechanic implemented & verified; ✅ local/dev World rollout verified; ⚠️ production content outstanding; ⬜ not deployed — §17)*
 - [x] Anime → الكومبو *(✅ mechanic implemented & verified; local/dev World rollout verified; ⚠️ production content outstanding — §16.4)*
 - [x] Football → Top 5 World-specific rollout reconciled — ✅ football-exclusive in the local/dev runtime; ⬜ not deployed (§C.1)
 - [ ] Puzzles → ركّبها World-specific rollout reconciled
+- [ ] Cars → **القطعة الدخيلة** *(new mechanic; no runtime key, ChallengeType, content contract or content exists — §16.7)*
 
 ### G. Taxonomy / catalog changes — 🟡 APPROVED DIRECTION, NOT IMPLEMENTED
 
@@ -427,8 +428,8 @@ Design approval above does **not** imply any of these. Full matrix in §16.
 
 ### H. Media — ⬜ NOT STARTED
 
-- [ ] Music audio enrichment from the 36 canonical intents (Wigolo-backed discovery → snippets)
-- [ ] Cars visual enrichment
+- [ ] Music audio enrichment from the 36 canonical intents (Wigolo-backed discovery → snippets) — now serves the **من أول نغمة** auction design (§16.6)
+- [ ] Cars visual enrichment — now serves the **القطعة الدخيلة** visual-recognition design (§16.7), including both puzzle fragments and the mandatory full/original target-vehicle reveal asset
 - [ ] Banners / logos / imagery backlog across Worlds
 
 ### I. Board configuration — 🚧 PARTIAL
@@ -682,15 +683,17 @@ to random removal (§7.1).
 ## 4. Signature Mechanics — Requirements *(assignment now in §16)*
 
 > **SUPERSEDED IN PART.** When this section was written no Signature mechanic had been assigned. **Assignments
-> now exist for 8 of 11 Worlds** — see the authoritative matrix in **§16**. The *requirements* below (§4.1) and
-> the *launch gate* (§4.2) remain fully in force and are still the acceptance criteria for any new Signature.
+> now exist for 9 of 11 Worlds** — see the authoritative matrix in **§16** *(this count was 8 of 11 until Cars was
+> assigned **القطعة الدخيلة** on 2026-08-29, §16.7)*. The *requirements* below (§4.1) and the *launch gate* (§4.2)
+> remain fully in force and are still the acceptance criteria for any new Signature.
 
 **Every World must own exactly one exclusive mechanic that appears in no other World.** It is the World's mechanical and visual fingerprint, always played, never substituted — it is the reason the player chose that World.
 
 ~~**The specific mechanic assigned to each World is not fixed in this document and is expected to change.** Candidates have been explored (list-ranking, live drawing, buzzer-race, rapid-fire chain) but none are committed. Do not implement any until assignment is decided.~~
 
 **Resolved.** Assignments are recorded in **§16**. Three mechanics are implemented (Top 5, Distributed
-Information, الكومبو), five are design-approved and unimplemented, and three Worlds remain undecided.
+Information, الكومبو), six are design-approved and unimplemented (on 2026-08-29 Cars joined them with
+**القطعة الدخيلة**, §16.7), and two Worlds remain undecided (Saudi Arabia and Sports).
 
 ### 4.1 Requirements
 
@@ -1216,7 +1219,7 @@ Status is split four ways. **Do not collapse it.**
 | Production Bomb content | 🚧 **PARTIAL** — ✅ Anime (60 items) and Football (45 items) authored with media, local/dev; ⚠️ every other World outstanding (§C.1) |
 | Cross-World Bomb content coverage | ⬜ **NOT YET AUTHORED** |
 | Cross-World board migration | 🚧 **NOT COMPLETE** — pending content readiness |
-| One Clue → Movies Signature | ⚠️ **STILL OUTSTANDING** |
+| One Clue → Movies Signature | ⚠️ **SUPERSEDED** — One Clue is no longer the forward Movies Signature; the approved Movies Signature is now **القطها** (§16.5), unimplemented |
 | Git state | ⬜ **NOT COMMITTED / NOT PUSHED** |
 | Deployment | ⬜ **NOT DEPLOYED** |
 
@@ -1301,10 +1304,13 @@ leakage. Verified: the same Bomb ChallengeType bound to two Worlds while their c
 **This does not mean the Worlds have been migrated.** The Anime binding proves the complete local World-slot
 path end to end; every other World still needs production content readiness and board reconciliation.
 
-**The existing One Clue catalog is not deleted or wasted.** One Clue's *ownership* changes from shared to the
-Movies Signature (§16.2); the content does not disappear, and any migration plan must preserve it.
-⚠️ The count has moved: 549 ready items at the 2026-08-18 baseline, **288** in the local runtime on 2026-08-21,
-unexplained — §19 item 19. Preserving the catalog means first establishing which figure is right.
+**The existing One Clue catalog is not deleted or wasted.** Under the earlier plan One Clue's *ownership* would
+change from shared to the **Movies Signature** (§16.2). That plan is **superseded (2026-08-29)**: the approved
+forward Movies Signature is now **القطها** (§16.5), an entirely new mechanic — the `one-clue` mechanic and its
+content are **not** re-owned as the Movies Signature and are not deleted. The `one-clue` catalog remains what it
+is (a currently-shared mechanic); its fate under the new Movies direction is an open question, not a decided
+repurpose. ⚠️ The count has moved: 549 ready items at the 2026-08-18 baseline, **288** in the local runtime on
+2026-08-21, unexplained — §19 item 19. Preserving the catalog means first establishing which figure is right.
 
 ### 16.2 Signature matrix
 
@@ -1312,23 +1318,40 @@ unexplained — §19 item 19. Preserving the catalog means first establishing wh
 |---|---|---|---|---|
 | **Football / كرة القدم** | Top 5 / أفضل 5 | ✅ `top-5` plugin, launcher, ChallengeType | ✅ **football-exclusive in the local/dev runtime** — `slot_1` on the Football board, no other board binds it, all 40 items in Football; 7 active Scopes after the expansion; ⬜ not deployed | ✅ mechanic / ✅ local rollout (§C.1) |
 | **Puzzles / عالم الالغاز** | Distributed Information / ركّبها | ✅ `distributed-information` plugin, launcher, ChallengeType, 213 items | 🚧 exclusivity and board rollout not finalized | ✅ mechanic / 🚧 rollout |
-| **Movies / الأفلام** | One Clue / بدليل واحد | ✅ mechanic exists (`one-clue`) | ⬜ not re-owned as the Movies Signature; Movies-specific form undefined | 🟡 design approved |
-| **Music / الأغاني** | من أول نغمة | ⬜ | ⬜ | 🟡 design approved |
+| **Movies / الأفلام** | **القطها** | ⬜ new mechanic — no plugin/launcher/ChallengeType/content contract exists (§16.5) | ⬜ | 🟡 **design approved — not implemented** (supersedes the earlier **One Clue / بدليل واحد** direction; the `one-clue` mechanic still exists in the runtime but is no longer the forward Movies Signature, §16.5) |
+| **Music / الأغاني** | من أول نغمة | ⬜ no runtime exists; runtime design upgraded to the **auction** model (§16.6) | ⬜ | 🟡 design approved — not implemented |
 | **World / العالم** | على الخريطة | ⬜ | ⬜ | 🟡 design approved |
 | **Series / المسلسلات** | وش صار بعدها؟ | ⬜ | ⬜ | 🟡 design approved |
 | **Video Games / فيديو قيمز** | المرحلة | ✅ `marhala` plugin, launcher, on-demand supplier, content policy, ChallengeType | ✅ `slot_4` bound to `marhala` in the **local/dev** runtime; ⚠️ content is 19 dev fixtures, not authored | ✅ mechanic / ✅ local rollout / ⚠️ content / ⬜ not deployed (§17) |
 | **Anime / الأنمي** | الكومبو | ✅ `combo` plugin, launcher, content policy, ChallengeType | ✅ `slot_2` bound to `combo` and ✅ **84 authored الكومبو items across all 7 Anime Scopes** in the **local/dev** runtime; ⬜ not deployed | ✅ mechanic / ✅ local rollout / ✅ local content (§16.4) |
 | **Saudi Arabia / السعودية** | *undecided* | — | — | ⬜ |
-| **Cars / السيارات** | *undecided* | — | — | ⬜ |
+| **Cars / السيارات** | **القطعة الدخيلة** | ⬜ new mechanic — no plugin/launcher/ChallengeType/content contract exists (§16.7) | ⬜ | 🟡 **design approved — not implemented** |
 | **Sports / الرياضة** | *undecided* | — | — | ⬜ |
 
-**Do not invent Signature mechanics for the three undecided Worlds.** They are blocked on product design, and
-by §4.2 none of them can ship without one.
+**Do not invent Signature mechanics for the undecided Worlds.** They are blocked on product design, and by §4.2
+none of them can ship without one. (Saudi Arabia and Sports remain undecided as of this reconciliation; Cars is
+now decided — §16.7.)
 
 ### 16.3 Approved Signature concepts — one line each
 
-- **من أول نغمة** (Music) — recognise the song or artist from a very short audio segment. Future direction:
-  revealing more audio is possible at a cost / reduced reward. Depends on the audio enrichment pipeline (checklist H).
+**Approved cross-mechanic direction:** the three new Signature mechanics in §§16.5–16.7 use a
+post-resolution Reveal beat before advancing. Reveal is conceptually distinct from answer input, scoring
+computation, and next-item preparation; future implementation should preserve **PLAY/ANSWER → RESOLVE → REVEAL →
+ADVANCE** and ensure Reveal time does not consume the next gameplay timer. This is a design requirement only and does
+not make these mechanics implemented.
+
+- **القطها** (Movies) — a shared movie-recognition race; **3 movie questions**; each with **5 ordered clues**
+  from hardest → easiest, a new clue every **3 seconds**, and a **decreasing reward** (5→4→3→2→1 points).
+  Teams may press **«جاوب»** to claim early: freeze the clues + lock the opponent + fix the reward, then get
+  **5 seconds** to submit. Clues may be text/image/audio. **🟡 DESIGN APPROVED — NOT IMPLEMENTED**; full spec
+  in §16.5.
+- **من أول نغمة** (Music) — a **music-recognition auction**: teams bid on **how few seconds** they need to
+  identify the song (ceiling 15s, min 1s). The lowest final bidder owns first-answer priority and plays exactly
+  that duration; a wrong answer gives the opponent **one steal attempt** on the **same** audio length. Reward
+  scales inversely with the winning bid; steal = +1. **🟡 DESIGN APPROVED — NOT IMPLEMENTED**; full spec in §16.6.
+  > `SUPERSEDED` — the earlier direction was *"recognise the song or artist from a very short audio segment,
+  revealing more audio possible at a cost / reduced reward."* The auction runtime design (§16.6) replaces that
+  simple progressive-audio-reveal concept while keeping the name **من أول نغمة** and the canonical Music Scopes.
 - **على الخريطة** (World) — geography answered by placing or selecting a location on a map, rather than
   ordinary text trivia. No map interaction primitive exists in the codebase today.
 - **وش صار بعدها؟** (Series) — exploits the sequential nature of series events/scenes: identify, order, or
@@ -1336,6 +1359,10 @@ by §4.2 none of them can ship without one.
 - **المرحلة** (Video Games) — board race whose central decision is *which risk band to elect from this tile*;
   full spec **and implementation record** in §17.
 - **الكومبو** (Anime) — push-your-luck knowledge run built around the team's **cash out or continue** decision, with direct opponent pressure through **كسر الكومبو**; full approved design in §16.4.
+- **القطعة الدخيلة** (Cars) — a simultaneous visual-recognition race; each puzzle shows **4 visual car
+  parts/details** — **3 belong to the same target vehicle, 1 belongs to a different vehicle** — and the team
+  identifies the **odd piece**. A wrong attempt consumes that team's attempt and hands the opportunity to the
+  opponent. **🟡 DESIGN APPROVED — NOT IMPLEMENTED**; full spec in §16.7.
 
 
 ### 16.4 الكومبو — Anime Signature design spec and implementation
@@ -1530,8 +1557,11 @@ represented by a Git commit, and none of it is deployed anywhere.
 - Combo is launchable through the real launcher registry, verified on a real Match board.
 - Both changes were applied **through the Admin API**, so the full board policy ran — not by raw DB mutation.
 
-Displacing One Clue from Anime is consistent with §16.2, which reassigns One Clue as the **Movies** Signature.
-That re-ownership itself remains outstanding (checklist F).
+Displacing One Clue from Anime was consistent with §16.2's then-reassignment of One Clue as the **Movies**
+Signature. **That reassignment is superseded (2026-08-29):** the Movies Signature is now **القطها** (§16.5), not
+One Clue. Displacing One Clue from Anime remains correct (Anime's Signature is الكومبو); what changes is that One
+Clue is no longer being re-owned as the Movies Signature, and its forward fate is an open question (§16.1). This
+re-ownership-as-القطها work is unchanged in being outstanding (checklist F).
 
 #### Content status — ✅ AUTHORED (local/dev only)
 
@@ -1553,6 +1583,249 @@ Remaining content work:
 - Playtest difficulty calibration and balance across the four stages (checklist K).
 - Preserve Scope/difficulty independence when authoring more (§16.4).
 - Get the content and its runtime state out of local-only (§19 items 12 and 27).
+
+### 16.5 القطها — Movies Signature product design *(approved 2026-08-29)*
+
+**Status: 🟡 DESIGN APPROVED — NOT IMPLEMENTED.** No plugin, launcher, ChallengeType, content contract, content,
+board slot or deployment exists. Repository/runtime evidence shows none — this is Product Design only.
+
+This **supersedes** the earlier Movies Signature direction **«One Clue / بدليل واحد»** (§16.2, checklist E/F, §19
+item 13). The name is **القطها** (not لقطها, not لقّطها, not بدليل واحد). The `one-clue` mechanic still exists in
+the runtime and its catalog is not deleted, but it is no longer the forward Movies Signature.
+
+#### Core identity
+
+A **shared movie-recognition race** where clues progressively reveal the movie.
+
+One Challenge contains:
+
+- **3 movie questions**
+- both teams play the **same question at the same time**
+- each movie question has exactly **5 ordered clues**
+- clues progress from **hardest / least revealing → easiest / most revealing**
+- a new clue appears every **3 seconds**
+- current reward decreases with each reveal:
+
+| Clue | Points |
+|---|---|
+| Clue 1 | 5 |
+| Clue 2 | 4 |
+| Clue 3 | 3 |
+| Clue 4 | 2 |
+| Clue 5 | 1 |
+
+Clues may be multimodal where appropriate — **text, image, audio** — but **not every clue must use media**; the
+content architecture stays flexible and reuses the canonical media systems when media exists.
+
+#### Answer lock / typing fairness
+
+The mechanic separates **recognition speed** from **typing speed**. At any point while clues are progressing, any
+player on either team may press **«جاوب»**. The first valid team claim:
+
+1. freezes clue progression immediately
+2. locks the opposing team temporarily
+3. freezes the current reward value
+4. gives the claiming team **5 seconds** to submit the movie name
+
+Any player on the claiming team may type/submit within this window; the first valid submission from that team is
+authoritative. Answer is **free text**, automatic `match`, canonical accepted answers + Arabic normalization, **no
+multiple-choice options**.
+
+Wrong answer OR failure to submit within the 5-second window:
+
+- counts as that team's failed attempt
+- permanently locks that team out of the current movie question
+- the other team may continue playing
+- clue progression resumes from the exact point where it was frozen
+- the remaining team does **not** lose clue/reward time because the opponent used its 5-second typing window
+
+If both teams fail, the question ends with no winner.
+
+**Tie rule:** no special tie-breaker. A tied Signature Challenge result is acceptable at Product Design level.
+
+#### Content principle
+
+Each clue must add meaningful new information and progressively narrow toward one **defensible** movie. Avoid:
+answer leakage; five redundant clues saying effectively the same thing; obscure-for-obscure trivia; clues that
+identify the answer immediately unless intentionally used as the late/easy clue.
+
+The mechanic's tension: **do we claim now for more points and risk being wrong, or wait for another clue and
+accept fewer points?**
+
+#### Post-question Reveal
+
+After each movie question resolves, show a short mechanic-native Reveal before the next question. At minimum it
+communicates the canonical movie title, which team answered and the resolution outcome, and the awarded points. A
+canonical movie visual/media asset may be reused where appropriate; a mandatory image for every question is not
+required. The intended lifecycle is **QUESTION → resolution → Reveal → next question**.
+
+### 16.6 من أول نغمة — Music Signature product design *(auction runtime, approved 2026-08-29)*
+
+**Status: 🟡 DESIGN APPROVED — NOT IMPLEMENTED.** No plugin, launcher, ChallengeType, runtime, content contract,
+content or deployment exists. The **name remains من أول نغمة**, but this **supersedes** the previous simple
+progressive-audio-reveal concept with an **auction-based runtime design**.
+
+#### Core identity
+
+A **music recognition auction**. The team is not merely deciding whether to request a longer clip; teams actively
+compete over **how few seconds** they believe they need to identify this song.
+
+One Challenge contains:
+
+- **3 songs**
+- songs come from the Music Scopes selected for the Match
+- both teams participate in the same auction/song
+
+#### Pre-auction clue
+
+Before bidding begins, show **exactly one** contextual clue about the song. The clue type is intentionally variable
+between questions — examples include artist, release year, album, decade/era, or another fair contextual clue.
+**Not locked to always showing the artist** (different clue types create uncertainty and change bidding confidence
+from round to round, while avoiding unnecessary content constraints).
+
+Hard rule: the pre-auction clue must provide enough context for a meaningful bid but **must not reveal or make the
+song answer derivable without hearing the audio**.
+
+#### Auction
+
+- Ceiling: **15 seconds**. Minimum: **1 second**.
+- Teams alternate bids; each new bid must be **lower** than the current bid.
+- Players may enter the numeric bid directly rather than selecting only fixed presets (e.g. 15 → 9 → 5 → 2); a team
+  may make an aggressive jump straight to a much lower number.
+
+#### Team anti-spam / ownership rule
+
+No permanently assigned captain. When it is a team's turn to bid, bidding is available to all players on that team;
+the **first valid bid submitted by any player** is accepted for the whole team; once accepted, bidding is locked for
+all other players on that team for that auction turn; when that team's bidding turn returns later, bidding opens to
+all team members again. This must be **server-authoritative** when implemented — client-side disabled buttons alone
+are never the concurrency guarantee.
+
+#### Auction ending
+
+When one team stops lowering the bid / leaves the opponent holding the final lowest bid, that lowest-bidding team
+owns **first-answer priority**. Play exactly the **final bid duration** (e.g. final bid 3 seconds → everyone hears
+the same 3-second clip). The clip is **public/shared**, not secret to the winning bidder.
+
+#### Answer flow
+
+- The team owning the final bid gets first answer priority.
+- Answer: **song title**, free-text `match`, accepted answers + canonical Arabic normalization, **no
+  multiple-choice options**.
+- Correct → award the reward corresponding to the final bid.
+- Wrong → the opposing team receives **one steal attempt**, using the **same audio duration** (not a longer clip —
+  otherwise losing the auction could become strategically advantageous). Steal correct → **+1 point**.
+- Both fail → 0 points for that song.
+
+#### Post-song Reveal
+
+After each song resolves, show a short mechanic-native Reveal before the next auction/song. At minimum it
+communicates the canonical song title, auction winner/answering outcome, any applicable steal outcome, and awarded
+points. Trust is not part of this auction mechanic. Existing canonical song/artist visual metadata may be reused
+through the established media architecture; no new media pipeline is introduced. The intended lifecycle is
+**SONG → resolution → Reveal → next auction/song**.
+
+#### Reward system
+
+| Winning bid | Points |
+|---|---|
+| 1–3 seconds | 3 |
+| 4–7 seconds | 2 |
+| 8–15 seconds | 1 |
+| Successful steal | 1 |
+
+**No tie-breaker rule** at this stage; a tie is acceptable.
+
+#### Content/audio direction
+
+Audio uses the existing canonical media enrichment workflow — authoring defines the intended playable audio cue /
+media intent; no new media pipeline is invented. Prefer a recognizable musical cue that makes the bidding duration
+meaningful. Avoid obvious answer leakage (e.g. immediately exposing the song title through spoken lyrics where that
+would trivialize the question).
+
+### 16.7 القطعة الدخيلة — Cars Signature product design *(approved 2026-08-29)*
+
+Cars previously had **no approved Signature mechanic**. Status: **🟡 DESIGN APPROVED — NOT IMPLEMENTED.** No
+plugin, launcher, ChallengeType, content contract, content, board slot or deployment exists — Product Design only.
+
+#### Core identity
+
+A **simultaneous visual recognition race**. Each puzzle shows **4 visual car parts/details** — exactly **3 belong
+to the same target vehicle**, **1 belongs to a different vehicle**. The objective is to identify the **odd / foreign
+piece**. Example: target BMW M4 with BMW M4 headlight + BMW M4 steering wheel + BMW M4 wheel + a Mercedes-AMG C63
+interior screen (the fourth image is the odd piece).
+
+This is not ordinary `وش اسم السيارة؟`. It tests whether players can compare automotive visual identity across
+headlights, interiors, steering wheels, wheels, dashboards, rear lights, body details, and other recognizable design
+elements.
+
+#### Challenge structure
+
+One Challenge contains **3 puzzles**; both teams see the same puzzle simultaneously. Difficulty increases
+progressively:
+
+- Puzzle 1 — clearly different cars / visual languages
+- Puzzle 2 — closer vehicles, classes, manufacturers, or design identities
+- Puzzle 3 — strong visual similarity / related models / more subtle differences
+
+Difficulty must not become obscure-for-obscure automotive trivia.
+
+#### Answer race
+
+Both teams discuss simultaneously; any team may press **«جاوب»**. The first valid team claim receives
+**first-answer priority**; they then choose which of the four pieces is the odd piece.
+
+- Correct → that team wins the puzzle reward — **+1 point for the puzzle** (current Product Design reward).
+- Wrong → that team's attempt is consumed and the opposing team receives an opportunity to answer the **same**
+  puzzle. The second team must still make its own selection — the point is **not** automatically awarded just
+  because the first team was wrong.
+
+#### Team anti-spam principle
+
+As with other Akwaan team interactions: any player on the team may initiate the team answer; the **first valid
+authoritative submission** represents the team; remaining team members become locked from duplicate submissions for
+that interaction. Implementation must be **server-authoritative**.
+
+#### Content/media contract direction
+
+This mechanic is inherently visual. The four pieces must be authentic, readable, and semantically correct. QA must
+verify, per puzzle:
+
+- all three matching visuals actually belong to the exact intended vehicle/model identity
+- the odd visual actually belongs to a different vehicle
+- no filename/text/logo leakage makes the answer trivial
+- the crop still contains enough genuine visual identity to be playable
+- media truth is verified against the actual assets, not assumed from filenames
+
+Reuse the established canonical Akwaan media pipeline — no Cars-specific media architecture is invented.
+
+#### Mandatory visual Reveal / proof
+
+After every puzzle resolves — whether the first attempt is correct, wrong and transferred, or both teams fail — the
+shared result state must reveal which of the four pieces was the intruder, identify the target vehicle that owns the
+three matching pieces, and show the **original/full target-vehicle reveal image**. This visual proof is mandatory for
+credibility, fairness, player trust, and spectator readability; it must not depend on host explanation.
+
+The future content/media contract therefore needs enough canonical data for both states: four playable fragments
+(exactly three from the target vehicle and one intruder), plus the canonical target-vehicle identity, intruder
+identity/source as needed, and a full/original target-vehicle reveal image. Exact field names and schema remain an
+implementation-phase decision and must fit the existing authoring/media system.
+
+Puzzle fragments and the full-car reveal asset must use the existing canonical media enrichment, storage, and
+presentation workflow. Missing reveal media is a content-readiness issue and must not silently remove the mandatory
+Reveal.
+
+### 16.8 Candidate Scope direction — discussion, not approved taxonomy *(2026-08-29)*
+
+The following Scope ideas were **discussed** alongside the three Signature approvals and are recorded explicitly as
+**discussion / candidate direction only**. They are **not** approved taxonomy, no runtime Scopes are created or
+mutated, and none may be described as a decision unless separately approved:
+
+- **Movies** — أفلام عربية · Marvel · Harry Potter · Disney & Pixar · أفلام عالمية
+- **Music** — preserve the existing canonical Music taxonomy already provisioned (§21.7): Saudi Music · Gulf Music ·
+  Arabic Music · International Music
+- **Cars** — سيارات يابانية · سيارات ألمانية · سيارات أمريكية · سيارات رياضية (the wording **«سيارات رياضية»**
+  replaced the earlier brainstormed «سيارات خارقة»)
 
 ---
 
@@ -1916,7 +2189,7 @@ Not implemented. Not scheduled.
 | 10 | **Production deployment smoke never executed** | Verification gap | **LOCAL rebuilt-stack verification: ✅ complete (2026-08-27).** The full stack was rebuilt from the current working tree and passed Final Release QA + Release Gate Cleanup (see "Where things stand — 2026-08-27", §K, §22). The remaining gap is a genuine **production deployment** smoke: nothing has been committed, pushed, or deployed, so no release-side result exists. Tracked as the open deployment items in §K; do **not** mark done from local evidence. |
 | 11 | ~~**الكومبو has no production content**~~ | Resolved 2026-08-21 | Closed. الكومبو has **84 authored items across all 7 Anime Scopes** in the local/dev runtime — 12 per Scope, 3 per stage — and no item carries the old fixture stamp. What remains is not content: it is that none of it is committed or deployed (item 12). §16.4. |
 | 12 | **الكومبو exists only in the local runtime** | Release gap | ChallengeType, Anime `slot_2` binding and content live on the developer machine. No commit, no push, no deployment. Reproducing this on any other environment currently requires re-running the rollout by hand. §16.4. |
-| 13 | **One Clue still needs its Movies re-ownership** | Product | Anime `slot_2` was rebound to `combo`, so One Clue is no longer on the Anime board — but it is still a Shared Core mechanic rather than the Movies Signature §16.2 assigns it. Unchanged by the Combo work; simply now more visible. |
+| 13 | **One Clue is no longer the forward Movies Signature** | Product | Anime `slot_2` was rebound to `combo`, so One Clue is no longer on the Anime board. Its earlier planned re-ownership as the **Movies Signature (§16.2)** is **superseded (2026-08-29)** — the approved Movies Signature is now **القطها** (§16.5), an entirely new mechanic. One Clue thus has no decided forward role: it remains a currently-shared mechanic whose fate under the new Movies direction is an open question (§16.1), not a decided repurpose. |
 | 14 | **Bomb production content exists for Anime and Football only** | Product / content | Done for Anime (**60** items) and Football (**45** items) — **105 authored Bomb items with media** in the local/dev runtime. Still outstanding for every other World; the authored Video Games and Puzzles expansions are each blocked on **45 Bomb media items** before they can be promoted. Every Bomb item needs an image, so this stays a media-bearing effort. §16.1, §C.1. |
 | 15 | ~~**The only Bomb content is 10 dev fixtures**~~ | Resolved 2026-08-21 | Closed — no item carries that stamp. The hygiene rule it expressed (dev fixtures must never be counted as coverage) still applies, and now applies only to the 19 المرحلة fixtures (item 20). |
 | 16 | **Cross-World board migration unfinished** | Product / config | Only Anime carries Bomb, and only in the local runtime. Every other World still needs reconciling to Signature + RYO + Closest + Bomb, which is gated on content readiness rather than on effort. |
@@ -1931,6 +2204,9 @@ Not implemented. Not scheduled.
 | 25 | **Six authored Scopes are not in any runtime** | Product / content rollout | Video Games (`minecraft`, `god-of-war`, `resident-evil`) and Puzzles (`patterns-sequences`, `lateral-thinking`, `visual-puzzles`) have committed taxonomy assets and authored content, but **no runtime Scope and no promoted content**. Each World is gated on its 45 Bomb media items first. Must not be described as implemented, active, Admin-visible, runtime-ready or DB-promoted. *(Was nine; Football's three were promoted on 2026-08-21.)* §C.1. |
 | 26 | **Bomb media outstanding for two Worlds** | Content / media | 45 items each for Video Games and Puzzles — **90** media items — each needing production, subject-by-subject pairing (§5.6), attachment and manual product review before its World can be promoted. Video Games is the immediate next content phase (§20). *(Was 135 across three Worlds; Football's 45 are complete.)* |
 | 27 | **The whole content expansion is local/dev only** | Release gap | **261** promoted items across **six** runtime Scopes (Anime 135, Football 126) and **90** media binaries exist on one developer machine. The push (`4fdab19`, `25141bd`, `fcf70ee`) carried **taxonomy, knowledge bases and tooling only** — not content documents, not `ai/output` packs (gitignored), not the media binaries under `uploads/question-assets/images/` (deliberately untracked). Reproducing the runtime state elsewhere means re-running the promotions. |
+| 28 | **القطها (Movies Signature) is design-only** | Product / design | Approved product design (§16.5, 2026-08-29) — **not implemented**. No plugin, launcher, ChallengeType, content contract, content, board slot or deployment exists. Supersedes One Clue as the forward Movies Signature (item 13). |
+| 29 | **من أول نغمة (Music Signature) auction design is design-only** | Product / design | Approved product design (§16.6, 2026-08-29) — **not implemented**. The name is unchanged but the runtime design is now auction-based; no plugin, launcher, ChallengeType, runtime, content contract, content or deployment exists. Depends on the Music audio enrichment pipeline (checklist H; §19 #3). The Music World and 4 Scopes are production-provisioned but `draft`/`not_ready` with 0 content (§21.7). |
+| 30 | **القطعة الدخيلة (Cars Signature) is design-only** | Product / design | Approved product design (§16.7, 2026-08-29) — **not implemented**. Cars previously had no approved Signature; this is now 🟡 design-approved. No plugin, launcher, ChallengeType, content contract, content, board slot or deployment exists. Cars visual enrichment (checklist H) now serves this design. |
 
 ---
 
@@ -2429,5 +2705,39 @@ intersection model, the three-segment / shared-fragment model, and the public/sh
   playerInstructions sync, deployment + runtime smoke, Puzzles World board rollout; and a pass over the remaining
   `ai/.opencode/knowledge|roles|workflows` authoring prose that still carries old-model wording.
 
+## 24. P0 Fair-Start Presentation Activation — ✅ IMPLEMENTED & VERIFIED
 
+The Fair-Start engineering milestone is complete in source and automated QA. The authoritative release is
+`fad3f08` (`feat(gameplay): add fair challenge presentation activation`), committed on
+`fix/timed-challenge-fair-start`, pushed to the feature branch, and fast-forwarded to `origin/main` without a merge
+commit or force push.
 
+Fair-Start separates challenge launch/reservation from gameplay presentation. Before the required presentation
+surface(s) are ready, playable content remains hidden, playable deadlines/clocks remain inert, and selection or
+reservation is not counted as exposure. Once readiness is authoritatively satisfied, the server stamps one
+`presentationActivatedAt`, starts the full configured gameplay window, and continues the existing server-owned
+deadline/clock lifecycle. No client-owned timeout or fixed-delay fallback was introduced.
+
+The shared foundation covers Combo, Bomb, Closest, One Clue, Rakkibha, and RYO. Bomb retains its continuous
+session/team clock; runtime-state mechanics remain activation-gated; RYO remains an interaction-deadline mechanic.
+RYO's initial barrier requires the shared/controller surface, the current server-assigned answerer, and the current
+server-assigned decider. Readiness is bound to the server-observed Socket.IO connection; disconnect, reconnect, and
+reassignment invalidate stale readiness. RYO prepares the first interaction inertly, then opens and anchors its
+deadline at activation. Private answer/decision state and canonical scoring remain unchanged.
+
+Frontend preparation shells, runtime/revision-bound acknowledgement, retry, reconnect re-acknowledgement, and
+no-flash playable-content protection are implemented and covered by automated tests.
+
+**QA evidence:** backend 180 suites / 1,695 tests; focused RYO 2 suites / 22 tests; real-Mongo RYO integration 1
+suite / 8 tests; frontend 89 files / 911 tests; focused RYO/runtime 37/37; backend/frontend typecheck and builds
+passed; changed-file backend lint had 0 errors (4 unrelated existing Bomb media-probe warnings); frontend lint
+passed with the existing Rakkibha `<img>` warning; `git diff --check` passed.
+
+**Git/deployment evidence:** local and remote release are `fad3f08`; production frontend and backend are healthy,
+and Fair-Start presence was observed in the served frontend marker (`presentation-ready`) and the recognized backend
+`PresentationReady` route. Render did not expose an exact deployed Git SHA through available tooling, so exact
+backend deployment identity is not claimed.
+
+**⚠️ KNOWN FOLLOW-UP:** the real Production RYO controller + answerer + decider multi-device playtest remains
+unexecuted and deferred to manual playtesting. This is a deployment-side verification follow-up, not an implementation
+gap, and must not be described as passed.
