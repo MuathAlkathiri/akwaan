@@ -40,6 +40,42 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
+### Where things stand — 2026-09-01 · FAIR-START + CARS SOURCE MILESTONES
+
+This is a source/local-Git milestone, not a rollout or deployment claim. Branch `feat/cars-odd-piece` is **2 local
+commits ahead of `origin/main`**: `52dd72a` (recurring Fair-Start) and `49c65b0` (Cars Odd Piece). Neither commit
+has been pushed or deployed by this work.
+
+- **Recurring Fair-Start — ✅ IMPLEMENTED & VERIFIED IN SOURCE / LOCALLY (`52dd72a`).** The lifecycle is
+  prepare → authenticated actor/socket readiness → server activation → authoritative deadline. Deadline and
+  playable exposure remain suppressed before activation; recurring presentation generations are supported;
+  stale generation/revision acknowledgements are rejected; reconnect is activation-safe; and the scheduler remains
+  the single deadline owner. RYO multi-surface fairness is verified. Concise evidence: backend **180 suites / 1,697
+  tests**; frontend **89 files / 925 tests**; focused Fair-Start/mechanic **16 suites / 290 tests**; real-Mongo
+  integrations **5 suites / 86 tests**; typecheck, build, changed-file lint, and diff check PASS.
+- **Cars `odd-piece` — ✅ IMPLEMENTED & VERIFIED IN SOURCE / LOCALLY (`49c65b0`).** Each Challenge has exactly
+  3 puzzles and each puzzle has exactly 4 visual pieces with enforced 3+1 vehicle identity, stable piece IDs, and
+  persisted server-controlled order. The canonical CAS claim flow gives the first authoritative claimant priority;
+  a wrong attempt is consumed and transfers the same puzzle to the opponent; each puzzle awards +1 internally and
+  canonical Match `challenge-win` convergence remains once. Mandatory resolution proof, including the full
+  target-vehicle reveal required by §16.7, is preserved. Every puzzle uses recurring Fair-Start; prepared puzzles
+  expose no playable media and arm no deadline, while reconnect preserves order/state without restarting timing.
+  The **30-second value is configurable and is a playtest/technical default, not locked Product Design**. Admin
+  authoring uses the canonical ContentItem/media architecture; no Cars-specific media pipeline, socket store,
+  scheduler, scoring system, or content repository was added. Evidence: backend **185 suites / 1,759 tests**;
+  frontend **92 files / 934 tests**; Cars real-Mongo lifecycle PASS; **88 unique shared-regression real-Mongo tests
+  passed**; typechecks, builds, lint, and diff check PASS. One suite-order-only Marhala transient was isolated and
+  the clean Marhala rerun passed **24/24**; it is not classified as a Cars regression.
+
+| Release boundary | State |
+|---|---|
+| Local Git commits | ✅ `52dd72a`, `49c65b0` |
+| Remote push | ⬜ NOT DONE |
+| Production deployment / verification | ⬜ NOT DONE |
+| Cars World rollout / board binding | ⬜ NOT STARTED |
+| Cars production content / media / R2 | ⬜ NOT STARTED |
+| Cars production runtime DB provisioning | ⬜ NOT MUTATED |
+
 ### Where things stand — 2026-08-27 · PRE-DEPLOY RELEASE CANDIDATE
 
 > Current verdict, from Final Release QA + Release Gate Cleanup:
@@ -328,6 +364,8 @@ The day-to-day view. Detail lives in the referenced sections; this stays short e
 - [x] Abort race safety (vs answer / timeout / skip / natural completion) under revision CAS
 - [x] Restart recovery for interrupted convergence
 - [x] Lifecycle regression coverage — 11 real-Mongo lifecycle suites green
+- [x] Recurring presentation Fair-Start — generation/revision-bound readiness, activation-gated exposure/deadlines,
+      reconnect-safe activation, and one authoritative scheduler owner *(✅ source/local commit `52dd72a`; ⬜ not pushed/deployed)*
 
 ### B. Performance — ✅ COMPLETE *(baseline `4f33704`)*
 
@@ -418,7 +456,8 @@ Design approval above does **not** imply any of these. Full matrix in §16.
 - [x] Anime → الكومبو *(✅ mechanic implemented & verified; local/dev World rollout verified; ⚠️ production content outstanding — §16.4)*
 - [x] Football → Top 5 World-specific rollout reconciled — ✅ football-exclusive in the local/dev runtime; ⬜ not deployed (§C.1)
 - [ ] Puzzles → ركّبها World-specific rollout reconciled
-- [ ] Cars → **القطعة الدخيلة** *(new mechanic; no runtime key, ChallengeType, content contract or content exists — §16.7)*
+- [x] Cars → **القطعة الدخيلة** *(✅ `odd-piece` mechanic implemented & verified in source/local commit `49c65b0`;
+      ⬜ World rollout; ⬜ production content/media; ⬜ runtime DB provisioning; ⬜ deployment — §16.7)*
 
 ### G. Taxonomy / catalog changes — 🟡 APPROVED DIRECTION, NOT IMPLEMENTED
 
@@ -429,7 +468,9 @@ Design approval above does **not** imply any of these. Full matrix in §16.
 ### H. Media — ⬜ NOT STARTED
 
 - [ ] Music audio enrichment from the 36 canonical intents (Wigolo-backed discovery → snippets) — now serves the **من أول نغمة** auction design (§16.6)
-- [ ] Cars visual enrichment — now serves the **القطعة الدخيلة** visual-recognition design (§16.7), including both puzzle fragments and the mandatory full/original target-vehicle reveal asset
+- [ ] Cars visual enrichment — implementation can consume the canonical assets, but no production pack has been
+      authored/promoted/ingested; puzzle fragments and the mandatory full/original target-vehicle reveal remain
+      outstanding (§16.7)
 - [ ] Banners / logos / imagery backlog across Worlds
 
 ### I. Board configuration — 🚧 PARTIAL
@@ -691,9 +732,9 @@ to random removal (§7.1).
 
 ~~**The specific mechanic assigned to each World is not fixed in this document and is expected to change.** Candidates have been explored (list-ranking, live drawing, buzzer-race, rapid-fire chain) but none are committed. Do not implement any until assignment is decided.~~
 
-**Resolved.** Assignments are recorded in **§16**. Three mechanics are implemented (Top 5, Distributed
-Information, الكومبو), six are design-approved and unimplemented (on 2026-08-29 Cars joined them with
-**القطعة الدخيلة**, §16.7), and two Worlds remain undecided (Saudi Arabia and Sports).
+**Resolved.** Assignments are recorded in **§16**. Four mechanics are implemented (Top 5, Distributed
+Information, الكومبو, and the locally verified Cars **القطعة الدخيلة** source implementation), five are
+design-approved and unimplemented, and two Worlds remain undecided (Saudi Arabia and Sports).
 
 ### 4.1 Requirements
 
@@ -1325,7 +1366,7 @@ repurpose. ⚠️ The count has moved: 549 ready items at the 2026-08-18 baselin
 | **Video Games / فيديو قيمز** | المرحلة | ✅ `marhala` plugin, launcher, on-demand supplier, content policy, ChallengeType | ✅ `slot_4` bound to `marhala` in the **local/dev** runtime; ⚠️ content is 19 dev fixtures, not authored | ✅ mechanic / ✅ local rollout / ⚠️ content / ⬜ not deployed (§17) |
 | **Anime / الأنمي** | الكومبو | ✅ `combo` plugin, launcher, content policy, ChallengeType | ✅ `slot_2` bound to `combo` and ✅ **84 authored الكومبو items across all 7 Anime Scopes** in the **local/dev** runtime; ⬜ not deployed | ✅ mechanic / ✅ local rollout / ✅ local content (§16.4) |
 | **Saudi Arabia / السعودية** | *undecided* | — | — | ⬜ |
-| **Cars / السيارات** | **القطعة الدخيلة** | ⬜ new mechanic — no plugin/launcher/ChallengeType/content contract exists (§16.7) | ⬜ | 🟡 **design approved — not implemented** |
+| **Cars / السيارات** | **القطعة الدخيلة** | ✅ `odd-piece`: plugin, launcher, content policy, ChallengeType definition/provisioning source, Admin authoring, player frontend, recurring Fair-Start (§16.7) | ⬜ **NOT STARTED** — no production Cars board binding | ✅ mechanic / ⬜ rollout / ⬜ production content+media / ⬜ deployment |
 | **Sports / الرياضة** | *undecided* | — | — | ⬜ |
 
 **Do not invent Signature mechanics for the undecided Worlds.** They are blocked on product design, and by §4.2
@@ -1336,9 +1377,9 @@ now decided — §16.7.)
 
 **Approved cross-mechanic direction:** the three new Signature mechanics in §§16.5–16.7 use a
 post-resolution Reveal beat before advancing. Reveal is conceptually distinct from answer input, scoring
-computation, and next-item preparation; future implementation should preserve **PLAY/ANSWER → RESOLVE → REVEAL →
-ADVANCE** and ensure Reveal time does not consume the next gameplay timer. This is a design requirement only and does
-not make these mechanics implemented.
+computation, and next-item preparation; implementation must preserve **PLAY/ANSWER → RESOLVE → REVEAL → ADVANCE**
+and ensure Reveal time does not consume the next gameplay timer. Product approval alone does not establish
+implementation; the per-mechanic state is recorded in the matrix and detail sections.
 
 - **القطها** (Movies) — a shared movie-recognition race; **3 movie questions**; each with **5 ordered clues**
   from hardest → easiest, a new clue every **3 seconds**, and a **decreasing reward** (5→4→3→2→1 points).
@@ -1362,7 +1403,8 @@ not make these mechanics implemented.
 - **القطعة الدخيلة** (Cars) — a simultaneous visual-recognition race; each puzzle shows **4 visual car
   parts/details** — **3 belong to the same target vehicle, 1 belongs to a different vehicle** — and the team
   identifies the **odd piece**. A wrong attempt consumes that team's attempt and hands the opportunity to the
-  opponent. **🟡 DESIGN APPROVED — NOT IMPLEMENTED**; full spec in §16.7.
+  opponent. **✅ MECHANIC IMPLEMENTED & VERIFIED IN SOURCE / LOCALLY**; World rollout, production content/media,
+  runtime DB provisioning, and deployment remain not started. Full spec and implementation state in §16.7.
 
 
 ### 16.4 الكومبو — Anime Signature design spec and implementation
@@ -1745,8 +1787,33 @@ would trivialize the question).
 
 ### 16.7 القطعة الدخيلة — Cars Signature product design *(approved 2026-08-29)*
 
-Cars previously had **no approved Signature mechanic**. Status: **🟡 DESIGN APPROVED — NOT IMPLEMENTED.** No
-plugin, launcher, ChallengeType, content contract, content, board slot or deployment exists — Product Design only.
+Cars previously had **no approved Signature mechanic**. Product Design is approved and preserved below; source
+implementation is now verified locally, while rollout and production remain separate and unstarted.
+
+| Concern | Status |
+|---|---|
+| Product design | ✅ **APPROVED** |
+| Mechanic implementation | ✅ **IMPLEMENTED & VERIFIED IN SOURCE / LOCALLY** |
+| Cars World rollout | ⬜ **NOT STARTED** |
+| Production content / media | ⬜ **NOT STARTED** |
+| Git state | ✅ local commits `52dd72a` (Fair-Start prerequisite) + `49c65b0` (Cars mechanic); **not pushed** |
+| Deployment | ⬜ **NOT DEPLOYED** |
+
+#### Implementation state *(2026-09-01)*
+
+- **Backend:** `odd-piece` GameplayModePlugin; launcher/start use case; content policy; registry/module integration;
+  ChallengeType production-definition source; canonical CAS claim flow; existing scoring/convergence integration;
+  recurring Fair-Start.
+- **Content contract:** 3 puzzles per Challenge; 4 visual pieces each; exact 3+1 semantic vehicle identity; stable
+  piece IDs; persisted/server-controlled ordering; mandatory full target-vehicle reveal; canonical media architecture.
+- **Frontend:** shared-screen Odd Piece gameplay panel; phone claim/selection flow; opponent handoff; result recap;
+  Match router and challenge-identity integration.
+- **Admin:** ordinary ContentItem authoring with mechanic-specific four-piece fields; shared backend authoring/launch
+  validation; no separate Cars CMS or media system.
+- **Fair-Start:** every puzzle opens a new recurring presentation generation; preparation arms no deadline and
+  exposes no playable piece/media before authoritative activation.
+- **Timer:** configurable **30-second technical/playtest default** — ⚠️ **PLAYTEST / CONFIGURATION VALUE — NOT
+  LOCKED PRODUCT DESIGN**.
 
 #### Core identity
 
@@ -1806,10 +1873,10 @@ shared result state must reveal which of the four pieces was the intruder, ident
 three matching pieces, and show the **original/full target-vehicle reveal image**. This visual proof is mandatory for
 credibility, fairness, player trust, and spectator readability; it must not depend on host explanation.
 
-The future content/media contract therefore needs enough canonical data for both states: four playable fragments
+The implemented content/media contract therefore carries enough canonical data for both states: four playable fragments
 (exactly three from the target vehicle and one intruder), plus the canonical target-vehicle identity, intruder
-identity/source as needed, and a full/original target-vehicle reveal image. Exact field names and schema remain an
-implementation-phase decision and must fit the existing authoring/media system.
+identity/source as needed, and a full/original target-vehicle reveal image. Its fields fit the existing
+authoring/media system.
 
 Puzzle fragments and the full-car reveal asset must use the existing canonical media enrichment, storage, and
 presentation workflow. Missing reveal media is a content-readiness issue and must not silently remove the mandatory
@@ -2206,7 +2273,7 @@ Not implemented. Not scheduled.
 | 27 | **The whole content expansion is local/dev only** | Release gap | **261** promoted items across **six** runtime Scopes (Anime 135, Football 126) and **90** media binaries exist on one developer machine. The push (`4fdab19`, `25141bd`, `fcf70ee`) carried **taxonomy, knowledge bases and tooling only** — not content documents, not `ai/output` packs (gitignored), not the media binaries under `uploads/question-assets/images/` (deliberately untracked). Reproducing the runtime state elsewhere means re-running the promotions. |
 | 28 | **القطها (Movies Signature) is design-only** | Product / design | Approved product design (§16.5, 2026-08-29) — **not implemented**. No plugin, launcher, ChallengeType, content contract, content, board slot or deployment exists. Supersedes One Clue as the forward Movies Signature (item 13). |
 | 29 | **من أول نغمة (Music Signature) auction design is design-only** | Product / design | Approved product design (§16.6, 2026-08-29) — **not implemented**. The name is unchanged but the runtime design is now auction-based; no plugin, launcher, ChallengeType, runtime, content contract, content or deployment exists. Depends on the Music audio enrichment pipeline (checklist H; §19 #3). The Music World and 4 Scopes are production-provisioned but `draft`/`not_ready` with 0 content (§21.7). |
-| 30 | **القطعة الدخيلة (Cars Signature) is design-only** | Product / design | Approved product design (§16.7, 2026-08-29) — **not implemented**. Cars previously had no approved Signature; this is now 🟡 design-approved. No plugin, launcher, ChallengeType, content contract, content, board slot or deployment exists. Cars visual enrichment (checklist H) now serves this design. |
+| 30 | ~~**القطعة الدخيلة (Cars Signature) is design-only**~~ | Resolved mechanic / rollout follow-up | **Superseded 2026-09-01:** the `odd-piece` mechanic is ✅ implemented and verified in source/local commit `49c65b0`. Remaining Cars rollout is still outstanding: approved/provisioned taxonomy and Scopes as applicable; production Odd Piece content; visual enrichment and mandatory reveal media; Shared Core Cars coverage; board configuration; runtime DB provisioning/promotion; multiplayer/product playtest; timer calibration; push, deployment, and production smoke. §16.7. |
 
 ---
 
