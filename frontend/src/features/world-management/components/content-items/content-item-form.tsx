@@ -41,6 +41,7 @@ import { OneClueFields } from "./one-clue-fields";
 import { ComboFields } from "./combo-fields";
 import { MarhalaFields } from "./marhala-fields";
 import { OddPieceFields } from "./odd-piece-fields";
+import { LaqathaFields } from "./laqatha-fields";
 import {
   CONTENT_STATUSES,
   CONTENT_STATUS_LABEL,
@@ -123,6 +124,10 @@ export function ContentItemForm({
   const comboSelected = hasComboMechanic(selectedChallengeTypes);
   const marhalaSelected = hasMarhalaMechanic(selectedChallengeTypes);
   const oddPieceSelected = hasOddPieceMechanic(selectedChallengeTypes);
+  const laqathaSelected = selectedChallengeTypes.some(
+    (configuration) =>
+      patternOf(configuration.challengeType.answerMode) === "laqatha",
+  );
   // Keep the payload flag in step with the selection, so deselecting the
   // mechanic stops emitting its payload.
   useEffect(() => {
@@ -189,6 +194,19 @@ export function ContentItemForm({
       };
     });
   }, [oddPieceSelected]);
+
+  useEffect(() => {
+    setValues((current) => {
+      if (current.laqatha.enabled === laqathaSelected) return current;
+      return {
+        ...current,
+        answer: laqathaSelected
+          ? { ...current.answer, mode: "match" }
+          : current.answer,
+        laqatha: { ...current.laqatha, enabled: laqathaSelected },
+      };
+    });
+  }, [laqathaSelected]);
 
   const formSubmit = useEntityFormSubmit<ContentItem>({
     entityId: contentItem?.id,
@@ -328,6 +346,15 @@ export function ContentItemForm({
           value={values.oneClue}
           acceptedAnswers={values.answer.acceptedAnswers}
           onChange={(oneClue) => set({ oneClue })}
+          onAcceptedAnswersChange={(acceptedAnswers) =>
+            set({ answer: { ...values.answer, acceptedAnswers } })
+          }
+        />
+      ) : laqathaSelected ? (
+        <LaqathaFields
+          value={values.laqatha}
+          acceptedAnswers={values.answer.acceptedAnswers}
+          onChange={(laqatha) => set({ laqatha })}
           onAcceptedAnswersChange={(acceptedAnswers) =>
             set({ answer: { ...values.answer, acceptedAnswers } })
           }

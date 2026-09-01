@@ -21,6 +21,8 @@ import {
   MARHALA_SLUG,
   ODD_PIECE_SLUG,
   ONE_CLUE_VALUES,
+  LAQATHA_SLUG,
+  LAQATHA_VALUES,
   VoteConsensusRule,
   WorldContentStatus,
 } from './world-content.constants';
@@ -45,6 +47,7 @@ import {
   Top5Payload,
   OneCluePayload,
   OddPiecePayload,
+  LaqathaPayload,
 } from './world-content.types';
 import { validateOddPiecePayload } from './odd-piece-content.policy';
 
@@ -99,6 +102,7 @@ export class ContentItemCompatibilityPolicy {
     blockers.push(...this.validateTop5Payload(input.item));
     blockers.push(...this.validateRakkibhaPayload(input.item, referenced));
     blockers.push(...this.validateOneCluePayload(input.item, referenced));
+    blockers.push(...this.validateLaqathaPayload(input.item, referenced));
     blockers.push(...this.validateComboPayload(input.item, referenced));
     blockers.push(...this.validateBombItem(input.item, referenced));
     blockers.push(...this.validateMarhalaPayload(input.item, referenced));
@@ -239,6 +243,61 @@ export class ContentItemCompatibilityPolicy {
       ];
     }
     return [];
+  }
+
+  /**
+   * "القطها" structure. Exactly five ordered clues valued 5..1, each playable:
+   * a clue carries Arabic text, or media, or both — an empty clue has nothing to
+   * reveal. Per-clue media rides through the one canonical media check, so an
+   * answer-bearing malformed asset is caught here, at authoring time, against the
+   * same predicate the launch path runs. The movie title is the item's MATCH
+   * `acceptedAnswers`, validated by `validateAnswerPayload`, so it is not re-checked
+   * here.
+   */
+  private validateLaqathaPayload(
+    item: ContentItemView,
+    challengeTypes: ChallengeTypeView[],
+  ): WorldContentIssue[] {
+    if (!challengeTypes.some((type) => type.slug === LAQATHA_SLUG)) return [];
+    const raw = item.mechanicPayload as Partial<LaqathaPayload> | undefined;
+    const clues = Array.isArray(raw?.clues) ? raw.clues : [];
+    const issues: WorldContentIssue[] = [];
+    if (
+      clues.length !== LAQATHA_VALUES.length ||
+      clues.some(
+        (clue, index) =>
+          clue?.order !== index + 1 ||
+          clue?.value !== LAQATHA_VALUES[index] ||
+          !this.laqathaClueHasContent(clue),
+      )
+    ) {
+      issues.push(
+        issue(
+          'LAQATHA_STRUCTURE_INVALID',
+          'القطها requires exactly five ordered clues valued 5, 4, 3, 2, 1, each with text or media',
+          { contentItemId: item.id },
+        ),
+      );
+    }
+    for (const [index, clue] of clues.entries()) {
+      issues.push(
+        ...this.mediaBlockIssues(clue?.media, `القطها clue ${index + 1}`),
+      );
+    }
+    return issues;
+  }
+
+  /** A القطها clue is playable when it carries Arabic text or a real media asset. */
+  private laqathaClueHasContent(
+    clue: LaqathaPayload['clues'][number] | undefined,
+  ): boolean {
+    if (clue?.text?.ar?.trim()) return true;
+    const media = clue?.media;
+    return Boolean(
+      media &&
+      media.type !== ContentMediaType.NONE &&
+      media.assets?.some((asset) => asset.url?.trim()),
+    );
   }
 
   /**

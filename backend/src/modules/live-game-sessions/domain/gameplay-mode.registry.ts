@@ -13,6 +13,7 @@ import { CLOSEST_GAMEPLAY_PLUGIN } from './closest-gameplay.plugin';
 import { ONE_CLUE_GAMEPLAY_PLUGIN } from './one-clue-gameplay.plugin';
 import { MARHALA_GAMEPLAY_PLUGIN } from './marhala-gameplay.plugin';
 import { ODD_PIECE_GAMEPLAY_PLUGIN } from './odd-piece-gameplay.plugin';
+import { LAQATHA_GAMEPLAY_PLUGIN } from './laqatha-gameplay.plugin';
 
 @Injectable()
 export class GameplayModeRegistry {
@@ -77,6 +78,13 @@ export class GameplayModeRegistry {
         ODD_PIECE_GAMEPLAY_PLUGIN.version,
       ),
       ODD_PIECE_GAMEPLAY_PLUGIN,
+    ],
+    [
+      this.registryKey(
+        LAQATHA_GAMEPLAY_PLUGIN.key,
+        LAQATHA_GAMEPLAY_PLUGIN.version,
+      ),
+      LAQATHA_GAMEPLAY_PLUGIN,
     ],
   ]);
 

@@ -10,6 +10,7 @@ import {
   BOMB_SLUG,
   MARHALA_SLUG,
   ODD_PIECE_SLUG,
+  LAQATHA_SLUG,
 } from './world-content.constants';
 import { ChallengePresentation } from './world-content.types';
 
@@ -195,6 +196,36 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
         timerSeconds: 7,
         soundPack: null,
         revealStyle: null,
+      },
+    },
+  }),
+  definition({
+    // "القطها" — the Movies Signature (§16.5). A discrete triple of movie
+    // questions, each a five-clue race; both teams play the same question and
+    // race a «جاوب» claim, so the free-text answer is a MATCH payload.
+    slug: LAQATHA_SLUG,
+    family: ChallengeFamily.SIGNATURE,
+    itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
+    answerMode: ChallengeAnswerMode.LAQATHA,
+    seed: {
+      name: 'القطها',
+      description:
+        'سباق تعرّف على الأفلام: خمسة أدلة متدرجة، وأول فريق يحجز الإجابة يجاوب.',
+      defaultPresentation: {
+        inputType: 'phone-text',
+        // The clue cadence. The claim window (5s) is a fixed product rule and
+        // lives in code, not here; this is the visible reveal rhythm.
+        timerSeconds: 3,
+        soundPack: null,
+        revealStyle: null,
+        playerInstructions: {
+          summary: 'كل فيلم له 5 أدلة تظهر بالتدريج.',
+          steps: [
+            'كل ما جاوبتوا بدري، نقاطكم أعلى.',
+            'اضغطوا «جاوب» لحجز الإجابة.',
+            'إذا غلطتم تكمل الفرصة للفريق الثاني.',
+          ],
+        },
       },
     },
   }),

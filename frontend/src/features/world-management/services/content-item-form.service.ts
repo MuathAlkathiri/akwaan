@@ -10,6 +10,7 @@ import type {
   OneCluePayload,
   ContentPattern,
   OddPiecePayload,
+  LaqathaPayload,
 } from "../types";
 
 /**
@@ -38,6 +39,7 @@ export interface ContentItemFormValues {
   combo: ComboFormState;
   marhala: MarhalaFormState;
   oddPiece: OddPieceFormState;
+  laqatha: LaqathaFormState;
 }
 
 export const ODD_PIECE_CHALLENGE_SLUG = "odd-piece";
@@ -254,6 +256,68 @@ function emptyOneClueState(): OneClueFormState {
   };
 }
 
+export const LAQATHA_CHALLENGE_SLUG = "laqatha";
+export const LAQATHA_VALUES = [5, 4, 3, 2, 1] as const;
+export const LAQATHA_PROMPT_AR = "خمّن الفيلم من الأدلة الخمسة";
+
+export type LaqathaClueModality = "text" | "image" | "audio";
+
+export interface LaqathaClueFormState {
+  modality: LaqathaClueModality;
+  text: string;
+  mediaUrl: string;
+}
+
+export interface LaqathaFormState {
+  enabled: boolean;
+  /** The canonical movie title — the first accepted answer. */
+  targetAnswer: string;
+  clues: LaqathaClueFormState[];
+}
+
+export function hasLaqathaMechanic(
+  selected: ReadonlyArray<{ challengeType: { slug: string } }>,
+): boolean {
+  return selected.some(
+    (configuration) =>
+      configuration.challengeType.slug === LAQATHA_CHALLENGE_SLUG,
+  );
+}
+
+function emptyLaqathaState(): LaqathaFormState {
+  return {
+    enabled: false,
+    targetAnswer: "",
+    clues: LAQATHA_VALUES.map(() => ({
+      modality: "text" as LaqathaClueModality,
+      text: "",
+      mediaUrl: "",
+    })),
+  };
+}
+
+export function toLaqathaFormState(
+  payload: Partial<LaqathaPayload> | undefined,
+  targetAnswer: string,
+): LaqathaFormState {
+  if (payload?.variant !== "laqatha") return emptyLaqathaState();
+  return {
+    enabled: true,
+    targetAnswer,
+    clues: LAQATHA_VALUES.map((_value, index) => {
+      const clue = payload.clues?.[index];
+      const type = clue?.media?.type;
+      const modality: LaqathaClueModality =
+        type === "image" ? "image" : type === "audio" ? "audio" : "text";
+      return {
+        modality,
+        text: clue?.text?.ar ?? "",
+        mediaUrl: clue?.media?.assets?.[0]?.url ?? "",
+      };
+    }),
+  };
+}
+
 /** One of the three fixed private segments of a "ركّبها" item. */
 export interface RakkibhaCandidateFormState {
   localId: string;
@@ -394,6 +458,7 @@ export function emptyContentItemForm(scopeId: string): ContentItemFormValues {
     combo: emptyComboState(),
     marhala: emptyMarhalaState(),
     oddPiece: emptyOddPieceState(),
+    laqatha: emptyLaqathaState(),
   };
 }
 
@@ -428,6 +493,11 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
   const emptyTop5 = emptyTop5State();
   const oneCluePayload = item.mechanicPayload as
     Partial<OneCluePayload> | undefined;
+  const laqathaPayload = item.mechanicPayload as
+    Partial<LaqathaPayload> | undefined;
+  // One Clue and القطها both carry `clues`; only القطها stamps a `variant`.
+  const isLaqatha = laqathaPayload?.variant === "laqatha";
+  const isOneClue = Boolean(oneCluePayload?.clues) && !isLaqatha;
   const acceptedAnswers = payload.acceptedAnswers ?? [];
   return {
     scopeId: item.scopeId,
@@ -460,7 +530,7 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
           ? ""
           : String(payload.acceptedTolerance),
       acceptedAnswers: acceptedAnswers
-        .slice(oneCluePayload?.clues ? 1 : 0)
+        .slice(isOneClue || isLaqatha ? 1 : 0)
         .join("\n"),
       consensusRule: payload.consensusRule ?? "majority",
       fragments: (payload.splitPayload?.fragments ?? []).map((fragment) => ({
@@ -471,15 +541,16 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
     rakkibha: toRakkibhaFormState(
       item.mechanicPayload as RakkibhaPayload | undefined,
     ),
-    oneClue: oneCluePayload?.clues
+    oneClue: isOneClue
       ? {
           enabled: true,
           targetAnswer: acceptedAnswers[0] ?? "",
           clues: ONE_CLUE_VALUES.map(
-            (_value, index) => oneCluePayload.clues?.[index]?.text?.ar ?? "",
+            (_value, index) => oneCluePayload?.clues?.[index]?.text?.ar ?? "",
           ),
         }
       : emptyOneClueState(),
+    laqatha: toLaqathaFormState(laqathaPayload, acceptedAnswers[0] ?? ""),
     oddPiece: toOddPieceFormState(
       item.mechanicPayload as Partial<OddPiecePayload> | undefined,
     ),
@@ -688,6 +759,26 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
     values.marhala.enabled && values.marhala.difficulty !== ""
       ? { marhalaDifficulty: values.marhala.difficulty }
       : undefined;
+  const laqathaMechanicPayload = values.laqatha.enabled
+    ? {
+        variant: "laqatha" as const,
+        clues: LAQATHA_VALUES.map((value, index) => {
+          const clue = values.laqatha.clues[index];
+          return {
+            order: index + 1,
+            value,
+            ...(clue?.modality === "text"
+              ? { text: { ar: clue?.text.trim() ?? "" } }
+              : {
+                  media: {
+                    type: (clue?.modality ?? "image") as ContentMediaType,
+                    assets: [{ url: clue?.mediaUrl.trim() ?? "" }],
+                  },
+                }),
+          };
+        }),
+      }
+    : undefined;
   const oddPieceMechanicPayload = values.oddPiece.enabled
     ? {
         variant: "odd-piece" as const,
@@ -724,7 +815,8 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
     oneClueMechanicPayload ??
     comboMechanicPayload ??
     marhalaMechanicPayload ??
-    oddPieceMechanicPayload)
+    oddPieceMechanicPayload ??
+    laqathaMechanicPayload)
       ? {
           ...top5MechanicPayload,
           ...rakkibhaMechanicPayload,
@@ -732,23 +824,32 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
           ...comboMechanicPayload,
           ...marhalaMechanicPayload,
           ...oddPieceMechanicPayload,
+          ...laqathaMechanicPayload,
         }
       : undefined;
-  const answerPayload = values.oneClue.enabled
-    ? {
-        mode: "match" as const,
-        acceptedAnswers: [
-          values.oneClue.targetAnswer.trim(),
-          ...toLines(values.answer.acceptedAnswers),
-        ].filter(Boolean),
-      }
-    : buildAnswerPayload(values.answer);
+  const signatureTargetAnswer = values.oneClue.enabled
+    ? values.oneClue.targetAnswer
+    : values.laqatha.targetAnswer;
+  const answerPayload =
+    values.oneClue.enabled || values.laqatha.enabled
+      ? {
+          mode: "match" as const,
+          acceptedAnswers: [
+            signatureTargetAnswer.trim(),
+            ...toLines(values.answer.acceptedAnswers),
+          ].filter(Boolean),
+        }
+      : buildAnswerPayload(values.answer);
   return {
     scopeId: values.scopeId,
     prompt: {
       ar:
         values.promptAr.trim() ||
-        (values.oneClue.enabled ? ONE_CLUE_PROMPT_AR : ""),
+        (values.oneClue.enabled
+          ? ONE_CLUE_PROMPT_AR
+          : values.laqatha.enabled
+            ? LAQATHA_PROMPT_AR
+            : ""),
       ...(values.promptEn.trim() ? { en: values.promptEn.trim() } : {}),
     },
     compatibleChallengeTypeIds: values.compatibleChallengeTypeIds,
@@ -820,7 +921,7 @@ export function findRakkibhaProblems(values: ContentItemFormValues): string[] {
 
 export function findLocalFormProblems(values: ContentItemFormValues): string[] {
   const problems: string[] = [];
-  if (!values.promptAr.trim() && !values.oneClue.enabled)
+  if (!values.promptAr.trim() && !values.oneClue.enabled && !values.laqatha.enabled)
     problems.push("نص السؤال بالعربية مطلوب.");
   if (!values.compatibleChallengeTypeIds.length) {
     problems.push("اختر نوع تحدٍ واحداً متوافقاً على الأقل.");
@@ -849,6 +950,18 @@ export function findLocalFormProblems(values: ContentItemFormValues): string[] {
       .filter(Boolean);
     if (new Set(clues).size !== clues.length)
       problems.push("لا يمكن تكرار نص الدليل نفسه.");
+  }
+  if (values.laqatha.enabled) {
+    const { laqatha } = values;
+    if (!laqatha.targetAnswer.trim())
+      problems.push("اسم الفيلم (الإجابة المستهدفة) مطلوب.");
+    if (
+      laqatha.clues.length !== LAQATHA_VALUES.length ||
+      laqatha.clues.some((clue) =>
+        clue.modality === "text" ? !clue.text.trim() : !clue.mediaUrl.trim(),
+      )
+    )
+      problems.push("اكتب الأدلة الخمسة كاملة (نص أو رابط وسائط).");
   }
   if (values.oddPiece.enabled) {
     const { oddPiece } = values;

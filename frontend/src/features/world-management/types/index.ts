@@ -28,7 +28,7 @@ export type ChallengeAnswerMode =
 export type ChallengeItemStructure = "discrete_triple" | "continuous";
 export type VoteConsensusRule = "exact" | "majority" | "team_match";
 export type ContentPattern =
-  "generic" | "top_5" | "rakkibha" | "one_clue" | "odd_piece";
+  "generic" | "top_5" | "rakkibha" | "one_clue" | "odd_piece" | "laqatha";
 
 export interface ContentAsset {
   url: string;
@@ -370,6 +370,16 @@ export interface OneCluePayload {
     order: number;
     value: number;
     text: LocalizedText;
+  }>;
+}
+
+export interface LaqathaPayload {
+  variant: "laqatha";
+  clues: Array<{
+    order: number;
+    value: number;
+    text?: LocalizedText;
+    media?: { type: ContentMediaType; assets: ContentAsset[] };
   }>;
 }
 

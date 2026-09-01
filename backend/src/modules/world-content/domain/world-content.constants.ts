@@ -50,6 +50,11 @@ export enum ChallengeAnswerMode {
    * already had.
    */
   RAKKIBHA = 'rakkibha',
+  /**
+   * Movies Signature "القطها": a five-clue race whose ContentItems keep a MATCH
+   * answer payload; each clue may be text, image, or audio.
+   */
+  LAQATHA = 'laqatha',
 }
 
 /** A generic board position. Gameplay meaning comes from its Challenge Type. */
@@ -142,8 +147,19 @@ export const ONE_CLUE_ITEM_COUNT = 3;
 export const ONE_CLUE_STAGE_SECONDS = 7;
 export const ONE_CLUE_VALUES = [5, 4, 3, 2, 1] as const;
 
+/** Movies Signature: القطها. */
+export const LAQATHA_SLUG = 'laqatha';
+/** Exactly three movie questions per challenge launch. */
+export const LAQATHA_ITEM_COUNT = 3;
+/** Reward per revealed clue, hardest (5) to easiest (1). */
+export const LAQATHA_VALUES = [5, 4, 3, 2, 1] as const;
+/** A new clue becomes available every three seconds. */
+export const LAQATHA_REVEAL_SECONDS = 3;
+/** A team that claims gets five seconds to submit the movie title. */
+export const LAQATHA_CLAIM_SECONDS = 5;
+
 export type ContentPattern =
-  'generic' | 'top_5' | 'rakkibha' | 'one_clue' | 'odd_piece';
+  'generic' | 'top_5' | 'rakkibha' | 'one_clue' | 'odd_piece' | 'laqatha';
 
 /** Mechanic-owned authoring structure, distinct from its answer contract. */
 export function contentPatternForChallengeAnswerMode(
@@ -153,6 +169,7 @@ export function contentPatternForChallengeAnswerMode(
   if (mode === ChallengeAnswerMode.RAKKIBHA) return 'rakkibha';
   if (mode === ChallengeAnswerMode.ONE_CLUE) return 'one_clue';
   if (mode === ChallengeAnswerMode.ODD_PIECE) return 'odd_piece';
+  if (mode === ChallengeAnswerMode.LAQATHA) return 'laqatha';
   return 'generic';
 }
 
@@ -217,6 +234,7 @@ export const ANSWER_MODE_COMPATIBLE_ITEM_MODES: Readonly<
   [ChallengeAnswerMode.TOP_5]: [ChallengeAnswerMode.TOP_5],
   [ChallengeAnswerMode.ODD_PIECE]: [ChallengeAnswerMode.ODD_PIECE],
   [ChallengeAnswerMode.ONE_CLUE]: [ChallengeAnswerMode.MATCH],
+  [ChallengeAnswerMode.LAQATHA]: [ChallengeAnswerMode.MATCH],
   [ChallengeAnswerMode.RAKKIBHA]: [
     ChallengeAnswerMode.MATCH,
     ChallengeAnswerMode.MULTIPLE_CHOICE,

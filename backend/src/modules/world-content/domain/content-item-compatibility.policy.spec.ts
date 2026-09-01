@@ -195,6 +195,111 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
     }
   });
 
+  it('enforces five ordered clues with playable text or media for القطها', () => {
+    const laqatha = challengeType({
+      id: 'challenge-ryo',
+      slug: 'laqatha',
+      family: ChallengeFamily.SIGNATURE,
+      answerMode: ChallengeAnswerMode.LAQATHA,
+    });
+    const validItem = contentItem({
+      answerPayload: {
+        mode: ChallengeAnswerMode.MATCH,
+        acceptedAnswers: ['الأسد الملك'],
+      },
+      mechanicPayload: {
+        clues: [
+          { order: 1, value: 5, text: { ar: 'دليل صعب' } },
+          {
+            order: 2,
+            value: 4,
+            media: {
+              type: ContentMediaType.IMAGE,
+              assets: [{ url: 'https://cdn/clue2.webp' }],
+            },
+          },
+          {
+            order: 3,
+            value: 3,
+            media: {
+              type: ContentMediaType.AUDIO,
+              assets: [{ url: 'https://cdn/clue3.mp3' }],
+            },
+          },
+          { order: 4, value: 2, text: { ar: 'دليل أسهل' } },
+          { order: 5, value: 1, text: { ar: 'الدليل الأسهل' } },
+        ],
+      },
+    });
+    expect(
+      evaluate({ item: validItem, challengeTypes: typeMap(laqatha) }).blockers,
+    ).toEqual([]);
+
+    // Fewer than five, more than five, and out-of-order all fail structurally.
+    for (const clues of [
+      [5, 4, 3, 2],
+      [5, 4, 3, 2, 1, 1],
+      [4, 5, 3, 2, 1],
+    ]) {
+      expect(
+        codes({
+          item: contentItem({
+            ...validItem,
+            mechanicPayload: {
+              clues: clues.map((value, index) => ({
+                order: index + 1,
+                value,
+                text: { ar: `دليل ${index + 1}` },
+              })),
+            },
+          }),
+          challengeTypes: typeMap(laqatha),
+        }),
+      ).toContain('LAQATHA_STRUCTURE_INVALID');
+    }
+
+    // A clue with neither text nor media is not playable.
+    expect(
+      codes({
+        item: contentItem({
+          ...validItem,
+          mechanicPayload: {
+            clues: [5, 4, 3, 2, 1].map((value, index) => ({
+              order: index + 1,
+              value,
+              ...(index === 2 ? {} : { text: { ar: `دليل ${index + 1}` } }),
+            })),
+          },
+        }),
+        challengeTypes: typeMap(laqatha),
+      }),
+    ).toContain('LAQATHA_STRUCTURE_INVALID');
+
+    // A malformed media asset (missing url) rides the canonical media check.
+    expect(
+      codes({
+        item: contentItem({
+          ...validItem,
+          mechanicPayload: {
+            clues: [5, 4, 3, 2, 1].map((value, index) => ({
+              order: index + 1,
+              value,
+              ...(index === 1
+                ? {
+                    media: {
+                      type: ContentMediaType.IMAGE,
+                      assets: [{ url: '' }],
+                    },
+                  }
+                : { text: { ar: `دليل ${index + 1}` } }),
+            })),
+          },
+        }),
+        challengeTypes: typeMap(laqatha),
+      }),
+    ).toContain('CONTENT_MEDIA_ASSET_URL_REQUIRED');
+  });
+
   it('does not cross-match One Clue and ركّبها content patterns', () => {
     const oneClue = challengeType({
       id: 'one-clue',

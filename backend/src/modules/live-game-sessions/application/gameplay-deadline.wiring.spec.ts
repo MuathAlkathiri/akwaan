@@ -62,6 +62,7 @@ const DEADLINE_CONTRACT: Record<
   combo: { kind: 'runtime-state' },
   marhala: { kind: 'runtime-state' },
   'odd-piece': { kind: 'runtime-state' },
+  laqatha: { kind: 'runtime-state' },
 };
 
 /** A live runtime carrying whatever the mechanic uses to express a deadline. */

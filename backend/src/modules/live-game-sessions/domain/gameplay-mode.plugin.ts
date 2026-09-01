@@ -149,6 +149,11 @@ export const MODE_COMMAND_TYPES: readonly string[] = [
   'submit-odd-piece',
   'advance-odd-piece',
   'expire-odd-piece',
+  // القطها.
+  'claim-laqatha',
+  'submit-laqatha',
+  'advance-laqatha',
+  'expire-laqatha-phase',
 ];
 
 export interface GameplayCommandDefinition {

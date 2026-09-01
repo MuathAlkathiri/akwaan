@@ -22,6 +22,7 @@ import { OneClueResultRecap } from "./one-clue-result-recap";
 import { ComboResultRecap } from "./combo-result-recap";
 import { MarhalaResultRecap } from "./marhala-result-recap";
 import { OddPieceResultRecap } from "./odd-piece-result-recap";
+import { LaqathaResultRecap } from "./laqatha-result-recap";
 import type { MatchActor, MatchChallengeResult } from "../types";
 
 /**
@@ -188,6 +189,8 @@ function ChallengeResultBody({ result }: { result: MatchChallengeResult }) {
       return <MarhalaResultRecap result={result} snapshot={snapshot} />;
     case "odd-piece":
       return <OddPieceResultRecap result={result} snapshot={snapshot} />;
+    case "laqatha":
+      return <LaqathaResultRecap result={result} snapshot={snapshot} />;
     default:
       return (
         <div

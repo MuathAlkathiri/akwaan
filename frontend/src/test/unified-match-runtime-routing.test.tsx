@@ -73,6 +73,12 @@ vi.mock(
     OddPieceGameplayPanel: () => <div data-testid="renderer-odd-piece" />,
   }),
 );
+vi.mock(
+  "@/features/live-game-session/components/laqatha-gameplay-panel",
+  () => ({
+    LaqathaGameplayPanel: () => <div data-testid="renderer-laqatha" />,
+  }),
+);
 vi.mock("@/features/live-game-session/components/rakkibha-panel", () => ({
   RakkibhaPanel: () => <div data-testid="renderer-rakkibha-phone" />,
 }));
@@ -244,6 +250,7 @@ describe("a running challenge is routed by its runtime mode key", () => {
     ["combo", "renderer-combo"],
     ["bomb", "renderer-bomb"],
     ["odd-piece", "renderer-odd-piece"],
+    ["laqatha", "renderer-laqatha"],
   ])("renders %s with its own screen", (modeKey, testId) => {
     renderRouter(match({ stage: "challenge", currentChallenge: running }), {
       runtimeModeKey: modeKey,

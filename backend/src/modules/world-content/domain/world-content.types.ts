@@ -313,6 +313,26 @@ export interface OneCluePayload {
   }>;
 }
 
+/**
+ * "القطها" (Movies Signature) content: exactly five ordered clues per movie
+ * question, hardest (value 5) to easiest (value 1). A clue is playable as text,
+ * image, or audio — different clues within one movie may use different
+ * modalities — so each carries optional localized text and optional media. The
+ * canonical movie title lives in the item's MATCH `answerPayload.acceptedAnswers`
+ * (no second source of truth for what is correct), exactly as One Clue does.
+ */
+export interface LaqathaClue {
+  order: number;
+  value: number;
+  text?: LocalizedText;
+  media?: ContentItemMedia;
+}
+
+export interface LaqathaPayload {
+  variant: 'laqatha';
+  clues: LaqathaClue[];
+}
+
 export interface OddPieceVisual {
   localId: string;
   /** Server-only grading identity; never projected while the puzzle is live. */
@@ -344,7 +364,8 @@ export interface ContentItemView {
     | Top5Payload
     | RakkibhaPayload
     | OneCluePayload
-    | OddPiecePayload;
+    | OddPiecePayload
+    | LaqathaPayload;
   isReusableAcrossSessions: boolean;
   status: ContentItemStatus;
   metadata?: {
