@@ -42,9 +42,9 @@ Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOC
 
 ### Where things stand — 2026-09-01 · FAIR-START + CARS SOURCE MILESTONES
 
-This is a source/local-Git milestone, not a rollout or deployment claim. Branch `feat/cars-odd-piece` is **2 local
-commits ahead of `origin/main`**: `52dd72a` (recurring Fair-Start) and `49c65b0` (Cars Odd Piece). Neither commit
-has been pushed or deployed by this work.
+This milestone was promoted to `main` on 2026-09-01. Commits `52dd72a` (recurring Fair-Start), `49c65b0` (Cars
+Odd Piece), and `3c6689d` (source-milestone reconciliation) were fast-forwarded and pushed without force. Source
+deployment is verified while Cars World rollout remains deliberately separate and unstarted.
 
 - **Recurring Fair-Start — ✅ IMPLEMENTED & VERIFIED IN SOURCE / LOCALLY (`52dd72a`).** The lifecycle is
   prepare → authenticated actor/socket readiness → server activation → authoritative deadline. Deadline and
@@ -69,9 +69,9 @@ has been pushed or deployed by this work.
 
 | Release boundary | State |
 |---|---|
-| Local Git commits | ✅ `52dd72a`, `49c65b0` |
-| Remote push | ⬜ NOT DONE |
-| Production deployment / verification | ⬜ NOT DONE |
+| Git main / remote | ✅ `origin/main` contains `52dd72a`, `49c65b0`, `3c6689d` |
+| Production code deployment | ✅ Vercel exact-SHA deployment succeeded; Render backend is healthy after configured `main` auto-deploy, but Render exposes no exact Git SHA through available public evidence |
+| Production smoke | ✅ public frontend routes, backend health/database, and public Worlds catalog; ✅ deployed Match bundle carries `odd-piece`, `rakkibha`, and recurring Fair-Start markers; ⚠️ authenticated gameplay/reconnect smoke not executed |
 | Cars World rollout / board binding | ⬜ NOT STARTED |
 | Cars production content / media / R2 | ⬜ NOT STARTED |
 | Cars production runtime DB provisioning | ⬜ NOT MUTATED |
@@ -365,7 +365,8 @@ The day-to-day view. Detail lives in the referenced sections; this stays short e
 - [x] Restart recovery for interrupted convergence
 - [x] Lifecycle regression coverage — 11 real-Mongo lifecycle suites green
 - [x] Recurring presentation Fair-Start — generation/revision-bound readiness, activation-gated exposure/deadlines,
-      reconnect-safe activation, and one authoritative scheduler owner *(✅ source/local commit `52dd72a`; ⬜ not pushed/deployed)*
+      reconnect-safe activation, and one authoritative scheduler owner *(✅ `52dd72a` on `origin/main`; ✅ code deployed;
+      ⚠️ authenticated production gameplay/reconnect smoke not executed)*
 
 ### B. Performance — ✅ COMPLETE *(baseline `4f33704`)*
 
@@ -457,7 +458,7 @@ Design approval above does **not** imply any of these. Full matrix in §16.
 - [x] Football → Top 5 World-specific rollout reconciled — ✅ football-exclusive in the local/dev runtime; ⬜ not deployed (§C.1)
 - [ ] Puzzles → ركّبها World-specific rollout reconciled
 - [x] Cars → **القطعة الدخيلة** *(✅ `odd-piece` mechanic implemented & verified in source/local commit `49c65b0`;
-      ⬜ World rollout; ⬜ production content/media; ⬜ runtime DB provisioning; ⬜ deployment — §16.7)*
+      ✅ on `origin/main` and code deployed; ⬜ World rollout; ⬜ production content/media; ⬜ runtime DB provisioning — §16.7)*
 
 ### G. Taxonomy / catalog changes — 🟡 APPROVED DIRECTION, NOT IMPLEMENTED
 
@@ -1366,7 +1367,7 @@ repurpose. ⚠️ The count has moved: 549 ready items at the 2026-08-18 baselin
 | **Video Games / فيديو قيمز** | المرحلة | ✅ `marhala` plugin, launcher, on-demand supplier, content policy, ChallengeType | ✅ `slot_4` bound to `marhala` in the **local/dev** runtime; ⚠️ content is 19 dev fixtures, not authored | ✅ mechanic / ✅ local rollout / ⚠️ content / ⬜ not deployed (§17) |
 | **Anime / الأنمي** | الكومبو | ✅ `combo` plugin, launcher, content policy, ChallengeType | ✅ `slot_2` bound to `combo` and ✅ **84 authored الكومبو items across all 7 Anime Scopes** in the **local/dev** runtime; ⬜ not deployed | ✅ mechanic / ✅ local rollout / ✅ local content (§16.4) |
 | **Saudi Arabia / السعودية** | *undecided* | — | — | ⬜ |
-| **Cars / السيارات** | **القطعة الدخيلة** | ✅ `odd-piece`: plugin, launcher, content policy, ChallengeType definition/provisioning source, Admin authoring, player frontend, recurring Fair-Start (§16.7) | ⬜ **NOT STARTED** — no production Cars board binding | ✅ mechanic / ⬜ rollout / ⬜ production content+media / ⬜ deployment |
+| **Cars / السيارات** | **القطعة الدخيلة** | ✅ `odd-piece`: plugin, launcher, content policy, ChallengeType definition/provisioning source, Admin authoring, player frontend, recurring Fair-Start (§16.7) | ⬜ **NOT STARTED** — no production Cars board binding | ✅ mechanic + code deployment / ⬜ rollout / ⬜ production content+media |
 | **Sports / الرياضة** | *undecided* | — | — | ⬜ |
 
 **Do not invent Signature mechanics for the undecided Worlds.** They are blocked on product design, and by §4.2
@@ -1403,8 +1404,8 @@ implementation; the per-mechanic state is recorded in the matrix and detail sect
 - **القطعة الدخيلة** (Cars) — a simultaneous visual-recognition race; each puzzle shows **4 visual car
   parts/details** — **3 belong to the same target vehicle, 1 belongs to a different vehicle** — and the team
   identifies the **odd piece**. A wrong attempt consumes that team's attempt and hands the opportunity to the
-  opponent. **✅ MECHANIC IMPLEMENTED & VERIFIED IN SOURCE / LOCALLY**; World rollout, production content/media,
-  runtime DB provisioning, and deployment remain not started. Full spec and implementation state in §16.7.
+  opponent. **✅ MECHANIC IMPLEMENTED, VERIFIED, AND CODE-DEPLOYED**; World rollout, production content/media,
+  and runtime DB provisioning remain not started. Full spec and implementation state in §16.7.
 
 
 ### 16.4 الكومبو — Anime Signature design spec and implementation
@@ -1796,8 +1797,9 @@ implementation is now verified locally, while rollout and production remain sepa
 | Mechanic implementation | ✅ **IMPLEMENTED & VERIFIED IN SOURCE / LOCALLY** |
 | Cars World rollout | ⬜ **NOT STARTED** |
 | Production content / media | ⬜ **NOT STARTED** |
-| Git state | ✅ local commits `52dd72a` (Fair-Start prerequisite) + `49c65b0` (Cars mechanic); **not pushed** |
-| Deployment | ⬜ **NOT DEPLOYED** |
+| Git state | ✅ `52dd72a` (Fair-Start prerequisite), `49c65b0` (Cars mechanic), and `3c6689d` are on `origin/main` |
+| Code deployment | ✅ frontend exact-SHA deployment; backend healthy after `main` auto-deploy (exact Render SHA not publicly exposed) |
+| Production gameplay smoke | ⬜ **BLOCKED BY INTENTIONALLY UNROLLED CONTENT/BOARD** |
 
 #### Implementation state *(2026-09-01)*
 
@@ -2273,7 +2275,7 @@ Not implemented. Not scheduled.
 | 27 | **The whole content expansion is local/dev only** | Release gap | **261** promoted items across **six** runtime Scopes (Anime 135, Football 126) and **90** media binaries exist on one developer machine. The push (`4fdab19`, `25141bd`, `fcf70ee`) carried **taxonomy, knowledge bases and tooling only** — not content documents, not `ai/output` packs (gitignored), not the media binaries under `uploads/question-assets/images/` (deliberately untracked). Reproducing the runtime state elsewhere means re-running the promotions. |
 | 28 | **القطها (Movies Signature) is design-only** | Product / design | Approved product design (§16.5, 2026-08-29) — **not implemented**. No plugin, launcher, ChallengeType, content contract, content, board slot or deployment exists. Supersedes One Clue as the forward Movies Signature (item 13). |
 | 29 | **من أول نغمة (Music Signature) auction design is design-only** | Product / design | Approved product design (§16.6, 2026-08-29) — **not implemented**. The name is unchanged but the runtime design is now auction-based; no plugin, launcher, ChallengeType, runtime, content contract, content or deployment exists. Depends on the Music audio enrichment pipeline (checklist H; §19 #3). The Music World and 4 Scopes are production-provisioned but `draft`/`not_ready` with 0 content (§21.7). |
-| 30 | ~~**القطعة الدخيلة (Cars Signature) is design-only**~~ | Resolved mechanic / rollout follow-up | **Superseded 2026-09-01:** the `odd-piece` mechanic is ✅ implemented and verified in source/local commit `49c65b0`. Remaining Cars rollout is still outstanding: approved/provisioned taxonomy and Scopes as applicable; production Odd Piece content; visual enrichment and mandatory reveal media; Shared Core Cars coverage; board configuration; runtime DB provisioning/promotion; multiplayer/product playtest; timer calibration; push, deployment, and production smoke. §16.7. |
+| 30 | ~~**القطعة الدخيلة (Cars Signature) is design-only**~~ | Resolved mechanic / rollout follow-up | **Superseded 2026-09-01:** the `odd-piece` mechanic is ✅ implemented, verified, on `origin/main`, and code-deployed. Remaining Cars rollout is still outstanding: approved/provisioned taxonomy and Scopes as applicable; production Odd Piece content; visual enrichment and mandatory reveal media; Shared Core Cars coverage; board configuration; runtime DB provisioning/promotion; multiplayer/product playtest; timer calibration; and gameplay production smoke. §16.7. |
 
 ---
 
