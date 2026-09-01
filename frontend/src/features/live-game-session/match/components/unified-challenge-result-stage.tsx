@@ -21,6 +21,7 @@ import { Top5ResultReveal } from "./top5-result-reveal";
 import { OneClueResultRecap } from "./one-clue-result-recap";
 import { ComboResultRecap } from "./combo-result-recap";
 import { MarhalaResultRecap } from "./marhala-result-recap";
+import { OddPieceResultRecap } from "./odd-piece-result-recap";
 import type { MatchActor, MatchChallengeResult } from "../types";
 
 /**
@@ -185,6 +186,8 @@ function ChallengeResultBody({ result }: { result: MatchChallengeResult }) {
       return <ComboResultRecap result={result} snapshot={snapshot} />;
     case "marhala":
       return <MarhalaResultRecap result={result} snapshot={snapshot} />;
+    case "odd-piece":
+      return <OddPieceResultRecap result={result} snapshot={snapshot} />;
     default:
       return (
         <div

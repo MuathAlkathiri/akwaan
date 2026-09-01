@@ -16,6 +16,7 @@ import { COMBO_MODE_KEY } from '../modules/live-game-sessions/domain/combo-gamep
 import { CLOSEST_MODE_KEY } from '../modules/live-game-sessions/domain/closest-gameplay.plugin';
 import { ONE_CLUE_MODE_KEY } from '../modules/live-game-sessions/domain/one-clue-gameplay.plugin';
 import { MARHALA_MODE_KEY } from '../modules/live-game-sessions/domain/marhala-board';
+import { ODD_PIECE_MODE_KEY } from '../modules/live-game-sessions/domain/odd-piece-gameplay.plugin';
 
 /**
  * Deciding which ChallengeType is a canonical mechanic wearing the wrong slug.
@@ -98,6 +99,7 @@ describe('canonical mechanic slug migration', () => {
       ONE_CLUE_MODE_KEY,
       COMBO_MODE_KEY,
       MARHALA_MODE_KEY,
+      ODD_PIECE_MODE_KEY,
     ];
     for (const entry of CANONICAL_MECHANICS) {
       expect(launcherKeys).toContain(entry.slug);

@@ -49,6 +49,7 @@ import { OneClueChallengeLauncher } from './application/one-clue-challenge.launc
 import { ChallengeTypeMatchUsageGuard } from './application/challenge-type-match-usage.guard';
 import { ListMyMatches } from './application/list-my-matches.use-case';
 import { MyMatchesController } from './presentation/my-matches.controller';
+import { OddPieceChallengeLauncher } from './application/odd-piece-challenge.launcher';
 
 /**
  * Match orchestration.
@@ -108,6 +109,7 @@ import { MyMatchesController } from './presentation/my-matches.controller';
     MarhalaChallengeLauncher,
     MarhalaQuestionSourceProvider,
     OneClueChallengeLauncher,
+    OddPieceChallengeLauncher,
     MatchReconciliationService,
     MatchConvergenceSweeper,
     MatchSnapshotComposer,

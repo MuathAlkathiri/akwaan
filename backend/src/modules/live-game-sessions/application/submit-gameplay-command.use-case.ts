@@ -49,6 +49,7 @@ import { CLOSEST_MODE_KEY } from '../domain/closest-gameplay.plugin';
 import { ONE_CLUE_MODE_KEY } from '../domain/one-clue-gameplay.plugin';
 import { findEligibleTeamParticipant } from '../domain/team-participant-eligibility';
 import { applyGameplaySessionEffects } from './gameplay-session-effects';
+import { ODD_PIECE_MODE_KEY } from '../domain/odd-piece-gameplay.plugin';
 
 /**
  * The authority behind `expire-team`, against the server clock and the
@@ -333,6 +334,13 @@ export class SubmitGameplayCommand {
             runtime.modeKey,
           ),
       });
+      if (handled.prepareNextPresentation) {
+        runtime.prepareNextPresentation(
+          `${command.commandId}:presentation`,
+          command.actor.actorId,
+          now,
+        );
+      }
       const terminal =
         this.completeBombIfTerminal(session, runtime, command, now) ||
         this.completeTop5IfTerminal(runtime, command, now) ||
@@ -348,6 +356,11 @@ export class SubmitGameplayCommand {
         now,
       );
       const comboTerminal = this.completeComboIfTerminal(runtime, command, now);
+      const oddPieceTerminal = this.completeOddPieceIfTerminal(
+        runtime,
+        command,
+        now,
+      );
       if (sessionChanged) {
         await context.saveSession(session, previousSessionRevision);
       }
@@ -357,7 +370,11 @@ export class SubmitGameplayCommand {
         runtime,
         now,
         terminal:
-          terminal || closestTerminal || oneClueTerminal || comboTerminal,
+          terminal ||
+          closestTerminal ||
+          oneClueTerminal ||
+          comboTerminal ||
+          oddPieceTerminal,
       };
     });
 
@@ -664,6 +681,36 @@ export class SubmitGameplayCommand {
         actorId: command.actor.actorId,
         reason: 'one-clue-three-items-completed',
         result: { resultsJson: state.runtimeState.resultsJson },
+        now,
+      });
+    }
+    runtime.complete(
+      `${command.commandId}:runtime-complete`,
+      command.actor.actorId,
+      now,
+    );
+    return true;
+  }
+
+  private completeOddPieceIfTerminal(
+    runtime: import('../domain/gameplay-runtime').GameplayRuntime,
+    command: GameplayRuntimeCommand,
+    now: Date,
+  ): boolean {
+    if (runtime.modeKey !== ODD_PIECE_MODE_KEY) return false;
+    const state = runtime.serialize();
+    if (state.runtimeState.phase !== 'completed') return false;
+    const round = state.activeRound;
+    if (round) {
+      runtime.completeRound({
+        roundId: round.id,
+        commandId: `${command.commandId}:round-complete`,
+        actorId: command.actor.actorId,
+        reason: 'odd-piece-three-puzzles-completed',
+        result: {
+          resultJson: state.runtimeState.resultJson,
+          resultsJson: state.runtimeState.resultsJson,
+        },
         now,
       });
     }

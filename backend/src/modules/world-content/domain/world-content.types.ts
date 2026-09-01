@@ -215,6 +215,9 @@ export type ContentAnswerPayload =
     }
   | {
       mode: ChallengeAnswerMode.TOP_5;
+    }
+  | {
+      mode: ChallengeAnswerMode.ODD_PIECE;
     };
 
 /**
@@ -310,6 +313,24 @@ export interface OneCluePayload {
   }>;
 }
 
+export interface OddPieceVisual {
+  localId: string;
+  /** Server-only grading identity; never projected while the puzzle is live. */
+  vehicleIdentity: string;
+  /** Player-facing identity used only in the post-resolution proof. */
+  vehicleLabel: string;
+  media: ContentItemMedia;
+}
+
+/** Canonical Cars Signature authoring payload. */
+export interface OddPiecePayload {
+  variant: 'odd-piece';
+  targetVehicleIdentity: string;
+  targetVehicleLabel: string;
+  targetVehicleReveal: ContentItemMedia;
+  pieces: OddPieceVisual[];
+}
+
 export interface ContentItemView {
   id: string;
   scopeId: string;
@@ -322,7 +343,8 @@ export interface ContentItemView {
     | Record<string, unknown>
     | Top5Payload
     | RakkibhaPayload
-    | OneCluePayload;
+    | OneCluePayload
+    | OddPiecePayload;
   isReusableAcrossSessions: boolean;
   status: ContentItemStatus;
   metadata?: {

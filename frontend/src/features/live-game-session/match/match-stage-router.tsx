@@ -20,6 +20,8 @@ import { MarhalaPhonePanel } from "../components/marhala-phone-panel";
 import { RAKKIBHA_MODE_KEY } from "./rakkibha.presentation";
 import { COMBO_MODE_KEY } from "./combo.presentation";
 import { MARHALA_MODE_KEY } from "./marhala.presentation";
+import { ODD_PIECE_MODE_KEY } from "./odd-piece.presentation";
+import { OddPieceGameplayPanel } from "../components/odd-piece-gameplay-panel";
 import { useLiveSession } from "../hooks/live-session-context";
 import { MatchConnectionBanner } from "./components/match-connection-banner";
 import { UnifiedBoard } from "./components/unified-board";
@@ -246,8 +248,12 @@ function MatchAbsent({ actor }: { actor: MatchActor }) {
  * projection, a screen and the host get the public one.
  */
 export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
-  const { snapshot, presentationReady, presentationReadySocket, connectionEpoch } =
-    useLiveSession();
+  const {
+    snapshot,
+    presentationReady,
+    presentationReadySocket,
+    connectionEpoch,
+  } = useLiveSession();
   const gameplay = snapshot?.gameplay;
   // Fair-start: while a mechanic that opted into presentation activation is
   // preparing, the server sends no playable content — only this marker. This
@@ -366,6 +372,8 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
       ) : (
         <MarhalaScreen runtime={runtime} />
       );
+    case ODD_PIECE_MODE_KEY:
+      return <OddPieceGameplayPanel runtime={runtime} actor={actor} />;
     default:
       // The server started a mechanic this client has no screen for. Saying so is
       // the only honest option: the runtime is real and running.

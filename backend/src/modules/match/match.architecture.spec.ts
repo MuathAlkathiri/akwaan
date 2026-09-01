@@ -49,11 +49,11 @@ describe('Match module architecture', () => {
     const launchers = matchFiles.filter((path) =>
       path.endsWith('.launcher.ts'),
     );
-    expect(launchers).toHaveLength(8);
+    expect(launchers).toHaveLength(9);
     for (const path of launchers) {
       const content = read(path);
       expect(content).toMatch(
-        /StartRyoGameplay|StartTop5|StartRakkibha|StartClosestGameplay|StartOneClueGameplay|StartBombGameplayFromContent|StartComboGameplay|StartMarhalaGameplay/,
+        /StartRyoGameplay|StartTop5|StartRakkibha|StartClosestGameplay|StartOneClueGameplay|StartBombGameplayFromContent|StartComboGameplay|StartMarhalaGameplay|StartOddPieceGameplay/,
       );
       // No launcher may build a runtime, a round, or an interaction itself.
       expect(content).not.toMatch(
@@ -248,6 +248,7 @@ describe('Match module architecture', () => {
       'live-game-sessions/application/start-closest-gameplay.use-case',
       'live-game-sessions/application/start-combo-gameplay.use-case',
       'live-game-sessions/application/start-one-clue-gameplay.use-case',
+      'live-game-sessions/application/start-odd-piece-gameplay.use-case',
       // Releasing a challenge is the same class of published surface as
       // starting one: the Match aborts a runtime it owns through the runtime's
       // own cancel use case rather than reaching into its state.
@@ -277,6 +278,7 @@ describe('Match module architecture', () => {
       'live-game-sessions/domain/one-clue-gameplay.plugin',
       'live-game-sessions/domain/bomb-gameplay.plugin',
       'live-game-sessions/domain/marhala-gameplay.plugin',
+      'live-game-sessions/domain/odd-piece-gameplay.plugin',
       // المرحلة draws content on demand, so the Match layer reads the board's own
       // vocabulary to decide what a difficulty is worth.
       'live-game-sessions/domain/marhala-board',

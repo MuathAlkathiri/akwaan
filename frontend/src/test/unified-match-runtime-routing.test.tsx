@@ -67,6 +67,12 @@ vi.mock("@/features/live-game-session/components/combo-gameplay-panel", () => ({
 vi.mock("@/features/live-game-session/components/bomb-gameplay-panel", () => ({
   BombGameplayPanel: () => <div data-testid="renderer-bomb" />,
 }));
+vi.mock(
+  "@/features/live-game-session/components/odd-piece-gameplay-panel",
+  () => ({
+    OddPieceGameplayPanel: () => <div data-testid="renderer-odd-piece" />,
+  }),
+);
 vi.mock("@/features/live-game-session/components/rakkibha-panel", () => ({
   RakkibhaPanel: () => <div data-testid="renderer-rakkibha-phone" />,
 }));
@@ -237,6 +243,7 @@ describe("a running challenge is routed by its runtime mode key", () => {
     ["top-5", "renderer-top5"],
     ["combo", "renderer-combo"],
     ["bomb", "renderer-bomb"],
+    ["odd-piece", "renderer-odd-piece"],
   ])("renders %s with its own screen", (modeKey, testId) => {
     renderRouter(match({ stage: "challenge", currentChallenge: running }), {
       runtimeModeKey: modeKey,
@@ -592,7 +599,12 @@ describe("fair-start presentation acknowledgement", () => {
       unmount: view.unmount,
       rerenderWith: (next: LiveSessionSnapshot, connectionEpoch = 1) =>
         view.rerender(
-          tree(next, presentationReady, presentationReadySocket, connectionEpoch),
+          tree(
+            next,
+            presentationReady,
+            presentationReadySocket,
+            connectionEpoch,
+          ),
         ),
     };
   };
@@ -741,7 +753,11 @@ describe("fair-start presentation acknowledgement", () => {
 
   it("replaces the shared preparing loader with the mechanic once activation lands", async () => {
     const socketAck = vi.fn().mockResolvedValue(undefined);
-    const { ack, socketAck: onSocket, rerenderWith } = renderWith(
+    const {
+      ack,
+      socketAck: onSocket,
+      rerenderWith,
+    } = renderWith(
       gameplaySnapshot({
         modeKey: "read-your-opponent",
         presentationSurface: true,
@@ -776,7 +792,11 @@ describe("fair-start presentation acknowledgement", () => {
       .fn()
       .mockRejectedValueOnce(new Error("no live connection"))
       .mockResolvedValue(undefined);
-    const { ack, socketAck: onSocket, rerenderWith } = renderWith(
+    const {
+      ack,
+      socketAck: onSocket,
+      rerenderWith,
+    } = renderWith(
       gameplaySnapshot({ presentationSurface: true }),
       vi.fn().mockResolvedValue(undefined),
       socketAck,
@@ -792,7 +812,11 @@ describe("fair-start presentation acknowledgement", () => {
   // ── Recurring generation-aware acknowledgement (Batch B) ──────────────────
   const recurring = (
     generation: number,
-    over: { runtimeRevision?: number; sessionRevision?: number; awaiting?: boolean } = {},
+    over: {
+      runtimeRevision?: number;
+      sessionRevision?: number;
+      awaiting?: boolean;
+    } = {},
   ) =>
     gameplaySnapshot({
       modeKey: "read-your-opponent",

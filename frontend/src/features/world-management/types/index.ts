@@ -21,12 +21,14 @@ export type ChallengeAnswerMode =
   | "vote"
   | "split"
   | "top_5"
+  | "odd_piece"
   | "one_clue"
   /** The canonical ركّبها answer mode. */
   | "rakkibha";
 export type ChallengeItemStructure = "discrete_triple" | "continuous";
 export type VoteConsensusRule = "exact" | "majority" | "team_match";
-export type ContentPattern = "generic" | "top_5" | "rakkibha" | "one_clue";
+export type ContentPattern =
+  "generic" | "top_5" | "rakkibha" | "one_clue" | "odd_piece";
 
 export interface ContentAsset {
   url: string;
@@ -303,6 +305,22 @@ export interface Top5Payload {
   /** Exactly ten: five ranked 1..5 and five traps. */
   entries: Top5Entry[];
   explanation?: string;
+}
+
+export interface OddPiecePayload {
+  variant: "odd-piece";
+  targetVehicleIdentity: string;
+  targetVehicleLabel: string;
+  targetVehicleReveal: {
+    type: "image";
+    assets: ContentAsset[];
+  };
+  pieces: Array<{
+    localId: string;
+    vehicleIdentity: string;
+    vehicleLabel: string;
+    media: { type: "image"; assets: ContentAsset[] };
+  }>;
 }
 
 export interface ScoringRuleOption {

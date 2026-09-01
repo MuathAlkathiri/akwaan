@@ -131,6 +131,7 @@ import { MarhalaTurnSupplier } from './application/marhala-turn.supplier';
 import { StartComboGameplay } from './application/start-combo-gameplay.use-case';
 import { StartOneClueGameplay } from './application/start-one-clue-gameplay.use-case';
 import { WithdrawPresentationReadiness } from './application/withdraw-presentation-readiness.use-case';
+import { StartOddPieceGameplay } from './application/start-odd-piece-gameplay.use-case';
 
 const applicationProviders = [
   CreateLiveGameSession,
@@ -190,6 +191,7 @@ const applicationProviders = [
   StartComboGameplay,
   StartOneClueGameplay,
   WithdrawPresentationReadiness,
+  StartOddPieceGameplay,
 ];
 
 @Module({
@@ -306,6 +308,7 @@ const applicationProviders = [
     StartComboGameplay,
     StartOneClueGameplay,
     StartRakkibha,
+    StartOddPieceGameplay,
     GAMEPLAY_RUNTIME_REPOSITORY,
     LIVE_GAME_SESSION_REPOSITORY,
     // The Match layer announces its transitions on the session's own channel.

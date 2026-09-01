@@ -31,6 +31,7 @@ import {
   type ContentItemFormValues,
   hasComboMechanic,
   hasMarhalaMechanic,
+  hasOddPieceMechanic,
 } from "../../services/content-item-form.service";
 import { FormIssueList } from "../shared";
 import { AnswerPayloadFields } from "./answer-payload-fields";
@@ -39,6 +40,7 @@ import { RakkibhaFields } from "./rakkibha-fields";
 import { OneClueFields } from "./one-clue-fields";
 import { ComboFields } from "./combo-fields";
 import { MarhalaFields } from "./marhala-fields";
+import { OddPieceFields } from "./odd-piece-fields";
 import {
   CONTENT_STATUSES,
   CONTENT_STATUS_LABEL,
@@ -120,6 +122,7 @@ export function ContentItemForm({
   );
   const comboSelected = hasComboMechanic(selectedChallengeTypes);
   const marhalaSelected = hasMarhalaMechanic(selectedChallengeTypes);
+  const oddPieceSelected = hasOddPieceMechanic(selectedChallengeTypes);
   // Keep the payload flag in step with the selection, so deselecting the
   // mechanic stops emitting its payload.
   useEffect(() => {
@@ -173,6 +176,19 @@ export function ContentItemForm({
           },
     );
   }, [marhalaSelected]);
+
+  useEffect(() => {
+    setValues((current) => {
+      if (current.oddPiece.enabled === oddPieceSelected) return current;
+      return {
+        ...current,
+        answer: oddPieceSelected
+          ? { ...current.answer, mode: "odd_piece" }
+          : current.answer,
+        oddPiece: { ...current.oddPiece, enabled: oddPieceSelected },
+      };
+    });
+  }, [oddPieceSelected]);
 
   const formSubmit = useEntityFormSubmit<ContentItem>({
     entityId: contentItem?.id,
@@ -307,7 +323,7 @@ export function ContentItemForm({
         })}
       </div>
 
-      {oneClueSelected ? (
+      {oddPieceSelected ? null : oneClueSelected ? (
         <OneClueFields
           value={values.oneClue}
           acceptedAnswers={values.answer.acceptedAnswers}
@@ -339,6 +355,13 @@ export function ContentItemForm({
         <MarhalaFields
           value={values.marhala}
           onChange={(marhala) => set({ marhala })}
+        />
+      )}
+
+      {values.oddPiece.enabled && (
+        <OddPieceFields
+          value={values.oddPiece}
+          onChange={(oddPiece) => set({ oddPiece })}
         />
       )}
 

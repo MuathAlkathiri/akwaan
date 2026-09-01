@@ -19,6 +19,7 @@ import {
   COMBO_SLUG,
   BOMB_SLUG,
   MARHALA_SLUG,
+  ODD_PIECE_SLUG,
   ONE_CLUE_VALUES,
   VoteConsensusRule,
   WorldContentStatus,
@@ -43,7 +44,9 @@ import {
   RakkibhaPayload,
   Top5Payload,
   OneCluePayload,
+  OddPiecePayload,
 } from './world-content.types';
+import { validateOddPiecePayload } from './odd-piece-content.policy';
 
 /**
  * Fields the legacy question model carried that have no place in the new domain
@@ -99,6 +102,7 @@ export class ContentItemCompatibilityPolicy {
     blockers.push(...this.validateComboPayload(input.item, referenced));
     blockers.push(...this.validateBombItem(input.item, referenced));
     blockers.push(...this.validateMarhalaPayload(input.item, referenced));
+    blockers.push(...this.validateOddPiecePayload(input.item, referenced));
     warnings.push(...this.reuseWarnings(input.item, referenced));
 
     return buildReadinessReport(blockers, warnings);
@@ -199,6 +203,16 @@ export class ContentItemCompatibilityPolicy {
       ];
     }
     return [];
+  }
+
+  private validateOddPiecePayload(
+    item: ContentItemView,
+    challengeTypes: ChallengeTypeView[],
+  ): WorldContentIssue[] {
+    if (!challengeTypes.some((type) => type.slug === ODD_PIECE_SLUG)) return [];
+    return validateOddPiecePayload(
+      item.mechanicPayload as Partial<OddPiecePayload>,
+    );
   }
 
   private validateOneCluePayload(
@@ -788,6 +802,7 @@ export class ContentItemCompatibilityPolicy {
       case ChallengeAnswerMode.RYO:
         return this.validateRyoPayload(payload);
       case ChallengeAnswerMode.TOP_5:
+      case ChallengeAnswerMode.ODD_PIECE:
         return [];
       default:
         return [

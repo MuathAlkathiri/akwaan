@@ -52,6 +52,7 @@ export const ANSWER_MODE_LABEL: Record<ChallengeAnswerMode, string> = {
   rakkibha: "ركّبها (تجميع بصري)",
   top_5: "أفضل 5",
   one_clue: "بدليل واحد",
+  odd_piece: "القطعة الدخيلة",
 };
 
 export const ITEM_STRUCTURE_LABEL: Record<ChallengeItemStructure, string> = {

@@ -144,6 +144,11 @@ export const MODE_COMMAND_TYPES: readonly string[] = [
   'advance-marhala-turn',
   'refresh-marhala-availability',
   'exhaust-marhala-content',
+  // القطعة الدخيلة.
+  'claim-odd-piece',
+  'submit-odd-piece',
+  'advance-odd-piece',
+  'expire-odd-piece',
 ];
 
 export interface GameplayCommandDefinition {
@@ -203,6 +208,8 @@ export interface GameplayCommandResult {
   eventType: string;
   eventPayload: GameplayModeState;
   effects: GameplaySessionEffect[];
+  /** Ask the aggregate to open a fresh recurring Fair-Start checkpoint. */
+  prepareNextPresentation?: boolean;
   /**
    * Who is authoritative for the team action this command opened, when the
    * mechanic opted into single-participant team authority. The session layer

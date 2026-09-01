@@ -40,6 +40,8 @@ export enum ChallengeAnswerMode {
   VOTE = 'vote',
   SPLIT = 'split',
   TOP_5 = 'top_5',
+  /** Cars Signature: four visual pieces with one server-graded intruder. */
+  ODD_PIECE = 'odd_piece',
   /** Progressive five-clue wrapper; ContentItems keep a MATCH answer payload. */
   ONE_CLUE = 'one_clue',
   /**
@@ -134,11 +136,14 @@ export const COMBO_SLUG = 'combo';
 export const BOMB_SLUG = 'bomb';
 
 export const MARHALA_SLUG = 'marhala';
+/** Cars Signature: القطعة الدخيلة. */
+export const ODD_PIECE_SLUG = 'odd-piece';
 export const ONE_CLUE_ITEM_COUNT = 3;
 export const ONE_CLUE_STAGE_SECONDS = 7;
 export const ONE_CLUE_VALUES = [5, 4, 3, 2, 1] as const;
 
-export type ContentPattern = 'generic' | 'top_5' | 'rakkibha' | 'one_clue';
+export type ContentPattern =
+  'generic' | 'top_5' | 'rakkibha' | 'one_clue' | 'odd_piece';
 
 /** Mechanic-owned authoring structure, distinct from its answer contract. */
 export function contentPatternForChallengeAnswerMode(
@@ -147,6 +152,7 @@ export function contentPatternForChallengeAnswerMode(
   if (mode === ChallengeAnswerMode.TOP_5) return 'top_5';
   if (mode === ChallengeAnswerMode.RAKKIBHA) return 'rakkibha';
   if (mode === ChallengeAnswerMode.ONE_CLUE) return 'one_clue';
+  if (mode === ChallengeAnswerMode.ODD_PIECE) return 'odd_piece';
   return 'generic';
 }
 
@@ -209,6 +215,7 @@ export const ANSWER_MODE_COMPATIBLE_ITEM_MODES: Readonly<
   [ChallengeAnswerMode.VOTE]: [ChallengeAnswerMode.VOTE],
   [ChallengeAnswerMode.SPLIT]: [ChallengeAnswerMode.SPLIT],
   [ChallengeAnswerMode.TOP_5]: [ChallengeAnswerMode.TOP_5],
+  [ChallengeAnswerMode.ODD_PIECE]: [ChallengeAnswerMode.ODD_PIECE],
   [ChallengeAnswerMode.ONE_CLUE]: [ChallengeAnswerMode.MATCH],
   [ChallengeAnswerMode.RAKKIBHA]: [
     ChallengeAnswerMode.MATCH,

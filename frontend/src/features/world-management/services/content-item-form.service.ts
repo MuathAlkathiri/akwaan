@@ -9,6 +9,7 @@ import type {
   Top5Payload,
   OneCluePayload,
   ContentPattern,
+  OddPiecePayload,
 } from "../types";
 
 /**
@@ -36,6 +37,69 @@ export interface ContentItemFormValues {
   oneClue: OneClueFormState;
   combo: ComboFormState;
   marhala: MarhalaFormState;
+  oddPiece: OddPieceFormState;
+}
+
+export const ODD_PIECE_CHALLENGE_SLUG = "odd-piece";
+
+export interface OddPieceVisualFormState {
+  localId: string;
+  vehicleIdentity: string;
+  vehicleLabel: string;
+  imageUrl: string;
+}
+
+export interface OddPieceFormState {
+  enabled: boolean;
+  targetVehicleIdentity: string;
+  targetVehicleLabel: string;
+  targetRevealImageUrl: string;
+  pieces: OddPieceVisualFormState[];
+}
+
+export function hasOddPieceMechanic(
+  selected: ReadonlyArray<{ challengeType: { slug: string } }>,
+): boolean {
+  return selected.some(
+    (configuration) =>
+      configuration.challengeType.slug === ODD_PIECE_CHALLENGE_SLUG,
+  );
+}
+
+function emptyOddPieceState(): OddPieceFormState {
+  return {
+    enabled: false,
+    targetVehicleIdentity: "",
+    targetVehicleLabel: "",
+    targetRevealImageUrl: "",
+    pieces: Array.from({ length: 4 }, (_, index) => ({
+      localId: `piece-${index + 1}`,
+      vehicleIdentity: "",
+      vehicleLabel: "",
+      imageUrl: "",
+    })),
+  };
+}
+
+export function toOddPieceFormState(
+  payload: Partial<OddPiecePayload> | undefined,
+): OddPieceFormState {
+  if (payload?.variant !== "odd-piece") return emptyOddPieceState();
+  return {
+    enabled: true,
+    targetVehicleIdentity: payload.targetVehicleIdentity ?? "",
+    targetVehicleLabel: payload.targetVehicleLabel ?? "",
+    targetRevealImageUrl: payload.targetVehicleReveal?.assets?.[0]?.url ?? "",
+    pieces: Array.from({ length: 4 }, (_, index) => {
+      const piece = payload.pieces?.[index];
+      return {
+        localId: piece?.localId ?? `piece-${index + 1}`,
+        vehicleIdentity: piece?.vehicleIdentity ?? "",
+        vehicleLabel: piece?.vehicleLabel ?? "",
+        imageUrl: piece?.media?.assets?.[0]?.url ?? "",
+      };
+    }),
+  };
 }
 
 /** A ContentItem cannot carry two different mechanic-owned payload shapes. */
@@ -329,6 +393,7 @@ export function emptyContentItemForm(scopeId: string): ContentItemFormValues {
     oneClue: emptyOneClueState(),
     combo: emptyComboState(),
     marhala: emptyMarhalaState(),
+    oddPiece: emptyOddPieceState(),
   };
 }
 
@@ -415,6 +480,9 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
           ),
         }
       : emptyOneClueState(),
+    oddPiece: toOddPieceFormState(
+      item.mechanicPayload as Partial<OddPiecePayload> | undefined,
+    ),
     top5:
       top5Payload?.variant === "keep-or-give"
         ? {
@@ -505,6 +573,8 @@ export function buildAnswerPayload(
       };
     case "top_5":
       return { mode: "top_5" };
+    case "odd_piece":
+      return { mode: "odd_piece" };
     case "ryo":
     default:
       // Roadmap 6.1: an RYO prompt is multiple choice or a numeric estimate,
@@ -618,6 +688,26 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
     values.marhala.enabled && values.marhala.difficulty !== ""
       ? { marhalaDifficulty: values.marhala.difficulty }
       : undefined;
+  const oddPieceMechanicPayload = values.oddPiece.enabled
+    ? {
+        variant: "odd-piece" as const,
+        targetVehicleIdentity: values.oddPiece.targetVehicleIdentity.trim(),
+        targetVehicleLabel: values.oddPiece.targetVehicleLabel.trim(),
+        targetVehicleReveal: {
+          type: "image" as const,
+          assets: [{ url: values.oddPiece.targetRevealImageUrl.trim() }],
+        },
+        pieces: values.oddPiece.pieces.map((piece) => ({
+          localId: piece.localId.trim(),
+          vehicleIdentity: piece.vehicleIdentity.trim(),
+          vehicleLabel: piece.vehicleLabel.trim(),
+          media: {
+            type: "image" as const,
+            assets: [{ url: piece.imageUrl.trim() }],
+          },
+        })),
+      }
+    : undefined;
   /**
    * One payload holding every selected mechanic's own keys.
    *
@@ -633,13 +723,15 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
     rakkibhaMechanicPayload ??
     oneClueMechanicPayload ??
     comboMechanicPayload ??
-    marhalaMechanicPayload)
+    marhalaMechanicPayload ??
+    oddPieceMechanicPayload)
       ? {
           ...top5MechanicPayload,
           ...rakkibhaMechanicPayload,
           ...oneClueMechanicPayload,
           ...comboMechanicPayload,
           ...marhalaMechanicPayload,
+          ...oddPieceMechanicPayload,
         }
       : undefined;
   const answerPayload = values.oneClue.enabled
@@ -757,6 +849,41 @@ export function findLocalFormProblems(values: ContentItemFormValues): string[] {
       .filter(Boolean);
     if (new Set(clues).size !== clues.length)
       problems.push("لا يمكن تكرار نص الدليل نفسه.");
+  }
+  if (values.oddPiece.enabled) {
+    const { oddPiece } = values;
+    if (
+      !oddPiece.targetVehicleIdentity.trim() ||
+      !oddPiece.targetVehicleLabel.trim() ||
+      !oddPiece.targetRevealImageUrl.trim()
+    )
+      problems.push("هوية السيارة الأساسية وصورتها الكاملة مطلوبة.");
+    if (
+      oddPiece.pieces.length !== 4 ||
+      oddPiece.pieces.some(
+        (piece) =>
+          !piece.localId.trim() ||
+          !piece.vehicleIdentity.trim() ||
+          !piece.vehicleLabel.trim() ||
+          !piece.imageUrl.trim(),
+      )
+    )
+      problems.push("القطع الأربع تحتاج معرفاً وهوية واسماً وصورة.");
+    const ids = oddPiece.pieces.map((piece) => piece.localId.trim());
+    if (new Set(ids).size !== ids.length)
+      problems.push("معرفات القطع يجب أن تكون فريدة.");
+    const counts = new Map<string, number>();
+    oddPiece.pieces.forEach((piece) => {
+      const identity = piece.vehicleIdentity.trim();
+      counts.set(identity, (counts.get(identity) ?? 0) + 1);
+    });
+    if (
+      [...counts.values()].sort((a, b) => a - b).join(",") !== "1,3" ||
+      counts.get(oddPiece.targetVehicleIdentity.trim()) !== 3
+    )
+      problems.push(
+        "يجب أن تكون ثلاث قطع من السيارة الأساسية وقطعة واحدة دخيلة.",
+      );
   }
   // Two mechanics can ask the author for the same thing — both take a صعوبة —
   // and saying it twice reads as two different problems.

@@ -9,7 +9,9 @@ import {
   COMBO_SLUG,
   BOMB_SLUG,
   MARHALA_SLUG,
+  ODD_PIECE_SLUG,
 } from './world-content.constants';
+import { ChallengePresentation } from './world-content.types';
 
 /**
  * Runtime-owned ChallengeType identity. Display copy, artwork, activation and
@@ -25,12 +27,7 @@ export interface ProductionMechanicDefinition {
   seed: {
     name: string;
     description: string;
-    defaultPresentation: {
-      inputType: string;
-      timerSeconds: number | null;
-      soundPack: null;
-      revealStyle: null;
-    };
+    defaultPresentation: ChallengePresentation;
   };
 }
 
@@ -46,6 +43,32 @@ const definition = (
 });
 
 export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
+  definition({
+    slug: ODD_PIECE_SLUG,
+    family: ChallengeFamily.SIGNATURE,
+    itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
+    answerMode: ChallengeAnswerMode.ODD_PIECE,
+    seed: {
+      name: 'القطعة الدخيلة',
+      description:
+        'أربع قطع بصرية: ثلاث من نفس السيارة وواحدة دخيلة، وأول فريق يحجز الإجابة يختار.',
+      defaultPresentation: {
+        inputType: 'phone-choice',
+        // Configurable implementation/playtest value; Product has not fixed it.
+        timerSeconds: 30,
+        soundPack: null,
+        revealStyle: null,
+        playerInstructions: {
+          summary: 'أربع قطع، ثلاث من نفس السيارة وواحدة دخيلة.',
+          steps: [
+            'إذا عرفتم القطعة اضغطوا «جاوب».',
+            'أول فريق يحجز الإجابة يختار القطعة.',
+            'إذا أخطأ، تنتقل الفرصة للفريق الثاني.',
+          ],
+        },
+      },
+    },
+  }),
   definition({
     slug: 'read-your-opponent',
     family: ChallengeFamily.RYO,
