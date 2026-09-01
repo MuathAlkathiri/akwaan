@@ -120,7 +120,7 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
 
         {!completed && current && (
           <section className="space-y-5 text-center">
-            <div className="akwaan-rise rounded-[var(--radius)] border-2 border-border bg-background p-6 shadow-[inset_0_1px_0_hsl(var(--card))]">
+            <div className="akwaan-rise rounded-[var(--radius)] border-2 border-border bg-background p-4 shadow-[inset_0_1px_0_hsl(var(--card))] sm:p-6">
               {current.media?.url && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -130,7 +130,7 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
                 />
               )}
               <p
-                className="text-3xl font-black leading-tight text-foreground sm:text-4xl"
+                className="[overflow-wrap:anywhere] text-2xl font-black leading-tight text-foreground sm:text-3xl md:text-4xl"
                 data-testid="top5-current-card"
               >
                 {current.label}

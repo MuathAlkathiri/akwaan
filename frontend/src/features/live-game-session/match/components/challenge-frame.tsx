@@ -57,8 +57,11 @@ export function ChallengeFrame({
           )}
           <h1
             className={cn(
-              "truncate font-black leading-tight text-foreground",
-              compact ? "text-lg" : "text-xl sm:text-2xl",
+              // The full topic must stay readable: wrap naturally (RTL Arabic
+              // wraps by word) up to a three-line safety cap for extreme content,
+              // rather than ellipsizing a normal long Top-5 topic on one line.
+              "font-black leading-tight text-foreground [text-wrap:pretty] line-clamp-3",
+              compact ? "text-base sm:text-lg" : "text-lg sm:text-xl md:text-2xl",
             )}
           >
             {title}
