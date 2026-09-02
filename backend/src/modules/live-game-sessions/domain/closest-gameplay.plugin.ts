@@ -16,6 +16,8 @@ import {
   serializeTeamActionAssignments,
   TeamActionAssignmentState,
 } from './team-action-assignment';
+import { toSafeQuestionMedia } from './safe-question-media';
+import { ContentItemMedia } from '../../world-content/domain/world-content.types';
 
 export const CLOSEST_MODE_KEY = 'closest';
 export const CLOSEST_TIMER_SECONDS = 45;
@@ -431,7 +433,11 @@ function publicState(
     currentItemJson: JSON.stringify({
       id: item.id,
       prompt: item.prompt,
-      media: item.media ?? null,
+      // Player-facing shape only: never the raw ContentItem media object
+      // (which can carry storage path/filename/mimetype/size).
+      media: toSafeQuestionMedia(
+        item.media as ContentItemMedia | null | undefined,
+      ),
     }),
     deadlineAt: valid.deadlineAt ?? null,
     teamIdsJson: JSON.stringify(teams),

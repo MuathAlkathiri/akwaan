@@ -14,6 +14,8 @@ import {
   serializeTeamActionAssignments,
   TeamActionAssignmentState,
 } from './team-action-assignment';
+import { toSafeQuestionMedia } from './safe-question-media';
+import { ContentItemMedia } from '../../world-content/domain/world-content.types';
 
 export const RYO_MODE_KEY = 'read-your-opponent';
 export const RYO_TIMER_SECONDS = 25;
@@ -429,7 +431,11 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
           itemJson: JSON.stringify({
             id: item.id,
             prompt: item.prompt,
-            media: item.media ?? null,
+            // Player-facing shape only: never the raw ContentItem media object
+            // (which can carry storage path/filename/mimetype/size).
+            media: toSafeQuestionMedia(
+              item.media as ContentItemMedia | null | undefined,
+            ),
             answerMode: item.answerMode,
             options: item.options ?? null,
           }),

@@ -130,12 +130,18 @@ describe('World Content architecture', () => {
       // restating ten, five, and the rank set a second time.
       // المرحلة's difficulty vocabulary is content metadata, so the board reads it
       // from World Content rather than declaring a second copy.
+      'modules/live-game-sessions/domain/closest-gameplay.plugin.spec.ts',
+      'modules/live-game-sessions/domain/closest-gameplay.plugin.ts',
       'modules/live-game-sessions/domain/first-note-gameplay.plugin.spec.ts',
       'modules/live-game-sessions/domain/first-note-gameplay.plugin.ts',
       'modules/live-game-sessions/domain/laqatha-gameplay.plugin.spec.ts',
       'modules/live-game-sessions/domain/laqatha-gameplay.plugin.ts',
       'modules/live-game-sessions/domain/marhala-board.ts',
       'modules/live-game-sessions/domain/one-clue-gameplay.plugin.ts',
+      'modules/live-game-sessions/domain/ryo-gameplay.plugin.spec.ts',
+      'modules/live-game-sessions/domain/ryo-gameplay.plugin.ts',
+      'modules/live-game-sessions/domain/safe-question-media.spec.ts',
+      'modules/live-game-sessions/domain/safe-question-media.ts',
       'modules/live-game-sessions/domain/top5-keep-or-give.plugin.ts',
       'modules/live-game-sessions/live-game-sessions.module.ts',
       'modules/live-game-sessions/presentation/gameplay-runtime.dto.ts',

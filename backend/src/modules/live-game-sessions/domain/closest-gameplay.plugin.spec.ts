@@ -10,6 +10,7 @@ import {
   parseTeamActionAssignments,
   serializeTeamActionAssignments,
 } from './team-action-assignment';
+import { ContentMediaType } from '../../world-content/domain/world-content.constants';
 
 const item = { id: 'item-1', prompt: 'كم؟', correctValue: 20 };
 
@@ -157,6 +158,144 @@ describe('Closest gameplay', () => {
       JSON.parse(String(second.runtimeState.resultsJson))[0],
     ).toMatchObject({
       assignedParticipantIds: { a: 'a1', b: 'b1' },
+    });
+  });
+
+  describe('media projection', () => {
+    const runtimeWithItemMedia = (media: unknown) => ({
+      itemsJson: JSON.stringify([
+        { ...item, media },
+        { ...item, id: 'item-2' },
+        { ...item, id: 'item-3' },
+      ]),
+      teamIdsJson: '["a","b"]',
+      currentItemIndex: 0,
+      phase: 'collecting',
+      answersJson: '{}',
+      resultsJson: '[]',
+      teamActionJson: serializeTeamActionAssignments(
+        createTeamActionAssignmentState([
+          { teamId: 'a', order: ['a1'], cursor: 0 },
+          { teamId: 'b', order: ['b1'], cursor: 0 },
+        ]),
+      ),
+      deadlineAt: '2026-01-01T00:00:45.000Z',
+    });
+    const projectedItem = (media: unknown) =>
+      JSON.parse(
+        String(
+          CLOSEST_GAMEPLAY_PLUGIN.projectRuntimeState(
+            runtimeWithItemMedia(media),
+          ).currentItemJson,
+        ),
+      ) as { media: unknown };
+
+    it('projects a safe image media shape: type, playable url, no raw asset metadata', () => {
+      const { media } = projectedItem({
+        type: ContentMediaType.IMAGE,
+        assets: [
+          {
+            url: 'https://cdn/closest-image.webp',
+            altText: 'صورة السؤال',
+            path: 'question-assets/images/closest-image.webp',
+            filename: 'الإجابة-فورست-غامب.webp',
+            mimetype: 'image/webp',
+            size: 45210,
+          },
+        ],
+      });
+      expect(media).toEqual({
+        type: 'image',
+        url: 'https://cdn/closest-image.webp',
+        altText: 'صورة السؤال',
+      });
+      const raw = JSON.stringify(media);
+      expect(raw).not.toContain('path');
+      expect(raw).not.toContain('filename');
+      expect(raw).not.toContain('mimetype');
+      expect(raw).not.toContain('size');
+      expect(raw).not.toContain('45210');
+    });
+
+    it('projects a safe audio media shape: type, playable url, no raw asset metadata', () => {
+      const { media } = projectedItem({
+        type: ContentMediaType.AUDIO,
+        assets: [
+          {
+            url: 'https://cdn/closest-audio.mp3',
+            path: 'question-assets/audio/closest-audio.mp3',
+            filename: 'answer-forty-two.mp3',
+            mimetype: 'audio/mpeg',
+            size: 88213,
+          },
+        ],
+      });
+      expect(media).toEqual({
+        type: 'audio',
+        url: 'https://cdn/closest-audio.mp3',
+      });
+      const raw = JSON.stringify(media);
+      expect(raw).not.toContain('path');
+      expect(raw).not.toContain('filename');
+      expect(raw).not.toContain('mimetype');
+    });
+
+    it('never leaks the accepted correctValue through the projected item, image or audio alike', () => {
+      for (const media of [
+        null,
+        {
+          type: ContentMediaType.IMAGE,
+          assets: [{ url: 'https://cdn/i.webp' }],
+        },
+        {
+          type: ContentMediaType.AUDIO,
+          assets: [{ url: 'https://cdn/a.mp3' }],
+        },
+      ]) {
+        const raw = JSON.stringify(projectedItem(media));
+        expect(raw).not.toContain('correctValue');
+        expect(raw).not.toContain(':20');
+      }
+    });
+
+    it('a text-only item (no media) remains valid and projects no media block', () => {
+      const projected = CLOSEST_GAMEPLAY_PLUGIN.projectRuntimeState(
+        runtimeWithItemMedia(undefined),
+      );
+      expect(JSON.parse(String(projected.currentItemJson)).media).toBeNull();
+    });
+
+    it('degrades unsupported/malformed media to no media rather than failing the projection', () => {
+      for (const media of [
+        {
+          type: ContentMediaType.VIDEO,
+          assets: [{ url: 'https://cdn/v.mp4' }],
+        },
+        { type: ContentMediaType.IMAGE, assets: [] },
+        { type: ContentMediaType.IMAGE, assets: [{ url: '' }] },
+      ]) {
+        expect(() => projectedItem(media)).not.toThrow();
+        expect(projectedItem(media).media).toBeNull();
+      }
+    });
+
+    it('reconnect/re-projection retains the same media identity', () => {
+      const media = {
+        type: ContentMediaType.IMAGE,
+        assets: [{ url: 'https://cdn/stable.webp', altText: 'ثابت' }],
+      };
+      const state = runtimeWithItemMedia(media);
+      const first = projectedItem(media);
+      const second = JSON.parse(
+        String(
+          CLOSEST_GAMEPLAY_PLUGIN.projectRuntimeStateForActor!(state, {
+            kind: 'participant',
+            participantId: 'a1',
+            teamId: 'a',
+          } as never).currentItemJson,
+        ),
+      ) as { media: unknown };
+      expect(first.media).toEqual(second.media);
     });
   });
 });

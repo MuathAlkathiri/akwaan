@@ -5,6 +5,7 @@ import {
   RYO_GAMEPLAY_PLUGIN,
   ryoAnsweringTeam,
 } from './ryo-gameplay.plugin';
+import { ContentMediaType } from '../../world-content/domain/world-content.constants';
 
 describe('RYO gameplay plugin', () => {
   const interaction = RYO_GAMEPLAY_PLUGIN.interaction!;
@@ -450,6 +451,154 @@ describe('RYO gameplay plugin', () => {
       opposingTeamId: 'b',
       decision: 'STEAL',
       correct: true,
+    });
+  });
+
+  describe('media projection', () => {
+    const promptWithItem = (item: Record<string, unknown>) =>
+      interaction.preparePrompt(
+        { sessionId: 's', runtimeId: 'r', activeTeamId: 'a' },
+        {
+          opposingTeamId: 'b',
+          answererParticipantId: 'p',
+          deciderParticipantId: 'q',
+          itemJson: JSON.stringify({
+            id: 'i1',
+            prompt: 'سؤال',
+            answerMode: 'multiple_choice',
+            options: [{ id: 'x', label: 'أ' }],
+            correctOptionId: 'x',
+            ...item,
+          }),
+        },
+        now,
+      );
+    const projectedMedia = (prompt: ReturnType<typeof promptWithItem>) =>
+      JSON.parse(String(prompt.publicPayload.itemJson)).media as unknown;
+
+    it('projects a safe image media shape: type, playable url, no raw asset metadata', () => {
+      const prompt = promptWithItem({
+        media: {
+          type: ContentMediaType.IMAGE,
+          assets: [
+            {
+              url: 'https://cdn/ryo-image.webp',
+              altText: 'صورة السؤال',
+              path: 'question-assets/images/ryo-image.webp',
+              filename: 'الإجابة-كريستيانو-رونالدو.webp',
+              mimetype: 'image/webp',
+              size: 51234,
+            },
+          ],
+        },
+      });
+      const media = projectedMedia(prompt);
+      expect(media).toEqual({
+        type: 'image',
+        url: 'https://cdn/ryo-image.webp',
+        altText: 'صورة السؤال',
+      });
+      const raw = JSON.stringify(prompt.publicPayload);
+      expect(raw).not.toContain('path');
+      expect(raw).not.toContain('filename');
+      expect(raw).not.toContain('mimetype');
+      expect(raw).not.toContain('51234');
+      // The private/internal half still carries the full raw item — the safety
+      // narrowing is a projection concern, not a storage concern.
+      expect(String(prompt.internalPayload.itemJson)).toContain('path');
+    });
+
+    it('projects a safe audio media shape: type, playable url, no raw asset metadata', () => {
+      const prompt = promptWithItem({
+        media: {
+          type: ContentMediaType.AUDIO,
+          assets: [
+            {
+              url: 'https://cdn/ryo-audio.mp3',
+              path: 'question-assets/audio/ryo-audio.mp3',
+              filename: 'answer-messi.mp3',
+              mimetype: 'audio/mpeg',
+              size: 91234,
+            },
+          ],
+        },
+      });
+      const media = projectedMedia(prompt);
+      expect(media).toEqual({
+        type: 'audio',
+        url: 'https://cdn/ryo-audio.mp3',
+      });
+      const raw = JSON.stringify(prompt.publicPayload);
+      expect(raw).not.toContain('path');
+      expect(raw).not.toContain('filename');
+      expect(raw).not.toContain('mimetype');
+    });
+
+    it('never leaks the correct option id through the public prompt, image or audio alike', () => {
+      for (const media of [
+        undefined,
+        {
+          type: ContentMediaType.IMAGE,
+          assets: [{ url: 'https://cdn/i.webp' }],
+        },
+        {
+          type: ContentMediaType.AUDIO,
+          assets: [{ url: 'https://cdn/a.mp3' }],
+        },
+      ]) {
+        const prompt = promptWithItem({ media });
+        expect(JSON.stringify(prompt.publicPayload)).not.toContain(
+          'correctOptionId',
+        );
+      }
+    });
+
+    it('a text-only item (no media) remains valid and projects no media block', () => {
+      const prompt = promptWithItem({});
+      expect(projectedMedia(prompt)).toBeNull();
+    });
+
+    it('degrades unsupported/malformed media to no media rather than failing the projection', () => {
+      for (const media of [
+        {
+          type: ContentMediaType.VIDEO,
+          assets: [{ url: 'https://cdn/v.mp4' }],
+        },
+        { type: ContentMediaType.IMAGE, assets: [] },
+        { type: ContentMediaType.IMAGE, assets: [{ url: '' }] },
+      ]) {
+        expect(() => promptWithItem({ media })).not.toThrow();
+        expect(projectedMedia(promptWithItem({ media }))).toBeNull();
+      }
+    });
+
+    it('projects the same public media to every actor role: shared, answering, opposing, spectator', () => {
+      const prompt = {
+        ...promptWithItem({
+          media: {
+            type: ContentMediaType.IMAGE,
+            assets: [{ url: 'https://cdn/shared.webp' }],
+          },
+        }),
+        id: 'p',
+        preparedAt: now,
+      };
+      const roles = [
+        { controller: true },
+        { controller: false, participantId: 'p1', teamId: 'a' }, // answering
+        { controller: false, participantId: 'q1', teamId: 'b' }, // opposing
+        { controller: false, participantId: 'z1', teamId: 'z' }, // spectator
+      ] as const;
+      const mediaViews = roles.map((actor) => {
+        const projected = interaction.projectPrompt(prompt, actor);
+        return JSON.parse(String(projected?.itemJson)).media;
+      });
+      // Media is public question context: identical for every actor.
+      for (const view of mediaViews) {
+        expect(view).toEqual({ type: 'image', url: 'https://cdn/shared.webp' });
+      }
+      // The privacy contract itself (per-role labelling, no grading truth) is
+      // unaffected — still covered by the existing role/authority tests above.
     });
   });
 });

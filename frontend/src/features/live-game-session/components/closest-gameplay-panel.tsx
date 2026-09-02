@@ -12,11 +12,17 @@ import { authoredText, type AuthoredText } from "../authored-text";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
 import type { GameplayRuntimeSnapshot } from "../model";
+import { MarhalaQuestionAudio } from "./marhala-screen";
 
+/**
+ * `media` is already the server-narrowed safe shape (an explicit `type`, never
+ * inferred from the URL) — the projection strips storage path/filename/mimetype
+ * before it ever reaches this client.
+ */
 interface ClosestItem {
   id: string;
   prompt: AuthoredText;
-  media?: { url?: string; altText?: AuthoredText } | null;
+  media?: { type: "image" | "audio"; url: string; altText?: AuthoredText } | null;
 }
 
 interface ClosestResult {
@@ -106,13 +112,16 @@ export function ClosestGameplayPanel({
       className="mx-auto max-w-4xl"
     >
       <div className="space-y-5" dir="rtl">
-        {item?.media?.url ? (
+        {item?.media?.type === "image" && item.media.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.media.url}
             alt={authoredText(item.media.altText, "صورة السؤال")}
             className="mx-auto max-h-64 rounded-[var(--radius)] object-contain"
           />
+        ) : null}
+        {item?.media?.type === "audio" && item.media.url ? (
+          <MarhalaQuestionAudio url={item.media.url} />
         ) : null}
         <h2 className="text-center text-[2rem] font-black leading-snug text-foreground sm:text-[2.5rem]">
           <BidiText>

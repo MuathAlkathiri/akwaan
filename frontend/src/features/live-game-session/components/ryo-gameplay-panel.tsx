@@ -19,16 +19,21 @@ import {
   ryoDecisionRevealLabel,
 } from "../match/ryo-decision.presentation";
 import type { GameplayRuntimeSnapshot } from "../model";
+import { MarhalaQuestionAudio } from "./marhala-screen";
 
 /**
  * The item as the runtime republishes it — which is as the author wrote it. The
  * text fields are localized objects, not strings; typing them as strings is what
  * crashed this panel the first time a read-your-opponent challenge could start.
+ *
+ * `media` is already the server-narrowed safe shape (an explicit `type`, never
+ * inferred from the URL) — the projection strips storage path/filename/mimetype
+ * before it ever reaches this client.
  */
 interface RyoItem {
   id: string;
   prompt: AuthoredText;
-  media?: { url?: string; altText?: AuthoredText } | null;
+  media?: { type: "image" | "audio"; url: string; altText?: AuthoredText } | null;
   answerMode: "multiple_choice" | "closest";
   options?: Array<{ id: string; label: AuthoredText }> | null;
 }
@@ -208,13 +213,16 @@ export function RyoGameplayPanel({
         </div>
         {item ? (
           <section className="mx-auto flex max-w-2xl flex-col items-center gap-5 text-center">
-            {item.media?.url && (
+            {item.media?.type === "image" && item.media.url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={item.media.url}
                 alt={authoredText(item.media.altText, "صورة السؤال")}
                 className="mx-auto max-h-52 rounded-[var(--radius)] object-contain"
               />
+            )}
+            {item.media?.type === "audio" && item.media.url && (
+              <MarhalaQuestionAudio url={item.media.url} />
             )}
             {/* The question is the largest thing on screen, at a size that reads
                 from three metres on a television. */}
