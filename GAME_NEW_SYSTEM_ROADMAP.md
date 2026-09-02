@@ -429,7 +429,7 @@ Games, Puzzles and the draft Worlds still need both (§C.1).
       `slot_3` `bomb`, `slot_4` RYO, `blockers: []` — ⚠️ **local/dev runtime only**
 - [ ] Reconcile the **remaining** target World boards to **Signature + RYO + Closest + Bomb**
 - [ ] Verify every target World against final Shared Core readiness
-- [ ] One Clue is **no longer re-pointed to the Movies Signature** — that prior step (§16.2) is superseded; the Movies Signature is now a **new mechanic, القطها** (§16.5), unimplemented
+- [ ] One Clue is **no longer re-pointed to the Movies Signature** — that prior step (§16.2) is superseded; the Movies Signature is now a **new mechanic, القطها** (§16.5), implemented in source but not rolled out
 
 ### E. Signature mechanics — product design
 
@@ -449,10 +449,10 @@ Games, Puzzles and the draft Worlds still need both (§C.1).
 
 Design approval above does **not** imply any of these. Full matrix in §16.
 
-- [ ] Movies → **القطها** *(new mechanic; no runtime key, ChallengeType, content contract or content exists — §16.5)*
-- [ ] Music → **من أول نغمة** *(auction runtime design; depends on audio enrichment — checklist H; no runtime exists — §16.6)*
-- [ ] World → على الخريطة *(map interaction; no map primitive exists yet)*
-- [ ] Series → وش صار بعدها؟ *(sequential/ordering mechanic)*
+- [x] Movies → **القطها** *(✅ mechanic implemented and verified in source; ⬜ production content/media/board rollout — §16.5)*
+- [x] Music → **من أول نغمة** *(✅ auction mechanic implemented and verified in source; ⬜ production content/media/board rollout — §16.6)*
+- [ ] World → على الخريطة *(product concept — needs further refinement; **DO NOT IMPLEMENT UNTIL NEW EXPLICIT PRODUCT APPROVAL**)*
+- [ ] Series → وش صار بعدها؟ *(product concept — needs further refinement; **DO NOT IMPLEMENT UNTIL NEW EXPLICIT PRODUCT APPROVAL**)*
 - [x] Video Games → المرحلة *(✅ mechanic implemented & verified; ✅ local/dev World rollout verified; ⚠️ production content outstanding; ⬜ not deployed — §17)*
 - [x] Anime → الكومبو *(✅ mechanic implemented & verified; local/dev World rollout verified; ⚠️ production content outstanding — §16.4)*
 - [x] Football → Top 5 World-specific rollout reconciled — ✅ football-exclusive in the local/dev runtime; ⬜ not deployed (§C.1)
@@ -1261,8 +1261,8 @@ Status is split four ways. **Do not collapse it.**
 | Production Bomb content | 🚧 **PARTIAL** — ✅ Anime (60 items) and Football (45 items) authored with media, local/dev; ⚠️ every other World outstanding (§C.1) |
 | Cross-World Bomb content coverage | ⬜ **NOT YET AUTHORED** |
 | Cross-World board migration | 🚧 **NOT COMPLETE** — pending content readiness |
-| One Clue → Movies Signature | ⚠️ **SUPERSEDED** — One Clue is no longer the forward Movies Signature; the approved Movies Signature is now **القطها** (§16.5), unimplemented |
-| Git state | ⬜ **NOT COMMITTED / NOT PUSHED** |
+| One Clue → Movies Signature | ⚠️ **SUPERSEDED** — One Clue is no longer the forward Movies Signature; the approved Movies Signature is now **القطها** (§16.5), implemented in source but not rolled out |
+| Git state | 🚧 **ROADMAP RECONCILIATION IN PROGRESS** — implementation commits are local; this reconciliation is the pending release tip |
 | Deployment | ⬜ **NOT DEPLOYED** |
 
 #### Canonical Bomb ChallengeType
@@ -1360,10 +1360,10 @@ repurpose. ⚠️ The count has moved: 549 ready items at the 2026-08-18 baselin
 |---|---|---|---|---|
 | **Football / كرة القدم** | Top 5 / أفضل 5 | ✅ `top-5` plugin, launcher, ChallengeType | ✅ **football-exclusive in the local/dev runtime** — `slot_1` on the Football board, no other board binds it, all 40 items in Football; 7 active Scopes after the expansion; ⬜ not deployed | ✅ mechanic / ✅ local rollout (§C.1) |
 | **Puzzles / عالم الالغاز** | Distributed Information / ركّبها | ✅ `distributed-information` plugin, launcher, ChallengeType, 213 items | 🚧 exclusivity and board rollout not finalized | ✅ mechanic / 🚧 rollout |
-| **Movies / الأفلام** | **القطها** | ⬜ new mechanic — no plugin/launcher/ChallengeType/content contract exists (§16.5) | ⬜ | 🟡 **design approved — not implemented** (supersedes the earlier **One Clue / بدليل واحد** direction; the `one-clue` mechanic still exists in the runtime but is no longer the forward Movies Signature, §16.5) |
-| **Music / الأغاني** | من أول نغمة | ⬜ no runtime exists; runtime design upgraded to the **auction** model (§16.6) | ⬜ | 🟡 design approved — not implemented |
-| **World / العالم** | على الخريطة | ⬜ | ⬜ | 🟡 design approved |
-| **Series / المسلسلات** | وش صار بعدها؟ | ⬜ | ⬜ | 🟡 design approved |
+| **Movies / الأفلام** | **القطها** | ✅ `laqatha` plugin, launcher, content policy, ChallengeType, Admin authoring, player frontend, recurring Fair-Start (§16.5) | ⬜ production content/media/board rollout | ✅ source implemented and verified / ⬜ rollout |
+| **Music / الأغاني** | من أول نغمة | ✅ `first-note` plugin, launcher, content policy, ChallengeType, Admin authoring, player frontend, recurring Fair-Start (§16.6) | ⬜ production content/media/board rollout | ✅ source implemented and verified / ⬜ rollout |
+| **World / العالم** | على الخريطة | 🟡 product concept — needs further refinement | ⬜ | 🟡 **DO NOT IMPLEMENT UNTIL NEW EXPLICIT PRODUCT APPROVAL** |
+| **Series / المسلسلات** | وش صار بعدها؟ | 🟡 product concept — needs further refinement | ⬜ | 🟡 **DO NOT IMPLEMENT UNTIL NEW EXPLICIT PRODUCT APPROVAL** |
 | **Video Games / فيديو قيمز** | المرحلة | ✅ `marhala` plugin, launcher, on-demand supplier, content policy, ChallengeType | ✅ `slot_4` bound to `marhala` in the **local/dev** runtime; ⚠️ content is 19 dev fixtures, not authored | ✅ mechanic / ✅ local rollout / ⚠️ content / ⬜ not deployed (§17) |
 | **Anime / الأنمي** | الكومبو | ✅ `combo` plugin, launcher, content policy, ChallengeType | ✅ `slot_2` bound to `combo` and ✅ **84 authored الكومبو items across all 7 Anime Scopes** in the **local/dev** runtime; ⬜ not deployed | ✅ mechanic / ✅ local rollout / ✅ local content (§16.4) |
 | **Saudi Arabia / السعودية** | *undecided* | — | — | ⬜ |
@@ -1385,12 +1385,12 @@ implementation; the per-mechanic state is recorded in the matrix and detail sect
 - **القطها** (Movies) — a shared movie-recognition race; **3 movie questions**; each with **5 ordered clues**
   from hardest → easiest, a new clue every **3 seconds**, and a **decreasing reward** (5→4→3→2→1 points).
   Teams may press **«جاوب»** to claim early: freeze the clues + lock the opponent + fix the reward, then get
-  **5 seconds** to submit. Clues may be text/image/audio. **🟡 DESIGN APPROVED — NOT IMPLEMENTED**; full spec
+  **5 seconds** to submit. Clues may be text/image/audio. **✅ IMPLEMENTED & VERIFIED IN SOURCE** (`ab25f708`); full spec
   in §16.5.
 - **من أول نغمة** (Music) — a **music-recognition auction**: teams bid on **how few seconds** they need to
   identify the song (ceiling 15s, min 1s). The lowest final bidder owns first-answer priority and plays exactly
   that duration; a wrong answer gives the opponent **one steal attempt** on the **same** audio length. Reward
-  scales inversely with the winning bid; steal = +1. **🟡 DESIGN APPROVED — NOT IMPLEMENTED**; full spec in §16.6.
+  scales inversely with the winning bid; steal = +1. **✅ IMPLEMENTED & VERIFIED IN SOURCE** (`e32344f`); full spec in §16.6.
   > `SUPERSEDED` — the earlier direction was *"recognise the song or artist from a very short audio segment,
   revealing more audio possible at a cost / reduced reward."* The auction runtime design (§16.6) replaces that
   simple progressive-audio-reveal concept while keeping the name **من أول نغمة** and the canonical Music Scopes.
@@ -1629,8 +1629,8 @@ Remaining content work:
 
 ### 16.5 القطها — Movies Signature product design *(approved 2026-08-29)*
 
-**Status: 🟡 DESIGN APPROVED — NOT IMPLEMENTED.** No plugin, launcher, ChallengeType, content contract, content,
-board slot or deployment exists. Repository/runtime evidence shows none — this is Product Design only.
+**Status: ✅ IMPLEMENTED & VERIFIED IN SOURCE.** Runtime source is complete; production content, board slot and
+deployment remain separate rollout work.
 
 This **supersedes** the earlier Movies Signature direction **«One Clue / بدليل واحد»** (§16.2, checklist E/F, §19
 item 13). The name is **القطها** (not لقطها, not لقّطها, not بدليل واحد). The `one-clue` mechanic still exists in
@@ -1704,8 +1704,8 @@ required. The intended lifecycle is **QUESTION → resolution → Reveal → nex
 
 ### 16.6 من أول نغمة — Music Signature product design *(auction runtime, approved 2026-08-29)*
 
-**Status: 🟡 DESIGN APPROVED — NOT IMPLEMENTED.** No plugin, launcher, ChallengeType, runtime, content contract,
-content or deployment exists. The **name remains من أول نغمة**, but this **supersedes** the previous simple
+**Status: ✅ IMPLEMENTED & VERIFIED IN SOURCE.** Runtime source is complete; production content, board slot and
+deployment remain separate rollout work. The **name remains من أول نغمة**, but this **supersedes** the previous simple
 progressive-audio-reveal concept with an **auction-based runtime design**.
 
 #### Core identity
