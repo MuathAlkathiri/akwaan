@@ -115,6 +115,9 @@ export class ContentItem extends Document {
   @Prop({ type: ContentMediaSchema, default: undefined })
   media?: ContentItemMedia;
 
+  @Prop({ type: ContentMediaSchema, default: undefined })
+  revealMedia?: ContentItemMedia;
+
   @Prop({ type: AnswerPayloadSchema, required: true })
   answerPayload: ContentAnswerPayload;
 

@@ -132,6 +132,12 @@ export class CreateContentItemDto {
   @Type(() => ContentItemMediaDto)
   media?: ContentItemMediaDto;
 
+  @ApiPropertyOptional({ type: ContentItemMediaDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ContentItemMediaDto)
+  revealMedia?: ContentItemMediaDto;
+
   @ApiProperty({ type: ContentAnswerPayloadDto })
   @ValidateNested()
   @Type(() => ContentAnswerPayloadDto)

@@ -49,6 +49,10 @@ export class WorldContentAssetMutator {
     await this.storage.delete(asset as { path: string });
   }
 
+  async uploadContentItemAsset(file: UploadedImageFile) {
+    return this.save(file, 'content-items');
+  }
+
   private save(file: UploadedImageFile, kind: WorldContentAssetKind) {
     return this.storage.save(file, {
       directory: ['world-content', kind],

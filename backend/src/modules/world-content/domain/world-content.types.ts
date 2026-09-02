@@ -366,6 +366,8 @@ export interface ContentItemView {
   prompt: LocalizedText;
   compatibleChallengeTypeIds: string[];
   media?: ContentItemMedia;
+  /** Optional answer/reveal image; never exposed by generic live projections. */
+  revealMedia?: ContentItemMedia;
   answerPayload: ContentAnswerPayload;
   mechanicPayload?:
     | Record<string, unknown>

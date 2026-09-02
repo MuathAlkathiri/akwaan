@@ -164,7 +164,7 @@ describe('Closest gameplay', () => {
   describe('media projection', () => {
     const runtimeWithItemMedia = (media: unknown) => ({
       itemsJson: JSON.stringify([
-        { ...item, media },
+        { ...item, media, revealMedia: { type: 'image', assets: [{ url: 'https://cdn/answer.webp' }] } },
         { ...item, id: 'item-2' },
         { ...item, id: 'item-3' },
       ]),
@@ -213,6 +213,7 @@ describe('Closest gameplay', () => {
       expect(raw).not.toContain('path');
       expect(raw).not.toContain('filename');
       expect(raw).not.toContain('mimetype');
+      expect(raw).not.toContain('answer.webp');
       expect(raw).not.toContain('size');
       expect(raw).not.toContain('45210');
     });

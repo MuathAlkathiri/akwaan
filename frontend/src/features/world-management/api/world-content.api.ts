@@ -179,6 +179,14 @@ export const fetchContentItems = (params: {
 export const createContentItem = (data: Payload) =>
   unwrap<ContentItem>(apiClient.post("/admin/content-items", data));
 
+export const uploadContentItemAsset = (file: File) => {
+  const form = new FormData();
+  form.append("asset", file);
+  return unwrap<{ url: string; path: string; filename: string }>(
+    apiClient.post("/admin/content-items/upload-asset", form),
+  );
+};
+
 export const updateContentItem = (contentItemId: string, data: Payload) =>
   unwrap<ContentItem>(
     apiClient.patch(`/admin/content-items/${contentItemId}`, data),

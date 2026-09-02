@@ -71,6 +71,7 @@ export class ContentItemService {
       prompt: dto.prompt,
       compatibleChallengeTypeIds: dto.compatibleChallengeTypeIds,
       ...(dto.media ? { media: dto.media } : {}),
+      ...(dto.revealMedia ? { revealMedia: dto.revealMedia } : {}),
       answerPayload: dto.answerPayload as ContentAnswerPayload,
       ...(dto.mechanicPayload ? { mechanicPayload: dto.mechanicPayload } : {}),
       // Filled in below once the mechanics have been loaded exactly once.
@@ -93,6 +94,7 @@ export class ContentItemService {
         (id) => new Types.ObjectId(id),
       ),
       media: candidate.media,
+      revealMedia: candidate.revealMedia,
       answerPayload: candidate.answerPayload,
       mechanicPayload: candidate.mechanicPayload,
       isReusableAcrossSessions: candidate.isReusableAcrossSessions,
@@ -120,6 +122,9 @@ export class ContentItemService {
         ? { compatibleChallengeTypeIds: dto.compatibleChallengeTypeIds }
         : {}),
       ...(dto.media === undefined ? {} : { media: dto.media }),
+      ...(dto.revealMedia === undefined
+        ? {}
+        : { revealMedia: dto.revealMedia }),
       ...(dto.answerPayload
         ? { answerPayload: dto.answerPayload as ContentAnswerPayload }
         : {}),
@@ -142,6 +147,7 @@ export class ContentItemService {
         (value) => new Types.ObjectId(value),
       ),
       media: candidate.media,
+      revealMedia: candidate.revealMedia,
       answerPayload: candidate.answerPayload,
       mechanicPayload: candidate.mechanicPayload,
       isReusableAcrossSessions: candidate.isReusableAcrossSessions,
@@ -173,10 +179,9 @@ export class ContentItemService {
     const { report, compatibleFamilies } = await this.evaluate(candidate);
     assertNoIssues(
       report.blockers.filter((problem) =>
-        [
-          'ONE_CLUE_STRUCTURE_INVALID',
-          'RAKKIBHA_STRUCTURE_REQUIRED',
-        ].includes(problem.code),
+        ['ONE_CLUE_STRUCTURE_INVALID', 'RAKKIBHA_STRUCTURE_REQUIRED'].includes(
+          problem.code,
+        ),
       ),
       'The selected mechanic content pattern is invalid',
     );

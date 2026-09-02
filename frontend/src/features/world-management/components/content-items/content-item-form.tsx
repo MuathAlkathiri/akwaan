@@ -35,6 +35,8 @@ import {
   hasFirstNoteMechanic,
 } from "../../services/content-item-form.service";
 import { FormIssueList } from "../shared";
+import { UploadField } from "../shared/upload-field";
+import { uploadContentItemAsset } from "../../api/world-content.api";
 import { AnswerPayloadFields } from "./answer-payload-fields";
 import { Top5Fields } from "./top5-fields";
 import { RakkibhaFields } from "./rakkibha-fields";
@@ -79,6 +81,7 @@ export function ContentItemForm({
       : emptyContentItemForm(defaultScopeId ?? ""),
   );
   const [localProblems, setLocalProblems] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   const set = (patch: Partial<ContentItemFormValues>) =>
     setValues((current) => ({ ...current, ...patch }));
@@ -468,7 +471,41 @@ export function ContentItemForm({
         </div>
       </div>
 
-      {values.mediaType !== "none" && (
+      {values.mediaType === "image" && (
+        <UploadField
+          label="صورة السؤال"
+          existingUrl={values.mediaUrls[0]}
+          value={null}
+          disabled={uploading}
+          onChange={async (file) => {
+            if (!file) return;
+            setUploading(true);
+            try {
+              const asset = await uploadContentItemAsset(file);
+              set({ mediaUrls: [asset.url] });
+            } finally {
+              setUploading(false);
+            }
+          }}
+        />
+      )}
+      {values.mediaType === "image" && (
+        <UploadField
+          label="صورة الكشف (اختياري)"
+          existingUrl={values.revealMediaUrl}
+          value={null}
+          disabled={uploading}
+          onChange={async (file) => {
+            if (!file) return;
+            setUploading(true);
+            try {
+              const asset = await uploadContentItemAsset(file);
+              set({ revealMediaUrl: asset.url });
+            } finally { setUploading(false); }
+          }}
+        />
+      )}
+      {values.mediaType !== "none" && values.mediaType !== "image" && (
         <div>
           <label className="mb-1.5 block text-sm font-medium">
             روابط الوسائط (سطر لكل رابط)

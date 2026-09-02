@@ -7,20 +7,27 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { UserRole } from '../../users/schemas/user.schema';
 import { ContentItemService } from '../application/content-item.service';
+import { WorldContentAssetMutator } from '../application/world-content-asset.mutator';
 import {
   CreateContentItemDto,
   QueryContentItemsDto,
   UpdateContentItemDto,
 } from '../dto/content-item.dto';
-import { envelope } from './world-content.http';
+import {
+  envelope,
+  UploadedWorldContentAsset,
+  worldContentAssetInterceptor,
+} from './world-content.http';
 
 @ApiTags('World Management')
 @ApiBearerAuth()
@@ -28,7 +35,18 @@ import { envelope } from './world-content.http';
 @Roles(UserRole.ADMIN)
 @Controller('admin/content-items')
 export class ContentItemsController {
-  constructor(private readonly contentItems: ContentItemService) {}
+  constructor(
+    private readonly contentItems: ContentItemService,
+    private readonly assets: WorldContentAssetMutator,
+  ) {}
+
+  @Post('upload-asset')
+  @UseInterceptors(worldContentAssetInterceptor)
+  @ApiConsumes('multipart/form-data')
+  uploadAsset(@UploadedFile() asset?: UploadedWorldContentAsset) {
+    if (!asset) throw new Error('Asset is required');
+    return envelope(this.assets.uploadContentItemAsset(asset));
+  }
 
   @Get()
   list(@Query() query: QueryContentItemsDto) {

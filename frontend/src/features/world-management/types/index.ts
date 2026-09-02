@@ -254,6 +254,7 @@ export interface ContentItem {
   prompt: LocalizedText;
   compatibleChallengeTypeIds: string[];
   media?: { type: ContentMediaType; assets: ContentAsset[] };
+  revealMedia?: { type: ContentMediaType; assets: ContentAsset[] };
   answerPayload: ContentAnswerPayload;
   mechanicPayload?: Record<string, unknown>;
   isReusableAcrossSessions: boolean;

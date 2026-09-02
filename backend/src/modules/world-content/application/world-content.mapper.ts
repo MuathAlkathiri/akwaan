@@ -108,6 +108,14 @@ export function toContentItemView(document: ContentItem): ContentItemView {
           },
         }
       : {}),
+    ...(document.revealMedia
+      ? {
+          revealMedia: {
+            type: document.revealMedia.type,
+            assets: document.revealMedia.assets ?? [],
+          },
+        }
+      : {}),
     answerPayload: document.answerPayload as ContentAnswerPayload,
     ...(document.mechanicPayload
       ? { mechanicPayload: document.mechanicPayload }

@@ -30,6 +30,7 @@ export interface ContentItemFormValues {
   compatibleChallengeTypeIds: string[];
   mediaType: ContentMediaType;
   mediaUrls: string[];
+  revealMediaUrl: string;
   status: ContentItemStatus;
   isReusableAcrossSessions: boolean;
   notes: string;
@@ -483,6 +484,7 @@ export function emptyContentItemForm(scopeId: string): ContentItemFormValues {
     compatibleChallengeTypeIds: [],
     mediaType: "none",
     mediaUrls: [],
+    revealMediaUrl: "",
     status: "draft",
     isReusableAcrossSessions: false,
     notes: "",
@@ -545,6 +547,7 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
     compatibleChallengeTypeIds: [...item.compatibleChallengeTypeIds],
     mediaType: item.media?.type ?? "none",
     mediaUrls: (item.media?.assets ?? []).map((asset) => asset.url),
+    revealMediaUrl: item.revealMedia?.assets?.[0]?.url ?? "",
     status: item.status,
     isReusableAcrossSessions: item.isReusableAcrossSessions,
     notes: item.metadata?.notes ?? "",
@@ -924,6 +927,9 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
             assets: mediaUrls.map((url) => ({ url })),
           },
         }),
+    ...(values.mediaType === "image" && values.revealMediaUrl.trim()
+      ? { revealMedia: { type: "image", assets: [{ url: values.revealMediaUrl.trim() }] } }
+      : {}),
     answerPayload,
     ...(mechanicPayload ? { mechanicPayload } : {}),
     isReusableAcrossSessions: values.isReusableAcrossSessions,
