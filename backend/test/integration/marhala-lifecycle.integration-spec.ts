@@ -39,6 +39,7 @@ import {
 import { UpdateParticipantPresence } from '../../src/modules/live-game-sessions/application/update-participant-presence.use-case';
 import { GameplayDeadlineScheduler } from '../../src/modules/live-game-sessions/application/gameplay-deadline.scheduler';
 import { SubmitGameplayCommand } from '../../src/modules/live-game-sessions/application/submit-gameplay-command.use-case';
+import { GameplayRuntimeSocketFacade } from '../../src/modules/live-game-sessions/application/gameplay-runtime.socket-facade';
 import {
   GAMEPLAY_RUNTIME_REPOSITORY,
   GameplayRuntimeRepository,
@@ -504,11 +505,34 @@ describe('marhala lifecycle integration', () => {
       { difficulty },
     );
 
+  const activate = async (sessionId: string) => {
+    const runtime = (await runtimes().findBySessionId(sessionId))!;
+    await app.get(GameplayRuntimeSocketFacade).presentationReady(
+      controllerActor(),
+      {
+        sessionId,
+        commandId: uuid(),
+        expectedSessionRevision: (await app
+          .get<LiveGameSessionRepository>(LIVE_GAME_SESSION_REPOSITORY)
+          .findById(sessionId))!.revision,
+        expectedRuntimeRevision: runtime.revision,
+        ...(runtime.currentPresentationCheckpoint()
+          ? {
+              presentationGeneration:
+                runtime.currentPresentationCheckpoint()!.generation,
+            }
+          : {}),
+      },
+      'marhala-shared-screen',
+    );
+  };
+
   /** Answer the open question, correctly or not. */
   const answer = async (
     session: { sessionId: string; participants: LiveSessionActor[] },
     correct: boolean,
   ) => {
+    await activate(session.sessionId);
     const question = (await questionOf(session.sessionId))!;
     return command(
       session.sessionId,
@@ -591,7 +615,7 @@ describe('marhala lifecycle integration', () => {
       expect(question.difficulty).toBe('hard');
       // A Hard request is a hard filter, never an easier band relabelled.
       expect(bandById.get(question.contentItemId)).toBe('hard');
-      expect(state.deadlineAt).toBeTruthy();
+      expect(state.deadlineAt).toBeNull();
     });
 
     it.each(DIFFICULTIES)('honours a %s request exactly', async (band) => {
@@ -607,6 +631,7 @@ describe('marhala lifecycle integration', () => {
       await expect(exposures()).resolves.toEqual([]);
 
       await choose(session, 'easy');
+      await activate(session.sessionId);
 
       const question = (await questionOf(session.sessionId))!;
       const rows = await exposures({ state: 'exposed' });
@@ -654,6 +679,7 @@ describe('marhala lifecycle integration', () => {
     it('spends the question on a timeout too', async () => {
       const session = await running();
       await choose(session, 'medium');
+      await activate(session.sessionId);
       const question = (await questionOf(session.sessionId))!;
 
       await command(
