@@ -265,7 +265,7 @@ describe('المرحلة gameplay', () => {
     it('opens with a clock and the prompt, never the answers', () => {
       const open = opened('easy', runtime());
       expect(open.phase).toBe('question');
-      expect(open.deadlineAt).toBeTruthy();
+      expect(open.deadlineAt).toBeNull();
       const projected = MARHALA_GAMEPLAY_PLUGIN.projectRuntimeState(open);
       expect(projected.questionPrompt).toBeTruthy();
       expect(JSON.stringify(projected)).not.toContain('روكستار');

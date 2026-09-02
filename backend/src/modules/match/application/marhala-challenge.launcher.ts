@@ -100,6 +100,13 @@ export class MarhalaChallengeLauncher
     if (!runtimeState || !MARHALA_GAMEPLAY_PLUGIN.presentedContentItemIds) {
       return [];
     }
+    if (
+      (MARHALA_GAMEPLAY_PLUGIN.deadline?.requiresPresentationActivation &&
+        !input.runtime.presentationActivatedAt) ||
+      input.runtime.currentPresentation?.status === 'prepared'
+    ) {
+      return [];
+    }
     return MARHALA_GAMEPLAY_PLUGIN.presentedContentItemIds({
       runtimeState,
       roundState: input.runtime.activeRound?.modeState ?? {},

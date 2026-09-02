@@ -219,6 +219,9 @@ export class SubmitGameplayCommand {
           // roster to hand its next action to somebody who is actually here.
           eligibleParticipants: eligibleParticipantsOf(session.serialize()),
           runtimeState: runtimeState.runtimeState,
+          awaitingPresentationActivation:
+            !runtime.serialize().presentationActivatedAt ||
+            runtime.serialize().currentPresentation?.status === 'prepared',
           now,
         },
         {
@@ -336,7 +339,10 @@ export class SubmitGameplayCommand {
             runtime.modeKey,
           ),
       });
-      if (handled.prepareNextPresentation) {
+      if (
+        handled.prepareNextPresentation &&
+        runtime.serialize().presentationActivatedAt
+      ) {
         runtime.prepareNextPresentation(
           `${command.commandId}:presentation`,
           command.actor.actorId,

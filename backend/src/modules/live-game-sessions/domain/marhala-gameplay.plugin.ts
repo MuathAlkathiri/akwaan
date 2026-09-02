@@ -422,12 +422,14 @@ function handle(
     next: GameplayModeState,
     eventType: string,
     eventPayload: GameplayModeState,
+    options?: { prepareNextPresentation?: boolean },
   ): GameplayCommandResult => ({
     runtimeState: next,
     roundState: validateRound({ phase: next.phase }),
     eventType,
     eventPayload,
     effects: [],
+    ...options,
   });
 
   if (phase === 'completed') {
@@ -491,7 +493,7 @@ function handle(
         ...state,
         phase: 'question',
         questionJson: question,
-        deadlineAt: deadlineFor(now),
+        deadlineAt: null,
       }),
       'marhala-question-opened',
       {
@@ -499,6 +501,7 @@ function handle(
         difficulty: parsed.difficulty,
         contentItemId: parsed.contentItemId,
       },
+      { prepareNextPresentation: true },
     );
   }
 
@@ -506,6 +509,12 @@ function handle(
     assertSubmitterIsActiveTeam(state, context, 'answer this question');
     if (phase !== 'question') {
       reject('MARHALA_NO_OPEN_QUESTION', 'No المرحلة question is open');
+    }
+    if (context.awaitingPresentationActivation) {
+      reject(
+        'MARHALA_PRESENTATION_NOT_ACTIVE',
+        'The question is not playable until presentation activation',
+      );
     }
     const question = questionOf(state);
     if (!question) {
@@ -530,6 +539,12 @@ function handle(
   if (command.type === MARHALA_COMMANDS.expireQuestion) {
     if (phase !== 'question') {
       reject('MARHALA_NO_OPEN_QUESTION', 'No المرحلة question is open');
+    }
+    if (context.awaitingPresentationActivation) {
+      reject(
+        'MARHALA_PRESENTATION_NOT_ACTIVE',
+        'The question cannot expire until presentation activation',
+      );
     }
     // A timeout costs exactly what a wrong answer costs: the question is spent,
     // nothing moves, the turn passes.
@@ -729,6 +744,12 @@ export const MARHALA_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     return undefined;
   },
   handleCommand: handle,
+  requiredPresentationSurfaces: ({ runtimeState }) =>
+    runtimeState.phase === 'question' ? [{ capability: 'shared' }] : undefined,
+  activatePresentation: (state, now) => {
+    if (state.phase !== 'question' || state.deadlineAt) return state;
+    return validateRuntime({ ...state, deadlineAt: deadlineFor(now) });
+  },
   /**
    * Only the questions actually put in front of a team.
    *
