@@ -18,6 +18,7 @@ import { ONE_CLUE_MODE_KEY } from '../modules/live-game-sessions/domain/one-clue
 import { MARHALA_MODE_KEY } from '../modules/live-game-sessions/domain/marhala-board';
 import { ODD_PIECE_MODE_KEY } from '../modules/live-game-sessions/domain/odd-piece-gameplay.plugin';
 import { LAQATHA_MODE_KEY } from '../modules/live-game-sessions/domain/laqatha-gameplay.plugin';
+import { FIRST_NOTE_MODE_KEY } from '../modules/live-game-sessions/domain/first-note-gameplay.plugin';
 
 /**
  * Deciding which ChallengeType is a canonical mechanic wearing the wrong slug.
@@ -102,6 +103,7 @@ describe('canonical mechanic slug migration', () => {
       MARHALA_MODE_KEY,
       ODD_PIECE_MODE_KEY,
       LAQATHA_MODE_KEY,
+      FIRST_NOTE_MODE_KEY,
     ];
     for (const entry of CANONICAL_MECHANICS) {
       expect(launcherKeys).toContain(entry.slug);

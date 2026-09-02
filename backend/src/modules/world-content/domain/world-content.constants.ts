@@ -55,6 +55,8 @@ export enum ChallengeAnswerMode {
    * answer payload; each clue may be text, image, or audio.
    */
   LAQATHA = 'laqatha',
+  /** Music Signature auction; ContentItems retain a MATCH answer payload. */
+  FIRST_NOTE = 'first_note',
 }
 
 /** A generic board position. Gameplay meaning comes from its Challenge Type. */
@@ -158,8 +160,22 @@ export const LAQATHA_REVEAL_SECONDS = 3;
 /** A team that claims gets five seconds to submit the movie title. */
 export const LAQATHA_CLAIM_SECONDS = 5;
 
+/** Music Signature: من أول نغمة. */
+export const FIRST_NOTE_SLUG = 'first-note';
+export const FIRST_NOTE_ITEM_COUNT = 3;
+export const FIRST_NOTE_MIN_BID_SECONDS = 1;
+export const FIRST_NOTE_MAX_BID_SECONDS = 15;
+/** Configurable implementation/playtest default, not a Product balance rule. */
+export const FIRST_NOTE_ANSWER_SECONDS = 15;
+
 export type ContentPattern =
-  'generic' | 'top_5' | 'rakkibha' | 'one_clue' | 'odd_piece' | 'laqatha';
+  | 'generic'
+  | 'top_5'
+  | 'rakkibha'
+  | 'one_clue'
+  | 'odd_piece'
+  | 'laqatha'
+  | 'first_note';
 
 /** Mechanic-owned authoring structure, distinct from its answer contract. */
 export function contentPatternForChallengeAnswerMode(
@@ -170,6 +186,7 @@ export function contentPatternForChallengeAnswerMode(
   if (mode === ChallengeAnswerMode.ONE_CLUE) return 'one_clue';
   if (mode === ChallengeAnswerMode.ODD_PIECE) return 'odd_piece';
   if (mode === ChallengeAnswerMode.LAQATHA) return 'laqatha';
+  if (mode === ChallengeAnswerMode.FIRST_NOTE) return 'first_note';
   return 'generic';
 }
 
@@ -235,6 +252,7 @@ export const ANSWER_MODE_COMPATIBLE_ITEM_MODES: Readonly<
   [ChallengeAnswerMode.ODD_PIECE]: [ChallengeAnswerMode.ODD_PIECE],
   [ChallengeAnswerMode.ONE_CLUE]: [ChallengeAnswerMode.MATCH],
   [ChallengeAnswerMode.LAQATHA]: [ChallengeAnswerMode.MATCH],
+  [ChallengeAnswerMode.FIRST_NOTE]: [ChallengeAnswerMode.MATCH],
   [ChallengeAnswerMode.RAKKIBHA]: [
     ChallengeAnswerMode.MATCH,
     ChallengeAnswerMode.MULTIPLE_CHOICE,

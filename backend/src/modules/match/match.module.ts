@@ -51,6 +51,7 @@ import { ListMyMatches } from './application/list-my-matches.use-case';
 import { MyMatchesController } from './presentation/my-matches.controller';
 import { OddPieceChallengeLauncher } from './application/odd-piece-challenge.launcher';
 import { LaqathaChallengeLauncher } from './application/laqatha-challenge.launcher';
+import { FirstNoteChallengeLauncher } from './application/first-note-challenge.launcher';
 
 /**
  * Match orchestration.
@@ -82,6 +83,7 @@ import { LaqathaChallengeLauncher } from './application/laqatha-challenge.launch
     MyMatchesController,
   ],
   providers: [
+    FirstNoteChallengeLauncher,
     SystemMatchClock,
     { provide: MATCH_CLOCK, useExisting: SystemMatchClock },
     MongooseMatchRepository,

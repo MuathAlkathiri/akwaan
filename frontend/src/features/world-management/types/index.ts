@@ -23,12 +23,20 @@ export type ChallengeAnswerMode =
   | "top_5"
   | "odd_piece"
   | "one_clue"
+  | "laqatha"
+  | "first_note"
   /** The canonical ركّبها answer mode. */
   | "rakkibha";
 export type ChallengeItemStructure = "discrete_triple" | "continuous";
 export type VoteConsensusRule = "exact" | "majority" | "team_match";
 export type ContentPattern =
-  "generic" | "top_5" | "rakkibha" | "one_clue" | "odd_piece" | "laqatha";
+  | "generic"
+  | "top_5"
+  | "rakkibha"
+  | "one_clue"
+  | "odd_piece"
+  | "laqatha"
+  | "first_note";
 
 export interface ContentAsset {
   url: string;
@@ -381,6 +389,11 @@ export interface LaqathaPayload {
     text?: LocalizedText;
     media?: { type: ContentMediaType; assets: ContentAsset[] };
   }>;
+}
+export interface FirstNotePayload {
+  variant: "first-note";
+  contextualClue: LocalizedText;
+  clueLabel?: LocalizedText;
 }
 
 export interface ChallengeTypeDeletionPreview {

@@ -53,6 +53,8 @@ export const ANSWER_MODE_LABEL: Record<ChallengeAnswerMode, string> = {
   top_5: "أفضل 5",
   one_clue: "بدليل واحد",
   odd_piece: "القطعة الدخيلة",
+  laqatha: "القطها",
+  first_note: "من أول نغمة",
 };
 
 export const ITEM_STRUCTURE_LABEL: Record<ChallengeItemStructure, string> = {

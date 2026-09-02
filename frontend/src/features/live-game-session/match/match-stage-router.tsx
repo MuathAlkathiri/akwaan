@@ -24,6 +24,8 @@ import { ODD_PIECE_MODE_KEY } from "./odd-piece.presentation";
 import { OddPieceGameplayPanel } from "../components/odd-piece-gameplay-panel";
 import { LAQATHA_MODE_KEY } from "./laqatha.presentation";
 import { LaqathaGameplayPanel } from "../components/laqatha-gameplay-panel";
+import { FIRST_NOTE_MODE_KEY } from "./first-note.presentation";
+import { FirstNoteGameplayPanel } from "../components/first-note-gameplay-panel";
 import { useLiveSession } from "../hooks/live-session-context";
 import { MatchConnectionBanner } from "./components/match-connection-banner";
 import { UnifiedBoard } from "./components/unified-board";
@@ -380,6 +382,8 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
     // safe view to each, so the claim/answer controls appear only where allowed.
     case LAQATHA_MODE_KEY:
       return <LaqathaGameplayPanel runtime={runtime} actor={actor} />;
+    case FIRST_NOTE_MODE_KEY:
+      return <FirstNoteGameplayPanel runtime={runtime} actor={actor} />;
     default:
       // The server started a mechanic this client has no screen for. Saying so is
       // the only honest option: the runtime is real and running.

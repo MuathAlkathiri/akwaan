@@ -154,6 +154,12 @@ export const MODE_COMMAND_TYPES: readonly string[] = [
   'submit-laqatha',
   'advance-laqatha',
   'expire-laqatha-phase',
+  // من أول نغمة.
+  'submit-first-note-bid',
+  'pass-first-note-bid',
+  'submit-first-note-answer',
+  'advance-first-note',
+  'expire-first-note-answer',
 ];
 
 export interface GameplayCommandDefinition {

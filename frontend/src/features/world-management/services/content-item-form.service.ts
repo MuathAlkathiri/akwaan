@@ -11,6 +11,7 @@ import type {
   ContentPattern,
   OddPiecePayload,
   LaqathaPayload,
+  FirstNotePayload,
 } from "../types";
 
 /**
@@ -40,6 +41,7 @@ export interface ContentItemFormValues {
   marhala: MarhalaFormState;
   oddPiece: OddPieceFormState;
   laqatha: LaqathaFormState;
+  firstNote: FirstNoteFormState;
 }
 
 export const ODD_PIECE_CHALLENGE_SLUG = "odd-piece";
@@ -296,6 +298,39 @@ function emptyLaqathaState(): LaqathaFormState {
   };
 }
 
+export const FIRST_NOTE_CHALLENGE_SLUG = "first-note";
+export interface FirstNoteFormState {
+  enabled: boolean;
+  title: string;
+  clue: string;
+  clueLabel: string;
+  audioUrl: string;
+}
+export function hasFirstNoteMechanic(
+  selected: ReadonlyArray<{ challengeType: { slug: string } }>,
+): boolean {
+  return selected.some(
+    (entry) => entry.challengeType.slug === FIRST_NOTE_CHALLENGE_SLUG,
+  );
+}
+function emptyFirstNoteState(): FirstNoteFormState {
+  return { enabled: false, title: "", clue: "", clueLabel: "", audioUrl: "" };
+}
+function toFirstNoteFormState(
+  payload: Partial<FirstNotePayload> | undefined,
+  title: string,
+  audioUrl: string,
+): FirstNoteFormState {
+  if (payload?.variant !== "first-note") return emptyFirstNoteState();
+  return {
+    enabled: true,
+    title,
+    clue: payload.contextualClue?.ar ?? "",
+    clueLabel: payload.clueLabel?.ar ?? "",
+    audioUrl,
+  };
+}
+
 export function toLaqathaFormState(
   payload: Partial<LaqathaPayload> | undefined,
   targetAnswer: string,
@@ -459,6 +494,7 @@ export function emptyContentItemForm(scopeId: string): ContentItemFormValues {
     marhala: emptyMarhalaState(),
     oddPiece: emptyOddPieceState(),
     laqatha: emptyLaqathaState(),
+    firstNote: emptyFirstNoteState(),
   };
 }
 
@@ -495,8 +531,11 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
     Partial<OneCluePayload> | undefined;
   const laqathaPayload = item.mechanicPayload as
     Partial<LaqathaPayload> | undefined;
+  const firstNotePayload = item.mechanicPayload as
+    Partial<FirstNotePayload> | undefined;
   // One Clue and القطها both carry `clues`; only القطها stamps a `variant`.
   const isLaqatha = laqathaPayload?.variant === "laqatha";
+  const isFirstNote = firstNotePayload?.variant === "first-note";
   const isOneClue = Boolean(oneCluePayload?.clues) && !isLaqatha;
   const acceptedAnswers = payload.acceptedAnswers ?? [];
   return {
@@ -530,7 +569,7 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
           ? ""
           : String(payload.acceptedTolerance),
       acceptedAnswers: acceptedAnswers
-        .slice(isOneClue || isLaqatha ? 1 : 0)
+        .slice(isOneClue || isLaqatha || isFirstNote ? 1 : 0)
         .join("\n"),
       consensusRule: payload.consensusRule ?? "majority",
       fragments: (payload.splitPayload?.fragments ?? []).map((fragment) => ({
@@ -551,6 +590,11 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
         }
       : emptyOneClueState(),
     laqatha: toLaqathaFormState(laqathaPayload, acceptedAnswers[0] ?? ""),
+    firstNote: toFirstNoteFormState(
+      firstNotePayload,
+      acceptedAnswers[0] ?? "",
+      item.media?.assets?.[0]?.url ?? "",
+    ),
     oddPiece: toOddPieceFormState(
       item.mechanicPayload as Partial<OddPiecePayload> | undefined,
     ),
@@ -668,7 +712,11 @@ export function buildAnswerPayload(
 }
 
 export function buildContentItemPayload(values: ContentItemFormValues) {
-  const mediaUrls = values.mediaUrls.map((url) => url.trim()).filter(Boolean);
+  const mediaUrls = (
+    values.firstNote.enabled ? [values.firstNote.audioUrl] : values.mediaUrls
+  )
+    .map((url) => url.trim())
+    .filter(Boolean);
   const top5MechanicPayload =
     values.answer.mode === "top_5"
       ? {
@@ -779,6 +827,15 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
         }),
       }
     : undefined;
+  const firstNoteMechanicPayload = values.firstNote.enabled
+    ? {
+        variant: "first-note" as const,
+        contextualClue: { ar: values.firstNote.clue.trim() },
+        ...(values.firstNote.clueLabel.trim()
+          ? { clueLabel: { ar: values.firstNote.clueLabel.trim() } }
+          : {}),
+      }
+    : undefined;
   const oddPieceMechanicPayload = values.oddPiece.enabled
     ? {
         variant: "odd-piece" as const,
@@ -816,7 +873,8 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
     comboMechanicPayload ??
     marhalaMechanicPayload ??
     oddPieceMechanicPayload ??
-    laqathaMechanicPayload)
+    laqathaMechanicPayload ??
+    firstNoteMechanicPayload)
       ? {
           ...top5MechanicPayload,
           ...rakkibhaMechanicPayload,
@@ -825,13 +883,16 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
           ...marhalaMechanicPayload,
           ...oddPieceMechanicPayload,
           ...laqathaMechanicPayload,
+          ...firstNoteMechanicPayload,
         }
       : undefined;
   const signatureTargetAnswer = values.oneClue.enabled
     ? values.oneClue.targetAnswer
-    : values.laqatha.targetAnswer;
+    : values.laqatha.enabled
+      ? values.laqatha.targetAnswer
+      : values.firstNote.title;
   const answerPayload =
-    values.oneClue.enabled || values.laqatha.enabled
+    values.oneClue.enabled || values.laqatha.enabled || values.firstNote.enabled
       ? {
           mode: "match" as const,
           acceptedAnswers: [
@@ -849,15 +910,17 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
           ? ONE_CLUE_PROMPT_AR
           : values.laqatha.enabled
             ? LAQATHA_PROMPT_AR
-            : ""),
+            : values.firstNote.enabled
+              ? "خمّن اسم الأغنية"
+              : ""),
       ...(values.promptEn.trim() ? { en: values.promptEn.trim() } : {}),
     },
     compatibleChallengeTypeIds: values.compatibleChallengeTypeIds,
-    ...(values.mediaType === "none"
+    ...(!values.firstNote.enabled && values.mediaType === "none"
       ? {}
       : {
           media: {
-            type: values.mediaType,
+            type: values.firstNote.enabled ? "audio" : values.mediaType,
             assets: mediaUrls.map((url) => ({ url })),
           },
         }),
@@ -921,7 +984,12 @@ export function findRakkibhaProblems(values: ContentItemFormValues): string[] {
 
 export function findLocalFormProblems(values: ContentItemFormValues): string[] {
   const problems: string[] = [];
-  if (!values.promptAr.trim() && !values.oneClue.enabled && !values.laqatha.enabled)
+  if (
+    !values.promptAr.trim() &&
+    !values.oneClue.enabled &&
+    !values.laqatha.enabled &&
+    !values.firstNote.enabled
+  )
     problems.push("نص السؤال بالعربية مطلوب.");
   if (!values.compatibleChallengeTypeIds.length) {
     problems.push("اختر نوع تحدٍ واحداً متوافقاً على الأقل.");
@@ -962,6 +1030,11 @@ export function findLocalFormProblems(values: ContentItemFormValues): string[] {
       )
     )
       problems.push("اكتب الأدلة الخمسة كاملة (نص أو رابط وسائط).");
+  }
+  if (values.firstNote.enabled) {
+    if (!values.firstNote.title.trim()) problems.push("اسم الأغنية مطلوب.");
+    if (!values.firstNote.clue.trim()) problems.push("الدليل السياقي مطلوب.");
+    if (!values.firstNote.audioUrl.trim()) problems.push("مقطع الصوت مطلوب.");
   }
   if (values.oddPiece.enabled) {
     const { oddPiece } = values;

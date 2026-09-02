@@ -51,6 +51,7 @@ import { findEligibleTeamParticipant } from '../domain/team-participant-eligibil
 import { applyGameplaySessionEffects } from './gameplay-session-effects';
 import { ODD_PIECE_MODE_KEY } from '../domain/odd-piece-gameplay.plugin';
 import { LAQATHA_MODE_KEY } from '../domain/laqatha-gameplay.plugin';
+import { FIRST_NOTE_MODE_KEY } from '../domain/first-note-gameplay.plugin';
 
 /**
  * The authority behind `expire-team`, against the server clock and the
@@ -367,6 +368,11 @@ export class SubmitGameplayCommand {
         command,
         now,
       );
+      const firstNoteTerminal = this.completeFirstNoteIfTerminal(
+        runtime,
+        command,
+        now,
+      );
       if (sessionChanged) {
         await context.saveSession(session, previousSessionRevision);
       }
@@ -381,7 +387,8 @@ export class SubmitGameplayCommand {
           oneClueTerminal ||
           comboTerminal ||
           oddPieceTerminal ||
-          laqathaTerminal,
+          laqathaTerminal ||
+          firstNoteTerminal,
       };
     });
 
@@ -744,6 +751,36 @@ export class SubmitGameplayCommand {
         commandId: `${command.commandId}:round-complete`,
         actorId: command.actor.actorId,
         reason: 'laqatha-three-questions-completed',
+        result: {
+          resultJson: state.runtimeState.resultJson,
+          resultsJson: state.runtimeState.resultsJson,
+        },
+        now,
+      });
+    }
+    runtime.complete(
+      `${command.commandId}:runtime-complete`,
+      command.actor.actorId,
+      now,
+    );
+    return true;
+  }
+
+  private completeFirstNoteIfTerminal(
+    runtime: import('../domain/gameplay-runtime').GameplayRuntime,
+    command: GameplayRuntimeCommand,
+    now: Date,
+  ): boolean {
+    if (runtime.modeKey !== FIRST_NOTE_MODE_KEY) return false;
+    const state = runtime.serialize();
+    if (state.runtimeState.phase !== 'completed') return false;
+    const round = state.activeRound;
+    if (round) {
+      runtime.completeRound({
+        roundId: round.id,
+        commandId: `${command.commandId}:round-complete`,
+        actorId: command.actor.actorId,
+        reason: 'first-note-three-songs-completed',
         result: {
           resultJson: state.runtimeState.resultJson,
           resultsJson: state.runtimeState.resultsJson,

@@ -333,6 +333,14 @@ export interface LaqathaPayload {
   clues: LaqathaClue[];
 }
 
+/** One authored song for the public, shared First Note auction. */
+export interface FirstNotePayload {
+  variant: 'first-note';
+  contextualClue: LocalizedText;
+  /** Optional player-facing label such as artist, year, album, or era. */
+  clueLabel?: LocalizedText;
+}
+
 export interface OddPieceVisual {
   localId: string;
   /** Server-only grading identity; never projected while the puzzle is live. */

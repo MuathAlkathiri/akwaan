@@ -14,6 +14,7 @@ import { ONE_CLUE_GAMEPLAY_PLUGIN } from './one-clue-gameplay.plugin';
 import { MARHALA_GAMEPLAY_PLUGIN } from './marhala-gameplay.plugin';
 import { ODD_PIECE_GAMEPLAY_PLUGIN } from './odd-piece-gameplay.plugin';
 import { LAQATHA_GAMEPLAY_PLUGIN } from './laqatha-gameplay.plugin';
+import { FIRST_NOTE_GAMEPLAY_PLUGIN } from './first-note-gameplay.plugin';
 
 @Injectable()
 export class GameplayModeRegistry {
@@ -85,6 +86,13 @@ export class GameplayModeRegistry {
         LAQATHA_GAMEPLAY_PLUGIN.version,
       ),
       LAQATHA_GAMEPLAY_PLUGIN,
+    ],
+    [
+      this.registryKey(
+        FIRST_NOTE_GAMEPLAY_PLUGIN.key,
+        FIRST_NOTE_GAMEPLAY_PLUGIN.version,
+      ),
+      FIRST_NOTE_GAMEPLAY_PLUGIN,
     ],
   ]);
 

@@ -964,4 +964,58 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
       expect(codes()).not.toContain('MARHALA_ITEM_DIFFICULTY_INVALID');
     });
   });
+
+  describe('First Note content', () => {
+    const firstNoteType = () =>
+      challengeType({
+        id: 'challenge-first-note',
+        slug: 'first-note',
+        family: ChallengeFamily.SIGNATURE,
+        answerMode: ChallengeAnswerMode.FIRST_NOTE,
+      });
+    const firstNoteItem = (overrides: Record<string, unknown> = {}) =>
+      contentItem({
+        compatibleChallengeTypeIds: ['challenge-first-note'],
+        answerPayload: {
+          mode: ChallengeAnswerMode.MATCH,
+          acceptedAnswers: ['الأماكن'],
+        },
+        media: {
+          type: ContentMediaType.AUDIO,
+          assets: [{ url: 'https://cdn/song.mp3' }],
+        },
+        mechanicPayload: {
+          variant: 'first-note',
+          contextualClue: { ar: 'أغنية خليجية من التسعينات' },
+        },
+        ...overrides,
+      });
+    const firstNoteCodes = (overrides: Record<string, unknown> = {}) =>
+      codes({
+        item: firstNoteItem(overrides),
+        challengeTypes: typeMap(firstNoteType()),
+      });
+
+    it('accepts one contextual clue, MATCH answers, and canonical audio', () => {
+      expect(firstNoteCodes()).not.toContain('FIRST_NOTE_STRUCTURE_INVALID');
+    });
+    it('rejects a missing clue', () => {
+      expect(
+        firstNoteCodes({ mechanicPayload: { variant: 'first-note' } }),
+      ).toContain('FIRST_NOTE_STRUCTURE_INVALID');
+    });
+    it('rejects missing or non-audio media', () => {
+      expect(firstNoteCodes({ media: undefined })).toContain(
+        'FIRST_NOTE_STRUCTURE_INVALID',
+      );
+      expect(
+        firstNoteCodes({
+          media: {
+            type: ContentMediaType.IMAGE,
+            assets: [{ url: 'https://cdn/song.webp' }],
+          },
+        }),
+      ).toContain('FIRST_NOTE_STRUCTURE_INVALID');
+    });
+  });
 });

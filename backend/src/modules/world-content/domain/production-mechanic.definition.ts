@@ -11,6 +11,7 @@ import {
   MARHALA_SLUG,
   ODD_PIECE_SLUG,
   LAQATHA_SLUG,
+  FIRST_NOTE_SLUG,
 } from './world-content.constants';
 import { ChallengePresentation } from './world-content.types';
 
@@ -224,6 +225,30 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
             'كل ما جاوبتوا بدري، نقاطكم أعلى.',
             'اضغطوا «جاوب» لحجز الإجابة.',
             'إذا غلطتم تكمل الفرصة للفريق الثاني.',
+          ],
+        },
+      },
+    },
+  }),
+  definition({
+    slug: FIRST_NOTE_SLUG,
+    family: ChallengeFamily.SIGNATURE,
+    itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
+    answerMode: ChallengeAnswerMode.FIRST_NOTE,
+    seed: {
+      name: 'من أول نغمة',
+      description:
+        'مزاد تعرّف على الأغاني: أقل مدة رابحة تسمع المقطع وتملك أولوية الإجابة.',
+      defaultPresentation: {
+        inputType: 'phone-text',
+        timerSeconds: 15,
+        soundPack: null,
+        revealStyle: null,
+        playerInstructions: {
+          summary: 'زايدوا على أقل مدة تقدرون تعرفون منها الأغنية.',
+          steps: [
+            'أقل مزايدة تسمع نفس المدة وتجاوب أول.',
+            'إذا غلطتوا، للفريق الثاني محاولة سرقة بنفس المقطع.',
           ],
         },
       },

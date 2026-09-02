@@ -118,6 +118,7 @@ describe('World Content architecture', () => {
       'modules/live-game-sessions/application/start-bomb-from-content.use-case.ts',
       'modules/live-game-sessions/application/start-closest-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-combo-gameplay.use-case.ts',
+      'modules/live-game-sessions/application/start-first-note-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-laqatha-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-marhala-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-odd-piece-gameplay.use-case.ts',
@@ -129,6 +130,8 @@ describe('World Content architecture', () => {
       // restating ten, five, and the rank set a second time.
       // المرحلة's difficulty vocabulary is content metadata, so the board reads it
       // from World Content rather than declaring a second copy.
+      'modules/live-game-sessions/domain/first-note-gameplay.plugin.spec.ts',
+      'modules/live-game-sessions/domain/first-note-gameplay.plugin.ts',
       'modules/live-game-sessions/domain/laqatha-gameplay.plugin.spec.ts',
       'modules/live-game-sessions/domain/laqatha-gameplay.plugin.ts',
       'modules/live-game-sessions/domain/marhala-board.ts',

@@ -133,8 +133,10 @@ import { StartOneClueGameplay } from './application/start-one-clue-gameplay.use-
 import { WithdrawPresentationReadiness } from './application/withdraw-presentation-readiness.use-case';
 import { StartOddPieceGameplay } from './application/start-odd-piece-gameplay.use-case';
 import { StartLaqathaGameplay } from './application/start-laqatha-gameplay.use-case';
+import { StartFirstNoteGameplay } from './application/start-first-note-gameplay.use-case';
 
 const applicationProviders = [
+  StartFirstNoteGameplay,
   CreateLiveGameSession,
   GetLiveGameSession,
   LiveSessionSnapshotComposer,
@@ -308,6 +310,7 @@ const applicationProviders = [
     StartTop5,
     StartClosestGameplay,
     StartComboGameplay,
+    StartFirstNoteGameplay,
     StartOneClueGameplay,
     StartRakkibha,
     StartOddPieceGameplay,

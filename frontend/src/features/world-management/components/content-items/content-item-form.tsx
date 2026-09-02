@@ -32,6 +32,7 @@ import {
   hasComboMechanic,
   hasMarhalaMechanic,
   hasOddPieceMechanic,
+  hasFirstNoteMechanic,
 } from "../../services/content-item-form.service";
 import { FormIssueList } from "../shared";
 import { AnswerPayloadFields } from "./answer-payload-fields";
@@ -42,6 +43,7 @@ import { ComboFields } from "./combo-fields";
 import { MarhalaFields } from "./marhala-fields";
 import { OddPieceFields } from "./odd-piece-fields";
 import { LaqathaFields } from "./laqatha-fields";
+import { FirstNoteFields } from "./first-note-fields";
 import {
   CONTENT_STATUSES,
   CONTENT_STATUS_LABEL,
@@ -128,6 +130,7 @@ export function ContentItemForm({
     (configuration) =>
       patternOf(configuration.challengeType.answerMode) === "laqatha",
   );
+  const firstNoteSelected = hasFirstNoteMechanic(selectedChallengeTypes);
   // Keep the payload flag in step with the selection, so deselecting the
   // mechanic stops emitting its payload.
   useEffect(() => {
@@ -207,6 +210,20 @@ export function ContentItemForm({
       };
     });
   }, [laqathaSelected]);
+
+  useEffect(() => {
+    setValues((current) =>
+      current.firstNote.enabled === firstNoteSelected
+        ? current
+        : {
+            ...current,
+            answer: firstNoteSelected
+              ? { ...current.answer, mode: "match" }
+              : current.answer,
+            firstNote: { ...current.firstNote, enabled: firstNoteSelected },
+          },
+    );
+  }, [firstNoteSelected]);
 
   const formSubmit = useEntityFormSubmit<ContentItem>({
     entityId: contentItem?.id,
@@ -355,6 +372,15 @@ export function ContentItemForm({
           value={values.laqatha}
           acceptedAnswers={values.answer.acceptedAnswers}
           onChange={(laqatha) => set({ laqatha })}
+          onAcceptedAnswersChange={(acceptedAnswers) =>
+            set({ answer: { ...values.answer, acceptedAnswers } })
+          }
+        />
+      ) : firstNoteSelected ? (
+        <FirstNoteFields
+          value={values.firstNote}
+          acceptedAnswers={values.answer.acceptedAnswers}
+          onChange={(firstNote) => set({ firstNote })}
           onAcceptedAnswersChange={(acceptedAnswers) =>
             set({ answer: { ...values.answer, acceptedAnswers } })
           }

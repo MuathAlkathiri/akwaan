@@ -23,6 +23,7 @@ import {
   ONE_CLUE_VALUES,
   LAQATHA_SLUG,
   LAQATHA_VALUES,
+  FIRST_NOTE_SLUG,
   VoteConsensusRule,
   WorldContentStatus,
 } from './world-content.constants';
@@ -48,6 +49,7 @@ import {
   OneCluePayload,
   OddPiecePayload,
   LaqathaPayload,
+  FirstNotePayload,
 } from './world-content.types';
 import { validateOddPiecePayload } from './odd-piece-content.policy';
 
@@ -103,6 +105,7 @@ export class ContentItemCompatibilityPolicy {
     blockers.push(...this.validateRakkibhaPayload(input.item, referenced));
     blockers.push(...this.validateOneCluePayload(input.item, referenced));
     blockers.push(...this.validateLaqathaPayload(input.item, referenced));
+    blockers.push(...this.validateFirstNotePayload(input.item, referenced));
     blockers.push(...this.validateComboPayload(input.item, referenced));
     blockers.push(...this.validateBombItem(input.item, referenced));
     blockers.push(...this.validateMarhalaPayload(input.item, referenced));
@@ -298,6 +301,33 @@ export class ContentItemCompatibilityPolicy {
       media.type !== ContentMediaType.NONE &&
       media.assets?.some((asset) => asset.url?.trim()),
     );
+  }
+
+  private validateFirstNotePayload(
+    item: ContentItemView,
+    challengeTypes: ChallengeTypeView[],
+  ): WorldContentIssue[] {
+    if (!challengeTypes.some((type) => type.slug === FIRST_NOTE_SLUG))
+      return [];
+    const payload = item.mechanicPayload as
+      Partial<FirstNotePayload> | undefined;
+    const audio = item.media;
+    if (
+      payload?.variant !== 'first-note' ||
+      !payload.contextualClue?.ar?.trim() ||
+      audio?.type !== ContentMediaType.AUDIO ||
+      audio.assets?.length !== 1 ||
+      !audio.assets[0]?.url?.trim()
+    ) {
+      return [
+        issue(
+          'FIRST_NOTE_STRUCTURE_INVALID',
+          'من أول نغمة requires one contextual clue and exactly one playable audio asset',
+          { contentItemId: item.id },
+        ),
+      ];
+    }
+    return [];
   }
 
   /**
