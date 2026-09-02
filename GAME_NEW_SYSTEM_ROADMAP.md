@@ -40,6 +40,21 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
+### Where things stand — 2026-09-02 · MEDIA + MARHALA FAIR-START SOURCE MILESTONES
+
+The RYO/Closest media projection work and Marhala Fair-Start lifecycle are implemented and verified locally.
+Commit `6b685376` adds canonical audio playback and minimal safe media projection for RYO and Closest without
+changing scoring or gameplay. Marhala commits `c7614dd` and `4ed3250` move each question through
+**difficulty → prepared → presentation readiness → activation → deadline → answer/expiry**. Prepared questions
+have no consumable deadline and are not exposed; activation anchors the authoritative deadline, recurring
+questions use fresh presentation generations, and existing board, movement, scoring, and media semantics remain
+unchanged. The Marhala real-Mongo lifecycle passes **24/24** against an isolated test database. No production
+content, board, World, DB, or R2 state was changed by these source milestones.
+
+Verification evidence for this release stack: backend **190 suites / 1,850 tests**, frontend **100 files / 968
+tests**, Marhala focused backend **47/47**, shared Fair-Start/exposure **59/59**, Marhala frontend **82/82**,
+Marhala real-Mongo **24/24**, typechecks, frontend and backend production builds, lint, and diff check PASS.
+
 ### Where things stand — 2026-09-01 · FAIR-START + CARS SOURCE MILESTONES
 
 This milestone was promoted to `main` on 2026-09-01. Commits `52dd72a` (recurring Fair-Start), `49c65b0` (Cars
