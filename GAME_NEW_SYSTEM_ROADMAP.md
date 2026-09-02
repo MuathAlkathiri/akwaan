@@ -141,6 +141,7 @@ Distinctions kept apart on purpose. Each row is one claim about one thing.
 | **Video Games / Puzzles expansion — runtime promotion** | ⬜ **NOT PROMOTED** — Bomb media pending (§C.1) |
 | Public production database | ⬜ **NOT PROMOTED** |
 | Production deployment | ⬜ **NOT DEPLOYED** |
+| **Admin image upload + generic optional Reveal authoring** | ✅ **IMPLEMENTED & VERIFIED** — IMAGE ContentItems use the canonical upload/storage pipeline; optional image-only `revealMedia` is additive, independent, non-positional, and does not affect readiness. Legacy URL-backed items remain compatible; no bulk migration is required. Reveal is not universally player-projected or rendered by mechanics. Odd Piece's richer `targetVehicleReveal` contract remains unchanged. Backend: 190 suites / 1850 tests; frontend: 100 files / 968 tests; typechecks, production builds, lint, privacy and media-switch regressions pass; local Admin upload/reveal smoke verified. |
 
 **Git, database and deployment are three different things and this document keeps them apart.**
 
