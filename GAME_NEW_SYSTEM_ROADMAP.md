@@ -40,6 +40,32 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
+### Where things stand — 2026-09-03 · HOW-TO-PLAY WALKTHROUGH — FRONTEND PRODUCTION RELEASE
+
+The redesigned player-facing **`/how-to-play`** walkthrough is ✅ **IMPLEMENTED & VERIFIED — PRODUCTION**. The old
+generic 2×2 instruction-card block on the home page was replaced by a dedicated route that sells the product with
+the product: a hero putting one shared screen among several player phones, four alternating steps, and a CTA into
+the existing World-selection journey. Step 2 draws **real World artwork from the existing public catalog API**;
+Step 4 is an active-gameplay preview composed from the real `TeamScore`, `ChallengeCountdown`, challenge-identity
+and team-identity pieces. Detail and evidence in **§22.5**.
+
+Source is on `main` as commit `e4fa573` (parent `a01fe09`), pushed **fast-forward** `a01fe09..e4fa573` with no
+force push. **Commit boundary — `e4fa573` is not How-to-Play-only:** it deliberately also carries same-session
+landing-page work (site **Footer**, navbar **smooth-scroll**, **`SectionHeading`** extraction), which was accepted
+into the single commit because the header, layout and home page each contain both changes.
+
+Frontend was **deployed and production-verified** through the existing Vercel Git integration at
+`https://akwaan-frontend.vercel.app/how-to-play` (HTTP 200; no duplicate manual deployment created). The same push
+also auto-triggered a **Render backend rebuild** because `render.yaml` sets `autoDeploy: true` on `branch: main` —
+the commit contains **zero backend source changes**, so that rebuild is identical code and is **not** part of this
+milestone. **No runtime DB, production content, World taxonomy, or R2/media writes occurred**; the page only reads
+existing World catalog and media data.
+
+Verification for this frontend milestone: typecheck PASS, frontend **102 files / 984 tests**, changed-scope lint
+clean (one pre-existing unrelated warning in `rakkibha.test.tsx`), frontend production build PASS with
+`/how-to-play` statically prerendered, plus desktop/tablet/mobile checks. This snapshot upgrades **only** this
+page — no unrelated Player UX, gameplay, content or backend QA status changes on its evidence.
+
 ### Where things stand — 2026-09-02 · MEDIA + MARHALA FAIR-START SOURCE MILESTONES
 
 The RYO/Closest media projection work and Marhala Fair-Start lifecycle are implemented and verified locally.
@@ -508,6 +534,12 @@ Design approval above does **not** imply any of these. Full matrix in §16.
 
 ### K. Final QA / release — 🚧 PRE-DEPLOY QA COMPLETE; deployment pending
 
+> **Current status pointer.** The "deployment pending" framing below is **historical pre-deploy evidence for the
+> 2026-08-27 RC** and is deliberately left intact. Deployment has since happened: §22's *Deployment update
+> (2026-08-28)* is the deployment-status source of truth for that RC, and **§22.5** records the separate
+> 2026-09-03 `/how-to-play` frontend release (committed `e4fa573`, pushed, deployed and production-verified).
+> Neither supersedes the unchecked gameplay/multi-device items below, which remain genuinely open.
+
 Local runtime QA + Release Gate Cleanup completed **2026-08-27** (evidence in "Where things stand — 2026-08-27").
 
 - [x] Full **local** runtime QA against a stack **rebuilt from the current working tree**
@@ -542,6 +574,11 @@ Partial credit (historical, unchanged): local rebuilt-stack gameplay smokes for 
 New player-facing workstreams since the previous baseline. All verified locally against the rebuilt stack; **none
 committed, pushed, or deployed.** Detail and evidence in **§22**.
 
+> **Current status pointer.** The "*local, pre-deploy*" heading and the "none committed, pushed, or deployed"
+> sentence above are **preserved as the original 2026-08-27 pre-deploy evidence**. Both have since been overtaken:
+> the RC was committed, pushed and deployed (§22 *Deployment update, 2026-08-28*), and the 2026-09-03
+> `/how-to-play` walkthrough below is **deployed and production-verified** (§22.5).
+
 - [x] **Player journey** — Homepage / World+Scope selection → Team Setup → Match → Board → Preflight → Challenge → Result; the old **Review step is removed** (component deleted, unimported); Match creation stays the normal authoritative orchestration (session → ready → start → `createUnified`)
 - [x] Homepage / Worlds journey, Scope-selection interaction, Auth/login redesign, Team Setup redesign
 - [x] **Match HUD / Header** — live scores + team presentation + Double state in a Match-specific header, distinct from the SiteHeader
@@ -549,6 +586,10 @@ committed, pushed, or deployed.** Detail and evidence in **§22**.
 - [x] **مبارياتي / My Games (Resume + Replay)** — authenticated **owner-scoped** listing; Resume returns the **SAME** `liveSessionId`/Match; Replay seeds the normal setup flow and creates a **NEW** session + Match with World-occurrence order + selected Scope IDs preserved; the previous completed Match stays untouched; **no `reconnectToken`/private runtime state exposed**. ⚠️ abandoned-Match **expiry policy remains Known Debt (§19 #2)** — My Games does **not** solve expiry
 - [x] **Preflight redesign** — Challenge-first briefing, canonical `playerInstructions`, compact readiness roster with authoritative counts, Match-scoped scan-once QR accordion (open on first relevant join, later collapsible/reopenable, no re-scan between Challenges), context chips + selecting team, authoritative `readyToLaunch`, Preflight-only large-turn-band suppression *(§10.2 remains the QR architecture source of truth)*
 - [x] **Interaction Feedback system** — branded loader (meaningful entry/recovery waits only), skeletons (known-layout content), pending buttons (async mutations / duplicate-submit prevention), one global Sonner toast (errors + invisible-utility successes only; **score/turn/Double/successful-reconnect stay silent**; **no artificial gameplay delay**; loaders never own the gameplay lifecycle)
+- [x] **How-to-Play product walkthrough** — ✅ **PRODUCTION** *(2026-09-03, §22.5)*. The home page's generic 2×2 instruction cards replaced by a dedicated `/how-to-play` product story: hero (one shared screen among player phones), four alternating steps, CTA into the **existing** World-selection journey — **no parallel game-start path**
+- [x] **API-driven real World artwork (Step 2)** — reuses `usePlayableWorlds()` → `fetchPlayableWorlds()` → `GET /worlds` and the canonical World `banner` media infrastructure; **no new endpoint, no backend contract change, no second World query layer**. Three Worlds marked 1 / 2 / 3, fourth explanatory/unselected at `opacity: 0.6` with no filter; **no Match World-selection mutation occurs**
+- [x] **Active gameplay preview (Step 4)** — composed from existing `TeamScore`, `ChallengeCountdown`, challenge-identity and team-identity pieces; **static/presentational only — no socket, Match snapshot, runtime, or gameplay mutation**; demo scoreline is marketing presentation data, not runtime state
+- [x] **Production deployment verification** — commit `e4fa573` (**not How-to-Play-only**: also carries the site Footer, navbar smooth-scroll and `SectionHeading` extraction) pushed fast-forward `a01fe09..e4fa573`; frontend deployed via the existing Vercel Git integration and smoke-verified at `https://akwaan-frontend.vercel.app/how-to-play`. Backend rebuild was **auto-triggered by `render.yaml` `autoDeploy` only — zero backend source changes**. **No DB/content/taxonomy/R2 mutations**
 - [ ] ⚠️ **POST-DEPLOY VISUAL FOLLOW-UP** *(not an implementation gap)* — real-latency loader/skeleton + toast visuals, multi-device QR/reconnect, Resume + completed-Match Replay browser E2E (§22)
 
 ---
@@ -2594,6 +2635,92 @@ The scoped commit **excludes**, at minimum:
 - **Multi-device** QR join, team assignment, private-vs-shared projections, phone + controller reconnect, next-Challenge without re-scan.
 - **Completed-Match history + `العب مرة ثانية` (Replay)** full browser E2E (no completed Match exists locally, and completing one needs a fully-played 12-Challenge Match).
 - The full **production deployment smoke** (§19 item 10, §K).
+
+### 22.5 How-to-Play Product Walkthrough — ✅ IMPLEMENTED & VERIFIED — PRODUCTION (2026-09-03)
+
+The detailed home for the `/how-to-play` milestone summarised in the "Where things stand — 2026-09-03" snapshot
+and checklist **§L**. This is production implementation, **not** a prototype or a design-only approval. It changes
+no gameplay, scoring, lifecycle, socket or backend contract.
+
+#### What replaced what
+
+The home page previously carried a generic 2×2 instruction-card block. It was removed and replaced by a dedicated
+`/how-to-play` route built as a scrollable product story, with the header and footer "كيف تلعب" links repointed at
+the new page.
+
+| # | Step | Product visual |
+|---|---|---|
+| — | **Hero** — `كيف تلعب أكوان؟` | One shared screen centred among several player-phone visuals; states the Akwaan model directly: one shared **public** screen, private **player** phones |
+| 1 | `جهزوا الشاشة` | Shared-screen presentation |
+| 2 | `اختاروا 3 عوالم` | **Real World data/artwork**, API-driven; three Worlds marked **1 / 2 / 3** as selected, the fourth explanatory/unselected |
+| 3 | `اربطوا جوالاتكم` | Explanatory QR → phones visual for the existing **scan-once-per-match** model (§10.2) |
+| 4 | `العبوا وتنافسوا` | **Active gameplay** preview — active challenge, score, active team, timer, player submission state |
+| — | **CTA** — `ابدأ اللعبة` | Routes into the existing homepage / World-selection journey |
+
+#### Step 2 — real World artwork, no new API
+
+- Reuses the existing public read-only catalog flow end to end: **`usePlayableWorlds()` → `fetchPlayableWorlds()` → `GET /worlds`**.
+- Reuses the canonical World **`banner`** media field and the existing World media-URL / cover infrastructure — no new media path, no second World query layer.
+- **No new How-to-Play API endpoint was created; no backend contract change was required.**
+- The visual is explanatory only: **no Match World-selection mutation occurs from it.**
+- Final unselected-World treatment: artwork stays **coloured and recognizable**, `opacity: 0.6`, **no desaturation/filter**, **no selection badge**, **no selected gold-ring treatment** — available, not disabled.
+
+#### Step 4 — active gameplay preview, static only
+
+- Composed from existing product presentation pieces: **`TeamScore`**, **`ChallengeCountdown`**, the challenge identity/icon infrastructure, and team identity.
+- Redesigned away from an earlier visual that duplicated the Step 1 resting board.
+- **Static/presentational only: no socket, no Match snapshot, no active runtime, no gameplay mutation.** No Match/session/runtime data is fetched for it.
+- The demo scoreline is **marketing-only presentation data, not runtime state**, and is confined to this page.
+
+#### Visual & responsive direction (approved and implemented)
+
+Warm cream/off-white page, navy with restrained gold, Arabic RTL, product visuals rather than generic SaaS feature
+icons, an alternating vertical product-story journey, and a lightweight orbit/timeline connector. Responsive across
+desktop/tablet/mobile with **no horizontal overflow** on mobile; the desktop journey stays spacious but was
+tightened by roughly **10–15%**. **No new animation framework or parallel design system was introduced.**
+
+#### Source validation
+
+- Frontend typecheck **PASS**; frontend tests **984 / 984 across 102 files**; changed-scope lint **clean**; frontend production build **PASS** with `/how-to-play` **statically prerendered**.
+- One unrelated, pre-existing lint warning in `rakkibha.test.tsx` is untouched and is not part of this boundary.
+- Desktop/tablet/mobile checked · RTL correct · no horizontal overflow · all 4 World images loaded · Step 3 QR visual intact · Step 4 active-gameplay visual intact · CTA works · zero page errors · zero console errors.
+- This evidence upgrades **this page only** — no unrelated application QA status is raised on it.
+
+#### Git boundary
+
+- Branch **`main`** · commit **`e4fa573a6ceddfaaa59af4d443186f1820e62d83`** (parent `a01fe09`).
+- Previous `origin/main` **`a01fe09`** → new `origin/main` **`e4fa573`**; push was **fast-forward**, **no force push**.
+- **`e4fa573` is NOT exclusively How-to-Play.** It also contains same-session landing-page work that was intentionally accepted into the single commit: the site **Footer**, the navbar **smooth-scroll**, and the **`SectionHeading`** extraction. The three are entangled inside the same files (header, layout, home page), so a clean split would have produced a non-building intermediate commit.
+- 18 files changed, **0 backend files**.
+
+#### Deployment — three distinct facts
+
+| Fact | State |
+|---|---|
+| Git remote push | ✅ `a01fe09..e4fa573` fast-forward to `origin/main` |
+| **Frontend production deployment** | ✅ **DEPLOYED & VERIFIED** — Vercel, triggered automatically by the `main` push through the existing Git integration; **no duplicate/manual deployment created** |
+| Backend deployment | ⚙️ **Rebuild auto-triggered only.** `render.yaml` carries `autoDeploy: true` on `branch: main`, so the push rebuilt `akwaan-api` from **identical code**. **No backend implementation was performed for this milestone and the backend received no feature changes.** This rebuild is not part of the How-to-Play implementation |
+| Runtime DB mutations | **NONE** |
+| Production content mutations | **NONE** |
+| World taxonomy mutations | **NONE** |
+| R2 / media writes | **NONE** |
+
+The page only **reads** existing World catalog and media data.
+
+#### Production smoke — verified on the public deployment
+
+Public frontend origin **`https://akwaan-frontend.vercel.app`**; verified route
+**`https://akwaan-frontend.vercel.app/how-to-play`**, on desktop and mobile viewports:
+
+HTTP **200** and route live · header/navigation render · Hero renders · **real API World artwork renders** ·
+**1 / 2 / 3** selected-World indicators render · unselected World renders at **`opacity: 0.6` with no filter and
+does not look disabled** · QR explanatory visual renders · Step 4 active-gameplay presentation renders · CTA routes
+correctly · **zero broken images** · no horizontal overflow on the verified viewports · **zero page/console errors**.
+
+#### Follow-ups (not implementation gaps)
+
+- **`selectFeaturedWorlds` alias matching** does not directly match the current `كرة قدم` name form, so Football can fall through the generic fill path instead of curated matching. **Pre-existing**, and it affects the **homepage** as well as this page — **not fixed by this milestone**.
+- **Documentation:** `docs/BETA-DEPLOYMENT.md` still names `akwaan.vercel.app`, which returns a Vercel 404. The verified live frontend origin is **`https://akwaan-frontend.vercel.app`**. Recorded as a documentation follow-up — **not fixed**.
 
 ---
 
