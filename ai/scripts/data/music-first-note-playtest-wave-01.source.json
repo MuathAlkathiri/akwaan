@@ -1,0 +1,462 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "metadata": {
+    "packId": "music-first-note-playtest-wave-01-r2",
+    "world": "music",
+    "mechanic": "first-note",
+    "mechanicNameAr": "من أول نغمة",
+    "status": "DESIGN_APPROVED_NOT_IMPLEMENTED",
+    "totalItems": 12,
+    "scopes": ["saudi-music", "gulf-music", "arabic-music", "international-music"],
+    "distributionPerScope": 3,
+    "eraDistribution": {
+      "modern_2020_2026": 4,
+      "mid_era_2005_2019": 4,
+      "older_pre_2005": 4
+    },
+    "distinctArtists": 12,
+    "duplicateArtists": 0,
+    "playableSecondsContract": [1, 3, 7, 15],
+    "mediaEnriched": true,
+    "totalClips": 12
+  },
+  "items": [
+    {
+      "authoringId": "mus-not-001",
+      "world": "music",
+      "scopeSlug": "saudi-music",
+      "mechanic": "first-note",
+      "eraBucket": "Modern (2020–2026)",
+      "releaseYear": 2020,
+      "artist": "عايض",
+      "album": "فمان الله (سينجل 2020)",
+      "answer": {
+        "canonicalTitle": "فمان الله",
+        "acceptedAnswers": ["فمان الله", "فمان الله عايض", "Faman Allah", "Faman Allah Ayed"]
+      },
+      "auctionHint": {
+        "type": "era_scene",
+        "playerText": "سعودية معاصرة من بداية العقد",
+        "wordCount": 5
+      },
+      "mediaUrl": "uploads/question-assets/audio/mus_faman_allah_ayed.mp3",
+      "audioClipDetails": {
+        "sourceSubject": "عايض - فمان الله (2020)",
+        "preferredCue": "صولو الجيتار الأكوستيك الحزين الممزوج بالإيقاع السعودي المعاصر.",
+        "durationSeconds": 15.0,
+        "playableSteps": [1, 3, 7, 15],
+        "recognitionRationale": "الثانية 1 تعطي رنة الجيتار الأكوستيك الحزينة الأولى؛ 3 ثوانٍ تكمل التتابع اللحني التعبيري؛ 7 ثوانٍ تدخل الإيقاع السعودي المعاصر؛ 15 ثانية تصل لذروة اللحن قبل الغناء."
+      },
+      "evidence": [
+        "One Production / Rotana: Ayed - Faman Allah (2020), composed by Yasser Bu Ali, lyrics by Saud bin Mohammed Al-Abdullah Al-Faisal.",
+        "Verified master audio intro: 15.00s purely acoustic guitar and modern Saudi beat."
+      ],
+      "qa": {
+        "factualVerdict": "PASS",
+        "zeroLeakageVerdict": "PASS",
+        "audioPlayabilityVerdict": "PASS (uploads/question-assets/audio/mus_faman_allah_ayed.mp3)"
+      }
+    },
+    {
+      "authoringId": "mus-not-002",
+      "world": "music",
+      "scopeSlug": "saudi-music",
+      "mechanic": "first-note",
+      "eraBucket": "Mid-Era (2005–2019)",
+      "releaseYear": 2015,
+      "artist": "رابح صقر",
+      "album": "أوجه المعنى (2015)",
+      "answer": {
+        "canonicalTitle": "سقى الله",
+        "acceptedAnswers": ["سقى الله", "سقى الله رابح", "سقا الله", "Seqa Allah", "Sega Allah"]
+      },
+      "auctionHint": {
+        "type": "style_era",
+        "playerText": "جلسة سعودية من منتصف العقد الماضي",
+        "wordCount": 6
+      },
+      "mediaUrl": "uploads/question-assets/audio/mus_seqa_allah_saqer.mp3",
+      "audioClipDetails": {
+        "sourceSubject": "رابح صقر - سقى الله (2015)",
+        "preferredCue": "تقاسيم العود الصقري الرنانة مع إيقاع الخبيتي الهادئ وصوت الصفقات.",
+        "durationSeconds": 15.0,
+        "playableSteps": [1, 3, 7, 15],
+        "recognitionRationale": "الثانية 1 تعطي ضربة وتر العود الرنانة المميزة لرابح؛ 3 ثوانٍ توضح رتم الجلسة مع الصفقة؛ 7 ثوانٍ تقدم الجملة اللحنية الخالدة؛ 15 ثانية تكتمل مع الكورال قبل المذهب."
+      },
+      "evidence": [
+        "Rotana Music: Rabeh Saqer - Seqa Allah (2015), composed by Rabeh Saqer, lyrics by Qaws.",
+        "Verified master audio intro: 15.00s solo Oud and signature Rabeh groove."
+      ],
+      "qa": {
+        "factualVerdict": "PASS",
+        "zeroLeakageVerdict": "PASS",
+        "audioPlayabilityVerdict": "PASS (uploads/question-assets/audio/mus_seqa_allah_saqer.mp3)"
+      }
+    },
+    {
+      "authoringId": "mus-not-003",
+      "world": "music",
+      "scopeSlug": "saudi-music",
+      "mechanic": "first-note",
+      "eraBucket": "Older / Classic (pre-2005)",
+      "releaseYear": 1980,
+      "artist": "أبو بكر سالم",
+      "album": "سر حبي (1980)",
+      "answer": {
+        "canonicalTitle": "سر حبي",
+        "acceptedAnswers": ["سر حبي", "سر حبي فيك غامض", "سر حبي فيك", "Serr Hubbi", "Ser Hobi"]
+      },
+      "auctionHint": {
+        "type": "heritage_style",
+        "playerText": "من التراث الغنائي الأصيل",
+        "wordCount": 4
+      },
+      "mediaUrl": "uploads/question-assets/audio/mus_serr_hubbi_abubakr.mp3",
+      "audioClipDetails": {
+        "sourceSubject": "أبو بكر سالم - سر حبي فيك غامض (1980)",
+        "preferredCue": "نغمات العود الحضرمي والوتريات الكلاسيكية لمقدمة سر حبي فيك غامض.",
+        "durationSeconds": 15.0,
+        "playableSteps": [1, 3, 7, 15],
+        "recognitionRationale": "الثانية 1 تعطي رنة العود الطربية؛ 3 ثوانٍ تكمل مدخل اللحن الحضرمي الداني؛ 7 ثوانٍ تدمج كمنجات الأوركسترا الكلاسيكية؛ 15 ثانية تقدم لازمة اللحن كاملة."
+      },
+      "evidence": [
+        "Founoon Al Jazeerah: Abu Baker Salem - Serr Hubbi Feek Ghamed (1980), lyrics & music by Hussein Abu Bakr Al-Mehdhar.",
+        "Verified master audio intro: 15.00s classic Oud and strings arrangement."
+      ],
+      "qa": {
+        "factualVerdict": "PASS",
+        "zeroLeakageVerdict": "PASS",
+        "audioPlayabilityVerdict": "PASS (uploads/question-assets/audio/mus_serr_hubbi_abubakr.mp3)"
+      }
+    },
+    {
+      "authoringId": "mus-not-004",
+      "world": "music",
+      "scopeSlug": "gulf-music",
+      "mechanic": "first-note",
+      "eraBucket": "Modern (2020–2026)",
+      "releaseYear": 2020,
+      "artist": "ماجد المهندس",
+      "album": "شهد الحروف (2020)",
+      "answer": {
+        "canonicalTitle": "هتان",
+        "acceptedAnswers": ["هتان", "ماجد المهندس هتان", "Hattan", "Hatan"]
+      },
+      "auctionHint": {
+        "type": "mood_year",
+        "playerText": "عمل رومانسي هادئ صدر في 2020",
+        "wordCount": 6
+      },
+      "mediaUrl": "uploads/question-assets/audio/mus_hattan_mohandis.mp3",
+      "audioClipDetails": {
+        "sourceSubject": "ماجد المهندس - هتان (2020)",
+        "preferredCue": "صولو البيانو الرومانسي والوتريات الهادئة لمقدمة هتان.",
+        "durationSeconds": 15.0,
+        "playableSteps": [1, 3, 7, 15],
+        "recognitionRationale": "الثانية 1 تعطي أول كورد بيانو رومانسي؛ 3 ثوانٍ تكمل لحن المطر الانسيابي؛ 7 ثوانٍ تدخل الوتريات المتناغمة؛ 15 ثانية تقدم المقدمة الرومانسية كاملة لصادق الشاعر."
+      },
+      "evidence": [
+        "Rotana Music: Majed Al Mohandis - Hattan (2020), composed by Sadiq Al Shaer, lyrics by Prince Badr bin Abdulmohsen.",
+        "Verified master audio intro: 15.00s piano & orchestral strings."
+      ],
+      "qa": {
+        "factualVerdict": "PASS",
+        "zeroLeakageVerdict": "PASS",
+        "audioPlayabilityVerdict": "PASS (uploads/question-assets/audio/mus_hattan_mohandis.mp3)"
+      }
+    },
+    {
+      "authoringId": "mus-not-005",
+      "world": "music",
+      "scopeSlug": "gulf-music",
+      "mechanic": "first-note",
+      "eraBucket": "Mid-Era (2005–2019)",
+      "releaseYear": 2016,
+      "artist": "نوال الكويتية",
+      "album": "نوال 2016",
+      "answer": {
+        "canonicalTitle": "مثل النسيم",
+        "acceptedAnswers": ["مثل النسيم", "نوال مثل النسيم", "Methel El Naseem", "Mithl Al Naseem"]
+      },
+      "auctionHint": {
+        "type": "scene_composer",
+        "playerText": "عمل كويتي من ألحان سهم",
+        "wordCount": 5
+      },
+      "mediaUrl": "uploads/question-assets/audio/mus_methel_el_naseem_nawal.mp3",
+      "audioClipDetails": {
+        "sourceSubject": "نوال الكويتية - مثل النسيم (2016)",
+        "preferredCue": "توزيع الوتريات الدرامي المتصاعد لسهم مع البيانو الحزين.",
+        "durationSeconds": 15.0,
+        "playableSteps": [1, 3, 7, 15],
+        "recognitionRationale": "الثانية 1 تعطي النغمة الأولى للبيانو والوتريات؛ 3 ثوانٍ تكشف تصاعد الوتريات الدرامي المألوف؛ 7 ثوانٍ تقدم الجملة السهمية الرئيسية؛ 15 ثانية تهيئ المستمع لصوت قيثارة الخليج."
+      },
+      "evidence": [
+        "Rotana Music: Nawal El Kuwaitia - Methel El Naseem (2016), composed by Sahm, lyrics by Khalfan.",
+        "Verified master audio intro: 15.00s signature Sahm orchestral violin arrangement."
+      ],
+      "qa": {
+        "factualVerdict": "PASS",
+        "zeroLeakageVerdict": "PASS",
+        "audioPlayabilityVerdict": "PASS (uploads/question-assets/audio/mus_methel_el_naseem_nawal.mp3)"
+      }
+    },
+    {
+      "authoringId": "mus-not-006",
+      "world": "music",
+      "scopeSlug": "gulf-music",
+      "mechanic": "first-note",
+      "eraBucket": "Older / Classic (pre-2005)",
+      "releaseYear": 1997,
+      "artist": "فرقة ميامي",
+      "album": "عاشوا (1997)",
+      "answer": {
+        "canonicalTitle": "صبوحة",
+        "acceptedAnswers": ["صبوحة", "صبوحة خطبها نصيب", "ميامي صبوحة", "Sabbouha", "Sabouha"]
+      },
+      "auctionHint": {
+        "type": "genre_era",
+        "playerText": "بوب خليجي إيقاعي من التسعينات",
+        "wordCount": 5
+      },
+      "mediaUrl": "uploads/question-assets/audio/mus_sabbouha_miami.mp3",
+      "audioClipDetails": {
+        "sourceSubject": "فرقة ميامي - صبوحة (1997)",
+        "preferredCue": "نغمات الكيبورد والسنث الإيقاعية الراقصة لميامي مع الإيقاع السريع.",
+        "durationSeconds": 15.0,
+        "playableSteps": [1, 3, 7, 15],
+        "recognitionRationale": "الثانية 1 تعطي نقرة السنث التسعيناتي الراقصة؛ 3 ثوانٍ توضح ريتم ميامي الحماسي؛ 7 ثوانٍ تقدم جملة الكيبورد الشهيرة لصبوحة؛ 15 ثانية تطلق الحماس الإيقاعي الكامل."
+      },
+      "evidence": [
+        "Nazaer / Miami Band: Miami Band - Sabbouha (1997), Kuwaiti dance pop revival.",
+        "Verified master audio intro: 15.00s upbeat 90s synth and Gulf dance rhythm."
+      ],
+      "qa": {
+        "factualVerdict": "PASS",
+        "zeroLeakageVerdict": "PASS",
+        "audioPlayabilityVerdict": "PASS (uploads/question-assets/audio/mus_sabbouha_miami.mp3)"
+      }
+    },
+    {
+      "authoringId": "mus-not-007",
+      "world": "music",
+      "scopeSlug": "arabic-music",
+      "mechanic": "first-note",
+      "eraBucket": "Modern (2020–2026)",
+      "releaseYear": 2020,
+      "artist": "حمزة نمرة",
+      "album": "مولود سنة 80 (2020)",
+      "answer": {
+        "canonicalTitle": "فاضي شوية",
+        "acceptedAnswers": ["فاضي شوية", "فاضي شويه", "Fadi Shewaya", "Fady Shewaya"]
+      },
+      "auctionHint": {
+        "type": "scene_year",
+        "playerText": "أغنية عربية واسعة الانتشار صدرت 2020",
+        "wordCount": 6
+      },
+      "mediaUrl": "uploads/question-assets/audio/mus_fadi_shewaya_namira.mp3",
+      "audioClipDetails": {
+        "sourceSubject": "حمزة نمرة - فاضي شوية (2020)",
+        "preferredCue": "عزف الجيتار الأكوستيك الحزين المنفرد لمقدمة فاضي شوية.",
+        "durationSeconds": 15.0,
+        "playableSteps": [1, 3, 7, 15],
+        "recognitionRationale": "الثانية 1 تعطي أول رنة وتر جيتار حزينة؛ 3 ثوانٍ تكمل كورد الجيتار الانسيابي الهادئ؛ 7 ثوانٍ تظهر النمط اللحني المألوف لملايين المستمعين؛ 15 ثانية تقدم اللحن الحزين كاملاً قبل الغناء."
+      },
+      "evidence": [
+        "Namira Productions: Hamza Namira - Fadi Shewaya (2020), composed by Hamza Namira, lyrics by Khalil Ezz El-Din.",
+        "Verified master audio intro: 15.00s solo acoustic guitar theme."
+      ],
+      "qa": {
+        "factualVerdict": "PASS",
+        "zeroLeakageVerdict": "PASS",
+        "audioPlayabilityVerdict": "PASS (uploads/question-assets/audio/mus_fadi_shewaya_namira.mp3)"
+      }
+    },
+    {
+      "authoringId": "mus-not-008",
+      "world": "music",
+      "scopeSlug": "arabic-music",
+      "mechanic": "first-note",
+      "eraBucket": "Mid-Era (2005–2019)",
+      "releaseYear": 2013,
+      "artist": "شيرين",
+      "album": "شارة مسلسل حكاية حياة (2013)",
+      "answer": {
+        "canonicalTitle": "مشاعر",
+        "acceptedAnswers": ["مشاعر", "شيرين مشاعر", "Mashaer", "Mashaaer"]
+      },
+      "auctionHint": {
+        "type": "context_year",
+        "playerText": "شارة مسلسل درامي من 2013",
+        "wordCount": 5
+      },
+      "mediaUrl": "uploads/question-assets/audio/mus_mashaaer_sherine.mp3",
+      "audioClipDetails": {
+        "sourceSubject": "شيرين - مشاعر (2013)",
+        "preferredCue": "نغمات البيانو الحزينة وصوت الشيللو الأوركسترالي لمحمد رحيم.",
+        "durationSeconds": 15.0,
+        "playableSteps": [1, 3, 7, 15],
+        "recognitionRationale": "الثانية 1 تعطي نقرة البيانو الدرامية الأولى؛ 3 ثوانٍ تكمل جملة البيانو المؤثرة؛ 7 ثوانٍ يدخل صوت آلة الشيللو الأوركسترالي الحزين؛ 15 ثانية تقدم تتر المسلسل الدرامي كاملاً."
+      },
+      "evidence": [
+        "Arabica Music: Sherine Abdel-Wahab - Masha'er (2013), composed by Mohamed Rahim, lyrics by Ahmad Marzouk.",
+        "Verified master audio intro: 15.00s dramatic piano and cello intro."
+      ],
+      "qa": {
+        "factualVerdict": "PASS",
+        "zeroLeakageVerdict": "PASS",
+        "audioPlayabilityVerdict": "PASS (uploads/question-assets/audio/mus_mashaaer_sherine.mp3)"
+      }
+    },
+    {
+      "authoringId": "mus-not-009",
+      "world": "music",
+      "scopeSlug": "arabic-music",
+      "mechanic": "first-note",
+      "eraBucket": "Older / Classic (pre-2005)",
+      "releaseYear": 1999,
+      "artist": "جورج وسوف",
+      "album": "طبيب جراح (1999)",
+      "answer": {
+        "canonicalTitle": "طبيب جراح",
+        "acceptedAnswers": ["طبيب جراح", "جورج وسوف طبيب جراح", "Tabeeb Garrah", "Tabib Garah"]
+      },
+      "auctionHint": {
+        "type": "style_era",
+        "playerText": "طرب شامي من أواخر التسعينات",
+        "wordCount": 5
+      },
+      "mediaUrl": "uploads/question-assets/audio/mus_tabeeb_garrah_wassouf.mp3",
+      "audioClipDetails": {
+        "sourceSubject": "جورج وسوف - طبيب جراح (1999)",
+        "preferredCue": "صولو الأكورديون الشرقي ومقدمة الطرب الكلاسيكية لصلاح الشرنوبي.",
+        "durationSeconds": 15.0,
+        "playableSteps": [1, 3, 7, 15],
+        "recognitionRationale": "الثانية 1 تعطي نغمة الأكورديون الطربية الأولى لصلاح الشرنوبي؛ 3 ثوانٍ توضح اللحن الشرقي الدرامي؛ 7 ثوانٍ تدمج كمنجات الطرب الشرقي؛ 15 ثانية تقدم المقدمة الأيقونية كاملة لأبو وديع."
+      },
+      "evidence": [
+        "Rotana Music: George Wassouf - Tabeeb Garrah (1999), composed by Salah El Sharnoubi, lyrics by Safouh Shaghala.",
+        "Verified master audio intro: 15.00s classic oriental accordion and strings theme."
+      ],
+      "qa": {
+        "factualVerdict": "PASS",
+        "zeroLeakageVerdict": "PASS",
+        "audioPlayabilityVerdict": "PASS (uploads/question-assets/audio/mus_tabeeb_garrah_wassouf.mp3)"
+      }
+    },
+    {
+      "authoringId": "mus-not-010",
+      "world": "music",
+      "scopeSlug": "international-music",
+      "mechanic": "first-note",
+      "eraBucket": "Modern (2020–2026)",
+      "releaseYear": 2020,
+      "artist": "The Weeknd",
+      "album": "After Hours (2020)",
+      "answer": {
+        "canonicalTitle": "Blinding Lights",
+        "acceptedAnswers": ["Blinding Lights", "بليندنج لايتس", "بليندنغ لايتس", "ذا ويكند بليندنج لايتس"]
+      },
+      "auctionHint": {
+        "type": "genre_year",
+        "playerText": "سينث بوب عالمي من عام 2020",
+        "wordCount": 6
+      },
+      "mediaUrl": "uploads/question-assets/audio/mus_blinding_lights_weeknd.mp3",
+      "audioClipDetails": {
+        "sourceSubject": "The Weeknd - Blinding Lights (2020)",
+        "preferredCue": "نغمات السنث ويف الثمانينية السريعة مع الإيقاع الإلكتروني الراقص.",
+        "durationSeconds": 15.0,
+        "playableSteps": [1, 3, 7, 15],
+        "recognitionRationale": "الثانية 1 تعطي ضربة السنث ويف الثمانينية السريعة الأولى؛ 3 ثوانٍ تكمل ريف السنث الراقص الأشهر في 2020؛ 7 ثوانٍ تدخل ضربات الطبول الإلكترونية؛ 15 ثانية تقدم التوليفة الراقصة كاملة قبل دخول صوت ذا ويكند."
+      },
+      "evidence": [
+        "XO / Republic Records: The Weeknd - Blinding Lights (2020), produced by Max Martin & Oscar Holter.",
+        "Verified master audio intro: 15.00s energetic 80s synthwave hook."
+      ],
+      "qa": {
+        "factualVerdict": "PASS",
+        "zeroLeakageVerdict": "PASS",
+        "audioPlayabilityVerdict": "PASS (uploads/question-assets/audio/mus_blinding_lights_weeknd.mp3)"
+      }
+    },
+    {
+      "authoringId": "mus-not-011",
+      "world": "music",
+      "scopeSlug": "international-music",
+      "mechanic": "first-note",
+      "eraBucket": "Mid-Era (2005–2019)",
+      "releaseYear": 2008,
+      "artist": "Coldplay",
+      "album": "Viva la Vida or Death and All His Friends (2008)",
+      "answer": {
+        "canonicalTitle": "Viva La Vida",
+        "acceptedAnswers": ["Viva La Vida", "Viva la Vida", "فيفا لا فيدا", "كولدبلاي فيفا لا فيدا"]
+      },
+      "auctionHint": {
+        "type": "genre_era",
+        "playerText": "روك بديل عالمي من أواخر الألفينات",
+        "wordCount": 6
+      },
+      "mediaUrl": "uploads/question-assets/audio/mus_viva_la_vida_coldplay.mp3",
+      "audioClipDetails": {
+        "sourceSubject": "Coldplay - Viva La Vida (2008)",
+        "preferredCue": "عزف الوتريات الإيقاعي المتكرر الشهير لكولدبلاي مع الأجراس الإيقاعية.",
+        "durationSeconds": 15.0,
+        "playableSteps": [1, 3, 7, 15],
+        "recognitionRationale": "الثانية 1 تعطي أول رشفة وتريات إيقاعية (String rhythm section)؛ 3 ثوانٍ توضح اللوب الوتري الأوركسترالي المتكرر؛ 7 ثوانٍ تدخل الأجراس الإيقاعية وطبل البيز؛ 15 ثانية تقدم الافتتاحية الملحمية كاملة قبل صوت كريس مارتن."
+      },
+      "evidence": [
+        "Parlophone / Capitol: Coldplay - Viva La Vida (2008), produced by Brian Eno & Markus Dravs.",
+        "Verified master audio intro: 15.00s iconic orchestral strings rhythm."
+      ],
+      "qa": {
+        "factualVerdict": "PASS",
+        "zeroLeakageVerdict": "PASS",
+        "audioPlayabilityVerdict": "PASS (uploads/question-assets/audio/mus_viva_la_vida_coldplay.mp3)"
+      }
+    },
+    {
+      "authoringId": "mus-not-012",
+      "world": "music",
+      "scopeSlug": "international-music",
+      "mechanic": "first-note",
+      "eraBucket": "Older / Classic (pre-2005)",
+      "releaseYear": 1980,
+      "artist": "Queen",
+      "album": "The Game (1980)",
+      "answer": {
+        "canonicalTitle": "Another One Bites the Dust",
+        "acceptedAnswers": [
+          "Another One Bites the Dust",
+          "Another One Bites The Dust",
+          "كوين انذر ون بايتس ذا دست",
+          "انذر ون بايتس ذا دست"
+        ]
+      },
+      "auctionHint": {
+        "type": "style_year",
+        "playerText": "باص لاين كلاسيكي من عام 1980",
+        "wordCount": 6
+      },
+      "mediaUrl": "uploads/question-assets/audio/mus_another_one_bites_dust_queen.mp3",
+      "audioClipDetails": {
+        "sourceSubject": "Queen - Another One Bites the Dust (1980)",
+        "preferredCue": "خط الباص لاين الفانكي الأسطوري لجون ديكون مع ضربات الدرامز الصامتة.",
+        "durationSeconds": 15.0,
+        "playableSteps": [1, 3, 7, 15],
+        "recognitionRationale": "الثانية 1 تعطي أول 3 نغمات باص لاين فانكي أسطوري (Bassline)؛ 3 ثوانٍ تكمل ريف الباص لاين الشهير مع ضربة الدرامز؛ 7 ثوانٍ تكرر النمط الإيقاعي المحكم؛ 15 ثانية تقدم الإيقاع الفانكي كاملاً قبل غناء فريدي ميركوري."
+      },
+      "evidence": [
+        "EMI / Elektra: Queen - Another One Bites the Dust (1980), written by John Deacon, produced by Queen & Mack.",
+        "Verified master audio intro: 15.00s iconic bassline and tight funk drums."
+      ],
+      "qa": {
+        "factualVerdict": "PASS",
+        "zeroLeakageVerdict": "PASS",
+        "audioPlayabilityVerdict": "PASS (uploads/question-assets/audio/mus_another_one_bites_dust_queen.mp3)"
+      }
+    }
+  ]
+}

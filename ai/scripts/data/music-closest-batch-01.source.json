@@ -1,0 +1,405 @@
+{
+    "batchId": "music-closest-batch-01",
+    "world": {
+        "id": "music"
+    },
+    "targetContentItemCount": 12,
+    "items": [
+        {
+            "id": "music-closest-001",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "في أي سنة غنى محمد عبده أغنية «الأماكن» لأول مرة في مهرجان جدة؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 2005
+            },
+            "authoring": {
+                "questionArchetype": "EVENT_YEAR",
+                "evidence": "Mohammed Abdu debuted 'Al-Amaken' live at the Jeddah Festival in 2005.",
+                "source": "Arab News / Official Rotana records",
+                "difficulty": "easy"
+            },
+            "status": "ready",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-002",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "كم عدد الأغاني في ألبوم 'عالم موازي' للفنان عبدالمجيد عبدالله الذي صدر عام 2021؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 22
+            },
+            "authoring": {
+                "questionArchetype": "NUMERIC_STATISTIC",
+                "evidence": "Abdul Majeed Abdullah's album 'Aalam Mowazi' (2021) contains exactly 22 tracks.",
+                "source": "Apple Music / Rotana",
+                "difficulty": "medium"
+            },
+            "status": "ready",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-003",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "في أي سنة كانت الحفلة الأخيرة لطلال مداح على مسرح المفتاحة في أبها؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 2000
+            },
+            "authoring": {
+                "questionArchetype": "EVENT_YEAR",
+                "evidence": "Talal Maddah passed away on August 11, 2000, while performing live on stage.",
+                "source": "Arab News / Saudi Gazette",
+                "difficulty": "hard"
+            },
+            "status": "ready",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-004",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "في أي سنة أصدرت 'فرقة ميامي' الكويتية ألبومها الأول (صبوحة)؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 1991
+            },
+            "authoring": {
+                "questionArchetype": "EVENT_YEAR",
+                "evidence": "Miami Band's debut album 'Sabouha' was released in 1991.",
+                "source": "Official band history / discography",
+                "difficulty": "medium",
+                "replacedBy": "music-closest-004-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-005",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "في أي سنة أصدرت الفنانة أحلام ألبومها الأول 'أحبك موت'؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 1995
+            },
+            "authoring": {
+                "questionArchetype": "EVENT_YEAR",
+                "evidence": "Ahlam's debut album 'Ahebbak Mot' was released in 1995.",
+                "source": "Discogs / YouTube Music",
+                "difficulty": "easy",
+                "replacedBy": "music-closest-005-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-006",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "في أي سنة صدرت أغنية «بشرة خير» لحسين الجسمي؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 2014
+            },
+            "authoring": {
+                "questionArchetype": "EVENT_YEAR",
+                "evidence": "Hussain Al Jassmi released 'Boshret Kheir' in 2014.",
+                "source": "Official YouTube release / Rotana",
+                "difficulty": "hard"
+            },
+            "status": "ready",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-007",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "في أي سنة تم إصدار الأغنية الشهيرة 'آه يا ليل' للفنانة شيرين عبدالوهاب؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 2002
+            },
+            "authoring": {
+                "questionArchetype": "EVENT_YEAR",
+                "evidence": "'Ah Ya Leil' was released in 2002 as part of the Free Mix 3 album.",
+                "source": "Apple Music / Free Music records",
+                "difficulty": "easy"
+            },
+            "status": "ready",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-008",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "كم عدد الأغاني في الألبوم الأصلي 'عيش بشوقك' للفنان تامر حسني والذي صدر عام 2018؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 13
+            },
+            "authoring": {
+                "questionArchetype": "NUMERIC_STATISTIC",
+                "evidence": "Tamer Hosny's 2018 album 'Eish Beshoak' contains exactly 13 tracks.",
+                "source": "Apple Music / Discogs",
+                "difficulty": "medium"
+            },
+            "status": "ready",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-009",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "في أي سنة غنى عبدالحليم حافظ «قارئة الفنجان» في حفل شم النسيم الشهير؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 1976
+            },
+            "authoring": {
+                "questionArchetype": "EVENT_YEAR",
+                "evidence": "Abdel Halim Hafez performed 'Qareat El Fingan' at the Sham Ennessim concert in 1976.",
+                "source": "Historical musical records / Wikipedia",
+                "difficulty": "hard",
+                "replacedBy": "music-closest-009-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-010",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "في أي سنة تم إصدار ألبوم 'Thriller' (ثريلر) الأيقوني للفنان مايكل جاكسون؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 1982
+            },
+            "authoring": {
+                "questionArchetype": "EVENT_YEAR",
+                "evidence": "Michael Jackson's album Thriller was released on November 30, 1982.",
+                "source": "Britannica / Official Billboard records",
+                "difficulty": "easy",
+                "replacedBy": "music-closest-010-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-011",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "كم عدد الأغاني في الإصدار الأصلي القياسي لألبوم فرقة كوين (Queen) الشهير 'A Night at the Opera'؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 12
+            },
+            "authoring": {
+                "questionArchetype": "NUMERIC_STATISTIC",
+                "evidence": "The original 1975 release of Queen's 'A Night at the Opera' features 12 tracks.",
+                "source": "Apple Music / Official Queen Discography",
+                "difficulty": "medium",
+                "replacedBy": "music-closest-011-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-012",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "كم أسبوعاً استمرت أغنية 'Blinding Lights' للفنان ذا ويكند (The Weeknd) في المراكز العشرة الأولى (Top 10) في قائمة بيلبورد هوت 100؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 57
+            },
+            "authoring": {
+                "questionArchetype": "NUMERIC_STATISTIC",
+                "evidence": "Blinding Lights spent a record-breaking 57 weeks in the Top 10 of the Billboard Hot 100.",
+                "source": "Billboard Official Chart Records",
+                "difficulty": "hard"
+            },
+            "status": "ready",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-004-v2",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "كم عدد الأغاني في ألبوم الفنان بدر الشعيبي «بـ30 سنة» الذي صدر عام 2024؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 8
+            },
+            "authoring": {
+                "artist": "بدر الشعيبي",
+                "year": "2024",
+                "difficulty": "Hard",
+                "productApproval": "YES"
+            },
+            "status": "ready",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-005-v2",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "في أي سنة أطلق الفنان الكويتي عبدالعزيز الويس أغنيته الناجحة «طرف واحد»؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 2024
+            },
+            "authoring": {
+                "artist": "عبدالعزيز الويس",
+                "difficulty": "Medium",
+                "productApproval": "YES"
+            },
+            "status": "ready",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-009-v2",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "كم عدد الأغاني في ألبوم فرقة كايروكي «سوبرنوفا» (Supernova) الذي صدر في أغسطس 2026؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 10
+            },
+            "authoring": {
+                "artist": "كايروكي",
+                "year": "2026",
+                "difficulty": "Hard",
+                "productApproval": "YES"
+            },
+            "status": "ready",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-010-v2",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "كم عدد الأغاني في الإصدار القياسي (Standard) لألبوم تايلور سويفت «The Tortured Poets Department» الصادر عام 2024؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 16
+            },
+            "authoring": {
+                "artist": "Taylor Swift",
+                "year": "2024",
+                "difficulty": "Hard",
+                "productApproval": "YES"
+            },
+            "status": "ready",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-closest-011-v2",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "closest",
+            "prompt": {
+                "ar": "كم يبلغ طول أغنية بيلي آيليش الشهيرة «BIRDS OF A FEATHER» (بالثواني) من ألبومها الصادر عام 2024؟"
+            },
+            "answerPayload": {
+                "mode": "closest",
+                "correctValue": 210
+            },
+            "authoring": {
+                "artist": "Billie Eilish",
+                "song": "BIRDS OF A FEATHER",
+                "year": "2024",
+                "difficulty": "Medium",
+                "productApproval": "YES"
+            },
+            "status": "ready",
+            "media": {
+                "type": "none"
+            }
+        }
+    ]
+}

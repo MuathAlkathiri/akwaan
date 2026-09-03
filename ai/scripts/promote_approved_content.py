@@ -72,6 +72,8 @@ from urllib.parse import urlparse
 
 import requests
 
+from source_pack_selection import select_forward_items
+
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
 PRODUCTION_HOSTS = {"akwaan-api.onrender.com"}
 DEFAULT_TARGET = "http://localhost:3002"
@@ -200,7 +202,49 @@ MILESTONES: dict[str, Milestone] = {
         difficulty_key="marhalaDifficulty",
         per_scope_difficulty={"easy": 3, "medium": 3, "hard": 3},
     ),
+    "music-bomb-batch-01": Milestone(
+        key="music-bomb-batch-01",
+        label="Music Bomb Batch 01 (14 items)",
+        scope_slugs=("saudi-music", "gulf-music", "egyptian-music", "international-music"),
+        source_prefix="music-bomb-batch-01",
+        expected_by_mechanic={"bomb": 14},
+        expected_items=14,
+        source_file="ai/scripts/data/music-bomb-batch-01.source.json",
+        world_slug="music",
+    ),
+    "music-ryo-batch-01": Milestone(
+        key="music-ryo-batch-01",
+        label="Music RYO Batch 01 (12 items)",
+        scope_slugs=("saudi-music", "gulf-music", "egyptian-music", "international-music"),
+        source_prefix="music-ryo-batch-01",
+        expected_by_mechanic={"read-your-opponent": 12},
+        expected_items=12,
+        source_file="ai/scripts/data/music-ryo-batch-01.source.json",
+        world_slug="music",
+    ),
+    "music-closest-batch-01": Milestone(
+        key="music-closest-batch-01",
+        label="Music Closest Batch 01 (12 items)",
+        scope_slugs=("saudi-music", "gulf-music", "egyptian-music", "international-music"),
+        source_prefix="music-closest-batch-01",
+        expected_by_mechanic={"closest": 12},
+        expected_items=12,
+        source_file="ai/scripts/data/music-closest-batch-01.source.json",
+        world_slug="music",
+    ),
+    "music-first-note-batch-01": Milestone(
+        key="music-first-note-batch-01",
+        label="Music first_note Batch 01 (12 items)",
+        scope_slugs=("saudi-music", "gulf-music", "egyptian-music", "international-music"),
+        source_prefix="music-first-note-batch-01",
+        expected_by_mechanic={"first_note": 12},
+        expected_items=12,
+        source_file="ai/scripts/data/music-first-note-batch-01.source.json",
+        world_slug="music",
+        allow_mechanic_slugs=frozenset({"first_note"}),
+    ),
 }
+
 
 
 
@@ -530,6 +574,7 @@ CANONICAL_CHALLENGE_TYPE_ALIASES: dict[str, tuple[str, ...]] = {
     "read-your-opponent": ("read-your-opponent", "اقرأ خصمك"),
     "closest": ("closest", "مين اقرب", "مين أقرب"),
     "top-5": ("top-5", "أفضل 5", "افضل 5"),
+    "first_note": ("first_note", "mechanic-1788380928916", "من أول نغمة"),
 }
 
 
@@ -767,7 +812,10 @@ def build_manifest_from_file(milestone: Milestone) -> Manifest:
 
     mechanic = next(iter(milestone.expected_by_mechanic))  # the milestone's single mechanic
     items: list[ManifestItem] = []
-    for question in data.get("questions", []):
+    # A final pack records replaced items beside their replacements. Everything
+    # below builds a *promotable* payload, so it may only ever see the forward
+    # set — the shared gate decides which that is, and raises rather than guessing.
+    for question in select_forward_items(data, source=milestone.source_file):
         qid = str(question.get("id") or "")
         marker = f"{milestone.source_prefix}:{qid}"
 
@@ -814,6 +862,7 @@ def build_manifest_from_file(milestone: Milestone) -> Manifest:
         raw_media = question.get("media") or {}
         media_payload: dict | None = None
         media_path: str | None = None
+        media_problem: str | None = None
         if raw_media.get("type") and raw_media["type"] != "none" and raw_media.get("assets"):
             media_payload, media_problem = canonical_media(raw_media)
             if media_payload:
@@ -826,14 +875,18 @@ def build_manifest_from_file(milestone: Milestone) -> Manifest:
             "mechanicPayload": mechanic_payload,
             "media": media_payload,
             "isReusableAcrossSessions": False,
-            "status": "ready",
+            # From the source when it states a lifecycle, and only ever `ready`
+            # here because `select_forward_items` has already excluded the rest.
+            # A pre-lifecycle pack (no `status` on any item) keeps the historical
+            # default so the already-promoted milestones stay reproducible.
+            "status": question.get("status") or "ready",
             "metadata": {"source": marker, "notes": None, "tags": None},
         }
         items.append(
             ManifestItem(
                 source_marker=marker,
                 world_slug=milestone.world_slug,
-                scope_slug=str(question.get("scopeSlug") or ""),
+                scope_slug=str(question.get("scopeSlug") or question.get("scopeId") or ""),
                 mechanic_slugs=(mechanic,),
                 media_path=media_path,
                 media_problem=(media_problem if raw_media.get("type") and

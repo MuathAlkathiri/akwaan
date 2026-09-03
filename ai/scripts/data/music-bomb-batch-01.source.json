@@ -1,0 +1,524 @@
+{
+    "batchId": "music-bomb-batch-01",
+    "world": {
+        "id": "music"
+    },
+    "targetContentItemCount": 14,
+    "items": [
+        {
+            "id": "bomb-music-sau-001",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "Mohammed Abdu"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "Mohammed Abdu"
+                ]
+            },
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/bomb-music-sau-001.mp3",
+                        "altText": "Music media asset"
+                    }
+                ]
+            },
+            "authoring": {
+                "artist": "Mohammed Abdu",
+                "productApproval": "NO",
+                "replacedBy": "bomb-music-sau-001-v2"
+            },
+            "status": "archived"
+        },
+        {
+            "id": "bomb-music-sau-004",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "Talal Maddah"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "Talal Maddah"
+                ]
+            },
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/bomb-music-sau-004.mp3",
+                        "altText": "Music media asset"
+                    }
+                ]
+            },
+            "authoring": {
+                "artist": "Talal Maddah",
+                "productApproval": "NO",
+                "replacedBy": "bomb-music-sau-004-v2"
+            },
+            "status": "archived"
+        },
+        {
+            "id": "bomb-music-gulf-001",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "Nawal Kuwaitia"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "Nawal Kuwaitia"
+                ]
+            },
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/bomb-music-gulf-001.mp3",
+                        "altText": "Music media asset"
+                    }
+                ]
+            },
+            "authoring": {
+                "artist": "Nawal Kuwaitia",
+                "productApproval": "NO",
+                "replacedBy": "bomb-music-gulf-001-v2"
+            },
+            "status": "archived"
+        },
+        {
+            "id": "bomb-music-arab-001",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "Umm Kulthum"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "Umm Kulthum"
+                ]
+            },
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/bomb-music-arab-001.mp3",
+                        "altText": "Music media asset"
+                    }
+                ]
+            },
+            "authoring": {
+                "artist": "Umm Kulthum",
+                "productApproval": "NO",
+                "replacedBy": "bomb-music-arab-001-v2"
+            },
+            "status": "archived"
+        },
+        {
+            "id": "bomb-music-intl-001",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "Michael Jackson"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "Michael Jackson"
+                ]
+            },
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/bomb-music-intl-001.mp3",
+                        "altText": "Music media asset"
+                    }
+                ]
+            },
+            "authoring": {
+                "artist": "Michael Jackson",
+                "productApproval": "NO",
+                "replacedBy": "bomb-music-intl-001-v2"
+            },
+            "status": "archived"
+        },
+        {
+            "id": "bomb-music-sau-001-v2",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "مين هذي المغنية؟"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "زينة عماد"
+                ]
+            },
+            "media": {
+                "type": "image",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/images/bomb-music-sau-001-v2.webp",
+                        "altText": "Authentic, recognizable, face visible, no generated fake likeness, no name/caption leakage."
+                    }
+                ]
+            },
+            "authoring": {
+                "artist": "زينة عماد",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "bomb-music-sau-004-v2",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "مين يغني «لمّاح»؟"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "عايض"
+                ]
+            },
+            "media": {
+                "type": "none"
+            },
+            "authoring": {
+                "artist": "عايض",
+                "productApproval": "YES"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "bomb-music-gulf-001-v2",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "مين هذا المغني؟"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "عبدالعزيز الويس"
+                ]
+            },
+            "media": {
+                "type": "image",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/images/bomb-music-gulf-001-v2.webp",
+                        "altText": "Authentic, recognizable, face visible, no generated fake likeness, no name/caption leakage."
+                    }
+                ]
+            },
+            "authoring": {
+                "artist": "عبدالعزيز الويس",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "bomb-music-arab-001-v2",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "مين هذا الرابر؟"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "ويجز"
+                ]
+            },
+            "media": {
+                "type": "image",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/images/bomb-music-arab-001-v2.webp",
+                        "altText": "Authentic, recognizable, face visible, no generated fake likeness, no name/caption leakage."
+                    }
+                ]
+            },
+            "authoring": {
+                "artist": "ويجز",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "bomb-music-intl-001-v2",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "مين هذي المغنية؟"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "دوا ليبا"
+                ]
+            },
+            "media": {
+                "type": "image",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/images/bomb-music-intl-001-v2.webp",
+                        "altText": "Authentic, recognizable, face visible, no generated fake likeness, no name/caption leakage."
+                    }
+                ]
+            },
+            "authoring": {
+                "artist": "دوا ليبا",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "bomb-music-sau-002",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "مين يغني «يا طيب القلب»؟"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "عبدالمجيد عبدالله"
+                ]
+            },
+            "media": {
+                "type": "none"
+            },
+            "authoring": {
+                "artist": "عبدالمجيد عبدالله",
+                "productApproval": "YES"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "bomb-music-sau-003",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "مين الفنان اللي يُعرف بلقب «أخطبوط العود»؟"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "عبادي الجوهر"
+                ]
+            },
+            "media": {
+                "type": "none"
+            },
+            "authoring": {
+                "artist": "عبادي الجوهر",
+                "productApproval": "YES"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "bomb-music-gulf-002",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "مين يغني «دنيا الوله»؟"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "عبدالله الرويشد"
+                ]
+            },
+            "media": {
+                "type": "none"
+            },
+            "authoring": {
+                "artist": "عبدالله الرويشد",
+                "productApproval": "YES"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "bomb-music-gulf-003",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "وش جنسية حسين الجسمي؟"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "إماراتي"
+                ]
+            },
+            "media": {
+                "type": "none"
+            },
+            "authoring": {
+                "artist": "حسين الجسمي",
+                "productApproval": "YES"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "bomb-music-gulf-004",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "مين هذا المغني؟"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "نبيل شعيل"
+                ]
+            },
+            "media": {
+                "type": "image",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/images/bomb-music-gulf-004.webp",
+                        "altText": "Authentic, recognizable, face visible, no generated fake likeness, no name/caption leakage."
+                    }
+                ]
+            },
+            "authoring": {
+                "artist": "نبيل شعيل",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "bomb-music-arab-003",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "مين يغني «تملي معاك»؟"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "عمرو دياب"
+                ]
+            },
+            "media": {
+                "type": "none"
+            },
+            "authoring": {
+                "artist": "عمرو دياب",
+                "productApproval": "YES"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "bomb-music-arab-004",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "وش اسم حماقي الأول؟"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "محمد"
+                ]
+            },
+            "media": {
+                "type": "none"
+            },
+            "authoring": {
+                "artist": "محمد حماقي",
+                "productApproval": "YES"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "bomb-music-intl-002",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "وش اسم ليدي غاغا الأول الحقيقي؟"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "ستيفاني",
+                    "Stefani"
+                ]
+            },
+            "media": {
+                "type": "none"
+            },
+            "authoring": {
+                "artist": "Lady Gaga",
+                "productApproval": "YES"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "bomb-music-intl-003",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "bomb",
+            "prompt": {
+                "ar": "مين هذي الفرقة؟"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "The Beatles"
+                ]
+            },
+            "media": {
+                "type": "image",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/images/bomb-music-intl-003.webp",
+                        "altText": "Exact approved visual target from the canonical question. Authentic, recognizable, no generated fake likeness, no name/caption leakage."
+                    }
+                ]
+            },
+            "authoring": {
+                "artist": "The Beatles",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        }
+    ]
+}

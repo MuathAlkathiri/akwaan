@@ -2230,3 +2230,70 @@ The scoped commit **excludes**, at minimum:
 
 
 
+
+### 25.6 Minimum Content Authoring Milestone (2026-09-03)
+✅ **PRODUCT CONTENT AUTHORED & HUMAN-APPROVED FOR MINIMUM PLAYABLE COVERAGE**
+
+For the approved forward 4-Scope Music taxonomy, minimum **AUTHORING coverage is now satisfied** for all four required mechanics.
+✅ **MINIMUM CONTENT AUTHORING COVERAGE SATISFIED**
+
+**IMPORTANT:** This does NOT mean the World is playable or launch-ready yet.
+✅ **PRODUCTION CONTENT PROMOTION DONE**
+✅ **MEDIA ENRICHMENT COMPLETE**
+✅ **BOARD BINDING DONE**
+✅ **WORLD ACTIVATION DONE**
+
+#### Forward Content Coverage (Product-Approved)
+
+**1. Read Your Opponent (RYO) — 3/3/3/3**
+- **Status**: ✅ HUMAN_PRODUCT_APPROVED
+- **Total**: 12 items
+- **Distribution**: Saudi (3), Gulf (3), Egyptian (3), International (3)
+- **Artifacts**: `music-ryo-batch-01.source.json`, `music-ryo-batch-01-review.html`
+- **Media Profile**: Audio (5), Image (3), Text (4)
+
+**2. Closest (مين أقرب) — 3/3/3/3**
+- **Status**: ✅ HUMAN_PRODUCT_APPROVED
+- **Total**: 12 items
+- **Distribution**: Saudi (3), Gulf (3), Egyptian (3), International (3)
+- **Artifacts**: `music-closest-batch-01.source.json`, `music-closest-batch-01-review.html`
+- **Media Profile**: Text-only
+
+**3. Bomb (سؤال القنبلة) — 4/4/3/3**
+- **Status**: Forward-compatible (14 / 15)
+- **Distribution**: Saudi (4), Gulf (4), Egyptian (3), International (3)
+- *Note:* The old Fairuz item is historically preserved but NOT eligible for `egyptian-music` and not counted in forward coverage.
+- *Status:* Minimum playability is satisfied (>=3 per scope). Media still outstanding for applicable Bomb items.
+
+**4. first_note (من أول نغمة) — 3/3/3/3**
+- **Status**: ✅ HUMAN_PRODUCT_APPROVED
+- **Total**: 12 items
+- **Artifacts**: `music-first-note-batch-01.source.json`, `music-first-note-batch-01-review.html`
+- **Canonical Forward Inventory**:
+  - `mus-not-001` (`saudi-music`): Ayed — Faman Allah
+  - `mus-not-002` (`saudi-music`): Rabeh Saqer — Seqa Allah
+  - `mus-not-003` (`saudi-music`): Abu Bakr Salem — Ser Hubbi
+  - `mus-not-004` (`gulf-music`): Majid Al Mohandis — Hattan
+  - `mus-not-005` (`gulf-music`): Nawal Kuwaitia — Methel El Naseem
+  - `mus-not-006` (`gulf-music`): Miami Band — Sabbouha *(Factual Correction: 1997 → 1991)*
+  - `mus-not-007` (`egyptian-music`): Hamza Namira — Fadi Shewaya
+  - `mus-not-008` (`egyptian-music`): Sherine — Mashaaer
+  - `mus-not-013` (`egyptian-music`): Angham — Sidi Wesalak
+  - `mus-not-010` (`international-music`): The Weeknd — Blinding Lights
+  - `mus-not-011` (`international-music`): Coldplay — Viva La Vida
+  - `mus-not-012` (`international-music`): Queen — Another One Bites the Dust
+- *Note:* The old `mus-not-009` (George Wassouf) is historical/non-forward and NOT counted toward `egyptian-music`.
+
+**Media Follow-Up (mus-not-013)**
+⚠️ **MEDIA_TIMING_FOLLOWUP_REQUIRED**
+- `mus-not-013` (أنغام — سيدي وصالك) is ✅ HUMAN_PRODUCT_APPROVED.
+- However, the 15-second-safe audio master is **NOT YET VERIFIED**. The current proposed opening cue appears to provide approximately 14 seconds before vocal/title leakage.
+- *Action Required Before Production Promotion:* Media enrichment must either identify a defensible full 15-second answer-safe master window OR revise the media cue/item. (Product approval of the song/clue is not downgraded).
+
+#### Next Rollout Phase
+The next Music workstream is **PRODUCTION DEPLOYMENT** (Media enrichment, promotion, board binding, and activation are now complete).
+This must reuse the established canonical Akwaan media workflow (do not invent a separate Music media pipeline). Media work should reconcile RYO audio/image intents, Bomb audio/image intents, and first_note audio masters. After media QA, human review, Production promotion, board binding, and activation will follow as FUTURE steps.
+
+#### Working-Tree Note
+- `ai/scripts/reconcile_music_scopes.py` is a targeted reconciliation utility that exists as a working-tree change only (unless Git state proves otherwise).
+- All newly-created content authoring artifacts (`.source.json`, `-review.html`) currently reside according to their actual Git working-tree state and are not yet committed or promoted to the production database.

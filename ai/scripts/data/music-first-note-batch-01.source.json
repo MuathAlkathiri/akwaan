@@ -1,0 +1,714 @@
+{
+    "batchId": "music-first-note-batch-01",
+    "world": {
+        "id": "music"
+    },
+    "targetContentItemCount": 12,
+    "items": [
+        {
+            "id": "mus-not-001",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنان: عايض"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "فمان الله",
+                    "فمان لله",
+                    "فمن الله",
+                    "Faman Allah"
+                ]
+            },
+            "authoring": {
+                "artist": "عايض",
+                "song": "فمان الله",
+                "clue": "الفنان: عايض",
+                "evidence": "2020 release, acoustic guitar intro",
+                "mediaStatus": "NOT_MEDIA_READY",
+                "productApproval": "YES",
+                "audioIntent": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, 8–15s fair."
+            },
+            "status": "ready",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-001.mp3",
+                        "altText": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, ..."
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-002",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنان: رابح صقر"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "سقى الله",
+                    "سقى لله",
+                    "Seqa Allah"
+                ]
+            },
+            "authoring": {
+                "artist": "رابح صقر",
+                "song": "سقى الله",
+                "clue": "الفنان: رابح صقر",
+                "evidence": "2015 release, oud/khebaiti groove",
+                "mediaStatus": "MEDIA_TIMING_FOLLOWUP_REQUIRED",
+                "productApproval": "YES",
+                "replacedBy": "mus-not-002-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-002.mp3",
+                        "altText": "Master audio"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-003",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنان: أبو بكر سالم"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "سر حبي",
+                    "سر حبه",
+                    "Ser Hubbi"
+                ]
+            },
+            "authoring": {
+                "artist": "أبو بكر سالم",
+                "song": "سر حبي",
+                "clue": "الفنان: أبو بكر سالم",
+                "evidence": "1980 release, classic strings/oud",
+                "mediaStatus": "MEDIA_TIMING_FOLLOWUP_REQUIRED",
+                "productApproval": "YES",
+                "replacedBy": "mus-not-003-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-003.mp3",
+                        "altText": "Master audio"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-004",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنان: ماجد المهندس"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "هتان",
+                    "Hattan"
+                ]
+            },
+            "authoring": {
+                "artist": "ماجد المهندس",
+                "song": "هتان",
+                "clue": "الفنان: ماجد المهندس",
+                "evidence": "2020 release, piano/strings",
+                "mediaStatus": "NOT_MEDIA_READY",
+                "productApproval": "YES",
+                "audioIntent": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, 8–15s fair."
+            },
+            "status": "ready",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-004.mp3",
+                        "altText": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, ..."
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-005",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنانة: نوال الكويتية"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "مثل النسيم",
+                    "متل النسيم",
+                    "Methel El Naseem"
+                ]
+            },
+            "authoring": {
+                "artist": "نوال الكويتية",
+                "song": "مثل النسيم",
+                "clue": "الفنانة: نوال الكويتية",
+                "evidence": "2016 release, dramatic Sahm strings",
+                "mediaStatus": "MEDIA_TIMING_FOLLOWUP_REQUIRED",
+                "productApproval": "YES",
+                "replacedBy": "mus-not-005-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-005.mp3",
+                        "altText": "Master audio"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-006",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفرقة: فرقة ميامي"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "صبوحة",
+                    "Sabbouha"
+                ]
+            },
+            "authoring": {
+                "artist": "فرقة ميامي",
+                "song": "صبوحة",
+                "clue": "الفرقة: فرقة ميامي",
+                "evidence": "1991 release (corrected from 1997), fast synth dance intro",
+                "mediaStatus": "MEDIA_TIMING_FOLLOWUP_REQUIRED",
+                "productApproval": "YES",
+                "replacedBy": "mus-not-006-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-006.mp3",
+                        "altText": "Master audio"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-007",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنان: حمزة نمرة"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "فاضي شوية",
+                    "Fadi Shewaya"
+                ]
+            },
+            "authoring": {
+                "artist": "حمزة نمرة",
+                "song": "فاضي شوية",
+                "clue": "الفنان: حمزة نمرة",
+                "evidence": "2020 release, acoustic guitar",
+                "mediaStatus": "MEDIA_TIMING_FOLLOWUP_REQUIRED",
+                "productApproval": "YES",
+                "replacedBy": "mus-not-007-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-007.mp3",
+                        "altText": "Master audio"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-008",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنانة: شيرين"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "مشاعر",
+                    "Mashaaer"
+                ]
+            },
+            "authoring": {
+                "artist": "شيرين",
+                "song": "مشاعر",
+                "clue": "الفنانة: شيرين",
+                "evidence": "2013 release, piano/cello drama",
+                "mediaStatus": "MEDIA_TIMING_FOLLOWUP_REQUIRED",
+                "productApproval": "YES",
+                "replacedBy": "mus-not-008-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-008.mp3",
+                        "altText": "Master audio"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-010",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنان: The Weeknd"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "Blinding Lights",
+                    "بلاندينق لايتس"
+                ]
+            },
+            "authoring": {
+                "artist": "The Weeknd",
+                "song": "Blinding Lights",
+                "clue": "الفنان: The Weeknd",
+                "evidence": "2020 release, synthwave hook",
+                "mediaStatus": "NOT_MEDIA_READY",
+                "productApproval": "YES",
+                "audioIntent": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, 8–15s fair."
+            },
+            "status": "ready",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-010.mp3",
+                        "altText": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, ..."
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-011",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "Band: Coldplay"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "Viva La Vida",
+                    "فيفا لا فيدا"
+                ]
+            },
+            "authoring": {
+                "artist": "Coldplay",
+                "song": "Viva La Vida",
+                "clue": "Band: Coldplay",
+                "evidence": "2008 release, string percussion riff",
+                "mediaStatus": "MEDIA_TIMING_FOLLOWUP_REQUIRED",
+                "productApproval": "YES",
+                "replacedBy": "mus-not-011-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-011.mp3",
+                        "altText": "Master audio"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-012",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "Band: Queen"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "Another One Bites the Dust",
+                    "Another one bites the dust"
+                ]
+            },
+            "authoring": {
+                "artist": "Queen",
+                "song": "Another One Bites the Dust",
+                "clue": "Band: Queen",
+                "evidence": "1980 release, funk bassline",
+                "mediaStatus": "MEDIA_TIMING_FOLLOWUP_REQUIRED",
+                "productApproval": "YES",
+                "replacedBy": "mus-not-012-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-012.mp3",
+                        "altText": "Master audio"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-013",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنانة: أنغام"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "سيدي وصالك"
+                ]
+            },
+            "authoring": {
+                "artist": "أنغام",
+                "song": "سيدي وصالك",
+                "clue": "الفنانة: أنغام",
+                "evidence": "«سيدي وصالك» من ألبوم «ليه سبتها» الصادر عام 2001.",
+                "audioIntent": "Find a continuous, recognizable, title-safe 15-second section from the canonical studio recording, preferably preserving the orchestral identity when possible. Non-zero start allowed.",
+                "mediaStatus": "MEDIA_TIMING_QA_REQUIRED",
+                "mediaNote": "Current proposed opening cue appears to provide ~14s before vocal entry; media enrichment must identify a full 15s answer-safe master window or this item must be revised before Production promotion.",
+                "productApproval": "YES"
+            },
+            "status": "ready",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-013.mp3",
+                        "altText": "Find a continuous, recognizable, title-safe 15-second section from the canonical studio recording, preferably preserving the orchestral identity when possible. Non-zero start allowed."
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-002-v2",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنان: سلطان المرشد"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "أدمنتك"
+                ]
+            },
+            "authoring": {
+                "artist": "سلطان المرشد",
+                "song": "أدمنتك",
+                "year": "2024",
+                "difficulty": "Hard",
+                "clue": "الفنان: سلطان المرشد",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY",
+                "audioIntent": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, 8–15s fair."
+            },
+            "status": "ready",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-002-v2.mp3",
+                        "altText": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, ..."
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-003-v2",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنانة: زينة عماد"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "أنا زينة"
+                ]
+            },
+            "authoring": {
+                "artist": "زينة عماد",
+                "song": "أنا زينة",
+                "year": "2024",
+                "difficulty": "Easy",
+                "clue": "الفنانة: زينة عماد",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY",
+                "audioIntent": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, 8–15s fair."
+            },
+            "status": "ready",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-003-v2.mp3",
+                        "altText": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, ..."
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-005-v2",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنان: مطرف المطرف"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "هم وإنزاح"
+                ]
+            },
+            "authoring": {
+                "artist": "مطرف المطرف",
+                "song": "هم وإنزاح",
+                "year": "2024",
+                "difficulty": "Hard",
+                "clue": "الفنان: مطرف المطرف",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY",
+                "audioIntent": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, 8–15s fair."
+            },
+            "status": "ready",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-005-v2.mp3",
+                        "altText": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, ..."
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-006-v2",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنانة: شمة حمدان"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "أخاف أدمنك"
+                ]
+            },
+            "authoring": {
+                "artist": "شمة حمدان",
+                "song": "أخاف أدمنك",
+                "year": "2024",
+                "difficulty": "Medium",
+                "clue": "الفنانة: شمة حمدان",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY",
+                "audioIntent": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, 8–15s fair."
+            },
+            "status": "ready",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-006-v2.mp3",
+                        "altText": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, ..."
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-007-v2",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنان: عصام صاصا"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "اتنين بمقام ملايين"
+                ]
+            },
+            "authoring": {
+                "artist": "عصام صاصا",
+                "song": "اتنين بمقام ملايين",
+                "year": "2024",
+                "difficulty": "Medium",
+                "clue": "الفنان: عصام صاصا",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY",
+                "audioIntent": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, 8–15s fair."
+            },
+            "status": "ready",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-007-v2.mp3",
+                        "altText": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, ..."
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-008-v2",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفرقة: كايروكي"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "وحدي"
+                ]
+            },
+            "authoring": {
+                "artist": "كايروكي",
+                "song": "وحدي",
+                "year": "2026",
+                "difficulty": "Hard",
+                "clue": "الفرقة: كايروكي",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY",
+                "audioIntent": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, 8–15s fair."
+            },
+            "status": "ready",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-008-v2.mp3",
+                        "altText": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, ..."
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-011-v2",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنانة: Sabrina Carpenter"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "Espresso"
+                ]
+            },
+            "authoring": {
+                "artist": "Sabrina Carpenter",
+                "song": "Espresso",
+                "year": "2024",
+                "difficulty": "Easy",
+                "clue": "الفنانة: Sabrina Carpenter",
+                "productApproval": "YES",
+                "mediaStatus": "MEDIA_TIMING_QA_REQUIRED",
+                "audioIntent": "A title-safe, highly recognizable 15-second segment from the canonical studio recording; non-zero start is allowed."
+            },
+            "status": "ready",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-011-v2.mp3",
+                        "altText": "A title-safe, highly recognizable 15-second segment from the canonical studio recording; non-zero start is allowed."
+                    }
+                ]
+            }
+        },
+        {
+            "id": "mus-not-012-v2",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "first_note",
+            "prompt": {
+                "ar": "الفنان: Benson Boone"
+            },
+            "answerPayload": {
+                "mode": "match",
+                "acceptedAnswers": [
+                    "Beautiful Things"
+                ]
+            },
+            "authoring": {
+                "artist": "Benson Boone",
+                "song": "Beautiful Things",
+                "year": "2024",
+                "difficulty": "Medium",
+                "clue": "الفنان: Benson Boone",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY",
+                "audioIntent": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, 8–15s fair."
+            },
+            "status": "ready",
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/mus-not-012-v2.mp3",
+                        "altText": "Minimum required master duration = 15.0s continuous. No title leakage. Version requirement: Canonical studio version unless specified. Progression requirement: 1–3s hard, 4–7s more recognizable, ..."
+                    }
+                ]
+            }
+        }
+    ]
+}

@@ -1,0 +1,960 @@
+{
+    "batchId": "music-ryo-batch-01",
+    "world": {
+        "id": "music"
+    },
+    "targetContentItemCount": 12,
+    "items": [
+        {
+            "id": "music-ryo-001",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "أي فنان يغني هذه الأغنية؟"
+            },
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/music-ryo-001.mp3",
+                        "altText": "Approx 4–8s recognizable instrumental cue. No direct answer leakage."
+                    }
+                ]
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "راشد الماجد"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "عبدالمجيد عبدالله"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "رابح صقر"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "راشد الفارس"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "questionArchetype": "AUDIO_RECOGNITION",
+                "artist": "Rashed Al-Majed",
+                "song": "مشكلني",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "music-ryo-002",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "ما اسم الأغنية التي تُعد أول أغنية وطنية سعودية بُثت عبر التلفزيون السعودي بصوت طلال مداح؟"
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "وطني الحبيب"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "فوق هام السحب"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "عاش سلمان"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "بلادي منار الهدى"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "questionArchetype": "ENTITY_ATTRIBUTE",
+                "replacedBy": "music-ryo-002-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-ryo-003",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "من هو هذا الفنان السعودي؟"
+            },
+            "media": {
+                "type": "image",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/images/music-ryo-003.webp",
+                        "altText": "Clear authentic recognizable photo of Rabeh Saqer. No visible answer text/captions."
+                    }
+                ]
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "رابح صقر"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "محمد عبده"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "عبدالمجيد عبدالله"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "طلال مداح"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "questionArchetype": "VISUAL_RECOGNITION",
+                "replacedBy": "music-ryo-003-v2"
+            },
+            "status": "archived"
+        },
+        {
+            "id": "music-ryo-004",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "من هي الفرقة الخليجية صاحبة هذه الأغنية المبهجة؟"
+            },
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/music-ryo-004.mp3",
+                        "altText": "Approx 4–6s recognizable rhythmic/instrumental cue."
+                    }
+                ]
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "فرقة ميامي"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "فرقة الإخوة البحرينية"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "فرقة التلفزيون"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "فرقة جيتارا"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "questionArchetype": "AUDIO_RECOGNITION",
+                "artist": "Miami Band",
+                "song": "الحمدلله وشفناكم",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "music-ryo-005",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "من هو هذا الفنان الكويتي القدير؟"
+            },
+            "media": {
+                "type": "image",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/images/music-ryo-005.webp",
+                        "altText": "Clear, authentic portrait or performance photo of Abdullah Al Rowaished showing his face and signature mustache, wearing traditional Kuwaiti attire. Crop out any name captions or logos."
+                    }
+                ]
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "عبدالله الرويشد"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "نبيل شعيل"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "عبدالكريم عبدالقادر"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "خالد الملا"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "questionArchetype": "VISUAL_RECOGNITION",
+                "replacedBy": "music-ryo-005-v2"
+            },
+            "status": "archived"
+        },
+        {
+            "id": "music-ryo-006",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "أي فنانة خليجية تُعرف بلقب «الملكة»؟"
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "أحلام"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "نوال الكويتية"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "بلقيس"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "هند البحرينية"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "questionArchetype": "NICKNAME_RECOGNITION"
+            },
+            "status": "ready",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-ryo-007",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "أي فنان مصري أطلق هذه الأغنية التي اشتهرت عالمياً في التسعينات؟"
+            },
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/music-ryo-007.mp3",
+                        "altText": "Audio clip (approx 5-7s) of the famous Spanish guitar intro of 'Nour El Ain' (حبيبي يا نور العين) by Amr Diab, before the vocals start."
+                    }
+                ]
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "عمرو دياب"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "محمد فؤاد"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "مصطفى قمر"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "إيهاب توفيق"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "questionArchetype": "AUDIO_RECOGNITION",
+                "replacedBy": "music-ryo-007-v2"
+            },
+            "status": "archived"
+        },
+        {
+            "id": "music-ryo-008",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "في أغنية 'ألف ليلة وليلة' لأم كلثوم، ما هو المقطع الذي يأتي مباشرة بعد: (يا حبيبي، الليل وسماه، ونجومه وقمره، وقمره وسهره)؟"
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "وإنت وأنا"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "وشوقي وإليك"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "وليلي ونهاري"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "وحبي وحياتي"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "questionArchetype": "QUOTE_COMPLETION"
+            },
+            "status": "ready",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-ryo-009",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "من هو هذا الفنان المصري؟"
+            },
+            "media": {
+                "type": "image",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/images/music-ryo-009.webp",
+                        "altText": "Clear authentic recognizable live/performance image of Mohamed Mounir. No visible captions/name."
+                    }
+                ]
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "محمد منير"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "عمرو دياب"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "تامر حسني"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "محمد حماقي"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "questionArchetype": "VISUAL_RECOGNITION",
+                "replacedBy": "music-ryo-009-v2"
+            },
+            "status": "archived"
+        },
+        {
+            "id": "music-ryo-010",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "من هي الفنانة صاحبة هذه الأغنية الشهيرة؟"
+            },
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/music-ryo-010.mp3",
+                        "altText": "Approx 4–5s opening acoustic-guitar cue, ending before lead vocal where possible according to approved intent."
+                    }
+                ]
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "Adele"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "Beyoncé"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "Lady Gaga"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "Sia"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "questionArchetype": "AUDIO_RECOGNITION",
+                "artist": "Adele",
+                "song": "Rolling in the Deep",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "music-ryo-011",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "ما هو اسم فنان الراب صاحب هذه الأغنية الأيقونية؟"
+            },
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/music-ryo-011.mp3",
+                        "altText": "Approx 5–7s distinctive intro cue."
+                    }
+                ]
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "Eminem"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "50 Cent"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "Snoop Dogg"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "Jay-Z"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "questionArchetype": "AUDIO_RECOGNITION",
+                "artist": "Eminem",
+                "song": "Lose Yourself",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "music-ryo-012",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "أي فنان عالمي اشتهر بحركة الرقص المعروفة باسم 'مِشية القمر' (Moonwalk)؟"
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "مايكل جاكسون"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "برونو مارس"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "جاستن بيبر"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "كريس براون"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "questionArchetype": "ENTITY_ATTRIBUTE",
+                "replacedBy": "music-ryo-012-v2"
+            },
+            "status": "archived",
+            "media": {
+                "type": "none"
+            }
+        },
+        {
+            "id": "music-ryo-002-v2",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "من هو الفنان صاحب هذه الأغنية الحديثة؟"
+            },
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/music-ryo-002-v2.mp3",
+                        "altText": "Audio clip of 'الملجأ' by Miteb Alshalan"
+                    }
+                ]
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "متعب الشعلان"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "عايض"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "سلطان المرشد"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "فهد الكبيسي"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "artist": "متعب الشعلان",
+                "song": "الملجأ",
+                "year": "2024",
+                "difficulty": "Hard",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "music-ryo-003-v2",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "في عام 2024، أطلق عبدالمجيد عبدالله ميني ألبوم (EP). كم كان عدد أغاني هذا الإصدار؟"
+            },
+            "media": {
+                "type": "none"
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "6 أغانٍ"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "4 أغانٍ"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "8 أغانٍ"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "10 أغانٍ"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "artist": "عبدالمجيد عبدالله",
+                "year": "2024",
+                "difficulty": "Medium",
+                "productApproval": "YES"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "music-ryo-005-v2",
+            "worldId": "music",
+            "scopeId": "gulf-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "من هو الفنان صاحب أغنية «رجعتي قريبة» من ألبوم «بـ30 سنة»؟"
+            },
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/music-ryo-005-v2.mp3",
+                        "altText": "Audio clip of 'رجعتي قريبة' by Bader Al Shuaibi"
+                    }
+                ]
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "بدر الشعيبي"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "عبدالسلام الزايد"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "دافي"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "عبدالعزيز الويس"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "artist": "بدر الشعيبي",
+                "year": "2024",
+                "difficulty": "Hard",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "music-ryo-007-v2",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "من هو الفنان صاحب هذه الأغنية الإيقاعية الحديثة؟"
+            },
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/music-ryo-007-v2.mp3",
+                        "altText": "Audio clip of '123' by Ahmed Saad"
+                    }
+                ]
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "أحمد سعد"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "محمود العسيلي"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "بهاء سلطان"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "رامي صبري"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "artist": "أحمد سعد",
+                "song": "123",
+                "year": "2024",
+                "difficulty": "Medium",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "music-ryo-009-v2",
+            "worldId": "music",
+            "scopeId": "egyptian-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "من هي الفنانة المصرية صاحبة هذه الصورة والتي أصدرت أغنية «الليلة حلوة» كفيديو كليب صيفي عام 2024؟"
+            },
+            "media": {
+                "type": "image",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/images/music-ryo-009-v2.webp",
+                        "altText": "Clear recent photo of Ruby"
+                    }
+                ]
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "روبي"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "أنغام"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "شيرين"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "كارمن سليمان"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "artist": "روبي",
+                "song": "الليلة حلوة",
+                "year": "2024",
+                "difficulty": "Easy",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        },
+        {
+            "id": "music-ryo-012-v2",
+            "worldId": "music",
+            "scopeId": "international-music",
+            "mechanic": "read-your-opponent",
+            "prompt": {
+                "ar": "من هو مغني الراب صاحب هذه الأغنية التي تصدرت الترند العالمي عام 2024؟"
+            },
+            "media": {
+                "type": "audio",
+                "assets": [
+                    {
+                        "url": "/uploads/question-assets/audio/music-ryo-012-v2.mp3",
+                        "altText": "Audio clip of 'Not Like Us' by Kendrick Lamar"
+                    }
+                ]
+            },
+            "answerPayload": {
+                "mode": "ryo",
+                "options": [
+                    {
+                        "id": "opt_1",
+                        "label": {
+                            "ar": "Kendrick Lamar"
+                        }
+                    },
+                    {
+                        "id": "opt_2",
+                        "label": {
+                            "ar": "Drake"
+                        }
+                    },
+                    {
+                        "id": "opt_3",
+                        "label": {
+                            "ar": "J. Cole"
+                        }
+                    },
+                    {
+                        "id": "opt_4",
+                        "label": {
+                            "ar": "Travis Scott"
+                        }
+                    }
+                ],
+                "correctOptionId": "opt_1"
+            },
+            "authoring": {
+                "artist": "Kendrick Lamar",
+                "song": "Not Like Us",
+                "year": "2024",
+                "difficulty": "Easy",
+                "productApproval": "YES",
+                "mediaStatus": "NOT_MEDIA_READY"
+            },
+            "status": "ready"
+        }
+    ]
+}
