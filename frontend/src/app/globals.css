@@ -477,6 +477,18 @@
   animation: akwaan-orbit 5s linear infinite reverse;
 }
 
+/* The How-to-play hero's phones breathing beside the shared screen. Very slow and
+   a couple of pixels of travel: ambient life, not an animation that asks to be
+   watched. Kept in the akwaan family so the reduced-motion block below stills it. */
+@keyframes akwaan-float {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.akwaan-float {
+  animation: akwaan-float 6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .akwaan-rise,
   .akwaan-pop,
@@ -489,7 +501,8 @@
   .akwaan-focus-scopes-in,
   .akwaan-soft-pop,
   .akwaan-orbit,
-  .akwaan-orbit-reverse {
+  .akwaan-orbit-reverse,
+  .akwaan-float {
     animation: none;
   }
 

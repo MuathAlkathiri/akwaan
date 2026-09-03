@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { Header } from "./header";
+import { Footer } from "./footer";
 import { Toaster } from "@/components/ui/sonner";
 import { AkwaanBackground } from "@/components/akwaan/akwaan-background";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,14 @@ export function isJourneyPath(pathname: string) {
 
 export function isAuthPath(pathname: string) {
   return pathname === "/login";
+}
+
+/**
+ * The How to Play walkthrough, which lays out edge to edge like the journey
+ * screens rather than sitting in the standard page container.
+ */
+export function isStoryPath(pathname: string) {
+  return pathname === "/how-to-play";
 }
 
 /**
@@ -75,7 +84,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   // The retired identity painted a dark purple canvas behind every authenticated
   // player screen. Akwaan is one warm room: the surface comes from the tokens, and
   // nothing paints over it.
-  const bare = isJourney || isMatch || isAuth;
+  const bare = isJourney || isMatch || isAuth || isStoryPath(pathname);
   const hasBackground = hasCosmicBackground(pathname);
   const hasPageArtwork = hasBackground;
 
@@ -107,6 +116,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="container py-8 md:py-12">{children}</div>
         )}
       </main>
+      {/* The footer belongs to the website, not to a game surface: a live Match
+          and a paired phone own their whole screen, and the login page is a
+          single focused card. */}
+      {!isAuth && !isPairedMatch && !isHostMatch && <Footer />}
       <Toaster />
     </div>
   );

@@ -112,3 +112,37 @@ export function JourneySection({
     </section>
   );
 }
+
+/** A centred section title framed by two gold diamond flourishes. */
+export function SectionHeading({
+  id,
+  title,
+}: {
+  id?: string;
+  title: string;
+}) {
+  return (
+    <div className="mb-7 flex items-center justify-center gap-3">
+      <Flourish />
+      <h2 id={id} className="text-2xl font-black text-foreground sm:text-3xl">
+        {title}
+      </h2>
+      <Flourish flip />
+    </div>
+  );
+}
+
+function Flourish({ flip = false }: { flip?: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "flex items-center gap-1.5 text-[hsl(var(--brand-gold))]",
+        flip && "flex-row-reverse",
+      )}
+    >
+      <span className="h-px w-8 bg-gradient-to-l from-[hsl(var(--brand-gold))] to-transparent sm:w-12" />
+      <span className="size-1.5 rotate-45 bg-[hsl(var(--brand-gold))]" />
+    </span>
+  );
+}

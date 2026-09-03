@@ -17,9 +17,98 @@ import {
  *  public nav mirrors the approved Pencil homepage design. */
 const userNavItems = [
   { label: "الرئيسية", href: "/" },
-  { label: "كيف نلعب", href: "/#why" },
+  { label: "كيف تلعب", href: "/how-to-play" },
   { label: "العوالم", href: "/#worlds" },
 ];
+
+/**
+ * Glide to an on-page section instead of teleporting to it.
+ *
+ * A hash link inside the page the section lives on jumps instantly, which costs
+ * the reader the sense of where the section sits relative to where they were.
+ * Scrolling it into view keeps that, and updating the hash afterwards keeps the
+ * URL shareable. Anything we cannot handle here — a different page, a section
+ * that is not mounted, a reader who asked for less motion — falls through to the
+ * browser's own navigation untouched.
+ */
+export function smoothScrollToHash(
+  event: React.MouseEvent<HTMLAnchorElement>,
+  href: string,
+) {
+  const [path, hash] = href.split("#");
+  if (!hash) return;
+  const samePage = (path || "/") === window.location.pathname;
+  if (!samePage) return;
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+
+  const target = document.getElementById(hash);
+  if (!target) return;
+
+  event.preventDefault();
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
+  window.history.replaceState(null, "", `#${hash}`);
+  holdAtTarget(target);
+}
+
+/**
+ * Land where we aimed, and stay there while the page settles.
+ *
+ * The browser picks a scroll offset when the glide starts and animates to that
+ * number. On a cold load the Worlds above the target are still resolving, so the
+ * section slides up underneath the animation — on a phone, far enough to leave
+ * its heading behind the sticky header. Worse, the last of that movement lands
+ * after the scrolling has stopped, so a single correction on arrival is not
+ * enough. We hold the section against its scroll margin until the page stops
+ * moving, then let go.
+ *
+ * The reader always outranks us: the first scroll, wheel, touch or key of their
+ * own ends the hold wherever they left it.
+ */
+function holdAtTarget(target: HTMLElement) {
+  const SETTLE_MS = 1500;
+  const deadline = performance.now() + SETTLE_MS;
+  let arrived = false;
+  let frame = 0;
+
+  const release = () => {
+    cancelAnimationFrame(frame);
+    for (const type of ["wheel", "touchstart", "keydown"]) {
+      window.removeEventListener(type, release);
+    }
+  };
+
+  const tick = () => {
+    // Nothing to correct until the glide itself has finished.
+    if (!arrived) {
+      frame = requestAnimationFrame(tick);
+      return;
+    }
+    const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+    const drift = target.getBoundingClientRect().top - margin;
+    // A drift wider than the viewport means we are no longer looking at the same
+    // page we aimed at; leave it alone rather than yanking the reader back.
+    if (Math.abs(drift) > 1 && Math.abs(drift) < window.innerHeight) {
+      window.scrollBy({ top: drift, behavior: "instant" as ScrollBehavior });
+    }
+    if (performance.now() < deadline) {
+      frame = requestAnimationFrame(tick);
+    } else {
+      release();
+    }
+  };
+
+  for (const type of ["wheel", "touchstart", "keydown"]) {
+    window.addEventListener(type, release, { passive: true });
+  }
+  const arrive = () => (arrived = true);
+  if ("onscrollend" in window) {
+    window.addEventListener("scrollend", arrive, { once: true });
+  } else {
+    // Safari has no scrollend yet: wait out a glide long enough to cross a page.
+    setTimeout(arrive, 700);
+  }
+  frame = requestAnimationFrame(tick);
+}
 
 /**
  * One entry point, two surfaces. The site header carries navigation and the
@@ -112,7 +201,10 @@ function SiteHeader({ merged }: { merged: boolean }) {
         <Link
           key={`${item.label}-${item.href}`}
           href={item.href}
-          onClick={closeOnNavigate ? () => setMobileOpen(false) : undefined}
+          onClick={(event) => {
+            if (closeOnNavigate) setMobileOpen(false);
+            if (isHashLink) smoothScrollToHash(event, item.href);
+          }}
           aria-current={isActive ? "page" : undefined}
           className={cn(
             "relative whitespace-nowrap text-[15px] transition-colors duration-200 after:origin-center after:transition-transform after:duration-200 before:transition-[opacity,transform] before:duration-200",

@@ -3,16 +3,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Check,
-  Smartphone,
-  Sparkles,
-  Trash2,
-  Trophy,
-  Users,
-  Zap,
-} from "lucide-react";
+import { ArrowLeft, Check, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MATCH_SETUP_ROUTE } from "@/features/match-setup/routes";
 import {
@@ -26,7 +17,7 @@ import {
   writeStoredDraft,
 } from "@/features/match-setup/state/match-setup-storage";
 import { cn } from "@/lib/utils";
-import { JourneyShell } from "./journey-shell";
+import { JourneyShell, SectionHeading } from "./journey-shell";
 import { JourneyError } from "./journey-error";
 import { WorldCover } from "./world-cover";
 import { ScopeCardMedia } from "./scope-card-media";
@@ -38,47 +29,6 @@ import { playableWorlds } from "../utils/featured-worlds";
 import { isSelectableScope } from "../utils/scopes";
 import { worldSignatureLabel } from "../utils/world-signature";
 import type { PlayableScope, PlayableWorld } from "../types";
-
-type NodeTone = "cyan" | "gold" | "purple" | "blue";
-
-const NODE_TONE: Record<NodeTone, string> = {
-  cyan: "bg-[hsl(var(--brand-cyan))] text-[hsl(var(--brand-navy))]",
-  gold: "bg-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))]",
-  purple: "bg-[hsl(var(--brand-purple))] text-white",
-  blue: "bg-[#3f6fd8] text-white",
-};
-
-/** Why Akwaan is different — the four promises shown under the World row. */
-const FEATURES = [
-  {
-    key: "teams",
-    title: "لعبة للفرق",
-    description: "تعاون، ناقش، وخذ قراراتك مع فريقك.",
-    Icon: Users,
-    tone: "cyan",
-  },
-  {
-    key: "variety",
-    title: "كل عالم له تحديه",
-    description: "كل عالم يضيف تحديًا خاصًا يعطيه تجربة لعب تميّزه.",
-    Icon: Zap,
-    tone: "purple",
-  },
-  {
-    key: "phone",
-    title: "العب من جوالك",
-    description: "شاشة مشتركة للكل، وجوالك لقراراتك الخاصة.",
-    Icon: Smartphone,
-    tone: "gold",
-  },
-  {
-    key: "decisions",
-    title: "مو كل شيء معرفة",
-    description: "بعض التحديات تكافئ القرار، التوقع وقراءة الخصم.",
-    Icon: Trophy,
-    tone: "gold",
-  },
-] as const;
 
 /** The categories not open yet — shown, greyed, so the roadmap reads as a promise. */
 const COMING_SOON = [
@@ -309,37 +259,8 @@ export function WorldsHome() {
           </div>
         </section>
 
-        <FeaturesSection />
       </div>
     </JourneyShell>
-  );
-}
-
-/** A centred section title framed by two gold diamond flourishes. */
-function SectionHeading({ id, title }: { id?: string; title: string }) {
-  return (
-    <div className="mb-7 flex items-center justify-center gap-3">
-      <Flourish />
-      <h2 id={id} className="text-2xl font-black text-foreground sm:text-3xl">
-        {title}
-      </h2>
-      <Flourish flip />
-    </div>
-  );
-}
-
-function Flourish({ flip = false }: { flip?: boolean }) {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "flex items-center gap-1.5 text-[hsl(var(--brand-gold))]",
-        flip && "flex-row-reverse",
-      )}
-    >
-      <span className="h-px w-8 bg-gradient-to-l from-[hsl(var(--brand-gold))] to-transparent sm:w-12" />
-      <span className="size-1.5 rotate-45 bg-[hsl(var(--brand-gold))]" />
-    </span>
   );
 }
 
@@ -614,38 +535,6 @@ function WorldSelectionSidebar({
         </Link>
       </Button>
     </aside>
-  );
-}
-
-function FeaturesSection() {
-  return (
-    <section
-      id="why"
-      aria-labelledby="why-title"
-      className="relative scroll-mt-24"
-    >
-      <SectionHeading id="why-title" title="ليش أكوان مختلفة؟" />
-      <ul className="grid list-none gap-x-6 gap-y-8 text-center sm:grid-cols-2 lg:grid-cols-4">
-        {FEATURES.map(({ key, title, description, Icon, tone }) => (
-          <li key={key} className="flex flex-col items-center gap-3">
-            <span
-              className={cn(
-                "grid size-14 place-items-center rounded-2xl shadow-[0_10px_26px_-12px_rgba(24,16,54,.4)]",
-                NODE_TONE[tone],
-              )}
-            >
-              <Icon className="size-6" strokeWidth={2} aria-hidden />
-            </span>
-            <span className="text-base font-black text-[hsl(var(--brand-navy))]">
-              {title}
-            </span>
-            <span className="max-w-[15rem] text-sm leading-6 text-muted-foreground">
-              {description}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 
