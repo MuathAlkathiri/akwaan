@@ -585,8 +585,8 @@ CANONICAL_CHALLENGE_TYPE_ALIASES: dict[str, tuple[str, ...]] = {
     # first_note one: an alias that accepts a generated slug is what lets a board
     # slot drift away from the launcher key without anything noticing.
     "marhala": ("marhala", "المرحلة"),
-    "bomb": ("bomb", "mechanic-1785880400000", "القنبلة"),
-    "combo": ("combo", "mechanic-1785880300000", "الكومبو"),
+    "bomb": ("bomb", "القنبلة"),
+    "combo": ("combo", "الكومبو"),
     "read-your-opponent": ("read-your-opponent", "اقرأ خصمك"),
     "closest": ("closest", "مين اقرب", "مين أقرب"),
     "top-5": ("top-5", "أفضل 5", "افضل 5"),

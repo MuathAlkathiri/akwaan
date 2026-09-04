@@ -1141,21 +1141,11 @@ class TestFirstNoteCanonicalSlug(unittest.TestCase):
         """
         import re
 
-        # Two legacy aliases remain, awaiting the same Admin confirmation that
-        # cleared `marhala` and `first_note`: Production board bindings show
-        # `bomb` and `combo` are canonically slugged in every World that uses
-        # them, but that was read from the public projection, not the admin
-        # ChallengeType list. Delete an entry here once its type is confirmed —
-        # this set may only ever shrink.
-        PENDING_VERIFICATION = {
-            "mechanic-1785880400000",  # bomb
-            "mechanic-1785880300000",  # combo
-        }
+        # The debt is closed: every canonical mechanic in Production now carries
+        # its canonical slug, so no alias may name a generated one at all.
         generated = re.compile(r"^mechanic-\d+$")
         for canonical, aliases in promoter.CANONICAL_CHALLENGE_TYPE_ALIASES.items():
             for alias in aliases:
-                if alias in PENDING_VERIFICATION:
-                    continue
                 with self.subTest(canonical=canonical, alias=alias):
                     self.assertIsNone(generated.match(alias))
 
