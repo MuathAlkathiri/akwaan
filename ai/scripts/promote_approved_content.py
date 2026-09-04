@@ -585,7 +585,13 @@ CANONICAL_CHALLENGE_TYPE_ALIASES: dict[str, tuple[str, ...]] = {
     "read-your-opponent": ("read-your-opponent", "اقرأ خصمك"),
     "closest": ("closest", "مين اقرب", "مين أقرب"),
     "top-5": ("top-5", "أفضل 5", "افضل 5"),
-    "first_note": ("first_note", "mechanic-1788380928916", "من أول نغمة"),
+    # The runtime's canonical slug is `first-note` (`FIRST_NOTE_SLUG`), which is
+    # also the launcher key a Match resolves a board slot through. The generated
+    # `mechanic-1788380928916` that Production carried is deliberately NOT an
+    # alias: tolerating it here is what let a Signature slot stay bound to a slug
+    # no launcher answers to, so the promoter now fails to resolve it rather than
+    # quietly promoting into it again.
+    "first_note": ("first_note", "first-note", "من أول نغمة"),
 }
 
 

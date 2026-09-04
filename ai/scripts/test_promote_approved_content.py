@@ -1101,3 +1101,53 @@ class TestGeneratedPackMilestones(unittest.TestCase):
         milestone = promoter.MILESTONES["music-bomb-batch-01"]
         with self.assertRaises(promoter.PromotionError):
             promoter.build_manifest_from_file(milestone)
+
+
+class TestFirstNoteCanonicalSlug(unittest.TestCase):
+    """The Music Signature must resolve to the slug a launcher answers to.
+
+    Production carried a Music `slot_1` bound to the generated ChallengeType slug
+    `mechanic-1788380928916` while the runtime launcher key is `first-note`, so no
+    launcher resolved the slot and players saw the Signature as unavailable. The
+    promoter had that generated slug in its alias table, which is what let content
+    be promoted into the drifted type without anything complaining.
+    """
+
+    GENERATED = "mechanic-1788380928916"
+
+    def aliases(self):
+        return promoter.CANONICAL_CHALLENGE_TYPE_ALIASES["first_note"]
+
+    def test_canonical_runtime_slug_is_an_alias(self):
+        # `first-note` is FIRST_NOTE_SLUG and FirstNoteChallengeLauncher.key.
+        self.assertIn("first-note", self.aliases())
+
+    def test_the_generated_slug_is_no_longer_accepted(self):
+        self.assertNotIn(self.GENERATED, self.aliases())
+
+    def test_no_alias_table_entry_carries_the_generated_first_note_slug(self):
+        for canonical, aliases in promoter.CANONICAL_CHALLENGE_TYPE_ALIASES.items():
+            with self.subTest(canonical=canonical):
+                self.assertNotIn(self.GENERATED, aliases)
+
+    def test_a_correctly_slugged_type_resolves_to_the_canonical_key(self):
+        index = self._index_with_slug("first-note")
+        self.assertIn("first_note", index.challenge_types_by_slug)
+
+    def test_the_generated_slug_no_longer_resolves(self):
+        index = self._index_with_slug(self.GENERATED)
+        # Fails to resolve rather than silently promoting into the drifted type.
+        self.assertNotIn("first_note", index.challenge_types_by_slug)
+
+    def _index_with_slug(self, slug: str):
+        """Build a RuntimeIndex from a fake admin runtime carrying one type."""
+
+        class FakeApi:
+            def get(self, path):
+                if path == "/admin/worlds":
+                    return []
+                if path == "/admin/challenge-types":
+                    return [{"id": "ct-1", "slug": slug, "name": "unrelated-name"}]
+                return []
+
+        return promoter.RuntimeIndex.load(FakeApi())
