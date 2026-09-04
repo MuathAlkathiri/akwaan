@@ -2424,22 +2424,54 @@ Completed three distinct authoring playtests validating the Question Craft archi
 - **Public Text Bomb Smoke:** ✅ Verified on live production runtime (no missing-image box, prominent text question, Arabic answer normalization, continuous team clock, turn transfer, -5s skip penalty).
 - **Public Image Bomb Smoke:** ✅ Verified on live production runtime (R2 image delivery, correct visual render, media-native prompt, accepted answer matching).
 - **Historical Root Cause & Note:** An earlier attempt only hit local runtime because legacy `promote_football_bomb_r1.py` hard-coded local Mongo ObjectIds. The promotion tooling has been corrected to use canonical slug resolution in `promote_approved_content.py` with full safety guards and unit test coverage.
-### 21.7 Music World & Scopes — Production Taxonomy Provisioning
-✅ **PRODUCTION TAXONOMY PROVISIONED (WORLD + 4 CANONICAL SCOPES).**
+### 21.7 Music World & Scopes — Production Taxonomy Provisioning & Reconciliation
 
-- **Authorization:** Approved Akwaan World §3 / §4 (`music` / `الأغاني`) and 4 canonical scopes.
-- **Production World Provisioned:** ✅ `music` (`الأغاني`, ObjectId `6a8ca5af45494d8b8490b1e1`, status: `draft`).
-- **Production Scopes Provisioned:** ✅ 4 canonical scopes under Music World:
+> **§25 is the authoritative Music rollout section, and §25.10 is the current
+> release answer.** This subsection records only how the Music *taxonomy* got
+> from its first provisioning to the canonical slugs now live, and deliberately
+> does not restate the content, media or activation history.
+
+#### Historical Implementation (2026-08-24 Provisioning Record)
+
+Reported at the time, for the 4-scope taxonomy as it stood then. **Historical —
+none of the slugs, ObjectIds or statuses below describe Production today.**
+
+- **Authorization:** Approved Akwaan World §3 / §4 (`music` / `الأغاني`) and the 4 canonical scopes as authored at the time.
+- **World:** `music` (`الأغاني`, ObjectId `6a8ca5af45494d8b8490b1e1`, status: `draft`).
+- **Scopes (as reported):**
   - `saudi-music` (`Saudi Music`, ObjectId `6a8ca5b045494d8b8490b1ee`, status: `draft`)
   - `gulf-music` (`Gulf Music`, ObjectId `6a8ca5b145494d8b8490b1fc`, status: `draft`)
   - `arabic-music` (`Arabic Music`, ObjectId `6a8ca5b345494d8b8490b20a`, status: `draft`)
   - `international-music` (`International Music`, ObjectId `6a8ca5b445494d8b8490b218`, status: `draft`)
-- **Tooling & Safety:** Executed via canonical `ai/scripts/provision_music_taxonomy.py` with deterministic plan hash `fe8093f6f2d1cffe6cc5f16c47eeb193571e2af015f007880683dc15ec9fbb09`.
-- **Idempotency:** ✅ Verified (subsequent dry-run yields `EXISTS_IDENTICAL` across World and all 4 Scopes; 0 proposed writes).
-- **Match Availability / Playability:** ✅ **PLAYABLE.** Music status is `active`, readiness is `ready`. It is selectable for matches.
-- **Content State:** ✅ **50/50 Music Content Items promoted.**
-- **Media State:** ✅ **27/27 Production assets ingested.**
-- **Audio Smoke State:** ✅ **VERIFIED.**
+- **Tooling & Plan Hash:** canonical `ai/scripts/provision_music_taxonomy.py`, deterministic plan hash `fe8093f6f2d1cffe6cc5f16c47eeb193571e2af015f007880683dc15ec9fbb09`.
+- **Idempotency:** verified at the time (`EXISTS_IDENTICAL` across World and all 4 Scopes; 0 proposed writes).
+
+⚠️ `arabic-music` was **superseded** by `egyptian-music` in the approved forward
+taxonomy (§25.1) and is not a live Scope.
+
+#### Taxonomy Drift Observed (2026-09-03 Audit)
+
+A read-only Production audit found the live taxonomy no longer matched that
+record: the Scopes under `music` carried **generated slugs and different
+ObjectIds** — `scope-1788035498763`, `scope-1788035521371`,
+`scope-1788035526998` and `songs` — so neither the historical slugs nor the
+historical ObjectIds resolved. The provisioning record above had stopped
+describing the runtime.
+
+#### Current Production Taxonomy (reconciled 2026-09-03)
+
+The drifted Scopes were updated in place to the canonical forward taxonomy. This
+is what Production carries now, and it agrees with §25.1 and §25.6:
+
+- `saudi-music` → أغاني سعودية (ObjectId `6a9341ae9da851231e2bdc71`)
+- `gulf-music` → أغاني خليجية (ObjectId `6a9341c49da851231e2bdcb5`)
+- `egyptian-music` → أغاني مصرية (ObjectId `6a9341c99da851231e2bdcf8`)
+- `international-music` → أغاني أجنبية (ObjectId `6a9341f29da851231e2bdd82`)
+
+Old generated slugs (`songs`, `scope-*`) no longer resolve. The reconciliation
+run, its idempotency evidence and its purity checks are recorded once, in
+**§25.6**; the released end state — World `active`/`ready`, content, media and
+gameplay smoke — is **§25.10**.
 
 ### 21.8 Saudi League × Bomb Question Craft R1 — Direct Production Promotion
 ✅ **HUMAN PRODUCT APPROVED, MEDIA ENRICHED, DIRECTLY PROMOTED TO REAL PRODUCTION, AND SMOKE VERIFIED.**

@@ -38,7 +38,9 @@
   `audit_active_architecture.py`, `validate_schema_examples.py`.
 - Scripts migrated to the Top 5 contract:
   - `scripts/push_content_gaps.py`, `scripts/push_all_football.py`,
-    `scripts/push_top10_worldcup.py` (canonical payloads; legacy poison-deck
+    `push_top10_worldcup.py` — removed from the repository in `eac8144` as a
+    root-level one-off; recover with `git show deecb44:push_top10_worldcup.py`
+    (canonical payloads; legacy poison-deck
     shape auto-converted with production semantics: ranks 1–5 stay ranked,
     6–10 become traps, decoys dropped).
   - `scripts/validate_pack.py` (top-5 schema + validator).
