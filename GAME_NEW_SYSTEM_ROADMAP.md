@@ -3228,3 +3228,66 @@ This must reuse the established canonical Akwaan media workflow (do not invent a
 #### Working-Tree Note
 - `ai/scripts/reconcile_music_scopes.py` is a targeted reconciliation utility that exists as a working-tree change only (unless Git state proves otherwise).
 - All newly-created content authoring artifacts (`.source.json`, `-review.html`) currently reside according to their actual Git working-tree state and are not yet committed or promoted to the production database.
+
+### 25.12 Board Launchability Correction (2026-09-04)
+
+⚠️ **Corrects §25.10.** That entry stands as written — it is the record of what
+was believed on 2026-09-03 — but two of its lines were not supported by the
+evidence behind them, and this subsection is the current answer.
+
+**What the earlier smoke actually proved.** It validated Match and board
+construction for the Music World. It did **not** exercise the Signature slot's
+launcher resolution, so "Music Board Binding — implemented & verified" and
+"Music Production Gameplay Smoke — PASS" were true of the board as a structure
+and untrue of من أول نغمة as a playable slot.
+
+**The defect.** Music `slot_1` was bound to a ChallengeType carrying the
+generated slug `mechanic-1788380928916`. A Match resolves a slot through the
+launcher registry by slug, and the first_note launcher key is `first-note`
+(`FIRST_NOTE_SLUG`), so no launcher resolved the slot: it projected
+`configured_but_unimplemented` and the room saw "هذا التحدي مو مفعّل في أكوان".
+Cars (`القطعة الدخيلة`) and Video Games (`المرحلة`) had carried the same defect
+with their own generated slugs and were corrected earlier.
+
+**The correction (Production, 2026-09-04).** The existing ChallengeType was
+renamed in place through the canonical Admin path — `mechanic-1788380928916` →
+`first-note`. ObjectId `6a98870fee95604a1f266747`, name, status, board binding
+and all 12 ContentItems preserved; no content was moved, re-promoted or
+duplicated, and no second `first-note` type exists. Its runtime-owned system
+fields match the production mechanic definition: `family: signature`,
+`itemStructure: discrete_triple`, `answerMode: first_note`,
+`scoringRuleId: challenge.win`.
+
+**Verified read-only after the correction:**
+
+| World | slot_1 | slot_2 | slot_3 | slot_4 | Launchers |
+|---|---|---|---|---|---|
+| الأغاني | `first-note` | `read-your-opponent` | `closest` | `bomb` | all |
+| عالم الالعاب الالكترونية | `read-your-opponent` | `closest` | `marhala` | `bomb` | all |
+| عالم الالغاز | `distributed-information` | `bomb` | `read-your-opponent` | `closest` | all |
+| عالم الانمي | `read-your-opponent` | `combo` | `closest` | `bomb` | all |
+| عالم السيارات | `odd-piece` | `read-your-opponent` | `bomb` | `closest` | all |
+| عالم كرة القدم | `top-5` | `closest` | `bomb` | `read-your-opponent` | all |
+
+**Every enabled slot in every active World now resolves to a canonical slug with
+a registered launcher — 0 unlaunchable slots.** Music content unchanged at
+12 / 13 / 13 / 12 ready items per Scope, which is how the rename is known to have
+moved nothing.
+
+**Source hardening (deployed 2026-09-04).** Board readiness now derives from the
+real `ChallengeLauncherRegistry` rather than trusting configuration. An enabled
+slot whose mechanic has no launcher raises `CHALLENGE_LAUNCHER_NOT_IMPLEMENTED`
+and `boardReady` becomes false, so Admin can no longer report a World ready that
+a Match would refuse to open. World Content owns a registry holding one
+predicate and Match publishes the launcher registry into it at `onModuleInit` —
+the same self-registration idiom the launchers use — so there is no second slug
+list and no parallel board architecture. Content readiness stays a separate
+judgement, and a disabled slot is ignored. The promoter's alias table no longer
+accepts any generated `mechanic-<digits>` slug for any mechanic, closing the
+path by which a slot could drift away from its launcher key again.
+
+**Status:**
+
+- ✅ **Music board binding — verified against the actual launcher registry**
+- ✅ **Board launchability hardening — implemented, deployed and verified** (backend healthy; all six Worlds pass the readiness sweep with 0 launcher blockers)
+- ⬜ **first_note real Production gameplay smoke — NOT YET RUN.** Creating a Production Match requires an authenticated player session, which the release operator did not have. Launcher *resolution* is proven by the board projection and by regression coverage; an actual auction launch — bidding, bounded Master playback, phone privacy — still needs a human to play one Match. **§25.10's "Gameplay Smoke — PASS" must not be read as covering the Signature slot until that is done.**
