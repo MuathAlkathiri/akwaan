@@ -40,6 +40,34 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
+### Where things stand — 2026-09-04 · MUSIC / FIRST NOTE PRODUCTION VERIFIED
+
+**من أول نغمة is ✅ IMPLEMENTED, DEPLOYED & PRODUCTION-VERIFIED.** A human played a
+real Production Match end to end: the Music Signature slot launched and
+completed, the auction ran, Master audio played on the shared screen with
+bounded playback and bounded replay, and phones received no Master audio. The
+gameplay-smoke follow-up left open in §25.12 is closed by evidence rather than
+inference.
+
+Two defects were corrected to get there, both identifier-resolution problems
+rather than anything wrong with the content or the media. The board slot was
+bound to a generated ChallengeType slug no launcher answered to, corrected in
+place to `first-note` (§25.12), and board readiness now derives from the real
+launcher registry so Admin can no longer report a World ready that a Match would
+refuse to open. Then the Master audio failed to play because First Note handed a
+ContentItem's **relative** media key straight to `<audio src>`, so the browser
+resolved it against the frontend origin; `e323cda` routes it through the same
+canonical `getMediaUrl` every other runtime media surface already used (§25.13).
+
+`/uploads/...` is confirmed as the canonical durable media abstraction — local
+disk first, falling through to the R2 mirror by redirect — verified live as
+`302` → `200`, `audio/mpeg`, with `206` byte-range support. **No DB, R2,
+ContentItem, World, Board or ChallengeType mutation was part of the audio fix**;
+the twelve items' `mechanicPayload` had been repaired earlier through the
+canonical Admin path, and promoter fix `1b50a17` prevents that gap recurring on
+future promotions.
+
+
 ### Where things stand — 2026-09-03 · HOW-TO-PLAY WALKTHROUGH — FRONTEND PRODUCTION RELEASE
 
 The redesigned player-facing **`/how-to-play`** walkthrough is ✅ **IMPLEMENTED & VERIFIED — PRODUCTION**. The old
@@ -3290,4 +3318,159 @@ path by which a slot could drift away from its launcher key again.
 
 - ✅ **Music board binding — verified against the actual launcher registry**
 - ✅ **Board launchability hardening — implemented, deployed and verified** (backend healthy; all six Worlds pass the readiness sweep with 0 launcher blockers)
-- ⬜ **first_note real Production gameplay smoke — NOT YET RUN.** Creating a Production Match requires an authenticated player session, which the release operator did not have. Launcher *resolution* is proven by the board projection and by regression coverage; an actual auction launch — bidding, bounded Master playback, phone privacy — still needs a human to play one Match. **§25.10's "Gameplay Smoke — PASS" must not be read as covering the Signature slot until that is done.**
+- ✅ **first_note real Production gameplay smoke — PASSED (2026-09-04).** A human played a real Production Match: the Signature slot launched and completed, the auction opened, Master audio played on the shared screen with bounded playback and bounded replay, and phones received no Master audio. Detail in **§25.13**.
+  - *Historical note:* this line read `⬜ NOT YET RUN` when §25.12 was written, because creating a Production Match needs an authenticated player session the release operator did not have. At that point launcher *resolution* was proven by the board projection and regression coverage, but no auction had actually been played. That gap is now closed by evidence rather than inference, and §25.10's "Gameplay Smoke — PASS" may now be read as covering the Signature slot.
+
+### 25.13 First Note Master Audio Origin Fix & Production Verification (2026-09-04)
+
+✅ **من أول نغمة — IMPLEMENTED, DEPLOYED & PRODUCTION-VERIFIED.** This closes the
+last open item on the Music Signature.
+
+#### The defect
+
+With the board slot corrected (§25.12) and the twelve items carrying their
+`mechanicPayload`, the challenge launched and the auction ran, but the Master
+audio would not play: the shared screen showed `0:00 / 0:00` and the browser had
+requested the clip from the **frontend** origin.
+
+A ContentItem legitimately stores its media as a **relative key** such as
+`/uploads/question-assets/audio/mus-not-004.mp3`. First Note handed that key
+straight to `<audio src>`, so the browser resolved it against the page's own
+origin — the Vercel frontend, which has no `/uploads` route — and the request
+404'd. Every other runtime surface that plays media already resolved through the
+canonical helper `getMediaUrl`; Bomb does exactly this for its audio and image
+items, and Marhala for its media. First Note was the only one that did not, and
+it never showed locally because the dev frontend and backend share an origin, so
+a relative path happens to resolve there.
+
+**This was a frontend URL-resolution defect, not a media durability or storage
+problem.** Nothing was wrong with the stored keys, the media pipeline, or R2.
+
+#### `/uploads/...` is the canonical durable media abstraction
+
+Confirmed in `backend/src/main.ts`: `express.static` is attempted first, and
+anything the local disk does not have falls through to the object-storage mirror,
+which redirects to the configured R2 public URL (`MEDIA_PUBLIC_BASE_URL`). With
+object storage unconfigured the fallback returns nothing and the request 404s —
+it fails closed rather than silently serving the wrong bytes. Relative keys in
+ContentItems are therefore the intended storage form, and no document rewrite or
+media migration was needed.
+
+Live read-only verification of the backend media path:
+
+| Check | Result |
+|---|---|
+| `GET /uploads/question-assets/audio/mus-not-004.mp3` | **302** → configured R2 public URL |
+| R2 target | **200** |
+| Content-Type | **audio/mpeg** |
+| Byte-range request | **206 Partial Content**, `Accept-Ranges: bytes` |
+
+Range support is what lets `<audio>` seek, and therefore what makes bounded
+*replay* work rather than only bounded first play.
+
+#### The fix
+
+`e323cdaf7456f8b6f0879de4684a7d08cb9b952a` — *fix(first-note): resolve master
+audio through media origin*, fast-forward pushed to `origin/main`. Two files:
+
+- `frontend/src/features/live-game-session/components/first-note-gameplay-panel.tsx`
+- `frontend/src/test/first-note-master-playback.test.tsx`
+
+The Master URL is resolved once through `getMediaUrl` and shared by the playback
+hook and both audio elements, because the bounded-playback hook keys its
+one-start-per-authorisation on the source and the element and the boundary must
+agree on a single URL. No origin is hard-coded — it comes from
+`NEXT_PUBLIC_API_URL`. Bounded prefix playback, bounded replay,
+shared-display-only audio and phone privacy are unchanged.
+
+#### State boundaries
+
+| Dimension | State |
+|---|---|
+| Git source | ✅ `e323cda` on `origin/main` (frontend only; **0 backend files**) |
+| Deployment | ✅ frontend deployed through the existing Vercel Git integration; the Render rebuild it also triggered carried no application change |
+| Runtime DB | **unchanged by this fix.** The twelve items' `mechanicPayload` had been repaired in place earlier through the canonical Admin content path (operator-performed); the promoter fix `1b50a17` prevents the gap recurring on future promotions but touched no live data |
+| R2 / media | **unchanged.** No upload, rewrite or migration; the same assets are served through the same `/uploads` → R2 path |
+| Human Production verification | ✅ **PASSED** — a real Match played end to end |
+
+#### Verified in the human Production gameplay smoke
+
+- ✅ The Music Signature slot launches and completes in a real Production Match
+- ✅ The auction opens and runs
+- ✅ Master audio plays on the shared screen, resolved through the canonical `/uploads` media origin
+- ✅ Bounded playback and bounded replay behave correctly in real gameplay
+- ✅ Phones receive no Master audio
+
+**Status: من أول نغمة — ✅ IMPLEMENTED, DEPLOYED & PRODUCTION-VERIFIED.** The
+gameplay-smoke follow-up left open in §25.12 is closed.
+
+### 25.14 First Note Content Contract Defect & Repair (2026-09-04)
+
+⚠️ **A second, separate First Note defect** — distinct from the Master-audio
+origin issue in §25.13. Same recovery milestone, different root cause and
+different evidence: this one is content validation, not media resolution.
+
+**Root cause.** `validateFirstNotePayload` in
+`content-item-compatibility.policy.ts` opens with
+`if (!challengeTypes.some((type) => type.slug === FIRST_NOTE_SLUG)) return []`.
+Production's Music Signature ChallengeType carried a generated slug rather than
+`first-note`, so that condition was false and the validator returned no issues
+for every First Note item. Enforcement depended on catalog identity, and the
+identity did not match — so the promotion path accepted structurally incomplete
+content that the runtime nevertheless requires. **The validator itself was never
+wrong and has not been edited;** it was simply never reached.
+
+**Observed Production impact.** Twelve First Note ContentItems existed with
+`mechanicPayload: null` — no `variant`, no `contextualClue` — while
+`FirstNotePayload` requires both. The promoter built a mechanic payload only for
+marhala, and the authored clue lived under `authoring`, which promotion strips.
+The gap only became visible when the slug was canonicalised (§25.12) and the
+gate opened.
+
+**Repair — source.** `1b50a17` *fix(authoring): emit canonical first-note content
+payload* (2 files, +131): first_note promotion now emits
+`{variant, contextualClue}` from the clue already in the pack, fails closed when
+that clue is missing, and corrects the item answer payload to `match`
+(`ANSWER_MODE_COMPATIBLE_ITEM_MODES[FIRST_NOTE] == [MATCH]`). Scoped to this
+mechanic; media untouched. Enforcement itself was restored by the §25.12 slug
+correction, not by changing the validator.
+
+**Repair — runtime data.** Separate from the above: the twelve live items were
+repaired **in place** through the canonical Admin content path, operator-performed,
+setting only `mechanicPayload`. `1b50a17` prevents recurrence on future
+promotions; it does not touch existing rows.
+
+**Verification.**
+
+- ✅ Source: 8 focused cases in `TestFirstNotePromotionContract`; `ai/scripts` **147/147**. Mutation-checked — removing the branch fails 6.
+- ✅ Runtime, by construction: a null `mechanicPayload` yields `contextualClue {ar: ''}`, which `validateFirstNoteSong` rejects, so the challenge **cannot** launch. The Production Match therefore proves the songs it drew carried a valid clue.
+- ⚠️ **KNOWN DEBT / FOLLOW-UP — 12/12 row-by-row Production verification.** All twelve rows are operator-reported repaired, and the successful Production Match corroborates the three songs it drew. No authenticated admin read independently enumerated all twelve, because admin credentials were not available to the release operator. Confirming the remaining rows is an **optional, non-blocking** follow-up: `⬜` would misread this as unstarted work when both the source repair and the Production repair already exist.
+
+**State boundaries.**
+
+| Dimension | State |
+|---|---|
+| Git / source | ✅ `1b50a17` on `origin/main` — promoter + tests only |
+| Production DB ContentItems | ⚠️ **mutated** — 12 rows patched in place (operator, Admin path), `mechanicPayload` only |
+| R2 / media | **0** — no upload, rewrite or migration |
+| Deployment | none required; the promoter is an authoring tool, not runtime |
+| Gameplay smoke | ✅ passed (§25.13) — corroborates the drawn songs |
+
+**Status.** Two distinct things, held apart on purpose:
+
+- ✅ **Content-contract repair — CLOSED.** The promotion path emits the canonical payload, is test-covered, and enforcement is live again now that the catalog identity is correct.
+- ⚠️ **Production content verification — KNOWN DEBT / FOLLOW-UP.** Operator-repaired and corroborated in play, not independently enumerated. **Non-blocking:** it does not hold the First Note production-recovery workstream open.
+
+#### First Note recovery — workstream state
+
+| Strand | State | Evidence |
+|---|---|---|
+| **Gameplay / production recovery** | ✅ **CLOSED** | mechanic implemented; source fixes shipped and deployed; real Production gameplay smoke passed; Master audio plays through the canonical `/uploads` → R2 delivery; bounded playback and replay work; phone privacy holds; the Signature challenge launches and completes |
+| **Content-contract repair** | ✅ **CLOSED** | source validation/promotion path repaired and test-covered (§25.14) |
+| **Production content verification** | ⚠️ **KNOWN DEBT / FOLLOW-UP** | operator reports all 12 rows repaired; the successful Match corroborates the drawn rows; all 12 not independently enumerated for want of admin credentials — **non-blocking** |
+
+**من أول نغمة / First Note — ✅ IMPLEMENTED, DEPLOYED & PRODUCTION-VERIFIED.** Both
+defects are closed on their own evidence: the content-contract /
+`mechanicPayload` defect here in §25.14, and the Master-audio media-origin defect
+in §25.13. Their root causes stay separate — one was validation gated on the
+wrong catalog identity, the other was a frontend URL-resolution mistake.
