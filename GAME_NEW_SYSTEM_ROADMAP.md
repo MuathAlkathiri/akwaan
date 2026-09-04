@@ -40,83 +40,6 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
-### Where things stand — 2026-09-03 · HOW-TO-PLAY WALKTHROUGH — FRONTEND PRODUCTION RELEASE
-
-The redesigned player-facing **`/how-to-play`** walkthrough is ✅ **IMPLEMENTED & VERIFIED — PRODUCTION**. The old
-generic 2×2 instruction-card block on the home page was replaced by a dedicated route that sells the product with
-the product: a hero putting one shared screen among several player phones, four alternating steps, and a CTA into
-the existing World-selection journey. Step 2 draws **real World artwork from the existing public catalog API**;
-Step 4 is an active-gameplay preview composed from the real `TeamScore`, `ChallengeCountdown`, challenge-identity
-and team-identity pieces. Detail and evidence in **§22.5**.
-
-Source is on `main` as commit `e4fa573` (parent `a01fe09`), pushed **fast-forward** `a01fe09..e4fa573` with no
-force push. **Commit boundary — `e4fa573` is not How-to-Play-only:** it deliberately also carries same-session
-landing-page work (site **Footer**, navbar **smooth-scroll**, **`SectionHeading`** extraction), which was accepted
-into the single commit because the header, layout and home page each contain both changes.
-
-Frontend was **deployed and production-verified** through the existing Vercel Git integration at
-`https://akwaan-frontend.vercel.app/how-to-play` (HTTP 200; no duplicate manual deployment created). The same push
-also auto-triggered a **Render backend rebuild** because `render.yaml` sets `autoDeploy: true` on `branch: main` —
-the commit contains **zero backend source changes**, so that rebuild is identical code and is **not** part of this
-milestone. **No runtime DB, production content, World taxonomy, or R2/media writes occurred**; the page only reads
-existing World catalog and media data.
-
-Verification for this frontend milestone: typecheck PASS, frontend **102 files / 984 tests**, changed-scope lint
-clean (one pre-existing unrelated warning in `rakkibha.test.tsx`), frontend production build PASS with
-`/how-to-play` statically prerendered, plus desktop/tablet/mobile checks. This snapshot upgrades **only** this
-page — no unrelated Player UX, gameplay, content or backend QA status changes on its evidence.
-
-### Where things stand — 2026-09-02 · MEDIA + MARHALA FAIR-START SOURCE MILESTONES
-
-The RYO/Closest media projection work and Marhala Fair-Start lifecycle are implemented and verified locally.
-Commit `6b685376` adds canonical audio playback and minimal safe media projection for RYO and Closest without
-changing scoring or gameplay. Marhala commits `c7614dd` and `4ed3250` move each question through
-**difficulty → prepared → presentation readiness → activation → deadline → answer/expiry**. Prepared questions
-have no consumable deadline and are not exposed; activation anchors the authoritative deadline, recurring
-questions use fresh presentation generations, and existing board, movement, scoring, and media semantics remain
-unchanged. The Marhala real-Mongo lifecycle passes **24/24** against an isolated test database. No production
-content, board, World, DB, or R2 state was changed by these source milestones.
-
-Verification evidence for this release stack: backend **190 suites / 1,850 tests**, frontend **100 files / 968
-tests**, Marhala focused backend **47/47**, shared Fair-Start/exposure **59/59**, Marhala frontend **82/82**,
-Marhala real-Mongo **24/24**, typechecks, frontend and backend production builds, lint, and diff check PASS.
-
-### Where things stand — 2026-09-01 · FAIR-START + CARS SOURCE MILESTONES
-
-This milestone was promoted to `main` on 2026-09-01. Commits `52dd72a` (recurring Fair-Start), `49c65b0` (Cars
-Odd Piece), and `3c6689d` (source-milestone reconciliation) were fast-forwarded and pushed without force. Source
-deployment is verified while Cars World rollout remains deliberately separate and unstarted.
-
-- **Recurring Fair-Start — ✅ IMPLEMENTED & VERIFIED IN SOURCE / LOCALLY (`52dd72a`).** The lifecycle is
-  prepare → authenticated actor/socket readiness → server activation → authoritative deadline. Deadline and
-  playable exposure remain suppressed before activation; recurring presentation generations are supported;
-  stale generation/revision acknowledgements are rejected; reconnect is activation-safe; and the scheduler remains
-  the single deadline owner. RYO multi-surface fairness is verified. Concise evidence: backend **180 suites / 1,697
-  tests**; frontend **89 files / 925 tests**; focused Fair-Start/mechanic **16 suites / 290 tests**; real-Mongo
-  integrations **5 suites / 86 tests**; typecheck, build, changed-file lint, and diff check PASS.
-- **Cars `odd-piece` — ✅ IMPLEMENTED & VERIFIED IN SOURCE / LOCALLY (`49c65b0`).** Each Challenge has exactly
-  3 puzzles and each puzzle has exactly 4 visual pieces with enforced 3+1 vehicle identity, stable piece IDs, and
-  persisted server-controlled order. The canonical CAS claim flow gives the first authoritative claimant priority;
-  a wrong attempt is consumed and transfers the same puzzle to the opponent; each puzzle awards +1 internally and
-  canonical Match `challenge-win` convergence remains once. Mandatory resolution proof, including the full
-  target-vehicle reveal required by §16.7, is preserved. Every puzzle uses recurring Fair-Start; prepared puzzles
-  expose no playable media and arm no deadline, while reconnect preserves order/state without restarting timing.
-  The **30-second value is configurable and is a playtest/technical default, not locked Product Design**. Admin
-  authoring uses the canonical ContentItem/media architecture; no Cars-specific media pipeline, socket store,
-  scheduler, scoring system, or content repository was added. Evidence: backend **185 suites / 1,759 tests**;
-  frontend **92 files / 934 tests**; Cars real-Mongo lifecycle PASS; **88 unique shared-regression real-Mongo tests
-  passed**; typechecks, builds, lint, and diff check PASS. One suite-order-only Marhala transient was isolated and
-  the clean Marhala rerun passed **24/24**; it is not classified as a Cars regression.
-
-| Release boundary | State |
-|---|---|
-| Git main / remote | ✅ `origin/main` contains `52dd72a`, `49c65b0`, `3c6689d` |
-| Production code deployment | ✅ Vercel exact-SHA deployment succeeded; Render backend is healthy after configured `main` auto-deploy, but Render exposes no exact Git SHA through available public evidence |
-| Production smoke | ✅ public frontend routes, backend health/database, and public Worlds catalog; ✅ deployed Match bundle carries `odd-piece`, `rakkibha`, and recurring Fair-Start markers; ⚠️ authenticated gameplay/reconnect smoke not executed |
-| Cars World rollout / board binding | ⬜ NOT STARTED |
-| Cars production content / media / R2 | ⬜ NOT STARTED |
-| Cars production runtime DB provisioning | ⬜ NOT MUTATED |
-
 ### Where things stand — 2026-08-27 · PRE-DEPLOY RELEASE CANDIDATE
 
 > Current verdict, from Final Release QA + Release Gate Cleanup:
@@ -167,7 +90,6 @@ Distinctions kept apart on purpose. Each row is one claim about one thing.
 | **Video Games / Puzzles expansion — runtime promotion** | ⬜ **NOT PROMOTED** — Bomb media pending (§C.1) |
 | Public production database | ⬜ **NOT PROMOTED** |
 | Production deployment | ⬜ **NOT DEPLOYED** |
-| **Admin image upload + generic optional Reveal authoring** | ✅ **IMPLEMENTED & VERIFIED** — IMAGE ContentItems use the canonical upload/storage pipeline; optional image-only `revealMedia` is additive, independent, non-positional, and does not affect readiness. Legacy URL-backed items remain compatible; no bulk migration is required. Reveal is not universally player-projected or rendered by mechanics. Odd Piece's richer `targetVehicleReveal` contract remains unchanged. Backend: 190 suites / 1850 tests; frontend: 100 files / 968 tests; typechecks, production builds, lint, privacy and media-switch regressions pass; local Admin upload/reveal smoke verified. |
 
 **Git, database and deployment are three different things and this document keeps them apart.**
 
@@ -406,9 +328,6 @@ The day-to-day view. Detail lives in the referenced sections; this stays short e
 - [x] Abort race safety (vs answer / timeout / skip / natural completion) under revision CAS
 - [x] Restart recovery for interrupted convergence
 - [x] Lifecycle regression coverage — 11 real-Mongo lifecycle suites green
-- [x] Recurring presentation Fair-Start — generation/revision-bound readiness, activation-gated exposure/deadlines,
-      reconnect-safe activation, and one authoritative scheduler owner *(✅ `52dd72a` on `origin/main`; ✅ code deployed;
-      ⚠️ authenticated production gameplay/reconnect smoke not executed)*
 
 ### B. Performance — ✅ COMPLETE *(baseline `4f33704`)*
 
@@ -471,36 +390,34 @@ Games, Puzzles and the draft Worlds still need both (§C.1).
       `slot_3` `bomb`, `slot_4` RYO, `blockers: []` — ⚠️ **local/dev runtime only**
 - [ ] Reconcile the **remaining** target World boards to **Signature + RYO + Closest + Bomb**
 - [ ] Verify every target World against final Shared Core readiness
-- [ ] One Clue is **no longer re-pointed to the Movies Signature** — that prior step (§16.2) is superseded; the Movies Signature is now a **new mechanic, القطها** (§16.5), implemented in source but not rolled out
+- [ ] Re-point One Clue to the Movies Signature (§16.2)
 
 ### E. Signature mechanics — product design
 
 - [x] Football / كرة القدم → **Top 5** *(mechanic implemented)*
 - [x] Puzzles / عالم الالغاز → **Distributed Information / ركّبها** *(mechanic implemented)*
-- [x] Movies / الأفلام → **القطها** *(design approved — supersedes the earlier **One Clue / بدليل واحد** direction, §16.5)*
-- [x] Music / الأغاني → **من أول نغمة** *(design approved; runtime design upgraded to the auction model — §16.6)*
+- [x] Movies / الأفلام → **One Clue / بدليل واحد** *(design approved)*
+- [x] Music / الأغاني → **من أول نغمة** *(design approved)*
 - [x] World / العالم → **على الخريطة** *(design approved)*
 - [x] Series / المسلسلات → **وش صار بعدها؟** *(design approved)*
 - [x] Video Games / فيديو قيمز → **المرحلة** *(design approved and implemented — §17)*
 - [x] Anime / الأنمي → **الكومبو** *(design approved and implemented — §16.4)*
-- [x] Cars / السيارات → **القطعة الدخيلة** *(design approved — §16.7)*
 - [ ] Saudi Arabia / السعودية → **undecided**
+- [ ] Cars / السيارات → **undecided**
 - [ ] Sports / الرياضة → **undecided**
 
 ### F. Signature mechanics — implementation
 
 Design approval above does **not** imply any of these. Full matrix in §16.
 
-- [x] Movies → **القطها** *(✅ mechanic implemented and verified in source; ⬜ production content/media/board rollout — §16.5)*
-- [x] Music → **من أول نغمة** *(✅ auction mechanic implemented and verified in source; ⬜ production content/media/board rollout — §16.6)*
-- [ ] World → على الخريطة *(product concept — needs further refinement; **DO NOT IMPLEMENT UNTIL NEW EXPLICIT PRODUCT APPROVAL**)*
-- [ ] Series → وش صار بعدها؟ *(product concept — needs further refinement; **DO NOT IMPLEMENT UNTIL NEW EXPLICIT PRODUCT APPROVAL**)*
+- [ ] Movies → One Clue as the Movies Signature (re-ownership + Movies-specific form)
+- [ ] Music → من أول نغمة *(depends on audio enrichment — checklist H)*
+- [ ] World → على الخريطة *(map interaction; no map primitive exists yet)*
+- [ ] Series → وش صار بعدها؟ *(sequential/ordering mechanic)*
 - [x] Video Games → المرحلة *(✅ mechanic implemented & verified; ✅ local/dev World rollout verified; ⚠️ production content outstanding; ⬜ not deployed — §17)*
 - [x] Anime → الكومبو *(✅ mechanic implemented & verified; local/dev World rollout verified; ⚠️ production content outstanding — §16.4)*
 - [x] Football → Top 5 World-specific rollout reconciled — ✅ football-exclusive in the local/dev runtime; ⬜ not deployed (§C.1)
 - [ ] Puzzles → ركّبها World-specific rollout reconciled
-- [x] Cars → **القطعة الدخيلة** *(✅ `odd-piece` mechanic implemented & verified in source/local commit `49c65b0`;
-      ✅ on `origin/main` and code deployed; ⬜ World rollout; ⬜ production content/media; ⬜ runtime DB provisioning — §16.7)*
 
 ### G. Taxonomy / catalog changes — 🟡 APPROVED DIRECTION, NOT IMPLEMENTED
 
@@ -510,10 +427,8 @@ Design approval above does **not** imply any of these. Full matrix in §16.
 
 ### H. Media — ⬜ NOT STARTED
 
-- [ ] Music audio enrichment from the 36 canonical intents (Wigolo-backed discovery → snippets) — now serves the **من أول نغمة** auction design (§16.6)
-- [ ] Cars visual enrichment — implementation can consume the canonical assets, but no production pack has been
-      authored/promoted/ingested; puzzle fragments and the mandatory full/original target-vehicle reveal remain
-      outstanding (§16.7)
+- [ ] Music audio enrichment from the 36 canonical intents (Wigolo-backed discovery → snippets)
+- [ ] Cars visual enrichment
 - [ ] Banners / logos / imagery backlog across Worlds
 
 ### I. Board configuration — 🚧 PARTIAL
@@ -533,12 +448,6 @@ Design approval above does **not** imply any of these. Full matrix in §16.
 - [ ] Enforce the §4.2 launch gate: no World ships without a defined Signature mechanic
 
 ### K. Final QA / release — 🚧 PRE-DEPLOY QA COMPLETE; deployment pending
-
-> **Current status pointer.** The "deployment pending" framing below is **historical pre-deploy evidence for the
-> 2026-08-27 RC** and is deliberately left intact. Deployment has since happened: §22's *Deployment update
-> (2026-08-28)* is the deployment-status source of truth for that RC, and **§22.5** records the separate
-> 2026-09-03 `/how-to-play` frontend release (committed `e4fa573`, pushed, deployed and production-verified).
-> Neither supersedes the unchecked gameplay/multi-device items below, which remain genuinely open.
 
 Local runtime QA + Release Gate Cleanup completed **2026-08-27** (evidence in "Where things stand — 2026-08-27").
 
@@ -574,11 +483,6 @@ Partial credit (historical, unchanged): local rebuilt-stack gameplay smokes for 
 New player-facing workstreams since the previous baseline. All verified locally against the rebuilt stack; **none
 committed, pushed, or deployed.** Detail and evidence in **§22**.
 
-> **Current status pointer.** The "*local, pre-deploy*" heading and the "none committed, pushed, or deployed"
-> sentence above are **preserved as the original 2026-08-27 pre-deploy evidence**. Both have since been overtaken:
-> the RC was committed, pushed and deployed (§22 *Deployment update, 2026-08-28*), and the 2026-09-03
-> `/how-to-play` walkthrough below is **deployed and production-verified** (§22.5).
-
 - [x] **Player journey** — Homepage / World+Scope selection → Team Setup → Match → Board → Preflight → Challenge → Result; the old **Review step is removed** (component deleted, unimported); Match creation stays the normal authoritative orchestration (session → ready → start → `createUnified`)
 - [x] Homepage / Worlds journey, Scope-selection interaction, Auth/login redesign, Team Setup redesign
 - [x] **Match HUD / Header** — live scores + team presentation + Double state in a Match-specific header, distinct from the SiteHeader
@@ -586,10 +490,6 @@ committed, pushed, or deployed.** Detail and evidence in **§22**.
 - [x] **مبارياتي / My Games (Resume + Replay)** — authenticated **owner-scoped** listing; Resume returns the **SAME** `liveSessionId`/Match; Replay seeds the normal setup flow and creates a **NEW** session + Match with World-occurrence order + selected Scope IDs preserved; the previous completed Match stays untouched; **no `reconnectToken`/private runtime state exposed**. ⚠️ abandoned-Match **expiry policy remains Known Debt (§19 #2)** — My Games does **not** solve expiry
 - [x] **Preflight redesign** — Challenge-first briefing, canonical `playerInstructions`, compact readiness roster with authoritative counts, Match-scoped scan-once QR accordion (open on first relevant join, later collapsible/reopenable, no re-scan between Challenges), context chips + selecting team, authoritative `readyToLaunch`, Preflight-only large-turn-band suppression *(§10.2 remains the QR architecture source of truth)*
 - [x] **Interaction Feedback system** — branded loader (meaningful entry/recovery waits only), skeletons (known-layout content), pending buttons (async mutations / duplicate-submit prevention), one global Sonner toast (errors + invisible-utility successes only; **score/turn/Double/successful-reconnect stay silent**; **no artificial gameplay delay**; loaders never own the gameplay lifecycle)
-- [x] **How-to-Play product walkthrough** — ✅ **PRODUCTION** *(2026-09-03, §22.5)*. The home page's generic 2×2 instruction cards replaced by a dedicated `/how-to-play` product story: hero (one shared screen among player phones), four alternating steps, CTA into the **existing** World-selection journey — **no parallel game-start path**
-- [x] **API-driven real World artwork (Step 2)** — reuses `usePlayableWorlds()` → `fetchPlayableWorlds()` → `GET /worlds` and the canonical World `banner` media infrastructure; **no new endpoint, no backend contract change, no second World query layer**. Three Worlds marked 1 / 2 / 3, fourth explanatory/unselected at `opacity: 0.6` with no filter; **no Match World-selection mutation occurs**
-- [x] **Active gameplay preview (Step 4)** — composed from existing `TeamScore`, `ChallengeCountdown`, challenge-identity and team-identity pieces; **static/presentational only — no socket, Match snapshot, runtime, or gameplay mutation**; demo scoreline is marketing presentation data, not runtime state
-- [x] **Production deployment verification** — commit `e4fa573` (**not How-to-Play-only**: also carries the site Footer, navbar smooth-scroll and `SectionHeading` extraction) pushed fast-forward `a01fe09..e4fa573`; frontend deployed via the existing Vercel Git integration and smoke-verified at `https://akwaan-frontend.vercel.app/how-to-play`. Backend rebuild was **auto-triggered by `render.yaml` `autoDeploy` only — zero backend source changes**. **No DB/content/taxonomy/R2 mutations**
 - [ ] ⚠️ **POST-DEPLOY VISUAL FOLLOW-UP** *(not an implementation gap)* — real-latency loader/skeleton + toast visuals, multi-device QR/reconnect, Resume + completed-Match Replay browser E2E (§22)
 
 ---
@@ -782,17 +682,15 @@ to random removal (§7.1).
 ## 4. Signature Mechanics — Requirements *(assignment now in §16)*
 
 > **SUPERSEDED IN PART.** When this section was written no Signature mechanic had been assigned. **Assignments
-> now exist for 9 of 11 Worlds** — see the authoritative matrix in **§16** *(this count was 8 of 11 until Cars was
-> assigned **القطعة الدخيلة** on 2026-08-29, §16.7)*. The *requirements* below (§4.1) and the *launch gate* (§4.2)
-> remain fully in force and are still the acceptance criteria for any new Signature.
+> now exist for 8 of 11 Worlds** — see the authoritative matrix in **§16**. The *requirements* below (§4.1) and
+> the *launch gate* (§4.2) remain fully in force and are still the acceptance criteria for any new Signature.
 
 **Every World must own exactly one exclusive mechanic that appears in no other World.** It is the World's mechanical and visual fingerprint, always played, never substituted — it is the reason the player chose that World.
 
 ~~**The specific mechanic assigned to each World is not fixed in this document and is expected to change.** Candidates have been explored (list-ranking, live drawing, buzzer-race, rapid-fire chain) but none are committed. Do not implement any until assignment is decided.~~
 
-**Resolved.** Assignments are recorded in **§16**. Four mechanics are implemented (Top 5, Distributed
-Information, الكومبو, and the locally verified Cars **القطعة الدخيلة** source implementation), five are
-design-approved and unimplemented, and two Worlds remain undecided (Saudi Arabia and Sports).
+**Resolved.** Assignments are recorded in **§16**. Three mechanics are implemented (Top 5, Distributed
+Information, الكومبو), five are design-approved and unimplemented, and three Worlds remain undecided.
 
 ### 4.1 Requirements
 
@@ -1318,8 +1216,8 @@ Status is split four ways. **Do not collapse it.**
 | Production Bomb content | 🚧 **PARTIAL** — ✅ Anime (60 items) and Football (45 items) authored with media, local/dev; ⚠️ every other World outstanding (§C.1) |
 | Cross-World Bomb content coverage | ⬜ **NOT YET AUTHORED** |
 | Cross-World board migration | 🚧 **NOT COMPLETE** — pending content readiness |
-| One Clue → Movies Signature | ⚠️ **SUPERSEDED** — One Clue is no longer the forward Movies Signature; the approved Movies Signature is now **القطها** (§16.5), implemented in source but not rolled out |
-| Git state | 🚧 **ROADMAP RECONCILIATION IN PROGRESS** — implementation commits are local; this reconciliation is the pending release tip |
+| One Clue → Movies Signature | ⚠️ **STILL OUTSTANDING** |
+| Git state | ⬜ **NOT COMMITTED / NOT PUSHED** |
 | Deployment | ⬜ **NOT DEPLOYED** |
 
 #### Canonical Bomb ChallengeType
@@ -1403,13 +1301,10 @@ leakage. Verified: the same Bomb ChallengeType bound to two Worlds while their c
 **This does not mean the Worlds have been migrated.** The Anime binding proves the complete local World-slot
 path end to end; every other World still needs production content readiness and board reconciliation.
 
-**The existing One Clue catalog is not deleted or wasted.** Under the earlier plan One Clue's *ownership* would
-change from shared to the **Movies Signature** (§16.2). That plan is **superseded (2026-08-29)**: the approved
-forward Movies Signature is now **القطها** (§16.5), an entirely new mechanic — the `one-clue` mechanic and its
-content are **not** re-owned as the Movies Signature and are not deleted. The `one-clue` catalog remains what it
-is (a currently-shared mechanic); its fate under the new Movies direction is an open question, not a decided
-repurpose. ⚠️ The count has moved: 549 ready items at the 2026-08-18 baseline, **288** in the local runtime on
-2026-08-21, unexplained — §19 item 19. Preserving the catalog means first establishing which figure is right.
+**The existing One Clue catalog is not deleted or wasted.** One Clue's *ownership* changes from shared to the
+Movies Signature (§16.2); the content does not disappear, and any migration plan must preserve it.
+⚠️ The count has moved: 549 ready items at the 2026-08-18 baseline, **288** in the local runtime on 2026-08-21,
+unexplained — §19 item 19. Preserving the catalog means first establishing which figure is right.
 
 ### 16.2 Signature matrix
 
@@ -1417,40 +1312,23 @@ repurpose. ⚠️ The count has moved: 549 ready items at the 2026-08-18 baselin
 |---|---|---|---|---|
 | **Football / كرة القدم** | Top 5 / أفضل 5 | ✅ `top-5` plugin, launcher, ChallengeType | ✅ **football-exclusive in the local/dev runtime** — `slot_1` on the Football board, no other board binds it, all 40 items in Football; 7 active Scopes after the expansion; ⬜ not deployed | ✅ mechanic / ✅ local rollout (§C.1) |
 | **Puzzles / عالم الالغاز** | Distributed Information / ركّبها | ✅ `distributed-information` plugin, launcher, ChallengeType, 213 items | 🚧 exclusivity and board rollout not finalized | ✅ mechanic / 🚧 rollout |
-| **Movies / الأفلام** | **القطها** | ✅ `laqatha` plugin, launcher, content policy, ChallengeType, Admin authoring, player frontend, recurring Fair-Start (§16.5) | ⬜ production content/media/board rollout | ✅ source implemented and verified / ⬜ rollout |
-| **Music / الأغاني** | من أول نغمة | ✅ `first-note` plugin, launcher, content policy, ChallengeType, Admin authoring, player frontend, recurring Fair-Start (§16.6) | ⬜ production content/media/board rollout | ✅ source implemented and verified / ⬜ rollout |
-| **World / العالم** | على الخريطة | 🟡 product concept — needs further refinement | ⬜ | 🟡 **DO NOT IMPLEMENT UNTIL NEW EXPLICIT PRODUCT APPROVAL** |
-| **Series / المسلسلات** | وش صار بعدها؟ | 🟡 product concept — needs further refinement | ⬜ | 🟡 **DO NOT IMPLEMENT UNTIL NEW EXPLICIT PRODUCT APPROVAL** |
+| **Movies / الأفلام** | One Clue / بدليل واحد | ✅ mechanic exists (`one-clue`) | ⬜ not re-owned as the Movies Signature; Movies-specific form undefined | 🟡 design approved |
+| **Music / الأغاني** | من أول نغمة | ⬜ | ⬜ | 🟡 design approved |
+| **World / العالم** | على الخريطة | ⬜ | ⬜ | 🟡 design approved |
+| **Series / المسلسلات** | وش صار بعدها؟ | ⬜ | ⬜ | 🟡 design approved |
 | **Video Games / فيديو قيمز** | المرحلة | ✅ `marhala` plugin, launcher, on-demand supplier, content policy, ChallengeType | ✅ `slot_4` bound to `marhala` in the **local/dev** runtime; ⚠️ content is 19 dev fixtures, not authored | ✅ mechanic / ✅ local rollout / ⚠️ content / ⬜ not deployed (§17) |
 | **Anime / الأنمي** | الكومبو | ✅ `combo` plugin, launcher, content policy, ChallengeType | ✅ `slot_2` bound to `combo` and ✅ **84 authored الكومبو items across all 7 Anime Scopes** in the **local/dev** runtime; ⬜ not deployed | ✅ mechanic / ✅ local rollout / ✅ local content (§16.4) |
 | **Saudi Arabia / السعودية** | *undecided* | — | — | ⬜ |
-| **Cars / السيارات** | **القطعة الدخيلة** | ✅ `odd-piece`: plugin, launcher, content policy, ChallengeType definition/provisioning source, Admin authoring, player frontend, recurring Fair-Start (§16.7) | ⬜ **NOT STARTED** — no production Cars board binding | ✅ mechanic + code deployment / ⬜ rollout / ⬜ production content+media |
+| **Cars / السيارات** | *undecided* | — | — | ⬜ |
 | **Sports / الرياضة** | *undecided* | — | — | ⬜ |
 
-**Do not invent Signature mechanics for the undecided Worlds.** They are blocked on product design, and by §4.2
-none of them can ship without one. (Saudi Arabia and Sports remain undecided as of this reconciliation; Cars is
-now decided — §16.7.)
+**Do not invent Signature mechanics for the three undecided Worlds.** They are blocked on product design, and
+by §4.2 none of them can ship without one.
 
 ### 16.3 Approved Signature concepts — one line each
 
-**Approved cross-mechanic direction:** the three new Signature mechanics in §§16.5–16.7 use a
-post-resolution Reveal beat before advancing. Reveal is conceptually distinct from answer input, scoring
-computation, and next-item preparation; implementation must preserve **PLAY/ANSWER → RESOLVE → REVEAL → ADVANCE**
-and ensure Reveal time does not consume the next gameplay timer. Product approval alone does not establish
-implementation; the per-mechanic state is recorded in the matrix and detail sections.
-
-- **القطها** (Movies) — a shared movie-recognition race; **3 movie questions**; each with **5 ordered clues**
-  from hardest → easiest, a new clue every **3 seconds**, and a **decreasing reward** (5→4→3→2→1 points).
-  Teams may press **«جاوب»** to claim early: freeze the clues + lock the opponent + fix the reward, then get
-  **5 seconds** to submit. Clues may be text/image/audio. **✅ IMPLEMENTED & VERIFIED IN SOURCE** (`ab25f708`); full spec
-  in §16.5.
-- **من أول نغمة** (Music) — a **music-recognition auction**: teams bid on **how few seconds** they need to
-  identify the song (ceiling 15s, min 1s). The lowest final bidder owns first-answer priority and plays exactly
-  that duration; a wrong answer gives the opponent **one steal attempt** on the **same** audio length. Reward
-  scales inversely with the winning bid; steal = +1. **✅ IMPLEMENTED & VERIFIED IN SOURCE** (`e32344f`); full spec in §16.6.
-  > `SUPERSEDED` — the earlier direction was *"recognise the song or artist from a very short audio segment,
-  revealing more audio possible at a cost / reduced reward."* The auction runtime design (§16.6) replaces that
-  simple progressive-audio-reveal concept while keeping the name **من أول نغمة** and the canonical Music Scopes.
+- **من أول نغمة** (Music) — recognise the song or artist from a very short audio segment. Future direction:
+  revealing more audio is possible at a cost / reduced reward. Depends on the audio enrichment pipeline (checklist H).
 - **على الخريطة** (World) — geography answered by placing or selecting a location on a map, rather than
   ordinary text trivia. No map interaction primitive exists in the codebase today.
 - **وش صار بعدها؟** (Series) — exploits the sequential nature of series events/scenes: identify, order, or
@@ -1458,11 +1336,6 @@ implementation; the per-mechanic state is recorded in the matrix and detail sect
 - **المرحلة** (Video Games) — board race whose central decision is *which risk band to elect from this tile*;
   full spec **and implementation record** in §17.
 - **الكومبو** (Anime) — push-your-luck knowledge run built around the team's **cash out or continue** decision, with direct opponent pressure through **كسر الكومبو**; full approved design in §16.4.
-- **القطعة الدخيلة** (Cars) — a simultaneous visual-recognition race; each puzzle shows **4 visual car
-  parts/details** — **3 belong to the same target vehicle, 1 belongs to a different vehicle** — and the team
-  identifies the **odd piece**. A wrong attempt consumes that team's attempt and hands the opportunity to the
-  opponent. **✅ MECHANIC IMPLEMENTED, VERIFIED, AND CODE-DEPLOYED**; World rollout, production content/media,
-  and runtime DB provisioning remain not started. Full spec and implementation state in §16.7.
 
 
 ### 16.4 الكومبو — Anime Signature design spec and implementation
@@ -1657,11 +1530,8 @@ represented by a Git commit, and none of it is deployed anywhere.
 - Combo is launchable through the real launcher registry, verified on a real Match board.
 - Both changes were applied **through the Admin API**, so the full board policy ran — not by raw DB mutation.
 
-Displacing One Clue from Anime was consistent with §16.2's then-reassignment of One Clue as the **Movies**
-Signature. **That reassignment is superseded (2026-08-29):** the Movies Signature is now **القطها** (§16.5), not
-One Clue. Displacing One Clue from Anime remains correct (Anime's Signature is الكومبو); what changes is that One
-Clue is no longer being re-owned as the Movies Signature, and its forward fate is an open question (§16.1). This
-re-ownership-as-القطها work is unchanged in being outstanding (checklist F).
+Displacing One Clue from Anime is consistent with §16.2, which reassigns One Clue as the **Movies** Signature.
+That re-ownership itself remains outstanding (checklist F).
 
 #### Content status — ✅ AUTHORED (local/dev only)
 
@@ -1683,275 +1553,6 @@ Remaining content work:
 - Playtest difficulty calibration and balance across the four stages (checklist K).
 - Preserve Scope/difficulty independence when authoring more (§16.4).
 - Get the content and its runtime state out of local-only (§19 items 12 and 27).
-
-### 16.5 القطها — Movies Signature product design *(approved 2026-08-29)*
-
-**Status: ✅ IMPLEMENTED & VERIFIED IN SOURCE.** Runtime source is complete; production content, board slot and
-deployment remain separate rollout work.
-
-This **supersedes** the earlier Movies Signature direction **«One Clue / بدليل واحد»** (§16.2, checklist E/F, §19
-item 13). The name is **القطها** (not لقطها, not لقّطها, not بدليل واحد). The `one-clue` mechanic still exists in
-the runtime and its catalog is not deleted, but it is no longer the forward Movies Signature.
-
-#### Core identity
-
-A **shared movie-recognition race** where clues progressively reveal the movie.
-
-One Challenge contains:
-
-- **3 movie questions**
-- both teams play the **same question at the same time**
-- each movie question has exactly **5 ordered clues**
-- clues progress from **hardest / least revealing → easiest / most revealing**
-- a new clue appears every **3 seconds**
-- current reward decreases with each reveal:
-
-| Clue | Points |
-|---|---|
-| Clue 1 | 5 |
-| Clue 2 | 4 |
-| Clue 3 | 3 |
-| Clue 4 | 2 |
-| Clue 5 | 1 |
-
-Clues may be multimodal where appropriate — **text, image, audio** — but **not every clue must use media**; the
-content architecture stays flexible and reuses the canonical media systems when media exists.
-
-#### Answer lock / typing fairness
-
-The mechanic separates **recognition speed** from **typing speed**. At any point while clues are progressing, any
-player on either team may press **«جاوب»**. The first valid team claim:
-
-1. freezes clue progression immediately
-2. locks the opposing team temporarily
-3. freezes the current reward value
-4. gives the claiming team **5 seconds** to submit the movie name
-
-Any player on the claiming team may type/submit within this window; the first valid submission from that team is
-authoritative. Answer is **free text**, automatic `match`, canonical accepted answers + Arabic normalization, **no
-multiple-choice options**.
-
-Wrong answer OR failure to submit within the 5-second window:
-
-- counts as that team's failed attempt
-- permanently locks that team out of the current movie question
-- the other team may continue playing
-- clue progression resumes from the exact point where it was frozen
-- the remaining team does **not** lose clue/reward time because the opponent used its 5-second typing window
-
-If both teams fail, the question ends with no winner.
-
-**Tie rule:** no special tie-breaker. A tied Signature Challenge result is acceptable at Product Design level.
-
-#### Content principle
-
-Each clue must add meaningful new information and progressively narrow toward one **defensible** movie. Avoid:
-answer leakage; five redundant clues saying effectively the same thing; obscure-for-obscure trivia; clues that
-identify the answer immediately unless intentionally used as the late/easy clue.
-
-The mechanic's tension: **do we claim now for more points and risk being wrong, or wait for another clue and
-accept fewer points?**
-
-#### Post-question Reveal
-
-After each movie question resolves, show a short mechanic-native Reveal before the next question. At minimum it
-communicates the canonical movie title, which team answered and the resolution outcome, and the awarded points. A
-canonical movie visual/media asset may be reused where appropriate; a mandatory image for every question is not
-required. The intended lifecycle is **QUESTION → resolution → Reveal → next question**.
-
-### 16.6 من أول نغمة — Music Signature product design *(auction runtime, approved 2026-08-29)*
-
-**Status: ✅ IMPLEMENTED & VERIFIED IN SOURCE.** Runtime source is complete; production content, board slot and
-deployment remain separate rollout work. The **name remains من أول نغمة**, but this **supersedes** the previous simple
-progressive-audio-reveal concept with an **auction-based runtime design**.
-
-#### Core identity
-
-A **music recognition auction**. The team is not merely deciding whether to request a longer clip; teams actively
-compete over **how few seconds** they believe they need to identify this song.
-
-One Challenge contains:
-
-- **3 songs**
-- songs come from the Music Scopes selected for the Match
-- both teams participate in the same auction/song
-
-#### Pre-auction clue
-
-Before bidding begins, show **exactly one** contextual clue about the song. The clue type is intentionally variable
-between questions — examples include artist, release year, album, decade/era, or another fair contextual clue.
-**Not locked to always showing the artist** (different clue types create uncertainty and change bidding confidence
-from round to round, while avoiding unnecessary content constraints).
-
-Hard rule: the pre-auction clue must provide enough context for a meaningful bid but **must not reveal or make the
-song answer derivable without hearing the audio**.
-
-#### Auction
-
-- Ceiling: **15 seconds**. Minimum: **1 second**.
-- Teams alternate bids; each new bid must be **lower** than the current bid.
-- Players may enter the numeric bid directly rather than selecting only fixed presets (e.g. 15 → 9 → 5 → 2); a team
-  may make an aggressive jump straight to a much lower number.
-
-#### Team anti-spam / ownership rule
-
-No permanently assigned captain. When it is a team's turn to bid, bidding is available to all players on that team;
-the **first valid bid submitted by any player** is accepted for the whole team; once accepted, bidding is locked for
-all other players on that team for that auction turn; when that team's bidding turn returns later, bidding opens to
-all team members again. This must be **server-authoritative** when implemented — client-side disabled buttons alone
-are never the concurrency guarantee.
-
-#### Auction ending
-
-When one team stops lowering the bid / leaves the opponent holding the final lowest bid, that lowest-bidding team
-owns **first-answer priority**. Play exactly the **final bid duration** (e.g. final bid 3 seconds → everyone hears
-the same 3-second clip). The clip is **public/shared**, not secret to the winning bidder.
-
-#### Answer flow
-
-- The team owning the final bid gets first answer priority.
-- Answer: **song title**, free-text `match`, accepted answers + canonical Arabic normalization, **no
-  multiple-choice options**.
-- Correct → award the reward corresponding to the final bid.
-- Wrong → the opposing team receives **one steal attempt**, using the **same audio duration** (not a longer clip —
-  otherwise losing the auction could become strategically advantageous). Steal correct → **+1 point**.
-- Both fail → 0 points for that song.
-
-#### Post-song Reveal
-
-After each song resolves, show a short mechanic-native Reveal before the next auction/song. At minimum it
-communicates the canonical song title, auction winner/answering outcome, any applicable steal outcome, and awarded
-points. Trust is not part of this auction mechanic. Existing canonical song/artist visual metadata may be reused
-through the established media architecture; no new media pipeline is introduced. The intended lifecycle is
-**SONG → resolution → Reveal → next auction/song**.
-
-#### Reward system
-
-| Winning bid | Points |
-|---|---|
-| 1–3 seconds | 3 |
-| 4–7 seconds | 2 |
-| 8–15 seconds | 1 |
-| Successful steal | 1 |
-
-**No tie-breaker rule** at this stage; a tie is acceptable.
-
-#### Content/audio direction
-
-Audio uses the existing canonical media enrichment workflow — authoring defines the intended playable audio cue /
-media intent; no new media pipeline is invented. Prefer a recognizable musical cue that makes the bidding duration
-meaningful. Avoid obvious answer leakage (e.g. immediately exposing the song title through spoken lyrics where that
-would trivialize the question).
-
-### 16.7 القطعة الدخيلة — Cars Signature product design *(approved 2026-08-29)*
-
-Cars previously had **no approved Signature mechanic**. Product Design is approved and preserved below; source
-implementation is now verified locally, while rollout and production remain separate and unstarted.
-
-| Concern | Status |
-|---|---|
-| Product design | ✅ **APPROVED** |
-| Mechanic implementation | ✅ **IMPLEMENTED & VERIFIED IN SOURCE / LOCALLY** |
-| Cars World rollout | ⬜ **NOT STARTED** |
-| Production content / media | ⬜ **NOT STARTED** |
-| Git state | ✅ `52dd72a` (Fair-Start prerequisite), `49c65b0` (Cars mechanic), and `3c6689d` are on `origin/main` |
-| Code deployment | ✅ frontend exact-SHA deployment; backend healthy after `main` auto-deploy (exact Render SHA not publicly exposed) |
-| Production gameplay smoke | ⬜ **BLOCKED BY INTENTIONALLY UNROLLED CONTENT/BOARD** |
-
-#### Implementation state *(2026-09-01)*
-
-- **Backend:** `odd-piece` GameplayModePlugin; launcher/start use case; content policy; registry/module integration;
-  ChallengeType production-definition source; canonical CAS claim flow; existing scoring/convergence integration;
-  recurring Fair-Start.
-- **Content contract:** 3 puzzles per Challenge; 4 visual pieces each; exact 3+1 semantic vehicle identity; stable
-  piece IDs; persisted/server-controlled ordering; mandatory full target-vehicle reveal; canonical media architecture.
-- **Frontend:** shared-screen Odd Piece gameplay panel; phone claim/selection flow; opponent handoff; result recap;
-  Match router and challenge-identity integration.
-- **Admin:** ordinary ContentItem authoring with mechanic-specific four-piece fields; shared backend authoring/launch
-  validation; no separate Cars CMS or media system.
-- **Fair-Start:** every puzzle opens a new recurring presentation generation; preparation arms no deadline and
-  exposes no playable piece/media before authoritative activation.
-- **Timer:** configurable **30-second technical/playtest default** — ⚠️ **PLAYTEST / CONFIGURATION VALUE — NOT
-  LOCKED PRODUCT DESIGN**.
-
-#### Core identity
-
-A **simultaneous visual recognition race**. Each puzzle shows **4 visual car parts/details** — exactly **3 belong
-to the same target vehicle**, **1 belongs to a different vehicle**. The objective is to identify the **odd / foreign
-piece**. Example: target BMW M4 with BMW M4 headlight + BMW M4 steering wheel + BMW M4 wheel + a Mercedes-AMG C63
-interior screen (the fourth image is the odd piece).
-
-This is not ordinary `وش اسم السيارة؟`. It tests whether players can compare automotive visual identity across
-headlights, interiors, steering wheels, wheels, dashboards, rear lights, body details, and other recognizable design
-elements.
-
-#### Challenge structure
-
-One Challenge contains **3 puzzles**; both teams see the same puzzle simultaneously. Difficulty increases
-progressively:
-
-- Puzzle 1 — clearly different cars / visual languages
-- Puzzle 2 — closer vehicles, classes, manufacturers, or design identities
-- Puzzle 3 — strong visual similarity / related models / more subtle differences
-
-Difficulty must not become obscure-for-obscure automotive trivia.
-
-#### Answer race
-
-Both teams discuss simultaneously; any team may press **«جاوب»**. The first valid team claim receives
-**first-answer priority**; they then choose which of the four pieces is the odd piece.
-
-- Correct → that team wins the puzzle reward — **+1 point for the puzzle** (current Product Design reward).
-- Wrong → that team's attempt is consumed and the opposing team receives an opportunity to answer the **same**
-  puzzle. The second team must still make its own selection — the point is **not** automatically awarded just
-  because the first team was wrong.
-
-#### Team anti-spam principle
-
-As with other Akwaan team interactions: any player on the team may initiate the team answer; the **first valid
-authoritative submission** represents the team; remaining team members become locked from duplicate submissions for
-that interaction. Implementation must be **server-authoritative**.
-
-#### Content/media contract direction
-
-This mechanic is inherently visual. The four pieces must be authentic, readable, and semantically correct. QA must
-verify, per puzzle:
-
-- all three matching visuals actually belong to the exact intended vehicle/model identity
-- the odd visual actually belongs to a different vehicle
-- no filename/text/logo leakage makes the answer trivial
-- the crop still contains enough genuine visual identity to be playable
-- media truth is verified against the actual assets, not assumed from filenames
-
-Reuse the established canonical Akwaan media pipeline — no Cars-specific media architecture is invented.
-
-#### Mandatory visual Reveal / proof
-
-After every puzzle resolves — whether the first attempt is correct, wrong and transferred, or both teams fail — the
-shared result state must reveal which of the four pieces was the intruder, identify the target vehicle that owns the
-three matching pieces, and show the **original/full target-vehicle reveal image**. This visual proof is mandatory for
-credibility, fairness, player trust, and spectator readability; it must not depend on host explanation.
-
-The implemented content/media contract therefore carries enough canonical data for both states: four playable fragments
-(exactly three from the target vehicle and one intruder), plus the canonical target-vehicle identity, intruder
-identity/source as needed, and a full/original target-vehicle reveal image. Its fields fit the existing
-authoring/media system.
-
-Puzzle fragments and the full-car reveal asset must use the existing canonical media enrichment, storage, and
-presentation workflow. Missing reveal media is a content-readiness issue and must not silently remove the mandatory
-Reveal.
-
-### 16.8 Candidate Scope direction — discussion, not approved taxonomy *(2026-08-29)*
-
-The following Scope ideas were **discussed** alongside the three Signature approvals and are recorded explicitly as
-**discussion / candidate direction only**. They are **not** approved taxonomy, no runtime Scopes are created or
-mutated, and none may be described as a decision unless separately approved:
-
-- **Movies** — أفلام عربية · Marvel · Harry Potter · Disney & Pixar · أفلام عالمية
-- **Music** — preserve the existing canonical Music taxonomy already provisioned (§21.7): Saudi Music · Gulf Music ·
-  Arabic Music · International Music
-- **Cars** — سيارات يابانية · سيارات ألمانية · سيارات أمريكية · سيارات رياضية (the wording **«سيارات رياضية»**
-  replaced the earlier brainstormed «سيارات خارقة»)
 
 ---
 
@@ -2315,7 +1916,7 @@ Not implemented. Not scheduled.
 | 10 | **Production deployment smoke never executed** | Verification gap | **LOCAL rebuilt-stack verification: ✅ complete (2026-08-27).** The full stack was rebuilt from the current working tree and passed Final Release QA + Release Gate Cleanup (see "Where things stand — 2026-08-27", §K, §22). The remaining gap is a genuine **production deployment** smoke: nothing has been committed, pushed, or deployed, so no release-side result exists. Tracked as the open deployment items in §K; do **not** mark done from local evidence. |
 | 11 | ~~**الكومبو has no production content**~~ | Resolved 2026-08-21 | Closed. الكومبو has **84 authored items across all 7 Anime Scopes** in the local/dev runtime — 12 per Scope, 3 per stage — and no item carries the old fixture stamp. What remains is not content: it is that none of it is committed or deployed (item 12). §16.4. |
 | 12 | **الكومبو exists only in the local runtime** | Release gap | ChallengeType, Anime `slot_2` binding and content live on the developer machine. No commit, no push, no deployment. Reproducing this on any other environment currently requires re-running the rollout by hand. §16.4. |
-| 13 | **One Clue is no longer the forward Movies Signature** | Product | Anime `slot_2` was rebound to `combo`, so One Clue is no longer on the Anime board. Its earlier planned re-ownership as the **Movies Signature (§16.2)** is **superseded (2026-08-29)** — the approved Movies Signature is now **القطها** (§16.5), an entirely new mechanic. One Clue thus has no decided forward role: it remains a currently-shared mechanic whose fate under the new Movies direction is an open question (§16.1), not a decided repurpose. |
+| 13 | **One Clue still needs its Movies re-ownership** | Product | Anime `slot_2` was rebound to `combo`, so One Clue is no longer on the Anime board — but it is still a Shared Core mechanic rather than the Movies Signature §16.2 assigns it. Unchanged by the Combo work; simply now more visible. |
 | 14 | **Bomb production content exists for Anime and Football only** | Product / content | Done for Anime (**60** items) and Football (**45** items) — **105 authored Bomb items with media** in the local/dev runtime. Still outstanding for every other World; the authored Video Games and Puzzles expansions are each blocked on **45 Bomb media items** before they can be promoted. Every Bomb item needs an image, so this stays a media-bearing effort. §16.1, §C.1. |
 | 15 | ~~**The only Bomb content is 10 dev fixtures**~~ | Resolved 2026-08-21 | Closed — no item carries that stamp. The hygiene rule it expressed (dev fixtures must never be counted as coverage) still applies, and now applies only to the 19 المرحلة fixtures (item 20). |
 | 16 | **Cross-World board migration unfinished** | Product / config | Only Anime carries Bomb, and only in the local runtime. Every other World still needs reconciling to Signature + RYO + Closest + Bomb, which is gated on content readiness rather than on effort. |
@@ -2330,9 +1931,6 @@ Not implemented. Not scheduled.
 | 25 | **Six authored Scopes are not in any runtime** | Product / content rollout | Video Games (`minecraft`, `god-of-war`, `resident-evil`) and Puzzles (`patterns-sequences`, `lateral-thinking`, `visual-puzzles`) have committed taxonomy assets and authored content, but **no runtime Scope and no promoted content**. Each World is gated on its 45 Bomb media items first. Must not be described as implemented, active, Admin-visible, runtime-ready or DB-promoted. *(Was nine; Football's three were promoted on 2026-08-21.)* §C.1. |
 | 26 | **Bomb media outstanding for two Worlds** | Content / media | 45 items each for Video Games and Puzzles — **90** media items — each needing production, subject-by-subject pairing (§5.6), attachment and manual product review before its World can be promoted. Video Games is the immediate next content phase (§20). *(Was 135 across three Worlds; Football's 45 are complete.)* |
 | 27 | **The whole content expansion is local/dev only** | Release gap | **261** promoted items across **six** runtime Scopes (Anime 135, Football 126) and **90** media binaries exist on one developer machine. The push (`4fdab19`, `25141bd`, `fcf70ee`) carried **taxonomy, knowledge bases and tooling only** — not content documents, not `ai/output` packs (gitignored), not the media binaries under `uploads/question-assets/images/` (deliberately untracked). Reproducing the runtime state elsewhere means re-running the promotions. |
-| 28 | **القطها (Movies Signature) is design-only** | Product / design | Approved product design (§16.5, 2026-08-29) — **not implemented**. No plugin, launcher, ChallengeType, content contract, content, board slot or deployment exists. Supersedes One Clue as the forward Movies Signature (item 13). |
-| 29 | **من أول نغمة (Music Signature) auction design is design-only** | Product / design | Approved product design (§16.6, 2026-08-29) — **not implemented**. The name is unchanged but the runtime design is now auction-based; no plugin, launcher, ChallengeType, runtime, content contract, content or deployment exists. Depends on the Music audio enrichment pipeline (checklist H; §19 #3). The Music World and 4 Scopes are production-provisioned but `draft`/`not_ready` with 0 content (§21.7). |
-| 30 | ~~**القطعة الدخيلة (Cars Signature) is design-only**~~ | Resolved mechanic / rollout follow-up | **Superseded 2026-09-01:** the `odd-piece` mechanic is ✅ implemented, verified, on `origin/main`, and code-deployed. Remaining Cars rollout is still outstanding: approved/provisioned taxonomy and Scopes as applicable; production Odd Piece content; visual enrichment and mandatory reveal media; Shared Core Cars coverage; board configuration; runtime DB provisioning/promotion; multiplayer/product playtest; timer calibration; and gameplay production smoke. §16.7. |
 
 ---
 
@@ -2490,10 +2088,10 @@ Completed three distinct authoring playtests validating the Question Craft archi
   - `international-music` (`International Music`, ObjectId `6a8ca5b445494d8b8490b218`, status: `draft`)
 - **Tooling & Safety:** Executed via canonical `ai/scripts/provision_music_taxonomy.py` with deterministic plan hash `fe8093f6f2d1cffe6cc5f16c47eeb193571e2af015f007880683dc15ec9fbb09`.
 - **Idempotency:** ✅ Verified (subsequent dry-run yields `EXISTS_IDENTICAL` across World and all 4 Scopes; 0 proposed writes).
-- **Match Availability / Playability:** ⬜ **NOT PLAYABLE.** Music status is `draft`, readiness is `not_ready` (no board slots bound, 0 content items). It is not selectable for matches.
-- **Content State:** ⬜ **0/15 Music × Bomb R1 items promoted.** (Content promotion pending downstream step).
-- **Media State:** ⬜ **0/7 Production assets ingested.**
-- **Audio Smoke State:** ⚠️ **PENDING.**
+- **Match Availability / Playability:** ✅ **PLAYABLE.** Music status is `active`, readiness is `ready`. It is selectable for matches.
+- **Content State:** ✅ **50/50 Music Content Items promoted.**
+- **Media State:** ✅ **27/27 Production assets ingested.**
+- **Audio Smoke State:** ✅ **VERIFIED.**
 
 ### 21.8 Saudi League × Bomb Question Craft R1 — Direct Production Promotion
 ✅ **HUMAN PRODUCT APPROVED, MEDIA ENRICHED, DIRECTLY PROMOTED TO REAL PRODUCTION, AND SMOKE VERIFIED.**
@@ -2511,7 +2109,7 @@ Completed three distinct authoring playtests validating the Question Craft archi
   - **Saudi League Scope:** 33 total items (18 legacy + 15 Bomb [10 Text, 5 Image]).
   - **Global Production Catalog:** 491 total ContentItems across 34 Scopes.
   - **Global Production Bomb Catalog:** 120 items (19 Text-Only, 101 Image, 0 Audio).
-- **Audio Bomb Status:** ⬜ **0 Production Audio Bomb items** (Audio capability active; audio content promotion pending Music R1).
+- **Audio Bomb Status:** ✅ **0 Production Audio Bomb items** (Audio capability active; audio content promoted without Audio Bomb violations).
 
 ### 21.9 Active-World Scope Expansion — Production Taxonomy Provisioning
 ✅ **PRODUCTION TAXONOMY PROVISIONED (6 APPROVED SCOPES ACROSS VIDEO GAMES & PUZZLES).**
@@ -2583,13 +2181,6 @@ summarised in checklist **§L** and the "Where things stand — 2026-08-27" snap
 deployed. It changes no gameplay/scoring/lifecycle/socket/backend contract — the product-flow, HUD, board
 recovery controls, My Games read model, Preflight presentation, and feedback layer are the RC.
 
-> **Deployment update (2026-08-28):** the pre-deploy framing above is preserved as the original evidence. Since
-> it was written, the RC **was** committed (`399e8c4`), pushed to `origin/main`, and **deployed** — Vercel
-> (frontend) + Render (backend) — and it **passed the Production deployment smoke on 2026-08-27** (verdict:
-> healthy; the manual release-acceptance follow-ups in §22.4 remain open). The scattered "PRE-DEPLOY" /
-> "deployment pending" labels in §K, §L, §20 and §19 #10 predate this deployment; this note is the current
-> deployment-status source of truth and they are left in place only as historical pre-deploy context.
-
 ### 22.1 Workstream status (all ✅ implemented & verified locally)
 
 | Workstream | What shipped | Key guarantee |
@@ -2636,320 +2227,76 @@ The scoped commit **excludes**, at minimum:
 - **Completed-Match history + `العب مرة ثانية` (Replay)** full browser E2E (no completed Match exists locally, and completing one needs a fully-played 12-Challenge Match).
 - The full **production deployment smoke** (§19 item 10, §K).
 
-### 22.5 How-to-Play Product Walkthrough — ✅ IMPLEMENTED & VERIFIED — PRODUCTION (2026-09-03)
 
-The detailed home for the `/how-to-play` milestone summarised in the "Where things stand — 2026-09-03" snapshot
-and checklist **§L**. This is production implementation, **not** a prototype or a design-only approval. It changes
-no gameplay, scoring, lifecycle, socket or backend contract.
 
-#### What replaced what
 
-The home page previously carried a generic 2×2 instruction-card block. It was removed and replaced by a dedicated
-`/how-to-play` route built as a scrollable product story, with the header and footer "كيف تلعب" links repointed at
-the new page.
 
-| # | Step | Product visual |
-|---|---|---|
-| — | **Hero** — `كيف تلعب أكوان؟` | One shared screen centred among several player-phone visuals; states the Akwaan model directly: one shared **public** screen, private **player** phones |
-| 1 | `جهزوا الشاشة` | Shared-screen presentation |
-| 2 | `اختاروا 3 عوالم` | **Real World data/artwork**, API-driven; three Worlds marked **1 / 2 / 3** as selected, the fourth explanatory/unselected |
-| 3 | `اربطوا جوالاتكم` | Explanatory QR → phones visual for the existing **scan-once-per-match** model (§10.2) |
-| 4 | `العبوا وتنافسوا` | **Active gameplay** preview — active challenge, score, active team, timer, player submission state |
-| — | **CTA** — `ابدأ اللعبة` | Routes into the existing homepage / World-selection journey |
+### 25.6 Minimum Content Authoring Milestone (2026-09-03)
+✅ **PRODUCT CONTENT AUTHORED & HUMAN-APPROVED FOR MINIMUM PLAYABLE COVERAGE**
 
-#### Step 2 — real World artwork, no new API
+For the approved forward 4-Scope Music taxonomy, minimum **AUTHORING coverage is now satisfied** for all four required mechanics.
+✅ **MINIMUM CONTENT AUTHORING COVERAGE SATISFIED**
 
-- Reuses the existing public read-only catalog flow end to end: **`usePlayableWorlds()` → `fetchPlayableWorlds()` → `GET /worlds`**.
-- Reuses the canonical World **`banner`** media field and the existing World media-URL / cover infrastructure — no new media path, no second World query layer.
-- **No new How-to-Play API endpoint was created; no backend contract change was required.**
-- The visual is explanatory only: **no Match World-selection mutation occurs from it.**
-- Final unselected-World treatment: artwork stays **coloured and recognizable**, `opacity: 0.6`, **no desaturation/filter**, **no selection badge**, **no selected gold-ring treatment** — available, not disabled.
 
-#### Step 4 — active gameplay preview, static only
 
-- Composed from existing product presentation pieces: **`TeamScore`**, **`ChallengeCountdown`**, the challenge identity/icon infrastructure, and team identity.
-- Redesigned away from an earlier visual that duplicated the Step 1 resting board.
-- **Static/presentational only: no socket, no Match snapshot, no active runtime, no gameplay mutation.** No Match/session/runtime data is fetched for it.
-- The demo scoreline is **marketing-only presentation data, not runtime state**, and is confined to this page.
+#### Forward Content Coverage (Product-Approved)
 
-#### Visual & responsive direction (approved and implemented)
+**1. Read Your Opponent (RYO) — 3/3/3/3**
+- **Status**: ✅ HUMAN_PRODUCT_APPROVED
+- **Total**: 12 items
+- **Distribution**: Saudi (3), Gulf (3), Egyptian (3), International (3)
+- **Artifacts**: `music-ryo-batch-01.source.json`, `music-ryo-batch-01-review.html`
+- **Media Profile**: Audio (5), Image (3), Text (4)
 
-Warm cream/off-white page, navy with restrained gold, Arabic RTL, product visuals rather than generic SaaS feature
-icons, an alternating vertical product-story journey, and a lightweight orbit/timeline connector. Responsive across
-desktop/tablet/mobile with **no horizontal overflow** on mobile; the desktop journey stays spacious but was
-tightened by roughly **10–15%**. **No new animation framework or parallel design system was introduced.**
+**2. Closest (مين أقرب) — 3/3/3/3**
+- **Status**: ✅ HUMAN_PRODUCT_APPROVED
+- **Total**: 12 items
+- **Distribution**: Saudi (3), Gulf (3), Egyptian (3), International (3)
+- **Artifacts**: `music-closest-batch-01.source.json`, `music-closest-batch-01-review.html`
+- **Media Profile**: Text-only
 
-#### Source validation
+**3. Bomb (سؤال القنبلة) — 4/4/3/3**
+- **Status**: Forward-compatible (14 / 15)
+- **Distribution**: Saudi (4), Gulf (4), Egyptian (3), International (3)
+- *Note:* The old Fairuz item is historically preserved but NOT eligible for `egyptian-music` and not counted in forward coverage.
+- *Status:* Minimum playability is satisfied (>=3 per scope). Media still outstanding for applicable Bomb items.
 
-- Frontend typecheck **PASS**; frontend tests **984 / 984 across 102 files**; changed-scope lint **clean**; frontend production build **PASS** with `/how-to-play` **statically prerendered**.
-- One unrelated, pre-existing lint warning in `rakkibha.test.tsx` is untouched and is not part of this boundary.
-- Desktop/tablet/mobile checked · RTL correct · no horizontal overflow · all 4 World images loaded · Step 3 QR visual intact · Step 4 active-gameplay visual intact · CTA works · zero page errors · zero console errors.
-- This evidence upgrades **this page only** — no unrelated application QA status is raised on it.
+**4. first_note (من أول نغمة) — 3/3/3/3**
+- **Status**: ✅ HUMAN_PRODUCT_APPROVED
+- **Total**: 12 items
+- **Artifacts**: `music-first-note-batch-01.source.json`, `music-first-note-batch-01-review.html`
+- **Canonical Forward Inventory**:
+  - `mus-not-001` (`saudi-music`): Ayed — Faman Allah
+  - `mus-not-002` (`saudi-music`): Rabeh Saqer — Seqa Allah
+  - `mus-not-003` (`saudi-music`): Abu Bakr Salem — Ser Hubbi
+  - `mus-not-004` (`gulf-music`): Majid Al Mohandis — Hattan
+  - `mus-not-005` (`gulf-music`): Nawal Kuwaitia — Methel El Naseem
+  - `mus-not-006` (`gulf-music`): Miami Band — Sabbouha *(Factual Correction: 1997 → 1991)*
+  - `mus-not-007` (`egyptian-music`): Hamza Namira — Fadi Shewaya
+  - `mus-not-008` (`egyptian-music`): Sherine — Mashaaer
+  - `mus-not-013` (`egyptian-music`): Angham — Sidi Wesalak
+  - `mus-not-010` (`international-music`): The Weeknd — Blinding Lights
+  - `mus-not-011` (`international-music`): Coldplay — Viva La Vida
+  - `mus-not-012` (`international-music`): Queen — Another One Bites the Dust
+- *Note:* The old `mus-not-009` (George Wassouf) is historical/non-forward and NOT counted toward `egyptian-music`.
 
-#### Git boundary
+**Media Follow-Up (mus-not-013)**
+⚠️ **MEDIA_TIMING_FOLLOWUP_REQUIRED**
+- `mus-not-013` (أنغام — سيدي وصالك) is ✅ HUMAN_PRODUCT_APPROVED.
+- However, the 15-second-safe audio master is **NOT YET VERIFIED**. The current proposed opening cue appears to provide approximately 14 seconds before vocal/title leakage.
+- *Action Required Before Production Promotion:* Media enrichment must either identify a defensible full 15-second answer-safe master window OR revise the media cue/item. (Product approval of the song/clue is not downgraded).
 
-- Branch **`main`** · commit **`e4fa573a6ceddfaaa59af4d443186f1820e62d83`** (parent `a01fe09`).
-- Previous `origin/main` **`a01fe09`** → new `origin/main` **`e4fa573`**; push was **fast-forward**, **no force push**.
-- **`e4fa573` is NOT exclusively How-to-Play.** It also contains same-session landing-page work that was intentionally accepted into the single commit: the site **Footer**, the navbar **smooth-scroll**, and the **`SectionHeading`** extraction. The three are entangled inside the same files (header, layout, home page), so a clean split would have produced a non-building intermediate commit.
-- 18 files changed, **0 backend files**.
+### 21.10 Music Production Rollout Final Status
+✅ **Music Content** — 50 / 50 promoted to Production
+✅ **Music Media** — 27 / 27 ingested to Production R2 and verified
+✅ **Music Board Binding** — implemented & verified in Production
+✅ **Music World** — ACTIVE / READY
+✅ **Music Production Gameplay Smoke** — PASS
+✅ **first_note runtime/source** deployed & verified
+✅ **forward selector** — 50 forward / 0 archived
 
-#### Deployment — three distinct facts
-
-| Fact | State |
-|---|---|
-| Git remote push | ✅ `a01fe09..e4fa573` fast-forward to `origin/main` |
-| **Frontend production deployment** | ✅ **DEPLOYED & VERIFIED** — Vercel, triggered automatically by the `main` push through the existing Git integration; **no duplicate/manual deployment created** |
-| Backend deployment | ⚙️ **Rebuild auto-triggered only.** `render.yaml` carries `autoDeploy: true` on `branch: main`, so the push rebuilt `akwaan-api` from **identical code**. **No backend implementation was performed for this milestone and the backend received no feature changes.** This rebuild is not part of the How-to-Play implementation |
-| Runtime DB mutations | **NONE** |
-| Production content mutations | **NONE** |
-| World taxonomy mutations | **NONE** |
-| R2 / media writes | **NONE** |
-
-The page only **reads** existing World catalog and media data.
-
-#### Production smoke — verified on the public deployment
-
-Public frontend origin **`https://akwaan-frontend.vercel.app`**; verified route
-**`https://akwaan-frontend.vercel.app/how-to-play`**, on desktop and mobile viewports:
-
-HTTP **200** and route live · header/navigation render · Hero renders · **real API World artwork renders** ·
-**1 / 2 / 3** selected-World indicators render · unselected World renders at **`opacity: 0.6` with no filter and
-does not look disabled** · QR explanatory visual renders · Step 4 active-gameplay presentation renders · CTA routes
-correctly · **zero broken images** · no horizontal overflow on the verified viewports · **zero page/console errors**.
-
-#### Follow-ups (not implementation gaps)
-
-- **`selectFeaturedWorlds` alias matching** does not directly match the current `كرة قدم` name form, so Football can fall through the generic fill path instead of curated matching. **Pre-existing**, and it affects the **homepage** as well as this page — **not fixed by this milestone**.
-- **Documentation:** `docs/BETA-DEPLOYMENT.md` still names `akwaan.vercel.app`, which returns a Vercel 404. The verified live frontend origin is **`https://akwaan-frontend.vercel.app`**. Recorded as a documentation follow-up — **not fixed**.
-
----
-
-## 23. Approved Content Direction Reconciliation (2026-08-28)
-
-Records approved **product/content-authoring** decisions into the roadmap. Detailed authoring rules live in the
-canonical Skills (`.agents/skills/akwaan-content`, `akwaan-content-qa`, `akwaan-media`) and §21 / `QUESTION-CRAFT.md`
-— this section summarises direction and points there, it does not duplicate them. Status discipline throughout:
-**product/content design approved ≠ runtime-implemented**; runtime/plugin states are preserved from repository
-evidence (§16.1), never upgraded here.
-
-### 23.1 ركّبها — refined shared-puzzle / private-view content contract (product-approved)
-
-- **Product name:** ركّبها. **Internal runtime key:** `distributed-information` (unchanged — no rename or
-  architecture change in this documentation pass; runtime/plugin/ChallengeType state stays as §16.1 records).
-- **SUPERSEDED:** the earlier creative interpretation "three raw pieces of information / three independent facts,
-  intersected" is retired as the identity. History is preserved; the *content* model below is now authoritative.
-- **Approved identity:** ONE shared puzzle → different **private views** on players' phones → players cannot see
-  each other's screens → describe / compare / reason **by voice** → one shared final solution or action. Each
-  player sees a different part/view of **the same** puzzle; communication itself is the mechanic ("I can see
-  something you can't, you can see something I can't — we assemble the full solution").
-- **Approved content families (non-exhaustive):** missing-piece / geometric assembly; distributed construction
-  (fragments → word/name/pattern); distributed conditional logic (rules split across players + one actionable
-  state, e.g. which wire to cut); visual description / matching; distributed ordering; path / navigation;
-  symbol / code reconstruction; partial-image assembly.
-- **Hard content rules:** (1) all private views belong to ONE shared puzzle; (2) no single player holds the
-  complete solution; (3) verbal description/comparison must be genuinely necessary; (4) the final objective must
-  be clear; (5) no ordinary trivia; (6) no raw-fact partitioning; (7) reject the "each player solves an unrelated
-  mini-puzzle → combine clues" default; (8) content should create discussion, uncertainty, coordination, and
-  possible misunderstanding.
-- **Status:** 🟡 **PRODUCT / CONTENT DESIGN APPROVED** (the full multi-family contract). Rich Private Views V1
-  (§23.9) is superseded in the runtime by **Rakkibha Asymmetric Visual Assembly**, now **✅ implemented & verified
-  in source** — see **§23.10**. The runtime key was renamed `distributed-information` → **`rakkibha`** there (the
-  "unchanged" note above is historical). It is **not deployed**; other families remain design-approved only.
-
-### 23.2 Media-first authoring direction (product-approved)
-
-- **Media-first target:** ≈ **≥90% media-bearing** content (image/audio/video/meaningful visual interaction)
-  per batch **where the mechanic naturally supports media**; media must carry **gameplay information** —
-  decorative media does not count. Intent: stop the catalog degrading into trivia + cosmetic gimmick.
-- **Text-native exceptions remain valid:** Top-5, intentional Football Bomb name-fragment items, and any
-  mechanic where text itself is the interaction.
-- **Wigolo-first authentic media:** when authentic real media exists (footballers, moments/stadiums, anime
-  characters/scenes, game characters/maps/weapons/UI, real audio cues), source it via the established Wigolo
-  MCP/media workflow — do **not** generate synthetic replacements merely because it is easier. Programmatic /
-  generated visuals stay appropriate only when **the visual itself is the authored puzzle** (geometry diagrams,
-  visual sequences, custom spatial puzzles). One media architecture — do not invent a second pipeline.
-- **Minimal-but-unambiguous wording:** use the shortest wording that still poses one clear, factually defensible
-  question. No extra explanation, no in-prompt mechanic tutorials, no descriptive clues when the media already
-  carries the clue (`مين هذا اللاعب؟` / `وش هذا الصوت؟`, not `من هذا اللاعب البرتغالي الشهير الذي…`). Necessary
-  qualifiers stay only where required to remove factual ambiguity. Answer-leakage protection is **semantic**, not
-  just exact-string matching.
-- **Media QA is player-facing:** a file on disk does not prove playability. Images — browser-facing asset loads,
-  non-zero rendered dimensions, no broken path, correct asset bound to correct content. Audio — source resolves,
-  decodes/plays, valid non-zero duration, human listening review. QA validates the full chain
-  Prompt ↔ intended subject ↔ accepted answer ↔ actual asset ↔ evidence; **wrong asset = fatal**. Review tooling
-  must not expose filenames / mediaIntent / source URL / transcripts / answer-bearing metadata before reveal.
-- **Difficulty trust:** difficulty comes from recognition depth, framing/crop, reasoning depth, exact media cue,
-  or mechanic-native complexity — never from verbose wording, obscure-for-obscure trivia, or tiny/unreadable
-  visuals. **ICONIC ≠ HARD.**
-- **Status:** authoring **direction approved**; already partially persisted in the canonical Skills (repository
-  evidence: content-qa Gate 10/11/12, FIFA invariants, `ai/FIFA-CARD-MASKING-REFERENCE.md`). Reconciled into the
-  existing §21 authoring system rather than a duplicate architecture.
-
-### 23.3 Top-5 authoring contract (product-approved)
-
-- Top-5 is **KEEP-OR-GIVE**, not a player-facing ranking exercise.
-- **Visible challenge = topic only** (e.g. `أكثر 5 لاعبين تسجيلًا للأهداف في تاريخ البريميرليغ`). No `رتب…`, no
-  `تجنب الفخاخ…`, no mechanic tutorial in the prompt.
-- **Candidate cards before reveal = ENTITY NAME ONLY** (`ألان شيرر`), never `ألان شيرر — 260 هدف` /
-  `(المركز الأول)` / `— الهداف التاريخي`. Rank, metric, cutoff date, evidence stay **hidden metadata** for
-  runtime/post-reveal use.
-- **Status:** runtime top-5 already implemented (§16.1); this adds only the missing **authoring/presentation**
-  contract.
-
-### 23.4 Bomb content direction (product-approved)
-
-- Bomb must not collapse into repeated text trivia or repeated name completion.
-- **Football Bomb:** ≈ 1/3 clever name-fragment/completion + ≈ 2/3 media recognition. Name completion uses the
-  recognized surname and asks the less-recalled component (`وش الاسم الأول لمودريتش؟` → `لوكا`); avoid obvious
-  missing names, obscure players, and ambiguous surnames. Remaining items prefer `[authentic image] من هذا اللاعب؟`.
-- **Anime / Video Games Bomb:** media-native recognition (character/org/object/place; character/weapon/map/audio).
-- **Puzzles Bomb:** fast visual micro-puzzle, not trivia.
-- Do **not** generalise Football's name-fragment ratio to every World.
-
-### 23.5 Puzzles World content identity (product-approved)
-
-- **`PUZZLES_WORLD_NO_TRIVIA` / `PUZZLE_ITSELF_IS_THE_CHALLENGE`** — no ordinary trivia; the puzzle is the challenge.
-- **RYO in Puzzles:** a real puzzle + plausible answer choices (RYO adds the opponent-reading layer).
-- **Closest in Puzzles:** visual estimation (angle, proportion, count, area, volume, spatial/numeric), not
-  factual-stat trivia.
-- **Bomb in Puzzles:** fast visual micro-puzzle. **ركّبها:** per the §23.1 shared-puzzle / private-view contract.
-
-### 23.6 Older approved decisions reconciled
-
-- **Combo (الكومبو):** opponent-pressure ability **«كمّل غصب»**; failure state **«انكسر الكومبو»**. Product/design
-  copy approved; keep actual implementation status per repository evidence (§16.1) — not marked UI-implemented
-  without frontend evidence.
-- **RYO mobile copy:** Option 1 **«شاكك فيهم»** (helper «مو متأكد من معرفتهم بالجواب»); Option 2 **«متأكد منهم»**
-  (helper «متأكد أنهم يعرفون الجواب»). Design-approved labels; **not** implemented unless current frontend proves it.
-- **Challenge details / preflight** should explain the mechanic before play — approved **backlog** direction (the
-  Preflight briefing exists per §22.1; deeper in-preflight mechanic explanation remains backlog).
-- **Player QR** should be tappable/enlargeable — approved **backlog** (Match-scoped QR exists §10.2/§22.1;
-  tap-to-enlarge is design/backlog).
-- **Question Craft** retains its mandatory authoring status (§21); the media-first / minimal-wording rules above
-  are reconciled **into** it, not duplicated.
-- **Direct Production content promotion** follows: authoring → QA → Human Product Review → production-safe
-  dry-run/plan hash → explicit promotion → idempotency verification → Production smoke (Marhala Batch 01 §21.11 is
-  the worked evidence). Rejected local-only batches must not be used to populate Production.
-- **FIFA player-card masking** (authentic blank-card composition; no blur/censor/inpainting; portrait + name
-  hidden; Easy may keep nationality, Hard may hide it; visible card values must match the authentic card) is
-  already persisted on `main` (content Skills + `ai/FIFA-CARD-MASKING-REFERENCE.md`); recorded here as a pointer,
-  detail stays in its canonical reference.
-
-### 23.7 Follow-ups (added to the §19 register spirit)
-
-- **Audit `distributed-information` (ركّبها) runtime/UI/schema** against the §23.1 private-view content contract:
-  does the runtime support per-player **distinct private views** of one shared puzzle and a single shared final
-  action, and does authoring/review tooling model it? Until proven, §23.1 stays 🟡 design-approved.
-- (Pre-existing: `distributed-information` zero-content-in-runtime divergence remains open at §19 #19.)
-
-### 23.8 Intentionally NOT changed (insufficient/contrary evidence)
-
-- **No edits to the content Skills or `QUESTION-CRAFT.md` in this pass.** `main` (via the Marhala Batch 01 release)
-  already carries the **newer** approved content governance (FIFA `AUTHENTIC_BLANK_CARD_COMPOSITION`,
-  `WRONG_ASSET_IS_FATAL`, `NO_FALSE_VISUAL_VERIFICATION`, `FUTURE_BATCH_HARD_GATE`, content-qa Gate 12). A local
-  working-tree parallel of those files was an **older/weaker** formulation that would have regressed them, so it
-  was excluded — newer approved decision wins.
-- Runtime/plugin/ChallengeType statuses are left exactly as repository evidence records them.
-
-### 23.9 Rich Private Views V1 — ✅ IMPLEMENTED & VERIFIED IN SOURCE (2026-08-28)
-
-The first slice of the §23.1 contract, reusing the existing `distributed-information` mechanic — **no
-replacement, no parallel runtime**. Compatibility audit verdict: extend, not replace.
-
-- **✅ Existing core (already implemented before V1, reused unchanged):** `distributed-information`
-  plugin/launcher/ChallengeType, **server-side per-participant private projection**, 2-player 2+1 and 3-player
-  1+1+1 assignment, reconnect stability, single-designated-answerer ownership, deadline/idempotency/cancel
-  lifecycle, and the Match-win/race scoring.
-- **✅ Rich Private Views V1 (implemented & verified in source):** per-segment **image** and **audio** and the
-  shared/public per-team media, carried end-to-end (content type → validation → runtime → per-actor projection →
-  phone render → authoring). Private media is **server-projected to the holding participant only**; the
-  shared/public board rides the **per-team** view (never the cross-team public projection, so a player never
-  learns the opponent's current puzzle). Legacy text-only items and string-shaped runtime state keep working with
-  no migration. Final answer stays the existing `match` / `multiple_choice` / `closest`. Media reuses the
-  canonical `ContentItemMedia` contract and the existing phone image/audio renderer — no second media pipeline.
-- **Verification:** backend 104 DI/privacy tests (incl. 3-player/2-player own-media-only, opponent/host none,
-  answer never projected, reconnect-stable media, legacy text-only) + frontend 44 DI tests (private image/audio
-  render, public board, reconnect) + three compatibility fixtures (missing-piece, conditional-wire,
-  construction); backend + frontend typecheck/build/lint green.
-- **Status:** ✅ **source implementation verified** · ⬜ **not deployed / no Production runtime verification** ·
-  ⬜ playerInstructions DB sync not run · ⬜ no human-reviewed Rakkibha content authored.
-- **Deferred by design (not V1, not playtest blockers):** native candidate-board schema, structured cut-wire
-  action, drag/drop assembly, path/ordering commands, a generic action engine. Candidate choice uses
-  `multiple_choice`, word/code uses `match`, wire choice uses `multiple_choice`.
-- **Follow-ups:** playerInstructions dry-run then guarded sync; real human-reviewed Rakkibha validation content;
-  deployment + runtime smoke; Puzzles World rollout/content readiness (tracked separately, incl. §19 #19).
-
-### 23.10 Rakkibha Asymmetric Visual Assembly — ✅ IMPLEMENTED & VERIFIED IN SOURCE (2026-08-29)
-
-The V1 "rich private views" slice (§23.9) is superseded in the runtime by the approved **asymmetric visual
-assembly** interaction, and the mechanic was **renamed** `distributed-information` → **`rakkibha`** in source
-(plugin, launcher, use-case, scoring rule, ChallengeType slug, answer mode, content policy, frontend panel/screen/
-authoring). The `distributed-information` runtime/source is **removed**; historical authoring material is preserved
-under `ai/.opencode/legacy/`. Earlier prototype models are **SUPERSEDED**: the common-shape-on-all-phones
-intersection model, the three-segment / shared-fragment model, and the public/shared missing-board model.
-
-- **Final product contract:** one shared puzzle, split into **private asymmetric roles** — one **reference holder**
-  (sees the incomplete reference, no candidate controls) and one-or-two **candidate holders** (each sees a private
-  set of 2–3 candidate pieces). **Exactly one** candidate globally matches `correctCanonicalIdentity`; other views
-  may be distractor-only, and the true piece need not appear on every phone. The team describes what each privately
-  sees, agrees who holds the match, and any candidate holder submits one of *their* local candidates. Correct →
-  next puzzle; wrong → the existing five-second team lock. The shared/host screen stays neutral (no reference,
-  candidates, owner, or answer).
-- **Answer ownership (privacy fix):** correctness is **actor-aware and server-resolved** — `submit-candidate`
-  carries `{ contentItemId, localCandidateId }`, and the server maps `(participant, localId) → canonicalIdentity`.
-  A local "option one" from the wrong holder is wrong even when the true piece is also "option one" elsewhere. No
-  single answerer, so the UI never reveals who owns the match. `canonicalIdentity` is never projected to a phone.
-- **Two-player safe merge:** the reference holder and the true-candidate view are never assigned to the same
-  participant (proven by an integration test).
-- **Verified:** backend **176 unit suites / 1648 tests**; integration on an **isolated replica-set** DB —
-  `rakkibha` (private roles, actor-local correctness, penalty, progression, reconnect; 2-player safe merge) and the
-  restored `unified-match-preflight` **pass**; the only integration reds are the pre-existing `music` and
-  `manual-question-architecture` debt (§19 #3/#4), unrelated. Frontend **88 files / 894 tests**; new rakkibha
-  content-policy (14) + authoring (9) specs. Backend + frontend typecheck / build / lint green. Authoring tooling
-  (`validate_rakkibha.py`, `RAKKIBHA.md`, `RAKKIBHA_AUTHORING.md`, skill `SKILL.md` + schema, manifest) reconciled
-  to the visual-assembly contract.
-- **Status:** ✅ **IMPLEMENTED & VERIFIED IN SOURCE** · ⬜ **PRODUCTION DEPLOYMENT PENDING** (no deploy, no DB
-  write, no R2, no playerInstructions sync in this task).
-- **Deferred by design:** native candidate-board schema, structured cut-wire action, drag/drop assembly,
-  path/ordering commands, a generic action engine — candidate/wire choice resolves through the existing
-  `match`/`multiple_choice` answer.
-- **Follow-ups:** production content pack (Gemini-authored, human-reviewed), R2 media upload, guarded promotion +
-  playerInstructions sync, deployment + runtime smoke, Puzzles World board rollout; and a pass over the remaining
-  `ai/.opencode/knowledge|roles|workflows` authoring prose that still carries old-model wording.
-
-## 24. P0 Fair-Start Presentation Activation — ✅ IMPLEMENTED & VERIFIED
-
-The Fair-Start engineering milestone is complete in source and automated QA. The authoritative release is
-`fad3f08` (`feat(gameplay): add fair challenge presentation activation`), committed on
-`fix/timed-challenge-fair-start`, pushed to the feature branch, and fast-forwarded to `origin/main` without a merge
-commit or force push.
-
-Fair-Start separates challenge launch/reservation from gameplay presentation. Before the required presentation
-surface(s) are ready, playable content remains hidden, playable deadlines/clocks remain inert, and selection or
-reservation is not counted as exposure. Once readiness is authoritatively satisfied, the server stamps one
-`presentationActivatedAt`, starts the full configured gameplay window, and continues the existing server-owned
-deadline/clock lifecycle. No client-owned timeout or fixed-delay fallback was introduced.
-
-The shared foundation covers Combo, Bomb, Closest, One Clue, Rakkibha, and RYO. Bomb retains its continuous
-session/team clock; runtime-state mechanics remain activation-gated; RYO remains an interaction-deadline mechanic.
-RYO's initial barrier requires the shared/controller surface, the current server-assigned answerer, and the current
-server-assigned decider. Readiness is bound to the server-observed Socket.IO connection; disconnect, reconnect, and
-reassignment invalidate stale readiness. RYO prepares the first interaction inertly, then opens and anchors its
-deadline at activation. Private answer/decision state and canonical scoring remain unchanged.
-
-Frontend preparation shells, runtime/revision-bound acknowledgement, retry, reconnect re-acknowledgement, and
-no-flash playable-content protection are implemented and covered by automated tests.
-
-**QA evidence:** backend 180 suites / 1,695 tests; focused RYO 2 suites / 22 tests; real-Mongo RYO integration 1
-suite / 8 tests; frontend 89 files / 911 tests; focused RYO/runtime 37/37; backend/frontend typecheck and builds
-passed; changed-file backend lint had 0 errors (4 unrelated existing Bomb media-probe warnings); frontend lint
-passed with the existing Rakkibha `<img>` warning; `git diff --check` passed.
-
-**Git/deployment evidence:** local and remote release are `fad3f08`; production frontend and backend are healthy,
-and Fair-Start presence was observed in the served frontend marker (`presentation-ready`) and the recognized backend
-`PresentationReady` route. Render did not expose an exact deployed Git SHA through available tooling, so exact
-backend deployment identity is not claimed.
-
-**⚠️ KNOWN FOLLOW-UP:** the real Production RYO controller + answerer + decider multi-device playtest remains
-unexecuted and deferred to manual playtesting. This is a deployment-side verification follow-up, not an implementation
-gap, and must not be described as passed.
+*Important Guardrails Preserved:*
+- Bomb friendly-copy rule is intact
+- first_note Artist Anchor rule is intact
+- 20 Audio / 7 Images media profile is strictly verified
+- Bomb Audio = 0
