@@ -92,7 +92,7 @@ except Exception as e:
     print(f'ERROR: Failed to parse JSON manifest: {e}', file=sys.stderr)
     sys.exit(2)
 
-questions = data.get('questions', [])
+questions = data.get('questions') or data.get('items', [])
 if not isinstance(questions, list) or len(questions) == 0:
     print('ERROR: Manifest contains zero questions.', file=sys.stderr)
     sys.exit(3)
@@ -102,6 +102,8 @@ seen_keys = set()
 errors = []
 
 for q in questions:
+    if q.get('status') == 'archived':
+        continue
     qid = q.get('id', 'unknown')
     media = q.get('media')
     if not media or not isinstance(media, dict):

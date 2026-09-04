@@ -20,7 +20,7 @@ Archetypes and difficulty tiers are **separate axes**:
 | | **Answer Mode:** `mode: 'match'`, 1–10 accepted answers, max 120 chars each. | **A. Runtime Contract** | `bomb-content.policy.ts` |
 | | **Run Cardinality:** 10–15 items per challenge run. | **A. Runtime Contract** | `bomb-content.policy.ts` |
 | | **Production Target:** 15 items per Scope pack. | **B. Approved Product Contract** | Roadmap §16.1, Scope Expansion Plan |
-| | **Prompt Brevity:** Rapid-fire prompt (e.g. `"بيلينغهام... وش اسمه الأول؟"` or `"ما هذا الشعار؟"`), recommended $<70$ chars. | **C. Authoring Recommendation** | Zero-Leakage Policy, Question Craft Guidelines |
+| | **Prompt Brevity & Friendly Copy:** Rapid-fire prompt (e.g. `"بيلينغهام... وش اسمه الأول؟"` or `"ما هذا الشعار؟"`), recommended $<70$ chars. Bomb prompts should be short, conversational and mechanic-native (e.g. "مين هذا؟", "وش اسم...؟"). Avoid multi-clause AI-style descriptive filler. Image recognition prompts normally use simple "مين هذا/هذي؟" forms. | **C. Authoring Recommendation** | Zero-Leakage Policy, Question Craft Guidelines |
 | **`closest`** | **Answer Mode:** `mode: 'closest'` with integer/number `correctValue`. | **A. Runtime Contract** | `backend/src/modules/world-content/domain/content-item-compatibility.policy.ts` (lines 800–813) |
 | | **Estimation Quality:** Target must be estimable; no embedded arithmetic formulas. | **B. Approved Product Contract** | Roadmap §3.3, Zero-Leakage QA Gate |
 | **`combo`** | **Stage Tagging:** `mechanicPayload.comboStage: 1 | 2 | 3 | 4`. | **A. Runtime Contract** | `backend/src/modules/world-content/domain/combo-content.policy.ts` (lines 12–20) |

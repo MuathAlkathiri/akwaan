@@ -14,7 +14,8 @@
   media-search intent. The existing AI/Wigolo service performs YouTube search,
   source selection, and audio snippet extraction. OpenCode never searches
   YouTube or downloads audio directly.
-- Signature mechanic: unassigned; the World is not launch-ready.
+- Signature mechanic: `first_note` (من أول نغمة)
+  - **Pre-Auction Clue Rule**: The clue exists to help players decide "How many seconds do I need?". Therefore, **Artist Identity is the DEFAULT anchor** (e.g., `الفنان: [artist]`, `الفنانة: [artist]`, `الفرقة: [group]`). Generic AI-style descriptive filler is strictly forbidden. Year/Album exceptions allowed only when Product-justified.
 
 This World supplies presentation context only.
 
