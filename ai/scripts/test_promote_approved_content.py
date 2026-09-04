@@ -209,8 +209,15 @@ class TestAllowlistExcludesMarhala(unittest.TestCase):
         spl_r1_scopes = {"saudi-league"}
         self.assertEqual(set(promoter.MILESTONES["saudi-league-bomb-r1"].scope_slugs),
                          spl_r1_scopes)
+        # The four canonical Music scopes joined the allowlist with the Music
+        # milestones (§25 taxonomy). They are named here for the same reason as
+        # every other set above: a scope may only reach Production through a
+        # milestone that says so out loud.
+        music_scopes = {"saudi-music", "gulf-music", "egyptian-music",
+                        "international-music"}
         self.assertEqual(allowed, {"dragon-ball", "demon-slayer", "jujutsu-kaisen",
-                                   "la-liga", "serie-a", "football-legends"} | vg_scopes | fb_r1_scopes | spl_r1_scopes)
+                                   "la-liga", "serie-a", "football-legends"}
+                         | vg_scopes | fb_r1_scopes | spl_r1_scopes | music_scopes)
 
 
 

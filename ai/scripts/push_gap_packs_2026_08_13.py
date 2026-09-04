@@ -23,6 +23,8 @@ from pathlib import Path
 
 import requests
 
+from source_pack_selection import select_forward_items, selection_summary
+
 BASE = "http://localhost:3002"
 LOGIN = {"email": "admin@test.com", "password": "strongPassword@123"}
 
@@ -227,7 +229,10 @@ def to_backend(item: dict, kind: str) -> dict:
         "compatibleChallengeTypeIds": [ct_id],
         "prompt": {"ar": item["prompt"]["ar"]},
         "isReusableAcrossSessions": item["isReusableAcrossSessions"],
-        "status": "ready",
+        # Carried from the source item, which `select_forward_items` has already
+        # proven to be `ready`. Stamping the literal here is what let archived
+        # records through as live content.
+        "status": item["status"],
         # Stable content fingerprint persisted in the valid `source` metadata
         # field. Enables --skip-existing to recognise re-pushed authored items.
         "metadata": {"source": content_fingerprint(item, kind)},
@@ -288,14 +293,24 @@ def main():
             existing_by_scope[scope_id] = fetch_existing_fingerprints(token, scope_id)
         return existing_by_scope[scope_id]
 
-    stats = {"ok": 0, "fail": 0, "skip": 0, "total": 0, "existing": 0, "would_dup": 0}
+    stats = {"ok": 0, "fail": 0, "skip": 0, "total": 0, "existing": 0, "would_dup": 0,
+             "archived_excluded": 0, "draft_excluded": 0}
     for p in packs:
         path = Path(p)
         if not path.is_absolute():
             path = OUT / path
         pack = json.loads(path.read_text(encoding="utf-8"))
-        print(f"\n=== {path.name} ({len(pack['items'])} items) ===")
-        for item in pack["items"]:
+        # A final pack keeps replaced records beside their replacements, so the
+        # forward set is a subset of `pack["items"]` — never the whole list.
+        summary = selection_summary(pack, source=path.name)
+        forward_items = select_forward_items(pack, source=path.name)
+        stats["archived_excluded"] += summary["archived"]
+        stats["draft_excluded"] += summary["draft"]
+        print(
+            f"\n=== {path.name} ({summary['forward']} forward of {summary['physical']} "
+            f"physical; excluded {summary['archived']} archived, {summary['draft']} draft) ==="
+        )
+        for item in forward_items:
             kind = item_kind(item)
             stats["total"] += 1
             fp = content_fingerprint(item, kind)
@@ -329,6 +344,8 @@ def main():
                 print(f"  OK   {item['id']} -> {new_id} (ready)")
 
     print(f"\n=== RESULT {stats['ok']} ok / {stats['skip']} skip / {stats['fail']} fail / {stats['total']} total ===")
+    print(f"  forward-selected={stats['total']}  archived-excluded={stats['archived_excluded']}"
+          f"  draft-excluded={stats['draft_excluded']}")
     if dry:
         print(f"  dry-run preflight: would-insert={stats['existing']} would-skip(existing)={stats['would_dup']}")
 
