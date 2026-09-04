@@ -14,6 +14,7 @@ import { WorldContentReferenceRegistry } from './application/world-content-refer
 import { WorldReadinessService } from './application/world-readiness.service';
 import { WorldService } from './application/world.service';
 import { BoardDefinitionPolicy } from './domain/board-definition.policy';
+import { ChallengeLaunchabilityRegistry } from './domain/challenge-launchability.registry';
 import { ChallengePresentationPolicy } from './domain/challenge-presentation.policy';
 import { ChallengeTypePolicy } from './domain/challenge-type.policy';
 import { ContentItemCompatibilityPolicy } from './domain/content-item-compatibility.policy';
@@ -78,6 +79,7 @@ import { World, WorldSchema } from './schemas/world.schema';
     ChallengePresentationPolicy,
     ChallengeTypePolicy,
     BoardDefinitionPolicy,
+    ChallengeLaunchabilityRegistry,
     ScopeCompatibilityPolicy,
     ContentItemCompatibilityPolicy,
     WorldReadinessPolicy,
@@ -104,6 +106,7 @@ import { World, WorldSchema } from './schemas/world.schema';
     LocalImageStorageService,
   ],
   exports: [
+    ChallengeLaunchabilityRegistry,
     // The only surfaces other modules may consume.
     WorldContentClassificationService,
     WorldReadinessService,

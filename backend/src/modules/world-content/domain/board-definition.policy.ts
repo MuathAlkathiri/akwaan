@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { ChallengeLaunchabilityRegistry } from './challenge-launchability.registry';
 import { ChallengeTypePolicy } from './challenge-type.policy';
 import {
   ChallengeAnswerMode,
@@ -50,7 +51,15 @@ export interface BoardDefinitionInput {
 /** The single policy for four generic positions and four distinct mechanics. */
 @Injectable()
 export class BoardDefinitionPolicy {
-  constructor(private readonly challengeTypes: ChallengeTypePolicy) {}
+  constructor(
+    private readonly challengeTypes: ChallengeTypePolicy,
+    /**
+     * Optional so a policy unit test can assert content rules without standing
+     * up a runtime; the composed application always provides it.
+     */
+    @Optional()
+    private readonly launchability?: ChallengeLaunchabilityRegistry,
+  ) {}
 
   build(input: BoardDefinitionInput): BoardDefinition {
     const blockers: WorldContentIssue[] = [];
@@ -77,6 +86,26 @@ export class BoardDefinitionPolicy {
           ),
         );
         continue;
+      }
+      // An enabled slot whose mechanic no runtime can launch is not a ready
+      // board, however complete its content is. Content readiness stays a
+      // separate judgement below: this one only answers "can a Match open it".
+      if (
+        this.launchability &&
+        !this.launchability.supports(challengeType.slug)
+      ) {
+        blockers.push(
+          issue(
+            'CHALLENGE_LAUNCHER_NOT_IMPLEMENTED',
+            'This board position holds a mechanic the game cannot run yet.',
+            {
+              configurationId: configuration.id,
+              challengeTypeId: challengeType.id,
+              challengeTypeSlug: challengeType.slug,
+              slotKey: configuration.slotKey,
+            },
+          ),
+        );
       }
       blockers.push(
         ...this.challengeTypes

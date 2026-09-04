@@ -5,6 +5,7 @@ import { LiveGameSessionsModule } from '../live-game-sessions/live-game-sessions
 import { ScoringModule } from '../scoring/scoring.module';
 import { WorldContentModule } from '../world-content/world-content.module';
 import { ChallengeLauncherRegistry } from './application/challenge-launcher.registry';
+import { ChallengeLaunchabilityPublisher } from './application/challenge-launchability.publisher';
 import { MATCH_CLOCK, SystemMatchClock } from './application/match-clock';
 import { MatchReconciliationService } from './application/match-reconciliation.service';
 import { MatchConvergenceSweeper } from './application/match-convergence.sweeper';
@@ -89,6 +90,7 @@ import { FirstNoteChallengeLauncher } from './application/first-note-challenge.l
     MongooseMatchRepository,
     { provide: MATCH_REPOSITORY, useExisting: MongooseMatchRepository },
     ChallengeLauncherRegistry,
+    ChallengeLaunchabilityPublisher,
     ContentExposureRepository,
     ContentExposureService,
     RuntimeScoreEventCollector,
