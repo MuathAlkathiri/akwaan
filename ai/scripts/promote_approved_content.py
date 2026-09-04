@@ -111,6 +111,17 @@ class Milestone:
     #: The single World these items belong to, required for a file source (a file
     #: has no runtime to discover the World from).
     world_slug: str | None = None
+    #: This milestone reads a pack that is a *generated authoring artifact* rather
+    #: than a tracked repository file, so it carries no `source_file` and the
+    #: operator supplies the pack with `--source-file`.
+    #:
+    #: The release contract — which Scopes may be written, how many items, which
+    #: mechanics, which source prefix — stays canonical and reviewable here. Only
+    #: the batch itself is external, because committing generated packs would put
+    #: content in Git that the runtime DB already owns. A milestone marked this way
+    #: refuses to run without an explicit path: it can never silently read a stale
+    #: file or a file someone happened to leave in the working tree.
+    external_source: bool = False
     #: A NARROW, per-milestone exception to the global mechanic ban. A mechanic in
     #: FORBIDDEN_MECHANIC_SLUGS is still rejected for every OTHER milestone; only
     #: the milestone that explicitly lists it here may carry it.
@@ -209,8 +220,8 @@ MILESTONES: dict[str, Milestone] = {
         source_prefix="music-bomb-batch-01",
         expected_by_mechanic={"bomb": 14},
         expected_items=14,
-        source_file="ai/scripts/data/music-bomb-batch-01.source.json",
         world_slug="music",
+        external_source=True,
     ),
     "music-ryo-batch-01": Milestone(
         key="music-ryo-batch-01",
@@ -219,8 +230,8 @@ MILESTONES: dict[str, Milestone] = {
         source_prefix="music-ryo-batch-01",
         expected_by_mechanic={"read-your-opponent": 12},
         expected_items=12,
-        source_file="ai/scripts/data/music-ryo-batch-01.source.json",
         world_slug="music",
+        external_source=True,
     ),
     "music-closest-batch-01": Milestone(
         key="music-closest-batch-01",
@@ -229,8 +240,8 @@ MILESTONES: dict[str, Milestone] = {
         source_prefix="music-closest-batch-01",
         expected_by_mechanic={"closest": 12},
         expected_items=12,
-        source_file="ai/scripts/data/music-closest-batch-01.source.json",
         world_slug="music",
+        external_source=True,
     ),
     "music-first-note-batch-01": Milestone(
         key="music-first-note-batch-01",
@@ -239,8 +250,8 @@ MILESTONES: dict[str, Milestone] = {
         source_prefix="music-first-note-batch-01",
         expected_by_mechanic={"first_note": 12},
         expected_items=12,
-        source_file="ai/scripts/data/music-first-note-batch-01.source.json",
         world_slug="music",
+        external_source=True,
         allow_mechanic_slugs=frozenset({"first_note"}),
     ),
 }
@@ -786,7 +797,9 @@ def _repo_root() -> str:
     return os.path.abspath(os.path.join(here, "..", ".."))
 
 
-def build_manifest_from_file(milestone: Milestone) -> Manifest:
+def build_manifest_from_file(
+    milestone: Milestone, source_path: str | None = None
+) -> Manifest:
     """Read a milestone's items from its reviewed repository file.
 
     A deterministic, side-effect-free transformation of an authoring artifact into
@@ -800,13 +813,23 @@ def build_manifest_from_file(milestone: Milestone) -> Manifest:
     - Bomb (multimodal): `answerPayload` with mode+acceptedAnswers, optional `media`
       block with `type` and `assets`. Text-only items have `media.type == "none"`.
     """
-    if not milestone.source_file or not milestone.world_slug:
+    if not milestone.world_slug:
         raise PromotionError(
-            f"{milestone.key}: a file-sourced milestone needs both source_file and world_slug."
+            f"{milestone.key}: a file-sourced milestone needs world_slug."
         )
-    path = os.path.join(_repo_root(), milestone.source_file)
+    # An explicitly supplied pack wins; otherwise the milestone's own tracked
+    # file. A milestone with neither is a registration bug, not a missing file.
+    source_path = source_path or milestone.source_file
+    if not source_path:
+        raise PromotionError(
+            f"{milestone.key}: no pack to read. A milestone whose batch is generated "
+            f"must be given one with --source-file."
+        )
+    path = source_path if os.path.isabs(source_path) else os.path.join(
+        _repo_root(), source_path
+    )
     if not os.path.exists(path):
-        raise PromotionError(f"{milestone.key}: source file not found: {milestone.source_file}")
+        raise PromotionError(f"{milestone.key}: source file not found: {source_path}")
     with open(path, encoding="utf-8") as handle:
         data = json.load(handle)
 
@@ -1316,6 +1339,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--allow-remote-write", action="store_true",
                         help="required to write to a non-local target")
     parser.add_argument("--require-plan-hash", help="refuse unless the plan hashes to this value")
+    parser.add_argument("--source-file",
+                        help="path to the generated pack for a milestone whose batch is not "
+                             "tracked in the repository (external_source). Repository-relative "
+                             "or absolute.")
     parser.add_argument("--plan-out", default=PLAN_PATH_DEFAULT)
     parser.add_argument("--skip-media-check", action="store_true",
                         help="plan without contacting the target's media resolver (never for production)")
@@ -1342,10 +1369,36 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     keys = sorted(MILESTONES) if args.milestone == "all" else [args.milestone]
-    # A file-sourced milestone is read from the repository, not a runtime, so it
-    # needs no source authentication at all. Only auth a source runtime when at
-    # least one selected milestone actually reads from one.
-    needs_source_runtime = any(MILESTONES[k].source_file is None for k in keys)
+
+    # `--source-file` names one batch, so it cannot be spread across a run of
+    # every milestone.
+    if args.source_file and args.milestone == "all":
+        print("ERROR: --source-file applies to a single --milestone, not 'all'.",
+              file=sys.stderr)
+        return 2
+    if args.source_file and not MILESTONES[args.milestone].external_source:
+        print(f"ERROR: {args.milestone} reads a tracked repository pack; "
+              "--source-file is only for a milestone whose batch is generated.",
+              file=sys.stderr)
+        return 2
+    # A milestone whose pack is generated refuses to run until it is handed one.
+    # Failing here beats reading whatever happens to be in the working tree.
+    missing_source = [
+        k for k in keys if MILESTONES[k].external_source and not args.source_file
+    ]
+    if missing_source:
+        print(f"ERROR: {', '.join(missing_source)} read a generated pack that is not "
+              "tracked in the repository. Re-run with --milestone <one> --source-file "
+              "<path to the reviewed pack>.", file=sys.stderr)
+        return 2
+
+    # A file-sourced milestone is read from a file, not a runtime, so it needs no
+    # source authentication at all. Only auth a source runtime when at least one
+    # selected milestone actually reads from one.
+    needs_source_runtime = any(
+        MILESTONES[k].source_file is None and not MILESTONES[k].external_source
+        for k in keys
+    )
     try:
         source: AdminApi | None = None
         source_index: RuntimeIndex | None = None
@@ -1365,7 +1418,8 @@ def main(argv: list[str] | None = None) -> int:
         exit_code = 0
         for key in keys:
             milestone = MILESTONES[key]
-            manifest = (build_manifest_from_file(milestone) if milestone.source_file
+            pack_path = args.source_file or milestone.source_file
+            manifest = (build_manifest_from_file(milestone, pack_path) if pack_path
                         else build_manifest(milestone, source, source_index))
             assert_manifest_is_clean(manifest)
             plan = build_plan(manifest, source, source_index, target, target_index,

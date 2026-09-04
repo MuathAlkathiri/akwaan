@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 import unittest
 import unittest.mock
 from pathlib import Path
@@ -1016,3 +1017,87 @@ class TestFootballBombR1Milestone(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestGeneratedPackMilestones(unittest.TestCase):
+    """No canonical milestone may depend on a file Git does not carry.
+
+    Four Music milestones shipped pointing at `ai/scripts/data/music-*.source.json`
+    that were never committed — the reviewed packs are generated authoring
+    artifacts and deliberately live outside Git. A registration that names a
+    missing path is an invalid contract however loudly it fails at run time, so
+    those milestones now declare `external_source` and are handed their batch
+    explicitly instead.
+    """
+
+    def test_every_tracked_source_file_exists(self):
+        root = Path(__file__).resolve().parents[2]
+        missing = [
+            (key, milestone.source_file)
+            for key, milestone in promoter.MILESTONES.items()
+            if milestone.source_file
+            and not (root / milestone.source_file).exists()
+        ]
+        self.assertEqual(missing, [])
+
+    def test_generated_pack_milestones_declare_no_source_file(self):
+        for key, milestone in promoter.MILESTONES.items():
+            if milestone.external_source:
+                with self.subTest(milestone=key):
+                    self.assertIsNone(milestone.source_file)
+
+    def test_the_music_batches_are_the_generated_ones(self):
+        external = {k for k, m in promoter.MILESTONES.items() if m.external_source}
+        self.assertEqual(
+            external,
+            {
+                "music-bomb-batch-01",
+                "music-ryo-batch-01",
+                "music-closest-batch-01",
+                "music-first-note-batch-01",
+            },
+        )
+
+    def test_a_generated_milestone_refuses_to_run_without_a_pack(self):
+        code = promoter.main([
+            "--milestone", "music-bomb-batch-01",
+            "--target", "http://localhost:3002",
+            "--no-interactive",
+        ])
+        self.assertEqual(code, 2)
+
+    def test_source_file_is_rejected_for_a_tracked_pack_milestone(self):
+        code = promoter.main([
+            "--milestone", "football-bomb-r1",
+            "--source-file", "anything.json",
+            "--target", "http://localhost:3002",
+            "--no-interactive",
+        ])
+        self.assertEqual(code, 2)
+
+    def test_source_file_cannot_be_spread_across_every_milestone(self):
+        code = promoter.main([
+            "--milestone", "all",
+            "--source-file", "anything.json",
+            "--target", "http://localhost:3002",
+            "--no-interactive",
+        ])
+        self.assertEqual(code, 2)
+
+    def test_an_explicit_pack_is_read_when_supplied(self):
+        milestone = promoter.MILESTONES["music-bomb-batch-01"]
+        with tempfile.TemporaryDirectory() as tmp:
+            pack = Path(tmp) / "batch.source.json"
+            pack.write_text(json.dumps({"questions": []}), encoding="utf-8")
+            manifest = promoter.build_manifest_from_file(milestone, str(pack))
+        self.assertEqual(manifest.items, [])
+
+    def test_a_missing_explicit_pack_fails_loudly(self):
+        milestone = promoter.MILESTONES["music-bomb-batch-01"]
+        with self.assertRaises(promoter.PromotionError):
+            promoter.build_manifest_from_file(milestone, "does/not/exist.json")
+
+    def test_a_generated_milestone_without_a_pack_is_a_registration_error(self):
+        milestone = promoter.MILESTONES["music-bomb-batch-01"]
+        with self.assertRaises(promoter.PromotionError):
+            promoter.build_manifest_from_file(milestone)
