@@ -1,9 +1,10 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { useLiveSession } from "../hooks/live-session-context";
+import { useBoundedAudio } from "../hooks/use-bounded-audio";
 import type { GameplayRuntimeSnapshot } from "../model";
 import type { MatchActor } from "../match/types";
 import {
@@ -25,7 +26,6 @@ export function FirstNoteGameplayPanel({
   );
   const [bid, setBid] = useState("");
   const [answer, setAnswer] = useState("");
-  const audioRef = useRef<HTMLAudioElement>(null);
   const can = (a: string) => runtime.availableActions.includes(`mode:${a}`);
   const send = (
     commandType: string,
@@ -39,6 +39,14 @@ export function FirstNoteGameplayPanel({
   const team = (id?: string | null) =>
     snapshot?.teams.find((t) => t.id === id)?.name ?? "الفريق";
   const phone = actor === "participant";
+  // The authorised prefix comes from the server's frozen winning bid, never from
+  // this component's own bid input.
+  const audioRef = useBoundedAudio({
+    src: view.audio?.assets[0]?.url,
+    seconds: view.finalBidSeconds,
+    enabled:
+      !phone && (view.phase === "answering" || view.phase === "steal"),
+  });
   const live = connection === "connected";
   const max = (view.currentBidSeconds ?? 16) - 1;
   return (
@@ -151,20 +159,12 @@ export function FirstNoteGameplayPanel({
               <audio
                 ref={audioRef}
                 controls
-                autoPlay
                 preload="auto"
+                // One canonical Master, identical for every bid and for the
+                // steal. Only how far it is allowed to run changes.
                 src={view.audio.assets[0].url}
                 data-clip-seconds={view.finalBidSeconds}
                 data-testid="first-note-audio"
-                onTimeUpdate={(event) => {
-                  if (
-                    event.currentTarget.currentTime >=
-                    (view.finalBidSeconds ?? 0)
-                  ) {
-                    event.currentTarget.pause();
-                    event.currentTarget.currentTime = view.finalBidSeconds ?? 0;
-                  }
-                }}
               />
             )}
             <p>مدة المقطع: {view.finalBidSeconds} ثانية</p>
