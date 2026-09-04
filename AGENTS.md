@@ -32,3 +32,34 @@ Always distinguish implementation and deployment reality:
 - Avoid ordinary trivia with a cosmetic mechanic wrapper.
 
 These instructions apply to the entire repository.
+
+## 5. File Placement
+
+Where a file goes is part of whether it is correct. The repository root is for
+project-level files only — `README.md`, `AGENTS.md`, `ARCHITECTURE.md`,
+`TESTING.md`, `GAME_NEW_SYSTEM_ROADMAP.md`, package manifests, compose and
+deploy configuration. **Never create an ad-hoc script or a generated report in
+the root.** A root full of `fix_*.py`, `audit.py` and `generate_report.py` is
+how a repository stops being readable.
+
+| What you are writing | Where it goes |
+|---|---|
+| Reusable authoring/release/validation tooling | `ai/scripts/` — with tests where practical |
+| A script for one task | `ai/workbench/scripts/` |
+| Generated output: batches, review HTML, audits, manifests | `ai/workbench/artifacts/` |
+| Long-lived documentation | the existing `docs/` structure |
+| Automated tests | beside the code, in the established test architecture |
+| Runtime/application source | its existing module architecture |
+
+`ai/workbench/` is git-ignored scratch space and is **temporary**. Clean it after
+a milestone rather than letting it become a graveyard of numbered variants
+(`fix_x.py`, `fix_x2.py`, `fix_x3.py`). Git history already preserves history for
+anything that was ever tracked; keeping dead scripts around preserves nothing.
+
+Promote a script from the workbench into `ai/scripts/` only when it is genuinely
+reusable infrastructure — not merely because it worked once.
+
+Generated content packs (`*.source.json`) are intermediate authoring artifacts.
+They are not committed just because a promotion consumed them: Git holds code,
+reusable tooling and taxonomy/knowledge; the runtime DB holds live content and
+object storage holds live media.

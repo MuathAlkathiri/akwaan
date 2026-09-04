@@ -54,3 +54,11 @@ Thumbs.db
 
 # Local nested git backups
 .git.nested-backup/
+
+# Agent workbench — local scratch only. One-off task scripts and generated
+# artifacts live here so they never reach the repository root, and they are not
+# source: they are the residue of a task, not its result. The README is the one
+# tracked file, because the rules have to survive the cleanup.
+ai/workbench/scripts/
+ai/workbench/artifacts/
+!ai/workbench/README.md
