@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChallengeFrame } from "../match/components/challenge-frame";
+import { getMediaUrl } from "@/lib/api/media-url";
 import { useLiveSession } from "../hooks/live-session-context";
 import { useBoundedAudio } from "../hooks/use-bounded-audio";
 import type { GameplayRuntimeSnapshot } from "../model";
@@ -39,10 +40,17 @@ export function FirstNoteGameplayPanel({
   const team = (id?: string | null) =>
     snapshot?.teams.find((t) => t.id === id)?.name ?? "الفريق";
   const phone = actor === "participant";
+  // A ContentItem stores its media as a relative key, so handing that straight
+  // to <audio> makes the browser resolve it against the page's own origin — the
+  // frontend — and the request 404s. Every other runtime mechanic that plays
+  // media resolves it through the canonical helper first; Bomb does exactly this
+  // for its audio and image items. Resolved once here so the element and the
+  // playback boundary key agree on one URL.
+  const masterUrl = getMediaUrl(view.audio?.assets[0]?.url);
   // The authorised prefix comes from the server's frozen winning bid, never from
   // this component's own bid input.
   const audioRef = useBoundedAudio({
-    src: view.audio?.assets[0]?.url,
+    src: masterUrl || undefined,
     seconds: view.finalBidSeconds,
     enabled:
       !phone && (view.phase === "answering" || view.phase === "steal"),
@@ -86,11 +94,11 @@ export function FirstNoteGameplayPanel({
             className="space-y-4 text-center"
             data-testid="first-note-auction"
           >
-            {!phone && view.audio?.assets[0] && (
+            {!phone && masterUrl && (
               <audio
                 className="hidden"
                 preload="auto"
-                src={view.audio.assets[0].url}
+                src={masterUrl}
                 data-testid="first-note-audio-preload"
               />
             )}
@@ -155,14 +163,14 @@ export function FirstNoteGameplayPanel({
                 ? "فرصة سرقة واحدة"
                 : `${team(view.answerOwnerTeamId)} قال يقدر يعرفها من ${view.finalBidSeconds} ثانية`}
             </p>
-            {view.audio?.assets[0] && !phone && (
+            {masterUrl && !phone && (
               <audio
                 ref={audioRef}
                 controls
                 preload="auto"
                 // One canonical Master, identical for every bid and for the
                 // steal. Only how far it is allowed to run changes.
-                src={view.audio.assets[0].url}
+                src={masterUrl}
                 data-clip-seconds={view.finalBidSeconds}
                 data-testid="first-note-audio"
               />

@@ -24,6 +24,18 @@ const session = vi.hoisted(() => ({
   connection: "connected",
 }));
 
+/**
+ * jsdom serves the document from http://localhost:3000, which is also
+ * `runtimeConfig`'s default API base. Left alone, "the audio src is not the
+ * frontend origin" would pass without the resolver doing anything — exactly the
+ * bug it is meant to catch. A distinct backend origin makes the two separable.
+ */
+const media = vi.hoisted(() => ({ backend: "https://api.akwaan.test" }));
+const BACKEND = media.backend;
+vi.mock("@/config/runtime-config", () => ({
+  runtimeConfig: { apiBaseUrl: media.backend },
+}));
+
 vi.mock("@/features/live-game-session/hooks/live-session-context", () => ({
   useLiveSession: () => session,
 }));
@@ -278,6 +290,78 @@ describe("projection privacy", () => {
       />,
     );
     expect(screen.queryByTestId("first-note-audio")).toBeNull();
+    expect(playCalls).toBe(0);
+  });
+});
+
+
+describe("Master audio URL resolution", () => {
+  const RELATIVE = "/uploads/question-assets/audio/mus-not-004.mp3";
+
+  const renderWith = (url: string) =>
+    render(
+      <FirstNoteGameplayPanel
+        runtime={runtime(
+          state({
+            finalBidSeconds: 4,
+            answerOwnerTeamId: "team-a",
+            audioJson: audioJson(url),
+          }),
+        )}
+        actor="shared-screen"
+      />,
+    );
+
+  it("resolves a relative ContentItem media key against the backend origin", () => {
+    renderWith(RELATIVE);
+    // A ContentItem stores the key, not a URL. Handing it straight to <audio>
+    // made the browser fetch it from the frontend, which 404s.
+    expect(el().getAttribute("src")).toBe(`${BACKEND}${RELATIVE}`);
+  });
+
+  it("never leaves the audio pointing at the page's own origin", () => {
+    renderWith(RELATIVE);
+    const src = el().getAttribute("src") ?? "";
+    expect(new URL(src).origin).toBe(BACKEND);
+    expect(new URL(src).origin).not.toBe(window.location.origin);
+  });
+
+  it("resolves the auction-phase preload element the same way", () => {
+    render(
+      <FirstNoteGameplayPanel
+        runtime={runtime(
+          state({ phase: "auction", biddingTeamId: "team-a", audioJson: audioJson(RELATIVE) }),
+        )}
+        actor="shared-screen"
+      />,
+    );
+    const preload = screen.getByTestId("first-note-audio-preload");
+    expect(preload.getAttribute("src")).toBe(`${BACKEND}${RELATIVE}`);
+  });
+
+  it("leaves an already-absolute Master URL untouched", () => {
+    renderWith(MASTER);
+    expect(el().getAttribute("src")).toBe(MASTER);
+  });
+
+  it("still clamps a resolved relative Master at the authoritative bid", () => {
+    renderWith(RELATIVE);
+    expect(playCalls).toBe(1);
+    advanceTo(4);
+    expect(paused).toEqual([4]);
+  });
+
+  it("mounts no audio on a phone even when the URL resolves", () => {
+    render(
+      <FirstNoteGameplayPanel
+        runtime={runtime(
+          state({ finalBidSeconds: 4, answerOwnerTeamId: "team-a", audioJson: audioJson(RELATIVE) }),
+        )}
+        actor="participant"
+      />,
+    );
+    expect(screen.queryByTestId("first-note-audio")).toBeNull();
+    expect(screen.queryByTestId("first-note-audio-preload")).toBeNull();
     expect(playCalls).toBe(0);
   });
 });
