@@ -2228,15 +2228,427 @@ The scoped commit **excludes**, at minimum:
 - The full **production deployment smoke** (§19 item 10, §K).
 
 
+## 23. Approved Content Direction Reconciliation (2026-08-28)
+
+Records approved **product/content-authoring** decisions into the roadmap. Detailed authoring rules live in the
+canonical Skills (`.agents/skills/akwaan-content`, `akwaan-content-qa`, `akwaan-media`) and §21 / `QUESTION-CRAFT.md`
+— this section summarises direction and points there, it does not duplicate them. Status discipline throughout:
+**product/content design approved ≠ runtime-implemented**; runtime/plugin states are preserved from repository
+evidence (§16.1), never upgraded here.
+
+### 23.1 ركّبها — refined shared-puzzle / private-view content contract (product-approved)
+
+- **Product name:** ركّبها. **Internal runtime key:** `distributed-information` (unchanged — no rename or
+  architecture change in this documentation pass; runtime/plugin/ChallengeType state stays as §16.1 records).
+- **SUPERSEDED:** the earlier creative interpretation "three raw pieces of information / three independent facts,
+  intersected" is retired as the identity. History is preserved; the *content* model below is now authoritative.
+- **Approved identity:** ONE shared puzzle → different **private views** on players' phones → players cannot see
+  each other's screens → describe / compare / reason **by voice** → one shared final solution or action. Each
+  player sees a different part/view of **the same** puzzle; communication itself is the mechanic ("I can see
+  something you can't, you can see something I can't — we assemble the full solution").
+- **Approved content families (non-exhaustive):** missing-piece / geometric assembly; distributed construction
+  (fragments → word/name/pattern); distributed conditional logic (rules split across players + one actionable
+  state, e.g. which wire to cut); visual description / matching; distributed ordering; path / navigation;
+  symbol / code reconstruction; partial-image assembly.
+- **Hard content rules:** (1) all private views belong to ONE shared puzzle; (2) no single player holds the
+  complete solution; (3) verbal description/comparison must be genuinely necessary; (4) the final objective must
+  be clear; (5) no ordinary trivia; (6) no raw-fact partitioning; (7) reject the "each player solves an unrelated
+  mini-puzzle → combine clues" default; (8) content should create discussion, uncertainty, coordination, and
+  possible misunderstanding.
+- **Status:** 🟡 **PRODUCT / CONTENT DESIGN APPROVED** (the full multi-family contract). Rich Private Views V1
+  (§23.9) is superseded in the runtime by **Rakkibha Asymmetric Visual Assembly**, now **✅ implemented & verified
+  in source** — see **§23.10**. The runtime key was renamed `distributed-information` → **`rakkibha`** there (the
+  "unchanged" note above is historical). It is **not deployed**; other families remain design-approved only.
+
+### 23.2 Media-first authoring direction (product-approved)
+
+- **Media-first target:** ≈ **≥90% media-bearing** content (image/audio/video/meaningful visual interaction)
+  per batch **where the mechanic naturally supports media**; media must carry **gameplay information** —
+  decorative media does not count. Intent: stop the catalog degrading into trivia + cosmetic gimmick.
+- **Text-native exceptions remain valid:** Top-5, intentional Football Bomb name-fragment items, and any
+  mechanic where text itself is the interaction.
+- **Wigolo-first authentic media:** when authentic real media exists (footballers, moments/stadiums, anime
+  characters/scenes, game characters/maps/weapons/UI, real audio cues), source it via the established Wigolo
+  MCP/media workflow — do **not** generate synthetic replacements merely because it is easier. Programmatic /
+  generated visuals stay appropriate only when **the visual itself is the authored puzzle** (geometry diagrams,
+  visual sequences, custom spatial puzzles). One media architecture — do not invent a second pipeline.
+- **Minimal-but-unambiguous wording:** use the shortest wording that still poses one clear, factually defensible
+  question. No extra explanation, no in-prompt mechanic tutorials, no descriptive clues when the media already
+  carries the clue (`مين هذا اللاعب؟` / `وش هذا الصوت؟`, not `من هذا اللاعب البرتغالي الشهير الذي…`). Necessary
+  qualifiers stay only where required to remove factual ambiguity. Answer-leakage protection is **semantic**, not
+  just exact-string matching.
+- **Media QA is player-facing:** a file on disk does not prove playability. Images — browser-facing asset loads,
+  non-zero rendered dimensions, no broken path, correct asset bound to correct content. Audio — source resolves,
+  decodes/plays, valid non-zero duration, human listening review. QA validates the full chain
+  Prompt ↔ intended subject ↔ accepted answer ↔ actual asset ↔ evidence; **wrong asset = fatal**. Review tooling
+  must not expose filenames / mediaIntent / source URL / transcripts / answer-bearing metadata before reveal.
+- **Difficulty trust:** difficulty comes from recognition depth, framing/crop, reasoning depth, exact media cue,
+  or mechanic-native complexity — never from verbose wording, obscure-for-obscure trivia, or tiny/unreadable
+  visuals. **ICONIC ≠ HARD.**
+- **Status:** authoring **direction approved**; already partially persisted in the canonical Skills (repository
+  evidence: content-qa Gate 10/11/12, FIFA invariants, `ai/FIFA-CARD-MASKING-REFERENCE.md`). Reconciled into the
+  existing §21 authoring system rather than a duplicate architecture.
+
+### 23.3 Top-5 authoring contract (product-approved)
+
+- Top-5 is **KEEP-OR-GIVE**, not a player-facing ranking exercise.
+- **Visible challenge = topic only** (e.g. `أكثر 5 لاعبين تسجيلًا للأهداف في تاريخ البريميرليغ`). No `رتب…`, no
+  `تجنب الفخاخ…`, no mechanic tutorial in the prompt.
+- **Candidate cards before reveal = ENTITY NAME ONLY** (`ألان شيرر`), never `ألان شيرر — 260 هدف` /
+  `(المركز الأول)` / `— الهداف التاريخي`. Rank, metric, cutoff date, evidence stay **hidden metadata** for
+  runtime/post-reveal use.
+- **Status:** runtime top-5 already implemented (§16.1); this adds only the missing **authoring/presentation**
+  contract.
+
+### 23.4 Bomb content direction (product-approved)
+
+- Bomb must not collapse into repeated text trivia or repeated name completion.
+- **Football Bomb:** ≈ 1/3 clever name-fragment/completion + ≈ 2/3 media recognition. Name completion uses the
+  recognized surname and asks the less-recalled component (`وش الاسم الأول لمودريتش؟` → `لوكا`); avoid obvious
+  missing names, obscure players, and ambiguous surnames. Remaining items prefer `[authentic image] من هذا اللاعب؟`.
+- **Anime / Video Games Bomb:** media-native recognition (character/org/object/place; character/weapon/map/audio).
+- **Puzzles Bomb:** fast visual micro-puzzle, not trivia.
+- Do **not** generalise Football's name-fragment ratio to every World.
+
+### 23.5 Puzzles World content identity (product-approved)
+
+- **`PUZZLES_WORLD_NO_TRIVIA` / `PUZZLE_ITSELF_IS_THE_CHALLENGE`** — no ordinary trivia; the puzzle is the challenge.
+- **RYO in Puzzles:** a real puzzle + plausible answer choices (RYO adds the opponent-reading layer).
+- **Closest in Puzzles:** visual estimation (angle, proportion, count, area, volume, spatial/numeric), not
+  factual-stat trivia.
+- **Bomb in Puzzles:** fast visual micro-puzzle. **ركّبها:** per the §23.1 shared-puzzle / private-view contract.
+
+### 23.6 Older approved decisions reconciled
+
+- **Combo (الكومبو):** opponent-pressure ability **«كمّل غصب»**; failure state **«انكسر الكومبو»**. Product/design
+  copy approved; keep actual implementation status per repository evidence (§16.1) — not marked UI-implemented
+  without frontend evidence.
+- **RYO mobile copy:** Option 1 **«شاكك فيهم»** (helper «مو متأكد من معرفتهم بالجواب»); Option 2 **«متأكد منهم»**
+  (helper «متأكد أنهم يعرفون الجواب»). Design-approved labels; **not** implemented unless current frontend proves it.
+- **Challenge details / preflight** should explain the mechanic before play — approved **backlog** direction (the
+  Preflight briefing exists per §22.1; deeper in-preflight mechanic explanation remains backlog).
+- **Player QR** should be tappable/enlargeable — approved **backlog** (Match-scoped QR exists §10.2/§22.1;
+  tap-to-enlarge is design/backlog).
+- **Question Craft** retains its mandatory authoring status (§21); the media-first / minimal-wording rules above
+  are reconciled **into** it, not duplicated.
+- **Direct Production content promotion** follows: authoring → QA → Human Product Review → production-safe
+  dry-run/plan hash → explicit promotion → idempotency verification → Production smoke (Marhala Batch 01 §21.11 is
+  the worked evidence). Rejected local-only batches must not be used to populate Production.
+- **FIFA player-card masking** (authentic blank-card composition; no blur/censor/inpainting; portrait + name
+  hidden; Easy may keep nationality, Hard may hide it; visible card values must match the authentic card) is
+  already persisted on `main` (content Skills + `ai/FIFA-CARD-MASKING-REFERENCE.md`); recorded here as a pointer,
+  detail stays in its canonical reference.
+
+### 23.7 Follow-ups (added to the §19 register spirit)
+
+- **Audit `distributed-information` (ركّبها) runtime/UI/schema** against the §23.1 private-view content contract:
+  does the runtime support per-player **distinct private views** of one shared puzzle and a single shared final
+  action, and does authoring/review tooling model it? Until proven, §23.1 stays 🟡 design-approved.
+- (Pre-existing: `distributed-information` zero-content-in-runtime divergence remains open at §19 #19.)
+
+### 23.8 Intentionally NOT changed (insufficient/contrary evidence)
+
+- **No edits to the content Skills or `QUESTION-CRAFT.md` in this pass.** `main` (via the Marhala Batch 01 release)
+  already carries the **newer** approved content governance (FIFA `AUTHENTIC_BLANK_CARD_COMPOSITION`,
+  `WRONG_ASSET_IS_FATAL`, `NO_FALSE_VISUAL_VERIFICATION`, `FUTURE_BATCH_HARD_GATE`, content-qa Gate 12). A local
+  working-tree parallel of those files was an **older/weaker** formulation that would have regressed them, so it
+  was excluded — newer approved decision wins.
+- Runtime/plugin/ChallengeType statuses are left exactly as repository evidence records them.
+
+### 23.9 Rich Private Views V1 — ✅ IMPLEMENTED & VERIFIED IN SOURCE (2026-08-28)
+
+The first slice of the §23.1 contract, reusing the existing `distributed-information` mechanic — **no
+replacement, no parallel runtime**. Compatibility audit verdict: extend, not replace.
+
+- **✅ Existing core (already implemented before V1, reused unchanged):** `distributed-information`
+  plugin/launcher/ChallengeType, **server-side per-participant private projection**, 2-player 2+1 and 3-player
+  1+1+1 assignment, reconnect stability, single-designated-answerer ownership, deadline/idempotency/cancel
+  lifecycle, and the Match-win/race scoring.
+- **✅ Rich Private Views V1 (implemented & verified in source):** per-segment **image** and **audio** and the
+  shared/public per-team media, carried end-to-end (content type → validation → runtime → per-actor projection →
+  phone render → authoring). Private media is **server-projected to the holding participant only**; the
+  shared/public board rides the **per-team** view (never the cross-team public projection, so a player never
+  learns the opponent's current puzzle). Legacy text-only items and string-shaped runtime state keep working with
+  no migration. Final answer stays the existing `match` / `multiple_choice` / `closest`. Media reuses the
+  canonical `ContentItemMedia` contract and the existing phone image/audio renderer — no second media pipeline.
+- **Verification:** backend 104 DI/privacy tests (incl. 3-player/2-player own-media-only, opponent/host none,
+  answer never projected, reconnect-stable media, legacy text-only) + frontend 44 DI tests (private image/audio
+  render, public board, reconnect) + three compatibility fixtures (missing-piece, conditional-wire,
+  construction); backend + frontend typecheck/build/lint green.
+- **Status:** ✅ **source implementation verified** · ⬜ **not deployed / no Production runtime verification** ·
+  ⬜ playerInstructions DB sync not run · ⬜ no human-reviewed Rakkibha content authored.
+- **Deferred by design (not V1, not playtest blockers):** native candidate-board schema, structured cut-wire
+  action, drag/drop assembly, path/ordering commands, a generic action engine. Candidate choice uses
+  `multiple_choice`, word/code uses `match`, wire choice uses `multiple_choice`.
+- **Follow-ups:** playerInstructions dry-run then guarded sync; real human-reviewed Rakkibha validation content;
+  deployment + runtime smoke; Puzzles World rollout/content readiness (tracked separately, incl. §19 #19).
+
+### 23.10 Rakkibha Asymmetric Visual Assembly — ✅ IMPLEMENTED & VERIFIED IN SOURCE (2026-08-29)
+
+The V1 "rich private views" slice (§23.9) is superseded in the runtime by the approved **asymmetric visual
+assembly** interaction, and the mechanic was **renamed** `distributed-information` → **`rakkibha`** in source
+(plugin, launcher, use-case, scoring rule, ChallengeType slug, answer mode, content policy, frontend panel/screen/
+authoring). The `distributed-information` runtime/source is **removed**; historical authoring material is preserved
+under `ai/.opencode/legacy/`. Earlier prototype models are **SUPERSEDED**: the common-shape-on-all-phones
+intersection model, the three-segment / shared-fragment model, and the public/shared missing-board model.
+
+- **Final product contract:** one shared puzzle, split into **private asymmetric roles** — one **reference holder**
+  (sees the incomplete reference, no candidate controls) and one-or-two **candidate holders** (each sees a private
+  set of 2–3 candidate pieces). **Exactly one** candidate globally matches `correctCanonicalIdentity`; other views
+  may be distractor-only, and the true piece need not appear on every phone. The team describes what each privately
+  sees, agrees who holds the match, and any candidate holder submits one of *their* local candidates. Correct →
+  next puzzle; wrong → the existing five-second team lock. The shared/host screen stays neutral (no reference,
+  candidates, owner, or answer).
+- **Answer ownership (privacy fix):** correctness is **actor-aware and server-resolved** — `submit-candidate`
+  carries `{ contentItemId, localCandidateId }`, and the server maps `(participant, localId) → canonicalIdentity`.
+  A local "option one" from the wrong holder is wrong even when the true piece is also "option one" elsewhere. No
+  single answerer, so the UI never reveals who owns the match. `canonicalIdentity` is never projected to a phone.
+- **Two-player safe merge:** the reference holder and the true-candidate view are never assigned to the same
+  participant (proven by an integration test).
+- **Verified:** backend **176 unit suites / 1648 tests**; integration on an **isolated replica-set** DB —
+  `rakkibha` (private roles, actor-local correctness, penalty, progression, reconnect; 2-player safe merge) and the
+  restored `unified-match-preflight` **pass**; the only integration reds are the pre-existing `music` and
+  `manual-question-architecture` debt (§19 #3/#4), unrelated. Frontend **88 files / 894 tests**; new rakkibha
+  content-policy (14) + authoring (9) specs. Backend + frontend typecheck / build / lint green. Authoring tooling
+  (`validate_rakkibha.py`, `RAKKIBHA.md`, `RAKKIBHA_AUTHORING.md`, skill `SKILL.md` + schema, manifest) reconciled
+  to the visual-assembly contract.
+- **Status:** ✅ **IMPLEMENTED & VERIFIED IN SOURCE** · ⬜ **PRODUCTION DEPLOYMENT PENDING** (no deploy, no DB
+  write, no R2, no playerInstructions sync in this task).
+- **Deferred by design:** native candidate-board schema, structured cut-wire action, drag/drop assembly,
+  path/ordering commands, a generic action engine — candidate/wire choice resolves through the existing
+  `match`/`multiple_choice` answer.
+- **Follow-ups:** production content pack (Gemini-authored, human-reviewed), R2 media upload, guarded promotion +
+  playerInstructions sync, deployment + runtime smoke, Puzzles World board rollout; and a pass over the remaining
+  `ai/.opencode/knowledge|roles|workflows` authoring prose that still carries old-model wording.
+
+## 24. P0 Fair-Start Presentation Activation — ✅ IMPLEMENTED & VERIFIED
+
+The Fair-Start engineering milestone is complete in source and automated QA. The authoritative release is
+`fad3f08` (`feat(gameplay): add fair challenge presentation activation`), committed on
+`fix/timed-challenge-fair-start`, pushed to the feature branch, and fast-forwarded to `origin/main` without a merge
+commit or force push.
+
+Fair-Start separates challenge launch/reservation from gameplay presentation. Before the required presentation
+surface(s) are ready, playable content remains hidden, playable deadlines/clocks remain inert, and selection or
+reservation is not counted as exposure. Once readiness is authoritatively satisfied, the server stamps one
+`presentationActivatedAt`, starts the full configured gameplay window, and continues the existing server-owned
+deadline/clock lifecycle. No client-owned timeout or fixed-delay fallback was introduced.
+
+The shared foundation covers Combo, Bomb, Closest, One Clue, Rakkibha, and RYO. Bomb retains its continuous
+session/team clock; runtime-state mechanics remain activation-gated; RYO remains an interaction-deadline mechanic.
+RYO's initial barrier requires the shared/controller surface, the current server-assigned answerer, and the current
+server-assigned decider. Readiness is bound to the server-observed Socket.IO connection; disconnect, reconnect, and
+reassignment invalidate stale readiness. RYO prepares the first interaction inertly, then opens and anchors its
+deadline at activation. Private answer/decision state and canonical scoring remain unchanged.
+
+Frontend preparation shells, runtime/revision-bound acknowledgement, retry, reconnect re-acknowledgement, and
+no-flash playable-content protection are implemented and covered by automated tests.
+
+**QA evidence:** backend 180 suites / 1,695 tests; focused RYO 2 suites / 22 tests; real-Mongo RYO integration 1
+suite / 8 tests; frontend 89 files / 911 tests; focused RYO/runtime 37/37; backend/frontend typecheck and builds
+passed; changed-file backend lint had 0 errors (4 unrelated existing Bomb media-probe warnings); frontend lint
+passed with the existing Rakkibha `<img>` warning; `git diff --check` passed.
+
+**Git/deployment evidence:** local and remote release are `fad3f08`; production frontend and backend are healthy,
+and Fair-Start presence was observed in the served frontend marker (`presentation-ready`) and the recognized backend
+`PresentationReady` route. Render did not expose an exact deployed Git SHA through available tooling, so exact
+backend deployment identity is not claimed.
+
+**⚠️ KNOWN FOLLOW-UP:** the real Production RYO controller + answerer + decider multi-device playtest remains
+unexecuted and deferred to manual playtesting. This is a deployment-side verification follow-up, not an implementation
+gap, and must not be described as passed.
+
+---
+
+## 25. Music World — Taxonomy, Content, Media & Production Release (2026-09-03)
+
+✅ **RELEASED TO PRODUCTION.** Music is `active` / `ready`, carries 50 promoted
+Content Items and 27 ingested media assets, and passed a Production gameplay
+smoke. The verified end state is **§25.10**; everything before it is the record
+of how the World got there and is preserved as history, not as current status.
+
+> **Reading this section.** Subsections 25.1–25.5 are the approved product
+> decisions and the plan they produced. 25.6–25.9 are the milestones executed
+> against that plan, in order. Where one of them states a blocker — media not
+> started, a master cue unverified, taxonomy not yet reconciled — that sentence
+> is the state *at the time it was written*; each is marked with what superseded
+> it. Do not quote a milestone's in-flight blocker as the current state.
+
+### 25.1 Approved Forward Music Scope Taxonomy
+
+The final Scope identity for the Music World (`music` / `الأغاني`) is officially approved as four focused cultural pillars:
+
+| Canonical Slug | Player-Facing Arabic Name | Cultural Scope & Content Boundaries | Scope Status |
+|---|---|---|:---:|
+| `saudi-music` | **أغاني سعودية** | Saudi traditional, golden-era, and contemporary pop/sheilat (Mohammed Abdu, Talal Maddah, Abadi Al-Johar, Rabeh Saqer, Abdul Majeed Abdullah, Ayed). | 🟡 Approved |
+| `gulf-music` | **أغاني خليجية** | Kuwaiti, Emirati, Bahraini, Qatari, and Omani music traditions and modern pop (Nawal Kuwaitia, Abdallah Al Rowaished, Nabeel Shoail, Hussain Al Jassmi, Miami Band, Majid Al Mohandis). | 🟡 Approved |
+| `egyptian-music` | **أغاني مصرية** | Egyptian classical, golden-era Tarab, and modern Egyptian pop/indie (Umm Kulthum, Abdel Halim Hafez, Amr Diab, Mohamed Hamaki, Sherine, Hamza Namira). **Supersedes `arabic-music`.** | 🟡 Approved |
+| `international-music` | **أغاني أجنبية** | Global Western, English, and international pop, rock, and electronic hits (Michael Jackson, Queen, The Beatles, Coldplay, The Weeknd, Lady Gaga). | 🟡 Approved |
+
+**Status:** 🟡 **DESIGN / PRODUCT APPROVED — RUNTIME TAXONOMY RECONCILIATION NOT YET IMPLEMENTED.**
+> **Superseded (§25.6):** the runtime reconciliation was executed in Production on 2026-09-03; the live Scopes now carry these canonical slugs.
+
+#### Product Policy & Guardrails:
+1. **`egyptian-music` Supersedes `arabic-music`:** The previous broad Arabic Music concept (`arabic-music` / أغاني عربية) is permanently superseded. Egypt represents a dense, culturally recognizable pillar with distinct musical dialect and artist legacy. Overbroad pan-Arab blending is replaced by clear regional focus.
+2. **Player-Facing Name for Foreign Music:** The canonical technical slug remains `international-music` to preserve repository convention, but its official player-facing Arabic name is settled as **أغاني أجنبية** (replacing "أغاني عالمية"). No redundant `foreign-music` slug is introduced.
+3. **Product Direction Only:** This milestone approves product direction only. It does **not** claim that canonical runtime Scopes currently exist in Production.
+
+---
 
 
+### 25.2 Music Content Identity & Freshness Policy (NEW)
+The approved forward identity for the Music World is a **living, current catalog** that reflects what players actively listen to and talk about today, not just historical trivia.
 
-### 25.6 Minimum Content Authoring Milestone (2026-09-03)
+**Freshness Bands (As of Sept 2026):**
+- **CURRENT / RECENT (~50–60%):** Primarily the last ~3 years (2024–2026), plus older content ONLY if genuinely resurging in current culture (e.g., major revival, active trend).
+- **MODERN FAMILIAR (~20–30%):** Roughly 2010–2023. Culturally familiar to younger players, but no longer a new/current release.
+- **CLASSIC / ICON (~15–20%):** Older catalog, legacy material, culturally treated as a classic.
+*(Note: Percentages are directional targets to ensure the World feels alive, not strict mathematical quotas).*
+
+**Difficulty is Independent from Age:**
+- A "Current" song can be Easy (mega-hit), Medium (known recent song), or Hard (legitimate recent release with a smaller audience, ~1M views or below). Do not use raw views as a permanent acceptance threshold, only as a discovery/difficulty signal.
+
+**Mechanic Applications:**
+- **First Note:** Skews Current/Recent for maximum bidding tension.
+- **RYO:** Mix current culture with enduring knowledge. Opponent-reading tension is strongest with modern cultural relevance.
+- **Closest:** Avoid volatile numbers (streams, views, followers). Use durable numeric facts, allowing more historical/modern anchors, but inject enough 2024-2026 subject matter to avoid feeling like a history quiz.
+- **Bomb:** Text + Image ONLY. 🚫 **AUDIO IS BANNED** for forward Bomb gameplay due to server-authoritative team clock constraints. (Historical audio playtests and backend audio capabilities remain preserved but are SUPERSEDED/NOT ALLOWED for forward authoring).
+
+### 25.3 Content Re-Scoping & Impact Analysis
+
+#### A. Music × Bomb Question Craft R1 (15 Approved Items Audited)
+Source: `music_bomb_playtest_02.json` (approved in Playtest 02 milestone). Evaluated against the new 4-Scope taxonomy:
+- **`saudi-music` (4 items) — All 4 Reusable:**
+  - `bomb-music-sau-001` (Audio): Mohammed Abdu — *Al-Amaken* (Intro recognition).
+  - `bomb-music-sau-002` (Text): Abdul Majeed Abdullah — *Ya Tayeb...* (*Al-Qalb* lyric completion).
+  - `bomb-music-sau-003` (Text): Abadi Al-Johar (*Okhtoboot Al-Oud* nickname).
+  - `bomb-music-sau-004` (Audio): Talal Maddah (*Sawt Al-Ard* vocal timbre).
+- **`gulf-music` (4 items) — All 4 Reusable:**
+  - `bomb-music-gulf-001` (Audio): Nawal Kuwaitia (*Qitharat Al-Khaleej* vocal timbre).
+  - `bomb-music-gulf-002` (Text): Abdallah Al Rowaished — *Dunya Al-Walah*.
+  - `bomb-music-gulf-003` (Text): Hussain Al Jassmi (Emirati nationality attribute).
+  - `bomb-music-gulf-004` (Image): Nabeel Shoail (*Bulbul Al-Khaleej* portrait visual).
+- **`egyptian-music` (4 items evaluated) — 3 Reusable, 1 Excluded:**
+  - `bomb-music-arab-001` (Audio): Umm Kulthum — *Enta Omri* (Iconic Khorshid guitar intro) $\rightarrow$ ✅ **Valid Egyptian.**
+  - `bomb-music-arab-003` (Text): Amr Diab — *Tamally Maak* lyric completion $\rightarrow$ ✅ **Valid Egyptian.**
+  - `bomb-music-arab-004` (Text): Mohamed Hamaki first name attribute $\rightarrow$ ✅ **Valid Egyptian.**
+  - `bomb-music-arab-002` (Text): Fairuz real first name (*Nouhad*). ⚠️ **Excluded from Egyptian Music.** Fairuz is Lebanese/Levantine, not Egyptian. Must not be promoted under `egyptian-music`. Preserved in authoring history for future Levantine/regional expansion.
+- **`international-music` (3 items) — All 3 Reusable:**
+  - `bomb-music-intl-001` (Audio): Michael Jackson — *Billie Jean* (Bassline/drum groove).
+  - `bomb-music-intl-002` (Text): Lady Gaga real first name (*Stefani*).
+  - `bomb-music-intl-003` (Image): The Beatles — *Abbey Road* zebra crossing cover without text.
+- **Bomb Reusability Summary:** **14 / 15 items reusable**. Egyptian retains 3 valid items, satisfying minimum playability ($\ge 3$ per scope).
+
+#### B. Music Signature «من أول نغمة» Wave 01 R2 (12 Approved Items Audited)
+Source: `music-first-note-playtest-wave-01.source.json` (12 local master audio clips on disk). Evaluated against the new taxonomy:
+- **`saudi-music` (3 items) — All 3 Reusable:**
+  - `mus-not-001`: Ayed — *Faman Allah* (2020, acoustic guitar intro).
+  - `mus-not-002`: Rabeh Saqer — *Seqa Allah* (2015, oud/khebaiti groove).
+  - `mus-not-003`: Abu Bakr Salem — *Ser Hubbi* (1980, classic strings/oud).
+- **`gulf-music` (3 items) — All 3 Reusable:**
+  - `mus-not-004`: Majid Al Mohandis — *Hattan* (2020, piano/strings).
+  - `mus-not-005`: Nawal Kuwaitia — *Methel El Naseem* (2016, dramatic Sahm strings).
+  - `mus-not-006`: Miami Band — *Sabbouha* (HISTORICAL METADATA: 1997, fast synth dance intro) -> Forward canonical metadata corrected to 1991.
+- **`egyptian-music` (3 items evaluated) — 2 Reusable, 1 Excluded:**
+  - `mus-not-007`: Hamza Namira — *Fadi Shewaya* (2020, acoustic guitar) $\rightarrow$ ✅ **Valid Egyptian.**
+  - `mus-not-008`: Sherine — *Mashaaer* (2013, piano/cello drama) $\rightarrow$ ✅ **Valid Egyptian.**
+  - `mus-not-009`: George Wassouf — *Tabeeb Garrah* (1999). ⚠️ **Excluded from Egyptian Music.** George Wassouf is Syrian/Levantine, not Egyptian. Must not be promoted under `egyptian-music`. Preserved in authoring history for future expansion.
+- **`international-music` (3 items) — All 3 Reusable:**
+  - `mus-not-010`: The Weeknd — *Blinding Lights* (2020, synthwave hook).
+  - `mus-not-011`: Coldplay — *Viva La Vida* (2008, string percussion riff).
+  - `mus-not-012`: Queen — *Another One Bites the Dust* (1980, funk bassline).
+- **first_note Reusability Summary (HISTORICAL):** **11 / 12 items reusable**. Requires **1 new Egyptian replacement song** to restore the minimum 3-song playable pool. -> **SUPERSEDED (COMPLETED)**: Canonical 12-item pack is now authored including the replacement.
+
+#### C. Historical 36 One-Clue Media Intents (`ai/.opencode/media-intents/music/`)
+36 structured audio search intents (9 per scope across previous 4 scopes) preserved in authoring assets. One Clue is excluded from forward Shared Core board coverage; these intents remain valuable reference vocabulary for audio enrichment discovery.
+
+---
+
+### 25.4 Minimum Playable Content Plan & Deficit Analysis
+
+#### Forward Music Board Composition:
+1. **Signature:** `first_note` / من أول نغمة (Music recognition auction)
+   - **Status**: ✅ **MECHANIC IMPLEMENTED & VERIFIED IN SOURCE** (§16.6) · ✅ **MASTER AUDIO PLAYBACK CONTRACT IMPLEMENTED & VERIFIED IN SOURCE (2026-09-03)** · ⬜ **MEDIA CATALOG INCOMPLETE** · ⬜ **NOT DEPLOYED**
+     - *Verified 2026-09-03:* the server already freezes and projects the winning bid as `finalBidSeconds`; the shared surface loads the one Master and stops at that offset. The stop is watched by `requestAnimationFrame`, `timeupdate` and a defensive timer together (`use-bounded-audio.ts`) because `timeupdate` alone lands within ~250ms — a quarter of everything a 1-second bid buys. Auto-start is keyed on Master + bid, so a re-render, a duplicate runtime update or a reconnect adopting identical state does not restart the clip; leaving the stage stops it. Steal reuses the same Master and the same frozen bid. **No runtime clipping/ffmpeg, and no media file is trimmed.**
+     - *Privacy (verified):* the Master URL is projected **only** to the shared surface — `publicState` deletes `audioJson` for any actor carrying a `teamId`, so player/controller phones never receive it. Bounded playback is therefore a presentation guarantee on a surface players do not control, not a client-side secret.
+     - *Still outstanding:* media enrichment (only Pilot Wave 01A is Human Media Approved), Production content promotion, board binding, activation. Nothing here is deployed.
+   - **Auction Rules**: Continuous free integer bidding from 15 seconds down to 1 second. (No fixed choices like 1/3/7/15). Lowest final bidder wins first-answer priority. Wrong answer allows the opposing team one steal attempt. The steal uses the EXACT SAME winning `bidSeconds`.
+   - **Master Audio Contract**: Exactly ONE canonical Master Audio cue per item. Prepared slightly >15.0s (e.g., 15.1-15.25s) to guarantee a full 15.0s window. NO artificial padding, time-stretching, or generating multiple files for different bids.
+   - **Playback Contract**: Server owns the authoritative `bidSeconds`. Frontend loads the single Master Audio, plays only the first `X` seconds corresponding to `bidSeconds`, and stops. NO runtime clipping/ffmpeg; bounded playback only.
+   - **Authoring Contract**: Non-zero start timestamp allowed if it fulfills: canonical studio version, continuous audio, no title leakage, useful progression.
+   - **QA Checkpoints**: Media quality should progress from challenging (1-3s), to clearer (4-7s), to fair (8-15s). 1/3/7/15 are QA review checkpoints, NOT fixed auction options.
+2. **Shared Core:** `read-your-opponent` / اقرأ خصمك
+3. **Shared Core:** `closest` / مين أقرب
+4. **Shared Core:** `bomb` / القنبلة
+   - **FORWARD BOMB MODALITY POLICY:** ✅ TEXT / ✅ IMAGE ONLY.
+   - 🚫 **AUDIO IS BANNED** for forward Bomb content due to continuous server-authoritative team clock constraints. (Historical audio playtests and the backend audio capability remain preserved but are SUPERSEDED/NOT ALLOWED for forward authoring).
+
+*(One Clue is NOT part of forward Shared Core coverage).*
+
+#### Minimum Playability Requirement:
+$\ge 3$ READY items per Scope per mechanic ($3 \times 4 = 12$ per mechanic across 4 Scopes; **48 total World READY items**).
+
+| Mechanic | Target per Scope | Total Target | Reusable Approved Authored | Deficit After Reuse | New Authoring Required |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Bomb** | $\ge 3$ | 12 | **14** (Saudi 4, Gulf 4, Egyptian 3, Foreign 3) | 0 | **0** *(meets minimum)* |
+| **first_note** | $\ge 3$ | 12 | **11** (Saudi 3, Gulf 3, Egyptian 2, Foreign 3) | 1 in Egyptian | **1** *(1 Egyptian replacement)* |
+| **Read Your Opponent** | $\ge 3$ | 12 | **0** | 12 (3 per Scope) | **12** (3 per Scope) |
+| **Closest** | $\ge 3$ | 12 | **0** | 12 (3 per Scope) | **12** (3 per Scope) |
+| **TOTAL WORLD MINIMUM** | — | **48** | **25** | — | **25 new items** |
+
+> [!IMPORTANT]
+> **HISTORICAL NOTE:** Previously, 25 new items were required for minimum playability (12 RYO + 12 Closest + 1 Egyptian first_note replacement song). **As of the Minimum Content Authoring Milestone, this deficit has been fully resolved.**
+
+---
+
+### 25.5 Status Discipline & Operational Guardrails
+
+| Workstream / Dimension | Status | Reality & Next Action |
+|---|:---:|---|
+| **Music Scope Taxonomy** | 🟡 **DESIGN APPROVED — NOT IMPLEMENTED** | Approved forward taxonomy: `saudi-music`, `gulf-music`, `egyptian-music`, `international-music`. No runtime scope mutation performed. |
+| **Production Taxonomy Reconciliation** | ✅ **IMPLEMENTED & VERIFIED — PRODUCTION TAXONOMY RECONCILED** | Live database scopes updated in-place via targeted utility (2026-09-03). Canonical taxonomy applied. Content promotion pending. |
+| **Music Board Configuration** | ⬜ **NOT DONE** | 0 board slots bound in Production; 4 empty slots with blockers. Board binding pending taxonomy reconciliation and content promotion. |
+| **Music Activation** | ⬜ **NOT DONE** | Status remains `draft` and `not_ready`. No match availability. |
+> **Superseded (§25.10):** Music released to Production on 2026-09-03 — World `active`/`ready`, 50/50 Content Items promoted, 27/27 media ingested, gameplay smoke PASS. The line above is the state when it was written.
+| **Signature Implementation** | ✅ **IMPLEMENTED & VERIFIED IN SOURCE** *(2026-09-03)* | `first_note` auction plugin, challenge launcher, Admin controls. Server-authoritative `finalBidSeconds` and bounded single-Master prefix playback are implemented and covered by regression tests (bids 1/7/15, >15s Master, one URL across bids, steal parity, reconnect, duplicate-update idempotency, unmount cleanup, phone projection). Rollout — media, promotion, board, activation, deployment — remains outstanding. |
+| **Reusable Authored Content** | ✅ **VERIFIED IN ARCHIVES** | 14 Bomb items (Playtest 02 approved); 11 first_note items (reviewed & local master audio clips verified on disk). |
+| **New Authoring Backlog** | ⚠️ **PRODUCT CONTENT REBALANCE REQUIRED** | Minimum quantity was authored, but the catalog now requires a freshness audit/rebalance before media enrichment to meet the new 50-60% Current/Recent identity. |
+| **Media Enrichment** | ⏸️ **PAUSED** | Media enrichment is frozen until the content freshness rebalance is completed and replacement items are finalized. |
+
+#### Follow-Up Reconciliation Governance:
+- Reconcile current live generated Scope IDs/slugs safely without creating duplicate Scopes.
+- Determine whether existing live empty Scopes (`6a9341...`) should be renamed/re-slugged in place rather than recreated.
+- Maintain strict separation: documentation approval is not runtime mutation; Git commit is not deployment; local files are not the public site.
+
+
+### 25.6 Production Taxonomy Reconciliation Milestone (2026-09-03)
+✅ **EXECUTED AND VERIFIED IN REAL PRODUCTION.**
+
+The previously drifted live scopes were updated in-place via a targeted repository utility (`ai/scripts/reconcile_music_scopes.py`), running in the working tree (not committed/pushed as deployed application code).
+
+**Final Production Scopes (Verified):**
+- `saudi-music` → أغاني سعودية (ObjectId: `6a9341ae9da851231e2bdc71`)
+- `gulf-music` → أغاني خليجية (ObjectId: `6a9341c49da851231e2bdcb5`)
+- `egyptian-music` → أغاني مصرية (ObjectId: `6a9341c99da851231e2bdcf8`)
+- `international-music` → أغاني أجنبية (ObjectId: `6a9341f29da851231e2bdd82`)
+
+**Idempotency & Purity Checks:**
+- 4 / 4 EXISTS_IDENTICAL
+- CREATE = 0 | UPDATE = 0 | DELETE = 0
+- Old generated slugs (`songs`, `scope-*`) no longer resolve.
+
+**Preserved Runtime State:**
+- World status remains `draft`.
+> **Superseded (§25.10):** Music released to Production on 2026-09-03 — World `active`/`ready`, 50/50 Content Items promoted, 27/27 media ingested, gameplay smoke PASS. The line above is the state when it was written.
+- Music ContentItems remain `0`.
+- Music Board bindings remain `0`.
+- Activation was not performed.
+
+### 25.7 Minimum Content Authoring Milestone (2026-09-03)
 ✅ **PRODUCT CONTENT AUTHORED & HUMAN-APPROVED FOR MINIMUM PLAYABLE COVERAGE**
 
 For the approved forward 4-Scope Music taxonomy, minimum **AUTHORING coverage is now satisfied** for all four required mechanics.
 ✅ **MINIMUM CONTENT AUTHORING COVERAGE SATISFIED**
-
 
 
 #### Forward Content Coverage (Product-Approved)
@@ -2282,11 +2694,39 @@ For the approved forward 4-Scope Music taxonomy, minimum **AUTHORING coverage is
 
 **Media Follow-Up (mus-not-013)**
 ⚠️ **MEDIA_TIMING_FOLLOWUP_REQUIRED**
+> **Resolved (§25.9, §25.10):** media enrichment completed and 27/27 assets were ingested and verified in Production. The `mus-not-013` master below is no longer outstanding, and the first_note Master Audio contract is implemented and verified in source (bounded prefix playback, server-authoritative `finalBidSeconds`).
 - `mus-not-013` (أنغام — سيدي وصالك) is ✅ HUMAN_PRODUCT_APPROVED.
 - However, the 15-second-safe audio master is **NOT YET VERIFIED**. The current proposed opening cue appears to provide approximately 14 seconds before vocal/title leakage.
 - *Action Required Before Production Promotion:* Media enrichment must either identify a defensible full 15-second answer-safe master window OR revise the media cue/item. (Product approval of the song/clue is not downgraded).
 
-### 21.10 Music Production Rollout Final Status
+### 25.8 Music Current Rebalance Wave 01
+- **Status**: ✅ HUMAN PRODUCT APPROVED
+- **Status**: ✅ CANONICALIZED AT AUTHORING LEVEL
+- 24 / 24 approved replacements.
+- **Final Forward Catalog**: 50 items (12 RYO, 12 Closest, 14 Bomb, 12 first_note).
+- **Freshness**: 24 Current (~48%), 18 Modern (~36%), 8 Classic (~16%).
+- **Result**: The directional freshness target is now materially satisfied for the launch catalog. (Not yet Production-ready due to pending media pipeline gating).
+
+
+### 25.9 Music Media Enrichment Wave 01
+- **Status**: 🚧 MUSIC MEDIA ENRICHMENT — REAL LOCAL ASSETS COMPLETE, PENDING HUMAN MEDIA REVIEW
+- Truth audit established:
+  - 0 real Music audio assets (PREVIOUS)
+  - 0 real Music image assets (PREVIOUS)
+  - 25 generated files were zero-byte placeholders (and have been deleted)
+  - Previous media review artifact invalid (and has been removed)
+- **Current state**:
+  - ✅ Forward selector implemented & verified
+  - ✅ Music 50-item forward content Human Product Approved
+  - ✅ Canonical media contracts reconciled
+  - ✅ **MEDIA PILOT WAVE 01A HUMAN APPROVED**: 5 items (`mus-not-001`, `mus-not-011-v2`, `mus-not-013`, `music-ryo-002-v2`, `bomb-music-sau-001-v2`) verified via real iTunes API / authentic imagery.
+  - 🚧 **WAVE 01B PREPARED**: 22 remaining real local media assets (16 Audio, 6 Images) prepared via canonical sources, passed technical decode/duration QA, now pending Product review.
+  - No R2 uploads occurred.
+> **Superseded (§25.10):** Music released to Production on 2026-09-03 — World `active`/`ready`, 50/50 Content Items promoted, 27/27 media ingested, gameplay smoke PASS. The line above is the state when it was written.
+  - No Production promotion occurred..
+- ⚠️ **Promotion Blocker**: Music canonical Production promoter adapter/milestone still required before Production dry-run because current Music packs (`items[]` shape) are not yet registered/shape-adapted for `promote_approved_content.py`.
+
+### 25.10 Production Rollout Final Status — ✅ RELEASED & VERIFIED (2026-09-03)
 ✅ **Music Content** — 50 / 50 promoted to Production
 ✅ **Music Media** — 27 / 27 ingested to Production R2 and verified
 ✅ **Music Board Binding** — implemented & verified in Production
@@ -2300,3 +2740,23 @@ For the approved forward 4-Scope Music taxonomy, minimum **AUTHORING coverage is
 - first_note Artist Anchor rule is intact
 - 20 Audio / 7 Images media profile is strictly verified
 - Bomb Audio = 0
+
+
+### 25.11 Pre-Release Milestone & Status (Music) — *historical, superseded by §25.10*
+✅ MUSIC CONTENT — 50 / 50 HUMAN PRODUCT APPROVED
+✅ MUSIC MEDIA — 27 / 27 HUMAN MEDIA APPROVED
+✅ MUSIC REAL LOCAL MEDIA COMPLETE
+✅ FORWARD SELECTOR — IMPLEMENTED & VERIFIED IN SOURCE (50 forward / 0 archived)
+✅ FIRST_NOTE MASTER PLAYBACK CONTRACT — IMPLEMENTED & VERIFIED IN SOURCE
+⬜ R2 PRODUCTION INGEST — PENDING
+⬜ PRODUCTION CONTENT PROMOTION — PENDING
+⬜ MUSIC BOARD BINDING / WORLD ACTIVATION — PENDING
+⬜ PRODUCTION SMOKE — PENDING
+
+#### Next Rollout Phase
+The next Music workstream is **MEDIA ENRICHMENT + PROMOTION PREPARATION**.
+This must reuse the established canonical Akwaan media workflow (do not invent a separate Music media pipeline). Media work should reconcile RYO audio/image intents, Bomb audio/image intents, and first_note audio masters. After media QA, human review, Production promotion, board binding, and activation will follow as FUTURE steps.
+
+#### Working-Tree Note
+- `ai/scripts/reconcile_music_scopes.py` is a targeted reconciliation utility that exists as a working-tree change only (unless Git state proves otherwise).
+- All newly-created content authoring artifacts (`.source.json`, `-review.html`) currently reside according to their actual Git working-tree state and are not yet committed or promoted to the production database.
