@@ -579,7 +579,12 @@ CANONICAL_SCOPE_ALIASES: dict[str, tuple[str, ...]] = {
 }
 
 CANONICAL_CHALLENGE_TYPE_ALIASES: dict[str, tuple[str, ...]] = {
-    "marhala": ("marhala", "mechanic-1787503326785", "المرحلة"),
+    # Production carries the canonical `marhala` slug (36 items, 1 board
+    # configuration), and no generated Marhala type exists any more. The old
+    # `mechanic-1787503326785` alias is dropped for the same reason as the
+    # first_note one: an alias that accepts a generated slug is what lets a board
+    # slot drift away from the launcher key without anything noticing.
+    "marhala": ("marhala", "المرحلة"),
     "bomb": ("bomb", "mechanic-1785880400000", "القنبلة"),
     "combo": ("combo", "mechanic-1785880300000", "الكومبو"),
     "read-your-opponent": ("read-your-opponent", "اقرأ خصمك"),

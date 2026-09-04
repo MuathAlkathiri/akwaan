@@ -1130,6 +1130,35 @@ class TestFirstNoteCanonicalSlug(unittest.TestCase):
             with self.subTest(canonical=canonical):
                 self.assertNotIn(self.GENERATED, aliases)
 
+
+    def test_no_alias_table_entry_carries_a_generated_mechanic_slug(self):
+        """No canonical mechanic may be reachable through a generated slug.
+
+        Both Production drifts — Music's `mechanic-1788380928916` and Video
+        Games' `mechanic-1787503326785` — were promotable because the alias table
+        accepted the generated slug. Any `mechanic-<digits>` alias is that same
+        hazard, so none may exist at all.
+        """
+        import re
+
+        # Two legacy aliases remain, awaiting the same Admin confirmation that
+        # cleared `marhala` and `first_note`: Production board bindings show
+        # `bomb` and `combo` are canonically slugged in every World that uses
+        # them, but that was read from the public projection, not the admin
+        # ChallengeType list. Delete an entry here once its type is confirmed —
+        # this set may only ever shrink.
+        PENDING_VERIFICATION = {
+            "mechanic-1785880400000",  # bomb
+            "mechanic-1785880300000",  # combo
+        }
+        generated = re.compile(r"^mechanic-\d+$")
+        for canonical, aliases in promoter.CANONICAL_CHALLENGE_TYPE_ALIASES.items():
+            for alias in aliases:
+                if alias in PENDING_VERIFICATION:
+                    continue
+                with self.subTest(canonical=canonical, alias=alias):
+                    self.assertIsNone(generated.match(alias))
+
     def test_a_correctly_slugged_type_resolves_to_the_canonical_key(self):
         index = self._index_with_slug("first-note")
         self.assertIn("first_note", index.challenge_types_by_slug)
