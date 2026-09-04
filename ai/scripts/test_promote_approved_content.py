@@ -1170,3 +1170,105 @@ class TestFirstNoteCanonicalSlug(unittest.TestCase):
                 return []
 
         return promoter.RuntimeIndex.load(FakeApi())
+
+
+class TestFirstNotePromotionContract(unittest.TestCase):
+    """من أول نغمة items must reach Production able to be played.
+
+    Twelve Music items were promoted with no `mechanicPayload` at all: the
+    promoter only ever built one for marhala, and the authored clue lived under
+    `authoring`, which promotion strips. Nothing complained because the
+    first-note compatibility check is gated on a ChallengeType slugged
+    `first-note` — `content-item-compatibility.policy.ts` returns no issues
+    unless one is present, and Production carried a generated slug. Canonicalising
+    the slug turned the check on and the gap became visible.
+    """
+
+    MILESTONE = "music-first-note-batch-01"
+
+    def pack(self, **over):
+        item = {
+            "id": "mus-not-001",
+            "worldId": "music",
+            "scopeId": "saudi-music",
+            "mechanic": "first_note",
+            "status": "ready",
+            "prompt": {"ar": "الفنان: عايض"},
+            "answerPayload": {
+                "mode": "first_note",
+                "correctValue": "فمان الله",
+                "acceptedAnswers": ["فمان الله", "فمان لله", "Faman Allah"],
+            },
+            "authoring": {"artist": "عايض", "clue": "الفنان: عايض"},
+            "media": {
+                "type": "audio",
+                "assets": [{"url": "/uploads/question-assets/audio/mus-not-001.mp3"}],
+            },
+        }
+        item.update(over)
+        return {"items": [item]}
+
+    def promote(self, pack):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "batch.source.json"
+            path.write_text(json.dumps(pack, ensure_ascii=False), encoding="utf-8")
+            manifest = promoter.build_manifest_from_file(
+                promoter.MILESTONES[self.MILESTONE], str(path)
+            )
+        return manifest.items[0].payload
+
+    def test_emits_the_first_note_variant(self):
+        self.assertEqual(
+            self.promote(self.pack())["mechanicPayload"]["variant"], "first-note"
+        )
+
+    def test_authored_clue_becomes_the_contextual_clue(self):
+        payload = self.promote(self.pack())
+        self.assertEqual(
+            payload["mechanicPayload"]["contextualClue"], {"ar": "الفنان: عايض"}
+        )
+
+    def test_a_missing_clue_fails_closed(self):
+        for authoring in ({}, {"clue": ""}, {"clue": "   "}):
+            with self.subTest(authoring=authoring):
+                with self.assertRaises(promoter.PromotionError):
+                    self.promote(self.pack(authoring=authoring))
+
+    def test_answer_mode_is_match(self):
+        # ANSWER_MODE_COMPATIBLE_ITEM_MODES[FIRST_NOTE] == [MATCH], and the
+        # runtime asserts the item carries a MATCH payload.
+        self.assertEqual(self.promote(self.pack())["answerPayload"]["mode"], "match")
+
+    def test_accepted_answers_are_preserved_in_order(self):
+        payload = self.promote(self.pack())
+        self.assertEqual(
+            payload["answerPayload"]["acceptedAnswers"],
+            ["فمان الله", "فمان لله", "Faman Allah"],
+        )
+        # [0] is the canonical title the runtime reads back as `title`.
+        self.assertEqual(payload["answerPayload"]["acceptedAnswers"][0], "فمان الله")
+
+    def test_the_source_pack_is_not_mutated(self):
+        pack = self.pack()
+        self.promote(pack)
+        self.assertEqual(pack["items"][0]["answerPayload"]["mode"], "first_note")
+
+    def test_the_single_audio_asset_is_preserved_untouched(self):
+        payload = self.promote(self.pack())
+        media = payload["media"]
+        self.assertEqual(media["type"], "audio")
+        self.assertEqual(len(media["assets"]), 1)
+        self.assertEqual(
+            media["assets"][0]["url"],
+            "/uploads/question-assets/audio/mus-not-001.mp3",
+        )
+
+    def test_other_mechanics_keep_their_own_mapping(self):
+        # The marhala milestone still reads its tracked pack and still carries
+        # marhalaDifficulty, with no first-note payload leaking into it.
+        manifest = promoter.build_manifest_from_file(
+            promoter.MILESTONES["marhala-video-games-batch-01"]
+        )
+        payload = manifest.items[0].payload
+        self.assertIn("marhalaDifficulty", payload["mechanicPayload"])
+        self.assertNotIn("variant", payload["mechanicPayload"])

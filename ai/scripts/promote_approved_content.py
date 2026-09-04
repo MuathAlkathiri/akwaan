@@ -890,6 +890,35 @@ def build_manifest_from_file(
         mechanic_payload: dict | None = None
         if mechanic == "marhala":
             mechanic_payload = {"marhalaDifficulty": question.get("marhalaDifficulty")}
+        elif mechanic == "first_note":
+            # من أول نغمة bids on how few seconds a team needs, so the
+            # pre-auction clue is part of the item's runtime contract, not
+            # authoring trivia: `FirstNotePayload` requires `variant` and a
+            # non-empty `contextualClue.ar`, and the compatibility policy
+            # rejects the item without them.
+            #
+            # The clue was already authored — it just never left `authoring`,
+            # which promotion strips. Twelve Music items reached Production with
+            # no mechanicPayload at all, and nothing complained because the
+            # first-note validator is gated on a ChallengeType slugged
+            # `first-note`, which Production did not have at the time.
+            clue = str((question.get("authoring") or {}).get("clue") or "").strip()
+            if not clue:
+                raise PromotionError(
+                    f"{milestone.key}: {qid} has no authored clue. من أول نغمة "
+                    f"cannot be promoted without `authoring.clue` — the auction "
+                    f"has nothing to bid against."
+                )
+            mechanic_payload = {
+                "variant": "first-note",
+                "contextualClue": {"ar": clue},
+            }
+            # A first-note ChallengeType resolves MATCH items
+            # (`ANSWER_MODE_COMPATIBLE_ITEM_MODES[FIRST_NOTE] == [MATCH]`, and
+            # the runtime asserts the same). Packs authored the mechanic's own
+            # mode onto the item; correct it here, for this mechanic only, and
+            # copy rather than edit the loaded pack in place.
+            answer_payload = {**answer_payload, "mode": "match"}
 
         # Media: read from the source when present and non-trivial. A `type: "none"`
         # entry means the item is text-only, which is valid for multimodal Bomb.
