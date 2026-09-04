@@ -236,7 +236,11 @@ describe("site chrome", () => {
   it("carries the brand, both link columns, and the notice", () => {
     render(<Footer />);
 
-    expect(screen.getByText("أكوان")).toBeInTheDocument();
+    // The brand block is the canonical mark, not the word set in body type.
+    expect(screen.getByAltText("أكوان")).toBeInTheDocument();
+    expect(
+      screen.getByText(/لعبة جماعية تجمع المعرفة/),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("navigation", { name: "روابط سريعة" }),
     ).toBeInTheDocument();
@@ -246,6 +250,16 @@ describe("site chrome", () => {
     expect(screen.getByRole("link", { name: "مبارياتي" })).toHaveAttribute(
       "href",
       "/matches",
+    );
+    // Worlds is a section of the home page, so the footer must reuse the
+    // header's destination rather than inventing a /worlds route.
+    expect(screen.getByRole("link", { name: "العوالم" })).toHaveAttribute(
+      "href",
+      "/#worlds",
+    );
+    expect(screen.getByRole("link", { name: "كيف تلعب" })).toHaveAttribute(
+      "href",
+      "/how-to-play",
     );
     expect(
       screen.getByRole("link", { name: "support@playakwaan.com" }),
