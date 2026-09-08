@@ -14,15 +14,16 @@ import {
 import { loginForToken } from '../helpers/auth-helper';
 import {
   ChallengeAnswerMode,
-  ChallengeFamily,
   ContentItemStatus,
   RAKKIBHA_TIMER_SECONDS,
   RAKKIBHA_VARIANT,
   WorldChallengeSlotKey,
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
-import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
-import { productionMechanicFixture } from '../fixtures/production-mechanic.fixture';
+import {
+  canonicalFillerFixtures,
+  productionMechanicFixture,
+} from '../fixtures/production-mechanic.fixture';
 import {
   MatchStage,
   MatchStatus,
@@ -136,7 +137,8 @@ describe('Unified Match preflight integration', () => {
 
   /**
    * One active World: ركّبها in the first position, the canonical RYO mechanic in
-   * the second, and two unimplemented fillers. Four Scopes, each holding one ركّبها
+   * the second, two canonical fillers, and slot_3 then re-pointed at an
+   * unlaunchable mechanic to reproduce legacy production data. Four Scopes, each holding one ركّبها
    * puzzle and one RYO item, so both mechanics can draw.
    */
   const seedWorld = async () => {
@@ -161,22 +163,17 @@ describe('Unified Match preflight integration', () => {
       ...productionMechanicFixture(RYO_MODE_KEY),
       status: WorldContentStatus.ACTIVE,
     });
-    const filler = [];
-    for (const [index, name] of ['Signature', 'Relational'].entries()) {
-      filler.push(
-        await challengeType({
-          name,
-          slug: `preflight-filler-${index}`,
-          family:
-            index === 0
-              ? ChallengeFamily.SIGNATURE
-              : ChallengeFamily.RELATIONAL,
-          answerMode: ChallengeAnswerMode.MULTIPLE_CHOICE,
-          scoringRuleId: SCORING_RULE_IDS.SIGNATURE_DECLARED_BY_MECHANIC,
-          status: WorldContentStatus.ACTIVE,
-        }),
-      );
-    }
+    // Real mechanics, not padding with invented slugs: this World must activate
+    // for the suite to reach preflight at all, and readiness correctly refuses a
+    // slot holding a mechanic no launcher answers to. Neither filler is seeded
+    // with content, so only ركّبها and RYO can draw — which is the point.
+    const filler = await Promise.all(
+      canonicalFillerFixtures({
+        exclude: [RAKKIBHA_MODE_KEY, RYO_MODE_KEY],
+        count: 2,
+        overrides: { status: WorldContentStatus.ACTIVE },
+      }).map((fixture) => challengeType(fixture)),
+    );
 
     const world = unwrap<{ id: string }>(
       await bearer(http().post('/admin/worlds'))
@@ -308,6 +305,7 @@ describe('Unified Match preflight integration', () => {
     await bearer(http().patch(`/admin/worlds/${world.id}`))
       .send({ status: WorldContentStatus.ACTIVE })
       .expect(200);
+
     return { worldId: String(world.id), scopeIds: scopes };
   };
 
@@ -901,22 +899,10 @@ describe('Unified Match preflight integration', () => {
       ).toHaveLength(1);
     });
 
-    it('needs no join code for a mechanic with no launcher', async () => {
-      const { sessionId } = await startSession();
-      await createMatch(sessionId);
-      // slot_3 is configured but unimplemented, so it cannot even be prepared.
-      const refused = await prepare(
-        sessionId,
-        0,
-        WorldChallengeSlotKey.SLOT_3,
-        400,
-      );
-      expect((refused as unknown as { code: string }).code).toBe(
-        'CHALLENGE_NOT_LAUNCHABLE',
-      );
-      expect((await snapshotOf(sessionId)).match.stage.key).toBe(
-        MatchStage.BOARD,
-      );
-    });
+    // A mechanic with no launcher can no longer be reached from a Match:
+    // readiness refuses to activate a World holding one, and Match creation
+    // refuses to open over an unready board, so no Match ever holds one. The
+    // refusal is covered in `match-world-launchability.spec`, and the gate that
+    // now prevents the state in `board-launchability-readiness.spec`.
   });
 });

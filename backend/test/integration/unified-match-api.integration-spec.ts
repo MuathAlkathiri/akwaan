@@ -14,13 +14,14 @@ import {
 import { loginForToken } from '../helpers/auth-helper';
 import {
   ChallengeAnswerMode,
-  ChallengeFamily,
   ContentItemStatus,
   WorldChallengeSlotKey,
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
-import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
-import { productionMechanicFixture } from '../fixtures/production-mechanic.fixture';
+import {
+  canonicalFillerFixtures,
+  productionMechanicFixture,
+} from '../fixtures/production-mechanic.fixture';
 import {
   MatchSetupMode,
   MatchSlotStatus,
@@ -39,6 +40,8 @@ import {
 } from '../../src/modules/live-game-sessions/application/live-participant.use-cases';
 import { UpdateParticipantPresence } from '../../src/modules/live-game-sessions/application/update-participant-presence.use-case';
 import { GameplayInteractionUseCases } from '../../src/modules/live-game-sessions/application/gameplay-interaction.use-cases';
+import { PresentationReady } from '../../src/modules/live-game-sessions/application/gameplay-runtime.lifecycle';
+import { ryoAssignedParticipants } from '../../src/modules/live-game-sessions/domain/ryo-gameplay.plugin';
 import { LiveSessionActor } from '../../src/modules/live-game-sessions/application/live-session-actor';
 import { LiveGameSessionSnapshot } from '../../src/modules/live-game-sessions/application/live-game-session.snapshot';
 import { MATCH_CHANGED_EVENT } from '../../src/modules/match/application/match-transition.notifier';
@@ -133,7 +136,13 @@ describe('Unified Match API integration', () => {
       4,
       mechanics,
       {
-        compatibleWith: mechanics.ryoNumbers,
+        // Authored for the أقرب position and readable only there, so every
+        // Scope holds ready content and the RYO position still has none.
+        compatibleWith: mechanics.relational,
+        answerPayload: {
+          mode: ChallengeAnswerMode.CLOSEST,
+          correctValue: 42,
+        },
       },
     );
   }, 120_000);
@@ -175,35 +184,24 @@ describe('Unified Match API integration', () => {
           .expect(201)
       ).body.data as { id: string };
 
+    // Three of the four slots are padding, but padding still has to be real:
+    // this World is activated, and readiness refuses a slot holding a mechanic
+    // no launcher answers to. Only RYO is seeded with content, so only RYO draws.
+    const [signature, ryoNumbers, relational] = await Promise.all(
+      canonicalFillerFixtures({
+        exclude: [RYO_MODE_KEY],
+        count: 3,
+        overrides: { status: WorldContentStatus.ACTIVE },
+      }).map((fixture) => create(fixture)),
+    );
     return {
-      signature: await create({
-        name: 'Formation Builder',
-        slug: 'unified-formation-builder',
-        family: ChallengeFamily.SIGNATURE,
-        answerMode: ChallengeAnswerMode.MULTIPLE_CHOICE,
-        scoringRuleId: SCORING_RULE_IDS.SIGNATURE_DECLARED_BY_MECHANIC,
-        status: WorldContentStatus.ACTIVE,
-      }),
+      signature,
       ryo: await create({
         ...productionMechanicFixture(RYO_MODE_KEY),
         status: WorldContentStatus.ACTIVE,
       }),
-      ryoNumbers: await create({
-        name: 'اقرأ الأرقام',
-        slug: 'unified-ryo-numbers',
-        family: ChallengeFamily.RYO,
-        answerMode: ChallengeAnswerMode.RYO,
-        scoringRuleId: SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
-        status: WorldContentStatus.ACTIVE,
-      }),
-      relational: await create({
-        name: 'Same Wavelength',
-        slug: 'unified-same-wavelength',
-        family: ChallengeFamily.RELATIONAL,
-        answerMode: ChallengeAnswerMode.VOTE,
-        scoringRuleId: SCORING_RULE_IDS.RELATIONAL_ITEM_SUCCESS,
-        status: WorldContentStatus.ACTIVE,
-      }),
+      ryoNumbers,
+      relational,
     };
   };
 
@@ -216,6 +214,12 @@ describe('Unified Match API integration', () => {
     options: {
       /** Which mechanic the seeded content is authored for. Defaults to RYO. */
       compatibleWith?: { id: string };
+      /**
+       * The answer payload to author. It travels with `compatibleWith`, because
+       * every mechanic only consumes the item modes it resolves — a أقرب slot
+       * cannot read a multiple-choice item.
+       */
+      answerPayload?: Record<string, unknown>;
     } = {},
   ): Promise<SeededWorld> => {
     const world = (
@@ -269,7 +273,7 @@ describe('Unified Match API integration', () => {
               compatibleChallengeTypeIds: [
                 (options.compatibleWith ?? mechanics.ryo).id,
               ],
-              answerPayload: {
+              answerPayload: options.answerPayload ?? {
                 mode: ChallengeAnswerMode.MULTIPLE_CHOICE,
                 options: [
                   { id: 'right', label: { ar: 'صحيح' } },
@@ -535,6 +539,48 @@ describe('Unified Match API integration', () => {
     const runtimes = app.get<GameplayRuntimeRepository>(
       GAMEPLAY_RUNTIME_REPOSITORY,
     );
+    // RYO declares three required surfaces — the shared screen and the two
+    // assigned phones — and holds the prepared interaction closed until all
+    // three acknowledge. Satisfy the barrier before submitting, or the first
+    // submission is refused as "interaction is prepared", which is the barrier
+    // working rather than a defect.
+    const held = (await runtimes.findBySessionId(sessionId))!.serialize();
+    if (held.activeRound?.interaction?.status === 'prepared') {
+      const assigned = ryoAssignedParticipants(held.runtimeState);
+      const ready = app.get(PresentationReady);
+      const surfaces: Array<{ actor: LiveSessionActor; connectionId: string }> =
+        [
+          {
+            actor: { kind: 'user', actorId: controllerId },
+            connectionId: 'test-shared-screen',
+          },
+          ...[
+            assigned.answererParticipantId,
+            assigned.deciderParticipantId,
+          ].map((participantId) => ({
+            actor: participants.find(
+              (person) =>
+                person.kind === 'participant' &&
+                person.participantId === participantId,
+            )!,
+            connectionId: `test-socket-${participantId}`,
+          })),
+        ];
+      for (const surface of surfaces) {
+        const current = (await runtimes.findBySessionId(
+          sessionId,
+        ))!.serialize();
+        await ready.execute({
+          sessionId,
+          actor: surface.actor,
+          commandId: uuid(),
+          expectedSessionRevision: await sessionRevision(sessionId),
+          expectedRuntimeRevision: current.revision,
+          connectionId: surface.connectionId,
+        });
+      }
+    }
+
     const runtime = (await runtimes.findBySessionId(sessionId))!.serialize();
     const round = runtime.activeRound!;
     const interaction = round.interaction!;
@@ -663,10 +709,15 @@ describe('Unified Match API integration', () => {
       ),
     ).toBe(true);
     // Only the canonical RYO mechanic has a launcher; the rest say so honestly.
+    // Every position is playable, and that is now the only shape a Match can
+    // have: a World does not activate while a slot holds a mechanic with no
+    // launcher, and a Match does not open over a board that is not ready. The
+    // `configured_but_unimplemented` projection is covered where it lives, in
+    // `match-world-launchability.spec`.
     expect(
       positions.filter((position) => position.launchability === 'launchable')
         .length,
-    ).toBe(3);
+    ).toBe(12);
     expect(positionOf(created, '2#slot_2').challengeKey).toBe(RYO_MODE_KEY);
     // The sequential sections are absent rather than filled with a guess.
     expect(created.match.board).toBeUndefined();
@@ -1038,20 +1089,11 @@ describe('Unified Match API integration', () => {
       expect(after.match.unified.board.completedPositionCount).toBe(0);
     });
 
-    it('refuses a position whose mechanic has no launcher', async () => {
-      const { sessionId } = await startSession();
-      await createUnified(sessionId);
-
-      const refused = await challengeCommand(
-        sessionId,
-        'prepare',
-        { occurrenceIndex: 0, slotKey: WorldChallengeSlotKey.SLOT_1 },
-        400,
-      );
-      expect((refused as unknown as { code: string }).code).toBe(
-        'CHALLENGE_NOT_LAUNCHABLE',
-      );
-    });
+    // A position whose mechanic has no launcher can no longer be reached from
+    // here: readiness refuses to activate such a World and Match creation
+    // refuses to open over an unready board, so no Match ever holds one. The
+    // refusal itself is covered in `match-world-launchability.spec`, and the
+    // gate that now prevents the state in `board-launchability-readiness.spec`.
 
     /**
      * `barren` is a real shape a content library can be in: an active World whose

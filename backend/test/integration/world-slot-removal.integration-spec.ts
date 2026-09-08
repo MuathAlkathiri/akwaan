@@ -12,11 +12,17 @@ import {
   seedIntegrationFixtures,
 } from '../fixtures/integration.fixture';
 import { loginForToken } from '../helpers/auth-helper';
+import { RYO_MODE_KEY } from '../../src/modules/live-game-sessions/domain/ryo-gameplay.plugin';
+import { CLOSEST_MODE_KEY } from '../../src/modules/live-game-sessions/domain/closest-gameplay.plugin';
+import { ONE_CLUE_MODE_KEY } from '../../src/modules/live-game-sessions/domain/one-clue-gameplay.plugin';
+import { LAQATHA_MODE_KEY } from '../../src/modules/live-game-sessions/domain/laqatha-gameplay.plugin';
+import { productionMechanicFixture } from '../fixtures/production-mechanic.fixture';
 import {
   ChallengeAnswerMode,
   ContentItemStatus,
   WorldChallengeSlotKey,
   WorldContentStatus,
+  ONE_CLUE_VALUES,
 } from '../../src/modules/world-content/domain/world-content.constants';
 
 /**
@@ -64,23 +70,69 @@ describe('world slot mechanic removal', () => {
     WorldChallengeSlotKey.SLOT_4,
   ];
 
+  /**
+   * The four mechanics this suite seats on every board.
+   *
+   * Canonical, because one of these tests asserts the board reports **no**
+   * blockers once a slot is refilled, and readiness correctly refuses a slot no
+   * launcher answers to. Which four is not arbitrary: every other canonical
+   * mechanic demands its own content pattern — a ركّبها assembly, a bomb run, a
+   * Marhala difficulty — and this suite is about counting a slot's content, not
+   * about authoring six different item shapes. These four need at most a ladder
+   * of clues.
+   */
+  const BOARD_MECHANICS = [
+    RYO_MODE_KEY,
+    CLOSEST_MODE_KEY,
+    ONE_CLUE_MODE_KEY,
+    LAQATHA_MODE_KEY,
+  ] as const;
+
+  /**
+   * A ready item for one mechanic.
+   *
+   * بدليل and القطها read a MATCH answer plus the five-clue ladder they both
+   * require; أقرب and اقرأ خصمك both accept a numeric CLOSEST item.
+   */
+  const itemFor = (slug: string, answer: string) =>
+    slug === ONE_CLUE_MODE_KEY || slug === LAQATHA_MODE_KEY
+      ? {
+          answerPayload: {
+            mode: ChallengeAnswerMode.MATCH,
+            acceptedAnswers: [answer],
+          },
+          mechanicPayload: {
+            clues: ONE_CLUE_VALUES.map((value, index) => ({
+              order: index + 1,
+              value,
+              text: { ar: `دليل ${index + 1}` },
+            })),
+          },
+        }
+      : {
+          answerPayload: {
+            mode: ChallengeAnswerMode.CLOSEST,
+            correctValue: 42,
+          },
+        };
+
   let mechanics: Array<{ id: string; slug: string }>;
 
   /** Four mechanics shared by every World in this suite, as the catalog is. */
   const seedMechanics = async () => {
+    // Four real mechanics. One of these tests asserts the board reports **no**
+    // blockers once a slot is refilled, and readiness correctly refuses a slot
+    // holding a mechanic no launcher answers to — so invented slugs cannot
+    // stand here. These four are the canonical mechanics with no extra
+    // per-mechanic content structure, which keeps this suite about counting a
+    // slot's content rather than about authoring four different item shapes.
     const created: Array<{ id: string; slug: string }> = [];
-    for (const slug of ['wsr-alpha', 'wsr-beta', 'wsr-gamma', 'wsr-delta']) {
+    for (const slug of BOARD_MECHANICS) {
       const type = unwrap<{ id: string }>(
         await bearer(http().post('/admin/challenge-types'))
           .send({
-            name: `مكانيكا ${slug}`,
-            slug,
-            family: 'coop',
-            itemStructure: 'discrete_triple',
-            answerMode: ChallengeAnswerMode.MATCH,
-            scoringRuleId: 'challenge.win',
+            ...productionMechanicFixture(slug),
             status: WorldContentStatus.ACTIVE,
-            defaultPresentation: { inputType: 'phone-text', timerSeconds: 30 },
           })
           .expect(201),
       );
@@ -133,10 +185,7 @@ describe('world slot mechanic removal', () => {
             scopeId,
             prompt: { ar: `${slug} ${mechanic.slug} ${copy}` },
             compatibleChallengeTypeIds: [mechanic.id],
-            answerPayload: {
-              mode: ChallengeAnswerMode.MATCH,
-              acceptedAnswers: [`${slug}-${mechanic.slug}-${copy}`],
-            },
+            ...itemFor(mechanic.slug, `${slug}-${mechanic.slug}-${copy}`),
             status: ContentItemStatus.READY,
           })
           .expect(201);
@@ -362,10 +411,8 @@ describe('world slot mechanic removal', () => {
             scopeId,
             prompt: { ar: 'سؤال مشترك' },
             compatibleChallengeTypeIds: [mechanics[2].id, mechanics[3].id],
-            answerPayload: {
-              mode: ChallengeAnswerMode.MATCH,
-              acceptedAnswers: ['مشترك'],
-            },
+            // Both of those read the clue ladder, so a shared item carries it.
+            ...itemFor(ONE_CLUE_MODE_KEY, 'مشترك'),
             status: ContentItemStatus.READY,
           })
           .expect(201),

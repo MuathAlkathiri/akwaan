@@ -37,6 +37,7 @@ import { UpdateParticipantPresence } from '../../src/modules/live-game-sessions/
 import { SubmitGameplayCommand } from '../../src/modules/live-game-sessions/application/submit-gameplay-command.use-case';
 import { GetLiveGameSession } from '../../src/modules/live-game-sessions/application/get-live-game-session.use-case';
 import { GetGameplayRuntime } from '../../src/modules/live-game-sessions/application/gameplay-runtime.queries';
+import { PresentationReady } from '../../src/modules/live-game-sessions/application/gameplay-runtime.lifecycle';
 import { GameplayDeadlineScheduler } from '../../src/modules/live-game-sessions/application/gameplay-deadline.scheduler';
 import {
   GAMEPLAY_RUNTIME_REPOSITORY,
@@ -152,20 +153,23 @@ describe('Bomb board lifecycle integration', () => {
     });
     const filler = await Promise.all(
       [
-        ['Formation', 'bomb-it-signature', ChallengeFamily.SIGNATURE],
-        ['Wavelength', 'bomb-it-relational', ChallengeFamily.RELATIONAL],
+        ['Closest', 'closest', ChallengeFamily.COOP],
+        ['One Clue', 'one-clue', ChallengeFamily.COOP],
       ].map(([name, slug, family]) =>
         challengeType({
           name,
           slug,
           family,
           itemStructure: 'discrete_triple',
-          answerMode: ChallengeAnswerMode.MULTIPLE_CHOICE,
+          answerMode:
+            slug === 'closest'
+              ? ChallengeAnswerMode.CLOSEST
+              : ChallengeAnswerMode.ONE_CLUE,
           scoringRuleId: SCORING_RULE_IDS.CHALLENGE_WIN,
           status: WorldContentStatus.ACTIVE,
           defaultPresentation: {
-            inputType: 'phone-choice',
-            timerSeconds: 25,
+            inputType: slug === 'closest' ? 'phone-number' : 'phone-text',
+            timerSeconds: slug === 'closest' ? 45 : 7,
             soundPack: null,
             revealStyle: null,
           },
@@ -280,30 +284,54 @@ describe('Bomb board lifecycle integration', () => {
       ryoItems.push(String(created.id));
     }
 
-    // Every selected Scope must hold ready content or the board refuses to
-    // open, so each one gets a playable filler item.
-    for (const [index, scope] of scopes.entries()) {
-      await bearer(http().post('/admin/content-items'))
-        .send({
-          scopeId: scope.id,
-          prompt: { ar: `حشو ${index + 1}` },
-          compatibleChallengeTypeIds: [filler[0].id, filler[1].id],
-          answerPayload: {
-            mode: ChallengeAnswerMode.MULTIPLE_CHOICE,
-            options: [
-              { id: 'right', label: { ar: 'صحيح' } },
-              { id: 'wrong', label: { ar: 'خطأ' } },
-            ],
-            correctOptionId: 'right',
-          },
-          status: ContentItemStatus.READY,
-        })
-        .expect(201);
+    // The activation gate requires every enabled board mechanic to have its
+    // canonical three-item budget in every Scope. These fixtures keep the
+    // Bomb lifecycle test honest without exercising the filler launchers.
+    for (const [scopeIndex, scope] of scopes.entries()) {
+      for (let copy = 0; copy < 3; copy += 1) {
+        const label = `${scopeIndex + 1}-${copy + 1}`;
+        await bearer(http().post('/admin/content-items'))
+          .send({
+            scopeId: scope.id,
+            prompt: { ar: `تقدير ${label}` },
+            compatibleChallengeTypeIds: [filler[0].id],
+            answerPayload: {
+              mode: ChallengeAnswerMode.CLOSEST,
+              correctValue: 42,
+            },
+            status: ContentItemStatus.READY,
+          })
+          .expect(201);
+        await bearer(http().post('/admin/content-items'))
+          .send({
+            scopeId: scope.id,
+            prompt: { ar: `دليل ${label}` },
+            compatibleChallengeTypeIds: [filler[1].id],
+            answerPayload: {
+              mode: ChallengeAnswerMode.MATCH,
+              acceptedAnswers: ['إجابة'],
+            },
+            mechanicPayload: {
+              clues: [5, 4, 3, 2, 1].map((value, clueIndex) => ({
+                order: clueIndex + 1,
+                value,
+                text: { ar: `دليل ${clueIndex + 1} ${label}` },
+              })),
+            },
+            status: ContentItemStatus.READY,
+          })
+          .expect(201);
+      }
     }
 
-    await bearer(http().patch(`/admin/worlds/${world.id}`))
-      .send({ status: WorldContentStatus.ACTIVE })
-      .expect(200);
+    const activation = await bearer(
+      http().patch(`/admin/worlds/${world.id}`),
+    ).send({ status: WorldContentStatus.ACTIVE });
+    if (activation.status !== 200) {
+      throw new Error(
+        `world activation -> ${activation.status} ${JSON.stringify(activation.body)}`,
+      );
+    }
 
     return {
       worldId: String(world.id),
@@ -360,6 +388,34 @@ describe('Bomb board lifecycle integration', () => {
         joined.participantId,
         // One simulated socket per participant. Presence is keyed by
         // connection now, so a test phone needs an identity like a real one.
+        `test-socket-${joined.participantId}`,
+      );
+      await readiness.execute({
+        actor,
+        ready: true,
+        expectedRevision: await sessionRevision(sessionId),
+        commandId: uuid(),
+      });
+      participants.push(actor);
+    }
+    for (const suffix of ['A2', 'A3']) {
+      const joined = await join.execute({
+        joinCode: access.joinCode,
+        displayName: `Player ${suffix}`,
+        requestedTeamId: teamIds[0],
+        joinRequestId: uuid(),
+      });
+      const actor: LiveSessionActor = {
+        kind: 'participant',
+        actorId: joined.participantId,
+        sessionId,
+        participantId: joined.participantId,
+        role: 'team-player',
+        credentialVersion: 1,
+      };
+      await presence.connected(
+        sessionId,
+        joined.participantId,
         `test-socket-${joined.participantId}`,
       );
       await readiness.execute({
@@ -482,27 +538,16 @@ describe('Bomb board lifecycle integration', () => {
     });
   };
 
-  const presentationReady = async (
-    sessionId: string,
-    commandId = uuid(),
-    expected = 201,
-  ) => {
+  const presentationReady = async (sessionId: string, commandId = uuid()) => {
     const runtime = (await runtimes().findBySessionId(sessionId))!.serialize();
-    const response = await bearer(
-      http().post(
-        `/live-game-sessions/${sessionId}/runtime/presentation-ready`,
-      ),
-    ).send({
+    return app.get(PresentationReady).execute({
+      sessionId,
+      actor: { kind: 'user', actorId: controllerId },
       commandId,
       expectedSessionRevision: await sessionRevision(sessionId),
       expectedRuntimeRevision: runtime.revision,
+      connectionId: 'test-shared-screen',
     });
-    if (response.status !== expected) {
-      throw new Error(
-        `presentation-ready -> ${response.status} ${JSON.stringify(response.body)}`,
-      );
-    }
-    return response;
   };
 
   /** The participant whose team currently holds the bomb. */
@@ -595,6 +640,11 @@ describe('Bomb board lifecycle integration', () => {
 
     const launchedRuntime = (await rawRuntime(sessionId))!;
     const launchedSession = (await rawSession(sessionId))!;
+    expect(
+      (
+        launchedSession.state.teams as Array<{ clock: { allocatedMs: number } }>
+      ).map((team) => team.clock.allocatedMs),
+    ).toEqual([30_000, 30_000]);
     expect(launchedRuntime.state.presentationActivatedAt ?? null).toBeNull();
     expect(launchedSession.state.activeTeamId).toBeUndefined();
     expect(
@@ -605,6 +655,17 @@ describe('Bomb board lifecycle integration', () => {
       ).some((team) => team.clock.running || team.clock.startedAt),
     ).toBe(false);
     expect(scheduler.armedKeyFor(sessionId)).toBeFalsy();
+
+    await expect(
+      app.get(PresentationReady).execute({
+        sessionId,
+        actor: participants[0],
+        commandId: uuid(),
+        expectedSessionRevision: await sessionRevision(sessionId),
+        expectedRuntimeRevision: launchedRuntime.state.revision,
+        connectionId: `test-socket-${participants[0].participantId}`,
+      }),
+    ).rejects.toMatchObject({ code: 'PRESENTATION_SURFACE_INVALID' });
 
     const preparing = await app
       .get(GetLiveGameSession)
@@ -627,29 +688,31 @@ describe('Bomb board lifecycle integration', () => {
     ))!.serialize();
     const sessionRevisionBeforeReady = await sessionRevision(sessionId);
     const commandId = uuid();
-    const racing = await Promise.all([
-      bearer(
-        http().post(
-          `/live-game-sessions/${sessionId}/runtime/presentation-ready`,
-        ),
-      ).send({
+    const ready = app.get(PresentationReady);
+    const racing = await Promise.allSettled([
+      ready.execute({
+        sessionId,
+        actor: { kind: 'user', actorId: controllerId },
         commandId,
         expectedSessionRevision: sessionRevisionBeforeReady,
         expectedRuntimeRevision: runtimeBeforeReady.revision,
+        connectionId: 'test-shared-screen',
       }),
-      bearer(
-        http().post(
-          `/live-game-sessions/${sessionId}/runtime/presentation-ready`,
-        ),
-      ).send({
+      ready.execute({
+        sessionId,
+        actor: { kind: 'user', actorId: controllerId },
         commandId: uuid(),
         expectedSessionRevision: sessionRevisionBeforeReady,
         expectedRuntimeRevision: runtimeBeforeReady.revision,
+        connectionId: 'test-shared-screen',
       }),
     ]);
-    expect(racing.map((response) => response.status).sort()).toEqual([
-      201, 409,
-    ]);
+    expect(
+      racing.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    expect(
+      racing.filter((result) => result.status === 'rejected'),
+    ).toHaveLength(1);
 
     const activatedRuntime = (await rawRuntime(sessionId))!;
     const activatedSession = (await rawSession(sessionId))!;
@@ -778,6 +841,59 @@ describe('Bomb board lifecycle integration', () => {
     const runtime = (await rawRuntime(sessionId))!;
     expect(runtime.state.activeRound.modeState.itemIndex).toBe(1);
     expect((await rawSession(sessionId))!.state.activeTeamId).not.toBe(before);
+  }, 180_000);
+
+  it('reassigns a disconnected Bomb owner without touching item, clock, or Fair-Start', async () => {
+    const { sessionId, participants } = await startSession();
+    await bombRunning(sessionId);
+    const presence = app.get(UpdateParticipantPresence);
+    const beforeRuntime = (await rawRuntime(sessionId))!.state;
+    const ownerId = beforeRuntime.activeRound.activeParticipantId as string;
+    const owner = participants.find(
+      (participant) => participant.participantId === ownerId,
+    )!;
+    const beforeSession = (await rawSession(sessionId))!.state;
+    const activeTeamId = beforeSession.activeTeamId as string;
+    const sameTeam = beforeSession.participants.filter(
+      (participant: { id: string; teamId?: string }) =>
+        participant.teamId === activeTeamId && participant.id !== ownerId,
+    );
+    const replacementId = sameTeam[0].id as string;
+    const peerId = sameTeam[1].id as string;
+    const replacement = participants.find(
+      (participant) => participant.participantId === replacementId,
+    )!;
+    const peer = participants.find(
+      (participant) => participant.participantId === peerId,
+    )!;
+
+    await presence.disconnected(sessionId, ownerId, `test-socket-${ownerId}`);
+
+    const afterRuntime = (await rawRuntime(sessionId))!.state;
+    const afterSession = (await rawSession(sessionId))!.state;
+    expect(afterRuntime.activeRound.activeParticipantId).toBe(replacementId);
+    expect(afterRuntime.activeRound.modeState.itemIndex).toBe(
+      beforeRuntime.activeRound.modeState.itemIndex,
+    );
+    expect(afterRuntime.currentPresentation).toBeUndefined();
+    expect(afterSession.teams).toEqual(beforeSession.teams);
+
+    await expect(
+      command(sessionId, owner, 'submit-answer', { answer: answerFor(0) }),
+    ).rejects.toMatchObject({ code: 'SESSION_FORBIDDEN' });
+    await expect(command(sessionId, peer, 'skip')).rejects.toMatchObject({
+      code: 'SESSION_FORBIDDEN',
+    });
+
+    await presence.connected(sessionId, ownerId, `reconnected-${ownerId}`);
+    expect(
+      (await rawRuntime(sessionId))!.state.activeRound.activeParticipantId,
+    ).toBe(replacementId);
+
+    await command(sessionId, replacement, 'skip');
+    expect(
+      (await rawRuntime(sessionId))!.state.activeRound.modeState.itemIndex,
+    ).toBe(1);
   }, 180_000);
 
   it('6b: a correct answer passes the bomb without resetting the clock', async () => {

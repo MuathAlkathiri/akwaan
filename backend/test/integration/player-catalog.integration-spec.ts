@@ -14,12 +14,15 @@ import { loginForToken } from '../helpers/auth-helper';
 import { expectSafeResponse } from '../helpers/response-safety';
 import {
   ChallengeAnswerMode,
-  ChallengeFamily,
   ContentItemStatus,
   WorldChallengeSlotKey,
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
-import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
+import { RYO_MODE_KEY } from '../../src/modules/live-game-sessions/domain/ryo-gameplay.plugin';
+import {
+  canonicalFillerFixtures,
+  productionMechanicFixture,
+} from '../fixtures/production-mechanic.fixture';
 
 /**
  * The player read surface.
@@ -63,56 +66,28 @@ describe('player catalog HTTP integration', () => {
    * Scope, plus a second World left in draft.
    */
   const seed = async () => {
-    const challengeType = async (
-      name: string,
-      slug: string,
-      family: ChallengeFamily,
-      answerMode: ChallengeAnswerMode,
-      scoringRuleId: string,
-    ) =>
+    const challengeType = async (body: Record<string, unknown>) =>
       unwrap<{ id: string }>(
         await admin(http().post('/admin/challenge-types'))
           .send({
-            name,
-            slug,
-            family,
-            answerMode,
-            scoringRuleId,
+            ...body,
             defaultPresentation: presentation,
             status: WorldContentStatus.ACTIVE,
           })
           .expect(201),
       );
 
+    // Real mechanics: this World is activated below, and readiness refuses a
+    // board slot holding a mechanic no launcher answers to. RYO leads because
+    // it is the one the catalog's content is written against — it consumes the
+    // multiple-choice items seeded further down.
     const mechanics = [
-      await challengeType(
-        'أفضل 5',
-        'player-top-5',
-        ChallengeFamily.SIGNATURE,
-        ChallengeAnswerMode.MULTIPLE_CHOICE,
-        SCORING_RULE_IDS.SIGNATURE_DECLARED_BY_MECHANIC,
-      ),
-      await challengeType(
-        'اقرأ خصمك',
-        'player-ryo',
-        ChallengeFamily.RYO,
-        ChallengeAnswerMode.RYO,
-        SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
-      ),
-      await challengeType(
-        'تعاون',
-        'player-coop',
-        ChallengeFamily.COOP,
-        ChallengeAnswerMode.CLOSEST,
-        SCORING_RULE_IDS.COOP_ITEM_SUCCESS,
-      ),
-      await challengeType(
-        'علاقات',
-        'player-relational',
-        ChallengeFamily.RELATIONAL,
-        ChallengeAnswerMode.VOTE,
-        SCORING_RULE_IDS.RELATIONAL_ITEM_SUCCESS,
-      ),
+      await challengeType(productionMechanicFixture(RYO_MODE_KEY)),
+      ...(await Promise.all(
+        canonicalFillerFixtures({ exclude: [RYO_MODE_KEY], count: 3 }).map(
+          (fixture) => challengeType(fixture),
+        ),
+      )),
     ];
 
     const world = unwrap<{ id: string }>(

@@ -1,6 +1,7 @@
 services:
   mongodb-test:
     image: mongo:7
+    hostname: mongodb-test
     command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports: ["127.0.0.1:27018:27017"]
     tmpfs: [/data/db]
@@ -36,7 +37,12 @@ services:
       dockerfile: backend/Dockerfile
       target: build
     working_dir: /app
-    command: sh -c "apk add --no-cache ffmpeg && npm run test:media:integration"
+    # The backend image is Debian (node:20-bookworm-slim), not Alpine, so the
+    # `apk` this used to run never existed and the profile could not start at
+    # all. Note this does not explain the music suite: ffmpeg and ffprobe are
+    # both present in the integration container and music still fails there,
+    # so its 500 has a different cause than the one on record.
+    command: sh -c "apt-get update && apt-get install -y --no-install-recommends ffmpeg && npm run test:media:integration"
     profiles: ["media"]
 
   backend-e2e:
@@ -75,3 +81,7 @@ services:
     ports: ["127.0.0.1:3201:3001"]
     depends_on: [backend-e2e]
     profiles: ["e2e"]
+
+networks:
+  default:
+    name: akwaan_integration_default

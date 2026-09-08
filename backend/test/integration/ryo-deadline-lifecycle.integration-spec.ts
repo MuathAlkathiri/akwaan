@@ -14,12 +14,14 @@ import {
 import { loginForToken } from '../helpers/auth-helper';
 import {
   ChallengeAnswerMode,
-  ChallengeFamily,
   ContentItemStatus,
   WorldChallengeSlotKey,
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
-import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
+import {
+  canonicalFillerFixtures,
+  productionMechanicFixture,
+} from '../fixtures/production-mechanic.fixture';
 import { LiveGameSessionSnapshot } from '../../src/modules/live-game-sessions/application/live-game-session.snapshot';
 import { LiveSessionActor } from '../../src/modules/live-game-sessions/application/live-session-actor';
 import {
@@ -142,29 +144,19 @@ describe('RYO deadline lifecycle integration', () => {
     };
 
     const ryo = await challengeType({
-      name: 'اقرأ خصمك',
-      slug: RYO_MODE_KEY,
-      family: ChallengeFamily.RYO,
-      answerMode: ChallengeAnswerMode.RYO,
-      scoringRuleId: SCORING_RULE_IDS.CHALLENGE_WIN,
-      itemStructure: 'discrete_triple',
+      ...productionMechanicFixture(RYO_MODE_KEY),
       status: WorldContentStatus.ACTIVE,
     });
+    // The three remaining board positions hold real mechanics. This World is
+    // activated below, and readiness refuses a slot holding a mechanic no
+    // launcher answers to; none of them is seeded with content, so the deadline
+    // this suite measures is always RYO's.
     const others = await Promise.all(
-      [
-        ['Formation Builder', 'ryo-dl-signature', ChallengeFamily.SIGNATURE],
-        ['Same Wavelength', 'ryo-dl-relational', ChallengeFamily.RELATIONAL],
-        ['Third', 'ryo-dl-third', ChallengeFamily.SIGNATURE],
-      ].map(([name, slug, family]) =>
-        challengeType({
-          name,
-          slug,
-          family,
-          answerMode: ChallengeAnswerMode.MULTIPLE_CHOICE,
-          scoringRuleId: SCORING_RULE_IDS.CHALLENGE_WIN,
-          status: WorldContentStatus.ACTIVE,
-        }),
-      ),
+      canonicalFillerFixtures({
+        exclude: [RYO_MODE_KEY],
+        count: 3,
+        overrides: { status: WorldContentStatus.ACTIVE },
+      }).map((fixture) => challengeType(fixture)),
     );
 
     const world = (

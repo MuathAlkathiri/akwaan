@@ -14,13 +14,14 @@ import {
 import { loginForToken } from '../helpers/auth-helper';
 import {
   ChallengeAnswerMode,
-  ChallengeFamily,
   ContentItemStatus,
   WorldChallengeSlotKey,
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
-import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
-import { productionMechanicFixture } from '../fixtures/production-mechanic.fixture';
+import {
+  canonicalFillerFixtures,
+  productionMechanicFixture,
+} from '../fixtures/production-mechanic.fixture';
 import {
   MatchSetupMode,
   MatchSlotStatus,
@@ -37,6 +38,8 @@ import {
 } from '../../src/modules/live-game-sessions/application/live-participant.use-cases';
 import { UpdateParticipantPresence } from '../../src/modules/live-game-sessions/application/update-participant-presence.use-case';
 import { GameplayInteractionUseCases } from '../../src/modules/live-game-sessions/application/gameplay-interaction.use-cases';
+import { PresentationReady } from '../../src/modules/live-game-sessions/application/gameplay-runtime.lifecycle';
+import { ryoAssignedParticipants } from '../../src/modules/live-game-sessions/domain/ryo-gameplay.plugin';
 import { LiveSessionSnapshotComposer } from '../../src/modules/live-game-sessions/application/live-session-snapshot.composer';
 import {
   LIVE_GAME_SESSION_REPOSITORY,
@@ -163,30 +166,17 @@ describe('Match API integration', () => {
       ...productionMechanicFixture(RYO_MODE_KEY),
       status: WorldContentStatus.ACTIVE,
     });
-    const signature = await challengeType({
-      name: 'Formation Builder',
-      slug: 'match-formation-builder',
-      family: ChallengeFamily.SIGNATURE,
-      answerMode: ChallengeAnswerMode.MULTIPLE_CHOICE,
-      scoringRuleId: SCORING_RULE_IDS.SIGNATURE_DECLARED_BY_MECHANIC,
-      status: WorldContentStatus.ACTIVE,
-    });
-    const ryoNumbers = await challengeType({
-      name: 'اقرأ الأرقام',
-      slug: 'match-ryo-numbers',
-      family: ChallengeFamily.RYO,
-      answerMode: ChallengeAnswerMode.RYO,
-      scoringRuleId: SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
-      status: WorldContentStatus.ACTIVE,
-    });
-    const relational = await challengeType({
-      name: 'Same Wavelength',
-      slug: 'match-same-wavelength',
-      family: ChallengeFamily.RELATIONAL,
-      answerMode: ChallengeAnswerMode.VOTE,
-      scoringRuleId: SCORING_RULE_IDS.RELATIONAL_ITEM_SUCCESS,
-      status: WorldContentStatus.ACTIVE,
-    });
+    // The other three slots hold real mechanics. A World only activates when
+    // every slot holds one the runtime can launch, and a Match only opens over a
+    // board that is ready — so an unimplemented mechanic can reach neither.
+    // None of the three is seeded with content, so only RYO draws.
+    const [signature, ryoNumbers, relational] = await Promise.all(
+      canonicalFillerFixtures({
+        exclude: [RYO_MODE_KEY],
+        count: 3,
+        overrides: { status: WorldContentStatus.ACTIVE },
+      }).map((fixture) => challengeType(fixture)),
+    );
 
     const world = (
       await bearer(http().post('/admin/worlds'))
@@ -431,6 +421,48 @@ describe('Match API integration', () => {
     const runtimes = app.get<GameplayRuntimeRepository>(
       GAMEPLAY_RUNTIME_REPOSITORY,
     );
+    // RYO declares three required surfaces — the shared screen and the two
+    // assigned phones — and holds the prepared interaction closed until all
+    // three acknowledge. Satisfy the barrier before submitting, or the first
+    // submission is refused as "interaction is prepared", which is the barrier
+    // working rather than a defect.
+    const held = (await runtimes.findBySessionId(sessionId))!.serialize();
+    if (held.activeRound?.interaction?.status === 'prepared') {
+      const assigned = ryoAssignedParticipants(held.runtimeState);
+      const ready = app.get(PresentationReady);
+      const surfaces: Array<{ actor: LiveSessionActor; connectionId: string }> =
+        [
+          {
+            actor: { kind: 'user', actorId: controllerId },
+            connectionId: 'test-shared-screen',
+          },
+          ...[
+            assigned.answererParticipantId,
+            assigned.deciderParticipantId,
+          ].map((participantId) => ({
+            actor: participants.find(
+              (person) =>
+                person.kind === 'participant' &&
+                person.participantId === participantId,
+            )!,
+            connectionId: `test-socket-${participantId}`,
+          })),
+        ];
+      for (const surface of surfaces) {
+        const current = (await runtimes.findBySessionId(
+          sessionId,
+        ))!.serialize();
+        await ready.execute({
+          sessionId,
+          actor: surface.actor,
+          commandId: uuid(),
+          expectedSessionRevision: await sessionRevision(sessionId),
+          expectedRuntimeRevision: current.revision,
+          connectionId: surface.connectionId,
+        });
+      }
+    }
+
     const runtime = (await runtimes.findBySessionId(sessionId))!.serialize();
     const round = runtime.activeRound!;
     const interaction = round.interaction!;
@@ -517,7 +549,13 @@ describe('Match API integration', () => {
     expect(created.match.unified.occurrences).toHaveLength(3);
     expect(created.match.unified.board.positions).toHaveLength(12);
 
-    // Every configured position is reported, including the three with no launcher.
+    // Every configured position is reported, and every one of them is playable.
+    // That is now the only shape a Match can be in: a World does not activate
+    // while a slot holds a mechanic with no launcher, and a Match does not open
+    // over a board that is not ready — so `configured_but_unimplemented` is
+    // unreachable from here. The projection itself, and the launch refusal that
+    // backs it up, are covered where they live: `match-world-launchability.spec`
+    // and `board-launchability-readiness.spec`.
     const launchabilityBySlot = [
       WorldChallengeSlotKey.SLOT_1,
       WorldChallengeSlotKey.SLOT_2,
@@ -528,25 +566,11 @@ describe('Match API integration', () => {
       position(created.match, 0, slotKey).launchability,
     ]);
     expect(launchabilityBySlot).toEqual([
-      [WorldChallengeSlotKey.SLOT_1, 'configured_but_unimplemented'],
+      [WorldChallengeSlotKey.SLOT_1, 'launchable'],
       [WorldChallengeSlotKey.SLOT_2, 'launchable'],
-      [WorldChallengeSlotKey.SLOT_3, 'configured_but_unimplemented'],
-      [WorldChallengeSlotKey.SLOT_4, 'configured_but_unimplemented'],
+      [WorldChallengeSlotKey.SLOT_3, 'launchable'],
+      [WorldChallengeSlotKey.SLOT_4, 'launchable'],
     ]);
-
-    // An unimplemented mechanic refuses to launch instead of being auto-completed.
-    const refused = await bearer(
-      http().post(matchRoute(sessionId, '/challenges/launch')),
-    )
-      .send({
-        commandId: uuid(),
-        expectedMatchRevision: created.match.revision,
-        occurrenceIndex: 0,
-        slotKey: WorldChallengeSlotKey.SLOT_1,
-        contentItemIds: [contentItemIds[0]],
-      })
-      .expect(400);
-    expect(refused.body.code).toBe('CHALLENGE_NOT_LAUNCHABLE');
 
     const launched = await command(sessionId, '/challenges/launch', {
       occurrenceIndex: 0,

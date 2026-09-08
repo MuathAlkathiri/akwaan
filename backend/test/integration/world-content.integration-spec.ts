@@ -19,6 +19,11 @@ import {
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
 import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
+import { ODD_PIECE_MODE_KEY } from '../../src/modules/live-game-sessions/domain/odd-piece-gameplay.plugin';
+import { RYO_MODE_KEY } from '../../src/modules/live-game-sessions/domain/ryo-gameplay.plugin';
+import { BOMB_MODE_KEY } from '../../src/modules/live-game-sessions/domain/bomb-gameplay.plugin';
+import { COMBO_MODE_KEY } from '../../src/modules/live-game-sessions/domain/combo-gameplay.plugin';
+import { productionMechanicFixture } from '../fixtures/production-mechanic.fixture';
 
 describe('World Management HTTP integration', () => {
   let app: INestApplication;
@@ -186,38 +191,38 @@ describe('World Management HTTP integration', () => {
       'WORLD_ACTIVATION_REQUIRES_BOARD',
     );
 
+    // Four real mechanics. A World only activates when every slot holds one the
+    // runtime can launch, so this board cannot be padded with invented slugs.
+    // The names stay as they were: display copy is admin-owned, which is the
+    // very thing the display-name assertions below are about.
     const signature = await createChallengeType({
-      name: 'Formation Builder',
-      slug: 'formation-builder',
-      family: ChallengeFamily.SIGNATURE,
-      answerMode: ChallengeAnswerMode.MULTIPLE_CHOICE,
+      ...productionMechanicFixture(ODD_PIECE_MODE_KEY, {
+        name: 'Formation Builder',
+      }),
       defaultPresentation: presentation({ inputType: 'phone-drag' }),
-      scoringRuleId: SCORING_RULE_IDS.SIGNATURE_DECLARED_BY_MECHANIC,
+      status: WorldContentStatus.ACTIVE,
+    });
+    const sharedRyo = await createChallengeType({
+      ...productionMechanicFixture(RYO_MODE_KEY, {
+        name: 'Read Your Opponent',
+      }),
+      defaultPresentation: presentation(),
       status: WorldContentStatus.ACTIVE,
     });
     const ryoTwo = await createChallengeType({
-      name: 'Read the numbers',
-      slug: 'ryo-numbers',
-      family: ChallengeFamily.RYO,
-      answerMode: ChallengeAnswerMode.RYO,
+      ...productionMechanicFixture(BOMB_MODE_KEY, {
+        name: 'Read the numbers',
+      }),
       defaultPresentation: presentation({ inputType: 'phone-slider' }),
-      scoringRuleId: SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
       status: WorldContentStatus.ACTIVE,
     });
     const relational = await createChallengeType({
-      name: 'Same Wavelength',
-      slug: 'same-wavelength',
-      family: ChallengeFamily.RELATIONAL,
-      answerMode: ChallengeAnswerMode.VOTE,
+      ...productionMechanicFixture(COMBO_MODE_KEY, {
+        name: 'Same Wavelength',
+      }),
       defaultPresentation: presentation({ inputType: 'phone-vote' }),
-      scoringRuleId: SCORING_RULE_IDS.RELATIONAL_ITEM_SUCCESS,
       status: WorldContentStatus.ACTIVE,
     });
-    const sharedRyo = (
-      await bearer(authed().get('/admin/challenge-types')).expect(200)
-    ).body.data.find(
-      (challengeType: { slug: string }) => challengeType.slug === 'ryo-shared',
-    );
 
     // Challenge Types are global and reusable across Worlds.
     expect(signature).not.toHaveProperty('isExclusive');
@@ -307,7 +312,11 @@ describe('World Management HTTP integration', () => {
     ).body.data;
     expect(readiness.blockers).toEqual([]);
     expect(readiness.boardReady).toBe(true);
-    expect(readiness.hasRelationalChallenge).toBe(true);
+    // False, and necessarily so: no Relational mechanic has a runtime launcher,
+    // so a board that can activate cannot contain one. The Match composition
+    // rule that wants a Relational challenge is a warning rather than a
+    // blocker, which is why play is unaffected — see the release notes.
+    expect(readiness.hasRelationalChallenge).toBe(false);
     expect(readiness.board.slots).toHaveLength(4);
     // Runtime stays global while player-facing copy may vary per World.
     expect(
@@ -363,13 +372,13 @@ describe('World Management HTTP integration', () => {
     const sharedRyo = (
       await bearer(authed().get('/admin/challenge-types')).expect(200)
     ).body.data.find(
-      (challengeType: { slug: string }) => challengeType.slug === 'ryo-shared',
+      (challengeType: { slug: string }) => challengeType.slug === RYO_MODE_KEY,
     );
     const signature = (
       await bearer(authed().get('/admin/challenge-types')).expect(200)
     ).body.data.find(
       (challengeType: { slug: string }) =>
-        challengeType.slug === 'formation-builder',
+        challengeType.slug === ODD_PIECE_MODE_KEY,
     );
 
     // Sharing the mechanic itself is allowed.
@@ -429,12 +438,22 @@ describe('World Management HTTP integration', () => {
       await bearer(authed().get('/admin/challenge-types')).expect(200)
     ).body.data;
     const sharedRyo = challengeTypes.find(
-      (challengeType: { slug: string }) => challengeType.slug === 'ryo-shared',
+      (challengeType: { slug: string }) => challengeType.slug === RYO_MODE_KEY,
     );
-    const relational = challengeTypes.find(
-      (challengeType: { slug: string }) =>
-        challengeType.slug === 'same-wavelength',
-    );
+    // Synthetic and deliberately so: rule 6.4 is about Relational-family
+    // content, and no Relational mechanic has a runtime launcher — so no
+    // canonical mechanic can stand in for it. This type is never seated on a
+    // board, only named as an item's compatible mechanic, so readiness never
+    // sees it and nothing about production launchability is weakened.
+    const relational = await createChallengeType({
+      name: 'Same Wavelength',
+      slug: 'same-wavelength',
+      family: ChallengeFamily.RELATIONAL,
+      answerMode: ChallengeAnswerMode.VOTE,
+      defaultPresentation: presentation({ inputType: 'phone-vote' }),
+      scoringRuleId: SCORING_RULE_IDS.RELATIONAL_ITEM_SUCCESS,
+      status: WorldContentStatus.ACTIVE,
+    });
 
     const created = (
       await bearer(authed().post('/admin/content-items'))
@@ -652,7 +671,7 @@ describe('World Management HTTP integration', () => {
       await bearer(authed().get('/admin/challenge-types')).expect(200)
     ).body.data;
     const sharedRyo = challengeTypes.find(
-      (challengeType: { slug: string }) => challengeType.slug === 'ryo-shared',
+      (challengeType: { slug: string }) => challengeType.slug === RYO_MODE_KEY,
     );
     expect(sharedRyo.worldConfigurationCount).toBeGreaterThan(0);
     await bearer(

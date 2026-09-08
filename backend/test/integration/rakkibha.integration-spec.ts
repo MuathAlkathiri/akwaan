@@ -14,7 +14,6 @@ import {
 import { loginForToken } from '../helpers/auth-helper';
 import {
   ChallengeAnswerMode,
-  ChallengeFamily,
   ContentItemStatus,
   RAKKIBHA_SLUG,
   RAKKIBHA_TIMER_SECONDS,
@@ -22,8 +21,10 @@ import {
   WorldChallengeSlotKey,
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
-import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
-import { productionMechanicFixture } from '../fixtures/production-mechanic.fixture';
+import {
+  canonicalFillerFixtures,
+  productionMechanicFixture,
+} from '../fixtures/production-mechanic.fixture';
 import { LiveGameSessionSnapshot } from '../../src/modules/live-game-sessions/application/live-game-session.snapshot';
 import { LiveSessionActor } from '../../src/modules/live-game-sessions/application/live-session-actor';
 import {
@@ -112,35 +113,16 @@ describe('Rakkibha race integration', () => {
       ...productionMechanicFixture(RAKKIBHA_SLUG),
       status: WorldContentStatus.ACTIVE,
     });
-    const filler = await Promise.all([
-      challengeType({
-        name: 'فاصل ريو',
-        slug: `rakkibha-filler-ryo-${Date.now()}`,
-        family: ChallengeFamily.RYO,
-        itemStructure: 'discrete_triple',
-        answerMode: ChallengeAnswerMode.RYO,
-        scoringRuleId: SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
-        status: WorldContentStatus.ACTIVE,
-      }),
-      challengeType({
-        name: 'فاصل تصويت',
-        slug: `rakkibha-filler-vote-${Date.now()}`,
-        family: ChallengeFamily.RELATIONAL,
-        itemStructure: 'discrete_triple',
-        answerMode: ChallengeAnswerMode.VOTE,
-        scoringRuleId: SCORING_RULE_IDS.RELATIONAL_ITEM_SUCCESS,
-        status: WorldContentStatus.ACTIVE,
-      }),
-      challengeType({
-        name: 'فاصل توقيع',
-        slug: `rakkibha-filler-signature-${Date.now()}`,
-        family: ChallengeFamily.SIGNATURE,
-        itemStructure: 'continuous',
-        answerMode: ChallengeAnswerMode.MATCH,
-        scoringRuleId: SCORING_RULE_IDS.SIGNATURE_DECLARED_BY_MECHANIC,
-        status: WorldContentStatus.ACTIVE,
-      }),
-    ]);
+    // The other three slots hold real mechanics. A board padded with invented
+    // slugs cannot activate — readiness refuses a slot no launcher answers to —
+    // so ركّبها would never get as far as drawing a puzzle.
+    const filler = await Promise.all(
+      canonicalFillerFixtures({
+        exclude: [RAKKIBHA_SLUG],
+        count: 3,
+        overrides: { status: WorldContentStatus.ACTIVE },
+      }).map((fixture) => challengeType(fixture)),
+    );
     const world = unwrap<{ id: string }>(
       await bearer(http().post('/admin/worlds'))
         .send({ name: 'عالم ركّبها', slug: `rakkibha-${Date.now()}` })

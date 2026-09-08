@@ -12,15 +12,18 @@ import {
   seedIntegrationFixtures,
 } from '../fixtures/integration.fixture';
 import { loginForToken } from '../helpers/auth-helper';
+import { PresentationReady } from '../../src/modules/live-game-sessions/application/gameplay-runtime.lifecycle';
 import {
   ChallengeAnswerMode,
-  ChallengeFamily,
   ContentItemStatus,
   WorldChallengeSlotKey,
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
 import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
-import { productionMechanicFixture } from '../fixtures/production-mechanic.fixture';
+import {
+  canonicalFillerFixtures,
+  productionMechanicFixture,
+} from '../fixtures/production-mechanic.fixture';
 import {
   MatchSetupMode,
   MatchSlotStatus,
@@ -177,22 +180,17 @@ describe('Match Top 5 integration', () => {
       ...productionMechanicFixture(RYO_MODE_KEY),
       status: WorldContentStatus.ACTIVE,
     });
-    const secondary = await challengeType({
-      name: 'معلومات سريعة',
-      slug: 'top5-quick-facts',
-      family: ChallengeFamily.RYO,
-      answerMode: ChallengeAnswerMode.RYO,
-      scoringRuleId: SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
-      status: WorldContentStatus.ACTIVE,
-    });
-    const relational = await challengeType({
-      name: 'Same Wavelength',
-      slug: 'top5-same-wavelength',
-      family: ChallengeFamily.RELATIONAL,
-      answerMode: ChallengeAnswerMode.VOTE,
-      scoringRuleId: SCORING_RULE_IDS.RELATIONAL_ITEM_SUCCESS,
-      status: WorldContentStatus.ACTIVE,
-    });
+    // The two remaining board positions are padding, and padding still has to
+    // be launchable: these Worlds are activated, and readiness refuses a slot
+    // holding a mechanic no launcher answers to. Neither is seeded with
+    // content, so only أفضل 5 and RYO draw.
+    const [secondary, relational] = await Promise.all(
+      canonicalFillerFixtures({
+        exclude: [TOP5_MODE_KEY, RYO_MODE_KEY],
+        count: 2,
+        overrides: { status: WorldContentStatus.ACTIVE },
+      }).map((fixture) => challengeType(fixture)),
+    );
 
     /** A World whose four board positions are the mechanics created above. */
     const createConfiguredWorld = async ({
@@ -806,6 +804,55 @@ describe('Match Top 5 integration', () => {
       });
     };
 
+    /**
+     * Satisfy RYO's multi-surface barrier for the item now held.
+     *
+     * RYO declares three required surfaces — the shared screen, the assigned
+     * answerer's phone and the assigned decider's phone — and holds the prepared
+     * interaction closed until all three acknowledge. Without this the first
+     * submission is refused with `Cannot perform this action while interaction
+     * is prepared`, which is the barrier doing its job rather than a defect.
+     */
+    const openThroughPresentation = async (
+      answererParticipantId: string,
+      deciderParticipantId: string,
+    ) => {
+      const runtime = await runtimeState(sessionId);
+      if (runtime.activeRound?.interaction?.status !== 'prepared') return;
+      const ready = app.get(PresentationReady);
+      const surfaces: Array<{
+        actor: LiveSessionActor;
+        connectionId: string;
+      }> = [
+        {
+          actor: { kind: 'user', actorId: controllerId },
+          connectionId: 'test-shared-screen',
+        },
+        ...[answererParticipantId, deciderParticipantId].map(
+          (participantId) => {
+            const phone = participants.find(
+              (person) => person.participantId === participantId,
+            )!;
+            return {
+              actor: phone,
+              connectionId: `test-socket-${participantId}`,
+            };
+          },
+        ),
+      ];
+      for (const surface of surfaces) {
+        const current = await runtimeState(sessionId);
+        await ready.execute({
+          sessionId,
+          actor: surface.actor,
+          commandId: uuid(),
+          expectedSessionRevision: await sessionRevision(sessionId),
+          expectedRuntimeRevision: current.revision,
+          connectionId: surface.connectionId,
+        });
+      }
+    };
+
     const seenAnswerers: string[] = [];
     const seenDeciders: string[] = [];
     for (let item = 0; item < 3; item += 1) {
@@ -825,6 +872,11 @@ describe('Match Top 5 integration', () => {
       )!;
       expect(answerer.teamId).toBe(answeringTeamId);
       expect(decider.teamId).not.toBe(answeringTeamId);
+
+      await openThroughPresentation(
+        assigned.answererParticipantId,
+        assigned.deciderParticipantId,
+      );
 
       if (item === 0) {
         // A teammate of the answerer is on the answering team and still refused.
