@@ -63,6 +63,15 @@ describe('Bomb gameplay rules', () => {
     expect(BOMB_GAMEPLAY_PLUGIN.key).toBe('bomb');
   });
 
+  it('requires the shared surface for its one initial Fair-Start', () => {
+    expect(
+      BOMB_GAMEPLAY_PLUGIN.requiredPresentationSurfaces?.({
+        runtimeState,
+        roundState: round(),
+      }),
+    ).toEqual([{ capability: 'shared' }]);
+  });
+
   describe('answering', () => {
     it("carries the next item's own prompt when advancing", () => {
       // Each ContentItem asks its own question, so advancing changes the

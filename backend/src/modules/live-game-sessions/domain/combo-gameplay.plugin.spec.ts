@@ -61,6 +61,7 @@ function runtime(
 
 const participants = [
   { participantId: 'p-a', teamId: TEAM_A, connected: true },
+  { participantId: 'p-a-2', teamId: TEAM_A, connected: true },
   { participantId: 'p-b', teamId: TEAM_B, connected: true },
 ];
 
@@ -73,12 +74,17 @@ function send(
     now?: Date;
   } = {},
 ) {
+  const activeTeamId = comboActiveTeamId(state);
+  const activeTeamParticipantId = participants.find(
+    (participant) => participant.teamId === activeTeamId,
+  )?.participantId;
   return COMBO_GAMEPLAY_PLUGIN.handleCommand(
     {
       sessionId: 'session-1',
       runtimeId: 'runtime-1',
       now: options.now ?? NOW,
-      submitterParticipantId: options.submitterParticipantId ?? 'p-a',
+      submitterParticipantId:
+        options.submitterParticipantId ?? activeTeamParticipantId,
       eligibleParticipants: participants,
     } as never,
     {
@@ -107,6 +113,75 @@ const wrong = (state: GameplayModeState, now = NOW) =>
 
 const resultsOf = (state: GameplayModeState): ComboRunResult[] =>
   JSON.parse(String(state.runResultsJson)) as ComboRunResult[];
+
+describe('الكومبو — server-owned team command authority', () => {
+  const expectUnchangedAfterRejection = (
+    state: GameplayModeState,
+    issue: () => unknown,
+  ) => {
+    const before = JSON.stringify(state);
+    expect(issue).toThrow(/active Combo team/);
+    expect(JSON.stringify(state)).toBe(before);
+  };
+
+  it.each(['p-a', 'p-a-2'])(
+    'allows active-team member %s to answer',
+    (submitterParticipantId) => {
+      expect(
+        send(runtime(), 'submit-combo-answer', {
+          answer: 'answer-0-1',
+          submitterParticipantId,
+        }).runtimeState.phase,
+      ).toBe('decision');
+    },
+  );
+
+  it('rejects an opposing-team answer without mutating gameplay state', () => {
+    const state = runtime();
+    expectUnchangedAfterRejection(state, () =>
+      send(state, 'submit-combo-answer', {
+        answer: 'answer-0-1',
+        submitterParticipantId: 'p-b',
+      }),
+    );
+  });
+
+  it.each(['p-a', 'p-a-2'])(
+    'allows active-team member %s to cash out',
+    (submitterParticipantId) => {
+      const decision = correct(runtime());
+      expect(
+        send(decision, 'cash-out-combo', { submitterParticipantId })
+          .runtimeState.phase,
+      ).toBe('run-complete');
+    },
+  );
+
+  it('rejects an opposing-team cash out without mutating gameplay state', () => {
+    const state = correct(runtime());
+    expectUnchangedAfterRejection(state, () =>
+      send(state, 'cash-out-combo', { submitterParticipantId: 'p-b' }),
+    );
+  });
+
+  it.each(['p-a', 'p-a-2'])(
+    'allows active-team member %s to continue',
+    (submitterParticipantId) => {
+      const decision = correct(runtime());
+      expect(
+        send(decision, 'continue-combo', { submitterParticipantId })
+          .runtimeState.questionIndex,
+      ).toBe(1);
+    },
+  );
+
+  it('rejects an opposing-team continue without mutating gameplay state', () => {
+    const state = correct(runtime());
+    expectUnchangedAfterRejection(state, () =>
+      send(state, 'continue-combo', { submitterParticipantId: 'p-b' }),
+    );
+  });
+});
 
 describe('الكومبو — the cash out decision', () => {
   it('offers the decision after a correct first question', () => {

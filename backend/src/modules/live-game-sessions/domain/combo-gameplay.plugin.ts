@@ -129,6 +129,44 @@ function chargesOf(state: GameplayModeState): Record<string, ComboChargeState> {
 }
 
 /**
+ * Resolve the authenticated command actor to a participating Combo team.
+ *
+ * `connected-player` is the outer session authorization boundary. Combo still
+ * has to establish team ownership itself because its active Run changes from
+ * Team A to Team B inside one generic gameplay round; the round's active team
+ * follows the Match/session turn and is not a second source of Combo truth.
+ */
+function comboSubmitterTeamId(
+  context: GameplayPluginContext,
+  teams: readonly string[],
+): string {
+  const participant = (context.eligibleParticipants ?? []).find(
+    (candidate) => candidate.participantId === context.submitterParticipantId,
+  );
+  if (!participant?.teamId || !teams.includes(participant.teamId)) {
+    reject(
+      'COMBO_COMMAND_FORBIDDEN',
+      'Only an eligible competing Combo player may act',
+    );
+  }
+  return participant.teamId;
+}
+
+function assertActiveComboTeam(
+  context: GameplayPluginContext,
+  state: GameplayModeState,
+  activeTeamId: string | null,
+): void {
+  const submitterTeamId = comboSubmitterTeamId(context, teamsOf(state));
+  if (!activeTeamId || submitterTeamId !== activeTeamId) {
+    reject(
+      'COMBO_COMMAND_FORBIDDEN',
+      'Only a player on the active Combo team may issue this command',
+    );
+  }
+}
+
+/**
  * The team whose Run is being played. Runs are taken in the order the plan was
  * built, so the active team is a function of `runIndex` and never stored twice.
  */
@@ -447,6 +485,7 @@ function handle(
   });
 
   if (command.type === 'submit-combo-answer') {
+    assertActiveComboTeam(context, state, activeTeamId);
     if (phase !== 'question') {
       reject('COMBO_NO_ACTIVE_QUESTION', 'No Combo question is open');
     }
@@ -508,6 +547,7 @@ function handle(
   }
 
   if (command.type === 'cash-out-combo') {
+    assertActiveComboTeam(context, state, activeTeamId);
     // Only reachable from the ordinary decision. `break-reveal` deliberately
     // does not accept it — removing the right to stop is the whole ability.
     if (phase !== 'decision') {
@@ -526,6 +566,7 @@ function handle(
   }
 
   if (command.type === 'continue-combo') {
+    assertActiveComboTeam(context, state, activeTeamId);
     if (phase !== 'decision' && phase !== 'break-reveal') {
       reject(
         'COMBO_CONTINUE_NOT_AVAILABLE',
@@ -570,15 +611,7 @@ function handle(
   if (command.type === 'arm-combo-break') {
     // Resolved from the authenticated submitter the session layer supplies, not
     // from anything the client asserts about itself.
-    const armingTeamId = (context.eligibleParticipants ?? []).find(
-      (candidate) => candidate.participantId === context.submitterParticipantId,
-    )?.teamId;
-    if (!armingTeamId) {
-      reject(
-        'COMBO_BREAK_FORBIDDEN',
-        'Only a participating team may arm كسر الكومبو',
-      );
-    }
+    const armingTeamId = comboSubmitterTeamId(context, teamsOf(state));
     if (armingTeamId === activeTeamId) {
       reject(
         'COMBO_BREAK_FORBIDDEN',

@@ -122,11 +122,20 @@ describe('Odd Piece gameplay', () => {
     };
     const claimed = command(open, 'claim-odd-piece').runtimeState;
     expect(claimed.answerOwnerTeamId).toBe('t1');
+    const puzzleOrder = JSON.parse(String(claimed.puzzlesJson)).map(
+      (entry: OddPiecePuzzle) => entry.pieces.map((piece) => piece.id),
+    );
     const wrong = command(claimed, 'submit-odd-piece', {
       pieceId: 'a',
     }).runtimeState;
     expect(wrong.phase).toBe('selecting');
     expect(wrong.answerOwnerTeamId).toBe('t2');
+    expect(
+      JSON.parse(String(wrong.puzzlesJson)).map((entry: OddPiecePuzzle) =>
+        entry.pieces.map((piece) => piece.id),
+      ),
+    ).toEqual(puzzleOrder);
+    expect(wrong.currentPuzzleIndex).toBe(claimed.currentPuzzleIndex);
     expect(() => command(wrong, 'claim-odd-piece')).toThrow();
     const opponentCorrect = ODD_PIECE_GAMEPLAY_PLUGIN.handleCommand(
       context('p2'),

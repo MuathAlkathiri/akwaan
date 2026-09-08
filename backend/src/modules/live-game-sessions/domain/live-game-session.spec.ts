@@ -1,4 +1,5 @@
 import { CORE_TIMED_TURNS_MODE } from './live-game-mode.registry';
+import { BOMB_TEAM_CLOCK_MS } from './live-game-mode.registry';
 import { LiveGameSession } from './live-game-session';
 import { LiveSessionDomainError } from './live-session.errors';
 
@@ -42,6 +43,44 @@ describe('LiveGameSession', () => {
     expect(state.teams[0].clock.consumedMs).toBe(5_000);
     expect(state.teams[1].clock.running).toBe(true);
     expect(state.turnHistory).toHaveLength(2);
+  });
+
+  it('allocates one 30-second Bomb clock per team and preserves it across returns', () => {
+    const session = create();
+    for (const [index, team] of session.serialize().teams.entries()) {
+      const player = session.enrollParticipant({
+        id: `bomb-player-${index}`,
+        displayName: `Bomb ${index}`,
+        teamId: team.id,
+        role: 'team-player',
+        joinRequestId: `bomb-join-${index}`,
+        now,
+      });
+      session.setParticipantReady(player.id, true, now);
+    }
+    session.markReady(now);
+    session.start(now);
+    session.allocateChallengeTeamClocks(BOMB_TEAM_CLOCK_MS, now);
+    expect(
+      session.serialize().teams.map((team) => team.clock.allocatedMs),
+    ).toEqual([30_000, 30_000, 30_000]);
+
+    const [first, second] = session.serialize().teams;
+    session.startTurn(first.id, 'bomb-start', now);
+    session.switchTurn(second.id, 'correct', new Date(now.getTime() + 4_000));
+    session.switchTurn(first.id, 'correct', new Date(now.getTime() + 7_000));
+    const returned = session.serialize();
+    expect(returned.teams[0].clock).toMatchObject({
+      allocatedMs: 30_000,
+      consumedMs: 4_000,
+      running: true,
+    });
+    expect(returned.teams[1].clock).toMatchObject({
+      allocatedMs: 30_000,
+      consumedMs: 3_000,
+      running: false,
+    });
+    expect(30_000 - returned.teams[0].clock.consumedMs - 2_000).toBe(24_000);
   });
 
   it('rejects unknown teams and stale revisions', () => {

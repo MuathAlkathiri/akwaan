@@ -564,6 +564,31 @@ export class LiveGameSession {
     return clock.remainingMs(now);
   }
 
+  /**
+   * Allocates the clocks for a newly launched timed challenge.
+   *
+   * Unified Match sessions outlive individual challenges and therefore start
+   * with generic session clocks. A mechanic may establish its own canonical
+   * budget only before its turn begins; handoffs can never call this seam.
+   */
+  allocateChallengeTeamClocks(allocatedMs: number, now: Date): void {
+    this.assertStatus(['active'], now);
+    if (
+      this.state.activeTeamId ||
+      this.state.teams.some((team) => team.clock.running)
+    ) {
+      throw new LiveSessionDomainError(
+        'ACTIVE_CLOCK_CANNOT_BE_REALLOCATED',
+        'Challenge clocks can only be allocated before a team turn starts',
+      );
+    }
+    this.state.teams = this.state.teams.map((team) => ({
+      ...team,
+      clock: TeamClock.create(allocatedMs).serialize(),
+    }));
+    this.state.lastTransitionAt = now;
+  }
+
   finish(
     reason: string,
     winnerTeamId: string | undefined,

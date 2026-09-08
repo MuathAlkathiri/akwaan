@@ -41,6 +41,11 @@ const puzzle = (id: string): RakkibhaPuzzle => ({
           canonicalIdentity: `${id}-wrong-c2`,
           media: { type: 'image', url: '/c2.webp' },
         },
+        {
+          localId: 'c-only',
+          canonicalIdentity: `${id}-wrong-c3`,
+          media: { type: 'image', url: '/c3.webp' },
+        },
       ],
     },
   ],
@@ -137,7 +142,7 @@ describe('Rakkibha plugin', () => {
     );
   });
   it('rejects candidates outside the actor private view', () => {
-    expect(() => submit(runtime(), 'a-c', 'missing')).toThrow(
+    expect(() => submit(runtime(), 'a-b', 'c-only')).toThrow(
       /not in your private view/i,
     );
   });
@@ -175,6 +180,44 @@ describe('Rakkibha plugin', () => {
     expect(distractor.myCandidatesJson).not.toContain('/b2.webp');
     expect(JSON.stringify(holder)).not.toContain('canonicalIdentity');
     expect(JSON.stringify(holder)).not.toContain('correctCanonicalIdentity');
+  });
+  it('keeps host and unassigned opponents on the public projection only', () => {
+    for (const actor of [
+      { controller: true, participantId: undefined },
+      { controller: false, participantId: 'outsider' },
+    ]) {
+      const projected = RAKKIBHA_PLUGIN.projectRuntimeStateForActor!(
+        runtime(),
+        actor,
+      );
+      expect(projected).not.toHaveProperty('myReferenceJson');
+      expect(projected).not.toHaveProperty('myCandidatesJson');
+      expect(JSON.stringify(projected)).not.toContain('.webp');
+      expect(JSON.stringify(projected)).not.toContain(
+        'correctCanonicalIdentity',
+      );
+    }
+  });
+  it('reprojects the identical private assignment for the same participant', () => {
+    const first = RAKKIBHA_PLUGIN.projectRuntimeStateForActor!(runtime(), {
+      controller: false,
+      participantId: 'a-c',
+    });
+    const reconnect = RAKKIBHA_PLUGIN.projectRuntimeStateForActor!(runtime(), {
+      controller: false,
+      participantId: 'a-c',
+    });
+    expect(reconnect).toEqual(first);
+    expect(reconnect.myCandidatesJson).toContain('holder-c');
+    expect(reconnect.myCandidatesJson).toContain('/c1.webp');
+    expect(reconnect.myCandidatesJson).not.toContain('/b2.webp');
+  });
+  it('advances puzzles inside one continuous authoritative race', () => {
+    const initial = runtime();
+    const result = submit(initial, 'a-b', 'option-2');
+    expect(result.runtimeState.deadlineAt).toBe(initial.deadlineAt);
+    expect(result).not.toHaveProperty('prepareNextPresentation');
+    expect(result.runtimeState.phase).toBe('active');
   });
   it('keeps the two-player reference away from every candidate set', () => {
     const twoPlayer = (

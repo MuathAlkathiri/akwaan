@@ -229,6 +229,7 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     commandType: 'expire-team',
     requiresPresentationActivation: true,
   },
+  requiredPresentationSurfaces: () => [{ capability: 'shared' }],
   activatePresentation: (state, _now, context) => {
     if (!context.activeTeamId) return state;
     return {

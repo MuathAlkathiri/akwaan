@@ -34,9 +34,18 @@ describe('GameplayAuthorization', () => {
       joinRequestId: 'join-2',
       now,
     });
+    session.enrollParticipant({
+      id: 'player-3',
+      displayName: 'Peer',
+      teamId: teamOne.id,
+      role: 'team-player',
+      joinRequestId: 'join-3',
+      now,
+    });
     const state = session.serialize();
     state.participants.find((item) => item.id === 'player-1')!.connected = true;
     state.participants.find((item) => item.id === 'player-2')!.connected = true;
+    state.participants.find((item) => item.id === 'player-3')!.connected = true;
     const runtime = GameplayRuntime.create({
       id: 'runtime-1',
       sessionId: session.id,
@@ -52,6 +61,7 @@ describe('GameplayAuthorization', () => {
         commandId: 'round',
         actorId: 'host-1',
         activeTeamId: teamOne.id,
+        activeParticipantId: 'player-1',
       },
       now,
     );
@@ -84,6 +94,30 @@ describe('GameplayAuthorization', () => {
     expect(
       authorization.can(
         'active-team-player',
+        actor('player-2'),
+        state,
+        runtime.serialize(),
+      ),
+    ).toBe(false);
+    expect(
+      authorization.can(
+        'active-participant',
+        actor('player-1'),
+        state,
+        runtime.serialize(),
+      ),
+    ).toBe(true);
+    expect(
+      authorization.can(
+        'active-participant',
+        actor('player-3'),
+        state,
+        runtime.serialize(),
+      ),
+    ).toBe(false);
+    expect(
+      authorization.can(
+        'active-participant',
         actor('player-2'),
         state,
         runtime.serialize(),

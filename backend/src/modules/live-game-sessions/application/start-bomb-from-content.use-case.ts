@@ -18,6 +18,8 @@ import {
 } from '../domain/live-game-session.repository';
 import { LiveSessionDomainError } from '../domain/live-session.errors';
 import { BOMB_MODE_KEY } from '../domain/bomb-gameplay.plugin';
+import { BOMB_TEAM_CLOCK_MS } from '../domain/live-game-mode.registry';
+import { LIVE_SESSION_CLOCK, LiveSessionClock } from './live-session-clock';
 import {
   findEligibleTeamParticipant,
   type TeamParticipantEligibilityCandidate,
@@ -74,6 +76,7 @@ export class StartBombGameplayFromContent {
     private readonly createRound: CreateGameplayRound,
     private readonly startRound: StartGameplayRound,
     private readonly getRuntime: GetGameplayRuntime,
+    @Inject(LIVE_SESSION_CLOCK) private readonly clock: LiveSessionClock,
   ) {}
 
   async execute(input: {
@@ -155,6 +158,13 @@ export class StartBombGameplayFromContent {
     }
 
     const actor = { kind: 'user' as const, actorId: input.actorId };
+    const clockCommandId = randomUUID();
+    const clockNow = this.clock.now();
+    const previousSessionRevision = session.revision;
+    session.allocateChallengeTeamClocks(BOMB_TEAM_CLOCK_MS, clockNow);
+    session.completeCommand(clockCommandId, clockNow);
+    await this.sessions.save(session, previousSessionRevision);
+
     await this.createRuntime.execute({
       sessionId: input.sessionId,
       actor,

@@ -14,6 +14,9 @@ export interface LiveGameModeRules {
   readyPlayersRequiredPerTeam: number;
 }
 
+/** Product-owned Bomb budget, reused by standalone and Unified Match launch. */
+export const BOMB_TEAM_CLOCK_MS = 30_000;
+
 export const CORE_TIMED_TURNS_MODE: LiveGameModeRules = {
   key: 'core-timed-turns',
   version: 1,
@@ -31,7 +34,7 @@ export const BOMB_TIMED_TURNS_MODE: LiveGameModeRules = {
   ...CORE_TIMED_TURNS_MODE,
   key: 'bomb',
   version: 1,
-  initialTeamDurationMs: 30_000,
+  initialTeamDurationMs: BOMB_TEAM_CLOCK_MS,
   minimumTeamCount: 2,
   maximumTeamCount: 2,
 };

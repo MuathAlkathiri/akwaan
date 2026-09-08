@@ -22,6 +22,7 @@ import {
 } from './live-session-transition.publisher';
 import { LiveSessionConcurrencyError } from '../domain/live-session.errors';
 import { eligibleParticipantsOf } from './start-top5.use-case';
+import { BOMB_MODE_KEY } from '../domain/bomb-gameplay.plugin';
 
 /**
  * Keeps a team-authoritative mechanic playable when its assigned player leaves.
@@ -99,6 +100,52 @@ export class ReassignTeamActions {
     const session = await this.sessions.findById(sessionId);
     if (!runtime || !session) return [];
     const state = runtime.serialize();
+    if (
+      state.modeKey === BOMB_MODE_KEY &&
+      state.activeRound?.status === 'active'
+    ) {
+      const sessionState = session.serialize();
+      const teamId = state.activeRound.activeTeamId;
+      const current = state.activeRound.activeParticipantId;
+      const eligible = eligibleParticipantsOf(sessionState).filter(
+        (participant) => participant.teamId === teamId && participant.connected,
+      );
+      if (
+        eligible.some((participant) => participant.participantId === current)
+      ) {
+        return [];
+      }
+      const replacement = eligible[0];
+      if (!replacement || !teamId) return [];
+      const previousRevision = runtime.revision;
+      const now = this.clock.now();
+      runtime.applyModeState({
+        commandId: randomUUID(),
+        actorId: 'system',
+        runtimeState: state.runtimeState,
+        roundState: state.activeRound.modeState,
+        eventType: 'bomb-active-participant-reassigned',
+        eventPayload: { participantId: replacement.participantId },
+        now,
+        sessionRevision: session.revision,
+        activeTeamId: teamId,
+        activeParticipantId: replacement.participantId,
+      });
+      await this.runtimes.save(runtime, previousRevision);
+      this.publisher.publish(
+        'live-session:state-changed',
+        this.snapshots.toSnapshot(session, session.controllerActorId, now),
+        { reason: 'bomb-active-participant-reassigned' },
+      );
+      return [
+        {
+          teamId,
+          participantId: replacement.participantId,
+          action: 'bomb.answer',
+          sequence: runtime.revision,
+        },
+      ];
+    }
     // Only a mechanic that opted in, and only while it is actually running.
     if (
       typeof state.runtimeState.teamActionJson !== 'string' ||

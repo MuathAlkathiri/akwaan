@@ -124,6 +124,33 @@ function runtimeState(input: {
   } as unknown as GameplayRuntimeState;
 }
 
+function bombRuntimeState(input: {
+  teamId: string;
+  holderId: string;
+  revision: number;
+}): GameplayRuntimeState {
+  const state = runtimeState({
+    ...input,
+    rotation: [input.holderId],
+  });
+  return {
+    ...state,
+    modeKey: 'bomb',
+    runtimeState: { phase: 'ready', questionIndex: 0, questionsJson: '[]' },
+    activeRound: {
+      ...state.activeRound!,
+      modeState: {
+        phase: 'presenting',
+        questionId: 'question-1',
+        prompt: 'سؤال',
+        itemIndex: 0,
+        itemCount: 10,
+        answersJson: '["جواب"]',
+      },
+    },
+  };
+}
+
 /**
  * A runtime store that behaves like the real one: writes are guarded on the
  * revision that was read, and a mismatch raises the same concurrency error.
@@ -216,6 +243,38 @@ const holderOf = (state: GameplayRuntimeState) =>
     .participantId;
 
 describe('disconnect-driven team action reassignment', () => {
+  it('hands a disconnected Bomb owner to the first connected teammate', async () => {
+    const { session, ids, teamId } = sessionWith({
+      alice: false,
+      bob: true,
+      charlie: true,
+    });
+    const beforeClock = session.serialize().teams[0].clock;
+    const store = runtimeStore(
+      bombRuntimeState({ teamId, holderId: ids.alice, revision: 5 }),
+    );
+    const { instance } = useCase(session, store.repository);
+
+    const changed = await instance.forSession('session-1');
+
+    expect(changed).toHaveLength(1);
+    expect(store.current().activeRound!.activeParticipantId).toBe(ids.bob);
+    expect(store.current().activeRound!.modeState.itemIndex).toBe(0);
+    expect(store.current().currentPresentation).toBeUndefined();
+    expect(session.serialize().teams[0].clock).toEqual(beforeClock);
+  });
+
+  it('does not let a reconnected old Bomb owner steal a valid replacement', async () => {
+    const { session, ids, teamId } = sessionWith({ alice: true, bob: true });
+    const store = runtimeStore(
+      bombRuntimeState({ teamId, holderId: ids.bob, revision: 6 }),
+    );
+    const { instance } = useCase(session, store.repository);
+
+    expect(await instance.forSession('session-1')).toEqual([]);
+    expect(store.current().activeRound!.activeParticipantId).toBe(ids.bob);
+    expect(store.saves).toHaveLength(0);
+  });
   it('hands the action on when its holder is gone', () => {
     const { session, ids, teamId } = sessionWith({ alice: false, bob: true });
     const store = runtimeStore(
