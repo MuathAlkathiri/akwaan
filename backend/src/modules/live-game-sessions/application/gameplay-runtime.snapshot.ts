@@ -22,6 +22,11 @@ export interface GameplayRuntimeSnapshot {
    */
   presentationSurface?: {
     running: boolean;
+    /**
+     * Whether this actor must acknowledge before the presentation activates.
+     * Absent when the mechanic declares no required surfaces at all.
+     */
+    required?: boolean;
     capability?: PresentationSurfaceCapability;
   };
   activeRound?: {
@@ -167,7 +172,18 @@ export class GameplayRuntimeSnapshotMapper {
                     projectionActor.participantId === surface.participantId
                   );
                 })?.capability;
-                return capability ? { capability } : {};
+                // Whether THIS actor is one of the surfaces that must
+                // acknowledge. A missing capability cannot say so on its own: it
+                // also means "no required set at all", where any valid actor may
+                // acknowledge. Without the distinction a phone acknowledges a
+                // `shared`-only mechanic it can never satisfy and is refused
+                // PRESENTATION_SURFACE_INVALID on every question — the recovery
+                // banner a real device showed. Absent when a mechanic declares
+                // no required set, so single-surface behaviour is untouched.
+                return {
+                  required: capability !== undefined,
+                  ...(capability ? { capability } : {}),
+                };
               })()
             : {}),
         }
