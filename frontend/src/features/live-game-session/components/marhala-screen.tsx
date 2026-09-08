@@ -21,6 +21,7 @@ import { MarhalaBoard } from "../match/components/marhala-board";
 import { MarhalaMovementRoll } from "../match/components/marhala-movement-roll";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
+import { useWaitingForNextQuestion } from "../hooks/use-recurring-question-transition";
 import {
   useMarhalaTurnReplay,
   usePrefersReducedMotion,
@@ -78,6 +79,9 @@ export function MarhalaScreen({
   const teamName = (id: string) =>
     teams.find((team) => team.id === id)?.name ?? "الفريق";
   const activeIdentity = teamIdentityOf(view.activeTeamId, teams);
+  // Between two questions the board, the pawns and the header are exactly what
+  // the room should keep looking at; only this panel is between states.
+  const waitingForNext = useWaitingForNextQuestion();
 
   return (
     <section
@@ -109,9 +113,11 @@ export function MarhalaScreen({
           {view.selectedDifficulty && view.phase !== "completed" && (
             <BandChip view={view} />
           )}
-          {remainingMs !== undefined && view.phase === "question" && (
-            <ChallengeCountdown remainingMs={remainingMs} />
-          )}
+          {!waitingForNext &&
+            remainingMs !== undefined &&
+            view.phase === "question" && (
+              <ChallengeCountdown remainingMs={remainingMs} />
+            )}
         </div>
       </header>
 
@@ -154,7 +160,9 @@ export function MarhalaScreen({
 
         <div className="space-y-3">
           <StandingsStrip view={view} teams={teams} replay={replay.positions} />
-          {replay.replaying && replay.movement !== undefined ? (
+          {waitingForNext ? (
+            <NextQuestionPanel />
+          ) : replay.replaying && replay.movement !== undefined ? (
             <MovementReveal
               movement={replay.movement}
               teamName={teamName(view.lastTurn?.teamId ?? "")}
@@ -275,6 +283,32 @@ function BoardCentre({
       </p>
       <p className="text-sm font-black leading-tight text-foreground sm:text-xl">
         {teamName(view.activeTeamId)}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The gap between two questions, on the shared screen.
+ *
+ * Deliberately small and deliberately empty of information: the board beside it
+ * still holds every position, and the next question has not been revealed to
+ * anyone yet. A result card belongs here eventually; it is not this task's.
+ */
+function NextQuestionPanel() {
+  return (
+    <div
+      className="surface-card flex items-center justify-center gap-2 px-4 py-6"
+      data-testid="marhala-next-question"
+      role="status"
+      aria-live="polite"
+    >
+      <span
+        aria-hidden
+        className="size-2 animate-pulse rounded-full bg-brand-gold motion-reduce:animate-none"
+      />
+      <p className="text-sm font-black text-muted-foreground">
+        السؤال التالي بعد لحظة…
       </p>
     </div>
   );
@@ -426,7 +460,6 @@ function DecisionPanel({
     </div>
   );
 }
-
 
 /**
  * The server is drawing the question.

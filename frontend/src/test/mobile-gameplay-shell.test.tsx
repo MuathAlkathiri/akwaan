@@ -400,8 +400,19 @@ describe("المرحلة recurring generations on one continuously mounted phone
 
     for (const generation of [1, 2, 3]) {
       rerender(tree(preparing(generation), ack));
-      // Prepared: the loader is shown, the question is hidden, and no clock.
-      expect(screen.getByTestId("challenge-preparing")).toBeInTheDocument();
+      // Prepared. From Q2 onward the stage is already up, so it stays up and
+      // only the question region waits — the full preparing screen is for a
+      // cold open, and tearing the stage down mid-match read as a page refresh.
+      if (generation === 1) {
+        expect(screen.getByTestId("challenge-preparing")).toBeInTheDocument();
+      } else {
+        expect(screen.queryByTestId("challenge-preparing")).toBeNull();
+        expect(screen.getByTestId("marhala-phone")).toBeInTheDocument();
+        expect(
+          screen.getByTestId("marhala-phone-next-question"),
+        ).toBeInTheDocument();
+      }
+      // Either way the prepared question is hidden and no clock is running.
       expect(document.body.textContent).not.toContain(`سؤال رقم ${generation}`);
       expect(screen.queryByTestId("challenge-countdown")).toBeNull();
 

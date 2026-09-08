@@ -20,13 +20,11 @@ import {
   type MarhalaDifficulty,
   type MarhalaView,
 } from "../match/marhala.presentation";
-import {
-  MarhalaQuestionAudio,
-  MarhalaQuestionImage,
-} from "./marhala-screen";
+import { MarhalaQuestionAudio, MarhalaQuestionImage } from "./marhala-screen";
 import { useVoiceInput } from "../hooks/use-voice-input";
 import { voiceInputPolicy } from "../hooks/voice-eligibility";
 import { ChallengeFrame } from "../match/components/challenge-frame";
+import { useWaitingForNextQuestion } from "../hooks/use-recurring-question-transition";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import type { GameplayRuntimeSnapshot } from "../model";
 
@@ -65,6 +63,9 @@ export function MarhalaPhonePanel({
     view.deadlineAt,
     view.phase === "completed",
   );
+  // The shell, the header and the team identity all stay; only this region is
+  // between two questions, and nothing answerable may survive into it.
+  const waitingForNext = useWaitingForNextQuestion();
   const live = connection === "connected";
   const can = (action: string) =>
     runtime.availableActions.includes(`mode:${action}`);
@@ -129,171 +130,199 @@ export function MarhalaPhonePanel({
       compact
       title={`مربّعكم الحالي ${marhalaPositionOf(view, view.actorTeamId ?? "")}`}
       aside={
-        remainingMs !== undefined && view.phase === "question" ? (
+        !waitingForNext &&
+        remainingMs !== undefined &&
+        view.phase === "question" ? (
           <ChallengeCountdown remainingMs={remainingMs} />
         ) : null
       }
       className="flex min-h-0 flex-1 flex-col"
     >
-    <section
-      dir="rtl"
-      data-testid="marhala-phone"
-      data-marhala-phase={view.phase}
-      className="flex min-h-0 w-full flex-1 flex-col gap-3"
-    >
-
-      {view.phase === "difficulty-choice" &&
-        (mayChoose ? (
-          <BandChoices view={view} onChoose={choose} disabled={!live} />
-        ) : (
-          <WaitingCard
-            title="دور الفريق الآخر"
-            body="شوفوا الشاشة — بيختارون مستوى الخطر الحين."
-          />
-        ))}
-
-      {view.phase === "question-pending" && (
-        <div
-          className="surface-card flex items-center gap-2 p-4"
-          data-testid="marhala-phone-pending"
-          role="status"
-        >
-          <Loader2
-            className="size-4 animate-spin text-muted-foreground"
-            aria-hidden
-          />
-          <p className="text-sm font-black text-foreground">
-            جارٍ تجهيز السؤال…
-          </p>
-        </div>
-      )}
-
-      {view.phase === "question" &&
-        (mayAnswer ? (
-          sending === "answer" ? (
-            <div
-              className="flex flex-1 flex-col items-center justify-center gap-2 text-center"
-              data-testid="marhala-phone-submitted"
-            >
-              <span
-                aria-hidden
-                className="grid size-14 place-items-center rounded-full border border-brand-gold/40 bg-brand-gold/10"
-              >
-                <Check className="size-7 text-brand-gold" />
-              </span>
-              <p className="text-base font-black text-foreground">
-                تم إرسال إجابتكم
-              </p>
-              <p className="text-sm font-bold text-muted-foreground">
-                تابعوا الحركة على الشاشة.
-              </p>
-            </div>
-          ) : (
-          <form
-            onSubmit={submit}
-            className="flex min-h-0 flex-1 flex-col"
-            data-testid="marhala-answer-form"
+      <section
+        dir="rtl"
+        data-testid="marhala-phone"
+        data-marhala-phase={view.phase}
+        className="flex min-h-0 w-full flex-1 flex-col gap-3"
+      >
+        {waitingForNext && (
+          <div
+            className="surface-card flex items-center gap-2 p-4"
+            data-testid="marhala-phone-next-question"
+            role="status"
+            aria-live="polite"
           >
-            {/* The media stays on the phone, against the usual "spectacle lives
+            <span
+              aria-hidden
+              className="size-2 animate-pulse rounded-full bg-brand-gold motion-reduce:animate-none"
+            />
+            <p className="text-sm font-black text-muted-foreground">
+              السؤال التالي بعد لحظة…
+            </p>
+          </div>
+        )}
+
+        {!waitingForNext &&
+          view.phase === "difficulty-choice" &&
+          (mayChoose ? (
+            <BandChoices view={view} onChoose={choose} disabled={!live} />
+          ) : (
+            <WaitingCard
+              title="دور الفريق الآخر"
+              body="شوفوا الشاشة — بيختارون مستوى الخطر الحين."
+            />
+          ))}
+
+        {!waitingForNext && view.phase === "question-pending" && (
+          <div
+            className="surface-card flex items-center gap-2 p-4"
+            data-testid="marhala-phone-pending"
+            role="status"
+          >
+            <Loader2
+              className="size-4 animate-spin text-muted-foreground"
+              aria-hidden
+            />
+            <p className="text-sm font-black text-foreground">
+              جارٍ تجهيز السؤال…
+            </p>
+          </div>
+        )}
+
+        {!waitingForNext &&
+          view.phase === "question" &&
+          (mayAnswer ? (
+            sending === "answer" ? (
+              <div
+                className="flex flex-1 flex-col items-center justify-center gap-2 text-center"
+                data-testid="marhala-phone-submitted"
+              >
+                <span
+                  aria-hidden
+                  className="grid size-14 place-items-center rounded-full border border-brand-gold/40 bg-brand-gold/10"
+                >
+                  <Check className="size-7 text-brand-gold" />
+                </span>
+                <p className="text-base font-black text-foreground">
+                  تم إرسال إجابتكم
+                </p>
+                <p className="text-sm font-bold text-muted-foreground">
+                  تابعوا الحركة على الشاشة.
+                </p>
+              </div>
+            ) : (
+              <form
+                onSubmit={submit}
+                className="flex min-h-0 flex-1 flex-col"
+                data-testid="marhala-answer-form"
+              >
+                {/* The media stays on the phone, against the usual "spectacle lives
                 on the shared screen" rule, because for المرحلة it is not
                 spectacle: an image question reads "من هذه الشخصية؟", so the
                 picture *is* the question and the person typing cannot answer
                 without it. Sized for a controller, not for the room. */}
-            <div className="flex flex-1 flex-col justify-center gap-3">
-              {view.media?.type === "image" && view.media.url && (
-                <MarhalaQuestionImage
-                  url={view.media.url}
-                  altText={view.media.altText}
-                />
-              )}
-              {view.media?.type === "audio" && view.media.url && (
-                <MarhalaQuestionAudio url={view.media.url} />
-              )}
-              <p className="text-center text-base font-black leading-snug text-foreground">
-                <BidiText>{marhalaPromptText(view)}</BidiText>
-              </p>
-              <Input
-                ref={answerInput}
-                value={answer}
-                onChange={(event) => setAnswer(event.target.value)}
-                placeholder="اكتب الإجابة"
-                aria-label="الإجابة"
-                autoComplete="off"
-                className="h-16 rounded-[var(--radius)] border-2 text-center text-xl font-black focus-visible:border-brand-gold"
-              />
-            </div>
-            <MobileActionArea>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="submit"
-                  size="lg"
-                  disabled={!answer.trim() || !live || Boolean(sending)}
-                  className="h-14 flex-1 text-base font-black"
-                  data-testid="marhala-answer-submit"
-                >
-                  <Send className="size-4" aria-hidden />
-                  أرسل الإجابة
-                </Button>
-                {/* Secondary, exactly as in القنبلة: typing is the primary path
+                <div className="flex flex-1 flex-col justify-center gap-3">
+                  {view.media?.type === "image" && view.media.url && (
+                    <MarhalaQuestionImage
+                      url={view.media.url}
+                      altText={view.media.altText}
+                    />
+                  )}
+                  {view.media?.type === "audio" && view.media.url && (
+                    <MarhalaQuestionAudio url={view.media.url} />
+                  )}
+                  <p className="text-center text-base font-black leading-snug text-foreground">
+                    <BidiText>{marhalaPromptText(view)}</BidiText>
+                  </p>
+                  <Input
+                    ref={answerInput}
+                    value={answer}
+                    onChange={(event) => setAnswer(event.target.value)}
+                    placeholder="اكتب الإجابة"
+                    aria-label="الإجابة"
+                    autoComplete="off"
+                    className="h-16 rounded-[var(--radius)] border-2 text-center text-xl font-black focus-visible:border-brand-gold"
+                  />
+                </div>
+                <MobileActionArea>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="submit"
+                      size="lg"
+                      disabled={!answer.trim() || !live || Boolean(sending)}
+                      className="h-14 flex-1 text-base font-black"
+                      data-testid="marhala-answer-submit"
+                    >
+                      <Send className="size-4" aria-hidden />
+                      أرسل الإجابة
+                    </Button>
+                    {/* Secondary, exactly as in القنبلة: typing is the primary path
                     and stays usable whatever the microphone is doing. */}
-                {voiceAllowed && voice.state !== "unsupported" && (
-                  <Button
-                    type="button"
-                    variant={
-                      voice.state === "listening" ? "destructive" : "outline"
-                    }
-                    disabled={
-                      !live ||
-                      Boolean(sending) ||
-                      voice.state === "processing" ||
-                      voice.state === "permission-denied"
-                    }
-                    onClick={() =>
-                      voice.state === "listening"
-                        ? voice.stop("idle")
-                        : voice.start()
-                    }
-                    aria-label={
-                      voice.state === "listening"
-                        ? "إيقاف الاستماع"
-                        : "الإجابة بالصوت"
-                    }
-                    data-testid="marhala-voice"
-                    className="size-14 shrink-0 rounded-full"
-                  >
-                    {voice.state === "listening" ? (
-                      <Square className="size-5 fill-current" aria-hidden />
-                    ) : voice.state === "processing" ? (
-                      <Loader2 className="size-5 animate-spin" aria-hidden />
-                    ) : (
-                      <Mic className="size-5" aria-hidden />
+                    {voiceAllowed && voice.state !== "unsupported" && (
+                      <Button
+                        type="button"
+                        variant={
+                          voice.state === "listening"
+                            ? "destructive"
+                            : "outline"
+                        }
+                        disabled={
+                          !live ||
+                          Boolean(sending) ||
+                          voice.state === "processing" ||
+                          voice.state === "permission-denied"
+                        }
+                        onClick={() =>
+                          voice.state === "listening"
+                            ? voice.stop("idle")
+                            : voice.start()
+                        }
+                        aria-label={
+                          voice.state === "listening"
+                            ? "إيقاف الاستماع"
+                            : "الإجابة بالصوت"
+                        }
+                        data-testid="marhala-voice"
+                        className="size-14 shrink-0 rounded-full"
+                      >
+                        {voice.state === "listening" ? (
+                          <Square className="size-5 fill-current" aria-hidden />
+                        ) : voice.state === "processing" ? (
+                          <Loader2
+                            className="size-5 animate-spin"
+                            aria-hidden
+                          />
+                        ) : (
+                          <Mic className="size-5" aria-hidden />
+                        )}
+                      </Button>
                     )}
-                  </Button>
-                )}
-              </div>
-              {voiceAllowed && VOICE_NOTE[voice.state] && (
-                <p
-                  role="status"
-                  data-testid="marhala-voice-state"
-                  className="text-center text-xs font-bold text-muted-foreground"
-                >
-                  {VOICE_NOTE[voice.state]}
-                </p>
-              )}
-            </MobileActionArea>
-          </form>
-          )
-        ) : (
-          <WaitingCard
-            title="الفريق الآخر يجيب"
-            body="لا تتدخّلون — دوركم بعد هذا السؤال."
-          />
-        ))}
+                  </div>
+                  {voiceAllowed && VOICE_NOTE[voice.state] && (
+                    <p
+                      role="status"
+                      data-testid="marhala-voice-state"
+                      className="text-center text-xs font-bold text-muted-foreground"
+                    >
+                      {VOICE_NOTE[voice.state]}
+                    </p>
+                  )}
+                </MobileActionArea>
+              </form>
+            )
+          ) : (
+            <WaitingCard
+              title="الفريق الآخر يجيب"
+              body="لا تتدخّلون — دوركم بعد هذا السؤال."
+            />
+          ))}
 
-      {view.phase === "completed" && (
-        <WaitingCard title="انتهى السباق" body="النتيجة على الشاشة المشتركة." />
-      )}
-    </section>
+        {!waitingForNext && view.phase === "completed" && (
+          <WaitingCard
+            title="انتهى السباق"
+            body="النتيجة على الشاشة المشتركة."
+          />
+        )}
+      </section>
     </ChallengeFrame>
   );
 }

@@ -180,8 +180,13 @@ describe("the phone recovers from a lost المرحلة transition", () => {
       expect(screen.queryByTestId("challenge-preparing")).toBeNull();
 
       // Q1 resolves and the server prepares Q2. This snapshot the phone did get.
+      // The stage stays mounted: only the question region waits.
       view.rerender(tree(preparing(8, 2)));
-      expect(screen.getByTestId("challenge-preparing")).toBeInTheDocument();
+      expect(screen.queryByTestId("challenge-preparing")).toBeNull();
+      expect(screen.getByTestId("marhala-phone")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("marhala-phone-next-question"),
+      ).toBeInTheDocument();
       // The phone is a spectator of this readiness and must stay silent.
       expect(presentationReady).not.toHaveBeenCalled();
       expect(presentationReadySocket).not.toHaveBeenCalled();
@@ -199,7 +204,7 @@ describe("the phone recovers from a lost المرحلة transition", () => {
       expect(screen.getByTestId("marhala-phone")).toHaveTextContent(
         `${PROMPT} (2)`,
       );
-      expect(screen.queryByTestId("challenge-preparing")).toBeNull();
+      expect(screen.queryByTestId("marhala-phone-next-question")).toBeNull();
       expect(resync).toHaveBeenCalledTimes(1);
 
       // Waiting on does not turn one recovery into a poll.
@@ -208,7 +213,9 @@ describe("the phone recovers from a lost المرحلة transition", () => {
 
       // Q2 → Q3: the next transition gets its own single attempt.
       view.rerender(tree(preparing(10, 3)));
-      expect(screen.getByTestId("challenge-preparing")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("marhala-phone-next-question"),
+      ).toBeInTheDocument();
       resync.mockImplementation(() => view.rerender(tree(active(11, 3))));
       await vi.advanceTimersByTimeAsync(3_000);
       expect(screen.getByTestId("marhala-phone")).toHaveTextContent(
@@ -260,16 +267,17 @@ describe("the phone recovers from a lost المرحلة transition", () => {
     expect(resync).not.toHaveBeenCalled();
   });
 
-  it("keeps the preparing state light between questions", () => {
+  it("keeps a cold open on the loader and a recurring wait inside the stage", () => {
     // A cold open is a page opening and gets the full loader; the gap between
     // two questions is not, and filling the phone with a loading screen every
     // time reads as the app restarting.
+    // A phone that arrives already awaiting has no stage to keep, so even a
+    // recurring generation is a cold open for it.
     const view = render(tree(preparing(8, 2)));
     expect(screen.getByTestId("challenge-preparing")).toHaveAttribute(
       "data-preparing",
       "recurring",
     );
-    expect(screen.queryByTestId("akwaan-loader")).toBeNull();
     // And it still refuses to show the prepared question.
     expect(document.body.textContent).not.toContain(PROMPT);
 

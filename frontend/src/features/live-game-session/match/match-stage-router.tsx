@@ -27,6 +27,10 @@ import { LaqathaGameplayPanel } from "../components/laqatha-gameplay-panel";
 import { FIRST_NOTE_MODE_KEY } from "./first-note.presentation";
 import { FirstNoteGameplayPanel } from "../components/first-note-gameplay-panel";
 import { useLiveSession } from "../hooks/live-session-context";
+import {
+  useRecurringQuestionTransition,
+  WaitingForNextQuestionProvider,
+} from "../hooks/use-recurring-question-transition";
 import { MatchConnectionBanner } from "./components/match-connection-banner";
 import { UnifiedBoard } from "./components/unified-board";
 import { UnifiedChallengeResultStage } from "./components/unified-challenge-result-stage";
@@ -35,6 +39,7 @@ import { UnifiedMatchComplete } from "./components/unified-match-complete";
 import { ParticipantWaiting } from "./components/participant-waiting";
 import { UnifiedPreflightStage } from "./components/unified-preflight-stage";
 import type { MatchActor } from "./types";
+import type { GameplayRuntimeSnapshot } from "../model";
 import { isMatchStageKey } from "./types";
 
 /**
@@ -370,6 +375,19 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
     retryTick,
   ]);
 
+  // Which mechanics can hold their stage up through a recurring wait.
+  //
+  // The server sends no playable content while a generation is prepared, so a
+  // view only belongs here once it can draw its persistent chrome from the
+  // retained runtime and put *only* its question region into a waiting state.
+  // المرحلة does: the board and the pawns are the stage, and the question is a
+  // panel beside them. Everything else keeps the preparing screen until its own
+  // view can make the same split — showing a stale question would be worse than
+  // showing a loader.
+  const transition = useRecurringQuestionTransition(gameplay, {
+    stageSurvivesTransition: gameplay?.mode.key === MARHALA_MODE_KEY,
+  });
+
   // Safety net for the one wait this surface cannot end by itself.
   //
   // A phone that is not a required surface acknowledges nothing: the shared
@@ -399,7 +417,7 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
   ]);
 
   if (!gameplay) return null;
-  if (awaiting) {
+  if (awaiting && !transition.keepStageMounted) {
     // Two different waits, and only one of them is a page opening.
     //
     // A cold open has nothing on screen yet, so the full branded loader is
@@ -436,10 +454,26 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
       </div>
     );
   }
+  // While a recurring generation is prepared the live snapshot carries no
+  // playable content, so the stage draws from the last runtime that did. The
+  // actions are dropped either way: nothing is answerable between questions.
+  const stage = transition.keepStageMounted
+    ? { ...(transition.stageRuntime ?? gameplay), availableActions: [] }
+    : gameplay;
   const runtime =
-    actor === "shared-screen"
-      ? { ...gameplay, availableActions: [] }
-      : gameplay;
+    actor === "shared-screen" ? { ...stage, availableActions: [] } : stage;
+  return (
+    <WaitingForNextQuestionProvider waiting={transition.keepStageMounted}>
+      {renderMechanic(runtime, actor)}
+    </WaitingForNextQuestionProvider>
+  );
+}
+
+/** The mechanic a runtime names, and nothing else. */
+function renderMechanic(
+  runtime: GameplayRuntimeSnapshot,
+  actor: MatchActor,
+): React.ReactElement | null {
   switch (runtime.mode.key) {
     case "read-your-opponent":
       return <RyoGameplayPanel runtime={runtime} />;
