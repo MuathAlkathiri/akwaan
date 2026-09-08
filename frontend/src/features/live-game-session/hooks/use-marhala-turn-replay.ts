@@ -39,11 +39,19 @@ export interface MarhalaReplay {
   effect?: { position: number; kind: "boost" | "trap" };
   /** The team whose token is moving, or undefined when nothing is moving. */
   travellingTeamId?: string;
+  /** Which beat of the replay is on screen, so a surface can dress that beat. */
+  phase?: MarhalaFrame["kind"];
   /** True while a replay is on screen, so callers can hold a transition. */
   replaying: boolean;
 }
 
 const STEP_MS = 260;
+/**
+ * The roll beat. Long enough for the band's possible values to reel past and
+ * settle on the server's, short enough that the room is not kept waiting for a
+ * number the server decided before the frame was ever built.
+ */
+const REVEAL_MS = 820;
 const BASE_HOLD_MS = 420;
 const EFFECT_MS = 760;
 const SETTLE_MS = 520;
@@ -51,7 +59,7 @@ const SETTLE_MS = 520;
 function frameDuration(frame: MarhalaFrame): number {
   switch (frame.kind) {
     case "reveal":
-      return BASE_HOLD_MS;
+      return REVEAL_MS;
     case "step":
       return STEP_MS;
     case "base":
@@ -88,8 +96,22 @@ export function useMarhalaTurnReplay({
     replayedTurn.current = turn.turnNumber;
     // No idea where the token was: adopt the server position rather than invent a
     // journey to it. This is the reconnect path.
-    if (previous === undefined || reducedMotion) {
+    if (previous === undefined) {
       setFrames([]);
+      setFrameIndex(0);
+      return;
+    }
+    // Reduced motion keeps the *information* and drops the travel: one settled
+    // frame, so the room still sees the movement the server committed — held
+    // briefly, with no walk and nothing reeling — and the token is drawn on its
+    // final tile from the first paint.
+    if (reducedMotion) {
+      const settled = turn.finalLanding;
+      setFrames(
+        settled === undefined
+          ? []
+          : [{ kind: "settled", position: settled } as MarhalaFrame],
+      );
       setFrameIndex(0);
       return;
     }
@@ -158,6 +180,7 @@ export function useMarhalaTurnReplay({
     ...(movement !== undefined ? { movement } : {}),
     ...(effect ? { effect } : {}),
     ...(travellingTeamId ? { travellingTeamId } : {}),
+    ...(frame ? { phase: frame.kind } : {}),
     replaying: Boolean(frame),
   };
 }

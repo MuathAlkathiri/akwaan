@@ -1,6 +1,6 @@
 "use client";
 
-import { PartyPopper, Smartphone } from "lucide-react";
+import { PartyPopper, Smartphone, Trophy } from "lucide-react";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
 import { useLiveSession } from "../../hooks/live-session-context";
@@ -43,24 +43,34 @@ export function ParticipantWaiting({
       ? teamIdentityOf(challengeResult.winnerTeamId, snapshot.teams)
       : undefined;
 
+  // The state owns the phone rather than floating in it: it fills whatever the
+  // shell leaves and centres inside that, so a player looking down sees a
+  // composed screen instead of a small card stranded under the header.
   return (
     <section
       dir="rtl"
       data-testid="participant-waiting"
       data-match-complete={matchComplete ? "true" : "false"}
       data-showing-result={challengeResult ? "true" : "false"}
-      className="surface-card mx-auto mt-8 max-w-md space-y-3 p-8 text-center"
+      className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-2 text-center"
     >
       {challengeResult && !matchComplete ? (
         <>
-          {/* Calm on purpose: a player can sit here for minutes between
-              challenges, so nothing loops or pulses. */}
-          <PartyPopper className="mx-auto size-8 text-brand-gold" aria-hidden />
-          <h1 className="text-lg font-black text-foreground">انتهى التحدي</h1>
+          {/* The moment, then the wait — one screen, read top to bottom. Calm on
+              purpose: a player can sit here for minutes between challenges, so
+              nothing loops or pulses. */}
+          <span
+            aria-hidden
+            className="grid size-16 place-items-center rounded-full border border-brand-gold/40 bg-brand-gold/10"
+          >
+            <PartyPopper className="size-8 text-brand-gold" />
+          </span>
+          <h1 className="text-xl font-black text-foreground">انتهى التحدي</h1>
           {winnerName && (
             <p
+              data-testid="participant-challenge-winner"
               className={cn(
-                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-base font-black",
+                "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-base font-black",
                 winnerIdentity?.surface,
                 winnerIdentity?.border,
                 winnerIdentity?.text,
@@ -71,12 +81,21 @@ export function ParticipantWaiting({
                 className={cn("size-2 rounded-full", winnerIdentity?.dot)}
               />
               فاز {winnerName}
+              {/* Only what the Match actually awarded. A challenge that granted
+                  no point says nothing rather than inventing one. */}
               {winnerPoints ? (
-                <span className="akwaan-numeral">+{winnerPoints} نقطة</span>
+                <span
+                  className="akwaan-numeral"
+                  data-testid="participant-challenge-points"
+                >
+                  +{winnerPoints} نقطة
+                </span>
               ) : null}
             </p>
           )}
-          <p className="text-sm leading-6 text-muted-foreground">
+          {/* The hand-off: the result settles above, and the wait for the next
+              challenge sits quietly under it behind a hairline. */}
+          <p className="mt-2 w-full max-w-xs border-t border-border/70 pt-3 text-sm leading-6 text-muted-foreground">
             بانتظار التحدي القادم…
             <br />
             سنفتح التحدي القادم هنا. أبقِ جوالك معك.
@@ -84,16 +103,35 @@ export function ParticipantWaiting({
         </>
       ) : (
         <>
-          <Smartphone
-            className="mx-auto size-8 text-muted-foreground"
+          {/* Match complete is deliberately a different mark and a different
+              weight from a challenge result: the Match ending is the bigger
+              moment, and a player must be able to tell them apart at a glance. */}
+          <span
             aria-hidden
-          />
-          <h1 className="text-lg font-black text-foreground">
+            className={cn(
+              "grid place-items-center rounded-full border",
+              matchComplete
+                ? "size-20 border-brand-gold/50 bg-brand-gold/12"
+                : "size-14 border-border bg-muted/50",
+            )}
+          >
+            {matchComplete ? (
+              <Trophy className="size-10 text-brand-gold" />
+            ) : (
+              <Smartphone className="size-7 text-muted-foreground" />
+            )}
+          </span>
+          <h1
+            className={cn(
+              "font-black text-foreground",
+              matchComplete ? "text-2xl" : "text-lg",
+            )}
+          >
             {matchComplete
               ? "انتهت المباراة"
               : "ما فيه تحدي يحتاج الجوال الحين"}
           </h1>
-          <p className="text-sm leading-6 text-muted-foreground">
+          <p className="max-w-xs text-sm leading-6 text-muted-foreground">
             {matchComplete
               ? "تمام، ما تحتاجون تخلون الجوال مفتوح."
               : "بنفتح التحدي الجاي هنا. خلّ جوالك معك."}

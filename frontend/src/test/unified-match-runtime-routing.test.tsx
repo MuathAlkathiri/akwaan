@@ -940,6 +940,190 @@ describe("fair-start presentation acknowledgement", () => {
     await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(2));
   });
 
+  it("retries when a newer snapshot arrives BEFORE the rejection settles", async () => {
+    // The mobile stall. A snapshot for the SAME prepared generation lands while
+    // the acknowledgement is still in flight, so the in-flight guard drops it as a
+    // retry signal (the dedupe key deliberately excludes the revision). The server
+    // then refuses that ack because it carried the older revision. A refused ack
+    // changes no state, so nothing is published and no later snapshot arrives to
+    // retry — the phone would sit on the preparing loader until a manual reload.
+    let rejectFirst: ((error: Error) => void) | undefined;
+    const socketAck = vi
+      .fn()
+      .mockImplementationOnce(
+        () => new Promise<void>((_, reject) => (rejectFirst = reject)),
+      )
+      .mockResolvedValue(undefined);
+    const { rerenderWith } = renderWith(
+      recurring(2, { runtimeRevision: 30 }),
+      vi.fn(),
+      socketAck,
+    );
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+    // Another player's action bumps the revision while our ack is still in flight.
+    rerenderWith(recurring(2, { runtimeRevision: 31 }), 1);
+    // Only now does the server refuse the first ack: it carried revision 30.
+    rejectFirst?.(new Error("STALE_GAMEPLAY_RUNTIME_REVISION"));
+    // The surface must re-acknowledge with the revisions it now holds.
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(2));
+    expect(socketAck).toHaveBeenLastCalledWith({
+      expectedSessionRevision: 12,
+      expectedRuntimeRevision: 31,
+      presentationGeneration: 2,
+    });
+  });
+
+  it("plays three consecutive questions on ONE mounted phone (no reload)", async () => {
+    // The lifecycle a phone actually lives through: prepare, acknowledge, activate,
+    // play, then the next question — three times over, on a surface that is never
+    // remounted. Each generation must be acknowledged exactly once, in order.
+    const socketAck = vi.fn().mockResolvedValue(undefined);
+    const { rerenderWith } = renderWith(recurring(2), vi.fn(), socketAck);
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+    for (const generation of [3, 4]) {
+      rerenderWith(recurring(generation - 1, { awaiting: false }), 1); // activated
+      rerenderWith(recurring(generation), 1); // next question prepared
+      await waitFor(() =>
+        expect(socketAck).toHaveBeenCalledTimes(generation - 1),
+      );
+    }
+    rerenderWith(recurring(4, { awaiting: false }), 1);
+    expect(screen.queryByTestId("challenge-preparing")).toBeNull();
+    expect(
+      socketAck.mock.calls.map(
+        (call) =>
+          (call[0] as { presentationGeneration: number }).presentationGeneration,
+      ),
+    ).toEqual([2, 3, 4]);
+  });
+
+  it("plays three consecutive questions when EVERY one hits the mid-flight race", async () => {
+    // The reported stall, three times in a row on one mount. For each question a
+    // snapshot lands while the ack is in flight and the server then refuses that
+    // ack as stale. The phone must recover on its own every time — no reload.
+    const refuse: Array<(error: Error) => void> = [];
+    let attempt = 0;
+    const socketAck = vi.fn().mockImplementation(() => {
+      attempt += 1;
+      return attempt % 2 === 1
+        ? new Promise<void>((_, reject) => refuse.push(reject))
+        : Promise.resolve();
+    });
+    const { rerenderWith } = renderWith(
+      recurring(2, { runtimeRevision: 40 }),
+      vi.fn(),
+      socketAck,
+    );
+    for (const [index, generation] of [2, 3, 4].entries()) {
+      const revision = 40 + index * 10;
+      if (index > 0) {
+        rerenderWith(recurring(generation - 1, { awaiting: false }), 1);
+        rerenderWith(recurring(generation, { runtimeRevision: revision }), 1);
+      }
+      await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(index * 2 + 1));
+      // A snapshot lands mid-flight, then the server refuses the stale ack.
+      rerenderWith(recurring(generation, { runtimeRevision: revision + 1 }), 1);
+      refuse.pop()?.(new Error("STALE_GAMEPLAY_RUNTIME_REVISION"));
+      await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(index * 2 + 2));
+      expect(socketAck).toHaveBeenLastCalledWith({
+        expectedSessionRevision: 10 + generation,
+        expectedRuntimeRevision: revision + 1,
+        presentationGeneration: generation,
+      });
+    }
+    rerenderWith(recurring(4, { awaiting: false }), 1);
+    expect(screen.queryByTestId("challenge-preparing")).toBeNull();
+  });
+
+
+  it.each(["first-note", "marhala", "laqatha", "odd-piece"])(
+    "recovers the mid-flight race for %s as well (the surface is mechanic-agnostic)",
+    async (modeKey) => {
+      // Fair-start readiness lives on the shared surface, not in any mechanic, so
+      // every recurring mechanic recovers the same way. Nothing here keys on a
+      // challenge name — only on the runtime mode key the server published.
+      const prepared = (runtimeRevision: number) =>
+        gameplaySnapshot({
+          modeKey,
+          generation: 2,
+          runtimeRevision,
+          sessionRevision: 12,
+        });
+      let rejectFirst: ((error: Error) => void) | undefined;
+      const socketAck = vi
+        .fn()
+        .mockImplementationOnce(
+          () => new Promise<void>((_, reject) => (rejectFirst = reject)),
+        )
+        .mockResolvedValue(undefined);
+      const { rerenderWith } = renderWith(prepared(30), vi.fn(), socketAck);
+      await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+      rerenderWith(prepared(31), 1);
+      rejectFirst?.(new Error("STALE_GAMEPLAY_RUNTIME_REVISION"));
+      await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(2));
+      expect(socketAck).toHaveBeenLastCalledWith({
+        expectedSessionRevision: 12,
+        expectedRuntimeRevision: 31,
+        presentationGeneration: 2,
+      });
+    },
+  );
+
+  it("never acknowledges a generation it is not a required surface for", async () => {
+    // The physical defect. المرحلة requires only a `shared` surface, and the
+    // server can only resolve that for a controller — so a phone's recurring
+    // acknowledgement is refused `PRESENTATION_SURFACE_INVALID` every single
+    // time, which is the "تعذّر تنفيذ آخر إجراء" banner the tester saw. The
+    // phone must not send it at all: it is a spectator of this readiness, and
+    // the shared screen is what activates the question.
+    const socketAck = vi
+      .fn()
+      .mockRejectedValue(new Error("PRESENTATION_SURFACE_INVALID"));
+    const notRequired = gameplaySnapshot({
+      modeKey: "marhala",
+      generation: 2,
+      runtimeRevision: 30,
+      awaiting: true,
+    });
+    // Exactly what the server projects to a phone: running + generation, and
+    // deliberately NO capability, because this actor is not a required surface.
+    (notRequired.gameplay as unknown as {
+      presentationSurface: Record<string, unknown>;
+    }).presentationSurface = { running: true, generation: 2, required: false };
+    renderWith(notRequired, vi.fn(), socketAck);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(socketAck).not.toHaveBeenCalled();
+  });
+
+  it("still acknowledges when the server says this surface IS required", async () => {
+    const socketAck = vi.fn().mockResolvedValue(undefined);
+    const required = gameplaySnapshot({
+      modeKey: "marhala",
+      generation: 2,
+      runtimeRevision: 30,
+      awaiting: true,
+    });
+    (required.gameplay as unknown as {
+      presentationSurface: Record<string, unknown>;
+    }).presentationSurface = {
+      running: true,
+      generation: 2,
+      capability: "shared",
+      required: true,
+    };
+    renderWith(required, vi.fn(), socketAck);
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+  });
+
+  it("keeps acknowledging a single-surface mechanic that declares no required set", async () => {
+    // No `required` field at all: the server declared no required surfaces, so
+    // any valid controller/actionable acknowledgement activates. Unchanged.
+    const socketAck = vi.fn().mockResolvedValue(undefined);
+    renderWith(recurring(2), vi.fn(), socketAck);
+    await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));
+  });
+
   it("cold-opens straight into a prepared generation 2 and acknowledges it", async () => {
     const { socketAck } = socketHarness(recurring(2));
     await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(1));

@@ -63,8 +63,20 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
       name: teamName(snapshot, score.teamId),
     }));
 
+  // A phone already carries its challenge and team identity in the mobile shell's
+  // own header, and the two-team scoreboard belongs to the screen the whole room
+  // is looking at. Repeating it here is what made a controller feel like a small
+  // television, so the phone simply skips this header. Nothing else differs: the
+  // same stage component, the same gameplay renderer, no second code path.
+  const phone = actor === "participant";
+
   return (
-    <div className="stage-center space-y-4" data-testid="unified-challenge">
+    <div
+      className={phone ? "flex min-h-0 flex-1 flex-col" : "stage-center space-y-4"}
+      data-testid="unified-challenge"
+      data-challenge-surface={phone ? "phone" : "screen"}
+    >
+      {!phone && (
       <header className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius)] border border-border bg-card p-4">
         <div className="min-w-0">
           {current && (
@@ -92,6 +104,7 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
           ))}
         </ul>
       </header>
+      )}
 
       {snapshot.gameplay ? (
         <MatchGameplayRenderer actor={actor} />

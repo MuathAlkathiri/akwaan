@@ -1,8 +1,12 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChallengeFrame } from "../match/components/challenge-frame";
+import { ChallengeCountdown } from "../match/components/challenge-countdown";
+import { MobileActionArea } from "../match/components/mobile-action-area";
+import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
+import { cn } from "@/lib/utils";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { useLiveSession } from "../hooks/live-session-context";
 import { useBoundedAudio } from "../hooks/use-bounded-audio";
@@ -27,6 +31,11 @@ export function FirstNoteGameplayPanel({
   );
   const [bid, setBid] = useState("");
   const [answer, setAnswer] = useState("");
+  // Presentational only, exactly as in the other controllers: `gameplayCommand`
+  // is fire-and-forget, so this closes the double-tap window and is released by
+  // the authoritative phase moving on. It never claims the bid was accepted —
+  // an auction is a race, and only the next snapshot says who leads.
+  const [sending, setSending] = useState<string | undefined>();
   const can = (a: string) => runtime.availableActions.includes(`mode:${a}`);
   const send = (
     commandType: string,
@@ -57,9 +66,45 @@ export function FirstNoteGameplayPanel({
   });
   const live = connection === "connected";
   const max = (view.currentBidSeconds ?? 16) - 1;
+  // The phone shows the clock for the action it is being asked to take. The
+  // deadline is the server's; nothing here counts on its own.
+  const remainingMs = useInteractionDeadline(
+    view.deadlineAt,
+    view.phase === "resolved" || view.phase === "completed",
+  );
+
+  // Any authoritative move — a new phase, a new song, a competing bid that
+  // changed the floor, or the right to act being withdrawn — releases the guard
+  // and drops a stale selection. This is what makes a losing race converge.
+  useEffect(() => {
+    setSending(undefined);
+    setBid("");
+  }, [
+    view.phase,
+    view.songIndex,
+    view.currentBidSeconds,
+    view.canBid,
+    view.canAnswer,
+  ]);
+
+  const dispatch = (
+    key: string,
+    commandType: string,
+    payload: Record<string, string | number> = {},
+  ) => {
+    if (sending) return;
+    setSending(key);
+    send(commandType, payload);
+  };
   return (
     <ChallengeFrame
-      eyebrow={FIRST_NOTE_NAME}
+      {...(phone ? {} : { eyebrow: FIRST_NOTE_NAME })}
+      compact={phone}
+      aside={
+        phone && remainingMs !== undefined ? (
+          <ChallengeCountdown remainingMs={remainingMs} />
+        ) : null
+      }
       title={
         view.phase === "completed"
           ? "نتيجة التحدي"
@@ -70,28 +115,42 @@ export function FirstNoteGameplayPanel({
           ? 100
           : ((view.songIndex + 1) / view.songCount) * 100
       }
-      className="mx-auto max-w-4xl"
+      className={phone ? "flex min-h-0 flex-1 flex-col" : "mx-auto max-w-4xl"}
     >
-      <div dir="rtl" className="space-y-5" data-testid="first-note-panel">
+      <div
+        dir="rtl"
+        className={phone ? "flex min-h-0 flex-1 flex-col gap-3" : "space-y-5"}
+        data-testid="first-note-panel"
+      >
         {view.phase === "preparing" && (
           <p className="text-center font-bold">جارٍ تجهيز المقطع…</p>
         )}
         {view.phase !== "preparing" && view.phase !== "completed" && (
           <section
-            className="rounded-[var(--radius)] border bg-card p-5 text-center"
+            className={
+              phone
+                ? "shrink-0 text-center"
+                : "rounded-[var(--radius)] border bg-card p-5 text-center"
+            }
             data-testid="first-note-clue"
           >
             {view.clueLabel?.ar && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {view.clueLabel.ar}
               </p>
             )}
-            <p className="text-2xl font-black">{view.clue.ar}</p>
+            <p className={phone ? "text-lg font-black" : "text-2xl font-black"}>
+              {view.clue.ar}
+            </p>
           </section>
         )}
         {view.phase === "auction" && (
           <section
-            className="space-y-4 text-center"
+            className={
+              phone
+                ? "flex min-h-0 flex-1 flex-col gap-2 text-center"
+                : "space-y-4 text-center"
+            }
             data-testid="first-note-auction"
           >
             {!phone && masterUrl && (
@@ -114,34 +173,84 @@ export function FirstNoteGameplayPanel({
               {team(view.biddingTeamId)} عليه الدور · المسموح 1–{max} ثانية
             </p>
             {phone && view.canBid && can("submit-first-note-bid") ? (
-              <div className="mx-auto flex max-w-sm gap-2">
-                <Input
-                  type="number"
-                  min={1}
-                  max={max}
-                  value={bid}
-                  onChange={(e) => setBid(e.target.value)}
-                  data-testid="first-note-bid-input"
-                />
+              <MobileActionArea>
+                {/* Only the seconds the current floor actually allows — the same
+                    1..max the panel has always computed from `currentBidSeconds`.
+                    Picking then confirming, rather than bidding on first tap: an
+                    auction is latency-sensitive and a mis-tap is unrecoverable. */}
+                <ol
+                  className="grid list-none grid-cols-5 gap-1.5"
+                  data-testid="first-note-bid-options"
+                  dir="ltr"
+                >
+                  {Array.from({ length: Math.max(max, 0) }, (_u, i) => max - i).map(
+                    (seconds) => (
+                      <li key={seconds}>
+                        <button
+                          type="button"
+                          disabled={!live || Boolean(sending)}
+                          onClick={() => setBid(String(seconds))}
+                          data-testid={`first-note-bid-${seconds}`}
+                          data-selected={
+                            Number(bid) === seconds ? "true" : undefined
+                          }
+                          className={cn(
+                            "akwaan-numeral h-12 w-full rounded-[var(--radius)] border-2 text-base font-black transition-colors duration-fast ease-akwaan disabled:opacity-40",
+                            Number(bid) === seconds
+                              ? "border-brand-gold bg-brand-gold/15 text-foreground"
+                              : "border-border bg-card text-muted-foreground",
+                          )}
+                        >
+                          {seconds}
+                        </button>
+                      </li>
+                    ),
+                  )}
+                </ol>
                 <Button
+                  size="lg"
                   disabled={
                     !live ||
+                    Boolean(sending) ||
                     !Number.isInteger(Number(bid)) ||
                     Number(bid) < 1 ||
                     Number(bid) > max
                   }
                   onClick={() =>
-                    send("submit-first-note-bid", { seconds: Number(bid) })
+                    dispatch("bid", "submit-first-note-bid", {
+                      seconds: Number(bid),
+                    })
                   }
                   data-testid="first-note-submit-bid"
+                  className="h-14 w-full text-base font-black"
                 >
-                  زايد
+                  {sending === "bid"
+                    ? "جارٍ الإرسال…"
+                    : bid
+                      ? `زايد بـ ${bid} ثانية`
+                      : "اختاروا عدد الثواني"}
                 </Button>
-              </div>
+                {view.canPass && can("pass-first-note-bid") && (
+                  <Button
+                    variant="outline"
+                    disabled={!live || Boolean(sending)}
+                    onClick={() => dispatch("pass", "pass-first-note-bid")}
+                    data-testid="first-note-pass"
+                    className="h-12 w-full font-black"
+                  >
+                    {sending === "pass" ? "جارٍ…" : "توقف عن المزايدة"}
+                  </Button>
+                )}
+              </MobileActionArea>
             ) : phone ? (
-              <p>بانتظار الفريق الآخر</p>
+              <p
+                className="flex flex-1 items-center justify-center font-black text-muted-foreground"
+                data-testid="first-note-auction-waiting"
+              >
+                بانتظار الفريق الآخر
+              </p>
             ) : null}
-            {phone && view.canPass && can("pass-first-note-bid") && (
+            {!phone && view.canPass && can("pass-first-note-bid") && (
               <Button
                 variant="outline"
                 disabled={!live}
@@ -155,10 +264,14 @@ export function FirstNoteGameplayPanel({
         )}
         {(view.phase === "answering" || view.phase === "steal") && (
           <section
-            className="space-y-4 text-center"
+            className={
+              phone
+                ? "flex min-h-0 flex-1 flex-col gap-2 text-center"
+                : "space-y-4 text-center"
+            }
             data-testid="first-note-answer-phase"
           >
-            <p className="text-xl font-black">
+            <p className={phone ? "text-base font-black" : "text-xl font-black"}>
               {view.phase === "steal"
                 ? "فرصة سرقة واحدة"
                 : `${team(view.answerOwnerTeamId)} قال يقدر يعرفها من ${view.finalBidSeconds} ثانية`}
@@ -175,25 +288,43 @@ export function FirstNoteGameplayPanel({
                 data-testid="first-note-audio"
               />
             )}
-            <p>مدة المقطع: {view.finalBidSeconds} ثانية</p>
+            {!phone && <p>مدة المقطع: {view.finalBidSeconds} ثانية</p>}
             {phone && view.canAnswer && can("submit-first-note-answer") ? (
-              <div className="mx-auto flex max-w-md gap-2">
-                <Input
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  data-testid="first-note-answer-input"
-                />
-                <Button
-                  disabled={!live || !answer.trim()}
-                  onClick={() =>
-                    send("submit-first-note-answer", { answer: answer.trim() })
-                  }
-                >
-                  إرسال
-                </Button>
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="flex flex-1 flex-col justify-center">
+                  <Input
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
+                    placeholder="اسم الأغنية"
+                    data-testid="first-note-answer-input"
+                    className="h-16 rounded-[var(--radius)] border-2 text-center text-xl font-black focus-visible:border-brand-gold"
+                  />
+                </div>
+                <MobileActionArea>
+                  <Button
+                    size="lg"
+                    disabled={!live || Boolean(sending) || !answer.trim()}
+                    onClick={() =>
+                      dispatch("answer", "submit-first-note-answer", {
+                        answer: answer.trim(),
+                      })
+                    }
+                    data-testid="first-note-submit-answer"
+                    className="h-14 w-full text-base font-black"
+                  >
+                    {sending === "answer" ? "جارٍ الإرسال…" : "إرسال الإجابة"}
+                  </Button>
+                </MobileActionArea>
               </div>
             ) : phone ? (
-              <p>بانتظار الفريق المجيب</p>
+              <p
+                className="flex flex-1 items-center justify-center font-black text-muted-foreground"
+                data-testid="first-note-answer-waiting"
+              >
+                {view.phase === "steal"
+                  ? "فرصة السرقة مع الفريق الآخر"
+                  : "بانتظار الفريق المجيب"}
+              </p>
             ) : null}
           </section>
         )}

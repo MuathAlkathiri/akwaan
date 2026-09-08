@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Hand, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChallengeFrame } from "../match/components/challenge-frame";
+import { MobileActionArea } from "../match/components/mobile-action-area";
+import { useMobileSurface } from "../match/components/mobile-gameplay-shell";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
 import { useLiveSession } from "../hooks/live-session-context";
@@ -49,6 +51,13 @@ function parse<T>(value: unknown, fallback: T): T {
  */
 export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
   const { snapshot, gameplayCommand, connection } = useLiveSession();
+  // Which surface is rendering this, from the shell that mounted it. The shared
+  // screen reads `false` and keeps exactly the presentation it had.
+  const phone = useMobileSurface();
+  // Presentational only. `gameplayCommand` is fire-and-forget, so there is no
+  // in-flight promise: this closes the window in which a decider could tap
+  // احتفظ and then دسّها and emit two commands for one card.
+  const [deciding, setDeciding] = useState<"keep" | "give" | undefined>();
   const round = runtime.activeRound;
   const state = runtime.modeState;
   const roundState = round?.modeState ?? {};
@@ -70,7 +79,16 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
     snapshot?.participants.find((person) => person.id === activeParticipantId)
       ?.displayName ?? "";
 
-  const decide = (action: "keep" | "give") =>
+  // A new card — or the server taking the decision away — releases the guard.
+  // The turn moving on is the authoritative acknowledgement that this decision
+  // landed; nothing local decides that it did.
+  useEffect(() => {
+    setDeciding(undefined);
+  }, [runtime.runtimeId, round?.id, cardNumber, canDecide]);
+
+  const decide = (action: "keep" | "give") => {
+    if (deciding) return;
+    setDeciding(action);
     gameplayCommand("gameplay-command", {
       roundId: round?.id,
       commandType: "decide-card",
@@ -81,11 +99,13 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
           : {}),
       },
     });
+  };
 
   return (
     <ChallengeFrame
-      eyebrow="أفضل 5"
+      {...(phone ? {} : { eyebrow: "أفضل 5" })}
       title={String(state.title || "احتفظ بها أو دسّها")}
+      compact={phone}
       progressLabel={
         completed ? "اكتمل التحدي" : `البطاقة ${cardNumber} من ${cardCount}`
       }
@@ -109,9 +129,12 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
           </span>
         )
       }
-      className="mx-auto max-w-3xl"
+      className={phone ? "flex min-h-0 flex-1 flex-col" : "mx-auto max-w-3xl"}
     >
-      <div className="space-y-5" data-testid="top5-panel">
+      <div
+        className={phone ? "flex min-h-0 flex-1 flex-col gap-3" : "space-y-5"}
+        data-testid="top5-panel"
+      >
         {/* The card counter lives in the frame header; this testid keeps the
             browser smoke addressing one stable element. */}
         <span data-testid="top5-card-counter" className="sr-only">
@@ -119,9 +142,19 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
         </span>
 
         {!completed && current && (
-          <section className="space-y-5 text-center">
-            <div className="akwaan-rise rounded-[var(--radius)] border-2 border-border bg-background p-4 shadow-[inset_0_1px_0_hsl(var(--card))] sm:p-6">
-              {current.media?.url && (
+          <section
+            className={
+              phone ? "flex min-h-0 flex-1 flex-col" : "space-y-5 text-center"
+            }
+          >
+            <div
+              className={
+                phone
+                  ? "akwaan-rise flex flex-1 flex-col items-center justify-center text-center"
+                  : "akwaan-rise rounded-[var(--radius)] border-2 border-border bg-background p-4 shadow-[inset_0_1px_0_hsl(var(--card))] sm:p-6"
+              }
+            >
+              {!phone && current.media?.url && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={current.media.url}
@@ -129,8 +162,15 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
                   className="mx-auto mb-4 h-36 w-full rounded-[var(--radius)] object-contain"
                 />
               )}
+              {/* The entity name and nothing else. Rank, metric, cutoff and
+                  evidence are not in this payload at all — the roadmap contract
+                  keeps them hidden metadata until the challenge resolves. */}
               <p
-                className="[overflow-wrap:anywhere] text-2xl font-black leading-tight text-foreground sm:text-3xl md:text-4xl"
+                className={
+                  phone
+                    ? "[overflow-wrap:anywhere] text-3xl font-black leading-tight text-foreground"
+                    : "[overflow-wrap:anywhere] text-2xl font-black leading-tight text-foreground sm:text-3xl md:text-4xl"
+                }
                 data-testid="top5-current-card"
               >
                 {current.label}
@@ -138,6 +178,43 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
             </div>
 
             {canDecide ? (
+              phone ? (
+                <MobileActionArea>
+                  {/* The primitive stays a place, not a component that knows
+                      about decisions: the mechanic labels its own region. */}
+                  <div data-testid="top5-decider-controls" className="contents" />
+                  <p className="text-center text-xs font-black text-muted-foreground">
+                    {deciding ? "جارٍ إرسال قراركم…" : "أنت صاحب القرار"}
+                  </p>
+                  {/* Two peers, not a safe choice and a dangerous one. Both are
+                      legitimate plays, so neither is dressed as destructive —
+                      the tension comes from the decision, not from the colour. */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      disabled={connection !== "connected" || Boolean(deciding)}
+                      onClick={() => decide("keep")}
+                      data-testid="top5-keep"
+                      className="h-16 border-2 text-base font-black"
+                    >
+                      <Hand className="size-5" aria-hidden />
+                      احتفظ بها
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      disabled={connection !== "connected" || Boolean(deciding)}
+                      onClick={() => decide("give")}
+                      data-testid="top5-give"
+                      className="h-16 border-2 text-base font-black"
+                    >
+                      <Send className="size-5" aria-hidden />
+                      دسّها للخصم
+                    </Button>
+                  </div>
+                </MobileActionArea>
+              ) : (
               <div className="space-y-3" data-testid="top5-decider-controls">
                 <p className="text-base font-black text-foreground">
                   أنت صاحب القرار
@@ -145,8 +222,9 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
                 <div className="grid grid-cols-2 gap-3">
                   <Button
                     size="lg"
-                    disabled={connection !== "connected"}
+                    disabled={connection !== "connected" || Boolean(deciding)}
                     onClick={() => decide("keep")}
+                    data-testid="top5-keep"
                     className="h-14 text-base font-black"
                   >
                     <Hand className="size-5" aria-hidden />
@@ -155,8 +233,9 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
                   <Button
                     size="lg"
                     variant="destructive"
-                    disabled={connection !== "connected"}
+                    disabled={connection !== "connected" || Boolean(deciding)}
                     onClick={() => decide("give")}
+                    data-testid="top5-give"
                     className="h-14 text-base font-black"
                   >
                     <Send className="size-5" aria-hidden />
@@ -164,9 +243,14 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
                   </Button>
                 </div>
               </div>
+              )
             ) : (
               <div
-                className="space-y-1 rounded-[var(--radius)] bg-muted p-4 text-sm"
+                className={
+                  phone
+                    ? "flex shrink-0 flex-col items-center gap-1 pb-2 text-center text-sm"
+                    : "space-y-1 rounded-[var(--radius)] bg-muted p-4 text-sm"
+                }
                 data-testid="top5-waiting"
               >
                 {deciderName ? (
@@ -191,7 +275,7 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
           </section>
         )}
 
-        {ownership.length > 0 && !completed && (
+        {ownership.length > 0 && !completed && !phone && (
           <section>
             <h3 className="mb-2 text-xs font-black text-muted-foreground">
               البطاقات الموزّعة

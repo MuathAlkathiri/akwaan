@@ -41,7 +41,15 @@ export function ChallengeFrame({
     <section
       dir="rtl"
       data-testid="challenge-frame"
-      className={cn("surface-card overflow-hidden", className)}
+      className={cn(
+        "surface-card overflow-hidden",
+        // Compact is the phone's mode, and a phone frame has to be able to fill
+        // the height it is given — that is what lets a mechanic push its primary
+        // action down to the thumb instead of stacking it under the question.
+        // The default (host) path is untouched.
+        compact && "flex min-h-0 flex-1 flex-col",
+        className,
+      )}
     >
       <header
         className={cn(
@@ -85,7 +93,13 @@ export function ChallengeFrame({
         />
       )}
 
-      <div className={cn(compact ? "p-4" : "p-5 sm:p-6")}>{children}</div>
+      <div
+        className={cn(
+          compact ? "flex min-h-0 flex-1 flex-col p-4" : "p-5 sm:p-6",
+        )}
+      >
+        {children}
+      </div>
     </section>
   );
 }

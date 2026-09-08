@@ -16,12 +16,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getMediaUrl } from "@/lib/api/media-url";
+import { cn } from "@/lib/utils";
 import { useLiveSession } from "../hooks/live-session-context";
 import {
   type BombVoiceState,
   useBombVoiceInput,
 } from "../hooks/use-bomb-voice-input";
 import { useTeamClockDisplay } from "../hooks/use-team-clock-display";
+import { ChallengeFrame } from "../match/components/challenge-frame";
+import { MobileActionArea } from "../match/components/mobile-action-area";
+import { useMobileSurface } from "../match/components/mobile-gameplay-shell";
 import type { GameplayRuntimeSnapshot } from "../model";
 
 function BombItemImage({ url, altText }: { url: string; altText: string }) {
@@ -219,8 +223,16 @@ export function BombGameplayPanel({
   runtime: GameplayRuntimeSnapshot;
 }) {
   const { snapshot, gameplayCommand, connection } = useLiveSession();
+  // Which surface is rendering this, from the shell that mounted it. The shared
+  // screen reads `false` and keeps its existing room presentation untouched.
+  const phone = useMobileSurface();
   const [answer, setAnswer] = useState("");
+  // One guard for every answer path. Typing, Enter and a final voice transcript
+  // all converge on `submitAnswer`, so closing the window there closes it for
+  // all three at once — no second guard in the voice hook.
+  const [sending, setSending] = useState(false);
   const answerInputRef = useRef<HTMLInputElement>(null);
+  const sendingRef = useRef(false);
   const round = runtime.activeRound;
   const activeTeamId = runtime.activeTeamId ?? round?.activeTeamId;
   const clock = useTeamClockDisplay(activeTeamId ?? "");
@@ -248,10 +260,21 @@ export function BombGameplayPanel({
     }
   }, [answerEnabled, activeTeamId]);
 
+  // Any authoritative move releases the guard: a new item, the turn passing to
+  // the other team, the phase changing, or this phone losing the right to act
+  // (a reassignment after disconnect). The server decides when this phone may
+  // send again — never a timer here.
+  useEffect(() => {
+    sendingRef.current = false;
+    setSending(false);
+  }, [itemIndex, activeTeamId, phase, canSubmit, canSkip, roundId]);
+
   const submitAnswer = useCallback(
     (value: string) => {
       const trimmed = value.trim();
-      if (!trimmed || !answerEnabled) return;
+      if (!trimmed || !answerEnabled || sendingRef.current) return;
+      sendingRef.current = true;
+      setSending(true);
       gameplayCommand("gameplay-command", {
         roundId,
         commandType: "submit-answer",
@@ -263,7 +286,9 @@ export function BombGameplayPanel({
   );
 
   const skipItem = useCallback(() => {
-    if (!canSkip || connection !== "connected") return;
+    if (!canSkip || connection !== "connected" || sendingRef.current) return;
+    sendingRef.current = true;
+    setSending(true);
     gameplayCommand("gameplay-command", {
       roundId,
       commandType: "skip",
@@ -316,6 +341,195 @@ export function BombGameplayPanel({
   const itemCount =
     runtime.currentItem?.totalItems ?? Number(round.modeState.itemCount ?? 0);
   const activeTeam = snapshot?.teams.find((team) => team.id === activeTeamId);
+
+  // ── The phone ────────────────────────────────────────────────────────────
+  //
+  // A phone is a controller, and in Bomb only one phone in the room is holding
+  // one: `mode:submit-answer` is authorised per *participant* against the
+  // runtime's `activeParticipantId`, so this flag is the server's own answer to
+  // "is this the phone that may act", not a team comparison. When the runtime
+  // reassigns the owner after a disconnect, the two phones swap roles on the
+  // next snapshot with nothing remounting.
+  const isActor = canSubmit || canSkip;
+
+  if (phone && !isActor) {
+    // Everyone else waits, and waits *empty*: no question, no image, and above
+    // all no clock. The exact remaining time is the acting player's instrument
+    // and the room's drama — a teammate reading it off their own screen would be
+    // playing a different game from the one on the wall.
+    const waitingForTeammate =
+      Boolean(activeTeamId) &&
+      snapshot?.participants.find(
+        (person) => person.id === round?.activeParticipantId,
+      );
+    return (
+      <section
+        dir="rtl"
+        data-testid="bomb-phone-waiting"
+        className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center"
+      >
+        <span
+          aria-hidden
+          className="grid size-14 place-items-center rounded-full border border-border bg-muted/50"
+        >
+          <Bomb className="size-7 text-muted-foreground" />
+        </span>
+        <p className="text-base font-black text-foreground">
+          {waitingForTeammate
+            ? `${waitingForTeammate.displayName} يجاوب الآن`
+            : "الدور على الفريق الآخر"}
+        </p>
+        <p className="text-sm font-bold text-muted-foreground">
+          تابعوا الشاشة.
+        </p>
+      </section>
+    );
+  }
+
+  if (phone) {
+    return (
+      <ChallengeFrame
+        compact
+        title={`السؤال ${Math.min(itemIndex + 1, itemCount)} من ${itemCount}`}
+        aside={
+          // The one authoritative clock, from the session's own TeamClock. It
+          // is compact here and dramatic on the wall; neither counts locally.
+          <output
+            data-testid="bomb-phone-clock"
+            aria-label="الوقت المتبقي لفريقكم"
+            className={cn(
+              "akwaan-numeral inline-flex items-center rounded-full border px-2.5 py-1 text-sm font-black tabular-nums",
+              clock.expired || clock.remainingMs <= 5000
+                ? "border-destructive/50 bg-destructive/10 text-destructive"
+                : "border-border bg-muted/60 text-foreground",
+            )}
+          >
+            {clock.formatted}
+          </output>
+        }
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <div dir="rtl" className="flex min-h-0 flex-1 flex-col gap-3">
+          {/* The wording, near the keyboard — text only. The image is the
+              room's; duplicating it here would cost reading time and turn the
+              controller back into a small television. */}
+          <p
+            data-testid="bomb-phone-prompt"
+            className="shrink-0 text-center text-base font-black leading-snug text-foreground"
+          >
+            {prompt}
+          </p>
+
+          {resolvingExpiration ? (
+            <p
+              role="status"
+              className="flex flex-1 items-center justify-center font-black text-muted-foreground"
+            >
+              انتهى وقتكم. جارٍ حساب النتيجة…
+            </p>
+          ) : (
+            <form
+              onSubmit={submit}
+              className="flex min-h-0 flex-1 flex-col"
+              data-testid="bomb-phone-controls"
+            >
+              <div className="flex flex-1 flex-col justify-center gap-3">
+                <Input
+                  ref={answerInputRef}
+                  value={answer}
+                  onChange={(event) => setAnswer(event.target.value)}
+                  placeholder="اكتب إجابتك"
+                  aria-label="إجابة القنبلة"
+                  autoComplete="off"
+                  disabled={!answerEnabled || sending}
+                  data-testid="bomb-phone-answer"
+                  className="h-16 rounded-[var(--radius)] border-2 text-center text-xl font-black focus-visible:border-brand-gold"
+                />
+                {voice.transcript && (
+                  <p className="text-sm font-bold text-muted-foreground" dir="rtl">
+                    «{voice.transcript}»
+                  </p>
+                )}
+                {voice.state !== "idle" && (
+                  <p
+                    role="status"
+                    data-testid="bomb-phone-voice-state"
+                    className={cn(
+                      "text-xs font-bold",
+                      voice.state === "listening"
+                        ? "text-destructive"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {VOICE_MESSAGES[voice.state]}
+                  </p>
+                )}
+              </div>
+
+              <MobileActionArea>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="submit"
+                    size="lg"
+                    disabled={
+                      !canSubmit ||
+                      sending ||
+                      !answer.trim() ||
+                      connection !== "connected"
+                    }
+                    data-testid="bomb-phone-submit"
+                    className="h-14 flex-1 text-base font-black"
+                  >
+                    <Send className="size-4" aria-hidden />
+                    {sending ? "جارٍ الإرسال…" : "إرسال"}
+                  </Button>
+                  {/* Secondary on purpose: typing is the primary path, and the
+                      microphone sits beside it rather than dominating. */}
+                  <Button
+                    type="button"
+                    variant={voice.state === "listening" ? "destructive" : "outline"}
+                    disabled={
+                      !answerEnabled ||
+                      sending ||
+                      voice.state === "processing" ||
+                      voice.state === "unsupported"
+                    }
+                    onClick={() =>
+                      voice.state === "listening" ? voice.stop("idle") : voice.start()
+                    }
+                    aria-label={
+                      voice.state === "listening" ? "إيقاف الاستماع" : "الإجابة بالصوت"
+                    }
+                    data-testid="bomb-phone-voice"
+                    className="size-14 shrink-0 rounded-full"
+                  >
+                    {voice.state === "listening" ? (
+                      <Square className="size-5 fill-current" aria-hidden />
+                    ) : voice.state === "processing" ? (
+                      <Loader2 className="size-5 animate-spin" aria-hidden />
+                    ) : (
+                      <Mic className="size-5" aria-hidden />
+                    )}
+                  </Button>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!canSkip || sending || connection !== "connected"}
+                  onClick={skip}
+                  data-testid="bomb-phone-skip"
+                  className="h-12 w-full font-black"
+                >
+                  <SkipForward className="size-4" aria-hidden />
+                  تخطّي (-5 ثوانٍ)
+                </Button>
+              </MobileActionArea>
+            </form>
+          )}
+        </div>
+      </ChallengeFrame>
+    );
+  }
 
   return (
     <section className="space-y-5 rounded-[var(--radius)] border bg-card p-5">

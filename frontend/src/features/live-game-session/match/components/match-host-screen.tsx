@@ -78,7 +78,14 @@ export function MatchHostScreen() {
         // Initial entry into an existing Match before its snapshot has hydrated
         // (a fresh open, or a Resume from مبارياتي): no Match state is valid yet,
         // so the branded loader owns the wait rather than blank skeleton blocks.
-        <AkwaanLoader label="نجهّز المباراة..." />
+        // It centres in the region the shell leaves between the HUD and the
+        // bottom of the viewport, which is the wait's whole composition.
+        <div
+          data-testid="match-hydrating"
+          className="flex flex-1 items-center justify-center py-8"
+        >
+          <AkwaanLoader label="نجهّز المباراة..." />
+        </div>
       )}
     </MatchShell>
   );

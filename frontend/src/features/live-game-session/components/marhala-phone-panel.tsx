@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Flag, Loader2, Rocket, Send, Zap } from "lucide-react";
+import { Check, Loader2, Mic, Send, Square } from "lucide-react";
 
 import { BidiText } from "@/components/akwaan/bidi-text";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,12 @@ import { ChallengeCountdown } from "../match/components/challenge-countdown";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
 import {
-  MARHALA_CHALLENGE_NAME,
   MARHALA_DIFFICULTY_LABEL,
   marhalaBandPreviews,
   marhalaPositionOf,
   marhalaPromptText,
   readMarhalaView,
+  type MarhalaBandRisk,
   type MarhalaDifficulty,
   type MarhalaView,
 } from "../match/marhala.presentation";
@@ -24,6 +24,10 @@ import {
   MarhalaQuestionAudio,
   MarhalaQuestionImage,
 } from "./marhala-screen";
+import { useVoiceInput } from "../hooks/use-voice-input";
+import { voiceInputPolicy } from "../hooks/voice-eligibility";
+import { ChallengeFrame } from "../match/components/challenge-frame";
+import { MobileActionArea } from "../match/components/mobile-action-area";
 import type { GameplayRuntimeSnapshot } from "../model";
 
 /**
@@ -46,6 +50,11 @@ export function MarhalaPhonePanel({
 }) {
   const { gameplayCommand, connection } = useLiveSession();
   const [answer, setAnswer] = useState("");
+  // Presentational only, as in every other controller: `gameplayCommand` is
+  // fire-and-forget, so this closes the double-tap window. It is released by the
+  // authoritative turn/phase moving on — the runtime publishes no "submitted"
+  // field, so none is invented here.
+  const [sending, setSending] = useState<"choice" | "answer" | undefined>();
   const answerInput = useRef<HTMLInputElement>(null);
   const view = useMemo(
     () => readMarhalaView(runtime.modeState),
@@ -64,14 +73,32 @@ export function MarhalaPhonePanel({
   const mayChoose = can("choose-marhala-difficulty") && view.isActiveTeam;
   const mayAnswer = can("submit-marhala-answer") && view.isActiveTeam;
 
-  // A typed answer must never survive into the next question.
-  useEffect(
-    () => setAnswer(""),
-    [runtime.runtimeId, round?.id, view.turnNumber, view.phase],
-  );
+  // A typed answer — and a pending guard — must never survive into the next
+  // question. Any authoritative move releases both.
+  useEffect(() => {
+    setAnswer("");
+    setSending(undefined);
+  }, [runtime.runtimeId, round?.id, view.turnNumber, view.phase]);
   useEffect(() => {
     if (mayAnswer && view.phase === "question") answerInput.current?.focus();
   }, [mayAnswer, view.phase, view.turnNumber]);
+
+  // Speech fills the field and stops there: المرحلة is `transcript`, never
+  // `auto-submit`. The player reads what was heard and presses the same button
+  // they would have pressed after typing.
+  // Eligibility is declared per mechanic, never inferred from the input type.
+  const voiceAllowed = voiceInputPolicy(runtime.mode.key) === "transcript";
+  const voice = useVoiceInput({
+    enabled: voiceAllowed && mayAnswer && view.phase === "question" && !sending,
+    connection,
+    lifecycleKey: `${runtime.runtimeId}:${round?.id ?? ""}:${view.turnNumber}:${view.phase}`,
+    onFinalTranscript: (text) => {
+      // Replaces rather than appends: concatenating speech onto half-typed text
+      // produces something the player did not intend and cannot easily undo.
+      setAnswer(text);
+      answerInput.current?.focus();
+    },
+  });
 
   const send = (
     commandType: string,
@@ -84,40 +111,36 @@ export function MarhalaPhonePanel({
     });
 
   const choose = (difficulty: MarhalaDifficulty) => {
-    if (!live) return;
+    if (!live || sending) return;
+    setSending("choice");
     send("choose-marhala-difficulty", { difficulty });
   };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!answer.trim() || !live || !mayAnswer) return;
+    if (!answer.trim() || !live || !mayAnswer || sending) return;
+    setSending("answer");
     send("submit-marhala-answer", { answer: answer.trim() });
     setAnswer("");
   };
 
   return (
+    <ChallengeFrame
+      compact
+      title={`مربّعكم الحالي ${marhalaPositionOf(view, view.actorTeamId ?? "")}`}
+      aside={
+        remainingMs !== undefined && view.phase === "question" ? (
+          <ChallengeCountdown remainingMs={remainingMs} />
+        ) : null
+      }
+      className="flex min-h-0 flex-1 flex-col"
+    >
     <section
       dir="rtl"
       data-testid="marhala-phone"
       data-marhala-phase={view.phase}
-      className="mx-auto w-full max-w-md space-y-3"
+      className="flex min-h-0 w-full flex-1 flex-col gap-3"
     >
-      <header className="surface-card flex items-center justify-between gap-3 px-4 py-2.5">
-        <div className="min-w-0">
-          <p className="text-[0.7rem] font-black text-muted-foreground">
-            {MARHALA_CHALLENGE_NAME}
-          </p>
-          <p className="text-sm font-black text-foreground">
-            مربّعكم الحالي:{" "}
-            <span className="akwaan-numeral">
-              {marhalaPositionOf(view, view.actorTeamId ?? "")}
-            </span>
-          </p>
-        </div>
-        {remainingMs !== undefined && view.phase === "question" && (
-          <ChallengeCountdown remainingMs={remainingMs} />
-        )}
-      </header>
 
       {view.phase === "difficulty-choice" &&
         (mayChoose ? (
@@ -147,43 +170,119 @@ export function MarhalaPhonePanel({
 
       {view.phase === "question" &&
         (mayAnswer ? (
+          sending === "answer" ? (
+            <div
+              className="flex flex-1 flex-col items-center justify-center gap-2 text-center"
+              data-testid="marhala-phone-submitted"
+            >
+              <span
+                aria-hidden
+                className="grid size-14 place-items-center rounded-full border border-brand-gold/40 bg-brand-gold/10"
+              >
+                <Check className="size-7 text-brand-gold" />
+              </span>
+              <p className="text-base font-black text-foreground">
+                تم إرسال إجابتكم
+              </p>
+              <p className="text-sm font-bold text-muted-foreground">
+                تابعوا الحركة على الشاشة.
+              </p>
+            </div>
+          ) : (
           <form
             onSubmit={submit}
-            className="surface-card space-y-3 p-4"
+            className="flex min-h-0 flex-1 flex-col"
             data-testid="marhala-answer-form"
           >
-            {view.media?.type === "image" && view.media.url && (
-              <MarhalaQuestionImage
-                url={view.media.url}
-                altText={view.media.altText}
+            {/* The media stays on the phone, against the usual "spectacle lives
+                on the shared screen" rule, because for المرحلة it is not
+                spectacle: an image question reads "من هذه الشخصية؟", so the
+                picture *is* the question and the person typing cannot answer
+                without it. Sized for a controller, not for the room. */}
+            <div className="flex flex-1 flex-col justify-center gap-3">
+              {view.media?.type === "image" && view.media.url && (
+                <MarhalaQuestionImage
+                  url={view.media.url}
+                  altText={view.media.altText}
+                />
+              )}
+              {view.media?.type === "audio" && view.media.url && (
+                <MarhalaQuestionAudio url={view.media.url} />
+              )}
+              <p className="text-center text-base font-black leading-snug text-foreground">
+                <BidiText>{marhalaPromptText(view)}</BidiText>
+              </p>
+              <Input
+                ref={answerInput}
+                value={answer}
+                onChange={(event) => setAnswer(event.target.value)}
+                placeholder="اكتب الإجابة"
+                aria-label="الإجابة"
+                autoComplete="off"
+                className="h-16 rounded-[var(--radius)] border-2 text-center text-xl font-black focus-visible:border-brand-gold"
               />
-            )}
-            {view.media?.type === "audio" && view.media.url && (
-              <MarhalaQuestionAudio url={view.media.url} />
-            )}
-            <p className="text-lg font-black leading-snug text-foreground">
-              <BidiText>{marhalaPromptText(view)}</BidiText>
-            </p>
-            <Input
-              ref={answerInput}
-              value={answer}
-              onChange={(event) => setAnswer(event.target.value)}
-              placeholder="اكتب الإجابة"
-              aria-label="الإجابة"
-              autoComplete="off"
-              className="h-12 text-base"
-            />
-            <Button
-              type="submit"
-              size="lg"
-              disabled={!answer.trim() || !live}
-              className="h-12 w-full font-black"
-              data-testid="marhala-answer-submit"
-            >
-              <Send className="size-4" aria-hidden />
-              أرسل الإجابة
-            </Button>
+            </div>
+            <MobileActionArea>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={!answer.trim() || !live || Boolean(sending)}
+                  className="h-14 flex-1 text-base font-black"
+                  data-testid="marhala-answer-submit"
+                >
+                  <Send className="size-4" aria-hidden />
+                  أرسل الإجابة
+                </Button>
+                {/* Secondary, exactly as in القنبلة: typing is the primary path
+                    and stays usable whatever the microphone is doing. */}
+                {voiceAllowed && voice.state !== "unsupported" && (
+                  <Button
+                    type="button"
+                    variant={
+                      voice.state === "listening" ? "destructive" : "outline"
+                    }
+                    disabled={
+                      !live ||
+                      Boolean(sending) ||
+                      voice.state === "processing" ||
+                      voice.state === "permission-denied"
+                    }
+                    onClick={() =>
+                      voice.state === "listening"
+                        ? voice.stop("idle")
+                        : voice.start()
+                    }
+                    aria-label={
+                      voice.state === "listening"
+                        ? "إيقاف الاستماع"
+                        : "الإجابة بالصوت"
+                    }
+                    data-testid="marhala-voice"
+                    className="size-14 shrink-0 rounded-full"
+                  >
+                    {voice.state === "listening" ? (
+                      <Square className="size-5 fill-current" aria-hidden />
+                    ) : voice.state === "processing" ? (
+                      <Loader2 className="size-5 animate-spin" aria-hidden />
+                    ) : (
+                      <Mic className="size-5" aria-hidden />
+                    )}
+                  </Button>
+                )}
+              </div>
+              {voiceAllowed && VOICE_NOTE[voice.state] && (
+                <p
+                  role="status"
+                  data-testid="marhala-voice-state"
+                  className="text-center text-xs font-bold text-muted-foreground"
+                >
+                  {VOICE_NOTE[voice.state]}
+                </p>
+              )}
+            </MobileActionArea>
           </form>
+          )
         ) : (
           <WaitingCard
             title="الفريق الآخر يجيب"
@@ -195,6 +294,7 @@ export function MarhalaPhonePanel({
         <WaitingCard title="انتهى السباق" body="النتيجة على الشاشة المشتركة." />
       )}
     </section>
+    </ChallengeFrame>
   );
 }
 
@@ -243,35 +343,23 @@ function BandChoices({
               {band.range.min}–{band.range.max}
             </span>
           </span>
+          {/* The band's risk, never the tiles it could reach: the deciding phone
+              must not hold information the room has just been denied, or the
+              uncertainty the choice is built on only moves into someone's hand. */}
           {band.available ? (
-            <span className="flex shrink-0 flex-wrap items-center justify-end gap-1">
-              {band.tiles.map((tile) => (
-                <span
-                  key={tile.position}
-                  data-testid={`marhala-phone-landing-${tile.position}`}
-                  className={cn(
-                    "inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[0.7rem] font-black",
-                    tile.kind === "boost" &&
-                      "border-brand-gold/60 text-brand-gold",
-                    tile.kind === "trap" &&
-                      "border-destructive/50 text-destructive",
-                    tile.kind === "finish" &&
-                      "border-brand-gold bg-brand-gold/20 text-brand-gold",
-                    tile.kind === "normal" && "border-border text-foreground",
-                  )}
-                >
-                  <span className="akwaan-numeral">{tile.position}</span>
-                  {tile.kind === "boost" && (
-                    <Rocket className="size-3" aria-hidden />
-                  )}
-                  {tile.kind === "trap" && (
-                    <Zap className="size-3" aria-hidden />
-                  )}
-                  {tile.kind === "finish" && (
-                    <Flag className="size-3" aria-hidden />
-                  )}
-                </span>
-              ))}
+            <span
+              data-testid={`marhala-phone-risk-${band.difficulty}`}
+              data-band-risk={band.risk}
+              className={cn(
+                "shrink-0 text-xs font-black",
+                band.risk === "bold"
+                  ? "text-brand-gold"
+                  : band.risk === "balanced"
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+              )}
+            >
+              {PHONE_BAND_RISK[band.risk]}
             </span>
           ) : (
             <span className="shrink-0 text-xs font-black">لا أسئلة جديدة</span>
@@ -281,6 +369,26 @@ function BandChoices({
     </div>
   );
 }
+
+/**
+ * One short line per speech state, never a blocking explanation.
+ * `idle`, `recognized` and `unsupported` say nothing at all: the first two need
+ * no words, and an unsupported browser simply has no microphone button.
+ */
+const VOICE_NOTE: Partial<Record<string, string>> = {
+  listening: "نسمعك…",
+  processing: "جارٍ التعرّف…",
+  "no-speech": "ما سمعنا شيء — جرّبوا مرة ثانية أو اكتبوا.",
+  "permission-denied": "الميكروفون مرفوض — اكتبوا الإجابة.",
+  error: "تعذّر الاستماع — اكتبوا الإجابة.",
+};
+
+/** The same three words the shared screen uses, so the room and the hand agree. */
+const PHONE_BAND_RISK: Record<MarhalaBandRisk, string> = {
+  steady: "تقدّم مضمون",
+  balanced: "متوازن",
+  bold: "مخاطرة عالية",
+};
 
 function WaitingCard({ title, body }: { title: string; body: string }) {
   return (

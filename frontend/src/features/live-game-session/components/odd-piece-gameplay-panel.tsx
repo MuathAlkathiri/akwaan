@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
 import { ChallengeFrame } from "../match/components/challenge-frame";
+import { MobileActionArea } from "../match/components/mobile-action-area";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
 import type { GameplayRuntimeSnapshot } from "../model";
@@ -46,6 +47,19 @@ export function OddPieceGameplayPanel({
     snapshot?.teams.find((team) => team.id === teamId)?.name ?? "الفريق";
   const phone = actor === "participant";
   const live = connection === "connected";
+
+  if (phone) {
+    return (
+      <OddPiecePhoneController
+        view={view}
+        live={live}
+        can={can}
+        remainingMs={remainingMs}
+        teamName={teamName}
+        send={send}
+      />
+    );
+  }
 
   return (
     <ChallengeFrame
@@ -216,5 +230,186 @@ export function OddPieceGameplayPanel({
         )}
       </div>
     </ChallengeFrame>
+  );
+}
+
+function OddPiecePhoneController({
+  view,
+  live,
+  can,
+  remainingMs,
+  teamName,
+  send,
+}: {
+  view: ReturnType<typeof readOddPieceView>;
+  live: boolean;
+  can: (action: string) => boolean;
+  remainingMs?: number;
+  teamName: (teamId?: string) => string;
+  send: (
+    commandType: string,
+    payload?: Record<string, string | number | boolean | null>,
+  ) => void;
+}) {
+  const [selectedPieceId, setSelectedPieceId] = useState<string>();
+  const [pending, setPending] = useState<"claim" | "submit">();
+
+  useEffect(() => {
+    setSelectedPieceId(undefined);
+    setPending(undefined);
+  }, [view.phase, view.puzzleIndex, view.answerOwnerTeamId, view.attemptUsed]);
+
+  const claim = () => {
+    if (!live || pending || !view.canClaim || !can("claim-odd-piece")) return;
+    setPending("claim");
+    send("claim-odd-piece");
+  };
+  const submit = () => {
+    if (
+      !live ||
+      pending ||
+      !selectedPieceId ||
+      !view.canSelect ||
+      !can("submit-odd-piece")
+    )
+      return;
+    setPending("submit");
+    send("submit-odd-piece", { pieceId: selectedPieceId });
+  };
+
+  return (
+    <ChallengeFrame
+      compact
+      title={
+        view.phase === "completed"
+          ? "انتهى التحدي"
+          : `اللغز ${view.puzzleIndex + 1} من ${view.puzzleCount}`
+      }
+      progressValue={
+        view.phase === "completed"
+          ? 100
+          : ((view.puzzleIndex + 1) / view.puzzleCount) * 100
+      }
+      aside={
+        remainingMs !== undefined && view.phase === "open" ? (
+          <ChallengeCountdown remainingMs={remainingMs} />
+        ) : null
+      }
+      className="flex min-h-0 flex-1 flex-col"
+    >
+      <div
+        className="flex min-h-0 flex-1 flex-col gap-3 text-center"
+        dir="rtl"
+        data-testid="odd-piece-phone-controller"
+      >
+        {view.phase === "preparing" ? (
+          <PhoneStatus testId="odd-piece-phone-preparing">
+            شاهدوا الشاشة — نجهّز اللغز التالي…
+          </PhoneStatus>
+        ) : view.phase === "open" ? (
+          <>
+            <PhoneStatus testId="odd-piece-phone-open">
+              {pending === "claim"
+                ? "جارٍ تثبيت الحجز…"
+                : view.canClaim && can("claim-odd-piece")
+                  ? "عرفتوها؟ احجزوا أولاً"
+                  : "شاهدوا الشاشة — بانتظار الحجز…"}
+            </PhoneStatus>
+            {view.canClaim && can("claim-odd-piece") && (
+              <MobileActionArea>
+                <Button
+                  size="lg"
+                  className="h-16 w-full text-lg font-black"
+                  disabled={!live || Boolean(pending)}
+                  onClick={claim}
+                  data-testid="odd-piece-phone-claim"
+                >
+                  {pending === "claim" ? "جارٍ الحجز…" : "جاوب"}
+                </Button>
+              </MobileActionArea>
+            )}
+          </>
+        ) : view.phase === "selecting" &&
+          view.canSelect &&
+          can("submit-odd-piece") ? (
+          <>
+            <p className="shrink-0 text-sm font-black text-muted-foreground">
+              اختاروا رقم القطعة من الشاشة
+            </p>
+            <div
+              className="grid flex-1 grid-cols-2 content-center gap-3"
+              dir="ltr"
+              data-testid="odd-piece-phone-piece-controls"
+            >
+              {view.pieces.map((piece, index) => (
+                <Button
+                  key={piece.id}
+                  type="button"
+                  variant="outline"
+                  data-piece-id={piece.id}
+                  data-selected={
+                    selectedPieceId === piece.id ? "true" : "false"
+                  }
+                  className={cn(
+                    "h-20 text-2xl font-black",
+                    selectedPieceId === piece.id &&
+                      "border-selected bg-selected-subtle text-selected",
+                  )}
+                  disabled={!live || Boolean(pending)}
+                  onClick={() => setSelectedPieceId(piece.id)}
+                  data-testid={`odd-piece-phone-select-${piece.id}`}
+                >
+                  {index + 1}
+                </Button>
+              ))}
+            </div>
+            <MobileActionArea>
+              <Button
+                size="lg"
+                className="h-16 w-full text-lg font-black"
+                disabled={!live || !selectedPieceId || Boolean(pending)}
+                onClick={submit}
+                data-testid="odd-piece-phone-submit"
+              >
+                {pending === "submit"
+                  ? "جارٍ تثبيت الاختيار…"
+                  : "تأكيد الاختيار"}
+              </Button>
+            </MobileActionArea>
+          </>
+        ) : view.phase === "selecting" ? (
+          <PhoneStatus testId="odd-piece-phone-waiting">
+            {view.attemptUsed
+              ? "انتهت محاولة فريقكم — تابعوا الشاشة"
+              : `${teamName(view.answerOwnerTeamId)} يختار الآن…`}
+          </PhoneStatus>
+        ) : view.phase === "revealed" ? (
+          <PhoneStatus testId="odd-piece-phone-resolved">
+            تم كشف الحل — تابعوا التفاصيل على الشاشة
+          </PhoneStatus>
+        ) : (
+          <PhoneStatus testId="odd-piece-phone-complete">
+            انتهى التحدي — تابعوا النتيجة على الشاشة
+          </PhoneStatus>
+        )}
+      </div>
+    </ChallengeFrame>
+  );
+}
+
+function PhoneStatus({
+  children,
+  testId,
+}: {
+  children: React.ReactNode;
+  testId: string;
+}) {
+  return (
+    <p
+      className="flex flex-1 items-center justify-center px-4 font-black text-muted-foreground"
+      data-testid={testId}
+    >
+      {children}
+    </p>
   );
 }

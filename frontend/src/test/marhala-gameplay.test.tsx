@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, render, screen, within } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -43,7 +45,10 @@ vi.mock("@/features/live-game-session/hooks/live-session-context", () => ({
 import { MarhalaScreen } from "@/features/live-game-session/components/marhala-screen";
 import { MarhalaPhonePanel } from "@/features/live-game-session/components/marhala-phone-panel";
 import { MatchGameplayRenderer } from "@/features/live-game-session/match/match-stage-router";
-import { MARHALA_MODE_KEY } from "@/features/live-game-session/match/marhala.presentation";
+import {
+  MARHALA_MODE_KEY,
+  marhalaBandValues,
+} from "@/features/live-game-session/match/marhala.presentation";
 
 /**
  * "المرحلة" as the room and the players see it.
@@ -100,8 +105,8 @@ const runtime = (modeState: Record<string, unknown>, actions: string[] = []) =>
 /** Which tile a team's token is currently drawn on, straight from the DOM. */
 const tokenTile = (teamId: string): number | undefined => {
   const token = screen.queryByTestId(`marhala-token-${teamId}`);
-  const tile = token?.closest("[data-tile-kind]")?.getAttribute("data-testid");
-  return tile ? Number(tile.replace("marhala-tile-", "")) : undefined;
+  const position = token?.getAttribute("data-token-position");
+  return position ? Number(position) : undefined;
 };
 
 beforeEach(() => {
@@ -161,42 +166,60 @@ describe("the shared screen during the decision", () => {
   it("shows the board, both positions and whose turn it is", () => {
     renderScreen();
     expect(screen.getByTestId("marhala-board")).toBeInTheDocument();
-    expect(
-      within(screen.getByTestId("marhala-tile-5")).getByTestId(
-        "marhala-token-team-alpha",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(screen.getByTestId("marhala-tile-1")).getByTestId(
-        "marhala-token-team-beta",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("marhala-token-team-alpha")).toHaveAttribute(
+      "data-token-position",
+      "5",
+    );
+    expect(screen.getByTestId("marhala-token-team-beta")).toHaveAttribute(
+      "data-token-position",
+      "1",
+    );
     expect(screen.getByTestId("marhala-standing-team-alpha")).toHaveTextContent(
       "دورهم",
     );
   });
 
-  it("compares the three bands by where they could land from here", () => {
+  it("tells the three bands apart by risk, never by where they could land", () => {
     renderScreen();
-    // From tile 5: سهل reaches 6–7, متوسط reaches 7–9, صعب reaches 9–11.
-    const easy = within(screen.getByTestId("marhala-band-easy"));
-    expect(easy.getByTestId("marhala-landing-6")).toBeInTheDocument();
-    expect(easy.getByTestId("marhala-landing-7")).toBeInTheDocument();
-
-    const medium = within(screen.getByTestId("marhala-band-medium"));
-    expect(medium.getByTestId("marhala-landing-9")).toHaveAttribute(
-      "data-landing-kind",
-      "trap",
+    // The Product decision: the room weighs risk against reward, and finds out
+    // where it actually landed only after the question is answered.
+    expect(document.querySelector("[data-testid^='marhala-landing-']")).toBeNull();
+    expect(
+      screen.getByTestId("marhala-band-easy-risk"),
+    ).toHaveAttribute("data-band-risk", "steady");
+    expect(
+      screen.getByTestId("marhala-band-medium-risk"),
+    ).toHaveAttribute("data-band-risk", "balanced");
+    expect(screen.getByTestId("marhala-band-hard-risk")).toHaveAttribute(
+      "data-band-risk",
+      "bold",
     );
+    // All three are still offered, and still named by the movement they buy.
+    for (const band of ["easy", "medium", "hard"]) {
+      expect(screen.getByTestId(`marhala-band-${band}`)).toBeInTheDocument();
+    }
+    expect(screen.getByTestId("marhala-band-hard")).toHaveTextContent("4–6");
+  });
 
-    const hard = within(screen.getByTestId("marhala-band-hard"));
-    expect(hard.getByTestId("marhala-landing-10")).toHaveAttribute(
-      "data-landing-kind",
-      "boost",
+  it("ranks risk from the server's ranges, not from the band's name", () => {
+    // A rebalance that makes سهل the furthest-reaching band must re-rank the
+    // room's reading of the choice rather than leave a stale caption behind.
+    renderScreen(
+      sharedState({
+        movementRangesJson: JSON.stringify({
+          easy: { min: 5, max: 9 },
+          medium: { min: 2, max: 4 },
+          hard: { min: 1, max: 2 },
+        }),
+      }),
     );
-    expect(hard.getByTestId("marhala-landing-11")).toHaveAttribute(
-      "data-landing-kind",
-      "trap",
+    expect(screen.getByTestId("marhala-band-easy-risk")).toHaveAttribute(
+      "data-band-risk",
+      "bold",
+    );
+    expect(screen.getByTestId("marhala-band-hard-risk")).toHaveAttribute(
+      "data-band-risk",
+      "steady",
     );
   });
 
@@ -233,23 +256,6 @@ describe("the shared screen during the decision", () => {
     }
   });
 
-  it("clamps a near-finish preview to the finish", () => {
-    renderScreen(
-      sharedState({
-        positionsJson: JSON.stringify({ "team-alpha": 13, "team-beta": 2 }),
-      }),
-    );
-    const hard = within(screen.getByTestId("marhala-band-hard"));
-    expect(hard.getByTestId("marhala-landing-16")).toHaveAttribute(
-      "data-landing-kind",
-      "finish",
-    );
-    // No tile 17, 18 or 19 is claimed to exist.
-    for (const position of [17, 18, 19]) {
-      expect(screen.queryByTestId(`marhala-landing-${position}`)).toBeNull();
-    }
-  });
-
   it("shows no question before a band is committed", () => {
     renderScreen();
     expect(screen.queryByTestId("marhala-question")).toBeNull();
@@ -275,14 +281,14 @@ describe("the shared screen with a question open", () => {
     expect(chip).toHaveTextContent("2–4");
   });
 
-  it("highlights the tiles that band could still reach", () => {
+  it("never paints the tiles that band could still reach", () => {
     render(<MarhalaScreen runtime={runtime(questionState())} />);
-    for (const position of [7, 8, 9]) {
-      expect(screen.getByTestId(`marhala-tile-${position}`)).toHaveAttribute(
-        "data-tile-highlighted",
-        "true",
-      );
-    }
+    // The server still sends `possibleLandingsJson`; the screen simply stops
+    // spending it, so the room keeps the uncertainty until the answer lands.
+    expect(document.querySelector("[data-tile-highlighted]")).toBeNull();
+    expect(screen.getByTestId("marhala-screen")).not.toHaveTextContent(
+      "الإجابة الصحيحة تنقلهم",
+    );
   });
 
   it("counts down from the server's own deadline", () => {
@@ -349,11 +355,10 @@ describe("a resolved turn on the shared screen", () => {
     expect(line).toHaveTextContent("بقوا في مكانهم");
     expect(screen.queryByTestId("marhala-movement-reveal")).toBeNull();
     // The token is exactly where the projection says, with no punishment move.
-    expect(
-      within(screen.getByTestId("marhala-tile-5")).getByTestId(
-        "marhala-token-team-alpha",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("marhala-token-team-alpha")).toHaveAttribute(
+      "data-token-position",
+      "5",
+    );
   });
 
   it("shows no movement for a timeout, and says the clock ran out", () => {
@@ -420,11 +425,10 @@ describe("a resolved turn on the shared screen", () => {
         )}
       />,
     );
-    expect(
-      within(screen.getByTestId("marhala-tile-13")).getByTestId(
-        "marhala-token-team-alpha",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("marhala-token-team-alpha")).toHaveAttribute(
+      "data-token-position",
+      "13",
+    );
     expect(screen.queryByTestId("marhala-movement-reveal")).toBeNull();
   });
 
@@ -598,6 +602,7 @@ describe("a resolved turn on the shared screen", () => {
   });
 
   it("presents the outcome in one step under reduced motion", () => {
+    vi.useFakeTimers();
     mocks.reducedMotion = true;
     window.matchMedia = ((query: string) => ({
       matches: query.includes("reduced-motion"),
@@ -625,13 +630,22 @@ describe("a resolved turn on the shared screen", () => {
         )}
       />,
     );
-    // No walk, but the record is still readable: final tile plus what happened.
-    expect(
-      within(screen.getByTestId("marhala-tile-13")).getByTestId(
-        "marhala-token-team-alpha",
-      ),
-    ).toBeInTheDocument();
+    // No walk: the token is on its final tile from the first paint, while the
+    // centre holds the authoritative movement briefly instead of reeling.
+    expect(screen.getByTestId("marhala-token-team-alpha")).toHaveAttribute(
+      "data-token-position",
+      "13",
+    );
+    expect(screen.getByTestId("marhala-movement-roll")).toHaveAttribute(
+      "data-roll-settled",
+      "true",
+    );
+    // Then the standing record, readable for the rest of the turn.
+    act(() => {
+      vi.advanceTimersByTime(1200);
+    });
     expect(screen.getByTestId("marhala-last-turn")).toHaveTextContent("قفزة");
+    vi.useRealTimers();
   });
 });
 
@@ -1061,6 +1075,329 @@ describe("multimodal question presentation (image, audio, text)", () => {
     // Ensure hidden filenames or answers are never in text content
     expect(container.textContent).not.toContain("asset-123.webp");
     expect(container.textContent).not.toContain("https://");
+  });
+});
+
+describe("the movement beat over the board", () => {
+  const renderScreen = (state = sharedState()) =>
+    render(<MarhalaScreen runtime={runtime(state)} />);
+  const turn = (overrides: Record<string, unknown> = {}) => ({
+    turnNumber: 3,
+    teamId: "team-alpha",
+    difficulty: "medium",
+    correct: true,
+    resolvedBy: "answer",
+    ...overrides,
+  });
+
+  it("stays out of the way when nothing is moving", () => {
+    // A calm board is sixteen readable squares. Whose turn it is already sits in
+    // the screen header, so an overlay repeating it would cover four squares for
+    // nothing — it appears only for the movement beat.
+    renderScreen();
+    expect(screen.queryByTestId("marhala-board-centre")).toBeNull();
+    expect(screen.getByTestId("marhala-screen")).toHaveTextContent("ألفا");
+  });
+
+  it("settles the roll on the server's movement, never a value of its own", () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = render(
+        <MarhalaScreen runtime={runtime(questionState())} />,
+      );
+      rerender(
+        <MarhalaScreen
+          runtime={runtime(
+            sharedState({
+              positionsJson: JSON.stringify({
+                "team-alpha": 13,
+                "team-beta": 1,
+              }),
+              lastTurnJson: JSON.stringify(
+                turn({
+                  movement: 3,
+                  baseLanding: 8,
+                  tile: "boost",
+                  finalLanding: 13,
+                }),
+              ),
+            }),
+          )}
+        />,
+      );
+      const roll = () => screen.getByTestId("marhala-movement-roll");
+      // Reel through the beat, then hold on the committed number.
+      act(() => void vi.advanceTimersByTime(820));
+      expect(roll()).toHaveAttribute("data-roll-settled", "true");
+      expect(roll()).toHaveAttribute("data-roll-value", "3");
+      const centre = screen.getByTestId("marhala-board-centre");
+      expect(centre).toHaveTextContent("+3");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("converges on the authoritative position when a snapshot outruns the replay", () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = render(
+        <MarhalaScreen runtime={runtime(questionState())} />,
+      );
+      rerender(
+        <MarhalaScreen
+          runtime={runtime(
+            sharedState({
+              positionsJson: JSON.stringify({
+                "team-alpha": 13,
+                "team-beta": 1,
+              }),
+              lastTurnJson: JSON.stringify(
+                turn({
+                  movement: 3,
+                  baseLanding: 8,
+                  tile: "boost",
+                  finalLanding: 13,
+                }),
+              ),
+            }),
+          )}
+        />,
+      );
+      // A newer snapshot lands mid-replay: the next turn has already begun.
+      rerender(
+        <MarhalaScreen
+          runtime={runtime(
+            sharedState({
+              turnNumber: 4,
+              activeTeamId: "team-beta",
+              positionsJson: JSON.stringify({
+                "team-alpha": 13,
+                "team-beta": 6,
+              }),
+            }),
+          )}
+        />,
+      );
+      act(() => void vi.advanceTimersByTime(4000));
+      // Server truth wins; no animation holds a token behind.
+      expect(tokenTile("team-alpha")).toBe(13);
+      expect(tokenTile("team-beta")).toBe(6);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("the frontend never becomes a second source of truth", () => {
+  const sources = [
+    "src/features/live-game-session/match/marhala.presentation.ts",
+    "src/features/live-game-session/match/components/marhala-board.tsx",
+    "src/features/live-game-session/components/marhala-screen.tsx",
+    "src/features/live-game-session/components/marhala-phone-panel.tsx",
+    "src/features/live-game-session/hooks/use-marhala-turn-replay.ts",
+    "src/features/live-game-session/match/components/marhala-movement-roll.tsx",
+  ];
+
+  it.each(sources)("resolves no gameplay of its own in %s", (relative) => {
+    const source = readFileSync(resolve(process.cwd(), relative), "utf8");
+    // A roll, a landing and a tile effect are all the server's. Anything that
+    // could invent one here would let the board disagree with the runtime.
+    expect(source).not.toContain("Math.random");
+    expect(source).not.toContain("crypto.getRandomValues");
+  });
+});
+
+describe("the movement roll only reels what the band can produce", () => {
+  const RANGES = {
+    easy: { min: 1, max: 2 },
+    medium: { min: 2, max: 4 },
+    hard: { min: 4, max: 6 },
+  } as const;
+
+  /**
+   * Every value the reel put on screen across the whole beat, in order.
+   *
+   * Sampled rather than timed: the assertion is *which numbers were shown*, not
+   * the pace they were shown at.
+   */
+  const reelValues = (
+    band: keyof typeof RANGES,
+    movement: number,
+    reduced = false,
+  ): { seen: number[]; final: string | null; settledAt: number | null } => {
+    mocks.reducedMotion = reduced;
+    window.matchMedia = ((query: string) => ({
+      matches: reduced && query.includes("reduce"),
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as never;
+    vi.useFakeTimers();
+    try {
+      const { rerender } = render(
+        <MarhalaScreen
+          runtime={runtime(
+            sharedState({
+              phase: "question",
+              selectedDifficulty: band,
+              positionsJson: JSON.stringify({
+                "team-alpha": 1,
+                "team-beta": 1,
+              }),
+            }),
+          )}
+        />,
+      );
+      rerender(
+        <MarhalaScreen
+          runtime={runtime(
+            sharedState({
+              positionsJson: JSON.stringify({
+                "team-alpha": 1 + movement,
+                "team-beta": 1,
+              }),
+              lastTurnJson: JSON.stringify({
+                turnNumber: 3,
+                teamId: "team-alpha",
+                difficulty: band,
+                correct: true,
+                resolvedBy: "answer",
+                movement,
+                baseLanding: 1 + movement,
+                tile: "normal",
+                finalLanding: 1 + movement,
+              }),
+            }),
+          )}
+        />,
+      );
+      const seen: number[] = [];
+      let settledAt: number | null = null;
+      for (let elapsed = 0; elapsed <= 820; elapsed += 30) {
+        const node = screen.queryByTestId("marhala-movement-roll");
+        const value = node?.getAttribute("data-roll-value");
+        if (value) seen.push(Number(value));
+        if (
+          settledAt === null &&
+          node?.getAttribute("data-roll-settled") === "true"
+        ) {
+          settledAt = elapsed;
+        }
+        act(() => void vi.advanceTimersByTime(30));
+      }
+      const node = screen.queryByTestId("marhala-movement-roll");
+      return {
+        seen,
+        final: node?.getAttribute("data-roll-value") ?? null,
+        settledAt,
+      };
+    } finally {
+      vi.useRealTimers();
+      mocks.reducedMotion = false;
+    }
+  };
+
+  it.each([
+    ["easy", 2] as const,
+    ["medium", 3] as const,
+    ["hard", 5] as const,
+  ])("reels only %s's own values", (band, movement) => {
+    const { seen, final } = reelValues(band, movement);
+    const allowed = marhalaBandValues(RANGES[band]);
+    expect(seen.length).toBeGreaterThan(1);
+    // Not one frame offered a number this band cannot produce — no 1–6 die.
+    for (const value of seen) {
+      expect(allowed).toContain(value);
+    }
+    // And it ends on exactly what the server committed.
+    expect(final).toBe(String(movement));
+  });
+
+  it("never shows a value from another band", () => {
+    // سهل can only ever produce 1 or 2. A d6 reel would show 5 or 6 here.
+    const { seen } = reelValues("easy", 2);
+    expect(seen).not.toContain(4);
+    expect(seen).not.toContain(5);
+    expect(seen).not.toContain(6);
+    expect(seen).not.toContain(3);
+  });
+
+  it("actually reels rather than holding one number", () => {
+    const { seen } = reelValues("hard", 5);
+    expect(new Set(seen).size).toBeGreaterThan(1);
+  });
+
+  it("settles within the reveal beat, then holds the authoritative value", () => {
+    const { settledAt, final } = reelValues("medium", 4);
+    expect(settledAt).not.toBeNull();
+    expect(settledAt!).toBeLessThanOrEqual(820);
+    expect(final).toBe("4");
+  });
+
+  it("skips the reel under reduced motion and presents the result at once", () => {
+    const { seen, settledAt } = reelValues("hard", 6, true);
+    // One value, the server's, settled from the very first frame — no cycling
+    // and nothing that could ever show a number the band cannot produce.
+    expect(seen.length).toBeGreaterThan(0);
+    expect(new Set(seen)).toEqual(new Set([6]));
+    expect(settledAt).toBe(0);
+  });
+
+  it("hands the pawn replay the authoritative landing, not the reel's value", () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = render(
+        <MarhalaScreen
+          runtime={runtime(
+            sharedState({
+              phase: "question",
+              selectedDifficulty: "hard",
+              positionsJson: JSON.stringify({
+                "team-alpha": 1,
+                "team-beta": 1,
+              }),
+            }),
+          )}
+        />,
+      );
+      rerender(
+        <MarhalaScreen
+          runtime={runtime(
+            sharedState({
+              positionsJson: JSON.stringify({
+                "team-alpha": 2,
+                "team-beta": 1,
+              }),
+              lastTurnJson: JSON.stringify({
+                turnNumber: 3,
+                teamId: "team-alpha",
+                difficulty: "hard",
+                correct: true,
+                resolvedBy: "answer",
+                movement: 5,
+                baseLanding: 6,
+                tile: "trap",
+                finalLanding: 2,
+              }),
+            }),
+          )}
+        />,
+      );
+      // The token does not move while the roll is still reeling.
+      expect(tokenTile("team-alpha")).toBe(1);
+      const path: number[] = [1];
+      for (let sample = 0; sample < 40; sample += 1) {
+        act(() => void vi.advanceTimersByTime(200));
+        const tile = tokenTile("team-alpha");
+        if (tile !== undefined && tile !== path[path.length - 1]) {
+          path.push(tile);
+        }
+      }
+      // Walked 2→6 on the server's roll of 5, then the trap's own destination.
+      expect(path).toEqual([1, 2, 3, 4, 5, 6, 2]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

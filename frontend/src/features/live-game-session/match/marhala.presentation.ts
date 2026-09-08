@@ -136,6 +136,37 @@ export function marhalaBoardRows(): MarhalaTile[][] {
   );
 }
 
+/** One special tile's connection, source to the destination it actually has. */
+export interface MarhalaRoute {
+  from: number;
+  to: number;
+  kind: "boost" | "trap";
+}
+
+/**
+ * Every route the board should draw, read off the tiles themselves.
+ *
+ * Deliberately derived from the tiles passed in rather than from the module
+ * tables, so the board renders whatever configuration it is handed and a test can
+ * prove it by handing it a different one. A tile that sends a team nowhere
+ * contributes no route.
+ */
+export function marhalaRoutes(
+  tiles: readonly MarhalaTile[] = MARHALA_BOARD,
+): MarhalaRoute[] {
+  return tiles
+    .filter(
+      (tile) =>
+        (tile.kind === "boost" || tile.kind === "trap") &&
+        tile.destination !== tile.position,
+    )
+    .map((tile) => ({
+      from: tile.position,
+      to: tile.destination,
+      kind: tile.kind as "boost" | "trap",
+    }));
+}
+
 export function marhalaTileAt(position: number): MarhalaTile | undefined {
   return MARHALA_BOARD.find((tile) => tile.position === position);
 }
@@ -453,29 +484,81 @@ export function marhalaBandAvailable(
  * has run out of is information the room needs — hiding it would look like the
  * mechanic only ever had two.
  */
+/**
+ * How bold a band is, relative to the other two.
+ *
+ * Ranked from the movement ranges the server actually sent rather than hardcoded
+ * per difficulty, so a rebalance in `MARHALA_MOVEMENT_RANGES` re-ranks the room's
+ * reading of the choice instead of leaving a stale caption behind. Ordering is by
+ * how far the band can reach, which is what the risk is made of.
+ */
+/**
+ * Every movement value a band can actually produce, in order.
+ *
+ * The one source the roll presentation is allowed to reel through. It is derived
+ * from the same range the difficulty panel shows — which is the server's
+ * `movementRanges`, defaulted from `MARHALA_MOVEMENT_RANGES` — so the animation
+ * can never offer the room a number the mechanic cannot produce, and a rebalance
+ * changes the reel without anyone editing it.
+ *
+ * Deliberately not a probability: the reel shows *which* values are possible, and
+ * says nothing about how likely any of them is. The runtime publishes no
+ * distribution and this must not imply one.
+ */
+export function marhalaBandValues(range: {
+  min: number;
+  max: number;
+}): number[] {
+  const values: number[] = [];
+  for (let value = range.min; value <= range.max; value += 1) {
+    values.push(value);
+  }
+  return values;
+}
+
+export type MarhalaBandRisk = "steady" | "balanced" | "bold";
+
+export function marhalaBandRisk(
+  difficulty: MarhalaDifficulty,
+  ranges: Record<MarhalaDifficulty, { min: number; max: number }>,
+): MarhalaBandRisk {
+  const ordered = [...DIFFICULTIES].sort(
+    (left, right) => ranges[left].max - ranges[right].max,
+  );
+  if (difficulty === ordered[0]) return "steady";
+  if (difficulty === ordered[ordered.length - 1]) return "bold";
+  return "balanced";
+}
+
+/**
+ * The three bands a team may elect.
+ *
+ * Deliberately carries the movement range and nothing about where that movement
+ * would land. Which tiles a band could reach is a *prediction*, and showing it
+ * before the question settles the room's argument for them — the uncertainty is
+ * the mechanic. The range is the risk being elected, so it stays.
+ *
+ * Every band is listed whether or not it is available, because a band the catalog
+ * has run out of is information the room needs — hiding it would look like the
+ * mechanic only ever had two.
+ */
 export function marhalaBandPreviews(view: MarhalaView): Array<{
   difficulty: MarhalaDifficulty;
   label: string;
   range: { min: number; max: number };
-  landings: number[];
-  tiles: MarhalaTile[];
+  risk: MarhalaBandRisk;
   available: boolean;
 }> {
-  const from = marhalaPositionOf(view, view.activeTeamId);
   return MARHALA_BANDS.map((band) => {
     const range = view.movementRanges[band.difficulty] ?? {
       min: band.min,
       max: band.max,
     };
-    const landings = marhalaPossibleLandings(from, range);
     return {
       difficulty: band.difficulty,
       label: band.label,
       range,
-      landings,
-      tiles: landings
-        .map((position) => marhalaTileAt(position))
-        .filter((tile): tile is MarhalaTile => Boolean(tile)),
+      risk: marhalaBandRisk(band.difficulty, view.movementRanges),
       available: marhalaBandAvailable(view, band.difficulty),
     };
   });

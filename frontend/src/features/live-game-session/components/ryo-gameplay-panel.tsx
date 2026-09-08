@@ -5,6 +5,8 @@ import { HelpCircle, Lock, Swords, Unlock } from "lucide-react";
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
 import { AnswerOption } from "../match/components/answer-option";
+import { MobileActionArea } from "../match/components/mobile-action-area";
+import { useMobileSurface } from "../match/components/mobile-gameplay-shell";
 import { teamIdentityOf, type TeamIdentity } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
 import { BidiText } from "@/components/akwaan/bidi-text";
@@ -33,7 +35,11 @@ import { MarhalaQuestionAudio } from "./marhala-screen";
 interface RyoItem {
   id: string;
   prompt: AuthoredText;
-  media?: { type: "image" | "audio"; url: string; altText?: AuthoredText } | null;
+  media?: {
+    type: "image" | "audio";
+    url: string;
+    altText?: AuthoredText;
+  } | null;
   answerMode: "multiple_choice" | "closest";
   options?: Array<{ id: string; label: AuthoredText }> | null;
 }
@@ -63,13 +69,15 @@ export function RyoGameplayPanel({
   // This phone's own decision, echoed back after it locks in. It is the local
   // player's own choice — never the opponent's — so showing it leaks nothing.
   const [myDecision, setMyDecision] = useState<string>();
+  const [sending, setSending] = useState(false);
   const round = runtime.activeRound;
   const interaction = round?.interaction;
   const prompt = interaction?.prompt;
   const item = parseItem(prompt?.payload.itemJson);
   const role = String(prompt?.payload.actorRole ?? "spectator");
   const terminal = Boolean(
-    interaction && ["resolved", "cancelled", "expired"].includes(interaction.status),
+    interaction &&
+    ["resolved", "cancelled", "expired"].includes(interaction.status),
   );
   // Fair-start multi-surface shell: while the first RYO item is waiting for every
   // surface (shared screen, answerer, decider) to mount, the server exposes only
@@ -147,6 +155,7 @@ export function RyoGameplayPanel({
     isAssignedActor &&
     !alreadySubmitted &&
     connection === "connected";
+  const phone = useMobileSurface();
   const deciderName = (participantId: unknown) =>
     snapshot?.participants.find((person) => person.id === participantId)
       ?.displayName ?? "";
@@ -160,24 +169,68 @@ export function RyoGameplayPanel({
   const opposingTeamId = String(round?.modeState.opposingTeamId ?? "");
   const team = (id: string) =>
     snapshot?.teams.find((candidate) => candidate.id === id)?.name ?? "الفريق";
-  const submit = (payload: Record<string, string | number>) =>
-    gameplayCommand("interaction-submit", { roundId: round?.id, payload });
+  useEffect(() => {
+    setSending(false);
+  }, [interaction?.id, interaction?.status, submissions.length, itemIndex]);
+  useEffect(() => {
+    setNumber("");
+    setMyDecision(undefined);
+  }, [interaction?.id, itemIndex]);
 
-  const answeringIdentity = teamIdentityOf(answeringTeamId, snapshot?.teams ?? []);
-  const opposingIdentity = teamIdentityOf(opposingTeamId, snapshot?.teams ?? []);
+  const submit = (payload: Record<string, string | number>) => {
+    if (!canSubmit || sending) return;
+    setSending(true);
+    gameplayCommand("interaction-submit", { roundId: round?.id, payload });
+  };
+
+  const answeringIdentity = teamIdentityOf(
+    answeringTeamId,
+    snapshot?.teams ?? [],
+  );
+  const opposingIdentity = teamIdentityOf(
+    opposingTeamId,
+    snapshot?.teams ?? [],
+  );
 
   if (awaiting) {
     return (
       <ChallengeFrame
-        eyebrow="اقرأ خصمك"
+        {...(phone ? {} : { eyebrow: "اقرأ خصمك" })}
+        compact={phone}
         title="السؤال 1 من 3"
         progressValue={0}
-        className="mx-auto max-w-3xl"
+        className={phone ? "flex min-h-0 flex-1 flex-col" : "mx-auto max-w-3xl"}
       >
-        <div className="grid place-items-center py-16" data-testid="ryo-preparing">
+        <div
+          className="grid place-items-center py-16"
+          data-testid="ryo-preparing"
+        >
           <AkwaanLoader label="نجهّز التحدي…" />
         </div>
       </ChallengeFrame>
+    );
+  }
+
+  if (phone) {
+    return (
+      <PhoneRyoController
+        runtime={runtime}
+        item={item}
+        role={role}
+        itemIndex={itemIndex}
+        number={number}
+        setNumber={setNumber}
+        remainingMs={remainingMs}
+        canSubmit={canSubmit}
+        sending={sending}
+        alreadySubmitted={alreadySubmitted}
+        isAssignedActor={isAssignedActor}
+        assignedName={assignedName}
+        myDecision={myDecision}
+        setMyDecision={setMyDecision}
+        submit={submit}
+        outcome={interaction?.outcome?.payload}
+      />
     );
   }
 
@@ -233,46 +286,65 @@ export function RyoGameplayPanel({
             {/* Second-largest, immediately after it: in a ~10-second blind window
                 the clock is the only tension driver in the mechanic. */}
             {remainingMs !== undefined && (
-              <ChallengeCountdown remainingMs={remainingMs} variant="prominent" />
+              <ChallengeCountdown
+                remainingMs={remainingMs}
+                variant="prominent"
+              />
             )}
 
-            {role === "answering" && canSubmit && item.answerMode === "multiple_choice" && (
-              <div
-                className="grid w-full gap-2 sm:grid-cols-2"
-                data-testid="ryo-answer-controls"
-              >
-                {item.options?.map((option) => (
-                  <AnswerOption
-                    key={option.id}
+            {role === "answering" &&
+              canSubmit &&
+              item.answerMode === "multiple_choice" && (
+                <div
+                  className="grid w-full gap-2 sm:grid-cols-2"
+                  data-testid="ryo-answer-controls"
+                >
+                  {item.options?.map((option) => (
+                    <AnswerOption
+                      key={option.id}
+                      onClick={() =>
+                        submit({
+                          kind: "answer",
+                          mode: "multiple_choice",
+                          optionId: option.id,
+                        })
+                      }
+                    >
+                      <BidiText>{authoredText(option.label)}</BidiText>
+                    </AnswerOption>
+                  ))}
+                </div>
+              )}
+            {role === "answering" &&
+              canSubmit &&
+              item.answerMode === "closest" && (
+                <div
+                  className="mx-auto flex max-w-sm gap-2"
+                  data-testid="ryo-answer-controls"
+                >
+                  <Input
+                    dir="ltr"
+                    inputMode="decimal"
+                    value={number}
+                    onChange={(event) => setNumber(event.target.value)}
+                    placeholder="اكتب تقديرك الرقمي"
+                  />
+                  <Button
+                    disabled={
+                      !number.trim() || !Number.isFinite(Number(number))
+                    }
                     onClick={() =>
-                      submit({ kind: "answer", mode: "multiple_choice", optionId: option.id })
+                      submit({
+                        kind: "answer",
+                        mode: "closest",
+                        value: Number(number),
+                      })
                     }
                   >
-                    <BidiText>{authoredText(option.label)}</BidiText>
-                  </AnswerOption>
-                ))}
-              </div>
-            )}
-            {role === "answering" && canSubmit && item.answerMode === "closest" && (
-              <div
-                className="mx-auto flex max-w-sm gap-2"
-                data-testid="ryo-answer-controls"
-              >
-                <Input
-                  dir="ltr"
-                  inputMode="decimal"
-                  value={number}
-                  onChange={(event) => setNumber(event.target.value)}
-                  placeholder="اكتب تقديرك الرقمي"
-                />
-                <Button
-                  disabled={!number.trim() || !Number.isFinite(Number(number))}
-                  onClick={() => submit({ kind: "answer", mode: "closest", value: Number(number) })}
-                >
-                  إرسال
-                </Button>
-              </div>
-            )}
+                    إرسال
+                  </Button>
+                </div>
+              )}
             {role === "opposing" && canSubmit && (
               /**
                * Steal and Trust, weighted identically.
@@ -317,20 +389,21 @@ export function RyoGameplayPanel({
                 ))}
               </div>
             )}
-            {(role === "spectator" || alreadySubmitted || !canSubmit) && !terminal && (
-              <p
-                className="rounded-[var(--radius)] bg-muted p-4 font-bold text-muted-foreground"
-                data-testid="ryo-waiting"
-              >
-                {alreadySubmitted
-                  ? myDecision
-                    ? `اخترت «${ryoDecisionRevealLabel(myDecision)}». ننتظر الطرف الثاني…`
-                    : "وصل اختيارك. ننتظر الطرف الثاني…"
-                  : !isAssignedActor && role !== "spectator" && assignedName
-                    ? `${assignedName} هو صاحب القرار في هذه الفقرة. ناقشوها معه.`
-                    : "ننتظر اختيارات الفريقين…"}
-              </p>
-            )}
+            {(role === "spectator" || alreadySubmitted || !canSubmit) &&
+              !terminal && (
+                <p
+                  className="rounded-[var(--radius)] bg-muted p-4 font-bold text-muted-foreground"
+                  data-testid="ryo-waiting"
+                >
+                  {alreadySubmitted
+                    ? myDecision
+                      ? `اخترت «${ryoDecisionRevealLabel(myDecision)}». ننتظر الطرف الثاني…`
+                      : "وصل اختيارك. ننتظر الطرف الثاني…"
+                    : !isAssignedActor && role !== "spectator" && assignedName
+                      ? `${assignedName} هو صاحب القرار في هذه الفقرة. ناقشوها معه.`
+                      : "ننتظر اختيارات الفريقين…"}
+                </p>
+              )}
           </section>
         ) : (
           <p className="rounded-[var(--radius)] bg-muted p-6 text-center font-bold text-muted-foreground">
@@ -372,6 +445,244 @@ export function RyoGameplayPanel({
         )}
       </div>
     </ChallengeFrame>
+  );
+}
+
+function PhoneRyoController({
+  runtime,
+  item,
+  role,
+  itemIndex,
+  number,
+  setNumber,
+  remainingMs,
+  canSubmit,
+  sending,
+  alreadySubmitted,
+  isAssignedActor,
+  assignedName,
+  myDecision,
+  setMyDecision,
+  submit,
+  outcome,
+}: {
+  runtime: GameplayRuntimeSnapshot;
+  item?: RyoItem;
+  role: string;
+  itemIndex: number;
+  number: string;
+  setNumber: (value: string) => void;
+  remainingMs?: number;
+  canSubmit: boolean;
+  sending: boolean;
+  alreadySubmitted: boolean;
+  isAssignedActor: boolean;
+  assignedName: string;
+  myDecision?: string;
+  setMyDecision: (decision: string) => void;
+  submit: (payload: Record<string, string | number>) => void;
+  outcome?: Record<string, unknown>;
+}) {
+  const completed = runtime.modeState.phase === "completed";
+  const numericAnswerValid =
+    number.trim().length > 0 && Number.isFinite(Number(number));
+
+  return (
+    <ChallengeFrame
+      compact
+      title={
+        completed ? "انتهى التحدي" : `السؤال ${Math.min(3, itemIndex + 1)} من 3`
+      }
+      progressValue={completed ? 100 : (Math.min(3, itemIndex) / 3) * 100}
+      aside={
+        remainingMs !== undefined && !outcome ? (
+          <ChallengeCountdown remainingMs={remainingMs} />
+        ) : null
+      }
+      className="flex min-h-0 flex-1 flex-col"
+    >
+      <div
+        className="flex min-h-0 flex-1 flex-col gap-3 text-center"
+        data-testid="ryo-phone-controller"
+      >
+        {outcome ? (
+          <section
+            className="flex flex-1 flex-col items-center justify-center gap-2"
+            data-testid="ryo-phone-reveal"
+          >
+            <p className="text-2xl font-black text-foreground">
+              {outcome.correct === true ? "إجابة صحيحة" : "إجابة غير صحيحة"}
+            </p>
+            <p className="font-bold text-muted-foreground">
+              قرار الخصم: {ryoDecisionRevealLabel(String(outcome.decision))}
+            </p>
+            <p className="text-sm font-bold text-muted-foreground">
+              تابعوا النتيجة على الشاشة
+            </p>
+          </section>
+        ) : completed ? (
+          <PhoneRyoWaiting testId="ryo-phone-complete">
+            انتهى التحدي — تابعوا النتيجة على الشاشة
+          </PhoneRyoWaiting>
+        ) : item ? (
+          <>
+            <h2 className="flex shrink-0 items-center justify-center text-base font-black leading-relaxed text-foreground">
+              <BidiText>{authoredText(item.prompt)}</BidiText>
+            </h2>
+
+            {role === "answering" &&
+              canSubmit &&
+              item.answerMode === "multiple_choice" && (
+                <div
+                  className="flex min-h-0 flex-1 flex-col"
+                  data-testid="ryo-phone-answer-controls"
+                >
+                  {sending && (
+                    <p className="flex flex-1 items-center justify-center font-black text-muted-foreground">
+                      جارٍ تثبيت اختيارك…
+                    </p>
+                  )}
+                  <MobileActionArea className="grid grid-cols-1 sm:grid-cols-2">
+                    {item.options?.map((option) => (
+                      <AnswerOption
+                        key={option.id}
+                        disabled={sending}
+                        onClick={() =>
+                          submit({
+                            kind: "answer",
+                            mode: "multiple_choice",
+                            optionId: option.id,
+                          })
+                        }
+                      >
+                        <BidiText>{authoredText(option.label)}</BidiText>
+                      </AnswerOption>
+                    ))}
+                  </MobileActionArea>
+                </div>
+              )}
+
+            {role === "answering" &&
+              canSubmit &&
+              item.answerMode === "closest" && (
+                <div
+                  className="flex min-h-0 flex-1 flex-col"
+                  data-testid="ryo-phone-answer-controls"
+                >
+                  <div className="flex flex-1 items-center">
+                    <Input
+                      dir="ltr"
+                      inputMode="decimal"
+                      enterKeyHint="send"
+                      value={number}
+                      onChange={(event) => setNumber(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && numericAnswerValid) {
+                          submit({
+                            kind: "answer",
+                            mode: "closest",
+                            value: Number(number),
+                          });
+                        }
+                      }}
+                      placeholder="اكتب تقديرك الرقمي"
+                      className="h-20 text-center text-3xl font-black"
+                      data-testid="ryo-phone-number"
+                    />
+                  </div>
+                  <MobileActionArea>
+                    <Button
+                      size="lg"
+                      disabled={!numericAnswerValid || sending}
+                      onClick={() =>
+                        submit({
+                          kind: "answer",
+                          mode: "closest",
+                          value: Number(number),
+                        })
+                      }
+                      className="h-14 w-full font-black"
+                      data-testid="ryo-phone-number-submit"
+                    >
+                      {sending ? "جارٍ الإرسال…" : "إرسال الإجابة"}
+                    </Button>
+                  </MobileActionArea>
+                </div>
+              )}
+
+            {role === "opposing" && canSubmit && (
+              <section
+                className="flex min-h-0 flex-1 flex-col"
+                data-testid="ryo-phone-decision-controls"
+              >
+                <p className="flex flex-1 items-center justify-center text-sm font-bold text-muted-foreground">
+                  {sending
+                    ? "جارٍ تثبيت اختيارك…"
+                    : "اقرأوا الفريق الثاني واختاروا"}
+                </p>
+                <MobileActionArea className="grid grid-cols-2">
+                  {DECISIONS.map(({ decision, label, description, Icon }) => (
+                    <Button
+                      key={decision}
+                      size="lg"
+                      variant="outline"
+                      data-decision={decision}
+                      disabled={sending}
+                      className="h-auto min-h-20 flex-col gap-1 whitespace-normal border-2 bg-card px-2 py-3 text-center font-black"
+                      onClick={() => {
+                        setMyDecision(decision);
+                        submit({ kind: "decision", decision });
+                      }}
+                    >
+                      <Icon className="size-5" aria-hidden />
+                      <span>{label}</span>
+                      <span className="text-[0.65rem] font-medium leading-tight text-muted-foreground">
+                        {description}
+                      </span>
+                    </Button>
+                  ))}
+                </MobileActionArea>
+              </section>
+            )}
+
+            {(alreadySubmitted || !canSubmit) && (
+              <PhoneRyoWaiting testId="ryo-phone-waiting">
+                {alreadySubmitted
+                  ? sending
+                    ? "جارٍ تثبيت اختيارك…"
+                    : myDecision
+                      ? `اخترت «${ryoDecisionRevealLabel(myDecision)}». ننتظر الطرف الثاني…`
+                      : "وصل اختيارك. ننتظر الطرف الثاني…"
+                  : !isAssignedActor && role !== "spectator" && assignedName
+                    ? `${assignedName} هو صاحب القرار. ناقشوها معه.`
+                    : "ننتظر صاحب القرار…"}
+              </PhoneRyoWaiting>
+            )}
+          </>
+        ) : (
+          <PhoneRyoWaiting testId="ryo-phone-between-items">
+            جارٍ تجهيز السؤال التالي…
+          </PhoneRyoWaiting>
+        )}
+      </div>
+    </ChallengeFrame>
+  );
+}
+
+function PhoneRyoWaiting({
+  children,
+  testId,
+}: {
+  children: React.ReactNode;
+  testId: string;
+}) {
+  return (
+    <p
+      className="flex flex-1 items-center justify-center px-4 font-black text-muted-foreground"
+      data-testid={testId}
+    >
+      {children}
+    </p>
   );
 }
 
@@ -449,4 +760,3 @@ function TeamLockIndicator({
     </p>
   );
 }
-

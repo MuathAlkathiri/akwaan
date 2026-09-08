@@ -51,7 +51,7 @@ const runtime = (modeState: Record<string, unknown>, actions: string[] = []) =>
 beforeEach(() => mocks.gameplayCommand.mockReset());
 
 describe("من أول نغمة", () => {
-  it("shows the one clue, current bid, lower numeric controls, and pass to the current team", async () => {
+  it("shows the one clue, current bid, only-legal second choices, and pass", async () => {
     render(
       <FirstNoteGameplayPanel
         runtime={runtime(state(), [
@@ -67,14 +67,30 @@ describe("من أول نغمة", () => {
     expect(screen.getByTestId("first-note-auction")).toHaveTextContent(
       "9 ثانية",
     );
-    await userEvent.clear(screen.getByTestId("first-note-bid-input"));
-    await userEvent.type(screen.getByTestId("first-note-bid-input"), "8");
+    // The floor is 9, so the phone offers 1..8 and nothing at or above it.
+    expect(screen.queryByTestId("first-note-bid-9")).toBeNull();
+    await userEvent.click(screen.getByTestId("first-note-bid-8"));
     await userEvent.click(screen.getByTestId("first-note-submit-bid"));
     expect(mocks.gameplayCommand).toHaveBeenCalledWith("gameplay-command", {
       roundId: "round",
       commandType: "submit-first-note-bid",
       payload: { seconds: 8 },
     });
+  });
+
+  it("passes with its own command, in its own decision window", async () => {
+    // Deliberately a fresh render: once a bid is in flight the phone blocks a
+    // second command for that window, so passing straight after bidding is not
+    // something the controller allows any more.
+    render(
+      <FirstNoteGameplayPanel
+        runtime={runtime(state(), [
+          "mode:submit-first-note-bid",
+          "mode:pass-first-note-bid",
+        ])}
+        actor="participant"
+      />,
+    );
     await userEvent.click(screen.getByTestId("first-note-pass"));
     expect(mocks.gameplayCommand).toHaveBeenLastCalledWith(
       "gameplay-command",
@@ -135,7 +151,7 @@ describe("من أول نغمة", () => {
       screen.getByTestId("first-note-answer-input"),
       "الأماكن",
     );
-    await userEvent.click(screen.getByRole("button", { name: "إرسال" }));
+    await userEvent.click(screen.getByTestId("first-note-submit-answer"));
     expect(mocks.gameplayCommand).toHaveBeenLastCalledWith(
       "gameplay-command",
       expect.objectContaining({ payload: { answer: "الأماكن" } }),

@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
 import { MarhalaBoard } from "../match/components/marhala-board";
+import { MarhalaMovementRoll } from "../match/components/marhala-movement-roll";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
 import {
@@ -28,10 +29,11 @@ import {
   MARHALA_CHALLENGE_NAME,
   MARHALA_DIFFICULTY_LABEL,
   marhalaBandPreviews,
+  marhalaBandValues,
   marhalaPositionOf,
   marhalaPromptText,
   readMarhalaView,
-  type MarhalaTile,
+  type MarhalaBandRisk,
   type MarhalaView,
 } from "../match/marhala.presentation";
 import type { GameplayRuntimeSnapshot } from "../model";
@@ -76,10 +78,6 @@ export function MarhalaScreen({
   const teamName = (id: string) =>
     teams.find((team) => team.id === id)?.name ?? "الفريق";
   const activeIdentity = teamIdentityOf(view.activeTeamId, teams);
-  // While the question is open the board shows what this band could still reach;
-  // during the decision the bands carry their own destinations instead, so the
-  // board is not painted with three overlapping sets at once.
-  const highlight = view.phase === "question" ? view.possibleLandings : [];
 
   return (
     <section
@@ -117,15 +115,36 @@ export function MarhalaScreen({
         </div>
       </header>
 
-      {/* Board first and biggest; the side column supports it. On a laptop the
-          whole 4×4 is readable without scrolling, which is the point of it. */}
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-        <div className="surface-card p-3 sm:p-4">
+      {/* The board is the hero; the side column supports it. It is sized to stay
+          whole on a 1280×720 shared screen without scrolling, which is the point
+          of it. */}
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <div className="grid place-items-center">
           <MarhalaBoard
+            // The board is square, so on a short shared screen its *width* has
+            // to be governed by the height left over — otherwise a wide 1280×720
+            // TV pushes the finish square below the fold and the room scrolls.
+            className="max-w-[min(100%,calc(100dvh-11rem))]"
             teams={teams}
             positions={replay.positions}
             activeTeamId={view.activeTeamId}
-            highlight={highlight}
+            // Only during the movement beat. A calm board is sixteen readable
+            // squares; whose turn it is already sits in the header above, so an
+            // always-on overlay would cover four squares to repeat it.
+            {...(replay.replaying
+              ? {
+                  centre: (
+                    <BoardCentre
+                      view={view}
+                      teamName={teamName}
+                      movement={replay.movement}
+                      rolling={replay.phase === "reveal"}
+                      reducedMotion={reducedMotion}
+                      {...(replay.effect ? { effect: replay.effect } : {})}
+                    />
+                  ),
+                }
+              : {})}
             {...(replay.effect ? { effect: replay.effect } : {})}
             {...(replay.travellingTeamId
               ? { travellingTeamId: replay.travellingTeamId }
@@ -156,6 +175,108 @@ export function MarhalaScreen({
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * What each risk tier says out loud.
+ *
+ * The tier itself is ranked from the server's own movement ranges, so this table
+ * only supplies the words — it never decides which band is the bold one. No
+ * probability is stated anywhere: the runtime publishes none, and inventing one
+ * would be a claim the mechanic cannot keep.
+ */
+const BAND_RISK: Record<
+  MarhalaBandRisk,
+  { label: string; blurb: string; tone: string }
+> = {
+  steady: {
+    label: "تقدّم مضمون",
+    blurb: "خطوات قصيرة، لكن أقل تعرّضًا للفخاخ.",
+    tone: "text-muted-foreground",
+  },
+  balanced: {
+    label: "متوازن",
+    blurb: "تقدّم معقول مقابل مخاطرة معقولة.",
+    tone: "text-foreground",
+  },
+  bold: {
+    label: "مخاطرة عالية",
+    blurb: "أبعد تقدّم ممكن — ومدى أوسع قد يوقعكم في فخ.",
+    tone: "text-brand-gold",
+  },
+};
+
+/**
+ * The middle of the ring.
+ *
+ * Calm by default — whose turn it is, and nothing else. While a committed turn is
+ * being replayed it becomes the focal point and shows the movement the *server*
+ * decided, then names the tile that reacted. It never computes a value and never
+ * holds state the board does not already have.
+ */
+function BoardCentre({
+  view,
+  teamName,
+  movement,
+  rolling,
+  reducedMotion,
+  effect,
+}: {
+  view: MarhalaView;
+  teamName: (id: string) => string;
+  movement?: number;
+  rolling: boolean;
+  reducedMotion: boolean;
+  effect?: { position: number; kind: "boost" | "trap" };
+}) {
+  if (movement !== undefined) {
+    // The band the team actually elected on this turn, read off the committed
+    // record, and its values read off the server's ranges. The reel can only ever
+    // show numbers that band can produce.
+    const band = view.lastTurn?.difficulty;
+    const range = band ? view.movementRanges[band] : undefined;
+    return (
+      <div data-testid="marhala-centre-movement" className="space-y-1">
+        <MarhalaMovementRoll
+          values={range ? marhalaBandValues(range) : []}
+          result={movement}
+          rolling={rolling}
+          reducedMotion={reducedMotion}
+          teamName={teamName(view.lastTurn?.teamId ?? "")}
+        />
+        {effect && (
+          <p
+            data-testid="marhala-centre-effect"
+            className={cn(
+              "text-xs font-black sm:text-sm",
+              // Gold for a launch, rose for a trap — the same two colours the
+              // board itself paints those squares in.
+              effect.kind === "boost" ? "text-brand-gold" : "text-destructive",
+            )}
+          >
+            {effect.kind === "boost" ? "انطلاق" : "فخ"}
+          </p>
+        )}
+      </div>
+    );
+  }
+  if (view.phase === "completed") {
+    return (
+      <p className="text-sm font-black text-muted-foreground sm:text-lg">
+        انتهى السباق
+      </p>
+    );
+  }
+  return (
+    <div data-testid="marhala-centre-calm" className="space-y-0.5">
+      <p className="text-[0.7rem] font-black text-muted-foreground sm:text-xs">
+        الدور <span className="akwaan-numeral">{view.turnNumber}</span>
+      </p>
+      <p className="text-sm font-black leading-tight text-foreground sm:text-xl">
+        {teamName(view.activeTeamId)}
+      </p>
+    </div>
   );
 }
 
@@ -275,8 +396,15 @@ function DecisionPanel({
                 </span>
               </p>
               {band.available ? (
-                <p className="text-[0.7rem] font-bold text-muted-foreground">
-                  المربّعات المحتملة
+                <p
+                  className={cn(
+                    "text-[0.7rem] font-black",
+                    BAND_RISK[band.risk].tone,
+                  )}
+                  data-testid={`marhala-band-${band.difficulty}-risk`}
+                  data-band-risk={band.risk}
+                >
+                  {BAND_RISK[band.risk].label}
                 </p>
               ) : (
                 <p
@@ -288,11 +416,9 @@ function DecisionPanel({
               )}
             </div>
             {band.available && (
-              <ul className="mt-1.5 flex flex-wrap gap-1.5" dir="ltr">
-                {band.tiles.map((tile) => (
-                  <LandingChip key={tile.position} tile={tile} />
-                ))}
-              </ul>
+              <p className="mt-1 text-[0.7rem] font-bold leading-snug text-muted-foreground">
+                {BAND_RISK[band.risk].blurb}
+              </p>
             )}
           </li>
         ))}
@@ -301,45 +427,6 @@ function DecisionPanel({
   );
 }
 
-/** One reachable tile, named by what it does as well as by its number. */
-function LandingChip({ tile }: { tile: MarhalaTile }) {
-  const Icon =
-    tile.kind === "boost" ? Rocket : tile.kind === "trap" ? Zap : undefined;
-  return (
-    <li
-      data-testid={`marhala-landing-${tile.position}`}
-      data-landing-kind={tile.kind}
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-black",
-        tile.kind === "boost" &&
-          "border-brand-gold/60 bg-brand-gold/15 text-brand-gold",
-        tile.kind === "trap" &&
-          "border-destructive/50 bg-destructive/10 text-destructive",
-        tile.kind === "finish" &&
-          "border-brand-gold bg-brand-gold/25 text-brand-gold",
-        tile.kind === "normal" && "border-border bg-muted/60 text-foreground",
-      )}
-    >
-      <span className="akwaan-numeral">{tile.position}</span>
-      {Icon && <Icon className="size-3" aria-hidden />}
-      {tile.kind === "finish" && (
-        <span dir="rtl" className="text-[0.65rem]">
-          النهاية
-        </span>
-      )}
-      {tile.kind === "boost" && (
-        <span className="akwaan-numeral text-[0.65rem]">
-          →{tile.destination}
-        </span>
-      )}
-      {tile.kind === "trap" && (
-        <span className="akwaan-numeral text-[0.65rem]">
-          →{tile.destination}
-        </span>
-      )}
-    </li>
-  );
-}
 
 /**
  * The server is drawing the question.
@@ -587,14 +674,6 @@ function QuestionPanel({ view }: { view: MarhalaView }) {
       <p className="text-xl font-black leading-snug text-foreground sm:text-2xl">
         <BidiText>{marhalaPromptText(view)}</BidiText>
       </p>
-      {view.possibleLandings.length > 0 && (
-        <p className="text-xs font-bold text-muted-foreground">
-          الإجابة الصحيحة تنقلهم إلى أحد المربّعات{" "}
-          <span className="akwaan-numeral" dir="ltr">
-            {view.possibleLandings.join(" · ")}
-          </span>
-        </p>
-      )}
     </div>
   );
 }

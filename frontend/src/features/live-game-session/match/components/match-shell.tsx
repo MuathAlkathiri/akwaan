@@ -110,7 +110,11 @@ export function MatchShell({
     ) : undefined;
 
   return (
-    <div dir="rtl" className="relative" data-testid="match-shell">
+    <div
+      dir="rtl"
+      className="relative flex min-h-[100dvh] flex-col"
+      data-testid="match-shell"
+    >
       <Header variant="match" merged hud={hud} />
 
       {activeTeam && activeIdentity && showTurnBand && (
@@ -150,7 +154,11 @@ export function MatchShell({
         </div>
       )}
 
-      <div className="mx-auto w-full max-w-[92rem] px-3 pb-10 pt-3 sm:px-5">
+      {/* The Match owns the viewport, so this region takes whatever height the
+          HUD and turn band leave behind. A full board simply grows past it; a
+          transient state (hydrating, or failed) can centre itself inside it
+          instead of being stranded at the top of an empty canvas. */}
+      <div className="mx-auto flex w-full max-w-[92rem] flex-1 flex-col px-3 pb-10 pt-3 sm:px-5">
         {children}
       </div>
     </div>

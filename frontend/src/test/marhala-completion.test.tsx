@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { MarhalaResultRecap } from "@/features/live-game-session/match/components/marhala-result-recap";
@@ -63,16 +63,14 @@ describe("a race that was won", () => {
 
   it("shows the board as it finished, with both tokens on it", () => {
     render(<MarhalaResultRecap result={result()} snapshot={snapshot} />);
-    expect(
-      within(screen.getByTestId("marhala-tile-16")).getByTestId(
-        "marhala-token-team-alpha",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(screen.getByTestId("marhala-tile-9")).getByTestId(
-        "marhala-token-team-beta",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("marhala-token-team-alpha")).toHaveAttribute(
+      "data-token-position",
+      "16",
+    );
+    expect(screen.getByTestId("marhala-token-team-beta")).toHaveAttribute(
+      "data-token-position",
+      "9",
+    );
   });
 
   it("reads the winner's tile as the finish rather than as a number", () => {
@@ -164,10 +162,9 @@ describe("a result whose details never arrived", () => {
     // A missing record is not a reason to hide the recap; both teams are drawn on
     // the opening tile and the winner the Match recorded is still named.
     expect(screen.getByTestId("marhala-result-winner")).toBeInTheDocument();
-    expect(
-      within(screen.getByTestId("marhala-tile-1")).getByTestId(
-        "marhala-token-team-alpha",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("marhala-token-team-alpha")).toHaveAttribute(
+      "data-token-position",
+      "1",
+    );
   });
 });

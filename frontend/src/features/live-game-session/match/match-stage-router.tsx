@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -280,6 +280,11 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
   // being duplicated; once activated, `awaiting` is false and nothing is sent.
   const ackedRef = useRef<string | null>(null);
   const inFlightRef = useRef<string | null>(null);
+  // A newer snapshot that arrived while an attempt was in flight is a wake-up we
+  // must not lose: the in-flight guard drops it, but the attempt it deferred to
+  // is carrying revisions that are now stale, so the server may refuse it.
+  const retryOwedRef = useRef(false);
+  const [retryTick, setRetryTick] = useState(0);
   useEffect(() => {
     if (!awaiting || !gameplay || !snapshot) return;
     const ack = multiSurface ? presentationReadySocket : presentationReady;
@@ -293,6 +298,15 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
     // after which the server withdrew the old readiness) does re-acknowledge. The
     // client only echoes what the server projected and never invents a generation.
     // Initial fair-start has no generation and keeps its existing revision identity.
+    // A surface the server is not waiting on must stay silent. المرحلة (and
+    // every other `shared`-only mechanic) can never resolve a capability for a
+    // phone, so an acknowledgement from one is refused
+    // `PRESENTATION_SURFACE_INVALID` every single time — which is exactly the
+    // "تعذّر تنفيذ آخر إجراء" banner a real device showed on every question.
+    // The phone is a spectator of this readiness; the shared screen activates.
+    // `required` is absent for mechanics that declare no required set, and those
+    // keep acknowledging as before.
+    if (gameplay.presentationSurface?.required === false) return;
     const generation = gameplay.presentationSurface?.generation;
     const capability = gameplay.presentationSurface?.capability;
     const key =
@@ -301,8 +315,15 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
             connectionEpoch ?? 0
           }`
         : `${gameplay.mode.key}:${gameplay.revision}:initial`;
-    if (ackedRef.current === key || inFlightRef.current === key) return;
+    if (ackedRef.current === key) return;
+    if (inFlightRef.current === key) {
+      // Same identity, newer revisions. Owe a retry instead of dropping this.
+      retryOwedRef.current = true;
+      return;
+    }
     inFlightRef.current = key;
+    retryOwedRef.current = false;
+    let accepted = false;
     ack({
       expectedSessionRevision: snapshot.revision,
       expectedRuntimeRevision: gameplay.revision,
@@ -311,6 +332,7 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
         : {}),
     })
       .then(() => {
+        accepted = true;
         ackedRef.current = key;
       })
       .catch(() => {
@@ -318,6 +340,14 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
       })
       .finally(() => {
         if (inFlightRef.current === key) inFlightRef.current = null;
+        // A refused ack mutates nothing, so the server publishes nothing and no
+        // further snapshot is owed to us. If one arrived mid-flight we already
+        // consumed it above, so waiting for "a later snapshot" would wait for a
+        // wake-up that is never coming. Re-run now with the revisions we hold.
+        if (!accepted && retryOwedRef.current) {
+          retryOwedRef.current = false;
+          setRetryTick((tick) => tick + 1);
+        }
       });
   }, [
     awaiting,
@@ -327,6 +357,7 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
     presentationReadySocket,
     multiSurface,
     connectionEpoch,
+    retryTick,
   ]);
 
   if (!gameplay) return null;

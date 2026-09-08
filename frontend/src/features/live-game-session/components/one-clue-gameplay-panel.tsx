@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Lock } from "lucide-react";
 import { BidiText } from "@/components/akwaan/bidi-text";
 import { Badge } from "@/components/ui/badge";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
@@ -9,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { ChallengeFrame } from "../match/components/challenge-frame";
+import { MobileActionArea } from "../match/components/mobile-action-area";
+import { useMobileSurface } from "../match/components/mobile-gameplay-shell";
 import { authoredText, type AuthoredText } from "../authored-text";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
@@ -43,7 +46,14 @@ export function OneClueGameplayPanel({
   runtime: GameplayRuntimeSnapshot;
 }) {
   const { snapshot, gameplayCommand, connection } = useLiveSession();
+  // Which surface is rendering this, from the shell that mounted it. The host and
+  // the shared screen read `false` and keep exactly the presentation they had.
+  const phone = useMobileSurface();
   const [answer, setAnswer] = useState("");
+  // Presentational only. `gameplayCommand` is fire-and-forget, so there is no
+  // in-flight promise to await; this closes the window in which Enter and the
+  // button could each queue their own copy of the same lock.
+  const [sending, setSending] = useState(false);
   const state = runtime.modeState;
   const round = runtime.activeRound;
   const item = parsed<OneClueItem | null>(state.currentItemJson, null);
@@ -79,13 +89,44 @@ export function OneClueGameplayPanel({
   const teamName = (id: string) =>
     snapshot?.teams.find((team) => team.id === id)?.name ?? "الفريق";
 
-  useEffect(() => setAnswer(""), [runtime.runtimeId, item?.id, itemIndex]);
+  useEffect(() => {
+    setAnswer("");
+    setSending(false);
+  }, [runtime.runtimeId, item?.id, itemIndex]);
+
+  // The server locking this team's answer is the release: the guard has nothing
+  // left to guard once the authoritative state says the answer is in.
+  useEffect(() => {
+    if (state.ownAnswerLocked === true) setSending(false);
+  }, [state.ownAnswerLocked]);
+
+  /**
+   * One place the answer is locked from.
+   *
+   * Enter and the button used to carry two identical copies of this command, so
+   * a fast player could send both. The payload and command name are unchanged —
+   * only the number of places that can emit them.
+   */
+  const lockAnswer = () => {
+    if (sending || !answer.trim()) return;
+    setSending(true);
+    gameplayCommand("gameplay-command", {
+      roundId: round?.id,
+      commandType: "submit-one-clue-answer",
+      payload: {
+        answer: answer.trim(),
+        assignmentSequence: Number(state.ownAssignmentSequence),
+      },
+    });
+    setAnswer("");
+  };
 
   return (
     <ChallengeFrame
-      eyebrow="بدليل واحد"
+      {...(phone ? {} : { eyebrow: "بدليل واحد" })}
       title={`السؤال ${itemIndex + 1} من 3`}
       progressValue={(itemIndex / 3) * 100}
+      compact={phone}
       aside={
         !revealed ? (
           <div className="flex gap-2">
@@ -98,23 +139,51 @@ export function OneClueGameplayPanel({
           </div>
         ) : null
       }
-      className="mx-auto max-w-4xl"
+      className={phone ? "flex min-h-0 flex-1 flex-col" : "mx-auto max-w-4xl"}
     >
-      <div className="space-y-5" dir="rtl">
-        <h2 className="text-center text-[2rem] font-black leading-snug text-foreground sm:text-[2.5rem]">
+      <div
+        className={
+          phone ? "flex min-h-0 flex-1 flex-col gap-3" : "space-y-5"
+        }
+        dir="rtl"
+      >
+        <h2
+          className={
+            phone
+              ? "text-center text-base font-black leading-snug text-foreground"
+              : "text-center text-[2rem] font-black leading-snug text-foreground sm:text-[2.5rem]"
+          }
+        >
           <BidiText>
             {item ? authoredText(item.prompt) : "جارٍ تجهيز السؤال…"}
           </BidiText>
         </h2>
 
         {!revealed && (
-          <ol className="space-y-2" data-testid="one-clue-revealed-clues">
+          <ol
+            className={
+              phone
+                ? "min-h-0 flex-1 space-y-1.5 overflow-y-auto"
+                : "space-y-2"
+            }
+            data-testid="one-clue-revealed-clues"
+          >
             {item?.clues.map((clue) => (
               <li
                 key={clue.order}
-                className="akwaan-rise rounded-[var(--radius)] border border-border bg-card p-4 text-lg font-bold"
+                className={
+                  phone
+                    ? "akwaan-rise rounded-[var(--radius)] border border-border bg-card px-3 py-2 text-sm font-bold"
+                    : "akwaan-rise rounded-[var(--radius)] border border-border bg-card p-4 text-lg font-bold"
+                }
               >
-                <span className="ms-2 text-sm text-muted-foreground">
+                <span
+                  className={
+                    phone
+                      ? "ms-2 text-xs text-muted-foreground"
+                      : "ms-2 text-sm text-muted-foreground"
+                  }
+                >
                   الدليل {clue.order}
                 </span>
                 {authoredText(clue.text)}
@@ -123,7 +192,7 @@ export function OneClueGameplayPanel({
           </ol>
         )}
 
-        {!revealed && (
+        {!revealed && !phone && (
           <div className="grid gap-3 sm:grid-cols-2">
             {teams.map((teamId) => {
               const identity = teamIdentityOf(teamId, snapshot?.teams ?? []);
@@ -152,57 +221,119 @@ export function OneClueGameplayPanel({
           </div>
         )}
 
-        {canAnswer && (
-          <div className="mx-auto flex max-w-lg gap-2">
-            <Input
-              autoComplete="off"
-              value={answer}
-              onChange={(event) => setAnswer(event.target.value)}
-              placeholder="اكتب إجابة فريقك"
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && answer.trim()) {
-                  gameplayCommand("gameplay-command", {
-                    roundId: round?.id,
-                    commandType: "submit-one-clue-answer",
-                    payload: {
-                      answer: answer.trim(),
-                      assignmentSequence: Number(state.ownAssignmentSequence),
-                    },
-                  });
-                  setAnswer("");
-                }
-              }}
-            />
-            <Button
-              disabled={!answer.trim()}
-              onClick={() => {
-                gameplayCommand("gameplay-command", {
-                  roundId: round?.id,
-                  commandType: "submit-one-clue-answer",
-                  payload: {
-                    answer: answer.trim(),
-                    assignmentSequence: Number(state.ownAssignmentSequence),
-                  },
-                });
-                setAnswer("");
-              }}
+        {canAnswer &&
+          (phone ? (
+            <div className="shrink-0" data-testid="one-clue-answer-controls">
+              <Input
+                autoComplete="off"
+                value={answer}
+                onChange={(event) => setAnswer(event.target.value)}
+                placeholder="اكتب إجابة فريقك"
+                data-testid="one-clue-answer-input"
+                className="h-14 rounded-[var(--radius)] border-2 text-center text-lg font-black focus-visible:border-brand-gold"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") lockAnswer();
+                }}
+              />
+              <MobileActionArea>
+                <Button
+                  size="lg"
+                  disabled={sending || !answer.trim()}
+                  onClick={lockAnswer}
+                  data-testid="one-clue-submit"
+                  className="h-14 w-full text-base font-black"
+                >
+                  {sending ? "جارٍ التثبيت…" : "قفل الإجابة"}
+                </Button>
+              </MobileActionArea>
+            </div>
+          ) : (
+            <div
+              className="mx-auto flex max-w-lg gap-2"
+              data-testid="one-clue-answer-controls"
             >
-              قفل الإجابة
-            </Button>
+              <Input
+                autoComplete="off"
+                value={answer}
+                onChange={(event) => setAnswer(event.target.value)}
+                placeholder="اكتب إجابة فريقك"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") lockAnswer();
+                }}
+              />
+              <Button
+                disabled={sending || !answer.trim()}
+                onClick={lockAnswer}
+                data-testid="one-clue-submit"
+              >
+                قفل الإجابة
+              </Button>
+            </div>
+          ))}
+
+        {!revealed && actorTeamId && !canAnswer && (
+          <div
+            className={
+              phone
+                ? "flex flex-1 flex-col items-center justify-center gap-2 text-center"
+                : ""
+            }
+            data-testid="one-clue-phone-status"
+          >
+            {phone && state.ownAnswerLocked === true && (
+              <span
+                aria-hidden
+                className="grid size-14 place-items-center rounded-full border border-brand-gold/40 bg-brand-gold/10"
+              >
+                <Lock className="size-6 text-brand-gold" />
+              </span>
+            )}
+            <p
+              className={
+                phone
+                  ? "text-base font-black text-foreground"
+                  : "rounded-[var(--radius)] bg-muted p-4 text-center font-bold text-muted-foreground"
+              }
+            >
+              {eliminated.includes(actorTeamId)
+                ? "إجابة غير صحيحة — خرجتم من هذا السؤال"
+                : state.ownAnswerLocked
+                  ? phone
+                    ? "تم تثبيت إجابتكم"
+                    : "تم تثبيت إجابتك"
+                  : `${nameOf(assigned[actorTeamId])} يثبت إجابة الفريق`}
+            </p>
+            {phone && state.ownAnswerLocked === true && (
+              <p className="text-sm font-bold text-muted-foreground">
+                ننتظر بقية الفرق…
+              </p>
+            )}
           </div>
         )}
 
-        {!revealed && actorTeamId && !canAnswer && (
-          <p className="rounded-[var(--radius)] bg-muted p-4 text-center font-bold text-muted-foreground">
-            {eliminated.includes(actorTeamId)
-              ? "إجابة غير صحيحة — خرجتم من هذا السؤال"
-              : state.ownAnswerLocked
-                ? "تم تثبيت إجابتك"
-                : `${nameOf(assigned[actorTeamId])} يثبت إجابة الفريق`}
-          </p>
+        {result && phone && (
+          <section
+            className="akwaan-rise flex flex-1 flex-col items-center justify-center gap-2 text-center"
+            data-testid="one-clue-phone-reveal"
+          >
+            <p className="text-xs font-black text-muted-foreground">
+              الإجابة الصحيحة
+            </p>
+            <p className="text-3xl font-black text-foreground">
+              {result.correctAnswer}
+            </p>
+            {actorTeamId && (
+              <p className="akwaan-numeral text-lg font-black text-brand-gold">
+                +{result.points[actorTeamId] ?? 0}
+              </p>
+            )}
+            <p className="text-sm font-bold text-muted-foreground">
+              التفاصيل على الشاشة.
+            </p>
+          </section>
         )}
 
-        {result && (
+        {result && !phone && (
           <section className="akwaan-rise space-y-4 text-center">
             <div className="rounded-[var(--radius)] bg-primary p-5 text-primary-foreground">
               <p className="text-sm font-bold opacity-80">الإجابة الصحيحة</p>

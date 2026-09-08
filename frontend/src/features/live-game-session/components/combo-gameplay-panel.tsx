@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
 import { ChallengeFrame } from "../match/components/challenge-frame";
+import { MobileActionArea } from "../match/components/mobile-action-area";
+import { useMobileSurface } from "../match/components/mobile-gameplay-shell";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
 import type { GameplayRuntimeSnapshot } from "../model";
@@ -41,6 +43,9 @@ export function ComboGameplayPanel({
 }) {
   const { snapshot, gameplayCommand, connection } = useLiveSession();
   const [answer, setAnswer] = useState("");
+  const [sending, setSending] = useState<
+    "answer" | "cash-out" | "continue" | "force" | undefined
+  >();
   const round = runtime.activeRound;
   const view = useMemo(
     () => readComboView(runtime.modeState),
@@ -53,6 +58,7 @@ export function ComboGameplayPanel({
     view.phase === "completed",
   );
   const live = connection === "connected";
+  const phone = useMobileSurface();
   const can = (action: string) =>
     runtime.availableActions.includes(`mode:${action}`);
 
@@ -63,7 +69,10 @@ export function ComboGameplayPanel({
   // must never survive into the next question, even when the server advances the
   // run without remounting.
   useEffect(
-    () => setAnswer(""),
+    () => {
+      setAnswer("");
+      setSending(undefined);
+    },
     [
       runtime.runtimeId,
       round?.id,
@@ -84,10 +93,42 @@ export function ComboGameplayPanel({
     });
 
   const submit = () => {
-    if (!answer.trim() || !live) return;
+    if (!answer.trim() || !live || sending) return;
+    setSending("answer");
     send("submit-combo-answer", { answer: answer.trim() });
     setAnswer("");
   };
+
+  const decide = (decision: "cash-out" | "continue") => {
+    if (!live || sending) return;
+    setSending(decision);
+    send(decision === "cash-out" ? "cash-out-combo" : "continue-combo");
+  };
+
+  const force = () => {
+    if (!live || sending) return;
+    setSending("force");
+    send("arm-combo-break");
+  };
+
+  if (phone) {
+    return (
+      <PhoneComboController
+        runtime={runtime}
+        view={view}
+        answer={answer}
+        setAnswer={setAnswer}
+        sending={sending}
+        live={live}
+        remainingMs={remainingMs}
+        can={can}
+        teamName={teamName}
+        submit={submit}
+        decide={decide}
+        force={force}
+      />
+    );
+  }
 
   return (
     <ChallengeFrame
@@ -265,6 +306,235 @@ export function ComboGameplayPanel({
         )}
       </div>
     </ChallengeFrame>
+  );
+}
+
+function PhoneComboController({
+  runtime,
+  view,
+  answer,
+  setAnswer,
+  sending,
+  live,
+  remainingMs,
+  can,
+  teamName,
+  submit,
+  decide,
+  force,
+}: {
+  runtime: GameplayRuntimeSnapshot;
+  view: ComboView;
+  answer: string;
+  setAnswer: (value: string) => void;
+  sending: "answer" | "cash-out" | "continue" | "force" | undefined;
+  live: boolean;
+  remainingMs?: number;
+  can: (action: string) => boolean;
+  teamName: (id: string) => string;
+  submit: () => void;
+  decide: (decision: "cash-out" | "continue") => void;
+  force: () => void;
+}) {
+  const latestRun = view.runResults.at(-1);
+  const broken =
+    latestRun?.endedBy === "combo-break" || latestRun?.endedBy === "timeout";
+  const awaitingOpponent = !view.isActiveTeam;
+
+  return (
+    <ChallengeFrame
+      compact
+      title={
+        view.phase === "completed"
+          ? "انتهى التحدي"
+          : `الجولة ${comboRunNumber(view)} · السؤال ${view.questionNumber} من ${view.questionsPerRun}`
+      }
+      progressValue={comboProgressValue(view)}
+      aside={
+        remainingMs !== undefined && view.phase === "question" ? (
+          <ChallengeCountdown remainingMs={remainingMs} />
+        ) : null
+      }
+      className="flex min-h-0 flex-1 flex-col"
+    >
+      <div
+        className="flex min-h-0 flex-1 flex-col gap-3 text-center"
+        dir="rtl"
+        data-testid="combo-phone-controller"
+      >
+        {view.phase !== "completed" && view.phase !== "run-complete" && (
+          <div className="shrink-0" data-testid="combo-phone-balance">
+            <p className="text-xs font-bold text-muted-foreground">
+              الرصيد غير المثبّت
+            </p>
+            <p className="akwaan-numeral text-3xl font-black text-foreground">
+              {comboStreakPoints(view)}
+            </p>
+          </div>
+        )}
+
+        {view.phase === "question" && view.isActiveTeam && (
+          <section className="flex min-h-0 flex-1 flex-col" data-testid="combo-phone-answer">
+            <div className="flex flex-1 flex-col justify-center gap-3">
+              {view.forcedQuestion && (
+                <p className="font-black text-destructive" data-testid="combo-phone-forced">
+                  الخصم أجبركم تكملون
+                </p>
+              )}
+              <h2 className="text-base font-black leading-relaxed text-foreground">
+                <BidiText>{comboPromptText(view)}</BidiText>
+              </h2>
+              <Input
+                key={`${runtime.runtimeId}:${view.runIndex}:${view.questionNumber}`}
+                autoComplete="off"
+                enterKeyHint="send"
+                value={answer}
+                onChange={(event) => setAnswer(event.target.value)}
+                onKeyDown={(event) => event.key === "Enter" && submit()}
+                placeholder="اكتب الإجابة"
+                className="h-16 text-center text-xl font-black"
+                data-testid="combo-answer-input"
+              />
+            </div>
+            <MobileActionArea>
+              <Button
+                size="lg"
+                disabled={!answer.trim() || !live || Boolean(sending)}
+                onClick={submit}
+                className="h-14 w-full text-base font-black"
+                data-testid="combo-answer-submit"
+              >
+                {sending === "answer" ? "جارٍ الإرسال…" : "إرسال الإجابة"}
+              </Button>
+            </MobileActionArea>
+          </section>
+        )}
+
+        {view.phase === "decision" && (
+          <section className="flex min-h-0 flex-1 flex-col" data-testid="combo-phone-decision">
+            {view.isActiveTeam ? (
+              <>
+                <div className="flex flex-1 flex-col items-center justify-center gap-1">
+                  <p className="text-2xl font-black text-foreground">وش تبون تسوون؟</p>
+                  <p className="text-sm font-bold text-muted-foreground">
+                    ثبّتوا {comboStreakPoints(view)} أو خاطروا بالرصيد كاملًا
+                  </p>
+                </div>
+                <MobileActionArea className="grid grid-cols-2">
+                  {can("cash-out-combo") && (
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      disabled={!live || Boolean(sending)}
+                      onClick={() => decide("cash-out")}
+                      className="h-16 w-full text-xl font-black"
+                      data-testid="combo-phone-cash-out"
+                    >
+                      {sending === "cash-out" ? "جارٍ التثبيت…" : "ثبّت"}
+                    </Button>
+                  )}
+                  {can("continue-combo") && (
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      disabled={!live || Boolean(sending)}
+                      onClick={() => decide("continue")}
+                      className="h-16 w-full text-xl font-black"
+                      data-testid="combo-phone-continue"
+                    >
+                      {sending === "continue" ? "جارٍ المتابعة…" : "كمّل"}
+                    </Button>
+                  )}
+                </MobileActionArea>
+              </>
+            ) : (
+              <PhoneWaiting>{teamName(view.activeTeamId)} يقررون الآن…</PhoneWaiting>
+            )}
+          </section>
+        )}
+
+        {view.phase === "break-reveal" && (
+          <section className="flex min-h-0 flex-1 flex-col" data-testid="combo-phone-break-reveal">
+            <div className="flex flex-1 flex-col items-center justify-center gap-2">
+              <p className="text-2xl font-black text-destructive">الخصم أجبركم تكملون</p>
+              <p className="text-sm font-bold text-muted-foreground">ما تقدرون تثبّتون الآن</p>
+            </div>
+            {view.isActiveTeam && can("continue-combo") ? (
+              <MobileActionArea>
+                <Button
+                  size="lg"
+                  disabled={!live || Boolean(sending)}
+                  onClick={() => decide("continue")}
+                  className="h-16 w-full text-lg font-black"
+                  data-testid="combo-phone-forced-continue"
+                >
+                  {sending === "continue" ? "جارٍ المتابعة…" : "ابدأ السؤال الإجباري"}
+                </Button>
+              </MobileActionArea>
+            ) : (
+              <PhoneWaiting>بانتظار الفريق…</PhoneWaiting>
+            )}
+          </section>
+        )}
+
+        {view.phase === "question" && awaitingOpponent && (
+          <section className="flex min-h-0 flex-1 flex-col" data-testid="combo-phone-opponent-run">
+            <PhoneWaiting>{teamName(view.activeTeamId)} يجيبون الآن…</PhoneWaiting>
+            {view.canArmComboBreak && can("arm-combo-break") && (
+              <MobileActionArea>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  disabled={!live || Boolean(sending)}
+                  onClick={force}
+                  className="h-14 w-full border-brand-gold/70 text-base font-black"
+                  data-testid="combo-phone-force"
+                >
+                  {sending === "force" ? "جارٍ الإرسال…" : "كمّل غصب"}
+                </Button>
+                <p className="text-xs font-bold text-muted-foreground">
+                  إذا جاوبوا صح، ما يقدرون يثبّتون
+                </p>
+              </MobileActionArea>
+            )}
+            {view.ownComboBreakArmed && (
+              <p className="mt-auto rounded-[var(--radius)] bg-muted p-4 font-black" data-testid="combo-phone-force-sent">
+                تم الإرسال سرًا — ننتظر إجابتهم
+              </p>
+            )}
+          </section>
+        )}
+
+        {(view.phase === "run-complete" || view.phase === "completed") && (
+          <section className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2" data-testid="combo-phone-run-result">
+            {broken ? (
+              <>
+                <p className="text-3xl font-black text-destructive">انكسر الكومبو</p>
+                <p className="font-bold text-muted-foreground">ضاع الرصيد غير المثبّت</p>
+              </>
+            ) : latestRun ? (
+              <>
+                <p className="text-2xl font-black text-foreground">تم تثبيت الرصيد</p>
+                <p className="akwaan-numeral text-4xl font-black text-brand-gold">{latestRun.bankedPoints}</p>
+              </>
+            ) : (
+              <p className="text-xl font-black">انتهى التحدي</p>
+            )}
+            <p className="text-sm font-bold text-muted-foreground">
+              {view.phase === "completed" ? "انتظروا نتيجة الشاشة" : "بانتظار الجولة التالية…"}
+            </p>
+          </section>
+        )}
+      </div>
+    </ChallengeFrame>
+  );
+}
+
+function PhoneWaiting({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="flex flex-1 items-center justify-center px-4 font-black text-muted-foreground">
+      {children}
+    </p>
   );
 }
 

@@ -111,6 +111,12 @@ export interface GameplayRuntimeSnapshot {
    */
   presentationSurface?: {
     running: boolean;
+    /**
+     * Whether this actor is one of the surfaces the server is waiting on.
+     * Absent when the mechanic declares no required set, in which case any
+     * valid actor's acknowledgement activates the presentation.
+     */
+    required?: boolean;
     capability?: "shared" | "answering" | "decision";
     /**
      * The server-issued recurring presentation generation, present only while a

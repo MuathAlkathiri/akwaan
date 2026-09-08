@@ -164,7 +164,11 @@ describe("القطها", () => {
       />,
     );
     expect(screen.queryByTestId("laqatha-answer-input")).toBeNull();
-    expect(screen.getByText("بانتظار إجابة الفريق الآخر…")).toBeInTheDocument();
+    // The five seconds belong entirely to the claiming team; this phone is told
+    // that, and is told nothing about what they are typing.
+    expect(screen.getByTestId("laqatha-answer-locked")).toHaveTextContent(
+      "الفريق الثاني يحاول يجاوب",
+    );
   });
 
   it("reveals the movie and lets the controller advance once resolved", async () => {

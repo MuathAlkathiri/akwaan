@@ -85,7 +85,7 @@ describe("القطعة الدخيلة", () => {
         actor="participant"
       />,
     );
-    await userEvent.click(screen.getByTestId("odd-piece-claim"));
+    await userEvent.click(screen.getByTestId("odd-piece-phone-claim"));
     expect(mocks.gameplayCommand).toHaveBeenCalledWith("gameplay-command", {
       roundId: "round-1",
       commandType: "claim-odd-piece",
@@ -106,7 +106,8 @@ describe("القطعة الدخيلة", () => {
         actor="participant"
       />,
     );
-    await userEvent.click(screen.getByTestId("odd-piece-select-c"));
+    await userEvent.click(screen.getByTestId("odd-piece-phone-select-c"));
+    await userEvent.click(screen.getByTestId("odd-piece-phone-submit"));
     expect(mocks.gameplayCommand).toHaveBeenLastCalledWith(
       "gameplay-command",
       expect.objectContaining({
@@ -131,8 +132,8 @@ describe("القطعة الدخيلة", () => {
         actor="participant"
       />,
     );
-    expect(screen.getByText("انتهت محاولة فريقكم.")).toBeInTheDocument();
-    expect(screen.queryByTestId("odd-piece-select-a")).toBeNull();
+    expect(screen.getByText(/انتهت محاولة فريقكم/)).toBeInTheDocument();
+    expect(screen.queryByTestId("odd-piece-phone-select-a")).toBeNull();
   });
 
   it("shows the mandatory full-vehicle proof and controller advance", async () => {
