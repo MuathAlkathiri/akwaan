@@ -79,6 +79,125 @@ describe("Match socket synchronization", () => {
     expect(onResyncing).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps resyncing after a snapshot request the server answered with an error", () => {
+    // The real iPhone Safari stall. A snapshot request that produces no
+    // `live-session:snapshot` reply — the server's `respond()` emits
+    // `live-session:error` and returns on any failure — used to latch the
+    // in-flight guard forever: every later announcement was converted into
+    // "one is owed" and dropped, because the owed flag is only drained inside
+    // the snapshot handler that never ran again. The phone then sat on
+    // "نجهّز التحدي…" through every following question until it was reloaded.
+    const client = new LiveSessionSocket();
+    const onSnapshot = vi.fn();
+    client.connect({
+      sessionId: "session-1",
+      token: "token",
+      onSnapshot,
+      onConnection: vi.fn(),
+      onError: vi.fn(),
+    });
+    socketHarness.handlers.get("connect")?.();
+    const requests = () =>
+      socketHarness.socket.emit.mock.calls.filter(
+        ([event]) => event === "live-session:request-snapshot",
+      ).length;
+
+    // Q1 → Q2: the runtime advances and the phone asks for the new snapshot.
+    socketHarness.handlers.get("live-session:runtime-changed")?.({
+      runtimeRevision: 8,
+    });
+    expect(requests()).toBe(1);
+
+    // The server fails that request and says so instead of sending a snapshot.
+    socketHarness.handlers.get("live-session:error")?.({
+      code: "LIVE_SESSION_ERROR",
+      message: "snapshot failed",
+    });
+
+    // Q2 → Q3, on the same live socket. The phone must ask again.
+    socketHarness.handlers.get("live-session:runtime-changed")?.({
+      runtimeRevision: 9,
+    });
+    expect(requests()).toBe(2);
+
+    // And the reply is adopted, so the phone is no longer stale.
+    socketHarness.handlers.get("live-session:snapshot")?.({
+      sessionId: "session-1",
+      revision: 4,
+      gameplay: { revision: 9 },
+    });
+    expect(onSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it("honours a revision announced while a request was already in flight", () => {
+    // The reply in flight was composed before that change existed, so adopting
+    // it and stopping would leave the phone one generation behind with nothing
+    // left to wake it.
+    const client = new LiveSessionSocket();
+    client.connect({
+      sessionId: "session-1",
+      token: "token",
+      onSnapshot: vi.fn(),
+      onConnection: vi.fn(),
+      onError: vi.fn(),
+    });
+    socketHarness.handlers.get("connect")?.();
+    const requests = () =>
+      socketHarness.socket.emit.mock.calls.filter(
+        ([event]) => event === "live-session:request-snapshot",
+      ).length;
+
+    socketHarness.handlers.get("live-session:runtime-changed")?.({
+      runtimeRevision: 8,
+    });
+    expect(requests()).toBe(1);
+
+    // Q3 is announced before the Q2 reply lands.
+    socketHarness.handlers.get("live-session:runtime-changed")?.({
+      runtimeRevision: 9,
+    });
+    expect(requests()).toBe(1);
+
+    // The stale reply arrives; the owed request must go out with it.
+    socketHarness.handlers.get("live-session:snapshot")?.({
+      sessionId: "session-1",
+      revision: 4,
+      gameplay: { revision: 8 },
+    });
+    expect(requests()).toBe(2);
+  });
+
+  it("does not wedge when a snapshot request is never answered at all", () => {
+    // Same latch, reached without an error event: a request that simply never
+    // comes back (a dropped frame on a backgrounded phone) must not silence
+    // every future recovery either.
+    const client = new LiveSessionSocket();
+    client.connect({
+      sessionId: "session-1",
+      token: "token",
+      onSnapshot: vi.fn(),
+      onConnection: vi.fn(),
+      onError: vi.fn(),
+    });
+    socketHarness.handlers.get("connect")?.();
+    const requests = () =>
+      socketHarness.socket.emit.mock.calls.filter(
+        ([event]) => event === "live-session:request-snapshot",
+      ).length;
+
+    socketHarness.handlers.get("live-session:runtime-changed")?.({
+      runtimeRevision: 8,
+    });
+    expect(requests()).toBe(1);
+
+    // No reply. After the bounded wait the channel is usable again.
+    vi.advanceTimersByTime(6_000);
+    socketHarness.handlers.get("live-session:runtime-changed")?.({
+      runtimeRevision: 9,
+    });
+    expect(requests()).toBe(2);
+  });
+
   it("resyncs when a phone's presence changes, which is what a preflight waits on", () => {
     const client = new LiveSessionSocket();
     client.connect({

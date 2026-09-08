@@ -153,7 +153,16 @@ export function LiveSessionProvider({
       }
     };
     document.addEventListener("visibilitychange", restore);
-    return () => document.removeEventListener("visibilitychange", restore);
+    // iOS Safari also restores a page from its back/forward cache without ever
+    // hiding it, and a phone that was frozen mid-match comes back holding
+    // whatever it had. `pageshow` is the event that fires for that, and it goes
+    // through the same canonical request as everything else.
+    const restored = () => socketRef.current?.requestSnapshot();
+    window.addEventListener("pageshow", restored);
+    return () => {
+      document.removeEventListener("visibilitychange", restore);
+      window.removeEventListener("pageshow", restored);
+    };
   }, []);
 
   const resync = useCallback(() => socketRef.current?.requestSnapshot(), []);

@@ -245,6 +245,15 @@ function MatchAbsent({ actor }: { actor: MatchActor }) {
 }
 
 /**
+ * How long a spectating surface waits for the activation update before asking.
+ *
+ * Comfortably longer than a healthy activation round-trip, so the normal path
+ * is always the one that wins, and short enough that a lost update costs a
+ * pause rather than the rest of the match.
+ */
+const PRESENTATION_RESYNC_GRACE_MS = 2_500;
+
+/**
  * The runtime in progress, routed by its own mode key.
  *
  * The key is the authoritative runtime identity the server published; nothing here
@@ -257,6 +266,7 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
     presentationReady,
     presentationReadySocket,
     connectionEpoch,
+    resync,
   } = useLiveSession();
   const gameplay = snapshot?.gameplay;
   // Fair-start: while a mechanic that opted into presentation activation is
@@ -360,12 +370,67 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
     retryTick,
   ]);
 
+  // Safety net for the one wait this surface cannot end by itself.
+  //
+  // A phone that is not a required surface acknowledges nothing: the shared
+  // screen activates, and the only way this device learns is the update that
+  // follows. If that update is lost — the failure a real iPhone showed, sitting
+  // on the preparing state for the rest of the match — nothing here retries,
+  // because nothing here is owed anything. So after a short grace, ask once
+  // through the same canonical snapshot path everything else uses.
+  //
+  // One attempt per generation, not a poll: the effect is keyed on the
+  // revisions it is waiting past, so adopting anything cancels it and nothing
+  // re-arms until the next wait begins. It never reloads the page and never
+  // touches gameplay — it only asks for the snapshot that already exists.
+  const spectatingPresentation =
+    awaiting && gameplay?.presentationSurface?.required === false;
+  useEffect(() => {
+    if (!spectatingPresentation || !resync) return;
+    const timer = setTimeout(resync, PRESENTATION_RESYNC_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, [
+    spectatingPresentation,
+    resync,
+    gameplay?.revision,
+    gameplay?.presentationSurface?.generation,
+    snapshot?.revision,
+    connectionEpoch,
+  ]);
+
   if (!gameplay) return null;
   if (awaiting) {
+    // Two different waits, and only one of them is a page opening.
+    //
+    // A cold open has nothing on screen yet, so the full branded loader is
+    // honest. A recurring transition mid-match is the gap between two
+    // questions: the room just answered one and is about to get the next, and
+    // filling the phone with a loading screen every time reads as the app
+    // restarting. The server projects a generation only on the recurring wait,
+    // which is exactly the distinction. Neither reveals the prepared question.
+    const recurring = gameplay.presentationSurface?.generation !== undefined;
+    if (recurring) {
+      return (
+        <p
+          role="status"
+          aria-live="polite"
+          data-testid="challenge-preparing"
+          data-preparing="recurring"
+          className="flex items-center justify-center gap-2 py-6 text-sm font-black text-muted-foreground"
+        >
+          <span
+            aria-hidden
+            className="size-2 animate-pulse rounded-full bg-brand-gold motion-reduce:animate-none"
+          />
+          السؤال التالي بعد لحظة…
+        </p>
+      );
+    }
     return (
       <div
         className="grid place-items-center py-16"
         data-testid="challenge-preparing"
+        data-preparing="initial"
       >
         <AkwaanLoader label="نجهّز التحدي…" />
       </div>

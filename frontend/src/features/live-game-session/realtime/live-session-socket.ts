@@ -30,6 +30,15 @@ const STALE_REVISION_CODES = [
   "CONCURRENT_UPDATE",
 ];
 
+/**
+ * How long a `request-snapshot` may stay unanswered before the channel reopens.
+ *
+ * Long enough that a slow reply is not double-requested, short enough that a
+ * player waiting between questions does not notice. It is a ceiling, not a
+ * poll: nothing re-requests unless a newer revision was announced meanwhile.
+ */
+const RESYNC_REPLY_TIMEOUT_MS = 5_000;
+
 function isStaleRevisionAck(ack: unknown): boolean {
   if (!ack || typeof ack !== "object") return false;
   const code = (ack as { code?: unknown }).code;
@@ -72,6 +81,29 @@ export class LiveSessionSocket {
      * happened to knock it loose.
      */
     let requestAgain = false;
+    /**
+     * A request is only "in flight" until it is answered *or* times out.
+     *
+     * Without the timeout this flag was a one-way latch. The server answers a
+     * failed `request-snapshot` with `live-session:error` and no snapshot, and a
+     * backgrounded phone can lose the reply frame outright — after either, every
+     * later announcement was folded into `requestAgain` and dropped, because
+     * that flag is drained only by the snapshot handler that never ran again.
+     * A real iPhone then sat on "نجهّز التحدي…" for the rest of the match while
+     * its socket stayed connected, and only a reload could clear it.
+     */
+    let resyncTimer: ReturnType<typeof setTimeout> | undefined;
+    const settleResync = () => {
+      resyncPending = false;
+      if (resyncTimer !== undefined) {
+        clearTimeout(resyncTimer);
+        resyncTimer = undefined;
+      }
+      if (requestAgain) {
+        requestAgain = false;
+        recoverSnapshot();
+      }
+    };
     socket.on("connect", () => {
       input.onConnection("connected");
       socket.emit(
@@ -96,25 +128,31 @@ export class LiveSessionSocket {
     socket.on("disconnect", () => {
       resyncPending = false;
       requestAgain = false;
+      if (resyncTimer !== undefined) {
+        clearTimeout(resyncTimer);
+        resyncTimer = undefined;
+      }
       input.onConnection("disconnected");
     });
     socket.on("connect_error", (error) => {
       input.onConnection("error");
       input.onError({ code: "CONNECTION_ERROR", message: error.message });
     });
-    socket.on("live-session:error", input.onError);
+    socket.on("live-session:error", (error: LiveSessionError) => {
+      // The server answers a failed `request-snapshot` this way and sends no
+      // snapshot, so this is the reply: settle, and honour anything owed.
+      input.onError(error);
+      settleResync();
+    });
     socket.on("live-session:snapshot", (snapshot: LiveSessionSnapshot) => {
-      resyncPending = false;
       const next = revisionsOf(snapshot);
       // A reply that lost a race must not roll the game backwards.
       if (!isRegression(next, adopted)) {
         adopted = { ...adopted, ...next };
         input.onSnapshot(snapshot);
       }
-      if (requestAgain) {
-        requestAgain = false;
-        recoverSnapshot();
-      }
+      // Settled after adopting, so an owed re-request carries what we now hold.
+      settleResync();
     });
     const recoverSnapshot = () => {
       if (!socket.connected) return;
@@ -128,6 +166,7 @@ export class LiveSessionSocket {
       socket.emit("live-session:request-snapshot", {
         sessionId: input.sessionId,
       });
+      resyncTimer = setTimeout(settleResync, RESYNC_REPLY_TIMEOUT_MS);
     };
     /**
      * Fetch only if the announcement carries something we do not already hold.
