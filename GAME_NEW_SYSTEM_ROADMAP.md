@@ -3474,3 +3474,241 @@ defects are closed on their own evidence: the content-contract /
 `mechanicPayload` defect here in §25.14, and the Master-audio media-origin defect
 in §25.13. Their root causes stay separate — one was validation gated on the
 wrong catalog identity, the other was a frontend URL-resolution mistake.
+
+---
+
+## 26. Universal Mobile UX + Voice V1 + Marhala Board & Fair-Start Release (2026-09-08)
+
+One release branch, `fix/mobile-recurring-presentation-ready`, closing the mobile
+gameplay workstream and two Marhala defects, plus a test-fixture repair that had
+been masking the state of the integration gate. Recorded per strand, because the
+strands reached different states.
+
+### 26.1 Universal Mobile Gameplay UX — ✅ IMPLEMENTED & VERIFIED LOCALLY
+
+All **11/11** mechanic phone controllers migrated onto the shared mobile
+architecture: `MobileGameplayShell` (a `100dvh` flex column honouring the safe
+area), `MobileActionArea` (`mt-auto`, deliberately *not* fixed — a fixed bar
+fights the iOS keyboard), `ChallengeFrame` in `compact`, and `useMobileSurface()`.
+
+Migrated: Closest · One Clue · Top-5 · First Note · القطها · Combo · RYO ·
+Odd Piece · ركّبها · Bomb · المرحلة.
+
+A visual acceptance sweep ran across all eleven at phone viewports. Remaining
+visual debt is cosmetic and non-blocking. The legacy `PlayerLobby` was **not**
+retired — out of scope for this release.
+
+Follow-up, closed in this release: **ركّبها candidate image scale** — candidate
+cards now share the panel height (`grid auto-rows-fr` + `[&_img]:max-h-full`)
+rather than one card growing past the fold.
+
+### 26.2 Bomb — ✅ IMPLEMENTED & VERIFIED LOCALLY
+
+- Canonical **30,000 ms per team**, held as a continuous server-authoritative
+  `TeamClock`. A correct answer does **not** refund time already consumed.
+- **Skip costs 5 s.**
+- Deterministic `activeParticipantId` reassignment on disconnect; a reconnecting
+  previous owner does **not** take ownership back.
+- The shared screen is a required surface for Bomb's initial presentation
+  readiness.
+
+Surface split — shared: question, image, dramatic timer. Active participant's
+phone: concise question text, exact compact timer, answer, voice, skip. Every
+other phone: waiting only — no exact timer, no image, no controls.
+
+### 26.3 Voice V1 — ✅ IMPLEMENTED & VERIFIED LOCALLY
+
+A generic browser voice-input capability (`SpeechRecognition` / `webkit`
+prefixed, `ar-SA`, one-final latch), gated per mechanic by `voiceInputPolicy`:
+
+| Mechanic | Policy |
+|---|---|
+| Bomb | `auto-submit` |
+| المرحلة | `transcript` (fills the field; the player still submits) |
+| all nine others | `disabled` |
+
+Eligibility is **never** inferred from `answerMode === 'match'` or from
+`inputType === 'phone-text'`. No `MediaRecorder`, no `getUserMedia` capture
+pipeline, no audio upload, no backend speech service, no R2 audio, no transcript
+persistence.
+
+### 26.4 المرحلة recurring Fair-Start — ✅ IMPLEMENTED & AUTOMATED-VERIFIED · ⚠️ PHYSICAL RETEST PENDING
+
+**Defect.** On a real phone, question 2 onwards stalled. The phone was
+acknowledging a presentation generation whose only required surface was
+`shared` — a capability a phone can never satisfy — so every recurring
+generation answered `PRESENTATION_SURFACE_INVALID` and activation never came.
+
+**Fix.** The runtime snapshot now projects whether *this actor* is a required
+surface at all; a المرحلة phone receives `required: false` for a shared-only
+generation, and the router does not send a readiness ack when
+`required === false`. A regression test drives Q1 → Q2 → Q3 on the *same*
+mounted phone.
+
+An earlier lost-wakeup fix in the same area is also in this release: a snapshot
+dropped by the in-flight guard left the ack stale with no further publish, and is
+now retried through `retryOwedRef` / `retryTick`. The unconditional-retry mutant
+spins forever, which is what proves the guard load-bearing.
+
+⚠️ **Physical authenticated-phone retest is PENDING.** Headless browsers are not
+evidence for this defect — the original failure was only ever visible on a real
+device. Do not read the automated regression as a physical pass.
+
+### 26.5 المرحلة board — ✅ IMPLEMENTED & HUMAN VISUALLY ACCEPTED LOCALLY
+
+Final approved direction, closed: **4×4, 16 tiles, serpentine 1 → 16**, tactile
+cream / soft-blue tiles on a navy-and-gold physical board, with team pawns.
+
+- Boosts: 3→7 · 5→7 · 8→13 · 10→13 · 12→16 · 14→16
+- Traps: 4→1 · 6→2 · 9→7 · 11→7 · 15→13
+- Safe: 1 · 2 · 7 · 13 · 16
+- Calm board: **full route connectors = 0.** Boost sources carry a contained
+  rocket plus a destination badge; trap sources a physical hazard pit plus a
+  destination badge.
+- Active special replay: **full route connectors = 1** — only the route that
+  fires is drawn.
+- Protected copy, exact: `نقطة البداية` · `نقطة النهاية`.
+
+Board geometry stays data-driven: routes are derived from the tiles handed in, so
+a route cannot point somewhere the configuration does not. `MARHALA_BOOSTS`,
+`MARHALA_TRAPS` and `MARHALA_SAFE_POSITIONS` are byte-identical to the previous
+commit — the redesign is presentation only. The dead circular `MARHALA_RING` /
+`MarhalaRingPoint` exports were removed.
+
+### 26.6 Integration infrastructure — release tooling, not gameplay
+
+Two test-only repairs in `docker-compose.test.yml`. Neither touches dev or
+production topology.
+
+1. **Integration Mongo could not start.** Dev Mongo and integration Mongo both
+   bind host `27018`, and the integration replica set could not resolve itself.
+   Fixed with `hostname: mongodb-test` and an isolated
+   `akwaan_integration_default` network.
+2. **The `media` profile had never worked.** Its command ran `apk add`, but the
+   backend image is Debian (`node:20-bookworm-slim`) — `apk` does not exist
+   there, so the profile failed before starting. Now `apt-get`; the media suite
+   passes (1/1).
+
+**Operational note for whoever runs this next.** Running the integration compose
+project removes the network the dev Mongo container is attached to, which leaves
+dev Mongo unable to match its own replica-set config on restart. Recreating it
+with `docker compose up -d --no-deps mongodb` restores it; the named volume
+`lammah-game_mongodb_data` is untouched and no data is lost. Verified: all dev
+collection counts identical before and after (users 48 · worlds 28 · games 15 ·
+matches 181 · sessions 310 · content_items 2015 · challenge_types 58).
+
+### 26.7 Integration fixture migration — ✅ COMPLETE
+
+Production readiness now correctly refuses to activate a World whose enabled
+slot holds a ChallengeType with no runtime launcher
+(`CHALLENGE_LAUNCHER_NOT_IMPLEMENTED`). That rule is right and was **not**
+weakened. What it exposed was a decade of fixture drift: eight integration suites
+padded their four-slot boards with invented mechanic slugs, so those Worlds no
+longer activate and the suites failed in setup, long before the behaviour they
+were written to check.
+
+**Repaired**, each keeping the mechanic actually under test and only replacing
+filler slots, via a new shared helper `canonicalFillerFixtures` that derives its
+padding from `PRODUCTION_MECHANICS` rather than restating a list:
+
+| Suite | Change |
+|---|---|
+| `rakkibha` | 3 fillers → canonical (ركّبها kept) |
+| `unified-match-preflight` | 2 fillers → canonical (ركّبها + RYO kept) |
+| `match-api` | 3 fillers → canonical (RYO kept) |
+| `unified-match-api` | 3 fillers → canonical; `barren` world's content now carries a payload its own mechanic can read |
+| `match-top5` | 2 fillers → canonical (أفضل 5 + RYO kept) |
+| `player-catalog` | all 4 → canonical, RYO leading because the catalog's content is authored against it |
+| `ryo-deadline-lifecycle` | 3 fillers → canonical; RYO creation aligned to the canonical fixture |
+| `world-slot-removal` | 4 → RYO · أقرب · بدليل · القطها, the canonical mechanics that need no extra content structure |
+| `world-content` | activating board → 4 canonical mechanics, display copy preserved |
+
+**Intentionally invalid fixtures retained.** `world-content`'s authoring
+negatives keep their synthetic slugs — slug uniqueness, unregistered scoring
+rule, impossible family/answer-mode pair — and rule 6.4's Relational-family
+content item keeps a synthetic Relational type, because it is only ever named as
+an item's compatible mechanic and never seated on a board.
+
+**Two Match-layer negatives were retired rather than repaired.** The tests
+asserting that a Match reports `configured_but_unimplemented` and refuses to
+launch it are now **unreachable through the API**: readiness refuses to activate
+such a World, and Match creation refuses to open over a board that is not ready
+(`MATCH_WORLD_BOARD_NOT_READY`). Attempting to force the state by writing the
+binding directly past the admin API also fails, at Match creation. That is a
+strengthening, not a loss: the projection is covered by
+`match-world-launchability.spec` — which reproduces both real production defects,
+the Cars and Video Games generated slugs — and the gate by
+`board-launchability-readiness.spec`.
+
+**A second, older layer of staleness** surfaced once the suites got past setup:
+three RYO tests submitted an answer without satisfying RYO's multi-surface
+barrier, which holds a `prepared` interaction closed until the shared screen and
+both assigned phones acknowledge. Every production file involved
+(`ryo-gameplay.plugin`, `gameplay-interaction`, `gameplay-runtime`,
+`gameplay-runtime.lifecycle`, `gameplay-interaction.use-cases`) is **unchanged
+from the previous commit**, so this is pre-existing behaviour the World-activation
+failure had been hiding — not a regression. The three fixtures now acknowledge
+readiness before submitting.
+
+**Negative proof — production readiness is intact.** With one canonical filler
+in `unified-match-preflight` swapped for `fixture-unlaunchable-type`, activation
+is refused:
+
+```
+400 {"message":"This World does not satisfy the activation rules yet",
+     "issues":[{"code":"CHALLENGE_LAUNCHER_NOT_IMPLEMENTED",
+     "message":"This board position holds a mechanic the game cannot run yet.",
+     "details":{"challengeTypeSlug":"…","slotKey":"slot_3"}}]}
+```
+
+6/6 tests fail. Mutation restored → 6/6 pass. The fixtures were repaired; the
+rule was not touched.
+
+### 26.8 Release gate
+
+| Gate | Result |
+|---|---|
+| Frontend tests | ✅ **1338 / 1338**, 118 / 118 files |
+| Frontend typecheck · build · lint | ✅ clean |
+| Backend unit tests | ✅ **1888 / 1888**, 192 / 192 suites |
+| Backend typecheck · build | ✅ clean |
+| Backend changed-file lint (25 files) | ✅ clean |
+| Canonical integration | **24 / 26 suites · 252 / 268 tests** (13 skipped) |
+| `git diff --check` | ✅ clean |
+
+Integration moved from **15 passed / 11 failed / 189 passed / 68 failed** to
+**24 passed / 2 failed / 252 passed / 3 failed**. Against the last recorded gate
+(§22: 21 suites, 243 tests) this is +3 suites and +9 tests, with the same two
+documented reds.
+
+Every critical lifecycle flow passes: bomb-board · challenge-abort · combo ·
+marhala · odd-piece · first-note · laqatha · ركّبها · ryo-deadline · match-api ·
+unified-match-api · unified-match-preflight · match-top5 · match-convergence ·
+match-persistence · content-exposure · participant-presence · player-catalog ·
+world-content · world-content-migration · world-slot-removal · games ·
+questions · auth-catalogs.
+
+### 26.9 Debt register updates
+
+**§19 #3 — music / ffmpeg: diagnosis corrected, still red.** The record said the
+integration container lacks ffmpeg and the tests run under the wrong profile.
+Measured: `ffmpeg` and `ffprobe` are both present at `/usr/bin` in the
+integration container and `music.integration-spec` **still** returns 500 on
+upload. So the missing binary is not the cause, or not the only one. Nothing
+music- or media-related is touched by this release (`backend/src/modules/music`,
+`backend/src/infrastructure/media` and the suite itself are all unchanged), so it
+remains **pre-existing and non-blocking** — but the recorded root cause should
+not be trusted until someone reads the actual 500.
+
+**§19 #4 — manual AI 503-vs-400: unchanged.** Exact same signature
+(`expected 503, got 400`, `AI_QUESTION_GENERATION_DISABLED`). Still awaiting an
+AI-module owner decision. Non-blocking, not release-introduced.
+
+**New — no Relational mechanic is launchable.** Every canonical mechanic is
+`signature`, `coop` or `ryo`; none is `relational`. So an activatable World can
+never satisfy `hasRelationalChallenge`, and the Match composition rule
+`MATCH_WITHOUT_RELATIONAL_CHALLENGE` warns for every published Match. It is a
+**warning, not a blocker** — play is unaffected, which is why this has gone
+unnoticed — but either a Relational mechanic needs a launcher or the composition
+rule needs revisiting. `world-content`'s assertion now reads `false` with that
+reasoning recorded inline.
