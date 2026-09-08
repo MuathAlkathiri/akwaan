@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: fifa
+
+## Identity / Boundaries
+Defines exactly what belongs in fifa and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of fifa know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Instantly recognizable gameplay feedback states, distinctive mode-native audiovisual cues, and mechanics whose meaning players learn naturally through play.
+
+## Weak / Boring Territories
+Weak: Shallow FUT consumables (Draft Tokens), patch note stat tweaks.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for fifa.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for fifa.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to fifa.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying fifa moment.
+
+### Legacy Taxonomy Data:
 # FIFA Knowledge
 
 ## Identity and Vocabulary

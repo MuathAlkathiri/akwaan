@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: movies-mix
+
+## Identity / Boundaries
+Defines exactly what belongs in movies-mix and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of movies-mix know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Iconic quotes, signature props, visual cinematography.
+
+## Weak / Boring Territories
+Weak: Box office numbers and exact release years.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for movies-mix.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for movies-mix.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to movies-mix.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying movies-mix moment.
+
+### Legacy Taxonomy Data:
 # Movies Mix Knowledge
 
 ## Identity and Vocabulary

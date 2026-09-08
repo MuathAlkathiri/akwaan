@@ -54,3 +54,8 @@ Thumbs.db
 
 # Local nested git backups
 .git.nested-backup/
+
+# Workbench
+ai/workbench/scripts/*
+ai/workbench/artifacts/*
+!ai/workbench/README.md

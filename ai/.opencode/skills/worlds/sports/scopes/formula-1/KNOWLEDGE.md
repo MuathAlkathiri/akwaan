@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: formula-1
+
+## Identity / Boundaries
+Defines exactly what belongs in formula-1 and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of formula-1 know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Championship moments, signature moves, iconic venues.
+
+## Weak / Boring Territories
+Weak: Regular season stats and contract values.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for formula-1.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for formula-1.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to formula-1.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying formula-1 moment.
+
+### Legacy Taxonomy Data:
 # Scope: Formula 1
 
 - `scopeId`: `sports.formula-1`

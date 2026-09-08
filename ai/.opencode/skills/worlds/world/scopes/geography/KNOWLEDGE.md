@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: geography
+
+## Identity / Boundaries
+Defines exactly what belongs in geography and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of geography know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Highly recognizable cultural touchstones and visual icons.
+
+## Weak / Boring Territories
+Weak: Obscure dates and academic minutiae.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for geography.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for geography.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to geography.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying geography moment.
+
+### Legacy Taxonomy Data:
 # Scope: Geography
 
 - `scopeId`: `world.geography`

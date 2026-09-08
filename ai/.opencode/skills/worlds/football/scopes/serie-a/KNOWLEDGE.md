@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: serie-a
+
+## Identity / Boundaries
+Defines exactly what belongs in serie-a and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of serie-a know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Tactical eras (Catenaccio), historic club icons, signature stadiums.
+
+## Weak / Boring Territories
+Weak: Minor Coppa Italia runs, generic player stats.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for serie-a.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for serie-a.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to serie-a.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying serie-a moment.
+
+### Legacy Taxonomy Data:
 # Serie A Knowledge Base (قاعدة معرفة الدوري الإيطالي)
 
 ## Scope Summary

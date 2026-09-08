@@ -11,7 +11,13 @@ To prevent rigid constraints from breaking mechanic-native authoring, batch vari
 
 ---
 
-## 1. Default Quality Targets (Advisory Warnings)
+## 1. Experience Shape Diversity (GLOBAL PRINCIPLE)
+A batch must feel varied in **experience shape**, evaluating both **interaction shape** and **modality shape**.
+- A batch where every item asks "وش اسم الشخصية؟" is a failure. Similarly, 15 identical text prompts or 15 identical image-identifications are failures.
+- Variety must include different ways of recognizing and reasoning: audio recognition, visual recognition, mechanic recognition, location/item recognition, situational knowledge, contextual text, and direct knowledge.
+- Do not impose arbitrary equal percentages, but judge whether the batch feels like a playable experience rather than a quiz sheet.
+
+## 2. Default Quality Targets (Advisory Warnings)
 
 For standard batches (e.g. 9–15 items), the following default quality targets apply as **advisory warnings**:
 
@@ -36,3 +42,31 @@ $$D = 0.4 \cdot \left(\frac{\text{Unique Archetypes}}{\min(N, 6)}\right) + 0.3 \
 - **Score $< 0.65$**: ⚠️ **LOW DIVERSITY NOTICE** — Optimization recommended before final human sign-off.
 
 > **Note:** The diversity score is an advisory product QA metric. It is **not** an automated runtime blocker.
+
+## EXPERIENCE SHAPE QUALITY & COGNITIVE VARIETY
+Batch-level QA must evaluate not just modality variety (audio vs image vs text) or topical variety, but **cognitive and interaction variety**.
+
+A batch should not contain:
+- 10 identification questions
+- 10 "وش هذا؟" questions
+- 10 sound → action-description questions
+even if every item is technically different.
+
+Look for variation such as:
+- identity recognition
+- mechanic consequence
+- contextual reasoning
+- location recognition
+- visual inference
+- audio recognition
+- item-function knowledge
+- system/HUD recognition
+- sequence/pattern understanding
+
+Do not impose arbitrary equal quotas, but judge whether the batch feels like multiple distinct mini-game cognitive moments.
+
+## VARIETY IS ENFORCED ACROSS THE BATCH, NOT BY OVERLOADING EACH QUESTION
+Cognitive variety is a BATCH-level concern.
+We do NOT want 10 consecutive questions that are all `مين الشخصية؟` or `وش اسم هذي القدرة؟`. However, do not damage an individual strong item just to make that item cognitively more complex.
+A batch may legitimately include character recognition, ability recognition, sound recognition, mechanic interpretation, consequence/effect, and object identification.
+Each item should use the question form that best fits its evidence. `VARIETY IS ENFORCED ACROSS THE BATCH, NOT BY OVERLOADING EACH QUESTION`.

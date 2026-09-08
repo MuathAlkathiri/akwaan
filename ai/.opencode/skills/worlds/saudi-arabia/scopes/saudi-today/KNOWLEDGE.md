@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: saudi-today
+
+## Identity / Boundaries
+Defines exactly what belongs in saudi-today and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of saudi-today know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Highly recognizable cultural touchstones and visual icons.
+
+## Weak / Boring Territories
+Weak: Obscure dates and academic minutiae.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for saudi-today.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for saudi-today.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to saudi-today.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying saudi-today moment.
+
+### Legacy Taxonomy Data:
 # Scope: Saudi Arabia Today
 
 - `scopeId`: `saudi-arabia.saudi-today`

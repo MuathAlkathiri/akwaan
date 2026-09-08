@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: one-piece
+
+## Identity / Boundaries
+Defines exactly what belongs in one-piece and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of one-piece know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Devil Fruit visuals, Jolly Rogers, unique laughs (Zahaha).
+
+## Weak / Boring Territories
+Weak: Bounty numbers (they change), exact island arrival dates.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for one-piece.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for one-piece.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to one-piece.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying one-piece moment.
+
+### Legacy Taxonomy Data:
 # One Piece Knowledge
 
 ## Identity and Vocabulary

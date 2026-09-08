@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: marvel
+
+## Identity / Boundaries
+Defines exactly what belongs in marvel and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of marvel know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Infinity stone colors, post-credit scenes, signature weapons.
+
+## Weak / Boring Territories
+Weak: Phase numbers, exact box office gross.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for marvel.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for marvel.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to marvel.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying marvel moment.
+
+### Legacy Taxonomy Data:
 # Marvel Knowledge
 
 ## Identity and Vocabulary

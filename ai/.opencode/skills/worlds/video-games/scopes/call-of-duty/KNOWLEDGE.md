@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: call-of-duty
+
+## Identity / Boundaries
+Defines exactly what belongs in call-of-duty and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of call-of-duty know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Mode-specific survival weapons with distinct visual silhouettes, recognizable jingles from progression systems.
+
+## Weak / Boring Territories
+Weak: Base weapon damage stats, exact release dates.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for call-of-duty.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for call-of-duty.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to call-of-duty.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying call-of-duty moment.
+
+### Legacy Taxonomy Data:
 # Call of Duty Knowledge
 
 ## Identity and Vocabulary

@@ -1,0 +1,607 @@
+{
+  "mechanics": {
+    "bomb": {
+      "category": "SHARED",
+      "status": "AUTHORABLE",
+      "profile": "ai/.opencode/skills/challenge-types/bomb/SKILL.md"
+    },
+    "marhala": {
+      "category": "SIGNATURE",
+      "boundWorld": "video-games",
+      "status": "AUTHORABLE",
+      "profile": "ai/.opencode/skills/challenge-types/marhala/SKILL.md"
+    },
+    "combo": {
+      "category": "SIGNATURE",
+      "boundWorld": "anime",
+      "status": "AUTHORABLE",
+      "profile": "ai/.opencode/skills/challenge-types/combo/SKILL.md"
+    },
+    "read-your-opponent": {
+      "category": "SHARED",
+      "status": "AUTHORABLE",
+      "profile": "ai/.opencode/skills/challenge-types/read-your-opponent/SKILL.md",
+      "aliases": [
+        "ryo"
+      ]
+    },
+    "closest": {
+      "category": "SHARED",
+      "status": "AUTHORABLE",
+      "profile": "ai/.opencode/skills/challenge-types/closest/SKILL.md"
+    },
+    "top-5": {
+      "category": "SIGNATURE",
+      "boundWorld": "football",
+      "status": "AUTHORABLE",
+      "profile": "ai/.opencode/skills/challenge-types/top-5/SKILL.md"
+    },
+    "distributed-information": {
+      "category": "SIGNATURE",
+      "boundWorld": "puzzles",
+      "status": "AUTHORABLE",
+      "profile": "ai/.opencode/skills/challenge-types/distributed-information/SKILL.md",
+      "aliases": [
+        "rakkibha"
+      ]
+    },
+    "odd-piece": {
+      "category": "SIGNATURE",
+      "boundWorld": "cars",
+      "status": "AUTHORABLE",
+      "profile": "ai/.opencode/skills/challenge-types/odd-piece/SKILL.md",
+      "aliases": [
+        "intruder-part",
+        "intruder"
+      ]
+    },
+    "first-note": {
+      "category": "SIGNATURE",
+      "boundWorld": "music",
+      "status": "AUTHORABLE",
+      "profile": "ai/.opencode/skills/challenge-types/first-note/SKILL.md",
+      "aliases": [
+        "first_note"
+      ]
+    },
+    "laqatha": {
+      "category": "SIGNATURE",
+      "boundWorld": "movies",
+      "status": "AUTHORABLE",
+      "profile": "ai/.opencode/skills/challenge-types/laqatha/SKILL.md"
+    },
+    "one-clue": {
+      "category": "SHARED",
+      "status": "LEGACY",
+      "profile": "ai/.opencode/skills/challenge-types/one-clue/SKILL.md"
+    },
+    "guess-your-teammate": {
+      "category": "SHARED",
+      "status": "LEGACY",
+      "profile": "ai/.opencode/skills/challenge-types/guess-your-teammate/SKILL.md"
+    },
+    "twenty-inquiries": {
+      "category": "SHARED",
+      "status": "LEGACY",
+      "profile": "ai/.opencode/skills/challenge-types/twenty-inquiries/SKILL.md"
+    },
+    "same-wavelength": {
+      "category": "SHARED",
+      "status": "LEGACY",
+      "profile": "ai/.opencode/skills/challenge-types/same-wavelength/SKILL.md"
+    },
+    "split": {
+      "category": "SHARED",
+      "status": "LEGACY",
+      "profile": "ai/.opencode/skills/challenge-types/split/SKILL.md"
+    },
+    "split-clue": {
+      "category": "SHARED",
+      "status": "LEGACY",
+      "profile": "ai/.opencode/skills/challenge-types/split-clue/SKILL.md"
+    },
+    "who-among-us": {
+      "category": "SHARED",
+      "status": "LEGACY",
+      "profile": "ai/.opencode/skills/challenge-types/who-among-us/SKILL.md"
+    }
+  },
+  "worlds": {
+    "anime": {
+      "profile": "ai/.opencode/skills/worlds/anime/WORLD.md",
+      "scopes": [
+        "attack-on-titan",
+        "bleach",
+        "demon-slayer",
+        "dragon-ball",
+        "jujutsu-kaisen",
+        "naruto",
+        "one-piece"
+      ]
+    },
+    "cars": {
+      "profile": "ai/.opencode/skills/worlds/cars/WORLD.md",
+      "scopes": [
+        "cars-mix",
+        "german-cars",
+        "japanese-cars",
+        "supercars"
+      ]
+    },
+    "football": {
+      "profile": "ai/.opencode/skills/worlds/football/WORLD.md",
+      "scopes": [
+        "champions-league",
+        "football-legends",
+        "la-liga",
+        "premier-league",
+        "saudi-league",
+        "serie-a",
+        "world-cup"
+      ]
+    },
+    "general-knowledge": {
+      "profile": "ai/.opencode/skills/worlds/general-knowledge/WORLD.md",
+      "scopes": [
+        "history",
+        "human-body-nature",
+        "inventions-discoveries",
+        "science"
+      ]
+    },
+    "movies": {
+      "profile": "ai/.opencode/skills/worlds/movies/WORLD.md",
+      "scopes": [
+        "disney-pixar",
+        "harry-potter",
+        "marvel",
+        "movies-mix"
+      ]
+    },
+    "music": {
+      "profile": "ai/.opencode/skills/worlds/music/WORLD.md",
+      "scopes": [
+        "arabic-music",
+        "gulf-music",
+        "international-music",
+        "saudi-music"
+      ]
+    },
+    "puzzles": {
+      "profile": "ai/.opencode/skills/worlds/puzzles/WORLD.md",
+      "scopes": [
+        "general-knowledge",
+        "lateral-thinking",
+        "letters-words",
+        "logic-deduction",
+        "numbers-arithmetic",
+        "patterns-sequences",
+        "shapes-patterns",
+        "symbols-codes",
+        "visual-puzzles"
+      ]
+    },
+    "saudi-arabia": {
+      "profile": "ai/.opencode/skills/worlds/saudi-arabia/WORLD.md",
+      "scopes": [
+        "cities-landmarks",
+        "culture-heritage",
+        "saudi-history",
+        "saudi-today"
+      ]
+    },
+    "series": {
+      "profile": "ai/.opencode/skills/worlds/series/WORLD.md",
+      "scopes": [
+        "breaking-bad",
+        "from",
+        "game-of-thrones",
+        "series-mix"
+      ]
+    },
+    "sports": {
+      "profile": "ai/.opencode/skills/worlds/sports/WORLD.md",
+      "scopes": [
+        "formula-1",
+        "nba",
+        "ufc",
+        "wwe"
+      ]
+    },
+    "video-games": {
+      "profile": "ai/.opencode/skills/worlds/video-games/WORLD.md",
+      "scopes": [
+        "call-of-duty",
+        "fifa",
+        "god-of-war",
+        "gta",
+        "minecraft",
+        "overwatch",
+        "resident-evil"
+      ]
+    },
+    "world": {
+      "profile": "ai/.opencode/skills/worlds/world/WORLD.md",
+      "scopes": [
+        "cities-landmarks",
+        "countries-flags",
+        "geography",
+        "peoples-cultures"
+      ]
+    }
+  },
+  "scopes": {
+    "anime/attack-on-titan": {
+      "world": "anime",
+      "scopePath": "ai/.opencode/skills/worlds/anime/scopes/attack-on-titan/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/anime/scopes/attack-on-titan/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/anime/scopes/attack-on-titan/EXEMPLARS.md"
+    },
+    "anime/bleach": {
+      "world": "anime",
+      "scopePath": "ai/.opencode/skills/worlds/anime/scopes/bleach/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/anime/scopes/bleach/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/anime/scopes/bleach/EXEMPLARS.md"
+    },
+    "anime/naruto": {
+      "world": "anime",
+      "scopePath": "ai/.opencode/skills/worlds/anime/scopes/naruto/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/anime/scopes/naruto/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/anime/scopes/naruto/EXEMPLARS.md"
+    },
+    "anime/one-piece": {
+      "world": "anime",
+      "scopePath": "ai/.opencode/skills/worlds/anime/scopes/one-piece/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/anime/scopes/one-piece/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/anime/scopes/one-piece/EXEMPLARS.md"
+    },
+    "anime/demon-slayer": {
+      "world": "anime",
+      "scopePath": "ai/.opencode/skills/worlds/anime/scopes/demon-slayer/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/anime/scopes/demon-slayer/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/anime/scopes/demon-slayer/EXEMPLARS.md"
+    },
+    "anime/dragon-ball": {
+      "world": "anime",
+      "scopePath": "ai/.opencode/skills/worlds/anime/scopes/dragon-ball/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/anime/scopes/dragon-ball/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/anime/scopes/dragon-ball/EXEMPLARS.md"
+    },
+    "anime/jujutsu-kaisen": {
+      "world": "anime",
+      "scopePath": "ai/.opencode/skills/worlds/anime/scopes/jujutsu-kaisen/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/anime/scopes/jujutsu-kaisen/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/anime/scopes/jujutsu-kaisen/EXEMPLARS.md"
+    },
+    "cars/cars-mix": {
+      "world": "cars",
+      "scopePath": "ai/.opencode/skills/worlds/cars/scopes/cars-mix/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/cars/scopes/cars-mix/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/cars/scopes/cars-mix/EXEMPLARS.md"
+    },
+    "cars/german-cars": {
+      "world": "cars",
+      "scopePath": "ai/.opencode/skills/worlds/cars/scopes/german-cars/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/cars/scopes/german-cars/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/cars/scopes/german-cars/EXEMPLARS.md"
+    },
+    "cars/japanese-cars": {
+      "world": "cars",
+      "scopePath": "ai/.opencode/skills/worlds/cars/scopes/japanese-cars/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/cars/scopes/japanese-cars/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/cars/scopes/japanese-cars/EXEMPLARS.md"
+    },
+    "cars/supercars": {
+      "world": "cars",
+      "scopePath": "ai/.opencode/skills/worlds/cars/scopes/supercars/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/cars/scopes/supercars/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/cars/scopes/supercars/EXEMPLARS.md"
+    },
+    "football/champions-league": {
+      "world": "football",
+      "scopePath": "ai/.opencode/skills/worlds/football/scopes/champions-league/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/football/scopes/champions-league/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/football/scopes/champions-league/EXEMPLARS.md"
+    },
+    "football/premier-league": {
+      "world": "football",
+      "scopePath": "ai/.opencode/skills/worlds/football/scopes/premier-league/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/football/scopes/premier-league/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/football/scopes/premier-league/EXEMPLARS.md"
+    },
+    "football/saudi-league": {
+      "world": "football",
+      "scopePath": "ai/.opencode/skills/worlds/football/scopes/saudi-league/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/football/scopes/saudi-league/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/football/scopes/saudi-league/EXEMPLARS.md"
+    },
+    "football/world-cup": {
+      "world": "football",
+      "scopePath": "ai/.opencode/skills/worlds/football/scopes/world-cup/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/football/scopes/world-cup/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/football/scopes/world-cup/EXEMPLARS.md"
+    },
+    "football/football-legends": {
+      "world": "football",
+      "scopePath": "ai/.opencode/skills/worlds/football/scopes/football-legends/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/football/scopes/football-legends/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/football/scopes/football-legends/EXEMPLARS.md"
+    },
+    "football/la-liga": {
+      "world": "football",
+      "scopePath": "ai/.opencode/skills/worlds/football/scopes/la-liga/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/football/scopes/la-liga/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/football/scopes/la-liga/EXEMPLARS.md"
+    },
+    "football/serie-a": {
+      "world": "football",
+      "scopePath": "ai/.opencode/skills/worlds/football/scopes/serie-a/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/football/scopes/serie-a/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/football/scopes/serie-a/EXEMPLARS.md"
+    },
+    "general-knowledge/history": {
+      "world": "general-knowledge",
+      "scopePath": "ai/.opencode/skills/worlds/general-knowledge/scopes/history/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/general-knowledge/scopes/history/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/general-knowledge/scopes/history/EXEMPLARS.md"
+    },
+    "general-knowledge/human-body-nature": {
+      "world": "general-knowledge",
+      "scopePath": "ai/.opencode/skills/worlds/general-knowledge/scopes/human-body-nature/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/general-knowledge/scopes/human-body-nature/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/general-knowledge/scopes/human-body-nature/EXEMPLARS.md"
+    },
+    "general-knowledge/inventions-discoveries": {
+      "world": "general-knowledge",
+      "scopePath": "ai/.opencode/skills/worlds/general-knowledge/scopes/inventions-discoveries/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/general-knowledge/scopes/inventions-discoveries/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/general-knowledge/scopes/inventions-discoveries/EXEMPLARS.md"
+    },
+    "general-knowledge/science": {
+      "world": "general-knowledge",
+      "scopePath": "ai/.opencode/skills/worlds/general-knowledge/scopes/science/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/general-knowledge/scopes/science/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/general-knowledge/scopes/science/EXEMPLARS.md"
+    },
+    "movies/disney-pixar": {
+      "world": "movies",
+      "scopePath": "ai/.opencode/skills/worlds/movies/scopes/disney-pixar/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/movies/scopes/disney-pixar/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/movies/scopes/disney-pixar/EXEMPLARS.md"
+    },
+    "movies/harry-potter": {
+      "world": "movies",
+      "scopePath": "ai/.opencode/skills/worlds/movies/scopes/harry-potter/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/movies/scopes/harry-potter/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/movies/scopes/harry-potter/EXEMPLARS.md"
+    },
+    "movies/marvel": {
+      "world": "movies",
+      "scopePath": "ai/.opencode/skills/worlds/movies/scopes/marvel/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/movies/scopes/marvel/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/movies/scopes/marvel/EXEMPLARS.md"
+    },
+    "movies/movies-mix": {
+      "world": "movies",
+      "scopePath": "ai/.opencode/skills/worlds/movies/scopes/movies-mix/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/movies/scopes/movies-mix/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/movies/scopes/movies-mix/EXEMPLARS.md"
+    },
+    "music/arabic-music": {
+      "world": "music",
+      "scopePath": "ai/.opencode/skills/worlds/music/scopes/arabic-music/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/music/scopes/arabic-music/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/music/scopes/arabic-music/EXEMPLARS.md"
+    },
+    "music/gulf-music": {
+      "world": "music",
+      "scopePath": "ai/.opencode/skills/worlds/music/scopes/gulf-music/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/music/scopes/gulf-music/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/music/scopes/gulf-music/EXEMPLARS.md"
+    },
+    "music/international-music": {
+      "world": "music",
+      "scopePath": "ai/.opencode/skills/worlds/music/scopes/international-music/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/music/scopes/international-music/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/music/scopes/international-music/EXEMPLARS.md"
+    },
+    "music/saudi-music": {
+      "world": "music",
+      "scopePath": "ai/.opencode/skills/worlds/music/scopes/saudi-music/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/music/scopes/saudi-music/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/music/scopes/saudi-music/EXEMPLARS.md"
+    },
+    "puzzles/general-knowledge": {
+      "world": "puzzles",
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/general-knowledge/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/general-knowledge/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/general-knowledge/EXEMPLARS.md"
+    },
+    "puzzles/letters-words": {
+      "world": "puzzles",
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/letters-words/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/letters-words/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/letters-words/EXEMPLARS.md"
+    },
+    "puzzles/logic-deduction": {
+      "world": "puzzles",
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/logic-deduction/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/logic-deduction/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/logic-deduction/EXEMPLARS.md"
+    },
+    "puzzles/numbers-arithmetic": {
+      "world": "puzzles",
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/numbers-arithmetic/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/numbers-arithmetic/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/numbers-arithmetic/EXEMPLARS.md"
+    },
+    "puzzles/symbols-codes": {
+      "world": "puzzles",
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/symbols-codes/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/symbols-codes/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/symbols-codes/EXEMPLARS.md"
+    },
+    "puzzles/shapes-patterns": {
+      "world": "puzzles",
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/shapes-patterns/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/shapes-patterns/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/shapes-patterns/EXEMPLARS.md"
+    },
+    "puzzles/patterns-sequences": {
+      "world": "puzzles",
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/patterns-sequences/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/patterns-sequences/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/patterns-sequences/EXEMPLARS.md"
+    },
+    "puzzles/lateral-thinking": {
+      "world": "puzzles",
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/lateral-thinking/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/lateral-thinking/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/lateral-thinking/EXEMPLARS.md"
+    },
+    "puzzles/visual-puzzles": {
+      "world": "puzzles",
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/visual-puzzles/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/visual-puzzles/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/visual-puzzles/EXEMPLARS.md"
+    },
+    "saudi-arabia/cities-landmarks": {
+      "world": "saudi-arabia",
+      "scopePath": "ai/.opencode/skills/worlds/saudi-arabia/scopes/cities-landmarks/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/saudi-arabia/scopes/cities-landmarks/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/saudi-arabia/scopes/cities-landmarks/EXEMPLARS.md"
+    },
+    "saudi-arabia/culture-heritage": {
+      "world": "saudi-arabia",
+      "scopePath": "ai/.opencode/skills/worlds/saudi-arabia/scopes/culture-heritage/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/saudi-arabia/scopes/culture-heritage/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/saudi-arabia/scopes/culture-heritage/EXEMPLARS.md"
+    },
+    "saudi-arabia/saudi-history": {
+      "world": "saudi-arabia",
+      "scopePath": "ai/.opencode/skills/worlds/saudi-arabia/scopes/saudi-history/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/saudi-arabia/scopes/saudi-history/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/saudi-arabia/scopes/saudi-history/EXEMPLARS.md"
+    },
+    "saudi-arabia/saudi-today": {
+      "world": "saudi-arabia",
+      "scopePath": "ai/.opencode/skills/worlds/saudi-arabia/scopes/saudi-today/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/saudi-arabia/scopes/saudi-today/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/saudi-arabia/scopes/saudi-today/EXEMPLARS.md"
+    },
+    "series/breaking-bad": {
+      "world": "series",
+      "scopePath": "ai/.opencode/skills/worlds/series/scopes/breaking-bad/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/series/scopes/breaking-bad/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/series/scopes/breaking-bad/EXEMPLARS.md"
+    },
+    "series/from": {
+      "world": "series",
+      "scopePath": "ai/.opencode/skills/worlds/series/scopes/from/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/series/scopes/from/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/series/scopes/from/EXEMPLARS.md"
+    },
+    "series/game-of-thrones": {
+      "world": "series",
+      "scopePath": "ai/.opencode/skills/worlds/series/scopes/game-of-thrones/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/series/scopes/game-of-thrones/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/series/scopes/game-of-thrones/EXEMPLARS.md"
+    },
+    "series/series-mix": {
+      "world": "series",
+      "scopePath": "ai/.opencode/skills/worlds/series/scopes/series-mix/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/series/scopes/series-mix/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/series/scopes/series-mix/EXEMPLARS.md"
+    },
+    "sports/formula-1": {
+      "world": "sports",
+      "scopePath": "ai/.opencode/skills/worlds/sports/scopes/formula-1/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/sports/scopes/formula-1/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/sports/scopes/formula-1/EXEMPLARS.md"
+    },
+    "sports/nba": {
+      "world": "sports",
+      "scopePath": "ai/.opencode/skills/worlds/sports/scopes/nba/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/sports/scopes/nba/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/sports/scopes/nba/EXEMPLARS.md"
+    },
+    "sports/ufc": {
+      "world": "sports",
+      "scopePath": "ai/.opencode/skills/worlds/sports/scopes/ufc/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/sports/scopes/ufc/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/sports/scopes/ufc/EXEMPLARS.md"
+    },
+    "sports/wwe": {
+      "world": "sports",
+      "scopePath": "ai/.opencode/skills/worlds/sports/scopes/wwe/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/sports/scopes/wwe/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/sports/scopes/wwe/EXEMPLARS.md"
+    },
+    "video-games/call-of-duty": {
+      "world": "video-games",
+      "scopePath": "ai/.opencode/skills/worlds/video-games/scopes/call-of-duty/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/video-games/scopes/call-of-duty/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/video-games/scopes/call-of-duty/EXEMPLARS.md"
+    },
+    "video-games/fifa": {
+      "world": "video-games",
+      "scopePath": "ai/.opencode/skills/worlds/video-games/scopes/fifa/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/video-games/scopes/fifa/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/video-games/scopes/fifa/EXEMPLARS.md"
+    },
+    "video-games/gta": {
+      "world": "video-games",
+      "scopePath": "ai/.opencode/skills/worlds/video-games/scopes/gta/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/video-games/scopes/gta/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/video-games/scopes/gta/EXEMPLARS.md"
+    },
+    "video-games/overwatch": {
+      "world": "video-games",
+      "scopePath": "ai/.opencode/skills/worlds/video-games/scopes/overwatch/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/video-games/scopes/overwatch/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/video-games/scopes/overwatch/EXEMPLARS.md"
+    },
+    "video-games/minecraft": {
+      "world": "video-games",
+      "scopePath": "ai/.opencode/skills/worlds/video-games/scopes/minecraft/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/video-games/scopes/minecraft/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/video-games/scopes/minecraft/EXEMPLARS.md"
+    },
+    "video-games/god-of-war": {
+      "world": "video-games",
+      "scopePath": "ai/.opencode/skills/worlds/video-games/scopes/god-of-war/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/video-games/scopes/god-of-war/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/video-games/scopes/god-of-war/EXEMPLARS.md"
+    },
+    "video-games/resident-evil": {
+      "world": "video-games",
+      "scopePath": "ai/.opencode/skills/worlds/video-games/scopes/resident-evil/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/video-games/scopes/resident-evil/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/video-games/scopes/resident-evil/EXEMPLARS.md"
+    },
+    "world/cities-landmarks": {
+      "world": "world",
+      "scopePath": "ai/.opencode/skills/worlds/world/scopes/cities-landmarks/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/world/scopes/cities-landmarks/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/world/scopes/cities-landmarks/EXEMPLARS.md"
+    },
+    "world/countries-flags": {
+      "world": "world",
+      "scopePath": "ai/.opencode/skills/worlds/world/scopes/countries-flags/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/world/scopes/countries-flags/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/world/scopes/countries-flags/EXEMPLARS.md"
+    },
+    "world/geography": {
+      "world": "world",
+      "scopePath": "ai/.opencode/skills/worlds/world/scopes/geography/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/world/scopes/geography/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/world/scopes/geography/EXEMPLARS.md"
+    },
+    "world/peoples-cultures": {
+      "world": "world",
+      "scopePath": "ai/.opencode/skills/worlds/world/scopes/peoples-cultures/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/world/scopes/peoples-cultures/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/world/scopes/peoples-cultures/EXEMPLARS.md"
+    }
+  }
+}

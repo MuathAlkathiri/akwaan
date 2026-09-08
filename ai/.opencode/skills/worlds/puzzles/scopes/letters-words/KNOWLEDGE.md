@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: letters-words
+
+## Identity / Boundaries
+Defines exactly what belongs in letters-words and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of letters-words know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Visually distinct spatial or logical leaps.
+
+## Weak / Boring Territories
+Weak: Overly complex math that requires a calculator.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for letters-words.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for letters-words.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to letters-words.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying letters-words moment.
+
+### Legacy Taxonomy Data:
 # Letters and Words
 
 ## Identity and Vocabulary

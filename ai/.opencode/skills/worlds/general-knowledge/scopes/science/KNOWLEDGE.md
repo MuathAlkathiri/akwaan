@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: science
+
+## Identity / Boundaries
+Defines exactly what belongs in science and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of science know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Highly recognizable cultural touchstones and visual icons.
+
+## Weak / Boring Territories
+Weak: Obscure dates and academic minutiae.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for science.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for science.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to science.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying science moment.
+
+### Legacy Taxonomy Data:
 # Scope: Science
 
 - `scopeId`: `general-knowledge.science`

@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: cities-landmarks
+
+## Identity / Boundaries
+Defines exactly what belongs in cities-landmarks and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of cities-landmarks know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Highly recognizable cultural touchstones and visual icons.
+
+## Weak / Boring Territories
+Weak: Obscure dates and academic minutiae.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for cities-landmarks.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for cities-landmarks.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to cities-landmarks.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying cities-landmarks moment.
+
+### Legacy Taxonomy Data:
 # Scope: Cities & Landmarks
 
 - `scopeId`: `saudi-arabia.cities-landmarks`

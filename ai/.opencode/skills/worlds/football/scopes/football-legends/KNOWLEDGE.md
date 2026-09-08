@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: football-legends
+
+## Identity / Boundaries
+Defines exactly what belongs in football-legends and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of football-legends know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Signature moves, historic rivalries, legendary World Cup goals.
+
+## Weak / Boring Territories
+Weak: Friendly match caps, mid-career transfer rumors.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for football-legends.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for football-legends.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to football-legends.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying football-legends moment.
+
+### Legacy Taxonomy Data:
 # Football Legends Knowledge Base (قاعدة معرفة أساطير كرة القدم)
 
 ## Scope Summary

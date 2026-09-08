@@ -1,3 +1,28 @@
+# World Experience Profile: football
+
+## World Identity
+The core aesthetic and thematic identity of football. Focus on authentic engagement.
+
+## Player Experience
+How players feel when answering questions in this World. Must be kinetic and reward true fandom.
+
+## Strong Content Territories
+Best formats for this World.
+- Strong: Signature moments, historic jerseys, famous derbies.
+
+## Weak / Meta Territories
+Avoid trivia that feels like a wiki lookup.
+- Weak: Exact transfer fees or minor match stats.
+
+## Natural Evidence Forms
+What media types work best (e.g., Audio, Video, Image).
+
+## World vs Scope Responsibility
+World defines the tone and media boundaries. Scopes define the factual boundaries.
+
+## World-Specific Anti-Patterns
+Avoid breaking the core experience of football.
+
 # World: Football
 
 - `worldId`: `football`

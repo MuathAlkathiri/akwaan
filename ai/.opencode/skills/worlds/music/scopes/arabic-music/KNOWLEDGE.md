@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: arabic-music
+
+## Identity / Boundaries
+Defines exactly what belongs in arabic-music and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of arabic-music know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: The first iconic notes of a track, signature instruments.
+
+## Weak / Boring Territories
+Weak: Chart positions and release dates.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for arabic-music.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for arabic-music.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to arabic-music.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying arabic-music moment.
+
+### Legacy Taxonomy Data:
 # Scope: Arabic Music
 
 - `scopeId`: `music.arabic-music`

@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: shapes-patterns
+
+## Identity / Boundaries
+Defines exactly what belongs in shapes-patterns and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of shapes-patterns know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Visually distinct spatial or logical leaps.
+
+## Weak / Boring Territories
+Weak: Overly complex math that requires a calculator.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for shapes-patterns.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for shapes-patterns.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to shapes-patterns.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying shapes-patterns moment.
+
+### Legacy Taxonomy Data:
 # Shapes and Patterns
 
 ## Identity and Vocabulary

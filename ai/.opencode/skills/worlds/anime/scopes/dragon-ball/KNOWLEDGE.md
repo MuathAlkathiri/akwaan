@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: dragon-ball
+
+## Identity / Boundaries
+Defines exactly what belongs in dragon-ball and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of dragon-ball know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Signature transformations, iconic energy attacks, fusion poses.
+
+## Weak / Boring Territories
+Weak: Power levels (which are inconsistent), minor movie villains.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for dragon-ball.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for dragon-ball.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to dragon-ball.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying dragon-ball moment.
+
+### Legacy Taxonomy Data:
 # Dragon Ball Knowledge Base (قاعدة معرفة دراغون بول)
 
 ## Scope Summary

@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: supercars
+
+## Identity / Boundaries
+Defines exactly what belongs in supercars and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of supercars know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Engine sounds, distinct taillight signatures, iconic hypercar silhouettes.
+
+## Weak / Boring Territories
+Weak: Exact 0-60 fractions of a second, generic trim levels.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for supercars.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for supercars.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to supercars.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying supercars moment.
+
+### Legacy Taxonomy Data:
 # Scope: Supercars
 
 - `scopeId`: `cars.supercars`

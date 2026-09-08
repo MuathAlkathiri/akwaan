@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: demon-slayer
+
+## Identity / Boundaries
+Defines exactly what belongs in demon-slayer and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of demon-slayer know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Breathing style forms, Hashira swords, distinct demon designs.
+
+## Weak / Boring Territories
+Weak: Manga-only lore, exact demon ages.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for demon-slayer.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for demon-slayer.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to demon-slayer.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying demon-slayer moment.
+
+### Legacy Taxonomy Data:
 # Demon Slayer Knowledge Base (قاعدة معرفة قاتل الشياطين)
 
 ## Scope Summary

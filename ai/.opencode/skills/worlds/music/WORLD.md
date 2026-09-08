@@ -1,3 +1,28 @@
+# World Experience Profile: music
+
+## World Identity
+The core aesthetic and thematic identity of music. Focus on authentic engagement.
+
+## Player Experience
+How players feel when answering questions in this World. Must be kinetic and reward true fandom.
+
+## Strong Content Territories
+Best formats for this World.
+- Strong: The first iconic notes of a track, signature instruments.
+
+## Weak / Meta Territories
+Avoid trivia that feels like a wiki lookup.
+- Weak: Chart positions and release dates.
+
+## Natural Evidence Forms
+What media types work best (e.g., Audio, Video, Image).
+
+## World vs Scope Responsibility
+World defines the tone and media boundaries. Scopes define the factual boundaries.
+
+## World-Specific Anti-Patterns
+Avoid breaking the core experience of music.
+
 # World: الأغاني (Music)
 
 - `worldId`: `music`
@@ -14,7 +39,8 @@
   media-search intent. The existing AI/Wigolo service performs YouTube search,
   source selection, and audio snippet extraction. OpenCode never searches
   YouTube or downloads audio directly.
-- Signature mechanic: unassigned; the World is not launch-ready.
+- Signature mechanic: `first_note` (من أول نغمة)
+  - **Pre-Auction Clue Rule**: The clue exists to help players decide "How many seconds do I need?". Therefore, **Artist Identity is the DEFAULT anchor** (e.g., `الفنان: [artist]`, `الفنانة: [artist]`, `الفرقة: [group]`). Generic AI-style descriptive filler is strictly forbidden. Year/Album exceptions allowed only when Product-justified.
 
 This World supplies presentation context only.
 

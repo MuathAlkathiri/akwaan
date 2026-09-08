@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: japanese-cars
+
+## Identity / Boundaries
+Defines exactly what belongs in japanese-cars and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of japanese-cars know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: JDM tuner culture icons, pop-up headlight visuals, rotary engine sounds.
+
+## Weak / Boring Territories
+Weak: Minivan model years, generic chassis codes.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for japanese-cars.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for japanese-cars.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to japanese-cars.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying japanese-cars moment.
+
+### Legacy Taxonomy Data:
 # Scope: Japanese Cars
 
 - `scopeId`: `cars.japanese-cars`

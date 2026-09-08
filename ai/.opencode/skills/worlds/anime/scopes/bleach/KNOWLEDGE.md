@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: bleach
+
+## Identity / Boundaries
+Defines exactly what belongs in bleach and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of bleach know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Zanpakuto release commands, Bankai visuals.
+
+## Weak / Boring Territories
+Weak: Bount arc trivia, generic hollow names.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for bleach.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for bleach.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to bleach.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying bleach moment.
+
+### Legacy Taxonomy Data:
 # Bleach Knowledge
 
 ## Identity and Vocabulary

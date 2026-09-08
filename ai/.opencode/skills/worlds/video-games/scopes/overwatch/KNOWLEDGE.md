@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: overwatch
+
+## Identity / Boundaries
+Defines exactly what belongs in overwatch and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of overwatch know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: High-stakes ability audio cues, character-specific voice lines that indicate immediate gameplay threats.
+
+## Weak / Boring Territories
+Weak: Patch note cooldown adjustments, exact health numbers.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for overwatch.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for overwatch.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to overwatch.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying overwatch moment.
+
+### Legacy Taxonomy Data:
 # Overwatch Knowledge
 
 ## Identity and Vocabulary

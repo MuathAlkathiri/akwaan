@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: history
+
+## Identity / Boundaries
+Defines exactly what belongs in history and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of history know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Highly recognizable cultural touchstones and visual icons.
+
+## Weak / Boring Territories
+Weak: Obscure dates and academic minutiae.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for history.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for history.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to history.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying history moment.
+
+### Legacy Taxonomy Data:
 # Scope: History
 
 - `scopeId`: `general-knowledge.history`

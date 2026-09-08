@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: ufc
+
+## Identity / Boundaries
+Defines exactly what belongs in ufc and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of ufc know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Championship moments, signature moves, iconic venues.
+
+## Weak / Boring Territories
+Weak: Regular season stats and contract values.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for ufc.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for ufc.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to ufc.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying ufc moment.
+
+### Legacy Taxonomy Data:
 # Scope: UFC
 
 - `scopeId`: `sports.ufc`

@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: culture-heritage
+
+## Identity / Boundaries
+Defines exactly what belongs in culture-heritage and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of culture-heritage know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Highly recognizable cultural touchstones and visual icons.
+
+## Weak / Boring Territories
+Weak: Obscure dates and academic minutiae.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for culture-heritage.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for culture-heritage.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to culture-heritage.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying culture-heritage moment.
+
+### Legacy Taxonomy Data:
 # Scope: Culture & Heritage
 
 - `scopeId`: `saudi-arabia.culture-heritage`

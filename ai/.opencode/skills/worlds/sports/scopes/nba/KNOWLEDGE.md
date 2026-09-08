@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: nba
+
+## Identity / Boundaries
+Defines exactly what belongs in nba and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of nba know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Championship moments, signature moves, iconic venues.
+
+## Weak / Boring Territories
+Weak: Regular season stats and contract values.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for nba.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for nba.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to nba.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying nba moment.
+
+### Legacy Taxonomy Data:
 # Scope: NBA
 
 - `scopeId`: `sports.nba`

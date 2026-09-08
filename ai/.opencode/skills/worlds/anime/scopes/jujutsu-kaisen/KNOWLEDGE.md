@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: jujutsu-kaisen
+
+## Identity / Boundaries
+Defines exactly what belongs in jujutsu-kaisen and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of jujutsu-kaisen know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Domain expansions, cursed techniques, specific character traits.
+
+## Weak / Boring Territories
+Weak: Manga-only spoilers, exact chapter numbers.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for jujutsu-kaisen.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for jujutsu-kaisen.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to jujutsu-kaisen.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying jujutsu-kaisen moment.
+
+### Legacy Taxonomy Data:
 # Jujutsu Kaisen Knowledge Base (قاعدة معرفة جوجوتسو كايسن)
 
 ## Scope Summary

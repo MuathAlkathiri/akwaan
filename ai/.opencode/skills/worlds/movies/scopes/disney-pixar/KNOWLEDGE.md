@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: disney-pixar
+
+## Identity / Boundaries
+Defines exactly what belongs in disney-pixar and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of disney-pixar know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Iconic quotes, signature props, visual cinematography.
+
+## Weak / Boring Territories
+Weak: Box office numbers and exact release years.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for disney-pixar.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for disney-pixar.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to disney-pixar.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying disney-pixar moment.
+
+### Legacy Taxonomy Data:
 # Disney & Pixar Knowledge
 
 ## Identity and Vocabulary
