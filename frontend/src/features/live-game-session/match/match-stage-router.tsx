@@ -388,27 +388,38 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
     stageSurvivesTransition: gameplay?.mode.key === MARHALA_MODE_KEY,
   });
 
-  // Safety net for the one wait this surface cannot end by itself.
+  // Safety net for a wait this surface cannot end by itself.
   //
-  // A phone that is not a required surface acknowledges nothing: the shared
-  // screen activates, and the only way this device learns is the update that
-  // follows. If that update is lost — the failure a real iPhone showed, sitting
-  // on the preparing state for the rest of the match — nothing here retries,
-  // because nothing here is owed anything. So after a short grace, ask once
-  // through the same canonical snapshot path everything else uses.
+  // The only way a waiting surface learns that a presentation activated is the
+  // update that follows. When that update is lost nothing here retries, because
+  // nothing here is owed anything — so after a short grace, ask once through
+  // the same canonical snapshot path everything else uses.
   //
-  // One attempt per generation, not a poll: the effect is keyed on the
+  // The precondition is simply "this surface is waiting". It was once narrowed
+  // to a surface the server had named a spectator (`required === false`), which
+  // covered recurring questions and missed the first challenge start entirely:
+  // المرحلة declares no required surface until its phase is `question`, so the
+  // launch window projects `{ running: true }` with neither `required` nor a
+  // generation, and a lost activation there left a real phone on the branded
+  // loader until it was manually refreshed. A required surface deserves the
+  // same net anyway — it can lose an update too — and asking is only a read:
+  // it cannot acknowledge anything, and the acknowledgement path above keeps
+  // its own in-flight and pinned guards.
+  //
+  // Also covers reaching the challenge stage with no runtime adopted at all,
+  // which is the same inconsistency one step earlier.
+  //
+  // One bounded attempt per wait, not a poll: the effect is keyed on the
   // revisions it is waiting past, so adopting anything cancels it and nothing
-  // re-arms until the next wait begins. It never reloads the page and never
-  // touches gameplay — it only asks for the snapshot that already exists.
-  const spectatingPresentation =
-    awaiting && gameplay?.presentationSurface?.required === false;
+  // re-arms until the next wait begins. It never reloads the page, never
+  // navigates and never touches gameplay.
+  const awaitingAuthoritativeState = awaiting || !gameplay;
   useEffect(() => {
-    if (!spectatingPresentation || !resync) return;
+    if (!awaitingAuthoritativeState || !resync) return;
     const timer = setTimeout(resync, PRESENTATION_RESYNC_GRACE_MS);
     return () => clearTimeout(timer);
   }, [
-    spectatingPresentation,
+    awaitingAuthoritativeState,
     resync,
     gameplay?.revision,
     gameplay?.presentationSurface?.generation,

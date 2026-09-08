@@ -255,14 +255,29 @@ describe("the phone recovers from a lost المرحلة transition", () => {
     );
   });
 
-  it("does not ask on behalf of a surface the server is waiting on", async () => {
-    // A shared screen owes an acknowledgement, so its wait is its own to end.
-    // Asking for a snapshot there would race the ack it has not sent yet.
+  it("gives a required surface the same net, because it can lose one too", async () => {
+    // This deliberately reverses a narrower rule: recovery used to arm only for
+    // a surface the server had named a spectator. That covered recurring
+    // questions and missed the first challenge start, where المرحلة declares no
+    // required surface yet and the snapshot carries no `required` at all — a
+    // lost activation there left a real phone on the loader until it was
+    // refreshed by hand. Asking is a read; it acknowledges nothing.
     const owed = preparing(8, 2) as unknown as {
       gameplay: { presentationSurface: { required: boolean } };
     };
     owed.gameplay.presentationSurface.required = true;
     render(tree(owed as unknown as LiveSessionSnapshot));
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect(resync).toHaveBeenCalledTimes(1);
+    // Still bounded: one attempt, not a poll.
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(resync).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks for nothing once a playable runtime is on screen", async () => {
+    // The net exists for a wait. An activated challenge is not one, so a
+    // healthy match never generates a single recovery request.
+    render(tree(active(7, 1)));
     await vi.advanceTimersByTimeAsync(30_000);
     expect(resync).not.toHaveBeenCalled();
   });
