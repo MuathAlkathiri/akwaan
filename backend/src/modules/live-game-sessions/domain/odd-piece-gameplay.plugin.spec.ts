@@ -229,4 +229,54 @@ describe('Odd Piece gameplay', () => {
     expect(advanced.prepareNextPresentation).toBe(true);
     expect(advanced.runtimeState.currentPuzzleIndex).toBe(1);
   });
+  describe('what a transfer must not leak', () => {
+    /**
+     * القطعة الدخيلة hands a failed puzzle to the opponent, who is still solving
+     * it. Until both attempts are spent — or one is right — the canonical odd
+     * piece, the two vehicle identities, the proof image and the first team's
+     * selection must all stay out of the projection. Any of them would hand the
+     * second team the answer it is still looking for.
+     */
+    const transferred = () => {
+      const open = { ...initial(), phase: 'open' };
+      const claimed = command(open, 'claim-odd-piece').runtimeState;
+      // 'a' is a target piece, so this claim is wrong and the puzzle transfers.
+      return command(claimed, 'submit-odd-piece', { pieceId: 'a' })
+        .runtimeState;
+    };
+
+    it('reveals nothing while the opponent still owns an attempt', () => {
+      const state = transferred();
+      expect(state.phase).toBe('selecting');
+      const projected = ODD_PIECE_GAMEPLAY_PLUGIN.projectRuntimeState(state);
+      expect(projected).not.toHaveProperty('revealJson');
+      expect(projected.attemptsJson).toBe('[]');
+      expect(projected.resultsJson).toBe('[]');
+      const serialized = JSON.stringify(projected);
+      // The intruder's identity is the answer; the target label names the rest.
+      expect(serialized).not.toContain('AMG C63');
+      expect(serialized).not.toContain('bmw-m4.jpg');
+    });
+
+    it('releases the proof and both selections once the puzzle is terminal', () => {
+      // The opponent owns the second attempt, so it must submit it.
+      const finished = ODD_PIECE_GAMEPLAY_PLUGIN.handleCommand(
+        context('p2') as never,
+        {
+          type: 'submit-odd-piece',
+          payload: { pieceId: 'b' },
+          runtimeState: transferred(),
+          roundState: { phase: 'selecting', puzzleIndex: 0 },
+        },
+      ).runtimeState;
+      expect(finished.phase).toBe('revealed');
+      const projected = ODD_PIECE_GAMEPLAY_PLUGIN.projectRuntimeState(finished);
+      const reveal = JSON.parse(String(projected.revealJson));
+      expect(reveal.targetVehicleLabel).toBe('BMW M4');
+      expect(reveal.intruderVehicleLabel).toBe('AMG C63');
+      expect(reveal.targetReveal.imageUrl).toBe('https://test/bmw-m4.jpg');
+      expect(reveal.oddPieceId).toBe('d');
+      expect(JSON.parse(String(projected.attemptsJson))).toHaveLength(2);
+    });
+  });
 });

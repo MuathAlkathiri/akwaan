@@ -26,6 +26,8 @@ export interface FirstNoteView {
   canAnswer: boolean;
   audio?: { type: string; assets: Array<{ url: string; altText?: string }> };
   reveal?: {
+    answers?: Record<string, string | null>;
+    resolvedAt?: string;
     title: string;
     finalBidSeconds: number;
     auctionTeamId: string;

@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 
 import {
+  MARHALA_MODE_KEY,
   marhalaFramePosition,
   marhalaTurnFrames,
   type MarhalaFrame,
   type MarhalaTurn,
 } from "../match/marhala.presentation";
+import { resolutionRevealMs } from "../match/resolution-pacing";
 
 /**
  * Replaying a committed المرحلة turn for the room.
@@ -58,6 +60,10 @@ const SETTLE_MS = 520;
 
 function frameDuration(frame: MarhalaFrame): number {
   switch (frame.kind) {
+    // The one beat whose length is a Product pacing decision rather than a
+    // motion detail, so it comes from the shared seam.
+    case "answer":
+      return resolutionRevealMs(MARHALA_MODE_KEY);
     case "reveal":
       return REVEAL_MS;
     case "step":
@@ -107,11 +113,13 @@ export function useMarhalaTurnReplay({
     // final tile from the first paint.
     if (reducedMotion) {
       const settled = turn.finalLanding;
-      setFrames(
-        settled === undefined
+      // Reduced motion drops travel, not truth: the answer beat is information.
+      setFrames([
+        { kind: "answer", turn } as MarhalaFrame,
+        ...(settled === undefined
           ? []
-          : [{ kind: "settled", position: settled } as MarhalaFrame],
-      );
+          : [{ kind: "settled", position: settled } as MarhalaFrame]),
+      ]);
       setFrameIndex(0);
       return;
     }
@@ -158,8 +166,12 @@ export function useMarhalaTurnReplay({
   let travellingTeamId: string | undefined;
 
   if (frame && turn) {
-    travellingTeamId = turn.teamId;
-    movement = turn.movement;
+    // Nothing is travelling yet while the answer is being read out, and the
+    // roll is not part of that beat either.
+    if (frame.kind !== "answer") {
+      travellingTeamId = turn.teamId;
+      movement = turn.movement;
+    }
     drawn[turn.teamId] = marhalaFramePosition(frame, startedFrom.current);
     if (frame.kind === "reveal") drawn[turn.teamId] = startedFrom.current;
     if (frame.kind === "effect") {

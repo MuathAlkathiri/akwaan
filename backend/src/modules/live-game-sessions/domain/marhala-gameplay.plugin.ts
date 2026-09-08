@@ -74,6 +74,10 @@ export interface MarhalaTurnResult {
   contentItemId: string;
   correct: boolean;
   resolvedBy: 'answer' | 'timeout';
+  /** What the team sent. `null` when the clock ran out with nothing submitted. */
+  submittedAnswer?: string | null;
+  /** The canonical answer, written only onto a turn that has already resolved. */
+  correctAnswer?: string;
   /** Absent when the answer was wrong: no movement happened at all. */
   movement?: number;
   baseLanding?: number;
@@ -300,7 +304,7 @@ function assertSubmitterIsActiveTeam(
  */
 function resolveCorrect(
   state: GameplayModeState,
-  input: { runtimeId: string; now: Date },
+  input: { runtimeId: string; now: Date; submittedAnswer: string },
 ): GameplayModeState {
   const question = questionOf(state);
   if (!question) fail('Marhala has no question to resolve');
@@ -330,6 +334,7 @@ function resolveCorrect(
       contentItemId: question.contentItemId,
       correct: true,
       resolvedBy: 'answer',
+      submittedAnswer: input.submittedAnswer,
       movement,
       baseLanding: MARHALA_FINISH_POSITION,
       tile: 'finish',
@@ -357,6 +362,7 @@ function resolveCorrect(
     contentItemId: question.contentItemId,
     correct: true,
     resolvedBy: 'answer',
+    submittedAnswer: input.submittedAnswer,
     movement,
     baseLanding,
     tile,
@@ -378,7 +384,11 @@ function resolveCorrect(
 /** A wrong answer or an expired clock: the question is spent, nothing moves. */
 function resolveFailure(
   state: GameplayModeState,
-  input: { resolvedBy: 'answer' | 'timeout'; now: Date },
+  input: {
+    resolvedBy: 'answer' | 'timeout';
+    now: Date;
+    submittedAnswer?: string | null;
+  },
 ): GameplayModeState {
   const question = questionOf(state);
   if (!question) fail('Marhala has no question to resolve');
@@ -389,19 +399,36 @@ function resolveFailure(
     contentItemId: question.contentItemId,
     correct: false,
     resolvedBy: input.resolvedBy,
+    submittedAnswer: input.submittedAnswer ?? null,
     resolvedAt: input.now.toISOString(),
   });
   return passTurn(recorded);
 }
 
+/**
+ * Write a resolved turn.
+ *
+ * The canonical answer is attached here rather than at each call site: a turn
+ * only ever exists because the question is over, so this is the first moment the
+ * answer is safe to keep — and the single funnel means no future resolution path
+ * can record a turn that quietly omits it.
+ */
 function recordTurn(
   state: GameplayModeState,
   turn: MarhalaTurnResult,
 ): GameplayModeState {
+  const question = questionOf(state);
+  const resolved: MarhalaTurnResult = {
+    ...turn,
+    submittedAnswer: turn.submittedAnswer ?? null,
+    ...(question?.acceptedAnswers?.[0]
+      ? { correctAnswer: question.acceptedAnswers[0] }
+      : {}),
+  };
   return {
     ...state,
-    turnsJson: JSON.stringify([...turnsOf(state), turn]),
-    lastTurnJson: JSON.stringify(turn),
+    turnsJson: JSON.stringify([...turnsOf(state), resolved]),
+    lastTurnJson: JSON.stringify(resolved),
   };
 }
 
@@ -527,8 +554,16 @@ function handle(
       .map(normalizeAnswer)
       .includes(normalizeAnswer(answer));
     const next = correct
-      ? resolveCorrect(state, { runtimeId: context.runtimeId, now })
-      : resolveFailure(state, { resolvedBy: 'answer', now });
+      ? resolveCorrect(state, {
+          runtimeId: context.runtimeId,
+          now,
+          submittedAnswer: answer,
+        })
+      : resolveFailure(state, {
+          resolvedBy: 'answer',
+          now,
+          submittedAnswer: answer,
+        });
     return settle(
       next,
       correct ? 'marhala-answer-correct' : 'marhala-answer-incorrect',

@@ -163,7 +163,10 @@ describe("replaying a committed turn", () => {
       turn({ baseLanding: 9, tile: "normal", finalLanding: 9 }),
       6,
     );
+    // The answer beat leads every replay: the room is told what the answer was
+    // before anything moves.
     expect(frames.map((frame) => frame.kind)).toEqual([
+      "answer",
       "reveal",
       "step",
       "step",
@@ -179,11 +182,12 @@ describe("replaying a committed turn", () => {
   });
 
   it("reveals the server's roll and never a number of its own", () => {
-    const [first] = marhalaTurnFrames(
+    // The roll beat is the second one now: the first says what the answer was.
+    const [, roll] = marhalaTurnFrames(
       turn({ movement: 5, baseLanding: 11 }),
       6,
     );
-    expect(first).toEqual({ kind: "reveal", movement: 5, from: 6 });
+    expect(roll).toEqual({ kind: "reveal", movement: 5, from: 6 });
   });
 
   it("fires a trap after the base landing, using the committed destination", () => {
@@ -243,7 +247,9 @@ describe("replaying a committed turn", () => {
     expect(frames.at(-1)).toEqual({ kind: "settled", position: 16 });
   });
 
-  it("has nothing to replay for a wrong answer or a timeout", () => {
+  it("replays only the answer for a wrong answer or a timeout", () => {
+    // Nothing moved, so there is no journey to show — but the turn still
+    // resolved, and a resolution the room is never told about is invisible.
     expect(
       marhalaTurnFrames(
         {
@@ -254,8 +260,8 @@ describe("replaying a committed turn", () => {
           resolvedBy: "answer",
         },
         4,
-      ),
-    ).toEqual([]);
+      ).map((frame) => frame.kind),
+    ).toEqual(["answer"]);
     expect(
       marhalaTurnFrames(
         {
@@ -266,8 +272,8 @@ describe("replaying a committed turn", () => {
           resolvedBy: "timeout",
         },
         4,
-      ),
-    ).toEqual([]);
+      ).map((frame) => frame.kind),
+    ).toEqual(["answer"]);
   });
 
   it("keeps the token on the tile that fired while the effect is announced", () => {

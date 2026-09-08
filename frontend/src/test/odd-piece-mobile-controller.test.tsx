@@ -244,7 +244,11 @@ describe("القطعة الدخيلة phone controller", () => {
     expect(screen.getByTestId("challenge-countdown")).toHaveTextContent("25");
   });
 
-  it("keeps identities and full reveal off the phone after authoritative resolution", () => {
+  it("gives the phone answer truth as piece numbers, never identities or media", () => {
+    // The device split is unchanged: the two vehicle identities and the proof
+    // photo are the shared screen's job, and a phone here is a numbered input
+    // surface — the server strips image urls from its pieces for that reason.
+    // The numbers carry the whole answer without carrying any of that.
     render(
       <OddPieceGameplayPanel
         runtime={runtimeWith(
@@ -252,6 +256,11 @@ describe("القطعة الدخيلة phone controller", () => {
             phase: "revealed",
             canClaim: false,
             deadlineAt: null,
+            // `piece-q` is the third piece, so it is "القطعة 3" on the board.
+            attemptsJson: JSON.stringify([
+              { teamId: "team-a", pieceId: "piece-a", correct: false },
+              { teamId: "team-b", pieceId: "piece-q", correct: true },
+            ]),
             revealJson: JSON.stringify({
               oddPieceId: "piece-q",
               targetVehicleLabel: "BMW M4",
@@ -264,9 +273,43 @@ describe("القطعة الدخيلة phone controller", () => {
       />,
     );
     expect(screen.getByTestId("odd-piece-phone-resolved")).toBeInTheDocument();
+    // What this team picked, and what the answer was, by board number.
+    expect(screen.getByTestId("odd-piece-phone-selected")).toHaveTextContent(
+      "القطعة 2",
+    );
+    expect(screen.getByTestId("odd-piece-phone-odd")).toHaveTextContent(
+      "القطعة 3",
+    );
+    expect(document.body).toHaveTextContent("إجابة غير صحيحة");
+    // And none of the shared screen's material followed it here.
     expect(document.body).not.toHaveTextContent("BMW M4");
     expect(document.body).not.toHaveTextContent("AMG C63");
     expect(document.querySelector("img")).toBeNull();
+    expect(document.body.innerHTML).not.toContain("private.example");
+  });
+
+  it("reveals no canonical piece while the opponent still owns an attempt", () => {
+    // The transfer window. The second team is still solving this puzzle, so the
+    // odd piece's number would be the answer handed straight to it.
+    render(
+      <OddPieceGameplayPanel
+        runtime={runtimeWith(
+          stateWith({
+            phase: "selecting",
+            canClaim: false,
+            canSelect: false,
+            attemptUsed: true,
+            // The server projects neither of these before the puzzle is
+            // terminal; this asserts the phone shows nothing even so.
+            attemptsJson: "[]",
+          }),
+        )}
+        actor="participant"
+      />,
+    );
+    expect(screen.queryByTestId("odd-piece-phone-resolved")).toBeNull();
+    expect(screen.queryByTestId("odd-piece-phone-odd")).toBeNull();
+    expect(screen.queryByTestId("odd-piece-phone-selected")).toBeNull();
   });
 
   it("preserves the host visual board and mandatory full-vehicle reveal", () => {

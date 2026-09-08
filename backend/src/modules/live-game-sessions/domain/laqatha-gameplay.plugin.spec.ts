@@ -332,9 +332,15 @@ describe('القطها claim race + answer window', () => {
   it('ends with no winner when both teams fail', () => {
     let state = run(revealing(2), 'claim-laqatha', 'p1').runtimeState;
     state = run(state, 'submit-laqatha', 'p1', { answer: 'nope' }).runtimeState;
+    expect(project(state)).not.toHaveProperty('revealJson');
+    expect(project(state)).not.toHaveProperty('revealAnswersJson');
     state = run(state, 'claim-laqatha', 'p2').runtimeState;
     state = run(state, 'submit-laqatha', 'p2', { answer: 'nope' }).runtimeState;
     expect(state.phase).toBe('resolved');
+    expect(JSON.parse(String(project(state).revealJson)).answers).toEqual({
+      t1: 'nope',
+      t2: 'nope',
+    });
     const results = JSON.parse(String(state.resultsJson)) as Array<{
       winnerTeamId: string | null;
     }>;

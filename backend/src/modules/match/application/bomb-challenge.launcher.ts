@@ -11,6 +11,7 @@ import {
 import {
   BOMB_GAMEPLAY_PLUGIN,
   BOMB_MODE_KEY,
+  bombTerminalSummary,
 } from '../../live-game-sessions/domain/bomb-gameplay.plugin';
 import {
   BOMB_MAX_ITEMS,
@@ -149,6 +150,7 @@ export class BombChallengeLauncher
       mechanicSummary: winnerTeamId ? { [winnerTeamId]: 1 } : {},
       details: {
         endedBy: verdict?.endedBy ?? 'unknown',
+        items: bombTerminalSummary(runtime.runtimeState),
         tie: winnerTeamId === null,
       },
     };

@@ -60,6 +60,7 @@ export interface LaqathaRuntimeQuestion {
 }
 
 export interface LaqathaQuestionResult {
+  answers: Record<string, string | null>;
   questionIndex: number;
   contentItemId: string;
   title: string;
@@ -256,6 +257,15 @@ function resolveQuestion(
     teams.map((teamId) => [teamId, teamId === winnerTeamId ? reward : 0]),
   );
   const questionResult: LaqathaQuestionResult = {
+    answers: Object.fromEntries(
+      teams.map((team) => [
+        team,
+        parse<Record<string, string>>(
+          state.revealAnswersJson ?? '{}',
+          'answers',
+        )[team] ?? null,
+      ]),
+    ),
     questionIndex: Number(state.currentQuestionIndex),
     contentItemId: question.contentItemId,
     title: question.title,
@@ -398,6 +408,8 @@ function publicState(
       ? {
           revealJson: JSON.stringify({
             title: latest.title,
+            answers: latest.answers,
+            resolvedAt: latest.resolvedAt,
             winnerTeamId: latest.winnerTeamId,
             solvedAtClue: latest.solvedAtClue,
             points: latest.points,
@@ -554,6 +566,13 @@ export const LAQATHA_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       }
       const question = currentQuestion(state);
       const answer = String(command.payload.answer);
+      state.revealAnswersJson = JSON.stringify({
+        ...parse<Record<string, string>>(
+          state.revealAnswersJson ?? '{}',
+          'answers',
+        ),
+        [teamId]: answer,
+      });
       const correct = question.acceptedAnswers.some(
         (accepted) => normalizeAnswer(accepted) === normalizeAnswer(answer),
       );
@@ -638,6 +657,7 @@ export const LAQATHA_GAMEPLAY_PLUGIN: GameplayModePlugin = {
           ...state,
           phase: 'preparing',
           currentQuestionIndex: next,
+          revealAnswersJson: '{}',
           revealedClueCount: 1,
           claimOwnerTeamId: null,
           frozenReward: null,

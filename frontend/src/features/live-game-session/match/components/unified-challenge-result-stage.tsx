@@ -24,6 +24,8 @@ import { MarhalaResultRecap } from "./marhala-result-recap";
 import { OddPieceResultRecap } from "./odd-piece-result-recap";
 import { LaqathaResultRecap } from "./laqatha-result-recap";
 import { FirstNoteResultRecap } from "./first-note-result-recap";
+import { BombResultRecap } from "./bomb-result-recap";
+import { RakkibhaResultRecap } from "./rakkibha-result-recap";
 import type { MatchActor, MatchChallengeResult } from "../types";
 
 /**
@@ -176,6 +178,10 @@ function ChallengeResultBody({ result }: { result: MatchChallengeResult }) {
   const { snapshot } = useLiveSession();
   if (!snapshot) return null;
   switch (result.challengeKey) {
+    case "bomb":
+      return <BombResultRecap result={result} snapshot={snapshot} />;
+    case "rakkibha":
+      return <RakkibhaResultRecap result={result} snapshot={snapshot} />;
     case "top-5":
       return <Top5ResultReveal result={result} snapshot={snapshot} />;
     case "read-your-opponent":

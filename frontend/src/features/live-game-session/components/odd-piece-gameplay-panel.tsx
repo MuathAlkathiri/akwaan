@@ -12,6 +12,11 @@ import type { GameplayRuntimeSnapshot } from "../model";
 import type { MatchActor } from "../match/types";
 import { MarhalaQuestionImage } from "./marhala-screen";
 import {
+  ResolutionAnswerRow,
+  ResolutionOutcome,
+  ResolutionReveal,
+} from "../match/components/resolution-reveal";
+import {
   ODD_PIECE_CHALLENGE_NAME,
   readOddPieceView,
 } from "../match/odd-piece.presentation";
@@ -183,6 +188,25 @@ export function OddPieceGameplayPanel({
               <p className="font-bold text-brand-gold">
                 القطعة الدخيلة من {view.reveal.intruderVehicleLabel}
               </p>
+              {/* Who picked what. Released with the answer and never before it:
+                  a selection narrows the puzzle for whoever is still solving. */}
+              {view.attempts.length > 0 && (
+                <div
+                  className="mx-auto grid max-w-xl gap-2 sm:grid-cols-2"
+                  data-testid="odd-piece-attempts"
+                >
+                  {view.attempts.map((attempt) => (
+                    <p
+                      key={`${attempt.teamId}-${attempt.pieceId}`}
+                      data-testid={`odd-piece-attempt-${attempt.teamId}`}
+                      className="rounded-lg bg-primary/10 px-3 py-2 text-sm font-bold"
+                    >
+                      {teamName(attempt.teamId)}:{" "}
+                      {attempt.correct ? "أصابت" : "أخطأت"}
+                    </p>
+                  ))}
+                </div>
+              )}
               {!phone && (
                 <div
                   className="mx-auto max-w-xl"
@@ -253,6 +277,13 @@ function OddPiecePhoneController({
 }) {
   const [selectedPieceId, setSelectedPieceId] = useState<string>();
   const [pending, setPending] = useState<"claim" | "submit">();
+  // Released with the answer, so this is empty until the puzzle is terminal.
+  const ownAttempt = view.attempts.find(
+    (attempt) => attempt.teamId === view.actorTeamId,
+  );
+  /** The number the player sees on the shared board, from the same ordering. */
+  const pieceNumber = (pieceId: string) =>
+    view.pieces.findIndex((piece) => piece.id === pieceId) + 1;
 
   useEffect(() => {
     setSelectedPieceId(undefined);
@@ -384,9 +415,38 @@ function OddPiecePhoneController({
               : `${teamName(view.answerOwnerTeamId)} يختار الآن…`}
           </PhoneStatus>
         ) : view.phase === "revealed" ? (
-          <PhoneStatus testId="odd-piece-phone-resolved">
-            تم كشف الحل — تابعوا التفاصيل على الشاشة
-          </PhoneStatus>
+          // Answer truth in the phone's own language: piece numbers.
+          //
+          // القطعة الدخيلة is played on images, and the two vehicle identities
+          // and the proof photo stay on the shared screen — a phone here is a
+          // numbered input surface, which is why the server strips image urls
+          // from its pieces at all. The numbers carry the whole answer without
+          // carrying any of that.
+          <div data-testid="odd-piece-phone-resolved">
+            <ResolutionReveal compact title="انكشفت القطعة الدخيلة">
+              {ownAttempt && (
+                <ResolutionAnswerRow label="اختياركم">
+                  <span data-testid="odd-piece-phone-selected">
+                    القطعة {pieceNumber(ownAttempt.pieceId)}
+                  </span>
+                </ResolutionAnswerRow>
+              )}
+              {view.reveal && (
+                <ResolutionAnswerRow label="القطعة الدخيلة">
+                  <span data-testid="odd-piece-phone-odd">
+                    القطعة {pieceNumber(view.reveal.oddPieceId)}
+                  </span>
+                </ResolutionAnswerRow>
+              )}
+              <ResolutionOutcome>
+                {ownAttempt
+                  ? ownAttempt.correct
+                    ? "إجابة صحيحة"
+                    : "إجابة غير صحيحة"
+                  : "انكشف الحل"}
+              </ResolutionOutcome>
+            </ResolutionReveal>
+          </div>
         ) : (
           <PhoneStatus testId="odd-piece-phone-complete">
             انتهى التحدي — تابعوا النتيجة على الشاشة

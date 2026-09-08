@@ -199,6 +199,10 @@ export interface MarhalaTurn {
   difficulty: MarhalaDifficulty;
   correct: boolean;
   resolvedBy: "answer" | "timeout";
+  /** What the team sent. `null` when the clock ran out with nothing submitted. */
+  submittedAnswer?: string | null;
+  /** The canonical answer, present only because the turn already resolved. */
+  correctAnswer?: string;
   movement?: number;
   baseLanding?: number;
   tile?: MarhalaTileKind;
@@ -222,6 +226,14 @@ export interface MarhalaResult {
  * server did not already commit.
  */
 export type MarhalaFrame =
+  /**
+   * The answer truth, before anything moves.
+   *
+   * It leads every replay because a room cannot read a movement it has not been
+   * told the reason for — and a wrong answer moves nothing at all, so without
+   * this beat it would resolve invisibly.
+   */
+  | { kind: "answer"; turn: MarhalaTurn }
   /** "+4": the roll, before the token moves. */
   | { kind: "reveal"; movement: number; from: number }
   /** One tile of walking, so movement reads as travel rather than teleporting. */
@@ -246,12 +258,16 @@ export function marhalaTurnFrames(
   turn: MarhalaTurn,
   from: number,
 ): MarhalaFrame[] {
-  if (!turn.correct || turn.movement === undefined) return [];
+  const answerFrame: MarhalaFrame = { kind: "answer", turn };
+  // A wrong or timed-out turn still resolved: it earns the answer beat, and
+  // then stops, because nothing moved.
+  if (!turn.correct || turn.movement === undefined) return [answerFrame];
   const base = Math.min(
     turn.baseLanding ?? from + turn.movement,
     MARHALA_FINISH_POSITION,
   );
   const frames: MarhalaFrame[] = [
+    answerFrame,
     { kind: "reveal", movement: turn.movement, from },
   ];
   // One frame per tile walked, capped at the finish: the board has no tile 17,

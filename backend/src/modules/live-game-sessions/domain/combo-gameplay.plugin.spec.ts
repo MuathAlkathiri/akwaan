@@ -754,4 +754,48 @@ describe('الكومبو — the hand-over cannot strand the challenge', () => {
     expect(done.phase).toBe('completed');
     expect(done.deadlineAt).toBeNull();
   });
+  describe('the answer truth a resolved question carries', () => {
+    /**
+     * الكومبو keeps the canonical answer out of every open question and writes
+     * it only onto the question that has already ended. A run that could read
+     * the answer while its own question was live would be unplayable.
+     */
+    it('projects no canonical answer while a question is open', () => {
+      const open = runtime();
+      const projected = COMBO_GAMEPLAY_PLUGIN.projectRuntimeState(open);
+      expect(projected.lastQuestionRevealJson ?? null).toBeNull();
+      expect(JSON.stringify(projected)).not.toContain('acceptedAnswers');
+    });
+
+    it('records what was sent beside the canonical answer once it resolves', () => {
+      const answered = send(runtime(), 'submit-combo-answer', {
+        answer: 'answer-0-1',
+      }).runtimeState;
+      const reveal = JSON.parse(
+        String(
+          COMBO_GAMEPLAY_PLUGIN.projectRuntimeState(answered)
+            .lastQuestionRevealJson,
+        ),
+      );
+      expect(reveal.submittedAnswer).toBe('answer-0-1');
+      expect(reveal.correctAnswer).toBe('answer-0-1');
+      expect(reveal.correct).toBe(true);
+      expect(reveal.resolvedBy).toBe('answer');
+    });
+
+    it('keeps a wrong answer beside the canonical one', () => {
+      const answered = send(runtime(), 'submit-combo-answer', {
+        answer: 'إجابة خاطئة',
+      }).runtimeState;
+      const reveal = JSON.parse(
+        String(
+          COMBO_GAMEPLAY_PLUGIN.projectRuntimeState(answered)
+            .lastQuestionRevealJson,
+        ),
+      );
+      expect(reveal.correct).toBe(false);
+      expect(reveal.submittedAnswer).toBe('إجابة خاطئة');
+      expect(reveal.correctAnswer).toBe('answer-0-1');
+    });
+  });
 });

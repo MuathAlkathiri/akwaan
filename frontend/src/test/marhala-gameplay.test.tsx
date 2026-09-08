@@ -42,6 +42,7 @@ vi.mock("@/features/live-game-session/hooks/live-session-context", () => ({
   }),
 }));
 
+import { RESOLUTION_REVEAL_MS } from "@/features/live-game-session/match/resolution-pacing";
 import { MarhalaScreen } from "@/features/live-game-session/components/marhala-screen";
 import { MarhalaPhonePanel } from "@/features/live-game-session/components/marhala-phone-panel";
 import { MatchGameplayRenderer } from "@/features/live-game-session/match/match-stage-router";
@@ -183,13 +184,17 @@ describe("the shared screen during the decision", () => {
     renderScreen();
     // The Product decision: the room weighs risk against reward, and finds out
     // where it actually landed only after the question is answered.
-    expect(document.querySelector("[data-testid^='marhala-landing-']")).toBeNull();
     expect(
-      screen.getByTestId("marhala-band-easy-risk"),
-    ).toHaveAttribute("data-band-risk", "steady");
-    expect(
-      screen.getByTestId("marhala-band-medium-risk"),
-    ).toHaveAttribute("data-band-risk", "balanced");
+      document.querySelector("[data-testid^='marhala-landing-']"),
+    ).toBeNull();
+    expect(screen.getByTestId("marhala-band-easy-risk")).toHaveAttribute(
+      "data-band-risk",
+      "steady",
+    );
+    expect(screen.getByTestId("marhala-band-medium-risk")).toHaveAttribute(
+      "data-band-risk",
+      "balanced",
+    );
     expect(screen.getByTestId("marhala-band-hard-risk")).toHaveAttribute(
       "data-band-risk",
       "bold",
@@ -317,6 +322,16 @@ describe("the shared screen with a question open", () => {
     expect(screen.queryByTestId("marhala-question")).toBeNull();
   });
 });
+
+/**
+ * Step past the answer beat every resolved turn now leads with.
+ *
+ * المرحلة reveals what the answer was before it moves anything, so the movement
+ * assertions below start one beat later than they used to. The beat itself is
+ * asserted in `marhala-answer-reveal.test.tsx`.
+ */
+const pastAnswerReveal = () =>
+  act(() => void vi.advanceTimersByTime(RESOLUTION_REVEAL_MS));
 
 describe("a resolved turn on the shared screen", () => {
   const turn = (overrides: Record<string, unknown> = {}) => ({
@@ -461,6 +476,7 @@ describe("a resolved turn on the shared screen", () => {
           )}
         />,
       );
+      pastAnswerReveal();
 
       // The roll is revealed first, with the token still where it was.
       expect(screen.getByTestId("marhala-movement-reveal")).toHaveAttribute(
@@ -535,6 +551,7 @@ describe("a resolved turn on the shared screen", () => {
           )}
         />,
       );
+      pastAnswerReveal();
 
       const path: number[] = [6];
       let announcedOn: number | undefined;
@@ -586,6 +603,7 @@ describe("a resolved turn on the shared screen", () => {
           )}
         />,
       );
+      pastAnswerReveal();
       // Drained frame by frame, the way the screen actually advances.
       for (let sample = 0; sample < 24; sample += 1) {
         act(() => void vi.advanceTimersByTime(200));
@@ -630,6 +648,7 @@ describe("a resolved turn on the shared screen", () => {
         )}
       />,
     );
+    pastAnswerReveal();
     // No walk: the token is on its final tile from the first paint, while the
     // centre holds the authoritative movement briefly instead of reeling.
     expect(screen.getByTestId("marhala-token-team-alpha")).toHaveAttribute(
@@ -942,7 +961,9 @@ describe("the opposing team's phone", () => {
 describe("multimodal question presentation (image, audio, text)", () => {
   it("renders pure text question without image or audio container", () => {
     const textState = questionState({
-      questionPrompt: JSON.stringify({ ar: "ما اسم بطل لعبة GTA San Andreas؟" }),
+      questionPrompt: JSON.stringify({
+        ar: "ما اسم بطل لعبة GTA San Andreas؟",
+      }),
     });
 
     render(<MarhalaScreen runtime={runtime(textState)} />);
@@ -968,9 +989,14 @@ describe("multimodal question presentation (image, audio, text)", () => {
 
     expect(screen.getByTestId("marhala-question-image")).toBeInTheDocument();
     const img = screen.getByRole("img");
-    expect(img).toHaveAttribute("src", "https://media.akwaan.com/images/tracer.webp");
+    expect(img).toHaveAttribute(
+      "src",
+      "https://media.akwaan.com/images/tracer.webp",
+    );
     expect(img).toHaveAttribute("alt", "صورة ترايسر");
-    expect(screen.getByTestId("marhala-question")).toHaveTextContent("من هذه الشخصية؟");
+    expect(screen.getByTestId("marhala-question")).toHaveTextContent(
+      "من هذه الشخصية؟",
+    );
 
     unmount();
 
@@ -984,7 +1010,10 @@ describe("multimodal question presentation (image, audio, text)", () => {
       />,
     );
     expect(screen.getByTestId("marhala-question-image")).toBeInTheDocument();
-    expect(screen.getByRole("img")).toHaveAttribute("src", "https://media.akwaan.com/images/tracer.webp");
+    expect(screen.getByRole("img")).toHaveAttribute(
+      "src",
+      "https://media.akwaan.com/images/tracer.webp",
+    );
   });
 
   it("handles image error gracefully without crashing", () => {
@@ -1021,8 +1050,12 @@ describe("multimodal question presentation (image, audio, text)", () => {
 
     expect(screen.getByTestId("marhala-question-audio")).toBeInTheDocument();
     expect(screen.getByTestId("marhala-audio-play-button")).toBeInTheDocument();
-    expect(screen.getByTestId("marhala-audio-restart-button")).toBeInTheDocument();
-    expect(screen.getByTestId("marhala-question")).toHaveTextContent("صوت أي شخصية هذا؟");
+    expect(
+      screen.getByTestId("marhala-audio-restart-button"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("marhala-question")).toHaveTextContent(
+      "صوت أي شخصية هذا؟",
+    );
 
     unmount();
 
@@ -1047,7 +1080,9 @@ describe("multimodal question presentation (image, audio, text)", () => {
       }),
     });
 
-    const { rerender } = render(<MarhalaScreen runtime={runtime(imageState)} />);
+    const { rerender } = render(
+      <MarhalaScreen runtime={runtime(imageState)} />,
+    );
     expect(screen.getByTestId("marhala-question-image")).toBeInTheDocument();
 
     const nextTextState = questionState({
@@ -1057,7 +1092,9 @@ describe("multimodal question presentation (image, audio, text)", () => {
 
     rerender(<MarhalaScreen runtime={runtime(nextTextState)} />);
     expect(screen.queryByTestId("marhala-question-image")).toBeNull();
-    expect(screen.getByTestId("marhala-question")).toHaveTextContent("سؤال نصي جديد");
+    expect(screen.getByTestId("marhala-question")).toHaveTextContent(
+      "سؤال نصي جديد",
+    );
   });
 
   it("preserves zero answer leakage in DOM elements", () => {
@@ -1070,7 +1107,9 @@ describe("multimodal question presentation (image, audio, text)", () => {
       }),
     });
 
-    const { container } = render(<MarhalaScreen runtime={runtime(imageState)} />);
+    const { container } = render(
+      <MarhalaScreen runtime={runtime(imageState)} />,
+    );
 
     // Ensure hidden filenames or answers are never in text content
     expect(container.textContent).not.toContain("asset-123.webp");
@@ -1125,6 +1164,7 @@ describe("the movement beat over the board", () => {
           )}
         />,
       );
+      pastAnswerReveal();
       const roll = () => screen.getByTestId("marhala-movement-roll");
       // Reel through the beat, then hold on the committed number.
       act(() => void vi.advanceTimersByTime(820));
@@ -1163,6 +1203,7 @@ describe("the movement beat over the board", () => {
           )}
         />,
       );
+      pastAnswerReveal();
       // A newer snapshot lands mid-replay: the next turn has already begun.
       rerender(
         <MarhalaScreen
@@ -1271,6 +1312,7 @@ describe("the movement roll only reels what the band can produce", () => {
           )}
         />,
       );
+      pastAnswerReveal();
       const seen: number[] = [];
       let settledAt: number | null = null;
       for (let elapsed = 0; elapsed <= 820; elapsed += 30) {
@@ -1297,21 +1339,20 @@ describe("the movement roll only reels what the band can produce", () => {
     }
   };
 
-  it.each([
-    ["easy", 2] as const,
-    ["medium", 3] as const,
-    ["hard", 5] as const,
-  ])("reels only %s's own values", (band, movement) => {
-    const { seen, final } = reelValues(band, movement);
-    const allowed = marhalaBandValues(RANGES[band]);
-    expect(seen.length).toBeGreaterThan(1);
-    // Not one frame offered a number this band cannot produce — no 1–6 die.
-    for (const value of seen) {
-      expect(allowed).toContain(value);
-    }
-    // And it ends on exactly what the server committed.
-    expect(final).toBe(String(movement));
-  });
+  it.each([["easy", 2] as const, ["medium", 3] as const, ["hard", 5] as const])(
+    "reels only %s's own values",
+    (band, movement) => {
+      const { seen, final } = reelValues(band, movement);
+      const allowed = marhalaBandValues(RANGES[band]);
+      expect(seen.length).toBeGreaterThan(1);
+      // Not one frame offered a number this band cannot produce — no 1–6 die.
+      for (const value of seen) {
+        expect(allowed).toContain(value);
+      }
+      // And it ends on exactly what the server committed.
+      expect(final).toBe(String(movement));
+    },
+  );
 
   it("never shows a value from another band", () => {
     // سهل can only ever produce 1 or 2. A d6 reel would show 5 or 6 here.
@@ -1383,6 +1424,7 @@ describe("the movement roll only reels what the band can produce", () => {
           )}
         />,
       );
+      pastAnswerReveal();
       // The token does not move while the roll is still reeling.
       expect(tokenTile("team-alpha")).toBe(1);
       const path: number[] = [1];
@@ -1400,4 +1442,3 @@ describe("the movement roll only reels what the band can produce", () => {
     }
   });
 });
-

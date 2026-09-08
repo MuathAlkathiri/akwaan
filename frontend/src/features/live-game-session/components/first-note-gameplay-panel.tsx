@@ -1,4 +1,5 @@
 "use client";
+import { ResolutionSubmissions } from "../match/components/resolution-submissions";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,8 +62,7 @@ export function FirstNoteGameplayPanel({
   const audioRef = useBoundedAudio({
     src: masterUrl || undefined,
     seconds: view.finalBidSeconds,
-    enabled:
-      !phone && (view.phase === "answering" || view.phase === "steal"),
+    enabled: !phone && (view.phase === "answering" || view.phase === "steal"),
   });
   const live = connection === "connected";
   const max = (view.currentBidSeconds ?? 16) - 1;
@@ -183,29 +183,30 @@ export function FirstNoteGameplayPanel({
                   data-testid="first-note-bid-options"
                   dir="ltr"
                 >
-                  {Array.from({ length: Math.max(max, 0) }, (_u, i) => max - i).map(
-                    (seconds) => (
-                      <li key={seconds}>
-                        <button
-                          type="button"
-                          disabled={!live || Boolean(sending)}
-                          onClick={() => setBid(String(seconds))}
-                          data-testid={`first-note-bid-${seconds}`}
-                          data-selected={
-                            Number(bid) === seconds ? "true" : undefined
-                          }
-                          className={cn(
-                            "akwaan-numeral h-12 w-full rounded-[var(--radius)] border-2 text-base font-black transition-colors duration-fast ease-akwaan disabled:opacity-40",
-                            Number(bid) === seconds
-                              ? "border-brand-gold bg-brand-gold/15 text-foreground"
-                              : "border-border bg-card text-muted-foreground",
-                          )}
-                        >
-                          {seconds}
-                        </button>
-                      </li>
-                    ),
-                  )}
+                  {Array.from(
+                    { length: Math.max(max, 0) },
+                    (_u, i) => max - i,
+                  ).map((seconds) => (
+                    <li key={seconds}>
+                      <button
+                        type="button"
+                        disabled={!live || Boolean(sending)}
+                        onClick={() => setBid(String(seconds))}
+                        data-testid={`first-note-bid-${seconds}`}
+                        data-selected={
+                          Number(bid) === seconds ? "true" : undefined
+                        }
+                        className={cn(
+                          "akwaan-numeral h-12 w-full rounded-[var(--radius)] border-2 text-base font-black transition-colors duration-fast ease-akwaan disabled:opacity-40",
+                          Number(bid) === seconds
+                            ? "border-brand-gold bg-brand-gold/15 text-foreground"
+                            : "border-border bg-card text-muted-foreground",
+                        )}
+                      >
+                        {seconds}
+                      </button>
+                    </li>
+                  ))}
                 </ol>
                 <Button
                   size="lg"
@@ -271,7 +272,9 @@ export function FirstNoteGameplayPanel({
             }
             data-testid="first-note-answer-phase"
           >
-            <p className={phone ? "text-base font-black" : "text-xl font-black"}>
+            <p
+              className={phone ? "text-base font-black" : "text-xl font-black"}
+            >
               {view.phase === "steal"
                 ? "فرصة سرقة واحدة"
                 : `${team(view.answerOwnerTeamId)} قال يقدر يعرفها من ${view.finalBidSeconds} ثانية`}
@@ -334,6 +337,10 @@ export function FirstNoteGameplayPanel({
             data-testid="first-note-reveal"
           >
             <h2 className="text-3xl font-black">{view.reveal.title}</h2>
+            <ResolutionSubmissions
+              answers={view.reveal.answers}
+              teamName={team}
+            />
             <p>المزايدة الأخيرة: {view.reveal.finalBidSeconds} ثانية</p>
             <p>
               {view.reveal.winnerTeamId

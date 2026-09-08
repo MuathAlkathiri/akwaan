@@ -74,6 +74,25 @@ export interface ComboView {
   canArmComboBreak: boolean;
   /** Private acknowledgement, sent only to the team that armed. */
   ownComboBreakArmed: boolean;
+  /**
+   * The question that just resolved, with its answers.
+   *
+   * Present only because it already resolved: the server clears it the moment
+   * the next question opens, so it can never describe a live question.
+   */
+  lastQuestionReveal?: ComboQuestionReveal;
+}
+
+/** One resolved الكومبو question, as the server recorded it. */
+export interface ComboQuestionReveal {
+  questionIndex: number;
+  teamId: string;
+  submittedAnswer: string | null;
+  correctAnswer: string;
+  correct: boolean;
+  resolvedBy: "answer" | "timeout";
+  earned: number;
+  resolvedAt: string;
 }
 
 function parseJson<T>(value: unknown, fallback: T): T {
@@ -129,6 +148,10 @@ export function readComboView(state: Record<string, unknown>): ComboView {
     isActiveTeam: state.isActiveTeam === true,
     canArmComboBreak: state.canArmComboBreak === true,
     ownComboBreakArmed: state.ownComboBreakArmed === true,
+    lastQuestionReveal: parseJson<ComboQuestionReveal | undefined>(
+      state.lastQuestionRevealJson,
+      undefined,
+    ),
   };
 }
 

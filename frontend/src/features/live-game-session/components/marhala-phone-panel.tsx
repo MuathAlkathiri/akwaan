@@ -24,6 +24,11 @@ import { MarhalaQuestionAudio, MarhalaQuestionImage } from "./marhala-screen";
 import { useVoiceInput } from "../hooks/use-voice-input";
 import { voiceInputPolicy } from "../hooks/voice-eligibility";
 import { ChallengeFrame } from "../match/components/challenge-frame";
+import { MarhalaAnswerReveal } from "../match/components/marhala-answer-reveal";
+import {
+  useMarhalaTurnReplay,
+  usePrefersReducedMotion,
+} from "../hooks/use-marhala-turn-replay";
 import { useWaitingForNextQuestion } from "../hooks/use-recurring-question-transition";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import type { GameplayRuntimeSnapshot } from "../model";
@@ -66,6 +71,16 @@ export function MarhalaPhonePanel({
   // The shell, the header and the team identity all stay; only this region is
   // between two questions, and nothing answerable may survive into it.
   const waitingForNext = useWaitingForNextQuestion();
+  // The same replay sequencer the shared screen runs, for its first beat only.
+  // The phone draws no board, but reusing the one sequencer keeps both surfaces
+  // on the same clock without inventing a second scheduler.
+  const reducedMotion = usePrefersReducedMotion();
+  const replay = useMarhalaTurnReplay({
+    positions: view.positions,
+    ...(view.lastTurn ? { lastTurn: view.lastTurn } : {}),
+    reducedMotion,
+  });
+  const revealing = Boolean(replay.phase === "answer" && view.lastTurn);
   const live = connection === "connected";
   const can = (action: string) =>
     runtime.availableActions.includes(`mode:${action}`);
@@ -130,6 +145,7 @@ export function MarhalaPhonePanel({
       compact
       title={`مربّعكم الحالي ${marhalaPositionOf(view, view.actorTeamId ?? "")}`}
       aside={
+        !revealing &&
         !waitingForNext &&
         remainingMs !== undefined &&
         view.phase === "question" ? (
@@ -144,7 +160,17 @@ export function MarhalaPhonePanel({
         data-marhala-phase={view.phase}
         className="flex min-h-0 w-full flex-1 flex-col gap-3"
       >
-        {waitingForNext && (
+        {revealing && view.lastTurn && (
+          <MarhalaAnswerReveal
+            compact
+            turn={view.lastTurn}
+            teamName={(id) =>
+              id === view.actorTeamId ? "فريقكم" : "الفريق الآخر"
+            }
+          />
+        )}
+
+        {!revealing && waitingForNext && (
           <div
             className="surface-card flex items-center gap-2 p-4"
             data-testid="marhala-phone-next-question"
@@ -161,7 +187,8 @@ export function MarhalaPhonePanel({
           </div>
         )}
 
-        {!waitingForNext &&
+        {!revealing &&
+          !waitingForNext &&
           view.phase === "difficulty-choice" &&
           (mayChoose ? (
             <BandChoices view={view} onChoose={choose} disabled={!live} />
@@ -172,7 +199,7 @@ export function MarhalaPhonePanel({
             />
           ))}
 
-        {!waitingForNext && view.phase === "question-pending" && (
+        {!revealing && !waitingForNext && view.phase === "question-pending" && (
           <div
             className="surface-card flex items-center gap-2 p-4"
             data-testid="marhala-phone-pending"
@@ -188,7 +215,8 @@ export function MarhalaPhonePanel({
           </div>
         )}
 
-        {!waitingForNext &&
+        {!revealing &&
+          !waitingForNext &&
           view.phase === "question" &&
           (mayAnswer ? (
             sending === "answer" ? (
@@ -316,7 +344,7 @@ export function MarhalaPhonePanel({
             />
           ))}
 
-        {!waitingForNext && view.phase === "completed" && (
+        {!revealing && !waitingForNext && view.phase === "completed" && (
           <WaitingCard
             title="انتهى السباق"
             body="النتيجة على الشاشة المشتركة."

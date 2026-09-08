@@ -23,6 +23,8 @@ export interface LaqathaView {
   canSubmit: boolean;
   attemptUsed: boolean;
   reveal?: {
+    answers?: Record<string, string | null>;
+    resolvedAt?: string;
     title: string;
     winnerTeamId: string | null;
     solvedAtClue: number | null;

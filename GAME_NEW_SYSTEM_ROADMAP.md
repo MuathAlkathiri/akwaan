@@ -3532,7 +3532,7 @@ Eligibility is **never** inferred from `answerMode === 'match'` or from
 pipeline, no audio upload, no backend speech service, no R2 audio, no transcript
 persistence.
 
-### 26.4 المرحلة recurring Fair-Start — ✅ IMPLEMENTED & AUTOMATED-VERIFIED · ⚠️ PHYSICAL RETEST PENDING
+### 26.4 المرحلة recurring Fair-Start — ✅ IMPLEMENTED & AUTOMATED-VERIFIED · ✅ PHYSICAL RETEST CLOSED IN §27.1
 
 **Defect.** On a real phone, question 2 onwards stalled. The phone was
 acknowledging a presentation generation whose only required surface was
@@ -3550,9 +3550,12 @@ dropped by the in-flight guard left the ack stale with no further publish, and i
 now retried through `retryOwedRef` / `retryTick`. The unconditional-retry mutant
 spins forever, which is what proves the guard load-bearing.
 
-⚠️ **Physical authenticated-phone retest is PENDING.** Headless browsers are not
-evidence for this defect — the original failure was only ever visible on a real
-device. Do not read the automated regression as a physical pass.
+⚠️ **Physical authenticated-phone retest was PENDING at the time of this
+release.** Headless browsers are not evidence for this defect — the original
+failure was only ever visible on a real device, and the automated regression was
+never a physical pass. The retest was run afterwards, failed twice, and the two
+further defects it exposed are recorded in **§27.1**, which is where this strand
+actually closes.
 
 ### 26.5 المرحلة board — ✅ IMPLEMENTED & HUMAN VISUALLY ACCEPTED LOCALLY
 
@@ -3712,3 +3715,119 @@ never satisfy `hasRelationalChallenge`, and the Match composition rule
 unnoticed — but either a Relational mechanic needs a launcher or the composition
 rule needs revisiting. `world-content`'s assertion now reads `false` with that
 reasoning recorded inline.
+
+## 27. المرحلة Zero-Refresh Closure + Universal Reveal V1 (2026-09-09)
+
+Two milestones that reached different states, recorded separately because one is
+finished in production and the other is not.
+
+### 27.1 المرحلة zero-refresh — ✅ IMPLEMENTED, DEPLOYED & PHYSICALLY VERIFIED IN PRODUCTION
+
+The §26.4 physical retest failed, twice, and each failure was a distinct defect
+the automated coverage could not have caught. All three fixes are deployed.
+
+**`e799e7a` — mobile snapshot resync recovery.** The client does not receive
+pushed snapshots; it receives announcements and *asks* for a snapshot when one
+names a newer revision, behind an in-flight guard. That guard was a one-way
+latch: the server answers a failed `request-snapshot` with `live-session:error`
+and no snapshot, and a backgrounded phone can lose the reply frame outright —
+after either, every later announcement was folded into "one is owed" and dropped,
+because that flag is drained only by the reply handler that never ran again. A
+real iPhone then sat on `نجهّز التحدي…` for the rest of the match with its socket
+still connected, and only a reload cleared it — the visibility recovery went
+through the same guard, so foregrounding could not. Every ending now settles
+through one path — the reply, an error reply, and a 5 s ceiling for a reply that
+never comes — and anything owed meanwhile is honoured with the revisions just
+adopted. `pageshow` joined `visibilitychange`, because iOS Safari restores a page
+from its back/forward cache without ever reporting it hidden.
+
+**`dceb09a` — internal question refresh, retained stage.** The recurring
+transition still tore the whole stage down: board, pawns, header and scores
+gone, a preparing screen, then everything rebuilt. The router returned the global
+`challenge-preparing` branch before it ever reached the mechanic. It now keeps
+the stage for a mechanic whose view can hold it up and tells only the question
+region it is between two questions. That needs something to draw — the server
+replaces `modeState` with a bare marker while a generation is prepared — so a
+small hook keeps the last runtime that carried content and hands the stage that.
+It is the state the room was already looking at: no position invented, no
+movement faked, and the prepared question is not in it to leak.
+
+**`1e660d0` — cold-start convergence.** Q1 → Q2 → Q3 worked; the *first* start
+still needed one manual refresh. The recovery was armed on the pair the server
+sends for a recurring presentation — a generation, and `required: false`. The
+launch window carries neither: المرحلة declares its required `shared` surface
+only once its phase is `question`, so while the board is on `difficulty-choice`
+the snapshot is just `{ running: true }`. A surface waiting there had no net at
+all. The precondition is now simply that this surface is waiting, which is what
+it should always have been.
+
+**Physically verified by the user on real iPhone Safari against production:**
+challenge cold start → Q1 → Q2 → Q3, with **zero manual refreshes**, a stable
+stage and board across every transition, recurring questions refreshing inside
+the mounted stage, cold-start convergence on the first question, and
+background → foreground recovery. That is the whole of what was verified; nothing
+beyond it is claimed.
+
+### 27.2 Universal Reveal V1 — ✅ IMPLEMENTED & VERIFIED LOCALLY · ⬜ PRODUCTION HUMAN VERIFICATION PENDING
+
+One shared resolution lifecycle with mechanic-native content. The general shape,
+for the nine mechanics that reveal per item — Closest · One Clue · Top-5 ·
+First Note · القطها · Combo · RYO · Odd Piece · المرحلة:
+
+```
+authoritative resolution → mechanic-native Reveal → next item / decision / movement
+```
+
+**The privacy rule, which is the whole design.** A correct answer is projected
+only once the item's *legal resolution opportunity* is closed — never merely
+because an attempt was wrong. A first wrong answer that leaves the opponent a
+turn is not a resolved item. Every canonical answer therefore comes from a record
+the server writes at resolution: Combo's is cleared the moment the next question
+opens, so it can never describe a live question; Odd Piece's is gated on a puzzle
+that is genuinely terminal; المرحلة's rides the turn record, which exists only
+because the question ended. Nothing is graded on the client.
+
+**Bomb — exception.** No per-question Reveal; the continuous team clock is never
+interrupted. A single terminal recap at end of challenge covers the items
+actually encountered — answered, skipped, and the timed-out one — and canonical
+answers appear only once the challenge is terminal.
+
+**ركّبها — exception.** No per-puzzle Reveal during the race. The two teams meet
+independently shuffled puzzles, so revealing an answer mid-race would leak a
+puzzle the other team has not reached yet, and pausing phones for a Reveal would
+change race timing. Terminal recap only, limited to each team's *encountered*
+puzzles.
+
+**Odd Piece — device split.** The phone gets answer truth in its own language:
+submitted piece number, canonical odd-piece number, outcome. The shared screen
+keeps the full visual proof — target vehicle identity, intruder identity and the
+mandatory full target-car image. A phone here is a numbered input surface, which
+is why the server strips image urls from its pieces at all.
+
+**المرحلة.** `QUESTION → Reveal → Movement → next question`, with the board and
+stage mounted throughout. The Reveal leads the existing movement replay as its
+first frame rather than running beside it, so there is still exactly one
+sequencer. A wrong or timed-out turn moves no token, so without this beat it
+resolved with nothing on screen to explain it.
+
+**Pacing.** One seam, `match/resolution-pacing.ts`. Default **3000 ms**; Bomb and
+ركّبها are **0**, which is a Product decision expressed as data — "this mechanic
+has no per-item reveal" — not a duration. The beat is measured against the
+server's own `resolvedAt` and the session clock, so it survives a reconnect
+honestly: rejoining late shows live state, not a replayed reveal. Presentation
+pacing owns no gameplay authority — it starts no deadline, resets none, and
+changes no score.
+
+**Verification.** Frontend **1370/1370** · Backend **1899/1899** · Integration
+**112/112** across 11 real-Mongo suites · both typechecks PASS · both production
+builds PASS · changed-file lint PASS · `git diff --check` PASS. Visual QA covered
+**11/11** mechanics at shared (1920×1080, 1440×900, 1280×720) and phone (390×844,
+360×640) viewports, including long Arabic answers, timeout states, media reveals
+and terminal recaps stressed with enough rows to break a layout — no horizontal
+overflow anywhere.
+
+Production DB: **UNCHANGED**. R2: **UNCHANGED**. This release is source and
+runtime only.
+
+⬜ **Production human Reveal smoke is PENDING.** Local verification is not
+production verification, and this strand stays open until a person plays it.

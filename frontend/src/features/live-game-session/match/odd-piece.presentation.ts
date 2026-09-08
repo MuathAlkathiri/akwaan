@@ -9,10 +9,17 @@ export interface OddPieceView {
   pieces: Array<{ id: string; imageUrl: string; altText?: string }>;
   answerOwnerTeamId?: string;
   failedTeamIds: string[];
+  /** This actor's own team, when the projection is actor-specific. */
+  actorTeamId?: string;
   canClaim: boolean;
   canSelect: boolean;
   attemptUsed: boolean;
   deadlineAt?: string;
+  /**
+   * Who picked what, released on the same terms as the answer: empty while a
+   * transfer is still open, because a selection narrows the puzzle.
+   */
+  attempts: Array<{ teamId: string; pieceId: string; correct: boolean }>;
   reveal?: {
     oddPieceId: string;
     targetVehicleLabel: string;
@@ -48,6 +55,12 @@ export function readOddPieceView(
       ? { answerOwnerTeamId: state.answerOwnerTeamId }
       : {}),
     failedTeamIds: json<string[]>(state.failedTeamIdsJson, []),
+    ...(typeof state.actorTeamId === "string"
+      ? { actorTeamId: state.actorTeamId }
+      : {}),
+    attempts: json<
+      Array<{ teamId: string; pieceId: string; correct: boolean }>
+    >(state.attemptsJson, []),
     canClaim: state.canClaim === true,
     canSelect: state.canSelect === true,
     attemptUsed: state.attemptUsed === true,

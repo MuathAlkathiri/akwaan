@@ -32,6 +32,61 @@ interface BombRuntimeQuestion {
   }>;
 }
 
+export interface BombItemOutcome {
+  questionId: string;
+  itemIndex: number;
+  contentItemId?: string;
+  teamId: string | null;
+  prompt: string;
+  submittedAnswer: string | null;
+  correctAnswer: string;
+  outcome: 'correct' | 'skipped' | 'timeout';
+}
+
+/** Private outcome log; no wrong attempts or future pool entries are recorded. */
+function recordOutcome(
+  runtime: GameplayModeState,
+  round: GameplayModeState,
+  teamId: string | undefined,
+  outcome: BombItemOutcome['outcome'],
+  submittedAnswer: string | null = null,
+): GameplayModeState {
+  const question = questions(runtime).find(
+    (entry) => entry.id === round.questionId,
+  );
+  const item = question?.items[Number(round.itemIndex)];
+  if (!item) return runtime;
+  const history = JSON.parse(
+    String(runtime.outcomeHistoryJson ?? '[]'),
+  ) as BombItemOutcome[];
+  return {
+    ...runtime,
+    outcomeHistoryJson: JSON.stringify([
+      ...history,
+      {
+        questionId: String(round.questionId),
+        itemIndex: Number(round.itemIndex),
+        ...(item.id ? { contentItemId: item.id } : {}),
+        teamId: teamId ?? null,
+        prompt: String(round.prompt),
+        submittedAnswer,
+        // Canonical Bomb authoring stores its display spelling first; aliases stay private.
+        correctAnswer: item.acceptedAnswers[0],
+        outcome,
+      },
+    ]),
+  };
+}
+
+export function bombTerminalSummary(
+  state: GameplayModeState,
+): BombItemOutcome[] {
+  if (!state.resultJson) return [];
+  return JSON.parse(
+    String(state.outcomeHistoryJson ?? '[]'),
+  ) as BombItemOutcome[];
+}
+
 function questions(state: GameplayModeState): BombRuntimeQuestion[] {
   if (typeof state.questionsJson !== 'string') return [];
   try {
@@ -60,6 +115,9 @@ function validateRuntime(state: GameplayModeState): GameplayModeState {
     phase: 'ready',
     questionIndex: Math.trunc(state.questionIndex),
     questionsJson: JSON.stringify(list),
+    ...(typeof state.outcomeHistoryJson === 'string'
+      ? { outcomeHistoryJson: state.outcomeHistoryJson }
+      : {}),
     // The challenge verdict, written once at completion. It has to live on the
     // runtime rather than the round: completing a round keeps only a summary
     // (id, sequence, reason) and discards the round body, so a winner recorded
@@ -302,7 +360,12 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       // The winning team is resolved at completion, where the session — and
       // therefore who was active when the clock ran out — is known.
       return {
-        runtimeState: command.runtimeState,
+        runtimeState: recordOutcome(
+          command.runtimeState,
+          round,
+          _context.activeTeamId,
+          'timeout',
+        ),
         roundState: validateRound({
           ...round,
           phase: 'completed',
@@ -319,6 +382,15 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     if (command.type === 'skip') {
       return {
         ...next,
+        runtimeState: {
+          ...next.runtimeState,
+          outcomeHistoryJson: recordOutcome(
+            command.runtimeState,
+            round,
+            _context.activeTeamId,
+            'skipped',
+          ).outcomeHistoryJson,
+        },
         eventType: 'bomb-item-skipped',
         eventPayload: { itemIndex: next.roundState.itemIndex },
         effects: [
@@ -332,7 +404,18 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       .map(normalizeAnswer)
       .includes(normalizeAnswer(String(command.payload.answer)));
     return {
-      runtimeState: correct ? next.runtimeState : command.runtimeState,
+      runtimeState: correct
+        ? {
+            ...next.runtimeState,
+            outcomeHistoryJson: recordOutcome(
+              command.runtimeState,
+              round,
+              _context.activeTeamId,
+              'correct',
+              String(command.payload.answer),
+            ).outcomeHistoryJson,
+          }
+        : command.runtimeState,
       roundState: correct ? next.roundState : command.roundState,
       eventType: correct ? 'bomb-answer-correct' : 'bomb-answer-incorrect',
       eventPayload: { correct, itemIndex: round.itemIndex },
@@ -371,6 +454,9 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       // Safe to project: the verdict is public once the challenge is over, and
       // it carries no answers.
       ...(valid.resultJson ? { resultJson: valid.resultJson } : {}),
+      ...(valid.resultJson
+        ? { terminalSummaryJson: JSON.stringify(bombTerminalSummary(valid)) }
+        : {}),
     };
   },
   projectRoundState(state) {

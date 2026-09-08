@@ -4,6 +4,7 @@ import {
   RAKKIBHA_PLUGIN,
   RakkibhaPuzzle,
   RakkibhaTeamPlan,
+  rakkibhaTerminalSummary,
 } from './rakkibha.plugin';
 
 const START = new Date('2026-01-01T00:00:00.000Z');
@@ -128,6 +129,56 @@ const progress = (state: GameplayModeState) =>
   JSON.parse(String(state.progressJson))[0];
 
 describe('Rakkibha plugin', () => {
+  it("keeps selections private during the race and reveals only each team's encountered puzzles at terminal", () => {
+    const initial = runtime();
+    const wrong = submit(initial, 'a-c', 'option-2').runtimeState;
+    const solved = submit(
+      wrong,
+      'a-b',
+      'option-2',
+      new Date(START.getTime() + 5000),
+    ).runtimeState;
+    expect(solved.deadlineAt).toBe(initial.deadlineAt);
+    expect(progress(solved).solved).toBe(1);
+    expect(rakkibhaTerminalSummary(solved)).toEqual([]);
+    expect(RAKKIBHA_PLUGIN.projectRuntimeState(solved)).not.toHaveProperty(
+      'selectionHistoryJson',
+    );
+    expect(RAKKIBHA_PLUGIN.projectRuntimeState(solved)).not.toHaveProperty(
+      'terminalSummaryJson',
+    );
+    const terminal = RAKKIBHA_PLUGIN.handleCommand(
+      {
+        sessionId: 'session',
+        runtimeId: 'runtime',
+        now: new Date(START.getTime() + 135000),
+      },
+      {
+        type: 'expire-race',
+        payload: {},
+        runtimeState: solved,
+        roundState: { phase: 'active' },
+      },
+    ).runtimeState;
+    const summary = rakkibhaTerminalSummary(terminal);
+    expect(
+      summary.map(({ teamId, contentItemId }) => [teamId, contentItemId]),
+    ).toEqual([
+      ['alpha', 'honeycomb-cluster'],
+      ['alpha', 'tangram-crystal'],
+      ['zeta', 'honeycomb-cluster'],
+    ]);
+    expect(summary[0].selections.map((selection) => selection.correct)).toEqual(
+      [false, true],
+    );
+    expect(summary[0].correctSelection.media.url).toBe('/b2.webp');
+    expect(summary[1]).toMatchObject({ selections: [], outcome: 'unfinished' });
+    expect(JSON.stringify(summary)).not.toContain('canonicalIdentity');
+    const restored = RAKKIBHA_PLUGIN.validateRuntimeState(
+      JSON.parse(JSON.stringify(terminal)),
+    );
+    expect(rakkibhaTerminalSummary(restored)).toEqual(summary);
+  });
   it('resolves the same local option number against its owning holder', () => {
     expect(
       progress(submit(runtime(), 'a-c', 'option-2').runtimeState),

@@ -1,4 +1,5 @@
 "use client";
+import { ResolutionSubmissions } from "../match/components/resolution-submissions";
 
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -295,6 +296,10 @@ export function LaqathaGameplayPanel({
               <p className="text-sm font-bold opacity-80">الفيلم</p>
               <p className="text-3xl font-black">{view.reveal.title}</p>
             </div>
+            <ResolutionSubmissions
+              answers={view.reveal.answers}
+              teamName={teamName}
+            />
             <p className="font-black">
               {view.reveal.winnerTeamId
                 ? `${teamName(view.reveal.winnerTeamId)} أجاب عند الدليل ${view.reveal.solvedAtClue} (+${view.reveal.points[view.reveal.winnerTeamId] ?? 0})`

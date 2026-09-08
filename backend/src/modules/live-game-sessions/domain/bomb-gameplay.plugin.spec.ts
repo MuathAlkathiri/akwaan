@@ -1,4 +1,8 @@
-import { BOMB_GAMEPLAY_PLUGIN, BOMB_MODE_KEY } from './bomb-gameplay.plugin';
+import {
+  BOMB_GAMEPLAY_PLUGIN,
+  BOMB_MODE_KEY,
+  bombTerminalSummary,
+} from './bomb-gameplay.plugin';
 
 /**
  * Bomb's rules, pinned exactly as the legacy implementation defined them, plus
@@ -63,6 +67,56 @@ describe('Bomb gameplay rules', () => {
     expect(BOMB_GAMEPLAY_PLUGIN.key).toBe('bomb');
   });
 
+  it('records only completed item outcomes and exposes them only with the terminal verdict', () => {
+    const skipped = run('skip');
+    expect(skipped.effects).toContainEqual({
+      type: 'adjust-active-team-time',
+      deltaMs: -5000,
+    });
+    expect(bombTerminalSummary(skipped.runtimeState)).toEqual([]);
+    expect(
+      BOMB_GAMEPLAY_PLUGIN.projectRuntimeState(skipped.runtimeState),
+    ).not.toHaveProperty('terminalSummaryJson');
+    const timeout = BOMB_GAMEPLAY_PLUGIN.handleCommand(
+      { sessionId: 's', runtimeId: 'r', activeTeamId: 'team-b' },
+      {
+        type: 'expire-team',
+        payload: {},
+        runtimeState: skipped.runtimeState,
+        roundState: skipped.roundState,
+      },
+    );
+    const terminal = BOMB_GAMEPLAY_PLUGIN.validateRuntimeState({
+      ...timeout.runtimeState,
+      resultJson: JSON.stringify({ winnerTeamId: 'team-a' }),
+    });
+    expect(bombTerminalSummary(terminal)).toMatchObject([
+      {
+        itemIndex: 0,
+        outcome: 'skipped',
+        submittedAnswer: null,
+        correctAnswer: 'ميسي',
+      },
+      {
+        itemIndex: 1,
+        outcome: 'timeout',
+        teamId: 'team-b',
+        submittedAnswer: null,
+        correctAnswer: 'رونالدو',
+      },
+    ]);
+    const answered = run('submit-answer', { answer: 'ميسي' });
+    expect(
+      bombTerminalSummary({ ...answered.runtimeState, resultJson: '{}' }),
+    ).toMatchObject([{ outcome: 'correct', submittedAnswer: 'ميسي' }]);
+    expect(
+      bombTerminalSummary({ ...answered.runtimeState, resultJson: '{}' }),
+    ).toHaveLength(1);
+    expect(run('submit-answer', { answer: 'wrong' }).runtimeState).toEqual(
+      runtimeState,
+    );
+  });
+
   it('requires the shared surface for its one initial Fair-Start', () => {
     expect(
       BOMB_GAMEPLAY_PLUGIN.requiredPresentationSurfaces?.({
@@ -122,7 +176,11 @@ describe('Bomb gameplay rules', () => {
       expect(result.roundState.itemIndex).toBe(1);
       expect(result.roundState.imageUrl).toBe(items[1].imageUrl);
       expect(result.roundState.prompt).toBe(items[1].prompt);
-      expect(result.runtimeState).toEqual(runtimeState);
+      const { outcomeHistoryJson, ...unchanged } = result.runtimeState;
+      expect(unchanged).toEqual(runtimeState);
+      expect(JSON.parse(String(outcomeHistoryJson))).toMatchObject([
+        { itemIndex: 0, outcome: 'skipped', submittedAnswer: null },
+      ]);
       expect(result.effects).toContainEqual({
         type: 'adjust-active-team-time',
         deltaMs: -5_000,

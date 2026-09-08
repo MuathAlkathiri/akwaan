@@ -381,8 +381,58 @@ function openQuestion(
     questionIndex: input.questionIndex,
     phase: 'question',
     forcedQuestion: input.forced,
+    // The previous question's truth never trails into this one.
+    lastQuestionRevealJson: null,
     deadlineAt: questionDeadline(input.now),
   });
+}
+
+/** What one resolved Combo question was, for the reveal that follows it. */
+export interface ComboQuestionReveal {
+  questionIndex: number;
+  teamId: string;
+  submittedAnswer: string | null;
+  correctAnswer: string;
+  correct: boolean;
+  resolvedBy: 'answer' | 'timeout';
+  earned: number;
+  /** When the server resolved it, so a reveal can pace itself honestly. */
+  resolvedAt: string;
+}
+
+/**
+ * Attach the answer truth of the question that has just ended.
+ *
+ * Written at resolution and nowhere else: the canonical answer is read from the
+ * question the team has already finished, so there is no state in which this
+ * record exists and the question is still open. `openQuestion` clears it, so it
+ * can never trail into the next one.
+ */
+function recordQuestionReveal(
+  state: GameplayModeState,
+  input: {
+    submittedAnswer: string | null;
+    correct: boolean;
+    resolvedBy: 'answer' | 'timeout';
+    earned: number;
+    now: Date;
+  },
+): GameplayModeState {
+  const question = currentQuestion(state);
+  const teamId = comboActiveTeamId(state);
+  // No question or no team on it means there is nothing that just resolved.
+  if (!question || !teamId) return state;
+  const reveal: ComboQuestionReveal = {
+    questionIndex: Number(state.questionIndex),
+    teamId,
+    submittedAnswer: input.submittedAnswer,
+    correctAnswer: question.acceptedAnswers[0] ?? '',
+    correct: input.correct,
+    resolvedBy: input.resolvedBy,
+    earned: input.earned,
+    resolvedAt: input.now.toISOString(),
+  };
+  return { ...state, lastQuestionRevealJson: JSON.stringify(reveal) };
 }
 
 /**
@@ -493,12 +543,24 @@ function handle(
     if (!question) {
       reject('COMBO_NO_ACTIVE_QUESTION', 'No Combo question is open');
     }
+    const submitted = String(command.payload.answer);
     const correct = question.acceptedAnswers
       .map(normalizeAnswer)
-      .includes(normalizeAnswer(String(command.payload.answer)));
+      .includes(normalizeAnswer(submitted));
+    // Recorded before the run advances, so the reveal describes the question
+    // that just ended rather than whatever the Run moved on to.
+    const resolved = recordQuestionReveal(state, {
+      submittedAnswer: submitted,
+      correct,
+      resolvedBy: 'answer',
+      earned: correct
+        ? 1 + (state.forcedQuestion === true ? COMBO_BREAK_SURVIVAL_BONUS : 0)
+        : 0,
+      now,
+    });
     const next = correct
-      ? comboCorrect(state, now)
-      : comboBreak(state, { endedBy: 'combo-break', now });
+      ? comboCorrect(resolved, now)
+      : comboBreak(resolved, { endedBy: 'combo-break', now });
     return settle(
       next,
       correct ? 'combo-answer-correct' : 'combo-answer-incorrect',
@@ -539,7 +601,17 @@ function handle(
         advancedBy: 'deadline',
       });
     }
-    const next = comboBreak(state, { endedBy: 'timeout', now });
+    // A timeout submitted nothing; the record says so rather than inventing one.
+    const next = comboBreak(
+      recordQuestionReveal(state, {
+        submittedAnswer: null,
+        correct: false,
+        resolvedBy: 'timeout',
+        earned: 0,
+        now,
+      }),
+      { endedBy: 'timeout', now },
+    );
     return settle(next, 'combo-question-expired', {
       teamId: activeTeamId,
       questionIndex: state.questionIndex,
@@ -697,6 +769,11 @@ function publicState(
     chargesJson: JSON.stringify(charges),
     ...(valid.deadlineAt ? { deadlineAt: valid.deadlineAt } : {}),
     ...(valid.resultJson ? { resultJson: valid.resultJson } : {}),
+    // Present only because a question already resolved: `openQuestion` clears
+    // it, so it can never be readable while its question is still open.
+    ...(valid.lastQuestionRevealJson
+      ? { lastQuestionRevealJson: valid.lastQuestionRevealJson }
+      : {}),
     // The prompt and its stage, never the accepted answers.
     ...(question
       ? {

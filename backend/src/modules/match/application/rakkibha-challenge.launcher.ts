@@ -9,6 +9,7 @@ import {
   RAKKIBHA_MODE_KEY,
   RakkibhaResult,
   RAKKIBHA_PLUGIN,
+  rakkibhaTerminalSummary,
 } from '../../live-game-sessions/domain/rakkibha.plugin';
 import {
   RAKKIBHA_ITEM_COUNT,
@@ -175,6 +176,7 @@ export class RakkibhaChallengeLauncher
         winnerTeamId: result.winnerTeamId,
         tie: result.tie,
         completionReason: result.reason,
+        puzzles: rakkibhaTerminalSummary(runtime.runtimeState),
         solved: result.solved,
         wrongAttempts: result.wrongAttempts,
         elapsedMsAtLastProgress: result.elapsedMsAtLastProgress,

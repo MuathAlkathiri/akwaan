@@ -217,6 +217,10 @@ const projectOddPieceRuntimeState = (state: GameplayModeState) => {
     answerOwnerTeamId: state.answerOwnerTeamId ?? null,
     failedTeamIdsJson: state.failedTeamIdsJson ?? '[]',
     resultsJson: revealed ? (state.resultsJson ?? '[]') : '[]',
+    // Who picked what, released on exactly the same terms as the answer: while
+    // a transfer is still open the opponent must not learn the first team's
+    // selection, because that narrows the puzzle it is still solving.
+    attemptsJson: revealed ? (state.attemptsJson ?? '[]') : '[]',
     deadlineAt: state.deadlineAt ?? null,
     ...(state.phase === 'completed' && state.resultJson
       ? { resultJson: state.resultJson }

@@ -603,6 +603,53 @@ describe('المرحلة gameplay', () => {
     });
   });
 
+  describe('the answer a resolved turn carries', () => {
+    /**
+     * المرحلة records the answer truth onto the turn, and only there.
+     *
+     * A turn exists because the question is over, so that is the first moment
+     * the canonical answer is safe to keep beside what the team actually sent.
+     * While the question is open the projection must carry neither.
+     */
+    it('keeps both answers off an open question', () => {
+      const open = opened('easy', at(1));
+      const projected = MARHALA_GAMEPLAY_PLUGIN.projectRuntimeState(open);
+      const serialized = JSON.stringify(projected);
+      expect(serialized).not.toContain('روكستار');
+      expect(projected.lastTurnJson ?? null).toBeNull();
+    });
+
+    it('records what was sent and what was canonical once it resolves', () => {
+      const open = opened('easy', at(1));
+      const next = send(MARHALA_COMMANDS.submitAnswer, open, {
+        answer: 'روكستار',
+      }).runtimeState;
+      const turn = turnsOf(next).at(-1)!;
+      expect(turn.submittedAnswer).toBe('روكستار');
+      expect(turn.correctAnswer).toBe('روكستار');
+    });
+
+    it('keeps a wrong answer beside the canonical one', () => {
+      const open = opened('easy', at(1));
+      const next = send(MARHALA_COMMANDS.submitAnswer, open, {
+        answer: 'إجابة خاطئة',
+      }).runtimeState;
+      const turn = turnsOf(next).at(-1)!;
+      expect(turn.correct).toBe(false);
+      expect(turn.submittedAnswer).toBe('إجابة خاطئة');
+      expect(turn.correctAnswer).toBe('روكستار');
+    });
+
+    it('invents no submission when the clock runs out', () => {
+      const open = opened('easy', at(1));
+      const next = send(MARHALA_COMMANDS.expireQuestion, open, {}).runtimeState;
+      const turn = turnsOf(next).at(-1)!;
+      expect(turn.resolvedBy).toBe('timeout');
+      expect(turn.submittedAnswer).toBeNull();
+      expect(turn.correctAnswer).toBe('روكستار');
+    });
+  });
+
   describe('per-actor projection', () => {
     it('tells a team whether the board is waiting on it', () => {
       const open = opened('easy', runtime());

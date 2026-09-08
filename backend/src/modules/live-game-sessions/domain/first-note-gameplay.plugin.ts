@@ -40,6 +40,7 @@ export interface FirstNoteBid {
 }
 
 export interface FirstNoteSongResult {
+  answers: Record<string, string | null>;
   songIndex: number;
   contentItemId: string;
   title: string;
@@ -206,6 +207,15 @@ function resolve(
     teams.map((t) => [t, t === winnerTeamId ? reward : 0]),
   );
   const result: FirstNoteSongResult = {
+    answers: Object.fromEntries(
+      teams.map((team) => [
+        team,
+        parse<Record<string, string>>(
+          state.revealAnswersJson ?? '{}',
+          'answers',
+        )[team] ?? null,
+      ]),
+    ),
     songIndex: Number(state.currentSongIndex),
     contentItemId: song.contentItemId,
     title: song.title,
@@ -426,6 +436,13 @@ export const FIRST_NOTE_GAMEPLAY_PLUGIN: GameplayModePlugin = {
           normalizeAnswer(a) ===
           normalizeAnswer(String(command.payload.answer)),
       );
+      state.revealAnswersJson = JSON.stringify({
+        ...parse<Record<string, string>>(
+          state.revealAnswersJson ?? '{}',
+          'answers',
+        ),
+        [team]: String(command.payload.answer),
+      });
       if (correct)
         return resolve(
           state,
@@ -494,6 +511,7 @@ export const FIRST_NOTE_GAMEPLAY_PLUGIN: GameplayModePlugin = {
           ...state,
           phase: 'preparing',
           currentSongIndex: next,
+          revealAnswersJson: '{}',
           currentBidSeconds: null,
           currentBidTeamId: null,
           biddingTeamId: opener,

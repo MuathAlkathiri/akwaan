@@ -65,6 +65,77 @@ export interface RakkibhaResult {
   elapsedMsAtLastProgress: Record<string, number>;
 }
 
+/** Stored privately; actor-local ids must never be interpreted without their view. */
+interface RakkibhaSelection {
+  teamId: string;
+  contentItemId: string;
+  selected: { content?: string; media: RakkibhaMedia };
+  correct: boolean;
+  submittedAt: string;
+}
+
+export interface RakkibhaPuzzleSummary {
+  teamId: string;
+  contentItemId: string;
+  instruction: string;
+  selections: Array<{
+    selected: { content?: string; media: RakkibhaMedia };
+    correct: boolean;
+    submittedAt: string;
+  }>;
+  correctSelection: { content?: string; media: RakkibhaMedia };
+  outcome: 'solved' | 'unfinished';
+}
+
+/** Only called after the entire race is terminal, never after one team's solve. */
+export function rakkibhaTerminalSummary(
+  state: GameplayModeState,
+): RakkibhaPuzzleSummary[] {
+  if (state.phase !== 'completed') return [];
+  const selections = parse<RakkibhaSelection[]>(
+    state.selectionHistoryJson ?? '[]',
+    'selection history',
+  );
+  return plans(state).flatMap((plan) => {
+    const progress = progressFor(state, plan.teamId);
+    return plan.order
+      .slice(0, Math.min(progress.solved + 1, plan.order.length))
+      .map((index, position) => {
+        const puzzle = puzzles(state)[index];
+        const correct = puzzle.candidateViews
+          .flatMap((view) => view.candidates)
+          .find(
+            (candidate) =>
+              candidate.canonicalIdentity === puzzle.correctCanonicalIdentity,
+          )!;
+        return {
+          teamId: plan.teamId,
+          contentItemId: puzzle.contentItemId,
+          instruction: puzzle.instruction,
+          selections: selections
+            .filter(
+              (entry) =>
+                entry.teamId === plan.teamId &&
+                entry.contentItemId === puzzle.contentItemId,
+            )
+            .map(({ selected, correct, submittedAt }) => ({
+              selected,
+              correct,
+              submittedAt,
+            })),
+          correctSelection: {
+            ...(correct.content ? { content: correct.content } : {}),
+            media: correct.media,
+          },
+          outcome:
+            position < progress.solved
+              ? ('solved' as const)
+              : ('unfinished' as const),
+        };
+      });
+  });
+}
+
 function fail(code: string, message: string): never {
   throw new LiveSessionDomainError(code, message);
 }
@@ -438,7 +509,27 @@ function submit(
             lockUntil: now.getTime() + RAKKIBHA_LOCK_MS,
           },
   );
-  const advanced = { ...runtime, progressJson: JSON.stringify(nextProgress) };
+  const history = parse<RakkibhaSelection[]>(
+    runtime.selectionHistoryJson ?? '[]',
+    'selection history',
+  );
+  const advanced = {
+    ...runtime,
+    progressJson: JSON.stringify(nextProgress),
+    selectionHistoryJson: JSON.stringify([
+      ...history,
+      {
+        teamId: plan.teamId,
+        contentItemId: puzzle.contentItemId,
+        selected: {
+          ...(candidate.content ? { content: candidate.content } : {}),
+          media: candidate.media,
+        },
+        correct,
+        submittedAt: now.toISOString(),
+      },
+    ]),
+  };
   const teamSolved =
     nextProgress.find((entry) => entry.teamId === plan.teamId)?.solved ?? 0;
   const finished = correct && teamSolved >= plan.order.length;
@@ -529,6 +620,9 @@ function publicRuntime(state: GameplayModeState): GameplayModeState {
       })),
     ),
     ...(valid.resultJson ? { resultJson: valid.resultJson } : {}),
+    ...(valid.phase === 'completed'
+      ? { terminalSummaryJson: JSON.stringify(rakkibhaTerminalSummary(valid)) }
+      : {}),
   };
 }
 function actorRuntime(

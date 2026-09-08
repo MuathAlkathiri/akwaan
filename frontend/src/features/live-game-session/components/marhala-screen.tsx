@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
 import { MarhalaBoard } from "../match/components/marhala-board";
+import { MarhalaAnswerReveal } from "../match/components/marhala-answer-reveal";
 import { MarhalaMovementRoll } from "../match/components/marhala-movement-roll";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
@@ -114,6 +115,7 @@ export function MarhalaScreen({
             <BandChip view={view} />
           )}
           {!waitingForNext &&
+            replay.phase !== "answer" &&
             remainingMs !== undefined &&
             view.phase === "question" && (
               <ChallengeCountdown remainingMs={remainingMs} />
@@ -137,7 +139,7 @@ export function MarhalaScreen({
             // Only during the movement beat. A calm board is sixteen readable
             // squares; whose turn it is already sits in the header above, so an
             // always-on overlay would cover four squares to repeat it.
-            {...(replay.replaying
+            {...(replay.replaying && replay.phase !== "answer"
               ? {
                   centre: (
                     <BoardCentre
@@ -162,6 +164,10 @@ export function MarhalaScreen({
           <StandingsStrip view={view} teams={teams} replay={replay.positions} />
           {waitingForNext ? (
             <NextQuestionPanel />
+          ) : replay.phase === "answer" && view.lastTurn ? (
+            // Answer truth first, movement second. The board beside this panel
+            // never leaves the screen for either beat.
+            <MarhalaAnswerReveal turn={view.lastTurn} teamName={teamName} />
           ) : replay.replaying && replay.movement !== undefined ? (
             <MovementReveal
               movement={replay.movement}

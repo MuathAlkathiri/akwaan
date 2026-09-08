@@ -441,6 +441,25 @@ export function RyoGameplayPanel({
                 String(interaction.outcome.payload.decision),
               )}
             </p>
+            {/* The answers, inside the one native reveal rather than a second
+                screen after it: اقرأ خصمك resolves both sides simultaneously,
+                and splitting that into two beats would break the mechanic. */}
+            <div className="mt-3 grid gap-2 text-start sm:grid-cols-2">
+              <div className="min-w-0">
+                <p className="text-xs font-bold opacity-80">الإجابة المُرسلة</p>
+                <p className="break-words text-lg font-black [overflow-wrap:anywhere]">
+                  {String(
+                    interaction.outcome.payload.selectedAnswer ?? "",
+                  ).trim() || "ما تم إرسال إجابة"}
+                </p>
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold opacity-80">الإجابة الصحيحة</p>
+                <p className="break-words text-lg font-black [overflow-wrap:anywhere]">
+                  {String(interaction.outcome.payload.correctAnswer ?? "")}
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>

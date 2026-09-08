@@ -186,7 +186,14 @@ describe('First Note answer, privacy, and progression', () => {
     const result = run(steal, 'submit-first-note-answer', 'p2', {
       answer: 'الأماكن',
     }).runtimeState;
+    expect(
+      FIRST_NOTE_GAMEPLAY_PLUGIN.projectRuntimeState(steal),
+    ).not.toHaveProperty('revealJson');
+    expect(
+      FIRST_NOTE_GAMEPLAY_PLUGIN.projectRuntimeState(steal),
+    ).not.toHaveProperty('revealAnswersJson');
     expect(JSON.parse(String(result.resultsJson))[0]).toMatchObject({
+      answers: { t1: 'خطأ', t2: 'الأماكن' },
       stolen: true,
       points: { t1: 0, t2: 1 },
     });
