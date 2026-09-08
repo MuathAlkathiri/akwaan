@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: resident-evil
+
+## Identity / Boundaries
+Defines exactly what belongs in resident-evil and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of resident-evil know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Safe room themes, signature bio-weapons, iconic puzzle items.
+
+## Weak / Boring Territories
+Weak: Speedrun strats, exact ammo counts.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for resident-evil.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for resident-evil.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to resident-evil.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying resident-evil moment.
+
+### Legacy Taxonomy Data:
 # Resident Evil Knowledge Base (قاعدة معرفة Resident Evil)
 
 ## Scope Summary

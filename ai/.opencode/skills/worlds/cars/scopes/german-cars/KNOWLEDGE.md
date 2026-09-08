@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: german-cars
+
+## Identity / Boundaries
+Defines exactly what belongs in german-cars and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of german-cars know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Distinct engine sounds, specific visual design language (grilles, lights).
+
+## Weak / Boring Territories
+Weak: Exact horsepower numbers and trim level minutiae.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for german-cars.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for german-cars.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to german-cars.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying german-cars moment.
+
+### Legacy Taxonomy Data:
 # Scope: German Cars
 
 - `scopeId`: `cars.german-cars`

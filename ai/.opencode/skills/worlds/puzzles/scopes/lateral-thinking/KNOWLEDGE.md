@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: lateral-thinking
+
+## Identity / Boundaries
+Defines exactly what belongs in lateral-thinking and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of lateral-thinking know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Outside-the-box conceptual leaps.
+
+## Weak / Boring Territories
+Weak: Esoteric riddles with multiple valid answers.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for lateral-thinking.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for lateral-thinking.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to lateral-thinking.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying lateral-thinking moment.
+
+### Legacy Taxonomy Data:
 # Lateral Thinking Knowledge Base (قاعدة معرفة تفكير جانبي)
 
 ## Scope Summary

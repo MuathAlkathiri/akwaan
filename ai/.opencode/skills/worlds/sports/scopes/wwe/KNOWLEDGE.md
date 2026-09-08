@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: wwe
+
+## Identity / Boundaries
+Defines exactly what belongs in wwe and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of wwe know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Championship moments, signature moves, iconic venues.
+
+## Weak / Boring Territories
+Weak: Regular season stats and contract values.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for wwe.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for wwe.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to wwe.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying wwe moment.
+
+### Legacy Taxonomy Data:
 # Scope: WWE
 
 - `scopeId`: `sports.wwe`

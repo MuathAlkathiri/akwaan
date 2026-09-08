@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: human-body-nature
+
+## Identity / Boundaries
+Defines exactly what belongs in human-body-nature and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of human-body-nature know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Highly recognizable cultural touchstones and visual icons.
+
+## Weak / Boring Territories
+Weak: Obscure dates and academic minutiae.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for human-body-nature.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for human-body-nature.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to human-body-nature.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying human-body-nature moment.
+
+### Legacy Taxonomy Data:
 # Scope: Human Body & Nature
 
 - `scopeId`: `general-knowledge.human-body-nature`

@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: visual-puzzles
+
+## Identity / Boundaries
+Defines exactly what belongs in visual-puzzles and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of visual-puzzles know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Clear optical illusions or spatial transformations.
+
+## Weak / Boring Territories
+Weak: Muddy images requiring extreme zoom.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for visual-puzzles.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for visual-puzzles.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to visual-puzzles.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying visual-puzzles moment.
+
+### Legacy Taxonomy Data:
 # Visual Puzzles Knowledge Base (قاعدة معرفة ألغاز بصرية)
 
 ## Scope Summary

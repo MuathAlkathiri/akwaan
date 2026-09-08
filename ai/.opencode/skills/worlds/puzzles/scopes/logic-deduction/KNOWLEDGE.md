@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: logic-deduction
+
+## Identity / Boundaries
+Defines exactly what belongs in logic-deduction and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of logic-deduction know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Visually distinct spatial or logical leaps.
+
+## Weak / Boring Territories
+Weak: Overly complex math that requires a calculator.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for logic-deduction.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for logic-deduction.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to logic-deduction.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying logic-deduction moment.
+
+### Legacy Taxonomy Data:
 # Logic and Deduction
 
 ## Identity and Vocabulary

@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: minecraft
+
+## Identity / Boundaries
+Defines exactly what belongs in minecraft and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of minecraft know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Crafting recipes, mob behaviors, specific sound effects.
+
+## Weak / Boring Territories
+Weak: Exact block break speeds, minor patch note tweaks.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for minecraft.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for minecraft.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to minecraft.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying minecraft moment.
+
+### Legacy Taxonomy Data:
 # Minecraft Knowledge Base (قاعدة معرفة ماينكرافت)
 
 ## Scope Summary

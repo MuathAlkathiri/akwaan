@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: patterns-sequences
+
+## Identity / Boundaries
+Defines exactly what belongs in patterns-sequences and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of patterns-sequences know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Visually distinct visual logic jumps.
+
+## Weak / Boring Territories
+Weak: Advanced mathematical derivations.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for patterns-sequences.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for patterns-sequences.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to patterns-sequences.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying patterns-sequences moment.
+
+### Legacy Taxonomy Data:
 # Patterns & Sequences Knowledge Base (قاعدة معرفة أنماط وتسلسل)
 
 ## Scope Summary

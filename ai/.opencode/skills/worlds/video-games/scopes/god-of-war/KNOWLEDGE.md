@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: god-of-war
+
+## Identity / Boundaries
+Defines exactly what belongs in god-of-war and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of god-of-war know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Signature weapons (Leviathan Axe), Spartan Rage visuals, iconic boss kills.
+
+## Weak / Boring Territories
+Weak: Exact upgrade material counts, speedrun routes.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for god-of-war.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for god-of-war.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to god-of-war.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying god-of-war moment.
+
+### Legacy Taxonomy Data:
 # God of War Knowledge Base (قاعدة معرفة God of War)
 
 ## Scope Summary

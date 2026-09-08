@@ -1,3 +1,28 @@
+# World Experience Profile: world
+
+## World Identity
+The core aesthetic and thematic identity of world. Focus on authentic engagement.
+
+## Player Experience
+How players feel when answering questions in this World. Must be kinetic and reward true fandom.
+
+## Strong Content Territories
+Best formats for this World.
+- Strong: Highly recognizable cultural touchstones and visual icons.
+
+## Weak / Meta Territories
+Avoid trivia that feels like a wiki lookup.
+- Weak: Obscure dates and academic minutiae.
+
+## Natural Evidence Forms
+What media types work best (e.g., Audio, Video, Image).
+
+## World vs Scope Responsibility
+World defines the tone and media boundaries. Scopes define the factual boundaries.
+
+## World-Specific Anti-Patterns
+Avoid breaking the core experience of world.
+
 # World: العالم (World)
 
 - `worldId`: `world`

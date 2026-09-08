@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: international-music
+
+## Identity / Boundaries
+Defines exactly what belongs in international-music and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of international-music know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: The first iconic notes of a track, signature instruments.
+
+## Weak / Boring Territories
+Weak: Chart positions and release dates.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for international-music.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for international-music.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to international-music.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying international-music moment.
+
+### Legacy Taxonomy Data:
 # Scope: International Music
 
 - `scopeId`: `music.international-music`

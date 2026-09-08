@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: from
+
+## Identity / Boundaries
+Defines exactly what belongs in from and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of from know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Signature character lines, season finales, iconic props.
+
+## Weak / Boring Territories
+Weak: Episode titles and actor biographies.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for from.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for from.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to from.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying from moment.
+
+### Legacy Taxonomy Data:
 # From Knowledge
 
 ## Identity and Vocabulary

@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: la-liga
+
+## Identity / Boundaries
+Defines exactly what belongs in la-liga and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of la-liga know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: El Clasico moments, historic club achievements, iconic derbies.
+
+## Weak / Boring Territories
+Weak: Mid-table relegation battles, generic attendance stats.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for la-liga.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for la-liga.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to la-liga.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying la-liga moment.
+
+### Legacy Taxonomy Data:
 # La Liga Knowledge Base (قاعدة معرفة الدوري الإسباني)
 
 ## Scope Summary

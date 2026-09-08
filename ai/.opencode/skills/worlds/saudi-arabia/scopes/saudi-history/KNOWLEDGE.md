@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: saudi-history
+
+## Identity / Boundaries
+Defines exactly what belongs in saudi-history and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of saudi-history know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Highly recognizable cultural touchstones and visual icons.
+
+## Weak / Boring Territories
+Weak: Obscure dates and academic minutiae.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for saudi-history.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for saudi-history.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to saudi-history.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying saudi-history moment.
+
+### Legacy Taxonomy Data:
 # Scope: Saudi History
 
 - `scopeId`: `saudi-arabia.saudi-history`

@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: harry-potter
+
+## Identity / Boundaries
+Defines exactly what belongs in harry-potter and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of harry-potter know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Spell incantations, wand designs, distinct magical creatures.
+
+## Weak / Boring Territories
+Weak: Exact book chapter titles, background extra names.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for harry-potter.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for harry-potter.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to harry-potter.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying harry-potter moment.
+
+### Legacy Taxonomy Data:
 # Harry Potter Knowledge
 
 ## Identity and Vocabulary

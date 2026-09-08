@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: cars-mix
+
+## Identity / Boundaries
+Defines exactly what belongs in cars-mix and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of cars-mix know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Distinct engine sounds, specific visual design language (grilles, lights).
+
+## Weak / Boring Territories
+Weak: Exact horsepower numbers and trim level minutiae.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for cars-mix.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for cars-mix.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to cars-mix.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying cars-mix moment.
+
+### Legacy Taxonomy Data:
 # Scope: Cars Mix
 
 - `scopeId`: `cars.cars-mix`

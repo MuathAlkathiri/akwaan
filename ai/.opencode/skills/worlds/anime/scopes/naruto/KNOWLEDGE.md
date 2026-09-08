@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: naruto
+
+## Identity / Boundaries
+Defines exactly what belongs in naruto and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of naruto know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Iconic Jutsu hand signs, Akatsuki rings, specific emotional quotes.
+
+## Weak / Boring Territories
+Weak: Filler arc villains, exact episode numbers.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for naruto.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for naruto.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to naruto.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying naruto moment.
+
+### Legacy Taxonomy Data:
 # Naruto Knowledge
 
 ## Identity and Vocabulary

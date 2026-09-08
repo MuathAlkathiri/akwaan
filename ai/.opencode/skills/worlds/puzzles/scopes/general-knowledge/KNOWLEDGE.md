@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: general-knowledge
+
+## Identity / Boundaries
+Defines exactly what belongs in general-knowledge and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of general-knowledge know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Visually distinct spatial or logical leaps.
+
+## Weak / Boring Territories
+Weak: Overly complex math that requires a calculator.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for general-knowledge.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for general-knowledge.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to general-knowledge.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying general-knowledge moment.
+
+### Legacy Taxonomy Data:
 # General Knowledge
 
 ## Identity and Vocabulary

@@ -1,3 +1,30 @@
+# Scope Knowledge Profile: gta
+
+## Identity / Boundaries
+Defines exactly what belongs in gta and what crosses into other scopes.
+
+## Experience-Native Knowledge
+What fans of gta know from playing/watching, not from reading wikis.
+
+## Strong Content Territories
+Strong: Cultural touchstone locations deeply tied to the protagonist's identity, iconic radio/audio cues.
+
+## Weak / Boring Territories
+Weak: Weapon price tags, exact mission payouts.
+
+## Evidence Opportunities
+Where to find the best IMAGE / AUDIO / TEXT for gta.
+
+## Terminology / Aliases
+Canonical names and acceptable variants for gta.
+
+## Ambiguity Traps
+Common pitfalls (e.g., remakes, reboots, localized names) specific to gta.
+
+## Scope-Specific Taste
+Questions must feel like a satisfying gta moment.
+
+### Legacy Taxonomy Data:
 # GTA Knowledge
 
 ## Identity and Vocabulary
