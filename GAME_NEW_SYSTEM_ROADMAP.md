@@ -3831,3 +3831,74 @@ runtime only.
 
 ⬜ **Production human Reveal smoke is PENDING.** Local verification is not
 production verification, and this strand stays open until a person plays it.
+
+### 27.3 Akwaan Authoring Hardening Milestone
+
+✅ **IMPLEMENTED & VERIFIED LOCALLY**
+
+This milestone concerns authoring infrastructure only. Under this milestone:
+DB mutations = 0
+R2 writes = 0
+runtime content promotions = 0
+deployment = 0
+
+#### Canonical Authoring Architecture
+- fail-closed context resolver
+- canonical current World / Scope authoring coverage
+- mechanic → World → Scope → Knowledge / Exemplar composition
+- Signature World ownership enforcement
+- resolver purity
+- provenance / context hashing
+- independent QA flow
+
+#### Durable History
+- Product decision history
+- SEEN generation history
+- self-collision provenance handling
+- future duplicate blocking
+
+#### Quality Gates
+- novelty
+- ambiguity
+- answer integrity
+- canonical answer vs strict alias contract
+
+#### Fail-Closed Mechanic Inventory
+Integration finding: A required canonical mechanic profile must not silently disappear merely because its SKILL file is missing. The generator now fails closed with required-profile validation. `distributed-information` remains canonical and authorable for the puzzles Signature.
+
+#### Enforcement Boundary
+**Deterministic / code-enforced:**
+- manifest/profile existence validation
+- fail-closed resolver constraints
+- Signature World binding
+- provenance/hash structure
+- structural concept-history handling
+- self-collision provenance handling
+- structural answer checks
+
+**Skill / QA-agent judgment:**
+- semantic novelty beyond known structural identity
+- ambiguity judgment
+- alias semantic equivalence
+- taste
+- factual/media semantic quality
+
+**Human Product:**
+Final content-quality approval. (Mathematical content quality is not guaranteed).
+
+#### Acceptance Evidence
+Iterative acceptance testing exposed and corrected:
+- shallow/exemplar-copying behavior
+- incomplete novelty/SEEN history
+- semantic answer-alias problems
+- self-collision provenance behavior
+- missing-required-mechanic fail-open integration behavior
+
+Final Batch 04 passed the hardened QA pipeline first-pass.
+Human Product then:
+- rejected FIFA Hunter
+- approved GTA Busted concept with item/media follow-up
+- approved CoD Insta-Kill concept
+- approved Overwatch Reaper concept
+
+Therefore: QA assists Human Product. It does not replace Human Product.
