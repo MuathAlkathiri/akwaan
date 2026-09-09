@@ -84,6 +84,13 @@ if os.path.exists(worlds_dir):
                     if os.path.isdir(s_path) and fs_slug not in CANONICAL_WORLDS[fw_slug]:
                         print(f"WARNING: UNREGISTERED_SCOPE_DIRECTORY found: {fw_slug}/{fs_slug}")
 
+
+# 3. Verify Mechanics (Fail-closed)
+for m_slug, m_data in manifest["mechanics"].items():
+    if not os.path.exists(m_data["profile"]):
+        print(f"REQUIRED_MECHANIC_PROFILE_MISSING: {m_slug}", file=sys.stderr)
+        sys.exit(1)
+
 with open("ai/.opencode/authoring-manifest.json", "w") as f:
     json.dump(manifest, f, indent=2)
 print("Manifest generated successfully from canonical catalog.")
