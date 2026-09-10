@@ -1423,7 +1423,7 @@ unexplained — §19 item 19. Preserving the catalog means first establishing wh
 | **Series / المسلسلات** | وش صار بعدها؟ | ⬜ | ⬜ | 🟡 design approved |
 | **Video Games / فيديو قيمز** | المرحلة | ✅ `marhala` plugin, launcher, on-demand supplier, content policy, ChallengeType | ✅ `slot_4` bound to `marhala` in the **local/dev** runtime; ⚠️ content is 19 dev fixtures, not authored | ✅ mechanic / ✅ local rollout / ⚠️ content / ⬜ not deployed (§17) |
 | **Anime / الأنمي** | الكومبو | ✅ `combo` plugin, launcher, content policy, ChallengeType | ✅ `slot_2` bound to `combo` and ✅ **84 authored الكومبو items across all 7 Anime Scopes** in the **local/dev** runtime; ⬜ not deployed | ✅ mechanic / ✅ local rollout / ✅ local content (§16.4) |
-| **Celebrities / المشاهير** | اكشفني | ✅ `ekshifni` plugin, launcher, content policy, ChallengeType, Admin authoring | ✅ **local/dev World provisioned as draft**, board = `ekshifni` + RYO + Closest + Bomb, `ekshifni` bound to Celebrities and nowhere else; ⛔ 0 Scopes, 0 content; ⬜ not deployed | ✅ mechanic / ✅ product review / 🚧 local rollout — blocked on content taxonomy (§16.9) |
+| **Celebrities / المشاهير** | اكشفني | ✅ `ekshifni` plugin, launcher, content policy, ChallengeType, Admin authoring | ✅ **source deployed** (`9083eb1`) and **Production shell provisioned**: `celebrities` draft World, board = `ekshifni` + RYO + Closest + Bomb, `ekshifni` bound to Celebrities and nowhere else; ⛔ 0 Scopes, 0 content, no media; ⬜ World not activated, ⬜ Production gameplay not run | ✅ mechanic / ✅ product review / ✅ source deployed / ✅ Production shell / 🚧 blocked on content taxonomy (§16.9) |
 | **Saudi Arabia / السعودية** | *undecided* | — | — | ⬜ |
 | **Cars / السيارات** | *undecided* | — | — | ⬜ |
 | **Sports / الرياضة** | *undecided* | — | — | ⬜ |
@@ -1943,14 +1943,59 @@ mutated, and none may be described as a decision unless separately approved:
 | Mechanic implementation (backend, Admin, player frontend) | ✅ **IMPLEMENTED & VERIFIED LOCALLY** |
 | Product review (shared screen, phone, reveal, responsive) | ✅ **PASSED** |
 | Local/dev Celebrities World + board rollout | ✅ **PROVISIONED (draft)** |
+| Source deployment | ✅ **COMMITTED, PUSHED, DEPLOYED** — `9083eb1`, frontend and backend both verified in Production (§16.9.1) |
+| Production runtime shell | ✅ **PROVISIONED** — `ekshifni` ChallengeType, `celebrities` draft World, four-slot board (§16.9.1) |
 | Celebrities Scope taxonomy | ⛔ **NOT DECIDED** — content workstream |
 | Content | ⬜ **NOT AUTHORED** |
-| Deployment / production DB | ⬜ **NOT DEPLOYED** |
+| Content media / World card asset | ⬜ **NOT CREATED** |
+| Real Production gameplay | ⬜ **NOT RUN** — no content exists to play |
+| Production World activation | ⬜ **NOT ACTIVATED** — deliberately draft |
 
 > **Provenance note.** This section was written from the approved product decisions supplied with the
 > implementation and product-review briefs. The repository copy of this roadmap carried no §16.9 and no
 > `اكشفني` row when the work began; that gap was reported at the time rather than silently filled, and this
 > record is the reconciliation. It records what was built and verified, not a design history it did not witness.
+
+#### 16.9.1 Source release and Production shell *(2026-09-10)*
+
+Commit **`9083eb1`**, parent `03a7bdf`, 37 files. Pushed to `main` as a fast-forward — no force push. The stated
+release baseline `42cb879` was three commits stale by the time of this release; `42cb879` remains an ancestor of
+`03a7bdf`, so nothing was rewritten and no rebase or merge was needed.
+
+**Frontend — deployed and proved byte-for-byte.** Vercel served the new chunk `5497-1bc83c053e359624.js`
+about 45 seconds after the push, **SHA-256 identical** to the local production build
+(`329064f1…6d7b39`), carrying the mechanic's own player-facing copy («لو جاوبتم الآن»,
+«الإجابة مفتوحة للفريقين»). The previous release's `5497-f79b397c3451db75.js` now returns 404.
+
+**Backend — deployed and proved by behaviour.** `/health` reported `status: ok`, `database: connected`
+throughout, with no sustained 5xx window, and the deployed API's challenge-type metadata enumerates
+**`ekshifni`** as an answer mode — a value that exists only in this commit, so the running service cannot be the
+previous build. Render does not expose the running Git SHA, so the SHA itself is not independently verified; the
+behavioural marker is the evidence. The deployed board readiness also resolves `ekshifni` through the
+launchability registry, which proves the launcher is registered in the running service.
+
+**Production runtime shell**, applied only through validated Admin endpoints — no raw Mongo writes — and
+re-applied to prove idempotency (every step reported `exists` on the second run):
+
+| Object | Result |
+|---|---|
+| ChallengeType | `ekshifni`, `family=signature`, `answerMode=ekshifni`, `itemStructure=discrete_triple`, `active` |
+| World | `celebrities` / المشاهير, **draft** |
+| Board | `slot_1` `ekshifni` · `slot_2` `read-your-opponent` · `slot_3` `closest` · `slot_4` `bomb`, `boardReady: true` |
+| Readiness | `not_ready` — one blocker, `WORLD_WITHOUT_ACTIVE_SCOPE`, plus four `CHALLENGE_WITHOUT_READY_CONTENT` warnings |
+
+Production counts: worlds 9 → 10, challenge_types 12 → 13, board configurations 25 → 29. **Scopes 43 → 43 and
+ContentItems 569 → 569 — unchanged.** No Scope, no ContentItem, no media and no R2 write. Every other World's
+scope, item and configuration counts are untouched.
+
+**Catalog safety verified.** The unauthenticated public `/worlds` catalog returns six active Worlds and does
+**not** include Celebrities, and Match selection refuses it explicitly:
+`MATCH_WORLD_NOT_ACTIVE — "المشاهير" is draft and cannot be selected`. Admin can see and manage the draft shell,
+which is the canonical behaviour. The World stays draft on purpose; it must not be activated before content.
+
+**What this release does not prove.** No real اكشفني challenge has been played in Production, because there is
+deliberately no content. Production gameplay verification stays open until a human plays it with authored
+celebrities.
 
 #### Approved gameplay rules (locked)
 
