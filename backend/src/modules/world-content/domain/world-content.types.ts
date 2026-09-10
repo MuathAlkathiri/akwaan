@@ -4,6 +4,7 @@ import {
   ChallengeItemStructure,
   ContentItemStatus,
   ContentMediaType,
+  EkshifniRegionRole,
   VoteConsensusRule,
   WorldChallengeSlotKey,
   WorldContentStatus,
@@ -359,6 +360,30 @@ export interface OddPiecePayload {
   pieces: OddPieceVisual[];
 }
 
+/**
+ * "اكشفني" (Celebrities Signature) authoring: six reveal regions over the item's
+ * one canonical celebrity image.
+ *
+ * `role` is authoring vocabulary — it is what tells a producer the six masks
+ * actually cover a face rather than six patches of background — and it is never
+ * projected to a player, who sees the neutral numbers 1..6. `shape` is fractions
+ * of the source image so one authored geometry lands identically on a television
+ * and a phone. The celebrity's name lives in the item's MATCH
+ * `answerPayload.acceptedAnswers`, exactly as القطها keeps its movie title, so
+ * there is no second source of truth for what is correct.
+ */
+export interface EkshifniRegionAuthoring {
+  /** Stable across edits: a recorded reveal must never drift onto another mask. */
+  localId: string;
+  role: EkshifniRegionRole;
+  shape: { x: number; y: number; width: number; height: number };
+}
+
+export interface EkshifniPayload {
+  variant: 'ekshifni';
+  regions: EkshifniRegionAuthoring[];
+}
+
 export interface ContentItemView {
   id: string;
   scopeId: string;
@@ -375,7 +400,8 @@ export interface ContentItemView {
     | RakkibhaPayload
     | OneCluePayload
     | OddPiecePayload
-    | LaqathaPayload;
+    | LaqathaPayload
+    | EkshifniPayload;
   isReusableAcrossSessions: boolean;
   status: ContentItemStatus;
   metadata?: {

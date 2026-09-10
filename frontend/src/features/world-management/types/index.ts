@@ -25,6 +25,7 @@ export type ChallengeAnswerMode =
   | "one_clue"
   | "laqatha"
   | "first_note"
+  | "ekshifni"
   /** The canonical ركّبها answer mode. */
   | "rakkibha";
 export type ChallengeItemStructure = "discrete_triple" | "continuous";
@@ -36,7 +37,8 @@ export type ContentPattern =
   | "one_clue"
   | "odd_piece"
   | "laqatha"
-  | "first_note";
+  | "first_note"
+  | "ekshifni";
 
 export interface ContentAsset {
   url: string;
@@ -391,6 +393,22 @@ export interface LaqathaPayload {
     media?: { type: ContentMediaType; assets: ContentAsset[] };
   }>;
 }
+/**
+ * "اكشفني" authoring: six reveal regions over the item's canonical image.
+ *
+ * `role` is authoring vocabulary and never reaches a player, who sees the
+ * numbers 1..6. `shape` is fractions of the source image so one authored mask
+ * lands on the same feature on a television and on a phone.
+ */
+export interface EkshifniPayload {
+  variant: "ekshifni";
+  regions: Array<{
+    localId: string;
+    role: string;
+    shape: { x: number; y: number; width: number; height: number };
+  }>;
+}
+
 export interface FirstNotePayload {
   variant: "first-note";
   contextualClue: LocalizedText;

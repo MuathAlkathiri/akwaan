@@ -7,6 +7,7 @@ import {
   Lightbulb,
   ListOrdered,
   Puzzle,
+  ScanFace,
   Target,
   type LucideIcon,
 } from "lucide-react";
@@ -38,6 +39,7 @@ export const CHALLENGE_ICONS: Readonly<Record<string, LucideIcon>> = {
   combo: Flame,
   bomb: Bomb,
   "odd-piece": CarFront,
+  ekshifni: ScanFace,
 };
 
 /** The icon for anything not in the registry. Never shared with a known type. */

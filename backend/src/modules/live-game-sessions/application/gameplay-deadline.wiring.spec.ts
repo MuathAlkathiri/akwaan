@@ -64,6 +64,8 @@ const DEADLINE_CONTRACT: Record<
   'odd-piece': { kind: 'runtime-state' },
   laqatha: { kind: 'runtime-state' },
   'first-note': { kind: 'runtime-state' },
+  // The technical safety window that ends a stalled image, not an answer timer.
+  ekshifni: { kind: 'runtime-state' },
 };
 
 /** A live runtime carrying whatever the mechanic uses to express a deadline. */

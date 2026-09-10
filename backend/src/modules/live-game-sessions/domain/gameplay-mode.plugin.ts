@@ -160,6 +160,12 @@ export const MODE_COMMAND_TYPES: readonly string[] = [
   'submit-first-note-answer',
   'advance-first-note',
   'expire-first-note-answer',
+  // اكشفني: the region a team spends its initiative on, the open answer race,
+  // the host's advance, and the technical safety expiry.
+  'reveal-ekshifni-region',
+  'submit-ekshifni',
+  'advance-ekshifni',
+  'expire-ekshifni-image',
 ];
 
 export interface GameplayCommandDefinition {

@@ -10,6 +10,7 @@ import type {
   OneCluePayload,
   ContentPattern,
   OddPiecePayload,
+  EkshifniPayload,
   LaqathaPayload,
   FirstNotePayload,
 } from "../types";
@@ -43,6 +44,7 @@ export interface ContentItemFormValues {
   oddPiece: OddPieceFormState;
   laqatha: LaqathaFormState;
   firstNote: FirstNoteFormState;
+  ekshifni: EkshifniFormState;
 }
 
 export const ODD_PIECE_CHALLENGE_SLUG = "odd-piece";
@@ -256,6 +258,105 @@ function emptyOneClueState(): OneClueFormState {
     enabled: false,
     targetAnswer: "",
     clues: ONE_CLUE_VALUES.map(() => ""),
+  };
+}
+
+export const EKSHIFNI_CHALLENGE_SLUG = "ekshifni";
+export const EKSHIFNI_REGION_COUNT = 6;
+export const EKSHIFNI_PROMPT_AR = "من هذا المشهور؟";
+
+/**
+ * The six authored roles, in the order they are presented to the author.
+ *
+ * Authoring vocabulary only — a player sees the numbers 1..6, because a mask
+ * labelled "the eyes" is half the answer. The order is also what turns an
+ * authored region into its player-facing number, so it is stable.
+ */
+export const EKSHIFNI_REGION_ROLES = [
+  "eyes",
+  "hair-head",
+  "mouth-facial-hair",
+  "outfit",
+  "background",
+  "distinctive-detail",
+] as const;
+
+export type EkshifniRegionRole = (typeof EKSHIFNI_REGION_ROLES)[number];
+
+export const EKSHIFNI_ROLE_LABEL: Record<EkshifniRegionRole, string> = {
+  eyes: "العينان",
+  "hair-head": "الشعر / الرأس",
+  "mouth-facial-hair": "الفم / اللحية",
+  outfit: "الملابس",
+  background: "الخلفية",
+  "distinctive-detail": "تفصيلة مميزة",
+};
+
+export interface EkshifniRegionFormState {
+  localId: string;
+  role: EkshifniRegionRole;
+  /** Fractions of the image, 0..1 — never screen pixels. */
+  x: string;
+  y: string;
+  width: string;
+  height: string;
+}
+
+export interface EkshifniFormState {
+  enabled: boolean;
+  /** The celebrity's name — the first accepted answer. */
+  targetAnswer: string;
+  regions: EkshifniRegionFormState[];
+}
+
+export function hasEkshifniMechanic(
+  selected: ReadonlyArray<{ challengeType: { slug: string } }>,
+): boolean {
+  return selected.some(
+    (configuration) =>
+      configuration.challengeType.slug === EKSHIFNI_CHALLENGE_SLUG,
+  );
+}
+
+/** Six evenly spread starter boxes, so an author adjusts rather than invents. */
+function emptyEkshifniState(): EkshifniFormState {
+  return {
+    enabled: false,
+    targetAnswer: "",
+    regions: EKSHIFNI_REGION_ROLES.map((role, index) => ({
+      localId: `region-${index + 1}`,
+      role,
+      x: String(0.05 + (index % 3) * 0.32),
+      y: index < 3 ? "0.1" : "0.55",
+      width: "0.28",
+      height: "0.3",
+    })),
+  };
+}
+
+export function toEkshifniFormState(
+  payload: Partial<EkshifniPayload> | undefined,
+  targetAnswer: string,
+): EkshifniFormState {
+  if (payload?.variant !== "ekshifni") return emptyEkshifniState();
+  const empty = emptyEkshifniState();
+  return {
+    enabled: true,
+    targetAnswer,
+    regions: empty.regions.map((fallback, index) => {
+      const region = payload.regions?.[index];
+      if (!region) return fallback;
+      return {
+        localId: region.localId ?? fallback.localId,
+        role: (EKSHIFNI_REGION_ROLES as readonly string[]).includes(region.role)
+          ? (region.role as EkshifniRegionRole)
+          : fallback.role,
+        x: String(region.shape?.x ?? fallback.x),
+        y: String(region.shape?.y ?? fallback.y),
+        width: String(region.shape?.width ?? fallback.width),
+        height: String(region.shape?.height ?? fallback.height),
+      };
+    }),
   };
 }
 
@@ -495,6 +596,7 @@ export function emptyContentItemForm(scopeId: string): ContentItemFormValues {
     combo: emptyComboState(),
     marhala: emptyMarhalaState(),
     oddPiece: emptyOddPieceState(),
+    ekshifni: emptyEkshifniState(),
     laqatha: emptyLaqathaState(),
     firstNote: emptyFirstNoteState(),
   };
@@ -600,6 +702,10 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
     ),
     oddPiece: toOddPieceFormState(
       item.mechanicPayload as Partial<OddPiecePayload> | undefined,
+    ),
+    ekshifni: toEkshifniFormState(
+      item.mechanicPayload as Partial<EkshifniPayload> | undefined,
+      acceptedAnswers[0] ?? "",
     ),
     top5:
       top5Payload?.variant === "keep-or-give"
@@ -859,6 +965,21 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
         })),
       }
     : undefined;
+  const ekshifniMechanicPayload = values.ekshifni.enabled
+    ? {
+        variant: "ekshifni" as const,
+        regions: values.ekshifni.regions.map((region) => ({
+          localId: region.localId.trim(),
+          role: region.role,
+          shape: {
+            x: Number(region.x),
+            y: Number(region.y),
+            width: Number(region.width),
+            height: Number(region.height),
+          },
+        })),
+      }
+    : undefined;
   /**
    * One payload holding every selected mechanic's own keys.
    *
@@ -877,7 +998,8 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
     marhalaMechanicPayload ??
     oddPieceMechanicPayload ??
     laqathaMechanicPayload ??
-    firstNoteMechanicPayload)
+    firstNoteMechanicPayload ??
+    ekshifniMechanicPayload)
       ? {
           ...top5MechanicPayload,
           ...rakkibhaMechanicPayload,
@@ -887,15 +1009,21 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
           ...oddPieceMechanicPayload,
           ...laqathaMechanicPayload,
           ...firstNoteMechanicPayload,
+          ...ekshifniMechanicPayload,
         }
       : undefined;
   const signatureTargetAnswer = values.oneClue.enabled
     ? values.oneClue.targetAnswer
     : values.laqatha.enabled
       ? values.laqatha.targetAnswer
-      : values.firstNote.title;
+      : values.ekshifni.enabled
+        ? values.ekshifni.targetAnswer
+        : values.firstNote.title;
   const answerPayload =
-    values.oneClue.enabled || values.laqatha.enabled || values.firstNote.enabled
+    values.oneClue.enabled ||
+    values.laqatha.enabled ||
+    values.ekshifni.enabled ||
+    values.firstNote.enabled
       ? {
           mode: "match" as const,
           acceptedAnswers: [
@@ -913,9 +1041,11 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
           ? ONE_CLUE_PROMPT_AR
           : values.laqatha.enabled
             ? LAQATHA_PROMPT_AR
-            : values.firstNote.enabled
-              ? "خمّن اسم الأغنية"
-              : ""),
+            : values.ekshifni.enabled
+              ? EKSHIFNI_PROMPT_AR
+              : values.firstNote.enabled
+                ? "خمّن اسم الأغنية"
+                : ""),
       ...(values.promptEn.trim() ? { en: values.promptEn.trim() } : {}),
     },
     compatibleChallengeTypeIds: values.compatibleChallengeTypeIds,
@@ -994,6 +1124,7 @@ export function findLocalFormProblems(values: ContentItemFormValues): string[] {
     !values.promptAr.trim() &&
     !values.oneClue.enabled &&
     !values.laqatha.enabled &&
+    !values.ekshifni.enabled &&
     !values.firstNote.enabled
   )
     problems.push("نص السؤال بالعربية مطلوب.");
@@ -1075,6 +1206,47 @@ export function findLocalFormProblems(values: ContentItemFormValues): string[] {
     )
       problems.push(
         "يجب أن تكون ثلاث قطع من السيارة الأساسية وقطعة واحدة دخيلة.",
+      );
+  }
+  if (values.ekshifni.enabled) {
+    const { ekshifni } = values;
+    // Deliberately the same shape as the backend's `validateEkshifniPayload`:
+    // this is the fast, local half of one contract, not a second one. An item
+    // the Admin accepts here must not be rejected by the room on game night.
+    if (!ekshifni.targetAnswer.trim()) problems.push("اسم المشهور مطلوب.");
+    if (values.mediaType !== "image" || !values.mediaUrls[0]?.trim())
+      problems.push("اكشفني يحتاج صورة واحدة للمشهور.");
+    if (ekshifni.regions.length !== EKSHIFNI_REGION_COUNT)
+      problems.push("اكشفني يحتاج ستة أجزاء بالضبط.");
+    const ids = ekshifni.regions.map((region) => region.localId.trim());
+    if (ids.some((id) => !id) || new Set(ids).size !== ids.length)
+      problems.push("معرفات الأجزاء يجب أن تكون موجودة وفريدة.");
+    const roles = ekshifni.regions.map((region) => region.role);
+    if (new Set(roles).size !== roles.length)
+      problems.push("لا تكرر نوع الجزء أكثر من مرة في نفس الصورة.");
+    const boxes = ekshifni.regions.map((region) => ({
+      x: Number(region.x),
+      y: Number(region.y),
+      width: Number(region.width),
+      height: Number(region.height),
+    }));
+    const fraction = (value: number) =>
+      Number.isFinite(value) && value >= 0 && value <= 1;
+    if (
+      boxes.some(
+        (box) =>
+          !fraction(box.x) ||
+          !fraction(box.y) ||
+          !fraction(box.width) ||
+          !fraction(box.height) ||
+          box.width <= 0 ||
+          box.height <= 0 ||
+          box.x + box.width > 1.0001 ||
+          box.y + box.height > 1.0001,
+      )
+    )
+      problems.push(
+        "أبعاد الأجزاء تكون نسبة من الصورة بين 0 و 1، وداخل حدود الصورة.",
       );
   }
   // Two mechanics can ask the author for the same thing — both take a صعوبة —

@@ -57,6 +57,12 @@ export enum ChallengeAnswerMode {
   LAQATHA = 'laqatha',
   /** Music Signature auction; ContentItems retain a MATCH answer payload. */
   FIRST_NOTE = 'first_note',
+  /**
+   * Celebrities Signature "اكشفني": six authored reveal regions over one
+   * celebrity image. The mechanic owns the regions; the ContentItem keeps the
+   * MATCH answer payload that names the celebrity.
+   */
+  EKSHIFNI = 'ekshifni',
 }
 
 /** A generic board position. Gameplay meaning comes from its Challenge Type. */
@@ -160,6 +166,53 @@ export const LAQATHA_REVEAL_SECONDS = 3;
 /** A team that claims gets five seconds to submit the movie title. */
 export const LAQATHA_CLAIM_SECONDS = 5;
 
+/**
+ * Celebrities Signature: اكشفني.
+ *
+ * Transliterated like every other Arabic-named mechanic in the catalog
+ * (`marhala`, `laqatha`, `rakkibha`), so the runtime key reads the same way the
+ * room says it.
+ */
+export const EKSHIFNI_SLUG = 'ekshifni';
+/** Exactly three celebrity images per challenge launch. */
+export const EKSHIFNI_ITEM_COUNT = 3;
+/** Exactly six authored reveal regions per image. */
+export const EKSHIFNI_REGION_COUNT = 6;
+/**
+ * What an image is worth as regions come off it: 5 before any reveal, then one
+ * point per reveal down to a floor of 1.
+ *
+ * The floor is the point of the sixth region — it stays revealable after the
+ * value has bottomed out, so a team can still buy information it cannot pay for
+ * twice.
+ */
+export const EKSHIFNI_VALUES = [5, 4, 3, 2, 1] as const;
+/**
+ * The authored role of each region, in authoring order.
+ *
+ * These are content-authoring vocabulary and are **never** player-facing: the
+ * runtime projects neutral numbers 1..6, because the role of a region is itself
+ * a clue about the celebrity.
+ */
+export const EKSHIFNI_REGION_ROLES = [
+  'eyes',
+  'hair-head',
+  'mouth-facial-hair',
+  'outfit',
+  'background',
+  'distinctive-detail',
+] as const;
+export type EkshifniRegionRole = (typeof EKSHIFNI_REGION_ROLES)[number];
+/**
+ * Technical safety timeout for one image, in seconds.
+ *
+ * **Not a Product balance rule.** اكشفني has no designed answer clock; this
+ * exists only so the canonical runtime lifecycle converges when a room stalls,
+ * and it is deliberately long enough never to be part of play. Tune it as
+ * playtest configuration, not as design.
+ */
+export const EKSHIFNI_IMAGE_SAFETY_SECONDS = 180;
+
 /** Music Signature: من أول نغمة. */
 export const FIRST_NOTE_SLUG = 'first-note';
 export const FIRST_NOTE_ITEM_COUNT = 3;
@@ -175,7 +228,8 @@ export type ContentPattern =
   | 'one_clue'
   | 'odd_piece'
   | 'laqatha'
-  | 'first_note';
+  | 'first_note'
+  | 'ekshifni';
 
 /** Mechanic-owned authoring structure, distinct from its answer contract. */
 export function contentPatternForChallengeAnswerMode(
@@ -187,6 +241,7 @@ export function contentPatternForChallengeAnswerMode(
   if (mode === ChallengeAnswerMode.ODD_PIECE) return 'odd_piece';
   if (mode === ChallengeAnswerMode.LAQATHA) return 'laqatha';
   if (mode === ChallengeAnswerMode.FIRST_NOTE) return 'first_note';
+  if (mode === ChallengeAnswerMode.EKSHIFNI) return 'ekshifni';
   return 'generic';
 }
 
@@ -253,6 +308,7 @@ export const ANSWER_MODE_COMPATIBLE_ITEM_MODES: Readonly<
   [ChallengeAnswerMode.ONE_CLUE]: [ChallengeAnswerMode.MATCH],
   [ChallengeAnswerMode.LAQATHA]: [ChallengeAnswerMode.MATCH],
   [ChallengeAnswerMode.FIRST_NOTE]: [ChallengeAnswerMode.MATCH],
+  [ChallengeAnswerMode.EKSHIFNI]: [ChallengeAnswerMode.MATCH],
   [ChallengeAnswerMode.RAKKIBHA]: [
     ChallengeAnswerMode.MATCH,
     ChallengeAnswerMode.MULTIPLE_CHOICE,

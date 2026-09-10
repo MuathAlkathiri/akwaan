@@ -19,6 +19,7 @@ import { MARHALA_MODE_KEY } from '../modules/live-game-sessions/domain/marhala-b
 import { ODD_PIECE_MODE_KEY } from '../modules/live-game-sessions/domain/odd-piece-gameplay.plugin';
 import { LAQATHA_MODE_KEY } from '../modules/live-game-sessions/domain/laqatha-gameplay.plugin';
 import { FIRST_NOTE_MODE_KEY } from '../modules/live-game-sessions/domain/first-note-gameplay.plugin';
+import { EKSHIFNI_MODE_KEY } from '../modules/live-game-sessions/domain/ekshifni-gameplay.plugin';
 
 /**
  * Deciding which ChallengeType is a canonical mechanic wearing the wrong slug.
@@ -104,6 +105,7 @@ describe('canonical mechanic slug migration', () => {
       ODD_PIECE_MODE_KEY,
       LAQATHA_MODE_KEY,
       FIRST_NOTE_MODE_KEY,
+      EKSHIFNI_MODE_KEY,
     ];
     for (const entry of CANONICAL_MECHANICS) {
       expect(launcherKeys).toContain(entry.slug);

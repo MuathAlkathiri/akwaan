@@ -1423,6 +1423,7 @@ unexplained — §19 item 19. Preserving the catalog means first establishing wh
 | **Series / المسلسلات** | وش صار بعدها؟ | ⬜ | ⬜ | 🟡 design approved |
 | **Video Games / فيديو قيمز** | المرحلة | ✅ `marhala` plugin, launcher, on-demand supplier, content policy, ChallengeType | ✅ `slot_4` bound to `marhala` in the **local/dev** runtime; ⚠️ content is 19 dev fixtures, not authored | ✅ mechanic / ✅ local rollout / ⚠️ content / ⬜ not deployed (§17) |
 | **Anime / الأنمي** | الكومبو | ✅ `combo` plugin, launcher, content policy, ChallengeType | ✅ `slot_2` bound to `combo` and ✅ **84 authored الكومبو items across all 7 Anime Scopes** in the **local/dev** runtime; ⬜ not deployed | ✅ mechanic / ✅ local rollout / ✅ local content (§16.4) |
+| **Celebrities / المشاهير** | اكشفني | ✅ `ekshifni` plugin, launcher, content policy, ChallengeType, Admin authoring | ✅ **local/dev World provisioned as draft**, board = `ekshifni` + RYO + Closest + Bomb, `ekshifni` bound to Celebrities and nowhere else; ⛔ 0 Scopes, 0 content; ⬜ not deployed | ✅ mechanic / ✅ product review / 🚧 local rollout — blocked on content taxonomy (§16.9) |
 | **Saudi Arabia / السعودية** | *undecided* | — | — | ⬜ |
 | **Cars / السيارات** | *undecided* | — | — | ⬜ |
 | **Sports / الرياضة** | *undecided* | — | — | ⬜ |
@@ -1441,6 +1442,7 @@ by §4.2 none of them can ship without one.
 - **المرحلة** (Video Games) — board race whose central decision is *which risk band to elect from this tile*;
   full spec **and implementation record** in §17.
 - **الكومبو** (Anime) — push-your-luck knowledge run built around the team's **cash out or continue** decision, with direct opponent pressure through **كسر الكومبو**; full approved design in §16.4.
+- **اكشفني** (Celebrities) — a celebrity photograph under six numbered masks; a team buys information by lifting a mask and pays for it in points, while answering stays an open race; full record in §16.9.
 
 
 ### 16.4 الكومبو — Anime Signature design spec and implementation
@@ -1931,6 +1933,87 @@ mutated, and none may be described as a decision unless separately approved:
   replaced the earlier brainstormed «سيارات خارقة»)
 
 ---
+
+### 16.9 اكشفني — Celebrities Signature *(implemented 2026-09-10; product review passed 2026-09-10)*
+
+**Status is deliberately split. Do not collapse it into one marker.**
+
+| Aspect | Status |
+|---|---|
+| Mechanic implementation (backend, Admin, player frontend) | ✅ **IMPLEMENTED & VERIFIED LOCALLY** |
+| Product review (shared screen, phone, reveal, responsive) | ✅ **PASSED** |
+| Local/dev Celebrities World + board rollout | ✅ **PROVISIONED (draft)** |
+| Celebrities Scope taxonomy | ⛔ **NOT DECIDED** — content workstream |
+| Content | ⬜ **NOT AUTHORED** |
+| Deployment / production DB | ⬜ **NOT DEPLOYED** |
+
+> **Provenance note.** This section was written from the approved product decisions supplied with the
+> implementation and product-review briefs. The repository copy of this roadmap carried no §16.9 and no
+> `اكشفني` row when the work began; that gap was reported at the time rather than silently filled, and this
+> record is the reconciliation. It records what was built and verified, not a design history it did not witness.
+
+#### Approved gameplay rules (locked)
+
+- Three celebrity images per challenge; each image has exactly **six** authored reveal regions.
+- Opening initiative rotates **A → B → A** across the three images, where **A is the team that selected the
+  challenge**. This is an *opening* order, not a turn order.
+- **Initiative decides only who chooses the next region.** Answering is an open race between eligible teams
+  through the ordinary server-graded text path — no claim window, no lock, no host judging.
+- Value ladder **5 → 4 → 3 → 2 → 1**, one point per reveal, floored at 1; the sixth region stays revealable at 1.
+- A wrong answer hands initiative to the opponent and parks that team's answer eligibility. **One** authoritative
+  action by the opponent — a reveal *or* an answer — restores it. No permanent elimination, and a wrong answer
+  never discloses the celebrity.
+- Initiative does **not** alternate after an ordinary reveal.
+- A hidden **180-second technical safety deadline** ends a stalled image with no reward. It is TECHNICAL/playtest
+  configuration, not a product timer, and is never shown as a countdown.
+- Terminal resolution uses **Universal Reveal V1**; no parallel reveal architecture.
+
+#### Approved presentation (masked-photo model)
+
+- The celebrity photograph is **on screen from the first second and is the dominant element**. Six **opaque**
+  authored panels cover the identifying features; a reveal *lifts* a panel. Panels carry no transparency — at 95%
+  opacity eyes and type read straight through, which the product review caught and fixed.
+- The shared screen renders the picture, the six masks and the neutral player-facing numbers 1–6, and therefore
+  **legitimately holds the full image media in its DOM**. That is inherent to "one shared image both teams look
+  at" and matches the existing Odd Piece precedent.
+- **The phone is the privacy boundary**: it receives no image media, no mask geometry, no authoring roles, no
+  accepted answers and no identity before terminal resolution — only the numbers it may press and the server's
+  word on which of its two rights are live.
+- Semantic region roles (eyes, hair/head, mouth/facial hair, outfit, background, distinctive detail) are
+  **authoring vocabulary only** and are never projected to any client.
+- Region geometry is stored as **fractions of the source image**, so one authored mask lands on the same feature
+  on a television and on a 390-wide phone. The board is sized from the picture's natural aspect; cropping to a
+  fixed ratio would slide every panel off its feature.
+- A mask the client cannot place **fails closed**: the picture is withheld entirely rather than shown unmasked.
+
+#### Runtime identity
+
+- Runtime mechanic slug: **`ekshifni`** (transliteration convention, as `marhala` / `laqatha` / `rakkibha`).
+- Family `signature`, item structure `discrete_triple`, answer mode `ekshifni`, item payload mode `match`.
+- Provisioned reproducibly through the canonical mechanic provisioner
+  (`npm run provision:production-mechanics -- --apply --only=ekshifni`), not by hand-editing Mongo.
+
+#### Local/dev Celebrities World rollout *(2026-09-10)*
+
+- World **`celebrities` / المشاهير**, created **draft** through the canonical Admin flow. The slug follows the
+  existing English World identifier convention (`music`, `movies`, `cars`, `saudi-arabia`, `general-knowledge`);
+  no canonical Celebrities slug existed in source, and the choice is recorded here.
+- Board = the locked composition **Signature + RYO + Closest + Bomb**: `slot_1` `ekshifni`, `slot_2`
+  `read-your-opponent`, `slot_3` `closest`, `slot_4` `bomb`. Configured through the board API, not a raw write.
+- **Signature exclusivity holds**: `ekshifni` has exactly one board binding, to Celebrities.
+- Readiness is **`not_ready`**, with exactly one blocker — `WORLD_WITHOUT_ACTIVE_SCOPE` — plus four
+  `CHALLENGE_WITHOUT_READY_CONTENT` warnings. **Architecture is green; the remaining gap is content.**
+- **No Celebrities Scopes exist and none were invented.** §16.8's candidate Scope direction covers Movies, Music
+  and Cars only, and is explicitly not approved taxonomy. Celebrities Scope taxonomy is a content-workstream
+  decision.
+
+#### Defect found by the rollout
+
+The Match's **selecting team was never passed to the runtime on the canonical unified launch path** —
+`startingTeamId` was only populated on the legacy launch route — so اكشفني's approved "A = the team that selected
+the challenge" anchor silently fell back to the first team, and was therefore correct only half the time. The
+unified launch now carries the selecting team through as the starting team, which is the Match's own semantics
+and applies uniformly to every launcher that accepts one.
 
 ## 17. المرحلة — Video Games Signature design spec and implementation
 

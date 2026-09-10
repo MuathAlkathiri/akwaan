@@ -614,8 +614,16 @@ export class MatchUseCases {
       challengeTypeId: slot.challengeTypeId,
       challengeTypeSlug: slot.challengeTypeSlug,
       contentItemIds,
-      ...(command.startingTeamId
-        ? { startingTeamId: command.startingTeamId }
+      // Who opens this challenge. The team that selected the position is the
+      // team that starts it, which is the Match's own semantics and what a
+      // mechanic anchored to the selecting team — اكشفني rotates its opening
+      // initiative A → B → A from exactly this team — needs in order to be
+      // right rather than right half the time. An explicit `startingTeamId`
+      // still wins, and a launch that names neither keeps the old fallback.
+      ...((command.startingTeamId ?? command.selectingTeamId)
+        ? {
+            startingTeamId: command.startingTeamId ?? command.selectingTeamId,
+          }
         : {}),
     };
     await launcher.validateLaunch(context);

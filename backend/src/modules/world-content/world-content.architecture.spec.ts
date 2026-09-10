@@ -118,6 +118,7 @@ describe('World Content architecture', () => {
       'modules/live-game-sessions/application/start-bomb-from-content.use-case.ts',
       'modules/live-game-sessions/application/start-closest-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-combo-gameplay.use-case.ts',
+      'modules/live-game-sessions/application/start-ekshifni-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-first-note-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-laqatha-gameplay.use-case.ts',
       'modules/live-game-sessions/application/start-marhala-gameplay.use-case.ts',
@@ -132,6 +133,8 @@ describe('World Content architecture', () => {
       // from World Content rather than declaring a second copy.
       'modules/live-game-sessions/domain/closest-gameplay.plugin.spec.ts',
       'modules/live-game-sessions/domain/closest-gameplay.plugin.ts',
+      'modules/live-game-sessions/domain/ekshifni-gameplay.plugin.spec.ts',
+      'modules/live-game-sessions/domain/ekshifni-gameplay.plugin.ts',
       'modules/live-game-sessions/domain/first-note-gameplay.plugin.spec.ts',
       'modules/live-game-sessions/domain/first-note-gameplay.plugin.ts',
       'modules/live-game-sessions/domain/laqatha-gameplay.plugin.spec.ts',

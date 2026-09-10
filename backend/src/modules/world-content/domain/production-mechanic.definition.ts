@@ -12,6 +12,7 @@ import {
   ODD_PIECE_SLUG,
   LAQATHA_SLUG,
   FIRST_NOTE_SLUG,
+  EKSHIFNI_SLUG,
 } from './world-content.constants';
 import { ChallengePresentation } from './world-content.types';
 
@@ -249,6 +250,38 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
           steps: [
             'أقل مزايدة تسمع نفس المدة وتجاوب أول.',
             'إذا غلطتوا، للفريق الثاني محاولة سرقة بنفس المقطع.',
+          ],
+        },
+      },
+    },
+  }),
+  definition({
+    // "اكشفني" — the Celebrities Signature (§16.9). A discrete triple of
+    // celebrity photographs, each masked by six authored regions. Both teams
+    // play the same picture and the answer race between them is open, so the
+    // free-text celebrity name is a MATCH payload.
+    slug: EKSHIFNI_SLUG,
+    family: ChallengeFamily.SIGNATURE,
+    itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
+    answerMode: ChallengeAnswerMode.EKSHIFNI,
+    seed: {
+      name: 'اكشفني',
+      description:
+        'ستة أجزاء مغطّاة على صورة مشهور: كل جزء تكشفونه يسهّل الصورة ويقلّل النقاط.',
+      defaultPresentation: {
+        inputType: 'phone-text',
+        // Not an answer timer: اكشفني has no product clock on answering. This is
+        // the technical safety window that keeps a stalled image from holding
+        // the match, and it is playtest configuration.
+        timerSeconds: 180,
+        soundPack: null,
+        revealStyle: null,
+        playerInstructions: {
+          summary: 'كل صورة تبدأ بـ 5 نقاط، وكل كشف ينقّص نقطة.',
+          steps: [
+            'صاحب الدور يختار رقم الجزء اللي يبغى يكشفه.',
+            'الإجابة مفتوحة للفريقين — أول إجابة صحيحة تأخذ النقاط.',
+            'إذا غلطتم، الدور والفرصة تنتقل للفريق الثاني.',
           ],
         },
       },

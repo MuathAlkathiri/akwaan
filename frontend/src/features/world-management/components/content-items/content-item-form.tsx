@@ -33,6 +33,7 @@ import {
   hasMarhalaMechanic,
   hasOddPieceMechanic,
   hasFirstNoteMechanic,
+  hasEkshifniMechanic,
 } from "../../services/content-item-form.service";
 import { FormIssueList } from "../shared";
 import { UploadField } from "../shared/upload-field";
@@ -44,6 +45,7 @@ import { OneClueFields } from "./one-clue-fields";
 import { ComboFields } from "./combo-fields";
 import { MarhalaFields } from "./marhala-fields";
 import { OddPieceFields } from "./odd-piece-fields";
+import { EkshifniFields } from "./ekshifni-fields";
 import { LaqathaFields } from "./laqatha-fields";
 import { FirstNoteFields } from "./first-note-fields";
 import {
@@ -134,6 +136,7 @@ export function ContentItemForm({
       patternOf(configuration.challengeType.answerMode) === "laqatha",
   );
   const firstNoteSelected = hasFirstNoteMechanic(selectedChallengeTypes);
+  const ekshifniSelected = hasEkshifniMechanic(selectedChallengeTypes);
   // Keep the payload flag in step with the selection, so deselecting the
   // mechanic stops emitting its payload.
   useEffect(() => {
@@ -213,6 +216,19 @@ export function ContentItemForm({
       };
     });
   }, [laqathaSelected]);
+
+  useEffect(() => {
+    setValues((current) => {
+      if (current.ekshifni.enabled === ekshifniSelected) return current;
+      return {
+        ...current,
+        answer: ekshifniSelected
+          ? { ...current.answer, mode: "match" }
+          : current.answer,
+        ekshifni: { ...current.ekshifni, enabled: ekshifniSelected },
+      };
+    });
+  }, [ekshifniSelected]);
 
   useEffect(() => {
     setValues((current) =>
@@ -375,6 +391,16 @@ export function ContentItemForm({
           value={values.laqatha}
           acceptedAnswers={values.answer.acceptedAnswers}
           onChange={(laqatha) => set({ laqatha })}
+          onAcceptedAnswersChange={(acceptedAnswers) =>
+            set({ answer: { ...values.answer, acceptedAnswers } })
+          }
+        />
+      ) : ekshifniSelected ? (
+        <EkshifniFields
+          value={values.ekshifni}
+          acceptedAnswers={values.answer.acceptedAnswers}
+          imageUrl={values.mediaUrls[0]}
+          onChange={(ekshifni) => set({ ekshifni })}
           onAcceptedAnswersChange={(acceptedAnswers) =>
             set({ answer: { ...values.answer, acceptedAnswers } })
           }

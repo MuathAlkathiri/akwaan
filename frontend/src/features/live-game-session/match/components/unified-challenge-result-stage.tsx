@@ -23,6 +23,7 @@ import { ComboResultRecap } from "./combo-result-recap";
 import { MarhalaResultRecap } from "./marhala-result-recap";
 import { OddPieceResultRecap } from "./odd-piece-result-recap";
 import { LaqathaResultRecap } from "./laqatha-result-recap";
+import { EkshifniResultRecap } from "./ekshifni-result-recap";
 import { FirstNoteResultRecap } from "./first-note-result-recap";
 import { BombResultRecap } from "./bomb-result-recap";
 import { RakkibhaResultRecap } from "./rakkibha-result-recap";
@@ -198,6 +199,8 @@ function ChallengeResultBody({ result }: { result: MatchChallengeResult }) {
       return <OddPieceResultRecap result={result} snapshot={snapshot} />;
     case "laqatha":
       return <LaqathaResultRecap result={result} snapshot={snapshot} />;
+    case "ekshifni":
+      return <EkshifniResultRecap result={result} snapshot={snapshot} />;
     case "first-note":
       return <FirstNoteResultRecap result={result} snapshot={snapshot} />;
     default:

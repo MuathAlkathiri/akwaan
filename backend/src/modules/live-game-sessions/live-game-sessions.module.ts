@@ -134,6 +134,7 @@ import { WithdrawPresentationReadiness } from './application/withdraw-presentati
 import { StartOddPieceGameplay } from './application/start-odd-piece-gameplay.use-case';
 import { StartLaqathaGameplay } from './application/start-laqatha-gameplay.use-case';
 import { StartFirstNoteGameplay } from './application/start-first-note-gameplay.use-case';
+import { StartEkshifniGameplay } from './application/start-ekshifni-gameplay.use-case';
 
 const applicationProviders = [
   StartFirstNoteGameplay,
@@ -196,6 +197,7 @@ const applicationProviders = [
   WithdrawPresentationReadiness,
   StartOddPieceGameplay,
   StartLaqathaGameplay,
+  StartEkshifniGameplay,
 ];
 
 @Module({
@@ -315,6 +317,7 @@ const applicationProviders = [
     StartRakkibha,
     StartOddPieceGameplay,
     StartLaqathaGameplay,
+    StartEkshifniGameplay,
     GAMEPLAY_RUNTIME_REPOSITORY,
     LIVE_GAME_SESSION_REPOSITORY,
     // The Match layer announces its transitions on the session's own channel.

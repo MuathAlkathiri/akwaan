@@ -20,6 +20,7 @@ import {
   BOMB_SLUG,
   MARHALA_SLUG,
   ODD_PIECE_SLUG,
+  EKSHIFNI_SLUG,
   ONE_CLUE_VALUES,
   LAQATHA_SLUG,
   LAQATHA_VALUES,
@@ -50,8 +51,13 @@ import {
   OddPiecePayload,
   LaqathaPayload,
   FirstNotePayload,
+  EkshifniPayload,
 } from './world-content.types';
 import { validateOddPiecePayload } from './odd-piece-content.policy';
+import {
+  ekshifniImageIssue,
+  validateEkshifniPayload,
+} from './ekshifni-content.policy';
 
 /**
  * Fields the legacy question model carried that have no place in the new domain
@@ -110,6 +116,7 @@ export class ContentItemCompatibilityPolicy {
     blockers.push(...this.validateBombItem(input.item, referenced));
     blockers.push(...this.validateMarhalaPayload(input.item, referenced));
     blockers.push(...this.validateOddPiecePayload(input.item, referenced));
+    blockers.push(...this.validateEkshifniPayload(input.item, referenced));
     warnings.push(...this.reuseWarnings(input.item, referenced));
 
     return buildReadinessReport(blockers, warnings);
@@ -220,6 +227,25 @@ export class ContentItemCompatibilityPolicy {
     return validateOddPiecePayload(
       item.mechanicPayload as Partial<OddPiecePayload>,
     );
+  }
+
+  /**
+   * "اكشفني" structure: one canonical celebrity image and its six reveal
+   * regions, checked here against the very predicate the launcher runs, so an
+   * item the Admin accepts cannot be rejected by the room on game night.
+   */
+  private validateEkshifniPayload(
+    item: ContentItemView,
+    challengeTypes: ChallengeTypeView[],
+  ): WorldContentIssue[] {
+    if (!challengeTypes.some((type) => type.slug === EKSHIFNI_SLUG)) return [];
+    const imageProblem = ekshifniImageIssue(item.media);
+    return [
+      ...(imageProblem ? [imageProblem] : []),
+      ...validateEkshifniPayload(
+        item.mechanicPayload as Partial<EkshifniPayload>,
+      ),
+    ];
   }
 
   private validateOneCluePayload(

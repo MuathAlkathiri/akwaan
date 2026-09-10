@@ -15,6 +15,7 @@ import { MARHALA_GAMEPLAY_PLUGIN } from './marhala-gameplay.plugin';
 import { ODD_PIECE_GAMEPLAY_PLUGIN } from './odd-piece-gameplay.plugin';
 import { LAQATHA_GAMEPLAY_PLUGIN } from './laqatha-gameplay.plugin';
 import { FIRST_NOTE_GAMEPLAY_PLUGIN } from './first-note-gameplay.plugin';
+import { EKSHIFNI_GAMEPLAY_PLUGIN } from './ekshifni-gameplay.plugin';
 
 @Injectable()
 export class GameplayModeRegistry {
@@ -93,6 +94,13 @@ export class GameplayModeRegistry {
         FIRST_NOTE_GAMEPLAY_PLUGIN.version,
       ),
       FIRST_NOTE_GAMEPLAY_PLUGIN,
+    ],
+    [
+      this.registryKey(
+        EKSHIFNI_GAMEPLAY_PLUGIN.key,
+        EKSHIFNI_GAMEPLAY_PLUGIN.version,
+      ),
+      EKSHIFNI_GAMEPLAY_PLUGIN,
     ],
   ]);
 

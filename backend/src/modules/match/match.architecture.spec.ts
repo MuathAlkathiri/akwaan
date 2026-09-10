@@ -49,11 +49,11 @@ describe('Match module architecture', () => {
     const launchers = matchFiles.filter((path) =>
       path.endsWith('.launcher.ts'),
     );
-    expect(launchers).toHaveLength(11);
+    expect(launchers).toHaveLength(12);
     for (const path of launchers) {
       const content = read(path);
       expect(content).toMatch(
-        /StartRyoGameplay|StartTop5|StartRakkibha|StartClosestGameplay|StartOneClueGameplay|StartBombGameplayFromContent|StartComboGameplay|StartMarhalaGameplay|StartOddPieceGameplay|StartLaqathaGameplay|StartFirstNoteGameplay/,
+        /StartRyoGameplay|StartTop5|StartRakkibha|StartClosestGameplay|StartOneClueGameplay|StartBombGameplayFromContent|StartComboGameplay|StartMarhalaGameplay|StartOddPieceGameplay|StartLaqathaGameplay|StartFirstNoteGameplay|StartEkshifniGameplay/,
       );
       // No launcher may build a runtime, a round, or an interaction itself.
       expect(content).not.toMatch(
@@ -282,11 +282,13 @@ describe('Match module architecture', () => {
       'live-game-sessions/domain/odd-piece-gameplay.plugin',
       'live-game-sessions/domain/laqatha-gameplay.plugin',
       'live-game-sessions/domain/first-note-gameplay.plugin',
+      'live-game-sessions/domain/ekshifni-gameplay.plugin',
       // المرحلة draws content on demand, so the Match layer reads the board's own
       // vocabulary to decide what a difficulty is worth.
       'live-game-sessions/domain/marhala-board',
       'live-game-sessions/application/start-marhala-gameplay.use-case',
       'live-game-sessions/application/start-first-note-gameplay.use-case',
+      'live-game-sessions/application/start-ekshifni-gameplay.use-case',
       // المرحلة draws on demand, so the runtime declares what it needs through a
       // registry and the Match layer registers something that can answer — the
       // same one-way pattern as the gameplay observer registry.
