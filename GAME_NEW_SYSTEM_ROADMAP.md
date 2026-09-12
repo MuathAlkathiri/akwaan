@@ -1949,7 +1949,7 @@ mutated, and none may be described as a decision unless separately approved:
 | Content | ⬜ **NOT AUTHORED** |
 | Content media / World card asset | ⬜ **NOT CREATED** |
 | Real Production gameplay | ⬜ **NOT RUN** — no content exists to play |
-| Production World activation | ⬜ **NOT ACTIVATED** — deliberately draft |
+| Production World activation | ⬜ **NOT ACTIVATED** — briefly active with 0 content, corrected back to draft (§28.5) |
 
 > **Provenance note.** This section was written from the approved product decisions supplied with the
 > implementation and product-review briefs. The repository copy of this roadmap carried no §16.9 and no
@@ -4030,3 +4030,109 @@ Human Product then:
 - approved Overwatch Reaper concept
 
 Therefore: QA assists Human Product. It does not replace Human Product.
+
+---
+
+## 28. Worlds catalogue availability + World activation policy (2026-09-12)
+
+**Status:** ✅ **IMPLEMENTED & VERIFIED LOCALLY** · ⬜ not committed, not deployed at the time of writing.
+
+### 28.1 The defect: a second, hardcoded source of World state
+
+`/worlds` showed «عوالم جديدة في الطريق» from a hardcoded array of Arabic label strings in
+`worlds-home.tsx` — not Worlds, not ids, just copy:
+
+```ts
+const COMING_SOON = ["الأفلام", "المسلسلات", "الأغاني", "المزيد قريباً"];
+```
+
+Because it was a parallel list of *strings*, nothing could reconcile it with the catalogue above it. الأغاني
+shipped and became selectable, and the same screen went on announcing it as not open yet. The frontend held an
+opinion about World state that the server had already superseded.
+
+That list is gone. **The public catalogue is now the only source of World availability**, and no frontend file
+carries World status. The one production file still allowed to render the «قريبًا» label is the roadmap row
+itself, and it may now only apply it to a World the *server* marks upcoming — a narrower exemption than the one
+it replaced, which is what let the الأغاني contradiction exist at all.
+
+### 28.2 Server-derived availability
+
+`GET /worlds` now carries `availability` on every World, derived from the canonical
+`MatchWorldSelectionPolicy` gate rather than from status alone:
+
+| Value | Condition | Behaviour |
+|---|---|---|
+| `available` | `status === ACTIVE` **and** `readiness.boardReady` | listed and selectable |
+| `upcoming` | listed, but that gate would refuse it | announced, never selectable |
+| *(absent)* | `ARCHIVED` | not listed at all |
+
+`boardReady` comes off the readiness report `WorldService` already computes for every summary, so this **reads**
+the answer rather than deriving a second one. Relational composition is deliberately not consulted: the policy
+raises it as a production warning, never as a structural blocker, so it does not decide whether one World may be
+chosen.
+
+The two groups partition one response, so `available ∩ upcoming = ∅` is structural rather than filtered, and a
+World moves between them on API data alone — no client release, no slug anywhere in the logic.
+
+**`ACTIVE` alone was never playability.** عالم الالغاز proved it: active, `boardReady: false`
+(`CHALLENGE_LAUNCHER_NOT_IMPLEMENTED` — a mechanic on its board lost its launcher in source), publicly listed as
+selectable, and refused by `validate-match-selection` with `MATCH_WORLD_BOARD_NOT_READY`. A player could pick it
+and be rejected. Degraded active Worlds like it now move to Upcoming automatically, with no DB mutation.
+
+### 28.3 Three separate concepts — do not collapse them
+
+| Concept | Means | Where it lives |
+|---|---|---|
+| `boardReady` | structural board + launcher readiness | `WorldReadinessPolicy` — **unchanged by this work** |
+| activation content gate | at least one configured Challenge has enough ready content to launch | `WorldService`, on DRAFT → ACTIVE only |
+| per-slot runtime guard | one Challenge may still refuse to open | `MATCH_INSUFFICIENT_PLAYABLE_CONTENT`, at launch |
+
+**`ACTIVE + limited` is a legitimate, supported state**, not debt. عالم كرة القدم runs that way today — active,
+190 items, one slot with zero ready content — and the runtime already answers that at launch.
+
+### 28.4 Activation policy *(product decision, approved 2026-09-12)*
+
+> **A World may not be switched on when *zero* of its configured Challenges are playable from ready content.**
+> It is **not** required that all four slots be content-ready before activation.
+
+Reasoning recorded because the stricter rule was considered and rejected on evidence. Requiring every slot would
+have: broken 10 existing integration suites (71 tests); contradicted suites that deliberately model an
+under-stocked board (`match-api`: *"None of the three is seeded with content, so only RYO draws"*); made the
+shipped `MATCH_INSUFFICIENT_PLAYABLE_CONTENT` path unreachable; and refused re-activation of عالم كرة القدم.
+It would also have forbidden the way Worlds are actually filled — switch on, then author.
+
+Both numbers are canonical: each mechanic's own `launchRequirements.contentItemCount`, published through the
+existing `ChallengeLaunchabilityRegistry` seam Match already fills at startup, against the ready counts readiness
+already uses. Nothing in the gate knows a slug or a World by name, and a board of purely on-demand mechanics
+(المرحلة declares `contentItemCount: 0`) asks nothing of the catalogue. The gate guards the *transition* only,
+so a live World stays editable and repairable.
+
+### 28.5 Celebrities corrected to DRAFT
+
+عالم المشاهير was found **ACTIVE in Production with 0 ContentItems** — a complete four-slot board and five
+Scopes, so Match selection accepted it structurally while every challenge would have failed at launch. It was
+returned to **DRAFT** through the canonical Admin path. Nothing else was touched: same World id and slug, same
+banner, same five Scopes, same board, still 0 items.
+
+Verified after the correction: absent from the public catalogue, `GET /worlds/:id` and `/:id/scopes` both 404 for
+a player, `validate-match-selection` refuses with `MATCH_WORLD_NOT_ACTIVE`, and Admin can still author into it.
+It stays Upcoming while content work proceeds.
+
+**This does not mean Celebrities is ready.** Content, media and real gameplay all remain outstanding (§16.9).
+
+### 28.6 Celebrities Scopes — provenance pending
+
+Five Scopes exist in Production against this World:
+
+| Slug | Name |
+|---|---|
+| `content-creators` | صناع المحتوى |
+| `media-stars` | نجوم الإعلام |
+| `acting-stars` | نجوم التمثيل |
+| `sports-stars` | نجوم الرياضة |
+| `music-stars` | نجوم الغناء |
+
+**Current Production content-workstream taxonomy — approval provenance pending.** No explicit approval for these
+names exists in project evidence; a search of the roadmap and every project document returns nothing. They are
+recorded here because they exist, not because they were approved, and they must not be described as approved
+taxonomy until that is established.

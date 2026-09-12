@@ -12,6 +12,15 @@ export interface PlayerAsset {
   altText?: string;
 }
 
+/**
+ * Whether a player may open this World, or is only being told it is coming.
+ *
+ * The catalog's own answer. No screen keeps its own list of which Worlds are
+ * open yet, so activating a World moves it from "coming soon" to selectable
+ * with no client release.
+ */
+export type PlayableWorldAvailability = "available" | "upcoming";
+
 export interface PlayableWorld {
   id: string;
   name: string;
@@ -22,6 +31,8 @@ export interface PlayableWorld {
   sortOrder: number;
   scopeCount: number;
   challengeConfigurationCount: number;
+  /** Absent from an older backend, which only ever returned playable Worlds. */
+  availability?: PlayableWorldAvailability;
 }
 
 /** A board position as the player sees it. */

@@ -21,16 +21,39 @@ const normalize = (value: string) =>
     .replace(/[\s_]+/g, "-")
     .replace(/[أإآ]/g, "ا");
 
-/** A World a player may actually open. */
-export function isPlayableWorld(_world: PlayableWorld): boolean {
-  return true;
+/**
+ * A World a player may actually open.
+ *
+ * The catalog decides. An older backend returned only playable Worlds and sent
+ * no `availability` at all, so a missing field means playable — which keeps this
+ * correct against either backend rather than hiding every World during a deploy.
+ */
+export function isPlayableWorld(world: PlayableWorld): boolean {
+  return (world.availability ?? "available") === "available";
 }
 
+/** A World announced as coming, which a player may see but never select. */
+export function isUpcomingWorld(world: PlayableWorld): boolean {
+  return world.availability === "upcoming";
+}
+
+const inCanonicalOrder = (worlds: PlayableWorld[]) =>
+  worlds.slice().sort((left, right) => left.sortOrder - right.sortOrder);
+
 export function playableWorlds(worlds: PlayableWorld[]): PlayableWorld[] {
-  return worlds
-    .filter(isPlayableWorld)
-    .slice()
-    .sort((left, right) => left.sortOrder - right.sortOrder);
+  return inCanonicalOrder(worlds.filter(isPlayableWorld));
+}
+
+/**
+ * The "عوالم جديدة في الطريق" row, from the same catalog response.
+ *
+ * Deriving both rows from one predicate pair is what makes the old bug —
+ * الأغاني selectable in the grid while a hardcoded roadmap below still
+ * announced it as not yet open — structurally impossible: the two lists
+ * partition the same array, so no World can appear in both.
+ */
+export function upcomingWorlds(worlds: PlayableWorld[]): PlayableWorld[] {
+  return inCanonicalOrder(worlds.filter(isUpcomingWorld));
 }
 
 function matches(world: PlayableWorld, aliases: readonly string[]): boolean {

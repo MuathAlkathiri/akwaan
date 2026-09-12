@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { UploadedImageFile } from '../../../common/uploads/local-image-storage.service';
 import { WorldReadinessReport } from '../domain/world-readiness.policy';
+import { ChallengeLaunchabilityRegistry } from '../domain/challenge-launchability.registry';
 import { WorldContentStatus } from '../domain/world-content.constants';
 import {
   assertNoIssues,
@@ -40,6 +41,7 @@ export class WorldService {
     private readonly configurations: WorldChallengeConfigurationRepository,
     private readonly contentItems: ContentItemRepository,
     private readonly readiness: WorldReadinessService,
+    private readonly launchability: ChallengeLaunchabilityRegistry,
     private readonly assets: WorldContentAssetMutator,
     private readonly references: WorldContentReferenceRegistry,
   ) {}
@@ -115,6 +117,13 @@ export class WorldService {
       await this.assertProjectionActivatable(id, {
         status: WorldContentStatus.ACTIVE,
       });
+      // Only on the way *in*. Editing a live World's board must stay possible
+      // even where a slot is still short of content — otherwise a World that
+      // shipped with a thin slot could never be repaired — so the content gate
+      // guards the transition, not every write to an active World.
+      if (existing.status !== WorldContentStatus.ACTIVE) {
+        await this.assertBoardContentPlayable(id);
+      }
     }
     const updated = await this.assets.withAsset({
       kind: 'worlds',
@@ -152,6 +161,68 @@ export class WorldService {
     await this.worlds.deleteById(id);
     await this.assets.discard(existing.banner);
     return { id };
+  }
+
+  /**
+   * Refuses to switch a World on when **no** board position can deal a
+   * challenge.
+   *
+   * عالم المشاهير reached Production active with a complete four-slot board,
+   * five Scopes and zero content items: Match selection accepted it on
+   * structure alone and every challenge would then have failed at launch. This
+   * closes that at the write boundary, rather than making every public
+   * catalogue request pay for a content aggregate to compensate afterwards.
+   *
+   * The threshold is deliberately "not a single playable slot", not "every slot
+   * stocked". A World with one thin position is a normal, shipped state —
+   * عالم كرة القدم is live today with an empty fourth slot — and the runtime
+   * already has a designed answer for it in `MATCH_INSUFFICIENT_PLAYABLE_CONTENT`
+   * at launch. Refusing activation for a single short slot would make that error
+   * path unreachable and would forbid the way Worlds are actually filled in:
+   * switch on, then author. What it will not allow is switching on a World that
+   * cannot play anything at all.
+   *
+   * Both numbers are canonical: the ready counts readiness already uses, and
+   * each mechanic's own launcher requirement, published through the registry
+   * Match fills at startup. Nothing here knows a slug or a World by name.
+   */
+  private async assertBoardContentPlayable(worldId: string): Promise<void> {
+    const [board, readyByChallengeType] = await Promise.all([
+      this.readiness.buildBoard(worldId),
+      this.contentItems.readyCountsByChallengeType(worldId),
+    ]);
+    const demanding = board.slots.filter(
+      (slot) =>
+        this.launchability.requiredContentItems(slot.challengeTypeSlug) > 0,
+    );
+    // A board of purely on-demand mechanics asks nothing of the catalogue.
+    if (!demanding.length) return;
+    const playable = demanding.filter(
+      (slot) =>
+        (readyByChallengeType.get(slot.challengeTypeId) ?? 0) >=
+        this.launchability.requiredContentItems(slot.challengeTypeSlug),
+    );
+    if (playable.length) return;
+    assertNoIssues(
+      [
+        issue(
+          'WORLD_BOARD_HAS_NO_PLAYABLE_CONTENT',
+          'This World has no board position with enough ready content to play',
+          {
+            worldId,
+            slots: demanding.map((slot) => ({
+              slotKey: slot.slotKey,
+              challengeTypeSlug: slot.challengeTypeSlug,
+              required: this.launchability.requiredContentItems(
+                slot.challengeTypeSlug,
+              ),
+              available: readyByChallengeType.get(slot.challengeTypeId) ?? 0,
+            })),
+          },
+        ),
+      ],
+      'This World cannot be activated until at least one board position has enough ready content to play',
+    );
   }
 
   /** Shared by the World and configuration services before any write. */

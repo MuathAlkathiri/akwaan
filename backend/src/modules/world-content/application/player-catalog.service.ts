@@ -13,6 +13,21 @@ import { WorldService, WorldSummary } from './world.service';
  * item counts, no sound/timer/tone profiles. Those are authoring and runtime
  * concerns, and a player screen has no use for them.
  */
+/**
+ * Whether a player may select this World, or is only being told it is coming.
+ *
+ * `available` means the Match's own selection gate will accept it — not merely
+ * that somebody flipped the World to active. Those are different facts, and
+ * treating the second as the first is what put عالم الالغاز in the selectable
+ * grid while `MatchWorldSelectionPolicy` was rejecting it for an incomplete
+ * board: the catalogue advertised a World the server would refuse.
+ *
+ * One answer, carried by the catalogue, so no screen keeps its own list of which
+ * Worlds are open. A World that becomes selectable moves from `upcoming` to
+ * `available` on the next response, with no client release.
+ */
+export type PlayableWorldAvailability = 'available' | 'upcoming';
+
 export interface PlayableWorld {
   id: string;
   name: string;
@@ -23,6 +38,7 @@ export interface PlayableWorld {
   sortOrder: number;
   scopeCount: number;
   challengeConfigurationCount: number;
+  availability: PlayableWorldAvailability;
 }
 
 /**
@@ -70,10 +86,21 @@ export class PlayerCatalogService {
     private readonly worldRecords: WorldRepository,
   ) {}
 
+  /**
+   * Every World a player may be shown: the ones they can select, and the ones
+   * announced as coming.
+   *
+   * Worlds the selection gate would refuse are listed but not openable —
+   * `availability` says which is which, and `getPlayableWorld` and
+   * `listPlayableScopes` below still refuse anything that is not active. That
+   * asymmetry is the point: a player may learn that عالم الأفلام is on the way
+   * without being able to walk into it. Archived Worlds are not announcements
+   * and are not listed at all.
+   */
   async listPlayableWorlds(): Promise<PlayableWorld[]> {
     const summaries = await this.worlds.list();
     return summaries
-      .filter((world) => world.status === WorldContentStatus.ACTIVE)
+      .filter((world) => world.status !== WorldContentStatus.ARCHIVED)
       .map((world) => toPlayableWorld(world));
   }
 
@@ -105,8 +132,27 @@ export class PlayerCatalogService {
   }
 }
 
+/**
+ * The Match's own selection gate, read rather than re-derived.
+ *
+ * `MatchWorldSelectionPolicy` refuses a World on exactly two per-World facts:
+ * it must be active (`MATCH_WORLD_NOT_ACTIVE`) and its board must be complete
+ * (`MATCH_WORLD_BOARD_NOT_READY`). Both are already decided — `boardReady`
+ * comes off the readiness report `WorldService` computed for this very summary
+ * — so this reads the answer instead of computing a second one. Relational
+ * composition is deliberately not consulted: the policy raises it as a
+ * production warning, never as a structural blocker, so it does not decide
+ * whether one World may be chosen.
+ */
+function isSelectableForMatch(world: WorldSummary): boolean {
+  return (
+    world.status === WorldContentStatus.ACTIVE && world.readiness.boardReady
+  );
+}
+
 function toPlayableWorld(world: WorldSummary): PlayableWorld {
   return {
+    availability: isSelectableForMatch(world) ? 'available' : 'upcoming',
     id: world.id,
     name: world.name,
     slug: world.slug,

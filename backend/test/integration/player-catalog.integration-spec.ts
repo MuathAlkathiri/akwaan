@@ -40,6 +40,7 @@ describe('player catalog HTTP integration', () => {
   let playerToken: string;
   let activeWorldId: string;
   let draftWorldId: string;
+  let archivedWorldId: string;
   let activeScopeIds: string[];
   let draftScopeId: string;
 
@@ -174,6 +175,15 @@ describe('player catalog HTTP integration', () => {
         .send({ name: 'عالم قيد التحرير', slug: 'player-draft-world' })
         .expect(201),
     ).id;
+
+    archivedWorldId = unwrap<{ id: string }>(
+      await admin(http().post('/admin/worlds'))
+        .send({ name: 'عالم متقاعد', slug: 'player-archived-world' })
+        .expect(201),
+    ).id;
+    await admin(http().patch(`/admin/worlds/${archivedWorldId}`))
+      .send({ status: WorldContentStatus.ARCHIVED })
+      .expect(200);
   };
 
   beforeAll(async () => {
@@ -221,8 +231,8 @@ describe('player catalog HTTP integration', () => {
     const response = await http().get('/worlds').expect(200);
     const worlds = response.body.data as Array<Record<string, unknown>>;
 
-    expect(worlds.map((world) => world.id)).toEqual([activeWorldId]);
-    expect(worlds[0]).toMatchObject({
+    const active = worlds.find((world) => world.id === activeWorldId)!;
+    expect(active).toMatchObject({
       id: activeWorldId,
       name: 'كرة قدم',
       slug: 'player-football',
@@ -230,6 +240,8 @@ describe('player catalog HTTP integration', () => {
       sortOrder: 1,
       scopeCount: 3,
       challengeConfigurationCount: 4,
+      // The one field a screen needs to know whether this World can be opened.
+      availability: 'available',
     });
     expectSafeResponse(response.body);
     expect(response.body).toMatchObject({ statusCode: 200, data: worlds });
@@ -318,15 +330,66 @@ describe('player catalog HTTP integration', () => {
     }
   });
 
-  it('does not expose a draft World to a player, by list or by id', async () => {
-    const worlds = (await http().get('/worlds').expect(200)).body
-      .data as Array<{ id: string }>;
-    expect(worlds.map((world) => world.id)).not.toContain(draftWorldId);
+  it('announces a draft World without letting a player open it', async () => {
+    // The contract changed shape but not strength. A draft is *announced* — the
+    // home page's "عوالم جديدة في الطريق" needs to know it is coming — and it
+    // stays shut: it cannot be opened and its Scopes cannot be read, so nothing
+    // unpublished leaks and the World cannot be walked into.
+    const worlds = (await http().get('/worlds').expect(200)).body.data as Array<
+      Record<string, unknown>
+    >;
+    const draft = worlds.find((world) => world.id === draftWorldId);
+    expect(draft).toBeDefined();
+    expect(draft).toMatchObject({ availability: 'upcoming' });
+    // An announcement carries a name and a picture, never authoring internals.
+    for (const field of [
+      'status',
+      'readiness',
+      'contentItemCount',
+      'soundPack',
+      'timerProfile',
+      'toneProfile',
+    ]) {
+      expect(draft).not.toHaveProperty(field);
+    }
 
-    // A draft is indistinguishable from a missing World.
+    // Still indistinguishable from a missing World on every openable route.
     await http().get(`/worlds/${draftWorldId}/scopes`).expect(404);
     await http().get(`/worlds/${draftWorldId}`).expect(404);
     await http().get('/worlds/000000000000000000000000').expect(404);
+  });
+
+  it('calls a World available exactly when the Match gate accepts it', async () => {
+    const worlds = (await http().get('/worlds').expect(200)).body
+      .data as Array<{ id: string; availability: string }>;
+    for (const world of worlds) {
+      const verdict = await admin(
+        http().post('/admin/worlds/validate-match-selection'),
+      )
+        .send({ worldIds: [world.id, activeWorldId, activeWorldId] })
+        .expect(201);
+      const refused = (
+        verdict.body.data.blockers as Array<{ code: string; details?: unknown }>
+      ).some((blocker) =>
+        ['MATCH_WORLD_NOT_ACTIVE', 'MATCH_WORLD_BOARD_NOT_READY'].includes(
+          blocker.code,
+        ),
+      );
+      // The one invariant: the catalogue never advertises what the gate refuses.
+      expect(world.availability === 'available').toBe(!refused);
+    }
+  });
+
+  it('never announces an archived World', async () => {
+    // Archived is a retirement, not a roadmap entry.
+    const worlds = (await http().get('/worlds').expect(200)).body
+      .data as Array<{ id: string; availability: string }>;
+    expect(worlds.map((world) => world.id)).not.toContain(archivedWorldId);
+    expect(
+      worlds.every((world) =>
+        ['available', 'upcoming'].includes(world.availability),
+      ),
+    ).toBe(true);
   });
 
   it('keeps admin and Match mutations protected for anonymous visitors', async () => {

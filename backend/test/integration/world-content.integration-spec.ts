@@ -300,6 +300,39 @@ describe('World Management HTTP integration', () => {
       'BOARD_SLOT_ALREADY_FILLED',
     );
 
+    // A complete board is still not a playable World. Nothing on it can deal a
+    // challenge yet, which is the state عالم المشاهير reached in Production.
+    const withoutContent = await bearer(
+      authed().patch(`/admin/worlds/${world.id}`),
+    )
+      .send({ status: WorldContentStatus.ACTIVE })
+      .expect(400);
+    expect(JSON.stringify(withoutContent.body)).toContain(
+      'WORLD_BOARD_HAS_NO_PLAYABLE_CONTENT',
+    );
+
+    // One position stocked to its launcher's minimum is enough to switch the
+    // World on: the rest may be authored afterwards, which is how a World is
+    // actually filled in.
+    for (let index = 0; index < 3; index += 1) {
+      await bearer(authed().post('/admin/content-items'))
+        .send({
+          scopeId: scope.id,
+          prompt: { ar: `سؤال ${index}` },
+          compatibleChallengeTypeIds: [sharedRyo.id],
+          answerPayload: {
+            mode: ChallengeAnswerMode.MULTIPLE_CHOICE,
+            options: [
+              { id: 'a', label: { ar: 'أ' } },
+              { id: 'b', label: { ar: 'ب' } },
+            ],
+            correctOptionId: 'a',
+          },
+          status: ContentItemStatus.READY,
+        })
+        .expect(201);
+    }
+
     const activated = await bearer(authed().patch(`/admin/worlds/${world.id}`))
       .send({ status: WorldContentStatus.ACTIVE })
       .expect(200);
@@ -541,7 +574,9 @@ describe('World Management HTTP integration', () => {
         authed().get(`/admin/content-items?worldId=${football.id}`),
       ).expect(200)
     ).body.data;
-    expect(listed).toHaveLength(2);
+    // The two authored above, plus the three اقرأ خصمك items the activation step
+    // needed before this World could be switched on at all.
+    expect(listed).toHaveLength(5);
   });
 
   it('persists the complete native Top 5 mechanic payload on create and update', async () => {

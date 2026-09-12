@@ -84,16 +84,20 @@ const REMOVED_LEGACY_SYMBOLS = [
 /**
  * Placeholder language for a World or a mechanic that is, in fact, either
  * playable or permanently unavailable — never merely "being prepared". This is a
- * rule about *Worlds and mechanics*, not about the home page's curated roadmap
- * teaser, which advertises future *content categories* (films, series, songs)
- * that are not Worlds in the system at all.
+ * rule about *Worlds and mechanics*, and the home page's roadmap row is the one
+ * place the label is legitimate.
  */
 const WORLD_PREPARATION_PLACEHOLDERS = ["قيد التجهيز", "قريبًا", "قريباً"] as const;
 
 /**
- * The one production file allowed to say "قريباً": the home roadmap teaser, whose
- * cards are content-category promises, not Worlds. Every other file must still be
- * clean, so a real World or mechanic can never be labelled as being prepared.
+ * The one production file allowed to use the label: the home roadmap row.
+ *
+ * It used to be exempt because its cards were hardcoded content-category
+ * promises rather than Worlds — and that exemption is exactly what let it call
+ * الأغاني "not open yet" on the same screen that offered الأغاني as a choice.
+ * The row is now driven by the catalog's own `availability`, so the label can
+ * only land on a World the backend says is upcoming. The exemption is narrower
+ * in effect than it was: one file, and the server decides what it may say.
  */
 const ROADMAP_TEASER_FILE =
   "src/features/worlds/components/worlds-home.tsx";

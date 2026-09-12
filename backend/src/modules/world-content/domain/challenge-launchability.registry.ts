@@ -24,6 +24,7 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class ChallengeLaunchabilityRegistry {
   private answer?: (challengeTypeSlug: string) => boolean;
+  private requirement?: (challengeTypeSlug: string) => number;
 
   /**
    * Called once at startup by the runtime that owns the launchers. Registering
@@ -31,6 +32,32 @@ export class ChallengeLaunchabilityRegistry {
    */
   publish(answer: (challengeTypeSlug: string) => boolean): void {
     this.answer = answer;
+  }
+
+  /**
+   * How much content a mechanic needs before it can deal a single challenge.
+   *
+   * Published from the same launcher registry as `supports`, so the number is
+   * the launcher's own `contentItemCount` rather than a copy that can drift.
+   * World Content asks this when a World is *activated*: a board of four valid
+   * slots is not a playable World if every slot would fail its first launch for
+   * want of content.
+   */
+  publishContentRequirement(
+    requirement: (challengeTypeSlug: string) => number,
+  ): void {
+    this.requirement = requirement;
+  }
+
+  /**
+   * Items one slot needs, or `0` when nothing has an opinion.
+   *
+   * `0` is also the honest answer for a mechanic that draws on demand — المرحلة
+   * declares `contentItemCount: 0` deliberately — so both cases correctly impose
+   * no activation requirement rather than a guessed one.
+   */
+  requiredContentItems(challengeTypeSlug: string): number {
+    return this.requirement ? this.requirement(challengeTypeSlug) : 0;
   }
 
   /** Whether anything has told us how to judge a slug yet. */

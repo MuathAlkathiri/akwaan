@@ -51,7 +51,12 @@ vi.mock("@/components/auth/auth-provider", () => ({
 
 import { WorldsHome } from "@/features/worlds";
 
-function world(slug: string, name: string, sortOrder: number): PlayableWorld {
+function world(
+  slug: string,
+  name: string,
+  sortOrder: number,
+  availability: PlayableWorld["availability"] = "available",
+): PlayableWorld {
   return {
     id: `id-${slug}`,
     name,
@@ -59,6 +64,7 @@ function world(slug: string, name: string, sortOrder: number): PlayableWorld {
     sortOrder,
     scopeCount: 4,
     challengeConfigurationCount: 4,
+    availability,
   };
 }
 
@@ -91,6 +97,8 @@ beforeEach(() => {
       world("anime", "أنمي", 2),
       world("video-games", "ألعاب الفيديو", 3),
       world("history", "تاريخ", 4),
+      world("movies", "الأفلام", 5, "upcoming"),
+      world("series", "المسلسلات", 6, "upcoming"),
     ],
     isLoading: false,
     isError: false,
@@ -292,9 +300,10 @@ describe("home is a dashboard of Worlds", () => {
   });
 
   it("keeps every coming-soon World muted and outside the interactive controls", () => {
+    // The names come from the catalog now, not from a list in this file.
     render(<WorldsHome />);
 
-    for (const label of ["الأفلام", "المسلسلات", "الأغاني", "المزيد قريباً"]) {
+    for (const label of ["الأفلام", "المسلسلات"]) {
       expect(
         screen.getByText(label).closest("[aria-disabled]"),
       ).toHaveAttribute("aria-disabled", "true");
@@ -302,7 +311,7 @@ describe("home is a dashboard of Worlds", () => {
         screen.queryByRole("button", { name: label }),
       ).not.toBeInTheDocument();
     }
-    expect(screen.getAllByText("قريبًا")).toHaveLength(4);
+    expect(screen.getAllByText("قريبًا")).toHaveLength(2);
   });
 
   it("does not infer an active Match from local browser state", () => {

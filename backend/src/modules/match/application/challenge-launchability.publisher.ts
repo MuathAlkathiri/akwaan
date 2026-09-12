@@ -23,5 +23,12 @@ export class ChallengeLaunchabilityPublisher implements OnModuleInit {
     this.launchability.publish((challengeTypeSlug) =>
       Boolean(this.launchers.find({ challengeTypeSlug })),
     );
+    // The same registry answers how much content a slot needs, so the activation
+    // gate and the launch that would later refuse the World read one number.
+    this.launchability.publishContentRequirement(
+      (challengeTypeSlug) =>
+        this.launchers.find({ challengeTypeSlug })?.launchRequirements
+          .contentItemCount ?? 0,
+    );
   }
 }

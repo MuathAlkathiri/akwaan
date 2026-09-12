@@ -25,18 +25,10 @@ import {
   usePlayableScopes,
   usePlayableWorlds,
 } from "../hooks/use-player-catalog";
-import { playableWorlds } from "../utils/featured-worlds";
+import { playableWorlds, upcomingWorlds } from "../utils/featured-worlds";
 import { isSelectableScope } from "../utils/scopes";
 import { worldSignatureLabel } from "../utils/world-signature";
 import type { PlayableScope, PlayableWorld } from "../types";
-
-/** The categories not open yet — shown, greyed, so the roadmap reads as a promise. */
-const COMING_SOON = [
-  "الأفلام",
-  "المسلسلات",
-  "الأغاني",
-  "المزيد قريباً",
-] as const;
 
 function withViewTransition(update: () => void) {
   const startViewTransition = (
@@ -58,7 +50,11 @@ function withViewTransition(update: () => void) {
 
 export function WorldsHome() {
   const query = usePlayableWorlds();
+  // One catalog response, partitioned. The page holds no opinion about which
+  // Worlds are open — that was the bug: الأغاني shipped and the hardcoded
+  // roadmap below kept calling it «قريبًا» on the same screen.
   const worlds = query.isSuccess ? playableWorlds(query.data) : [];
+  const upcoming = query.isSuccess ? upcomingWorlds(query.data) : [];
   const [draft, dispatch] = useReducer(
     matchSetupReducer,
     undefined,
@@ -240,17 +236,26 @@ export function WorldsHome() {
                     })}
                   </ul>
 
-                  {/* Not open yet — same portal language, plainly muted and unselectable. */}
-                  <h3 className="mb-8 mt-12 text-center text-xl font-black text-[hsl(var(--brand-navy))] sm:text-2xl">
-                    عوالم جديدة في الطريق
-                  </h3>
-                  <ul className="grid list-none grid-cols-2 justify-items-center gap-x-6 gap-y-8 sm:grid-cols-4">
-                    {COMING_SOON.map((label) => (
-                      <li key={label} className="w-full">
-                        <ComingSoonCard label={label} />
-                      </li>
-                    ))}
-                  </ul>
+                  {/* Not open yet — same portal language, plainly muted and
+                      unselectable. Nothing renders when the catalog announces
+                      nothing, rather than an empty heading over an empty grid. */}
+                  {upcoming.length > 0 && (
+                    <>
+                      <h3 className="mb-8 mt-12 text-center text-xl font-black text-[hsl(var(--brand-navy))] sm:text-2xl">
+                        عوالم جديدة في الطريق
+                      </h3>
+                      <ul
+                        className="grid list-none grid-cols-2 justify-items-center gap-x-6 gap-y-8 sm:grid-cols-4"
+                        data-testid="upcoming-worlds"
+                      >
+                        {upcoming.map((world) => (
+                          <li key={world.id} className="w-full">
+                            <ComingSoonCard world={world} />
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
                 </>
               ) : (
                 <EmptyWorlds />
@@ -425,19 +430,33 @@ function WorldCardScopes({
   );
 }
 
-/** A category that is not open yet: same portal language, plainly muted, and not
- *  selectable — never a playable choice. */
-function ComingSoonCard({ label }: { label: string }) {
+/**
+ * A World that is not open yet: same portal language, plainly muted, and not
+ * selectable — never a playable choice.
+ *
+ * It shows the World's own artwork when the catalog has any, and the neutral
+ * dashed placeholder when it does not, which is the ordinary state of a World
+ * announced before its art exists.
+ */
+function ComingSoonCard({ world }: { world: PlayableWorld }) {
+  const art = world.banner ?? world.icon;
   return (
     <div
       aria-disabled
+      data-testid={`upcoming-world-${world.slug}`}
       className="mx-auto flex w-full max-w-[13rem] flex-col items-center gap-3 text-center opacity-60"
     >
-      <span className="grid aspect-square w-full max-w-[9.5rem] place-items-center rounded-full border-2 border-dashed border-[hsl(var(--brand-navy)/.18)] bg-[hsl(var(--brand-navy)/.04)] text-[hsl(var(--brand-navy)/.35)]">
-        <Sparkles className="size-6" aria-hidden />
-      </span>
+      {art ? (
+        <span className="grid aspect-square w-full max-w-[9.5rem] place-items-center overflow-hidden rounded-full grayscale">
+          <WorldCover world={world} sizes="(min-width:640px) 152px, 40vw" />
+        </span>
+      ) : (
+        <span className="grid aspect-square w-full max-w-[9.5rem] place-items-center rounded-full border-2 border-dashed border-[hsl(var(--brand-navy)/.18)] bg-[hsl(var(--brand-navy)/.04)] text-[hsl(var(--brand-navy)/.35)]">
+          <Sparkles className="size-6" aria-hidden />
+        </span>
+      )}
       <span className="text-base font-black text-muted-foreground">
-        {label}
+        {world.name}
       </span>
       <span className="rounded-full bg-secondary/70 px-2.5 py-0.5 text-[0.7rem] font-black text-muted-foreground">
         قريبًا
