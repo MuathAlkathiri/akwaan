@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { LiveSessionContext } from "@/features/live-game-session/hooks/live-session-context";
 import { EkshifniGameplayPanel } from "@/features/live-game-session/components/ekshifni-gameplay-panel";
 import { MobileGameplayShell } from "@/features/live-game-session/match/components/mobile-gameplay-shell";
+import { EKSHIFNI_OBSCURATION } from "@/components/akwaan/ekshifni-board";
 import type { GameplayRuntimeSnapshot } from "@/features/live-game-session/model";
 
 /**
@@ -147,21 +148,33 @@ const renderScreen = (modeState = screenState(), cmd = vi.fn()) => {
 };
 
 describe("the اكشفني board on the shared screen", () => {
-  it("covers the picture and marks every hidden region with its number", () => {
+  it("obscures the whole picture and numbers every shut region", () => {
     renderScreen();
-    expect(screen.getByTestId("ekshifni-board")).toHaveAttribute(
-      "data-unmasked",
-      "false",
+    const board = screen.getByTestId("ekshifni-board");
+    expect(board).toHaveAttribute("data-unmasked", "false");
+    expect(board).toHaveAttribute("data-obscured", "true");
+    // The obscuration is on the picture itself, not on six panels over it.
+    const layer = screen
+      .getByTestId("ekshifni-obscured-layer")
+      .querySelector("img")!;
+    expect(layer.className).toContain(EKSHIFNI_OBSCURATION.fallbackClassName);
+    expect(layer).toHaveStyle({ filter: EKSHIFNI_OBSCURATION.relative });
+    // The clear original is not left sitting underneath it. The blurred copy is
+    // opaque, so this changes nothing visually — it is the second lock: if the
+    // obscuring layer ever failed to paint, a visible base would be the face.
+    expect(screen.getByTestId("ekshifni-board-base").className).toContain(
+      "invisible",
     );
     for (const number of [1, 2, 3, 4, 5, 6]) {
       expect(screen.getByTestId(`ekshifni-marker-${number}`)).toHaveTextContent(
         String(number),
       );
     }
+    // Nothing is clear yet.
     expect(screen.queryByTestId("ekshifni-window-1")).toBeNull();
   });
 
-  it("opens a window exactly where the server said the region is", () => {
+  it("clears exactly the revealed region and nothing else", () => {
     renderScreen(
       screenState({
         regionsJson: JSON.stringify([
@@ -173,10 +186,73 @@ describe("the اكشفني board on the shared screen", () => {
       }),
     );
     const window = screen.getByTestId("ekshifni-window-1");
-    expect(window).toHaveStyle({ left: "10%", top: "10%" });
-    // The number is gone from the board once its window is open.
+    // The window sits on the authored fractions, and the picture inside it is
+    // scaled and offset so exactly that slice shows: 0.12 wide of the source
+    // means the inner copy is 1/0.12 of the frame, pushed left by x/width.
+    expect(window).toHaveStyle({
+      left: "10%",
+      top: "10%",
+      width: "12%",
+      height: "20%",
+    });
+    const inner = window.querySelector("img")!;
+    expect(inner).toHaveStyle({
+      width: `${100 / 0.12}%`,
+      height: `${100 / 0.2}%`,
+      left: `${(-0.1 / 0.12) * 100}%`,
+      top: `${(-0.1 / 0.2) * 100}%`,
+    });
+    // Its number is gone; every other region is still shut and still numbered.
     expect(screen.queryByTestId("ekshifni-marker-1")).toBeNull();
+    for (const number of [2, 3, 4, 5, 6]) {
+      expect(screen.getByTestId(`ekshifni-marker-${number}`)).toBeInTheDocument();
+      expect(screen.queryByTestId(`ekshifni-window-${number}`)).toBeNull();
+    }
+    // And the picture underneath is still obscured.
+    expect(screen.getByTestId("ekshifni-board")).toHaveAttribute(
+      "data-obscured",
+      "true",
+    );
     expect(screen.getByTestId("ekshifni-value")).toHaveTextContent("4");
+  });
+
+  it("accumulates clear windows as more regions are bought", () => {
+    renderScreen(
+      screenState({
+        regionsJson: JSON.stringify([
+          region(1, true),
+          region(2, true),
+          region(3, true),
+          ...[4, 5, 6].map((n) => region(n)),
+        ]),
+        revealedRegionIdsJson: JSON.stringify(["r1", "r2", "r3"]),
+        currentValue: 2,
+      }),
+    );
+    for (const number of [1, 2, 3]) {
+      expect(screen.getByTestId(`ekshifni-window-${number}`)).toBeInTheDocument();
+      expect(screen.queryByTestId(`ekshifni-marker-${number}`)).toBeNull();
+    }
+    for (const number of [4, 5, 6]) {
+      expect(screen.queryByTestId(`ekshifni-window-${number}`)).toBeNull();
+      expect(screen.getByTestId(`ekshifni-marker-${number}`)).toBeInTheDocument();
+    }
+    // Three windows open, and the rest of the face is still unreadable.
+    expect(screen.getByTestId("ekshifni-board")).toHaveAttribute(
+      "data-obscured",
+      "true",
+    );
+  });
+
+  it("keeps the picture at its natural aspect, never cropped to a ratio", () => {
+    // Fractional geometry is relative to the source, so a forced aspect would
+    // slide every window off the feature it was drawn over.
+    renderScreen();
+    const base = screen.getByTestId("ekshifni-board-base");
+    expect(base.className).toContain("w-auto");
+    expect(base.className).toContain("max-w-full");
+    expect(base.className).not.toContain("object-cover");
+    expect(base.className).not.toMatch(/aspect-/);
   });
 
   it("says whose turn it is to choose, and that answering is open to both", () => {
@@ -216,10 +292,19 @@ describe("the اكشفني board on the shared screen", () => {
         }),
       }),
     );
-    expect(screen.getByTestId("ekshifni-board")).toHaveAttribute(
-      "data-unmasked",
-      "true",
-    );
+    const board = screen.getByTestId("ekshifni-board");
+    expect(board).toHaveAttribute("data-unmasked", "true");
+    // Terminal resolution is the whole photograph, clear: no blur left on it,
+    // and no clipped windows, because there is nothing left to withhold.
+    expect(board).toHaveAttribute("data-obscured", "false");
+    // No obscuring layer at all, and the picture itself carries no blur.
+    expect(screen.queryByTestId("ekshifni-obscured-layer")).toBeNull();
+    const base = screen.getByTestId("ekshifni-board-base");
+    expect(base.className).not.toContain(EKSHIFNI_OBSCURATION.fallbackClassName);
+    expect(base.style.filter).toBe("");
+    expect(base.className).not.toContain("invisible");
+    expect(screen.queryByTestId("ekshifni-window-1")).toBeNull();
+    expect(screen.queryByTestId("ekshifni-marker-1")).toBeNull();
     const reveal = screen.getByTestId("resolution-reveal");
     expect(reveal).toHaveTextContent(CELEBRITY);
     // Both submissions are shown, so the room can see how the race went.
@@ -249,16 +334,19 @@ describe("the اكشفني board on the shared screen", () => {
     );
   });
 
-  it("draws masks with no transparency at all", () => {
-    // Found by looking at it: at 95% opacity the eyes and a line of type still
-    // read straight through the panel. A mask you can squint past is not a mask,
-    // so the fill must carry no alpha modifier.
+  it("carries the obscuration on the picture, with a fallback that still hides it", () => {
+    // The protection moved: it is the blur on the photograph, not an opaque
+    // panel. Both units are asserted because the relative one is what keeps a
+    // television and a phone equally hard, and the static class is what still
+    // obscures the face where container units are not supported — an invalid
+    // inline filter is dropped and the class below it wins.
     renderScreen();
-    const mask = screen.getByTestId("ekshifni-marker-1");
-    expect(mask.className).toContain("bg-primary");
-    expect(mask.className).not.toMatch(/bg-primary\/\d/);
-    expect(mask.className).not.toMatch(/\bopacity-\d/);
-    expect(mask.className).not.toMatch(/backdrop-blur/);
+    expect(EKSHIFNI_OBSCURATION.relative).toMatch(/^blur\(/);
+    expect(EKSHIFNI_OBSCURATION.fallbackClassName).toMatch(/^blur-/);
+    const layer = screen.getByTestId("ekshifni-obscured-layer");
+    const blurred = layer.querySelector("img")!;
+    expect(blurred).toHaveStyle({ filter: EKSHIFNI_OBSCURATION.relative });
+    expect(blurred.className).toContain(EKSHIFNI_OBSCURATION.fallbackClassName);
   });
 
   it("withholds the picture rather than show it unmasked", () => {

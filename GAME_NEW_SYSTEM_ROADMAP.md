@@ -2015,6 +2015,9 @@ celebrities.
 
 #### Approved presentation (masked-photo model)
 
+- **SUPERSEDED 2026-09-12 by the clear-window model (§29).** The presentation below described six opaque panels
+  over a clear photograph; a reveal lifted a panel. It is kept because it is what shipped first and what the
+  product review passed. What replaced it is recorded in §29.
 - The celebrity photograph is **on screen from the first second and is the dominant element**. Six **opaque**
   authored panels cover the identifying features; a reveal *lifts* a panel. Panels carry no transparency — at 95%
   opacity eyes and type read straight through, which the product review caught and fixed.
@@ -4136,3 +4139,70 @@ Five Scopes exist in Production against this World:
 names exists in project evidence; a search of the roadmap and every project document returns nothing. They are
 recorded here because they exist, not because they were approved, and they must not be described as approved
 taxonomy until that is established.
+
+---
+
+## 29. اكشفني clear-window reveal + visual mask authoring (2026-09-12)
+
+| Aspect | Status |
+|---|---|
+| Product decision | ✅ **APPROVED** |
+| Source implementation | ✅ **IMPLEMENTED & VERIFIED LOCALLY** |
+| Production deployment | ⬜ **NOT DEPLOYED** — not committed at the time of writing |
+| Celebrities content / geometry re-authoring | ⬜ **PENDING** — owned by the content workstream |
+
+### 29.1 What changed
+
+The first اكشفني shipped a **clear photograph under six opaque panels**; buying a reveal lifted a panel off. It
+passed product review, and it had one structural weakness: everything *outside* the six authored boxes was
+readable from the first second, so the picture gave away more than the mechanic charged for.
+
+It is now a **clear-window reveal**. The whole photograph is obscured, and each authored region is a *window*:
+revealing it makes exactly that rectangle clear while everything around it stays obscured. The windows
+accumulate, so the room buys sharpness in pieces, and at terminal resolution the full picture appears through the
+existing canonical reveal — no parallel terminal path.
+
+### 29.2 What did not change
+
+- **One media asset.** The clear windows are the same source image drawn again and clipped by geometry. Nothing is
+  pre-rendered, no second pipeline, no six crops in storage.
+- **The geometry contract.** Still `x`/`y`/`width`/`height` as fractions of the natural source image, so every
+  authored payload stays structurally valid and **no schema migration was needed**. Only the meaning changed: the
+  rectangle is now the clear window rather than the panel that disappears.
+- **Gameplay.** Scoring, reveal count, reveal costs, initiative, answer eligibility, deadlines, Fair-Start,
+  reconnect and terminal convergence are untouched. This was presentation and authoring only; the backend plugin,
+  policy and projections were not edited.
+- **Privacy.** A phone still receives no image media, no geometry, no roles, no accepted answers and no identity
+  before terminal resolution.
+
+### 29.3 Obscuration is one tuning knob
+
+`EKSHIFNI_OBSCURATION` carries the blur, in two units. The relative one (`blur(2.4cqw)`) scales with the rendered
+width, so a television and a phone hide the *same amount of face* rather than the same number of pixels. The
+static class is the fallback where container units are unsupported: an invalid inline `filter` is dropped at parse
+time and the class below it wins, so the failure mode is still an obscured picture. Difficulty is tuned here and
+nowhere else, and nothing about scoring moves with it.
+
+Two implementation notes worth keeping, both found by looking at the rendered board rather than by a test:
+
+- The containment that makes the relative blur possible **cannot live on the box itself** — `container-type:
+  inline-size` removes shrink-to-fit, which collapses the very box the authored fractions are measured against. It
+  lives on an overlay that fills the box instead.
+- While masked, the clear original is **hidden underneath** the blurred copy. The copy is opaque so this changes
+  nothing visually; it is the second lock, for the day the obscuring layer fails to paint.
+
+### 29.4 Admin: place the windows by dragging them
+
+Authoring was six sets of four decimals with a read-only preview. It is now a visual editor on the photograph:
+select a region, drag it, resize it from any corner. Pointer positions are divided by the rendered frame the
+moment they arrive, so nothing is ever held in pixels, and a box can be pushed to an edge but never off the image
+— geometry that validated before a drag still validates after one. The numeric fields remain for precision.
+
+Beside it is a **live preview built from the same component the room renders**, with a toggle per window, so an
+author rehearses the actual turn rather than inspecting a second interpretation of the same numbers.
+
+### 29.5 Not done here
+
+Celebrities content, images and the `acting-stars` mask geometry were **not touched**. The existing authored
+geometry remains valid under the new model but was drawn for the old one, where a box was the part to *hide*; it
+now marks the part to *show*, so it deserves review against a face. That is the content workstream's next step.

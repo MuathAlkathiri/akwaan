@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { getMediaUrl } from "@/lib/api/media-url";
 import { cn } from "@/lib/utils";
+import { EkshifniBoard } from "@/components/akwaan/ekshifni-board";
+import { EkshifniRegionEditor } from "./ekshifni-region-editor";
 import {
   EKSHIFNI_REGION_ROLES,
   EKSHIFNI_ROLE_LABEL,
@@ -37,6 +38,14 @@ export function EkshifniFields({
   onAcceptedAnswersChange: (next: string) => void;
 }) {
   const [active, setActive] = useState(0);
+  /** Which windows the preview shows open, so the author can rehearse a turn. */
+  const [previewOpen, setPreviewOpen] = useState<number[]>([]);
+  const togglePreview = (index: number) =>
+    setPreviewOpen((open) =>
+      open.includes(index)
+        ? open.filter((entry) => entry !== index)
+        : [...open, index],
+    );
   const setRegion = (
     index: number,
     patch: Partial<EkshifniFormState["regions"][number]>,
@@ -87,15 +96,83 @@ export function EkshifniFields({
           صيغة في كل سطر. تُستخدم لمطابقة الطرق الصحيحة لكتابة اسم المشهور.
         </p>
       </label>
-      {/* Numbers on a photograph, at the size the room will see them. Six sets
-          of four decimals are checkable but not authorable — a producer needs to
-          see that box 1 is actually on the eyes before publishing. */}
-      <EkshifniGeometryPreview
-        imageUrl={imageUrl}
-        regions={value.regions}
-        activeIndex={active}
-        onSelect={setActive}
-      />
+      {/* Place the windows by dragging them on the photograph. Six sets of four
+          decimals are checkable but not authorable — a producer needs to see
+          that window 1 is actually on the eyes before publishing. */}
+      <div className="space-y-2">
+        <p className="text-xs font-bold text-muted-foreground">
+          اسحب المربع لتحريكه، واسحب الزوايا لتغيير حجمه.
+        </p>
+        <EkshifniRegionEditor
+          imageUrl={imageUrl}
+          regions={value.regions}
+          activeIndex={active}
+          onSelect={setActive}
+          onChange={(index, box) =>
+            setRegion(index, {
+              x: String(box.x),
+              y: String(box.y),
+              width: String(box.width),
+              height: String(box.height),
+            })
+          }
+        />
+      </div>
+
+      {/* The same board the room sees, from the same component — so what an
+          author checks here is the presentation itself, not a second reading of
+          the same numbers. */}
+      {imageUrl ? (
+        <div className="space-y-2" data-testid="ekshifni-runtime-preview">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-muted-foreground">
+              معاينة اللعب
+            </span>
+            {value.regions.map((_region, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => togglePreview(index)}
+                data-testid={`ekshifni-preview-toggle-${index + 1}`}
+                aria-pressed={previewOpen.includes(index)}
+                className={cn(
+                  "akwaan-numeral size-8 rounded-md border text-sm font-black",
+                  previewOpen.includes(index)
+                    ? "border-brand-gold bg-brand-gold/20"
+                    : "border-border bg-card",
+                )}
+              >
+                {index + 1}
+              </button>
+            ))}
+            {previewOpen.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setPreviewOpen([])}
+                className="text-xs font-bold text-muted-foreground underline"
+              >
+                إعادة التغطية
+              </button>
+            )}
+          </div>
+          <EkshifniBoard
+            url={imageUrl}
+            altText="معاينة"
+            imageClassName="max-h-80"
+            regions={value.regions.map((region, index) => ({
+              id: region.localId || `region-${index + 1}`,
+              number: index + 1,
+              revealed: previewOpen.includes(index),
+              shape: {
+                x: Number(region.x) || 0,
+                y: Number(region.y) || 0,
+                width: Number(region.width) || 0,
+                height: Number(region.height) || 0,
+              },
+            }))}
+          />
+        </div>
+      ) : null}
 
       <div className="grid gap-3 md:grid-cols-2">
         {value.regions.map((region, index) => (
@@ -169,72 +246,5 @@ export function EkshifniFields({
         ))}
       </div>
     </section>
-  );
-}
-
-/**
- * The six boxes, drawn on the picture they belong to.
- *
- * Read-only on purpose: the numbers in the fields stay the single source of
- * truth, and this only shows the author what those numbers mean. Selecting a box
- * scrolls attention to that region rather than editing it, so there is no second
- * way to author geometry and no chance of the two disagreeing.
- */
-function EkshifniGeometryPreview({
-  imageUrl,
-  regions,
-  activeIndex,
-  onSelect,
-}: {
-  imageUrl?: string;
-  regions: EkshifniFormState["regions"];
-  activeIndex: number;
-  onSelect: (index: number) => void;
-}) {
-  const src = getMediaUrl(imageUrl) || "";
-  const fraction = (raw: string) => {
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) ? Math.min(Math.max(parsed, 0), 1) : 0;
-  };
-  if (!src) {
-    return (
-      <p
-        className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground"
-        data-testid="ekshifni-preview-empty"
-      >
-        أضف صورة المشهور أولاً لتشوف مواضع الأجزاء عليها.
-      </p>
-    );
-  }
-  return (
-    <div
-      className="relative mx-auto inline-block max-w-full overflow-hidden rounded-lg border"
-      data-testid="ekshifni-preview"
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="صورة المشهور" className="block max-h-80 w-auto" />
-      {regions.map((region, index) => (
-        <button
-          type="button"
-          key={index}
-          onClick={() => onSelect(index)}
-          data-testid={`ekshifni-preview-region-${index + 1}`}
-          className={cn(
-            "absolute grid place-items-center rounded border-2 text-lg font-black",
-            activeIndex === index
-              ? "border-brand-gold bg-brand-gold/30 text-foreground"
-              : "border-primary/70 bg-primary/40 text-primary-foreground",
-          )}
-          style={{
-            left: `${fraction(region.x) * 100}%`,
-            top: `${fraction(region.y) * 100}%`,
-            width: `${fraction(region.width) * 100}%`,
-            height: `${fraction(region.height) * 100}%`,
-          }}
-        >
-          {index + 1}
-        </button>
-      ))}
-    </div>
   );
 }

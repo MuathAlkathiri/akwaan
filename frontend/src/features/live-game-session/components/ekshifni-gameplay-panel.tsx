@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { getMediaUrl } from "@/lib/api/media-url";
+import { EkshifniBoard } from "@/components/akwaan/ekshifni-board";
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import {
@@ -20,143 +20,6 @@ import {
   readEkshifniView,
   type EkshifniRegionView,
 } from "../match/ekshifni.presentation";
-
-/**
- * The masked celebrity board.
- *
- * The photograph is on screen from the first second — it is the thing the room
- * is looking at — and six authored panels sit over the features that would name
- * the person. Buying a reveal lifts one panel off the picture; nothing else
- * about the image changes. That is the whole read at TV distance: a face you
- * can almost place, getting placeable.
- *
- * The panels are opaque, so the pixels under them are genuinely not rendered —
- * no blur to squint through — and the number is printed on the panel itself, so
- * "اكشفوا ٣" points at somewhere on the face rather than at a list.
- *
- * Region boxes are fractions of the source image, so one authored geometry lands
- * on the same eye at 1920×1080 and at 390 wide. The `<img>` sets the box, which
- * is what keeps the panels on the picture at any aspect ratio.
- */
-function MaskedCelebrity({
-  url,
-  altText,
-  regions,
-  unmasked = false,
-  newestRegionId,
-  compact = false,
-}: {
-  url: string;
-  altText: string;
-  regions: EkshifniRegionView[];
-  unmasked?: boolean;
-  /** The region uncovered most recently, accented so the room sees what moved. */
-  newestRegionId?: string;
-  /** Give height back once the picture shares the screen with the reveal. */
-  compact?: boolean;
-}) {
-  const percent = (value: number) => `${value * 100}%`;
-  // One resolver for every media url in the app; a raw R2 key never reaches an
-  // <img> from here either.
-  const src = getMediaUrl(url) ?? url;
-  const masks = unmasked ? [] : regions.filter((region) => !region.revealed);
-  /**
-   * A mask this client cannot place must not become a mask it does not draw.
-   *
-   * The panels are the only thing standing between the room and the answer, so
-   * geometry going missing — a projection regression, a truncated payload —
-   * fails closed: the picture is withheld entirely rather than shown naked. A
-   * board that shows nothing is a bug someone reports; a board that quietly
-   * shows the celebrity has already ended the image.
-   */
-  const undrawable = masks.some((region) => !region.shape);
-  const [broken, setBroken] = useState(false);
-  const withheld = undrawable || broken;
-  return (
-    <div className="flex justify-center">
-      <div
-        className="relative inline-block min-h-40 max-w-full overflow-hidden rounded-[var(--radius)] border border-border/70 bg-muted shadow-sm"
-        data-testid="ekshifni-board"
-        data-unmasked={String(unmasked)}
-        data-withheld={String(withheld)}
-      >
-        {/* The box *is* the picture: natural aspect, no crop. Authored geometry
-            is a fraction of the source, so cropping to a fixed ratio would slide
-            every panel off the feature it was drawn over. Height is capped so a
-            television shows the face large without a letterbox, width so a phone
-            never overflows — neither changes the aspect, so neither moves a
-            panel. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={src}
-          alt={altText}
-          onError={() => setBroken(true)}
-          className={cn(
-            "block w-auto max-w-full",
-            compact ? "max-h-[24vh]" : "max-h-[58vh]",
-            withheld && "invisible",
-          )}
-        />
-        {withheld && (
-          <div
-            className="absolute inset-0 grid place-items-center bg-muted p-6 text-center"
-            role="status"
-          >
-            <p className="text-base font-black text-muted-foreground">
-              تعذّر عرض الصورة الآن
-            </p>
-          </div>
-        )}
-        {!withheld &&
-          masks.map((region) =>
-            region.shape ? (
-              <div
-                key={region.id}
-                data-testid={`ekshifni-marker-${region.number}`}
-                // Fully opaque on purpose. At 95% a high-contrast feature — an
-                // eye, a line of type — still reads through, and a panel you can
-                // squint past is not a panel.
-                className="absolute grid place-items-center rounded-lg bg-primary shadow-lg ring-1 ring-inset ring-primary-foreground/30"
-                style={{
-                  left: percent(region.shape.x),
-                  top: percent(region.shape.y),
-                  width: percent(region.shape.width),
-                  height: percent(region.shape.height),
-                }}
-              >
-                <span className="akwaan-numeral text-2xl font-black text-primary-foreground/90 sm:text-3xl">
-                  {region.number}
-                </span>
-              </div>
-            ) : null,
-          )}
-        {/* The one that just came off, so both teams register the change without
-            a line of copy telling them. It is drawn from committed state, not a
-            timer, so a screen that rejoins mid-image sees the same thing rather
-            than a replayed animation. */}
-        {!withheld &&
-          !unmasked &&
-          newestRegionId &&
-          regions
-            .filter((region) => region.id === newestRegionId && region.shape)
-            .map((region) => (
-              <div
-                key={region.id}
-                aria-hidden
-                data-testid={`ekshifni-window-${region.number}`}
-                className="pointer-events-none absolute rounded-lg ring-2 ring-brand-gold"
-                style={{
-                  left: percent(region.shape!.x),
-                  top: percent(region.shape!.y),
-                  width: percent(region.shape!.width),
-                  height: percent(region.shape!.height),
-                }}
-              />
-            ))}
-      </div>
-    </div>
-  );
-}
 
 /**
  * The shared board's marker strip, and the phone's keypad.
@@ -350,7 +213,7 @@ export function EkshifniGameplayPanel({
         {/* The shared board is the hero. A phone renders no picture at all — the
             server sends it none — so this is unreachable there by construction. */}
         {!phone && view.media?.assets[0] && view.phase !== "completed" && (
-          <MaskedCelebrity
+          <EkshifniBoard
             url={view.media.assets[0].url}
             altText={
               view.reveal?.identity ??
@@ -359,7 +222,9 @@ export function EkshifniGameplayPanel({
             }
             regions={view.regions}
             unmasked={view.phase === "resolved"}
-            compact={view.phase === "resolved"}
+            imageClassName={
+              view.phase === "resolved" ? "max-h-[24vh]" : "max-h-[58vh]"
+            }
             {...(view.revealedRegionIds.length
               ? { newestRegionId: view.revealedRegionIds.at(-1) }
               : {})}

@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { EkshifniFields } from "@/features/world-management/components/content-items/ekshifni-fields";
 import {
@@ -36,8 +37,8 @@ const renderFields = (imageUrl?: string) => {
 describe("اكشفني authoring surface", () => {
   it("draws all six boxes on the item's own picture", () => {
     renderFields("https://cdn/celebrity.webp");
-    const preview = screen.getByTestId("ekshifni-preview");
-    expect(preview.querySelector("img")?.getAttribute("src")).toContain(
+    const editor = screen.getByTestId("ekshifni-region-editor");
+    expect(editor.querySelector("img")?.getAttribute("src")).toContain(
       "celebrity.webp",
     );
     for (const number of [1, 2, 3, 4, 5, 6]) {
@@ -50,7 +51,7 @@ describe("اكشفني authoring surface", () => {
 
   it("asks for the picture before pretending to place anything", () => {
     renderFields(undefined);
-    expect(screen.queryByTestId("ekshifni-preview")).toBeNull();
+    expect(screen.queryByTestId("ekshifni-region-editor")).toBeNull();
     expect(screen.getByTestId("ekshifni-preview-empty")).toHaveTextContent(
       "أضف صورة المشهور أولاً",
     );
@@ -66,6 +67,54 @@ describe("اكشفني authoring surface", () => {
     expect(screen.getByTestId("ekshifni-region-2").className).toContain(
       "border-primary",
     );
+  });
+
+  it("previews the real board, and opens a window per region on demand", () => {
+    // The same component the room renders, so an author checks the presentation
+    // itself rather than a second reading of the same numbers.
+    renderFields("https://cdn/celebrity.webp");
+    const preview = screen.getByTestId("ekshifni-runtime-preview");
+    const board = within(preview).getByTestId("ekshifni-board");
+    expect(board).toHaveAttribute("data-obscured", "true");
+    expect(within(board).queryByTestId("ekshifni-window-3")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("ekshifni-preview-toggle-3"));
+    expect(within(board).getByTestId("ekshifni-window-3")).toBeInTheDocument();
+    // Only that one: the rest of the face is still obscured.
+    expect(within(board).queryByTestId("ekshifni-window-1")).toBeNull();
+    expect(board).toHaveAttribute("data-obscured", "true");
+
+    fireEvent.click(screen.getByTestId("ekshifni-preview-toggle-3"));
+    expect(within(board).queryByTestId("ekshifni-window-3")).toBeNull();
+  });
+
+  it("moves the preview window when the authored geometry changes", () => {
+    // Stateful on purpose: the property under test is that the preview is bound
+    // to the authored numbers, which a mocked onChange would hide.
+    function Stateful() {
+      const [value, setValue] = useState(authored());
+      return (
+        <EkshifniFields
+          value={value}
+          acceptedAnswers=""
+          imageUrl="https://cdn/celebrity.webp"
+          onChange={setValue}
+          onAcceptedAnswersChange={vi.fn()}
+        />
+      );
+    }
+    render(<Stateful />);
+    fireEvent.click(screen.getByTestId("ekshifni-preview-toggle-1"));
+    const windowOf = () =>
+      screen
+        .getByTestId("ekshifni-runtime-preview")
+        .querySelector('[data-testid="ekshifni-window-1"]') as HTMLElement;
+    const before = windowOf().style.left;
+    fireEvent.change(screen.getByLabelText("س للجزء 1"), {
+      target: { value: "0.55" },
+    });
+    expect(windowOf().style.left).toBe("55%");
+    expect(windowOf().style.left).not.toBe(before);
   });
 
   it("keeps every geometry field labelled once it has a value", () => {
