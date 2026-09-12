@@ -4148,7 +4148,9 @@ taxonomy until that is established.
 |---|---|
 | Product decision | ✅ **APPROVED** |
 | Source implementation | ✅ **IMPLEMENTED & VERIFIED LOCALLY** |
-| Production deployment | ⬜ **NOT DEPLOYED** — not committed at the time of writing |
+| Git remote | ✅ **PUSHED** — `a93786f` on `origin/main` |
+| Production frontend | ✅ **DEPLOYED & VERIFIED** — the runtime chunk Vercel serves is SHA-256 identical to the local build and carries the clear-window markers; the Admin chunk carries the region editor |
+| Production gameplay with real content | ⬜ **NOT RUN** — no Celebrities content exists to play, so deployment is not gameplay verification |
 | Celebrities content / geometry re-authoring | ⬜ **PENDING** — owned by the content workstream |
 
 ### 29.1 What changed
