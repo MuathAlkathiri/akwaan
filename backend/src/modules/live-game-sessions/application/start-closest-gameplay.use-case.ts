@@ -170,6 +170,14 @@ export class StartClosestGameplay {
                 correctValue: number;
               }
             ).correctValue,
+            ...((
+              item!.mechanicPayload as { closestSlider?: unknown } | undefined
+            )?.closestSlider
+              ? {
+                  slider: (item!.mechanicPayload as { closestSlider: unknown })
+                    .closestSlider,
+                }
+              : {}),
           })),
         ),
         teamIdsJson: JSON.stringify(teams),

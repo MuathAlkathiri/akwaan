@@ -48,6 +48,59 @@ describe('Closest gameplay', () => {
     }
   });
 
+  it('enforces an authored slider range and step through the canonical command', () => {
+    let assignments = createTeamActionAssignmentState([
+      { teamId: 'a', order: ['a1'], cursor: 0 },
+      { teamId: 'b', order: ['b1'], cursor: 0 },
+    ]);
+    assignments = assignNextTeamAction(assignments, {
+      teamId: 'a',
+      action: closestAnswerAction('a'),
+      participants: [{ participantId: 'a1', teamId: 'a', connected: true }],
+    }).state;
+    const state = {
+      itemsJson: JSON.stringify([
+        {
+          ...item,
+          slider: { mode: 'numeric-range', min: 0, max: 100, step: 5 },
+        },
+        { ...item, id: 'item-2' },
+        { ...item, id: 'item-3' },
+      ]),
+      teamIdsJson: '["a","b"]',
+      currentItemIndex: 0,
+      phase: 'collecting',
+      answersJson: '{}',
+      resultsJson: '[]',
+      teamActionJson: serializeTeamActionAssignments(assignments),
+      deadlineAt: '2026-01-01T00:00:45.000Z',
+    };
+    for (const value of [-1, 101, 12]) {
+      expect(() =>
+        CLOSEST_GAMEPLAY_PLUGIN.handleCommand!(
+          { now: new Date(), submitterParticipantId: 'a1' } as never,
+          {
+            type: 'submit-estimate',
+            payload: { value },
+            runtimeState: state,
+            roundState: { phase: 'collecting', itemIndex: 0 },
+          },
+        ),
+      ).toThrow(/authored range|authored step/);
+    }
+    expect(
+      CLOSEST_GAMEPLAY_PLUGIN.handleCommand!(
+        { now: new Date(), submitterParticipantId: 'a1' } as never,
+        {
+          type: 'submit-estimate',
+          payload: { value: 15 },
+          runtimeState: state,
+          roundState: { phase: 'collecting', itemIndex: 0 },
+        },
+      ).eventType,
+    ).toBe('closest-estimate-submitted');
+  });
+
   it('keeps truth and the opposing value out of pre-resolution projections', () => {
     let assignments = createTeamActionAssignmentState([
       { teamId: 'a', order: ['a1'], cursor: 0 },
@@ -164,7 +217,14 @@ describe('Closest gameplay', () => {
   describe('media projection', () => {
     const runtimeWithItemMedia = (media: unknown) => ({
       itemsJson: JSON.stringify([
-        { ...item, media, revealMedia: { type: 'image', assets: [{ url: 'https://cdn/answer.webp' }] } },
+        {
+          ...item,
+          media,
+          revealMedia: {
+            type: 'image',
+            assets: [{ url: 'https://cdn/answer.webp' }],
+          },
+        },
         { ...item, id: 'item-2' },
         { ...item, id: 'item-3' },
       ]),

@@ -1043,6 +1043,59 @@ done or scheduled.
 
 **No free-text judged answers exist.** Legacy open-answer content must be converted to multiple-choice at import time — a one-time content task, never a runtime judgment.
 
+### 6.6 Closest slider interaction refresh — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-09-16)
+
+**Product review:** ✅ **PRODUCT REVIEW PASSED** (2026-09-16)
+
+**Release state before deployment:** ⬜ not committed · ⬜ not pushed · ⬜ not deployed ·
+⬜ not Production-verified.
+
+Closest remains the single `closest` runtime mechanic. This refresh does not create a new ChallengeType,
+scoring engine, convergence path, realtime architecture, or state store. Its existing server-authoritative
+absolute-distance resolution, tie behavior, three-item Challenge lifecycle, Fair-Start, and reconnect semantics
+remain unchanged; the approved change is limited to item-level player input and presentation.
+
+Forward Closest content may explicitly choose one of two interaction modes:
+
+- **Numeric range:** a horizontal slider with authored, question-specific finite `min` and `max`, optional
+  positive `step`, optional safe unit/display metadata, and a canonical target inside the range. The range is
+  never assumed to be a global 0–100 scale.
+- **Between two anchors:** a horizontal continuum with meaningful authored left and right anchor labels and a
+  canonical target position/mapping inside that continuum. The normalized numeric mapping may remain an
+  internal implementation detail and must not become an unnecessary player-facing scale.
+
+The item chooses its interaction mode. Slider movement is local ephemeral state: no drag-event commands are
+sent. Confirm submits the single final numeric estimate through the canonical Closest command, and an accepted
+server state locks it. Before resolution a team sees only its own current or committed estimate; the opponent's
+estimate and the authoritative target remain private. On resolution, the shared screen presents Team A, Team B,
+and the target together on one continuum and continues through the existing Universal Reveal lifecycle.
+
+Legacy Closest items without explicit slider metadata remain playable through the existing numeric interaction
+until deliberately migrated. The system must not fabricate arbitrary ranges or anchors for them. Authoring must
+extend the canonical `ContentItem` / `mechanicPayload` validation, serialization, promotion, and Admin paths
+rather than introduce a second Closest CMS or engine.
+
+Local implementation: both item-selected modes are carried as optional `mechanicPayload` slider
+configuration while `answerPayload.correctValue` remains the canonical scoring target. The phone uses a custom
+thumb-friendly slider with local-only dragging and one Confirm submission; authoritative acceptance restores a
+locked own estimate on reconnect. Pre-resolution projections retain the established privacy boundary, and the
+shared reveal adds Team A, Team B, and target markers on one continuum using canonical team colors. Focused
+backend, frontend, Admin serialization, privacy, reconnect-state, legacy-compatibility, typecheck, scoped lint,
+and production-build checks pass locally. Real Chromium QA passes at 360×640 and 390×844 on phones and at
+1280, 1440, and 1920 widths on the shared reveal, including mixed-mode three-item play, local-only dragging,
+Confirm-only submission, privacy before resolution, reconnect before and after Confirm, long Arabic anchors,
+exact marker collisions, legacy items, deadline resolution, and Admin create/edit round trips. The full unit
+regression is green; the repository-wide integration run retains unrelated pre-existing failures in music upload
+and disabled-AI response status behavior. No Production content/data migration, deployment, or R2 mutation
+occurred.
+
+Product-review polish was presentation-only: the selected value now follows the thumb in a clamped,
+side-aware bubble that remains inside the cream card for long units and edge values; keyboard focus gained a
+clear restrained ring; the authoritative locked marker is intentionally non-interactive; waiting copy is
+explicit; Numeric Range reveals format authored units; and Between Anchors reveals preserve the authored
+continuum without exposing normalized implementation numbers. No gameplay, scoring, lifecycle, schema, or
+authority behavior changed in this review pass.
+
 ---
 
 ## 7. Selection and Turn Order

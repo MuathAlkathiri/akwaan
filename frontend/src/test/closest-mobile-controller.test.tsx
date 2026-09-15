@@ -69,7 +69,12 @@ const context = (gameplayCommand = vi.fn()) =>
       serverTimestamp: "2026-01-01T00:00:10.000Z",
       teams: TEAMS,
       participants: [
-        { id: "p-1", displayName: "مُعاذ", teamId: "team-alpha", role: "player" },
+        {
+          id: "p-1",
+          displayName: "مُعاذ",
+          teamId: "team-alpha",
+          role: "player",
+        },
         { id: "p-2", displayName: "سالم", teamId: "team-beta", role: "player" },
       ],
       availableActions: [],
@@ -102,6 +107,56 @@ const renderHost = (runtime = runtimeWith(), gameplayCommand = vi.fn()) => {
 };
 
 describe("the phone is a controller", () => {
+  it("renders numeric-range and anchor sliders without sending during drag", () => {
+    const gameplayCommand = vi.fn();
+    const sliderRuntime = runtimeWith({
+      currentItemJson: JSON.stringify({
+        id: "slider",
+        prompt: { ar: "قدّر" },
+        slider: {
+          mode: "numeric-range",
+          min: 1950,
+          max: 2026,
+          step: 1,
+          unit: "سنة",
+        },
+      }),
+    });
+    const view = renderPhone(sliderRuntime, gameplayCommand);
+    const slider = screen.getByTestId("closest-estimate-slider");
+    const bubble = screen.getByTestId("closest-value-bubble");
+    expect(slider).toHaveAttribute("min", "1950");
+    fireEvent.change(slider, { target: { value: "1950" } });
+    expect(bubble).toHaveStyle({ left: "12%" });
+    fireEvent.change(slider, { target: { value: "2000" } });
+    expect(bubble).toHaveTextContent("سنة");
+    expect(gameplayCommand).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "تأكيد الإجابة" }));
+    expect(gameplayCommand).toHaveBeenCalledTimes(1);
+    expect(gameplayCommand).toHaveBeenCalledWith(
+      "gameplay-command",
+      expect.objectContaining({ payload: { value: 2000 } }),
+    );
+    view.unmount();
+    renderPhone(
+      runtimeWith({
+        currentItemJson: JSON.stringify({
+          id: "anchors",
+          prompt: { ar: "قدّر" },
+          slider: {
+            mode: "between-anchors",
+            min: 0,
+            max: 1,
+            step: 0.01,
+            leftAnchor: "خفيف",
+            rightAnchor: "ثقيل",
+          },
+        }),
+      }),
+    );
+    expect(screen.getByText("خفيف")).toBeInTheDocument();
+    expect(screen.getByText("ثقيل")).toBeInTheDocument();
+  });
   it("makes the numeric answer the one dominant control", () => {
     renderPhone();
     const input = screen.getByTestId("closest-estimate-input");
@@ -164,7 +219,7 @@ describe("the phone is a controller", () => {
     );
     const status = screen.getByTestId("closest-phone-status");
     expect(status).toHaveTextContent("تم إرسال إجابتكم");
-    expect(status).toHaveTextContent("ننتظر الفريق الثاني…");
+    expect(status).toHaveTextContent("بانتظار الفريق الثاني…");
     // The form is gone: there is nothing left to submit.
     expect(screen.queryByTestId("closest-estimate-input")).toBeNull();
   });

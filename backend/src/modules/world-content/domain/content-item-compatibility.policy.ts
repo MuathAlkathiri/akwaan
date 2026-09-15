@@ -103,6 +103,7 @@ export class ContentItemCompatibilityPolicy {
     blockers.push(...this.validateScope(input));
     blockers.push(...this.validatePrompt(input.item));
     blockers.push(...this.validateAnswerPayload(input.item.answerPayload));
+    blockers.push(...this.validateClosestSlider(input.item));
 
     const referenced = this.resolveChallengeTypes(input, blockers);
     blockers.push(...this.validateChallengeCompatibility(input, referenced));
@@ -928,6 +929,103 @@ export class ContentItemCompatibilityPolicy {
           ),
         ];
     }
+  }
+
+  private validateClosestSlider(item: ContentItemView): WorldContentIssue[] {
+    if (item.answerPayload?.mode !== ChallengeAnswerMode.CLOSEST) return [];
+    const slider = (
+      item.mechanicPayload as
+        { closestSlider?: Record<string, unknown> } | undefined
+    )?.closestSlider;
+    // Deliberate legacy compatibility: absence keeps the existing number input.
+    if (slider === undefined) return [];
+    const issues: WorldContentIssue[] = [];
+    const min = slider.min;
+    const max = slider.max;
+    const step = slider.step;
+    const target = item.answerPayload.correctValue;
+    if (
+      typeof min !== 'number' ||
+      !Number.isFinite(min) ||
+      typeof max !== 'number' ||
+      !Number.isFinite(max) ||
+      min >= max
+    ) {
+      issues.push(
+        issue(
+          'CLOSEST_SLIDER_RANGE_INVALID',
+          'Closest slider min and max must be finite and min must be less than max',
+        ),
+      );
+    } else if (target < min || target > max) {
+      issues.push(
+        issue(
+          'CLOSEST_SLIDER_TARGET_OUT_OF_RANGE',
+          'Closest target must be inside the authored slider range',
+        ),
+      );
+    }
+    if (
+      step !== undefined &&
+      (typeof step !== 'number' || !Number.isFinite(step) || step <= 0)
+    ) {
+      issues.push(
+        issue(
+          'CLOSEST_SLIDER_STEP_INVALID',
+          'Closest slider step must be a positive finite number',
+        ),
+      );
+    } else if (
+      typeof step === 'number' &&
+      typeof min === 'number' &&
+      Number.isFinite(min) &&
+      Math.abs((target - min) / step - Math.round((target - min) / step)) > 1e-8
+    ) {
+      issues.push(
+        issue(
+          'CLOSEST_SLIDER_TARGET_STEP_INVALID',
+          'Closest target must align with the authored slider step',
+        ),
+      );
+    }
+    if (slider.mode === 'numeric-range') {
+      if (
+        slider.unit !== undefined &&
+        (typeof slider.unit !== 'string' || slider.unit.trim().length > 40)
+      )
+        issues.push(
+          issue(
+            'CLOSEST_SLIDER_UNIT_INVALID',
+            'Closest slider unit must be at most 40 characters',
+          ),
+        );
+    } else if (slider.mode === 'between-anchors') {
+      const left =
+        typeof slider.leftAnchor === 'string' ? slider.leftAnchor.trim() : '';
+      const right =
+        typeof slider.rightAnchor === 'string' ? slider.rightAnchor.trim() : '';
+      if (
+        !left ||
+        !right ||
+        left === right ||
+        left.length > 80 ||
+        right.length > 80
+      )
+        issues.push(
+          issue(
+            'CLOSEST_SLIDER_ANCHORS_INVALID',
+            'Closest slider needs distinct anchor labels of at most 80 characters',
+          ),
+        );
+    } else {
+      issues.push(
+        issue(
+          'CLOSEST_SLIDER_MODE_INVALID',
+          'Closest slider mode must be numeric-range or between-anchors',
+        ),
+      );
+    }
+    return issues;
   }
 
   private validateRyoPayload(

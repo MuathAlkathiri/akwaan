@@ -182,6 +182,27 @@ export interface ContentAnswerOption {
   label: LocalizedText;
 }
 
+export type ClosestSliderConfig =
+  | {
+      mode: 'numeric-range';
+      min: number;
+      max: number;
+      step?: number;
+      unit?: string;
+    }
+  | {
+      mode: 'between-anchors';
+      min: number;
+      max: number;
+      step?: number;
+      leftAnchor: string;
+      rightAnchor: string;
+    };
+
+export interface ClosestMechanicPayload extends Record<string, unknown> {
+  closestSlider?: ClosestSliderConfig;
+}
+
 export type ContentAnswerPayload =
   | {
       mode: ChallengeAnswerMode.MULTIPLE_CHOICE;

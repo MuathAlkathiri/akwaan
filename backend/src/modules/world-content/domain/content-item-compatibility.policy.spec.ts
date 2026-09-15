@@ -408,6 +408,57 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
     ).toEqual([]);
   });
 
+  it('validates optional closest slider metadata while preserving legacy items', () => {
+    const closest = challengeType({
+      id: 'closest',
+      family: ChallengeFamily.COOP,
+      answerMode: ChallengeAnswerMode.CLOSEST,
+    });
+    const base = {
+      compatibleChallengeTypeIds: ['closest'],
+      answerPayload: {
+        mode: ChallengeAnswerMode.CLOSEST,
+        correctValue: 50,
+      } as const,
+    };
+    expect(
+      codes({ item: contentItem(base), challengeTypes: typeMap(closest) }),
+    ).toEqual([]);
+    expect(
+      codes({
+        item: contentItem({
+          ...base,
+          mechanicPayload: {
+            closestSlider: { mode: 'numeric-range', min: 60, max: 20, step: 0 },
+          },
+        }),
+        challengeTypes: typeMap(closest),
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        'CLOSEST_SLIDER_RANGE_INVALID',
+        'CLOSEST_SLIDER_STEP_INVALID',
+      ]),
+    );
+    expect(
+      codes({
+        item: contentItem({
+          ...base,
+          mechanicPayload: {
+            closestSlider: {
+              mode: 'between-anchors',
+              min: 0,
+              max: 100,
+              leftAnchor: 'بارد',
+              rightAnchor: 'بارد',
+            },
+          },
+        }),
+        challengeTypes: typeMap(closest),
+      }),
+    ).toContain('CLOSEST_SLIDER_ANCHORS_INVALID');
+  });
+
   it('validates split payload structure', () => {
     const coopSplit = challengeType({
       id: 'challenge-ryo',

@@ -554,6 +554,13 @@ export interface AnswerFormState {
   acceptedAnswers: string;
   consensusRule: VoteConsensusRule;
   fragments: Array<{ seat: number; clue: string }>;
+  closestInteraction: "legacy" | "numeric-range" | "between-anchors";
+  closestMin: string;
+  closestMax: string;
+  closestStep: string;
+  closestUnit: string;
+  closestLeftAnchor: string;
+  closestRightAnchor: string;
 }
 
 export function emptyAnswerState(
@@ -574,6 +581,13 @@ export function emptyAnswerState(
       { seat: 1, clue: "" },
       { seat: 2, clue: "" },
     ],
+    closestInteraction: "legacy",
+    closestMin: "",
+    closestMax: "",
+    closestStep: "",
+    closestUnit: "",
+    closestLeftAnchor: "",
+    closestRightAnchor: "",
   };
 }
 
@@ -642,6 +656,21 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
   const isFirstNote = firstNotePayload?.variant === "first-note";
   const isOneClue = Boolean(oneCluePayload?.clues) && !isLaqatha;
   const acceptedAnswers = payload.acceptedAnswers ?? [];
+  const closestSlider = (
+    item.mechanicPayload as
+      | {
+          closestSlider?: {
+            mode?: "numeric-range" | "between-anchors";
+            min?: number;
+            max?: number;
+            step?: number;
+            unit?: string;
+            leftAnchor?: string;
+            rightAnchor?: string;
+          };
+        }
+      | undefined
+  )?.closestSlider;
   return {
     scopeId: item.scopeId,
     promptAr: item.prompt.ar,
@@ -681,6 +710,16 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
         seat: fragment.seat,
         clue: fragment.clue.ar,
       })),
+      closestInteraction: closestSlider?.mode ?? "legacy",
+      closestMin:
+        closestSlider?.min === undefined ? "" : String(closestSlider.min),
+      closestMax:
+        closestSlider?.max === undefined ? "" : String(closestSlider.max),
+      closestStep:
+        closestSlider?.step === undefined ? "" : String(closestSlider.step),
+      closestUnit: closestSlider?.unit ?? "",
+      closestLeftAnchor: closestSlider?.leftAnchor ?? "",
+      closestRightAnchor: closestSlider?.rightAnchor ?? "",
     },
     rakkibha: toRakkibhaFormState(
       item.mechanicPayload as RakkibhaPayload | undefined,
@@ -999,7 +1038,11 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
     oddPieceMechanicPayload ??
     laqathaMechanicPayload ??
     firstNoteMechanicPayload ??
-    ekshifniMechanicPayload)
+    ekshifniMechanicPayload ??
+    (values.answer.mode === "closest" &&
+    values.answer.closestInteraction !== "legacy"
+      ? {}
+      : undefined))
       ? {
           ...top5MechanicPayload,
           ...rakkibhaMechanicPayload,
@@ -1010,6 +1053,27 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
           ...laqathaMechanicPayload,
           ...firstNoteMechanicPayload,
           ...ekshifniMechanicPayload,
+          ...(values.answer.mode === "closest" &&
+          values.answer.closestInteraction !== "legacy"
+            ? {
+                closestSlider: {
+                  mode: values.answer.closestInteraction,
+                  min: toNumber(values.answer.closestMin),
+                  max: toNumber(values.answer.closestMax),
+                  ...(toNumber(values.answer.closestStep) === undefined
+                    ? {}
+                    : { step: toNumber(values.answer.closestStep) }),
+                  ...(values.answer.closestInteraction === "numeric-range"
+                    ? values.answer.closestUnit.trim()
+                      ? { unit: values.answer.closestUnit.trim() }
+                      : {}
+                    : {
+                        leftAnchor: values.answer.closestLeftAnchor.trim(),
+                        rightAnchor: values.answer.closestRightAnchor.trim(),
+                      }),
+                },
+              }
+            : {}),
         }
       : undefined;
   const signatureTargetAnswer = values.oneClue.enabled
@@ -1058,7 +1122,12 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
           },
         }),
     ...(values.mediaType === "image" && values.revealMediaUrl.trim()
-      ? { revealMedia: { type: "image", assets: [{ url: values.revealMediaUrl.trim() }] } }
+      ? {
+          revealMedia: {
+            type: "image",
+            assets: [{ url: values.revealMediaUrl.trim() }],
+          },
+        }
       : {}),
     answerPayload,
     ...(mechanicPayload ? { mechanicPayload } : {}),

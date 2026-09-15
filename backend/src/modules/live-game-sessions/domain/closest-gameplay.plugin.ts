@@ -30,6 +30,15 @@ export interface ClosestRuntimeItem {
   prompt: unknown;
   media?: unknown;
   correctValue: number;
+  slider?: {
+    mode: 'numeric-range' | 'between-anchors';
+    min: number;
+    max: number;
+    step?: number;
+    unit?: string;
+    leftAnchor?: string;
+    rightAnchor?: string;
+  };
 }
 
 export interface ClosestItemResult {
@@ -89,7 +98,19 @@ function validateRuntime(state: GameplayModeState): GameplayModeState {
   if (
     items.length !== CLOSEST_ITEM_COUNT ||
     new Set(items.map((item) => item.id)).size !== CLOSEST_ITEM_COUNT ||
-    items.some((item) => !Number.isFinite(item.correctValue)) ||
+    items.some(
+      (item) =>
+        !Number.isFinite(item.correctValue) ||
+        (item.slider !== undefined &&
+          (!['numeric-range', 'between-anchors'].includes(item.slider.mode) ||
+            !Number.isFinite(item.slider.min) ||
+            !Number.isFinite(item.slider.max) ||
+            item.slider.min >= item.slider.max ||
+            item.correctValue < item.slider.min ||
+            item.correctValue > item.slider.max ||
+            (item.slider.step !== undefined &&
+              (!Number.isFinite(item.slider.step) || item.slider.step <= 0)))),
+    ) ||
     teams.length !== 2 ||
     new Set(teams).size !== 2 ||
     results.length > CLOSEST_ITEM_COUNT ||
@@ -330,7 +351,27 @@ function handle(
         'This team already submitted an estimate',
       );
     }
-    answers[teamId] = Number(command.payload.value);
+    const slider = itemsOf(runtime)[Number(runtime.currentItemIndex)].slider;
+    const submittedValue = Number(command.payload.value);
+    if (
+      slider &&
+      (submittedValue < slider.min || submittedValue > slider.max)
+    ) {
+      throw new LiveSessionDomainError(
+        'INVALID_CLOSEST_SUBMISSION',
+        'Estimate is outside the authored range',
+      );
+    }
+    if (slider?.step) {
+      const steps = (submittedValue - slider.min) / slider.step;
+      if (Math.abs(steps - Math.round(steps)) > 1e-8) {
+        throw new LiveSessionDomainError(
+          'INVALID_CLOSEST_SUBMISSION',
+          'Estimate does not match the authored step',
+        );
+      }
+    }
+    answers[teamId] = submittedValue;
     const submittedBy = submittedByOf(runtime);
     submittedBy[teamId] = participantId;
     const remainingAssignments = clearTeamAction(
@@ -438,6 +479,7 @@ function publicState(
       media: toSafeQuestionMedia(
         item.media as ContentItemMedia | null | undefined,
       ),
+      ...(item.slider ? { slider: item.slider } : {}),
     }),
     deadlineAt: valid.deadlineAt ?? null,
     teamIdsJson: JSON.stringify(teams),

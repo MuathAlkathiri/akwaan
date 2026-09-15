@@ -169,6 +169,95 @@ export function AnswerPayloadFields({
         </div>
       )}
 
+      {value.mode === "closest" && (
+        <div
+          className="space-y-3 rounded-lg border bg-muted/30 p-3"
+          data-testid="closest-slider-fields"
+        >
+          <div>
+            <label className="mb-1.5 block text-sm font-medium">
+              طريقة التفاعل
+            </label>
+            <Select
+              value={value.closestInteraction}
+              onValueChange={(next: string) =>
+                set({
+                  closestInteraction:
+                    next as AnswerFormState["closestInteraction"],
+                })
+              }
+            >
+              <SelectTrigger aria-label="طريقة تفاعل مين أقرب">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="legacy">إدخال رقمي قديم</SelectItem>
+                <SelectItem value="numeric-range">نطاق رقمي</SelectItem>
+                <SelectItem value="between-anchors">
+                  بين نقطتي ارتكاز
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {value.closestInteraction !== "legacy" && (
+            <>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Input
+                  type="number"
+                  aria-label="الحد الأدنى"
+                  placeholder="الحد الأدنى"
+                  value={value.closestMin}
+                  onChange={(e) => set({ closestMin: e.target.value })}
+                />
+                <Input
+                  type="number"
+                  aria-label="الحد الأعلى"
+                  placeholder="الحد الأعلى"
+                  value={value.closestMax}
+                  onChange={(e) => set({ closestMax: e.target.value })}
+                />
+                <Input
+                  type="number"
+                  min={0}
+                  aria-label="الخطوة"
+                  placeholder="الخطوة (اختياري)"
+                  value={value.closestStep}
+                  onChange={(e) => set({ closestStep: e.target.value })}
+                />
+              </div>
+              {value.closestInteraction === "numeric-range" ? (
+                <Input
+                  aria-label="الوحدة"
+                  maxLength={40}
+                  placeholder="الوحدة (اختياري)"
+                  value={value.closestUnit}
+                  onChange={(e) => set({ closestUnit: e.target.value })}
+                />
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Input
+                    aria-label="نقطة الارتكاز اليسرى"
+                    maxLength={80}
+                    placeholder="نقطة الارتكاز اليسرى"
+                    value={value.closestLeftAnchor}
+                    onChange={(e) => set({ closestLeftAnchor: e.target.value })}
+                  />
+                  <Input
+                    aria-label="نقطة الارتكاز اليمنى"
+                    maxLength={80}
+                    placeholder="نقطة الارتكاز اليمنى"
+                    value={value.closestRightAnchor}
+                    onChange={(e) =>
+                      set({ closestRightAnchor: e.target.value })
+                    }
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {usesAcceptedAnswers && (
         <div>
           <label className="mb-1.5 block text-sm font-medium">

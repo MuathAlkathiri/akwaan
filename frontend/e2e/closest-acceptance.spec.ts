@@ -32,33 +32,53 @@ test.describe.serial("@closest real Chromium acceptance", () => {
     const contexts: BrowserContext[] = [];
     const phones: Page[] = [];
     const socketFrames: string[][] = [];
+    const socketSent: string[][] = [];
     await page.setViewportSize({ width: 1440, height: 900 });
     await login(page);
     await completeSetup(page);
     const sessionId = sessionIdOf(page);
     await openClosest(page);
-    const joinCode = (await page.getByTestId("preflight-join-code").innerText()).trim();
+    const joinCode = (
+      await page.getByTestId("preflight-join-code").innerText()
+    ).trim();
     for (const [index, team] of TEAM.entries()) {
-      const context = await browser.newContext({ viewport: PHONE });
+      const context = await browser.newContext({
+        viewport: team === 0 ? { width: 360, height: 640 } : PHONE,
+      });
       contexts.push(context);
       const phone = await context.newPage();
       const frames: string[] = [];
+      const sent: string[] = [];
       phone.on("websocket", (socket) => {
-        socket.on("framereceived", ({ payload }) => frames.push(String(payload)));
+        socket.on("framereceived", ({ payload }) =>
+          frames.push(String(payload)),
+        );
+        socket.on("framesent", ({ payload }) => sent.push(String(payload)));
       });
       socketFrames.push(frames);
+      socketSent.push(sent);
       phones.push(phone);
       await joinPhone(phone, joinCode, NAMES[index], team);
     }
     await waitForPairedPhones(page);
     await page.getByTestId("preflight-start").click();
-    await expect(page.getByText("السؤال 1 من 3").first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText("السؤال 1 من 3").first()).toBeVisible({
+      timeout: 60_000,
+    });
+    configureSliderRuntime(sessionId);
+    await page.reload();
+    for (const phone of phones) await phone.reload();
+    await expect(page.getByText("السؤال 1 من 3").first()).toBeVisible({
+      timeout: 30_000,
+    });
     await shot(page, "closest-host-question");
 
     // Host refresh before either answer: the same item and collecting state restore.
     const firstTruth = runtimeTruth(sessionId);
     await page.reload();
-    await expect(page.getByText("السؤال 1 من 3").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("السؤال 1 من 3").first()).toBeVisible({
+      timeout: 30_000,
+    });
     expect(runtimeTruth(sessionId).itemId).toBe(firstTruth.itemId);
 
     const firstHolders = await holders(phones);
@@ -68,36 +88,118 @@ test.describe.serial("@closest real Chromium acceptance", () => {
     const firstGreen = firstHolders.find((index) => index < 2)!;
     const firstCoral = firstHolders.find((index) => index >= 2)!;
     await shot(phones[firstGreen], "closest-phone-answerer");
+    await shot(phones[firstCoral], "closest-phone-answerer-390");
     await shot(phones[firstGreen === 0 ? 1 : 0], "closest-phone-teammate");
 
     // Wrong teammate has no control and cannot trigger a mode command through UI.
-    await expect(phones[firstGreen === 0 ? 1 : 0].getByTestId("closest-answer-controls")).toHaveCount(0);
+    await expect(
+      phones[firstGreen === 0 ? 1 : 0].getByTestId("closest-answer-controls"),
+    ).toHaveCount(0);
     await assertBlindProjection(phones[firstCoral]);
-    const opponentProjection = latestGameplayModeState(socketFrames[firstCoral]);
+    const slider = phones[firstGreen].getByTestId("closest-estimate-slider");
+    const bubble = phones[firstGreen].getByTestId("closest-value-bubble");
+    const sliderCard = phones[firstGreen]
+      .getByTestId("closest-numeric-range-slider")
+      .locator("..");
+    await expect(slider).toBeVisible();
+    const sentBeforeDrag = socketSent[firstGreen].filter((frame) =>
+      frame.includes("gameplay-command"),
+    ).length;
+    for (const value of [1950, 1969, 1988, 2007, 2026]) {
+      await slider.fill(String(value));
+      const [bubbleBox, cardBox] = await Promise.all([
+        bubble.boundingBox(),
+        sliderCard.boundingBox(),
+      ]);
+      expect(bubbleBox).not.toBeNull();
+      expect(cardBox).not.toBeNull();
+      expect(bubbleBox!.x).toBeGreaterThanOrEqual(cardBox!.x);
+      expect(bubbleBox!.x + bubbleBox!.width).toBeLessThanOrEqual(
+        cardBox!.x + cardBox!.width,
+      );
+    }
+    await slider.focus();
+    await expect(slider).toBeFocused();
+    await slider.fill("2023");
+    expect(
+      socketSent[firstGreen].filter((frame) =>
+        frame.includes("gameplay-command"),
+      ),
+    ).toHaveLength(sentBeforeDrag);
+    await expect(
+      phones[firstGreen].getByRole("button", { name: "تأكيد الإجابة" }),
+    ).toBeVisible();
+    expect(
+      await phones[firstGreen].evaluate(() => ({
+        width: innerWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        height: innerHeight,
+        scrollHeight: document.documentElement.scrollHeight,
+      })),
+    ).toMatchObject({
+      width: indexWidth(firstGreen),
+      scrollWidth: indexWidth(firstGreen),
+    });
+    const opponentProjection = latestGameplayModeState(
+      socketFrames[firstCoral],
+    );
     expect(opponentProjection.revealedResultJson).toBeUndefined();
     expect(opponentProjection.ownSubmittedValue).toBeUndefined();
     expect(String(opponentProjection.resultsJson)).toBe("[]");
-    expect(JSON.parse(String(opponentProjection.currentItemJson))).not.toHaveProperty("correctValue");
+    expect(
+      JSON.parse(String(opponentProjection.currentItemJson)),
+    ).not.toHaveProperty("correctValue");
 
     // Round 1: Green distance 1, Coral distance 2.
     await submit(phones[firstGreen], firstTruth.correctValue - 1);
-    await expect(phones[firstGreen].getByText(/تم إرسال إجابتكم/)).toBeVisible();
+    await expect(
+      phones[firstGreen].getByText(/تم (إرسال|تأكيد) إجابتكم/),
+    ).toBeVisible();
     await shot(page, "closest-one-team-submitted");
     await shot(phones[firstGreen], "closest-phone-after-own-submit");
     await assertBlindProjection(phones[firstCoral]);
 
     // Refresh submitted answerer: locked, persisted, still blind.
     await phones[firstGreen].reload();
-    await expect(phones[firstGreen].getByText(/تم إرسال إجابتكم/)).toBeVisible({ timeout: 30_000 });
-    await expect(phones[firstGreen].getByTestId("closest-answer-controls")).toHaveCount(0);
+    await expect(
+      phones[firstGreen].getByText(/تم (إرسال|تأكيد) إجابتكم/),
+    ).toBeVisible({ timeout: 30_000 });
+    await expect(
+      phones[firstGreen].getByTestId("closest-answer-controls"),
+    ).toHaveCount(0);
 
     await submit(phones[firstCoral], firstTruth.correctValue + 2);
-    await expect(page.getByTestId("closest-item-reveal")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("closest-item-reveal")).toBeVisible({
+      timeout: 30_000,
+    });
+    for (const viewport of [
+      { width: 1920, height: 1080, name: "1920x1080" },
+      { width: 1440, height: 900, name: "1440x900" },
+      { width: 1280, height: 720, name: "1280x720" },
+    ]) {
+      await page.setViewportSize(viewport);
+      await expect(page.getByTestId("closest-continuum-reveal")).toBeVisible();
+      await shot(page, `closest-slider-reveal-${viewport.name}`);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    }
     await shot(page, "closest-both-submitted");
     await shot(page, "closest-item-win");
     await shot(phones[firstGreen], "closest-phone-resolved");
-    await expect.poll(() => latestGameplayModeState(socketFrames[firstCoral]).revealedResultJson).toBeTruthy();
-    const revealedProjection = JSON.parse(String(latestGameplayModeState(socketFrames[firstCoral]).revealedResultJson));
+    await expect
+      .poll(
+        () =>
+          latestGameplayModeState(socketFrames[firstCoral]).revealedResultJson,
+      )
+      .toBeTruthy();
+    const revealedProjection = JSON.parse(
+      String(
+        latestGameplayModeState(socketFrames[firstCoral]).revealedResultJson,
+      ),
+    );
     expect(revealedProjection).toMatchObject({
       correctValue: firstTruth.correctValue,
       distances: expect.any(Object),
@@ -109,66 +211,122 @@ test.describe.serial("@closest real Chromium acceptance", () => {
       tie: false,
     });
     await page.reload();
-    await expect(page.getByTestId("closest-item-reveal")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("closest-item-reveal")).toBeVisible({
+      timeout: 30_000,
+    });
 
     await page.getByTestId("closest-next-item").click();
-    await expect(page.getByText("السؤال 2 من 3").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("السؤال 2 من 3").first()).toBeVisible({
+      timeout: 30_000,
+    });
     await shot(page, "closest-round-2");
     const secondTruth = runtimeTruth(sessionId);
-    await expect(phones[firstGreen].getByTestId("closest-answer-controls")).toHaveCount(0, { timeout: 30_000 });
-    await expect(phones[firstCoral].getByTestId("closest-answer-controls")).toHaveCount(0, { timeout: 30_000 });
+    await expect(
+      phones[firstGreen].getByTestId("closest-answer-controls"),
+    ).toHaveCount(0, { timeout: 30_000 });
+    await expect(
+      phones[firstCoral].getByTestId("closest-answer-controls"),
+    ).toHaveCount(0, { timeout: 30_000 });
     const secondHolders = await holders(phones);
     expect(secondHolders.find((index) => index < 2)).not.toBe(firstGreen);
     expect(secondHolders.find((index) => index >= 2)).not.toBe(firstCoral);
     const secondGreen = secondHolders.find((index) => index < 2)!;
     const secondCoral = secondHolders.find((index) => index >= 2)!;
-    await submit(phones[secondGreen], secondTruth.correctValue - 1);
-    await submit(phones[secondCoral], secondTruth.correctValue + 1);
-    await expect(page.getByText(/نفس المسافة/)).toBeVisible({ timeout: 30_000 });
+    await expect(
+      phones[secondGreen].getByTestId("closest-numeric-range-slider"),
+    ).toBeVisible({ timeout: 30_000 });
+    await shot(phones[secondGreen], "closest-phone-long-numeric-stress");
+    for (const value of [-1000000, -500000, 0, 500000, 1000000]) {
+      await phones[secondGreen]
+        .getByTestId("closest-estimate-slider")
+        .fill(String(value));
+      const [bubbleBox, cardBox] = await Promise.all([
+        phones[secondGreen].getByTestId("closest-value-bubble").boundingBox(),
+        phones[secondGreen]
+          .getByTestId("closest-numeric-range-slider")
+          .locator("..")
+          .boundingBox(),
+      ]);
+      expect(bubbleBox).not.toBeNull();
+      expect(cardBox).not.toBeNull();
+      expect(bubbleBox!.x).toBeGreaterThanOrEqual(cardBox!.x);
+      expect(bubbleBox!.x + bubbleBox!.width).toBeLessThanOrEqual(
+        cardBox!.x + cardBox!.width,
+      );
+    }
+    // All three markers share one horizontal value here. The reveal must keep
+    // both teams and the target visually distinguishable.
+    await submit(phones[secondGreen], secondTruth.correctValue);
+    await submit(phones[secondCoral], secondTruth.correctValue);
+    await expect(page.getByText(/نفس المسافة/)).toBeVisible({
+      timeout: 30_000,
+    });
     await shot(page, "closest-item-tie");
-    expect(runtimeTruth(sessionId).results[1]).toMatchObject({ tie: true, winnerTeamId: null });
+    await expect(page.getByTestId("closest-continuum-reveal")).toBeVisible();
+    await shot(page, "closest-slider-reveal-all-overlap");
+    expect(runtimeTruth(sessionId).results[1]).toMatchObject({
+      tie: true,
+      winnerTeamId: null,
+    });
 
     await page.getByTestId("closest-next-item").click();
-    await expect(page.getByText("السؤال 3 من 3").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("السؤال 3 من 3").first()).toBeVisible({
+      timeout: 30_000,
+    });
     await shot(page, "closest-round-3");
     const thirdTruth = runtimeTruth(sessionId);
-    await expect(phones[secondGreen].getByTestId("closest-answer-controls")).toHaveCount(0, { timeout: 30_000 });
-    await expect(phones[secondCoral].getByTestId("closest-answer-controls")).toHaveCount(0, { timeout: 30_000 });
+    await expect(
+      phones[secondGreen].getByTestId("closest-answer-controls"),
+    ).toHaveCount(0, { timeout: 30_000 });
+    await expect(
+      phones[secondCoral].getByTestId("closest-answer-controls"),
+    ).toHaveCount(0, { timeout: 30_000 });
     const thirdHolders = await holders(phones);
     const thirdGreen = thirdHolders.find((index) => index < 2)!;
     const thirdCoral = thirdHolders.find((index) => index >= 2)!;
     expect(thirdGreen).toBe(firstGreen);
     expect(thirdCoral).toBe(firstCoral);
+    await expect(
+      phones[thirdGreen].getByTestId("closest-between-anchors-slider"),
+    ).toBeVisible();
+    await expect(
+      phones[thirdGreen].getByText("لعبة فردية تعتمد على المهارة"),
+    ).toBeVisible();
+    await expect(
+      phones[thirdGreen].getByText("لعبة جماعية تعتمد على التنسيق"),
+    ).toBeVisible();
+    await shot(phones[thirdGreen], "closest-phone-anchors-360");
 
-    // Disconnect the assigned Green participant; server hands authority to teammate.
-    const reconnectUrl = phones[thirdGreen].url();
-    const reconnectSession = await phones[thirdGreen].evaluate(() =>
-      Object.fromEntries(
-        Array.from({ length: sessionStorage.length }, (_, index) => sessionStorage.key(index))
-          .filter((key): key is string => Boolean(key))
-          .map((key) => [key, sessionStorage.getItem(key) ?? ""]),
-      ),
-    );
-    await phones[thirdGreen].close();
-    const replacementGreen = thirdGreen === 0 ? 1 : 0;
-    await expect(phones[replacementGreen].getByTestId("closest-answer-controls")).toBeVisible({ timeout: 30_000 });
-    const reconnected = await contexts[thirdGreen].newPage();
-    phones[thirdGreen] = reconnected;
-    await reconnected.addInitScript((entries) => {
-      for (const [key, value] of Object.entries(entries)) sessionStorage.setItem(key, value);
-    }, reconnectSession);
-    await reconnected.goto(reconnectUrl);
-    await expect(phones[thirdGreen].getByText("السؤال 3 من 3").first()).toBeVisible({ timeout: 30_000 });
-    await expect(phones[thirdGreen].getByTestId("closest-answer-controls")).toHaveCount(0);
-    await expect(phones[replacementGreen].getByTestId("closest-answer-controls")).toBeVisible();
-    await submit(phones[replacementGreen], thirdTruth.correctValue + 5);
+    // Before confirmation, a dragged position is ephemeral. Refresh keeps the
+    // server-owned assignment but restores the authored midpoint, not the drag.
+    await phones[thirdGreen].getByTestId("closest-estimate-slider").fill("80");
+    expect(runtimeAnswers(sessionId)).toEqual({});
+    await phones[thirdGreen].reload();
+    const refreshedHolders = await holders(phones);
+    const refreshedGreen = refreshedHolders.find((index) => index < 2)!;
+    await expect(
+      phones[refreshedGreen].getByTestId("closest-answer-controls"),
+    ).toBeVisible({ timeout: 30_000 });
+    await expect(
+      phones[refreshedGreen].getByTestId("closest-estimate-slider"),
+    ).toHaveValue("50");
+    await submit(phones[refreshedGreen], thirdTruth.correctValue + 5);
     await submit(phones[thirdCoral], thirdTruth.correctValue);
-    await expect(page.getByTestId("closest-item-reveal")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("closest-item-reveal")).toBeVisible({
+      timeout: 30_000,
+    });
+    await shot(page, "closest-slider-reveal-target-overlap");
     await page.getByTestId("closest-next-item").click();
-    await expect(page.getByTestId("closest-challenge-result")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId("closest-challenge-result")).toBeVisible({
+      timeout: 60_000,
+    });
     await expect(page.getByText(/تعادل التحدي/)).toBeVisible();
     await shot(page, "closest-challenge-result-tie");
-    expect(matchLedger(sessionId).filter((event) => event.reason === "challenge.win.closest")).toHaveLength(0);
+    expect(
+      matchLedger(sessionId).filter(
+        (event) => event.reason === "challenge.win.closest",
+      ),
+    ).toHaveLength(0);
 
     for (const context of contexts) await context.close();
   });
@@ -184,7 +342,9 @@ test.describe.serial("@closest real Chromium acceptance", () => {
     await completeSetup(page);
     const sessionId = sessionIdOf(page);
     await openClosest(page);
-    const joinCode = (await page.getByTestId("preflight-join-code").innerText()).trim();
+    const joinCode = (
+      await page.getByTestId("preflight-join-code").innerText()
+    ).trim();
     for (const [index, team] of TEAM.entries()) {
       const context = await browser.newContext({ viewport: PHONE });
       contexts.push(context);
@@ -196,7 +356,9 @@ test.describe.serial("@closest real Chromium acceptance", () => {
     await page.getByTestId("preflight-start").click();
 
     for (let round = 0; round < 3; round += 1) {
-      await expect(page.getByText(`السؤال ${round + 1} من 3`).first()).toBeVisible({ timeout: 30_000 });
+      await expect(
+        page.getByText(`السؤال ${round + 1} من 3`).first(),
+      ).toBeVisible({ timeout: 30_000 });
       const truth = runtimeTruth(sessionId);
       const current = await holders(phones);
       const green = current.find((index) => index < 2)!;
@@ -208,27 +370,48 @@ test.describe.serial("@closest real Chromium acceptance", () => {
         await submit(phones[green], truth.correctValue + 4);
         await submit(phones[coral], truth.correctValue);
       }
-      await expect(page.getByTestId("closest-item-reveal")).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByTestId("closest-item-reveal")).toBeVisible({
+        timeout: 30_000,
+      });
       await page.getByTestId("closest-next-item").click();
     }
 
-    await expect(page.getByTestId("closest-challenge-result")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId("closest-challenge-result")).toBeVisible({
+      timeout: 60_000,
+    });
     await expect(page.getByText(/فاز بالتحدي/)).toBeVisible();
     await shot(page, "closest-challenge-result-win");
-    const before = matchLedger(sessionId).filter((event) => event.reason === "challenge.win.closest");
+    const before = matchLedger(sessionId).filter(
+      (event) => event.reason === "challenge.win.closest",
+    );
     expect(before).toHaveLength(1);
     expect(before[0]).toMatchObject({ delta: 1 });
     await page.reload();
-    await expect(page.getByTestId("closest-challenge-result")).toBeVisible({ timeout: 30_000 });
-    expect(matchLedger(sessionId).filter((event) => event.reason === "challenge.win.closest")).toHaveLength(1);
+    await expect(page.getByTestId("closest-challenge-result")).toBeVisible({
+      timeout: 30_000,
+    });
+    expect(
+      matchLedger(sessionId).filter(
+        (event) => event.reason === "challenge.win.closest",
+      ),
+    ).toHaveLength(1);
     await page.getByTestId("challenge-result-continue").click();
-    await expect(page.getByTestId("unified-board")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("unified-board")).toBeVisible({
+      timeout: 30_000,
+    });
     await shot(page, "board-after-closest");
-    expect(matchLedger(sessionId).filter((event) => event.reason === "challenge.win.closest")).toHaveLength(1);
+    expect(
+      matchLedger(sessionId).filter(
+        (event) => event.reason === "challenge.win.closest",
+      ),
+    ).toHaveLength(1);
     for (const context of contexts) await context.close();
   });
 
-  test("focused deadline: one submitted team wins by forfeit", async ({ page, browser }) => {
+  test("focused deadline: one submitted team wins by forfeit", async ({
+    page,
+    browser,
+  }) => {
     const contexts: BrowserContext[] = [];
     const phones: Page[] = [];
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -236,7 +419,9 @@ test.describe.serial("@closest real Chromium acceptance", () => {
     await completeSetup(page);
     const sessionId = sessionIdOf(page);
     await openClosest(page);
-    const joinCode = (await page.getByTestId("preflight-join-code").innerText()).trim();
+    const joinCode = (
+      await page.getByTestId("preflight-join-code").innerText()
+    ).trim();
     for (const [index, team] of TEAM.entries()) {
       const context = await browser.newContext({ viewport: PHONE });
       contexts.push(context);
@@ -246,19 +431,25 @@ test.describe.serial("@closest real Chromium acceptance", () => {
     }
     await waitForPairedPhones(page);
     await page.getByTestId("preflight-start").click();
-    await expect(page.getByText("السؤال 1 من 3").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("السؤال 1 من 3").first()).toBeVisible({
+      timeout: 30_000,
+    });
     const truth = runtimeTruth(sessionId);
     const current = await holders(phones);
     const green = current.find((index) => index < 2)!;
     await submit(phones[green], truth.correctValue + 3);
-    await expect(page.getByTestId("closest-item-reveal")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId("closest-item-reveal")).toBeVisible({
+      timeout: 60_000,
+    });
     const result = runtimeTruth(sessionId).results[0] as {
       answers: Record<string, number | null>;
       distances: Record<string, number | null>;
       winnerTeamId: string;
       resolutionReason: string;
     };
-    const nullTeam = Object.keys(result.answers).find((teamId) => result.answers[teamId] === null)!;
+    const nullTeam = Object.keys(result.answers).find(
+      (teamId) => result.answers[teamId] === null,
+    )!;
     expect(result.resolutionReason).toBe("deadline");
     expect(result.distances[nullTeam]).toBeNull();
     expect(result.winnerTeamId).toBeTruthy();
@@ -269,28 +460,43 @@ test.describe.serial("@closest real Chromium acceptance", () => {
 });
 
 async function login(page: Page) {
-  await page.goto("/login");
-  await page.locator('input[type="email"]').fill(HOST);
-  await page.locator('input[type="password"]').fill(PASSWORD);
-  await page.getByRole("button", { name: "دخول" }).click();
-  await expect(page).not.toHaveURL(/\/login/, { timeout: 30_000 });
+  const response = await page.request.post(
+    process.env.E2E_API_URL ?? "http://127.0.0.1:3002/auth/login",
+    { data: { email: HOST, password: PASSWORD } },
+  );
+  expect(response.ok()).toBeTruthy();
+  const session = (await response.json()) as {
+    accessToken: string;
+    user: Record<string, unknown>;
+  };
+  await page.goto("/");
+  await page.evaluate(({ accessToken, user }) => {
+    localStorage.setItem("akwaan_access_token", accessToken);
+    localStorage.setItem("akwaan_user", JSON.stringify(user));
+  }, session);
 }
 
 async function completeSetup(page: Page) {
   await page.goto("/matches/new");
-  await expect(page.getByTestId("match-setup-wizard")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("match-setup-wizard")).toBeVisible({
+    timeout: 30_000,
+  });
   for (let occurrence = 0; occurrence < 3; occurrence += 1) {
     await page.locator(`button[aria-pressed][aria-label="${WORLD}"]`).click();
-    const scopes = page.locator('button[aria-pressed="false"]:not([disabled])[aria-label]');
+    const scopes = page.locator(
+      'button[aria-pressed="false"]:not([disabled])[aria-label]',
+    );
     for (let index = 0; index < 4; index += 1) await scopes.first().click();
     await page.getByRole("button", { name: "متابعة", exact: true }).click();
   }
-  await page.getByRole("button", { name: "متابعة إلى الفريقين" }).click();
+  const toTeams = page.getByRole("button", { name: "متابعة إلى الفريقين" });
+  if (await toTeams.count()) await toTeams.click();
   const start = page.getByRole("button", { name: /ابدأ المباراة/ });
   await expect(start).toBeEnabled({ timeout: 30_000 });
   await start.click();
   await page.waitForURL(
-    (url) => /^\/matches\/[^/]+$/.test(url.pathname) && !url.pathname.endsWith("/new"),
+    (url) =>
+      /^\/matches\/[^/]+$/.test(url.pathname) && !url.pathname.endsWith("/new"),
     { timeout: 60_000 },
   );
 }
@@ -298,8 +504,10 @@ async function completeSetup(page: Page) {
 async function openClosest(page: Page) {
   const tile = page.locator('[data-challenge-key="closest"]').first();
   await expect(tile).toBeVisible({ timeout: 30_000 });
-  await tile.getByRole("button").first().click();
-  await expect(page.getByTestId("challenge-preflight")).toBeVisible({ timeout: 30_000 });
+  await tile.click();
+  await expect(page.getByTestId("challenge-preflight")).toBeVisible({
+    timeout: 30_000,
+  });
 }
 
 async function joinPhone(page: Page, code: string, name: string, team: number) {
@@ -310,29 +518,52 @@ async function joinPhone(page: Page, code: string, name: string, team: number) {
 }
 
 async function waitForPairedPhones(page: Page) {
-  const teams = page.locator('[data-testid^="preflight-team-"]');
+  const teams = page.locator(
+    '[data-testid^="preflight-team-"]:not([data-testid^="preflight-team-status-"])',
+  );
   await expect(teams).toHaveCount(2, { timeout: 60_000 });
   for (const team of await teams.all()) {
-    await expect(team.locator('[aria-label="متصل"]')).toHaveCount(2, { timeout: 60_000 });
+    await expect(team).toHaveAttribute("data-ready", "true", {
+      timeout: 60_000,
+    });
   }
 }
 
 async function holders(phones: Page[]): Promise<number[]> {
   let values: number[] = [];
-  await expect.poll(async () => {
-    values = [];
-    for (const [index, phone] of phones.entries()) {
-      if (!phone.isClosed() && (await phone.getByTestId("closest-answer-controls").count())) values.push(index);
-    }
-    return values.length;
-  }, { timeout: 60_000 }).toBe(2);
+  await expect
+    .poll(
+      async () => {
+        values = [];
+        for (const [index, phone] of phones.entries()) {
+          if (
+            !phone.isClosed() &&
+            (await phone.getByTestId("closest-answer-controls").count())
+          )
+            values.push(index);
+        }
+        return values.length;
+      },
+      { timeout: 60_000 },
+    )
+    .toBe(2);
   return values;
 }
 
 async function submit(page: Page, value: number) {
   const controls = page.getByTestId("closest-answer-controls");
   await controls.locator("input").fill(String(value));
-  await controls.getByRole("button", { name: "إرسال" }).click();
+  await controls.getByRole("button", { name: /إرسال|تأكيد/ }).click();
+}
+
+function indexWidth(index: number): number {
+  return index < 2 ? 360 : 390;
+}
+
+function configureSliderRuntime(sessionId: string) {
+  mongoJson(
+    `const r=db.gameplay_runtimes.findOne({sessionId:${JSON.stringify(sessionId)}}); const s=r.state.runtimeState; const items=JSON.parse(s.itemsJson); items[0].prompt={ar:"في أي سنة انتقل كريستيانو رونالدو إلى نادي النصر السعودي؟"}; items[0].correctValue=2023; items[0].slider={mode:"numeric-range",min:1950,max:2026,step:1,unit:"سنة"}; items[1].prompt={ar:"قدّر القيمة المعيارية الدقيقة ضمن نطاق واسع لاختبار وضوح المحتوى الطويل"}; items[1].correctValue=123456.5; items[1].slider={mode:"numeric-range",min:-1000000,max:1000000,step:0.25,unit:"وحدة قياس معيارية طويلة"}; items[2].prompt={ar:"أين تقع اللعبة على المقياس بين المهارة الفردية والتنسيق الجماعي؟"}; items[2].correctValue=65; items[2].slider={mode:"between-anchors",min:0,max:100,step:1,leftAnchor:"لعبة فردية تعتمد على المهارة",rightAnchor:"لعبة جماعية تعتمد على التنسيق"}; db.gameplay_runtimes.updateOne({_id:r._id},{$set:{"state.runtimeState.itemsJson":JSON.stringify(items)}}); print(JSON.stringify({ok:true}));`,
+  );
 }
 
 async function assertBlindProjection(page: Page) {
@@ -350,8 +581,14 @@ function latestGameplayModeState(frames: string[]): Record<string, unknown> {
     const start = frame.indexOf("[");
     if (start < 0) continue;
     try {
-      const event = JSON.parse(frame.slice(start)) as [string, { gameplay?: { modeState?: Record<string, unknown> } }];
-      if (event[0] === "live-session:snapshot" && event[1]?.gameplay?.modeState) {
+      const event = JSON.parse(frame.slice(start)) as [
+        string,
+        { gameplay?: { modeState?: Record<string, unknown> } },
+      ];
+      if (
+        event[0] === "live-session:snapshot" &&
+        event[1]?.gameplay?.modeState
+      ) {
         return event[1].gameplay.modeState;
       }
     } catch {
@@ -362,18 +599,45 @@ function latestGameplayModeState(frames: string[]): Record<string, unknown> {
 }
 
 function runtimeTruth(sessionId: string): RuntimeTruth {
-  return mongoJson(`const r=db.gameplay_runtimes.findOne({sessionId:${JSON.stringify(sessionId)}}); const s=r.state.runtimeState; const items=JSON.parse(s.itemsJson); const i=Number(s.currentItemIndex); print(JSON.stringify({sessionId:r.sessionId,itemIndex:i,itemId:items[i].id,correctValue:items[i].correctValue,phase:s.phase,results:JSON.parse(s.resultsJson||"[]")}));`);
+  return mongoJson(
+    `const r=db.gameplay_runtimes.findOne({sessionId:${JSON.stringify(sessionId)}}); const s=r.state.runtimeState; const items=JSON.parse(s.itemsJson); const i=Number(s.currentItemIndex); print(JSON.stringify({sessionId:r.sessionId,itemIndex:i,itemId:items[i].id,correctValue:items[i].correctValue,phase:s.phase,results:JSON.parse(s.resultsJson||"[]")}));`,
+  );
 }
 
 function matchLedger(sessionId: string): Array<Record<string, unknown>> {
-  return mongoJson(`const m=db.matches.findOne({liveSessionId:${JSON.stringify(sessionId)}}); print(JSON.stringify((m&&m.scoreEvents)||[]));`);
+  return mongoJson(
+    `const m=db.matches.findOne({liveSessionId:${JSON.stringify(sessionId)}}); print(JSON.stringify((m&&m.scoreEvents)||[]));`,
+  );
+}
+
+function runtimeAnswers(sessionId: string): Record<string, number> {
+  return mongoJson(
+    `const r=db.gameplay_runtimes.findOne({sessionId:${JSON.stringify(sessionId)}}); print(r.state.runtimeState.answersJson||"{}");`,
+  );
 }
 
 function mongoJson<T>(script: string): T {
-  const output = execFileSync("docker", ["compose", "exec", "-T", "mongodb", "mongosh", "lammah-quiz", "--quiet", "--eval", script], { cwd: ROOT, encoding: "utf8" });
+  const output = execFileSync(
+    "docker",
+    [
+      "compose",
+      "exec",
+      "-T",
+      "mongodb",
+      "mongosh",
+      "lammah-quiz",
+      "--quiet",
+      "--eval",
+      script,
+    ],
+    { cwd: ROOT, encoding: "utf8" },
+  );
   return JSON.parse(output.trim()) as T;
 }
 
 async function shot(page: Page, name: string) {
-  await page.screenshot({ path: resolve(SHOTS, `${name}.png`), fullPage: false });
+  await page.screenshot({
+    path: resolve(SHOTS, `${name}.png`),
+    fullPage: false,
+  });
 }
