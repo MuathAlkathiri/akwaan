@@ -1047,8 +1047,10 @@ done or scheduled.
 
 **Product review:** ✅ **PRODUCT REVIEW PASSED** (2026-09-16)
 
-**Release state before deployment:** ⬜ not committed · ⬜ not pushed · ⬜ not deployed ·
-⬜ not Production-verified.
+**Release state:** ✅ committed & pushed · ✅ frontend source deployed and verified ·
+✅ backend health/database connectivity verified · ⚠️ backend running SHA not exposed by Render ·
+⬜ authenticated legacy Production gameplay smoke pending access ·
+⬜ real slider Production gameplay pending confirmed authored content and access.
 
 Closest remains the single `closest` runtime mechanic. This refresh does not create a new ChallengeType,
 scoring engine, convergence path, realtime architecture, or state store. Its existing server-authoritative
@@ -1095,6 +1097,14 @@ clear restrained ring; the authoritative locked marker is intentionally non-inte
 explicit; Numeric Range reveals format authored units; and Between Anchors reveals preserve the authored
 continuum without exposing normalized implementation numbers. No gameplay, scoring, lifecycle, schema, or
 authority behavior changed in this review pass.
+
+Production release evidence (2026-09-16): Vercel reported the milestone SHA as a successful Production
+deployment; the canonical production home and Match routes returned HTTP 200; and the served Match bundle
+contained the new slider input, value-bubble, Confirm, and A/B/target continuum markers. The Render health
+endpoint returned HTTP 200 with `database: connected` throughout a five-sample window. Render's public surface
+does not expose the exact running SHA. No authenticated Production account or Atlas read-only URI was available
+for this release pass, so legacy gameplay and the presence of a real authored slider item were not guessed or
+fabricated. Production DB writes, content writes, automatic migrations, and R2 writes remained zero.
 
 ---
 
