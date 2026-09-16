@@ -1552,14 +1552,27 @@ under the session controller's identity. Potential unreachable scheduler expiry 
 audit. Source-confirmed only — not reproduced against those mechanics at runtime, and deliberately unchanged in this
 milestone. لا تحرقها itself declares `controller` and is covered by a regression test.
 
-**Not done, deliberately:**
+**Release state.** This is a **source release**, not a Food World rollout.
 
-- ⬜ Not committed
-- ⬜ Not pushed
-- ⬜ Not deployed
-- ⬜ Food Production World not provisioned
-- ⬜ Production content not authored or promoted
-- ⬜ Production gameplay not verified
+- ✅ Implemented and verified locally
+- ✅ Product Review passed
+- ✅ Committed — `74d8b4b` *feat(food): add la-tahriqha signature mechanic*, 37 files
+- ✅ Pushed — `e0e805b..74d8b4b` fast-forward to `origin/main`, no force
+- ✅ Frontend source deployed and verified — the deployed Vercel bundle carries the mechanic's own
+  markers (`la-tahriqha-panel`, `select-la-tahriqha-ingredient`, `lock-la-tahriqha-dish`, «قائد الطبق»,
+  «احترقت», «طبق مثالي»), which is stronger evidence than a build badge
+- ✅ Backend healthy after Render `autoDeploy` on `main` — `/health` returned `200 {status: ok,
+  database: connected}` on every probe across the deployment window, with no 5xx
+- ⚠️ Backend exact running SHA unavailable — the service exposes no version endpoint, and reading the
+  admin metadata route would have meant authenticating against Production. No SHA equivalence is claimed.
+- ⬜ Production Food World not provisioned — the public `/worlds` catalog lists ten Worlds and no Food
+  World, which is the intended state
+- ⬜ Production Food content not promoted
+- ⬜ Production Food gameplay not verified — and it cannot be without provisioning a World, which this
+  milestone deliberately does not do
+
+Nothing in this release provisions Food at runtime. The `PRODUCTION_MECHANICS` entry is a definition
+read by the Admin catalog and by the manual `provision:production-mechanics` CLI; no boot path writes it.
 
 ### 16.3 Approved Signature concepts — one line each
 
