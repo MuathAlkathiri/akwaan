@@ -1,0 +1,587 @@
+{
+  "Shah Rukh Khan": {
+    "celebrity": "Shah Rukh Khan",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.224,
+          "y": 0.32,
+          "width": 0.445,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.299,
+          "y": 0.488,
+          "width": 0.317,
+          "height": 0.086
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.191,
+          "y": 0.21,
+          "width": 0.511,
+          "height": 0.072
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.342,
+          "y": 0.319,
+          "width": 0.208,
+          "height": 0.194
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.216,
+          "y": 0.61,
+          "width": 0.512,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Will Smith": {
+    "celebrity": "Will Smith",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.213,
+          "y": 0.36,
+          "width": 0.554,
+          "height": 0.054
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.298,
+          "y": 0.536,
+          "width": 0.374,
+          "height": 0.091
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.185,
+          "y": 0.216,
+          "width": 0.61,
+          "height": 0.075
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.328,
+          "y": 0.337,
+          "width": 0.296,
+          "height": 0.23
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.2,
+          "y": 0.664,
+          "width": 0.6,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Dwayne Johnson": {
+    "celebrity": "Dwayne Johnson",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.246,
+          "y": 0.355,
+          "width": 0.515,
+          "height": 0.058
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.314,
+          "y": 0.554,
+          "width": 0.384,
+          "height": 0.091
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.211,
+          "y": 0.232,
+          "width": 0.236,
+          "height": 0.075
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.37,
+          "y": 0.337,
+          "width": 0.264,
+          "height": 0.239
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.23,
+          "y": 0.703,
+          "width": 0.568,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Keanu Reeves": {
+    "celebrity": "Keanu Reeves",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.282,
+          "y": 0.338,
+          "width": 0.42,
+          "height": 0.067
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.339,
+          "y": 0.534,
+          "width": 0.294,
+          "height": 0.062
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.247,
+          "y": 0.228,
+          "width": 0.49,
+          "height": 0.075
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.395,
+          "y": 0.331,
+          "width": 0.188,
+          "height": 0.213
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.248,
+          "y": 0.642,
+          "width": 0.496,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Morgan Freeman": {
+    "celebrity": "Morgan Freeman",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.283,
+          "y": 0.369,
+          "width": 0.524,
+          "height": 0.086
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.38,
+          "y": 0.57,
+          "width": 0.33,
+          "height": 0.103
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.245,
+          "y": 0.201,
+          "width": 0.588,
+          "height": 0.107
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.397,
+          "y": 0.368,
+          "width": 0.3,
+          "height": 0.235
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.25,
+          "y": 0.669,
+          "width": 0.564,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Angelina Jolie": {
+    "celebrity": "Angelina Jolie",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.24,
+          "y": 0.357,
+          "width": 0.501,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.343,
+          "y": 0.534,
+          "width": 0.326,
+          "height": 0.101
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.207,
+          "y": 0.262,
+          "width": 0.564,
+          "height": 0.061
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.415,
+          "y": 0.361,
+          "width": 0.164,
+          "height": 0.209
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.244,
+          "y": 0.651,
+          "width": 0.514,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Scarlett Johansson": {
+    "celebrity": "Scarlett Johansson",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.313,
+          "y": 0.278,
+          "width": 0.482,
+          "height": 0.067
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.453,
+          "y": 0.409,
+          "width": 0.272,
+          "height": 0.122
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.277,
+          "y": 0.133,
+          "width": 0.535,
+          "height": 0.085
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.501,
+          "y": 0.263,
+          "width": 0.172,
+          "height": 0.177
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.256,
+          "y": 0.572,
+          "width": 0.524,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Amitabh Bachchan": {
+    "celebrity": "Amitabh Bachchan",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.329,
+          "y": 0.393,
+          "width": 0.482,
+          "height": 0.054
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.374,
+          "y": 0.581,
+          "width": 0.374,
+          "height": 0.084
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.284,
+          "y": 0.275,
+          "width": 0.547,
+          "height": 0.075
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.466,
+          "y": 0.363,
+          "width": 0.272,
+          "height": 0.247
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.204,
+          "y": 0.716,
+          "width": 0.582,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Salman Khan": {
+    "celebrity": "Salman Khan",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.366,
+          "y": 0.397,
+          "width": 0.476,
+          "height": 0.054
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.478,
+          "y": 0.587,
+          "width": 0.31,
+          "height": 0.077
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.311,
+          "y": 0.223,
+          "width": 0.545,
+          "height": 0.109
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.524,
+          "y": 0.373,
+          "width": 0.232,
+          "height": 0.228
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.268,
+          "y": 0.739,
+          "width": 0.574,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  }
+}

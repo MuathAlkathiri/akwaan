@@ -1,0 +1,587 @@
+{
+  "Rihanna": {
+    "celebrity": "Rihanna",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.3,
+          "y": 0.3,
+          "width": 0.45,
+          "height": 0.05
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.4,
+          "y": 0.43,
+          "width": 0.31,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.25,
+          "y": 0.02,
+          "width": 0.5,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.15,
+          "y": 0.82,
+          "width": 0.35,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.3,
+          "y": 0.65,
+          "width": 0.5,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Drake": {
+    "celebrity": "Drake",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.24,
+          "y": 0.33,
+          "width": 0.5,
+          "height": 0.07
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.37,
+          "y": 0.52,
+          "width": 0.4,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.17,
+          "y": 0.02,
+          "width": 0.6,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.7,
+          "y": 0.45,
+          "width": 0.15,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.16,
+          "y": 0.75,
+          "width": 0.7,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Ed Sheeran": {
+    "celebrity": "Ed Sheeran",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.26,
+          "y": 0.42,
+          "width": 0.5,
+          "height": 0.06
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.35,
+          "y": 0.62,
+          "width": 0.4,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.21,
+          "y": 0.1,
+          "width": 0.6,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.75,
+          "y": 0.35,
+          "width": 0.15,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.22,
+          "y": 0.75,
+          "width": 0.6,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "The Weeknd": {
+    "celebrity": "The Weeknd",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.324,
+          "y": 0.355,
+          "width": 0.406,
+          "height": 0.035
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.346,
+          "y": 0.455,
+          "width": 0.371,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.281,
+          "y": 0.213,
+          "width": 0.473,
+          "height": 0.09
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.4,
+          "y": 0.75,
+          "width": 0.3,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.242,
+          "y": 0.615,
+          "width": 0.514,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Shakira": {
+    "celebrity": "Shakira",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.3,
+          "y": 0.28,
+          "width": 0.4,
+          "height": 0.05
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.35,
+          "y": 0.4,
+          "width": 0.35,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.297,
+          "y": 0.163,
+          "width": 0.449,
+          "height": 0.067
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.65,
+          "y": 0.35,
+          "width": 0.25,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.264,
+          "y": 0.525,
+          "width": 0.454,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Snoop Dogg": {
+    "celebrity": "Snoop Dogg",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.08,
+          "y": 0.28,
+          "width": 0.5,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.16,
+          "y": 0.51,
+          "width": 0.36,
+          "height": 0.18
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.05,
+          "y": 0.05,
+          "width": 0.6,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.75,
+          "y": 0.7,
+          "width": 0.2,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.15,
+          "y": 0.75,
+          "width": 0.4,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Lady Gaga": {
+    "celebrity": "Lady Gaga",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.11,
+          "y": 0.31,
+          "width": 0.54,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.2,
+          "y": 0.49,
+          "width": 0.36,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.1,
+          "y": 0.023,
+          "width": 0.605,
+          "height": 0.19
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.7,
+          "y": 0.3,
+          "width": 0.2,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.14,
+          "y": 0.672,
+          "width": 0.672,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Bruno Mars": {
+    "celebrity": "Bruno Mars",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.26,
+          "y": 0.25,
+          "width": 0.36,
+          "height": 0.07
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.367,
+          "y": 0.387,
+          "width": 0.253,
+          "height": 0.094
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.237,
+          "y": 0.009,
+          "width": 0.42,
+          "height": 0.187
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.15,
+          "y": 0.15,
+          "width": 0.15,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.26,
+          "y": 0.514,
+          "width": 0.442,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Billie Eilish": {
+    "celebrity": "Billie Eilish",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.29,
+          "y": 0.33,
+          "width": 0.5,
+          "height": 0.07
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.398,
+          "y": 0.505,
+          "width": 0.365,
+          "height": 0.115
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.267,
+          "y": 0.155,
+          "width": 0.564,
+          "height": 0.117
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.15,
+          "y": 0.4,
+          "width": 0.15,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.246,
+          "y": 0.656,
+          "width": 0.562,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  }
+}

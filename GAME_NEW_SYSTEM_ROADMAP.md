@@ -1423,7 +1423,7 @@ unexplained — §19 item 19. Preserving the catalog means first establishing wh
 | **Series / المسلسلات** | وش صار بعدها؟ | ⬜ | ⬜ | 🟡 design approved |
 | **Video Games / فيديو قيمز** | المرحلة | ✅ `marhala` plugin, launcher, on-demand supplier, content policy, ChallengeType | ✅ `slot_4` bound to `marhala` in the **local/dev** runtime; ⚠️ content is 19 dev fixtures, not authored | ✅ mechanic / ✅ local rollout / ⚠️ content / ⬜ not deployed (§17) |
 | **Anime / الأنمي** | الكومبو | ✅ `combo` plugin, launcher, content policy, ChallengeType | ✅ `slot_2` bound to `combo` and ✅ **84 authored الكومبو items across all 7 Anime Scopes** in the **local/dev** runtime; ⬜ not deployed | ✅ mechanic / ✅ local rollout / ✅ local content (§16.4) |
-| **Celebrities / المشاهير** | اكشفني | ✅ `ekshifni` plugin, launcher, content policy, ChallengeType, Admin authoring | ✅ **source deployed** (`9083eb1`) and **Production shell provisioned**: `celebrities` draft World, board = `ekshifni` + RYO + Closest + Bomb, `ekshifni` bound to Celebrities and nowhere else; ⛔ 0 Scopes, 0 content, no media; ⬜ World not activated, ⬜ Production gameplay not run | ✅ mechanic / ✅ product review / ✅ source deployed / ✅ Production shell / 🚧 blocked on content taxonomy (§16.9) |
+| **Celebrities / المشاهير** | اكشفني | ✅ `ekshifni` plugin, launcher, content policy, ChallengeType, Admin authoring | ✅ **source deployed** (`9083eb1`) and **Production shell provisioned**: `celebrities` draft World, board = `ekshifni` + RYO + Closest + Bomb, `ekshifni` bound to Celebrities and nowhere else; ✅ Production taxonomy migrated (5 Scopes); ⬜ Content NOT AUTHORED; ⬜ World not activated, ⬜ Production gameplay not run | ✅ mechanic / ✅ product review / ✅ source deployed / ✅ Production shell / 🚧 blocked on content taxonomy (§16.9) |
 | **Saudi Arabia / السعودية** | *undecided* | — | — | ⬜ |
 | **Cars / السيارات** | *undecided* | — | — | ⬜ |
 | **Sports / الرياضة** | *undecided* | — | — | ⬜ |
@@ -1945,7 +1945,7 @@ mutated, and none may be described as a decision unless separately approved:
 | Local/dev Celebrities World + board rollout | ✅ **PROVISIONED (draft)** |
 | Source deployment | ✅ **COMMITTED, PUSHED, DEPLOYED** — `9083eb1`, frontend and backend both verified in Production (§16.9.1) |
 | Production runtime shell | ✅ **PROVISIONED** — `ekshifni` ChallengeType, `celebrities` draft World, four-slot board (§16.9.1) |
-| Celebrities Scope taxonomy | ⛔ **NOT DECIDED** — content workstream |
+| Celebrities Scope taxonomy | ✅ **PRODUCT APPROVED** (5 canonical Scopes) |
 | Content | ⬜ **NOT AUTHORED** |
 | Content media / World card asset | ⬜ **NOT CREATED** |
 | Real Production gameplay | ⬜ **NOT RUN** — no content exists to play |
@@ -2051,6 +2051,20 @@ celebrities.
 - **No Celebrities Scopes exist and none were invented.** §16.8's candidate Scope direction covers Movies, Music
   and Cars only, and is explicitly not approved taxonomy. Celebrities Scope taxonomy is a content-workstream
   decision.
+
+
+#### Celebrities Taxonomy & Authoring Status (Content Workstream)
+
+- **Celebrities Scope taxonomy:** ✅ **PRODUCTION TAXONOMY MIGRATED & VERIFIED** (New 10-Scope taxonomy: arab-acting-stars, non-arab-acting-stars, arab-music-stars, non-arab-music-stars, arab-sports-stars, non-arab-sports-stars, arab-content-creators, non-arab-content-creators, arab-media-stars, non-arab-media-stars. Previous 5-Scope taxonomy is SUPERSEDED).
+- **Production Scope state:** ✅ **MIGRATED & VERIFIED** (10 canonical Scopes active in Production DB).
+- **Celebrity candidate pool:** 🟡 **HUMAN PRODUCT APPROVED** (V3.1 pool: 100 real humans, 20 per Scope, 0 duplicates, 0 brands/groups).
+- **Real-person media authoring rule:** ✅ **APPROVED** (Authentic real-person photography only, no generated/synthetic faces, high subject prominence).
+- **Content authoring status:** 🚧 **IN PROGRESS**
+  - `acting-stars` pilot: 18/18 authored locally (ready for Human Product review).
+  - other four Scopes: ⬜ not authored.
+- **INITIAL LAUNCH CONTENT BASELINE (Target only, content does NOT exist yet):**
+  - **Per Scope:** ekshifni (9), RYO (3), Closest (3), Bomb (3) = **18 items**
+  - **World Total:** ekshifni (90), RYO (30), Closest (30), Bomb (30) = **180 items**
 
 #### Defect found by the rollout
 
@@ -4030,3 +4044,22 @@ Human Product then:
 - approved Overwatch Reaper concept
 
 Therefore: QA assists Human Product. It does not replace Human Product.
+
+### 27.4 Celebrities Ekshifni Content Authoring Milestone
+
+**Current Status:**
+✅ **Ekshifni source-image selection**: 90/90 Human Product Approved
+✅ **Identity/authenticity/gameplay-image review**: complete for the 90 selected Ekshifni source images
+⚠️ **Production rights/compliance**: NOT VERIFIED
+⬜ **Production media readiness/promotion**: NOT COMPLETE
+⬜ **Production Ekshifni ContentItems / media promotion**: NOT COMPLETE
+⬜ **Full Geometry authoring**: NOT COMPLETE
+✅ **Arab Acting Geometry**: 9/9 Human Product Approved
+✅ **Non-Arab Acting Geometry**: 9/9 Human Product Approved
+✅ **Arab Music Geometry**: 9/9 Human Product Approved
+✅ **Non-Arab Music Geometry**: 9/9 Human Product Approved
+✅ **Arab Sports Geometry**: 9/9 Human Product Approved
+✅ **Non-Arab Sports Geometry**: 9/9 Human Product Approved
+🚧 **Overall Geometry**: IN PROGRESS
+
+*Note: The Celebrities World remains inactive in Production, and ContentItems have not been mutated. This phase represents local authoring and Product review.*

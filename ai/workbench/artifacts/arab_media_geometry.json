@@ -1,0 +1,587 @@
+{
+  "Essam El-Shawaly": {
+    "celebrity": "Essam El-Shawaly",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.35,
+          "y": 0.3,
+          "width": 0.4,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.45,
+          "y": 0.55,
+          "width": 0.35,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.284,
+          "y": 0.033,
+          "width": 0.403,
+          "height": 0.225
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.18,
+          "y": 0.38,
+          "width": 0.12,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.279,
+          "y": 0.687,
+          "width": 0.436,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "George Kurdahi": {
+    "celebrity": "George Kurdahi",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.35,
+          "y": 0.13,
+          "width": 0.3,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.4,
+          "y": 0.25,
+          "width": 0.2,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.35,
+          "y": 0.02,
+          "width": 0.35,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.45,
+          "y": 0.38,
+          "width": 0.15,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.352,
+          "y": 0.311,
+          "width": 0.321,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Ali Jaber": {
+    "celebrity": "Ali Jaber",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.3,
+          "y": 0.32,
+          "width": 0.45,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.372,
+          "y": 0.495,
+          "width": 0.217,
+          "height": 0.119
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.4,
+          "y": 0.05,
+          "width": 0.4,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.45,
+          "y": 0.55,
+          "width": 0.15,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.364,
+          "y": 0.652,
+          "width": 0.277,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Mona El Shazly": {
+    "celebrity": "Mona El Shazly",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.3,
+          "y": 0.28,
+          "width": 0.25,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.367,
+          "y": 0.397,
+          "width": 0.135,
+          "height": 0.079
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.331,
+          "y": 0.203,
+          "width": 0.185,
+          "height": 0.077
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.65,
+          "y": 0.65,
+          "width": 0.15,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.35,
+          "y": 0.489,
+          "width": 0.219,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Amr Adib": {
+    "celebrity": "Amr Adib",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.35,
+          "y": 0.16,
+          "width": 0.2,
+          "height": 0.05
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.387,
+          "y": 0.238,
+          "width": 0.147,
+          "height": 0.035
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.35,
+          "y": 0.05,
+          "width": 0.2,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.8,
+          "y": 0.4,
+          "width": 0.1,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.372,
+          "y": 0.292,
+          "width": 0.187,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Halima Boland": {
+    "celebrity": "Halima Boland",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.28,
+          "y": 0.26,
+          "width": 0.35,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.334,
+          "y": 0.419,
+          "width": 0.246,
+          "height": 0.129
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.25,
+          "y": 0.08,
+          "width": 0.4,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.4,
+          "y": 0.85,
+          "width": 0.2,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.29,
+          "y": 0.575,
+          "width": 0.326,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Bassem Youssef": {
+    "celebrity": "Bassem Youssef",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.35,
+          "y": 0.31,
+          "width": 0.45,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.377,
+          "y": 0.46,
+          "width": 0.314,
+          "height": 0.093
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.379,
+          "y": 0.085,
+          "width": 0.388,
+          "height": 0.179
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.65,
+          "y": 0.85,
+          "width": 0.25,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.306,
+          "y": 0.583,
+          "width": 0.444,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Ahmad Al-Shugairi": {
+    "celebrity": "Ahmad Al-Shugairi",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.38,
+          "y": 0.26,
+          "width": 0.25,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.45,
+          "y": 0.4,
+          "width": 0.2,
+          "height": 0.13
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.35,
+          "y": 0.12,
+          "width": 0.3,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.25,
+          "y": 0.7,
+          "width": 0.1,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.3,
+          "y": 0.516,
+          "width": 0.334,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Khadija Benguenna": {
+    "celebrity": "Khadija Benguenna",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.25,
+          "y": 0.2,
+          "width": 0.35,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.312,
+          "y": 0.359,
+          "width": 0.218,
+          "height": 0.087
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.26,
+          "y": 0.08,
+          "width": 0.35,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.65,
+          "y": 0.7,
+          "width": 0.2,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.263,
+          "y": 0.482,
+          "width": 0.326,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  }
+}

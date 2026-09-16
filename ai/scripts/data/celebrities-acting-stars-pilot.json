@@ -1,0 +1,855 @@
+[
+  {
+    "variant": "ekshifni",
+    "targetAnswer": "سعاد عبدالله",
+    "acceptedAnswers": [
+      "سعاد عبدالله",
+      "Suad Abdullah"
+    ],
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.5,
+          "y": 0.25,
+          "width": 0.22,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.45,
+          "y": 0.08,
+          "width": 0.25,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.55,
+          "y": 0.42,
+          "width": 0.15,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.35,
+          "y": 0.7,
+          "width": 0.4,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.72,
+          "y": 0.35,
+          "width": 0.12,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.1,
+          "y": 0.65,
+          "width": 0.15,
+          "height": 0.2
+        }
+      }
+    ],
+    "media": {
+      "type": "image",
+      "assets": [
+        {
+          "url": "ai/review/assets/celebrities-media-samples/suad-abdullah.jpg",
+          "provenance": {
+            "source": "https://alchetron.com/Souad-Abdullah"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "variant": "ekshifni",
+    "targetAnswer": "حياة الفهد",
+    "acceptedAnswers": [
+      "حياة الفهد",
+      "Hayat Al-Fahad"
+    ],
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.48,
+          "y": 0.15,
+          "width": 0.15,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.46,
+          "y": 0.08,
+          "width": 0.15,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.5,
+          "y": 0.23,
+          "width": 0.12,
+          "height": 0.07
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.4,
+          "y": 0.55,
+          "width": 0.25,
+          "height": 0.3
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.6,
+          "y": 0.5,
+          "width": 0.18,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.1,
+          "y": 0.3,
+          "width": 0.2,
+          "height": 0.4
+        }
+      }
+    ],
+    "media": {
+      "type": "image",
+      "assets": [
+        {
+          "url": "ai/review/assets/celebrities-media-samples/hayat-al-fahad.jpg",
+          "provenance": {
+            "source": "https://alchetron.com/Hayat-Al-Fahad"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "variant": "ekshifni",
+    "targetAnswer": "عبدالحسين عبدالرضا",
+    "acceptedAnswers": [
+      "عبدالحسين عبدالرضا",
+      "Abdulhussain Abdulredha"
+    ],
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.45,
+          "y": 0.38,
+          "width": 0.2,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.43,
+          "y": 0.2,
+          "width": 0.25,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.48,
+          "y": 0.52,
+          "width": 0.15,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.1,
+          "y": 0.7,
+          "width": 0.25,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.2,
+          "y": 0.05,
+          "width": 0.18,
+          "height": 0.35
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.8,
+          "y": 0.1,
+          "width": 0.15,
+          "height": 0.2
+        }
+      }
+    ],
+    "media": {
+      "type": "image",
+      "assets": [
+        {
+          "url": "ai/review/assets/celebrities-media-samples/abdulhussain-abdulredha.jpg",
+          "provenance": {
+            "source": "https://www.newarab.com/opinion/remembering-abdulhussain-abdulredha-these-top-four-moments"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "variant": "ekshifni",
+    "targetAnswer": "هدى حسين",
+    "acceptedAnswers": [
+      "هدى حسين",
+      "Huda Hussein"
+    ],
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.35,
+          "y": 0.35,
+          "width": 0.45,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.25,
+          "y": 0.1,
+          "width": 0.5,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.38,
+          "y": 0.52,
+          "width": 0.25,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.6,
+          "y": 0.75,
+          "width": 0.3,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.2,
+          "y": 0.42,
+          "width": 0.1,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.0,
+          "y": 0.0,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ],
+    "media": {
+      "type": "image",
+      "assets": [
+        {
+          "url": "ai/review/assets/celebrities-media-samples/huda-hussein.jpg",
+          "provenance": {
+            "source": "https://en.hibamusic.com/Kuwait/huda-hussain/huda-hussain-1668.htm"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "variant": "ekshifni",
+    "targetAnswer": "ريم عبدالله",
+    "acceptedAnswers": [
+      "ريم عبدالله",
+      "Reem Abdullah"
+    ],
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.1,
+          "y": 0.2,
+          "width": 0.55,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.1,
+          "y": 0.0,
+          "width": 0.4,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.35,
+          "y": 0.6,
+          "width": 0.3,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.6,
+          "y": 0.7,
+          "width": 0.4,
+          "height": 0.3
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.1,
+          "y": 0.72,
+          "width": 0.18,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.75,
+          "y": 0.0,
+          "width": 0.25,
+          "height": 0.15
+        }
+      }
+    ],
+    "media": {
+      "type": "image",
+      "assets": [
+        {
+          "url": "ai/review/assets/celebrities-media-samples/reem-abdullah.jpg",
+          "provenance": {
+            "source": "https://www.listal.com/viewimage/10023266h"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "variant": "ekshifni",
+    "targetAnswer": "ناصر القصبي",
+    "acceptedAnswers": [
+      "ناصر القصبي",
+      "Nasser Al-Qasabi"
+    ],
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.4,
+          "y": 0.3,
+          "width": 0.25,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.45,
+          "y": 0.1,
+          "width": 0.2,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.45,
+          "y": 0.45,
+          "width": 0.15,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.45,
+          "y": 0.65,
+          "width": 0.2,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.3,
+          "y": 0.4,
+          "width": 0.1,
+          "height": 0.3
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.8,
+          "y": 0.5,
+          "width": 0.15,
+          "height": 0.2
+        }
+      }
+    ],
+    "media": {
+      "type": "image",
+      "assets": [
+        {
+          "url": "ai/review/assets/celebrities-media-samples/nasser-al-qasabi.jpg",
+          "provenance": {
+            "source": "https://evobiography.com/en/nasser-al-qasabi/"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "variant": "ekshifni",
+    "targetAnswer": "عبدالله السدحان",
+    "acceptedAnswers": [
+      "عبدالله السدحان",
+      "Abdullah Al-Sadhan"
+    ],
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.25,
+          "y": 0.25,
+          "width": 0.5,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.2,
+          "y": 0.03,
+          "width": 0.5,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.3,
+          "y": 0.4,
+          "width": 0.4,
+          "height": 0.18
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.1,
+          "y": 0.75,
+          "width": 0.3,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.3,
+          "y": 0.55,
+          "width": 0.35,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.0,
+          "y": 0.0,
+          "width": 0.2,
+          "height": 0.25
+        }
+      }
+    ],
+    "media": {
+      "type": "image",
+      "assets": [
+        {
+          "url": "ai/review/assets/celebrities-media-samples/abdullah-al-sadhan.jpg",
+          "provenance": {
+            "source": "https://www.themoviedb.org/person/3057827-abdullah-al-sadhan?language=ar-SA"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "variant": "ekshifni",
+    "targetAnswer": "عادل إمام",
+    "acceptedAnswers": [
+      "عادل إمام",
+      "Adel Emam"
+    ],
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.45,
+          "y": 0.17,
+          "width": 0.25,
+          "height": 0.06
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.35,
+          "y": 0.05,
+          "width": 0.4,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.45,
+          "y": 0.25,
+          "width": 0.25,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.75,
+          "y": 0.55,
+          "width": 0.15,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.4,
+          "y": 0.4,
+          "width": 0.15,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.25,
+          "width": 0.25,
+          "height": 0.15
+        }
+      }
+    ],
+    "media": {
+      "type": "image",
+      "assets": [
+        {
+          "url": "ai/review/assets/celebrities-media-samples/adel-emam.jpg",
+          "provenance": {
+            "source": "https://www.marefa.org/%D9%82%D8%A7%D8%A6%D9%85%D8%A9_%D8%A3%D8%B9%D9%85%D8%A7%D9%84_%D8%B9%D8%A7%D8%AF%D9%84_%D8%A5%D9%85%D8%A7%D9%85"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "variant": "ekshifni",
+    "targetAnswer": "أحمد حلمي",
+    "acceptedAnswers": [
+      "أحمد حلمي",
+      "Ahmed Helmy"
+    ],
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.2,
+          "y": 0.3,
+          "width": 0.55,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.2,
+          "y": 0.05,
+          "width": 0.6,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.25,
+          "y": 0.5,
+          "width": 0.45,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.2,
+          "y": 0.75,
+          "width": 0.6,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.8,
+          "y": 0.45,
+          "width": 0.15,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.0,
+          "y": 0.4,
+          "width": 0.1,
+          "height": 0.2
+        }
+      }
+    ],
+    "media": {
+      "type": "image",
+      "assets": [
+        {
+          "url": "ai/review/assets/celebrities-media-samples/ahmed-helmy.jpg",
+          "provenance": {
+            "source": "https://www.themoviedb.org/person/127783-ahmed-helmy"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "variant": "read-your-opponent",
+    "type": "multiple_choice",
+    "question": {
+      "text": "أي من هذه الشخصيات قدمها النجم أحمد مكي؟"
+    },
+    "options": [
+      {
+        "id": "A",
+        "label": "حزلقوم",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "label": "بهاء",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "label": "اللمبي",
+        "isCorrect": false
+      }
+    ]
+  },
+  {
+    "variant": "read-your-opponent",
+    "type": "multiple_choice",
+    "question": {
+      "text": "أي من هذه الأفلام جمع منى زكي مع أحمد حلمي؟"
+    },
+    "options": [
+      {
+        "id": "A",
+        "label": "سهر الليالي",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "label": "تيمور وشفيقة",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "label": "أبو علي",
+        "isCorrect": false
+      }
+    ]
+  },
+  {
+    "variant": "read-your-opponent",
+    "type": "multiple_choice",
+    "question": {
+      "text": "في أي دولة عربية وُلدت الفنانة هند صبري؟"
+    },
+    "options": [
+      {
+        "id": "A",
+        "label": "تونس",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "label": "مصر",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "label": "المغرب",
+        "isCorrect": false
+      }
+    ]
+  },
+  {
+    "variant": "closest",
+    "question": {
+      "text": "في أي عام فازت نادين نسيب نجيم بلقب ملكة جمال لبنان؟"
+    },
+    "correctValue": 2004
+  },
+  {
+    "variant": "closest",
+    "question": {
+      "text": "في أي عام عُرض فيلم تايتانيك الذي قام ببطولته ليوناردو دي كابريو؟"
+    },
+    "correctValue": 1997
+  },
+  {
+    "variant": "closest",
+    "question": {
+      "text": "كم عدد أجزاء سلسلة المهمة المستحيلة (Mission Impossible) التي صدرت حتى عام 2023 لتوم كروز؟"
+    },
+    "correctValue": 7
+  },
+  {
+    "variant": "bomb",
+    "question": {
+      "text": "ممثل أمريكي بطل فيلم Fight Club"
+    },
+    "acceptedAnswers": [
+      "براد بيت",
+      "Brad Pitt"
+    ]
+  },
+  {
+    "variant": "bomb",
+    "question": {
+      "text": "ممثل أمريكي اشتهر بدور الكابتن جاك سبارو"
+    },
+    "acceptedAnswers": [
+      "جوني ديب",
+      "Johnny Depp"
+    ]
+  },
+  {
+    "variant": "bomb",
+    "question": {
+      "text": "ممثل أمريكي اشتهر بدور آيرون مان"
+    },
+    "acceptedAnswers": [
+      "روبرت داوني جونيور",
+      "روبرت داوني",
+      "Robert Downey Jr"
+    ]
+  }
+]

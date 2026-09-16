@@ -1,0 +1,587 @@
+{
+  "Jimmy Fallon": {
+    "celebrity": "Jimmy Fallon",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.18,
+          "y": 0.36,
+          "width": 0.5,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.25,
+          "y": 0.55,
+          "width": 0.4,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.25,
+          "y": 0.02,
+          "width": 0.45,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.4,
+          "y": 0.85,
+          "width": 0.2,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.0,
+          "y": 0.7,
+          "width": 1.0,
+          "height": 0.3
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Ellen DeGeneres": {
+    "celebrity": "Ellen DeGeneres",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.25,
+          "y": 0.31,
+          "width": 0.4,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.3,
+          "y": 0.5,
+          "width": 0.3,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.25,
+          "y": 0.08,
+          "width": 0.45,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.15,
+          "y": 0.9,
+          "width": 0.15,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.0,
+          "y": 0.65,
+          "width": 1.0,
+          "height": 0.35
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.15,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Simon Cowell": {
+    "celebrity": "Simon Cowell",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.25,
+          "y": 0.29,
+          "width": 0.4,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.3,
+          "y": 0.45,
+          "width": 0.35,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.2,
+          "y": 0.02,
+          "width": 0.5,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.15,
+          "y": 0.7,
+          "width": 0.15,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.0,
+          "y": 0.6,
+          "width": 1.0,
+          "height": 0.4
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Dr. Phil": {
+    "celebrity": "Dr. Phil",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.3,
+          "y": 0.36,
+          "width": 0.4,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.337,
+          "y": 0.535,
+          "width": 0.37,
+          "height": 0.09
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.3,
+          "y": 0.1,
+          "width": 0.45,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.55,
+          "y": 0.75,
+          "width": 0.15,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.021,
+          "y": 0.659,
+          "width": 0.979,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Steve Irwin": {
+    "celebrity": "Steve Irwin",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.35,
+          "y": 0.16,
+          "width": 0.2,
+          "height": 0.05
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.384,
+          "y": 0.259,
+          "width": 0.116,
+          "height": 0.049
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.3,
+          "y": 0.05,
+          "width": 0.25,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.8,
+          "y": 0.28,
+          "width": 0.1,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.25,
+          "y": 0.65,
+          "width": 0.5,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Tyra Banks": {
+    "celebrity": "Tyra Banks",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.3,
+          "y": 0.28,
+          "width": 0.45,
+          "height": 0.06
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.402,
+          "y": 0.421,
+          "width": 0.269,
+          "height": 0.078
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.3,
+          "y": 0.1,
+          "width": 0.45,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.65,
+          "y": 0.85,
+          "width": 0.15,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.124,
+          "y": 0.527,
+          "width": 0.829,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Paris Hilton": {
+    "celebrity": "Paris Hilton",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.35,
+          "y": 0.29,
+          "width": 0.35,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.435,
+          "y": 0.413,
+          "width": 0.254,
+          "height": 0.123
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.3,
+          "y": 0.02,
+          "width": 0.4,
+          "height": 0.18
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.25,
+          "y": 0.45,
+          "width": 0.15,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.108,
+          "y": 0.544,
+          "width": 0.809,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Larry King": {
+    "celebrity": "Larry King",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.25,
+          "y": 0.33,
+          "width": 0.45,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.37,
+          "y": 0.521,
+          "width": 0.297,
+          "height": 0.094
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.25,
+          "y": 0.05,
+          "width": 0.5,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.4,
+          "y": 0.85,
+          "width": 0.15,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.034,
+          "y": 0.642,
+          "width": 0.925,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Jeremy Clarkson": {
+    "celebrity": "Jeremy Clarkson",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.38,
+          "y": 0.2,
+          "width": 0.25,
+          "height": 0.05
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.433,
+          "y": 0.31,
+          "width": 0.138,
+          "height": 0.063
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.3,
+          "y": 0.02,
+          "width": 0.4,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.7,
+          "y": 0.7,
+          "width": 0.15,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.249,
+          "y": 0.401,
+          "width": 0.468,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  }
+}

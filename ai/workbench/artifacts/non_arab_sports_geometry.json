@@ -1,0 +1,587 @@
+{
+  "Zinedine Zidane": {
+    "celebrity": "Zinedine Zidane",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.18,
+          "y": 0.3,
+          "width": 0.38,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.23,
+          "y": 0.47,
+          "width": 0.27,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.25,
+          "y": 0.1,
+          "width": 0.4,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.3,
+          "y": 0.75,
+          "width": 0.15,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.2,
+          "y": 0.583,
+          "width": 0.466,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Diego Maradona": {
+    "celebrity": "Diego Maradona",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.34,
+          "y": 0.26,
+          "width": 0.4,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.424,
+          "y": 0.39,
+          "width": 0.275,
+          "height": 0.082
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.309,
+          "y": 0.077,
+          "width": 0.444,
+          "height": 0.133
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.736,
+          "y": 0.281,
+          "width": 0.15,
+          "height": 0.054
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.05,
+          "y": 0.8,
+          "width": 0.3,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Pel\u00e9": {
+    "celebrity": "Pel\u00e9",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.2,
+          "y": 0.4,
+          "width": 0.5,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.253,
+          "y": 0.571,
+          "width": 0.419,
+          "height": 0.161
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.192,
+          "y": 0.207,
+          "width": 0.499,
+          "height": 0.147
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.53,
+          "y": 0.85,
+          "width": 0.18,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.238,
+          "y": 0.742,
+          "width": 0.53,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Muhammad Ali": {
+    "celebrity": "Muhammad Ali",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.12,
+          "y": 0.32,
+          "width": 0.58,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.2,
+          "y": 0.52,
+          "width": 0.45,
+          "height": 0.18
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.089,
+          "y": 0.0,
+          "width": 0.66,
+          "height": 0.263
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.1,
+          "y": 0.85,
+          "width": 0.25,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.15,
+          "y": 0.695,
+          "width": 0.668,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Mike Tyson": {
+    "celebrity": "Mike Tyson",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.18,
+          "y": 0.31,
+          "width": 0.65,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.25,
+          "y": 0.52,
+          "width": 0.5,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.25,
+          "y": 0.05,
+          "width": 0.45,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.7,
+          "y": 0.38,
+          "width": 0.18,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.116,
+          "y": 0.738,
+          "width": 0.75,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Khabib Nurmagomedov": {
+    "celebrity": "Khabib Nurmagomedov",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.115,
+          "y": 0.321,
+          "width": 0.624,
+          "height": 0.102
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.25,
+          "y": 0.56,
+          "width": 0.45,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.15,
+          "y": 0.05,
+          "width": 0.6,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.83,
+          "y": 0.35,
+          "width": 0.12,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.084,
+          "y": 0.719,
+          "width": 0.754,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Roger Federer": {
+    "celebrity": "Roger Federer",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.34,
+          "y": 0.38,
+          "width": 0.4,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.35,
+          "y": 0.58,
+          "width": 0.35,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.2,
+          "y": 0.05,
+          "width": 0.3,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.2,
+          "y": 0.23,
+          "width": 0.25,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.242,
+          "y": 0.693,
+          "width": 0.496,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Rafael Nadal": {
+    "celebrity": "Rafael Nadal",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.18,
+          "y": 0.41,
+          "width": 0.5,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.265,
+          "y": 0.593,
+          "width": 0.4,
+          "height": 0.142
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.15,
+          "y": 0.05,
+          "width": 0.55,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.35,
+          "y": 0.82,
+          "width": 0.15,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.194,
+          "y": 0.75,
+          "width": 0.586,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Serena Williams": {
+    "celebrity": "Serena Williams",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.16,
+          "y": 0.24,
+          "width": 0.55,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.236,
+          "y": 0.459,
+          "width": 0.48,
+          "height": 0.166
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.15,
+          "y": 0.05,
+          "width": 0.55,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.05,
+          "y": 0.5,
+          "width": 0.15,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "outfit",
+        "shape": {
+          "x": 0.182,
+          "y": 0.635,
+          "width": 0.584,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  }
+}

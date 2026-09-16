@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Non-Arab Acting Stars - Clear-Window Geometry Review</title>
+    <style>
+        body { font-family: system-ui; background: #0f172a; color: white; padding: 20px; }
+        .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 30px; }
+        .card { background: #1e293b; border-radius: 8px; padding: 15px; border: 1px solid #334155; }
+        .image-container { 
+            position: relative; width: 100%; aspect-ratio: 1; 
+            background-color: #000; overflow: hidden; border-radius: 4px;
+        }
+        .window-slice {
+            position: absolute;
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .window-slice.active {
+            opacity: 1;
+        }
+        .debug-outline {
+            position: absolute;
+            border: 2px solid red;
+            box-sizing: border-box;
+            background: rgba(255, 0, 0, 0.2);
+            pointer-events: none;
+            display: none;
+        }
+        .show-debug .debug-outline {
+            display: block;
+        }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px; }
+        button { background: #3b82f6; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; }
+        button.active { background: #10b981; }
+        button:hover { opacity: 0.9; }
+        .btn-all { background: #6366f1; grid-column: 1 / -1; }
+        .btn-debug { background: #ef4444; grid-column: 1 / -1; }
+        .coords { font-family: monospace; font-size: 11px; color: #94a3b8; margin-top: 10px; white-space: pre; }
+    </style>
+</head>
+<body>
+    <h1>Non-Arab Acting Stars — Geometry Pilot Review</h1>
+    <div class="gallery" id="gallery"></div>
+
+    <script>
+        fetch('../workbench/artifacts/non_arab_acting_geometry.json').then(r => r.json()).then(data => {
+            const gallery = document.getElementById('gallery');
+            
+            // Generate mapping dynamically using simple lowercase replacements
+            const getImageFilename = (name) => {
+                let filename = name.toLowerCase().replace(/ /g, '_');
+                return filename + '.jpg';
+            };
+
+            for (const [name, payload] of Object.entries(data)) {
+                const card = document.createElement('div');
+                card.className = 'card';
+                // Only specific exception is dwayne_johnson, which is already generic matching
+                const imgSrc = `media/${getImageFilename(name)}`;
+                
+                let slicesHtml = '';
+                let debugHtml = '';
+                let btnsHtml = '';
+                let coordsHtml = '';
+                
+                const windows = payload.regions;
+                
+                windows.forEach(w => {
+                    const l = (w.shape.x * 100).toFixed(2);
+                    const t = (w.shape.y * 100).toFixed(2);
+                    const width = (w.shape.width * 100).toFixed(2);
+                    const height = (w.shape.height * 100).toFixed(2);
+                    
+                    const bgSizeX = (100 / w.shape.width).toFixed(2);
+                    const bgSizeY = (100 / w.shape.height).toFixed(2);
+                    
+                    const bgPosX = w.shape.width === 1 ? 0 : (w.shape.x / (1 - w.shape.width) * 100).toFixed(2);
+                    const bgPosY = w.shape.height === 1 ? 0 : (w.shape.y / (1 - w.shape.height) * 100).toFixed(2);
+
+                    slicesHtml += `<div class="window-slice" id="slice-${name.replace(/ /g,'')}-${w.role}" 
+                        style="left: ${l}%; top: ${t}%; width: ${width}%; height: ${height}%; 
+                        background-image: url('${imgSrc}'); background-size: ${bgSizeX}% ${bgSizeY}%; 
+                        background-position: ${bgPosX}% ${bgPosY}%;"></div>`;
+                        
+                    debugHtml += `<div class="debug-outline" style="left: ${l}%; top: ${t}%; width: ${width}%; height: ${height}%;"></div>`;
+                    
+                    btnsHtml += `<button onclick="toggle('${name.replace(/ /g,'')}', '${w.role}')" id="btn-${name.replace(/ /g,'')}-${w.role}">${w.role}</button>`;
+                    coordsHtml += `${w.role}: x=${w.shape.x.toFixed(3)} y=${w.shape.y.toFixed(3)} w=${w.shape.width.toFixed(3)} h=${w.shape.height.toFixed(3)}\n`;
+                });
+                
+                card.innerHTML = `
+                    <h2>${name}</h2>
+                    <div class="image-container" id="container-${name.replace(/ /g,'')}">
+                        ${slicesHtml}
+                        ${debugHtml}
+                    </div>
+                    <div class="controls">
+                        ${btnsHtml}
+                        <button class="btn-all" onclick="toggleAll('${name.replace(/ /g,'')}')">Toggle All 6</button>
+                        <button class="btn-debug" onclick="toggleDebug('${name.replace(/ /g,'')}')">Toggle Debug Overlay</button>
+                    </div>
+                    <div class="coords">${coordsHtml}</div>
+                `;
+                gallery.appendChild(card);
+            }
+        });
+        
+        function toggle(name, role) {
+            document.getElementById(`slice-${name}-${role}`).classList.toggle('active');
+            document.getElementById(`btn-${name}-${role}`).classList.toggle('active');
+        }
+        function toggleAll(name) {
+            const container = document.getElementById(`container-${name}`);
+            const slices = container.querySelectorAll('.window-slice');
+            const btns = container.nextElementSibling.querySelectorAll('button:not(.btn-all):not(.btn-debug)');
+            const anyHidden = Array.from(slices).some(s => !s.classList.contains('active'));
+            slices.forEach(s => { if(anyHidden) s.classList.add('active'); else s.classList.remove('active'); });
+            btns.forEach(b => { if(anyHidden) b.classList.add('active'); else b.classList.remove('active'); });
+        }
+        function toggleDebug(name) {
+            document.getElementById(`container-${name}`).classList.toggle('show-debug');
+        }
+    </script>
+</body>
+</html>

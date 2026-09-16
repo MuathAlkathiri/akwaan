@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <title>Acting Stars - Clear Window Pilot Review</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { 'brand-gold': '#FBBF24' }
+        }
+      }
+    }
+  </script>
+  <script>
+    function resetWindows(name) {
+      document.querySelectorAll(`#img-container-${name} .window`).forEach(el => el.classList.add('opacity-0'));
+    }
+    
+    function revealAll(name) {
+      document.querySelectorAll(`#img-container-${name} .window`).forEach(el => el.classList.remove('opacity-0'));
+    }
+    
+    function revealRandom(name, count) {
+      resetWindows(name);
+      const windows = Array.from(document.querySelectorAll(`#img-container-${name} .window`));
+      for (let i = windows.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [windows[i], windows[j]] = [windows[j], windows[i]];
+      }
+      for (let i = 0; i < count && i < windows.length; i++) {
+          windows[i].classList.remove('opacity-0');
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 p-8 font-sans text-slate-900 max-w-7xl mx-auto">
+  <h1 class="text-3xl font-black mb-2">Celebrities Pilot: Acting Stars</h1>
+  <p class="text-slate-500 mb-8">9 ekshifni items (UNIQUE VISUAL GEOMETRY)</p>
+  
+  <div class="mb-12">
+    
+    <div class="border rounded-lg p-6 bg-white shadow-sm mb-8" id="card-سعاد عبدالله">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h2 class="text-xl font-bold mb-4">سعاد عبدالله</h2>
+          <ul class="space-y-2 text-sm mb-6">
+            <li><span class="font-semibold text-green-700">SINGLE_WINDOW:</span> MEDIUM</li>
+            <li><span class="font-semibold text-green-700">TWO_WINDOW:</span> HIGH</li>
+            <li><span class="font-semibold text-green-700">ALL_SIX:</span> HIGH</li>
+            <li><span class="font-semibold text-blue-700">AUTHORING:</span> VISUAL FIT (NO TEMPLATE)</li>
+          </ul>
+          
+          <div class="space-y-3">
+            <h3 class="font-semibold text-sm">Interactive Preview</h3>
+            <div class="flex flex-wrap gap-2">
+              
+        <button onclick="document.getElementById('window-سعاد عبدالله-1').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 1 (eyes)
+        </button>
+        
+        <button onclick="document.getElementById('window-سعاد عبدالله-2').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 2 (hair-head)
+        </button>
+        
+        <button onclick="document.getElementById('window-سعاد عبدالله-3').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 3 (mouth-facial-hair)
+        </button>
+        
+        <button onclick="document.getElementById('window-سعاد عبدالله-4').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 4 (outfit)
+        </button>
+        
+        <button onclick="document.getElementById('window-سعاد عبدالله-5').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 5 (distinctive-detail)
+        </button>
+        
+        <button onclick="document.getElementById('window-سعاد عبدالله-6').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 6 (background)
+        </button>
+        
+            </div>
+            <div class="flex flex-wrap gap-2 mt-4">
+              <button onclick="revealRandom('سعاد عبدالله', 1)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 1</button>
+              <button onclick="revealRandom('سعاد عبدالله', 2)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 2</button>
+              <button onclick="revealAll('سعاد عبدالله')" class="px-4 py-2 bg-green-600 text-white rounded text-sm flex-1 font-bold">REVEAL ALL SIX</button>
+              <button onclick="resetWindows('سعاد عبدالله')" class="px-4 py-2 bg-slate-800 text-white rounded text-sm flex-1 font-bold">RESET ALL</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="relative bg-slate-200 rounded-lg flex items-center justify-center overflow-hidden min-h-[400px]">
+          <div id="img-container-سعاد عبدالله" class="relative inline-block max-w-full">
+            <img src="../../ai/review/assets/celebrities-media-samples/suad-abdullah.jpg" class="max-h-[500px] w-auto block object-contain filter blur-xl brightness-50 contrast-125" alt="سعاد عبدالله" />
+            
+        <div id="window-سعاد عبدالله-1" class="window window-1 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 50.0%; top: 25.0%; width: 22.0%; height: 10.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/suad-abdullah.jpg" class="absolute max-w-none" style="width: 454.54545454545456%; height: 1000.0%; left: -227.27272727272728%; top: -250.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">1</div>
+        </div>
+        
+        <div id="window-سعاد عبدالله-2" class="window window-2 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 45.0%; top: 8.0%; width: 25.0%; height: 15.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/suad-abdullah.jpg" class="absolute max-w-none" style="width: 400.0%; height: 666.6666666666667%; left: -180.0%; top: -53.333333333333336%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">2</div>
+        </div>
+        
+        <div id="window-سعاد عبدالله-3" class="window window-3 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 55.00000000000001%; top: 42.0%; width: 15.0%; height: 12.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/suad-abdullah.jpg" class="absolute max-w-none" style="width: 666.6666666666667%; height: 833.3333333333334%; left: -366.6666666666667%; top: -350.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">3</div>
+        </div>
+        
+        <div id="window-سعاد عبدالله-4" class="window window-4 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 35.0%; top: 70.0%; width: 40.0%; height: 25.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/suad-abdullah.jpg" class="absolute max-w-none" style="width: 250.0%; height: 400.0%; left: -87.49999999999999%; top: -280.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">4</div>
+        </div>
+        
+        <div id="window-سعاد عبدالله-5" class="window window-5 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 72.0%; top: 35.0%; width: 12.0%; height: 25.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/suad-abdullah.jpg" class="absolute max-w-none" style="width: 833.3333333333334%; height: 400.0%; left: -600.0%; top: -140.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">5</div>
+        </div>
+        
+        <div id="window-سعاد عبدالله-6" class="window window-6 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 10.0%; top: 65.0%; width: 15.0%; height: 20.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/suad-abdullah.jpg" class="absolute max-w-none" style="width: 666.6666666666667%; height: 500.0%; left: -66.66666666666667%; top: -325.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">6</div>
+        </div>
+        
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="border rounded-lg p-6 bg-white shadow-sm mb-8" id="card-حياة الفهد">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h2 class="text-xl font-bold mb-4">حياة الفهد</h2>
+          <ul class="space-y-2 text-sm mb-6">
+            <li><span class="font-semibold text-green-700">SINGLE_WINDOW:</span> MEDIUM</li>
+            <li><span class="font-semibold text-green-700">TWO_WINDOW:</span> HIGH</li>
+            <li><span class="font-semibold text-green-700">ALL_SIX:</span> HIGH</li>
+            <li><span class="font-semibold text-blue-700">AUTHORING:</span> VISUAL FIT (NO TEMPLATE)</li>
+          </ul>
+          
+          <div class="space-y-3">
+            <h3 class="font-semibold text-sm">Interactive Preview</h3>
+            <div class="flex flex-wrap gap-2">
+              
+        <button onclick="document.getElementById('window-حياة الفهد-1').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 1 (eyes)
+        </button>
+        
+        <button onclick="document.getElementById('window-حياة الفهد-2').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 2 (hair-head)
+        </button>
+        
+        <button onclick="document.getElementById('window-حياة الفهد-3').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 3 (mouth-facial-hair)
+        </button>
+        
+        <button onclick="document.getElementById('window-حياة الفهد-4').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 4 (outfit)
+        </button>
+        
+        <button onclick="document.getElementById('window-حياة الفهد-5').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 5 (distinctive-detail)
+        </button>
+        
+        <button onclick="document.getElementById('window-حياة الفهد-6').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 6 (background)
+        </button>
+        
+            </div>
+            <div class="flex flex-wrap gap-2 mt-4">
+              <button onclick="revealRandom('حياة الفهد', 1)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 1</button>
+              <button onclick="revealRandom('حياة الفهد', 2)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 2</button>
+              <button onclick="revealAll('حياة الفهد')" class="px-4 py-2 bg-green-600 text-white rounded text-sm flex-1 font-bold">REVEAL ALL SIX</button>
+              <button onclick="resetWindows('حياة الفهد')" class="px-4 py-2 bg-slate-800 text-white rounded text-sm flex-1 font-bold">RESET ALL</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="relative bg-slate-200 rounded-lg flex items-center justify-center overflow-hidden min-h-[400px]">
+          <div id="img-container-حياة الفهد" class="relative inline-block max-w-full">
+            <img src="../../ai/review/assets/celebrities-media-samples/hayat-al-fahad.jpg" class="max-h-[500px] w-auto block object-contain filter blur-xl brightness-50 contrast-125" alt="حياة الفهد" />
+            
+        <div id="window-حياة الفهد-1" class="window window-1 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 48.0%; top: 15.0%; width: 15.0%; height: 8.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/hayat-al-fahad.jpg" class="absolute max-w-none" style="width: 666.6666666666667%; height: 1250.0%; left: -320.0%; top: -187.5%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">1</div>
+        </div>
+        
+        <div id="window-حياة الفهد-2" class="window window-2 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 46.0%; top: 8.0%; width: 15.0%; height: 10.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/hayat-al-fahad.jpg" class="absolute max-w-none" style="width: 666.6666666666667%; height: 1000.0%; left: -306.6666666666667%; top: -80.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">2</div>
+        </div>
+        
+        <div id="window-حياة الفهد-3" class="window window-3 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 50.0%; top: 23.0%; width: 12.0%; height: 7.000000000000001%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/hayat-al-fahad.jpg" class="absolute max-w-none" style="width: 833.3333333333334%; height: 1428.5714285714284%; left: -416.6666666666667%; top: -328.57142857142856%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">3</div>
+        </div>
+        
+        <div id="window-حياة الفهد-4" class="window window-4 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 40.0%; top: 55.00000000000001%; width: 25.0%; height: 30.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/hayat-al-fahad.jpg" class="absolute max-w-none" style="width: 400.0%; height: 333.33333333333337%; left: -160.0%; top: -183.33333333333334%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">4</div>
+        </div>
+        
+        <div id="window-حياة الفهد-5" class="window window-5 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 60.0%; top: 50.0%; width: 18.0%; height: 15.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/hayat-al-fahad.jpg" class="absolute max-w-none" style="width: 555.5555555555555%; height: 666.6666666666667%; left: -333.33333333333337%; top: -333.33333333333337%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">5</div>
+        </div>
+        
+        <div id="window-حياة الفهد-6" class="window window-6 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 10.0%; top: 30.0%; width: 20.0%; height: 40.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/hayat-al-fahad.jpg" class="absolute max-w-none" style="width: 500.0%; height: 250.0%; left: -50.0%; top: -74.99999999999999%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">6</div>
+        </div>
+        
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="border rounded-lg p-6 bg-white shadow-sm mb-8" id="card-عبدالحسين عبدالرضا">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h2 class="text-xl font-bold mb-4">عبدالحسين عبدالرضا</h2>
+          <ul class="space-y-2 text-sm mb-6">
+            <li><span class="font-semibold text-green-700">SINGLE_WINDOW:</span> MEDIUM</li>
+            <li><span class="font-semibold text-green-700">TWO_WINDOW:</span> HIGH</li>
+            <li><span class="font-semibold text-green-700">ALL_SIX:</span> HIGH</li>
+            <li><span class="font-semibold text-blue-700">AUTHORING:</span> VISUAL FIT (NO TEMPLATE)</li>
+          </ul>
+          
+          <div class="space-y-3">
+            <h3 class="font-semibold text-sm">Interactive Preview</h3>
+            <div class="flex flex-wrap gap-2">
+              
+        <button onclick="document.getElementById('window-عبدالحسين عبدالرضا-1').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 1 (eyes)
+        </button>
+        
+        <button onclick="document.getElementById('window-عبدالحسين عبدالرضا-2').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 2 (hair-head)
+        </button>
+        
+        <button onclick="document.getElementById('window-عبدالحسين عبدالرضا-3').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 3 (mouth-facial-hair)
+        </button>
+        
+        <button onclick="document.getElementById('window-عبدالحسين عبدالرضا-4').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 4 (outfit)
+        </button>
+        
+        <button onclick="document.getElementById('window-عبدالحسين عبدالرضا-5').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 5 (distinctive-detail)
+        </button>
+        
+        <button onclick="document.getElementById('window-عبدالحسين عبدالرضا-6').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 6 (background)
+        </button>
+        
+            </div>
+            <div class="flex flex-wrap gap-2 mt-4">
+              <button onclick="revealRandom('عبدالحسين عبدالرضا', 1)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 1</button>
+              <button onclick="revealRandom('عبدالحسين عبدالرضا', 2)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 2</button>
+              <button onclick="revealAll('عبدالحسين عبدالرضا')" class="px-4 py-2 bg-green-600 text-white rounded text-sm flex-1 font-bold">REVEAL ALL SIX</button>
+              <button onclick="resetWindows('عبدالحسين عبدالرضا')" class="px-4 py-2 bg-slate-800 text-white rounded text-sm flex-1 font-bold">RESET ALL</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="relative bg-slate-200 rounded-lg flex items-center justify-center overflow-hidden min-h-[400px]">
+          <div id="img-container-عبدالحسين عبدالرضا" class="relative inline-block max-w-full">
+            <img src="../../ai/review/assets/celebrities-media-samples/abdulhussain-abdulredha.jpg" class="max-h-[500px] w-auto block object-contain filter blur-xl brightness-50 contrast-125" alt="عبدالحسين عبدالرضا" />
+            
+        <div id="window-عبدالحسين عبدالرضا-1" class="window window-1 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 45.0%; top: 38.0%; width: 20.0%; height: 12.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/abdulhussain-abdulredha.jpg" class="absolute max-w-none" style="width: 500.0%; height: 833.3333333333334%; left: -225.0%; top: -316.6666666666667%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">1</div>
+        </div>
+        
+        <div id="window-عبدالحسين عبدالرضا-2" class="window window-2 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 43.0%; top: 20.0%; width: 25.0%; height: 15.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/abdulhussain-abdulredha.jpg" class="absolute max-w-none" style="width: 400.0%; height: 666.6666666666667%; left: -172.0%; top: -133.33333333333334%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">2</div>
+        </div>
+        
+        <div id="window-عبدالحسين عبدالرضا-3" class="window window-3 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 48.0%; top: 52.0%; width: 15.0%; height: 12.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/abdulhussain-abdulredha.jpg" class="absolute max-w-none" style="width: 666.6666666666667%; height: 833.3333333333334%; left: -320.0%; top: -433.33333333333337%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">3</div>
+        </div>
+        
+        <div id="window-عبدالحسين عبدالرضا-4" class="window window-4 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 10.0%; top: 70.0%; width: 25.0%; height: 20.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/abdulhussain-abdulredha.jpg" class="absolute max-w-none" style="width: 400.0%; height: 500.0%; left: -40.0%; top: -349.99999999999994%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">4</div>
+        </div>
+        
+        <div id="window-عبدالحسين عبدالرضا-5" class="window window-5 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 20.0%; top: 5.0%; width: 18.0%; height: 35.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/abdulhussain-abdulredha.jpg" class="absolute max-w-none" style="width: 555.5555555555555%; height: 285.7142857142857%; left: -111.11111111111111%; top: -14.285714285714288%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">5</div>
+        </div>
+        
+        <div id="window-عبدالحسين عبدالرضا-6" class="window window-6 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 80.0%; top: 10.0%; width: 15.0%; height: 20.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/abdulhussain-abdulredha.jpg" class="absolute max-w-none" style="width: 666.6666666666667%; height: 500.0%; left: -533.3333333333334%; top: -50.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">6</div>
+        </div>
+        
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="border rounded-lg p-6 bg-white shadow-sm mb-8" id="card-هدى حسين">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h2 class="text-xl font-bold mb-4">هدى حسين</h2>
+          <ul class="space-y-2 text-sm mb-6">
+            <li><span class="font-semibold text-green-700">SINGLE_WINDOW:</span> MEDIUM</li>
+            <li><span class="font-semibold text-green-700">TWO_WINDOW:</span> HIGH</li>
+            <li><span class="font-semibold text-green-700">ALL_SIX:</span> HIGH</li>
+            <li><span class="font-semibold text-blue-700">AUTHORING:</span> VISUAL FIT (NO TEMPLATE)</li>
+          </ul>
+          
+          <div class="space-y-3">
+            <h3 class="font-semibold text-sm">Interactive Preview</h3>
+            <div class="flex flex-wrap gap-2">
+              
+        <button onclick="document.getElementById('window-هدى حسين-1').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 1 (eyes)
+        </button>
+        
+        <button onclick="document.getElementById('window-هدى حسين-2').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 2 (hair-head)
+        </button>
+        
+        <button onclick="document.getElementById('window-هدى حسين-3').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 3 (mouth-facial-hair)
+        </button>
+        
+        <button onclick="document.getElementById('window-هدى حسين-4').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 4 (outfit)
+        </button>
+        
+        <button onclick="document.getElementById('window-هدى حسين-5').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 5 (distinctive-detail)
+        </button>
+        
+        <button onclick="document.getElementById('window-هدى حسين-6').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 6 (background)
+        </button>
+        
+            </div>
+            <div class="flex flex-wrap gap-2 mt-4">
+              <button onclick="revealRandom('هدى حسين', 1)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 1</button>
+              <button onclick="revealRandom('هدى حسين', 2)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 2</button>
+              <button onclick="revealAll('هدى حسين')" class="px-4 py-2 bg-green-600 text-white rounded text-sm flex-1 font-bold">REVEAL ALL SIX</button>
+              <button onclick="resetWindows('هدى حسين')" class="px-4 py-2 bg-slate-800 text-white rounded text-sm flex-1 font-bold">RESET ALL</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="relative bg-slate-200 rounded-lg flex items-center justify-center overflow-hidden min-h-[400px]">
+          <div id="img-container-هدى حسين" class="relative inline-block max-w-full">
+            <img src="../../ai/review/assets/celebrities-media-samples/huda-hussein.jpg" class="max-h-[500px] w-auto block object-contain filter blur-xl brightness-50 contrast-125" alt="هدى حسين" />
+            
+        <div id="window-هدى حسين-1" class="window window-1 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 35.0%; top: 35.0%; width: 45.0%; height: 15.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/huda-hussein.jpg" class="absolute max-w-none" style="width: 222.22222222222223%; height: 666.6666666666667%; left: -77.77777777777777%; top: -233.33333333333334%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">1</div>
+        </div>
+        
+        <div id="window-هدى حسين-2" class="window window-2 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 25.0%; top: 10.0%; width: 50.0%; height: 20.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/huda-hussein.jpg" class="absolute max-w-none" style="width: 200.0%; height: 500.0%; left: -50.0%; top: -50.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">2</div>
+        </div>
+        
+        <div id="window-هدى حسين-3" class="window window-3 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 38.0%; top: 52.0%; width: 25.0%; height: 10.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/huda-hussein.jpg" class="absolute max-w-none" style="width: 400.0%; height: 1000.0%; left: -152.0%; top: -520.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">3</div>
+        </div>
+        
+        <div id="window-هدى حسين-4" class="window window-4 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 60.0%; top: 75.0%; width: 30.0%; height: 20.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/huda-hussein.jpg" class="absolute max-w-none" style="width: 333.33333333333337%; height: 500.0%; left: -200.0%; top: -375.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">4</div>
+        </div>
+        
+        <div id="window-هدى حسين-5" class="window window-5 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 20.0%; top: 42.0%; width: 10.0%; height: 20.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/huda-hussein.jpg" class="absolute max-w-none" style="width: 1000.0%; height: 500.0%; left: -200.0%; top: -209.99999999999997%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">5</div>
+        </div>
+        
+        <div id="window-هدى حسين-6" class="window window-6 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 0.0%; top: 0.0%; width: 20.0%; height: 20.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/huda-hussein.jpg" class="absolute max-w-none" style="width: 500.0%; height: 500.0%; left: -0.0%; top: -0.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">6</div>
+        </div>
+        
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="border rounded-lg p-6 bg-white shadow-sm mb-8" id="card-ريم عبدالله">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h2 class="text-xl font-bold mb-4">ريم عبدالله</h2>
+          <ul class="space-y-2 text-sm mb-6">
+            <li><span class="font-semibold text-green-700">SINGLE_WINDOW:</span> MEDIUM</li>
+            <li><span class="font-semibold text-green-700">TWO_WINDOW:</span> HIGH</li>
+            <li><span class="font-semibold text-green-700">ALL_SIX:</span> HIGH</li>
+            <li><span class="font-semibold text-blue-700">AUTHORING:</span> VISUAL FIT (NO TEMPLATE)</li>
+          </ul>
+          
+          <div class="space-y-3">
+            <h3 class="font-semibold text-sm">Interactive Preview</h3>
+            <div class="flex flex-wrap gap-2">
+              
+        <button onclick="document.getElementById('window-ريم عبدالله-1').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 1 (eyes)
+        </button>
+        
+        <button onclick="document.getElementById('window-ريم عبدالله-2').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 2 (hair-head)
+        </button>
+        
+        <button onclick="document.getElementById('window-ريم عبدالله-3').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 3 (mouth-facial-hair)
+        </button>
+        
+        <button onclick="document.getElementById('window-ريم عبدالله-4').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 4 (outfit)
+        </button>
+        
+        <button onclick="document.getElementById('window-ريم عبدالله-5').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 5 (distinctive-detail)
+        </button>
+        
+        <button onclick="document.getElementById('window-ريم عبدالله-6').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 6 (background)
+        </button>
+        
+            </div>
+            <div class="flex flex-wrap gap-2 mt-4">
+              <button onclick="revealRandom('ريم عبدالله', 1)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 1</button>
+              <button onclick="revealRandom('ريم عبدالله', 2)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 2</button>
+              <button onclick="revealAll('ريم عبدالله')" class="px-4 py-2 bg-green-600 text-white rounded text-sm flex-1 font-bold">REVEAL ALL SIX</button>
+              <button onclick="resetWindows('ريم عبدالله')" class="px-4 py-2 bg-slate-800 text-white rounded text-sm flex-1 font-bold">RESET ALL</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="relative bg-slate-200 rounded-lg flex items-center justify-center overflow-hidden min-h-[400px]">
+          <div id="img-container-ريم عبدالله" class="relative inline-block max-w-full">
+            <img src="../../ai/review/assets/celebrities-media-samples/reem-abdullah.jpg" class="max-h-[500px] w-auto block object-contain filter blur-xl brightness-50 contrast-125" alt="ريم عبدالله" />
+            
+        <div id="window-ريم عبدالله-1" class="window window-1 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 10.0%; top: 20.0%; width: 55.00000000000001%; height: 25.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/reem-abdullah.jpg" class="absolute max-w-none" style="width: 181.8181818181818%; height: 400.0%; left: -18.181818181818183%; top: -80.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">1</div>
+        </div>
+        
+        <div id="window-ريم عبدالله-2" class="window window-2 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 10.0%; top: 0.0%; width: 40.0%; height: 15.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/reem-abdullah.jpg" class="absolute max-w-none" style="width: 250.0%; height: 666.6666666666667%; left: -25.0%; top: -0.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">2</div>
+        </div>
+        
+        <div id="window-ريم عبدالله-3" class="window window-3 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 35.0%; top: 60.0%; width: 30.0%; height: 15.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/reem-abdullah.jpg" class="absolute max-w-none" style="width: 333.33333333333337%; height: 666.6666666666667%; left: -116.66666666666667%; top: -400.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">3</div>
+        </div>
+        
+        <div id="window-ريم عبدالله-4" class="window window-4 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 60.0%; top: 70.0%; width: 40.0%; height: 30.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/reem-abdullah.jpg" class="absolute max-w-none" style="width: 250.0%; height: 333.33333333333337%; left: -149.99999999999997%; top: -233.33333333333334%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">4</div>
+        </div>
+        
+        <div id="window-ريم عبدالله-5" class="window window-5 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 10.0%; top: 72.0%; width: 18.0%; height: 15.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/reem-abdullah.jpg" class="absolute max-w-none" style="width: 555.5555555555555%; height: 666.6666666666667%; left: -55.55555555555556%; top: -480.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">5</div>
+        </div>
+        
+        <div id="window-ريم عبدالله-6" class="window window-6 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 75.0%; top: 0.0%; width: 25.0%; height: 15.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/reem-abdullah.jpg" class="absolute max-w-none" style="width: 400.0%; height: 666.6666666666667%; left: -300.0%; top: -0.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">6</div>
+        </div>
+        
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="border rounded-lg p-6 bg-white shadow-sm mb-8" id="card-ناصر القصبي">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h2 class="text-xl font-bold mb-4">ناصر القصبي</h2>
+          <ul class="space-y-2 text-sm mb-6">
+            <li><span class="font-semibold text-green-700">SINGLE_WINDOW:</span> MEDIUM</li>
+            <li><span class="font-semibold text-green-700">TWO_WINDOW:</span> HIGH</li>
+            <li><span class="font-semibold text-green-700">ALL_SIX:</span> HIGH</li>
+            <li><span class="font-semibold text-blue-700">AUTHORING:</span> VISUAL FIT (NO TEMPLATE)</li>
+          </ul>
+          
+          <div class="space-y-3">
+            <h3 class="font-semibold text-sm">Interactive Preview</h3>
+            <div class="flex flex-wrap gap-2">
+              
+        <button onclick="document.getElementById('window-ناصر القصبي-1').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 1 (eyes)
+        </button>
+        
+        <button onclick="document.getElementById('window-ناصر القصبي-2').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 2 (hair-head)
+        </button>
+        
+        <button onclick="document.getElementById('window-ناصر القصبي-3').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 3 (mouth-facial-hair)
+        </button>
+        
+        <button onclick="document.getElementById('window-ناصر القصبي-4').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 4 (outfit)
+        </button>
+        
+        <button onclick="document.getElementById('window-ناصر القصبي-5').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 5 (distinctive-detail)
+        </button>
+        
+        <button onclick="document.getElementById('window-ناصر القصبي-6').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 6 (background)
+        </button>
+        
+            </div>
+            <div class="flex flex-wrap gap-2 mt-4">
+              <button onclick="revealRandom('ناصر القصبي', 1)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 1</button>
+              <button onclick="revealRandom('ناصر القصبي', 2)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 2</button>
+              <button onclick="revealAll('ناصر القصبي')" class="px-4 py-2 bg-green-600 text-white rounded text-sm flex-1 font-bold">REVEAL ALL SIX</button>
+              <button onclick="resetWindows('ناصر القصبي')" class="px-4 py-2 bg-slate-800 text-white rounded text-sm flex-1 font-bold">RESET ALL</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="relative bg-slate-200 rounded-lg flex items-center justify-center overflow-hidden min-h-[400px]">
+          <div id="img-container-ناصر القصبي" class="relative inline-block max-w-full">
+            <img src="../../ai/review/assets/celebrities-media-samples/nasser-al-qasabi.jpg" class="max-h-[500px] w-auto block object-contain filter blur-xl brightness-50 contrast-125" alt="ناصر القصبي" />
+            
+        <div id="window-ناصر القصبي-1" class="window window-1 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 40.0%; top: 30.0%; width: 25.0%; height: 10.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/nasser-al-qasabi.jpg" class="absolute max-w-none" style="width: 400.0%; height: 1000.0%; left: -160.0%; top: -299.99999999999994%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">1</div>
+        </div>
+        
+        <div id="window-ناصر القصبي-2" class="window window-2 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 45.0%; top: 10.0%; width: 20.0%; height: 12.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/nasser-al-qasabi.jpg" class="absolute max-w-none" style="width: 500.0%; height: 833.3333333333334%; left: -225.0%; top: -83.33333333333334%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">2</div>
+        </div>
+        
+        <div id="window-ناصر القصبي-3" class="window window-3 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 45.0%; top: 45.0%; width: 15.0%; height: 8.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/nasser-al-qasabi.jpg" class="absolute max-w-none" style="width: 666.6666666666667%; height: 1250.0%; left: -300.0%; top: -562.5%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">3</div>
+        </div>
+        
+        <div id="window-ناصر القصبي-4" class="window window-4 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 45.0%; top: 65.0%; width: 20.0%; height: 25.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/nasser-al-qasabi.jpg" class="absolute max-w-none" style="width: 500.0%; height: 400.0%; left: -225.0%; top: -260.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">4</div>
+        </div>
+        
+        <div id="window-ناصر القصبي-5" class="window window-5 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 30.0%; top: 40.0%; width: 10.0%; height: 30.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/nasser-al-qasabi.jpg" class="absolute max-w-none" style="width: 1000.0%; height: 333.33333333333337%; left: -299.99999999999994%; top: -133.33333333333334%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">5</div>
+        </div>
+        
+        <div id="window-ناصر القصبي-6" class="window window-6 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 80.0%; top: 50.0%; width: 15.0%; height: 20.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/nasser-al-qasabi.jpg" class="absolute max-w-none" style="width: 666.6666666666667%; height: 500.0%; left: -533.3333333333334%; top: -250.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">6</div>
+        </div>
+        
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="border rounded-lg p-6 bg-white shadow-sm mb-8" id="card-عبدالله السدحان">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h2 class="text-xl font-bold mb-4">عبدالله السدحان</h2>
+          <ul class="space-y-2 text-sm mb-6">
+            <li><span class="font-semibold text-green-700">SINGLE_WINDOW:</span> MEDIUM</li>
+            <li><span class="font-semibold text-green-700">TWO_WINDOW:</span> HIGH</li>
+            <li><span class="font-semibold text-green-700">ALL_SIX:</span> HIGH</li>
+            <li><span class="font-semibold text-blue-700">AUTHORING:</span> VISUAL FIT (NO TEMPLATE)</li>
+          </ul>
+          
+          <div class="space-y-3">
+            <h3 class="font-semibold text-sm">Interactive Preview</h3>
+            <div class="flex flex-wrap gap-2">
+              
+        <button onclick="document.getElementById('window-عبدالله السدحان-1').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 1 (eyes)
+        </button>
+        
+        <button onclick="document.getElementById('window-عبدالله السدحان-2').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 2 (hair-head)
+        </button>
+        
+        <button onclick="document.getElementById('window-عبدالله السدحان-3').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 3 (mouth-facial-hair)
+        </button>
+        
+        <button onclick="document.getElementById('window-عبدالله السدحان-4').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 4 (outfit)
+        </button>
+        
+        <button onclick="document.getElementById('window-عبدالله السدحان-5').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 5 (distinctive-detail)
+        </button>
+        
+        <button onclick="document.getElementById('window-عبدالله السدحان-6').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 6 (background)
+        </button>
+        
+            </div>
+            <div class="flex flex-wrap gap-2 mt-4">
+              <button onclick="revealRandom('عبدالله السدحان', 1)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 1</button>
+              <button onclick="revealRandom('عبدالله السدحان', 2)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 2</button>
+              <button onclick="revealAll('عبدالله السدحان')" class="px-4 py-2 bg-green-600 text-white rounded text-sm flex-1 font-bold">REVEAL ALL SIX</button>
+              <button onclick="resetWindows('عبدالله السدحان')" class="px-4 py-2 bg-slate-800 text-white rounded text-sm flex-1 font-bold">RESET ALL</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="relative bg-slate-200 rounded-lg flex items-center justify-center overflow-hidden min-h-[400px]">
+          <div id="img-container-عبدالله السدحان" class="relative inline-block max-w-full">
+            <img src="../../ai/review/assets/celebrities-media-samples/abdullah-al-sadhan.jpg" class="max-h-[500px] w-auto block object-contain filter blur-xl brightness-50 contrast-125" alt="عبدالله السدحان" />
+            
+        <div id="window-عبدالله السدحان-1" class="window window-1 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 25.0%; top: 25.0%; width: 50.0%; height: 10.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/abdullah-al-sadhan.jpg" class="absolute max-w-none" style="width: 200.0%; height: 1000.0%; left: -50.0%; top: -250.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">1</div>
+        </div>
+        
+        <div id="window-عبدالله السدحان-2" class="window window-2 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 20.0%; top: 3.0%; width: 50.0%; height: 15.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/abdullah-al-sadhan.jpg" class="absolute max-w-none" style="width: 200.0%; height: 666.6666666666667%; left: -40.0%; top: -20.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">2</div>
+        </div>
+        
+        <div id="window-عبدالله السدحان-3" class="window window-3 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 30.0%; top: 40.0%; width: 40.0%; height: 18.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/abdullah-al-sadhan.jpg" class="absolute max-w-none" style="width: 250.0%; height: 555.5555555555555%; left: -74.99999999999999%; top: -222.22222222222223%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">3</div>
+        </div>
+        
+        <div id="window-عبدالله السدحان-4" class="window window-4 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 10.0%; top: 75.0%; width: 30.0%; height: 20.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/abdullah-al-sadhan.jpg" class="absolute max-w-none" style="width: 333.33333333333337%; height: 500.0%; left: -33.333333333333336%; top: -375.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">4</div>
+        </div>
+        
+        <div id="window-عبدالله السدحان-5" class="window window-5 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 30.0%; top: 55.00000000000001%; width: 35.0%; height: 20.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/abdullah-al-sadhan.jpg" class="absolute max-w-none" style="width: 285.7142857142857%; height: 500.0%; left: -85.71428571428572%; top: -275.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">5</div>
+        </div>
+        
+        <div id="window-عبدالله السدحان-6" class="window window-6 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 0.0%; top: 0.0%; width: 20.0%; height: 25.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/abdullah-al-sadhan.jpg" class="absolute max-w-none" style="width: 500.0%; height: 400.0%; left: -0.0%; top: -0.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">6</div>
+        </div>
+        
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="border rounded-lg p-6 bg-white shadow-sm mb-8" id="card-عادل إمام">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h2 class="text-xl font-bold mb-4">عادل إمام</h2>
+          <ul class="space-y-2 text-sm mb-6">
+            <li><span class="font-semibold text-green-700">SINGLE_WINDOW:</span> MEDIUM</li>
+            <li><span class="font-semibold text-green-700">TWO_WINDOW:</span> HIGH</li>
+            <li><span class="font-semibold text-green-700">ALL_SIX:</span> HIGH</li>
+            <li><span class="font-semibold text-blue-700">AUTHORING:</span> VISUAL FIT (NO TEMPLATE)</li>
+          </ul>
+          
+          <div class="space-y-3">
+            <h3 class="font-semibold text-sm">Interactive Preview</h3>
+            <div class="flex flex-wrap gap-2">
+              
+        <button onclick="document.getElementById('window-عادل إمام-1').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 1 (eyes)
+        </button>
+        
+        <button onclick="document.getElementById('window-عادل إمام-2').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 2 (hair-head)
+        </button>
+        
+        <button onclick="document.getElementById('window-عادل إمام-3').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 3 (mouth-facial-hair)
+        </button>
+        
+        <button onclick="document.getElementById('window-عادل إمام-4').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 4 (outfit)
+        </button>
+        
+        <button onclick="document.getElementById('window-عادل إمام-5').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 5 (distinctive-detail)
+        </button>
+        
+        <button onclick="document.getElementById('window-عادل إمام-6').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 6 (background)
+        </button>
+        
+            </div>
+            <div class="flex flex-wrap gap-2 mt-4">
+              <button onclick="revealRandom('عادل إمام', 1)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 1</button>
+              <button onclick="revealRandom('عادل إمام', 2)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 2</button>
+              <button onclick="revealAll('عادل إمام')" class="px-4 py-2 bg-green-600 text-white rounded text-sm flex-1 font-bold">REVEAL ALL SIX</button>
+              <button onclick="resetWindows('عادل إمام')" class="px-4 py-2 bg-slate-800 text-white rounded text-sm flex-1 font-bold">RESET ALL</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="relative bg-slate-200 rounded-lg flex items-center justify-center overflow-hidden min-h-[400px]">
+          <div id="img-container-عادل إمام" class="relative inline-block max-w-full">
+            <img src="../../ai/review/assets/celebrities-media-samples/adel-emam.jpg" class="max-h-[500px] w-auto block object-contain filter blur-xl brightness-50 contrast-125" alt="عادل إمام" />
+            
+        <div id="window-عادل إمام-1" class="window window-1 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 45.0%; top: 17.0%; width: 25.0%; height: 6.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/adel-emam.jpg" class="absolute max-w-none" style="width: 400.0%; height: 1666.6666666666667%; left: -180.0%; top: -283.33333333333337%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">1</div>
+        </div>
+        
+        <div id="window-عادل إمام-2" class="window window-2 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 35.0%; top: 5.0%; width: 40.0%; height: 8.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/adel-emam.jpg" class="absolute max-w-none" style="width: 250.0%; height: 1250.0%; left: -87.49999999999999%; top: -62.5%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">2</div>
+        </div>
+        
+        <div id="window-عادل إمام-3" class="window window-3 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 45.0%; top: 25.0%; width: 25.0%; height: 8.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/adel-emam.jpg" class="absolute max-w-none" style="width: 400.0%; height: 1250.0%; left: -180.0%; top: -312.5%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">3</div>
+        </div>
+        
+        <div id="window-عادل إمام-4" class="window window-4 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 75.0%; top: 55.00000000000001%; width: 15.0%; height: 10.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/adel-emam.jpg" class="absolute max-w-none" style="width: 666.6666666666667%; height: 1000.0%; left: -500.0%; top: -550.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">4</div>
+        </div>
+        
+        <div id="window-عادل إمام-5" class="window window-5 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 40.0%; top: 40.0%; width: 15.0%; height: 25.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/adel-emam.jpg" class="absolute max-w-none" style="width: 666.6666666666667%; height: 400.0%; left: -266.6666666666667%; top: -160.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">5</div>
+        </div>
+        
+        <div id="window-عادل إمام-6" class="window window-6 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 2.0%; top: 25.0%; width: 25.0%; height: 15.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/adel-emam.jpg" class="absolute max-w-none" style="width: 400.0%; height: 666.6666666666667%; left: -8.0%; top: -166.66666666666669%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">6</div>
+        </div>
+        
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="border rounded-lg p-6 bg-white shadow-sm mb-8" id="card-أحمد حلمي">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h2 class="text-xl font-bold mb-4">أحمد حلمي</h2>
+          <ul class="space-y-2 text-sm mb-6">
+            <li><span class="font-semibold text-green-700">SINGLE_WINDOW:</span> MEDIUM</li>
+            <li><span class="font-semibold text-green-700">TWO_WINDOW:</span> HIGH</li>
+            <li><span class="font-semibold text-green-700">ALL_SIX:</span> HIGH</li>
+            <li><span class="font-semibold text-blue-700">AUTHORING:</span> VISUAL FIT (NO TEMPLATE)</li>
+          </ul>
+          
+          <div class="space-y-3">
+            <h3 class="font-semibold text-sm">Interactive Preview</h3>
+            <div class="flex flex-wrap gap-2">
+              
+        <button onclick="document.getElementById('window-أحمد حلمي-1').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 1 (eyes)
+        </button>
+        
+        <button onclick="document.getElementById('window-أحمد حلمي-2').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 2 (hair-head)
+        </button>
+        
+        <button onclick="document.getElementById('window-أحمد حلمي-3').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 3 (mouth-facial-hair)
+        </button>
+        
+        <button onclick="document.getElementById('window-أحمد حلمي-4').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 4 (outfit)
+        </button>
+        
+        <button onclick="document.getElementById('window-أحمد حلمي-5').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 5 (distinctive-detail)
+        </button>
+        
+        <button onclick="document.getElementById('window-أحمد حلمي-6').classList.toggle('opacity-0')" class="px-3 py-1 bg-brand-gold text-slate-900 font-bold rounded text-sm hover:bg-yellow-500 transition border border-yellow-600 shadow-sm">
+          Toggle 6 (background)
+        </button>
+        
+            </div>
+            <div class="flex flex-wrap gap-2 mt-4">
+              <button onclick="revealRandom('أحمد حلمي', 1)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 1</button>
+              <button onclick="revealRandom('أحمد حلمي', 2)" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm flex-1 font-bold">REVEAL RANDOM 2</button>
+              <button onclick="revealAll('أحمد حلمي')" class="px-4 py-2 bg-green-600 text-white rounded text-sm flex-1 font-bold">REVEAL ALL SIX</button>
+              <button onclick="resetWindows('أحمد حلمي')" class="px-4 py-2 bg-slate-800 text-white rounded text-sm flex-1 font-bold">RESET ALL</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="relative bg-slate-200 rounded-lg flex items-center justify-center overflow-hidden min-h-[400px]">
+          <div id="img-container-أحمد حلمي" class="relative inline-block max-w-full">
+            <img src="../../ai/review/assets/celebrities-media-samples/ahmed-helmy.jpg" class="max-h-[500px] w-auto block object-contain filter blur-xl brightness-50 contrast-125" alt="أحمد حلمي" />
+            
+        <div id="window-أحمد حلمي-1" class="window window-1 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 20.0%; top: 30.0%; width: 55.00000000000001%; height: 15.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/ahmed-helmy.jpg" class="absolute max-w-none" style="width: 181.8181818181818%; height: 666.6666666666667%; left: -36.36363636363637%; top: -200.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">1</div>
+        </div>
+        
+        <div id="window-أحمد حلمي-2" class="window window-2 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 20.0%; top: 5.0%; width: 60.0%; height: 15.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/ahmed-helmy.jpg" class="absolute max-w-none" style="width: 166.66666666666669%; height: 666.6666666666667%; left: -33.333333333333336%; top: -33.333333333333336%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">2</div>
+        </div>
+        
+        <div id="window-أحمد حلمي-3" class="window window-3 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 25.0%; top: 50.0%; width: 45.0%; height: 15.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/ahmed-helmy.jpg" class="absolute max-w-none" style="width: 222.22222222222223%; height: 666.6666666666667%; left: -55.55555555555556%; top: -333.33333333333337%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">3</div>
+        </div>
+        
+        <div id="window-أحمد حلمي-4" class="window window-4 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 20.0%; top: 75.0%; width: 60.0%; height: 20.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/ahmed-helmy.jpg" class="absolute max-w-none" style="width: 166.66666666666669%; height: 500.0%; left: -33.333333333333336%; top: -375.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">4</div>
+        </div>
+        
+        <div id="window-أحمد حلمي-5" class="window window-5 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 80.0%; top: 45.0%; width: 15.0%; height: 20.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/ahmed-helmy.jpg" class="absolute max-w-none" style="width: 666.6666666666667%; height: 500.0%; left: -533.3333333333334%; top: -225.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">5</div>
+        </div>
+        
+        <div id="window-أحمد حلمي-6" class="window window-6 opacity-0 absolute overflow-hidden border-2 border-brand-gold shadow-lg transition-opacity duration-300 ring-2 ring-black/50" style="left: 0.0%; top: 40.0%; width: 10.0%; height: 20.0%;">
+          <img src="../../ai/review/assets/celebrities-media-samples/ahmed-helmy.jpg" class="absolute max-w-none" style="width: 1000.0%; height: 500.0%; left: -0.0%; top: -200.0%;" alt="" />
+          <div class="absolute inset-0 grid place-items-center text-white/70 font-black text-2xl drop-shadow-md z-10">6</div>
+        </div>
+        
+          </div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</body>
+</html>

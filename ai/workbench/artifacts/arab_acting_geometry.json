@@ -1,0 +1,587 @@
+{
+  "Suad Abdullah": {
+    "celebrity": "Suad Abdullah",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.264,
+          "y": 0.306,
+          "width": 0.318,
+          "height": 0.079
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.304,
+          "y": 0.457,
+          "width": 0.269,
+          "height": 0.079
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "background",
+        "shape": {
+          "x": 0.328,
+          "y": 0.313,
+          "width": 0.182,
+          "height": 0.176
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.244,
+          "y": 0.177,
+          "width": 0.357,
+          "height": 0.088
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.226,
+          "y": 0.517,
+          "width": 0.474,
+          "height": 0.162
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "outfit",
+        "shape": {
+          "x": 0.226,
+          "y": 0.679,
+          "width": 0.474,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Hayat Al-Fahad": {
+    "celebrity": "Hayat Al-Fahad",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.32,
+          "y": 0.191,
+          "width": 0.409,
+          "height": 0.024
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.349,
+          "y": 0.261,
+          "width": 0.36,
+          "height": 0.083
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "background",
+        "shape": {
+          "x": 0.421,
+          "y": 0.175,
+          "width": 0.211,
+          "height": 0.118
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.302,
+          "y": 0.115,
+          "width": 0.454,
+          "height": 0.044
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.256,
+          "y": 0.319,
+          "width": 0.545,
+          "height": 0.097
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "outfit",
+        "shape": {
+          "x": 0.256,
+          "y": 0.416,
+          "width": 0.545,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Abdulhussain Abdulredha": {
+    "celebrity": "Abdulhussain Abdulredha",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.325,
+          "y": 0.409,
+          "width": 0.248,
+          "height": 0.085
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.335,
+          "y": 0.604,
+          "width": 0.209,
+          "height": 0.102
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "background",
+        "shape": {
+          "x": 0.337,
+          "y": 0.405,
+          "width": 0.16,
+          "height": 0.238
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.318,
+          "y": 0.21,
+          "width": 0.284,
+          "height": 0.131
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.295,
+          "y": 0.714,
+          "width": 0.4,
+          "height": 0.204
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "outfit",
+        "shape": {
+          "x": 0.295,
+          "y": 0.918,
+          "width": 0.4,
+          "height": 0.082
+        }
+      }
+    ]
+  },
+  "Huda Hussain": {
+    "celebrity": "Huda Hussain",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.366,
+          "y": 0.204,
+          "width": 0.294,
+          "height": 0.094
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.348,
+          "y": 0.312,
+          "width": 0.253,
+          "height": 0.095
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "background",
+        "shape": {
+          "x": 0.424,
+          "y": 0.226,
+          "width": 0.132,
+          "height": 0.133
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.351,
+          "y": 0.071,
+          "width": 0.333,
+          "height": 0.102
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.285,
+          "y": 0.373,
+          "width": 0.41,
+          "height": 0.128
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "outfit",
+        "shape": {
+          "x": 0.285,
+          "y": 0.5,
+          "width": 0.41,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Nasser Al-Qasabi": {
+    "celebrity": "Nasser Al-Qasabi",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.29,
+          "y": 0.348,
+          "width": 0.299,
+          "height": 0.081
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.29,
+          "y": 0.567,
+          "width": 0.253,
+          "height": 0.107
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "background",
+        "shape": {
+          "x": 0.322,
+          "y": 0.321,
+          "width": 0.176,
+          "height": 0.291
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.278,
+          "y": 0.143,
+          "width": 0.344,
+          "height": 0.138
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.228,
+          "y": 0.669,
+          "width": 0.465,
+          "height": 0.236
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "outfit",
+        "shape": {
+          "x": 0.228,
+          "y": 0.905,
+          "width": 0.465,
+          "height": 0.095
+        }
+      }
+    ]
+  },
+  "Abdullah Al-Sadhan": {
+    "celebrity": "Abdullah Al-Sadhan",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.294,
+          "y": 0.265,
+          "width": 0.409,
+          "height": 0.07
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.311,
+          "y": 0.411,
+          "width": 0.346,
+          "height": 0.108
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "background",
+        "shape": {
+          "x": 0.377,
+          "y": 0.253,
+          "width": 0.236,
+          "height": 0.196
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.258,
+          "y": 0.085,
+          "width": 0.485,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.19,
+          "y": 0.485,
+          "width": 0.581,
+          "height": 0.16
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "outfit",
+        "shape": {
+          "x": 0.19,
+          "y": 0.645,
+          "width": 0.581,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Adel Emam": {
+    "celebrity": "Adel Emam",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.304,
+          "y": 0.31,
+          "width": 0.458,
+          "height": 0.068
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.349,
+          "y": 0.488,
+          "width": 0.355,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "background",
+        "shape": {
+          "x": 0.431,
+          "y": 0.285,
+          "width": 0.226,
+          "height": 0.214
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.27,
+          "y": 0.093,
+          "width": 0.519,
+          "height": 0.13
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.189,
+          "y": 0.563,
+          "width": 0.618,
+          "height": 0.168
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "outfit",
+        "shape": {
+          "x": 0.189,
+          "y": 0.731,
+          "width": 0.618,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Ahmed Helmy": {
+    "celebrity": "Ahmed Helmy",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.391,
+          "y": 0.198,
+          "width": 0.159,
+          "height": 0.023
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.405,
+          "y": 0.27,
+          "width": 0.127,
+          "height": 0.026
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "background",
+        "shape": {
+          "x": 0.426,
+          "y": 0.186,
+          "width": 0.082,
+          "height": 0.09
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.379,
+          "y": 0.127,
+          "width": 0.191,
+          "height": 0.045
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.355,
+          "y": 0.301,
+          "width": 0.247,
+          "height": 0.075
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "outfit",
+        "shape": {
+          "x": 0.355,
+          "y": 0.376,
+          "width": 0.247,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Reem Abdullah": {
+    "celebrity": "Reem Abdullah",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.086,
+          "y": 0.391,
+          "width": 0.588,
+          "height": 0.128
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.205,
+          "y": 0.602,
+          "width": 0.381,
+          "height": 0.173
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "background",
+        "shape": {
+          "x": 0.245,
+          "y": 0.407,
+          "width": 0.204,
+          "height": 0.256
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.064,
+          "y": 0.219,
+          "width": 0.667,
+          "height": 0.104
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.04,
+          "y": 0.705,
+          "width": 0.893,
+          "height": 0.233
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "outfit",
+        "shape": {
+          "x": 0.04,
+          "y": 0.938,
+          "width": 0.893,
+          "height": 0.062
+        }
+      }
+    ]
+  }
+}
