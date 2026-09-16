@@ -240,6 +240,14 @@ export type ContentAnswerPayload =
     }
   | {
       mode: ChallengeAnswerMode.ODD_PIECE;
+    }
+  | {
+      /**
+       * "لا تحرقها" carries no free-text answer: correctness is the `correct`
+       * flag on each of the eight authored ingredients, so there is exactly one
+       * source of truth for what belongs in the dish.
+       */
+      mode: ChallengeAnswerMode.LA_TAHRIQHA;
     };
 
 /**
@@ -405,6 +413,41 @@ export interface EkshifniPayload {
   regions: EkshifniRegionAuthoring[];
 }
 
+/**
+ * One ingredient card on a "لا تحرقها" dish.
+ *
+ * `correct` is explicit rather than inferred from position, because the eight
+ * cards are shuffled for presentation and an author must be able to look at the
+ * list and see which five they committed to. `localId` is stable across edits so
+ * a recorded selection can never drift onto a different card.
+ */
+export interface LaTahriqhaIngredientAuthoring {
+  localId: string;
+  label: LocalizedText;
+  correct: boolean;
+}
+
+/**
+ * "لا تحرقها" (Food Signature) authoring: one dish and its eight ingredients.
+ *
+ * Five correct and three distractors, exactly — the count is the balance. The
+ * dish name is player-facing from the first second; the correctness flags are
+ * never projected before the dish resolves.
+ */
+export interface LaTahriqhaPayload {
+  variant: 'la-tahriqha';
+  dishName: LocalizedText;
+  /** Optional producer note shown with the dish, e.g. the regional style. */
+  dishNote?: LocalizedText;
+  ingredients: LaTahriqhaIngredientAuthoring[];
+  /**
+   * This dish's own window. Absent means the product baseline
+   * (`LA_TAHRIQHA_DEFAULT_DISH_SECONDS`), so a harder dish can be given more
+   * time without the number being hard-coded anywhere global.
+   */
+  timerSeconds?: number;
+}
+
 export interface ContentItemView {
   id: string;
   scopeId: string;
@@ -422,7 +465,8 @@ export interface ContentItemView {
     | OneCluePayload
     | OddPiecePayload
     | LaqathaPayload
-    | EkshifniPayload;
+    | EkshifniPayload
+    | LaTahriqhaPayload;
   isReusableAcrossSessions: boolean;
   status: ContentItemStatus;
   metadata?: {

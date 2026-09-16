@@ -53,6 +53,7 @@ import { MyMatchesController } from './presentation/my-matches.controller';
 import { OddPieceChallengeLauncher } from './application/odd-piece-challenge.launcher';
 import { LaqathaChallengeLauncher } from './application/laqatha-challenge.launcher';
 import { EkshifniChallengeLauncher } from './application/ekshifni-challenge.launcher';
+import { LaTahriqhaChallengeLauncher } from './application/la-tahriqha-challenge.launcher';
 import { FirstNoteChallengeLauncher } from './application/first-note-challenge.launcher';
 
 /**
@@ -118,6 +119,7 @@ import { FirstNoteChallengeLauncher } from './application/first-note-challenge.l
     OddPieceChallengeLauncher,
     LaqathaChallengeLauncher,
     EkshifniChallengeLauncher,
+    LaTahriqhaChallengeLauncher,
     MatchReconciliationService,
     MatchConvergenceSweeper,
     MatchSnapshotComposer,

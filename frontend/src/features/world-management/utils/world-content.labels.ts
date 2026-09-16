@@ -56,6 +56,7 @@ export const ANSWER_MODE_LABEL: Record<ChallengeAnswerMode, string> = {
   laqatha: "القطها",
   first_note: "من أول نغمة",
   ekshifni: "اكشفني",
+  la_tahriqha: "لا تحرقها",
 };
 
 export const ITEM_STRUCTURE_LABEL: Record<ChallengeItemStructure, string> = {

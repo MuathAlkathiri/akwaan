@@ -1494,6 +1494,73 @@ unexplained — §19 item 19. Preserving the catalog means first establishing wh
 **Do not invent Signature mechanics for the three undecided Worlds.** They are blocked on product design, and
 by §4.2 none of them can ship without one.
 
+### 16.10 لا تحرقها — Food Signature product design *(approved 2026-09-16; reconciled)*
+
+This section was lost during a later roadmap synchronization and is restored from the previously authoritative
+approved record plus the current Product approval. It remains a product decision, not an implementation claim.
+
+**Status: ✅ IMPLEMENTED & VERIFIED LOCALLY · ✅ PRODUCT REVIEW PASSED** *(local only — see the ledger below)*
+
+Food's exclusive Signature is **لا تحرقها** with canonical runtime key `la-tahriqha`. A Challenge contains exactly
+three simultaneous dishes. Each dish has exactly eight ingredient cards: five explicit canonical correct
+ingredients and three plausible distractors. Each team selects three to five cards; one wrong card burns the dish.
+
+The baseline dish window is 30 seconds and remains configurable. Fair-Start activation arms the authoritative
+deadline. At expiry, three to five selected cards auto-lock as-is and score normally; fewer than three scores zero.
+Captain control is a per-dish action assignment, not a permanent Team Captain: `team-action-assignment` assigns one
+eligible player per team in server-authoritative round-robin order across the three dishes, preserving assignment and
+selection through reconnect/reassignment without restarting the timer.
+
+Dish scoring is 3 for three correct, 4 for four correct, 7 for an exact five-correct Perfect Dish, and zero with a
+Burn. Internal totals determine the three-dish Signature winner; ties are allowed and converge once through the
+canonical `challenge-win` path. Dish reveal is mandatory and exposes truth only after resolution. Dish images are
+optional and use canonical media architecture. No Food World, production content, or deployment is implied here.
+
+**What was built.** The mechanic runs on the canonical live-session architecture with no parallel system of its own:
+a registered `GameplayModePlugin` (`la-tahriqha`), a registered `ChallengeLauncher`, a `ChallengeType` with its own
+`ChallengeAnswerMode.LA_TAHRIQHA` and content pattern, persisted flat runtime state, CAS-guarded commands, the
+canonical `team-action-assignment` subsystem for قائد الطبق, Fair-Start with a recurring per-dish checkpoint, the
+canonical deadline scheduler, actor-scoped projections, the Universal Reveal components, and a one-time Match
+convergence. Authoring runs the same `validateLaTahriqhaPayload` predicate the launcher runs, so a dish the Admin
+accepts cannot be refused by the room.
+
+**Two defects the local QA found and fixed, both invisible to the unit tier.** The dish-expiry command was declared
+`internal`, which the deadline scheduler — it runs under the session controller's identity — can never satisfy, so
+an unattended dish would have hung; it is now `controller`, and the reducer still proves the persisted deadline
+elapsed. And the captain rotation was built from whoever was connected at the instant of launch, so a phone still
+opening its socket was left out of the order permanently: a real four-phone Chromium run persisted one side's
+rotation with a single name in it. The rotation is now the team's whole roster, with connectivity deciding only who
+may act right now. Both are covered by real-Mongo regression tests.
+
+**Local verification ledger.** Backend 197 suites / 2029 tests; frontend 134 files / 1470 tests; six real-Mongo
+lifecycle scenarios including the production deadline scheduler committing an unattended dish; a real Chromium
+product review driving one shared screen and four phones through all three dishes. Two product defects were fixed
+during that review: the phone's commit button fell below the fold at 360×640, and the reveal overflowed a 1440×900
+shared screen so the second team's burn or perfect dish was unreadable.
+
+The repository's integration suite is order-flaky under `--runInBand`: across full runs the failing set moves
+(`combo`, `marhala`, `rakkibha`, `ryo-deadline`, `world-content` and `world-activation-content` have each failed in
+one run and passed in another, several with a 404 on `/auth/login` in `beforeAll`). `la-tahriqha` passes in
+isolation every time and passed the majority of full runs, and no failure trace anywhere contains a Food frame. The
+only failures stable across every run are `music` (ffmpeg environment dependency) and `manual-question-architecture`
+(AI-disabled flag semantics) — both pre-existing and unrelated.
+
+⚠️ **Known debt found during this work — not addressed here.** `ekshifni`, `first-note`, `laqatha` and `odd-piece`
+each declare a `runtime-state` deadline whose expiry command carries `authorization: 'internal'`, while
+`GameplayAuthorization.can` returns `false` for `internal` for every actor and `GameplayDeadlineScheduler` dispatches
+under the session controller's identity. Potential unreachable scheduler expiry authorization; requires dedicated
+audit. Source-confirmed only — not reproduced against those mechanics at runtime, and deliberately unchanged in this
+milestone. لا تحرقها itself declares `controller` and is covered by a regression test.
+
+**Not done, deliberately:**
+
+- ⬜ Not committed
+- ⬜ Not pushed
+- ⬜ Not deployed
+- ⬜ Food Production World not provisioned
+- ⬜ Production content not authored or promoted
+- ⬜ Production gameplay not verified
+
 ### 16.3 Approved Signature concepts — one line each
 
 - **من أول نغمة** (Music) — recognise the song or artist from a very short audio segment. Future direction:

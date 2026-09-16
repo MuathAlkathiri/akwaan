@@ -26,6 +26,8 @@ import { LAQATHA_MODE_KEY } from "./laqatha.presentation";
 import { LaqathaGameplayPanel } from "../components/laqatha-gameplay-panel";
 import { EKSHIFNI_MODE_KEY } from "./ekshifni.presentation";
 import { EkshifniGameplayPanel } from "../components/ekshifni-gameplay-panel";
+import { LA_TAHRIQHA_MODE_KEY } from "./la-tahriqha.presentation";
+import { LaTahriqhaGameplayPanel } from "../components/la-tahriqha-gameplay-panel";
 import { FIRST_NOTE_MODE_KEY } from "./first-note.presentation";
 import { FirstNoteGameplayPanel } from "../components/first-note-gameplay-panel";
 import { useLiveSession } from "../hooks/live-session-context";
@@ -530,6 +532,11 @@ function renderMechanic(
     // decides which of the two it is projecting to.
     case EKSHIFNI_MODE_KEY:
       return <EkshifniGameplayPanel runtime={runtime} actor={actor} />;
+    // One panel for every surface: the server already decided what each of them
+    // may know about the eight cards, so this only chooses a size, never a
+    // secret. The shell tells the panel whether it is a phone.
+    case LA_TAHRIQHA_MODE_KEY:
+      return <LaTahriqhaGameplayPanel runtime={runtime} />;
     case FIRST_NOTE_MODE_KEY:
       return <FirstNoteGameplayPanel runtime={runtime} actor={actor} />;
     default:

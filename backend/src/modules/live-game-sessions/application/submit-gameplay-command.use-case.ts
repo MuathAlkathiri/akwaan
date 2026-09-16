@@ -52,6 +52,7 @@ import { applyGameplaySessionEffects } from './gameplay-session-effects';
 import { ODD_PIECE_MODE_KEY } from '../domain/odd-piece-gameplay.plugin';
 import { LAQATHA_MODE_KEY } from '../domain/laqatha-gameplay.plugin';
 import { EKSHIFNI_MODE_KEY } from '../domain/ekshifni-gameplay.plugin';
+import { LA_TAHRIQHA_MODE_KEY } from '../domain/la-tahriqha-gameplay.plugin';
 import { FIRST_NOTE_MODE_KEY } from '../domain/first-note-gameplay.plugin';
 
 /**
@@ -385,6 +386,11 @@ export class SubmitGameplayCommand {
         command,
         now,
       );
+      const laTahriqhaTerminal = this.completeLaTahriqhaIfTerminal(
+        runtime,
+        command,
+        now,
+      );
       if (sessionChanged) {
         await context.saveSession(session, previousSessionRevision);
       }
@@ -401,7 +407,8 @@ export class SubmitGameplayCommand {
           oddPieceTerminal ||
           laqathaTerminal ||
           firstNoteTerminal ||
-          ekshifniTerminal,
+          ekshifniTerminal ||
+          laTahriqhaTerminal,
       };
     });
 
@@ -794,6 +801,43 @@ export class SubmitGameplayCommand {
         commandId: `${command.commandId}:round-complete`,
         actorId: command.actor.actorId,
         reason: 'ekshifni-three-images-completed',
+        result: {
+          resultJson: state.runtimeState.resultJson,
+          resultsJson: state.runtimeState.resultsJson,
+        },
+        now,
+      });
+    }
+    runtime.complete(
+      `${command.commandId}:runtime-complete`,
+      command.actor.actorId,
+      now,
+    );
+    return true;
+  }
+
+  /**
+   * Three dishes are done, so the Signature is done.
+   *
+   * The round carries the dish ledger and the Signature's own verdict; the
+   * Match reads that verdict once through the canonical convergence path, and
+   * the internal dish points never touch a Match score on their own.
+   */
+  private completeLaTahriqhaIfTerminal(
+    runtime: import('../domain/gameplay-runtime').GameplayRuntime,
+    command: GameplayRuntimeCommand,
+    now: Date,
+  ): boolean {
+    if (runtime.modeKey !== LA_TAHRIQHA_MODE_KEY) return false;
+    const state = runtime.serialize();
+    if (state.runtimeState.phase !== 'completed') return false;
+    const round = state.activeRound;
+    if (round) {
+      runtime.completeRound({
+        roundId: round.id,
+        commandId: `${command.commandId}:round-complete`,
+        actorId: command.actor.actorId,
+        reason: 'la-tahriqha-three-dishes-completed',
         result: {
           resultJson: state.runtimeState.resultJson,
           resultsJson: state.runtimeState.resultsJson,

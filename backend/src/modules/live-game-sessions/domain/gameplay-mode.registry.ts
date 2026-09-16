@@ -16,6 +16,7 @@ import { ODD_PIECE_GAMEPLAY_PLUGIN } from './odd-piece-gameplay.plugin';
 import { LAQATHA_GAMEPLAY_PLUGIN } from './laqatha-gameplay.plugin';
 import { FIRST_NOTE_GAMEPLAY_PLUGIN } from './first-note-gameplay.plugin';
 import { EKSHIFNI_GAMEPLAY_PLUGIN } from './ekshifni-gameplay.plugin';
+import { LA_TAHRIQHA_GAMEPLAY_PLUGIN } from './la-tahriqha-gameplay.plugin';
 
 @Injectable()
 export class GameplayModeRegistry {
@@ -101,6 +102,13 @@ export class GameplayModeRegistry {
         EKSHIFNI_GAMEPLAY_PLUGIN.version,
       ),
       EKSHIFNI_GAMEPLAY_PLUGIN,
+    ],
+    [
+      this.registryKey(
+        LA_TAHRIQHA_GAMEPLAY_PLUGIN.key,
+        LA_TAHRIQHA_GAMEPLAY_PLUGIN.version,
+      ),
+      LA_TAHRIQHA_GAMEPLAY_PLUGIN,
     ],
   ]);
 

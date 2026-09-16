@@ -11,6 +11,7 @@ import type {
   ContentPattern,
   OddPiecePayload,
   EkshifniPayload,
+  LaTahriqhaPayload,
   LaqathaPayload,
   FirstNotePayload,
 } from "../types";
@@ -45,6 +46,7 @@ export interface ContentItemFormValues {
   laqatha: LaqathaFormState;
   firstNote: FirstNoteFormState;
   ekshifni: EkshifniFormState;
+  laTahriqha: LaTahriqhaFormState;
 }
 
 export const ODD_PIECE_CHALLENGE_SLUG = "odd-piece";
@@ -360,6 +362,84 @@ export function toEkshifniFormState(
   };
 }
 
+export const LA_TAHRIQHA_CHALLENGE_SLUG = "la-tahriqha";
+export const LA_TAHRIQHA_INGREDIENT_COUNT = 8;
+export const LA_TAHRIQHA_CORRECT_COUNT = 5;
+export const LA_TAHRIQHA_DISTRACTOR_COUNT = 3;
+export const LA_TAHRIQHA_PROMPT_AR = "وش مكوّنات هذا الطبق؟";
+
+export interface LaTahriqhaIngredientFormState {
+  localId: string;
+  label: string;
+  correct: boolean;
+}
+
+export interface LaTahriqhaFormState {
+  enabled: boolean;
+  dishName: string;
+  dishNote: string;
+  /** Empty means the product baseline; an author only fills this to override. */
+  timerSeconds: string;
+  ingredients: LaTahriqhaIngredientFormState[];
+}
+
+export function hasLaTahriqhaMechanic(
+  selected: ReadonlyArray<{ challengeType: { slug: string } }>,
+): boolean {
+  return selected.some(
+    (configuration) =>
+      configuration.challengeType.slug === LA_TAHRIQHA_CHALLENGE_SLUG,
+  );
+}
+
+/**
+ * Eight empty cards, the first five pre-marked as correct.
+ *
+ * The split is the contract, so the form starts already satisfying it and an
+ * author edits labels rather than discovering the rule by breaking it. The order
+ * here is authoring order only: the runtime shuffles the eight before anyone
+ * sees them, which is why an author may safely keep the correct ones together.
+ */
+function emptyLaTahriqhaState(): LaTahriqhaFormState {
+  return {
+    enabled: false,
+    dishName: "",
+    dishNote: "",
+    timerSeconds: "",
+    ingredients: Array.from(
+      { length: LA_TAHRIQHA_INGREDIENT_COUNT },
+      (_, index) => ({
+        localId: `ingredient-${index + 1}`,
+        label: "",
+        correct: index < LA_TAHRIQHA_CORRECT_COUNT,
+      }),
+    ),
+  };
+}
+
+export function toLaTahriqhaFormState(
+  payload: Partial<LaTahriqhaPayload> | undefined,
+): LaTahriqhaFormState {
+  if (payload?.variant !== "la-tahriqha") return emptyLaTahriqhaState();
+  const empty = emptyLaTahriqhaState();
+  return {
+    enabled: true,
+    dishName: payload.dishName?.ar ?? "",
+    dishNote: payload.dishNote?.ar ?? "",
+    timerSeconds:
+      payload.timerSeconds === undefined ? "" : String(payload.timerSeconds),
+    ingredients: empty.ingredients.map((fallback, index) => {
+      const ingredient = payload.ingredients?.[index];
+      if (!ingredient) return fallback;
+      return {
+        localId: ingredient.localId ?? fallback.localId,
+        label: ingredient.label?.ar ?? "",
+        correct: ingredient.correct === true,
+      };
+    }),
+  };
+}
+
 export const LAQATHA_CHALLENGE_SLUG = "laqatha";
 export const LAQATHA_VALUES = [5, 4, 3, 2, 1] as const;
 export const LAQATHA_PROMPT_AR = "خمّن الفيلم من الأدلة الخمسة";
@@ -611,6 +691,7 @@ export function emptyContentItemForm(scopeId: string): ContentItemFormValues {
     marhala: emptyMarhalaState(),
     oddPiece: emptyOddPieceState(),
     ekshifni: emptyEkshifniState(),
+    laTahriqha: emptyLaTahriqhaState(),
     laqatha: emptyLaqathaState(),
     firstNote: emptyFirstNoteState(),
   };
@@ -745,6 +826,9 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
     ekshifni: toEkshifniFormState(
       item.mechanicPayload as Partial<EkshifniPayload> | undefined,
       acceptedAnswers[0] ?? "",
+    ),
+    laTahriqha: toLaTahriqhaFormState(
+      item.mechanicPayload as Partial<LaTahriqhaPayload> | undefined,
     ),
     top5:
       top5Payload?.variant === "keep-or-give"
@@ -1019,6 +1103,25 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
         })),
       }
     : undefined;
+  const laTahriqhaMechanicPayload = values.laTahriqha.enabled
+    ? {
+        variant: "la-tahriqha" as const,
+        dishName: { ar: values.laTahriqha.dishName.trim() },
+        ...(values.laTahriqha.dishNote.trim()
+          ? { dishNote: { ar: values.laTahriqha.dishNote.trim() } }
+          : {}),
+        ingredients: values.laTahriqha.ingredients.map((ingredient) => ({
+          localId: ingredient.localId.trim(),
+          label: { ar: ingredient.label.trim() },
+          correct: ingredient.correct,
+        })),
+        // Absent means the product baseline, so an untouched field must not
+        // become a hard-coded thirty seconds in the payload.
+        ...(values.laTahriqha.timerSeconds.trim()
+          ? { timerSeconds: Number(values.laTahriqha.timerSeconds) }
+          : {}),
+      }
+    : undefined;
   /**
    * One payload holding every selected mechanic's own keys.
    *
@@ -1039,6 +1142,7 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
     laqathaMechanicPayload ??
     firstNoteMechanicPayload ??
     ekshifniMechanicPayload ??
+    laTahriqhaMechanicPayload ??
     (values.answer.mode === "closest" &&
     values.answer.closestInteraction !== "legacy"
       ? {}
@@ -1053,6 +1157,7 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
           ...laqathaMechanicPayload,
           ...firstNoteMechanicPayload,
           ...ekshifniMechanicPayload,
+          ...laTahriqhaMechanicPayload,
           ...(values.answer.mode === "closest" &&
           values.answer.closestInteraction !== "legacy"
             ? {
@@ -1083,11 +1188,14 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
       : values.ekshifni.enabled
         ? values.ekshifni.targetAnswer
         : values.firstNote.title;
-  const answerPayload =
-    values.oneClue.enabled ||
-    values.laqatha.enabled ||
-    values.ekshifni.enabled ||
-    values.firstNote.enabled
+  // لا تحرقها answers in its own mode: the five correct cards are the answer,
+  // so the item carries no accepted-answer text at all.
+  const answerPayload = values.laTahriqha.enabled
+    ? { mode: "la_tahriqha" as const }
+    : values.oneClue.enabled ||
+        values.laqatha.enabled ||
+        values.ekshifni.enabled ||
+        values.firstNote.enabled
       ? {
           mode: "match" as const,
           acceptedAnswers: [
@@ -1107,9 +1215,11 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
             ? LAQATHA_PROMPT_AR
             : values.ekshifni.enabled
               ? EKSHIFNI_PROMPT_AR
-              : values.firstNote.enabled
-                ? "خمّن اسم الأغنية"
-                : ""),
+              : values.laTahriqha.enabled
+                ? LA_TAHRIQHA_PROMPT_AR
+                : values.firstNote.enabled
+                  ? "خمّن اسم الأغنية"
+                  : ""),
       ...(values.promptEn.trim() ? { en: values.promptEn.trim() } : {}),
     },
     compatibleChallengeTypeIds: values.compatibleChallengeTypeIds,
@@ -1194,6 +1304,7 @@ export function findLocalFormProblems(values: ContentItemFormValues): string[] {
     !values.oneClue.enabled &&
     !values.laqatha.enabled &&
     !values.ekshifni.enabled &&
+    !values.laTahriqha.enabled &&
     !values.firstNote.enabled
   )
     problems.push("نص السؤال بالعربية مطلوب.");
@@ -1317,6 +1428,40 @@ export function findLocalFormProblems(values: ContentItemFormValues): string[] {
       problems.push(
         "أبعاد الأجزاء تكون نسبة من الصورة بين 0 و 1، وداخل حدود الصورة.",
       );
+  }
+  if (values.laTahriqha.enabled) {
+    const { laTahriqha } = values;
+    // Deliberately the same shape as the backend's `validateLaTahriqhaPayload`:
+    // the fast, local half of one contract rather than a second one. A dish the
+    // Admin accepts here must not be refused by the room on game night.
+    if (!laTahriqha.dishName.trim()) problems.push("اسم الطبق مطلوب.");
+    if (laTahriqha.ingredients.length !== LA_TAHRIQHA_INGREDIENT_COUNT)
+      problems.push("لا تحرقها يحتاج ثمانية مكوّنات بالضبط.");
+    const ids = laTahriqha.ingredients.map((ingredient) =>
+      ingredient.localId.trim(),
+    );
+    if (ids.some((id) => !id) || new Set(ids).size !== ids.length)
+      problems.push("معرفات المكوّنات يجب أن تكون موجودة وفريدة.");
+    if (laTahriqha.ingredients.some((ingredient) => !ingredient.label.trim()))
+      problems.push("كل مكوّن يحتاج اسمًا بالعربية.");
+    const correct = laTahriqha.ingredients.filter(
+      (ingredient) => ingredient.correct,
+    ).length;
+    if (correct !== LA_TAHRIQHA_CORRECT_COUNT)
+      problems.push(
+        `يجب اختيار ${LA_TAHRIQHA_CORRECT_COUNT} مكوّنات صحيحة بالضبط.`,
+      );
+    if (
+      laTahriqha.ingredients.length - correct !== LA_TAHRIQHA_DISTRACTOR_COUNT
+    )
+      problems.push(
+        `يجب ترك ${LA_TAHRIQHA_DISTRACTOR_COUNT} مكوّنات خاطئة محتملة.`,
+      );
+    if (laTahriqha.timerSeconds.trim()) {
+      const seconds = Number(laTahriqha.timerSeconds);
+      if (!Number.isInteger(seconds) || seconds < 5)
+        problems.push("وقت الطبق يكون عددًا صحيحًا من الثواني، 5 على الأقل.");
+    }
   }
   // Two mechanics can ask the author for the same thing — both take a صعوبة —
   // and saying it twice reads as two different problems.

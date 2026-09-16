@@ -34,6 +34,7 @@ import {
   hasOddPieceMechanic,
   hasFirstNoteMechanic,
   hasEkshifniMechanic,
+  hasLaTahriqhaMechanic,
 } from "../../services/content-item-form.service";
 import { FormIssueList } from "../shared";
 import { UploadField } from "../shared/upload-field";
@@ -46,6 +47,7 @@ import { ComboFields } from "./combo-fields";
 import { MarhalaFields } from "./marhala-fields";
 import { OddPieceFields } from "./odd-piece-fields";
 import { EkshifniFields } from "./ekshifni-fields";
+import { LaTahriqhaFields } from "./la-tahriqha-fields";
 import { LaqathaFields } from "./laqatha-fields";
 import { FirstNoteFields } from "./first-note-fields";
 import {
@@ -137,6 +139,7 @@ export function ContentItemForm({
   );
   const firstNoteSelected = hasFirstNoteMechanic(selectedChallengeTypes);
   const ekshifniSelected = hasEkshifniMechanic(selectedChallengeTypes);
+  const laTahriqhaSelected = hasLaTahriqhaMechanic(selectedChallengeTypes);
   // Keep the payload flag in step with the selection, so deselecting the
   // mechanic stops emitting its payload.
   useEffect(() => {
@@ -229,6 +232,21 @@ export function ContentItemForm({
       };
     });
   }, [ekshifniSelected]);
+
+  // لا تحرقها answers in its own mode rather than borrowing MATCH: the five
+  // correct cards are the answer, so there is no accepted-answer text to keep.
+  useEffect(() => {
+    setValues((current) => {
+      if (current.laTahriqha.enabled === laTahriqhaSelected) return current;
+      return {
+        ...current,
+        answer: laTahriqhaSelected
+          ? { ...current.answer, mode: "la_tahriqha" }
+          : current.answer,
+        laTahriqha: { ...current.laTahriqha, enabled: laTahriqhaSelected },
+      };
+    });
+  }, [laTahriqhaSelected]);
 
   useEffect(() => {
     setValues((current) =>
@@ -404,6 +422,11 @@ export function ContentItemForm({
           onAcceptedAnswersChange={(acceptedAnswers) =>
             set({ answer: { ...values.answer, acceptedAnswers } })
           }
+        />
+      ) : laTahriqhaSelected ? (
+        <LaTahriqhaFields
+          value={values.laTahriqha}
+          onChange={(laTahriqha) => set({ laTahriqha })}
         />
       ) : firstNoteSelected ? (
         <FirstNoteFields

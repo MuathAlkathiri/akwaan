@@ -13,6 +13,8 @@ import {
   LAQATHA_SLUG,
   FIRST_NOTE_SLUG,
   EKSHIFNI_SLUG,
+  LA_TAHRIQHA_SLUG,
+  LA_TAHRIQHA_DEFAULT_DISH_SECONDS,
 } from './world-content.constants';
 import { ChallengePresentation } from './world-content.types';
 
@@ -282,6 +284,37 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
             'صاحب الدور يختار رقم الجزء اللي يبغى يكشفه.',
             'الإجابة مفتوحة للفريقين — أول إجابة صحيحة تأخذ النقاط.',
             'إذا غلطتم، الدور والفرصة تنتقل للفريق الثاني.',
+          ],
+        },
+      },
+    },
+  }),
+  definition({
+    // "لا تحرقها" — the Food Signature (§16.10). A discrete triple of dishes,
+    // each with eight ingredient cards. The five correct ingredients are the
+    // answer, so the item answers in its own mode and carries no free text.
+    slug: LA_TAHRIQHA_SLUG,
+    family: ChallengeFamily.SIGNATURE,
+    itemStructure: ChallengeItemStructure.DISCRETE_TRIPLE,
+    answerMode: ChallengeAnswerMode.LA_TAHRIQHA,
+    seed: {
+      name: 'لا تحرقها',
+      description:
+        'ثمانية مكوّنات وطبق واحد: اختاروا من ثلاثة إلى خمسة مكوّنات صحيحة، ومكوّن واحد غلط يحرق الطبق.',
+      defaultPresentation: {
+        inputType: 'phone-choice',
+        // The product baseline for one dish. Authors may give a harder dish its
+        // own window; this is what a dish that says nothing gets.
+        timerSeconds: LA_TAHRIQHA_DEFAULT_DISH_SECONDS,
+        soundPack: null,
+        revealStyle: null,
+        playerInstructions: {
+          summary:
+            'ثلاثة صحيحة تعطيكم 3، وأربعة تعطيكم 4، والخمسة كاملة تعطيكم 7.',
+          steps: [
+            'قائد الطبق يختار المكوّنات، ويتغيّر مع كل طبق.',
+            'بقية الفريق يشوفون نفس الطبق ويناقشون قبل التثبيت.',
+            'مكوّن واحد غلط يحرق الطبق ويصفّر نقاطه.',
           ],
         },
       },

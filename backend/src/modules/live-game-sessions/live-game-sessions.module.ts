@@ -135,6 +135,7 @@ import { StartOddPieceGameplay } from './application/start-odd-piece-gameplay.us
 import { StartLaqathaGameplay } from './application/start-laqatha-gameplay.use-case';
 import { StartFirstNoteGameplay } from './application/start-first-note-gameplay.use-case';
 import { StartEkshifniGameplay } from './application/start-ekshifni-gameplay.use-case';
+import { StartLaTahriqhaGameplay } from './application/start-la-tahriqha-gameplay.use-case';
 
 const applicationProviders = [
   StartFirstNoteGameplay,
@@ -198,6 +199,7 @@ const applicationProviders = [
   StartOddPieceGameplay,
   StartLaqathaGameplay,
   StartEkshifniGameplay,
+  StartLaTahriqhaGameplay,
 ];
 
 @Module({
@@ -318,6 +320,7 @@ const applicationProviders = [
     StartOddPieceGameplay,
     StartLaqathaGameplay,
     StartEkshifniGameplay,
+    StartLaTahriqhaGameplay,
     GAMEPLAY_RUNTIME_REPOSITORY,
     LIVE_GAME_SESSION_REPOSITORY,
     // The Match layer announces its transitions on the session's own channel.

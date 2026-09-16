@@ -166,6 +166,13 @@ export const MODE_COMMAND_TYPES: readonly string[] = [
   'submit-ekshifni',
   'advance-ekshifni',
   'expire-ekshifni-image',
+  // لا تحرقها: the dish captain's two card commands, the commit, the host's
+  // advance past the reveal, and the dish window running out.
+  'select-la-tahriqha-ingredient',
+  'deselect-la-tahriqha-ingredient',
+  'lock-la-tahriqha-dish',
+  'advance-la-tahriqha',
+  'expire-la-tahriqha-dish',
 ];
 
 export interface GameplayCommandDefinition {

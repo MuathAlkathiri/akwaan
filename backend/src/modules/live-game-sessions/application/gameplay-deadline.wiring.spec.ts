@@ -66,6 +66,8 @@ const DEADLINE_CONTRACT: Record<
   'first-note': { kind: 'runtime-state' },
   // The technical safety window that ends a stalled image, not an answer timer.
   ekshifni: { kind: 'runtime-state' },
+  // The dish window itself: thirty seconds of choosing, armed at Fair-Start.
+  'la-tahriqha': { kind: 'runtime-state' },
 };
 
 /** A live runtime carrying whatever the mechanic uses to express a deadline. */

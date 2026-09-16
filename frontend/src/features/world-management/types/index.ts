@@ -26,6 +26,7 @@ export type ChallengeAnswerMode =
   | "laqatha"
   | "first_note"
   | "ekshifni"
+  | "la_tahriqha"
   /** The canonical ركّبها answer mode. */
   | "rakkibha";
 export type ChallengeItemStructure = "discrete_triple" | "continuous";
@@ -38,7 +39,8 @@ export type ContentPattern =
   | "odd_piece"
   | "laqatha"
   | "first_note"
-  | "ekshifni";
+  | "ekshifni"
+  | "la_tahriqha";
 
 export interface ContentAsset {
   url: string;
@@ -407,6 +409,25 @@ export interface EkshifniPayload {
     role: string;
     shape: { x: number; y: number; width: number; height: number };
   }>;
+}
+
+/**
+ * "لا تحرقها" authoring: one dish and its eight ingredient cards.
+ *
+ * `correct` is explicit on every card rather than inferred from position,
+ * because the runtime shuffles the eight before anyone sees them. `localId` is
+ * stable across edits so a recorded selection cannot drift onto another card.
+ */
+export interface LaTahriqhaPayload {
+  variant: "la-tahriqha";
+  dishName: LocalizedText;
+  dishNote?: LocalizedText;
+  ingredients: Array<{
+    localId: string;
+    label: LocalizedText;
+    correct: boolean;
+  }>;
+  timerSeconds?: number;
 }
 
 export interface FirstNotePayload {

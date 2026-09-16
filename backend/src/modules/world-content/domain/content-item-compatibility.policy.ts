@@ -21,6 +21,7 @@ import {
   MARHALA_SLUG,
   ODD_PIECE_SLUG,
   EKSHIFNI_SLUG,
+  LA_TAHRIQHA_SLUG,
   ONE_CLUE_VALUES,
   LAQATHA_SLUG,
   LAQATHA_VALUES,
@@ -52,12 +53,14 @@ import {
   LaqathaPayload,
   FirstNotePayload,
   EkshifniPayload,
+  LaTahriqhaPayload,
 } from './world-content.types';
 import { validateOddPiecePayload } from './odd-piece-content.policy';
 import {
   ekshifniImageIssue,
   validateEkshifniPayload,
 } from './ekshifni-content.policy';
+import { validateLaTahriqhaPayload } from './la-tahriqha-content.policy';
 
 /**
  * Fields the legacy question model carried that have no place in the new domain
@@ -118,6 +121,7 @@ export class ContentItemCompatibilityPolicy {
     blockers.push(...this.validateMarhalaPayload(input.item, referenced));
     blockers.push(...this.validateOddPiecePayload(input.item, referenced));
     blockers.push(...this.validateEkshifniPayload(input.item, referenced));
+    blockers.push(...this.validateLaTahriqhaPayload(input.item, referenced));
     warnings.push(...this.reuseWarnings(input.item, referenced));
 
     return buildReadinessReport(blockers, warnings);
@@ -247,6 +251,23 @@ export class ContentItemCompatibilityPolicy {
         item.mechanicPayload as Partial<EkshifniPayload>,
       ),
     ];
+  }
+
+  /**
+   * "لا تحرقها" structure: one dish and its eight ingredient cards, five of
+   * which belong in it. Checked here against the very predicate the launcher
+   * runs, so a dish the Admin accepts cannot be refused by the room on game
+   * night.
+   */
+  private validateLaTahriqhaPayload(
+    item: ContentItemView,
+    challengeTypes: ChallengeTypeView[],
+  ): WorldContentIssue[] {
+    if (!challengeTypes.some((type) => type.slug === LA_TAHRIQHA_SLUG))
+      return [];
+    return validateLaTahriqhaPayload(
+      item.mechanicPayload as Partial<LaTahriqhaPayload>,
+    );
   }
 
   private validateOneCluePayload(
@@ -919,6 +940,10 @@ export class ContentItemCompatibilityPolicy {
         return this.validateRyoPayload(payload);
       case ChallengeAnswerMode.TOP_5:
       case ChallengeAnswerMode.ODD_PIECE:
+      // "لا تحرقها" keeps its whole answer in the mechanic payload — the five
+      // correct ingredient cards — so there is nothing here to check twice. The
+      // dish itself is validated by `validateLaTahriqhaPayload` above.
+      case ChallengeAnswerMode.LA_TAHRIQHA:
         return [];
       default:
         return [

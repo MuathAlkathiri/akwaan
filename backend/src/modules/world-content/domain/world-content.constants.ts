@@ -63,6 +63,13 @@ export enum ChallengeAnswerMode {
    * MATCH answer payload that names the celebrity.
    */
   EKSHIFNI = 'ekshifni',
+  /**
+   * Food Signature "لا تحرقها": eight ingredient cards per dish, of which five
+   * are canonically correct. The five correct ingredients *are* the answer, so
+   * the item carries no free-text answer payload at all — the same shape القطعة
+   * الدخيلة uses, for the same reason.
+   */
+  LA_TAHRIQHA = 'la_tahriqha',
 }
 
 /** A generic board position. Gameplay meaning comes from its Challenge Type. */
@@ -213,6 +220,43 @@ export type EkshifniRegionRole = (typeof EKSHIFNI_REGION_ROLES)[number];
  */
 export const EKSHIFNI_IMAGE_SAFETY_SECONDS = 180;
 
+/**
+ * Food Signature: لا تحرقها.
+ *
+ * Transliterated like every other Arabic-named mechanic in the catalog
+ * (`marhala`, `laqatha`, `rakkibha`, `ekshifni`), so the runtime key reads the
+ * way the room says it.
+ */
+export const LA_TAHRIQHA_SLUG = 'la-tahriqha';
+/** Exactly three dishes per challenge launch; one ContentItem is one dish. */
+export const LA_TAHRIQHA_DISH_COUNT = 3;
+/** Exactly eight ingredient cards per dish. */
+export const LA_TAHRIQHA_INGREDIENT_COUNT = 8;
+/** Five of the eight belong in the dish. */
+export const LA_TAHRIQHA_CORRECT_COUNT = 5;
+/** The other three are plausible, which is what makes the choice a choice. */
+export const LA_TAHRIQHA_DISTRACTOR_COUNT = 3;
+/** A team must commit to at least three ingredients for the dish to count. */
+export const LA_TAHRIQHA_MIN_SELECTION = 3;
+/** And may never name more than five, because five is the whole recipe. */
+export const LA_TAHRIQHA_MAX_SELECTION = 5;
+/**
+ * The extra paid for naming the exact recipe.
+ *
+ * Three correct is worth three and four is worth four, so the ladder is flat
+ * until the last card: five correct pays 5 + 2 = 7. That step is the mechanic —
+ * the fifth ingredient is the only one that buys more than it costs, and it is
+ * also the one most likely to burn the dish.
+ */
+export const LA_TAHRIQHA_PERFECT_BONUS = 2;
+/**
+ * The baseline dish window, in seconds.
+ *
+ * Product baseline, not a hard-coded rule: an authored dish may carry its own
+ * `timerSeconds`, and this is only what a dish that says nothing gets.
+ */
+export const LA_TAHRIQHA_DEFAULT_DISH_SECONDS = 30;
+
 /** Music Signature: من أول نغمة. */
 export const FIRST_NOTE_SLUG = 'first-note';
 export const FIRST_NOTE_ITEM_COUNT = 3;
@@ -229,7 +273,8 @@ export type ContentPattern =
   | 'odd_piece'
   | 'laqatha'
   | 'first_note'
-  | 'ekshifni';
+  | 'ekshifni'
+  | 'la_tahriqha';
 
 /** Mechanic-owned authoring structure, distinct from its answer contract. */
 export function contentPatternForChallengeAnswerMode(
@@ -242,6 +287,7 @@ export function contentPatternForChallengeAnswerMode(
   if (mode === ChallengeAnswerMode.LAQATHA) return 'laqatha';
   if (mode === ChallengeAnswerMode.FIRST_NOTE) return 'first_note';
   if (mode === ChallengeAnswerMode.EKSHIFNI) return 'ekshifni';
+  if (mode === ChallengeAnswerMode.LA_TAHRIQHA) return 'la_tahriqha';
   return 'generic';
 }
 
@@ -309,6 +355,9 @@ export const ANSWER_MODE_COMPATIBLE_ITEM_MODES: Readonly<
   [ChallengeAnswerMode.LAQATHA]: [ChallengeAnswerMode.MATCH],
   [ChallengeAnswerMode.FIRST_NOTE]: [ChallengeAnswerMode.MATCH],
   [ChallengeAnswerMode.EKSHIFNI]: [ChallengeAnswerMode.MATCH],
+  // The five correct ingredients are the answer, so the item answers in its own
+  // mode rather than borrowing MATCH — exactly as القطعة الدخيلة does.
+  [ChallengeAnswerMode.LA_TAHRIQHA]: [ChallengeAnswerMode.LA_TAHRIQHA],
   [ChallengeAnswerMode.RAKKIBHA]: [
     ChallengeAnswerMode.MATCH,
     ChallengeAnswerMode.MULTIPLE_CHOICE,

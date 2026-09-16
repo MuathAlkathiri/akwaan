@@ -1,6 +1,7 @@
 import {
   Bomb,
   CarFront,
+  ChefHat,
   Eye,
   Flame,
   Gamepad2,
@@ -40,6 +41,7 @@ export const CHALLENGE_ICONS: Readonly<Record<string, LucideIcon>> = {
   bomb: Bomb,
   "odd-piece": CarFront,
   ekshifni: ScanFace,
+  "la-tahriqha": ChefHat,
 };
 
 /** The icon for anything not in the registry. Never shared with a known type. */
