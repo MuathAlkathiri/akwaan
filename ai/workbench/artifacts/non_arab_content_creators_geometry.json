@@ -1,0 +1,587 @@
+{
+  "KSI": {
+    "celebrity": "KSI",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.25,
+          "y": 0.35,
+          "width": 0.5,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.3,
+          "y": 0.02,
+          "width": 0.4,
+          "height": 0.23
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.35,
+          "y": 0.55,
+          "width": 0.3,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.1,
+          "y": 0.8,
+          "width": 0.3,
+          "height": 0.18
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "background",
+        "shape": {
+          "x": 0.8,
+          "y": 0.4,
+          "width": 0.18,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.05,
+          "y": 0.15,
+          "width": 0.2,
+          "height": 0.2
+        }
+      }
+    ]
+  },
+  "Ninja": {
+    "celebrity": "Ninja",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.25,
+          "y": 0.45,
+          "width": 0.5,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.2,
+          "y": 0.05,
+          "width": 0.25,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.35,
+          "y": 0.7,
+          "width": 0.3,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.55,
+          "y": 0.85,
+          "width": 0.35,
+          "height": 0.13
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "background",
+        "shape": {
+          "x": 0.8,
+          "y": 0.3,
+          "width": 0.18,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.5,
+          "y": 0.05,
+          "width": 0.3,
+          "height": 0.25
+        }
+      }
+    ]
+  },
+  "Kai Cenat": {
+    "celebrity": "Kai Cenat",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.3,
+          "y": 0.45,
+          "width": 0.45,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.3,
+          "y": 0.05,
+          "width": 0.4,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.35,
+          "y": 0.72,
+          "width": 0.3,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.6,
+          "y": 0.85,
+          "width": 0.35,
+          "height": 0.13
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "background",
+        "shape": {
+          "x": 0.05,
+          "y": 0.05,
+          "width": 0.2,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.18,
+          "y": 0.55,
+          "width": 0.1,
+          "height": 0.15
+        }
+      }
+    ]
+  },
+  "Casey Neistat": {
+    "celebrity": "Casey Neistat",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.2,
+          "y": 0.35,
+          "width": 0.6,
+          "height": 0.22
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.3,
+          "y": 0.02,
+          "width": 0.45,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.35,
+          "y": 0.65,
+          "width": 0.3,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.1,
+          "y": 0.82,
+          "width": 0.3,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "background",
+        "shape": {
+          "x": 0.75,
+          "y": 0.2,
+          "width": 0.23,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.65,
+          "y": 0.85,
+          "width": 0.25,
+          "height": 0.13
+        }
+      }
+    ]
+  },
+  "Charli D'Amelio": {
+    "celebrity": "Charli D'Amelio",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.15,
+          "y": 0.38,
+          "width": 0.4,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.6,
+          "y": 0.05,
+          "width": 0.3,
+          "height": 0.3
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.25,
+          "y": 0.65,
+          "width": 0.3,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.2,
+          "y": 0.9,
+          "width": 0.4,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "background",
+        "shape": {
+          "x": 0.05,
+          "y": 0.05,
+          "width": 0.2,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.15,
+          "y": 0.68,
+          "width": 0.1,
+          "height": 0.12
+        }
+      }
+    ]
+  },
+  "Marques Brownlee": {
+    "celebrity": "Marques Brownlee",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.25,
+          "y": 0.35,
+          "width": 0.5,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.35,
+          "y": 0.05,
+          "width": 0.3,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.35,
+          "y": 0.6,
+          "width": 0.3,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.6,
+          "y": 0.85,
+          "width": 0.35,
+          "height": 0.13
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "background",
+        "shape": {
+          "x": 0.05,
+          "y": 0.2,
+          "width": 0.2,
+          "height": 0.3
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.1,
+          "y": 0.85,
+          "width": 0.3,
+          "height": 0.13
+        }
+      }
+    ]
+  },
+  "Bella Poarch": {
+    "celebrity": "Bella Poarch",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.25,
+          "y": 0.45,
+          "width": 0.5,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.35,
+          "y": 0.05,
+          "width": 0.3,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.35,
+          "y": 0.75,
+          "width": 0.3,
+          "height": 0.12
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.35,
+          "y": 0.92,
+          "width": 0.3,
+          "height": 0.06
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "background",
+        "shape": {
+          "x": 0.02,
+          "y": 0.02,
+          "width": 0.15,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.05,
+          "y": 0.4,
+          "width": 0.15,
+          "height": 0.3
+        }
+      }
+    ]
+  },
+  "Jake Paul": {
+    "celebrity": "Jake Paul",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.28,
+          "y": 0.4,
+          "width": 0.44,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.3,
+          "y": 0.18,
+          "width": 0.4,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.35,
+          "y": 0.68,
+          "width": 0.3,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.6,
+          "y": 0.9,
+          "width": 0.3,
+          "height": 0.08
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "background",
+        "shape": {
+          "x": 0.05,
+          "y": 0.4,
+          "width": 0.15,
+          "height": 0.3
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.15,
+          "y": 0.02,
+          "width": 0.2,
+          "height": 0.12
+        }
+      }
+    ]
+  },
+  "Markiplier": {
+    "celebrity": "Markiplier",
+    "regions": [
+      {
+        "localId": "region-1",
+        "role": "eyes",
+        "shape": {
+          "x": 0.25,
+          "y": 0.38,
+          "width": 0.5,
+          "height": 0.15
+        }
+      },
+      {
+        "localId": "region-2",
+        "role": "hair-head",
+        "shape": {
+          "x": 0.35,
+          "y": 0.05,
+          "width": 0.3,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-3",
+        "role": "mouth-facial-hair",
+        "shape": {
+          "x": 0.35,
+          "y": 0.65,
+          "width": 0.3,
+          "height": 0.2
+        }
+      },
+      {
+        "localId": "region-4",
+        "role": "outfit",
+        "shape": {
+          "x": 0.25,
+          "y": 0.88,
+          "width": 0.5,
+          "height": 0.1
+        }
+      },
+      {
+        "localId": "region-5",
+        "role": "background",
+        "shape": {
+          "x": 0.05,
+          "y": 0.05,
+          "width": 0.25,
+          "height": 0.25
+        }
+      },
+      {
+        "localId": "region-6",
+        "role": "distinctive-detail",
+        "shape": {
+          "x": 0.75,
+          "y": 0.45,
+          "width": 0.23,
+          "height": 0.2
+        }
+      }
+    ]
+  }
+}
