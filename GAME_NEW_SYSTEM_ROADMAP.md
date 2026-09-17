@@ -1050,7 +1050,9 @@ done or scheduled.
 **Release state:** ✅ committed & pushed · ✅ frontend source deployed and verified ·
 ✅ backend health/database connectivity verified · ⚠️ backend running SHA not exposed by Render ·
 ⬜ authenticated legacy Production gameplay smoke pending access ·
-⬜ real slider Production gameplay pending confirmed authored content and access.
+⬜ real slider Production gameplay pending confirmed authored content and access ·
+⬜ Production Closest content audit blocked on access (2026-09-17) — and blocked again behind it on per-question
+authoring, because no legacy item carries derivable bounds.
 
 Closest remains the single `closest` runtime mechanic. This refresh does not create a new ChallengeType,
 scoring engine, convergence path, realtime architecture, or state store. Its existing server-authoritative
@@ -1097,6 +1099,49 @@ clear restrained ring; the authoritative locked marker is intentionally non-inte
 explicit; Numeric Range reveals format authored units; and Between Anchors reveals preserve the authored
 continuum without exposing normalized implementation numbers. No gameplay, scoring, lifecycle, schema, or
 authority behavior changed in this review pass.
+
+**Production content audit (2026-09-17) — why Production still plays the legacy experience.** The slider is not
+gated on code; it is gated on content. The condition for the new UI is exactly one thing: the ContentItem must
+carry `mechanicPayload.closestSlider`. Proven at all four layers — `start-closest-gameplay.use-case.ts` spreads
+`slider` into the runtime item only when that key exists, `closest-gameplay.plugin.ts` validates it only when
+present and omits it from the projection otherwise, and the phone renders the number input when `item.slider` is
+absent. Nothing derives a default, synthesises bounds, or rejects the item. A legacy item is fully playable and
+looks exactly as it did before, which is the designed behaviour.
+
+No Closest content anywhere carries that key. A read-only audit of the developer catalog found **626
+Closest-compatible items, 625 ready, and 0 with any `mechanicPayload` at all**. A legacy item carries only its
+prompt, `answerPayload.correctValue`, and usually an `acceptedTolerance` of 0 — no range, no unit, no anchors.
+The Admin form also defaults a newly authored Closest item to `closestInteraction: "legacy"`, so even content
+authored today in the deployed Admin is legacy unless an author explicitly chooses a mode and types bounds.
+
+**Those items are not automatically convertible, and this is a product finding rather than a tooling gap.**
+Choosing `min` and `max` for "how many goals did Shearer score" or "what year did Ronaldo move to Al Nassr" is an
+editorial decision about how hard the question should be; nothing in the authored data determines it, and no
+approved derivation rule exists in this document or in source. `acceptedTolerance` is a grading tolerance, not a
+range. So the correct classification of the entire legacy catalog is **LEGACY_REQUIRES_CONTENT_AUTHORING**, and
+zero items are deterministically convertible. Inventing a global 0–100 — or a plausible-looking range per item —
+is exactly what this section already forbids. Between-anchors is additionally unavailable as a bulk conversion:
+the authored target must still sit inside the continuum's internal range, so re-anchoring an existing numeric
+question cannot preserve its canonical target.
+
+The migration mechanics themselves are proven and safe. Rehearsed locally on twelve disposable QA items through
+the canonical Admin `PATCH /admin/content-items/:id` path: dry-run → apply → re-run reported `0` changes needed
+and `12` already applied, so the migration is idempotent; each item kept its `_id`, World, Scope, ChallengeType
+compatibility, status and `answerPayload` byte-for-byte, gaining only `mechanicPayload.closestSlider`; and the
+safety gates refused a careless plan whose target fell outside the proposed range rather than writing it. A real
+local Match then drew migrated item `6aab1792bfecc43f849e07c0`, and the phone rendered that item's authored
+`between-anchors` continuum with its authored bounds, dragging committed no gameplay command, Confirm submitted
+and locked, the shared screen showed no estimate before resolution, and the reveal placed both teams and the
+target on one continuum without exposing a normalized number. The target was 780 before and after.
+
+**Production remains unreachable from this environment**, so no Production audit, migration, or gameplay smoke was
+performed: there is no Atlas URI in any checked-in env file, the Render database URI is dashboard-only
+(`sync: false`), every `/admin/*` route returns 401, Swagger is disabled, and no Vercel or Render CLI or token is
+available. Credentials were not guessed. Production DB writes, content writes, World/Scope/board writes,
+ChallengeType writes and R2 writes all remained **zero**.
+
+Remaining work is therefore content authoring, not migration: each Closest question needs an author to decide its
+continuum, after which the existing Admin editor and the rehearsed canonical path apply it.
 
 Production release evidence (2026-09-16): Vercel reported the milestone SHA as a successful Production
 deployment; the canonical production home and Match routes returned HTTP 200; and the served Match bundle
