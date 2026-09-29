@@ -408,6 +408,191 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
     ).toEqual([]);
   });
 
+  describe('the مين أقرب interaction mode a new item must choose', () => {
+    const closest = challengeType({
+      id: 'closest',
+      family: ChallengeFamily.COOP,
+      answerMode: ChallengeAnswerMode.CLOSEST,
+    });
+    const ryo = challengeType({
+      id: 'challenge-ryo',
+      slug: 'read-your-opponent',
+      answerMode: ChallengeAnswerMode.RYO,
+    });
+    const numericItem = (overrides: Record<string, unknown> = {}) =>
+      contentItem({
+        compatibleChallengeTypeIds: ['closest'],
+        answerPayload: {
+          mode: ChallengeAnswerMode.CLOSEST,
+          correctValue: 50,
+        } as const,
+        ...overrides,
+      });
+    const range = {
+      closestSlider: { mode: 'numeric-range', min: 0, max: 100, step: 5 },
+    };
+    const anchors = {
+      closestSlider: {
+        mode: 'between-anchors',
+        min: 0,
+        max: 100,
+        leftAnchor: 'قريب',
+        rightAnchor: 'بعيد',
+      },
+    };
+
+    it('refuses a new item that never chose one', () => {
+      expect(
+        codes({
+          item: numericItem(),
+          challengeTypes: typeMap(closest),
+          authoring: { isNewItem: true },
+        }),
+      ).toContain('CLOSEST_SLIDER_MODE_REQUIRED');
+    });
+
+    it('accepts a new item that chose either mode', () => {
+      for (const slider of [range, anchors]) {
+        expect(
+          codes({
+            item: numericItem({ mechanicPayload: slider }),
+            challengeTypes: typeMap(closest),
+            authoring: { isNewItem: true },
+          }),
+        ).toEqual([]);
+      }
+    });
+
+    /**
+     * The whole point of the rule being an authoring rule: content written
+     * before the slider existed is still correct content, and asking to edit its
+     * prompt must not turn it into a blocker.
+     */
+    it('leaves an existing legacy item valid', () => {
+      expect(
+        codes({ item: numericItem(), challengeTypes: typeMap(closest) }),
+      ).toEqual([]);
+      expect(
+        codes({
+          item: numericItem(),
+          challengeTypes: typeMap(closest),
+          authoring: { isNewItem: false },
+        }),
+      ).toEqual([]);
+    });
+
+    /**
+     * A numeric item authored only for RYO is not Closest content. RYO accepts
+     * CLOSEST-mode items and renders no slider, so demanding a continuum there
+     * would be the guard reaching past what it is for.
+     */
+    it('does not demand a continuum from a numeric item authored only for RYO', () => {
+      expect(
+        codes({
+          item: numericItem({ compatibleChallengeTypeIds: ['challenge-ryo'] }),
+          challengeTypes: typeMap(ryo),
+          authoring: { isNewItem: true },
+        }),
+      ).not.toContain('CLOSEST_SLIDER_MODE_REQUIRED');
+    });
+
+    it('still validates the continuum a new item did choose', () => {
+      expect(
+        codes({
+          item: numericItem({
+            mechanicPayload: {
+              closestSlider: { mode: 'numeric-range', min: 0, max: 10 },
+            },
+          }),
+          challengeTypes: typeMap(closest),
+          authoring: { isNewItem: true },
+        }),
+      ).toContain('CLOSEST_SLIDER_TARGET_OUT_OF_RANGE');
+      expect(
+        codes({
+          item: numericItem({
+            mechanicPayload: {
+              closestSlider: {
+                mode: 'between-anchors',
+                min: 0,
+                max: 100,
+                leftAnchor: 'نفس الشيء',
+                rightAnchor: 'نفس الشيء',
+              },
+            },
+          }),
+          challengeTypes: typeMap(closest),
+          authoring: { isNewItem: true },
+        }),
+      ).toContain('CLOSEST_SLIDER_ANCHORS_INVALID');
+    });
+  });
+
+  /**
+   * A calendar year and a count can be the same number, so nothing about the
+   * value decides how it is written. The author says, explicitly.
+   */
+  it('accepts an authored calendar-year slider and refuses a unit on one', () => {
+    const closest = challengeType({
+      id: 'closest',
+      family: ChallengeFamily.COOP,
+      answerMode: ChallengeAnswerMode.CLOSEST,
+    });
+    const yearItem = (slider: Record<string, unknown>) =>
+      contentItem({
+        compatibleChallengeTypeIds: ['closest'],
+        answerPayload: {
+          mode: ChallengeAnswerMode.CLOSEST,
+          correctValue: 1930,
+        } as const,
+        mechanicPayload: { closestSlider: slider },
+      });
+    const base = {
+      mode: 'numeric-range',
+      min: 1900,
+      max: 1950,
+      step: 1,
+    } as const;
+
+    expect(
+      codes({
+        item: yearItem({ ...base, displayFormat: 'calendar-year' }),
+        challengeTypes: typeMap(closest),
+      }),
+    ).toEqual([]);
+    // A year is a value, not an amount of anything.
+    expect(
+      codes({
+        item: yearItem({
+          ...base,
+          displayFormat: 'calendar-year',
+          unit: 'سنة',
+        }),
+        challengeTypes: typeMap(closest),
+      }),
+    ).toContain('CLOSEST_SLIDER_YEAR_UNIT_FORBIDDEN');
+    expect(
+      codes({
+        item: yearItem({ ...base, displayFormat: 'gregorian' }),
+        challengeTypes: typeMap(closest),
+      }),
+    ).toContain('CLOSEST_SLIDER_DISPLAY_FORMAT_INVALID');
+    // An ordinary quantity of the same magnitude keeps its unit, and an item
+    // authored before the field existed stays valid without one.
+    expect(
+      codes({
+        item: yearItem({ mode: 'numeric-range', min: 0, max: 3000, unit: 'هدف' }),
+        challengeTypes: typeMap(closest),
+      }),
+    ).toEqual([]);
+    expect(
+      codes({
+        item: yearItem({ mode: 'numeric-range', min: 0, max: 3000 }),
+        challengeTypes: typeMap(closest),
+      }),
+    ).toEqual([]);
+  });
+
   it('validates optional closest slider metadata while preserving legacy items', () => {
     const closest = challengeType({
       id: 'closest',

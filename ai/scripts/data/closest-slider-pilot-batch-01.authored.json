@@ -1,0 +1,309 @@
+{
+  "artifactType": "closest-slider-authored-batch",
+  "sourceBatch": "closest-slider-pilot-batch-01.source.json",
+  "world": "كرة قدم",
+  "scopes": [
+    "كأس العالم",
+    "الدوري الانجليزي"
+  ],
+  "itemCount": 20,
+  "humanReview": {
+    "approvedForPilot": [
+      "6a725e414c19c862fcb4c0b1",
+      "6a72685c4c19c862fcb4cf65",
+      "6a738f4a451bd7ee6bf3e1db",
+      "6a81ee5d7787a244d05f391d",
+      "6a81ee5d7787a244d05f392c",
+      "6a81ee5d7787a244d05f393b",
+      "6a81ee5d7787a244d05f394a",
+      "6a81ee5d7787a244d05f3959",
+      "6a81ee5d7787a244d05f3968",
+      "6a725e414c19c862fcb4c10b",
+      "6a738f4a451bd7ee6bf3e203",
+      "6a738f4a451bd7ee6bf3e20d",
+      "6a81ee5d7787a244d05f3a2b",
+      "6a81ee5e7787a244d05f3a3a",
+      "6a81ee5e7787a244d05f3a49",
+      "6a81ee5e7787a244d05f3a58",
+      "6a81ee5e7787a244d05f3a67"
+    ],
+    "holdForContentReview": [
+      {
+        "contentItemId": "6a738f4a451bd7ee6bf3e1e5",
+        "reason": "HOLD — factual/time-context review required."
+      },
+      {
+        "contentItemId": "6a7268104c19c862fcb4ce8e",
+        "reason": "HOLD — factual answer requires review."
+      },
+      {
+        "contentItemId": "6a81ee5e7787a244d05f3a76",
+        "reason": "HOLD — Scope/content alignment defect."
+      }
+    ]
+  },
+  "items": [
+    {
+      "contentItemId": "6a725e414c19c862fcb4c0b1",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 10,
+        "max": 25,
+        "step": 1,
+        "unit": "هدف"
+      },
+      "rationale": "Provides a realistic band for World Cup all-time top scorers; 10 to 25 creates a good estimation window."
+    },
+    {
+      "contentItemId": "6a72685c4c19c862fcb4cf65",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 12,
+        "step": 1,
+        "unit": "هدف"
+      },
+      "rationale": "A 0-12 range is very plausible for goals by one player in a single World Cup tournament."
+    },
+    {
+      "contentItemId": "6a738f4a451bd7ee6bf3e1db",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 24,
+        "max": 64,
+        "step": 4,
+        "unit": "منتخب"
+      },
+      "rationale": "A 24-64 range covers historical and future expansion sizes. Step 4 aligns with typical tournament expansion logic."
+    },
+    {
+      "contentItemId": "6a738f4a451bd7ee6bf3e1e5",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 6,
+        "step": 1,
+        "unit": "مرة"
+      },
+      "rationale": "For a nation's World Cup wins, 0-6 covers the plausible range up to the most successful teams without being too broad."
+    },
+    {
+      "contentItemId": "6a81ee5d7787a244d05f391d",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 1,
+        "max": 8,
+        "step": 1,
+        "unit": "مرة"
+      },
+      "rationale": "Brazil is historically dominant; 1-8 forces the player to estimate exactly how dominant."
+    },
+    {
+      "contentItemId": "6a81ee5d7787a244d05f392c",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 6,
+        "step": 1,
+        "unit": "مرة"
+      },
+      "rationale": "A 0-6 range fits top-tier nations' World Cup title counts perfectly."
+    },
+    {
+      "contentItemId": "6a81ee5d7787a244d05f393b",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 5,
+        "max": 20,
+        "step": 1,
+        "unit": "هدف"
+      },
+      "rationale": "5-20 gives a solid window for legendary players' career World Cup goals."
+    },
+    {
+      "contentItemId": "6a81ee5d7787a244d05f394a",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 2,
+        "max": 15,
+        "step": 1,
+        "unit": "هدف"
+      },
+      "rationale": "Similar to Pele, a 2-15 range captures a realistic spread for an iconic attacking player's World Cup tally."
+    },
+    {
+      "contentItemId": "6a81ee5d7787a244d05f3959",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 1900,
+        "max": 1960,
+        "step": 1,
+        "unit": "سنة"
+      },
+      "rationale": "1900-1960 covers the foundational era of international football and forces a meaningful historical estimate."
+    },
+    {
+      "contentItemId": "6a81ee5d7787a244d05f3968",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 8,
+        "max": 24,
+        "step": 1,
+        "unit": "منتخب"
+      },
+      "rationale": "8-24 is a reasonable size for early 20th-century international tournaments."
+    },
+    {
+      "contentItemId": "6a725e414c19c862fcb4c10b",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 150,
+        "max": 350,
+        "step": 5,
+        "unit": "هدف"
+      },
+      "rationale": "150-350 with step 5 is wide enough for a career record while keeping the exact value of 260 reachable and mobile-friendly."
+    },
+    {
+      "contentItemId": "6a7268104c19c862fcb4ce8e",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 25,
+        "max": 45,
+        "step": 1,
+        "unit": "هدف"
+      },
+      "rationale": "25-45 is the standard band for top strikers in a single Premier League season."
+    },
+    {
+      "contentItemId": "6a738f4a451bd7ee6bf3e203",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 5,
+        "max": 20,
+        "step": 1,
+        "unit": "لقب"
+      },
+      "rationale": "5-20 frames the dominance of Man United in the Premier League era well without being obvious."
+    },
+    {
+      "contentItemId": "6a738f4a451bd7ee6bf3e20d",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 2,
+        "max": 12,
+        "step": 1,
+        "unit": "لقب"
+      },
+      "rationale": "2-12 gives a good span for City's recent but intense accumulation of titles."
+    },
+    {
+      "contentItemId": "6a81ee5d7787a244d05f3a2b",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 15,
+        "step": 1,
+        "unit": "مرة"
+      },
+      "rationale": "A 0-15 range reflects a plausible Premier League-era title-count continuum without artificially narrowing the answer."
+    },
+    {
+      "contentItemId": "6a81ee5e7787a244d05f3a3a",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 100,
+        "max": 250,
+        "step": 5,
+        "unit": "هدف"
+      },
+      "rationale": "100-250 with step 5 covers legendary club goalscoring careers while making 175 easily reachable on mobile."
+    },
+    {
+      "contentItemId": "6a81ee5e7787a244d05f3a49",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 10,
+        "max": 30,
+        "step": 1,
+        "unit": "مباراة"
+      },
+      "rationale": "10-30 frames a highly successful goalkeeping season in a 38-game league perfectly."
+    },
+    {
+      "contentItemId": "6a81ee5e7787a244d05f3a58",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 15,
+        "max": 40,
+        "step": 1,
+        "unit": "هدف"
+      },
+      "rationale": "15-40 covers a great debut season for a forward, keeping the 32-goal target uncertain."
+    },
+    {
+      "contentItemId": "6a81ee5e7787a244d05f3a67",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 15,
+        "max": 40,
+        "step": 1,
+        "unit": "هدف"
+      },
+      "rationale": "15-40 provides a consistent, credible range for a Golden Boot-level season total."
+    },
+    {
+      "contentItemId": "6a81ee5e7787a244d05f3a76",
+      "interactionMode": "numeric-range",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 2000,
+        "max": 2024,
+        "step": 1,
+        "unit": "سنة"
+      },
+      "rationale": "2000-2024 frames recent football history well without giving away the exact year of the final."
+    }
+  ],
+  "contentReviewNotes": [
+    {
+      "contentItemId": "6a72685c4c19c862fcb4cf65",
+      "severity": "note",
+      "issue": "Source batch noted this uses Arabic-Indic numerals and loose phrasing ('كم سجل ميسي هدف في كأس العالم ٢٠٢٢')."
+    },
+    {
+      "contentItemId": "6a81ee5e7787a244d05f3a76",
+      "severity": "note",
+      "issue": "Source batch noted this asks about a Europa League final within the Premier League Scope."
+    },
+    {
+      "contentItemId": "6a738f4a451bd7ee6bf3e1e5",
+      "severity": "needs-review",
+      "issue": "Phrasing 'حتى بعد نسخة 2026' references the future. Additionally, correctValue is 2, but Spain's men's team has won 1 World Cup (2010), while the women's team won 1 (2023). This may be confusing."
+    },
+    {
+      "contentItemId": "6a7268104c19c862fcb4ce8e",
+      "severity": "needs-review",
+      "issue": "correctValue is 34, which was the long-standing record by Cole/Shearer. However, Erling Haaland broke this with 36 goals in the 2022-23 season. The factual answer may be outdated."
+    }
+  ]
+}

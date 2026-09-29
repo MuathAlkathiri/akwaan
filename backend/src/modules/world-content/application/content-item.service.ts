@@ -79,7 +79,9 @@ export class ContentItemService {
       status: dto.status ?? ContentItemStatus.DRAFT,
       ...(dto.metadata ? { metadata: dto.metadata } : {}),
     };
-    const { compatibleFamilies } = await this.assertWritable(candidate, dto);
+    const { compatibleFamilies } = await this.assertWritable(candidate, dto, {
+      isNewItem: true,
+    });
     if (dto.isReusableAcrossSessions === undefined) {
       // Roadmap 6.4: Relational-only content defaults to reusable.
       candidate.isReusableAcrossSessions =
@@ -171,17 +173,34 @@ export class ContentItemService {
   private async assertWritable(
     candidate: ContentItemView,
     raw: CreateContentItemDto | UpdateContentItemDto,
+    authoring?: { isNewItem?: boolean },
   ): Promise<{ compatibleFamilies: ChallengeFamily[] }> {
     assertNoIssues(
       this.policy.findLegacyFields(raw as unknown as Record<string, unknown>),
       'Legacy question fields are not part of the World Content domain',
     );
-    const { report, compatibleFamilies } = await this.evaluate(candidate);
+    const { report, compatibleFamilies } = await this.evaluate(
+      candidate,
+      authoring,
+    );
     assertNoIssues(
       report.blockers.filter((problem) =>
-        ['ONE_CLUE_STRUCTURE_INVALID', 'RAKKIBHA_STRUCTURE_REQUIRED'].includes(
-          problem.code,
-        ),
+        [
+          'ONE_CLUE_STRUCTURE_INVALID',
+          'RAKKIBHA_STRUCTURE_REQUIRED',
+          // A مين أقرب continuum is refused at every status, not only at ready.
+          // A half-authored range is broken data whether or not the author has
+          // finished the rest of the item, and a new item with no mode at all is
+          // the case this guard exists for.
+          'CLOSEST_SLIDER_MODE_REQUIRED',
+          'CLOSEST_SLIDER_MODE_INVALID',
+          'CLOSEST_SLIDER_RANGE_INVALID',
+          'CLOSEST_SLIDER_TARGET_OUT_OF_RANGE',
+          'CLOSEST_SLIDER_STEP_INVALID',
+          'CLOSEST_SLIDER_TARGET_STEP_INVALID',
+          'CLOSEST_SLIDER_UNIT_INVALID',
+          'CLOSEST_SLIDER_ANCHORS_INVALID',
+        ].includes(problem.code),
       ),
       'The selected mechanic content pattern is invalid',
     );
@@ -194,7 +213,10 @@ export class ContentItemService {
     return { compatibleFamilies };
   }
 
-  private async evaluate(candidate: ContentItemView): Promise<{
+  private async evaluate(
+    candidate: ContentItemView,
+    authoring?: { isNewItem?: boolean },
+  ): Promise<{
     report: ReadinessReport;
     compatibleFamilies: ChallengeFamily[];
   }> {
@@ -207,6 +229,7 @@ export class ContentItemService {
     return {
       report: this.policy.evaluate({
         item: candidate,
+        ...(authoring ? { authoring } : {}),
         ...(scope ? { scope: toScopeView(scope) } : {}),
         ...(world ? { worldStatus: world.status } : {}),
         challengeTypes: challengeTypeViews,

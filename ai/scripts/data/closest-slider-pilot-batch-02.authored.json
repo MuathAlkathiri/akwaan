@@ -1,0 +1,342 @@
+{
+  "artifactType": "closest-slider-authored-batch",
+  "version": "2.0-domain-first",
+  "sourceBatch": "closest-slider-pilot-batch-01.source.json",
+  "world": "كرة قدم",
+  "itemCount": 20,
+  "authoringMethod": {
+    "principle": "domain-first-target-validation-second",
+    "targetDerivedBoundsForbidden": true,
+    "midpointProximityIsQaSignalOnly": true,
+    "note": "Every continuum was designed from its question's domain before any correctValue was read. Seven of the nine domains are shared by two or three questions, which is the structural reason none of them can be answer-shaped: one range cannot be centred on three different answers."
+  },
+  "items": [
+    {
+      "contentItemId": "6a725e414c19c862fcb4c0b1",
+      "interactionMode": "numeric-range",
+      "domainType": "world-cup-career-goals",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 25,
+        "step": 1,
+        "unit": "هدف"
+      },
+      "endpointRationale": "A player contests at most four or five World Cups of six or seven matches each, so even a great tournament scorer accumulates a low double-digit career total. 0–25 runs from a forward who never scored at a finals to beyond any career total the competition has produced.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "clear"
+      }
+    },
+    {
+      "contentItemId": "6a72685c4c19c862fcb4cf65",
+      "interactionMode": "numeric-range",
+      "domainType": "single-world-cup-goals",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 13,
+        "step": 1,
+        "unit": "هدف"
+      },
+      "endpointRationale": "Within one World Cup a Golden Boot is usually won with a mid-single-figure total, and the single-tournament record has stood in the low teens since 1958. 0–13 covers a player who did not score through to that historical ceiling.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "near-midpoint"
+      }
+    },
+    {
+      "contentItemId": "6a738f4a451bd7ee6bf3e1db",
+      "interactionMode": "numeric-range",
+      "domainType": "world-cup-finals-field-size",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 8,
+        "max": 56,
+        "step": 1,
+        "unit": "منتخب"
+      },
+      "endpointRationale": "World Cup finals fields have grown from a small invitational tournament to the modern expanded format, passing through 16, 24 and 32 teams. 8–56 spans the smallest credible finals field to beyond the largest format yet announced, which is the honest continuum for any edition.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "clear"
+      }
+    },
+    {
+      "contentItemId": "6a81ee5d7787a244d05f391d",
+      "interactionMode": "numeric-range",
+      "domainType": "world-cup-national-title-count",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 8,
+        "step": 1,
+        "unit": "مرة"
+      },
+      "endpointRationale": "World Cup titles are shared among a small set of nations across the tournament's 22 editions to 2022, and no nation has ever held more than a third of them. 0–8 spans every possible standing from a nation that has never won to the most decorated, with headroom above the historical leader.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "near-midpoint"
+      }
+    },
+    {
+      "contentItemId": "6a81ee5d7787a244d05f392c",
+      "interactionMode": "numeric-range",
+      "domainType": "world-cup-national-title-count",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 8,
+        "step": 1,
+        "unit": "مرة"
+      },
+      "endpointRationale": "World Cup titles are shared among a small set of nations across the tournament's 22 editions to 2022, and no nation has ever held more than a third of them. 0–8 spans every possible standing from a nation that has never won to the most decorated, with headroom above the historical leader.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "near-midpoint"
+      }
+    },
+    {
+      "contentItemId": "6a81ee5d7787a244d05f393b",
+      "interactionMode": "numeric-range",
+      "domainType": "world-cup-career-goals",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 25,
+        "step": 1,
+        "unit": "هدف"
+      },
+      "endpointRationale": "A player contests at most four or five World Cups of six or seven matches each, so even a great tournament scorer accumulates a low double-digit career total. 0–25 runs from a forward who never scored at a finals to beyond any career total the competition has produced.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "near-midpoint"
+      }
+    },
+    {
+      "contentItemId": "6a81ee5d7787a244d05f394a",
+      "interactionMode": "numeric-range",
+      "domainType": "world-cup-career-goals",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 25,
+        "step": 1,
+        "unit": "هدف"
+      },
+      "endpointRationale": "A player contests at most four or five World Cups of six or seven matches each, so even a great tournament scorer accumulates a low double-digit career total. 0–25 runs from a forward who never scored at a finals to beyond any career total the competition has produced.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "clear"
+      }
+    },
+    {
+      "contentItemId": "6a81ee5d7787a244d05f3959",
+      "interactionMode": "numeric-range",
+      "domainType": "world-cup-first-edition-year",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 1900,
+        "max": 1950,
+        "step": 1,
+        "displayFormat": "calendar-year"
+      },
+      "endpointRationale": "An era range rather than a window around a date: FIFA was founded in 1904, international tournament football took shape through the interwar years, and the competition resumed after the Second World War in 1950. 1900–1950 is that whole formative era. Authored as a calendar year: the number is the year itself, so it carries no unit and is written without a thousands separator.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "clear"
+      }
+    },
+    {
+      "contentItemId": "6a81ee5d7787a244d05f3968",
+      "interactionMode": "numeric-range",
+      "domainType": "world-cup-finals-field-size",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 8,
+        "max": 56,
+        "step": 1,
+        "unit": "منتخب"
+      },
+      "endpointRationale": "World Cup finals fields have grown from a small invitational tournament to the modern expanded format, passing through 16, 24 and 32 teams. 8–56 spans the smallest credible finals field to beyond the largest format yet announced, which is the honest continuum for any edition.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "clear"
+      }
+    },
+    {
+      "contentItemId": "6a725e414c19c862fcb4c10b",
+      "interactionMode": "numeric-range",
+      "domainType": "premier-league-career-goals",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 50,
+        "max": 300,
+        "step": 5,
+        "unit": "هدف"
+      },
+      "endpointRationale": "Career Premier League totals for players in the competition's all-time scoring conversation run from around a hundred goals up to the all-time record in the mid-200s. 50–300 spans that conversation with headroom at both ends; a step of five keeps a 250-goal span draggable on a phone.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "clear"
+      }
+    },
+    {
+      "contentItemId": "6a738f4a451bd7ee6bf3e203",
+      "interactionMode": "numeric-range",
+      "domainType": "premier-league-club-title-count",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 15,
+        "step": 1,
+        "unit": "لقب"
+      },
+      "endpointRationale": "The Premier League has run for roughly three decades, and its titles are concentrated among a handful of clubs. 0–15 covers a club that has never won it through to one that has taken close to half of all seasons played.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "clear"
+      }
+    },
+    {
+      "contentItemId": "6a738f4a451bd7ee6bf3e20d",
+      "interactionMode": "numeric-range",
+      "domainType": "premier-league-club-title-count",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 15,
+        "step": 1,
+        "unit": "لقب"
+      },
+      "endpointRationale": "The Premier League has run for roughly three decades, and its titles are concentrated among a handful of clubs. 0–15 covers a club that has never won it through to one that has taken close to half of all seasons played.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "near-midpoint"
+      }
+    },
+    {
+      "contentItemId": "6a81ee5d7787a244d05f3a2b",
+      "interactionMode": "numeric-range",
+      "domainType": "premier-league-club-title-count",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 15,
+        "step": 1,
+        "unit": "لقب"
+      },
+      "endpointRationale": "The Premier League has run for roughly three decades, and its titles are concentrated among a handful of clubs. 0–15 covers a club that has never won it through to one that has taken close to half of all seasons played.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "clear"
+      }
+    },
+    {
+      "contentItemId": "6a81ee5e7787a244d05f3a3a",
+      "interactionMode": "numeric-range",
+      "domainType": "premier-league-career-goals",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 50,
+        "max": 300,
+        "step": 5,
+        "unit": "هدف"
+      },
+      "endpointRationale": "Career Premier League totals for players in the competition's all-time scoring conversation run from around a hundred goals up to the all-time record in the mid-200s. 50–300 spans that conversation with headroom at both ends; a step of five keeps a 250-goal span draggable on a phone.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "exact-midpoint"
+      }
+    },
+    {
+      "contentItemId": "6a81ee5e7787a244d05f3a49",
+      "interactionMode": "numeric-range",
+      "domainType": "premier-league-season-clean-sheets",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 38,
+        "step": 1,
+        "unit": "مباراة"
+      },
+      "endpointRationale": "Bounded by the competition itself: a Premier League season is 38 matches, so a goalkeeper cannot keep more clean sheets than that. 0–38 is the structural range, needing no assumption about any particular season.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "clear"
+      }
+    },
+    {
+      "contentItemId": "6a81ee5e7787a244d05f3a58",
+      "interactionMode": "numeric-range",
+      "domainType": "premier-league-single-season-goals",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 40,
+        "step": 1,
+        "unit": "هدف"
+      },
+      "endpointRationale": "A 38-match season caps how many a leading scorer can realistically reach; Golden Boot totals sit in the twenties and the competition's single-season records have reached the mid-thirties. 0–40 covers a quiet campaign through to a record-breaking one.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "clear"
+      }
+    },
+    {
+      "contentItemId": "6a81ee5e7787a244d05f3a67",
+      "interactionMode": "numeric-range",
+      "domainType": "premier-league-single-season-goals",
+      "slider": {
+        "mode": "numeric-range",
+        "min": 0,
+        "max": 40,
+        "step": 1,
+        "unit": "هدف"
+      },
+      "endpointRationale": "A 38-match season caps how many a leading scorer can realistically reach; Golden Boot totals sit in the twenties and the competition's single-season records have reached the mid-thirties. 0–40 covers a quiet campaign through to a record-breaking one.",
+      "targetValidation": {
+        "insideRange": true,
+        "reachableByStep": true,
+        "midpointSignal": "clear"
+      }
+    }
+  ],
+  "holdForContentReview": [
+    {
+      "contentItemId": "6a738f4a451bd7ee6bf3e1e5",
+      "reason": "Existing Pilot hold — do not author"
+    },
+    {
+      "contentItemId": "6a7268104c19c862fcb4ce8e",
+      "reason": "Existing Pilot hold — do not author"
+    },
+    {
+      "contentItemId": "6a81ee5e7787a244d05f3a76",
+      "reason": "Existing Pilot hold — do not author"
+    }
+  ],
+  "qaSummary": {
+    "authored": 17,
+    "needsHumanAuthoring": 0,
+    "exactMidpoint": 1,
+    "nearMidpoint": 5,
+    "clear": 11
+  }
+}

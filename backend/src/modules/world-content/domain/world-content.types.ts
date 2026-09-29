@@ -182,6 +182,24 @@ export interface ContentAnswerOption {
   label: LocalizedText;
 }
 
+/**
+ * How a مين أقرب number is meant to be read.
+ *
+ * Explicit, never inferred. A quantity and a calendar year can occupy exactly
+ * the same magnitude — 1930 goals is as writable as the year 1930 — so nothing
+ * about the number itself can decide whether it takes a thousands separator or
+ * a unit. Only the author knows, so only the author says.
+ *
+ * Absent means `number`, which is what every item authored before this field
+ * existed meant.
+ */
+export const CLOSEST_VALUE_DISPLAY_FORMATS = [
+  'number',
+  'calendar-year',
+] as const;
+export type ClosestValueDisplayFormat =
+  (typeof CLOSEST_VALUE_DISPLAY_FORMATS)[number];
+
 export type ClosestSliderConfig =
   | {
       mode: 'numeric-range';
@@ -189,6 +207,7 @@ export type ClosestSliderConfig =
       max: number;
       step?: number;
       unit?: string;
+      displayFormat?: ClosestValueDisplayFormat;
     }
   | {
       mode: 'between-anchors';

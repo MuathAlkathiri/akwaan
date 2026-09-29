@@ -656,6 +656,171 @@ describe('World Management HTTP integration', () => {
     expect(storedAfterUpdate?.metadata?.notes).toBeUndefined();
   });
 
+  /**
+   * The approved authoring rule, proven where it actually lives.
+   *
+   * `legacy` — a Closest item with no `closestSlider` — is backward
+   * compatibility for content authored before the slider, and the runtime
+   * deliberately keeps playing it. What must not happen is a *new* item quietly
+   * joining that set, because the runtime falls back to the bare number input
+   * whenever the key is absent. So the rule is about the authoring moment, and
+   * the only place that can tell a create from an edit is the write path.
+   */
+  it('makes new مين أقرب content choose a continuum while leaving old content alone', async () => {
+    const world = await createWorld('Closest Authoring', 'closest-authoring');
+    const scope = (
+      await bearer(authed().post(`/admin/worlds/${world.id}/scopes`))
+        .send({
+          name: 'نطاق',
+          slug: 'closest-authoring-scope',
+          status: WorldContentStatus.ACTIVE,
+        })
+        .expect(201)
+    ).body.data;
+    // The canonical مين أقرب definition rather than a hand-rolled one, so this
+    // exercises the mechanic the catalog actually ships.
+    const closest = await createChallengeType(
+      productionMechanicFixture('closest', {
+        status: WorldContentStatus.ACTIVE,
+      }),
+    );
+    const item = (mechanicPayload?: Record<string, unknown>) => ({
+      scopeId: scope.id,
+      prompt: { ar: 'كم عدد الأهداف؟' },
+      compatibleChallengeTypeIds: [closest.id],
+      answerPayload: { mode: ChallengeAnswerMode.CLOSEST, correctValue: 50 },
+      ...(mechanicPayload ? { mechanicPayload } : {}),
+      status: ContentItemStatus.DRAFT,
+    });
+
+    // A new item with no continuum is refused — and refused as a draft, because
+    // waiting until "ready" would let the catalog fill with legacy content that
+    // only fails much later.
+    const refused = await bearer(authed().post('/admin/content-items'))
+      .send(item())
+      .expect(400);
+    expect(
+      (refused.body.issues as Array<{ code: string }>).map(
+        (problem) => problem.code,
+      ),
+    ).toContain('CLOSEST_SLIDER_MODE_REQUIRED');
+
+    // Both approved modes are accepted.
+    const ranged = (
+      await bearer(authed().post('/admin/content-items'))
+        .send(
+          item({
+            closestSlider: { mode: 'numeric-range', min: 0, max: 100, step: 5 },
+          }),
+        )
+        .expect(201)
+    ).body.data;
+    await bearer(authed().post('/admin/content-items'))
+      .send(
+        item({
+          closestSlider: {
+            mode: 'between-anchors',
+            min: 0,
+            max: 100,
+            leftAnchor: 'قليل',
+            rightAnchor: 'كثير',
+          },
+        }),
+      )
+      .expect(201);
+
+    // A continuum that does not contain its own answer is refused at create…
+    await bearer(authed().post('/admin/content-items'))
+      .send(item({ closestSlider: { mode: 'numeric-range', min: 0, max: 10 } }))
+      .expect(400);
+    // …and anchors that are not two distinct ends are refused too.
+    await bearer(authed().post('/admin/content-items'))
+      .send(
+        item({
+          closestSlider: {
+            mode: 'between-anchors',
+            min: 0,
+            max: 100,
+            leftAnchor: 'نفس الشيء',
+            rightAnchor: 'نفس الشيء',
+          },
+        }),
+      )
+      .expect(400);
+
+    // An item authored before the slider existed, written the way the catalog
+    // actually holds it.
+    const legacyId = (
+      await database.collection('content_items').insertOne({
+        scopeId: new Types.ObjectId(scope.id),
+        worldId: new Types.ObjectId(world.id),
+        prompt: { ar: 'سؤال قديم' },
+        compatibleChallengeTypeIds: [new Types.ObjectId(closest.id)],
+        answerPayload: {
+          mode: ChallengeAnswerMode.CLOSEST,
+          correctValue: 50,
+          acceptedTolerance: 0,
+        },
+        isReusableAcrossSessions: false,
+        status: ContentItemStatus.READY,
+      })
+    ).insertedId.toString();
+
+    // It loads, it is still ready, and an unrelated edit still saves — without
+    // anybody being asked to invent a range for it.
+    const loaded = (
+      await bearer(authed().get(`/admin/content-items/${legacyId}`)).expect(200)
+    ).body.data;
+    expect(loaded.mechanicPayload).toBeUndefined();
+    expect(
+      (
+        await bearer(
+          authed().get(`/admin/content-items/${legacyId}/readiness`),
+        ).expect(200)
+      ).body.data.readiness,
+    ).toBe('ready');
+    await bearer(authed().patch(`/admin/content-items/${legacyId}`))
+      .send({ prompt: { ar: 'سؤال قديم بصياغة أوضح' } })
+      .expect(200);
+
+    // Migrating it is a deliberate act, and then the full contract applies.
+    await bearer(authed().patch(`/admin/content-items/${legacyId}`))
+      .send({
+        mechanicPayload: {
+          closestSlider: { mode: 'numeric-range', min: 0, max: 10 },
+        },
+      })
+      .expect(400);
+    const migrated = (
+      await bearer(authed().patch(`/admin/content-items/${legacyId}`))
+        .send({
+          mechanicPayload: {
+            closestSlider: { mode: 'numeric-range', min: 0, max: 100 },
+          },
+        })
+        .expect(200)
+    ).body.data;
+    expect(migrated.answerPayload.correctValue).toBe(50);
+
+    // Duplicating old content is authoring new content: the copy arrives at the
+    // same create path and is held to the same rule, so a legacy shape cannot be
+    // carried forward by copying it.
+    const source = (
+      await bearer(authed().get(`/admin/content-items/${ranged.id}`)).expect(
+        200,
+      )
+    ).body.data;
+    await bearer(authed().post('/admin/content-items'))
+      .send({
+        scopeId: source.scopeId,
+        prompt: source.prompt,
+        compatibleChallengeTypeIds: [closest.id],
+        answerPayload: source.answerPayload,
+        status: ContentItemStatus.DRAFT,
+      })
+      .expect(400);
+  });
+
   it('lets an active World with an incomplete board be repaired', async () => {
     // A World left active by legacy data has an invalid board. If board edits
     // were refused while active it could never be completed, so repair is

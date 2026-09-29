@@ -15,7 +15,10 @@ import {
   ANSWER_MODE_LABEL,
   VOTE_CONSENSUS_LABEL,
 } from "../../utils/world-content.labels";
-import type { AnswerFormState } from "../../services/content-item-form.service";
+import {
+  hasClosestSliderMode,
+  type AnswerFormState,
+} from "../../services/content-item-form.service";
 import type { ChallengeAnswerMode, VoteConsensusRule } from "../../types";
 
 interface AnswerPayloadFieldsProps {
@@ -23,6 +26,11 @@ interface AnswerPayloadFieldsProps {
   onChange: (value: AnswerFormState) => void;
   /** Modes the selected challenge types can actually consume. */
   availableModes: ChallengeAnswerMode[];
+  /**
+   * Whether this form is creating rather than editing. Only مين أقرب reads it,
+   * and only to decide whether the legacy number input is still on offer.
+   */
+  isNewItem?: boolean;
 }
 
 const CONSENSUS_RULES: VoteConsensusRule[] = [
@@ -39,6 +47,7 @@ export function AnswerPayloadFields({
   value,
   onChange,
   availableModes,
+  isNewItem = false,
 }: AnswerPayloadFieldsProps) {
   const set = (patch: Partial<AnswerFormState>) =>
     onChange({ ...value, ...patch });
@@ -188,18 +197,45 @@ export function AnswerPayloadFields({
               }
             >
               <SelectTrigger aria-label="طريقة تفاعل مين أقرب">
-                <SelectValue />
+                {/* An unselected mode has to read as a question, not as a
+                    silently-chosen default. */}
+                <SelectValue placeholder="اختر طريقة التفاعل" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="legacy">إدخال رقمي قديم</SelectItem>
+                {/* Offered only where it already is the truth. A new item
+                    cannot choose the legacy number input, because the runtime
+                    falls back to it whenever no continuum is authored and a
+                    catalog that keeps choosing it never reaches the slider. */}
+                {!isNewItem && (
+                  <SelectItem value="legacy">
+                    إدخال رقمي قديم — محتوى قديم
+                  </SelectItem>
+                )}
                 <SelectItem value="numeric-range">نطاق رقمي</SelectItem>
                 <SelectItem value="between-anchors">
                   بين نقطتي ارتكاز
                 </SelectItem>
               </SelectContent>
             </Select>
+            {isNewItem && !hasClosestSliderMode(value.closestInteraction) && (
+              <p
+                className="mt-1.5 text-xs font-medium text-muted-foreground"
+                data-testid="closest-mode-required-hint"
+              >
+                المحتوى الجديد يختار مداه بنفسه — لا يوجد نطاق افتراضي.
+              </p>
+            )}
+            {!isNewItem && value.closestInteraction === "legacy" && (
+              <p
+                className="mt-1.5 text-xs font-medium text-muted-foreground"
+                data-testid="closest-legacy-badge"
+              >
+                محتوى قديم (Legacy) — يظل قابلًا للعب والتحرير. اختر مدى فقط إذا
+                قررت ترقيته.
+              </p>
+            )}
           </div>
-          {value.closestInteraction !== "legacy" && (
+          {hasClosestSliderMode(value.closestInteraction) && (
             <>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Input
@@ -226,13 +262,38 @@ export function AnswerPayloadFields({
                 />
               </div>
               {value.closestInteraction === "numeric-range" ? (
-                <Input
-                  aria-label="الوحدة"
-                  maxLength={40}
-                  placeholder="الوحدة (اختياري)"
-                  value={value.closestUnit}
-                  onChange={(e) => set({ closestUnit: e.target.value })}
-                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Select
+                    value={value.closestDisplayFormat}
+                    onValueChange={(next: string) =>
+                      set({
+                        closestDisplayFormat:
+                          next as AnswerFormState["closestDisplayFormat"],
+                        // A year takes no unit, so choosing it clears one the
+                        // author may already have typed.
+                        ...(next === "calendar-year" ? { closestUnit: "" } : {}),
+                      })
+                    }
+                  >
+                    <SelectTrigger aria-label="طريقة عرض الرقم">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="number">رقم عادي</SelectItem>
+                      <SelectItem value="calendar-year">سنة ميلادية</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {/* A calendar year is a value, not an amount of anything. */}
+                  {value.closestDisplayFormat === "number" && (
+                    <Input
+                      aria-label="الوحدة"
+                      maxLength={40}
+                      placeholder="الوحدة (اختياري)"
+                      value={value.closestUnit}
+                      onChange={(e) => set({ closestUnit: e.target.value })}
+                    />
+                  )}
+                </div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Input

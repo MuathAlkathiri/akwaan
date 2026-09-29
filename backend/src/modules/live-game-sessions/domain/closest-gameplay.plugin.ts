@@ -36,6 +36,8 @@ export interface ClosestRuntimeItem {
     max: number;
     step?: number;
     unit?: string;
+    /** Authored reading of the number; absent means an ordinary quantity. */
+    displayFormat?: 'number' | 'calendar-year';
     leftAnchor?: string;
     rightAnchor?: string;
   };

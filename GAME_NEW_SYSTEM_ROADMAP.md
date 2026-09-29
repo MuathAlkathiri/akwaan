@@ -1100,6 +1100,116 @@ explicit; Numeric Range reveals format authored units; and Between Anchors revea
 continuum without exposing normalized implementation numbers. No gameplay, scoring, lifecycle, schema, or
 authority behavior changed in this review pass.
 
+**Closest authoring guard — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-09-18).** Approved Product rule: `legacy` is
+backward compatibility for content authored before the slider and nothing else. A **new** Closest ContentItem must
+explicitly choose `numeric-range` or `between-anchors`; there is no default range, no derived `min`/`max`, and no
+generated anchors. Existing legacy items stay valid, playable and editable — including edits to unrelated fields —
+and are migrated only when an author deliberately gives one a continuum, at which point the full slider contract
+applies to it.
+
+Enforced at the canonical authoring boundary rather than as a visual restriction. `ContentItemCompatibilityPolicy`
+gained one optional `authoring.isNewItem` input and a `CLOSEST_SLIDER_MODE_REQUIRED` blocker; `ContentItemService`
+passes it from `create` and never from `update`, so the rule keys off the authoring moment and there is no second
+validation stack. The blocker — and every existing slider-validity code — is refused at any status rather than only
+at `ready`, because a half-authored continuum is broken data whether or not the rest of the item is finished. The
+trigger is the referenced mechanic's own `answerMode`, so a Closest ChallengeType under any slug is covered while a
+numeric item authored only for RYO, which renders no slider, is correctly left alone. Duplication needs no special
+case: the repository has no copy feature, so any duplicate necessarily arrives at the create path and is held to the
+same rule. In the Admin the mode starts unselected — «اختر طريقة التفاعل» — `legacy` is offered only on an item that
+already is legacy and is labelled «محتوى قديم», and the range fields appear only once a mode is chosen.
+
+**Closest Pilot Batch 01 exported (2026-09-18), not applied.** 20 legacy Football questions — every item in كأس
+العالم and الدوري الانجليزي — written to `ai/scripts/data/closest-slider-pilot-batch-01.source.json` through the
+existing `ai/scripts/data/*.source.json` convention. A single-Scope batch was not possible: across all 58 Scopes
+carrying legacy Closest content, none holds fifteen distinct items (the largest is twelve, in a draft World), and the
+only thirty-item Scopes are Puzzles fixtures repeating three prompts ten times each. Two Scopes is the fewest that
+reaches twenty, and taking *every* item in both means no question was filtered by taste. The targets already span
+1 to 2019 — title counts, tournament goal totals, season records, career totals in the hundreds, squad sizes, and two
+years nearly a century apart — so each needs a visibly different continuum. The batch carries the authoring contract
+and no authored metadata: choosing endpoints is a gameplay difficulty decision left to the content agent. Two
+pre-existing content defects noticed while exporting are reported in the batch rather than fixed in it. Nothing was
+written to any catalog.
+
+**Pilot Batch 01 applied to the LOCAL catalog and played (2026-09-22) — 🚧 failed range-authoring Product Review;
+superseded by Pilot 02 below.** 17 of the 20
+pilot items were migrated through the canonical Admin content path; 3 are held for content review and were never
+addressed. The write is idempotent (a second run reports 0 writes, 17 already identical) and identity-preserving: a
+read-back of all 20 shows 17 slider-ready, 3 legacy, and zero changes to answer, Scope, status or prompt. Three real
+local Matches then drew six items — three migrated (Shearer 260 on 150→350, Henry 175 on 100→250, Argentina 3 on
+0→6) and three untouched legacy items alongside them, which is also the backward-compatibility proof.
+
+The pilot did its job by failing usefully, twice.
+
+**A runtime defect, now fixed.** The phone seeded its slider at the raw midpoint of the authored range. That is only
+legal when the midpoint happens to sit on the range's own step grid, which every pre-pilot test range did (0→100
+step 5 starts at 50) and which 8 of these 17 do not — 15→40 step 1 seeds 27.5. The `<input type="range">` element
+snapped itself, so the thumb sat on a legal value while the bubble and the submitted state held an illegal one, and
+the server correctly refused it with «Estimate does not match the authored step». A player who agreed with the
+default and pressed Confirm was rejected. `seedClosestEstimate` now rounds to the nearest legal step and clamps to
+the range, covered by a regression test built from the pilot's own ranges.
+
+**A content defect, reported and not silently fixed.** The authored continua centre the range on the answer, so the
+slider's resting position *is* the answer on **6 of 17** items — including the year question (1900→1960, answer
+1930) — and within one step on a further 4. A team that never touches the slider and presses Confirm wins outright
+on more than a third of the batch, which is not an estimate game. Pilot 02 needs one more authoring rule: the
+authored range must not be centred on the target. No authored metadata was changed during review.
+
+**No implicit Closest guess — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-09-22).** Approved Product decision following
+Pilot 01: a Closest slider never begins holding an estimate. A range control must put its thumb somewhere, and that
+position is presentation until the player acts on it. Before any interaction there is no value bubble, no committed
+or selectable estimate, no gameplay command, and Confirm is disabled; the first genuine interaction — pointer, touch
+or keyboard, with adjustment keys counted even at an endpoint where they move nothing — creates the local estimate,
+shows the bubble and enables Confirm. Confirm remains the only submission and the server stays authoritative after
+it. A reconnect before Confirm invents no commitment; after Confirm the authoritative value is restored. Legacy
+numeric items are untouched: their plain field was already gated on the player typing. The screen reader is told
+«لم تختاروا تقديركم بعد» until a choice exists.
+
+Three separate findings from Pilot 01, recorded separately because they have different owners:
+
+1. ✅ **Runtime defect, fixed.** The midpoint seed must snap to a legal authored step. 15→40 with step 1 seeded 27.5,
+   which the server correctly refused; the `<input type="range">` snapped itself, so the thumb showed a legal value
+   while the submitted state held an illegal one. `seedClosestEstimate` rounds and clamps. Still required for
+   presentation correctness, and kept.
+2. ✅ **Product decision, implemented.** No implicit guess; explicit interaction is required before Confirm. A legal
+   visual seed is not a player estimate.
+3. ⬜ **Authoring rule, recorded for Pilot 02.** *Closest slider bounds must be justified by the question's domain,
+   not derived from the canonical target.* Good: a historically meaningful year window, a plausible tournament-size,
+   career-goal or title-count interval. Bad: target ± N, centring the target because it looks balanced, or nudging
+   one endpoint only to dodge a midpoint check. **QA review heuristic, not a backend error:** flag an item when the
+   target sits exactly at the midpoint or within one authored step of it, then ask the only question that settles
+   it — *could the author justify these endpoints without knowing the correctValue?* A naturally defensible range may
+   coincidentally centre the target, so this is never an unconditional validation failure.
+
+Pilot 01 ranges were **not** re-authored in this pass, and the three content-review holds remain legacy. Pilot 02
+will re-author the 17 approved items under the revised contract. Production Closest content and Production slider
+gameplay remain unverified.
+
+**Pilot Batch 02 — ✅ DOMAIN-FIRST AUTHORING MODEL VERIFIED LOCALLY (2026-09-22).** The same 17 items were
+re-authored under one rule: *slider bounds come from the question's domain, never from the target*. Nine continua
+were designed from the prompts before any `correctValue` was read, and six of the nine are shared by two or three
+questions — which is the structural reason none can be answer-shaped, because one range cannot be centred on three
+different answers. The Pilot 01 → 02 diff is the evidence that the old model was: Pilot 01 carried three *different*
+ranges for one domain (10–25, 5–20, 2–15 for targets 16, 12, 8), where Pilot 02 carries one 0–25. Midpoint proximity
+stayed a QA signal and nothing was moved to dodge it: Henry's 175 sits exactly at the centre of 50–300 and was kept,
+because that continuum is shared with Shearer's 260.
+
+Applied to the local catalog through the canonical Admin path, idempotent on re-run, with the three content-review
+holds untouched and zero changes to answer, tolerance, Scope, status or prompt. Real local Matches drew items from
+seven of the nine domains, including the exact-midpoint case, and the same 0–15 title continuum served two different
+answers in live play.
+
+**Calendar years are authored, not inferred.** Live review caught the year question rendering as «١٬٩٣٠ سنة» — a
+thousands separator and a duration unit, so the year 1930 read as "1,930 years". The fix is an explicit
+`displayFormat` on the numeric-range slider (`number` | `calendar-year`), deliberately *not* a magnitude heuristic:
+a count of 1930 and the year 1930 are the same number, so nothing about the value can tell them apart, and future
+questions will legitimately carry populations and distances above a thousand. A calendar year renders ungrouped and
+refuses a unit at validation; absent metadata means an ordinary quantity, so every item authored earlier is
+unchanged. One formatter serves the endpoints, the bubble, the locked estimate, the reveal target and both team
+markers, and the regression that matters proves 1930 *as a quantity* is still grouped and still keeps its unit.
+
+Pilot 02 is local only. Remaining open: ⬜ the rest of the Closest catalog, ⬜ Production content migration,
+⬜ Production slider gameplay.
+
 **Production content audit (2026-09-17) — why Production still plays the legacy experience.** The slider is not
 gated on code; it is gated on content. The condition for the new UI is exactly one thing: the ContentItem must
 carry `mechanicPayload.closestSlider`. Proven at all four layers — `start-closest-gameplay.use-case.ts` spreads

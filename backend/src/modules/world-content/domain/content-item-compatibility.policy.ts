@@ -54,6 +54,8 @@ import {
   FirstNotePayload,
   EkshifniPayload,
   LaTahriqhaPayload,
+  CLOSEST_VALUE_DISPLAY_FORMATS,
+  ClosestValueDisplayFormat,
 } from './world-content.types';
 import { validateOddPiecePayload } from './odd-piece-content.policy';
 import {
@@ -90,6 +92,17 @@ export interface ContentItemCompatibilityInput {
   worldStatus?: WorldContentStatus;
   /** Every challenge type referenced by the item, keyed by id. */
   challengeTypes: Map<string, ChallengeTypeView>;
+  /**
+   * Whether this evaluation is judging an item that does not exist yet.
+   *
+   * Almost nothing cares, and nothing should care lightly: readiness is a
+   * property of an item, not of how it arrived. The one approved exception is
+   * the Closest interaction mode, where the rule deliberately differs by
+   * authoring moment — new content must choose a slider mode, while content
+   * authored before the slider existed stays valid and editable until somebody
+   * decides its continuum.
+   */
+  authoring?: { isNewItem?: boolean };
 }
 
 /**
@@ -109,6 +122,7 @@ export class ContentItemCompatibilityPolicy {
     blockers.push(...this.validateClosestSlider(input.item));
 
     const referenced = this.resolveChallengeTypes(input, blockers);
+    blockers.push(...this.requireClosestInteractionMode(input, referenced));
     blockers.push(...this.validateChallengeCompatibility(input, referenced));
     blockers.push(...this.validateMedia(input.item));
     blockers.push(...this.validateTop5Payload(input.item));
@@ -956,6 +970,48 @@ export class ContentItemCompatibilityPolicy {
     }
   }
 
+  /**
+   * New Closest content must choose how it is played.
+   *
+   * `legacy` — an item with no `closestSlider` at all — is backward
+   * compatibility for the catalog that was authored before the slider existed,
+   * and it stays playable and editable forever. It is not an option for
+   * something being authored now: the runtime falls back to the bare number
+   * input whenever the key is absent, so allowing a new item to omit it is how
+   * a catalog quietly re-fills with content the slider can never reach.
+   *
+   * Deliberately keyed off the referenced mechanic's own answer mode rather
+   * than a slug, so a Closest ChallengeType under any slug is covered — and a
+   * numeric item authored only for RYO, which also accepts CLOSEST items and
+   * renders no slider, is correctly left alone.
+   *
+   * There is no default range and no derivation here on purpose. The blocker
+   * asks the author to decide; it never decides for them.
+   */
+  private requireClosestInteractionMode(
+    input: ContentItemCompatibilityInput,
+    challengeTypes: ChallengeTypeView[],
+  ): WorldContentIssue[] {
+    if (!input.authoring?.isNewItem) return [];
+    if (input.item.answerPayload?.mode !== ChallengeAnswerMode.CLOSEST)
+      return [];
+    const playedAsClosest = challengeTypes.some(
+      (challengeType) =>
+        challengeType.answerMode === ChallengeAnswerMode.CLOSEST,
+    );
+    if (!playedAsClosest) return [];
+    const slider = (
+      input.item.mechanicPayload as { closestSlider?: unknown } | undefined
+    )?.closestSlider;
+    if (slider !== undefined) return [];
+    return [
+      issue(
+        'CLOSEST_SLIDER_MODE_REQUIRED',
+        'A new مين أقرب item must choose numeric-range or between-anchors; the legacy number input is kept only for content authored before the slider',
+      ),
+    ];
+  }
+
   private validateClosestSlider(item: ContentItemView): WorldContentIssue[] {
     if (item.answerPayload?.mode !== ChallengeAnswerMode.CLOSEST) return [];
     const slider = (
@@ -1014,6 +1070,28 @@ export class ContentItemCompatibilityPolicy {
       );
     }
     if (slider.mode === 'numeric-range') {
+      const displayFormat = slider.displayFormat;
+      if (
+        displayFormat !== undefined &&
+        !CLOSEST_VALUE_DISPLAY_FORMATS.includes(
+          displayFormat as ClosestValueDisplayFormat,
+        )
+      )
+        issues.push(
+          issue(
+            'CLOSEST_SLIDER_DISPLAY_FORMAT_INVALID',
+            `Closest slider display format must be one of: ${CLOSEST_VALUE_DISPLAY_FORMATS.join(', ')}`,
+          ),
+        );
+      // A calendar year is a value, not an amount of anything. Carrying a unit
+      // is exactly what turned «1930» into «1930 سنة» on a player's phone.
+      if (displayFormat === 'calendar-year' && slider.unit !== undefined)
+        issues.push(
+          issue(
+            'CLOSEST_SLIDER_YEAR_UNIT_FORBIDDEN',
+            'A calendar-year Closest slider takes no unit: the number is the year',
+          ),
+        );
       if (
         slider.unit !== undefined &&
         (typeof slider.unit !== 'string' || slider.unit.trim().length > 40)

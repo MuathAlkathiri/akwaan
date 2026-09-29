@@ -85,6 +85,7 @@ export function ContentItemForm({
       : emptyContentItemForm(defaultScopeId ?? ""),
   );
   const [localProblems, setLocalProblems] = useState<string[]>([]);
+  const isNewItem = !contentItem;
   const [uploading, setUploading] = useState(false);
 
   const set = (patch: Partial<ContentItemFormValues>) =>
@@ -300,7 +301,7 @@ export function ContentItemForm({
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const problems = findLocalFormProblems(values);
+    const problems = findLocalFormProblems(values, { isNewItem });
     setLocalProblems(problems);
     if (problems.length) return;
     const ok = await formSubmit.submit(buildContentItemPayload(values));
@@ -439,6 +440,7 @@ export function ContentItemForm({
         />
       ) : (
         <AnswerPayloadFields
+          isNewItem={isNewItem}
           value={values.answer}
           onChange={(answer) => set({ answer })}
           availableModes={availableModes}

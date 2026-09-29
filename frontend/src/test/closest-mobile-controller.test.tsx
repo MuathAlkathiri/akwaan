@@ -124,9 +124,11 @@ describe("the phone is a controller", () => {
     });
     const view = renderPhone(sliderRuntime, gameplayCommand);
     const slider = screen.getByTestId("closest-estimate-slider");
-    const bubble = screen.getByTestId("closest-value-bubble");
     expect(slider).toHaveAttribute("min", "1950");
+    // Nothing has been chosen yet, so nothing claims to be this team's estimate.
+    expect(screen.queryByTestId("closest-value-bubble")).toBeNull();
     fireEvent.change(slider, { target: { value: "1950" } });
+    const bubble = screen.getByTestId("closest-value-bubble");
     expect(bubble).toHaveStyle({ left: "12%" });
     fireEvent.change(slider, { target: { value: "2000" } });
     expect(bubble).toHaveTextContent("سنة");

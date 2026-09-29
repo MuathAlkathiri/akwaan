@@ -36,6 +36,8 @@ interface ClosestItem {
     max: number;
     step?: number;
     unit?: string;
+    /** Authored reading of the number; absent means an ordinary quantity. */
+    displayFormat?: "number" | "calendar-year";
     leftAnchor?: string;
     rightAnchor?: string;
   };
@@ -47,6 +49,59 @@ interface ClosestResult {
   distances: Record<string, number | null>;
   winnerTeamId: string | null;
   tie: boolean;
+}
+
+/**
+ * Where the thumb starts, snapped to the authored step.
+ *
+ * The midpoint of an authored range is not necessarily on that range's step
+ * grid — 15→40 with a step of 1 has a midpoint of 27.5 — and the server refuses
+ * an estimate that is not, with `Estimate does not match the authored step`. So
+ * seeding the raw midpoint meant a player who agreed with the default and simply
+ * pressed Confirm had their answer rejected, on eight of the seventeen ranges in
+ * the first authored pilot. The `<input type="range">` element already snaps
+ * itself, which is what made it look fine: the thumb sat on a legal value while
+ * the bubble and the submitted state held the illegal one.
+ *
+ * Rounds to the nearest legal step and clamps to the range, so the value shown,
+ * the value under the thumb, and the value submitted are the same number.
+ */
+export function seedClosestEstimate(slider: {
+  min: number;
+  max: number;
+  step?: number;
+}): number {
+  const middle = (slider.min + slider.max) / 2;
+  if (!slider.step || !Number.isFinite(slider.step) || slider.step <= 0)
+    return middle;
+  const steps = Math.round((middle - slider.min) / slider.step);
+  return Math.min(slider.max, slider.min + steps * slider.step);
+}
+
+/**
+ * How one مين أقرب number is written, everywhere it is written.
+ *
+ * A calendar year is a value, not an amount: it takes no unit and no thousands
+ * separator, because «1930 سنة» reads as a duration and «١٬٩٣٠» reads as a
+ * quantity, and the question asked for neither. Ordinary quantities keep the
+ * grouped locale formatting and their authored unit.
+ *
+ * The distinction is read from the item's authored `displayFormat` and never
+ * guessed from magnitude: a count of 1930 and the year 1930 are the same number,
+ * so nothing about the value itself can tell them apart. An item that authored
+ * nothing is a quantity, which is what every item written before this field
+ * existed meant.
+ */
+export function formatClosestValue(
+  value: number,
+  slider?: ClosestItem["slider"],
+): string {
+  if (slider?.mode === "numeric-range" && slider.displayFormat === "calendar-year")
+    return new Intl.NumberFormat("ar-SA", { useGrouping: false }).format(value);
+  const number = new Intl.NumberFormat("ar-SA", {
+    maximumFractionDigits: 4,
+  }).format(value);
+  return slider?.unit ? `${number} ${slider.unit}` : number;
 }
 
 function parsed<T>(value: unknown, fallback: T): T {
@@ -74,6 +129,17 @@ export function ClosestGameplayPanel({
   // second tap could queue a second command, and is released by the server's own
   // submission status.
   const [sending, setSending] = useState(false);
+  /**
+   * Whether the player has actually chosen, as opposed to merely being shown a
+   * slider.
+   *
+   * A range control has to put its thumb somewhere, and the first authored pilot
+   * showed what happens when that position is treated as an answer: six of
+   * seventeen ranges seeded the thumb exactly on the correct value, so a team
+   * that touched nothing and pressed Confirm won outright. The physical position
+   * is presentation; this is the estimate. Mounting is not an act of play.
+   */
+  const [chosen, setChosen] = useState(false);
   const state = runtime.modeState;
   const round = runtime.activeRound;
   const item = useMemo(
@@ -119,9 +185,12 @@ export function ClosestGameplayPanel({
   // estimate into the next item, even when the server advances without remounting.
   useEffect(() => {
     setEstimate(
-      item?.slider ? String((item.slider.min + item.slider.max) / 2) : "",
+      item?.slider ? String(seedClosestEstimate(item.slider)) : "",
     );
     setSending(false);
+    // A new question is unanswered, and so is a reconnect that lands before
+    // Confirm: neither may arrive already holding a commitment.
+    setChosen(false);
   }, [runtime.runtimeId, round?.id, item?.id, itemIndex, item?.slider]);
 
   // The authoritative submission is the release: once the server says this team
@@ -132,7 +201,7 @@ export function ClosestGameplayPanel({
 
   const submitEstimate = () => {
     const value = Number(estimate);
-    if (sending || !estimate.trim() || !Number.isFinite(value)) return;
+    if (sending || !hasEstimate) return;
     setSending(true);
     gameplayCommand("gameplay-command", {
       roundId: round?.id,
@@ -142,7 +211,7 @@ export function ClosestGameplayPanel({
     setEstimate("");
   };
   const formatValue = (value: number) =>
-    `${new Intl.NumberFormat("ar-SA", { maximumFractionDigits: 4 }).format(value)}${item?.slider?.unit ? ` ${item.slider.unit}` : ""}`;
+    formatClosestValue(value, item?.slider);
   const sliderProgress = item?.slider
     ? Math.max(
         0,
@@ -158,6 +227,10 @@ export function ClosestGameplayPanel({
     item?.slider?.mode === "numeric-range"
       ? formatValue(Number(estimate))
       : "موضع تقديركم";
+  /** A slider item is answerable only once the player has moved it. */
+  const hasEstimate = item?.slider
+    ? chosen && estimate.trim() !== "" && Number.isFinite(Number(estimate))
+    : estimate.trim() !== "" && Number.isFinite(Number(estimate));
   const wideBubble = bubbleText.length > 18;
   // Compact values can follow the thumb with a small edge clamp. A deliberately
   // long unit gets a predictable width and switches to side-aware placement;
@@ -297,6 +370,7 @@ export function ClosestGameplayPanel({
                       حرّك المؤشر إلى تقديرك ثم أكّد الإجابة
                     </p>
                     <div className="relative pt-12">
+                      {chosen && (
                       <div
                         className={cn(
                           "absolute top-0 z-10 max-w-[76%] rounded-xl bg-[#10253f] px-3 py-2 text-center text-sm font-black leading-tight text-white shadow-md",
@@ -316,6 +390,7 @@ export function ClosestGameplayPanel({
                           style={{ left: bubblePlacement.pointer }}
                         />
                       </div>
+                      )}
                       <input
                         id="closest-estimate"
                         type="range"
@@ -324,11 +399,38 @@ export function ClosestGameplayPanel({
                         max={item.slider.max}
                         step={item.slider.step ?? "any"}
                         value={estimate}
-                        onChange={(event) => setEstimate(event.target.value)}
+                        // `onChange` on a range input fires for pointer, touch
+                        // and keyboard alike, so every real way of moving the
+                        // thumb counts as choosing.
+                        onChange={(event) => {
+                          setChosen(true);
+                          setEstimate(event.target.value);
+                        }}
+                        // …except an adjustment key pressed while already at an
+                        // endpoint, which changes nothing and so fires no
+                        // change. That is still a deliberate act, and a keyboard
+                        // player must not be the one who cannot answer.
+                        onKeyDown={(event) => {
+                          if (
+                            [
+                              "ArrowLeft",
+                              "ArrowRight",
+                              "ArrowUp",
+                              "ArrowDown",
+                              "Home",
+                              "End",
+                              "PageUp",
+                              "PageDown",
+                            ].includes(event.key)
+                          )
+                            setChosen(true);
+                        }}
                         aria-valuetext={
-                          item.slider.mode === "numeric-range"
-                            ? formatValue(Number(estimate))
-                            : `موضع ${Math.round(sliderProgress)} بالمئة`
+                          !chosen
+                            ? "لم تختاروا تقديركم بعد"
+                            : item.slider.mode === "numeric-range"
+                              ? formatValue(Number(estimate))
+                              : `موضع ${Math.round(sliderProgress)} بالمئة`
                         }
                         style={
                           {
@@ -373,11 +475,7 @@ export function ClosestGameplayPanel({
               <MobileActionArea>
                 <Button
                   size="lg"
-                  disabled={
-                    sending ||
-                    !estimate.trim() ||
-                    !Number.isFinite(Number(estimate))
-                  }
+                  disabled={sending || !hasEstimate}
                   onClick={submitEstimate}
                   data-testid="closest-submit"
                   className="h-14 w-full text-base font-black"

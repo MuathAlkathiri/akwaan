@@ -362,6 +362,21 @@ export function toEkshifniFormState(
   };
 }
 
+/** The two modes new Closest content may choose between. */
+export const CLOSEST_SLIDER_MODES = [
+  "numeric-range",
+  "between-anchors",
+] as const;
+
+export type ClosestSliderMode = (typeof CLOSEST_SLIDER_MODES)[number];
+
+/** Whether the author has actually chosen a continuum. */
+export function hasClosestSliderMode(
+  interaction: AnswerFormState["closestInteraction"],
+): interaction is ClosestSliderMode {
+  return (CLOSEST_SLIDER_MODES as readonly string[]).includes(interaction);
+}
+
 export const LA_TAHRIQHA_CHALLENGE_SLUG = "la-tahriqha";
 export const LA_TAHRIQHA_INGREDIENT_COUNT = 8;
 export const LA_TAHRIQHA_CORRECT_COUNT = 5;
@@ -634,7 +649,12 @@ export interface AnswerFormState {
   acceptedAnswers: string;
   consensusRule: VoteConsensusRule;
   fragments: Array<{ seat: number; clue: string }>;
-  closestInteraction: "legacy" | "numeric-range" | "between-anchors";
+  closestInteraction: "" | "legacy" | "numeric-range" | "between-anchors";
+  /**
+   * How the number is read. Explicit, never inferred from magnitude — a count of
+   * 1930 and the year 1930 are the same number.
+   */
+  closestDisplayFormat: "number" | "calendar-year";
   closestMin: string;
   closestMax: string;
   closestStep: string;
@@ -661,7 +681,11 @@ export function emptyAnswerState(
       { seat: 1, clue: "" },
       { seat: 2, clue: "" },
     ],
-    closestInteraction: "legacy",
+    // New Closest content chooses its own continuum. There is no default, and
+    // "legacy" is not offered: it exists for the catalog authored before the
+    // slider, not for anything being authored now.
+    closestInteraction: "",
+    closestDisplayFormat: "number",
     closestMin: "",
     closestMax: "",
     closestStep: "",
@@ -746,6 +770,7 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
             max?: number;
             step?: number;
             unit?: string;
+            displayFormat?: "number" | "calendar-year";
             leftAnchor?: string;
             rightAnchor?: string;
           };
@@ -798,6 +823,10 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
         closestSlider?.max === undefined ? "" : String(closestSlider.max),
       closestStep:
         closestSlider?.step === undefined ? "" : String(closestSlider.step),
+      closestDisplayFormat:
+        closestSlider?.displayFormat === "calendar-year"
+          ? "calendar-year"
+          : "number",
       closestUnit: closestSlider?.unit ?? "",
       closestLeftAnchor: closestSlider?.leftAnchor ?? "",
       closestRightAnchor: closestSlider?.rightAnchor ?? "",
@@ -1144,7 +1173,7 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
     ekshifniMechanicPayload ??
     laTahriqhaMechanicPayload ??
     (values.answer.mode === "closest" &&
-    values.answer.closestInteraction !== "legacy"
+    hasClosestSliderMode(values.answer.closestInteraction)
       ? {}
       : undefined))
       ? {
@@ -1159,7 +1188,7 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
           ...ekshifniMechanicPayload,
           ...laTahriqhaMechanicPayload,
           ...(values.answer.mode === "closest" &&
-          values.answer.closestInteraction !== "legacy"
+          hasClosestSliderMode(values.answer.closestInteraction)
             ? {
                 closestSlider: {
                   mode: values.answer.closestInteraction,
@@ -1169,9 +1198,11 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
                     ? {}
                     : { step: toNumber(values.answer.closestStep) }),
                   ...(values.answer.closestInteraction === "numeric-range"
-                    ? values.answer.closestUnit.trim()
-                      ? { unit: values.answer.closestUnit.trim() }
-                      : {}
+                    ? values.answer.closestDisplayFormat === "calendar-year"
+                      ? { displayFormat: "calendar-year" as const }
+                      : values.answer.closestUnit.trim()
+                        ? { unit: values.answer.closestUnit.trim() }
+                        : {}
                     : {
                         leftAnchor: values.answer.closestLeftAnchor.trim(),
                         rightAnchor: values.answer.closestRightAnchor.trim(),
@@ -1297,8 +1328,53 @@ export function findRakkibhaProblems(values: ContentItemFormValues): string[] {
   return problems;
 }
 
-export function findLocalFormProblems(values: ContentItemFormValues): string[] {
+export function findLocalFormProblems(
+  values: ContentItemFormValues,
+  /**
+   * Whether the author is creating rather than editing.
+   *
+   * The only rule that differs is the Closest continuum: new content must
+   * choose one, existing legacy content may stay as it is. Defaulting to `false`
+   * keeps every existing caller — and every saved item — behaving exactly as
+   * before.
+   */
+  authoring: { isNewItem?: boolean } = {},
+): string[] {
   const problems: string[] = [];
+  if (values.answer.mode === "closest") {
+    const interaction = values.answer.closestInteraction;
+    if (authoring.isNewItem && !hasClosestSliderMode(interaction)) {
+      problems.push(
+        "اختر طريقة التفاعل لمين أقرب: نطاق رقمي أو بين نقطتي ارتكاز.",
+      );
+    }
+    if (hasClosestSliderMode(interaction)) {
+      // The fast local half of the backend's own contract, so an author is told
+      // at the form rather than by a save that fails.
+      const min = toNumber(values.answer.closestMin);
+      const max = toNumber(values.answer.closestMax);
+      const step = toNumber(values.answer.closestStep);
+      const target = toNumber(values.answer.correctValue);
+      if (min === undefined || max === undefined || min >= max)
+        problems.push("حدّد حدًّا أدنى وحدًّا أعلى صحيحين، والأدنى أقل من الأعلى.");
+      else if (target !== undefined && (target < min || target > max))
+        problems.push("الإجابة الصحيحة يجب أن تقع داخل النطاق المحدد.");
+      if (values.answer.closestStep.trim() && (step === undefined || step <= 0))
+        problems.push("الخطوة يجب أن تكون رقمًا موجبًا.");
+      if (
+        interaction === "numeric-range" &&
+        values.answer.closestDisplayFormat === "calendar-year" &&
+        values.answer.closestUnit.trim()
+      )
+        problems.push("سؤال السنة لا يأخذ وحدة — الرقم نفسه هو السنة.");
+      if (interaction === "between-anchors") {
+        const left = values.answer.closestLeftAnchor.trim();
+        const right = values.answer.closestRightAnchor.trim();
+        if (!left || !right || left === right)
+          problems.push("نقطتا الارتكاز مطلوبتان ويجب أن تكونا مختلفتين.");
+      }
+    }
+  }
   if (
     !values.promptAr.trim() &&
     !values.oneClue.enabled &&
