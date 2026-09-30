@@ -83,6 +83,78 @@ describe('LiveGameSession', () => {
     expect(30_000 - returned.teams[0].clock.consumedMs - 2_000).toBe(24_000);
   });
 
+  /**
+   * The two halves of the Bomb sequential-launch defect, pinned together.
+   *
+   * Refusing to reallocate a clock mid-turn is correct and must stay correct.
+   * What was missing is the other half: once the turn has properly ended, the
+   * very same allocation has to succeed, because that is what a second القنبلة
+   * on the same board does.
+   */
+  describe('releasing a challenge turn before the next allocation', () => {
+    const started = () => {
+      const session = create();
+      session.markReady(now);
+      session.start(now);
+      return session;
+    };
+
+    it('still refuses to reallocate while a turn is active', () => {
+      const session = started();
+      const [first] = session.serialize().teams;
+      session.startTurn(first.id, 'bomb-start', now);
+      expect(() =>
+        session.allocateChallengeTeamClocks(
+          BOMB_TEAM_CLOCK_MS,
+          new Date(now.getTime() + 1_000),
+        ),
+      ).toThrow(
+        expect.objectContaining({ code: 'ACTIVE_CLOCK_CANNOT_BE_REALLOCATED' }),
+      );
+    });
+
+    it('allocates again once the turn has been released', () => {
+      const session = started();
+      const [first] = session.serialize().teams;
+      session.startTurn(first.id, 'bomb-start', now);
+      const returned = new Date(now.getTime() + 8_000);
+
+      expect(session.releaseChallengeTurn('challenge-ended', returned)).toBe(
+        true,
+      );
+      const neutral = session.serialize();
+      expect(neutral.activeTeamId).toBeUndefined();
+      expect(neutral.teams.every((team) => !team.clock.running)).toBe(true);
+
+      session.allocateChallengeTeamClocks(BOMB_TEAM_CLOCK_MS, returned);
+      expect(
+        session.serialize().teams.map((team) => team.clock.allocatedMs),
+      ).toEqual([30_000, 30_000, 30_000]);
+      // A fresh budget, not the time the previous challenge burned.
+      expect(
+        session.serialize().teams.every((team) => team.clock.consumedMs === 0),
+      ).toBe(true);
+    });
+
+    it('releases nothing, and complains about nothing, after a turnless mechanic', () => {
+      // مين أقرب and اقرأ خصمك never take a session turn, so board return has to
+      // be a no-op for them rather than an error.
+      const session = started();
+      expect(session.releaseChallengeTurn('challenge-ended', now)).toBe(false);
+      session.allocateChallengeTeamClocks(BOMB_TEAM_CLOCK_MS, now);
+      expect(session.serialize().teams[0].clock.allocatedMs).toBe(30_000);
+    });
+
+    it('is idempotent when the same board return is replayed', () => {
+      const session = started();
+      const [first] = session.serialize().teams;
+      session.startTurn(first.id, 'bomb-start', now);
+      expect(session.releaseChallengeTurn('challenge-ended', now)).toBe(true);
+      expect(session.releaseChallengeTurn('challenge-ended', now)).toBe(false);
+      expect(session.serialize().activeTeamId).toBeUndefined();
+    });
+  });
+
   it('rejects unknown teams and stale revisions', () => {
     const session = create();
     expect(() => session.assertRevision(1)).toThrow(

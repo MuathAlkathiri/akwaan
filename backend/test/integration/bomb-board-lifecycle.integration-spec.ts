@@ -39,6 +39,7 @@ import { GetLiveGameSession } from '../../src/modules/live-game-sessions/applica
 import { GetGameplayRuntime } from '../../src/modules/live-game-sessions/application/gameplay-runtime.queries';
 import { PresentationReady } from '../../src/modules/live-game-sessions/application/gameplay-runtime.lifecycle';
 import { GameplayDeadlineScheduler } from '../../src/modules/live-game-sessions/application/gameplay-deadline.scheduler';
+import { BOMB_TEAM_CLOCK_MS } from '../../src/modules/live-game-sessions/domain/live-game-mode.registry';
 import {
   GAMEPLAY_RUNTIME_REPOSITORY,
   GameplayRuntimeRepository,
@@ -66,6 +67,7 @@ describe('Bomb board lifecycle integration', () => {
   let worldId: string;
   let scopeIds: string[];
   let bombItemIds: string[];
+  let bombItemIdsSecondRun: string[];
   let ryoItemIds: string[];
 
   const uuid = () => randomUUID();
@@ -79,7 +81,8 @@ describe('Bomb board lifecycle integration', () => {
     });
     token = await loginForToken(app, fixtureCredentials.admin);
     controllerId = await currentUserId();
-    ({ worldId, scopeIds, bombItemIds, ryoItemIds } = await seedWorld());
+    ({ worldId, scopeIds, bombItemIds, bombItemIdsSecondRun, ryoItemIds } =
+      await seedWorld());
   }, 180_000);
 
   afterAll(async () => {
@@ -227,9 +230,15 @@ describe('Bomb board lifecycle integration', () => {
       sortOrder: 3,
     }).expect(201);
 
-    /** Ten ordered Bomb pictures, each with its own prompt and answer. */
+    /**
+     * Two ordered Bomb runs, each with its own prompts and answers.
+     *
+     * The board carries the same World three times, so a second القنبلة is an
+     * ordinary board position rather than a contrived one — and a Match that
+     * plays Bomb twice is exactly the sequence that used to fail.
+     */
     const bombItems: string[] = [];
-    for (let index = 0; index < BOMB_ITEM_COUNT; index += 1) {
+    for (let index = 0; index < BOMB_ITEM_COUNT * 2; index += 1) {
       const created = (
         await bearer(http().post('/admin/content-items'))
           .send({
@@ -299,6 +308,16 @@ describe('Bomb board lifecycle integration', () => {
               mode: ChallengeAnswerMode.CLOSEST,
               correctValue: 42,
             },
+            // New مين أقرب content must choose its continuum; a bare
+            // correctValue has been refused since the slider authoring guard.
+            mechanicPayload: {
+              closestSlider: {
+                mode: 'numeric-range',
+                min: 0,
+                max: 100,
+                step: 1,
+              },
+            },
             status: ContentItemStatus.READY,
           })
           .expect(201);
@@ -336,7 +355,8 @@ describe('Bomb board lifecycle integration', () => {
     return {
       worldId: String(world.id),
       scopeIds: scopes.map((entry) => String(entry.id)),
-      bombItemIds: bombItems,
+      bombItemIds: bombItems.slice(0, BOMB_ITEM_COUNT),
+      bombItemIdsSecondRun: bombItems.slice(BOMB_ITEM_COUNT),
       ryoItemIds: ryoItems,
     };
   };
@@ -473,6 +493,7 @@ describe('Bomb board lifecycle integration', () => {
     slotKey: WorldChallengeSlotKey,
     contentItemIds: string[],
     expected = 201,
+    occurrenceIndex = 0,
   ) => {
     const current = await matchSnapshot(sessionId);
     const response = await bearer(
@@ -480,7 +501,7 @@ describe('Bomb board lifecycle integration', () => {
     ).send({
       commandId: uuid(),
       expectedMatchRevision: (current.match as { revision: number }).revision,
-      occurrenceIndex: 0,
+      occurrenceIndex,
       slotKey,
       contentItemIds,
     });
@@ -1236,6 +1257,107 @@ describe('Bomb board lifecycle integration', () => {
     const next = (await rawRuntime(sessionId))!;
     expect(next.sessionId).toBe(sessionId);
     expect(next.modeKey).toBe('read-your-opponent');
+  }, 240_000);
+
+  /**
+   * The direction nothing covered, and the one players actually hit.
+   *
+   * Every other test here launches القنبلة first, which is why the defect
+   * survived: Bomb-first meets a session that has never taken a turn. A
+   * turn-driving challenge leaves `activeTeamId` set, and Bomb's clock
+   * allocation — correctly — refuses to reallocate over an open turn. Board
+   * return is what has to hand that turn back.
+   */
+  it('sequential: Bomb launches after a turn-driving challenge already ran', async () => {
+    const { sessionId } = await startSession();
+    await bombRunning(sessionId);
+
+    // Finish the first Bomb the ordinary way: its clock runs out.
+    await expireActiveClock(sessionId);
+    await app.get(GameplayDeadlineScheduler).schedule(sessionId);
+    await settle();
+    expect(['completed', 'cancelled']).toContain(
+      String((await rawRuntime(sessionId))!.status),
+    );
+
+    await continueFromChallengeResult(sessionId);
+
+    // Back at a selectable board the session owns no turn and no clock runs.
+    const neutral = (await rawSession(sessionId))!;
+    expect(neutral.state.activeTeamId).toBeUndefined();
+    expect(
+      (neutral.state.teams as Array<{ clock: { running: boolean } }>).every(
+        (team) => !team.clock.running,
+      ),
+    ).toBe(true);
+
+    // The second القنبلة is an ordinary board position: the same World is on
+    // the board three times, so this is product architecture, not a fixture.
+    await launch(
+      sessionId,
+      WorldChallengeSlotKey.SLOT_1,
+      bombItemIdsSecondRun,
+      201,
+      1,
+    );
+    expect((await rawRuntime(sessionId))!.modeKey).toBe('bomb');
+
+    // A fresh budget for both teams, not whatever the first run left behind.
+    const allocated = (
+      (await rawSession(sessionId))!.state.teams as Array<{
+        clock: { allocatedMs: number; consumedMs: number };
+      }>
+    ).map((team) => team.clock);
+    expect(allocated.every((c) => c.allocatedMs === BOMB_TEAM_CLOCK_MS)).toBe(
+      true,
+    );
+    expect(allocated.every((c) => c.consumedMs === 0)).toBe(true);
+  }, 240_000);
+
+  /**
+   * The other way back to the board, and the only one that can leave a clock
+   * still running: an abandoned challenge never reaches a result screen.
+   */
+  it('sequential: an aborted challenge releases the turn and Bomb can launch', async () => {
+    const { sessionId } = await startSession();
+    await bombRunning(sessionId);
+
+    // Mid-challenge: a team owns the turn and its clock is running.
+    const during = (await rawSession(sessionId))!;
+    expect(during.state.activeTeamId).toBeTruthy();
+    expect(
+      (during.state.teams as Array<{ clock: { running: boolean } }>).some(
+        (team) => team.clock.running,
+      ),
+    ).toBe(true);
+
+    const live = (await runtimes().findBySessionId(sessionId))!.serialize();
+    await bearer(http().post(`/live-game-sessions/${sessionId}/runtime/cancel`))
+      .send({
+        commandId: uuid(),
+        expectedRuntimeRevision: live.revision,
+        expectedSessionRevision: await sessionRevision(sessionId),
+      })
+      .expect(201);
+    await settle();
+
+    const neutral = (await rawSession(sessionId))!;
+    expect(neutral.state.activeTeamId).toBeUndefined();
+    expect(
+      (neutral.state.teams as Array<{ clock: { running: boolean } }>).every(
+        (team) => !team.clock.running,
+      ),
+    ).toBe(true);
+    expect(neutral.status).toBe('active');
+
+    await launch(
+      sessionId,
+      WorldChallengeSlotKey.SLOT_1,
+      bombItemIdsSecondRun,
+      201,
+      1,
+    );
+    expect((await rawRuntime(sessionId))!.modeKey).toBe('bomb');
   }, 240_000);
 
   it('15, 17: a true item-exhaustion tie persists once and scores zero', async () => {

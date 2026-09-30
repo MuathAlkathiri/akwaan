@@ -70,6 +70,21 @@ const messages: Record<string, string> = {
   TOP5_STARTING_TEAM_INVALID: "الفريق المحدد للبدء مو مشارك في المباراة.",
   RYO_RUNTIME_NOT_CREATED: "ما ضبط بدء اقرأ خصمك. جرّبوا مرة ثانية.",
   TOP5_RUNTIME_NOT_CREATED: "ما ضبط بدء أفضل 5. جرّبوا مرة ثانية.",
+  // القنبلة refusals a host can actually meet at the board. Every one of these
+  // used to land on the anonymous fallback, which is how a lifecycle defect
+  // spent weeks looking like a random "try again".
+  BOMB_REQUIRES_TEN_TO_FIFTEEN_ITEMS:
+    "تحدي القنبلة يحتاج من 10 إلى 15 عنصر محتوى مختلف.",
+  BOMB_ITEMS_NOT_DISTINCT: "ما ينفع يتكرر نفس العنصر في جولة القنبلة.",
+  BOMB_RUNTIME_NOT_CREATED: "ما ضبط بدء القنبلة. جرّبوا مرة ثانية.",
+  BOMB_LAUNCH_FORBIDDEN: "تشغيل القنبلة للمتحكّم بس.",
+  BOMB_SLOT_INVALID: "هذه الخانة مو مضبوطة على آلية القنبلة.",
+  BOMB_CONTENT_INVALID: "محتوى القنبلة المختار مو مناسب لهذه الخانة.",
+  BOMB_REQUIRES_TWO_TEAMS: "القنبلة تحتاج فريقين نشطين بالضبط.",
+  BOMB_REPRESENTATIVE_REQUIRED:
+    "الفريق الأول يحتاج لاعب متصل يمسك القنبلة قبل ما تبدأ.",
+  ACTIVE_CLOCK_CANNOT_BE_REALLOCATED:
+    "فيه دور فريق ما زال مفتوح من تحدي قبل. ارجعوا للوحة وجرّبوا مرة ثانية.",
   TOP5_CONTENT_INVALID: "ما فيه محتوى أفضل 5 جاهز لهذه الخانة.",
   TOP5_MECHANIC_INCOMPATIBLE:
     "إعداد أفضل 5 في هذا العالم لا يناسب المحتوى المتاح.",

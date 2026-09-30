@@ -24,6 +24,7 @@ import { MATCH_CLOCK, MatchClock } from './match-clock';
 import { MatchTransitionNotifier } from './match-transition.notifier';
 import { reconciliationCommandId } from './match.use-cases';
 import { RuntimeScoreEventCollector } from './runtime-score-event.collector';
+import { releaseSessionTurnForBoardReturn } from './session-turn-release';
 
 /** Why a reconciliation attempt ended the way it did. */
 export type MatchReconciliationOutcome =
@@ -374,6 +375,23 @@ export class MatchReconciliationService
         attempt,
         error,
       );
+    }
+    // An abort goes straight back to the board without a result screen, so it is
+    // the second route that has to hand the session's turn back — and the one
+    // that could leave a clock still running.
+    try {
+      await releaseSessionTurnForBoardReturn({
+        sessions: this.sessions,
+        sessionId: input.sessionId,
+        reason: 'challenge-aborted',
+        now: this.clock.now(),
+      });
+    } catch (error) {
+      this.logger.error({
+        event: 'session_turn_release_failed',
+        sessionId: input.sessionId,
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
     this.transitions.publish(match, 'challenge-aborted');
     return { outcome: 'aborted', matchId: match.id, importedScoreEvents: 0 };

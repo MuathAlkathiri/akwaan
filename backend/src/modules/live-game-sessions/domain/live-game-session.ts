@@ -565,6 +565,30 @@ export class LiveGameSession {
   }
 
   /**
+   * Hands team-turn ownership back when a challenge is over.
+   *
+   * A Match outlives its challenges, but only some mechanics take a turn:
+   * القنبلة and أفضل 5 drive `activeTeamId`, مين أقرب and اقرأ خصمك never touch
+   * it. Nothing used to give that ownership back, so a session that had once
+   * played a turn-driving challenge carried an open turn for the rest of the
+   * Match, and the next القنبلة met `allocateChallengeTeamClocks` with a turn
+   * still active and was refused — the whole sequential-launch bug.
+   *
+   * Idempotent by design. Returning to the board must not depend on which
+   * mechanic just finished, so releasing nothing is a normal outcome and is
+   * reported as `false` rather than raised.
+   */
+  releaseChallengeTurn(reason: string, now: Date): boolean {
+    if (this.state.status !== 'active' || !this.state.activeTeamId) {
+      return false;
+    }
+    // `endTurn` stops the active clock and clears the active team together,
+    // which is exactly the neutral state the next challenge expects.
+    this.endTurn(reason, now);
+    return true;
+  }
+
+  /**
    * Allocates the clocks for a newly launched timed challenge.
    *
    * Unified Match sessions outlive individual challenges and therefore start

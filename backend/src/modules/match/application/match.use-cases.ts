@@ -40,6 +40,7 @@ import {
   MatchTransitionReason,
 } from './match-transition.notifier';
 import { MatchWorldCatalog } from './match-world.catalog';
+import { releaseSessionTurnForBoardReturn } from './session-turn-release';
 import { UnifiedMatchSetupValidator } from './unified-match-setup.validator';
 import {
   assertTeamActionAuthorized,
@@ -380,8 +381,8 @@ export class MatchUseCases {
    * command, or a reconnect that resends it cannot move a score. A press from
    * any other stage is refused rather than silently ignored.
    */
-  continueFromChallengeResult(command: MatchCommand): Promise<Match> {
-    return this.mutate(
+  async continueFromChallengeResult(command: MatchCommand): Promise<Match> {
+    const match = await this.mutate(
       command,
       (match) => this.transitions.continueReason(match),
       (match, now) => {
@@ -391,6 +392,37 @@ export class MatchUseCases {
         });
       },
     );
+    await this.releaseSessionTurn(command.sessionId, 'challenge-ended');
+    return match;
+  }
+
+  /**
+   * Neutralizes the session now that the board is selectable again.
+   *
+   * Best effort on purpose: a player who has finished a challenge must reach the
+   * board even if this fails, so a refusal is logged rather than raised. The log
+   * carries the code, because the only way this should ever fail is a genuine
+   * lifecycle defect worth seeing.
+   */
+  private async releaseSessionTurn(
+    sessionId: string,
+    reason: string,
+  ): Promise<void> {
+    try {
+      await releaseSessionTurnForBoardReturn({
+        sessions: this.sessions,
+        sessionId,
+        reason,
+        now: this.clock.now(),
+      });
+    } catch (error) {
+      this.logger.error({
+        event: 'session_turn_release_failed',
+        sessionId,
+        reason,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   /** Abandons a prepared position. Consumes nothing and changes no turn. */

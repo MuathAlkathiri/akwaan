@@ -1629,6 +1629,43 @@ Movies Signature (§16.2); the content does not disappear, and any migration pla
 ⚠️ The count has moved: 549 ready items at the 2026-08-18 baseline, **288** in the local runtime on 2026-08-21,
 unexplained — §19 item 19. Preserving the catalog means first establishing which figure is right.
 
+#### Sequential-launch lifecycle defect — ✅ FIXED & VERIFIED (2026-09-30)
+
+**Symptom.** A Match could play القنبلة first, but selecting it *after* another challenge failed at launch with
+«ما ضبط. تأكد من الحالة وجرّب مرة ثانية.»
+
+**Root cause.** Bomb is the only mechanic that calls `allocateChallengeTeamClocks`, which correctly refuses to
+reallocate over an open turn. Turn-driving challenges — القنبلة, أفضل 5 and legacy Top 10 — set
+`session.activeTeamId`, and **nothing released it on board return**: no plugin emits `stop-active-turn` and no
+completion path called `endTurn`. The next Bomb therefore met an open turn and was refused with
+`ACTIVE_CLOCK_CANNOT_BE_REALLOCATED`, a code the frontend never mapped, so a real lifecycle defect presented as
+an anonymous "try again".
+
+**Fix.** Board return is now the canonical release point. `LiveGameSession.releaseChallengeTurn` (idempotent,
+delegating to the existing `endTurn`) is called from the two routes back to a selectable board — the result
+screen's continue and an aborted challenge — through one shared owner, `session-turn-release.ts`. **Bomb's
+allocation guard is unchanged**; normal sequential play now reaches it with neutral state. The Bomb launch codes
+and `ACTIVE_CLOCK_CANNOT_BE_REALLOCATED` are now mapped in the Match error architecture.
+
+**Scope correction.** The original report was "play anything, then Bomb". Verified on the real local stack, both
+before and after the fix: مين أقرب and اقرأ خصمك never set `activeTeamId` and never broke Bomb. **Only
+turn-driving mechanics triggered it.**
+
+| Preceding challenge | Pre-fix build | Post-fix build |
+|---|---|---|
+| none (Bomb first) | `201` | `201` |
+| أفضل 5 | **`400` `ACTIVE_CLOCK_CANNOT_BE_REALLOCATED`** | `201`, clocks 30000/30000 |
+| مين أقرب | `201` | `201` |
+| اقرأ خصمك | `201` | `201` |
+
+Covered by `bomb-board-lifecycle` (sequential launch and abort→board→Bomb, both proven to fail without the fix)
+and by domain tests pinning **both** invariants: allocation refused during an active turn, allowed once released.
+
+⚠️ **KNOWN DEBT — unrelated to Bomb.** The مين أقرب authoring guard released in `06a3c55` refuses new `CLOSEST`
+items that carry no `closestSlider`, which is correct, but **13 integration suites still seed such fixtures and
+now fail at setup** (120 tests). Only `bomb-board-lifecycle` was repaired here. The rest need the same one-line
+fixture change — see §19.
+
 ### 16.2 Signature matrix
 
 | World | Signature mechanic | Mechanic implemented? | World rollout | Status |
