@@ -234,6 +234,10 @@ describe('challenge abort lifecycle integration', () => {
         closest.id,
         { mode: ChallengeAnswerMode.CLOSEST, correctValue: 42 },
         'أقرب',
+        // Test-only filler: مين أقرب content now has to name its continuum.
+        {
+          closestSlider: { mode: 'numeric-range', min: 0, max: 100, step: 1 },
+        },
       ),
       [ONE_CLUE_MODE_KEY]: await seedItems(
         oneClue.id,

@@ -175,6 +175,16 @@ describe('من أول نغمة lifecycle integration', () => {
               mode: ChallengeAnswerMode.CLOSEST,
               correctValue: 42,
             },
+            // Test-only filler: مين أقرب content now has to name its
+            // continuum, and this suite is not about slider authoring.
+            mechanicPayload: {
+              closestSlider: {
+                mode: 'numeric-range',
+                min: 0,
+                max: 100,
+                step: 1,
+              },
+            },
             status: ContentItemStatus.READY,
           })
           .expect(201);

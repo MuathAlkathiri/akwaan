@@ -143,6 +143,10 @@ describe('Unified Match API integration', () => {
           mode: ChallengeAnswerMode.CLOSEST,
           correctValue: 42,
         },
+        // Test-only filler: مين أقرب content now has to name its continuum.
+        mechanicPayload: {
+          closestSlider: { mode: 'numeric-range', min: 0, max: 100, step: 1 },
+        },
       },
     );
   }, 120_000);
@@ -220,6 +224,8 @@ describe('Unified Match API integration', () => {
        * cannot read a multiple-choice item.
        */
       answerPayload?: Record<string, unknown>;
+      /** Mechanic metadata that `answerPayload` now requires, e.g. a مين أقرب slider. */
+      mechanicPayload?: Record<string, unknown>;
     } = {},
   ): Promise<SeededWorld> => {
     const world = (
@@ -281,6 +287,9 @@ describe('Unified Match API integration', () => {
                 ],
                 correctOptionId: 'right',
               },
+              ...(options.mechanicPayload
+                ? { mechanicPayload: options.mechanicPayload }
+                : {}),
               status: ContentItemStatus.READY,
             })
             .expect(201)

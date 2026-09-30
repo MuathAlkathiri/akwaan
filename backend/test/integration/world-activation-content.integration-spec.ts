@@ -145,12 +145,28 @@ describe('World activation requires playable board content', () => {
       ((index: number) => Record<string, unknown>) | undefined = undefined,
   ) => {
     for (let index = 0; index < count; index += 1) {
+      const extra: Record<string, unknown> = extras ? extras(index) : {};
+      // Test-only filler: مين أقرب content now has to name its continuum, and
+      // this suite is about activation readiness rather than slider authoring.
+      const mechanicPayload =
+        mode === ChallengeAnswerMode.CLOSEST
+          ? {
+              ...((extra.mechanicPayload as Record<string, unknown>) ?? {}),
+              closestSlider: {
+                mode: 'numeric-range',
+                min: 0,
+                max: 100,
+                step: 1,
+              },
+            }
+          : undefined;
       await admin(http().post('/admin/content-items'))
         .send({
           scopeId,
           prompt: { ar: `سؤال ${index}` },
           compatibleChallengeTypeIds: [challengeTypeId],
-          ...(extras ? extras(index) : {}),
+          ...extra,
+          ...(mechanicPayload ? { mechanicPayload } : {}),
           answerPayload:
             mode === ChallengeAnswerMode.MULTIPLE_CHOICE
               ? {

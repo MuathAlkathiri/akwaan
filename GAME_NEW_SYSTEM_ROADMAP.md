@@ -1661,10 +1661,20 @@ turn-driving mechanics triggered it.**
 Covered by `bomb-board-lifecycle` (sequential launch and abort→board→Bomb, both proven to fail without the fix)
 and by domain tests pinning **both** invariants: allocation refused during an active turn, allowed once released.
 
-⚠️ **KNOWN DEBT — unrelated to Bomb.** The مين أقرب authoring guard released in `06a3c55` refuses new `CLOSEST`
-items that carry no `closestSlider`, which is correct, but **13 integration suites still seed such fixtures and
-now fail at setup** (120 tests). Only `bomb-board-lifecycle` was repaired here. The rest need the same one-line
-fixture change — see §19.
+✅ **Stale Closest fixtures — debt closed (2026-10-01).** The مين أقرب authoring guard released in `06a3c55`
+refuses new `CLOSEST` items carrying no `closestSlider`. That is correct, and it left integration fixtures
+seeding pre-guard content failing at setup. **11 suites** were updated to the current explicit-slider contract —
+a deterministic, test-only `numeric-range` filler — and now pass: challenge-abort, combo, ekshifni, first-note,
+la-tahriqha, laqatha, marhala, odd-piece, unified-match-api, world-activation-content, world-slot-removal
+(`bomb-board-lifecycle` was repaired with the Bomb release). `unified-match-preflight` was **not** touched: its
+`CLOSEST` entry is unused data, so it never hit the guard.
+
+**The product guard is unchanged** — no production source was modified, `legacy` was not reintroduced for new
+content, and `world-content` still proves all three rules: a new item without a slider is refused, one with a
+valid `numeric-range` is accepted, and pre-existing legacy content stays playable. The integration tier went
+from **15 failing suites / 122 tests** to **3 / 4**, with zero `CLOSEST_SLIDER_MODE_REQUIRED` remaining; the
+survivors (`music`, `manual-question-architecture`, and an order-flaky `unified-match-api` session-revision
+race) are unrelated pre-existing failures.
 
 ### 16.2 Signature matrix
 

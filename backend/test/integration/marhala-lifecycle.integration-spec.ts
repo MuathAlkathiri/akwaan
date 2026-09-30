@@ -242,11 +242,15 @@ describe('marhala lifecycle integration', () => {
     }
 
     // The other two slots need content of their own for a unified Match.
-    for (const [mechanicId, answerPayload, label] of [
+    for (const [mechanicId, answerPayload, label, mechanicPayload] of [
       [
         closest.id,
         { mode: ChallengeAnswerMode.CLOSEST, correctValue: 42 },
         'أقرب',
+        // Test-only filler: مين أقرب content now has to name its continuum.
+        {
+          closestSlider: { mode: 'numeric-range', min: 0, max: 100, step: 1 },
+        },
       ],
       [
         ryo.id,
@@ -260,7 +264,9 @@ describe('marhala lifecycle integration', () => {
         },
         'اقرأ',
       ],
-    ] as Array<[string, Record<string, unknown>, string]>) {
+    ] as Array<
+      [string, Record<string, unknown>, string, Record<string, unknown>?]
+    >) {
       for (const scopeId of scopes) {
         for (let round = 0; round < 3; round += 1) {
           await bearer(http().post('/admin/content-items'))
@@ -269,6 +275,7 @@ describe('marhala lifecycle integration', () => {
               prompt: { ar: `${label} ${round}` },
               compatibleChallengeTypeIds: [mechanicId],
               answerPayload,
+              ...(mechanicPayload ? { mechanicPayload } : {}),
               status: ContentItemStatus.READY,
             })
             .expect(201);

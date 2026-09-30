@@ -272,6 +272,8 @@ describe('combo lifecycle integration', () => {
       closest.id,
       { mode: ChallengeAnswerMode.CLOSEST, correctValue: 42 },
       'أقرب',
+      // Test-only filler: مين أقرب content now has to name its continuum.
+      { closestSlider: { mode: 'numeric-range', min: 0, max: 100, step: 1 } },
     );
     await seedOther(
       oneClue.id,
@@ -598,7 +600,10 @@ describe('combo lifecycle integration', () => {
         [
           closest.id,
           { mode: ChallengeAnswerMode.CLOSEST, correctValue: 42 },
-          undefined,
+          // Test-only filler: مين أقرب content now has to name its continuum.
+          {
+            closestSlider: { mode: 'numeric-range', min: 0, max: 100, step: 1 },
+          },
         ],
         [
           oneClue.id,

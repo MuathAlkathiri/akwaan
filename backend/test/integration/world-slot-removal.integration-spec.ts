@@ -114,6 +114,15 @@ describe('world slot mechanic removal', () => {
             mode: ChallengeAnswerMode.CLOSEST,
             correctValue: 42,
           },
+          // Test-only filler: مين أقرب content now has to name its continuum.
+          mechanicPayload: {
+            closestSlider: {
+              mode: 'numeric-range',
+              min: 0,
+              max: 100,
+              step: 1,
+            },
+          },
         };
 
   let mechanics: Array<{ id: string; slug: string }>;
