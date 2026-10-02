@@ -105,6 +105,43 @@ Do not collapse failures into one generic media error. Use these distinct classi
 - **Reviewer Test**: Hide rationale, QA labels, and metadata. Ask: "Would this be fun and clear if a player saw/heard it in a real match?" If yes, accept it.
 - **Batch Variety**: `VARIETY IS ENFORCED ACROSS THE BATCH, NOT BY OVERLOADING EACH QUESTION`. Do not penalize an individual item for lacking multiple cognitive steps if the batch as a whole has cognitive variety.
 
+### QA GATE: مين أقرب SLIDER CONTRACT
+
+Applies to every Closest item that carries `mechanicPayload.closestSlider`.
+Full authoring rules live in `ai/.opencode/skills/challenge-types/closest/SKILL.md`.
+
+**Automatable — an authored batch fails if any is false:**
+- `min` and `max` finite, `min < max`
+- `step` present and positive
+- `correctValue` inside `[min, max]`
+- `correctValue` exactly reachable: `(correctValue - min) % step == 0`
+- `mode` is `numeric-range` or `between-anchors` — never `legacy`, never unset
+- `displayFormat`, where present, is `number` or `calendar-year`
+- a `calendar-year` slider carries **no** `unit`
+- `between-anchors` carries both anchor labels, non-empty
+- source IDs complete and unique; no invented IDs
+- `prompt`, `correctValue` and `acceptedTolerance` unchanged from source
+
+**Editorial — human/product judgement, reported as flags not verdicts:**
+- bounds are derived from the question's domain, not from the answer
+- the range is neither absurdly broad nor trivially narrow
+- the step is meaningful and reachable on a phone
+- the unit is natural to the quantity
+- endpoints do not leak the answer
+- comparable items share a continuum where the reasoning space is the same
+- `between-anchors` endpoints are semantically real
+
+**THE MANDATORY QUESTION — ask it of every authored range:**
+
+> **"Could these exact endpoints be justified if `correctValue` were hidden?"**
+
+If **no**, the item **FAILS authoring QA**, however plausible the range looks.
+
+**Midpoint classification** (`exact-midpoint` · `near-midpoint` · `clear`) is
+computed *after* the continuum is authored and is a **QA signal only**. Never
+reject an item for midpoint proximity alone: a shared, independently defensible
+continuum may place an answer at its midpoint honestly.
+
 ## Canonical QA Order
 
 Before evaluating content semantics, you MUST execute QA in this exact order:
