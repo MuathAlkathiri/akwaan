@@ -1261,6 +1261,30 @@ does not expose the exact running SHA. No authenticated Production account or At
 for this release pass, so legacy gameplay and the presence of a real authored slider item were not guessed or
 fabricated. Production DB writes, content writes, automatic migrations, and R2 writes remained zero.
 
+**Football scale authoring Wave 1 — ✅ PRODUCT-APPROVED & VERIFIED LOCALLY (2026-10-02).** The reusable مين أقرب
+scale authoring workflow, QA contract and validator are released in Git at `aaf0979`; this entry records the first
+wave authored through them. The rule the wave is built on, in one sentence: **scale authoring is domain-first —
+target-derived ranges are forbidden, deliberate headroom must rest on evidence independent of the item's own
+answer, and a truthful-but-weak Slider question becomes a Content Hold rather than receiving an artificial range.**
+
+**Football, the durable accounting:** **50** legacy Closest items reviewed · **46** Slider items Product-approved
+across two batches · **4** Content Holds. Two Product audit rounds per batch were needed before approval; what they
+caught is what now lives in the authoring Skill — a shared unit is not a shared domain, and three rationales had
+quietly set their ceiling to their own `correctValue`.
+
+**Local application.** The 46 approved records were applied to the **local developer catalog** through the canonical
+Admin authoring path. A second application run required **0 writes**, and an exact database read-back verified all 46
+authored slider payloads. The 4 held records remained unapplied. Prompts, `correctValue`, `acceptedTolerance`, Scope
+and status were unchanged throughout. **This is local runtime state and is not reproduced by Git.**
+
+⚠️ **Real gameplay evidence is a sample, not the batch.** Five distinct items were played in real local Matches,
+chosen to span a large numeric career total, a small numeric title count, a calendar-year item, a low-cardinality
+slider and an exact/near-midpoint case. **It is not proven that every planned representative category was covered,
+and the other 41 approved items were not individually played.**
+
+Remaining open: ⬜ the rest of the Closest catalog authoring, ⬜ Production Closest content migration,
+⬜ Production slider gameplay verification. No Production content, board, World or R2 mutation occurred.
+
 ---
 
 ## 7. Selection and Turn Order
