@@ -13,6 +13,36 @@ description: >-
 - Distinguish authoring from media enrichment: content items define media requirements/intents during authoring before assets are curated or attached.
 - Do not publish, replace, or upload media assets without explicit review.
 
+## Real-Person Media (canonical — Product decision 2026-10-04)
+
+**This is the canonical statement of the rule. Other documents reference it; they do not restate it.**
+
+Rights clearance is **not** an Akwaan readiness gate. A Celebrities item is not blocked from authoring,
+promotion, Production or public release because a licence is unknown, permission has not been obtained, or a
+likeness basis has not been established. A superseded policy briefly required a two-layer clearance before
+release; the Product owner reversed it.
+
+**What that means, exactly.** It means Akwaan does not gate on rights. It does **not** mean an asset is legally
+cleared, and it does not mean permission exists. Never record or report an asset as rights-cleared on the
+strength of this rule.
+
+**Select media on gameplay merit**, in this order: recognizability · gameplay suitability · image quality ·
+clean composition · no answer leakage · stable source/provenance where practical. Do **not** reject a strong
+celebrity image solely because it is not Creative Commons, not Public Domain, carries no permission, or has
+unknown likeness status.
+
+**Record provenance when you have it** — source URL, provider, asset hash, original filename, author/credit,
+licence or rights notes. Missing provenance does not make an item unusable. **Never invent a licence, a
+rights holder or a permission that was not evidenced**, and never convert an unknown state into a cleared one.
+
+**Rights evidence may still be recorded** in the `media_rights` registry (`backend/src/modules/media-rights/`),
+which remains available as optional informational metadata with Admin APIs, impact lookup and effective-status
+derivation. Its status is advisory: it does not affect ContentItem readiness, local gameplay, World activation,
+Production promotion or release readiness.
+
+**The media quality gates below remain mandatory** — leakage, clarity, framing, and the mechanic invariants.
+Those are gameplay correctness, not rights.
+
 ## Visual Media Guidelines & Inspection
 
 1. **Integral Gameplay Support**:
@@ -23,7 +53,9 @@ description: >-
    - **Leakage Check**: Verify the image contains no embedded text, watermarks, names, logos, subtitles, or filenames that prematurely reveal the answer.
    - **Clarity & Ambiguity**: Ensure the subject is unmistakable and cleanly identifiable to avoid player confusion.
    - **Framing & Crop**: Inspect aspect ratios, zoom levels, and crops so critical details are not cut off across devices.
-   - **Licensing & Sourcing**: Verify source and license notes for each asset.
+   - **Licensing & Sourcing**: Record source and licence notes for each asset where they are known. For a
+     real person, see *Real-Person Media* above: missing rights information is not a blocker, and a licence
+     or permission is never to be asserted without evidence.
 
 3. **Content Contract Compliance**:
    - Verify media attachment format adheres to the target mechanic's policy (e.g., `media.assets` containing `{ url, altText }` for Bomb).

@@ -9,6 +9,10 @@ Verify source and license notes, availability, quality, required observation,
 blind evidence sufficiency, crop or segment, accessibility, and every leakage
 channel. Private media must be assigned only to authorized seats or teams.
 
+For a real person, record source and licence notes where known. Missing rights information does not block an
+asset, and no licence or permission may be asserted without evidence. See *Real-Person Media* in
+`.agents/skills/akwaan-media/SKILL.md`.
+
 ## Boundaries
 Do not rewrite prompts or payloads, change mechanics, replace evidence claims,
 approve items, or publish assets.
