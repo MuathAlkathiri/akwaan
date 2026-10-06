@@ -8,7 +8,8 @@ automatable and is deliberately left to human/product review; see
 
 Two shapes are accepted:
   * a single ContentItem carrying `mechanicPayload.closestSlider`
-  * an authored scale batch: `{"items": [{contentItemId, closestSlider, ...}]}`
+  * an authored batch: `{"items": [...]}` or `{"questions": [...]}` — the two
+    shapes the repository's source packs already use
 
 The batch form is additionally checked against its `.source.json` when one is
 given, so a run can prove no ID, prompt or answer drifted during authoring.
@@ -42,6 +43,44 @@ def midpoint_signal(slider: dict, target: float) -> str:
     if abs(target - middle) < 1e-9:
         return "exact-midpoint"
     return "near-midpoint" if abs(target - middle) <= span * 0.05 else "clear"
+
+
+def batch_rows(batch: object) -> list | None:
+    """The batch's records, under whichever key the pack uses.
+
+    Candidate packs written to `ai/scripts/data` use `questions`, authored scale
+    batches use `items`. `ai/scripts/source_pack_selection.py` already reads both
+    through one gate; this mirrors it rather than forcing one shape on authors.
+    """
+    if not isinstance(batch, dict):
+        return None
+    for key in ("items", "questions"):
+        if isinstance(batch.get(key), list):
+            return batch[key]
+    return None
+
+
+def row_field(row: dict, name: str):
+    """A compared field, wherever its shape keeps it.
+
+    Authored batches hold `correctValue` and `acceptedTolerance` at the top
+    level; candidate packs nest them under `answerPayload`. Comparing only one
+    path is how the Celebrities rescue silently dropped nine targets while
+    reporting success, so the drift check reads both.
+    """
+    if name in row:
+        return row[name]
+    return (row.get("answerPayload") or {}).get(name)
+
+
+def row_id(row: dict) -> str | None:
+    """A record's id, under whichever key its shape uses.
+
+    Authored batches key records by `contentItemId`; the candidate packs in
+    `ai/scripts/data` key them by `id`. Reading both is what lets one batch be
+    cross-validated against the other.
+    """
+    return row.get("contentItemId") or row.get("id")
 
 
 def validate_slider(slider: object, correct_value: object, label: str) -> list[str]:
@@ -110,31 +149,36 @@ def validate(item: dict) -> list[str]:
 def validate_batch(batch: dict, source: dict | None = None) -> list[str]:
     """Validate an authored scale batch, optionally against its source worklist."""
     errors: list[str] = []
-    items = batch.get("items")
-    if not isinstance(items, list) or not items:
-        return ["batch.items must be a non-empty list"]
+    items = batch_rows(batch)
+    if not items:
+        return ["batch must carry a non-empty `items` or `questions` list"]
 
     seen: set[str] = set()
     for index, entry in enumerate(items):
-        item_id = entry.get("contentItemId")
+        item_id = row_id(entry)
         label = item_id or f"items[{index}]"
         if not item_id:
-            errors.append(f"{label}: contentItemId is required")
+            errors.append(f"{label}: a contentItemId (or id) is required")
         elif item_id in seen:
             errors.append(f"{label}: duplicate contentItemId")
         else:
             seen.add(item_id)
-        if entry.get("holdForContentReview"):
-            # Held items are carried through untouched, never authored.
+        # Two outcomes legitimately carry no slider. A held item is parked for
+        # content review, and `needsHumanAuthoring` is what the authoring
+        # workflow tells an author to emit when an honest range cannot contain
+        # the target — refusing it here would reject the very shape the released
+        # workflow asks for. Neither may smuggle an authored slider through.
+        if entry.get("holdForContentReview") or entry.get("needsHumanAuthoring"):
             if entry.get("closestSlider"):
-                errors.append(f"{label}: a held item must not be authored")
+                reason = "held" if entry.get("holdForContentReview") else "needs-human-authoring"
+                errors.append(f"{label}: a {reason} item must not be authored")
             continue
         errors.extend(
             validate_slider(entry.get("closestSlider"), entry.get("correctValue"), label)
         )
 
     if source is not None:
-        by_id = {i["contentItemId"]: i for i in source.get("items", [])}
+        by_id = {row_id(i): i for i in (batch_rows(source) or []) if row_id(i)}
         missing = sorted(set(by_id) - seen)
         invented = sorted(seen - set(by_id))
         if missing:
@@ -142,10 +186,11 @@ def validate_batch(batch: dict, source: dict | None = None) -> list[str]:
         if invented:
             errors.append(f"authored batch invented IDs not present in source: {invented}")
         for item_id in sorted(seen & set(by_id)):
-            authored = next(i for i in items if i.get("contentItemId") == item_id)
+            authored = next(i for i in items if row_id(i) == item_id)
             original = by_id[item_id]
             for field in ("prompt", "correctValue", "acceptedTolerance"):
-                if field in authored and authored[field] != original.get(field):
+                mine, theirs = row_field(authored, field), row_field(original, field)
+                if mine is not None and mine != theirs:
                     errors.append(f"{item_id}: {field} drifted from source")
             if original.get("holdForContentReview") and not authored.get("holdForContentReview"):
                 errors.append(f"{item_id}: content-review hold was dropped")
@@ -154,10 +199,10 @@ def validate_batch(batch: dict, source: dict | None = None) -> list[str]:
 
 def report_signals(batch: dict) -> list[str]:
     lines = []
-    for entry in batch.get("items", []):
+    for entry in batch_rows(batch) or []:
         slider, target = entry.get("closestSlider"), _number(entry.get("correctValue"))
         if isinstance(slider, dict) and target is not None:
-            lines.append(f"  {entry.get('contentItemId')}: {midpoint_signal(slider, target)}")
+            lines.append(f"  {row_id(entry)}: {midpoint_signal(slider, target)}")
     return lines
 
 
@@ -171,7 +216,7 @@ def main(paths: list[str]) -> int:
     batch = json.loads(Path(paths[0]).read_text(encoding="utf-8"))
     source = json.loads(Path(paths[1]).read_text(encoding="utf-8")) if len(paths) > 1 else None
 
-    if isinstance(batch, dict) and isinstance(batch.get("items"), list):
+    if batch_rows(batch) is not None:
         errors = validate_batch(batch, source)
         signals = report_signals(batch)
     else:

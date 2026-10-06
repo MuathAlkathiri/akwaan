@@ -107,6 +107,29 @@ def main() -> int:
     authored_hold["items"][1]["closestSlider"] = VALID
     results.append(check("authoring a held item caught", validate_batch(authored_hold, source), True))
 
+    # A batch may arrive under either key the repository's packs use.
+    as_questions = {"questions": authored["items"]}
+    results.append(check("questions[] batch accepted", validate_batch(as_questions, source), False))
+    results.append(
+        check("questions[] source accepted", validate_batch(authored, {"questions": source["items"]}), False)
+    )
+    results.append(check("batch with neither key rejected", validate_batch({"rows": []}, None), True))
+
+    # `needsHumanAuthoring` is what the authoring workflow emits when an honest
+    # range cannot contain the target, so it must validate without a slider.
+    needs_human = {
+        "items": [
+            {"contentItemId": "a", "prompt": "س", "correctValue": 10, "acceptedTolerance": 1,
+             "needsHumanAuthoring": True},
+            {"contentItemId": "b", "prompt": "ص", "correctValue": 20, "acceptedTolerance": 1,
+             "holdForContentReview": ["factual-answer-concern"]},
+        ]
+    }
+    results.append(check("needsHumanAuthoring without slider accepted", validate_batch(needs_human, source), False))
+    smuggled = copy.deepcopy(needs_human)
+    smuggled["items"][0]["closestSlider"] = VALID
+    results.append(check("needsHumanAuthoring must not carry a slider", validate_batch(smuggled, source), True))
+
     # Midpoint is a signal, never an error.
     signals = [
         ("exact-midpoint", midpoint_signal({"min": 0, "max": 100}, 50)),
