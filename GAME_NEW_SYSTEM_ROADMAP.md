@@ -40,6 +40,21 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
+### Where things stand — 2026-10-06 · PUZZLES FORWARD REDESIGN — 🟡 DESIGN APPROVED, NOT IMPLEMENTED
+
+**A Product decision, not a milestone.** Puzzles gets a new forward taxonomy of **six Scopes** —
+قوة الملاحظة والخداع البصري · التلاعب بالكلمات والحروف · أرقام وتقديرات · تركيب وتدوير · مسارات وحركة ·
+اكتشف الخطأ — and a new forward Signature direction, working label **Moving XO** (3×3, X vs O, one board move
+per correct puzzle, three-live-mark FIFO with an in-place refresh, and **الحسم** after 12 successful moves).
+Canonical slugs are not approved and the final Arabic Signature name is not chosen.
+
+**Nothing is implemented.** No code, no Scope records, no ChallengeType, no board binding, no content, no DB or
+R2 write, no deployment. **ركّبها remains the implemented Puzzles Signature** (§23.10) and is superseded only as
+the *forward* direction. The runtime Puzzles taxonomy and Production are unchanged. One terminal edge case —
+a full board with no winner during الحسم — is explicitly **unresolved**.
+
+Full contract: **§23.11**.
+
 ### Where things stand — 2026-09-04 · MUSIC / FIRST NOTE PRODUCTION VERIFIED
 
 **من أول نغمة is ✅ IMPLEMENTED, DEPLOYED & PRODUCTION-VERIFIED.** A human played a
@@ -336,7 +351,7 @@ Statuses differ per World and must not be collapsed.
 | **Anime / الأنمي** | `dragon-ball` · `demon-slayer` · `jujutsu-kaisen` | ✅ complete | ✅ **45/45 complete** | ✅ **PROMOTED & VERIFIED LOCALLY** |
 | **Football / كرة القدم** | `la-liga` · `serie-a` · `football-legends` | ✅ complete | ✅ **45/45 complete** | ✅ **PROMOTED & VERIFIED LOCALLY** |
 | **Video Games / فيديو قيمز** | `minecraft` · `god-of-war` · `resident-evil` | ✅ complete | 🟡 **45 pending** | ⬜ **not promoted** |
-| **Puzzles / عالم الالغاز** | `patterns-sequences` · `lateral-thinking` · `visual-puzzles` | ✅ complete | 🟡 **45 pending** | ⬜ **not promoted** |
+| **Puzzles / عالم الالغاز** | `patterns-sequences` · `lateral-thinking` · `visual-puzzles` | ✅ complete | 🟡 **45 pending** | ⬜ **not promoted** · ⚠️ **superseded for forward work (§23.11)** |
 
 ⚠️ **Six of the twelve are promoted; six are source-only.** Anime and Football are in the runtime database
 (3 Scopes each). The remaining **six** — Video Games `minecraft` · `god-of-war` · `resident-evil` and Puzzles
@@ -467,7 +482,9 @@ The day-to-day view. Detail lives in the referenced sections; this stays short e
 - [x] **Football**: Bomb media 45/45 + product review, 3 Scopes created in the local/dev runtime, 126 items
       promoted, all four mechanic smokes PASS *(details in "Content expansion — 12 new Scopes")*
 - [ ] **Video Games**: Bomb media 45 → manual review → runtime promotion
-- [ ] **Puzzles**: Bomb media 45 → manual review → runtime promotion
+- [ ] **Puzzles**: Bomb media 45 → manual review → runtime promotion — ⚠️ **superseded as forward plan by
+      §23.11.** The authored 45 belong to the old three source-only Scopes; forward Puzzles Bomb content
+      targets the **six approved Scopes**, whose canonical slugs are not approved yet.
 - [ ] Promotion of any of it to the **public production database** *(not started; explicitly out of scope so far)*
 
 ### D. Shared Core migration — 🚧 IN PROGRESS
@@ -500,7 +517,10 @@ Games, Puzzles and the draft Worlds still need both (§C.1).
 ### E. Signature mechanics — product design
 
 - [x] Football / كرة القدم → **Top 5** *(mechanic implemented)*
-- [x] Puzzles / عالم الالغاز → **Distributed Information / ركّبها** *(mechanic implemented)*
+- [x] Puzzles / عالم الالغاز → **Distributed Information / ركّبها** *(mechanic implemented — remains the
+      implemented Puzzles Signature; ⚠️ superseded as the forward direction by Moving XO, §23.11)*
+- [ ] Puzzles / عالم الالغاز → **Moving XO** *(working label; 🟡 design approved 2026-10-06, NOT implemented;
+      final Arabic name TBD — §23.11)*
 - [x] Movies / الأفلام → **One Clue / بدليل واحد** *(design approved)*
 - [x] Music / الأغاني → **من أول نغمة** *(design approved)*
 - [x] World / العالم → **على الخريطة** *(design approved)*
@@ -522,13 +542,19 @@ Design approval above does **not** imply any of these. Full matrix in §16.
 - [x] Video Games → المرحلة *(✅ mechanic implemented & verified; ✅ local/dev World rollout verified; ⚠️ production content outstanding; ⬜ not deployed — §17)*
 - [x] Anime → الكومبو *(✅ mechanic implemented & verified; local/dev World rollout verified; ⚠️ production content outstanding — §16.4)*
 - [x] Football → Top 5 World-specific rollout reconciled — ✅ football-exclusive in the local/dev runtime; ⬜ not deployed (§C.1)
-- [ ] Puzzles → ركّبها World-specific rollout reconciled
+- [ ] Puzzles → ركّبها World-specific rollout reconciled *(⚠️ superseded as forward direction by §23.11; the
+      implemented mechanic stays until a replacement is actually built)*
+- [ ] Puzzles → **Moving XO** *(🟡 design approved, not started — no code, no ChallengeType, no board binding)*
 
 ### G. Taxonomy / catalog changes — 🟡 APPROVED DIRECTION, NOT IMPLEMENTED
 
 - [ ] General Knowledge / معلومات عامة consolidated into عالم الالغاز as a Scope (§18.3)
 - [ ] Arabic Movies scopes/content added under the existing Movies World (§18.2)
 - [ ] Arabic Series scopes/content added under the existing Series World (§18.2)
+- [ ] **Puzzles forward six-Scope taxonomy** — قوة الملاحظة والخداع البصري · التلاعب بالكلمات والحروف ·
+      أرقام وتقديرات · تركيب وتدوير · مسارات وحركة · اكتشف الخطأ *(🟡 approved direction 2026-10-06, not
+      implemented; canonical slugs **not** approved; supersedes the old three source-only Puzzles Scopes for
+      forward work without changing their historical status — §23.11)*
 
 ### H. Media — ⬜ NOT STARTED
 
@@ -1705,7 +1731,8 @@ race) are unrelated pre-existing failures.
 | World | Signature mechanic | Mechanic implemented? | World rollout | Status |
 |---|---|---|---|---|
 | **Football / كرة القدم** | Top 5 / أفضل 5 | ✅ `top-5` plugin, launcher, ChallengeType | ✅ **football-exclusive in the local/dev runtime** — `slot_1` on the Football board, no other board binds it, all 40 items in Football; 7 active Scopes after the expansion; ⬜ not deployed | ✅ mechanic / ✅ local rollout (§C.1) |
-| **Puzzles / عالم الالغاز** | Distributed Information / ركّبها | ✅ `distributed-information` plugin, launcher, ChallengeType, 213 items | 🚧 exclusivity and board rollout not finalized | ✅ mechanic / 🚧 rollout |
+| **Puzzles / عالم الالغاز** | Distributed Information / ركّبها | ✅ `distributed-information` plugin, launcher, ChallengeType, 213 items | 🚧 exclusivity and board rollout not finalized | ✅ mechanic / 🚧 rollout — ⚠️ **superseded as forward direction (§23.11); retained until a replacement is built** |
+| **Puzzles / عالم الالغاز — forward** | **Moving XO** *(working label; Arabic name TBD)* | ⬜ **nothing implemented** — no plugin, launcher, ChallengeType or content | 🟡 **design approved 2026-10-06** (§23.11) | 🟡 design only / ⬜ not started |
 | **Movies / الأفلام** | One Clue / بدليل واحد | ✅ mechanic exists (`one-clue`) | ⬜ not re-owned as the Movies Signature; Movies-specific form undefined | 🟡 design approved |
 | **Music / الأغاني** | من أول نغمة | ⬜ | ⬜ | 🟡 design approved |
 | **World / العالم** | على الخريطة | ⬜ | ⬜ | 🟡 design approved |
@@ -1811,6 +1838,11 @@ read by the Admin catalog and by the manual `provision:production-mechanics` CLI
 - **المرحلة** (Video Games) — board race whose central decision is *which risk band to elect from this tile*;
   full spec **and implementation record** in §17.
 - **الكومبو** (Anime) — push-your-luck knowledge run built around the team's **cash out or continue** decision, with direct opponent pressure through **كسر الكومبو**; full approved design in §16.4.
+- **Moving XO** (Puzzles — working label, Arabic name TBD) — a 3×3 Tic-Tac-Toe the teams play *through*
+  puzzles: one correct answer earns exactly one board move, each team holds at most three live marks in FIFO
+  order, and the expiring oldest mark may be refreshed in place instead of moved. After 12 successful moves
+  with no winner the board enters **الحسم** and marks stop expiring. 🟡 design approved 2026-10-06, **not
+  implemented**; full contract and one unresolved terminal edge case in §23.11.
 - **اكشفني** (Celebrities) — a celebrity photograph under six numbered masks; a team buys information by lifting a mask and pays for it in points, while answering stays an open race; full record in §16.9.
 
 
@@ -3314,6 +3346,14 @@ evidence (§16.1), never upgraded here.
   factual-stat trivia.
 - **Bomb in Puzzles:** fast visual micro-puzzle. **ركّبها:** per the §23.1 shared-puzzle / private-view contract.
 
+**Forward reconciliation (2026-10-06).** The identity above is unchanged and still governs. What changed is the
+Scope set it applies to: forward Puzzles content targets the **six approved Scopes** in §23.11 rather than the
+old `patterns-sequences` · `lateral-thinking` · `visual-puzzles` trio, whose historical source-only status is
+untouched. Two additions from that decision: **اكتشف الخطأ** may use Between Two Anchors naturally for spatial
+targeting («وين الخطأ؟»), and **«شفرة الضاد»** is a question family inside **التلاعب بالكلمات والحروف**, not a
+Scope of its own. The forward Signature is Moving XO (🟡 design approved, not implemented); ركّبها remains the
+implemented Puzzles Signature until a replacement is built.
+
 ### 23.6 Older approved decisions reconciled
 
 - **Combo (الكومبو):** opponent-pressure ability **«كمّل غصب»**; failure state **«انكسر الكومبو»**. Product/design
@@ -3416,6 +3456,121 @@ intersection model, the three-segment / shared-fragment model, and the public/sh
 - **Follow-ups:** production content pack (Gemini-authored, human-reviewed), R2 media upload, guarded promotion +
   playerInstructions sync, deployment + runtime smoke, Puzzles World board rollout; and a pass over the remaining
   `ai/.opencode/knowledge|roles|workflows` authoring prose that still carries old-model wording.
+
+> `SUPERSEDED AS FORWARD DIRECTION (2026-10-06)` — ركّبها remains **implemented and verified in source**, and
+> everything recorded above stays true. §23.11 replaces it as the *forward* Puzzles Signature direction. It is
+> retained as the current Puzzles Signature implementation until a replacement is actually built.
+
+### 23.11 Puzzles Forward Taxonomy + Moving XO — 🟡 DESIGN APPROVED — NOT IMPLEMENTED (2026-10-06)
+
+**Approval scope.** This records a Product decision and nothing more. It is **not** source implementation, not
+runtime implementation, not Scope provisioning, not board binding, not content authoring or promotion, not a DB
+mutation, not R2/media work, and not a deployment. No code changed with this decision.
+
+#### Forward Puzzles Scopes — six, approved
+
+1. **قوة الملاحظة والخداع البصري**
+2. **التلاعب بالكلمات والحروف**
+3. **أرقام وتقديرات**
+4. **تركيب وتدوير**
+5. **مسارات وحركة**
+6. **اكتشف الخطأ**
+
+**Canonical technical slugs are NOT approved.** None are proposed here and none may be invented downstream.
+
+The existing `patterns-sequences` · `lateral-thinking` · `visual-puzzles` expansion is **source-only historical
+work** and keeps the status the roadmap already records for it (§C.1, §19 items 25–26, §16.1). It is
+**superseded for forward work**: new Puzzles content targets the six Scopes above. It is not deleted, not
+promoted, and not described as implemented.
+
+**Runtime Puzzles taxonomy is UNCHANGED by this decision. Production is UNCHANGED.**
+
+#### Scope identities
+
+`PUZZLES_WORLD_NO_TRIVIA` and `PUZZLE_ITSELF_IS_THE_CHALLENGE` are unchanged: ordinary trivia in a cosmetic
+puzzle wrapper remains invalid in every Scope below.
+
+| Scope | Primary solve | Examples | The question it asks |
+|---|---|---|---|
+| **قوة الملاحظة والخداع البصري** | Notice what is already present | hidden detail · illusion · reflection · perspective · visual count · visual inconsistency, with **no inferred rule required** | «Did you notice it?» |
+| **التلاعب بالكلمات والحروف** | Language itself is the puzzle | anagrams · hidden words · add/remove/substitute letters · letter patterns · Arabic-script transformations | — |
+| **أرقام وتقديرات** | Playful numerical intuition | quantity · proportion · counting · patterns · time · light calculation. **Not** school-math worksheet content | — |
+| **تركيب وتدوير** | Spatial transformation of the **object itself** | piece fitting · rotation · fold/unfold · cube nets · 2D↔3D · views/projections · silhouettes · cross-sections · reconstruction | «How does the object itself fit/fold/rotate/transform?» |
+| **مسارات وحركة** | Predict a deterministic system in motion | paths · wires · gears · pulleys · dominoes · switches · cause/effect diagrams | «What happens after the system moves?» |
+| **اكتشف الخطأ** | Infer an objective rule, then find what violates it | wrong element · intruder · invalid member · incorrect component/order · rule-breaking visual | «What rule is being broken, and where?» |
+
+**«شفرة الضاد» is a question family inside التلاعب بالكلمات والحروف — not a Scope.**
+
+#### Shared Core fit (unchanged identity, retargeted at the six Scopes)
+
+- **RYO:** a real puzzle plus plausible answer choices; RYO adds the opponent-reading layer.
+- **Closest:** visual/spatial/numeric estimation through an authored, defensible interaction — angle,
+  proportion, count, area, volume, position, overlap. **اكتشف الخطأ** may use Between Two Anchors naturally for
+  spatial targeting («وين الخطأ؟»). Generic ranges must not be fabricated; the Closest authoring contract and
+  its validator still apply.
+- **Bomb:** fast visual micro-puzzle, never ordinary trivia.
+
+#### Forward Signature — Moving XO
+
+**Working label only.** The final player-facing Arabic name is **TBD / NOT APPROVED**.
+**Status: 🟡 DESIGN APPROVED — NOT IMPLEMENTED.**
+
+**Board** — classic 3×3 Tic-Tac-Toe. **Teams** — X vs O.
+
+**Starting team.** Whichever team already owns the canonical Match turn when the Signature begins. There is no
+random starter, no coin flip and no separate first-player selection.
+
+**Turn loop.** Each turn the current team receives **one fresh eligible puzzle on demand** from the selected
+Puzzles Scope pool. A correct answer earns **exactly one** board move. A wrong answer places no mark and passes
+the turn, and the opponent receives a **new** puzzle. There is **no fixed question count** — the Challenge
+consumes as many eligible items as the game actually requires.
+
+Content selection must eventually reuse the existing canonical reservation / exposure / depletion architecture.
+**That integration is not implemented and is not claimed here.**
+
+**Three-live-mark FIFO (normal play).** Each team normally holds at most **three** active marks, in an
+authoritative oldest → newest order. When a team that already holds three earns another move:
+
+- its **oldest** mark becomes the mark scheduled to expire;
+- **before placement** that mark must be visibly previewed as expiring — reduced opacity or an equally clear
+  presentation — and it stays physically present while the player chooses;
+- the player may then choose **either**:
+  - **(A) another legal empty cell** — on authoritative commit the fading mark disappears, the new mark
+    appears, and the new mark becomes newest; **or**
+  - **(B) the fading oldest mark's own cell** — this is **legal**. The location stays occupied by that team,
+    the mark is refreshed in place, and it becomes **newest** in FIFO order. The refresh consumes the earned
+    move, counts as a successful move, and changes FIFO ordering.
+
+In normal play a team may **not** choose an opponent's mark, nor any of its own marks that are not the one
+expiring. The replacement/refresh is to be treated as **one** authoritative committed board transition when
+implemented.
+
+**Win.** The first team whose **active** marks contain a normal row, column or diagonal wins immediately. The
+win check runs after each committed successful board move.
+
+**Long-game safeguard.** Count **successful board moves** only — never questions presented, wrong answers, or
+elapsed time. The current playtest threshold is **12 successful moves total across both teams**. **12 is
+configurable playtest balance, not locked Product balance.**
+
+- If successful move **#12** creates a winning line → resolve that winner normally.
+- If successful move **#12** completes with no winner → **before the next turn**, enter **الحسم**.
+
+**الحسم.** Normal FIFO expiry is **suspended**: old marks no longer disappear through FIFO, newly earned marks
+persist, and teams may therefore exceed three active marks. The win condition remains a normal 3-in-a-row — no
+alternative scoring or tie-break condition exists.
+
+#### ⚠️ PRODUCT FOLLOW-UP — UNRESOLVED
+
+During الحسم the 3×3 board can theoretically fill completely with neither team holding a 3-in-a-row. **The
+terminal fallback for FULL BOARD + NO WINNER is not approved.** Nothing is chosen here — not a tie, not a board
+reset, not a forced overwrite, not an extra deciding puzzle, not a score comparison, not a random winner. This
+must be decided by Product before Moving XO is implemented.
+
+#### Other unresolved details (implementation / Product follow-up)
+
+Exact question timer · exact answer interaction contract · exact placement input surface · content-depletion
+terminal UX · final player-facing Signature name · canonical technical slugs for the six Scopes. None are
+chosen by this decision.
 
 ## 24. P0 Fair-Start Presentation Activation — ✅ IMPLEMENTED & VERIFIED
 
