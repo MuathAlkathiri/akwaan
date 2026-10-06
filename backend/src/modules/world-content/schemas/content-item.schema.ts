@@ -142,3 +142,13 @@ export class ContentItem extends Document {
 
 export const ContentItemSchema = SchemaFactory.createForClass(ContentItem);
 ContentItemSchema.index({ worldId: 1, scopeId: 1, status: 1 });
+
+/**
+ * "Which items use this asset?" — the media-rights impact lookup.
+ *
+ * An index only: no field is added here and no rights metadata lives on a
+ * ContentItem. The relationship between an asset and the items showing it stays
+ * query-derived from the url the item already stores, so there is never a second
+ * copy of it to go stale when an item is promoted, retired or re-scoped.
+ */
+ContentItemSchema.index({ 'media.assets.url': 1 });
