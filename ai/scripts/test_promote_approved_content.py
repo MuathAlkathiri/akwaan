@@ -216,9 +216,14 @@ class TestAllowlistExcludesMarhala(unittest.TestCase):
         # milestone that says so out loud.
         music_scopes = {"saudi-music", "gulf-music", "egyptian-music",
                         "international-music"}
+        # عالم المشاهير joins with its first smoke. Only the one Scope its
+        # milestones name is allowed: the other nine Celebrities Scopes exist in
+        # the taxonomy but no milestone may write to them.
+        celebrities_scopes = {"arab-media-stars"}
         self.assertEqual(allowed, {"dragon-ball", "demon-slayer", "jujutsu-kaisen",
                                    "la-liga", "serie-a", "football-legends"}
-                         | vg_scopes | fb_r1_scopes | spl_r1_scopes | music_scopes)
+                         | vg_scopes | fb_r1_scopes | spl_r1_scopes | music_scopes
+                         | celebrities_scopes)
 
 
 
@@ -1046,7 +1051,10 @@ class TestGeneratedPackMilestones(unittest.TestCase):
                 with self.subTest(milestone=key):
                     self.assertIsNone(milestone.source_file)
 
-    def test_the_music_batches_are_the_generated_ones(self):
+    def test_the_generated_pack_milestones_are_named_out_loud(self):
+        # Music and Celebrities read generated authoring packs rather than a
+        # tracked repository file, so each must be listed here deliberately: a
+        # milestone that can be pointed at any path is one worth noticing.
         external = {k for k, m in promoter.MILESTONES.items() if m.external_source}
         self.assertEqual(
             external,
@@ -1055,6 +1063,9 @@ class TestGeneratedPackMilestones(unittest.TestCase):
                 "music-ryo-batch-01",
                 "music-closest-batch-01",
                 "music-first-note-batch-01",
+                "celebrities-ryo-batch-01",
+                "celebrities-closest-batch-01",
+                "celebrities-bomb-batch-01",
             },
         )
 
@@ -1272,3 +1283,320 @@ class TestFirstNotePromotionContract(unittest.TestCase):
         payload = manifest.items[0].payload
         self.assertIn("marhalaDifficulty", payload["mechanicPayload"])
         self.assertNotIn("variant", payload["mechanicPayload"])
+
+
+# --------------------------------------------------------------------------- #
+# مين أقرب sliders
+#
+# Promotion used to emit no mechanicPayload at all for closest, which dropped the
+# authored slider and produced items the runtime then blocked with
+# CLOSEST_SLIDER_MODE_REQUIRED. These hold the mapping down, and hold the door
+# shut on a new item that has no slider to map.
+# --------------------------------------------------------------------------- #
+
+CLOSEST_KEY = "celebrities-closest-batch-01"
+
+
+def closest_pack(tmp: str, *items: dict) -> str:
+    """A --source-file pack carrying the given Closest questions."""
+    pack = Path(tmp) / "closest.source.json"
+    pack.write_text(json.dumps({"questions": list(items)}, ensure_ascii=False), encoding="utf-8")
+    return str(pack)
+
+
+def closest_question(qid: str, value, slider: dict | None, nested: bool = True) -> dict:
+    question = {
+        "id": qid,
+        "scopeSlug": "arab-media-stars",
+        "prompt": {"ar": "سؤال"},
+        "answerPayload": {"mode": "closest", "correctValue": value},
+        "status": "ready",
+    }
+    if slider is not None:
+        question["mechanicPayload" if nested else "closestSlider"] = (
+            {"closestSlider": slider} if nested else slider
+        )
+    return question
+
+
+class TestClosestSliderPromotion(unittest.TestCase):
+    def _slider(self, *items: dict) -> dict:
+        milestone = promoter.MILESTONES[CLOSEST_KEY]
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = promoter.build_manifest_from_file(milestone, closest_pack(tmp, *items))
+        return manifest.items[0].payload["mechanicPayload"]["closestSlider"]
+
+    def test_numeric_range_maps_the_whole_slider(self):
+        # George Kurdahi: 15 on 8–20, step 1, unit سؤال.
+        slider = self._slider(closest_question("cel-ams-clo-001", 15, {
+            "mode": "numeric-range", "min": 8, "max": 20, "step": 1,
+            "unit": "سؤال", "displayFormat": "number",
+        }))
+        self.assertEqual(slider, {
+            "mode": "numeric-range", "min": 8, "max": 20, "step": 1,
+            "unit": "سؤال", "displayFormat": "number",
+        })
+
+    def test_calendar_year_keeps_its_display_format(self):
+        # Essam El-Shawaly: 2009 on 2003–2013, calendar-year, no unit.
+        slider = self._slider(closest_question("cel-ams-clo-014", 2009, {
+            "mode": "numeric-range", "min": 2003, "max": 2013, "step": 1,
+            "displayFormat": "calendar-year",
+        }))
+        self.assertEqual(slider["displayFormat"], "calendar-year")
+        self.assertEqual((slider["min"], slider["max"], slider["step"]), (2003, 2013, 1))
+        # A calendar year carries no unit, and promotion must not invent one.
+        self.assertNotIn("unit", slider)
+
+    def test_a_unit_is_preserved_when_the_author_set_one(self):
+        slider = self._slider(closest_question("cel-ams-clo-016", 2009, {
+            "mode": "numeric-range", "min": 2005, "max": 2015, "step": 1,
+            "displayFormat": "calendar-year",
+        }))
+        self.assertEqual((slider["min"], slider["max"]), (2005, 2015))
+        self.assertNotIn("unit", slider)
+        with_unit = self._slider(closest_question("x", 5, {
+            "mode": "numeric-range", "min": 0, "max": 10, "step": 1, "unit": "قناة",
+        }))
+        self.assertEqual(with_unit["unit"], "قناة")
+
+    def test_a_top_level_slider_is_read_too(self):
+        # Authoring batches keep the slider at the top level; packs keep it under
+        # mechanicPayload. Both are the same authored contract.
+        slider = self._slider(closest_question("flat", 15, {
+            "mode": "numeric-range", "min": 8, "max": 20, "step": 1,
+        }, nested=False))
+        self.assertEqual(slider["mode"], "numeric-range")
+
+    def test_between_anchors_keeps_both_anchors(self):
+        slider = self._slider(closest_question("anchored", 4, {
+            "mode": "between-anchors", "min": 0, "max": 10, "step": 1,
+            "leftAnchor": "قليل", "rightAnchor": "كثير",
+        }))
+        self.assertEqual(slider["leftAnchor"], "قليل")
+        self.assertEqual(slider["rightAnchor"], "كثير")
+
+    # -- fail closed -------------------------------------------------------- #
+
+    def test_a_new_closest_item_without_a_slider_is_refused(self):
+        with self.assertRaises(promoter.PromotionError) as caught:
+            self._slider(closest_question("no-slider", 15, None))
+        self.assertIn("closestSlider", str(caught.exception))
+
+    def test_an_unauthorable_mode_is_refused(self):
+        with self.assertRaises(promoter.PromotionError):
+            self._slider(closest_question("legacy", 15, {
+                "mode": "legacy", "min": 8, "max": 20, "step": 1,
+            }))
+
+    def test_an_inverted_range_is_refused(self):
+        with self.assertRaises(promoter.PromotionError):
+            self._slider(closest_question("inverted", 15, {
+                "mode": "numeric-range", "min": 20, "max": 8, "step": 1,
+            }))
+
+    def test_numeric_range_without_a_step_is_refused(self):
+        with self.assertRaises(promoter.PromotionError):
+            self._slider(closest_question("stepless", 15, {
+                "mode": "numeric-range", "min": 8, "max": 20,
+            }))
+
+    def test_an_unknown_display_format_is_refused(self):
+        with self.assertRaises(promoter.PromotionError):
+            self._slider(closest_question("roman", 15, {
+                "mode": "numeric-range", "min": 8, "max": 20, "step": 1,
+                "displayFormat": "roman",
+            }))
+
+    def test_between_anchors_without_an_anchor_is_refused(self):
+        with self.assertRaises(promoter.PromotionError):
+            self._slider(closest_question("half-anchored", 4, {
+                "mode": "between-anchors", "min": 0, "max": 10, "step": 1,
+                "leftAnchor": "قليل",
+            }))
+
+    # -- neighbours unchanged ----------------------------------------------- #
+
+    def test_other_mechanics_are_untouched_by_the_closest_branch(self):
+        marhala = promoter.build_manifest_from_file(
+            promoter.MILESTONES["marhala-video-games-batch-01"]
+        ).items[0].payload["mechanicPayload"]
+        self.assertIn("marhalaDifficulty", marhala)
+        self.assertNotIn("closestSlider", marhala)
+
+    def test_bomb_still_carries_no_mechanic_payload(self):
+        milestone = promoter.MILESTONES["celebrities-bomb-batch-01"]
+        with tempfile.TemporaryDirectory() as tmp:
+            pack = Path(tmp) / "bomb.source.json"
+            pack.write_text(json.dumps({"questions": [{
+                "id": "cel-ams-bomb-001",
+                "scopeSlug": "arab-media-stars",
+                "prompt": {"ar": "مين هذا؟"},
+                "answerPayload": {"mode": "match", "acceptedAnswers": ["جورج قرداحي"]},
+                "media": {"type": "image", "assets": [
+                    {"url": "/uploads/questions/bomb-items/bomb-item-1-a.jpg"}]},
+                "status": "ready",
+            }]}, ensure_ascii=False), encoding="utf-8")
+            item = promoter.build_manifest_from_file(milestone, str(pack)).items[0]
+        self.assertIsNone(item.payload["mechanicPayload"])
+        self.assertEqual(item.payload["media"]["type"], "image")
+        self.assertEqual(len(item.payload["media"]["assets"]), 1)
+        self.assertNotIn("storageKey", item.payload["media"]["assets"][0])
+
+    def test_a_generated_milestone_plans_without_a_source_runtime(self):
+        # `main` gives a generated milestone no source runtime, because it reads
+        # a file. The planner must agree: it used to check only `source_file` and
+        # then assert on the `None` source it had correctly been handed.
+        milestone = promoter.MILESTONES["celebrities-closest-batch-01"]
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = promoter.build_manifest_from_file(
+                milestone,
+                closest_pack(tmp, closest_question("cel-ams-clo-001", 15, {
+                    "mode": "numeric-range", "min": 8, "max": 20, "step": 1, "unit": "سؤال",
+                })),
+            )
+        class FakeApi:
+            base_url = "http://127.0.0.1:3002"
+
+            def get(self, path):
+                if path == "/admin/worlds":
+                    return [{"id": "w1", "slug": "celebrities"}]
+                if path == "/admin/challenge-types":
+                    return [{"id": "c1", "slug": "closest"}]
+                if path == "/admin/worlds/w1/scopes":
+                    return [{"id": "s1", "slug": "arab-media-stars"}]
+                return []
+
+        target = FakeApi()
+        index = promoter.RuntimeIndex.load(target)
+        plan = promoter.build_plan(manifest, None, None, target, index, check_media=False)
+        self.assertEqual([i.action for i in plan.items], ["CREATE"])
+
+
+# --------------------------------------------------------------------------- #
+# Celebrities media rights are not a promotion gate
+#
+# A two-layer rights clearance was briefly a Production blocker here. The Product
+# owner reversed that: rights state is informational metadata and never decides
+# whether content may be promoted. These hold the reversal down, so the gate
+# cannot creep back in, and so nothing starts reading the registry at plan time.
+#
+# This says nothing about whether an asset is legally cleared. It says only that
+# Akwaan does not gate on it.
+# --------------------------------------------------------------------------- #
+
+CELEB_BOMB = "celebrities-bomb-batch-01"
+CELEB_ASSET = "/uploads/questions/bomb-items/bomb-item-1-a.jpg"
+
+
+def celebrities_pack(tmp: str, asset_url: str = CELEB_ASSET) -> str:
+    pack = Path(tmp) / "celeb.source.json"
+    pack.write_text(json.dumps({"questions": [{
+        "id": "cel-ams-bomb-001",
+        "scopeSlug": "arab-media-stars",
+        "prompt": {"ar": "مين هذا؟"},
+        "answerPayload": {"mode": "match", "acceptedAnswers": ["جورج قرداحي"]},
+        "media": {"type": "image", "assets": [{"url": asset_url}]},
+        "status": "ready",
+    }]}, ensure_ascii=False), encoding="utf-8")
+    return str(pack)
+
+
+class PlanTarget:
+    """A target that records any rights lookup, so an accidental one is visible."""
+
+    def __init__(self, base_url: str, media: str = "MEDIA_OK", world: str = "celebrities",
+                 scopes: tuple[str, ...] = ("arab-media-stars",)):
+        self.base_url = base_url
+        self._media = media
+        self._world = world
+        self._scopes = scopes
+        self.rights_calls: list[str] = []
+
+    def get(self, path):
+        if path == "/admin/worlds":
+            return [{"id": "w1", "slug": self._world}]
+        if path == "/admin/challenge-types":
+            return [{"id": "c1", "slug": "bomb"}]
+        if path == "/admin/worlds/w1/scopes":
+            return [{"id": f"s{n}", "slug": s} for n, s in enumerate(self._scopes)]
+        if path.startswith("/admin/media-rights"):
+            self.rights_calls.append(path)
+            raise AssertionError("promotion must not read the rights registry")
+        return []
+
+    def media_state(self, _path):
+        return self._media
+
+
+def celeb_plan(target, milestone_key=CELEB_BOMB):
+    milestone = promoter.MILESTONES[milestone_key]
+    with tempfile.TemporaryDirectory() as tmp:
+        manifest = promoter.build_manifest_from_file(milestone, celebrities_pack(tmp))
+    index = promoter.RuntimeIndex.load(target)
+    return promoter.build_plan(manifest, None, None, target, index, check_media=True)
+
+
+class TestRightsAreNotAPromotionGate(unittest.TestCase):
+    PROD = "https://akwaan-api.onrender.com"
+    LOCAL = "http://localhost:3002"
+
+    def test_production_celebrities_plans_without_any_rights_record(self):
+        # The registry need not even exist on the target.
+        target = PlanTarget(self.PROD)
+        plan = celeb_plan(target)
+        self.assertEqual(target.rights_calls, [])
+        self.assertEqual(plan.items[0].media_state, "MEDIA_OK")
+        self.assertEqual(plan.blockers(), [])
+
+    def test_unknown_or_pending_rights_cannot_block_because_they_are_never_read(self):
+        # There is no code path left that could consult a status, so UNKNOWN and
+        # PENDING are unreachable as blockers rather than merely tolerated.
+        for env in (self.PROD, self.LOCAL):
+            with self.subTest(env=env):
+                target = PlanTarget(env)
+                plan = celeb_plan(target)
+                self.assertEqual(target.rights_calls, [])
+                self.assertEqual(plan.blockers(), [])
+
+    def test_the_retired_blocker_is_gone_from_the_promoter(self):
+        source = Path(promoter.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("MEDIA_RIGHTS_NOT_CLEARED", source)
+        self.assertNotIn("RIGHTS_GATED_WORLDS", source)
+        self.assertFalse(hasattr(promoter.AdminApi, "media_rights"))
+
+    # -- everything unrelated still applies --------------------------------- #
+
+    def test_missing_media_still_blocks(self):
+        plan = celeb_plan(PlanTarget(self.PROD, media="MEDIA_MISSING"))
+        self.assertEqual(plan.items[0].media_state, "MEDIA_MISSING")
+        self.assertTrue(plan.blockers())
+
+    def test_invalid_media_still_blocks(self):
+        plan = celeb_plan(PlanTarget(self.PROD, media="MEDIA_INVALID"))
+        self.assertTrue(plan.blockers())
+
+    def test_non_celebrities_behaviour_is_unchanged(self):
+        target = PlanTarget(self.PROD, world="music",
+                            scopes=("saudi-music", "gulf-music",
+                                    "egyptian-music", "international-music"))
+        milestone = promoter.MILESTONES["music-bomb-batch-01"]
+        with tempfile.TemporaryDirectory() as tmp:
+            pack = Path(tmp) / "music.source.json"
+            pack.write_text(json.dumps({"questions": [{
+                "id": "mus-001", "scopeSlug": "saudi-music",
+                "prompt": {"ar": "؟"},
+                "answerPayload": {"mode": "match", "acceptedAnswers": ["x"]},
+                "media": {"type": "image", "assets": [{"url": CELEB_ASSET}]},
+                "status": "ready",
+            }]}, ensure_ascii=False), encoding="utf-8")
+            manifest = promoter.build_manifest_from_file(milestone, str(pack))
+        plan = promoter.build_plan(manifest, None, None, target,
+                                   promoter.RuntimeIndex.load(target), check_media=True)
+        self.assertEqual(target.rights_calls, [])
+        self.assertEqual(plan.blockers(), [])
+
+    def test_planning_remains_non_mutating(self):
+        target = PlanTarget(self.PROD)
+        self.assertFalse(hasattr(target, "post"))
+        celeb_plan(target)

@@ -68,7 +68,7 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Iterable
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import requests
 
@@ -253,6 +253,41 @@ MILESTONES: dict[str, Milestone] = {
         world_slug="music",
         external_source=True,
         allow_mechanic_slugs=frozenset({"first_note"}),
+    ),
+    # عالم المشاهير — نجوم التلفزيون والإعلام العرب, first smoke. One milestone
+    # per mechanic, as the Music batches already do, because a milestone carries
+    # exactly one mechanic. Neshan and ريا أبي راشد are absent from the Bomb
+    # count by Product decision: both are deferred on a media hold, so the
+    # declared 11 is the approved active set, not a partial read of 13.
+    "celebrities-ryo-batch-01": Milestone(
+        key="celebrities-ryo-batch-01",
+        label="Celebrities arab-media-stars RYO first smoke (9 items)",
+        scope_slugs=("arab-media-stars",),
+        source_prefix="celebrities-ryo-batch-01",
+        expected_by_mechanic={"read-your-opponent": 9},
+        expected_items=9,
+        world_slug="celebrities",
+        external_source=True,
+    ),
+    "celebrities-closest-batch-01": Milestone(
+        key="celebrities-closest-batch-01",
+        label="Celebrities arab-media-stars Closest first smoke (3 items)",
+        scope_slugs=("arab-media-stars",),
+        source_prefix="celebrities-closest-batch-01",
+        expected_by_mechanic={"closest": 3},
+        expected_items=3,
+        world_slug="celebrities",
+        external_source=True,
+    ),
+    "celebrities-bomb-batch-01": Milestone(
+        key="celebrities-bomb-batch-01",
+        label="Celebrities arab-media-stars Bomb first smoke (11 items)",
+        scope_slugs=("arab-media-stars",),
+        source_prefix="celebrities-bomb-batch-01",
+        expected_by_mechanic={"bomb": 11},
+        expected_items=11,
+        world_slug="celebrities",
+        external_source=True,
     ),
 }
 
@@ -672,6 +707,81 @@ def sources_in_world(api: AdminApi, world_id: str) -> dict[str, dict]:
 ASSET_WRITE_FIELDS = ("url", "altText")
 ASSET_REDUNDANT_FIELDS = ("type",)
 
+#: The slider modes a *new* مين أقرب item may be authored with. `legacy` — an
+#: item with no slider at all — is a runtime backward-compatibility allowance for
+#: content authored before the contract, never something promotion may create.
+CLOSEST_SLIDER_MODES = ("numeric-range", "between-anchors")
+CLOSEST_DISPLAY_FORMATS = ("number", "calendar-year")
+
+
+def _finite(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if value != value or value in (float("inf"), float("-inf")):
+        return None
+    return float(value)
+
+
+def closest_slider(question: dict, milestone_key: str, qid: str) -> dict:
+    """The authored مين أقرب slider, projected to the runtime contract.
+
+    Fails closed. A new Closest item without a usable slider is refused here,
+    before any HTTP verb is issued, rather than being created and then blocked by
+    `CLOSEST_SLIDER_MODE_REQUIRED` on the far side.
+
+    Packs carry the slider either under `mechanicPayload` (the runtime shape) or
+    at the top level (the authoring-batch shape); both are read, the same way
+    `ai/.opencode/validators/validate_closest.py` already reads both.
+    """
+    raw = (question.get("mechanicPayload") or {}).get("closestSlider")
+    if raw is None:
+        raw = question.get("closestSlider")
+
+    def refuse(detail: str) -> None:
+        raise PromotionError(
+            f"{milestone_key}: {qid} cannot be promoted as مين أقرب — {detail}. A new Closest item "
+            f"must carry a valid mechanicPayload.closestSlider; promoting without one would create an "
+            f"item that CLOSEST_SLIDER_MODE_REQUIRED immediately blocks."
+        )
+
+    if not isinstance(raw, dict):
+        refuse("no closestSlider in the source pack")
+
+    mode = raw.get("mode")
+    if mode not in CLOSEST_SLIDER_MODES:
+        refuse(f"slider mode {mode!r} is not one of {list(CLOSEST_SLIDER_MODES)}")
+
+    low, high, step = _finite(raw.get("min")), _finite(raw.get("max")), _finite(raw.get("step"))
+    if low is None or high is None:
+        refuse("slider min and max must both be finite numbers")
+    if low >= high:
+        refuse(f"slider min {low:g} is not below max {high:g}")
+    if mode == "numeric-range" and (step is None or step <= 0):
+        refuse("a numeric-range slider needs a positive step")
+
+    display = raw.get("displayFormat")
+    if display is not None and display not in CLOSEST_DISPLAY_FORMATS:
+        refuse(f"displayFormat {display!r} is not one of {list(CLOSEST_DISPLAY_FORMATS)}")
+
+    # Project explicitly: an unknown key must not ride along into the payload,
+    # and a key the author set must not be silently dropped.
+    slider: dict = {"mode": mode, "min": raw["min"], "max": raw["max"]}
+    if step is not None:
+        slider["step"] = raw["step"]
+    if raw.get("unit"):
+        slider["unit"] = raw["unit"]
+    if display is not None:
+        slider["displayFormat"] = display
+    if mode == "between-anchors":
+        # Dropping an anchor would leave an unreadable scale — the same class of
+        # silent loss this function exists to prevent.
+        for key in ("leftAnchor", "rightAnchor"):
+            text = raw.get(key)
+            if not isinstance(text, str) or not text.strip():
+                refuse(f"a between-anchors slider needs a non-empty {key}")
+            slider[key] = text
+    return slider
+
 
 def canonical_media(media: dict | None) -> tuple[dict | None, str | None]:
     """(payload, problem) — the media as the create contract accepts it."""
@@ -919,6 +1029,18 @@ def build_manifest_from_file(
             # mode onto the item; correct it here, for this mechanic only, and
             # copy rather than edit the loaded pack in place.
             answer_payload = {**answer_payload, "mode": "match"}
+        elif mechanic == "closest":
+            # مين أقرب plays on an authored slider, and the slider IS the
+            # item's runtime contract: `CLOSEST_SLIDER_MODE_REQUIRED` rejects a
+            # *new* item whose `mechanicPayload.closestSlider` is absent. This
+            # branch exists because promotion previously emitted no
+            # mechanicPayload for closest at all, which silently dropped the
+            # slider and produced items the compatibility policy then blocked.
+            #
+            # The legacy exemption — items authored before the slider contract —
+            # lives in the runtime policy and is untouched here. Promotion only
+            # ever creates new items, so it fails closed instead.
+            mechanic_payload = {"closestSlider": closest_slider(question, milestone.key, qid)}
 
         # Media: read from the source when present and non-trivial. A `type: "none"`
         # entry means the item is text-only, which is valid for multimodal Bomb.
@@ -1192,7 +1314,14 @@ def build_plan(manifest: Manifest, source: AdminApi | None, source_index: Runtim
                check_media: bool = True) -> Plan:
     scopes: list[ScopePlan] = []
     target_scope_ids: dict[str, str] = {}
-    file_sourced = manifest.milestone.source_file is not None
+    # A milestone reads from a file either because it names a tracked one or
+    # because its batch is generated and supplied with `--source-file`. `main`
+    # already decides source authentication the same way; checking only
+    # `source_file` here left an `external_source` milestone planning as though a
+    # source runtime existed, and it asserted on the `None` it was correctly given.
+    file_sourced = (
+        manifest.milestone.source_file is not None or manifest.milestone.external_source
+    )
 
     for world_slug in manifest.world_slugs:
         target_world = target_index.worlds_by_slug.get(world_slug)
