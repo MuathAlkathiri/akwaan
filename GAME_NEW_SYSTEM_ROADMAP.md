@@ -4492,22 +4492,45 @@ It stays Upcoming while content work proceeds.
 
 **This does not mean Celebrities is ready.** Content, media and real gameplay all remain outstanding (§16.9).
 
-### 28.6 Celebrities Scopes — provenance pending
+### 28.6 Celebrities Scopes — 🟡 DESIGN / PRODUCT APPROVED (10-Scope Taxonomy)
 
-Five Scopes exist in Production against this World:
+**✅ HUMAN PRODUCT APPROVAL — 2026-10-02.** The 10-Scope taxonomy split (Arab / non-Arab) is approved for
+authoring. It supersedes the provenance question below, which is kept as history rather than deleted. The
+approved Scopes are:
 
-| Slug | Name |
-|---|---|
-| `content-creators` | صناع المحتوى |
-| `media-stars` | نجوم الإعلام |
-| `acting-stars` | نجوم التمثيل |
-| `sports-stars` | نجوم الرياضة |
-| `music-stars` | نجوم الغناء |
+1. `arab-acting-stars`
+2. `non-arab-acting-stars`
+3. `arab-music-stars`
+4. `non-arab-music-stars`
+5. `arab-sports-stars`
+6. `non-arab-sports-stars`
+7. `arab-content-creators`
+8. `non-arab-content-creators`
+9. `arab-media-stars`
+10. `non-arab-media-stars`
 
-**Current Production content-workstream taxonomy — approval provenance pending.** No explicit approval for these
-names exists in project evidence; a search of the roadmap and every project document returns nothing. They are
-recorded here because they exist, not because they were approved, and they must not be described as approved
-taxonomy until that is established.
+**Note on Runtime:** Production/runtime database provisioning for these 10 Scopes remains outstanding. The 5 legacy Scopes must be migrated or replaced in the DB. This product approval governs authoring taxonomy only; no claim is made that the World is activated or that runtime content is promoted.
+
+> `SUPERSEDED (2026-10-02)` — historical, and resolved by the approval above. It was written against the **five
+> legacy Production Scopes** (`content-creators`, `media-stars`, `acting-stars`, `sports-stars`, `music-stars`),
+> not against the 10-Scope taxonomy:
+>
+> *"**Current Production content-workstream taxonomy — approval provenance pending.** No explicit approval for
+> these names exists in project evidence; a search of the roadmap and every project document returns nothing.
+> They are recorded here because they exist, not because they were approved, and they must not be described as
+> approved taxonomy until that is established."*
+>
+> The 2026-10-02 decision establishes approval for the 10-Scope authoring taxonomy. It says nothing about the
+> five legacy Scopes, which still need migration or replacement in the runtime database.
+
+**Scope-assignment decisions taken with the approval (2026-10-02).** عصام الشوالي sits in `arab-media-stars` — his
+primary role is commentator and broadcaster, not athlete, so the Axis-2 athlete rule does not apply. حليمة بولند
+sits in `arab-acting-stars`, her primary source of fame, and is therefore **not** part of the `arab-media-stars`
+first smoke. Scope placement is not item approval: the Shawaly decision does not approve every question about him.
+
+**What this approval is not.** It governs **authoring taxonomy only**. It does not provision the 10 Scopes in
+Production, does not activate عالم المشاهير, does not promote any content, and does not approve any individual
+item.
 
 ---
 
@@ -4572,8 +4595,115 @@ moment they arrive, so nothing is ever held in pixels, and a box can be pushed t
 Beside it is a **live preview built from the same component the room renders**, with a toggle per window, so an
 author rehearses the actual turn rather than inspecting a second interpretation of the same numbers.
 
-### 29.5 Not done here
+### 29.5 Content & Geometry Update
 
-Celebrities content, images and the `acting-stars` mask geometry were **not touched**. The existing authored
-geometry remains valid under the new model but was drawn for the old one, where a box was the part to *hide*; it
-now marks the part to *show*, so it deserves review against a face. That is the content workstream's next step.
+- ✅ **Ekshifni clear-window authoring geometry milestone achieved** for the `arab-media-stars` scope (and others where supported by migrated authoring artifacts). The mask geometry was correctly re-authored to reflect the clear-window reveal logic.
+**`arab-media-stars` first smoke — human Product approval 2026-10-03.** Content approval only. Nothing below is
+runtime content: no item has been promoted, so none of it is `IMPLEMENTED & VERIFIED`.
+
+- ✅ **اقرأ خصمك (RYO) first smoke: 9 / 9 `HUMAN_PRODUCT_APPROVED`.** Approved with their non-blocking notes
+  intact — the سوكا/ماتيلدا naming note (ريا أبي راشد), the «قد يفاجئ الكثيرين» framing note (فيصل القاسم), and
+  علي جابر's time-sensitive current post, which must be reverified before runtime promotion.
+- ✅ **القنبلة (Bomb) first smoke: 11 active items `HUMAN_PRODUCT_APPROVED`** for text, prompts, acceptedAnswers
+  and their **current authoring media**. All 11 authoring assets carry a verified free licence and
+  hash-proven Wikimedia Commons provenance.
+- ⚠️ **Bomb deferred: نيشان and ريا أبي راشد** are preserved on `MEDIA_HOLD`, deferred from the first smoke
+  because no acceptable licensed source asset exists for either. Their authored text is preserved and is **not**
+  rejected; the exhausted sourcing search is recorded so it is not repeated.
+- ✅ **Bomb managed media provisioned LOCALLY — 11 / 11 (2026-10-04).** All 11 approved authoring images were
+  uploaded through the canonical admin endpoint `POST /admin/questions/bomb-item-images` and verified
+  byte-identical, each with a managed URL under `/uploads/questions/bomb-items/` and a matching `storageKey`.
+  `BOMB_ITEM_IMAGE_REQUIRED` is therefore resolved for the active 11. **Local development environment only** —
+  the R2 mirror is disabled here, so nothing was written to object storage, and no Production media exists.
+- ⚠️ **`RUNTIME_MEDIA_ATTRIBUTION_FOLLOWUP` — production blocker, not a local one.** 10 of the 11 managed assets
+  require attribution and 6 also carry ShareAlike obligations, but the runtime Bomb image schema carries only
+  `{url, storageKey, mimetype, size}` with no licence or attribution field. The authoring rights ledger remains
+  the source of attribution truth where it is known. **Tracked as a consideration, not a release blocker** —
+  superseded by the 2026-10-04 decision that rights state does not gate Akwaan readiness.
+- ✅ **Celebrities media rights are NOT an Akwaan readiness or Production gate — Product decision 2026-10-04
+  (supersedes the two-layer clearance policy approved earlier the same day).** Rights clearance does not gate
+  authoring, promotion, World activation, Production or public release. Media is selected on gameplay merit:
+  recognizability, suitability, quality, clean composition, no answer leakage, and stable provenance where
+  practical. A strong celebrity image is **not** rejected for lacking a CC licence, Public Domain status,
+  permission, or known likeness basis.
+  - **Honesty rule — this is not a clearance claim.** "Not a gate" does not mean an asset is legally cleared
+    or that permission exists. No unknown rights state may be recorded or reported as cleared.
+  - Provenance (source URL, provider, hash, filename, author, licence notes) is recorded **when known**, never
+    invented. Canonical rule: `.agents/skills/akwaan-media/SKILL.md` — *Real-Person Media*.
+  - **`AUTHENTIC_REAL_PERSON_ONLY` is unchanged:** AI-generated, synthetic, lookalike and generic-substitute
+    imagery remain disallowed for اكشفني and real-celebrity recognition content.
+
+> `SUPERSEDED (2026-10-04)` — the two-layer clearance policy below is kept as history, not as a live
+> requirement. It read: every real-celebrity image intended for
+> public/Production use must clear two independent layers: **asset rights** (the right to use the image —
+> ownership, CC, Public Domain, commercial licence, rightsholder grant, commissioned work, or another
+> documented lawful basis) and a **commercial likeness / use basis** (a documented basis for using an
+> identifiable person's likeness in a commercial product). The acceptable Layer-2 basis varies by market,
+> provider and contract, so the system records **which basis applies** rather than assuming personal permission
+> is always required. Canonical rule: `.agents/skills/akwaan-media/SKILL.md`, *Real-Person Media: Two-Layer
+> Clearance*.
+> - **Sourcing strategy: free-first + cleared-commercial fallback.** Prefer high-quality CC / Public Domain
+> imagery where it meets Product quality; do **not** lower recognizability because a famous person lacks a
+> free image. Where none exists, pursue a commercially defensible source or direct rights acquisition. No
+> provider is named canonical. Editorial-only assets are **never** Production-ready for commercial game use,
+> and stock availability alone does not satisfy Layer 2.
+> - ✅ **Local QA may proceed** before Layer 2 is cleared; such assets stay explicitly `NOT_PRODUCTION_CLEARED`
+> and are never described as release-ready.
+> - ⬜ **Public/Production release stays blocked** until the required clearance is satisfied.
+> - ⚠️ **Existing Bomb consequence:** the 11 locally promoted Bomb assets have CC / Public Domain evidence,
+> which proves **Layer 1 only**. They remain valid for local QA and are not demoted, but they must not be
+> described as `PRODUCTION_RIGHTS_CLEARED`. Production follow-up, not a local blocker.
+>
+- ✅ **Media-rights registry MVP implemented locally / in source (2026-10-04).** A sidecar `media_rights`
+    collection (`backend/src/modules/media-rights/`), keyed by `assetUrl` — the identity the runtime already
+    stores — with `storageKey` derived, never stored. **No ContentItem or ContentAsset schema change:** the
+    asset↔item relationship stays query-derived through a new `{'media.assets.url': 1}` index. Both clearance
+    layers carry their own optional `expiresAt`; `EXPIRED` and `productionReady` are derived on read in one
+    canonical helper and never persisted. Admin-only routes under `/admin/media-rights` (status, affected
+    ContentItems, record); evidence, notes and commercial terms are never projected. The canonical promoter
+    gains a `MEDIA_RIGHTS_NOT_CLEARED` blocker that fails closed **only** for a Production target in a
+    rights-gated World, naming the failing layer. Verified end to end against the local runtime.
+  - ✅ **Existing Bomb media migrated to the media-rights registry LOCALLY — 11 / 11 (2026-10-04).** Written
+    through the canonical Admin API, one asset at a time with read-back after each. **Layer 1 `CLEARED` = 11**
+    (10 Creative Commons, 1 Public domain, each from hash-verified Commons provenance); **Layer 2 `UNKNOWN` =
+    11** — deliberately not `PENDING`, because no likeness acquisition has begun, and no Layer-2 field is
+    populated anywhere. **Production-ready = 0 / 11.** Attribution was derived from each rights basis rather
+    than copied from the historical ledger — 10 required, 1 not (Amr Adib, Public domain), which resolves the
+    ledger's own contradiction on that asset. **Gameplay payloads unchanged:** no ContentItem was written
+    (`updatedAt` unmoved on all 11), no media re-uploaded, asset fields still only `{url, altText}`. Impact
+    lookup verified 11/11, strict 1:1. **Local runtime only — no Production write.**
+  - **Likeness-basis evidence remains `UNKNOWN` on all 11, and that is now a recorded fact rather than
+    outstanding work.** No rights-acquisition milestone is required for any Celebrities asset. The rows stay
+    historically accurate: `assetRights: CLEARED` documents real licence evidence, `likenessUseBasis: UNKNOWN`
+    documents that nothing is known — and neither decides whether content may ship.
+  - ⬜ **Player-facing credits NOT DONE.** The registry preserves public-safe attribution ingredients, but no
+    credits surface exists. Internal rights evidence and player-facing attribution remain **separate systems**.
+  - **The registry is informational metadata.** It retains its collection, Admin APIs, impact lookup and
+    effective-status derivation, and its `productionReady` derivation is advisory: nothing reads it to decide
+    readiness. **Ekshifni needs no rights acquisition** — the next step for the approved subjects is image
+    sourcing, then image review, geometry, reveal-order review, final item review and promotion.
+  - **`AUTHENTIC_REAL_PERSON_ONLY` is unchanged:** AI-generated, synthetic, lookalike and generic-substitute
+    imagery remain disallowed for اكشفني and real-celebrity recognition content.
+- ✅ **مين أقرب (Closest) first smoke: 3 / 3 `HUMAN_PRODUCT_APPROVED`.** 
+  - George Kurdahi
+  - Essam El-Shawaly
+  - Ahmad Al-Shugairi
+- ⚠️ **Historical/non-active Closest items remain preserved:**
+  - Raya Abirached remains `NEEDS_HUMAN_AUTHORING`
+  - Bassem Youssef and Ahmad Al-Shugairi (original production-stat) remain `CONTENT_HOLD`
+  - All rejected authoring attempts remain preserved as review history.
+- ✅ **`arab-media-stars` first smoke PRODUCT/AUTHORING CONTENT GATE COMPLETE.** All required mechanics (RYO 9/9, Bomb 11/11, Closest 3/3) have satisfied their authoring/Product gate.
+  - ✅ **Managed media provisioned LOCALLY (11/11):** `BOMB_ITEM_IMAGE_REQUIRED` is resolved for the active
+    Bomb items in the local environment. No Production media exists and no object-storage mirror was written.
+  - ✅ **Shared-mechanic ContentItems promoted LOCALLY — 23 / 23 (2026-10-04):** RYO 9, Closest 3, Bomb 11, all
+    in `arab-media-stars`, created through the canonical promoter (`ai/scripts/promote_approved_content.py`)
+    against the local runtime. 23 unique `metadata.source` markers, 23 `ready`, 0 readiness blockers, and a
+    repeat dry-run plans `EXISTS_IDENTICAL` for all 23. **Local runtime only — nothing was promoted to
+    Production.**
+  - ⬜ **Ekshifni runtime content = 0:** the اكشفني board slot has no ContentItems in this Scope, so slot_1
+    cannot deal a challenge. The board is **not** content-complete; three of four slots are covered.
+  - ⬜ **World remains `draft` / not activated:** activation is deliberately deferred to a separate Product
+    decision about playing with an empty Signature slot. The Scopes are not provisioned in Production.
+  - ⬜ **Production gameplay NOT RUN:** no production gameplay has occurred.
+  - ⚠️ **`RUNTIME_MEDIA_ATTRIBUTION_FOLLOWUP` is retained as a known consideration, not a release gate.**
+    Attribution ingredients are recorded where known; no credits surface exists and none is required to ship.
