@@ -28,7 +28,7 @@ import {
   type RyoTutorialScenario,
 } from "../tutorial-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerControls } from "./explainer-controls";
+import { ExplainerCaption, ExplainerControls } from "./explainer-controls";
 
 /**
  * A miniature, faithful run of one "اقرأ خصمك" item.
@@ -94,13 +94,32 @@ function viewOf(scenario: RyoTutorialScenario): TutorialView {
   };
 }
 
+/**
+ * Who is watching, and therefore what belongs on screen.
+ *
+ * `player` is the real audience: a host learning the mechanic mid-Match. They
+ * get the demonstration and the line explaining it, and nothing else — a
+ * transport bar invites fiddling with a 16-second loop that will come round
+ * again by itself.
+ *
+ * `preview` is an editor checking their own work, who genuinely needs to step
+ * to a specific beat and read "3 / 5" while doing it.
+ *
+ * One component, one timeline, one choreography. The mode decides only which
+ * chrome is rendered around them.
+ */
+export type ExplainerMode = "player" | "preview";
+
 export function RyoExplainer({
   scenario,
   compact = false,
+  mode = "player",
 }: {
   /** The published tutorial this mechanic teaches with. */
   scenario: RyoTutorialScenario;
   compact?: boolean;
+  /** Defaults to the player-facing presentation. */
+  mode?: ExplainerMode;
 }) {
   const scope = useRef<HTMLDivElement | null>(null);
   const spotlightRef = useRef<HTMLDivElement | null>(null);
@@ -145,14 +164,19 @@ export function RyoExplainer({
       data-variant={compact ? "compact" : "full"}
       className={compact ? "space-y-3" : "space-y-6"}
     >
-      <ExplainerControls
-        step={at}
-        total={RYO_DEMO_STEPS.length}
-        caption={step.caption}
-        phase={step.phase}
-        timeline={timeline}
-        compact={compact}
-      />
+      {mode === "preview" ? (
+        <ExplainerControls
+          step={at}
+          total={RYO_DEMO_STEPS.length}
+          caption={step.caption}
+          phase={step.phase}
+          timeline={timeline}
+          compact={compact}
+        />
+      ) : (
+        /* The narration survives the controls: it is the teaching, not chrome. */
+        <ExplainerCaption caption={step.caption} compact={compact} />
+      )}
 
       <div
         className={
@@ -164,8 +188,11 @@ export function RyoExplainer({
         {/* The room's shared screen. Public state only. */}
         <SharedScreenFrame stand={!compact}>
           <ChallengeFrame
-            eyebrow="اقرأ خصمك"
-            title="السؤال 1 من 3"
+            // No "السؤال 1 من 3": this demonstrates one representative item,
+            // so a counter would describe a sequence that does not exist. The
+            // challenge name moves up into the title rather than a new badge
+            // taking the counter's place.
+            title="اقرأ خصمك"
             progressValue={0}
             compact={compact}
             className={compact ? "w-full" : "mx-auto w-full max-w-3xl"}

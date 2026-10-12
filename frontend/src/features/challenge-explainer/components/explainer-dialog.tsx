@@ -90,7 +90,9 @@ export function RyoExplainerDialog({
               "مثال توضيحي فقط — مو سؤال المباراة. فريق يجاوب، وفريق يقرأه."}
           </DialogDescription>
         </DialogHeader>
-        {tutorial && <RyoExplainer scenario={tutorial.scenario} compact />}
+        {tutorial && (
+          <RyoExplainer scenario={tutorial.scenario} compact mode="player" />
+        )}
       </DialogContent>
     </Dialog>
   );

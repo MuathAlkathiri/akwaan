@@ -1,4 +1,7 @@
-export { RyoExplainer } from "./components/ryo-explainer";
+export {
+  RyoExplainer,
+  type ExplainerMode,
+} from "./components/ryo-explainer";
 export { ExplainerControls } from "./components/explainer-controls";
 export { ExplainerDisclosure } from "./components/explainer-disclosure";
 export { RyoExplainerDialog } from "./components/explainer-dialog";

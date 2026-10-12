@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Copy, Smartphone, Users } from "lucide-react";
 import {
   RyoExplainer,
+  RyoExplainerDialog,
   SAMPLE_TUTORIAL_SCENARIO,
 } from "@/features/challenge-explainer";
 import { ScannableQr } from "@/components/akwaan/scannable-qr";
@@ -34,6 +35,11 @@ const FIXTURE = {
   challenge: "اقرأ خصمك",
   summary: "فريق يجاوب، والفريق الثاني يقرأه.",
   startingTeam: "الفريق الأول",
+  steps: [
+    "فريق الدور يختار إجابته بالسر.",
+    "بنفس الوقت، الفريق الثاني يقرر: يثق أو يسرق.",
+    "تنكشف الإجابة والقرار مع بعض، وتنحسب النقاط تلقائي.",
+  ],
   joinCode: "DEMO42",
   teams: [
     { name: "الفريق الأول", connected: 2, target: 3, ready: false },
@@ -102,13 +108,31 @@ export default function RyoPreflightPreview() {
         <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,2.6fr)_minmax(16rem,1fr)]">
           {/* LEFT — the only production component on this page */}
           <section className="surface-card space-y-2.5 p-3 sm:p-4">
-            <header className="space-y-0.5">
-              <h3 className="text-base font-black text-foreground">شرح التحدي</h3>
-              <p className="text-xs leading-5 text-muted-foreground">
-                جولة حقيقية مختصرة — نفس السؤال ونفس الخيارات اللي بتلعبونها.
-              </p>
+            {/* The real Preflight composition: a title, the authored steps, and
+                the demonstration one click away — so what is reviewed here is
+                the production surface, not an approximation of it. */}
+            <header className="flex items-start justify-between gap-3">
+              <span className="min-w-0 space-y-0.5">
+                <h3 className="text-base font-black text-foreground">شرح التحدي</h3>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  اقروا الخطوات قبل ما تبدأون.
+                </p>
+              </span>
+              <RyoExplainerDialog mechanicKey="read-your-opponent" />
             </header>
-            <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />
+            <ol className="list-none space-y-2">
+              {FIXTURE.steps.map((step, index) => (
+                <li
+                  key={step}
+                  className="preflight-secondary-surface flex min-h-11 items-start gap-3 rounded-xl p-2"
+                >
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-black text-primary-foreground">
+                    {index + 1}
+                  </span>
+                  <span className="text-sm leading-6 font-black">{step}</span>
+                </li>
+              ))}
+            </ol>
           </section>
 
           {/* RIGHT — joining + readiness, all fixture */}
@@ -186,6 +210,27 @@ export default function RyoPreflightPreview() {
             </div>
           </aside>
         </div>
+
+        {/* The editor's view of the same scenario: identical demonstration,
+            with the transport an author needs to step through beats. */}
+        <section
+          className="surface-card space-y-2.5 p-3 sm:p-4"
+          data-testid="preview-mode-sample"
+        >
+          <header className="space-y-0.5">
+            <h3 className="text-base font-black text-foreground">
+              وضع المعاينة (الأدمن والتطوير)
+            </h3>
+            <p className="text-xs leading-5 text-muted-foreground">
+              نفس العرض، مع أدوات التنقل بين اللقطات — للمراجعة فقط.
+            </p>
+          </header>
+          <RyoExplainer
+            scenario={SAMPLE_TUTORIAL_SCENARIO}
+            compact
+            mode="preview"
+          />
+        </section>
 
         {/* Bottom action — disabled fixture, matching a not-yet-ready state */}
         <section className="surface-card p-3">
