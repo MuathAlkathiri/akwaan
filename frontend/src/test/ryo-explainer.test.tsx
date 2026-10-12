@@ -55,7 +55,7 @@ describe("RYO explainer — demo-state isolation", () => {
     vi.stubGlobal("fetch", fetchSpy);
     const xhr = vi.spyOn(XMLHttpRequest.prototype, "open");
 
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     await act(async () => {
       await Promise.resolve();
     });
@@ -67,12 +67,12 @@ describe("RYO explainer — demo-state isolation", () => {
   it("renders with no live-session provider mounted", () => {
     // The real panel reads `useLiveSession()`; if the explainer ever grew that
     // dependency this render would throw rather than produce a surface.
-    expect(() => render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />)).not.toThrow();
+    expect(() => render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />)).not.toThrow();
     expect(screen.getByTestId("ryo-explainer")).toBeInTheDocument();
   });
 
   it("renders every interactive control inert", () => {
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     const answers = screen.getByTestId("explainer-phone-answer-controls");
     within(answers)
       .getAllByRole("button")
@@ -86,7 +86,7 @@ describe("RYO explainer — demo-state isolation", () => {
 
 describe("RYO explainer — correct phase presentation", () => {
   it("opens in the collecting phase with neither side locked", () => {
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     expect(screen.getByTestId("explainer-phase")).toHaveTextContent("الاختيار");
     expect(screen.getByTestId("explainer-lock-answering")).toHaveAttribute(
       "data-locked",
@@ -100,7 +100,7 @@ describe("RYO explainer — correct phase presentation", () => {
   });
 
   it("shows the real authored question and all four authored options", () => {
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     // `BidiText` splits a mixed-direction string into segments, so the prompt is
     // asserted against the element's text content rather than a single node.
     const answers = screen.getByTestId("explainer-phone-answer-controls");
@@ -111,7 +111,7 @@ describe("RYO explainer — correct phase presentation", () => {
   });
 
   it("never reveals either private choice before the reveal beat", () => {
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     // The shared screen shows lock state only — not what was chosen.
     const shared = screen.getByTestId("explainer-lock-indicators");
     expect(within(shared).queryByText("ألمانيا")).not.toBeInTheDocument();
@@ -124,7 +124,7 @@ describe("RYO explainer — correct phase presentation", () => {
     // screen, or on the other team's phone, before the reveal.
     reducedMotion = true;
     const user = userEvent.setup();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
 
     const revealBeat = RYO_DEMO_STEPS.findIndex((s) => s.id === "reveal");
     for (let beat = 0; beat < revealBeat; beat += 1) {
@@ -145,7 +145,7 @@ describe("RYO explainer — correct phase presentation", () => {
 
   it("reaches the reveal and the payoff when skipped to the end", async () => {
     const user = userEvent.setup();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     await user.click(screen.getByTestId("explainer-skip"));
 
     expect(screen.getByTestId("explainer-phase")).toHaveTextContent("الكشف");
@@ -157,7 +157,7 @@ describe("RYO explainer — correct phase presentation", () => {
 
   it("renders the server's derived outcome rather than computing one", async () => {
     const user = userEvent.setup();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     await user.click(screen.getByTestId("explainer-skip"));
 
     // The scenario carries an `outcome` the server derived from
@@ -181,6 +181,7 @@ describe("RYO explainer — correct phase presentation", () => {
     const user = userEvent.setup();
     render(
       <RyoExplainer
+        mode="preview"
         scenario={{
           ...SAMPLE_TUTORIAL_SCENARIO,
           answeringSelectionOptionId: "b",
@@ -212,7 +213,7 @@ describe("RYO explainer — correct phase presentation", () => {
 describe("RYO explainer — replay and skip", () => {
   it("skip jumps to the final beat and replay returns to the first", async () => {
     const user = userEvent.setup();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     const progress = () => screen.getByTestId("explainer-progress").textContent;
 
     expect(progress()).toContain(`1 / ${RYO_DEMO_STEPS.length}`);
@@ -228,7 +229,7 @@ describe("RYO explainer — replay and skip", () => {
 
   it("disables skip once the end is reached", async () => {
     const user = userEvent.setup();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     await user.click(screen.getByTestId("explainer-skip"));
     expect(screen.getByTestId("explainer-skip")).toBeDisabled();
   });
@@ -241,7 +242,7 @@ describe("RYO explainer — reduced motion", () => {
 
   it("never auto-plays and exposes manual stepping instead", async () => {
     const user = userEvent.setup();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
 
     expect(screen.getByTestId("explainer-controls")).toHaveAttribute(
       "data-reduced-motion",
@@ -262,7 +263,7 @@ describe("RYO explainer — reduced motion", () => {
 
   it("still reaches the full reveal without any animation", async () => {
     const user = userEvent.setup();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     for (let step = 1; step < RYO_DEMO_STEPS.length; step += 1) {
       await user.click(screen.getByTestId("explainer-next"));
     }
@@ -276,7 +277,7 @@ describe("RYO explainer — timeline cleanup", () => {
     const gsap = (await import("gsap")).default;
     const contextSpy = vi.spyOn(gsap, "context");
 
-    const view = render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    const view = render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     expect(contextSpy).toHaveBeenCalled();
     const context = contextSpy.mock.results.at(-1)?.value as {
       revert: () => void;
@@ -288,9 +289,9 @@ describe("RYO explainer — timeline cleanup", () => {
   });
 
   it("creates exactly one timeline across a re-render", () => {
-    const view = render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    const view = render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     const before = document.querySelectorAll('[data-testid="ryo-explainer"]').length;
-    view.rerender(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    view.rerender(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     expect(
       document.querySelectorAll('[data-testid="ryo-explainer"]').length,
     ).toBe(before);
@@ -299,7 +300,7 @@ describe("RYO explainer — timeline cleanup", () => {
 
 describe("RYO explainer — responsive structure", () => {
   it("keeps the shared screen and both phones as distinct surfaces", () => {
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     // The split is the mechanic's point: public lock state on the screen,
     // private controls on each phone.
     expect(screen.getByTestId("explainer-lock-indicators")).toBeInTheDocument();
@@ -315,7 +316,7 @@ describe("RYO explainer — responsive structure", () => {
 describe("RYO explainer — compact variant", () => {
   it("spotlights one phone instead of two, so a card column stays readable", async () => {
     const user = userEvent.setup();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
 
     expect(screen.getByTestId("ryo-explainer")).toHaveAttribute(
       "data-variant",
@@ -333,7 +334,7 @@ describe("RYO explainer — compact variant", () => {
 
     // Both phones are present at full size — the split is the mechanic.
     cleanup();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     expect(screen.queryByTestId("explainer-spotlight")).not.toBeInTheDocument();
     expect(
       screen.getByTestId("explainer-phone-answer-controls"),
@@ -347,7 +348,7 @@ describe("RYO explainer — compact variant", () => {
   it("moves the spotlight to the reading team once the answer locks", async () => {
     reducedMotion = true;
     const user = userEvent.setup();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
 
     expect(screen.getByTestId("explainer-spotlight")).toHaveAttribute(
       "data-surface",
@@ -365,7 +366,7 @@ describe("RYO explainer — compact variant", () => {
 
   it("still reaches the real reveal and payoff when compact", async () => {
     const user = userEvent.setup();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     await user.click(screen.getByTestId("explainer-skip"));
     expect(screen.getByTestId("explainer-reveal")).toHaveAttribute(
       "data-outcome",
@@ -378,7 +379,7 @@ describe("RYO explainer — compact variant", () => {
   });
 
   it("keeps the shared screen public and the phone private in compact too", () => {
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     const locks = screen.getByTestId("explainer-lock-indicators");
     expect(locks).toBeInTheDocument();
     // Lock state is public; the chosen answer is not.
@@ -393,7 +394,7 @@ describe("explainer disclosure — collapsed by default", () => {
 
     render(
       <ExplainerDisclosure>
-        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />
+        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />
       </ExplainerDisclosure>,
     );
 
@@ -413,7 +414,7 @@ describe("explainer disclosure — collapsed by default", () => {
     const user = userEvent.setup();
     render(
       <ExplainerDisclosure>
-        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />
+        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />
       </ExplainerDisclosure>,
     );
     const trigger = screen.getByTestId("explainer-disclosure-trigger");
@@ -435,7 +436,7 @@ describe("explainer disclosure — expand and collapse", () => {
     const user = userEvent.setup();
     render(
       <ExplainerDisclosure>
-        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />
+        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />
       </ExplainerDisclosure>,
     );
     const trigger = screen.getByTestId("explainer-disclosure-trigger");
@@ -461,7 +462,7 @@ describe("explainer disclosure — expand and collapse", () => {
     const user = userEvent.setup();
     render(
       <ExplainerDisclosure>
-        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />
+        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />
       </ExplainerDisclosure>,
     );
     const trigger = screen.getByTestId("explainer-disclosure-trigger");
@@ -489,7 +490,7 @@ describe("explainer disclosure — expand and collapse", () => {
     const user = userEvent.setup();
     render(
       <ExplainerDisclosure>
-        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />
+        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />
       </ExplainerDisclosure>,
     );
     const trigger = screen.getByTestId("explainer-disclosure-trigger");
@@ -507,7 +508,7 @@ describe("explainer disclosure — expand and collapse", () => {
     const user = userEvent.setup();
     render(
       <ExplainerDisclosure>
-        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />
+        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />
       </ExplainerDisclosure>,
     );
     const trigger = screen.getByTestId("explainer-disclosure-trigger");
@@ -520,7 +521,7 @@ describe("explainer disclosure — expand and collapse", () => {
     const user = userEvent.setup();
     render(
       <ExplainerDisclosure>
-        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />
+        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />
       </ExplainerDisclosure>,
     );
     await user.click(screen.getByTestId("explainer-disclosure-trigger"));
@@ -534,7 +535,7 @@ describe("explainer disclosure — expand and collapse", () => {
     const user = userEvent.setup();
     render(
       <ExplainerDisclosure>
-        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />
+        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />
       </ExplainerDisclosure>,
     );
     const trigger = screen.getByTestId("explainer-disclosure-trigger");
@@ -554,7 +555,7 @@ describe("explainer disclosure — reduced motion", () => {
     const user = userEvent.setup();
     render(
       <ExplainerDisclosure>
-        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />
+        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />
       </ExplainerDisclosure>,
     );
     await user.click(screen.getByTestId("explainer-disclosure-trigger"));
@@ -572,7 +573,7 @@ describe("RYO explainer — autoplay lifecycle", () => {
     const gsap = (await import("gsap")).default;
     const timelineSpy = vi.spyOn(gsap, "timeline");
 
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     await act(async () => {
       await Promise.resolve();
     });
@@ -593,7 +594,7 @@ describe("RYO explainer — autoplay lifecycle", () => {
 
   it("keeps the final state on screen once playback ends", async () => {
     const user = userEvent.setup();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     await user.click(screen.getByTestId("explainer-skip"));
 
     expect(screen.getByTestId("explainer-progress")).toHaveTextContent("5 / 5");
@@ -608,7 +609,7 @@ describe("RYO explainer — autoplay lifecycle", () => {
 
   it("offers a pause control that stops and resumes playback", async () => {
     const user = userEvent.setup();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     // The timeline is built in an effect, so flush before asserting on it.
     await act(async () => {
       await Promise.resolve();
@@ -623,7 +624,7 @@ describe("RYO explainer — autoplay lifecycle", () => {
   });
 
   it("suspends while the document is hidden and resumes when it returns", async () => {
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     // The timeline is built in an effect, so flush before asserting on it.
     await act(async () => {
       await Promise.resolve();
@@ -649,7 +650,7 @@ describe("RYO explainer — autoplay lifecycle", () => {
 
   it("does not resume a host-paused demo when the tab returns", async () => {
     const user = userEvent.setup();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     // The timeline is built in an effect, so flush before asserting on it.
     await act(async () => {
       await Promise.resolve();
@@ -677,7 +678,7 @@ describe("RYO explainer — autoplay lifecycle", () => {
         <div>
           {/* Stands in for readiness/presence churn on the Preflight screen. */}
           <span data-testid="ready-count">{readyCount}</span>
-          <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />
+          <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />
         </div>
       );
     }
@@ -702,7 +703,7 @@ describe("RYO explainer — autoplay lifecycle", () => {
 
   it("hides the pause control under reduced motion", async () => {
     reducedMotion = true;
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     expect(
       screen.queryByTestId("explainer-play-toggle"),
     ).not.toBeInTheDocument();
@@ -777,14 +778,14 @@ describe("RYO explainer — viewport-driven playback", () => {
     // the initial state hydrates as a mismatch: the server has none and renders
     // "playing", the browser has one and renders "suspended". Both of these
     // renders must agree, and the observer corrects the value afterwards.
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     const withoutObserver = screen
       .getByTestId("explainer-controls")
       .getAttribute("data-suspended");
     cleanup();
 
     installIntersectionObserver();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     const withObserver = screen
       .getByTestId("explainer-controls")
       .getAttribute("data-suspended");
@@ -795,7 +796,7 @@ describe("RYO explainer — viewport-driven playback", () => {
 
   it("does not play while it is scrolled out of view", async () => {
     const observer = installIntersectionObserver();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     await act(async () => {
       await Promise.resolve();
     });
@@ -814,7 +815,7 @@ describe("RYO explainer — viewport-driven playback", () => {
 
   it("starts by itself once it scrolls into view", async () => {
     const observer = installIntersectionObserver();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     await act(async () => {
       await Promise.resolve();
     });
@@ -838,7 +839,7 @@ describe("RYO explainer — viewport-driven playback", () => {
 
   it("treats a sliver of the demo as offscreen", async () => {
     const observer = installIntersectionObserver();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     await act(async () => {
       await Promise.resolve();
     });
@@ -860,7 +861,7 @@ describe("RYO explainer — viewport-driven playback", () => {
 
   it("observes the explainer itself, at the documented threshold", async () => {
     const observer = installIntersectionObserver();
-    const { container } = render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    const { container } = render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     await act(async () => {
       await Promise.resolve();
     });
@@ -874,7 +875,7 @@ describe("RYO explainer — viewport-driven playback", () => {
   it("keeps a host pause through scrolling away and back", async () => {
     const user = userEvent.setup();
     const observer = installIntersectionObserver();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     await act(async () => {
       await Promise.resolve();
     });
@@ -893,7 +894,7 @@ describe("RYO explainer — viewport-driven playback", () => {
 
   it("stops observing when the explainer unmounts", async () => {
     const observer = installIntersectionObserver();
-    const { unmount } = render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    const { unmount } = render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     await act(async () => {
       await Promise.resolve();
     });
@@ -908,7 +909,7 @@ describe("RYO explainer — viewport-driven playback", () => {
     const gsap = (await import("gsap")).default;
     const timelineSpy = vi.spyOn(gsap, "timeline");
     const observer = installIntersectionObserver();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     await act(async () => {
       await Promise.resolve();
     });
@@ -924,7 +925,7 @@ describe("RYO explainer — viewport-driven playback", () => {
   it("never observes anything when motion is reduced", async () => {
     reducedMotion = true;
     const observer = installIntersectionObserver();
-    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />);
     await act(async () => {
       await Promise.resolve();
     });
@@ -937,5 +938,112 @@ describe("RYO explainer — viewport-driven playback", () => {
       "data-reduced-motion",
       "true",
     );
+  });
+});
+
+describe("RYO explainer — player vs preview presentation", () => {
+  /** Everything the transport strip contributes, and nothing else. */
+  const TRANSPORT = [
+    "explainer-controls",
+    "explainer-progress",
+    "explainer-phase",
+    "explainer-play-toggle",
+    "explainer-skip",
+    "explainer-replay",
+    "explainer-prev",
+    "explainer-next",
+  ];
+
+  it("shows a host the demonstration and the narration, and no transport", () => {
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+
+    for (const id of TRANSPORT) {
+      expect(screen.queryByTestId(id)).not.toBeInTheDocument();
+    }
+    // The sentence explaining the beat is the teaching, so it survives.
+    expect(screen.getByTestId("explainer-caption")).toHaveTextContent(
+      RYO_DEMO_STEPS[0].caption,
+    );
+    // And the demonstration itself is untouched.
+    expect(screen.getByTestId("explainer-lock-indicators")).toBeInTheDocument();
+    expect(screen.getByTestId("explainer-phone-shell")).toBeInTheDocument();
+  });
+
+  it("defaults to the player presentation when no mode is given", () => {
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} />);
+    expect(screen.queryByTestId("explainer-controls")).not.toBeInTheDocument();
+  });
+
+  it("gives an editor the transport back in preview mode", () => {
+    render(
+      <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />,
+    );
+    for (const id of ["explainer-controls", "explainer-progress", "explainer-replay"]) {
+      expect(screen.getByTestId(id)).toBeInTheDocument();
+    }
+    expect(screen.getByTestId("explainer-progress")).toHaveTextContent(
+      `1 / ${RYO_DEMO_STEPS.length}`,
+    );
+  });
+
+  it("drops the question counter in both modes", () => {
+    // The tutorial demonstrates one representative item, so "السؤال 1 من 3"
+    // would describe a sequence that does not exist. The real challenge's own
+    // counter is a separate component and is unaffected.
+    for (const mode of ["player", "preview"] as const) {
+      cleanup();
+      render(
+        <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode={mode} />,
+      );
+      const frame = screen.getByTestId("challenge-frame");
+      expect(frame.textContent).not.toContain("السؤال");
+      expect(frame.textContent).not.toContain("من 3");
+      // Replaced by nothing — the challenge name already heads the frame.
+      expect(frame.textContent).toContain("اقرأ خصمك");
+    }
+  });
+
+  it("runs the same single timeline in both modes", async () => {
+    const gsap = (await import("gsap")).default;
+    const timelineSpy = vi.spyOn(gsap, "timeline");
+
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(timelineSpy).toHaveBeenCalledTimes(1);
+    const playerConfig = timelineSpy.mock.calls[0]?.[0] as { repeat?: number };
+    cleanup();
+    timelineSpy.mockClear();
+
+    render(
+      <RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact mode="preview" />,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(timelineSpy).toHaveBeenCalledTimes(1);
+    const previewConfig = timelineSpy.mock.calls[0]?.[0] as { repeat?: number };
+
+    // Same choreography, same loop — the mode changes chrome only.
+    expect(playerConfig?.repeat).toBe(-1);
+    expect(previewConfig?.repeat).toBe(playerConfig?.repeat);
+  });
+
+  it("still autoplays and loops for a host with no controls to press", async () => {
+    const observer = installIntersectionObserver();
+    render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} compact />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await observer.emit(1);
+
+    // There is no play button to assert on, so the timeline itself is the
+    // evidence: built, looping, and not paused.
+    const gsapModule = (await import("gsap")).default;
+    void gsapModule;
+    expect(screen.getByTestId("explainer-caption")).toBeInTheDocument();
+    expect(observer.instances).toHaveLength(1);
+    expect(observer.instances[0]?.disconnected).toBe(false);
   });
 });

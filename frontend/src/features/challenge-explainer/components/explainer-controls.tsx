@@ -13,6 +13,36 @@ import type { ExplainerTimeline } from "../use-explainer-timeline";
  * carries the beat. That is the whole accessibility contract — the explainer is
  * fully readable with no motion at all.
  */
+/**
+ * The narration line on its own, for the player-facing mode.
+ *
+ * Deliberately the same copy the control strip shows, rendered without the
+ * strip: removing the transport must not remove the sentence that explains what
+ * the beat on screen means.
+ */
+export function ExplainerCaption({
+  caption,
+  compact = false,
+}: {
+  caption: string;
+  compact?: boolean;
+}) {
+  return (
+    <p
+      dir="rtl"
+      data-testid="explainer-caption"
+      aria-live="polite"
+      className={
+        compact
+          ? "text-center text-sm font-bold leading-6 text-muted-foreground"
+          : "text-center text-base font-bold leading-7 text-muted-foreground"
+      }
+    >
+      {caption}
+    </p>
+  );
+}
+
 export function ExplainerControls({
   step,
   total,

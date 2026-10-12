@@ -284,7 +284,7 @@ export function MechanicTutorialEditor({
           <p className="text-xs font-black text-muted-foreground">
             معاينة بالشرح الحقيقي
           </p>
-          <RyoExplainer scenario={previewScenario} compact />
+          <RyoExplainer scenario={previewScenario} compact mode="preview" />
         </div>
       )}
     </section>

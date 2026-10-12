@@ -711,7 +711,18 @@ describe("challenge preflight", () => {
         "data-variant",
         "compact",
       );
-      expect(within(dialog).getByTestId("explainer-controls")).toBeInTheDocument();
+      // The host-facing dialog is the demonstration alone: narration yes,
+      // transport no. A 16-second loop that comes round by itself does not
+      // need a play button.
+      expect(within(dialog).getByTestId("explainer-caption")).toBeInTheDocument();
+      expect(
+        within(dialog).queryByTestId("explainer-controls"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(dialog).queryByTestId("explainer-progress"),
+      ).not.toBeInTheDocument();
+      // And no counter describing a sequence of questions that does not exist.
+      expect(dialog.textContent).not.toContain("السؤال 1 من 3");
       // Said plainly to be a teaching example, never the Match's own question.
       expect(dialog.textContent).toContain("مو سؤال المباراة");
 
