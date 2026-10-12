@@ -49,6 +49,10 @@ import type {
   ChallengeType,
   WorldContentStatus,
 } from "../../types";
+import { MechanicTutorialEditor } from "./mechanic-tutorial-editor";
+
+/** The one mechanic with an authored demonstration so far. */
+const RYO_MECHANIC_KEY = "read-your-opponent";
 
 interface ChallengeTypeFormProps {
   challengeType?: ChallengeType;
@@ -305,6 +309,13 @@ export function ChallengeTypeForm({
       />
 
       <PlayerInstructionsPreview value={presentation.playerInstructions} />
+
+      {/* The animated demonstration, for mechanics that have one. Keyed by the
+          mechanic's own slug — the canonical identifier — and only offered for
+          a saved mechanic, since a draft has no key to publish under yet. */}
+      {challengeType?.slug === RYO_MECHANIC_KEY && (
+        <MechanicTutorialEditor mechanicKey={challengeType.slug} />
+      )}
 
       <UploadField
         label="أيقونة المكانيكا"

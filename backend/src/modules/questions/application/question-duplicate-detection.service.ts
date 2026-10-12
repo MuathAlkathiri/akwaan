@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { QuestionRepository } from '../persistence/question.repository';
+import {
+  ARABIC_DUPLICATE_THRESHOLD,
+  arabicTextSimilarity,
+  normalizeArabicText,
+} from '../../../common/utils/arabic-text-similarity.util';
 
 export interface DuplicateMatch {
   questionId: string;
@@ -33,7 +38,7 @@ export class QuestionDuplicateDetectionService {
         ),
         categoryId: String(candidate.category),
       }))
-      .filter((candidate) => candidate.similarity >= 0.72)
+      .filter((candidate) => candidate.similarity >= ARABIC_DUPLICATE_THRESHOLD)
       .sort((left, right) => right.similarity - left.similarity)
       .slice(0, 10);
     return {
@@ -43,38 +48,12 @@ export class QuestionDuplicateDetectionService {
     };
   }
 
+  /** Kept as the service's public API; the algorithm itself is now shared. */
   normalize(value: string): string {
-    return value
-      .trim()
-      .toLocaleLowerCase('ar')
-      .normalize('NFKC')
-      .replace(/[\u064B-\u065F\u0670]/g, '')
-      .replace(/[أإآٱ]/g, 'ا')
-      .replace(/[ىئ]/g, 'ي')
-      .replace(/ؤ/g, 'و')
-      .replace(/ة/g, 'ه')
-      .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
-      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    return normalizeArabicText(value);
   }
 
   private similarity(left: string, right: string): number {
-    if (left === right) return 1;
-    const a = this.trigrams(left);
-    const b = this.trigrams(right);
-    if (!a.size || !b.size) return 0;
-    let intersection = 0;
-    for (const token of a) if (b.has(token)) intersection += 1;
-    return Number((intersection / (a.size + b.size - intersection)).toFixed(4));
-  }
-
-  private trigrams(value: string): Set<string> {
-    const padded = `  ${value}  `;
-    return new Set(
-      Array.from({ length: Math.max(0, padded.length - 2) }, (_, index) =>
-        padded.slice(index, index + 3),
-      ),
-    );
+    return arabicTextSimilarity(left, right);
   }
 }

@@ -10,6 +10,10 @@ import { PendingButtonContent } from "@/components/ui/pending-button-content";
 import { WorldMedia } from "@/components/akwaan/world-media";
 import { teamIdentity, TEAM_SLOT_ORDER } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
+import { RyoExplainerDialog } from "@/features/challenge-explainer";
+
+/** The one mechanic with an animated explainer so far. */
+const RYO_CHALLENGE_KEY = "read-your-opponent";
 import { occurrenceLabel } from "@/features/match-setup";
 import type { PreflightTeam, UnifiedPreflight } from "../types";
 
@@ -50,18 +54,19 @@ export function ChallengePreflight({
   onLaunch: () => void;
 }) {
   return (
-    <div className="space-y-4" data-testid="challenge-preflight" dir="rtl">
-      {/* Main briefing at 70–75%, the pairing sidebar at the rest. items-start so a
-          challenge with a short brief never stretches to the sidebar's height. */}
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2.5fr)_minmax(17rem,1fr)]">
-        <ChallengeBrief
-          preflight={preflight}
-          selectingTeamName={selectingTeamName}
-          {...(worldImageUrl ? { worldImageUrl } : {})}
-          launching={launching}
-          cancelling={cancelling}
-          onLaunch={onLaunch}
-        />
+    <div className="space-y-3" data-testid="challenge-preflight" dir="rtl">
+      {/* One identity banner across the top — what World, what challenge, who
+          starts — then the two working regions beneath it. */}
+      <ChallengeIdentityBanner
+        preflight={preflight}
+        {...(selectingTeamName ? { selectingTeamName } : {})}
+        {...(worldImageUrl ? { worldImageUrl } : {})}
+      />
+
+      {/* The explanation at ~70%, joining at the rest. items-start so a short
+          brief never stretches to the sidebar's height. */}
+      <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,2.6fr)_minmax(16rem,1fr)]">
+        <ChallengeExplanation preflight={preflight} launching={launching} />
         {preflight.requiresPhones ? (
           <PairingPanel preflight={preflight} sessionId={sessionId} />
         ) : (
@@ -70,6 +75,13 @@ export function ChallengePreflight({
           </aside>
         )}
       </div>
+
+      <StartChallengeSection
+        preflight={preflight}
+        launching={launching}
+        cancelling={cancelling}
+        onLaunch={onLaunch}
+      />
 
       {error && (
         <Alert variant="destructive" role="alert">
@@ -95,114 +107,184 @@ export function ChallengePreflight({
 }
 
 /**
- * What is about to be played, and the button that plays it.
+ * What is about to be played — World, challenge, and the two facts a host needs.
  *
- * The order is fixed and read top-to-bottom: World banner, the challenge's name and
- * one-line summary, the context chips (phones / who starts), "كيف نلعب؟", one
- * highlight, then the full-width launch. The launch lives *in* this card because it
- * acts on this challenge; orphaned under the grid it read as unfinished layout.
+ * Pulled above the working columns so the identity reads once, across the full
+ * width, instead of competing with the explanation for the same card. Every
+ * field is canonical Match projection data; nothing about a specific mechanic is
+ * hardcoded here.
  */
-function ChallengeBrief({
+function ChallengeIdentityBanner({
   preflight,
   selectingTeamName,
   worldImageUrl,
+}: {
+  preflight: UnifiedPreflight;
+  selectingTeamName?: string;
+  worldImageUrl?: string;
+}) {
+  const summary = preflight.playerInstructions?.summary ?? preflight.description;
+  return (
+    <section
+      data-testid="preflight-identity"
+      className="surface-card overflow-hidden"
+    >
+      <div className="grid gap-0 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]">
+        <WorldMedia
+          name={preflight.worldName ?? "عالم"}
+          eyebrow={occurrenceLabel(preflight.occurrenceIndex)}
+          variant="strip"
+          {...(worldImageUrl ? { imageUrl: worldImageUrl } : {})}
+          className="h-20 rounded-none aspect-auto sm:h-full sm:min-h-[6rem]"
+        />
+        <div className="flex flex-col gap-1.5 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4">
+          <header className="min-w-0 space-y-1">
+            <h1 className="text-xl font-black leading-tight text-foreground sm:text-2xl">
+              {preflight.challengeName}
+            </h1>
+            {summary && (
+              <p className="line-clamp-2 text-xs leading-5 text-muted-foreground sm:text-sm">
+                {summary}
+              </p>
+            )}
+          </header>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {preflight.requiresPhones && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-bold text-secondary-foreground">
+                <Smartphone className="size-3" aria-hidden />
+                يحتاج جوالات
+              </span>
+            )}
+            {selectingTeamName && (
+              <span
+                data-testid="preflight-turn-chip"
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-xs font-bold text-muted-foreground"
+              >
+                <Users className="size-3" aria-hidden />
+                {selectingTeamName} يبدأ
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * "شرح التحدي" — the left region.
+ *
+ * An animated demonstration where the mechanic has one, the authored numbered
+ * steps everywhere else. The explainer is a presentation-only simulation: it
+ * holds no session, sends no command, and cannot touch readiness, Fair-Start or
+ * Match state. Canonical `playerInstructions` stay on the projection untouched,
+ * so withdrawing a demo loses nothing.
+ *
+ * `launching` only dims the region — a purely visual handoff while the
+ * authoritative stage change does the real work. It never gates the launch.
+ */
+function ChallengeExplanation({
+  preflight,
+  launching,
+}: {
+  preflight: UnifiedPreflight;
+  launching: boolean;
+}) {
+  const animated = preflight.challengeKey === RYO_CHALLENGE_KEY;
+  return (
+    <section
+      data-testid="preflight-explainer"
+      data-animated={animated ? "true" : "false"}
+      data-launching={launching ? "true" : "false"}
+      className={cn(
+        "surface-card space-y-2.5 p-3 transition-all duration-base ease-akwaan sm:p-4",
+        // The exit half of the handoff: the explanation steps back as the real
+        // challenge is being started. Visual only, and never blocking.
+        launching && "pointer-events-none translate-y-1 opacity-40",
+      )}
+    >
+      <header className="flex items-start justify-between gap-3">
+        <span className="min-w-0 space-y-0.5">
+          <h2 className="text-base font-black text-foreground">شرح التحدي</h2>
+          <p className="text-xs leading-5 text-muted-foreground">
+            اقروا الخطوات قبل ما تبدأون.
+          </p>
+        </span>
+        {/* The demonstration is an answer to a question the host may not have.
+            It is offered here and opened on demand, so the default screen stays
+            about starting the challenge. */}
+        {animated && (
+          <RyoExplainerDialog
+            mechanicKey={preflight.challengeKey}
+            launching={launching}
+          />
+        )}
+      </header>
+      {/* Every mechanic now shows the same canonical authored instructions —
+          the explainer supplements them, it does not replace them. */}
+      <PlayerInstructionsBrief instructions={preflight.playerInstructions} />
+      {preflight.playerInstructions?.highlights?.find((item) =>
+        item.trim(),
+      ) && (
+        <p
+          data-testid="preflight-highlight"
+          className="flex items-start gap-2 rounded-xl border border-brand-gold/25 bg-brand-gold/5 px-3 py-2 text-sm font-bold text-foreground/90"
+        >
+          <span aria-hidden className="mt-0.5 text-brand-gold">
+            ★
+          </span>
+          {preflight.playerInstructions.highlights.find((item) => item.trim())}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * The launch, across the full width beneath both regions.
+ *
+ * Every condition is the server's: `readyToLaunch` is the single answer the
+ * button reads, the blocking line names who is missing, and the check is re-run
+ * server side at launch anyway. The explainer has no say in any of it.
+ */
+function StartChallengeSection({
+  preflight,
   launching,
   cancelling,
   onLaunch,
 }: {
   preflight: UnifiedPreflight;
-  selectingTeamName?: string;
-  worldImageUrl?: string;
   launching: boolean;
   cancelling: boolean;
   onLaunch: () => void;
 }) {
   return (
-    <section className="surface-card overflow-hidden">
-      <WorldMedia
-        name={preflight.worldName ?? "عالم"}
-        eyebrow={occurrenceLabel(preflight.occurrenceIndex)}
-        variant="strip"
-        {...(worldImageUrl ? { imageUrl: worldImageUrl } : {})}
-        className="h-28 rounded-none aspect-auto sm:h-32"
-      />
-      <div className="space-y-3 p-4 sm:p-5">
-        <header>
-          <h1 className="text-2xl font-black text-foreground sm:text-3xl">
-            {preflight.challengeName}
-          </h1>
-          {(preflight.playerInstructions?.summary ?? preflight.description) && (
-            <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-              {preflight.playerInstructions?.summary ?? preflight.description}
-            </p>
-          )}
-        </header>
-
-        {/* Context chips — locked directly beneath the summary, above كيف نلعب؟. */}
-        <div className="flex flex-wrap items-center gap-2">
-          {preflight.requiresPhones && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-bold text-secondary-foreground">
-              <Smartphone className="size-3" aria-hidden />
-              يحتاج جوالات
-            </span>
-          )}
-          {selectingTeamName && (
-            <span
-              data-testid="preflight-turn-chip"
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-xs font-bold text-muted-foreground"
-            >
-              <Users className="size-3" aria-hidden />
-              {selectingTeamName} يبدأ
-            </span>
-          )}
-        </div>
-
-        <PlayerInstructionsBrief instructions={preflight.playerInstructions} />
-
-        {preflight.playerInstructions?.highlights?.find((item) =>
-          item.trim(),
-        ) && (
-          <p
-            data-testid="preflight-highlight"
-            className="flex items-start gap-2 rounded-xl border border-brand-gold/25 bg-brand-gold/5 px-3 py-2 text-sm font-bold text-foreground/90"
-          >
-            <span aria-hidden className="mt-0.5 text-brand-gold">
-              ★
-            </span>
-            {preflight.playerInstructions.highlights.find((item) =>
-              item.trim(),
-            )}
-          </p>
+    <section data-testid="preflight-start-section" className="surface-card p-3">
+      {!preflight.readyToLaunch && (
+        <p className="mb-2 text-center text-sm font-bold text-muted-foreground">
+          {blockingSummary(preflight)}
+        </p>
+      )}
+      <Button
+        type="button"
+        size="lg"
+        data-testid="preflight-start"
+        disabled={!preflight.readyToLaunch || launching || cancelling}
+        aria-busy={launching}
+        onClick={onLaunch}
+        className={cn(
+          "w-full gap-2 font-black transition-shadow",
+          preflight.readyToLaunch &&
+            "shadow-[0_12px_28px_-16px_hsl(var(--primary)/0.65)]",
         )}
-
-        <div className="pt-0.5">
-          {!preflight.readyToLaunch && (
-            <p className="mb-2 text-center text-sm font-bold text-muted-foreground">
-              {blockingSummary(preflight)}
-            </p>
-          )}
-          <Button
-            type="button"
-            size="lg"
-            data-testid="preflight-start"
-            disabled={!preflight.readyToLaunch || launching || cancelling}
-            aria-busy={launching}
-            onClick={onLaunch}
-            className={cn(
-              "w-full gap-2 font-black transition-shadow",
-              preflight.readyToLaunch &&
-                "shadow-[0_12px_28px_-16px_hsl(var(--primary)/0.65)]",
-            )}
-          >
-            <PendingButtonContent
-              pending={launching}
-              pendingLabel="جارٍ بدء التحدي…"
-            >
-              ابدأ التحدي
-            </PendingButtonContent>
-          </Button>
-        </div>
-      </div>
+      >
+        <PendingButtonContent
+          pending={launching}
+          pendingLabel="جارٍ بدء التحدي…"
+        >
+          ابدأ التحدي
+        </PendingButtonContent>
+      </Button>
     </section>
   );
 }
@@ -259,30 +341,17 @@ function PairingPanel({
 
   return (
     <aside className="space-y-3">
-      <section
-        data-testid="preflight-readiness"
-        className="surface-card space-y-3 p-4"
-      >
-        <h2 className="flex items-center gap-2 text-base font-black text-foreground">
-          <Users className="size-4 text-muted-foreground" aria-hidden />
-          جاهزية اللاعبين
-        </h2>
-        <ul className="list-none space-y-3">
-          {preflight.teams.map((team, index) => (
-            <li key={team.teamId}>
-              <TeamRoster team={team} order={index} />
-            </li>
-          ))}
-        </ul>
-      </section>
-
+      {/* One joining card: the code to scan, then who has actually arrived.
+          The readiness roster is no longer its own card — it is the answer to
+          the question this card asks — but it is the same authoritative
+          `preflight.teams` data and the same roster component as before. */}
       <section className="surface-card overflow-hidden">
         <button
           type="button"
           data-testid="preflight-join-toggle"
           aria-expanded={expanded}
           onClick={() => setExpanded((value) => !value)}
-          className="flex w-full items-center justify-between gap-3 p-4 text-start transition-colors hover:bg-muted/40"
+          className="flex w-full items-center justify-between gap-3 p-3 text-start transition-colors hover:bg-muted/40"
         >
           <span
             data-testid={!expanded ? "preflight-players-paired" : undefined}
@@ -302,7 +371,7 @@ function PairingPanel({
           />
         </button>
         {expanded && (
-          <div className="space-y-3 border-t border-border/70 p-4">
+          <div className="space-y-2 border-t border-border/70 p-3">
             <p className="text-xs font-bold leading-5 text-muted-foreground">
               امسحوا الرمز للانضمام إلى المباراة. لا تحتاجون لإعادة المسح بين
               التحديات.
@@ -340,6 +409,23 @@ function PairingPanel({
             )}
           </div>
         )}
+
+        <div
+          data-testid="preflight-readiness"
+          className="space-y-2 border-t border-border/70 p-3"
+        >
+          <h2 className="flex items-center gap-2 text-sm font-black text-foreground">
+            <Users className="size-4 text-muted-foreground" aria-hidden />
+            جاهزية اللاعبين
+          </h2>
+          <ul className="list-none space-y-3">
+            {preflight.teams.map((team, index) => (
+              <li key={team.teamId}>
+                <TeamRoster team={team} order={index} />
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
     </aside>
   );
@@ -507,9 +593,11 @@ function PlayerInstructionsBrief({
   return (
     <div
       data-testid="preflight-player-instructions"
-      className="space-y-2 border-t border-border/70 pt-3 text-foreground/85"
+      className="space-y-2 text-foreground/85"
     >
-      <p className="text-base font-black text-foreground">كيف نلعب؟</p>
+      {/* No heading of its own: the card above is already titled «شرح التحدي»
+          and the action beside it is «كيف تلعب؟». A third near-identical label
+          here read as three competing titles for one region. */}
       <ol className="list-none space-y-2">
         {/* All authored steps, not a forced three — correctness over a fixed count. */}
         {steps.map((step, index) => (

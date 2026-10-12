@@ -9,10 +9,12 @@ import {
 import {
   ChallengePresentation,
   ContentAssetRef,
+  MechanicTutorial,
 } from '../domain/world-content.types';
 import {
   ChallengePresentationDefinition,
   ContentAssetDefinition,
+  MechanicTutorialDefinition,
   SLUG_PATTERN,
 } from './world-content-shared.schema';
 
@@ -68,6 +70,17 @@ export class ChallengeType extends Document {
   status: WorldContentStatus;
 
   @Prop({ default: 0 }) sortOrder: number;
+
+  /**
+   * The mechanic's educational demonstration, draft and published.
+   *
+   * It lives here because the ChallengeType is already the canonical per-mechanic
+   * record and already carries `defaultPresentation.playerInstructions` — the
+   * other mechanic-level teaching content. A separate tutorial collection would
+   * be a second authoring system for the same thing.
+   */
+  @Prop({ type: MechanicTutorialDefinition, default: undefined, _id: false })
+  tutorial?: MechanicTutorial;
 }
 
 export const ChallengeTypeSchema = SchemaFactory.createForClass(ChallengeType);
