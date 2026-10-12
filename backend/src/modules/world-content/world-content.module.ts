@@ -28,6 +28,11 @@ import { WorldChallengeConfigurationRepository } from './persistence/world-chall
 import { WorldRepository } from './persistence/world.repository';
 import { ProductionMechanicLifecycleRepository } from './persistence/production-mechanic-lifecycle.repository';
 import { ChallengeTypesController } from './presentation/challenge-types.controller';
+import {
+  AdminMechanicTutorialsController,
+  MechanicTutorialsController,
+} from './presentation/mechanic-tutorials.controller';
+import { MechanicTutorialService } from './application/mechanic-tutorial.service';
 import { ContentItemsController } from './presentation/content-items.controller';
 import { PlayerWorldsController } from './presentation/player-worlds.controller';
 import { ScopesController } from './presentation/scopes.controller';
@@ -72,9 +77,12 @@ import { World, WorldSchema } from './schemas/world.schema';
     ScopesController,
     WorldChallengeConfigurationsController,
     ChallengeTypesController,
+    AdminMechanicTutorialsController,
+    MechanicTutorialsController,
     ContentItemsController,
   ],
   providers: [
+    MechanicTutorialService,
     // domain policies
     ChallengePresentationPolicy,
     ChallengeTypePolicy,

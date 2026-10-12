@@ -495,6 +495,30 @@ export interface ContentItemView {
   };
 }
 
+/** The stored shape of a mechanic's educational demonstration. */
+export interface MechanicTutorial {
+  draft?: StoredTutorialScenario;
+  published?: StoredTutorialScenario;
+  publishedRevision: number;
+  publishedAt?: Date;
+  draftUpdatedAt?: Date;
+}
+
+export interface StoredTutorialScenario {
+  prompt: string;
+  options: { id: string; label: string }[];
+  correctOptionId: string;
+  answeringSelectionOptionId: string;
+  opposingDecision: 'TRUST' | 'STEAL';
+  caption?: string;
+  outcome: {
+    teamRole: 'answering' | 'opposing';
+    delta: number;
+    reason: string;
+    correct: boolean;
+  };
+}
+
 /** Uniform issue shape for every validation and readiness surface. */
 export interface WorldContentIssue {
   code: string;
