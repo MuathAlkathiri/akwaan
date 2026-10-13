@@ -1,3 +1,14 @@
+> **⚠️ SUPERSEDED (2026-10-09) — Puzzles Scope routing only.**
+> The six Scopes this document routes families into (`general-knowledge`,
+> `letters-words`, `numbers-arithmetic`, `logic-deduction`, `shapes-patterns`,
+> `symbols-codes`) are the **legacy** Puzzles taxonomy and no longer exist. The
+> forward Puzzles taxonomy is the six Scopes in roadmap §23.11:
+> `observation-illusions`, `wordplay-letters`, `numbers-estimation`,
+> `assembly-rotation`, `paths-motion`, `spot-the-error`.
+> Everything else here — the ركّبها / `PUZZLE_FAMILY` pattern architecture — is
+> unchanged and still current. Re-routing the families onto the forward Scopes
+> belongs to the deliberate ركّبها replacement task, not here.
+
 # Puzzle-Family Vocabulary
 
 Canonical lightweight vocabulary for naming the solving operation behind a

@@ -40,8 +40,14 @@ Avoid breaking the core experience of puzzles.
 - Ownership: this World is the exclusive home of the
   `rakkibha` ChallengeType (ركّبها). That mechanic is not intended
   to run across Anime, Football, or Video Games.
-- Scopes: `general-knowledge`, `letters-words`, `numbers-arithmetic`,
-  `logic-deduction`, `shapes-patterns`, and `symbols-codes`. A Scope defines the
+- Scopes: the six forward Scopes approved 2026-10-06 with canonical slugs
+  approved 2026-10-09 (roadmap §23.11) — `observation-illusions`,
+  `wordplay-letters`, `numbers-estimation`, `assembly-rotation`, `paths-motion`
+  and `spot-the-error`. These are the **only** Puzzles Scopes. The earlier
+  `general-knowledge` / `letters-words` / `numbers-arithmetic` /
+  `logic-deduction` / `shapes-patterns` / `symbols-codes` set and the
+  `patterns-sequences` / `lateral-thinking` / `visual-puzzles` expansion are
+  **SUPERSEDED and removed**; no second Puzzles taxonomy exists. A Scope defines the
   puzzle's primary content/material domain and constrains what material belongs,
   routing, authoring boundaries, and review expectations; it never owns mechanic
   behavior. No Puzzle World item may be authored `ready` until the
@@ -64,6 +70,6 @@ or Content Patterns.
 - **Archetypes to Limit**:
   - Fact-recall trivia (Puzzles must test deductive reasoning, pattern recognition, and lateral thinking—not general trivia).
 - **Content Dimensions to Rotate Through**:
-  - Letters & Words, Numbers & Arithmetic, Logic & Deduction, Shapes & Patterns, Symbols & Codes, Lateral Thinking.
+  - قوة الملاحظة والخداع البصري, التلاعب بالكلمات والحروف, أرقام وتقديرات, تركيب وتدوير, مسارات وحركة, اكتشف الخطأ.
 - **World-Specific Anti-Patterns**:
   - *Trivia disguise*: Never author standard encyclopedic trivia in Puzzles World.
