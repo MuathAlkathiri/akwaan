@@ -37,9 +37,11 @@ Avoid breaking the core experience of puzzles.
   relationships, intelligence, or awkward family-group topics.
 - Presentation: distinctive puzzle-grid frame and concise Arabic instruction
   vocabulary.
-- Ownership: this World is the exclusive home of the
-  `rakkibha` ChallengeType (ركّبها). That mechanic is not intended
-  to run across Anime, Football, or Video Games.
+- Ownership: this World is the exclusive home of two mechanics — `moving-xo`
+  (إكس أو المتحرك), the Puzzles **Signature**, and `rakkibha` (ركّبها), an
+  independent preserved mechanic with its own runtime, validators and content.
+  Neither replaces the other, and Moving XO is **not** a renamed ركّبها. Neither
+  is intended to run across Anime, Football, or Video Games.
 - Scopes: the six forward Scopes approved 2026-10-06 with canonical slugs
   approved 2026-10-09 (roadmap §23.11) — `observation-illusions`,
   `wordplay-letters`, `numbers-estimation`, `assembly-rotation`, `paths-motion`
@@ -50,8 +52,18 @@ Avoid breaking the core experience of puzzles.
   **SUPERSEDED and removed**; no second Puzzles taxonomy exists. A Scope defines the
   puzzle's primary content/material domain and constrains what material belongs,
   routing, authoring boundaries, and review expectations; it never owns mechanic
-  behavior. No Puzzle World item may be authored `ready` until the
-  Rakkibha authoring/runtime contract exists.
+  behavior.
+- Authoring gate: readiness is decided per **target mechanic**, not World-wide.
+  An item may be authored `ready` once the contract for the mechanic it is
+  written for exists and its checks pass:
+  - `moving-xo` — see `ai/.opencode/knowledge/architecture/MOVING-XO.md` for the
+    contract and `ai/.opencode/validators/validate_moving_xo.py` for the checks.
+    The backend's `ContentItemCompatibilityPolicy` is the gate that actually
+    holds at READY.
+  - `rakkibha` — see `ai/.opencode/validators/RAKKIBHA.md`, unchanged.
+  The earlier blanket rule — no Puzzles item `ready` until the Rakkibha contract
+  exists — is **superseded**: that precondition is satisfied, and it never
+  applied to a mechanic Rakkibha does not own.
 
 This file supplies presentation context only. It does not own mechanic behavior
 or Content Patterns.

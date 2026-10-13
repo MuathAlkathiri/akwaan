@@ -21,6 +21,28 @@
 - `PUZZLE_ITSELF_IS_THE_CHALLENGE` — the puzzle must be self-contained in what
   the player is shown. No outside lookup, no recall dependency.
 
+## Puzzle families (Moving XO authoring)
+
+Families are authoring guidance for the Puzzles Signature mechanic. They are
+**not** a database field and carry no runtime behaviour — see
+`ai/.opencode/knowledge/architecture/MOVING-XO.md`.
+
+Every family answers on a **text-only** phone within the **15-second** window,
+while the prompt and media sit on the shared screen.
+
+| Family | Arabic | Media | Answer modes |
+|---|---|---|---|
+| `hidden-detail` | تفصيلة مخفية | required | `multiple_choice` |
+| `illusion-perception` | خداع بصري | required | `multiple_choice` |
+| `visual-count` | عدّ بصري | required | `multiple_choice` |
+
+- **`hidden-detail`** — A detail that is present and overlooked. Findable at shared-screen distance.
+  - Reject: A detail only visible by zooming or peering close.
+- **`illusion-perception`** — A perceptual effect the player names or resolves.
+  - Reject: Illusions needing an explanation longer than the answer itself.
+- **`visual-count`** — Counting a small, clearly separated set.
+  - Reject: Counts above roughly a dozen, or overlapping shapes, inside 15s.
+
 ## Safety
 
 No real-person names or likenesses, no brands, no money, body shape or weight,

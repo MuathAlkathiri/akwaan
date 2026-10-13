@@ -1,0 +1,136 @@
+{
+  "_comment": "One authored Moving XO puzzle per forward Puzzles Scope. These are contract fixtures, not a content batch: they exist so the validator and the family table are exercised against a shape an author would actually write. The twenty-one local smoke items are NOT examples of this contract.",
+  "items": [
+    {
+      "contentItemId": "moving-xo-fixture-observation",
+      "scope": "observation-illusions",
+      "family": "visual-count",
+      "compatibleChallengeTypeIds": ["moving-xo"],
+      "prompt": { "ar": "كم مثلثًا في الشكل؟" },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "https://cdn.akwaan.test/puzzles/triangles.png",
+            "altText": "شكل هندسي مكوّن من مثلثات متداخلة"
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "options": [
+          { "id": "four", "label": { "ar": "٤" } },
+          { "id": "five", "label": { "ar": "٥" } },
+          { "id": "six", "label": { "ar": "٦" } },
+          { "id": "eight", "label": { "ar": "٨" } }
+        ],
+        "correctOptionId": "five"
+      }
+    },
+    {
+      "contentItemId": "moving-xo-fixture-wordplay",
+      "scope": "wordplay-letters",
+      "family": "anagram-rearrange",
+      "compatibleChallengeTypeIds": ["moving-xo"],
+      "prompt": { "ar": "رتّب حروف «م ل ق» لتكوّن أداة كتابة." },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": ["قلم"]
+      }
+    },
+    {
+      "contentItemId": "moving-xo-fixture-numbers",
+      "scope": "numbers-estimation",
+      "family": "proportion-estimate",
+      "compatibleChallengeTypeIds": ["moving-xo"],
+      "prompt": { "ar": "أيهما أقرب إلى نصف الكوب؟" },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "https://cdn.akwaan.test/puzzles/glasses.png",
+            "altText": "أربعة أكواب بمستويات ماء مختلفة"
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "options": [
+          { "id": "a", "label": { "ar": "الكوب الأول" } },
+          { "id": "b", "label": { "ar": "الكوب الثاني" } },
+          { "id": "c", "label": { "ar": "الكوب الثالث" } },
+          { "id": "d", "label": { "ar": "الكوب الرابع" } }
+        ],
+        "correctOptionId": "c"
+      }
+    },
+    {
+      "contentItemId": "moving-xo-fixture-assembly",
+      "scope": "assembly-rotation",
+      "family": "silhouette-match",
+      "compatibleChallengeTypeIds": ["moving-xo"],
+      "prompt": { "ar": "أي ظل يطابق المجسّم المعروض؟" },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "https://cdn.akwaan.test/puzzles/silhouette.png",
+            "altText": "مجسّم وأربعة ظلال مرقّمة"
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "options": [
+          { "id": "a", "label": { "ar": "الظل أ" } },
+          { "id": "b", "label": { "ar": "الظل ب" } },
+          { "id": "c", "label": { "ar": "الظل ج" } },
+          { "id": "d", "label": { "ar": "الظل د" } }
+        ],
+        "correctOptionId": "b"
+      }
+    },
+    {
+      "contentItemId": "moving-xo-fixture-paths",
+      "scope": "paths-motion",
+      "family": "path-trace",
+      "compatibleChallengeTypeIds": ["moving-xo"],
+      "prompt": { "ar": "أي باب يصل إليه الخيط الأحمر؟" },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "https://cdn.akwaan.test/puzzles/threads.png",
+            "altText": "ثلاثة خيوط متشابكة تنتهي عند ثلاثة أبواب"
+          }
+        ]
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "options": [
+          { "id": "one", "label": { "ar": "الباب الأول" } },
+          { "id": "two", "label": { "ar": "الباب الثاني" } },
+          { "id": "three", "label": { "ar": "الباب الثالث" } }
+        ],
+        "correctOptionId": "three"
+      }
+    },
+    {
+      "contentItemId": "moving-xo-fixture-error",
+      "scope": "spot-the-error",
+      "family": "intruder-element",
+      "compatibleChallengeTypeIds": ["moving-xo"],
+      "prompt": { "ar": "ثلاثة منها تطير. أيّها الدخيل؟" },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "options": [
+          { "id": "a", "label": { "ar": "نسر" } },
+          { "id": "b", "label": { "ar": "خفاش" } },
+          { "id": "c", "label": { "ar": "نعامة" } },
+          { "id": "d", "label": { "ar": "حمامة" } }
+        ],
+        "correctOptionId": "c"
+      }
+    }
+  ]
+}

@@ -22,6 +22,28 @@
 - `PUZZLE_ITSELF_IS_THE_CHALLENGE` — the puzzle must be self-contained in what
   the player is shown. No outside lookup, no recall dependency.
 
+## Puzzle families (Moving XO authoring)
+
+Families are authoring guidance for the Puzzles Signature mechanic. They are
+**not** a database field and carry no runtime behaviour — see
+`ai/.opencode/knowledge/architecture/MOVING-XO.md`.
+
+Every family answers on a **text-only** phone within the **15-second** window,
+while the prompt and media sit on the shared screen.
+
+| Family | Arabic | Media | Answer modes |
+|---|---|---|---|
+| `anagram-rearrange` | إعادة ترتيب الحروف | none | `multiple_choice | match` |
+| `letter-operation` | عملية على الحروف | none | `multiple_choice | match` |
+| `hidden-word` | كلمة مخبأة | optional | `multiple_choice` |
+
+- **`anagram-rearrange`** — Letters of a word rearranged into another.
+  - Reject: Words whose rearrangement has more than one valid result.
+- **`letter-operation`** — Add, remove or substitute a letter to transform a word.
+  - Reject: Operations depending on an unstated spelling convention.
+- **`hidden-word`** — A word concealed inside a longer string or phrase.
+  - Reject: Strings where a second hidden word is equally defensible.
+
 ## Safety
 
 No real-person names or likenesses, no brands, no money, body shape or weight,

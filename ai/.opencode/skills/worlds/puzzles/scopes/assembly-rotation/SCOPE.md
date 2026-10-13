@@ -20,6 +20,28 @@
 - `PUZZLE_ITSELF_IS_THE_CHALLENGE` — the puzzle must be self-contained in what
   the player is shown. No outside lookup, no recall dependency.
 
+## Puzzle families (Moving XO authoring)
+
+Families are authoring guidance for the Puzzles Signature mechanic. They are
+**not** a database field and carry no runtime behaviour — see
+`ai/.opencode/knowledge/architecture/MOVING-XO.md`.
+
+Every family answers on a **text-only** phone within the **15-second** window,
+while the prompt and media sit on the shared screen.
+
+| Family | Arabic | Media | Answer modes |
+|---|---|---|---|
+| `net-fold` | طيّ وشبكات | required | `multiple_choice` |
+| `silhouette-match` | مطابقة الظل | required | `multiple_choice` |
+| `view-projection` | إسقاط ومنظور | required | `multiple_choice` |
+
+- **`net-fold`** — A net folded, or a solid unfolded, in the player's head.
+  - Reject: Nets complex enough to need physical rotation to verify.
+- **`silhouette-match`** — Matching an object to its silhouette or projection.
+  - Reject: Answers that can only be expressed as pictures.
+- **`view-projection`** — Identifying another view of the same object.
+  - Reject: Views requiring measurement rather than recognition.
+
 ## Safety
 
 No real-person names or likenesses, no brands, no money, body shape or weight,

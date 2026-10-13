@@ -155,6 +155,52 @@ export const COMBO_SLUG = 'combo';
 
 export const BOMB_SLUG = 'bomb';
 
+/** Puzzles Signature: a 3×3 board played through fresh puzzles on demand. */
+export const MOVING_XO_SLUG = 'moving-xo';
+
+/**
+ * The answer modes Moving XO content may be authored in (§23.11 V1).
+ *
+ * The mechanic needs a binary verdict from the item — correct earns one board
+ * move, wrong earns none — and only these two modes give one through a phone
+ * that shows answer controls and nothing else. `closest` is an estimate and is
+ * deliberately absent.
+ *
+ * `feat/puzzles-moving-xo` states the same pair a second way, as
+ * `ANSWER_MODE_COMPATIBLE_ITEM_MODES[ChallengeAnswerMode.MOVING_XO]`. That
+ * entry cannot live here yet: the enum member it keys on would let an admin
+ * configure a mechanic `main` has no runtime for. When that branch lands, the
+ * two must be asserted equal — a silent widening on one side is exactly the
+ * drift two spellings of one rule invite.
+ */
+export const MOVING_XO_AUTHORING_ANSWER_MODES = [
+  'match',
+  'multiple_choice',
+] as const;
+
+/**
+ * The six forward Puzzles Scope slugs (roadmap §23.11, approved 2026-10-09).
+ * The nine legacy Scopes are retired and may not carry Moving XO content.
+ */
+export const FORWARD_PUZZLE_SCOPE_SLUGS = [
+  'observation-illusions',
+  'wordplay-letters',
+  'numbers-estimation',
+  'assembly-rotation',
+  'paths-motion',
+  'spot-the-error',
+] as const;
+
+/**
+ * Scopes whose own boundary makes the image the puzzle, so a resolved asset is
+ * required before READY. The mixed Scopes stay family-led and review-enforced.
+ */
+export const VISUAL_PUZZLE_SCOPE_SLUGS = [
+  'observation-illusions',
+  'assembly-rotation',
+  'paths-motion',
+] as const;
+
 export const MARHALA_SLUG = 'marhala';
 /** Cars Signature: القطعة الدخيلة. */
 export const ODD_PIECE_SLUG = 'odd-piece';
