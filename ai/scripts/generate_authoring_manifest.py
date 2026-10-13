@@ -4,7 +4,8 @@ import sys
 
 # The canonical catalog is derived from GAME_NEW_SYSTEM_ROADMAP.md
 # and docs/WORLD_CONTENT_EXPANSION_PLAN.md.
-# 49 baseline + 12 expansion + 1 pre-existing (shapes-patterns) = 62 Scopes.
+# Scope counts moved when Puzzles was replaced by its six forward Scopes
+# (roadmap §23.11, 2026-10-09): the legacy nine-Scope Puzzles taxonomy is gone.
 
 CANONICAL_WORLDS = {
     "anime": ["attack-on-titan", "bleach", "naruto", "one-piece", "demon-slayer", "dragon-ball", "jujutsu-kaisen"],
@@ -13,7 +14,10 @@ CANONICAL_WORLDS = {
     "general-knowledge": ["history", "human-body-nature", "inventions-discoveries", "science"],
     "movies": ["disney-pixar", "harry-potter", "marvel", "movies-mix"],
     "music": ["arabic-music", "gulf-music", "international-music", "saudi-music"],
-    "puzzles": ["general-knowledge", "letters-words", "logic-deduction", "numbers-arithmetic", "symbols-codes", "shapes-patterns", "patterns-sequences", "lateral-thinking", "visual-puzzles"],
+    # Puzzles: the six forward Scopes (roadmap §23.11, slugs approved 2026-10-09).
+    # The earlier nine-Scope set is SUPERSEDED and removed; there is no second
+    # Puzzles taxonomy.
+    "puzzles": ["observation-illusions", "wordplay-letters", "numbers-estimation", "assembly-rotation", "paths-motion", "spot-the-error"],
     "saudi-arabia": ["cities-landmarks", "culture-heritage", "saudi-history", "saudi-today"],
     "series": ["breaking-bad", "from", "game-of-thrones", "series-mix"],
     "sports": ["formula-1", "nba", "ufc", "wwe"],

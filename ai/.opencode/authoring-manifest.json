@@ -170,15 +170,12 @@
     "puzzles": {
       "profile": "ai/.opencode/skills/worlds/puzzles/WORLD.md",
       "scopes": [
-        "general-knowledge",
-        "lateral-thinking",
-        "letters-words",
-        "logic-deduction",
-        "numbers-arithmetic",
-        "patterns-sequences",
-        "shapes-patterns",
-        "symbols-codes",
-        "visual-puzzles"
+        "assembly-rotation",
+        "numbers-estimation",
+        "observation-illusions",
+        "paths-motion",
+        "spot-the-error",
+        "wordplay-letters"
       ]
     },
     "saudi-arabia": {
@@ -411,59 +408,41 @@
       "knowledgePath": "ai/.opencode/skills/worlds/music/scopes/saudi-music/KNOWLEDGE.md",
       "exemplarsPath": "ai/.opencode/skills/worlds/music/scopes/saudi-music/EXEMPLARS.md"
     },
-    "puzzles/general-knowledge": {
+    "puzzles/observation-illusions": {
       "world": "puzzles",
-      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/general-knowledge/SCOPE.md",
-      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/general-knowledge/KNOWLEDGE.md",
-      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/general-knowledge/EXEMPLARS.md"
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/observation-illusions/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/observation-illusions/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/observation-illusions/EXEMPLARS.md"
     },
-    "puzzles/letters-words": {
+    "puzzles/wordplay-letters": {
       "world": "puzzles",
-      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/letters-words/SCOPE.md",
-      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/letters-words/KNOWLEDGE.md",
-      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/letters-words/EXEMPLARS.md"
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/wordplay-letters/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/wordplay-letters/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/wordplay-letters/EXEMPLARS.md"
     },
-    "puzzles/logic-deduction": {
+    "puzzles/numbers-estimation": {
       "world": "puzzles",
-      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/logic-deduction/SCOPE.md",
-      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/logic-deduction/KNOWLEDGE.md",
-      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/logic-deduction/EXEMPLARS.md"
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/numbers-estimation/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/numbers-estimation/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/numbers-estimation/EXEMPLARS.md"
     },
-    "puzzles/numbers-arithmetic": {
+    "puzzles/assembly-rotation": {
       "world": "puzzles",
-      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/numbers-arithmetic/SCOPE.md",
-      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/numbers-arithmetic/KNOWLEDGE.md",
-      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/numbers-arithmetic/EXEMPLARS.md"
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/assembly-rotation/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/assembly-rotation/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/assembly-rotation/EXEMPLARS.md"
     },
-    "puzzles/symbols-codes": {
+    "puzzles/paths-motion": {
       "world": "puzzles",
-      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/symbols-codes/SCOPE.md",
-      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/symbols-codes/KNOWLEDGE.md",
-      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/symbols-codes/EXEMPLARS.md"
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/paths-motion/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/paths-motion/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/paths-motion/EXEMPLARS.md"
     },
-    "puzzles/shapes-patterns": {
+    "puzzles/spot-the-error": {
       "world": "puzzles",
-      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/shapes-patterns/SCOPE.md",
-      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/shapes-patterns/KNOWLEDGE.md",
-      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/shapes-patterns/EXEMPLARS.md"
-    },
-    "puzzles/patterns-sequences": {
-      "world": "puzzles",
-      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/patterns-sequences/SCOPE.md",
-      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/patterns-sequences/KNOWLEDGE.md",
-      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/patterns-sequences/EXEMPLARS.md"
-    },
-    "puzzles/lateral-thinking": {
-      "world": "puzzles",
-      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/lateral-thinking/SCOPE.md",
-      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/lateral-thinking/KNOWLEDGE.md",
-      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/lateral-thinking/EXEMPLARS.md"
-    },
-    "puzzles/visual-puzzles": {
-      "world": "puzzles",
-      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/visual-puzzles/SCOPE.md",
-      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/visual-puzzles/KNOWLEDGE.md",
-      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/visual-puzzles/EXEMPLARS.md"
+      "scopePath": "ai/.opencode/skills/worlds/puzzles/scopes/spot-the-error/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/puzzles/scopes/spot-the-error/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/puzzles/scopes/spot-the-error/EXEMPLARS.md"
     },
     "saudi-arabia/cities-landmarks": {
       "world": "saudi-arabia",

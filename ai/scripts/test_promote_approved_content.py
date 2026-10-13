@@ -196,7 +196,13 @@ class TestAllowlistExcludesMarhala(unittest.TestCase):
     def test_no_milestone_names_an_excluded_scope(self):
         allowed = {s for m in promoter.MILESTONES.values() for s in m.scope_slugs}
         # Genuinely unrelated scopes are still named by no milestone.
+        # Puzzles has no promotion milestone yet: neither the superseded legacy
+        # taxonomy nor the six forward Scopes may be promoted through one.
         for excluded in ("patterns-sequences", "lateral-thinking", "visual-puzzles",
+                         "numbers-arithmetic", "letters-words", "symbols-codes",
+                         "observation-illusions", "wordplay-letters",
+                         "numbers-estimation", "assembly-rotation",
+                         "paths-motion", "spot-the-error",
                          "naruto", "one-piece"):
             self.assertNotIn(excluded, allowed)
         # The Video Games scopes are now allowed — but ONLY through the explicit
