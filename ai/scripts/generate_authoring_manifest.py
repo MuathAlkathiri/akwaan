@@ -35,6 +35,10 @@ manifest = {
         
         "top-5": {"category": "SIGNATURE", "boundWorld": "football", "status": "AUTHORABLE", "profile": "ai/.opencode/skills/challenge-types/top-5/SKILL.md"},
         "distributed-information": {"category": "SIGNATURE", "boundWorld": "puzzles", "status": "AUTHORABLE", "profile": "ai/.opencode/skills/challenge-types/distributed-information/SKILL.md", "aliases": ["rakkibha"]},
+        # Puzzles Signature (roadmap §23.11). Registering it makes the mechanic
+        # AUTHORABLE; source integration alone does not provision or activate a
+        # runtime ChallengeType.
+        "moving-xo": {"category": "SIGNATURE", "boundWorld": "puzzles", "status": "AUTHORABLE", "profile": "ai/.opencode/skills/challenge-types/moving-xo/SKILL.md"},
         "odd-piece": {"category": "SIGNATURE", "boundWorld": "cars", "status": "AUTHORABLE", "profile": "ai/.opencode/skills/challenge-types/odd-piece/SKILL.md", "aliases": ["intruder-part", "intruder"]},
         "first-note": {"category": "SIGNATURE", "boundWorld": "music", "status": "AUTHORABLE", "profile": "ai/.opencode/skills/challenge-types/first-note/SKILL.md", "aliases": ["first_note"]},
         "laqatha": {"category": "SIGNATURE", "boundWorld": "movies", "status": "AUTHORABLE", "profile": "ai/.opencode/skills/challenge-types/laqatha/SKILL.md"},

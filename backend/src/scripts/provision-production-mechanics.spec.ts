@@ -1,9 +1,13 @@
 import { SCORING_RULE_IDS } from '../modules/scoring/domain/scoring-rule';
 import {
+  ANSWER_MODE_COMPATIBLE_ITEM_MODES,
   ChallengeAnswerMode,
   ChallengeFamily,
   ChallengeItemStructure,
+  MOVING_XO_SLUG,
+  contentPatternForChallengeAnswerMode,
 } from '../modules/world-content/domain/world-content.constants';
+import { MOVING_XO_MODE_KEY } from '../modules/live-game-sessions/domain/moving-xo-board';
 import { ChallengeTypePolicy } from '../modules/world-content/domain/challenge-type.policy';
 import {
   PRODUCTION_MECHANICS,
@@ -16,12 +20,12 @@ import {
 import { ChallengePresentationPolicy } from '../modules/world-content/domain/challenge-presentation.policy';
 import { ScoringRuleRegistry } from '../modules/scoring/application/scoring-rule.registry';
 
-describe('production mechanic provisioning', () => {
-  const policy = new ChallengeTypePolicy(
-    new ChallengePresentationPolicy(),
-    new ScoringRuleRegistry(),
-  );
+const policy = new ChallengeTypePolicy(
+  new ChallengePresentationPolicy(),
+  new ScoringRuleRegistry(),
+);
 
+describe('production mechanic provisioning', () => {
   it.each(PRODUCTION_MECHANICS.map((entry) => [entry.slug, entry] as const))(
     'provisions %s with its runtime identity and generic Match rule',
     (_slug, definition) => {
@@ -144,6 +148,26 @@ describe('scoped provisioning', () => {
     expect(insertOne.mock.calls[0][0]).toMatchObject({ slug: 'combo' });
   });
 
+  it('recognizes Moving XO as a scoped canonical mechanic', async () => {
+    const { db, insertOne } = dbWith([]);
+    const report = await new ProductionMechanicProvisioner(db, true, [
+      MOVING_XO_SLUG,
+    ]).run();
+
+    expect(report.only).toEqual([MOVING_XO_SLUG]);
+    expect(report.entries).toEqual([
+      expect.objectContaining({
+        slug: MOVING_XO_SLUG,
+        outcome: 'create',
+      }),
+    ]);
+    expect(insertOne).toHaveBeenCalledTimes(1);
+    expect(insertOne.mock.calls[0][0]).toMatchObject({
+      slug: MOVING_XO_SLUG,
+      answerMode: ChallengeAnswerMode.MOVING_XO,
+    });
+  });
+
   it('is idempotent — a second scoped run reports unchanged and writes nothing', async () => {
     const definition = PRODUCTION_MECHANICS.find(
       (entry) => entry.slug === 'combo',
@@ -210,5 +234,46 @@ describe('canonical Bomb identity', () => {
 
   it('is named for players in Arabic', () => {
     expect(bomb().seed.name).toBe('القنبلة');
+  });
+});
+
+describe('canonical Moving XO identity', () => {
+  const movingXo = () =>
+    PRODUCTION_MECHANICS.find((entry) => entry.slug === MOVING_XO_SLUG)!;
+
+  it('uses the implemented runtime key as a continuous Signature mechanic', () => {
+    expect(movingXo()).toMatchObject({
+      slug: MOVING_XO_MODE_KEY,
+      runtimeKey: MOVING_XO_MODE_KEY,
+      family: ChallengeFamily.SIGNATURE,
+      itemStructure: ChallengeItemStructure.CONTINUOUS,
+      answerMode: ChallengeAnswerMode.MOVING_XO,
+    });
+  });
+
+  it('consumes exactly generic match and multiple-choice content', () => {
+    expect(
+      ANSWER_MODE_COMPATIBLE_ITEM_MODES[ChallengeAnswerMode.MOVING_XO],
+    ).toEqual([ChallengeAnswerMode.MATCH, ChallengeAnswerMode.MULTIPLE_CHOICE]);
+    expect(
+      ANSWER_MODE_COMPATIBLE_ITEM_MODES[ChallengeAnswerMode.MOVING_XO],
+    ).not.toContain(ChallengeAnswerMode.CLOSEST);
+    expect(
+      contentPatternForChallengeAnswerMode(ChallengeAnswerMode.MOVING_XO),
+    ).toBe('generic');
+  });
+
+  it('produces a canonical payload accepted by ChallengeType policy', () => {
+    const created = canonicalProvisionedDocument(movingXo());
+    expect(created).toMatchObject({
+      slug: MOVING_XO_MODE_KEY,
+      family: ChallengeFamily.SIGNATURE,
+      itemStructure: ChallengeItemStructure.CONTINUOUS,
+      answerMode: ChallengeAnswerMode.MOVING_XO,
+      scoringRuleId: SCORING_RULE_IDS.CHALLENGE_WIN,
+    });
+    expect(policy.validate({ ...created, id: 'moving-xo' } as never)).toEqual(
+      [],
+    );
   });
 });

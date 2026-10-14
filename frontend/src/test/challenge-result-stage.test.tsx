@@ -382,9 +382,7 @@ describe("Top 5 ownership reveal", () => {
     render(<Top5ResultReveal result={result} snapshot={snapshot} />);
     const ranked = screen.getAllByTestId(/^top5-field-real-/);
     // Ranked 1..5 in order, regardless of the reveal order.
-    expect(
-      ranked.map((node) => node.getAttribute("data-testid")),
-    ).toEqual([
+    expect(ranked.map((node) => node.getAttribute("data-testid"))).toEqual([
       "top5-field-real-1",
       "top5-field-real-2",
       "top5-field-real-3",
@@ -521,6 +519,29 @@ describe("RYO result recap", () => {
     expect(second.textContent).toContain("خطأ");
     expect(screen.getByTestId("ryo-result-winner").textContent).toContain(
       "صقور الرياض",
+    );
+  });
+});
+
+describe("Moving XO result recap", () => {
+  it("preserves the authoritative no-winner exhaustion result", () => {
+    renderRouter(
+      match({
+        challengeResult: top5Result({
+          challengeKey: "moving-xo",
+          challengeName: "Moving XO",
+          winnerTeamId: null,
+          tie: true,
+          matchPoints: [
+            { teamId: TEAM_A, points: 0 },
+            { teamId: TEAM_B, points: 0 },
+          ],
+          details: { endedBy: "content-exhausted" },
+        }),
+      }),
+    );
+    expect(screen.getByTestId("moving-xo-result-recap")).toHaveTextContent(
+      "انتهت الألغاز المتاحة لهذا التحدي، وتنتهي الجولة بدون فائز.",
     );
   });
 });

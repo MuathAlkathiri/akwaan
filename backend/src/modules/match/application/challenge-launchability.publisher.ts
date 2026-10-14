@@ -23,8 +23,10 @@ export class ChallengeLaunchabilityPublisher implements OnModuleInit {
     this.launchability.publish((challengeTypeSlug) =>
       Boolean(this.launchers.find({ challengeTypeSlug })),
     );
-    // The same registry answers how much content a slot needs, so the activation
-    // gate and the launch that would later refuse the World read one number.
+    // Global World readiness sees only the deck requirement. An account-specific
+    // on-demand inventory floor belongs to launch selection, where owner history
+    // and live reservations exist; publishing it here would disable a World for
+    // everyone because one account exhausted its own pool.
     this.launchability.publishContentRequirement(
       (challengeTypeSlug) =>
         this.launchers.find({ challengeTypeSlug })?.launchRequirements

@@ -68,6 +68,7 @@ const DEADLINE_CONTRACT: Record<
   ekshifni: { kind: 'runtime-state' },
   // The dish window itself: thirty seconds of choosing, armed at Fair-Start.
   'la-tahriqha': { kind: 'runtime-state' },
+  'moving-xo': { kind: 'runtime-state' },
 };
 
 /** A live runtime carrying whatever the mechanic uses to express a deadline. */
@@ -415,5 +416,102 @@ describe('production lifecycle hooks arm deadlines without being asked to', () =
         ),
       );
     expect(offenders).toEqual([]);
+  });
+});
+
+/**
+ * Phase-aware expiry.
+ *
+ * `commandTypeByPhase` was added so one mechanic can own more than one window
+ * without a second scheduler. These assert both halves: the extension works for
+ * the mechanic that uses it, and every mechanic that does not is untouched.
+ */
+describe('a mechanic may own more than one deadline window', () => {
+  const modes = new GameplayModeRegistry();
+  const movingXo = modes
+    .all()
+    .find((plugin) => plugin.key === 'moving-xo') as GameplayModePlugin;
+
+  function runtimeInPhase(phase: string): GameplayRuntimeState {
+    return {
+      ...liveRuntime(movingXo, 'runtime-state'),
+      runtimeState: { phase, deadlineAt: DEADLINE },
+    } as GameplayRuntimeState;
+  }
+
+  it('arms the question command while answering', () => {
+    expect(
+      pendingDeadline(
+        runtimeInPhase('answering'),
+        movingXo.deadline,
+        undefined,
+      ),
+    ).toMatchObject({ commandType: 'expire-moving-xo-question' });
+  });
+
+  it('arms the placement command while placing', () => {
+    expect(
+      pendingDeadline(
+        runtimeInPhase('placement'),
+        movingXo.deadline,
+        undefined,
+      ),
+    ).toMatchObject({ commandType: 'expire-moving-xo-placement' });
+  });
+
+  it('arms nothing while the turn is waiting for its puzzle', () => {
+    // An on-demand mechanic between turns owes content and runs no clock. A
+    // deadline armed here would expire a question that does not exist yet.
+    expect(
+      pendingDeadline(
+        runtimeInPhase('question-pending'),
+        movingXo.deadline,
+        undefined,
+      ),
+    ).toBeUndefined();
+  });
+
+  it('arms nothing once the challenge is over', () => {
+    expect(
+      pendingDeadline(
+        runtimeInPhase('completed'),
+        movingXo.deadline,
+        undefined,
+      ),
+    ).toBeUndefined();
+  });
+
+  it('keys the two windows apart so one cannot cancel the other', () => {
+    const answering = pendingDeadline(
+      runtimeInPhase('answering'),
+      movingXo.deadline,
+      undefined,
+    );
+    const placing = pendingDeadline(
+      runtimeInPhase('placement'),
+      movingXo.deadline,
+      undefined,
+    );
+    expect(answering?.key).not.toBe(placing?.key);
+  });
+
+  it('leaves single-window mechanics exactly as they were', () => {
+    for (const plugin of modes.all()) {
+      if (plugin.key === 'moving-xo') continue;
+      const declaration = plugin.deadline;
+      if (declaration?.source !== 'runtime-state') continue;
+      // No other mechanic declares a per-phase map, so each still arms its one
+      // command in its one set of phases.
+      expect(declaration.commandTypeByPhase).toBeUndefined();
+      const armed = pendingDeadline(
+        liveRuntime(plugin, 'runtime-state'),
+        declaration,
+        undefined,
+      );
+      expect(armed?.kind).toBe('mode-command');
+      expect(
+        armed && armed.kind === 'mode-command' ? armed.commandType : undefined,
+      ).toBe(declaration.commandType);
+    }
   });
 });

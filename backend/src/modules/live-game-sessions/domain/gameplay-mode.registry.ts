@@ -17,6 +17,7 @@ import { LAQATHA_GAMEPLAY_PLUGIN } from './laqatha-gameplay.plugin';
 import { FIRST_NOTE_GAMEPLAY_PLUGIN } from './first-note-gameplay.plugin';
 import { EKSHIFNI_GAMEPLAY_PLUGIN } from './ekshifni-gameplay.plugin';
 import { LA_TAHRIQHA_GAMEPLAY_PLUGIN } from './la-tahriqha-gameplay.plugin';
+import { MOVING_XO_GAMEPLAY_PLUGIN } from './moving-xo-gameplay.plugin';
 
 @Injectable()
 export class GameplayModeRegistry {
@@ -109,6 +110,13 @@ export class GameplayModeRegistry {
         LA_TAHRIQHA_GAMEPLAY_PLUGIN.version,
       ),
       LA_TAHRIQHA_GAMEPLAY_PLUGIN,
+    ],
+    [
+      this.registryKey(
+        MOVING_XO_GAMEPLAY_PLUGIN.key,
+        MOVING_XO_GAMEPLAY_PLUGIN.version,
+      ),
+      MOVING_XO_GAMEPLAY_PLUGIN,
     ],
   ]);
 

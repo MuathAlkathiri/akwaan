@@ -1,12 +1,17 @@
 import { ContentItemRepository } from '../../world-content/persistence/content-item.repository';
-import { ChallengeAnswerMode } from '../../world-content/domain/world-content.constants';
-import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.constants';
+import {
+  ChallengeAnswerMode,
+  ContentItemStatus,
+  WorldChallengeSlotKey,
+} from '../../world-content/domain/world-content.constants';
 import { MatchChallengeLaunchRequirements } from './challenge-launcher.registry';
 import { MatchContentSelector } from './match-content-selection.service';
+import { MatchDomainError } from '../domain/match.errors';
 import {
   ContentExposureService,
   MatchContentExhaustedError,
 } from './content-exposure.service';
+import { isMovingXoPlayableItem } from './moving-xo-content.policy';
 
 const ANIME = 'world-anime';
 const MATCH_ID = 'match-1';
@@ -61,13 +66,20 @@ function selector(items: FakeItem[]) {
   // No account history in these tests: exposure is covered by its own suites, and
   // a pass-through keeps every assertion here about the draw itself.
   return {
-    selector: new MatchContentSelector(repository, {
-      selectable: (_scope: unknown, ids: string[]) => Promise.resolve(ids),
-      reserve: (_scope: unknown, ids: string[]) =>
-        Promise.resolve({ claimed: ids, lost: [] }),
-      recordPresented: () => Promise.resolve(0),
-      releaseUnseen: () => Promise.resolve(0),
-    } as unknown as ContentExposureService),
+    selector: new MatchContentSelector(
+      repository,
+      {
+        selectable: (_scope: unknown, ids: string[]) => Promise.resolve(ids),
+        reserve: (_scope: unknown, ids: string[]) =>
+          Promise.resolve({ claimed: ids, lost: [] }),
+        recordPresented: () => Promise.resolve(0),
+        releaseUnseen: () => Promise.resolve(0),
+      } as unknown as ContentExposureService,
+      {
+        findByIds: (ids: string[]) =>
+          Promise.resolve(ids.map((id) => ({ _id: id, slug: id }))),
+      } as never,
+    ),
     queries,
   };
 }
@@ -579,10 +591,14 @@ describe('content already seen by the account', () => {
     const repository = {
       listPlayableForOccurrence: () => Promise.resolve(items),
     } as unknown as ContentItemRepository;
-    return new MatchContentSelector(repository, {
-      selectable: (_scope: unknown, ids: string[]) =>
-        Promise.resolve(ids.filter((id) => !seen.includes(id))),
-    } as unknown as ContentExposureService);
+    return new MatchContentSelector(
+      repository,
+      {
+        selectable: (_scope: unknown, ids: string[]) =>
+          Promise.resolve(ids.filter((id) => !seen.includes(id))),
+      } as unknown as ContentExposureService,
+      { findByIds: () => Promise.resolve([]) } as never,
+    );
   };
 
   const draw = (target: MatchContentSelector) =>
@@ -659,5 +675,152 @@ describe('content already seen by the account', () => {
         usedContentItemIds: [],
       }),
     ).resolves.toHaveLength(3);
+  });
+});
+
+describe('Moving XO usable inventory gate', () => {
+  const movingItem = (id: string, overrides: Record<string, unknown> = {}) => ({
+    _id: id,
+    worldId: ANIME,
+    scopeId: 'scope-1',
+    status: ContentItemStatus.READY,
+    compatibleChallengeTypeIds: ['moving-xo-type'],
+    prompt: { ar: `لغز ${id}` },
+    answerPayload: { mode: 'match', acceptedAnswers: ['جواب'] },
+    ...overrides,
+  });
+
+  const gate = (
+    items: Array<Record<string, unknown>>,
+    blocked: string[] = [],
+    minimumUsableContentItems = 24,
+  ) => {
+    const repository = {
+      listPlayableForOccurrence: (query: {
+        worldId: string;
+        scopeIds: string[];
+        challengeTypeId: string;
+      }) =>
+        Promise.resolve(
+          items.filter(
+            (entry) =>
+              entry.worldId === query.worldId &&
+              query.scopeIds.includes(String(entry.scopeId)) &&
+              entry.status === ContentItemStatus.READY &&
+              (entry.compatibleChallengeTypeIds as string[]).includes(
+                query.challengeTypeId,
+              ),
+          ),
+        ),
+    } as unknown as ContentItemRepository;
+    const target = new MatchContentSelector(
+      repository,
+      {
+        selectable: (_scope: unknown, ids: string[]) =>
+          Promise.resolve(ids.filter((id) => !blocked.includes(id))),
+      } as unknown as ContentExposureService,
+      {
+        findByIds: () =>
+          Promise.resolve([{ _id: 'scope-1', slug: 'wordplay-letters' }]),
+      } as never,
+    );
+    return target.select({
+      matchId: MATCH_ID,
+      occurrenceIndex: 0,
+      worldId: ANIME,
+      selectedScopeIds: ['scope-1'],
+      slotKey: WorldChallengeSlotKey.SLOT_1,
+      challengeTypeId: 'moving-xo-type',
+      requirements: {
+        contentItemCount: 0,
+        minimumUsableContentItems,
+        requiresPhones: true,
+        isPlayableItem: isMovingXoPlayableItem,
+      },
+      usedContentItemIds: [],
+      exposureScope: {
+        ownerAccountId: 'account-a',
+        challengeTypeKey: 'moving-xo',
+        matchId: MATCH_ID,
+      },
+    });
+  };
+
+  it('passes at exactly 24 usable items without selecting a launch deck', async () => {
+    const items = Array.from({ length: 24 }, (_, index) =>
+      movingItem(`i${index}`),
+    );
+    await expect(gate(items)).resolves.toEqual([]);
+  });
+
+  it('blocks at 23 and honors a configured lower threshold', async () => {
+    const items = Array.from({ length: 23 }, (_, index) =>
+      movingItem(`i${index}`),
+    );
+    await expect(gate(items)).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'MATCH_INSUFFICIENT_PLAYABLE_CONTENT',
+      }),
+    });
+    await expect(gate(items, [], 12)).resolves.toEqual([]);
+  });
+
+  it('counts valid match and multiple-choice items but rejects malformed modes', async () => {
+    const valid = Array.from({ length: 12 }, (_, index) =>
+      movingItem(`match-${index}`),
+    );
+    valid.push(
+      ...Array.from({ length: 12 }, (_, index) =>
+        movingItem(`choice-${index}`, {
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: 'a', label: { ar: 'أ' } },
+              { id: 'b', label: { ar: 'ب' } },
+            ],
+            correctOptionId: 'a',
+          },
+        }),
+      ),
+    );
+    expect(await gate(valid)).toEqual([]);
+    await expect(
+      gate([
+        ...valid.slice(0, 18),
+        ...Array.from({ length: 12 }, (_, index) =>
+          movingItem(`bad-${index}`, {
+            answerPayload: { mode: 'closest' },
+          }),
+        ),
+      ]),
+    ).rejects.toBeInstanceOf(MatchDomainError);
+  });
+
+  it('applies account exposure and live reservations to the floor', async () => {
+    const items = Array.from({ length: 30 }, (_, index) =>
+      movingItem(`i${index}`),
+    );
+    await expect(
+      gate(
+        items,
+        items.slice(0, 7).map((entry) => String(entry._id)),
+      ),
+    ).rejects.toBeInstanceOf(MatchContentExhaustedError);
+  });
+
+  it('does not count wrong-Scope, wrong-mechanic, or non-READY rows', async () => {
+    const usable = Array.from({ length: 21 }, (_, index) =>
+      movingItem(`valid-${index}`),
+    );
+    const noise = [
+      movingItem('wrong-scope', { scopeId: 'scope-2' }),
+      movingItem('wrong-mechanic', {
+        compatibleChallengeTypeIds: ['another-type'],
+      }),
+      movingItem('draft', { status: ContentItemStatus.DRAFT }),
+    ];
+    await expect(gate([...usable, ...noise])).rejects.toBeInstanceOf(
+      MatchDomainError,
+    );
   });
 });

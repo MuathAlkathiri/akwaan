@@ -28,6 +28,7 @@ import { LaTahriqhaResultRecap } from "./la-tahriqha-result-recap";
 import { FirstNoteResultRecap } from "./first-note-result-recap";
 import { BombResultRecap } from "./bomb-result-recap";
 import { RakkibhaResultRecap } from "./rakkibha-result-recap";
+import { MovingXoResultRecap } from "./moving-xo-result-recap";
 import type { MatchActor, MatchChallengeResult } from "../types";
 
 /**
@@ -184,6 +185,8 @@ function ChallengeResultBody({ result }: { result: MatchChallengeResult }) {
       return <BombResultRecap result={result} snapshot={snapshot} />;
     case "rakkibha":
       return <RakkibhaResultRecap result={result} snapshot={snapshot} />;
+    case "moving-xo":
+      return <MovingXoResultRecap result={result} snapshot={snapshot} />;
     case "top-5":
       return <Top5ResultReveal result={result} snapshot={snapshot} />;
     case "read-your-opponent":

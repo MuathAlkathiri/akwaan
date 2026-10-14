@@ -187,6 +187,29 @@ export class ContentExposureRepository {
     return result.deletedCount ?? 0;
   }
 
+  /** Release only these unseen claims owned by this exact Match/mechanic. */
+  async releaseReservedItems(
+    key: ContentExposureKey,
+    matchId: string,
+    contentItemIds: string[],
+    session?: ClientSession,
+  ): Promise<number> {
+    if (!contentItemIds.length) return 0;
+    const result = await this.model
+      .deleteMany(
+        {
+          ownerAccountId: key.ownerAccountId,
+          challengeTypeKey: key.challengeTypeKey,
+          matchId,
+          state: 'reserved',
+          contentItemId: { $in: contentItemIds },
+        },
+        session ? { session } : {},
+      )
+      .exec();
+    return result.deletedCount ?? 0;
+  }
+
   /** Test and diagnostic read; never used by selection. */
   async listForOwner(
     key: ContentExposureKey,

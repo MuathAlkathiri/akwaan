@@ -24,6 +24,10 @@ import {
   LA_TAHRIQHA_SLUG,
   ONE_CLUE_VALUES,
   LAQATHA_SLUG,
+  MOVING_XO_SLUG,
+  MOVING_XO_AUTHORING_ANSWER_MODES,
+  FORWARD_PUZZLE_SCOPE_SLUGS,
+  VISUAL_PUZZLE_SCOPE_SLUGS,
   LAQATHA_VALUES,
   FIRST_NOTE_SLUG,
   VoteConsensusRule,
@@ -136,6 +140,7 @@ export class ContentItemCompatibilityPolicy {
     blockers.push(...this.validateOddPiecePayload(input.item, referenced));
     blockers.push(...this.validateEkshifniPayload(input.item, referenced));
     blockers.push(...this.validateLaTahriqhaPayload(input.item, referenced));
+    blockers.push(...this.validateMovingXoContent(input, referenced));
     warnings.push(...this.reuseWarnings(input.item, referenced));
 
     return buildReadinessReport(blockers, warnings);
@@ -1346,6 +1351,98 @@ export class ContentItemCompatibilityPolicy {
         );
       }
     }
+    return issues;
+  }
+  /**
+   * Moving XO plays an ordinary ContentItem — no `mechanicPayload`, no bespoke
+   * schema. What it does have is a set of surface constraints that make some
+   * otherwise-valid items unplayable. The runtime rejects and recovers from a
+   * stale invalid row defensively, but the refusal still belongs here, at READY,
+   * where an author can fix it before it distorts launch inventory.
+   *
+   * Scoped to items actually compatible with the mechanic. An item that no
+   * Moving XO ChallengeType references is none of this method's business.
+   */
+  private validateMovingXoContent(
+    input: ContentItemCompatibilityInput,
+    challengeTypes: ChallengeTypeView[],
+  ): WorldContentIssue[] {
+    if (!challengeTypes.some((type) => type.slug === MOVING_XO_SLUG)) return [];
+    const item = input.item;
+    const issues: WorldContentIssue[] = [];
+    const mode = item.answerPayload?.mode;
+
+    // The draw only ever asks the item for a binary verdict, and only two modes
+    // can give it one through a phone showing answer controls alone.
+    if (
+      !(MOVING_XO_AUTHORING_ANSWER_MODES as readonly string[]).includes(
+        mode as string,
+      )
+    ) {
+      issues.push(
+        issue(
+          'MOVING_XO_ANSWER_MODE_UNSUPPORTED',
+          `Moving XO content must be ${MOVING_XO_AUTHORING_ANSWER_MODES.join(' or ')}`,
+          { contentItemId: item.id, answerMode: mode ?? null },
+        ),
+      );
+    } else if (mode === ChallengeAnswerMode.MATCH) {
+      // `normalizeAnswer` folds the alef family, ة/ه, ى/ي, diacritics and a
+      // leading ال — but not digits. ٧ and 7 stay different strings, so a
+      // player typing the numeral their keyboard offers loses the turn on a
+      // correct answer. Numbers belong in multiple_choice; this is an authoring
+      // rule, not a normalizer change, because the normalizer is shared by
+      // every mechanic and is not Moving XO's to widen.
+      const numeric = item.answerPayload.acceptedAnswers?.filter((answer) =>
+        /\p{Nd}/u.test(answer ?? ''),
+      );
+      if (numeric?.length) {
+        issues.push(
+          issue(
+            'MOVING_XO_MATCH_ANSWER_NUMERIC',
+            'Moving XO match answers cannot contain digits, which the Arabic normalizer does not fold — use multiple_choice',
+            { contentItemId: item.id, acceptedAnswers: numeric },
+          ),
+        );
+      }
+    }
+
+    const slug = input.scope?.slug;
+    // A missing Scope is already CONTENT_SCOPE_MISSING; nothing to add here.
+    if (!slug) return issues;
+
+    if (!(FORWARD_PUZZLE_SCOPE_SLUGS as readonly string[]).includes(slug)) {
+      issues.push(
+        issue(
+          'MOVING_XO_SCOPE_NOT_FORWARD',
+          `Moving XO content must sit on a forward Puzzles Scope (${FORWARD_PUZZLE_SCOPE_SLUGS.join(', ')})`,
+          { contentItemId: item.id, scopeId: input.scope?.id, scopeSlug: slug },
+        ),
+      );
+    }
+
+    // Three Scopes are definitionally visual: their own boundary says the image
+    // *is* the puzzle. A declared media type with an empty asset list is intent,
+    // and a host cannot play an intent — so the asset must be resolved, not
+    // merely promised. The mixed Scopes stay family-led and review-enforced,
+    // because no Puzzle Family identifier is persisted to check against.
+    if ((VISUAL_PUZZLE_SCOPE_SLUGS as readonly string[]).includes(slug)) {
+      const resolved = item.media?.assets?.some((asset) => asset.url?.trim());
+      if (item.media?.type === ContentMediaType.NONE || !resolved) {
+        issues.push(
+          issue(
+            'PUZZLE_SCOPE_REQUIRES_MEDIA',
+            `Scope "${slug}" is definitionally visual and needs a resolved media asset before READY`,
+            {
+              contentItemId: item.id,
+              scopeSlug: slug,
+              mediaType: item.media?.type ?? null,
+            },
+          ),
+        );
+      }
+    }
+
     return issues;
   }
 }

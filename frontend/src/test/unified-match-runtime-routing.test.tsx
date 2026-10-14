@@ -85,6 +85,15 @@ vi.mock("@/features/live-game-session/components/rakkibha-panel", () => ({
 vi.mock("@/features/live-game-session/components/rakkibha-screen", () => ({
   RakkibhaScreen: () => <div data-testid="renderer-rakkibha-screen" />,
 }));
+vi.mock(
+  "@/features/live-game-session/components/moving-xo-phone-panel",
+  () => ({
+    MovingXoPhonePanel: () => <div data-testid="renderer-moving-xo-phone" />,
+  }),
+);
+vi.mock("@/features/live-game-session/components/moving-xo-screen", () => ({
+  MovingXoScreen: () => <div data-testid="renderer-moving-xo-screen" />,
+}));
 
 const position = (
   occurrenceIndex: number,
@@ -276,6 +285,26 @@ describe("a running challenge is routed by its runtime mode key", () => {
         runtimeModeKey: "rakkibha",
       });
       expect(screen.getByTestId("renderer-rakkibha-screen")).toBeTruthy();
+      view.unmount();
+    }
+  });
+
+  it("gives Moving XO a private phone panel and a public shared screen", () => {
+    const state = match({ stage: "challenge", currentChallenge: running });
+
+    const phone = renderRouter(state, {
+      actor: "participant",
+      runtimeModeKey: "moving-xo",
+    });
+    expect(screen.getByTestId("renderer-moving-xo-phone")).toBeTruthy();
+    phone.unmount();
+
+    for (const actor of ["controller", "shared-screen"] as const) {
+      const view = renderRouter(state, {
+        actor,
+        runtimeModeKey: "moving-xo",
+      });
+      expect(screen.getByTestId("renderer-moving-xo-screen")).toBeTruthy();
       view.unmount();
     }
   });
@@ -992,7 +1021,8 @@ describe("fair-start presentation acknowledgement", () => {
     expect(
       socketAck.mock.calls.map(
         (call) =>
-          (call[0] as { presentationGeneration: number }).presentationGeneration,
+          (call[0] as { presentationGeneration: number })
+            .presentationGeneration,
       ),
     ).toEqual([2, 3, 4]);
   });
@@ -1020,11 +1050,15 @@ describe("fair-start presentation acknowledgement", () => {
         rerenderWith(recurring(generation - 1, { awaiting: false }), 1);
         rerenderWith(recurring(generation, { runtimeRevision: revision }), 1);
       }
-      await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(index * 2 + 1));
+      await waitFor(() =>
+        expect(socketAck).toHaveBeenCalledTimes(index * 2 + 1),
+      );
       // A snapshot lands mid-flight, then the server refuses the stale ack.
       rerenderWith(recurring(generation, { runtimeRevision: revision + 1 }), 1);
       refuse.pop()?.(new Error("STALE_GAMEPLAY_RUNTIME_REVISION"));
-      await waitFor(() => expect(socketAck).toHaveBeenCalledTimes(index * 2 + 2));
+      await waitFor(() =>
+        expect(socketAck).toHaveBeenCalledTimes(index * 2 + 2),
+      );
       expect(socketAck).toHaveBeenLastCalledWith({
         expectedSessionRevision: 10 + generation,
         expectedRuntimeRevision: revision + 1,
@@ -1034,7 +1068,6 @@ describe("fair-start presentation acknowledgement", () => {
     rerenderWith(recurring(4, { awaiting: false }), 1);
     expect(screen.queryByTestId("challenge-preparing")).toBeNull();
   });
-
 
   it.each(["first-note", "marhala", "laqatha", "odd-piece"])(
     "recovers the mid-flight race for %s as well (the surface is mechanic-agnostic)",
@@ -1087,9 +1120,11 @@ describe("fair-start presentation acknowledgement", () => {
     });
     // Exactly what the server projects to a phone: running + generation, and
     // deliberately NO capability, because this actor is not a required surface.
-    (notRequired.gameplay as unknown as {
-      presentationSurface: Record<string, unknown>;
-    }).presentationSurface = { running: true, generation: 2, required: false };
+    (
+      notRequired.gameplay as unknown as {
+        presentationSurface: Record<string, unknown>;
+      }
+    ).presentationSurface = { running: true, generation: 2, required: false };
     renderWith(notRequired, vi.fn(), socketAck);
     await Promise.resolve();
     await Promise.resolve();
@@ -1104,9 +1139,11 @@ describe("fair-start presentation acknowledgement", () => {
       runtimeRevision: 30,
       awaiting: true,
     });
-    (required.gameplay as unknown as {
-      presentationSurface: Record<string, unknown>;
-    }).presentationSurface = {
+    (
+      required.gameplay as unknown as {
+        presentationSurface: Record<string, unknown>;
+      }
+    ).presentationSurface = {
       running: true,
       generation: 2,
       capability: "shared",

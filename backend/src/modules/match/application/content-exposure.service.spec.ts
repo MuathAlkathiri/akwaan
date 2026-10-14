@@ -31,6 +31,7 @@ describe('ContentExposureService', () => {
         Promise.resolve(ids.length),
       ),
       releaseReservations: jest.fn().mockResolvedValue(3),
+      releaseReservedItems: jest.fn().mockResolvedValue(1),
     } as unknown as ContentExposureRepository;
     return { service: new ContentExposureService(repository), repository };
   };
@@ -113,5 +114,20 @@ describe('ContentExposureService', () => {
     const { service, repository } = build();
     await expect(service.releaseUnseen('match-1')).resolves.toBe(3);
     expect(repository.releaseReservations).toHaveBeenCalledWith('match-1');
+  });
+
+  it('releases only the rejected unseen reservation in the exact scope', async () => {
+    const { service, repository } = build();
+    await expect(service.releaseReserved(scope(), ['i2'])).resolves.toBe(1);
+    expect(repository.releaseReservedItems).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ownerAccountId: 'account-a',
+        challengeTypeKey: 'bomb',
+        matchId: 'match-1',
+      }),
+      'match-1',
+      ['i2'],
+    );
+    expect(repository.markExposed).not.toHaveBeenCalled();
   });
 });

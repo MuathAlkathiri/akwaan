@@ -108,6 +108,14 @@ export interface GameplayPluginContext {
  * became `decide-card`. `gameplay-mode.registry.spec.ts` keeps it complete.
  */
 export const MODE_COMMAND_TYPES: readonly string[] = [
+  // Moving XO (Puzzles Signature): the answer, the board move, both server-owned
+  // clocks, the puzzle the server drew, and the honest end when none remain.
+  'submit-moving-xo-answer',
+  'place-moving-xo-mark',
+  'expire-moving-xo-question',
+  'expire-moving-xo-placement',
+  'open-moving-xo-question',
+  'exhaust-moving-xo-content',
   // Neutral reference mode.
   'advance-phase',
   // Bomb.
@@ -207,6 +215,16 @@ export type GameplayDeadlineDeclaration =
        * mattering — "ركّبها" does — relies on this to stay unarmed.
        */
       readonly activePhases: readonly string[];
+      /**
+       * Phases that expire through a *different* command than `commandType`.
+       *
+       * A mechanic with one window omits this and nothing changes. A mechanic
+       * with more than one — Moving XO answers for 15s and then places for 10s —
+       * names the command for each extra phase here, so one scheduler still owns
+       * every clock and the reducer stays the single derivation. The keys are
+       * armed phases in their own right: `activePhases` need not repeat them.
+       */
+      readonly commandTypeByPhase?: Readonly<Record<string, string>>;
       /**
        * Opt into fair-start: the deadline stays unarmed until the runtime records
        * `presentationActivatedAt`, so slow client cold-start never burns gameplay

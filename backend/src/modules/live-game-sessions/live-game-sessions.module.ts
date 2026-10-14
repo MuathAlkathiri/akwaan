@@ -128,6 +128,9 @@ import { StartClosestGameplay } from './application/start-closest-gameplay.use-c
 import { StartMarhalaGameplay } from './application/start-marhala-gameplay.use-case';
 import { MarhalaQuestionSourceRegistry } from './application/marhala-question-source.registry';
 import { MarhalaTurnSupplier } from './application/marhala-turn.supplier';
+import { StartMovingXoGameplay } from './application/start-moving-xo-gameplay.use-case';
+import { MovingXoQuestionSourceRegistry } from './application/moving-xo-question-source.registry';
+import { MovingXoTurnSupplier } from './application/moving-xo-turn.supplier';
 import { StartComboGameplay } from './application/start-combo-gameplay.use-case';
 import { StartOneClueGameplay } from './application/start-one-clue-gameplay.use-case';
 import { WithdrawPresentationReadiness } from './application/withdraw-presentation-readiness.use-case';
@@ -240,6 +243,9 @@ const applicationProviders = [
     StartMarhalaGameplay,
     MarhalaQuestionSourceRegistry,
     MarhalaTurnSupplier,
+    StartMovingXoGameplay,
+    MovingXoQuestionSourceRegistry,
+    MovingXoTurnSupplier,
     LiveGameModeRegistry,
     LiveGameSessionSnapshotMapper,
     GameplayModeRegistry,
@@ -305,6 +311,8 @@ const applicationProviders = [
     // is internal and is driven by the observer registry.
     MarhalaQuestionSourceRegistry,
     StartMarhalaGameplay,
+    MovingXoQuestionSourceRegistry,
+    StartMovingXoGameplay,
     CancelGameplayRuntime,
     GameplayObserverRegistry,
     GetLiveGameSession,
