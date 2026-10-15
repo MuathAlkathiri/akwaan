@@ -40,18 +40,176 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
-### Where things stand — 2026-10-06 · PUZZLES FORWARD REDESIGN — 🟡 DESIGN APPROVED, NOT IMPLEMENTED
+### Where things stand — 2026-10-10 (later) · PRODUCTION PUZZLES LEGACY TAXONOMY CLEANUP COMPLETE — 🚧 IN PROGRESS
 
-**A Product decision, not a milestone.** Puzzles gets a new forward taxonomy of **six Scopes** —
+✅ **The Production Puzzles taxonomy is now exactly the six forward Scopes.** The legacy taxonomy was removed
+through the canonical Admin delete APIs, verified by read-back:
+
+| Verified mutation | Count |
+|---|---|
+| Legacy Puzzles **ContentItems** deleted | **30** |
+| Legacy Puzzles **Scope rows** deleted | **8** |
+| Forward Scopes remaining | **6** |
+| Content in those six Scopes | **0** |
+
+The six that remain — `observation-illusions` · `wordplay-letters` · `numbers-estimation` ·
+`assembly-rotation` · `paths-motion` · `spot-the-error` — are `active`, carry their approved Arabic names, sit
+under the Puzzles World `6a7a21fd4cfb4a6a8738d5ed`, and hold **0 content items**. No legacy Puzzles Scope
+remains.
+
+**Live-runtime safety gate — the reason this was safe.** A read-only Production audit before the deletes
+returned **29 dependency records**, which deduplicated to **11 unique stale gameplay chains**. Forensic
+classification across `matches`, `live_game_sessions`, `gameplay_runtimes` and `live_session_presence`:
+
+| Class | Count |
+|---|---|
+| A — likely genuinely live | **0** |
+| B — stale non-terminal record | **11** |
+| C — historical / false positive | **0** |
+| D — ambiguous | **0** |
+
+Zero live chains, zero ambiguous. **The 11 stale chains were not cancelled, deleted or mutated in any way** —
+they are separate lifecycle debt, not active gameplay, and remain open work. Matches, sessions, gameplay
+runtimes, scores and exposure history were all preserved; a historical Match whose Scope row is now gone
+degrades to an empty Scope label rather than erroring, which source inspection confirmed before any delete.
+
+**The three expansion Scopes were real, and the record stays honest.** `patterns-sequences`,
+`lateral-thinking` and `visual-puzzles` **were genuinely provisioned in Production** under §21.9 with 0 content
+each. They were later superseded by the six forward Scopes and have now been **deliberately removed** as part of
+this cleanup. They are not to be described as having never existed.
+
+**What this is NOT.** No real Puzzles content is authored or promoted — Production forward Puzzles content is
+**⬜ 0 real items**. Moving XO still **does not exist in Production** and no Moving XO Production gameplay is
+verified. The Puzzles World is not launch-ready. The Puzzles board, all ChallengeTypes,
+`distributed-information`, Series, the standalone معلومات عامة World, every other World, R2/media and the local
+runtime are all unchanged. No deployment, no commit, no push. **Moving XO overall remains 🚧 IN PROGRESS.**
+
+### Where things stand — 2026-10-10 · SIX-SCOPE PUZZLES TAXONOMY PROVISIONED IN PRODUCTION — 🚧 IN PROGRESS
+
+✅ **The six forward Puzzles Scope identities now exist in Production.** Product approved a direct Production
+provisioning, and exactly six Scope rows were created under the existing Puzzles World
+(`6a7a21fd4cfb4a6a8738d5ed`) through the canonical `POST /admin/worlds/:worldId/scopes` path, driven by
+`ai/scripts/provision_active_world_scopes.py --only=puzzles --execute --expected-environment production
+--allow-remote-write --require-plan-hash`:
+
+| Scope | Slug | Production Scope ID |
+|---|---|---|
+| قوة الملاحظة والخداع البصري | `observation-illusions` | `6ac956f1825a380b45f73e62` |
+| التلاعب بالكلمات والحروف | `wordplay-letters` | `6ac956f3825a380b45f73e70` |
+| أرقام وتقديرات | `numbers-estimation` | `6ac956f5825a380b45f73e7e` |
+| تركيب وتدوير | `assembly-rotation` | `6ac956f7825a380b45f73e8c` |
+| مسارات وحركة | `paths-motion` | `6ac956f8825a380b45f73e9a` |
+| اكتشف الخطأ | `spot-the-error` | `6ac956fa825a380b45f73ea8` |
+
+All six read back `status=active`, correct Arabic name, correct slug, correct Puzzles `worldId`, and **0 content
+items**. Production Puzzles Scope count went 8 → 14.
+
+**What this is NOT.** No ContentItem was created, promoted, updated or deleted (Production Puzzles content stayed
+at **30** items, delta 0). No legacy Puzzles Scope was changed, archived or removed — all eight are untouched. The
+Puzzles board is unchanged (`challengeConfigurationCount` 4 → 4). **Moving XO is still absent from Production
+entirely** — no `moving-xo` ChallengeType exists there — so nothing here implies a Moving XO Production rollout.
+`rakkibha` likewise does not exist as a Production ChallengeType (Production carries
+`distributed-information`). No Series mutation, no other World touched, no R2/media write, no deployment, no
+commit and no push. The Puzzles World remains `availability: upcoming`.
+
+**Production taxonomy differs from local — newly discovered.** Production already carries
+`patterns-sequences`, `lateral-thinking` and `visual-puzzles` as **active, empty** Scopes. The roadmap previously
+recorded that trio as *source-only historical work that was never provisioned*; that is **true locally and false
+in Production**. They are now orphaned: Phase-1 removed them from the provisioning spec, so no source declaration
+reconciles them any more. Their disposition belongs to the separate legacy-cleanup Production task.
+
+**Moving XO overall remains 🚧 IN PROGRESS.** Content authoring/promotion, legacy taxonomy cleanup, the Moving XO
+Production rollout, the ركّبها replacement, the Series cleanup, the final Arabic Signature name, depletion
+UX/copy and the Puzzles Bomb-content gap are all still open.
+
+### Where things stand — 2026-10-09 (later) · PUZZLES TAXONOMY REPLACEMENT — SOURCE/AUTHORING DONE, RUNTIME PENDING — 🚧 IN PROGRESS
+
+**Product decision (2026-10-09).** The legacy Puzzles taxonomy is **replaced, not archived**. The six forward
+Scopes are the only Puzzles Scopes; everything belonging to the old Puzzles Scope system is removed from the
+current product/runtime/content/authoring architecture rather than preserved. The five legacy runtime Scopes
+(أرقام وحساب · منطق واستنتاج · حروف وكلمات · رموز وشفرات · معلومات عامة) are **not** migrated and their 300
+historical ContentItems are **not** retagged. The 21 Moving XO smoke items are temporary and are **not** the
+forward content baseline. **§18.3 (General Knowledge → a Scope of عالم الالغاز) is SUPERSEDED**:
+`PUZZLES_WORLD_NO_TRIVIA` wins and no trivia Scope belongs in Puzzles. The standalone معلومات عامة **World** is
+untouched and out of scope.
+
+**✅ Phase 1 — source/authoring replacement is complete.** `ai/scripts/provision_active_world_scopes.py` now
+declares exactly the six forward Scopes; `ai/scripts/generate_authoring_manifest.py` and the regenerated
+`ai/.opencode/authoring-manifest.json` carry the six and nothing else (9 Puzzles Scope entries removed, 6 added,
+no other World touched); six new `SCOPE.md` / `KNOWLEDGE.md` profiles were authored against the §23.11
+boundaries, each restating `PUZZLES_WORLD_NO_TRIVIA` and `PUZZLE_ITSELF_IS_THE_CHALLENGE`; the nine legacy
+Puzzles Scope profile folders were deleted; `puzzles/WORLD.md` names the six and marks the old sets SUPERSEDED;
+`ai/scripts` tests updated and **127/127 PASS**. **No second Puzzles authoring taxonomy remains.**
+
+**🚧 Phases 2–5 — runtime work is NOT done.** The six Scopes do **not** exist in any runtime; no new smoke
+content was authored; no new-taxonomy gameplay smoke was run; the 300 legacy ContentItems, the 21 smoke items and
+the five legacy Scope rows are **all still present in the local runtime, unchanged**. Execution is blocked on
+admin API access (see §23.11). **Runtime DB writes: 0. Production: unchanged. R2: unchanged.**
+
+**Match-history integrity — resolved by inspection.** `MatchSnapshotComposer.describeScopes` is fully defensive
+(`try/catch`, `byId.get(scopeId) ?? ''`) and `list-my-matches` only copies ids, so a deleted Scope row degrades a
+historical Match to `name: ''` rather than breaking it. Scope deletion is guarded only by `SCOPE_NOT_EMPTY` and
+the legacy-questions reference guard, which counts **0** for all five Scopes. **No tombstone is technically
+required**: hard deletion after content removal is safe for the 37 historical Matches.
+
+### Where things stand — 2026-10-09 · MOVING XO PROVISIONED LOCAL RUNTIME GAMEPLAY VERIFIED — 🚧 IN PROGRESS
+
+✅ **Moving XO provisioned LOCAL runtime gameplay is verified.** The mechanic was provisioned as a runtime
+ChallengeType in the **local/dev** runtime, bound to Puzzles `slot_1`, and played end to end against real
+replica-set Mongo through the real shared screen and real phones. **Gameplay smoke: 17/17 PASS. Exposure /
+lifecycle: 5/5 PASS.** Verified: board launch · Fair-Start · active-team vs waiting-phone projection · wrong
+answer handoff · correct answer → placement · 15s question timeout · 10s placement timeout · normal placement ·
+three-live-mark FIFO · same-cell refresh · teammate placement race · reconnect while answering · reconnect during
+placement · normal 3-in-a-row win · move-12 **الحسم** transition · FIFO suspension in الحسم · full-board/no-winner
+draw · terminal convergence and board return. Exposure: reservation ≠ exposure · owner-account no-repeat ·
+reconnect does not double-expose · abort **before** presentation spends nothing · abort **after** legal
+presentation preserves the exposure.
+
+**Overall status remains 🚧 IN PROGRESS.** This verifies the **local/dev** runtime only. Still open: six-Scope
+runtime taxonomy reconciliation *(the canonical technical Scope slugs were approved 2026-10-09 — design only; the
+runtime migration is not done)*, real Puzzles content authoring/promotion
+(the 21 items used are temporary smoke content), the deliberate ركّبها replacement/removal decision and
+execution, the Series stale-binding cleanup, the final Arabic Signature name, player-facing depletion UX/copy,
+Production rollout and deployment. **Production is unchanged, R2 is unchanged, and nothing was committed, pushed
+or deployed.** ركّبها remains ✅ implemented and is **not** removed.
+
+One **local data defect** was found and repaired during the smoke: the 21 temporary smoke ContentItems lacked a
+canonical Puzzles `worldId`, so the first genuine launch correctly resolved as catalog-empty and completed as
+`content-exhausted` with no winner and no content burned — the depletion path behaving exactly as designed
+against real bad data. Repair ran through the canonical `PATCH /admin/content-items/:id` path: **21 LOCAL
+ContentItem mutations**, not a Production write, not a taxonomy mutation, not a historical-content retag, and not
+a Git change.
+
+Full contract and evidence: **§23.11**.
+
+### Where things stand — 2026-10-07 · MOVING XO BACKEND + FRONTEND SOURCE MILESTONES — 🚧 IN PROGRESS
+
+This milestone builds on the 2026-10-06 Product decision: Puzzles gets a new forward taxonomy of **six Scopes** —
 قوة الملاحظة والخداع البصري · التلاعب بالكلمات والحروف · أرقام وتقديرات · تركيب وتدوير · مسارات وحركة ·
 اكتشف الخطأ — and a new forward Signature direction, working label **Moving XO** (3×3, X vs O, one board move
 per correct puzzle, three-live-mark FIFO with an in-place refresh, and **الحسم** after 12 successful moves).
 Canonical slugs are not approved and the final Arabic Signature name is not chosen.
 
-**Nothing is implemented.** No code, no Scope records, no ChallengeType, no board binding, no content, no DB or
-R2 write, no deployment. **ركّبها remains the implemented Puzzles Signature** (§23.10) and is superseded only as
-the *forward* direction. The runtime Puzzles taxonomy and Production are unchanged. One terminal edge case —
-a full board with no winner during الحسم — is explicitly **unresolved**.
+**Backend Phase 1–4 is implemented and verified locally** in `3620cf2`: the board/FIFO/refresh/الحسم/draw domain,
+GameplayModePlugin and actor-safe commands, one-question on-demand selection through the canonical reservation /
+exposure ledger, Fair-Start, phase-aware server deadlines, Match launch/convergence, safe depletion, terminal
+runtime finalization and abort/board-return semantics. **The frontend milestone is implemented and verified
+locally** in `8f140f2`: authoritative shared board/puzzle/placement/terminal states, active-team and waiting phone
+surfaces, server-deadline rendering, FIFO/refresh/الحسم presentation, safe projected answer/placement controls,
+and snapshot-only reconnect reconstruction. **Overall status remains 🚧 IN PROGRESS**: no six-Scope runtime
+taxonomy reconciliation, runtime ChallengeType provisioning, Puzzles board binding, Series stale-binding cleanup,
+content promotion, provisioned-runtime gameplay smoke, DB or R2 write, or deployment. *(Superseded in part on
+2026-10-09: local runtime ChallengeType provisioning, Puzzles `slot_1` binding and the provisioned-runtime
+gameplay smoke are now done **in the local/dev runtime** — see the 2026-10-09 snapshot. The rest of this list
+still stands, and Production remains unchanged.)* **ركّبها remains ✅
+implemented and verified in source** (§23.10), superseded only as the *forward Product direction* and not removed.
+The runtime Puzzles taxonomy and Production are unchanged.
+
+**Interaction rules closed 2026-10-06:** V1 answers are `match` + `multiple_choice` (no `closest`), a
+**15s** question window whose timeout is a wrong answer, phone-based placement with a **10s** window whose
+timeout forfeits the earned move, and a **draw** when الحسم fills the board with no three-in-a-row. Still open:
+the final Arabic Signature name and the player-facing depletion UX. *(The six canonical Scope slugs were approved
+on 2026-10-09 — §23.11.)*
 
 Full contract: **§23.11**.
 
@@ -519,8 +677,9 @@ Games, Puzzles and the draft Worlds still need both (§C.1).
 - [x] Football / كرة القدم → **Top 5** *(mechanic implemented)*
 - [x] Puzzles / عالم الالغاز → **Distributed Information / ركّبها** *(mechanic implemented — remains the
       implemented Puzzles Signature; ⚠️ superseded as the forward direction by Moving XO, §23.11)*
-- [ ] Puzzles / عالم الالغاز → **Moving XO** *(working label; 🟡 design approved 2026-10-06, NOT implemented;
-      final Arabic name TBD — §23.11)*
+- [x] Puzzles / عالم الالغاز → **Moving XO** *(working label; design approved 2026-10-06; backend Phase 1–4 and
+      frontend milestone implemented and verified locally 2026-10-07; provisioned LOCAL runtime gameplay verified
+      2026-10-09; final Arabic name TBD — §23.11)*
 - [x] Movies / الأفلام → **One Clue / بدليل واحد** *(design approved)*
 - [x] Music / الأغاني → **من أول نغمة** *(design approved)*
 - [x] World / العالم → **على الخريطة** *(design approved)*
@@ -544,11 +703,16 @@ Design approval above does **not** imply any of these. Full matrix in §16.
 - [x] Football → Top 5 World-specific rollout reconciled — ✅ football-exclusive in the local/dev runtime; ⬜ not deployed (§C.1)
 - [ ] Puzzles → ركّبها World-specific rollout reconciled *(⚠️ superseded as forward direction by §23.11; the
       implemented mechanic stays until a replacement is actually built)*
-- [ ] Puzzles → **Moving XO** *(🟡 design approved, not started — no code, no ChallengeType, no board binding)*
+- [x] Puzzles → **Moving XO source implementation** *(✅ backend Phase 1–4 and frontend milestone implemented and
+      verified locally; ✅ provisioned LOCAL runtime gameplay verified 2026-10-09 — 17/17 gameplay, 5/5 exposure;
+      🚧 six-Scope taxonomy reconciliation *(slugs approved 2026-10-09)*, real content authoring/promotion, deliberate
+      ركّبها replacement, Series stale-binding cleanup and Production rollout remain pending — §23.11)*
 
 ### G. Taxonomy / catalog changes — 🟡 APPROVED DIRECTION, NOT IMPLEMENTED
 
-- [ ] General Knowledge / معلومات عامة consolidated into عالم الالغاز as a Scope (§18.3)
+- [ ] ~~General Knowledge / معلومات عامة consolidated into عالم الالغاز as a Scope (§18.3)~~ — ⚠️ **SUPERSEDED
+      2026-10-09** by the Puzzles taxonomy replacement; `PUZZLES_WORLD_NO_TRIVIA` wins (§23.11). The standalone
+      معلومات عامة World is untouched and remains a separate open question.
 - [ ] Arabic Movies scopes/content added under the existing Movies World (§18.2)
 - [ ] Arabic Series scopes/content added under the existing Series World (§18.2)
 - [ ] **Puzzles forward six-Scope taxonomy** — قوة الملاحظة والخداع البصري · التلاعب بالكلمات والحروف ·
@@ -1732,7 +1896,7 @@ race) are unrelated pre-existing failures.
 |---|---|---|---|---|
 | **Football / كرة القدم** | Top 5 / أفضل 5 | ✅ `top-5` plugin, launcher, ChallengeType | ✅ **football-exclusive in the local/dev runtime** — `slot_1` on the Football board, no other board binds it, all 40 items in Football; 7 active Scopes after the expansion; ⬜ not deployed | ✅ mechanic / ✅ local rollout (§C.1) |
 | **Puzzles / عالم الالغاز** | Distributed Information / ركّبها | ✅ `distributed-information` plugin, launcher, ChallengeType, 213 items | 🚧 exclusivity and board rollout not finalized | ✅ mechanic / 🚧 rollout — ⚠️ **superseded as forward direction (§23.11); retained until a replacement is built** |
-| **Puzzles / عالم الالغاز — forward** | **Moving XO** *(working label; Arabic name TBD)* | ⬜ **nothing implemented** — no plugin, launcher, ChallengeType or content | 🟡 **design approved 2026-10-06** (§23.11) | 🟡 design only / ⬜ not started |
+| **Puzzles / عالم الالغاز — forward** | **Moving XO** *(working label; Arabic name TBD)* | ✅ backend plugin, launcher, board domain, on-demand supplier and lifecycle; ✅ shared-screen and phone frontend; ✅ provisioned and played end to end in the **local/dev** runtime (17/17 gameplay, 5/5 exposure, 2026-10-09) | 🚧 **local/dev only** — ChallengeType active and bound to Puzzles `slot_1` with 21 **temporary smoke** items; ⬜ no six-Scope reconciliation, no real content promotion, ⬜ not deployed | ✅ source milestones + ✅ provisioned LOCAL runtime gameplay / 🚧 overall in progress (§23.11) |
 | **Movies / الأفلام** | One Clue / بدليل واحد | ✅ mechanic exists (`one-clue`) | ⬜ not re-owned as the Movies Signature; Movies-specific form undefined | 🟡 design approved |
 | **Music / الأغاني** | من أول نغمة | ⬜ | ⬜ | 🟡 design approved |
 | **World / العالم** | على الخريطة | ⬜ | ⬜ | 🟡 design approved |
@@ -1841,8 +2005,9 @@ read by the Admin catalog and by the manual `provision:production-mechanics` CLI
 - **Moving XO** (Puzzles — working label, Arabic name TBD) — a 3×3 Tic-Tac-Toe the teams play *through*
   puzzles: one correct answer earns exactly one board move, each team holds at most three live marks in FIFO
   order, and the expiring oldest mark may be refreshed in place instead of moved. After 12 successful moves
-  with no winner the board enters **الحسم** and marks stop expiring. 🟡 design approved 2026-10-06, **not
-  implemented**; full contract and one unresolved terminal edge case in §23.11.
+  with no winner the board enters **الحسم** and marks stop expiring; a board that fills in الحسم with no
+  three-in-a-row is a **draw**. ✅ backend Phase 1–4 and frontend milestone implemented and verified locally
+  2026-10-07; runtime rollout remains pending; full contract in §23.11.
 - **اكشفني** (Celebrities) — a celebrity photograph under six numbered masks; a team buys information by lifting a mask and pays for it in points, while answering stays an open race; full record in §16.9.
 
 
@@ -2790,7 +2955,13 @@ same medium.
 
 *Remaining work:* Arabic Movies and Arabic Series scopes/content do not exist yet and are future authoring work.
 
-### 18.3 General Knowledge → a Scope of عالم الالغاز
+### 18.3 General Knowledge → a Scope of عالم الالغاز — ⚠️ SUPERSEDED (2026-10-09)
+
+> **SUPERSEDED by the Puzzles taxonomy replacement (§23.11, 2026-10-09).** General Knowledge / معلومات عامة must
+> **not** become a Puzzles Scope: `PUZZLES_WORLD_NO_TRIVIA` wins, and the forward Puzzles taxonomy is exactly the
+> six Scopes in §23.11. The legacy معلومات عامة **Scope inside Puzzles** is to be removed with the rest of the
+> legacy taxonomy. The standalone معلومات عامة **World** is a separate question, is untouched by that decision,
+> and keeps whatever status it has below. The direction recorded here is retained to explain past reasoning only.
 
 🟡 **TAXONOMY / PRODUCT DIRECTION — NOT IMPLEMENTED.** Nothing has been merged, deleted, renamed or migrated.
 معلومات عامة **still exists as its own draft World** in the runtime and remains the implementation truth.
@@ -3351,8 +3522,10 @@ Scope set it applies to: forward Puzzles content targets the **six approved Scop
 old `patterns-sequences` · `lateral-thinking` · `visual-puzzles` trio, whose historical source-only status is
 untouched. Two additions from that decision: **اكتشف الخطأ** may use Between Two Anchors naturally for spatial
 targeting («وين الخطأ؟»), and **«شفرة الضاد»** is a question family inside **التلاعب بالكلمات والحروف**, not a
-Scope of its own. The forward Signature is Moving XO (🟡 design approved, not implemented); ركّبها remains the
-implemented Puzzles Signature until a replacement is built.
+Scope of its own. The forward Signature is Moving XO (✅ backend Phase 1–4 and frontend milestone implemented and
+verified locally; ✅ provisioned LOCAL runtime gameplay verified 2026-10-09; 🚧 six-Scope reconciliation, real
+content and Production rollout pending); ركّبها remains the implemented Puzzles Signature until deliberate
+replacement work is completed.
 
 ### 23.6 Older approved decisions reconciled
 
@@ -3461,11 +3634,18 @@ intersection model, the three-segment / shared-fragment model, and the public/sh
 > everything recorded above stays true. §23.11 replaces it as the *forward* Puzzles Signature direction. It is
 > retained as the current Puzzles Signature implementation until a replacement is actually built.
 
-### 23.11 Puzzles Forward Taxonomy + Moving XO — 🟡 DESIGN APPROVED — NOT IMPLEMENTED (2026-10-06)
+### 23.11 Puzzles Forward Taxonomy + Moving XO — 🚧 IN PROGRESS (Production Puzzles taxonomy replaced 2026-10-10)
 
-**Approval scope.** This records a Product decision and nothing more. It is **not** source implementation, not
-runtime implementation, not Scope provisioning, not board binding, not content authoring or promotion, not a DB
-mutation, not R2/media work, and not a deployment. No code changed with this decision.
+**Status boundary.** Product design was approved 2026-10-06. **Backend Phase 1–4 is ✅ implemented and
+verified locally** in source (`3620cf2`), the **frontend milestone is ✅ implemented and verified locally** in
+source (`8f140f2`), and as of 2026-10-09 **✅ provisioned LOCAL runtime gameplay is verified** — the mechanic was
+provisioned as a runtime ChallengeType in the local/dev runtime, bound to Puzzles `slot_1`, and played end to end
+with 17/17 gameplay cases and 5/5 exposure cases passing. **Moving XO overall remains 🚧 IN PROGRESS.**
+
+Canonical technical Scope slugs were approved on 2026-10-09 (design only — see below). This is **not** six-Scope
+taxonomy reconciliation, not real content authoring or promotion, not ركّبها replacement or removal, not the Series stale-binding cleanup, not a Production write, not
+R2/media work, and not a deployment. Everything recorded below about provisioning, board binding and gameplay is
+**local/dev runtime only**; Production is unchanged.
 
 #### Forward Puzzles Scopes — six, approved
 
@@ -3476,12 +3656,36 @@ mutation, not R2/media work, and not a deployment. No code changed with this dec
 5. **مسارات وحركة**
 6. **اكتشف الخطأ**
 
-**Canonical technical slugs are NOT approved.** None are proposed here and none may be invented downstream.
+**Canonical technical slugs — 🟡 PRODUCT/DESIGN APPROVED (2026-10-09), runtime taxonomy implementation still
+pending.** Product has approved the canonical technical slug for each of the six forward Scopes:
 
-The existing `patterns-sequences` · `lateral-thinking` · `visual-puzzles` expansion is **source-only historical
-work** and keeps the status the roadmap already records for it (§C.1, §19 items 25–26, §16.1). It is
-**superseded for forward work**: new Puzzles content targets the six Scopes above. It is not deleted, not
-promoted, and not described as implemented.
+| # | Scope (player-facing Arabic) | Canonical technical slug |
+|---|---|---|
+| 1 | قوة الملاحظة والخداع البصري | `observation-illusions` |
+| 2 | التلاعب بالكلمات والحروف | `wordplay-letters` |
+| 3 | أرقام وتقديرات | `numbers-estimation` |
+| 4 | تركيب وتدوير | `assembly-rotation` |
+| 5 | مسارات وحركة | `paths-motion` |
+| 6 | اكتشف الخطأ | `spot-the-error` |
+
+These six slugs are now the only approved forward Puzzles Scope identifiers; **no additional forward Scope slug
+may be invented downstream.** Approval is **design only**: none of them exists yet in the runtime taxonomy, in
+`ai/scripts/provision_active_world_scopes.py`, or in the authoring knowledge tree. **Six-Scope runtime taxonomy
+reconciliation remains 🚧 pending** and is unchanged by this approval.
+
+The existing `patterns-sequences` · `lateral-thinking` · `visual-puzzles` expansion is
+**superseded for forward work**: new Puzzles content targets the six Scopes above.
+
+> **⚠️ Historical correction (2026-10-10).** An earlier revision of this paragraph called that trio *source-only
+> historical work*. **That was wrong for Production.** §21.9 records — and a Production read on 2026-10-10
+> confirmed — that all three were genuinely **provisioned in Production** during the Active-World Scope Expansion
+> milestone, as `active` Scopes with **0 content items**, taking the Production Puzzles Scope count from 5 to 8:
+> `patterns-sequences` `6a8def626465112df8e6456a` · `lateral-thinking` `6a8def646465112df8e64578` ·
+> `visual-puzzles` `6a8def656465112df8e64586`. They were never provisioned in the **local/dev** runtime, which is
+> where the "source-only" description came from. The §21.9 milestone stands and is not erased: the trio was
+> provisioned, is now superseded by the six forward Scopes, and was **deliberately retired from Production on
+> 2026-10-10** as part of the legacy-taxonomy cleanup (8 Scope rows and 30 ContentItems). The §21.9 milestone
+> itself is not erased: these three Scopes genuinely existed in Production, and this record says so.
 
 **Runtime Puzzles taxonomy is UNCHANGED by this decision. Production is UNCHANGED.**
 
@@ -3513,7 +3717,8 @@ puzzle wrapper remains invalid in every Scope below.
 #### Forward Signature — Moving XO
 
 **Working label only.** The final player-facing Arabic name is **TBD / NOT APPROVED**.
-**Status: 🟡 DESIGN APPROVED — NOT IMPLEMENTED.**
+**Status: 🚧 IN PROGRESS — backend Phase 1–4 and frontend milestone implemented and verified locally; runtime
+rollout, taxonomy reconciliation and deliberate Rakkibha replacement remain pending.**
 
 **Board** — classic 3×3 Tic-Tac-Toe. **Teams** — X vs O.
 
@@ -3525,8 +3730,33 @@ Puzzles Scope pool. A correct answer earns **exactly one** board move. A wrong a
 the turn, and the opponent receives a **new** puzzle. There is **no fixed question count** — the Challenge
 consumes as many eligible items as the game actually requires.
 
-Content selection must eventually reuse the existing canonical reservation / exposure / depletion architecture.
-**That integration is not implemented and is not claimed here.**
+Backend content selection reuses the existing canonical `MatchContentSelector` reservation / exposure /
+depletion architecture. It draws exactly one eligible item on demand, never builds a launch deck or prefetches,
+filters by the Match's selected Scopes, permanently excludes owner-account exposures for Moving XO, and safely
+separates account exhaustion from catalog insufficiency. Selection/reservation is not exposure: the first and
+recurring puzzles are spent only after their Fair-Start presentation generation activates. This is verified in
+source and isolated test data; no runtime/dev or Production catalog was provisioned or mutated.
+
+**Answer contract (V1).** Moving XO consumes exactly two item answer modes: **`match`** and
+**`multiple_choice`**. **`closest` is deliberately excluded from V1** — the mechanic needs a binary result
+(correct earns one board move, wrong earns none), and an estimate is not binary. A visual puzzle may still be
+authored with multiple-choice options, and word or number puzzles may use canonical `match`. This says nothing
+about the Shared Core Closest mechanic, which is unchanged and still plays Puzzles content in its own right.
+
+**Question window — 15 seconds**, server-authoritative, anchored on the existing
+Fair-Start / deadline architecture. **Configurable playtest value, not locked balance.** A timeout carries
+**wrong-answer semantics exactly**: no board move is earned, the turn passes, and the opponent receives a fresh
+puzzle. There is no additional timeout penalty.
+
+**Placement surface.** After a correct answer the **active team's phone** is the authoritative input surface
+for choosing the cell; the shared screen stays the public/spectator view of the board. **Any** eligible player
+on the active team may attempt the placement and the **first valid authoritative placement wins for the
+team**. Server-side legality is mandatory — a disabled control is presentation, never authority.
+
+**Placement window — 10 seconds**, from the correct answer. **Configurable technical/playtest value, not
+locked balance.** If no legal placement is committed before the deadline the **earned move is forfeited**: no
+mark changes, the turn passes, and the opponent receives a fresh puzzle. The move is **not** auto-placed, **not**
+assigned to a random cell, and **not** carried into a later turn.
 
 **Three-live-mark FIFO (normal play).** Each team normally holds at most **three** active marks, in an
 authoritative oldest → newest order. When a team that already holds three earns another move:
@@ -3542,8 +3772,7 @@ authoritative oldest → newest order. When a team that already holds three earn
     move, counts as a successful move, and changes FIFO ordering.
 
 In normal play a team may **not** choose an opponent's mark, nor any of its own marks that are not the one
-expiring. The replacement/refresh is to be treated as **one** authoritative committed board transition when
-implemented.
+expiring. The replacement/refresh is treated as **one** authoritative committed board transition.
 
 **Win.** The first team whose **active** marks contain a normal row, column or diagonal wins immediately. The
 win check runs after each committed successful board move.
@@ -3559,18 +3788,180 @@ configurable playtest balance, not locked Product balance.**
 persist, and teams may therefore exceed three active marks. The win condition remains a normal 3-in-a-row — no
 alternative scoring or tie-break condition exists.
 
-#### ⚠️ PRODUCT FOLLOW-UP — UNRESOLVED
+#### Terminal fallback — FULL BOARD + NO WINNER *(approved 2026-10-06, closing the earlier blocker)*
 
-During الحسم the 3×3 board can theoretically fill completely with neither team holding a 3-in-a-row. **The
-terminal fallback for FULL BOARD + NO WINNER is not approved.** Nothing is chosen here — not a tie, not a board
-reset, not a forced overwrite, not an extra deciding puzzle, not a score comparison, not a random winner. This
-must be decided by Product before Moving XO is implemented.
+If الحسم is active and the 3×3 board becomes completely full with neither team holding a normal three-in-a-row,
+the Challenge ends in a **draw** and **no team is the Challenge winner**. The board is not reset, FIFO does not
+resume, marks are not overwritten, no extra deciding puzzle is dealt, no other score is compared, and no winner
+is chosen at random.
 
-#### Other unresolved details (implementation / Product follow-up)
+**Normal win checking always runs first.** After a committed placement:
 
-Exact question timer · exact answer interaction contract · exact placement input surface · content-depletion
-terminal UX · final player-facing Signature name · canonical technical slugs for the six Scopes. None are
-chosen by this decision.
+1. check for a normal three-in-a-row → if found, that team wins and resolves normally;
+2. otherwise, if الحسم is active **and** the board is full → resolve a draw;
+3. otherwise continue to handoff.
+
+#### Authoritative lifecycle *(backend + frontend implemented and verified locally; exercised end to end in the provisioned local runtime 2026-10-09; Production rollout pending)*
+
+| Phase | Deadline | Outcome |
+|---|---|---|
+| Question — Fair-Start / readiness → authoritative activation | **15s** answer deadline | correct → placement phase · wrong **or timeout** → no earned move, turn handoff |
+| Placement — active team's phone | **10s** placement deadline | legal placement → authoritative atomic board commit · **timeout → earned move forfeited, no board mutation, turn handoff** |
+| Commit | — | increment `successfulMoveCount` → check normal win → check move #12 / الحسم transition → in الحسم, no winner and board full → draw → otherwise handoff |
+
+There is **one authoritative deadline owner** per phase. Backend Phase 1–4 implements the 15-second question
+window and 10-second placement window through the shared phase-aware deadline scheduler; placement expiry
+forfeits the earned move without board mutation. The canonical Match starter is required (no random or team-array
+fallback), terminal win/draw/depletion completes both the runtime round and Match convergence, and reconnect /
+duplicate observation cannot redraw or double-spend a puzzle. Abort returns through the canonical challenge
+cancel/board path.
+
+**Backend implementation coverage (2026-10-07).** The pure board owns canonical team-id marks, three-live-mark
+FIFO, legal oldest-cell refresh, successful-move counting, win-before-الحسم ordering, suspended FIFO in الحسم,
+and the full-board draw. The plugin owns authoritative answer/placement commands, active-team-player authority,
+CAS/idempotency and actor-safe projections; V1 accepts `match` and `multiple_choice` and rejects `closest`. The
+supplier durably converges `question-pending` one item at a time across launch, recurring turns, reads and
+reconnects, with no launch deck and no prefetch.
+
+**Frontend implementation coverage (2026-10-07).** The shared screen renders the authoritative 3×3 board,
+active team, puzzle and stable `question-pending` state, server-derived question/placement countdowns, FIFO
+expiring-mark treatment without premature removal, placement transition, الحسم, and terminal win/draw with a
+safely derived winning line. Phones support projected `match` and `multiple_choice` answering, opponent waiting,
+and active-team placement driven only by server-projected `legalCells` / `expiringCell`; same-cell refresh,
+teammate command-race convergence, timeout and reconnect all resolve from the next authoritative snapshot with no
+optimistic canonical-board mutation. The presentation parser whitelists safe question fields and carries no
+`acceptedAnswers` or `correctOptionId`; reconstruction depends on no animation or client-owned gameplay state.
+
+**Verification.** Full backend unit suite: **203 suites / 2,203 tests PASS**. Focused Moving XO units:
+**6 suites / 199 tests PASS**. Moving XO real-Mongo lifecycle against an isolated `_test` database:
+**23/23 PASS**. Shared regression group: **24 suites / 390 tests PASS**. Full backend integration:
+**28 suites pass · 1 skipped · 2 unrelated suites fail; 294 tests pass · 13 skipped · 3 fail**. The remaining
+failures are the pre-existing Music upload-path and manual-question disabled-AI HTTP-status debts; they are not
+Moving XO debt. Backend typecheck, targeted lint, targeted Prettier check and diff check pass.
+
+**Frontend verification.** Focused Moving XO frontend: **18/18 PASS**. Moving XO + routing: **76/76 PASS**.
+Shared gameplay regressions: **161/161 PASS**. Full frontend: **139 files / 1,528 tests PASS**. Frontend typecheck,
+targeted lint, targeted Prettier check, diff check and production build pass. No browser/pixel-level smoke was
+performed at that milestone because no safe DB-free fixture exists. *(Superseded 2026-10-09: real
+visual/gameplay smoke against a provisioned Moving XO runtime has since been executed in the local/dev runtime —
+see below.)*
+
+#### Provisioned LOCAL runtime gameplay smoke — ✅ VERIFIED (2026-10-09)
+
+**Scope of this milestone.** The local/dev runtime only. It says nothing about Production, which is unchanged.
+
+**Local runtime state as observed.** Moving XO ChallengeType **active**; Puzzles board `slot_1 = moving-xo`,
+`slot_2 = bomb`, `slot_3 = read-your-opponent`, `slot_4 = closest`; **21** Moving XO-compatible items, **21**
+`ready`, **0** missing `worldId`. **ركّبها is still present and was not removed.** **Series `slot_1` is still
+`distributed-information`** — that stale binding remains open work. These are local/dev runtime facts and are
+**not** Production state.
+
+**Gameplay smoke — 17/17 PASS.** Board launch · Fair-Start · active-team vs waiting-phone projection · wrong
+answer handoff · correct answer → placement · 15s question timeout · 10s placement timeout · normal placement ·
+three-live-mark FIFO · same-cell refresh · teammate placement race · reconnect while answering · reconnect during
+placement · normal 3-in-a-row win · move-12 **الحسم** transition · FIFO suspension in الحسم · full-board/no-winner
+draw · terminal convergence and board return.
+
+**Exposure / lifecycle — 5/5 PASS.** Reservation is distinct from exposure · owner-account no-repeat holds ·
+reconnect does not double-expose · an abort **before** presentation spends no content · an abort **after** legal
+presentation preserves the exposure already earned.
+
+**Normal win evidence.** 5 successful moves; winning row `[0, 1, 2]`; Match points **[1, 0]**; **exactly one**
+`challenge.win` score event; reload did not duplicate scoring.
+
+**Long-game evidence.** **18 unique exposures**; **15** successful board moves; `decisivePhase = true` after the
+threshold; FIFO suspended so **9 live marks** coexisted on the board; a natural full-board draw with **no score
+awarded** to either team.
+
+**Local data defect found and repaired.** The 21 temporary smoke ContentItems lacked a canonical Puzzles
+`worldId`. The first genuine launch therefore resolved as catalog-empty and completed as `content-exhausted`
+with no winner and no content burned — the safe depletion path behaving correctly against real bad data. Repair
+ran through the canonical `PATCH /admin/content-items/:id` path, carrying each item's existing `scopeId` so
+`ContentItemService` derived the correct Puzzles `worldId` and revalidated readiness. Post-write fidelity
+verification confirmed the same keys, Scopes, prompts, answer payloads, statuses and compatibility arrays. This
+was **21 LOCAL ContentItem mutations**. It was **not** a Production write, **not** a taxonomy mutation, **not** a
+historical-content retag, and **not** a Git change.
+
+**Non-blocking UX follow-ups observed.** None of these is a gameplay correctness failure.
+
+1. The waiting phone can show the shell chip «دوركم» while the body correctly says the opponent is active. This
+   appears to be shared/pre-existing mobile-shell behaviour, **not** a Moving XO regression.
+2. The answering phone has a large vertical dead space between the prompt and the options.
+3. The terminal draw/win result does not show the final XO board or explain why a draw occurred.
+4. A visible player-facing **الحسم** indicator was **not proven** by the captured visual evidence.
+
+#### Puzzles taxonomy replacement — Product decision 2026-10-09
+
+The legacy Puzzles taxonomy is **replaced, not archived**. The six forward Scopes are the only Puzzles Scopes.
+The five legacy runtime Scopes are not migrated, their 300 historical ContentItems are not retagged, and the 21
+Moving XO smoke items are temporary rather than a forward baseline. Sampling confirmed why: the legacy content is
+school arithmetic («كم يساوي ناتج 7 × 8؟»), letter recall («كم عدد حروف كلمة مدرسة؟»), symbol recall and pure
+trivia («ما أكبر محيط في العالم؟») — retagging it would import exactly what `PUZZLES_WORLD_NO_TRIVIA` excludes.
+
+**§18.3 (General Knowledge → a Scope of عالم الالغاز) is SUPERSEDED.** No trivia Scope belongs in Puzzles. The
+standalone معلومات عامة **World** is a separate thing and is untouched.
+
+**✅ Phase 1 — source/authoring: complete.** Provisioning spec, manifest generator, regenerated manifest, six new
+Scope profiles, nine legacy profiles deleted, `WORLD.md` retargeted, `ai/scripts` tests 127/127 PASS. No second
+Puzzles authoring taxonomy remains. The ركّبها-coupled `ai/.opencode/knowledge/architecture/PUZZLE-FAMILY.md`
+carries a SUPERSEDED banner for its Scope routing only; re-routing its families belongs to the deliberate ركّبها
+replacement task.
+
+**✅ Production taxonomy replacement COMPLETE (2026-10-10).** Two steps, both verified by read-back. First the
+six Scope identities were **created** in Production under the Puzzles World through the canonical admin path,
+under a target-bound plan hash. Then the legacy taxonomy was **retired** through the canonical Admin APIs:
+
+| Verified Production mutation | Count |
+|---|---|
+| Legacy Puzzles ContentItems retired | **30** |
+| Legacy Puzzles Scope rows retired | **8** |
+| Forward Scopes remaining | **6**, all `active`, correct Arabic names, correct worldId |
+| Real content in those six Scopes | **0** |
+
+Production Puzzles now contains **exactly** `observation-illusions` · `wordplay-letters` ·
+`numbers-estimation` · `assembly-rotation` · `paths-motion` · `spot-the-error`, and no legacy Puzzles Scope.
+
+**Live-runtime safety gate (pre-cleanup, read-only).** 29 dependency records → **11 unique stale gameplay
+chains**; classification **A=0 · B=11 · C=0 · D=0**. No genuinely live and no ambiguous chain existed. The 11
+stale chains were **not** cancelled, removed or mutated — they are separate lifecycle debt and remain open work,
+and must not be described as active gameplay. Matches, sessions, runtimes, scores and exposure history were all
+preserved; source inspection confirmed beforehand that a historical Match whose Scope row is gone degrades to an
+empty Scope label rather than erroring, so no tombstone was required.
+
+**Not part of this.** No content authored or promoted (Production forward Puzzles content is **⬜ 0 real
+items**), no Moving XO Production rollout, no board change, no deployment.
+
+**🚧 Phases 2–5 — LOCAL runtime: not started.** The six Scopes exist in no *local* runtime; no new smoke content; no
+new-taxonomy gameplay smoke; the 300 legacy items, the 21 smoke items and the five legacy Scope rows are all
+still present locally and unchanged. **Blocked on admin API access** — the canonical `POST /admin/worlds/:id/scopes`
+path needs an admin token, and admin is granted by hand in MongoDB by deliberate policy, so there is no automated
+path. Raw Mongo writes would bypass `ScopeService` validation, readiness revalidation and the reference guards,
+and were not used.
+
+**Match-history integrity — resolved by inspection; no tombstone required.** `MatchSnapshotComposer.describeScopes`
+is defensive (`try/catch` plus `byId.get(scopeId) ?? ''`) and `list-my-matches` only copies ids, so a deleted
+Scope row degrades a historical Match to an empty Scope name rather than breaking it. Scope deletion is guarded
+only by `SCOPE_NOT_EMPTY` and the legacy-questions guard, which counts **0** for all five Scopes. Hard deletion
+after content removal is therefore safe for the 37 historical Matches.
+
+#### Still pending (rollout / replacement)
+
+**real Puzzles content authoring/promotion** *(Production forward Scopes hold **0 real items**)* ·
+**LOCAL runtime Phases 2–5** *(the local runtime still carries the stale 5-Scope / 321-item taxonomy; only
+Production has been replaced)* · **stale gameplay lifecycle debt** *(the 11 preserved chains)* *(the 21 provisioned items are temporary smoke content)* · **deliberate ركّبها
+replacement/removal** · **Series stale-binding cleanup** · **Production rollout** · **deployment**.
+
+*(Runtime ChallengeType provisioning, Puzzles board binding and the provisioned-runtime gameplay smoke were on
+this list until 2026-10-09; they are now done **in the local/dev runtime only** and remain entirely open for
+Production.)*
+
+#### Still unresolved (Product follow-up)
+
+**Final player-facing Arabic Signature name** · **player-facing content-depletion UX and copy**. Depletion
+behaviour must eventually be safe and explicit in the runtime, but its Product-facing treatment is not approved.
+Nothing else from the original follow-up list remains open: the answer contract, question timer, placement
+surface, placement window, the full-board terminal and — as of 2026-10-09 — the **canonical technical Scope
+slugs** are all approved above.
 
 ## 24. P0 Fair-Start Presentation Activation — ✅ IMPLEMENTED & VERIFIED
 
