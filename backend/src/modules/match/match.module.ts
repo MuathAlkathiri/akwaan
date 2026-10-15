@@ -25,6 +25,8 @@ import { BombChallengeLauncher } from './application/bomb-challenge.launcher';
 import { ClosestChallengeLauncher } from './application/closest-challenge.launcher';
 import { MarhalaChallengeLauncher } from './application/marhala-challenge.launcher';
 import { MarhalaQuestionSourceProvider } from './application/marhala-question-source';
+import { MovingXoChallengeLauncher } from './application/moving-xo-challenge.launcher';
+import { MovingXoQuestionSourceProvider } from './application/moving-xo-question-source';
 import { ComboChallengeLauncher } from './application/combo-challenge.launcher';
 import {
   UnifiedMatchBoardPolicy,
@@ -115,6 +117,8 @@ import { FirstNoteChallengeLauncher } from './application/first-note-challenge.l
     ComboChallengeLauncher,
     MarhalaChallengeLauncher,
     MarhalaQuestionSourceProvider,
+    MovingXoChallengeLauncher,
+    MovingXoQuestionSourceProvider,
     OneClueChallengeLauncher,
     OddPieceChallengeLauncher,
     LaqathaChallengeLauncher,

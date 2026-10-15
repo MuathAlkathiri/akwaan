@@ -164,15 +164,26 @@ export function pendingDeadline(
   if (
     declaration?.source === 'runtime-state' &&
     typeof state.runtimeState.deadlineAt === 'string' &&
-    state.runtimeState.deadlineAt &&
-    declaration.activePhases.includes(String(state.runtimeState.phase))
+    state.runtimeState.deadlineAt
   ) {
+    // Which command expires *this* phase. A mechanic with a single window
+    // answers `commandType` for every phase it lists; one with several — an
+    // answer window followed by a placement window — maps the extras by phase.
+    // Either way exactly one command is armed at a time, from this one place.
+    const phase = String(state.runtimeState.phase);
+    const phaseCommand = declaration.commandTypeByPhase?.[phase];
+    const commandType = phaseCommand
+      ? phaseCommand
+      : declaration.activePhases.includes(phase)
+        ? declaration.commandType
+        : undefined;
+    if (!commandType) return undefined;
     const deadlineAt = state.runtimeState.deadlineAt;
     return {
       kind: 'mode-command',
-      key: `${identity}|mode|${declaration.commandType}|${deadlineAt}`,
+      key: `${identity}|mode|${commandType}|${deadlineAt}`,
       deadlineAt,
-      commandType: declaration.commandType,
+      commandType,
     };
   }
 

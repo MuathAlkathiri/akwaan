@@ -171,6 +171,30 @@ describe('content exposure ledger', () => {
         [],
       );
     });
+
+    it('releases only the rejected reservation owned by that Match', async () => {
+      await exposures.reserve(scope({ matchId: 'match-1' }), ['i1', 'i2'], NOW);
+      await exposures.recordPresented(
+        scope({ matchId: 'match-1' }),
+        ['i1'],
+        NOW,
+      );
+      await exposures.reserve(scope({ matchId: 'match-2' }), ['i3'], NOW);
+
+      await exposures.releaseReserved(scope({ matchId: 'match-1' }), [
+        'i1',
+        'i2',
+        'i3',
+      ]);
+
+      expect(await seen(scope())).toEqual(
+        expect.arrayContaining([
+          { contentItemId: 'i1', state: 'exposed' },
+          { contentItemId: 'i3', state: 'reserved' },
+        ]),
+      );
+      expect(await seen(scope())).toHaveLength(2);
+    });
   });
 
   describe('idempotency', () => {
@@ -329,6 +353,10 @@ describe('content exposure ledger', () => {
       selector = new MatchContentSelector(
         new ContentItemRepository(items as never),
         exposures,
+        {
+          findByIds: () =>
+            Promise.resolve([{ _id: SCOPE, slug: 'wordplay-letters' }]),
+        } as never,
       );
       // Six items, each playable through *both* mechanics — which is what makes
       // the per-mechanic distinction observable at all.

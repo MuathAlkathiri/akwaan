@@ -70,6 +70,11 @@ export enum ChallengeAnswerMode {
    * الدخيلة uses, for the same reason.
    */
   LA_TAHRIQHA = 'la_tahriqha',
+  /**
+   * Puzzles Signature: a 3×3 board played through puzzles. The item keeps its
+   * own answer contract — the mechanic only needs a binary verdict from it.
+   */
+  MOVING_XO = 'moving_xo',
 }
 
 /** A generic board position. Gameplay meaning comes from its Challenge Type. */
@@ -154,6 +159,39 @@ export const ONE_CLUE_SLUG = 'one-clue';
 export const COMBO_SLUG = 'combo';
 
 export const BOMB_SLUG = 'bomb';
+
+/** Puzzles Signature: a 3×3 board played through fresh puzzles on demand. */
+export const MOVING_XO_SLUG = 'moving-xo';
+
+/**
+ * The two binary answer contracts Moving XO can consume (§23.11 V1).
+ *
+ * This list is shared by READY enforcement, runtime compatibility and the
+ * contract drift spec. Keeping the enum values here makes the compatibility
+ * map below a projection of the canonical list instead of a second mutable
+ * declaration.
+ */
+export const MOVING_XO_AUTHORING_ANSWER_MODES = [
+  ChallengeAnswerMode.MATCH,
+  ChallengeAnswerMode.MULTIPLE_CHOICE,
+] as const;
+
+/** The six approved forward Puzzles Scope slugs. */
+export const FORWARD_PUZZLE_SCOPE_SLUGS = [
+  'observation-illusions',
+  'wordplay-letters',
+  'numbers-estimation',
+  'assembly-rotation',
+  'paths-motion',
+  'spot-the-error',
+] as const;
+
+/** Scopes whose puzzle is definitionally visual and requires resolved media. */
+export const VISUAL_PUZZLE_SCOPE_SLUGS = [
+  'observation-illusions',
+  'assembly-rotation',
+  'paths-motion',
+] as const;
 
 export const MARHALA_SLUG = 'marhala';
 /** Cars Signature: القطعة الدخيلة. */
@@ -288,6 +326,9 @@ export function contentPatternForChallengeAnswerMode(
   if (mode === ChallengeAnswerMode.FIRST_NOTE) return 'first_note';
   if (mode === ChallengeAnswerMode.EKSHIFNI) return 'ekshifni';
   if (mode === ChallengeAnswerMode.LA_TAHRIQHA) return 'la_tahriqha';
+  // Moving XO is deliberately absent: it owns no authoring structure. Its items
+  // are ordinary match / multiple_choice content, so they stay `generic` and the
+  // mechanic adds no second content shape.
   return 'generic';
 }
 
@@ -358,6 +399,11 @@ export const ANSWER_MODE_COMPATIBLE_ITEM_MODES: Readonly<
   // The five correct ingredients are the answer, so the item answers in its own
   // mode rather than borrowing MATCH — exactly as القطعة الدخيلة does.
   [ChallengeAnswerMode.LA_TAHRIQHA]: [ChallengeAnswerMode.LA_TAHRIQHA],
+  // Moving XO needs a binary result — correct earns one board move, wrong earns
+  // none — so V1 consumes only the two modes that give one. `closest` is an
+  // estimate and is deliberately absent (§23.11); leaving it out of this map is
+  // what keeps it out of selection, with no mechanic-specific filter anywhere.
+  [ChallengeAnswerMode.MOVING_XO]: MOVING_XO_AUTHORING_ANSWER_MODES,
   [ChallengeAnswerMode.RAKKIBHA]: [
     ChallengeAnswerMode.MATCH,
     ChallengeAnswerMode.MULTIPLE_CHOICE,

@@ -30,6 +30,9 @@ import { LA_TAHRIQHA_MODE_KEY } from "./la-tahriqha.presentation";
 import { LaTahriqhaGameplayPanel } from "../components/la-tahriqha-gameplay-panel";
 import { FIRST_NOTE_MODE_KEY } from "./first-note.presentation";
 import { FirstNoteGameplayPanel } from "../components/first-note-gameplay-panel";
+import { MOVING_XO_MODE_KEY } from "./moving-xo.presentation";
+import { MovingXoScreen } from "../components/moving-xo-screen";
+import { MovingXoPhonePanel } from "../components/moving-xo-phone-panel";
 import { useLiveSession } from "../hooks/live-session-context";
 import {
   useRecurringQuestionTransition,
@@ -389,7 +392,9 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
   // view can make the same split — showing a stale question would be worse than
   // showing a loader.
   const transition = useRecurringQuestionTransition(gameplay, {
-    stageSurvivesTransition: gameplay?.mode.key === MARHALA_MODE_KEY,
+    stageSurvivesTransition:
+      gameplay?.mode.key === MARHALA_MODE_KEY ||
+      gameplay?.mode.key === MOVING_XO_MODE_KEY,
   });
 
   // Safety net for a wait this surface cannot end by itself.
@@ -539,6 +544,14 @@ function renderMechanic(
       return <LaTahriqhaGameplayPanel runtime={runtime} />;
     case FIRST_NOTE_MODE_KEY:
       return <FirstNoteGameplayPanel runtime={runtime} actor={actor} />;
+    // Moving XO keeps its public board on the room screen and gives phones only
+    // the action the actor-safe projection permits: answer, place, or wait.
+    case MOVING_XO_MODE_KEY:
+      return actor === "participant" ? (
+        <MovingXoPhonePanel runtime={runtime} />
+      ) : (
+        <MovingXoScreen runtime={runtime} />
+      );
     default:
       // The server started a mechanic this client has no screen for. Saying so is
       // the only honest option: the runtime is real and running.

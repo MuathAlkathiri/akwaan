@@ -7,6 +7,7 @@ import {
   MatchContentExhaustedError,
 } from './content-exposure.service';
 import { MatchDomainError } from '../domain/match.errors';
+import { ScopeRepository } from '../../world-content/persistence/scope.repository';
 import {
   MatchChallengeLaunchRequirements,
   MatchSelectableContentItem,
@@ -30,6 +31,7 @@ export class MatchContentSelector {
   constructor(
     private readonly items: ContentItemRepository,
     private readonly exposures: ContentExposureService,
+    private readonly scopes: ScopeRepository,
   ) {}
 
   async select(input: {
@@ -56,15 +58,23 @@ export class MatchContentSelector {
     now?: Date;
   }): Promise<string[]> {
     const required = input.requirements.contentItemCount;
-    const documents = await this.items.listPlayableForOccurrence({
-      worldId: input.worldId,
-      scopeIds: input.selectedScopeIds,
-      challengeTypeId: input.challengeTypeId,
-    });
+    const [documents, scopes] = await Promise.all([
+      this.items.listPlayableForOccurrence({
+        worldId: input.worldId,
+        scopeIds: input.selectedScopeIds,
+        challengeTypeId: input.challengeTypeId,
+      }),
+      this.scopes.findByIds(input.selectedScopeIds),
+    ]);
+    const scopeSlugs = new Map(
+      scopes.map((scope) => [String(scope._id), scope.slug]),
+    );
 
     const used = new Set(input.usedContentItemIds);
     const eligible = documents
-      .map((document) => this.toSelectable(document))
+      .map((document) =>
+        this.toSelectable(document, scopeSlugs.get(String(document.scopeId))),
+      )
       .filter((item) => !used.has(item.id))
       .filter(
         (item) =>
@@ -160,7 +170,13 @@ export class MatchContentSelector {
       return chosen;
     }
 
-    if (playable.length < required) refuse(required, playable.length);
+    const minimumUsable = Math.max(
+      required,
+      input.requirements.minimumUsableContentItems ?? required,
+    );
+    if (playable.length < minimumUsable) {
+      refuse(minimumUsable, playable.length);
+    }
 
     return this.draw(playable, required, positionKey, input.matchId);
   }
@@ -212,19 +228,30 @@ export class MatchContentSelector {
     return selected;
   }
 
-  private toSelectable(document: {
-    _id: unknown;
-    worldId: unknown;
-    scopeId: unknown;
-    answerPayload: { mode: string };
-    mechanicPayload?: Record<string, unknown>;
-  }): MatchSelectableContentItem {
+  private toSelectable(
+    document: {
+      _id: unknown;
+      worldId: unknown;
+      scopeId: unknown;
+      prompt?: unknown;
+      answerPayload?: { mode?: string };
+      media?: unknown;
+      mechanicPayload?: Record<string, unknown>;
+    },
+    scopeSlug?: string,
+  ): MatchSelectableContentItem {
     const payload = document.mechanicPayload ?? {};
     return {
       id: String(document._id),
       worldId: String(document.worldId),
       scopeId: String(document.scopeId),
-      answerMode: document.answerPayload.mode,
+      answerMode: String(document.answerPayload?.mode ?? ''),
+      ...(scopeSlug ? { scopeSlug } : {}),
+      ...(document.prompt !== undefined ? { prompt: document.prompt } : {}),
+      ...(document.answerPayload !== undefined
+        ? { answerPayload: document.answerPayload }
+        : {}),
+      ...(document.media !== undefined ? { media: document.media } : {}),
       ...(typeof payload.comboStage === 'number'
         ? { comboStage: payload.comboStage }
         : {}),

@@ -45,6 +45,12 @@
         "rakkibha"
       ]
     },
+    "moving-xo": {
+      "category": "SIGNATURE",
+      "boundWorld": "puzzles",
+      "status": "AUTHORABLE",
+      "profile": "ai/.opencode/skills/challenge-types/moving-xo/SKILL.md"
+    },
     "odd-piece": {
       "category": "SIGNATURE",
       "boundWorld": "cars",

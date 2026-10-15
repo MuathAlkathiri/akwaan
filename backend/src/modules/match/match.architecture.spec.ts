@@ -49,11 +49,11 @@ describe('Match module architecture', () => {
     const launchers = matchFiles.filter((path) =>
       path.endsWith('.launcher.ts'),
     );
-    expect(launchers).toHaveLength(13);
+    expect(launchers).toHaveLength(14);
     for (const path of launchers) {
       const content = read(path);
       expect(content).toMatch(
-        /StartRyoGameplay|StartTop5|StartRakkibha|StartClosestGameplay|StartOneClueGameplay|StartBombGameplayFromContent|StartComboGameplay|StartMarhalaGameplay|StartOddPieceGameplay|StartLaqathaGameplay|StartFirstNoteGameplay|StartEkshifniGameplay|StartLaTahriqhaGameplay/,
+        /StartRyoGameplay|StartTop5|StartRakkibha|StartClosestGameplay|StartOneClueGameplay|StartBombGameplayFromContent|StartComboGameplay|StartMarhalaGameplay|StartOddPieceGameplay|StartLaqathaGameplay|StartFirstNoteGameplay|StartEkshifniGameplay|StartLaTahriqhaGameplay|StartMovingXoGameplay/,
       );
       // No launcher may build a runtime, a round, or an interaction itself.
       expect(content).not.toMatch(
@@ -295,6 +295,12 @@ describe('Match module architecture', () => {
       // registry and the Match layer registers something that can answer — the
       // same one-way pattern as the gameplay observer registry.
       'live-game-sessions/application/marhala-question-source.registry',
+      // Moving XO draws on demand through the same one-way registry, and reads
+      // the board's own key plus the mechanic's verdict to report a result.
+      'live-game-sessions/application/moving-xo-question-source.registry',
+      'live-game-sessions/application/start-moving-xo-gameplay.use-case',
+      'live-game-sessions/domain/moving-xo-board',
+      'live-game-sessions/domain/moving-xo-gameplay.plugin',
       'live-game-sessions/application/start-bomb-from-content.use-case',
       'live-game-sessions/domain/team-action-assignment',
       'live-game-sessions/presentation/participant-auth',

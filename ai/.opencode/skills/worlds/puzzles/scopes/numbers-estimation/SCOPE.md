@@ -20,6 +20,28 @@
 - `PUZZLE_ITSELF_IS_THE_CHALLENGE` — the puzzle must be self-contained in what
   the player is shown. No outside lookup, no recall dependency.
 
+## Puzzle families (Moving XO authoring)
+
+Families are authoring guidance for the Puzzles Signature mechanic. They are
+**not** a database field and carry no runtime behaviour — see
+`ai/.opencode/knowledge/architecture/MOVING-XO.md`.
+
+Every family answers on a **text-only** phone within the **15-second** window,
+while the prompt and media sit on the shared screen.
+
+| Family | Arabic | Media | Answer modes |
+|---|---|---|---|
+| `quantity-intuition` | حدس الكمية | optional | `multiple_choice` |
+| `proportion-estimate` | تقدير النسبة | optional | `multiple_choice` |
+| `numeric-pattern` | نمط عددي | none | `multiple_choice` |
+
+- **`quantity-intuition`** — A sense-of-quantity judgement answered in seconds.
+  - Reject: School-math worksheet content (§23.11, explicit).
+- **`proportion-estimate`** — Comparing magnitudes or proportions by intuition.
+  - Reject: Anything needing written calculation.
+- **`numeric-pattern`** — A short numeric pattern completed by insight.
+  - Reject: Sequences with more than one defensible continuation.
+
 ## Safety
 
 No real-person names or likenesses, no brands, no money, body shape or weight,

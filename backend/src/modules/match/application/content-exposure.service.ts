@@ -125,6 +125,30 @@ export class ContentExposureService {
     }
     return released;
   }
+
+  /**
+   * Give back a bounded failed draw without disturbing another unseen item this
+   * Match may legitimately hold. Exposed rows can never match this delete.
+   */
+  async releaseReserved(
+    scope: ContentExposureScope,
+    contentItemIds: string[],
+  ): Promise<number> {
+    const released = await this.exposures.releaseReservedItems(
+      scope,
+      scope.matchId,
+      contentItemIds,
+    );
+    if (released) {
+      this.logger.warn({
+        event: 'content_reservations_released_after_invalid_draw',
+        matchId: scope.matchId,
+        challengeTypeKey: scope.challengeTypeKey,
+        released,
+      });
+    }
+    return released;
+  }
 }
 
 /**

@@ -54,6 +54,7 @@ import { LAQATHA_MODE_KEY } from '../domain/laqatha-gameplay.plugin';
 import { EKSHIFNI_MODE_KEY } from '../domain/ekshifni-gameplay.plugin';
 import { LA_TAHRIQHA_MODE_KEY } from '../domain/la-tahriqha-gameplay.plugin';
 import { FIRST_NOTE_MODE_KEY } from '../domain/first-note-gameplay.plugin';
+import { MOVING_XO_MODE_KEY } from '../domain/moving-xo-board';
 
 /**
  * The authority behind `expire-team`, against the server clock and the
@@ -391,6 +392,11 @@ export class SubmitGameplayCommand {
         command,
         now,
       );
+      const movingXoTerminal = this.completeMovingXoIfTerminal(
+        runtime,
+        command,
+        now,
+      );
       if (sessionChanged) {
         await context.saveSession(session, previousSessionRevision);
       }
@@ -408,7 +414,8 @@ export class SubmitGameplayCommand {
           laqathaTerminal ||
           firstNoteTerminal ||
           ekshifniTerminal ||
-          laTahriqhaTerminal,
+          laTahriqhaTerminal ||
+          movingXoTerminal,
       };
     });
 
@@ -654,6 +661,44 @@ export class SubmitGameplayCommand {
         actorId: command.actor.actorId,
         reason: 'closest-three-items-completed',
         result: { resultsJson: state.runtimeState.resultsJson },
+        now,
+      });
+    }
+    runtime.complete(
+      `${command.commandId}:runtime-complete`,
+      command.actor.actorId,
+      now,
+    );
+    return true;
+  }
+
+  /**
+   * Finalize Moving XO after its reducer records win, draw or depletion.
+   *
+   * The Match reads the mechanic's verdict through its ordinary reconciliation
+   * observer, but the live gameplay aggregate must still close its active round
+   * and runtime. Leaving those active would make the next board challenge clean
+   * up a supposedly orphaned runtime instead of inheriting a canonical terminal.
+   */
+  private completeMovingXoIfTerminal(
+    runtime: import('../domain/gameplay-runtime').GameplayRuntime,
+    command: GameplayRuntimeCommand,
+    now: Date,
+  ): boolean {
+    if (runtime.modeKey !== MOVING_XO_MODE_KEY) return false;
+    const state = runtime.serialize();
+    if (state.runtimeState.phase !== 'completed') return false;
+    const round = state.activeRound;
+    if (round) {
+      runtime.completeRound({
+        roundId: round.id,
+        commandId: `${command.commandId}:round-complete`,
+        actorId: command.actor.actorId,
+        reason: 'moving-xo-completed',
+        result: {
+          outcome: state.runtimeState.outcome,
+          winningTeamId: state.runtimeState.winningTeamId,
+        },
         now,
       });
     }

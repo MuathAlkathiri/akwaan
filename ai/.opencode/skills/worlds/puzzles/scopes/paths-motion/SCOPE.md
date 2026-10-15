@@ -20,6 +20,25 @@
 - `PUZZLE_ITSELF_IS_THE_CHALLENGE` — the puzzle must be self-contained in what
   the player is shown. No outside lookup, no recall dependency.
 
+## Puzzle families (Moving XO authoring)
+
+Families are authoring guidance for the Puzzles Signature mechanic. They are
+**not** a database field and carry no runtime behaviour — see
+`ai/.opencode/knowledge/architecture/MOVING-XO.md`.
+
+Every family answers on a **text-only** phone within the **15-second** window,
+while the prompt and media sit on the shared screen.
+
+| Family | Arabic | Media | Answer modes |
+|---|---|---|---|
+| `path-trace` | تتبّع مسار | required | `multiple_choice` |
+| `mechanism-outcome` | نتيجة آلية | required | `multiple_choice` |
+
+- **`path-trace`** — Following a path, wire or route to its endpoint.
+  - Reject: Diagrams too dense to trace at shared-screen distance.
+- **`mechanism-outcome`** — Predicting a closed deterministic mechanism's result.
+  - Reject: Outcomes depending on real-world physics knowledge.
+
 ## Safety
 
 No real-person names or likenesses, no brands, no money, body shape or weight,

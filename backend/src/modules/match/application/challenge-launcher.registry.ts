@@ -18,6 +18,12 @@ export interface MatchSelectableContentItem {
   worldId: string;
   scopeId: string;
   answerMode: string;
+  /** Scope identity needed by mechanics with Scope-level runtime safeguards. */
+  scopeSlug?: string;
+  /** Generic ContentItem fields used by a launcher's runtime-safe predicate. */
+  prompt?: unknown;
+  answerPayload?: unknown;
+  media?: unknown;
   /** `mechanicPayload.variant`, when the mechanic authored one. */
   mechanicVariant?: string;
   /** `mechanicPayload.authorSafetyConfirmation`, when the mechanic requires it. */
@@ -39,6 +45,12 @@ export interface MatchSelectableContentItem {
 export interface MatchChallengeLaunchRequirements {
   /** Exactly this many distinct ContentItems, chosen by the server. */
   contentItemCount: number;
+  /**
+   * Minimum selectable inventory required to begin, without drawing or reserving
+   * that inventory. On-demand mechanics use this independently of
+   * `contentItemCount`, which remains zero so launch never builds a deck.
+   */
+  minimumUsableContentItems?: number;
   /**
    * True when the mechanic cannot resolve without private input from connected
    * player phones. Every currently implemented mechanic is phone-required.

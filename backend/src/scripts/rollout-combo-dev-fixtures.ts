@@ -262,6 +262,15 @@ async function verifySelectable(
     {
       selectable: (_scope: unknown, ids: string[]) => Promise.resolve(ids),
     } as never,
+    {
+      findByIds: (ids: string[]) =>
+        connection
+          .db!.collection('scopes')
+          .find({
+            _id: { $in: ids.map((id) => new mongoose.Types.ObjectId(id)) },
+          })
+          .toArray(),
+    } as never,
   );
   const scopeIds = (
     await connection

@@ -18,7 +18,7 @@ class TestAuthoringContext(unittest.TestCase):
         scopes = self.manifest["scopes"]
         
         self.assertEqual(len(worlds), 12, "Should have exactly 12 worlds")
-        self.assertEqual(len(scopes), 62, "Should have exactly 62 scopes")
+        self.assertEqual(len(scopes), 59, "Should have exactly 59 scopes")
         
         total_scopes = 0
         for w, wdata in worlds.items():
@@ -26,7 +26,7 @@ class TestAuthoringContext(unittest.TestCase):
             for s in wdata["scopes"]:
                 self.assertIn(f"{w}/{s}", scopes)
         
-        self.assertEqual(total_scopes, 62, "Sum of per-world scopes must equal 62")
+        self.assertEqual(total_scopes, 59, "Sum of per-world scopes must equal 59")
         
         for s_slug, s_data in scopes.items():
             self.assertTrue(os.path.exists(s_data["scopePath"]))
@@ -35,7 +35,7 @@ class TestAuthoringContext(unittest.TestCase):
     def test_mechanics_inventory(self):
         mechs = self.manifest["mechanics"]
         
-        expected_authorable = ["bomb", "marhala", "combo", "read-your-opponent", "closest", "top-5", "distributed-information", "odd-piece", "first-note", "laqatha"]
+        expected_authorable = ["bomb", "marhala", "combo", "read-your-opponent", "closest", "top-5", "distributed-information", "moving-xo", "odd-piece", "first-note", "laqatha"]
         expected_legacy = ["one-clue", "guess-your-teammate", "twenty-inquiries", "same-wavelength", "split", "split-clue", "who-among-us"]
         
         for k in expected_authorable:
@@ -67,8 +67,8 @@ class TestAuthoringContext(unittest.TestCase):
         # top-5 + football + premier-league -> PASS
         self.assertEqual(run_resolver("top-5", "football", "premier-league").returncode, 0)
         
-        # distributed-information + puzzles + logic-deduction -> PASS
-        self.assertEqual(run_resolver("distributed-information", "puzzles", "logic-deduction").returncode, 0)
+        # distributed-information + puzzles + a forward Scope -> PASS
+        self.assertEqual(run_resolver("distributed-information", "puzzles", "wordplay-letters").returncode, 0)
         
         # odd-piece + cars + german-cars -> PASS
         self.assertEqual(run_resolver("odd-piece", "cars", "german-cars").returncode, 0)
@@ -78,6 +78,23 @@ class TestAuthoringContext(unittest.TestCase):
         
         # laqatha + movies + marvel -> PASS
         self.assertEqual(run_resolver("laqatha", "movies", "marvel").returncode, 0)
+
+    def test_moving_xo_and_rakkibha_discovery_are_independent(self):
+        mechs = self.manifest["mechanics"]
+        moving_xo = mechs["moving-xo"]
+        rakkibha = mechs["distributed-information"]
+
+        self.assertNotEqual(moving_xo["profile"], rakkibha["profile"])
+        self.assertNotIn("rakkibha", moving_xo.get("aliases", []))
+        self.assertIn("rakkibha", rakkibha.get("aliases", []))
+
+        for scope in self.manifest["worlds"]["puzzles"]["scopes"]:
+            self.assertEqual(run_resolver("moving-xo", "puzzles", scope).returncode, 0)
+
+        resolved_rakkibha = run_resolver("rakkibha", "puzzles", "wordplay-letters")
+        self.assertEqual(resolved_rakkibha.returncode, 0)
+        self.assertIn('"mechanicKey": "distributed-information"', resolved_rakkibha.stdout)
+        self.assertNotEqual(run_resolver("moving-xo", "anime", "naruto").returncode, 0)
 
     def test_provenance(self):
         res = run_resolver("marhala", "video-games", "fifa")

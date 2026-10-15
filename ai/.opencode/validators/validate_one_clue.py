@@ -54,10 +54,14 @@ def normalize(value: str) -> str:
     text = text.replace("\u0649", "\u064A").replace("\u0629", "\u0647")
     text = re.sub(r"[\W_]+", " ", text, flags=re.UNICODE).strip().lower()
     text = re.sub(r"\s+", " ", text)
-    for article in ("the", "\u0627\u0644"):
-        if text.startswith(article + " ") and len(text) > len(article) + 1:
-            text = text[len(article) + 1:]
-    return text
+    if text.startswith("the ") and len(text) > 4:
+        text = text[4:]
+    # Arabic's definite article is attached to its word — الشمس, not "ال شمس" —
+    # so a space-separated check never fires on real Arabic. The backend's
+    # `normalizeAnswer` strips `^ال` whenever an Arabic letter follows; mirroring
+    # that is what makes الشمس and شمس the one answer they actually are.
+    text = re.sub(r"^\u0627\u0644(?=[\u0600-\u06ff])", "", text)
+    return text.strip()
 
 
 def walk_keys(value, keys=None):

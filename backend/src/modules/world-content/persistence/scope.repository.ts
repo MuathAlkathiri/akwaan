@@ -22,6 +22,13 @@ export class ScopeRepository {
     return this.model.findById(id).exec();
   }
 
+  findByIds(ids: string[]): Promise<Scope[]> {
+    if (!ids.length) return Promise.resolve([]);
+    return this.model
+      .find({ _id: { $in: ids.map((id) => new Types.ObjectId(id)) } })
+      .exec();
+  }
+
   create(data: Partial<Scope>): Promise<Scope> {
     return this.model.create(data);
   }

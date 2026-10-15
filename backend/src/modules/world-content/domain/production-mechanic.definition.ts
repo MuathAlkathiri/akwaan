@@ -15,6 +15,7 @@ import {
   EKSHIFNI_SLUG,
   LA_TAHRIQHA_SLUG,
   LA_TAHRIQHA_DEFAULT_DISH_SECONDS,
+  MOVING_XO_SLUG,
 } from './world-content.constants';
 import { ChallengePresentation } from './world-content.types';
 
@@ -159,6 +160,31 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
       defaultPresentation: {
         inputType: 'phone-text',
         timerSeconds: 45,
+        soundPack: null,
+        revealStyle: null,
+      },
+    },
+  }),
+  definition({
+    // Moving XO draws one ordinary puzzle per turn for as long as its board
+    // lasts. It therefore owns a continuous challenge lifecycle, but no custom
+    // content shape: MOVING_XO answer compatibility resolves canonical MATCH
+    // and MULTIPLE_CHOICE items through the generic content pattern.
+    slug: MOVING_XO_SLUG,
+    family: ChallengeFamily.SIGNATURE,
+    itemStructure: ChallengeItemStructure.CONTINUOUS,
+    answerMode: ChallengeAnswerMode.MOVING_XO,
+    seed: {
+      // Working label only; the final player-facing Arabic name is unresolved.
+      name: 'Moving XO',
+      description:
+        'كل إجابة صحيحة تكسب الفريق حركة على لوحة 3×3 حتى الفوز بثلاث علامات متتالية.',
+      defaultPresentation: {
+        // The runtime selects answer controls by item mode, then uses the same
+        // phone for cell placement. This is the existing discrete phone-input
+        // presentation value; phone readiness itself belongs to the launcher.
+        inputType: 'phone-choice',
+        timerSeconds: 15,
         soundPack: null,
         revealStyle: null,
       },

@@ -4,6 +4,8 @@ import {
   ChallengeFamily,
   ContentItemStatus,
   ContentMediaType,
+  MOVING_XO_SLUG,
+  RAKKIBHA_SLUG,
   VoteConsensusRule,
 } from './world-content.constants';
 import {
@@ -12,7 +14,11 @@ import {
   multipleChoicePayload,
   scope,
 } from './world-content.fixtures';
-import { ChallengeTypeView } from './world-content.types';
+import {
+  ChallengeTypeView,
+  ContentItemView,
+  ScopeView,
+} from './world-content.types';
 
 describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
   const policy = new ContentItemCompatibilityPolicy();
@@ -581,7 +587,12 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
     // authored before the field existed stays valid without one.
     expect(
       codes({
-        item: yearItem({ mode: 'numeric-range', min: 0, max: 3000, unit: 'هدف' }),
+        item: yearItem({
+          mode: 'numeric-range',
+          min: 0,
+          max: 3000,
+          unit: 'هدف',
+        }),
         challengeTypes: typeMap(closest),
       }),
     ).toEqual([]);
@@ -1252,6 +1263,307 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
           },
         }),
       ).toContain('FIRST_NOTE_STRUCTURE_INVALID');
+    });
+  });
+
+  describe('Moving XO authoring (roadmap §23.11)', () => {
+    // The mechanic plays an ordinary ContentItem. These tests therefore only ever
+    // build ordinary items — the point of the contract is that nothing bespoke is
+    // needed, and a fixture that invented a Moving XO payload would hide that.
+    const movingXo = (overrides: Partial<ChallengeTypeView> = {}) =>
+      challengeType({
+        id: 'challenge-moving-xo',
+        slug: MOVING_XO_SLUG,
+        family: ChallengeFamily.SIGNATURE,
+        answerMode: ChallengeAnswerMode.MOVING_XO,
+        ...overrides,
+      });
+
+    const puzzleScope = (slug: string, overrides: Partial<ScopeView> = {}) =>
+      scope({
+        id: `scope-${slug}`,
+        worldId: 'world-puzzles',
+        name: slug,
+        slug,
+        ...overrides,
+      });
+
+    const resolvedImage = {
+      type: ContentMediaType.IMAGE,
+      assets: [{ url: 'https://cdn.akwaan.test/puzzle.png' }],
+    };
+
+    const puzzleItem = (overrides: Partial<ContentItemView> = {}) =>
+      contentItem({
+        worldId: 'world-puzzles',
+        scopeId: 'scope-wordplay-letters',
+        prompt: { ar: 'أي كلمة تتكوّن من حروف «رطش»؟' },
+        compatibleChallengeTypeIds: ['challenge-moving-xo'],
+        ...overrides,
+      });
+
+    const judge = (
+      item: ContentItemView,
+      scopeSlug: string,
+      type: ChallengeTypeView = movingXo(),
+    ) =>
+      policy
+        .evaluate({
+          item: { ...item, scopeId: `scope-${scopeSlug}` },
+          scope: puzzleScope(scopeSlug),
+          challengeTypes: typeMap(type),
+        })
+        .blockers.map((problem) => problem.code);
+
+    const matchItem = (acceptedAnswers: string[]) =>
+      puzzleItem({
+        answerPayload: { mode: ChallengeAnswerMode.MATCH, acceptedAnswers },
+      });
+
+    const matchType = movingXo();
+
+    describe('the six forward Scopes', () => {
+      // The three definitionally visual Scopes say the image *is* the puzzle, so
+      // they are the same multiple-choice item plus a resolved asset.
+      it.each([
+        ['observation-illusions', resolvedImage],
+        ['assembly-rotation', resolvedImage],
+        ['paths-motion', resolvedImage],
+        ['wordplay-letters', undefined],
+        ['numbers-estimation', undefined],
+        ['spot-the-error', undefined],
+      ])('accepts a multiple-choice puzzle on %s', (scopeSlug, media) => {
+        expect(judge(puzzleItem({ media }), scopeSlug)).toEqual([]);
+      });
+
+      it('accepts a short single-word match answer', () => {
+        // One short Arabic word is the whole safe surface for typing under
+        // fifteen seconds. Anything longer has more than one defensible phrasing.
+        expect(
+          judge(matchItem(['مثلث']), 'wordplay-letters', matchType),
+        ).toEqual([]);
+      });
+
+      it('needs no alias for a spelling the normalizer already folds', () => {
+        // `normalizeAnswer` folds a leading ال, the alef family, ة/ه, ى/ي and
+        // diacritics, so المثلث *is* مثلث. Listing both is not generosity, it is
+        // one answer written twice — and the existing duplicate check says so.
+        expect(
+          judge(matchItem(['مثلث', 'المثلث']), 'wordplay-letters', matchType),
+        ).toEqual(['DUPLICATE_ACCEPTED_ANSWER']);
+      });
+
+      it('rejects content parked on a retired Scope', () => {
+        // The nine legacy Puzzles Scopes are retired; the twenty-one local smoke
+        // fixtures sit on them and must never be promoted.
+        expect(judge(puzzleItem(), 'general-knowledge')).toContain(
+          'MOVING_XO_SCOPE_NOT_FORWARD',
+        );
+        expect(judge(puzzleItem(), 'visual-puzzles')).toContain(
+          'MOVING_XO_SCOPE_NOT_FORWARD',
+        );
+      });
+    });
+
+    describe('answer modes', () => {
+      it('refuses a mode the fifteen-second phone cannot answer in', () => {
+        // Runtime recovery rejects this defensively, but READY is the proper
+        // authoring boundary and must refuse it before launch inventory counts it.
+        expect(
+          judge(
+            puzzleItem({
+              answerPayload: {
+                mode: ChallengeAnswerMode.CLOSEST,
+                correctValue: 7,
+              },
+            }),
+            'numbers-estimation',
+            movingXo(),
+          ),
+        ).toContain('MOVING_XO_ANSWER_MODE_UNSUPPORTED');
+      });
+
+      it('refuses a vote payload even when the challenge would resolve it', () => {
+        expect(
+          judge(
+            puzzleItem({
+              answerPayload: {
+                mode: ChallengeAnswerMode.VOTE,
+                consensusRule: VoteConsensusRule.EXACT,
+                options: [
+                  { id: 'a', label: { ar: 'أ' } },
+                  { id: 'b', label: { ar: 'ب' } },
+                ],
+              },
+            }),
+            'spot-the-error',
+            movingXo(),
+          ),
+        ).toContain('MOVING_XO_ANSWER_MODE_UNSUPPORTED');
+      });
+
+      it.each([['25'], ['٢٥'], ['٧ سنوات'], ['90 درجة']])(
+        'refuses the typed numeric answer %s',
+        (answer) => {
+          // The shared Arabic normalizer folds letters, not digits: ٧ and 7 stay
+          // different strings, so a correct answer typed on the other keyboard
+          // loses the turn. Numbers belong in multiple_choice.
+          expect(
+            judge(matchItem([answer]), 'numbers-estimation', matchType),
+          ).toContain('MOVING_XO_MATCH_ANSWER_NUMERIC');
+        },
+      );
+
+      it('names the offending answers rather than just failing', () => {
+        const report = policy.evaluate({
+          item: {
+            ...matchItem(['سبعة', '7']),
+            scopeId: 'scope-numbers-estimation',
+          },
+          scope: puzzleScope('numbers-estimation'),
+          challengeTypes: typeMap(matchType),
+        });
+        const numeric = report.blockers.find(
+          (problem) => problem.code === 'MOVING_XO_MATCH_ANSWER_NUMERIC',
+        );
+        expect(numeric?.details).toMatchObject({ acceptedAnswers: ['7'] });
+      });
+
+      it('leaves a multiple-choice numeric answer alone', () => {
+        // Tapping a number is unambiguous; only typing one is not.
+        expect(
+          judge(
+            puzzleItem({
+              answerPayload: multipleChoicePayload({
+                options: [
+                  { id: 'seven', label: { ar: '٧' } },
+                  { id: 'eight', label: { ar: '٨' } },
+                ],
+                correctOptionId: 'seven',
+              }),
+            }),
+            'numbers-estimation',
+          ),
+        ).toEqual([]);
+      });
+    });
+
+    describe('media on the definitionally visual Scopes', () => {
+      it.each(['observation-illusions', 'assembly-rotation', 'paths-motion'])(
+        '%s needs a resolved asset, not an intention',
+        (scopeSlug) => {
+          expect(judge(puzzleItem(), scopeSlug)).toContain(
+            'PUZZLE_SCOPE_REQUIRES_MEDIA',
+          );
+          expect(
+            judge(
+              puzzleItem({
+                media: { type: ContentMediaType.IMAGE, assets: [] },
+              }),
+              scopeSlug,
+            ),
+          ).toContain('PUZZLE_SCOPE_REQUIRES_MEDIA');
+          expect(
+            judge(
+              puzzleItem({
+                media: { type: ContentMediaType.NONE, assets: [] },
+              }),
+              scopeSlug,
+            ),
+          ).toContain('PUZZLE_SCOPE_REQUIRES_MEDIA');
+        },
+      );
+
+      it('accepts audio or video where the Scope only demands a resolved asset', () => {
+        // paths-motion can be a short clip of the mechanism running.
+        expect(
+          judge(
+            puzzleItem({
+              media: {
+                type: ContentMediaType.VIDEO,
+                assets: [{ url: 'https://cdn.akwaan.test/gears.mp4' }],
+              },
+            }),
+            'paths-motion',
+          ),
+        ).toEqual([]);
+      });
+
+      it.each(['wordplay-letters', 'numbers-estimation', 'spot-the-error'])(
+        '%s is text-native or mixed and is never blocked for media',
+        (scopeSlug) => {
+          // No Puzzle Family identifier is persisted, so the mixed Scopes' media
+          // rule is review-enforced by design. A machine rule here would fail
+          // honest text puzzles.
+          expect(judge(puzzleItem(), scopeSlug)).not.toContain(
+            'PUZZLE_SCOPE_REQUIRES_MEDIA',
+          );
+        },
+      );
+    });
+
+    describe('blast radius', () => {
+      it('says nothing about an item no Moving XO challenge references', () => {
+        // Same retired Scope, same missing media — but an RYO item, so none of
+        // this applies. Puzzles rules must not leak into other Worlds.
+        const codes = policy
+          .evaluate({
+            item: contentItem({ scopeId: 'scope-world-cup' }),
+            scope: scope(),
+            challengeTypes: typeMap(
+              challengeType({
+                id: 'challenge-ryo',
+                slug: 'read-your-opponent',
+              }),
+            ),
+          })
+          .blockers.map((problem) => problem.code);
+        expect(codes.filter((code) => code.startsWith('MOVING_XO_'))).toEqual(
+          [],
+        );
+        expect(codes).not.toContain('PUZZLE_SCOPE_REQUIRES_MEDIA');
+      });
+
+      it('leaves ركّبها untouched', () => {
+        // Moving XO is not a renamed Rakkibha. Both are Signature mechanics that
+        // read a generic answerPayload, and each keeps its own validator.
+        const codes = policy
+          .evaluate({
+            item: puzzleItem({
+              compatibleChallengeTypeIds: ['challenge-rakkibha'],
+            }),
+            scope: puzzleScope('general-knowledge'),
+            challengeTypes: typeMap(
+              challengeType({
+                id: 'challenge-rakkibha',
+                slug: RAKKIBHA_SLUG,
+                family: ChallengeFamily.SIGNATURE,
+                answerMode: ChallengeAnswerMode.MULTIPLE_CHOICE,
+              }),
+            ),
+          })
+          .blockers.map((problem) => problem.code);
+        expect(codes.filter((code) => code.startsWith('MOVING_XO_'))).toEqual(
+          [],
+        );
+      });
+
+      it('reports rather than throws, so a draft can still be saved', () => {
+        // Authoring is iterative: an author parks a text-first puzzle in draft
+        // and comes back when the asset lands. Only READY asserts on blockers.
+        const report = policy.evaluate({
+          item: {
+            ...puzzleItem({ status: ContentItemStatus.DRAFT }),
+            scopeId: 'scope-paths-motion',
+          },
+          scope: puzzleScope('paths-motion'),
+          challengeTypes: typeMap(movingXo()),
+        });
+        expect(report.blockers.map((problem) => problem.code)).toContain(
+          'PUZZLE_SCOPE_REQUIRES_MEDIA',
+        );
+        expect(report.readiness).toBe('not_ready');
+      });
     });
   });
 });
