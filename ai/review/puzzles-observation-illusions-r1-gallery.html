@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Akwaan Review Gallery - Observation & Illusions</title>
+<style>
+  :root { --bg: #f9f6f0; --navy: #1a2942; --gold: #d4af37; --card-bg: #ffffff; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--navy); margin: 0; padding: 20px; }
+  h1, h2, h3 { color: var(--navy); margin-top: 0; }
+  .header { border-bottom: 2px solid var(--gold); padding-bottom: 15px; margin-bottom: 20px; }
+  
+  .tabs { display: flex; gap: 10px; margin-bottom: 10px; overflow-x: auto; }
+  .tab { padding: 8px 16px; background: #e2dcd0; border-radius: 20px; cursor: pointer; white-space: nowrap; font-weight: bold; }
+  .tab.active { background: var(--navy); color: #fff; }
+  
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+  .card { background: var(--card-bg); border-radius: 12px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; border: 1px solid #e2dcd0; }
+  .card:hover { transform: translateY(-3px); border-color: var(--gold); }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .badge { background: var(--gold); color: #fff; padding: 3px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; }
+  .diff { font-size: 12px; color: #666; }
+  .prompt-preview { font-size: 14px; margin: 10px 0; height: 40px; overflow: hidden; }
+  .thumb { width: 100%; height: 150px; background: #eee; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; pointer-events: none;}
+  
+  #detail-view { display: none; background: var(--card-bg); border-radius: 12px; padding: 30px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto; }
+  .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 15px; }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-secondary { background: #eee; color: #333; margin-left: 10px;}
+  .puzzle-stage { width: 100%; max-width: 600px; height: 400px; background: #fafafa; border: 2px solid #e2dcd0; border-radius: 12px; margin: 20px auto; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .puzzle-stage.mobile-view { max-width: 375px; height: 667px; }
+  .options-list { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .option { background: #f0f0f0; padding: 10px; border-radius: 8px; text-align: center; }
+  .option.correct { background: #d4edda; border: 2px solid #28a745; font-weight: bold;}
+  
+  .controls { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; display: flex; gap: 15px; align-items: center;}
+  .review-btn { font-size: 20px; background: none; border: 1px solid #ccc; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; }
+  .review-btn.selected { background: var(--gold); color: #fff; border-color: var(--gold); }
+  .notes { flex-grow: 1; padding: 8px; border-radius: 8px; border: 1px solid #ccc; }
+  
+  .details-box { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 13px; display:none; }
+  #error-panel { display: none; background: #ffebeb; color: #cc0000; border: 2px solid #cc0000; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: bold;}
+  .status-bar { margin-bottom: 20px; font-weight: bold; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 8px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>قوة الملاحظة والخداع البصري</h1>
+  <p>R1.2 — Human Product Review Gallery</p>
+  <div id="stats"></div>
+</div>
+
+<div id="error-panel"></div>
+
+<div class="status-bar" id="render-status">Rendered cards: 0 / 12</div>
+
+<div class="tabs" id="tabs">
+  <div class="tab active" data-filter="all" onclick="renderGrid('all')">الكل</div>
+  <div class="tab" data-filter="xo" onclick="renderGrid('xo')">Moving XO</div>
+  <div class="tab" data-filter="bomb" onclick="renderGrid('bomb')">Bomb</div>
+  <div class="tab" data-filter="ryo" onclick="renderGrid('ryo')">اقرأ خصمك</div>
+  <div class="tab" data-filter="cls" onclick="renderGrid('cls')">مين أقرب</div>
+</div>
+
+<div class="grid" id="gallery-grid"></div>
+
+<div id="detail-view">
+  <button class="btn btn-secondary" onclick="closeDetail()">رجوع</button>
+  <button class="btn btn-primary" id="reveal-btn" onclick="toggleReveal()">إظهار الإجابة</button>
+  <button class="btn btn-secondary" onclick="toggleMobile()">معاينة بحجم الجوال</button>
+  <button class="btn btn-secondary" onclick="toggleDetails()">إظهار تفاصيل البناء</button>
+  
+  <div style="margin-top: 20px;">
+    <span class="badge" id="d-mechanic"></span>
+    <span class="diff" id="d-diff"></span>
+  </div>
+  
+  <h2 id="d-prompt" style="margin-top: 15px;"></h2>
+  
+  <div class="puzzle-stage" id="d-stage"></div>
+  
+  <ul class="options-list" id="d-options"></ul>
+  
+  <div class="details-box" id="d-details"></div>
+  
+  <div class="controls">
+    <button class="review-btn" id="btn-up" onclick="setReview('up')">👍</button>
+    <button class="review-btn" id="btn-warn" onclick="setReview('warn')">🟡</button>
+    <button class="review-btn" id="btn-down" onclick="setReview('down')">❌</button>
+    <input type="text" class="notes" id="d-notes" placeholder="ملاحظاتي..." onchange="saveNote(this.value)">
+  </div>
+</div>
+
+<script>
+window.onerror = function(msg, url, lineNo, columnNo, error) {
+  const errPanel = document.getElementById('error-panel');
+  errPanel.style.display = 'block';
+  errPanel.innerHTML = 'FATAL JS ERROR: ' + msg + '<br>Line: ' + lineNo;
+  return false;
+};
+
+const batch = {"metadata": {"worldId": "puzzles", "scopeSlug": "observation-illusions", "batchMarker": "R1"}, "questions": [{"id": "pzl-obs-xo-001", "scopeSlug": "observation-illusions", "authoring": {"questionArchetype": "DETAIL_RECOGNITION", "difficulty": "easy"}, "prompt": {"ar": "كم عدد الدوائر السوداء بالكامل في هذه الصورة؟"}, "answerMode": "multiple_choice", "answerPayload": {"options": [{"id": "A", "label": {"ar": "3"}}, {"id": "B", "label": {"ar": "4"}}, {"id": "C", "label": {"ar": "5"}}, {"id": "D", "label": {"ar": "6"}}], "correctOptionId": "B"}, "mediaIntent": {"subject": "Circles Grid", "description": "A 4x4 grid of circles. Some are light grey, some are half black, and exactly 4 circles are 100% solid black.", "layout": "Grid structure, easy to read on mobile.", "criticalDetails": "Exact SVG vector grid. Exactly 4 circles must be #000000. Others are #888888 or exactly half-split. No near-black colors (like #111111) to avoid ambiguity.", "avoid": "Do not make the grey too dark to avoid ambiguity on dim screens.", "generationPreference": "deterministic SVG", "mediaConstructionClass": "A"}, "status": "ready"}, {"id": "pzl-obs-xo-002", "scopeSlug": "observation-illusions", "authoring": {"questionArchetype": "PUZZLE_FAMILY", "difficulty": "easy"}, "prompt": {"ar": "أي من هذه الحيوانات يختبئ في الفراغ الأبيض بين الأشجار؟"}, "answerMode": "multiple_choice", "answerPayload": {"options": [{"id": "A", "label": {"ar": "غزال"}}, {"id": "B", "label": {"ar": "ذئب"}}, {"id": "C", "label": {"ar": "دب"}}, {"id": "D", "label": {"ar": "أرنب"}}], "correctOptionId": "A"}, "mediaIntent": {"subject": "Negative Space Forest", "description": "Black silhouettes of trees on a white background. The white negative space between the two central trees forms a perfect, undeniable silhouette of a deer (غزال) with antlers.", "layout": "Centered negative space illusion.", "criticalDetails": "Controlled vector mask. The negative space must form an unmistakable deer with antlers. No accidental pareidolia. The animal identity must be solitary and undeniable.", "avoid": "No random shapes that could look like wolves or bears.", "generationPreference": "controlled manual/composite illustration", "mediaConstructionClass": "C"}, "status": "ready"}, {"id": "pzl-obs-xo-003", "scopeSlug": "observation-illusions", "authoring": {"questionArchetype": "DETAIL_RECOGNITION", "difficulty": "medium"}, "prompt": {"ar": "انظر إلى انعكاس الغرفة في المرآة. ما هو الشيء الذي يظهر في المرآة ولكنه مفقود في الغرفة الحقيقية أمامك؟"}, "answerMode": "multiple_choice", "answerPayload": {"options": [{"id": "A", "label": {"ar": "الساعة"}}, {"id": "B", "label": {"ar": "المزهرية"}}, {"id": "C", "label": {"ar": "اللوحة"}}, {"id": "D", "label": {"ar": "الكرسي"}}], "correctOptionId": "A"}, "mediaIntent": {"subject": "Mirror Reflection Inconsistency", "description": "A view of a room with a large mirror facing the camera. The real room contains a chair, a vase, and a painting on the wall. The mirror reflects all of these, BUT it also reflects a wall clock that does not exist in the real room.", "layout": "Split visually between the real foreground room and the mirror reflection.", "criticalDetails": "Precisely matched composite scene + reflection. Exactly ONE mismatch exists: the clock in the mirror. Both foreground and mirror must be perfectly aligned otherwise.", "avoid": "Avoid confusing angles. The mirror should reflect exactly what is visible in the foreground.", "generationPreference": "controlled manual/composite illustration", "mediaConstructionClass": "C"}, "status": "ready"}, {"id": "pzl-obs-xo-004", "scopeSlug": "observation-illusions", "authoring": {"questionArchetype": "PUZZLE_FAMILY", "difficulty": "medium"}, "prompt": {"ar": "أي من هذه الظلال الأربعة يطابق تماماً شكل الطائر الموجود في المنتصف؟"}, "answerMode": "multiple_choice", "answerPayload": {"options": [{"id": "A", "label": {"ar": "الظل (أ)"}}, {"id": "B", "label": {"ar": "الظل (ب)"}}, {"id": "C", "label": {"ar": "الظل (ج)"}}, {"id": "D", "label": {"ar": "الظل (د)"}}], "correctOptionId": "C"}, "mediaIntent": {"subject": "Shadow Matching Bird", "description": "A detailed drawing of a bird in flight in the center. Surrounding it are 4 solid black silhouettes labeled A, B, C, and D. Only shadow C matches perfectly. A has an extra tail feather. B has a shorter beak. D has a different wing angle.", "layout": "Center object with 4 corner shadows.", "criticalDetails": "Vector bird. Silhouette C is a mathematically exact boolean copy. A, B, D have distinct vector edits (added feather, shortened beak) requiring no rotation to verify.", "avoid": "Avoid ambiguous overlap.", "generationPreference": "deterministic SVG", "mediaConstructionClass": "A"}, "status": "ready"}, {"id": "pzl-obs-xo-005", "scopeSlug": "observation-illusions", "authoring": {"questionArchetype": "DETAIL_RECOGNITION", "difficulty": "medium"}, "prompt": {"ar": "تتقاطع هذه الخطوط لتكوين مربعات. كم مربعاً أحمر اللون يظهر بشكله الكامل (بدون أن يقطعه خط آخر)؟"}, "answerMode": "match", "answerPayload": {"acceptedAnswers": ["5", "٥", "خمسة", "خمسه"]}, "mediaIntent": {"subject": "Overlapping Squares Grid", "description": "A complex grid of intersecting blue lines on a white background. Scattered inside the grid are red squares. Most red squares have a blue line cutting through them. Exactly 5 red squares are completely untouched by any intersecting line.", "layout": "Clear grid structure.", "criticalDetails": "SVG composition. Exact square geometry. 'Fully visible' means 100% of the red square area is un-occluded by any blue line. No borderline intersections; a square is either fully clear or obviously cut.", "avoid": "Do not make it too dense; it must be countable in 15 seconds.", "generationPreference": "deterministic SVG", "mediaConstructionClass": "A"}, "status": "ready"}, {"id": "pzl-obs-xo-006", "scopeSlug": "observation-illusions", "authoring": {"questionArchetype": "PUZZLE_FAMILY", "difficulty": "hard"}, "prompt": {"ar": "ركز في المساحة البيضاء بين المبنيين في المنتصف. ما هو الشكل الذي يظهر لك بوضوح؟"}, "answerMode": "multiple_choice", "answerPayload": {"options": [{"id": "A", "label": {"ar": "شوكة"}}, {"id": "B", "label": {"ar": "ملعقة"}}, {"id": "C", "label": {"ar": "سكين"}}, {"id": "D", "label": {"ar": "كأس"}}], "correctOptionId": "A"}, "mediaIntent": {"subject": "Cityscape Negative Space Fork", "description": "Silhouette of dark buildings against a white sky. The negative space exactly between the two central buildings forms a perfectly shaped dining fork.", "layout": "Centered negative space.", "criticalDetails": "The fork shape must be explicit, featuring 3 or 4 clear prongs and a handle, formed entirely by the building edges.", "avoid": "No ambiguous shapes. No famous stock illusions. Must be an original geometric composition.", "mediaConstructionClass": "A", "generationPreference": "deterministic SVG"}, "status": "ready"}, {"id": "pzl-obs-bmb-001", "scopeSlug": "observation-illusions", "authoring": {"questionArchetype": "DETAIL_RECOGNITION", "difficulty": "easy"}, "prompt": {"ar": "أي قسم يحتوي على الشكل الهندسي المختلف الذي لا يطابق البقية؟"}, "answerMode": "multiple_choice", "answerPayload": {"options": [{"id": "A", "label": {"ar": "القسم (أ)"}}, {"id": "B", "label": {"ar": "القسم (ب)"}}, {"id": "C", "label": {"ar": "القسم (ج)"}}, {"id": "D", "label": {"ar": "القسم (د)"}}], "correctOptionId": "C"}, "mediaIntent": {"subject": "Dense Geometric Icon Odd-One-Out", "description": "An image divided into 4 quadrants (A, B, C, D). Each quadrant contains a 4x4 grid of a complex geometric icon (e.g. a hexagon with a dot on the top). Exactly ONE icon in Quadrant C has the dot on the bottom instead.", "layout": "2x2 quadrants, clearly labeled A, B, C, D.", "criticalDetails": "Absolutely no letters or linguistic symbols. Pure geometric scan. The odd trait must be unambiguous.", "avoid": "Do not use microscopic differences. The difference should pop out under pressure.", "mediaConstructionClass": "B", "generationPreference": "deterministic programmatic raster composition"}, "status": "ready"}, {"id": "pzl-obs-bmb-002", "scopeSlug": "observation-illusions", "authoring": {"questionArchetype": "DETAIL_RECOGNITION", "difficulty": "medium"}, "prompt": {"ar": "أي شريط ملوّن يمر تحت جميع الأشرطة الأخرى في نقاط التقاطع؟"}, "answerMode": "multiple_choice", "answerPayload": {"options": [{"id": "A", "label": {"ar": "الأخضر"}}, {"id": "B", "label": {"ar": "الأحمر"}}, {"id": "C", "label": {"ar": "الأزرق"}}, {"id": "D", "label": {"ar": "الأصفر"}}], "correctOptionId": "A"}, "mediaIntent": {"subject": "Overlapping Ribbons Depth Order", "description": "Four colored ribbons (Green, Red, Blue, Yellow) criss-crossing each other. Every intersection is clearly visible. The Green ribbon passes underneath every other ribbon it intersects with.", "layout": "Intertwined ribbons forming a knot or grid.", "criticalDetails": "Deterministic depth order. Every intersection must unambiguously show one ribbon on top (drop shadow/stroke). Green must logically be the global bottom.", "avoid": "No fully covered/hidden sections. No ambiguity in z-index at any crossing.", "mediaConstructionClass": "A", "generationPreference": "deterministic SVG"}, "status": "ready"}, {"id": "pzl-obs-ryo-001", "scopeSlug": "observation-illusions", "authoring": {"questionArchetype": "DETAIL_RECOGNITION", "difficulty": "medium"}, "prompt": {"ar": "ابحث عن الشخص الوحيد الذي لا يرتدي نظارات. أي قميص يرتدي؟"}, "answerMode": "multiple_choice", "answerPayload": {"options": [{"id": "A", "label": {"ar": "القميص الأصفر بنجمة"}}, {"id": "B", "label": {"ar": "القميص الأحمر بدائرة"}}, {"id": "C", "label": {"ar": "القميص الأزرق بخطوط"}}, {"id": "D", "label": {"ar": "القميص الأخضر بمثلث"}}], "correctOptionId": "A"}, "mediaIntent": {"subject": "Crowd with Glasses", "description": "A cartoon crowd of 15-20 people. Everyone wears glasses except one person. The shirts have distinct colors AND distinct high-contrast icons: Yellow+Star, Red+Circle, Blue+Stripes, Green+Triangle. The person with no glasses wears the Yellow+Star shirt.", "layout": "Busy crowd scene, Where's Waldo style but much simpler.", "criticalDetails": "Icons/patterns on the shirts must be large and unambiguous, allowing full color-blind accessibility. Exactly one character lacks eyewear (Yellow+Star).", "avoid": "Avoid making the faces too small.", "generationPreference": "controlled manual/composite illustration", "mediaConstructionClass": "C"}, "status": "ready"}, {"id": "pzl-obs-ryo-002", "scopeSlug": "observation-illusions", "authoring": {"questionArchetype": "DETAIL_RECOGNITION", "difficulty": "hard"}, "prompt": {"ar": "كم عدد المفاتيح في هذه الميدالية التي لا تحتوي على أي أسنان (شفرتها ملساء تماماً)؟"}, "answerMode": "multiple_choice", "answerPayload": {"options": [{"id": "A", "label": {"ar": "1"}}, {"id": "B", "label": {"ar": "2"}}, {"id": "C", "label": {"ar": "3"}}, {"id": "D", "label": {"ar": "4"}}], "correctOptionId": "B"}, "mediaIntent": {"subject": "Keychain Keys Overlap", "description": "A close-up image of a keychain ring holding 8 overlapping metal keys. Most keys have jagged teeth. Exactly 2 keys have completely smooth, blank blades with no teeth.", "layout": "Clustered overlap in the center.", "criticalDetails": "Vector keys with clean outlines. The smooth blade edges of the 2 target keys must be 100% visible and un-occluded. Only handles/tops overlap.", "avoid": "Do not completely hide the blade of any key so that its teeth status is a guess.", "generationPreference": "deterministic SVG", "mediaConstructionClass": "A"}, "status": "ready"}, {"id": "pzl-obs-cls-001", "scopeSlug": "observation-illusions", "authoring": {"questionArchetype": "DETAIL_RECOGNITION", "difficulty": "hard"}, "prompt": {"ar": "كم عدد المثلثات الصغيرة باللون الأزرق المتناثرة في هذه الصورة؟"}, "answerMode": "closest", "answerPayload": {"targetValue": 27}, "mediaIntent": {"subject": "Confetti Shape Count", "description": "A visually dense but clean scatter of small shapes (circles, squares, triangles) in three distinct colors (red, green, blue). Exactly 27 small blue triangles exist.", "layout": "Scattered uniformly.", "criticalDetails": "Programmatic canvas/SVG placement. A script must place EXACTLY 27 blue triangles. The count is an objective ground truth, not estimated by the author.", "avoid": "Do not clutter shapes on top of each other so they can't be counted.", "generationPreference": "deterministic programmatic raster composition", "mediaConstructionClass": "B"}, "status": "ready", "correctValue": 27, "mechanicPayload": {"closestSlider": {"mode": "numeric-range", "min": 10, "max": 50, "step": 1}}}, {"id": "pzl-obs-cls-002", "scopeSlug": "observation-illusions", "authoring": {"questionArchetype": "DETAIL_RECOGNITION", "difficulty": "medium"}, "prompt": {"ar": "كم تبلغ نسبة المساحة المظللة باللون الأسود في هذه اللوحة (كنسبة مئوية ٪)؟"}, "answerMode": "closest", "answerPayload": {"targetValue": 34}, "mediaIntent": {"subject": "Percentage Grid Area", "description": "A 100x100 unit white canvas (Area = 10,000). Placed on it are 3 non-overlapping black rectangles: one 30x40 (Area 1200), one 50x30 (Area 1500), and one 35x20 (Area 700). Total black area is exactly 3400. Players must visually estimate the proportion.", "layout": "Large centered grid.", "criticalDetails": "Must be a clean deterministic SVG. Mathematical total canvas area is 10,000. Sum of black rectangles is exactly 3400 (34%). No grids. No tiny fragments. Must be bold, simple geometric blocks.", "avoid": "Do not use partial shading (no half-squares). Keep it exactly to the grid.", "generationPreference": "deterministic SVG", "mediaConstructionClass": "A"}, "status": "ready", "correctValue": 34, "mechanicPayload": {"closestSlider": {"mode": "numeric-range", "min": 0, "max": 100, "step": 1}}}]};
+let currentItem = null;
+let isRevealed = false;
+let isMobile = false;
+
+function getMechanicKey(id) {
+  if (id.includes('-xo-')) return 'xo';
+  if (id.includes('-bmb-')) return 'bomb';
+  if (id.includes('-ryo-')) return 'ryo';
+  if (id.includes('-cls-')) return 'cls';
+  return 'other';
+}
+
+function renderSVG(id, reveal) {
+  let svg = '';
+  const hash = x => Math.abs(Math.sin(x) * 10000) % 1;
+  try {
+    if(id === 'pzl-obs-xo-001') {
+      svg = `<svg viewBox="0 0 200 200" width="100%" height="100%">`;
+      for(let i=0; i<4; i++){
+        for(let j=0; j<4; j++){
+           let idx = i*4+j;
+           let isBlack = [0, 5, 10, 15].includes(idx);
+           let cx = 25 + j*50; let cy = 25 + i*50;
+           if(isBlack) {
+             svg += `<circle cx="${cx}" cy="${cy}" r="20" fill="#000000" />`;
+             if(reveal) svg += `<circle cx="${cx}" cy="${cy}" r="22" fill="none" stroke="red" stroke-width="3" />`;
+           } else if (idx%2===0) {
+             svg += `<circle cx="${cx}" cy="${cy}" r="20" fill="#888888" />`;
+           } else {
+             svg += `<path d="M${cx},${cy-20} A20,20 0 0,0 ${cx},${cy+20} Z" fill="#000000"/><path d="M${cx},${cy-20} A20,20 0 0,1 ${cx},${cy+20} Z" fill="#888888"/>`;
+           }
+        }
+      }
+      svg += `</svg>`;
+    }
+    else if(id === 'pzl-obs-xo-002') {
+      let deer = "M80,100 L80,60 L70,40 L85,50 L95,20 L100,45 L105,30 L110,50 L120,55 L130,90 L130,130 L115,130 L115,100 L100,130 L85,130 L95,100 Z";
+      let outer = "M0,0 L200,0 L200,150 L0,150 Z ";
+      svg = `<svg viewBox="0 0 200 150" width="100%" height="100%">
+         <rect width="200" height="150" fill="#ffffff" />
+         <path d="${outer} ${deer}" fill="#2d3748" fill-rule="evenodd" />`;
+      if(reveal) svg += `<path d="${deer}" fill="rgba(255,0,0,0.3)" stroke="red" stroke-width="2" />`;
+      svg += `</svg>`;
+    }
+    else if(id === 'pzl-obs-xo-003') {
+      svg = `<svg viewBox="0 0 200 100" width="100%" height="100%">
+        <line x1="100" y1="0" x2="100" y2="100" stroke="#000" stroke-width="4" />
+        <rect x="10" y="40" width="30" height="40" fill="#8b4513" />
+        <rect x="50" y="20" width="20" height="30" fill="#4682b4" />
+        <rect x="160" y="40" width="30" height="40" fill="#8b4513" />
+        <rect x="130" y="20" width="20" height="30" fill="#4682b4" />
+        <circle cx="115" cy="30" r="10" fill="#ddd" stroke="#333" />
+      `;
+      if(reveal) svg += `<circle cx="115" cy="30" r="14" fill="none" stroke="red" stroke-width="2" />`;
+      svg += `</svg>`;
+    }
+    else if(id === 'pzl-obs-xo-004') {
+      let bird = "M 50 50 L 60 40 L 70 45 L 80 30 L 90 50 L 70 60 Z";
+      svg = `<svg viewBox="0 0 200 200" width="100%" height="100%">
+        <g transform="translate(50,50)"><path d="${bird}" fill="#4a90e2" /></g>
+        <g transform="translate(10,10) scale(0.5)"><path d="${bird} M 90 50 L 100 45 L 80 60 Z" fill="#000" /><text x="50" y="80" font-size="20">أ</text></g>
+        <g transform="translate(140,10) scale(0.5)"><path d="M 55 50 L 60 40 L 70 45 L 80 30 L 90 50 L 70 60 Z" fill="#000" /><text x="50" y="80" font-size="20">ب</text></g>
+        <g transform="translate(10,140) scale(0.5)"><path d="${bird}" fill="#000" /><text x="50" y="80" font-size="20">ج</text></g>
+        <g transform="translate(140,140) scale(0.5)"><path d="M 50 50 L 60 30 L 70 45 L 80 30 L 90 50 L 70 60 Z" fill="#000" /><text x="50" y="80" font-size="20">د</text></g>
+      `;
+      if(reveal) svg += `<rect x="10" y="140" width="50" height="50" fill="none" stroke="green" stroke-width="2" />`;
+      svg += `</svg>`;
+    }
+    else if(id === 'pzl-obs-xo-005') {
+      svg = `<svg viewBox="0 0 200 200" width="100%" height="100%">`;
+      let uncut = [[20,20], [150,20], [80,150], [20,150], [150,150]];
+      let cut = [[80,20], [50,80], [120,80], [20,80], [150,80]];
+      uncut.forEach(p => svg += `<rect x="${p[0]}" y="${p[1]}" width="20" height="20" fill="red" />`);
+      cut.forEach(p => svg += `<rect x="${p[0]}" y="${p[1]}" width="20" height="20" fill="red" />`);
+      svg += `<line x1="80" y1="10" x2="100" y2="50" stroke="blue" stroke-width="3" />
+              <line x1="40" y1="80" x2="140" y2="100" stroke="blue" stroke-width="3" />
+              <line x1="10" y1="90" x2="40" y2="85" stroke="blue" stroke-width="3" />
+              <line x1="140" y1="70" x2="170" y2="100" stroke="blue" stroke-width="3" />`;
+      if(reveal) {
+         uncut.forEach(p => svg += `<rect x="${p[0]-2}" y="${p[1]-2}" width="24" height="24" fill="none" stroke="#00ff00" stroke-width="3" />`);
+      }
+      svg += `</svg>`;
+    }
+    else if(id === 'pzl-obs-xo-006') {
+      let fork = "M 90 100 L 90 40 L 80 40 L 80 10 L 85 10 L 85 30 L 95 30 L 95 10 L 105 10 L 105 30 L 115 30 L 115 10 L 120 10 L 120 40 L 110 40 L 110 100 Z";
+      svg = `<svg viewBox="0 0 200 150" width="100%" height="100%">
+        <rect width="200" height="150" fill="#fff" />
+        <path d="M0 150 L200 150 L200 0 L0 0 Z ${fork}" fill="#2c3e50" fill-rule="evenodd" />
+      `;
+      if(reveal) svg += `<path d="${fork}" fill="rgba(52, 152, 219, 0.4)" stroke="#3498db" stroke-width="2" />`;
+      svg += `</svg>`;
+    }
+    else if(id === 'pzl-obs-bmb-001') {
+      let icon = (x, y, dotTop) => `<rect x="${x}" y="${y}" width="15" height="15" fill="none" stroke="#000" stroke-width="2"/><circle cx="${x+7.5}" cy="${dotTop ? y+4 : y+11}" r="2" fill="#000"/>`;
+      svg = `<svg viewBox="0 0 200 200" width="100%" height="100%">
+        <line x1="100" y1="0" x2="100" y2="200" stroke="#ccc" />
+        <line x1="0" y1="100" x2="200" y2="100" stroke="#ccc" />
+        <text x="10" y="20" font-size="16">أ</text><text x="110" y="20" font-size="16">ب</text>
+        <text x="10" y="120" font-size="16">ج</text><text x="110" y="120" font-size="16">د</text>`;
+      for(let i=0; i<4; i++) {
+        for(let j=0; j<4; j++) {
+          svg += icon(20 + j*18, 30 + i*18, true); // A
+          svg += icon(120 + j*18, 30 + i*18, true); // B
+          svg += icon(120 + j*18, 130 + i*18, true); // D
+          let dotTop = !(i===2 && j===2);
+          svg += icon(20 + j*18, 130 + i*18, dotTop); // C
+        }
+      }
+      if(reveal) svg += `<circle cx="${20+2*18+7.5}" cy="${130+2*18+7.5}" r="12" fill="none" stroke="red" stroke-width="2" />`;
+      svg += `</svg>`;
+    }
+    else if(id === 'pzl-obs-bmb-002') {
+      svg = `<svg viewBox="0 0 200 200" width="100%" height="100%">
+        <line x1="20" y1="100" x2="180" y2="100" stroke="green" stroke-width="20" />
+        <line x1="100" y1="20" x2="100" y2="180" stroke="red" stroke-width="20" />
+        <line x1="20" y1="20" x2="180" y2="180" stroke="blue" stroke-width="20" />
+        <line x1="180" y1="20" x2="20" y2="180" stroke="gold" stroke-width="20" />
+      `;
+      if(reveal) svg += `<rect x="10" y="90" width="180" height="20" fill="none" stroke="#000" stroke-width="2" stroke-dasharray="4" />`;
+      svg += `</svg>`;
+    }
+    else if(id === 'pzl-obs-ryo-001') {
+      svg = `<svg viewBox="0 0 200 200" width="100%" height="100%">`;
+      let k=0;
+      for(let r=0; r<4; r++){
+        for(let c=0; c<4; c++){
+          let x = 25 + c*50; let y = 30 + r*45;
+          let color = ["red", "gold", "blue", "green"][k%4];
+          let hasGlasses = !(k===5); 
+          if(k===5) color = "gold";
+          svg += `<path d="M${x-15},${y+20} C${x-15},${y+5} ${x+15},${y+5} ${x+15},${y+20} Z" fill="${color}" />`;
+          svg += `<circle cx="${x}" cy="${y-10}" r="10" fill="#fcd5ce" />`;
+          if(color==="gold") svg += `<path d="M${x},${y+7} L${x-3},${y+15} L${x+4},${y+10} L${x-4},${y+10} L${x+3},${y+15} Z" fill="#fff" />`;
+          if(color==="red") svg += `<circle cx="${x}" cy="${y+12}" r="4" fill="#fff" />`;
+          if(color==="blue") { svg += `<line x1="${x-10}" y1="${y+9}" x2="${x+10}" y2="${y+9}" stroke="#fff" stroke-width="2" />`; svg += `<line x1="${x-10}" y1="${y+15}" x2="${x+10}" y2="${y+15}" stroke="#fff" stroke-width="2" />`; }
+          if(color==="green") svg += `<polygon points="${x},${y+8} ${x-4},${y+15} ${x+4},${y+15}" fill="#fff" />`;
+          if(hasGlasses) {
+            svg += `<circle cx="${x-4}" cy="${y-12}" r="3" fill="none" stroke="#333" stroke-width="1.5" />`;
+            svg += `<circle cx="${x+4}" cy="${y-12}" r="3" fill="none" stroke="#333" stroke-width="1.5" />`;
+            svg += `<line x1="${x-1}" y1="${y-12}" x2="${x+1}" y2="${y-12}" stroke="#333" stroke-width="1.5" />`;
+          }
+          k++;
+        }
+      }
+      if(reveal) svg += `<circle cx="75" cy="75" r="25" fill="none" stroke="red" stroke-width="3" />`;
+      svg += `</svg>`;
+    }
+    else if(id === 'pzl-obs-ryo-002') {
+      svg = `<svg viewBox="0 0 200 200" width="100%" height="100%">`;
+      let angles = [0, 45, 90, 135, 180, 225, 270, 315];
+      let smooth = [2, 5];
+      angles.forEach((a, idx) => {
+         let isSmooth = smooth.includes(idx);
+         let teeth = isSmooth ? `L105,60 L105,120` : `L105,60 L105,70 L110,75 L105,80 L110,85 L105,90 L105,120`;
+         let path = `M95,120 L95,60 A15,15 0 1,1 105,60 ${teeth} Z`;
+         svg += `<g transform="translate(100,100) rotate(${a}) translate(-100,-100)">
+            <path d="${path}" fill="#ccc" stroke="#333" stroke-width="2" />
+            <circle cx="100" cy="45" r="5" fill="#fff" stroke="#333" stroke-width="2" />
+         </g>`;
+      });
+      svg += `<circle cx="100" cy="100" r="20" fill="none" stroke="#888" stroke-width="4" />`;
+      if(reveal) {
+         smooth.forEach(idx => {
+           svg += `<g transform="translate(100,100) rotate(${angles[idx]}) translate(-100,-100)">
+             <rect x="85" y="60" width="30" height="70" fill="none" stroke="red" stroke-width="2" />
+           </g>`;
+         });
+      }
+      svg += `</svg>`;
+    }
+    else if(id === 'pzl-obs-cls-001') {
+      svg = `<svg viewBox="0 0 200 200" width="100%" height="100%">`;
+      for(let i=0; i<87; i++) {
+         let x = 15 + (hash(i*13)*170);
+         let y = 15 + (hash(i*17)*170);
+         if(i<27) {
+           svg += `<polygon points="${x},${y-5} ${x-5},${y+5} ${x+5},${y+5}" fill="blue" />`;
+           if(reveal) svg += `<circle cx="${x}" cy="${y}" r="8" fill="none" stroke="gold" stroke-width="2" />`;
+         }
+         else if(i<57) svg += `<circle cx="${x}" cy="${y}" r="4" fill="red" />`;
+         else svg += `<rect x="${x-4}" y="${y-4}" width="8" height="8" fill="green" />`;
+      }
+      svg += `</svg>`;
+    }
+    else if(id === 'pzl-obs-cls-002') {
+      svg = `<svg viewBox="0 0 100 100" width="100%" height="100%">
+        <rect x="0" y="0" width="100" height="100" fill="#fff" stroke="#ccc" stroke-width="1" />
+        <rect x="10" y="10" width="30" height="40" fill="#000" />
+        <rect x="45" y="55" width="50" height="30" fill="#000" />
+        <rect x="50" y="10" width="35" height="20" fill="#000" />
+      `;
+      if(reveal) {
+        svg += `<text x="25" y="30" fill="red" font-size="6" text-anchor="middle">30x40=1200</text>
+                <text x="70" y="70" fill="red" font-size="6" text-anchor="middle">50x30=1500</text>
+                <text x="67" y="20" fill="red" font-size="6" text-anchor="middle">35x20=700</text>
+                <rect x="20" y="42" width="60" height="10" fill="white" stroke="red" stroke-width="0.5"/>
+                <text x="50" y="49" fill="red" font-size="6" text-anchor="middle">المجموع: 3400 (34%)</text>`;
+      }
+      svg += `</svg>`;
+    }
+  } catch(e) {
+    console.error('Error rendering ' + id, e);
+    svg = `<div style="color:red; padding:20px; text-align:center;">Failed to render: ${e.message}</div>`;
+  }
+  return svg;
+}
+
+function init() {
+  console.log('[gallery] artifact items loaded:', batch.questions.length);
+  updateStats();
+  renderGrid('all');
+}
+
+function updateStats() {
+  let app = 0, warn = 0, rej = 0;
+  batch.questions.forEach(q => {
+    let s = localStorage.getItem('rev_' + q.id);
+    if(s === 'up') app++;
+    if(s === 'warn') warn++;
+    if(s === 'down') rej++;
+  });
+  document.getElementById('stats').innerHTML = 
+    `Reviewed: ${app+warn+rej} / 12 &nbsp;|&nbsp; ✅ Approved: ${app} &nbsp;|&nbsp; 🟡 Needs changes: ${warn} &nbsp;|&nbsp; ❌ Rejected: ${rej}`;
+}
+
+function renderGrid(filterType) {
+  try {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    let activeTab = document.querySelector(`.tab[data-filter="${filterType}"]`);
+    if(activeTab) activeTab.classList.add('active');
+    
+    let grid = document.getElementById('gallery-grid');
+    grid.innerHTML = '';
+    let renderedCount = 0;
+    
+    batch.questions.forEach(q => {
+      let mechKey = getMechanicKey(q.id);
+      if(filterType !== 'all' && mechKey !== filterType) return;
+      
+      let el = document.createElement('div');
+      el.className = 'card';
+      el.onclick = () => openDetail(q.id);
+      
+      el.innerHTML = `
+        <div class="card-header">
+          <span class="badge">${q.id.split('-')[1].toUpperCase()} / ${mechKey.toUpperCase()}</span>
+          <span class="diff">${q.authoring.difficulty}</span>
+        </div>
+        <div class="prompt-preview">${q.prompt.ar}</div>
+        <div class="thumb">${renderSVG(q.id, false)}</div>
+      `;
+      grid.appendChild(el);
+      renderedCount++;
+    });
+    
+    document.getElementById('render-status').innerText = `Rendered cards: ${renderedCount} / 12`;
+    console.log(`[gallery] cards rendered for filter '${filterType}':`, renderedCount);
+  } catch(e) {
+    document.getElementById('error-panel').style.display = 'block';
+    document.getElementById('error-panel').innerHTML = 'Error rendering grid: ' + e.message;
+    console.error(e);
+  }
+}
+
+function openDetail(id) {
+  try {
+    currentItem = batch.questions.find(q => q.id === id);
+    if(!currentItem) return;
+    
+    isRevealed = false;
+    isMobile = false;
+    
+    document.getElementById('gallery-grid').style.display = 'none';
+    document.getElementById('tabs').style.display = 'none';
+    document.getElementById('render-status').style.display = 'none';
+    document.getElementById('detail-view').style.display = 'block';
+    
+    document.getElementById('d-mechanic').innerText = currentItem.id.split('-')[1].toUpperCase();
+    document.getElementById('d-diff').innerText = currentItem.authoring.difficulty;
+    document.getElementById('d-prompt').innerText = currentItem.prompt.ar;
+    
+    document.getElementById('reveal-btn').innerText = 'إظهار الإجابة';
+    document.getElementById('d-details').style.display = 'none';
+    
+    let md = currentItem.mediaIntent || {};
+    document.getElementById('d-details').innerHTML = `<strong>البناء (Class ${md.mediaConstructionClass || '?'}):</strong> ${md.description || 'none'}<br><br><strong>تفاصيل مهمة:</strong> ${md.criticalDetails || 'none'}`;
+    
+    let reviewState = localStorage.getItem('rev_' + id);
+    document.querySelectorAll('.review-btn').forEach(b => b.classList.remove('selected'));
+    if(reviewState) {
+      let b = document.getElementById('btn-' + reviewState);
+      if(b) b.classList.add('selected');
+    }
+    document.getElementById('d-notes').value = localStorage.getItem('note_' + id) || '';
+    
+    renderStage();
+    renderOptions();
+  } catch(e) {
+    document.getElementById('error-panel').style.display = 'block';
+    document.getElementById('error-panel').innerHTML = 'Error opening detail: ' + e.message;
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detail-view').style.display = 'none';
+  document.getElementById('gallery-grid').style.display = 'grid';
+  document.getElementById('tabs').style.display = 'flex';
+  document.getElementById('render-status').style.display = 'block';
+  updateStats();
+}
+
+function toggleReveal() {
+  isRevealed = !isRevealed;
+  document.getElementById('reveal-btn').innerText = isRevealed ? 'إخفاء الإجابة' : 'إظهار الإجابة';
+  renderStage();
+  renderOptions();
+}
+
+function toggleMobile() {
+  isMobile = !isMobile;
+  renderStage();
+}
+
+function toggleDetails() {
+  let el = document.getElementById('d-details');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function renderStage() {
+  try {
+    let stage = document.getElementById('d-stage');
+    stage.className = isMobile ? 'puzzle-stage mobile-view' : 'puzzle-stage';
+    stage.innerHTML = renderSVG(currentItem.id, isRevealed);
+  } catch (e) {
+    console.error('Stage render error', e);
+  }
+}
+
+function renderOptions() {
+  let ol = document.getElementById('d-options');
+  ol.innerHTML = '';
+  
+  if (currentItem.answerMode === 'multiple_choice') {
+    currentItem.answerPayload.options.forEach(opt => {
+      let isCorrect = (opt.id === currentItem.answerPayload.correctOptionId);
+      ol.innerHTML += `<li class="option ${isRevealed && isCorrect ? 'correct' : ''}">${opt.label.ar}</li>`;
+    });
+  } else if (currentItem.answerMode === 'match') {
+    if(isRevealed) ol.innerHTML = `<li class="option correct">Match accepted (Check config)</li>`;
+  } else if (currentItem.answerMode === 'closest') {
+    if(isRevealed) ol.innerHTML = `<li class="option correct">الهدف: ${currentItem.correctValue || (currentItem.answerPayload && currentItem.answerPayload.targetValue)}</li>`;
+  }
+}
+
+function setReview(val) {
+  localStorage.setItem('rev_' + currentItem.id, val);
+  document.querySelectorAll('.review-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('btn-' + val).classList.add('selected');
+  updateStats();
+}
+
+function saveNote(val) {
+  localStorage.setItem('note_' + currentItem.id, val);
+}
+
+// Start application
+init();
+</script>
+</body>
+</html>

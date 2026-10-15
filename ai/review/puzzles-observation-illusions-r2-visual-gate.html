@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Akwaan - R2 Visual Prototype Gate</title>
+<style>
+  :root { --bg: #0f172a; --text: #f8fafc; --accent: #38bdf8; --card: #1e293b; --gold: #fbbf24; --danger: #ef4444; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+  h1, h2, h3, h4 { color: var(--text); }
+  .header { border-bottom: 2px solid var(--accent); padding-bottom: 15px; margin-bottom: 30px; text-align: center; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+  .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #334155; text-align: center; transition: 0.2s; }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .thumb { width: 100%; height: 180px; background: #000; border-radius: 8px; margin: 15px 0; display: flex; align-items: center; justify-content: center; overflow: hidden; pointer-events: none;}
+  .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; background: var(--accent); color: #000; margin: 5px; }
+  .btn-outline { background: transparent; border: 2px solid var(--accent); color: var(--accent); }
+  
+  #detail-view { display: none; background: var(--card); border-radius: 12px; padding: 30px; max-width: 900px; margin: 0 auto; border: 1px solid #334155; }
+  .puzzle-stage { width: 100%; max-width: 800px; height: 500px; background: #000; border: 2px solid #334155; border-radius: 12px; margin: 20px auto; overflow: hidden; position: relative; }
+  .puzzle-stage.mobile-view { max-width: 375px; height: 667px; }
+  
+  .controls-bar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 20px; }
+  .review-bar { display: flex; gap: 15px; justify-content: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #334155; }
+  .review-btn { font-size: 16px; padding: 10px 15px; background: #334155; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+  .review-btn:hover { background: #475569; }
+  .review-btn.active { background: var(--gold); color: #000; }
+  
+  .proof-panel { margin-top: 20px; padding: 15px; background: #020617; border-left: 4px solid var(--gold); border-radius: 4px; font-size: 14px; font-family: monospace; display: none; text-align: left; direction: ltr; }
+  .proof-panel h4 { margin-top: 0; color: var(--gold); }
+  
+  #slider-container { display: none; width: 80%; margin: 20px auto; text-align: center; }
+  input[type="range"] { width: 100%; margin: 10px 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>قوة الملاحظة والخداع البصري</h1>
+  <h2>R2 Visual Prototype Gate</h2>
+</div>
+
+<div class="grid" id="gallery-grid"></div>
+
+<div id="detail-view">
+  <div class="controls-bar">
+    <button class="btn btn-outline" onclick="closeDetail()">رجوع (Back)</button>
+    <button class="btn" id="btn-reveal" onclick="toggleReveal()">إظهار الحقيقة (Reveal)</button>
+    <button class="btn btn-outline" onclick="toggleMobile()">معاينة الجوال (Mobile)</button>
+    <button class="btn btn-outline" style="border-color:var(--gold); color:var(--gold)" onclick="toggleProof()">Proof Mode</button>
+  </div>
+  
+  <h2 id="d-prompt" style="text-align: center; margin: 20px 0; font-size: 24px;"></h2>
+  
+  <div id="slider-container">
+    <input type="range" id="angle-slider" min="0" max="90" value="45" oninput="document.getElementById('angle-val').innerText = this.value + '°'">
+    <div style="font-size: 20px; font-weight: bold; color: var(--gold);" id="angle-val">45°</div>
+  </div>
+
+  <div class="puzzle-stage" id="d-stage"></div>
+  
+  <div class="proof-panel" id="d-proof"></div>
+  
+  <div class="review-bar">
+    <button class="review-btn" onclick="setVerdict('strong')">👍 الخدعة قوية (Strong)</button>
+    <button class="review-btn" onclick="setVerdict('borderline')">🟡 تحتاج تحسين (Borderline)</button>
+    <button class="review-btn" onclick="setVerdict('failed')">❌ ما تشتغل (Failed)</button>
+  </div>
+</div>
+
+<script>
+const prototypes = [
+  {
+    id: "XO-01",
+    mechanic: "Moving XO",
+    title: "Sci-Fi Hovercrafts",
+    prompt: "أي المركبتين أكبر فعلياً في الصورة (مساحة بكسل)؟",
+    options: ["المركبة الخلفية (A)", "المركبة الأمامية (B)"],
+    correct: "B",
+    proof: "Hovercraft A (back): 110x55 pixels.\nHovercraft B (front): 120x60 pixels.\nTrue Ratio: B is ~1.19x larger in area.\nPerceptual bias: The extreme converging lines of the perspective grid make A look massive (as if scaling to match the 'distant' tunnel size).",
+    render: (reveal) => {
+      let svg = `<svg viewBox="0 0 800 500" width="100%" height="100%">
+        <!-- Deep perspective tunnel -->
+        <defs>
+          <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="#0f172a" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <rect width="800" height="500" fill="#020617"/>`;
+      
+      // Perspective Grid Lines
+      const cx = 400, cy = 250;
+      if (!reveal) {
+        for(let i = -10; i <= 10; i++) {
+          let x2 = cx + (i * 150);
+          svg += `<line x1="${cx}" y1="${cy}" x2="${x2}" y2="500" stroke="#1e293b" stroke-width="2"/>`;
+          svg += `<line x1="${cx}" y1="${cy}" x2="${x2}" y2="0" stroke="#1e293b" stroke-width="2"/>`;
+        }
+        for(let j = -5; j <= 5; j++) {
+          let y2 = cy + (j * 150);
+          svg += `<line x1="${cx}" y1="${cy}" x2="0" y2="${y2}" stroke="#1e293b" stroke-width="2"/>`;
+          svg += `<line x1="${cx}" y1="${cy}" x2="800" y2="${y2}" stroke="#1e293b" stroke-width="2"/>`;
+        }
+        // Horizontal depth lines
+        [270, 300, 350, 420, 500].forEach(y => {
+          let scale = (y - cy) / 250;
+          svg += `<line x1="0" y1="${y}" x2="800" y2="${y}" stroke="#38bdf8" stroke-width="${1 + scale*3}" opacity="${scale}"/>`;
+          svg += `<line x1="0" y1="${500-y}" x2="800" y2="${500-y}" stroke="#38bdf8" stroke-width="${1 + scale*3}" opacity="${scale}"/>`;
+        });
+      }
+
+      // Hovercraft drawer
+      const drawCraft = (x, y, w, h, label) => {
+        return `
+          <g transform="translate(${x}, ${y})">
+            <!-- Glowing exhaust -->
+            <ellipse cx="${w/2}" cy="${h}" rx="${w/2}" ry="${h/4}" fill="url(#glow)"/>
+            <!-- Chassis -->
+            <polygon points="0,${h/2} ${w/4},0 ${w*3/4},0 ${w},${h/2} ${w*0.8},${h} ${w*0.2},${h}" fill="#334155" stroke="#94a3b8" stroke-width="2"/>
+            <polygon points="${w/4},${h/4} ${w*3/4},${h/4} ${w*0.7},${h*0.7} ${w*0.3},${h*0.7}" fill="#38bdf8"/>
+            <text x="${w/2}" y="-10" fill="#fff" font-size="20" text-anchor="middle">${label}</text>
+            ${reveal ? `<rect x="0" y="0" width="${w}" height="${h}" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="4"/>` : ''}
+          </g>
+        `;
+      };
+
+      // Hovercraft A (Back)
+      svg += drawCraft(345, 200, 110, 55, "A");
+      // Hovercraft B (Front)
+      svg += drawCraft(100, 350, 120, 60, "B");
+
+      if (reveal) {
+        // Draw physical projection lines to prove B > A
+        svg += `<line x1="345" y1="200" x2="345" y2="350" stroke="#ef4444" stroke-width="2" stroke-dasharray="5"/>`;
+        svg += `<line x1="455" y1="200" x2="455" y2="350" stroke="#ef4444" stroke-width="2" stroke-dasharray="5"/>`;
+        svg += `<text x="400" y="450" fill="#ef4444" font-size="24" font-weight="bold" text-anchor="middle">المركبة B أعرض بمقدار 10 بكسل وأطول بـ 5 بكسل</text>`;
+      }
+      
+      svg += `</svg>`;
+      return svg;
+    }
+  },
+  {
+    id: "XO-02",
+    mechanic: "Moving XO",
+    title: "Laser Tether",
+    prompt: "أي بوابة يكمل عندها شعاع الليزر خطه المستقيم تماماً؟",
+    options: ["بوابة 1", "بوابة 2", "بوابة 3", "بوابة 4"],
+    correct: "2",
+    proof: "Laser Start: (0, 100), Angle slope: 0.3.\nLine eq: y = 0.3x + 100.\nExit X = 650.\nTrue Y = 0.3(650) + 100 = 295 (Port 2).\nPoggendorff effect makes the eye underestimate the trajectory across the vertical gap. Players naturally trace lower to Port 3 (y=340).",
+    render: (reveal) => {
+      let svg = `<svg viewBox="0 0 800 500" width="100%" height="100%">
+        <rect width="800" height="500" fill="#000"/>
+        <!-- Stars -->
+        ${Array.from({length: 50}).map((_,i) => `<circle cx="${(Math.sin(i*123)*400+400)}" cy="${(Math.cos(i*321)*250+250)}" r="${Math.random()*1.5}" fill="#fff"/>`).join('')}
+      `;
+
+      // Laser Math
+      // y = 0.3x + 100
+      
+      // Laser entering
+      svg += `<line x1="0" y1="100" x2="250" y2="175" stroke="#ef4444" stroke-width="6" filter="drop-shadow(0 0 8px #ef4444)"/>`;
+
+      // The Asteroid Occluder (blocks x from 250 to 550)
+      svg += `<polygon points="250,50 350,20 450,80 550,150 600,300 500,480 300,450 200,250" fill="#334155" stroke="#475569" stroke-width="4"/>`;
+      // Asteroid texture lines
+      svg += `<path d="M 300 150 Q 350 200 400 180 M 350 300 Q 400 350 450 300" stroke="#1e293b" stroke-width="6" fill="none"/>`;
+
+      // Ports
+      const portX = 650;
+      const trueY = 295; // 0.3 * 650 + 100 = 295
+      
+      // Generate 4 ports
+      const ports = [
+        {id: 1, y: 250},
+        {id: 2, y: 295}, // True
+        {id: 3, y: 340}, // Visually tempting
+        {id: 4, y: 385}
+      ];
+
+      ports.forEach(p => {
+        svg += `<circle cx="${portX}" cy="${p.y}" r="15" fill="#1e293b" stroke="#38bdf8" stroke-width="3"/>`;
+        svg += `<text x="${portX + 30}" y="${p.y + 6}" fill="#fff" font-size="20" font-weight="bold">${p.id}</text>`;
+      });
+
+      if (reveal) {
+        // Draw the hidden portion of the laser
+        svg += `<line x1="250" y1="175" x2="${portX}" y2="${trueY}" stroke="#ef4444" stroke-width="6" stroke-dasharray="10" filter="drop-shadow(0 0 8px #ef4444)"/>`;
+        svg += `<circle cx="${portX}" cy="${trueY}" r="25" fill="none" stroke="#fbbf24" stroke-width="4"/>`;
+      }
+
+      svg += `</svg>`;
+      return svg;
+    }
+  },
+  {
+    id: "XO-03",
+    mechanic: "Moving XO",
+    title: "Desert Ruins",
+    prompt: "أي الحجرين لونه الرمادي أغمق فعلياً في الصورة (كقيمة لونية)؟",
+    options: ["الحجر أ (في الظل)", "الحجر ب (في الشمس)", "متساويان تماماً"],
+    correct: "متساويان تماماً",
+    proof: "Adelson's Checker Shadow illusion implemented in a 2.5D architectural context.\nStone A (lit sand): Background #E2C08D, Stone #808080.\nStone B (shadowed sand): Background #4A3A26, Stone #808080.\nBoth stones are mathematically exactly #808080. The 3D shadow cast by the arch forces the visual cortex to subtract the perceived shadow from Stone B, making it look much lighter.",
+    render: (reveal) => {
+      let svg = `<svg viewBox="0 0 800 500" width="100%" height="100%">
+        <!-- Wall/Ground -->
+        <polygon points="0,0 800,0 800,500 0,500" fill="#E2C08D"/>
+        
+        <!-- The deep shadow cast diagonally from top left -->
+        <polygon points="0,0 600,0 0,600" fill="#000000" opacity="0.6"/>
+        
+        <!-- Arch Column casting the shadow -->
+        <rect x="0" y="0" width="100" height="500" fill="#8B7355" stroke="#5C4D38" stroke-width="4"/>
+        <polygon points="100,0 150,0 150,500 100,500" fill="#5C4D38"/>
+      `;
+
+      // Stone A (In Shadow)
+      svg += `
+        <g transform="translate(150, 300)">
+          <polygon points="0,20 60,0 120,20 60,40" fill="#808080"/>
+          <polygon points="0,20 60,40 60,60 0,40" fill="#606060"/>
+          <polygon points="120,20 60,40 60,60 120,40" fill="#A0A0A0"/>
+          <text x="60" y="15" fill="#000" font-size="20" font-weight="bold" text-anchor="middle">أ</text>
+        </g>
+      `;
+
+      // Stone B (In Light)
+      svg += `
+        <g transform="translate(450, 150)">
+          <polygon points="0,20 60,0 120,20 60,40" fill="#808080"/>
+          <polygon points="0,20 60,40 60,60 0,40" fill="#606060"/>
+          <polygon points="120,20 60,40 60,60 120,40" fill="#A0A0A0"/>
+          <text x="60" y="15" fill="#fff" font-size="20" font-weight="bold" text-anchor="middle">ب</text>
+        </g>
+      `;
+
+      if (reveal) {
+        // Draw a solid bridge of exactly the same color connecting them
+        svg += `<polygon points="210,320 510,170 530,190 230,340" fill="#808080"/>`;
+        svg += `<text x="350" y="220" fill="#ef4444" font-size="24" font-weight="bold" text-anchor="middle">نفس الدرجة تماماً (#808080)</text>`;
+      }
+
+      svg += `</svg>`;
+      return svg;
+    }
+  },
+  {
+    id: "BMB-02",
+    mechanic: "Bomb",
+    title: "Energy Grid Amulets",
+    prompt: "أي تعويذة لونها الحقيقي الداخلي أقرب للبرتقالي؟",
+    options: ["التعويذة أ", "التعويذة ب"],
+    correct: "التعويذة أ",
+    proof: "Munker-White Color Assimilation.\nAmulet A base color: #FF8C00 (Dark Orange).\nAmulet B base color: #FFD700 (Gold/Yellow).\nA is crossed by Green grids (#00FF00).\nB is crossed by Red grids (#FF0000).\nAssimilation shifts A visually towards green/yellow. Assimilation shifts B visually towards red/orange. The player perceives B as more orange, but A is physically the orange one.",
+    render: (reveal) => {
+      let svg = `<svg viewBox="0 0 800 500" width="100%" height="100%">
+        <rect width="800" height="500" fill="#0f172a"/>
+      `;
+
+      // Amulet A (True Orange #FF8C00)
+      svg += `<circle cx="250" cy="250" r="120" fill="#FF8C00"/>`;
+      svg += `<text x="250" y="100" fill="#fff" font-size="24" font-weight="bold" text-anchor="middle">التعويذة أ</text>`;
+
+      // Amulet B (True Yellow #FFD700)
+      svg += `<circle cx="550" cy="250" r="120" fill="#FFD700"/>`;
+      svg += `<text x="550" y="100" fill="#fff" font-size="24" font-weight="bold" text-anchor="middle">التعويذة ب</text>`;
+
+      if (!reveal) {
+        // High-frequency grids
+        // Grid A: Green lines
+        for(let y = 130; y <= 370; y += 12) {
+          svg += `<line x1="130" y1="${y}" x2="370" y2="${y}" stroke="#00FF00" stroke-width="6"/>`;
+        }
+        // Grid B: Red lines
+        for(let y = 130; y <= 370; y += 12) {
+          svg += `<line x1="430" y1="${y}" x2="670" y2="${y}" stroke="#FF0000" stroke-width="6"/>`;
+        }
+      } else {
+        svg += `<text x="250" y="420" fill="#FF8C00" font-size="24" font-weight="bold" text-anchor="middle">اللون الحقيقي: برتقالي</text>`;
+        svg += `<text x="550" y="420" fill="#FFD700" font-size="24" font-weight="bold" text-anchor="middle">اللون الحقيقي: أصفر</text>`;
+      }
+
+      svg += `</svg>`;
+      return svg;
+    }
+  },
+  {
+    id: "CLS-02",
+    mechanic: "Closest",
+    title: "Warp Drive Laser",
+    prompt: "كم تتوقع زاوية ميلان شعاع الليزر عن الأرضية الأفقية (بالدرجات)؟",
+    options: ["(Use Slider)"],
+    correct: "28",
+    proof: "Hering / Zöllner variant.\nLaser angle: exactly 28°.\nRadiating background lines emanate from an offset vanishing point. The acute angles created by intersections force visual cortex orientation-neurons to exaggerate the angle, making the laser line appear bent or significantly steeper (e.g., 40-50°).",
+    render: (reveal) => {
+      let svg = `<svg viewBox="0 0 800 500" width="100%" height="100%">
+        <rect width="800" height="500" fill="#020617"/>
+      `;
+
+      // Starburst Center
+      const bx = 400, by = 500;
+      
+      if (!reveal) {
+        // Radiating warp lines
+        for(let i = 0; i <= 180; i += 5) {
+          let rad = i * Math.PI / 180;
+          let lx = bx + Math.cos(rad) * 1000;
+          let ly = by - Math.sin(rad) * 1000;
+          svg += `<line x1="${bx}" y1="${by}" x2="${lx}" y2="${ly}" stroke="#1e293b" stroke-width="3"/>`;
+        }
+      } else {
+        // Baseline grid for reveal
+        svg += `<line x1="100" y1="400" x2="700" y2="400" stroke="#334155" stroke-width="2" stroke-dasharray="10"/>`;
+        svg += `<path d="M 300 400 A 100 100 0 0 0 380 350" fill="none" stroke="#fbbf24" stroke-width="4"/>`;
+        svg += `<text x="360" y="380" fill="#fbbf24" font-size="24" font-weight="bold">28°</text>`;
+      }
+
+      // Laser Line at 28 degrees
+      // Origin at (200, 400)
+      let rad28 = 28 * Math.PI / 180;
+      let len = 600;
+      let endX = 200 + Math.cos(rad28) * len;
+      let endY = 400 - Math.sin(rad28) * len; // minus because SVG y is inverted
+      
+      svg += `<line x1="200" y1="400" x2="${endX}" y2="${endY}" stroke="#ef4444" stroke-width="8" filter="drop-shadow(0 0 10px #ef4444)"/>`;
+
+      svg += `</svg>`;
+      return svg;
+    }
+  }
+];
+
+let currentPrototype = null;
+let isRevealed = false;
+let isMobile = false;
+
+function init() {
+  const grid = document.getElementById('gallery-grid');
+  prototypes.forEach((p, idx) => {
+    grid.innerHTML += `
+      <div class="card">
+        <h3>${p.id} — ${p.title}</h3>
+        <span style="background:var(--accent); color:#000; padding:2px 8px; border-radius:12px; font-size:12px;">${p.mechanic}</span>
+        <p style="font-size:14px; margin-top:15px; height: 40px;">${p.prompt}</p>
+        <div class="thumb">${p.render(false)}</div>
+        <button class="btn" onclick="openDetail(${idx})">افتح التجربة</button>
+      </div>
+    `;
+  });
+}
+
+function openDetail(idx) {
+  currentPrototype = prototypes[idx];
+  isRevealed = false;
+  
+  document.getElementById('gallery-grid').style.display = 'none';
+  document.getElementById('detail-view').style.display = 'block';
+  document.getElementById('d-prompt').innerText = currentPrototype.prompt;
+  document.getElementById('d-proof').innerHTML = `<h4>Proof Mode</h4><pre style="margin:0; white-space:pre-wrap;">${currentPrototype.proof}</pre>`;
+  
+  if(currentPrototype.mechanic === 'Closest') {
+    document.getElementById('slider-container').style.display = 'block';
+  } else {
+    document.getElementById('slider-container').style.display = 'none';
+  }
+  
+  // reset review buttons
+  document.querySelectorAll('.review-btn').forEach(b => b.classList.remove('active'));
+  let saved = localStorage.getItem('rev2_' + currentPrototype.id);
+  if(saved) {
+    document.querySelectorAll('.review-btn').forEach(b => {
+      if(b.innerText.includes(saved)) b.classList.add('active');
+    });
+  }
+
+  renderStage();
+}
+
+function closeDetail() {
+  document.getElementById('detail-view').style.display = 'none';
+  document.getElementById('gallery-grid').style.display = 'grid';
+  document.getElementById('d-proof').style.display = 'none';
+}
+
+function toggleReveal() {
+  isRevealed = !isRevealed;
+  document.getElementById('btn-reveal').innerText = isRevealed ? 'إعادة الخدعة (Reset)' : 'إظهار الحقيقة (Reveal)';
+  renderStage();
+}
+
+function toggleMobile() {
+  isMobile = !isMobile;
+  renderStage();
+}
+
+function toggleProof() {
+  const p = document.getElementById('d-proof');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+function renderStage() {
+  const stage = document.getElementById('d-stage');
+  stage.className = isMobile ? 'puzzle-stage mobile-view' : 'puzzle-stage';
+  stage.innerHTML = currentPrototype.render(isRevealed);
+}
+
+function setVerdict(type) {
+  let v = type === 'strong' ? 'Strong' : type === 'borderline' ? 'Borderline' : 'Failed';
+  localStorage.setItem('rev2_' + currentPrototype.id, v);
+  document.querySelectorAll('.review-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+init();
+</script>
+</body>
+</html>
