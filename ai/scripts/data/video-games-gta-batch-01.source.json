@@ -1,0 +1,314 @@
+{
+  "questions": [
+    {
+      "id": "ryo-gta-1-v2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "انظر إلى حالة واجهة المستخدم هذه في لعبة GTA V (صورة النجوم)... ماذا تعني حالة النجوم الوامضة (Flashing)؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "الشرطة فقدت رؤيتك وتبحث عنك"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "تم استدعاء القوات الخاصة (SWAT)"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "الشرطة تطلق النار للقتل"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "أنت في منطقة عسكرية محظورة"
+            }
+          }
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://gta-flashing-stars.jpg"
+          }
+        ],
+        "intent": "صورة لنجوم الشرطة في الزاوية العلوية اليمنى وهي تومض (Flashing Stars) في GTA V"
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      }
+    },
+    {
+      "id": "ryo-gta-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في طور القصة للعبة GTA V، ما هي القدرة الخاصة (Special Ability) التي يتميز بها فرانكلين (Franklin) دون بقية الشخصيات؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "إبطاء الوقت أثناء القيادة لتسهيل المناورة وتفادي الحوادث"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "إبطاء الوقت أثناء التصويب لإصابة الأهداف بدقة (Bullet Time)"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "الدخول في حالة غضب تقلل الضرر المتلقي وتزيد قوة الضربات"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "استدعاء عصابات مسلحة للمساعدة في القتال فوراً"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "GTA V"
+      }
+    },
+    {
+      "id": "ryo-gta-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في GTA Online، وش تسوي لك خدمة 'Remove Wanted Level' لما تختارها عن طريق ليستر (Lester)؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "التخلص فوراً من جميع نجوم ملاحقة الشرطة الحالية"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "إخفاء أيقونتك من خريطة اللاعبين الآخرين لمدة دقيقة"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "توفير سيارة هروب مصفحة في أقرب طريق لك"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "رشوة السلطات لعدم تدخل الشرطة في جرائمك القادمة لمدة 3 دقائق"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "GTA Online"
+      }
+    },
+    {
+      "id": "clos-gta-1-v2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في GTA Online، كم سيارة يشيل مرآب الشقة من فئة High-End كحد أقصى؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 10,
+        "unit": "سيارات"
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://gta-10-car-garage-highend.jpg"
+          }
+        ],
+        "intent": "صورة لمرآب شقة فخمة (High-End Apartment Garage) في GTA Online يعرض مواقف السيارات من الداخل دون تسريب السعة القصوى بالعدد الصريح."
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "GTA Online — High-End Apartment"
+      }
+    },
+    {
+      "id": "clos-gta-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في GTA Online، كم عدد الصناديق (Crates) الأقصى الذي يمكن تخزينه في مستودع البضائع الخاصة الكبير (Large Special Cargo Warehouse)؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 111,
+        "unit": "صندوق"
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "GTA Online"
+      }
+    },
+    {
+      "id": "clos-gta-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في GTA V، كم عدد قطع سفينة الفضاء (Spaceship Parts) اللي تحتاج تجمعها لإكمال سلسلة مهام أوميغا (Omega)؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 50,
+        "unit": "قطعة"
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "GTA V — Omega / Far Out"
+      }
+    },
+    {
+      "id": "bomb-gta-1",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "من هذه الشخصية الرئيسية في طور القصة للعبة GTA V؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "تريفور",
+          "تريفور فيليبس",
+          "Trevor",
+          "Trevor Philips",
+          "ترفور"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://gta-trevor.jpg"
+          }
+        ],
+        "intent": "صورة واضحة لشخصية تريفور (Trevor) من داخل بيئة اللعب في GTA V بملابسه المعتادة، دون ظهور اسمه نصياً في الشاشة."
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      }
+    },
+    {
+      "id": "bomb-gta-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "ما اسم هذه المدينة الرئيسية التي تدور فيها أحداث لعبة GTA V؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "لوس سانتوس",
+          "Los Santos"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://gta-los-santos.jpg"
+          }
+        ],
+        "intent": "صورة لعلامة Vinewood الشهيرة أو ناطحات السحاب المميزة لمدينة لوس سانتوس (Los Santos) من داخل اللعبة، دون وجود نص صريح باسم المدينة."
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      }
+    },
+    {
+      "id": "bomb-gta-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "وش اسم هذه الدراجة الطائرة في GTA Online؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "أوبريسور مارك 2",
+          "اوبريسور مارك 2",
+          "Oppressor Mk II",
+          "Oppressor MK2",
+          "Oppressor Mark 2",
+          "اوبريسور ام كي 2"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://gta-oppressor.jpg"
+          }
+        ],
+        "intent": "صورة واضحة من داخل اللعبة لدراجة Pegassi Oppressor Mk II الطائرة في GTA Online، من دون إظهار اسمها نصياً في الشاشة."
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "GTA Online"
+      }
+    }
+  ]
+}

@@ -1,0 +1,309 @@
+{
+  "questions": [
+    {
+      "id": "ryo-gow-1-v2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "استمع لهذا الصوت القوي... ما هو السلاح الذي يُصدر هذا الصوت عند استدعائه عائداً إلى يد كريتوس؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "فأس ليفياثان (Leviathan Axe)"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "نصال الفوضى (Blades of Chaos)"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "رمح دراوبنير (Draupnir Spear)"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "مطرقة ميونير (Mjolnir)"
+            }
+          }
+        ]
+      },
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "mock://gow-axe-recall.mp3"
+          }
+        ],
+        "intent": "مقطع صوتي أيقوني لصوت ارتداد فأس ليفياثان وارتطامه العنيف بيد كريتوس"
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "AUDIO_RECOGNITION",
+        "scopeVersion": "God of War (2018)"
+      }
+    },
+    {
+      "id": "ryo-gow-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "أي عالم يغطيه الضباب السام ويحتوي على متاهة إيفالدي في إله الحرب 2018؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "نيفلهايم"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "موسبلهايم"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "ألفهايم"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "هيلهايم"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "God of War (2018) — Niflheim"
+      }
+    },
+    {
+      "id": "ryo-gow-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في God of War Ragnarök، وش هي الميزة القتالية الأساسية والفريدة اللي يقدمها سلاح (رمح دراوبنير - Draupnir Spear)؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "رمي نسخ متعددة في الأعداء ثم تفجيرها معاً"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "إطلاق أمواج نارية تحرق الأعداء في مساحة واسعة"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "تجميد الماء والآليات في البيئة المحيطة"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "سحب أرواح الأعداء لتعبئة شريط الصحة"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "God of War Ragnarök"
+      }
+    },
+    {
+      "id": "clos-gow-1",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "كم عدد الفالكريز (بما في ذلك الملكة سيغرون) الذين يجب عليك هزيمتهم في إله الحرب (2018)؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 9,
+        "unit": "فالكري"
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "God of War (2018)"
+      }
+    },
+    {
+      "id": "clos-gow-6",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في God of War (2018)، كم صدى ضباب (Mist Echo) تحتاج لفتح أعلى مزق في العوالم (Realm Tear) تكلفةً داخل غرفة إيفالدي المركزية في Niflheim؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 20000,
+        "unit": "صدى ضباب (Mist Echoes)"
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "God of War (2018)"
+      }
+    },
+    {
+      "id": "clos-gow-7",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في God of War (2018)، في التحدي الرابع العادي (Trial IV Normal) داخل Muspelheim، كم عدو لازم تهزم عشان تكمل التحدي؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 100,
+        "unit": "عدو"
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "God of War (2018) — Muspelheim — Trial IV — Normal"
+      }
+    },
+    {
+      "id": "bomb-gow-1",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "وش اسم هذي الأسلحة الأيقونية اللي يستخدمها كريتوس؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "نصال الفوضى",
+          "Blades of Chaos",
+          "شفرات الفوضى",
+          "بلايدز اوف كيوس"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://img-1"
+          }
+        ],
+        "intent": "صورة واضحة لأسلحة (نصال الفوضى - Blades of Chaos) داخل اللعبة، تظهر النصال والسلاسل، بدون عرض أي نصوص تكشف الاسم."
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "God of War (2018)"
+      }
+    },
+    {
+      "id": "bomb-gow-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "وش اسم هذا العالم البركاني المليء بالنار والحمم واللي تخوض فيه تحديات قتالية؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "موسبلهايم",
+          "Muspelheim",
+          "مسفلهيم",
+          "موسبلهيم",
+          "موسبل هيم"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://img-2"
+          }
+        ],
+        "intent": "صورة واضحة لعالم موسبلهايم (Muspelheim) في اللعبة، تظهر الحمم البركانية وساحة التحديات الخاصة بسورت (Surtr) بدون أي نصوص أو واجهة تسرب الاسم."
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "God of War (2018)"
+      }
+    },
+    {
+      "id": "bomb-gow-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://gow-nornir-chest.jpg"
+          }
+        ],
+        "intent": "صورة واضحة داخل اللعبة لصندوق نورنير (Nornir Chest) واحد، مع ظهور الأختام/الرونات الثلاثة المميزة له في البيئة المحيطة، بدون أي نصوص تسرب الاسم."
+      },
+      "prompt": {
+        "ar": "في God of War (2018)، وش اسم هذا الصندوق اللي يحتاج تحل لغز مرتبط بثلاث رونات عشان تفتحه؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "صندوق النورنير",
+          "صندوق نورنير",
+          "Nornir Chest",
+          "النورنير",
+          "nornir chest"
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "God of War (2018)"
+      }
+    }
+  ]
+}

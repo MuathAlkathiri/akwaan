@@ -1,0 +1,2168 @@
+{
+  "milestone": "video-games-126",
+  "world": "video-games",
+  "questions": [
+    {
+      "id": "ryo-fifa-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "ماذا يحدث عند تفعيل خاصية 'قفل اللاعب' (Player Lock) بالضغط على L3 + R3 أثناء امتلاك الكرة؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "تتحكم بلاعب واحد للركض في مساحة فارغة بينما يتحكم الذكاء الاصطناعي بحامل الكرة"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "يتم تثبيت الكاميرا على لاعب معين وتتجاهل باقي الملعب"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "يتم إيقاف جميع المدافعين في أماكنهم لثانية واحدة"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "ينفذ حامل الكرة مهارة مراوغة خاصة بشكل تلقائي"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "DETAIL_RECOGNITION"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "fifa"
+    },
+    {
+      "id": "ryo-fifa-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "ما هو التأثير الرئيسي لامتلاك اللاعب لميزة 'أسلوب اللعب بلس' (PlayStyle+) في EA FC بدلاً من أسلوب اللعب العادي؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "يعزز تأثير أسلوب اللعب ويمنحه تأثيرات أقوى بشكل ملحوظ من نسخته العادية"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "يرفع تقييم اللاعب العام (Rating) بمقدار نقطتين بشكل دائم"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "يمنع لياقة اللاعب من التناقص نهائياً أثناء المباراة"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "يعطي اللاعب القدرة على الركض بأقصى سرعة دون الكرة فقط"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "DETAIL_RECOGNITION"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "fifa"
+    },
+    {
+      "id": "ryo-fifa-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في طور Rush في EA SPORTS FC 25، وش يصير للاعب إذا أخذ البطاقة الزرقاء بسبب مخالفة قوية أو منعه فرصة تسجيل؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "يغادر الملعب لمدة دقيقة واحدة كعقوبة مؤقتة ثم يعود"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "يُطرد نهائياً ولا يمكن استبداله كما في البطاقة الحمراء"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "تُحتسب ركلة جزاء مباشرة للفريق الخصم دون طرد"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "يُمنع من تسجيل الأهداف طوال الشوط الحالي"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "EA SPORTS FC 25 — Rush"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "fifa"
+    },
+    {
+      "id": "clos-fifa-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في نظام التناغم (Chemistry) الحالي في طور Ultimate Team، ما هو الحد الأقصى لنقاط التناغم الذي يمكن أن يمتلكه الفريق بالكامل في التشكيلة الأساسية؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 33
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "DETAIL_RECOGNITION"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "fifa"
+    },
+    {
+      "id": "clos-fifa-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "كم عدد الأقسام (Divisions) المرقمة في طور Rivals في Ultimate Team (بدون احتساب قسم النخبة Elite)؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 10
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "DETAIL_RECOGNITION"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "fifa"
+    },
+    {
+      "id": "clos-fifa-7",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في طور Clubs في EA SPORTS FC 26، بعد تحديث العطلات (Holiday Update)، كم صار الحد الأقصى لنقاط التطوير (Attribute Points) اللي تقدر تستخدمها لتطوير الـ Archetype؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 475
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "EA SPORTS FC 26 — Clubs — Holiday Update"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "fifa"
+    },
+    {
+      "id": "bomb-fifa-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "ماذا يسمى هذا الطور الشهير في اللعبة حيث تقوم ببناء فريقك الخاص من بطاقات اللاعبين وتنافس به الآخرين؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "التميت تيم",
+          "ultimate team",
+          "fut"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-fifa-2-1d4d4dec.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "fifa"
+    },
+    {
+      "id": "bomb-fifa-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "ماذا يسمى هذا النظام الحديث في اللعبة الذي يسمح لك بترقية بطاقات اللاعبين ورفع طاقاتهم عبر إنجاز مهمات معينة؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "إيفولوشنز",
+          "التطويرات",
+          "Evolution"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-fifa-4-a1a9f71c.png"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "fifa"
+    },
+    {
+      "id": "bomb-fifa-6",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "ماذا يسمى هذا الطور التعاوني الشهير الذي تبتكر فيه لاعبك الخاص (Pro) وتطوره لتلعب في مركز محدد مع أصدقائك كفريق واحد؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "كلوبز",
+          "أندية برو",
+          "Pro Clubs"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-fifa-6-2afa71a6.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "fifa"
+    },
+    {
+      "id": "ryo-gta-1-v2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "انظر إلى حالة واجهة المستخدم هذه في لعبة GTA V (صورة النجوم)... ماذا تعني حالة النجوم الوامضة (Flashing)؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "الشرطة فقدت رؤيتك وتبحث عنك"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "تم استدعاء القوات الخاصة (SWAT)"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "الشرطة تطلق النار للقتل"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "أنت في منطقة عسكرية محظورة"
+            }
+          }
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/ryo-gta-1-v2-addda160.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "gta"
+    },
+    {
+      "id": "ryo-gta-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في طور القصة للعبة GTA V، ما هي القدرة الخاصة (Special Ability) التي يتميز بها فرانكلين (Franklin) دون بقية الشخصيات؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "إبطاء الوقت أثناء القيادة لتسهيل المناورة وتفادي الحوادث"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "إبطاء الوقت أثناء التصويب لإصابة الأهداف بدقة (Bullet Time)"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "الدخول في حالة غضب تقلل الضرر المتلقي وتزيد قوة الضربات"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "استدعاء عصابات مسلحة للمساعدة في القتال فوراً"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "GTA V"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "gta"
+    },
+    {
+      "id": "ryo-gta-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في GTA Online، وش تسوي لك خدمة 'Remove Wanted Level' لما تختارها عن طريق ليستر (Lester)؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "التخلص فوراً من جميع نجوم ملاحقة الشرطة الحالية"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "إخفاء أيقونتك من خريطة اللاعبين الآخرين لمدة دقيقة"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "توفير سيارة هروب مصفحة في أقرب طريق لك"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "رشوة السلطات لعدم تدخل الشرطة في جرائمك القادمة لمدة 3 دقائق"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "GTA Online"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "gta"
+    },
+    {
+      "id": "clos-gta-1-v2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في GTA Online، كم سيارة يشيل مرآب الشقة من فئة High-End كحد أقصى؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 10
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/clos-gta-1-v2-ffec566e.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "GTA Online — High-End Apartment"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "gta"
+    },
+    {
+      "id": "clos-gta-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في GTA Online، كم عدد الصناديق (Crates) الأقصى الذي يمكن تخزينه في مستودع البضائع الخاصة الكبير (Large Special Cargo Warehouse)؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 111
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "GTA Online"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "gta"
+    },
+    {
+      "id": "clos-gta-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في GTA V، كم عدد قطع سفينة الفضاء (Spaceship Parts) اللي تحتاج تجمعها لإكمال سلسلة مهام أوميغا (Omega)؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 50
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "GTA V — Omega / Far Out"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "gta"
+    },
+    {
+      "id": "bomb-gta-1",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "من هذه الشخصية الرئيسية في طور القصة للعبة GTA V؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "تريفور فيليبس",
+          "Trevor Philips"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-gta-1-c58ba57e.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "gta"
+    },
+    {
+      "id": "bomb-gta-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "ما اسم هذه المدينة الرئيسية التي تدور فيها أحداث لعبة GTA V؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "لوس سانتوس",
+          "Los Santos"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-gta-2-cb1cb3af.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "gta"
+    },
+    {
+      "id": "bomb-gta-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "وش اسم هذه الدراجة الطائرة في GTA Online؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "أوبريسور مارك 2",
+          "Oppressor Mk II",
+          "اوبريسور ام كي 2"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-gta-4-7ed70a33.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "gta",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "GTA Online"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "gta"
+    },
+    {
+      "id": "ryo-cod-2-v2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "استمع لهذه الأغنية القصيرة (Jingle) من طور الزومبي الكلاسيكي... لأي آلة بيرك (Perk) تتبع؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "جقرنوق (Juggernog)"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "سبيد كولا (Speed Cola)"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "كويك ريفايف (Quick Revive)"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "دبل تاب (Double Tap)"
+            }
+          }
+        ]
+      },
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/audio/ryo-cod-2-v2.mp3"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "AUDIO_RECOGNITION",
+        "scopeVersion": "Black Ops Zombies"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "call-of-duty"
+    },
+    {
+      "id": "ryo-cod-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في لعبة Black Ops 2، ما اسم الخريطة الشهيرة التي تقع أحداثها على متن يخت فاخر في البحر؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "Hijacked (هايجَاكت)"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "Raid (ريد)"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "Nuketown (نيوك تاون)"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "Slums (سلومز)"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "DETAIL_RECOGNITION"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "call-of-duty"
+    },
+    {
+      "id": "ryo-cod-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في طور الزومبي الكلاسيكي، ماذا يعني ظهور دمية الدب (Teddy Bear) عند فتح صندوق الأسلحة العشوائي (Mystery Box)؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "الصندوق سيختفي وينتقل إلى موقع آخر في الخريطة"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "ستحصل على سلاح مجاني في المحاولة القادمة"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "اللعبة ستنتهي فوراً"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "ستحصل على ضعف النقاط لمدة قصيرة"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Black Ops Zombies"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "call-of-duty"
+    },
+    {
+      "id": "clos-cod-1-v2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Modern Warfare 2 (2009)، بدون استخدام بيرك Hardline، كم قتلة متتالية تحتاج لتفعيل Tactical Nuke؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 25
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/clos-cod-1-v2-replacement-manual_0.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "call-of-duty"
+    },
+    {
+      "id": "clos-cod-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في طور Zombies في Call of Duty: Black Ops (2010)، كم نقطة تحتاج لأول استخدام عادي لآلة Pack-a-Punch؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 5000
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Call of Duty: Black Ops (2010) — Zombies"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "call-of-duty"
+    },
+    {
+      "id": "clos-cod-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في لعبة Modern Warfare 2 (2009) للطور الجماعي، كم هو أقصى ليفل (Level) تصل إليه قبل أن تتمكن من الدخول في البريستيج (Prestige) لأول مرة؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 70
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Modern Warfare 2 (2009)"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "call-of-duty"
+    },
+    {
+      "id": "bomb-cod-1",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "وش اسم آلة الـPerk هذي في طور Zombies في Call of Duty: Black Ops؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "سبيد كولا",
+          "Speed Cola"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-cod-1-replacement-manual_crop.png"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Call of Duty: Black Ops (2010) — Zombies"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "call-of-duty"
+    },
+    {
+      "id": "bomb-cod-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "خريطة صغيرة جداً ومشهورة في سلسلة Black Ops تحتوي على حافلتين ومنازل ألعاب في المنتصف، ما اسمها؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "نيوك تاون",
+          "Nuketown"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-cod-2-replacement-manual_crop.png"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Call of Duty: Black Ops (2010)"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "call-of-duty"
+    },
+    {
+      "id": "bomb-cod-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "شخصية أيقونية في سلسلة Modern Warfare، معروف بارتدائه قناع يحمل رسمة جمجمة. ما اسمه؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "جوست",
+          "سايمون رايلي",
+          "Ghost"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-cod-3-e2d74e1b.png"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Call of Duty: Modern Warfare 2 (2009)"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "call-of-duty"
+    },
+    {
+      "id": "ryo-ow-1-v2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "استمع لهذا الخطاب الصوتي الخاص بقدرة الألتميت (القصوى)... لأي بطل يعود هذا الصوت؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "فرح (Pharah)"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "ريبر (Reaper)"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "كاسيدي (Cassidy)"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "سولجر: 76 (Soldier: 76)"
+            }
+          }
+        ]
+      },
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/audio/ryo-ow-1-v2.mp3"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "AUDIO_RECOGNITION"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "overwatch"
+    },
+    {
+      "id": "ryo-ow-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "ما هو اسم القدرة التي تستخدمها تريسر (Tracer) للعودة بالزمن إلى موقعها وحالتها السابقة؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "الاستدعاء (Recall)"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "الوميض (Blink)"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "القنبلة النبضية (Pulse Bomb)"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "إرجاع (Rewind)"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "DETAIL_RECOGNITION"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "overwatch"
+    },
+    {
+      "id": "ryo-ow-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في Overwatch 2، وش يصير لـ B.O.B (ألتميت البطلة Ashe) إذا انضرب بقدرة الألتميت EMP الخاصة بـ Sombra؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "يتعطل عن العمل تماماً لفترة قصيرة"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "يتحول لمهاجمة فريقه الأصلي"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "ينفجر فوراً ويختفي"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "يكتسب درع إضافي ويزيد ضرره"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Overwatch 2"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "overwatch"
+    },
+    {
+      "id": "clos-ow-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Overwatch الحالية، كم نقطة (Competitive Points) تحتاج لفتح سلاح ذهبي (Golden Weapon Variant) لشخصية واحدة؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 3000
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Current Overwatch"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "overwatch"
+    },
+    {
+      "id": "clos-ow-6",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Overwatch، بدون أي Perks أو تأثيرات إضافية، كم HP يعالج صندوق الإسعافات الكبير (Large Health Pack) بالقيمة الأساسية؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 250
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Current Overwatch Baseline"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "overwatch"
+    },
+    {
+      "id": "clos-ow-7",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في طور Control في Overwatch، إذا وصلت النسبة للنهاية والنقطة ما زالت متنازع عليها، عند كم٪ يتوقف التقدم وتبدأ حالة الـOvertime؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 99
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Current Overwatch — Control Mode"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "overwatch"
+    },
+    {
+      "id": "bomb-ow-1",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "من هو البطل الذي يستخدم هذا السلاح في أوفرواتش؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "هانزو",
+          "Hanzo"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-ow-1-replacement-manual_3.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "overwatch"
+    },
+    {
+      "id": "bomb-ow-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "وش اسم هذا الهدف المتحرك اللي لازم فريق يرافقه والفريق الثاني يوقفه في Overwatch؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "الحمولة",
+          "Payload"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-ow-3-4f40da03.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Overwatch"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "overwatch"
+    },
+    {
+      "id": "bomb-ow-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-ow-4-aeab0814.png"
+          }
+        ]
+      },
+      "prompt": {
+        "ar": "وش اسم خريطة Overwatch هذي المشهورة بالبئر (Well) الكبير في منتصف نقطة التحكم؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "إليوس",
+          "Ilios"
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Overwatch 1 & 2"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "overwatch"
+    },
+    {
+      "id": "ryo-gow-1-v2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "استمع لهذا الصوت القوي... ما هو السلاح الذي يُصدر هذا الصوت عند استدعائه عائداً إلى يد كريتوس؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "فأس ليفياثان (Leviathan Axe)"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "نصال الفوضى (Blades of Chaos)"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "رمح دراوبنير (Draupnir Spear)"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "مطرقة ميونير (Mjolnir)"
+            }
+          }
+        ]
+      },
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/audio/ryo-gow-1-v2-replacement.mp3"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "AUDIO_RECOGNITION",
+        "scopeVersion": "God of War (2018)"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "god-of-war"
+    },
+    {
+      "id": "ryo-gow-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "أي عالم يغطيه الضباب السام ويحتوي على متاهة إيفالدي في إله الحرب 2018؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "نيفلهايم"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "موسبلهايم"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "ألفهايم"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "هيلهايم"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "God of War (2018) — Niflheim"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "god-of-war"
+    },
+    {
+      "id": "ryo-gow-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في God of War Ragnarök، وش هي الميزة القتالية الأساسية والفريدة اللي يقدمها سلاح (رمح دراوبنير - Draupnir Spear)؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "رمي نسخ متعددة في الأعداء ثم تفجيرها معاً"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "إطلاق أمواج نارية تحرق الأعداء في مساحة واسعة"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "تجميد الماء والآليات في البيئة المحيطة"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "سحب أرواح الأعداء لتعبئة شريط الصحة"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "God of War Ragnarök"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "god-of-war"
+    },
+    {
+      "id": "clos-gow-1",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "كم عدد الفالكريز (بما في ذلك الملكة سيغرون) الذين يجب عليك هزيمتهم في إله الحرب (2018)؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 9
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "God of War (2018)"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "god-of-war"
+    },
+    {
+      "id": "clos-gow-6",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في God of War (2018)، كم صدى ضباب (Mist Echo) تحتاج لفتح أعلى مزق في العوالم (Realm Tear) تكلفةً داخل غرفة إيفالدي المركزية في Niflheim؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 20000
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "God of War (2018)"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "god-of-war"
+    },
+    {
+      "id": "clos-gow-7",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في God of War (2018)، في التحدي الرابع العادي (Trial IV Normal) داخل Muspelheim، كم عدو لازم تهزم عشان تكمل التحدي؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 100
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "God of War (2018) — Muspelheim — Trial IV — Normal"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "god-of-war"
+    },
+    {
+      "id": "bomb-gow-1",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "وش اسم هذي الأسلحة الأيقونية اللي يستخدمها كريتوس؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "نصال الفوضى",
+          "Blades of Chaos"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-gow-1-e824238f.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "God of War (2018)"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "god-of-war"
+    },
+    {
+      "id": "bomb-gow-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "وش اسم هذا العالم البركاني المليء بالنار والحمم واللي تخوض فيه تحديات قتالية؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "موسبلهايم",
+          "Muspelheim"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-gow-2-ba397f6a.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "God of War (2018)"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "god-of-war"
+    },
+    {
+      "id": "bomb-gow-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-gow-4-eb970512.jpg"
+          }
+        ]
+      },
+      "prompt": {
+        "ar": "في God of War (2018)، وش اسم هذا الصندوق اللي يحتاج تحل لغز مرتبط بثلاث رونات عشان تفتحه؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "صندوق النورنير",
+          "Nornir Chest"
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "god-of-war",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "God of War (2018)"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "god-of-war"
+    },
+    {
+      "id": "ryo-mc-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "أي من هذه الكائنات لا يحترق في ضوء الشمس؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "كريبر"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "زومبي"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "سكيلتون"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "فانتوم"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "CURRENT JAVA + BEDROCK PARITY"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "minecraft"
+    },
+    {
+      "id": "ryo-mc-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/audio/ryo-mc-4.mp3"
+          }
+        ]
+      },
+      "prompt": {
+        "ar": "استمع لهذا الصوت... أي Mob يصدر هذا الصوت المميز لما تستفزه بالنظر في عيونه أو تهاجمه؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "الإندرمان (Enderman)"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "الفانتوم (Phantom)"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "الغاست (Ghast)"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "الـ Warden"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "AUDIO_RECOGNITION",
+        "scopeVersion": "Java Edition 1.21"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "minecraft"
+    },
+    {
+      "id": "ryo-mc-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "وش يصير إذا حاولت تنام باستخدام السرير العادي (Regular Bed) داخل الـNether أو The End في Minecraft؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "السرير ينفجر بقوة كبيرة"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "يرفض اللاعب النوم بدون تأثير إضافي"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "تترسب وحوش خطيرة حولك فوراً"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "يحترق السرير ببطء وتفقد نقاط صحة"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "CURRENT JAVA + BEDROCK PARITY"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "minecraft"
+    },
+    {
+      "id": "clos-mc-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Minecraft، لبناء هرم كامل المستوى (Tier 4) لتفعيل طاقة الـ Beacon، كم عدد البلوكات المعدنية (مثل الحديد أو الألماس) اللي تحتاجها لتشكيل قاعدة الهرم كاملة؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 164
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "CURRENT JAVA + BEDROCK PARITY"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "minecraft"
+    },
+    {
+      "id": "clos-mc-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في أفران Minecraft (Furnaces)، قطعة الفحم العادية تطبخ 8 عناصر... لكن كم عنصر (Item) تقدر تطبخ 'بلوكة الفحم' (Block of Coal) الواحدة إذا استخدمتها كوقود؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 80
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "CURRENT JAVA + BEDROCK PARITY"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "minecraft"
+    },
+    {
+      "id": "clos-mc-7",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Minecraft Java Edition بوضع Survival، إذا وصلت تكلفة عملية في الـAnvil إلى كم Level تظهر لك رسالة 'Too Expensive!' وما تقدر تكمل العملية؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 40
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Minecraft Java Edition — Survival / Adventure"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "minecraft"
+    },
+    {
+      "id": "bomb-mc-1",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "اذكر اسم هذا الكائن الذي ينفجر عند الاقتراب منه في ماين كرافت"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "كريبر",
+          "creeper"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/Creeper-Minecraft-2e6f5e0f-ba43-478e-8da2-10a16178973a.png"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "CURRENT JAVA + BEDROCK PARITY"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "minecraft"
+    },
+    {
+      "id": "bomb-mc-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "وش اسم هذا البعد في Minecraft؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "الإند",
+          "The End"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-mc-2-f27e3b3f.png"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "CURRENT JAVA + BEDROCK PARITY"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "minecraft"
+    },
+    {
+      "id": "bomb-mc-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "اذكر اسم هذه المادة الحمراء المستخدمة لنقل الطاقة وبناء الآلات في ماين كرافت"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "ريدستون",
+          "redstone"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-mc-3-93d067d1.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "CURRENT JAVA + BEDROCK PARITY"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "minecraft"
+    },
+    {
+      "id": "ryo-re-2-v2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في Resident Evil 2 (2019)، وش يصير إذا دمجت العشبة الخضراء مع العشبة الحمراء؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "استعادة الصحة كاملة (Full Heal)"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "علاج التسمم (Cure Poison)"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "زيادة مؤقتة في سرعة الركض"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "لا يمكن دمجهما معاً"
+            }
+          }
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/ryo-re-2-v2-9209ff7c.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Resident Evil 2 remake (2019)"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "resident-evil"
+    },
+    {
+      "id": "ryo-re-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في Resident Evil 4 remake (2023)، وش يصير لسكين ليون (Combat Knife) لما تستخدمه لعمل صد (Parry) ناجح لصد هجوم قوي؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "ينقص مستوى متانة السكين (Durability)"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "ينكسر السكين فوراً بعد صدة واحدة"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "يعكس الضرر بالكامل بدون تأثر السكين"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "تزيد قوة السكين للضربة القادمة"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Resident Evil 4 remake (2023)"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "resident-evil"
+    },
+    {
+      "id": "ryo-re-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/audio/ryo-re-5.mp3"
+          }
+        ]
+      },
+      "prompt": {
+        "ar": "استمع لهذا الصوت... أي واحد من هذي الأعداء يتميز بصوت التنفس المرعب هذا؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "label": {
+              "ar": "ريجينيرادور (Regenerador)"
+            }
+          },
+          {
+            "id": "opt2",
+            "label": {
+              "ar": "مستر إكس (Mr. X)"
+            }
+          },
+          {
+            "id": "opt3",
+            "label": {
+              "ar": "ليكر (Licker)"
+            }
+          },
+          {
+            "id": "opt4",
+            "label": {
+              "ar": "هانتر (Hunter)"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "AUDIO_RECOGNITION",
+        "scopeVersion": "Resident Evil 4 remake (2023)"
+      },
+      "mechanic": "read-your-opponent",
+      "scopeSlug": "resident-evil"
+    },
+    {
+      "id": "clos-re-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Resident Evil 2 remake (2019) على Standard، كم يصير الحد الأقصى لخانات الحقيبة بعد ما تجمع كل الـHip Pouches المتاحة؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 20
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Resident Evil 2 remake (2019) — Standard difficulty"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "resident-evil"
+    },
+    {
+      "id": "clos-re-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Resident Evil 4 remake (2023) — Main Story New Game Plus، كم السعر الأساسي للـInfinite Rocket Launcher عند التاجر بدون أي Charm يخفض السعر؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 2000000
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Resident Evil 4 remake (2023) — Main Story New Game Plus"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "resident-evil"
+    },
+    {
+      "id": "clos-re-7",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Resident Evil 4 remake (2023) على Standard، كم Ganado لازم تقتل في هجوم القرية الافتتاحي عشان يرن جرس الكنيسة وينتهي الهجوم فورًا بدل ما تنتظر الوقت؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "correctValue": 15
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Resident Evil 4 remake (2023) — Standard difficulty"
+      },
+      "mechanic": "closest",
+      "scopeSlug": "resident-evil"
+    },
+    {
+      "id": "bomb-re-1",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "ما اسم هذا العدو الضخم والمخيف الذي يطاردك بلا هوادة في مركز شرطة مدينة راكون في Resident Evil 2؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "مستر إكس",
+          "Mr. X"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-re-1-6c814e48.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Resident Evil 2 remake (2019)"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "resident-evil"
+    },
+    {
+      "id": "bomb-re-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "وش اسم هذي الشخصية في Resident Evil 4؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "ليون إس. كينيدي",
+          "Leon S. Kennedy"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-re-3-908556ce.jpg"
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Resident Evil 4 remake (2023)"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "resident-evil"
+    },
+    {
+      "id": "bomb-re-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/bomb-re-4-c717affe.jpg"
+          }
+        ]
+      },
+      "prompt": {
+        "ar": "وش اسم هذي الآلة الكلاسيكية اللي تستخدمها عشان تحفظ تقدمك (Save) في اللعبة؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "الآلة الكاتبة",
+          "Typewriter"
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Resident Evil 2 remake (2019)"
+      },
+      "mechanic": "bomb",
+      "scopeSlug": "resident-evil"
+    }
+  ]
+}

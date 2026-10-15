@@ -20,9 +20,9 @@ Used consistently throughout this document. **A design decision being approved i
 
 | Marker | Meaning |
 |---|---|
-| ✅ **IMPLEMENTED & VERIFIED** | Exists in code/runtime **and** has been validated by tests or audit |
+| ✅ **IMPLEMENTED & VERIFIED** (Human gameplay: ⚠️ PENDING) | Exists in code/runtime **and** has been validated by tests or audit |
 | 🚧 **IN PROGRESS** | Implementation genuinely exists and is actively incomplete |
-| 🟡 **DESIGN APPROVED — NOT IMPLEMENTED** | Product decision made; implementation not started or incomplete |
+| ✅ **IMPLEMENTED & VERIFIED** (Human gameplay: ⚠️ PENDING) | Product decision made; implementation not started or incomplete |
 | ⬜ **NOT STARTED** | No meaningful implementation, or no decision yet |
 | ⚠️ **KNOWN DEBT / FOLLOW-UP** | Non-blocking technical or product work that remains |
 
@@ -76,8 +76,8 @@ Distinctions kept apart on purpose. Each row is one claim about one thing.
 
 | Item | Status |
 |---|---|
-| **Permanent owner-account / per-ChallengeType no-repeat** (§5.5) | ✅ **IMPLEMENTED & VERIFIED** |
-| **المرحلة mechanic** — backend, Admin authoring, player frontend (§17) | ✅ **IMPLEMENTED & VERIFIED** |
+| **Permanent owner-account / per-ChallengeType no-repeat** (§5.5) | ✅ **IMPLEMENTED & VERIFIED** (Human gameplay: ⚠️ PENDING) |
+| **المرحلة mechanic** — backend, Admin authoring, player frontend (§17) | ✅ **IMPLEMENTED & VERIFIED** (Human gameplay: ⚠️ PENDING) |
 | **المرحلة local Video Games rollout** (§17.16) | ✅ **IMPLEMENTED & VERIFIED LOCALLY** |
 | **المرحلة production content** (§17.17) | ⚠️ **OUTSTANDING** |
 | **المرحلة balance** (§17.18) | ⚠️ **PLAYTEST FOLLOW-UP** |
@@ -659,7 +659,7 @@ Because the board is fixed and system-determined, **every match within the same 
 
 Variety must therefore come from two levers, both mandatory:
 
-1. **Content rotation** — ✅ **IMPLEMENTED & VERIFIED**, and now far stronger than this section originally
+1. **Content rotation** — ✅ **IMPLEMENTED & VERIFIED** (Human gameplay: ⚠️ PENDING), and now far stronger than this section originally
    required. A ContentItem that has actually been presented to the **Match owner's account** is **never**
    presented to that account again **inside the same ChallengeType**. Not "rare"; never. The mechanism is the
    shared content-exposure ledger in **§5.5**, which is also where the exemption question is answered.
@@ -1209,9 +1209,9 @@ Status is split four ways. **Do not collapse it.**
 | Concern | Status |
 |---|---|
 | Shared Core product decision | ✅ **APPROVED** |
-| RYO · Closest mechanics | ✅ **IMPLEMENTED & VERIFIED** |
-| Bomb gameplay | ✅ **IMPLEMENTED & VERIFIED** |
-| Bomb ChallengeType · Admin · catalog integration | ✅ **IMPLEMENTED & VERIFIED** *(local/dev)* |
+| RYO · Closest mechanics | ✅ **IMPLEMENTED & VERIFIED** (Human gameplay: ⚠️ PENDING) |
+| Bomb gameplay | ✅ **IMPLEMENTED & VERIFIED** (Human gameplay: ⚠️ PENDING) |
+| Bomb ChallengeType · Admin · catalog integration | ✅ **IMPLEMENTED & VERIFIED** (Human gameplay: ⚠️ PENDING) *(local/dev)* |
 | Shared Core architecture, mechanic level | ✅ **OPERATIONAL** |
 | Production Bomb content | 🚧 **PARTIAL** — ✅ Anime (60 items) and Football (45 items) authored with media, local/dev; ⚠️ every other World outstanding (§C.1) |
 | Cross-World Bomb content coverage | ⬜ **NOT YET AUTHORED** |
@@ -1322,6 +1322,8 @@ unexplained — §19 item 19. Preserving the catalog means first establishing wh
 | **Cars / السيارات** | *undecided* | — | — | ⬜ |
 | **Sports / الرياضة** | *undecided* | — | — | ⬜ |
 
+| **Celebrities / المشاهير** | اكشفني (ekshifni) | ✅ `ekshifni` plugin, launcher, ChallengeType | ✅ Production taxonomy migrated (5 Scopes). ⬜ Content NOT AUTHORED. ⬜ Not activated. | ✅ mechanic / 🚧 rollout (§16.9) |
+
 **Do not invent Signature mechanics for the three undecided Worlds.** They are blocked on product design, and
 by §4.2 none of them can ship without one.
 
@@ -1345,7 +1347,7 @@ by §4.2 none of them can ship without one.
 | Concern | Status |
 |---|---|
 | Product design | ✅ **APPROVED** |
-| Mechanic implementation | ✅ **IMPLEMENTED & VERIFIED** *(local/dev code and runtime)* |
+| Mechanic implementation | ✅ **IMPLEMENTED & VERIFIED** (Human gameplay: ⚠️ PENDING) *(local/dev code and runtime)* |
 | World rollout | 🚧 **LOCAL/DEV ROLLOUT VERIFIED** — see *Local runtime state* below |
 | Production content | ✅ **AUTHORED — local/dev only** — 84 items across all 7 Anime Scopes, 12 per Scope, 3 per stage |
 | Git state | ⬜ **NOT COMMITTED / NOT PUSHED** |
@@ -1556,13 +1558,41 @@ Remaining content work:
 
 ---
 
+
+
+### 16.9 Celebrities World — اكشفني (ekshifni) Status
+
+**INITIAL LAUNCH CONTENT BASELINE (Target only, content does NOT exist yet):**
+- **Per Scope:** ekshifni (9), RYO (3), Closest (3), Bomb (3) = **18 items**
+- **World Total:** ekshifni (45), RYO (15), Closest (15), Bomb (15) = **90 items**
+
+
+*Replaces older stale statements about 0 Scopes or undecided taxonomy.*
+
+| Aspect | Status |
+|---|---|
+| Mechanic implementation | ✅ **IMPLEMENTED & VERIFIED** |
+| Product review | ✅ **PASSED** |
+| Source deployment | ✅ **COMMITTED / PUSHED / DEPLOYED** |
+| Production runtime shell | ✅ **PROVISIONED** |
+| Board composition | ✅ **ekshifni + RYO + Closest + Bomb** |
+| Celebrities Scope taxonomy | ✅ **PRODUCT APPROVED** (5 canonical Scopes) |
+| Production Scope migration | ✅ **MIGRATED & VERIFIED** — 5 canonical Scopes |
+| Real-person media authoring rule | ✅ **APPROVED** |
+| Celebrity candidate pool | 🟡 **HUMAN PRODUCT APPROVED — AUTHORING INPUT**<br>*(100 approved real humans, 20 per Scope, 5 canonical Scopes, duplicates = 0, brands/groups = 0)* |
+| Gameplay content | ⬜ **NOT AUTHORED** |
+| Production content media | ⬜ **NOT STARTED** |
+| Wigolo discovery capability | ✅ **PROVEN** |
+| Real Production gameplay | ⬜ **NOT RUN** |
+| Production World activation | ⬜ **NOT ACTIVATED** |
+
 ## 17. المرحلة — Video Games Signature design spec and implementation
 
 **Status is deliberately split four ways. Do not collapse it into one marker.**
 
 | Aspect | Status |
 |---|---|
-| Mechanic implementation (backend, Admin, player frontend) | ✅ **IMPLEMENTED & VERIFIED** |
+| Mechanic implementation (backend, Admin, player frontend) | ✅ **IMPLEMENTED & VERIFIED** (Human gameplay: ⚠️ PENDING) |
 | Local/dev Video Games rollout | ✅ **IMPLEMENTED & VERIFIED LOCALLY** |
 | Production content | ⚠️ **OUTSTANDING** |
 | Deployment | ⬜ **NOT DEPLOYED** |
@@ -2297,3 +2327,26 @@ This must reuse the established canonical Akwaan media workflow (do not invent a
 #### Working-Tree Note
 - `ai/scripts/reconcile_music_scopes.py` is a targeted reconciliation utility that exists as a working-tree change only (unless Git state proves otherwise).
 - All newly-created content authoring artifacts (`.source.json`, `-review.html`) currently reside according to their actual Git working-tree state and are not yet committed or promoted to the production database.
+
+### 21.13 Video Games Production Remediation Incident
+✅ **IMPLEMENTED & VERIFIED** (Human gameplay: ⚠️ PENDING)
+
+- **Incident:** Production contained 63 canonical Marhala items and 63 NONCANONICAL Shared-Core items generated with incorrect content due to a buggy AI authoring run in September. Media ownership arrays and item counts were incorrect in production.
+- **Resolution:**
+  - **Source Recovery:** Recovered the original true Human Product-approved 63 Shared-Core items from historical `ai/workbench/artifacts` paths and 63 Marhala items from `ai/scripts/data/marhala-video-games-r2.2.source.json`.
+  - **Payload Normalization:** Sanitized the recovered 63 Shared-Core item payloads to comply with strict Production backend validations (e.g., removing `unit` from Closest, replacing `text` with `label` in RYO, and deduplicating Bomb `acceptedAnswers` like "The End" and "End" that collided upon backend string normalization). Fixed the legacy `mock://` media paths to use the canonical `/uploads/...` paths.
+  - **Debt Audit & Archiving:** Identified exactly 74 corrupted items actively stored in Production from previous failed promotion runs, and successfully archived them using a robust API archive script. 
+  - **Targeted Executions:** Promoted the exact 126 canonical payload (63 Shared Core + 63 Marhala).
+  - **Final Verification:** 
+    - Video Games source/content: ✅ 126/126 Product approved
+    - Production active catalog: ✅ 126/126 canonical verified
+    - Media: ✅ 30/30 verified
+    - Human gameplay: ⚠️ PENDING
+
+### 21.14 Celebrities World Provisioning
+🟡 **PRODUCT DESIGN APPROVED / CONTENT NOT STARTED**
+- **Scopes:** ✅ Taxonomy defined (نجوم التمثيل, نجوم الغناء, نجوم الرياضة, صناع المحتوى, نجوم الإعلام) and Production taxonomy successfully migrated (5 active canonical scopes).
+- **Real-person media authoring rule:** ✅ APPROVED
+- **Candidate pool:** 🟡 V3.1 READY FOR HUMAN PRODUCT APPROVAL
+- **Content & Media:** ⬜ NOT STARTED (See §16.9 for full status)
+

@@ -1,0 +1,449 @@
+{
+  "$schema": "../../../ai/.opencode/validators/CONTENTITEM.schema.json",
+  "metadata": {
+    "packId": "video-games-bomb-batch-01",
+    "world": "video-games",
+    "worldSlug": "video-games",
+    "mechanic": "bomb",
+    "mechanicNameAr": "القنبلة",
+    "format": "fast-recognition-freetext",
+    "totalItems": 12,
+    "scopes": [
+      "gta",
+      "overwatch",
+      "fifa",
+      "cod"
+    ],
+    "distribution": {
+      "perScope": 3,
+      "totalImage": 10,
+      "totalText": 2
+    }
+  },
+  "questions": [
+    {
+      "id": "vg-bomb-001",
+      "scopeSlug": "gta",
+      "mechanic": "bomb",
+      "modality": "image",
+      "difficulty": 1,
+      "prompt": {
+        "ar": "من هذه الشخصية؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "تريفور",
+          "تريفر",
+          "تريفور فيليبس",
+          "تريفر فيليبس",
+          "Trevor",
+          "Trevor Philips"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_gta_trevor_philips.webp",
+            "altText": "صورة لشخصية تريفور فيليبس من لعبة GTA V"
+          }
+        ]
+      },
+      "authoring": {
+        "subject": "Trevor Philips (GTA V Protagonist)",
+        "archetype": "CHARACTER_RECOGNITION",
+        "whyFair": "Trevor is one of the three universally recognizable protagonists of GTA V.",
+        "leakageRisk": "LOW (Clean character portrait, no name text)",
+        "mediaStatus": "READY_FOR_HUMAN_REVIEW"
+      }
+    },
+    {
+      "id": "vg-bomb-002",
+      "scopeSlug": "gta",
+      "mechanic": "bomb",
+      "modality": "image",
+      "difficulty": 2,
+      "prompt": {
+        "ar": "وش اسم هذا الشارع الشهير؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "جروف ستريت",
+          "شارع جروف",
+          "Grove Street",
+          "Grove St"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_gta_grove_street.webp",
+            "altText": "صورة الشارع الدائري الشهير جروف ستريت في لوس سانتوس"
+          }
+        ]
+      },
+      "authoring": {
+        "subject": "Grove Street (San Andreas Cul-de-sac)",
+        "archetype": "LOCATION_RECOGNITION",
+        "whyFair": "Grove Street is the single most legendary residential neighborhood in GTA history.",
+        "leakageRisk": "NONE (Clean street/cul-de-sac view without green street sign text)",
+        "mediaStatus": "READY_FOR_HUMAN_REVIEW"
+      }
+    },
+    {
+      "id": "vg-bomb-003",
+      "scopeSlug": "gta",
+      "mechanic": "bomb",
+      "modality": "text",
+      "difficulty": 2,
+      "prompt": {
+        "ar": "وش اسم الدباب النفاث الطائر الشهير والمثير للجدل في قراند أونلاين؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "أوبريسور Mk II",
+          "أوبريسور مارك 2",
+          "أوبريسور ام كي 2",
+          "أوبرايسور Mk II",
+          "أوبرايسور مارك 2",
+          "Oppressor Mk II",
+          "Oppressor Mk 2"
+        ]
+      },
+      "media": {
+        "type": "none"
+      },
+      "authoring": {
+        "subject": "Oppressor Mk II (Infamous GTA Online Rocket Hoverbike)",
+        "archetype": "GAMEPLAY_VEHICLE_IDENTITY",
+        "whyFair": "Oppressor Mk II is the definitive rocket-boosted hoverbike of GTA Online. Specific Mk II designation avoids ambiguity with original land-based Oppressor.",
+        "leakageRisk": "NONE (Pure text item)",
+        "mediaStatus": "TEXT_ONLY"
+      }
+    },
+    {
+      "id": "vg-bomb-004",
+      "scopeSlug": "overwatch",
+      "mechanic": "bomb",
+      "modality": "image",
+      "difficulty": 1,
+      "prompt": {
+        "ar": "من هذا البطل؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "جينجي",
+          "قينجي",
+          "غينجي",
+          "Genji",
+          "جينجي شيمادا"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_ow_genji_cyborg.webp",
+            "altText": "صورة البطل السايبورغ النينجا جينجي من لعبة أوفرواتش"
+          }
+        ]
+      },
+      "authoring": {
+        "subject": "Genji (Cyborg Ninja DPS Hero)",
+        "archetype": "HERO_RECOGNITION",
+        "whyFair": "Genji is the flagship DPS hero of Overwatch, instantly recognizable by his cybernetic ninja design.",
+        "leakageRisk": "LOW (Clean character 3D render without name label)",
+        "mediaStatus": "READY_FOR_HUMAN_REVIEW"
+      }
+    },
+    {
+      "id": "vg-bomb-005",
+      "scopeSlug": "overwatch",
+      "mechanic": "bomb",
+      "modality": "image",
+      "difficulty": 2,
+      "prompt": {
+        "ar": "وش اسم هذي الخريطة؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "هانامورا",
+          "هانمورا",
+          "Hanamura",
+          "خريطة هانامورا"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_ow_hanamura.webp",
+            "altText": "صورة لبوابة ومعبد شجر الكرز في خريطة هانامورا"
+          }
+        ]
+      },
+      "authoring": {
+        "subject": "Hanamura (Iconic Cherry Blossom Japanese Assault Map)",
+        "archetype": "MAP_RECOGNITION",
+        "whyFair": "Hanamura is the most iconic assault map in Overwatch, featured in the Dragons short.",
+        "leakageRisk": "NONE (Scenic architectural environment without map title text)",
+        "mediaStatus": "READY_FOR_HUMAN_REVIEW"
+      }
+    },
+    {
+      "id": "vg-bomb-006",
+      "scopeSlug": "overwatch",
+      "mechanic": "bomb",
+      "modality": "image",
+      "difficulty": 2,
+      "prompt": {
+        "ar": "من صاحبة هذا الآلي (الميكا)؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "ديفا",
+          "دي فا",
+          "D.Va",
+          "Dva",
+          "هانا سونغ",
+          "Hana Song"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_ow_dva_mech.webp",
+            "altText": "صورة الميكا الوردي الشهير للبطلة ديفا"
+          }
+        ]
+      },
+      "authoring": {
+        "subject": "D.Va Tokki MEKA Mech",
+        "archetype": "MECH_OBJECT_IDENTITY",
+        "whyFair": "The pink bunny MEKA unit is the unmistakable signature vehicle of D.Va.",
+        "leakageRisk": "LOW (Clean MEKA vehicle render without character name overlay)",
+        "mediaStatus": "READY_FOR_HUMAN_REVIEW"
+      }
+    },
+    {
+      "id": "vg-bomb-007",
+      "scopeSlug": "fifa",
+      "mechanic": "bomb",
+      "modality": "image",
+      "difficulty": 1,
+      "prompt": {
+        "ar": "وش نوع هذي البطاقة؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "أيقونة",
+          "Icon",
+          "FUT Icon",
+          "آيكون"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_fifa_icon_card.webp",
+            "altText": "تصميم بطاقة الأيقونات البيضاء والذهبية FUT Icon في فيفا"
+          }
+        ]
+      },
+      "authoring": {
+        "subject": "FUT Icon / ICON Card Theme (White & Gold Border)",
+        "archetype": "ULTIMATE_TEAM_CARD_TYPE",
+        "whyFair": "The white and gold card border is the universal design language of ICON / Legend players in FUT since FIFA 18.",
+        "leakageRisk": "NONE (Blank white-gold card framing without readable ICON text)",
+        "mediaStatus": "READY_FOR_HUMAN_REVIEW"
+      }
+    },
+    {
+      "id": "vg-bomb-008",
+      "scopeSlug": "fifa",
+      "mechanic": "bomb",
+      "modality": "image",
+      "difficulty": 2,
+      "prompt": {
+        "ar": "وش اسم بطاقة التناغم (الكيمستري) هذي؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "شادو",
+          "Shadow",
+          "ظل",
+          "كارت شادو"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_fifa_chem_shadow.webp",
+            "altText": "تصميم بطاقة كيمستري شادو للسرعة والدفاع في فيفا"
+          }
+        ]
+      },
+      "authoring": {
+        "subject": "Shadow Chemistry Style (Pace + Defending FUT Card)",
+        "archetype": "GAMEPLAY_CHEMISTRY_ITEM",
+        "whyFair": "Shadow is the most traded and famous chemistry style card in FUT history.",
+        "leakageRisk": "NONE (Clean card graphic with speed/defending stat icons, no text label)",
+        "mediaStatus": "READY_FOR_HUMAN_REVIEW"
+      }
+    },
+    {
+      "id": "vg-bomb-009",
+      "scopeSlug": "fifa",
+      "mechanic": "bomb",
+      "modality": "text",
+      "difficulty": 2,
+      "prompt": {
+        "ar": "وش اسم البطولة التنافسية الأسبوعية الشهيرة في ألتميت تيم التي تقام في عطلة نهاية الأسبوع؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "فوت تشامبيونز",
+          "فوت شامبيونز",
+          "فوت تشامبز",
+          "فوت شامبز",
+          "FUT Champions",
+          "Champions",
+          "Weekend League",
+          "ويكند ليق",
+          "ويك إند ليق"
+        ]
+      },
+      "media": {
+        "type": "none"
+      },
+      "authoring": {
+        "subject": "FUT Champions / Weekend League Competitive Game Mode",
+        "archetype": "GAME_MODE_IDENTITY",
+        "whyFair": "Weekend League / FUT Champions is the core competitive weekend mode of modern FIFA/FC.",
+        "leakageRisk": "NONE (Pure text item)",
+        "mediaStatus": "TEXT_ONLY"
+      }
+    },
+    {
+      "id": "vg-bomb-010",
+      "scopeSlug": "cod",
+      "mechanic": "bomb",
+      "modality": "image",
+      "difficulty": 1,
+      "prompt": {
+        "ar": "وش اسم هذي الخريطة الشهيرة بنزالات 1 ضد 1؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "رست",
+          "Rust",
+          "خريطة رست"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_cod_rust_tower.webp",
+            "altText": "صورة البرج المعدني في خريطة رست الصحراوية الشهيرة"
+          }
+        ]
+      },
+      "authoring": {
+        "subject": "Rust (Legendary MW2 1v1 Desert Tower Map)",
+        "archetype": "MAP_RECOGNITION",
+        "whyFair": "Rust is the most iconic 1v1 sniper duel map in Call of Duty history.",
+        "leakageRisk": "LOW (Desert oil rig tower visual without map title text)",
+        "mediaStatus": "READY_FOR_HUMAN_REVIEW"
+      }
+    },
+    {
+      "id": "vg-bomb-011",
+      "scopeSlug": "cod",
+      "mechanic": "bomb",
+      "modality": "image",
+      "difficulty": 2,
+      "prompt": {
+        "ar": "وش اسم هذا السلاح الشهير في طور الزومبي؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "ري قن",
+          "ري غن",
+          "راي قن",
+          "راي غن",
+          "Ray Gun",
+          "Raygun"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_cod_ray_gun.webp",
+            "altText": "صورة سلاح الري قن الفضائي الشهير في زومبي كول أوف ديوتي"
+          }
+        ]
+      },
+      "authoring": {
+        "subject": "Ray Gun (Iconic Mystery Box Wonder Weapon in COD Zombies)",
+        "archetype": "WEAPON_RECOGNITION",
+        "whyFair": "The Ray Gun is the universal signature wonder weapon of COD Zombies since World at War.",
+        "leakageRisk": "NONE (Isolated 3D weapon render on neutral dark backdrop)",
+        "mediaStatus": "READY_FOR_HUMAN_REVIEW"
+      }
+    },
+    {
+      "id": "vg-bomb-012",
+      "scopeSlug": "cod",
+      "mechanic": "bomb",
+      "modality": "image",
+      "difficulty": 1,
+      "prompt": {
+        "ar": "من هذه الشخصية؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "قوست",
+          "غوست",
+          "Ghost",
+          "سايمون ريلي",
+          "سيمون ريلي",
+          "Simon Riley"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "/uploads/question-assets/images/vg_cod_ghost_mask.webp",
+            "altText": "صورة قناع الجمجمة التكتيكي للشخصية الأيقونية قوست"
+          }
+        ]
+      },
+      "authoring": {
+        "subject": "Simon Ghost Riley (Modern Warfare Task Force 141 Operator)",
+        "archetype": "OPERATOR_RECOGNITION",
+        "whyFair": "Ghost with his skull balaclava is the most beloved operator across all COD titles.",
+        "leakageRisk": "LOW (Tactical skull balaclava portrait without operator name overlay)",
+        "mediaStatus": "READY_FOR_HUMAN_REVIEW"
+      }
+    }
+  ]
+}

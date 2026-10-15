@@ -1,0 +1,316 @@
+{
+  "questions": [
+    {
+      "id": "ryo-cod-2-v2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "استمع لهذه الأغنية القصيرة (Jingle) من طور الزومبي الكلاسيكي... لأي آلة بيرك (Perk) تتبع؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "جقرنوق (Juggernog)"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "سبيد كولا (Speed Cola)"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "كويك ريفايف (Quick Revive)"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "دبل تاب (Double Tap)"
+            }
+          }
+        ]
+      },
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "mock://cod-zombies-jugg-jingle.mp3"
+          }
+        ],
+        "intent": "مقطع صوتي لجزء من أغنية آلة الجقرنوق (Juggernog) في طور الزومبي، حيث يظهر اللحن بوضوح ولكن يجب ألا تتضمن الأغنية اسم Juggernog أو أي كلمة تسرب الإجابة."
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "AUDIO_RECOGNITION",
+        "scopeVersion": "Black Ops Zombies"
+      }
+    },
+    {
+      "id": "ryo-cod-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في لعبة Black Ops 2، ما اسم الخريطة الشهيرة التي تقع أحداثها على متن يخت فاخر في البحر؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "Hijacked (هايجَاكت)"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "Raid (ريد)"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "Nuketown (نيوك تاون)"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "Slums (سلومز)"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "DETAIL_RECOGNITION"
+      }
+    },
+    {
+      "id": "ryo-cod-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في طور الزومبي الكلاسيكي، ماذا يعني ظهور دمية الدب (Teddy Bear) عند فتح صندوق الأسلحة العشوائي (Mystery Box)؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "الصندوق سيختفي وينتقل إلى موقع آخر في الخريطة"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "ستحصل على سلاح مجاني في المحاولة القادمة"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "اللعبة ستنتهي فوراً"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "ستحصل على ضعف النقاط لمدة قصيرة"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Black Ops Zombies"
+      }
+    },
+    {
+      "id": "clos-cod-1-v2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Modern Warfare 2 (2009)، بدون استخدام بيرك Hardline، كم قتلة متتالية تحتاج لتفعيل Tactical Nuke؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 25,
+        "unit": "قتلة متتالية"
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://cod-tactical-nuke-icon.png"
+          }
+        ],
+        "intent": "صورة لأيقونة Tactical Nuke النووية الشهيرة من قائمة الكيل ستريك دون إظهار رقم 25"
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      }
+    },
+    {
+      "id": "clos-cod-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في طور Zombies في Call of Duty: Black Ops (2010)، كم نقطة تحتاج لأول استخدام عادي لآلة Pack-a-Punch؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 5000,
+        "unit": "نقطة"
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Call of Duty: Black Ops (2010) — Zombies"
+      }
+    },
+    {
+      "id": "clos-cod-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في لعبة Modern Warfare 2 (2009) للطور الجماعي، كم هو أقصى ليفل (Level) تصل إليه قبل أن تتمكن من الدخول في البريستيج (Prestige) لأول مرة؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 70,
+        "unit": "ليفل (Level)"
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Modern Warfare 2 (2009)"
+      }
+    },
+    {
+      "id": "bomb-cod-1",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "وش اسم آلة الـPerk هذي في طور Zombies في Call of Duty: Black Ops؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "سبيد كولا",
+          "Speed Cola",
+          "سبيدكولا"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://cod-speed-cola.jpg"
+          }
+        ],
+        "intent": "صورة واضحة لآلة Speed Cola الخضراء من طور الزومبي الكلاسيكي، دون ظهور اسمها نصياً في الشاشة."
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Call of Duty: Black Ops (2010) — Zombies"
+      }
+    },
+    {
+      "id": "bomb-cod-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "خريطة صغيرة جداً ومشهورة في سلسلة Black Ops تحتوي على حافلتين ومنازل ألعاب في المنتصف، ما اسمها؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "نيوك تاون",
+          "نيوكتاون",
+          "Nuketown",
+          "Nuke town"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://cod-nuketown-map"
+          }
+        ],
+        "intent": "صورة واضحة لخريطة Nuketown الأصلية من لعبة Call of Duty: Black Ops (2010) من داخل بيئة اللعب. يمكن أن تظهر الشارع المركزي، الحافلات، والمنازل. يمنع منعاً باتاً ظهور شاشة التحميل التي تحتوي على اسم Nuketown، أو واجهة اختيار الخرائط، أو أي لوحة أو نص يكشف اسم الخريطة."
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Call of Duty: Black Ops (2010)"
+      }
+    },
+    {
+      "id": "bomb-cod-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "شخصية أيقونية في سلسلة Modern Warfare، معروف بارتدائه قناع يحمل رسمة جمجمة. ما اسمه؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "جوست",
+          "غوست",
+          "قوست",
+          "Ghost",
+          "Simon Riley",
+          "سايمون رايلي",
+          "Simon \"Ghost\" Riley"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://cod-ghost-character"
+          }
+        ],
+        "intent": "صورة واضحة لشخصية Simon 'Ghost' Riley بمظهره الأصلي من لعبة Call of Duty: Modern Warfare 2 (2009)، مرتدياً قناع الجمجمة والنظارات الشمسية. يمنع منعاً باتاً دمج تصاميم نسخة الريبوت (2019 وما بعدها). يمنع ظهور أي نصوص، أسماء (مثل Ghost أو Simon Riley)، أو واجهات اختيار العملاء (Operator UI)، أو ترجمات تكشف هويته."
+      },
+      "authoring": {
+        "scopeSlug": "call-of-duty",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Call of Duty: Modern Warfare 2 (2009)"
+      }
+    }
+  ]
+}

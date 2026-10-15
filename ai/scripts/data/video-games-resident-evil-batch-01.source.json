@@ -1,0 +1,322 @@
+{
+  "questions": [
+    {
+      "id": "ryo-re-2-v2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في Resident Evil 2 (2019)، وش يصير إذا دمجت العشبة الخضراء مع العشبة الحمراء؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "استعادة الصحة كاملة (Full Heal)"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "علاج التسمم (Cure Poison)"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "زيادة مؤقتة في سرعة الركض"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "لا يمكن دمجهما معاً"
+            }
+          }
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://re-green-red-herb.jpg"
+          }
+        ],
+        "intent": "صورة لعشبة خضراء وعشبة حمراء من RE2 remake (2019) قبل الدمج، بدون ظهور النصوص الوصفية أو اسم النتيجة."
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Resident Evil 2 remake (2019)"
+      }
+    },
+    {
+      "id": "ryo-re-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في Resident Evil 4 remake (2023)، وش يصير لسكين ليون (Combat Knife) لما تستخدمه لعمل صد (Parry) ناجح لصد هجوم قوي؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "ينقص مستوى متانة السكين (Durability)"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "ينكسر السكين فوراً بعد صدة واحدة"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "يعكس الضرر بالكامل بدون تأثر السكين"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "تزيد قوة السكين للضربة القادمة"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Resident Evil 4 remake (2023)"
+      }
+    },
+    {
+      "id": "ryo-re-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "mock://re4-regenerador-breathing.mp3"
+          }
+        ],
+        "intent": "تسجيل صوتي منفصل وحصري لصوت التنفس الثقيل والمرعب لعدو الـ Regenerador من مواجهة فعلية داخل Resident Evil 4 remake (2023)، بدون موسيقى خلفية أو أصوات أخرى أو حوارات تشوش على الإجابة."
+      },
+      "prompt": {
+        "ar": "استمع لهذا الصوت... أي واحد من هذي الأعداء يتميز بصوت التنفس المرعب هذا؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "ريجينيرادور (Regenerador)"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "مستر إكس (Mr. X)"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "ليكر (Licker)"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "هانتر (Hunter)"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "AUDIO_RECOGNITION",
+        "scopeVersion": "Resident Evil 4 remake (2023)"
+      }
+    },
+    {
+      "id": "clos-re-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Resident Evil 2 remake (2019) على Standard، كم يصير الحد الأقصى لخانات الحقيبة بعد ما تجمع كل الـHip Pouches المتاحة؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 20,
+        "unit": "خانة (Slot)"
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Resident Evil 2 remake (2019) — Standard difficulty"
+      }
+    },
+    {
+      "id": "clos-re-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Resident Evil 4 remake (2023) — Main Story New Game Plus، كم السعر الأساسي للـInfinite Rocket Launcher عند التاجر بدون أي Charm يخفض السعر؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 2000000,
+        "unit": "بيزيتا (Pesetas)"
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Resident Evil 4 remake (2023) — Main Story New Game Plus"
+      }
+    },
+    {
+      "id": "clos-re-7",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Resident Evil 4 remake (2023) على Standard، كم Ganado لازم تقتل في هجوم القرية الافتتاحي عشان يرن جرس الكنيسة وينتهي الهجوم فورًا بدل ما تنتظر الوقت؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 15,
+        "unit": "عدو (Enemy)"
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Resident Evil 4 remake (2023) — Standard difficulty"
+      }
+    },
+    {
+      "id": "bomb-re-1",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "ما اسم هذا العدو الضخم والمخيف الذي يطاردك بلا هوادة في مركز شرطة مدينة راكون في Resident Evil 2؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "مستر إكس",
+          "مستر اكس",
+          "Mr. X",
+          "Mr X",
+          "المستر إكس"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://img-mr-x.jpg"
+          }
+        ],
+        "intent": "صورة واضحة لشخصية Mr. X وهو يرتدي معطفه الطويل وقبعته الشهيرة من لعبة Resident Evil 2 remake (2019) داخل بيئة اللعب. يمنع ظهور أي نصوص أو أسماء أو ترجمات أو واجهات (UI) تكشف عن اسمه، ويجب تجنب الصور الترويجية التي تضع شخصيات أخرى بشكل بارز يخلق التباساً."
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Resident Evil 2 remake (2019)"
+      }
+    },
+    {
+      "id": "bomb-re-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "وش اسم هذي الشخصية في Resident Evil 4؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "ليون إس. كينيدي",
+          "Leon S. Kennedy",
+          "Leon",
+          "Leon Kennedy",
+          "ليون",
+          "ليون كينيدي",
+          "ليون إس كينيدي"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://img-leon-re4.jpg"
+          }
+        ],
+        "intent": "صورة واضحة لشخصية Leon بسترته المميزة من داخل RE4 remake (2023)، بدون نصوص أو واجهة تكشف اسمه."
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Resident Evil 4 remake (2023)"
+      }
+    },
+    {
+      "id": "bomb-re-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://re-typewriter.jpg"
+          }
+        ],
+        "intent": "صورة واضحة للآلة الكاتبة (Typewriter) الكلاسيكية من RE2 Remake الموجودة في الغرف الآمنة، بدون نصوص أو واجهة."
+      },
+      "prompt": {
+        "ar": "وش اسم هذي الآلة الكلاسيكية اللي تستخدمها عشان تحفظ تقدمك (Save) في اللعبة؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "الآلة الكاتبة",
+          "Typewriter",
+          "آلة كاتبة",
+          "typewriter",
+          "الآله الكاتبة",
+          "الة كاتبة"
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "resident-evil",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Resident Evil 2 remake (2019)"
+      }
+    }
+  ]
+}

@@ -1,0 +1,305 @@
+{
+  "questions": [
+    {
+      "id": "ryo-ow-1-v2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "استمع لهذا الخطاب الصوتي الخاص بقدرة الألتميت (القصوى)... لأي بطل يعود هذا الصوت؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "فرح (Pharah)"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "ريبر (Reaper)"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "كاسيدي (Cassidy)"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "سولجر: 76 (Soldier: 76)"
+            }
+          }
+        ]
+      },
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "mock://ow-pharah-ult.mp3"
+          }
+        ],
+        "intent": "مقطع صوتي لفرح تصرخ: Justice rains from above!"
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "AUDIO_RECOGNITION"
+      }
+    },
+    {
+      "id": "ryo-ow-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "ما هو اسم القدرة التي تستخدمها تريسر (Tracer) للعودة بالزمن إلى موقعها وحالتها السابقة؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "الاستدعاء (Recall)"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "الوميض (Blink)"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "القنبلة النبضية (Pulse Bomb)"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "إرجاع (Rewind)"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "DETAIL_RECOGNITION"
+      }
+    },
+    {
+      "id": "ryo-ow-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في Overwatch 2، وش يصير لـ B.O.B (ألتميت البطلة Ashe) إذا انضرب بقدرة الألتميت EMP الخاصة بـ Sombra؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "يتعطل عن العمل تماماً لفترة قصيرة"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "يتحول لمهاجمة فريقه الأصلي"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "ينفجر فوراً ويختفي"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "يكتسب درع إضافي ويزيد ضرره"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Overwatch 2"
+      }
+    },
+    {
+      "id": "clos-ow-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Overwatch الحالية، كم نقطة (Competitive Points) تحتاج لفتح سلاح ذهبي (Golden Weapon Variant) لشخصية واحدة؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 3000,
+        "unit": "نقطة"
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Current Overwatch"
+      }
+    },
+    {
+      "id": "clos-ow-6",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Overwatch، بدون أي Perks أو تأثيرات إضافية، كم HP يعالج صندوق الإسعافات الكبير (Large Health Pack) بالقيمة الأساسية؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 250,
+        "unit": "HP"
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Current Overwatch Baseline"
+      }
+    },
+    {
+      "id": "clos-ow-7",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في طور Control في Overwatch، إذا وصلت النسبة للنهاية والنقطة ما زالت متنازع عليها، عند كم٪ يتوقف التقدم وتبدأ حالة الـOvertime؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 99,
+        "unit": "%"
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Current Overwatch — Control Mode"
+      }
+    },
+    {
+      "id": "bomb-ow-1",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "من هو البطل الذي يستخدم هذا السلاح في أوفرواتش؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "هانزو",
+          "Hanzo",
+          "hanzo"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://ow-hanzo-bow.png"
+          }
+        ],
+        "intent": "صورة واضحة ومنعزلة لسلاح قوس هانزو (Storm Bow) من داخل اللعبة. يمنع منعاً باتاً ظهور شخصية هانزو نفسه (وجهه أو جسده)، ويمنع ظهور أي نصوص أو واجهات اختيار الأبطال (Hero Select) أو أي اسم يسرب الإجابة. الاعتماد يجب أن يكون حصراً على السلاح كدليل بصري."
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      }
+    },
+    {
+      "id": "bomb-ow-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "وش اسم هذا الهدف المتحرك اللي لازم فريق يرافقه والفريق الثاني يوقفه في Overwatch؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "البايلود",
+          "الحمولة",
+          "Payload",
+          "payload",
+          "بايلود",
+          "حمولة"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://ow-payload.png"
+          }
+        ],
+        "intent": "صورة لمركبة البايلود (Payload) داخل اللعبة أثناء تحركها، دون إظهار اسمها نصياً إذا كان ذلك يسرب الإجابة."
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Overwatch"
+      }
+    },
+    {
+      "id": "bomb-ow-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://ow-ilios-well.jpg"
+          }
+        ],
+        "intent": "صورة واضحة لنقطة التحكم في خريطة Ilios تظهر البئر الدائري الأيقوني (Well) في المنتصف، دون أي نصوص تسرب اسم الخريطة."
+      },
+      "prompt": {
+        "ar": "وش اسم خريطة Overwatch هذي المشهورة بالبئر (Well) الكبير في منتصف نقطة التحكم؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "إليوس",
+          "اليوس",
+          "Ilios",
+          "ilios"
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "overwatch",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "Overwatch 1 & 2"
+      }
+    }
+  ]
+}

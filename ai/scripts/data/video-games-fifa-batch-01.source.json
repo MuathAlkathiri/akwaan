@@ -1,0 +1,295 @@
+{
+  "questions": [
+    {
+      "id": "ryo-fifa-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "ماذا يحدث عند تفعيل خاصية 'قفل اللاعب' (Player Lock) بالضغط على L3 + R3 أثناء امتلاك الكرة؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "تتحكم بلاعب واحد للركض في مساحة فارغة بينما يتحكم الذكاء الاصطناعي بحامل الكرة"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "يتم تثبيت الكاميرا على لاعب معين وتتجاهل باقي الملعب"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "يتم إيقاف جميع المدافعين في أماكنهم لثانية واحدة"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "ينفذ حامل الكرة مهارة مراوغة خاصة بشكل تلقائي"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "DETAIL_RECOGNITION"
+      }
+    },
+    {
+      "id": "ryo-fifa-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "ما هو التأثير الرئيسي لامتلاك اللاعب لميزة 'أسلوب اللعب بلس' (PlayStyle+) في EA FC بدلاً من أسلوب اللعب العادي؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "يعزز تأثير أسلوب اللعب ويمنحه تأثيرات أقوى بشكل ملحوظ من نسخته العادية"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "يرفع تقييم اللاعب العام (Rating) بمقدار نقطتين بشكل دائم"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "يمنع لياقة اللاعب من التناقص نهائياً أثناء المباراة"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "يعطي اللاعب القدرة على الركض بأقصى سرعة دون الكرة فقط"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "DETAIL_RECOGNITION"
+      }
+    },
+    {
+      "id": "ryo-fifa-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "في طور Rush في EA SPORTS FC 25، وش يصير للاعب إذا أخذ البطاقة الزرقاء بسبب مخالفة قوية أو منعه فرصة تسجيل؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "يغادر الملعب لمدة دقيقة واحدة كعقوبة مؤقتة ثم يعود"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "يُطرد نهائياً ولا يمكن استبداله كما في البطاقة الحمراء"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "تُحتسب ركلة جزاء مباشرة للفريق الخصم دون طرد"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "يُمنع من تسجيل الأهداف طوال الشوط الحالي"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "EA SPORTS FC 25 — Rush"
+      }
+    },
+    {
+      "id": "clos-fifa-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في نظام التناغم (Chemistry) الحالي في طور Ultimate Team، ما هو الحد الأقصى لنقاط التناغم الذي يمكن أن يمتلكه الفريق بالكامل في التشكيلة الأساسية؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 33,
+        "unit": "نقطة"
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "DETAIL_RECOGNITION"
+      }
+    },
+    {
+      "id": "clos-fifa-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "كم عدد الأقسام (Divisions) المرقمة في طور Rivals في Ultimate Team (بدون احتساب قسم النخبة Elite)؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 10,
+        "unit": "أقسام"
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "DETAIL_RECOGNITION"
+      }
+    },
+    {
+      "id": "clos-fifa-7",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في طور Clubs في EA SPORTS FC 26، بعد تحديث العطلات (Holiday Update)، كم صار الحد الأقصى لنقاط التطوير (Attribute Points) اللي تقدر تستخدمها لتطوير الـ Archetype؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 475,
+        "unit": "نقطة (Attribute Points)"
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "EA SPORTS FC 26 — Clubs — Holiday Update"
+      }
+    },
+    {
+      "id": "bomb-fifa-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "ماذا يسمى هذا الطور الشهير في اللعبة حيث تقوم ببناء فريقك الخاص من بطاقات اللاعبين وتنافس به الآخرين؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "التميت تيم",
+          "التيميت تيم",
+          "التميت",
+          "التيميت",
+          "ultimate team",
+          "fut"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://fifa-ut-logo.png"
+          }
+        ],
+        "intent": "صورة لشاشة التشكيلة (Squad Screen) الحالية في طور Ultimate Team، تظهر فيها بطاقات اللاعبين ومؤشرات التناغم (Chemistry) الحديثة (دون خطوط الربط القديمة). يجب إخفاء كلمة Ultimate Team صريحة إن وجدت."
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      }
+    },
+    {
+      "id": "bomb-fifa-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "ماذا يسمى هذا النظام الحديث في اللعبة الذي يسمح لك بترقية بطاقات اللاعبين ورفع طاقاتهم عبر إنجاز مهمات معينة؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "إيفولوشنز",
+          "ايفولوشنز",
+          "التطويرات",
+          "Evolutions",
+          "Evolution"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://fifa-evolutions.jpg"
+          }
+        ],
+        "intent": "صورة من شاشة Evolutions الحالية في Ultimate Team تعرض مسار أو مراحل ترقية بطاقة لاعب، من دون إظهار كلمة Evolutions أو أي نص يكشف اسم النظام."
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      }
+    },
+    {
+      "id": "bomb-fifa-6",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "ماذا يسمى هذا الطور التعاوني الشهير الذي تبتكر فيه لاعبك الخاص (Pro) وتطوره لتلعب في مركز محدد مع أصدقائك كفريق واحد؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "كلوبز",
+          "أندية برو",
+          "برو كلوبز",
+          "Clubs",
+          "Pro Clubs"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://fifa-clubs.jpg"
+          }
+        ],
+        "intent": "صورة لشاشة تخصيص اللاعب (Pro) أو ساحة انتظار الفريق (Lobby) في طور Clubs. يجب إخفاء كلمة Clubs أو Pro Clubs الصريحة من الواجهة لمنع التسريب."
+      },
+      "authoring": {
+        "scopeSlug": "fifa",
+        "questionArchetype": "VISUAL_RECOGNITION"
+      }
+    }
+  ]
+}

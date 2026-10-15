@@ -1,0 +1,307 @@
+{
+  "questions": [
+    {
+      "id": "ryo-mc-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "أي من هذه الكائنات لا يحترق في ضوء الشمس؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "كريبر"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "زومبي"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "سكيلتون"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "فانتوم"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "CURRENT JAVA + BEDROCK PARITY"
+      }
+    },
+    {
+      "id": "ryo-mc-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "media": {
+        "type": "audio",
+        "assets": [
+          {
+            "url": "mock://mc-enderman-stare.mp3"
+          }
+        ],
+        "intent": "صوت صرخة الإندرمان (Enderman) الأيقونية عند الهجوم أو الاستفزاز، بدون أي تسريب للكلمات. تم تسجيله من نسخة (Java Edition 1.21)."
+      },
+      "prompt": {
+        "ar": "استمع لهذا الصوت... أي Mob يصدر هذا الصوت المميز لما تستفزه بالنظر في عيونه أو تهاجمه؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "الإندرمان (Enderman)"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "الفانتوم (Phantom)"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "الغاست (Ghast)"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "الـ Warden"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "AUDIO_RECOGNITION",
+        "scopeVersion": "Java Edition 1.21"
+      }
+    },
+    {
+      "id": "ryo-mc-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "read-your-opponent"
+      ],
+      "prompt": {
+        "ar": "وش يصير إذا حاولت تنام باستخدام السرير العادي (Regular Bed) داخل الـNether أو The End في Minecraft؟"
+      },
+      "answerPayload": {
+        "mode": "multiple_choice",
+        "correctOptionId": "opt1",
+        "options": [
+          {
+            "id": "opt1",
+            "text": {
+              "ar": "السرير ينفجر بقوة كبيرة"
+            }
+          },
+          {
+            "id": "opt2",
+            "text": {
+              "ar": "يرفض اللاعب النوم بدون تأثير إضافي"
+            }
+          },
+          {
+            "id": "opt3",
+            "text": {
+              "ar": "تترسب وحوش خطيرة حولك فوراً"
+            }
+          },
+          {
+            "id": "opt4",
+            "text": {
+              "ar": "يحترق السرير ببطء وتفقد نقاط صحة"
+            }
+          }
+        ]
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "CURRENT JAVA + BEDROCK PARITY"
+      }
+    },
+    {
+      "id": "clos-mc-4",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Minecraft، لبناء هرم كامل المستوى (Tier 4) لتفعيل طاقة الـ Beacon، كم عدد البلوكات المعدنية (مثل الحديد أو الألماس) اللي تحتاجها لتشكيل قاعدة الهرم كاملة؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 164,
+        "unit": "بلوكة (Block)"
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "CURRENT JAVA + BEDROCK PARITY"
+      }
+    },
+    {
+      "id": "clos-mc-5",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في أفران Minecraft (Furnaces)، قطعة الفحم العادية تطبخ 8 عناصر... لكن كم عنصر (Item) تقدر تطبخ 'بلوكة الفحم' (Block of Coal) الواحدة إذا استخدمتها كوقود؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 80,
+        "unit": "عنصر (Item)"
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "CURRENT JAVA + BEDROCK PARITY"
+      }
+    },
+    {
+      "id": "clos-mc-7",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "closest"
+      ],
+      "prompt": {
+        "ar": "في Minecraft Java Edition بوضع Survival، إذا وصلت تكلفة عملية في الـAnvil إلى كم Level تظهر لك رسالة 'Too Expensive!' وما تقدر تكمل العملية؟"
+      },
+      "answerPayload": {
+        "mode": "closest",
+        "targetNumber": 40,
+        "unit": "مستوى (Level)"
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "DETAIL_RECOGNITION",
+        "scopeVersion": "Minecraft Java Edition — Survival / Adventure"
+      }
+    },
+    {
+      "id": "bomb-mc-1",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "اذكر اسم هذا الكائن الذي ينفجر عند الاقتراب منه في ماين كرافت"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "كريبر",
+          "creeper"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://img-creeper"
+          }
+        ],
+        "intent": "صورة واضحة لشخصية الكريبر (Creeper) داخل بيئة اللعب، بحيث يكون تمييزه معتمداً على الشكل البصري. يمنع ظهور اسمه أو أي نصوص أو واجهات توضيحية (UI) أو ترجمات (Subtitles) تسرب الإجابة. يجب استخدام التقاط من داخل اللعبة وعدم الاعتماد على الأعمال الفنية الترويجية إذا كانت تخالف السياق المعتمد."
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "CURRENT JAVA + BEDROCK PARITY"
+      }
+    },
+    {
+      "id": "bomb-mc-2",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "وش اسم هذا البعد في Minecraft؟"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "الإند",
+          "الـEnd",
+          "The End",
+          "End",
+          "الاند",
+          "اند",
+          "the end"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://img-end-dimension"
+          }
+        ],
+        "intent": "صورة واضحة لبيئة الإند (The End) من داخل اللعبة، تظهر صخور الإند وأبراج حجر السج (Obsidian) والسماء المظلمة المميزة، بدون أي نصوص أو واجهة تسرب الاسم."
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "CURRENT JAVA + BEDROCK PARITY"
+      }
+    },
+    {
+      "id": "bomb-mc-3",
+      "status": "ready",
+      "compatibleChallengeTypeIds": [
+        "bomb"
+      ],
+      "prompt": {
+        "ar": "اذكر اسم هذه المادة الحمراء المستخدمة لنقل الطاقة وبناء الآلات في ماين كرافت"
+      },
+      "answerPayload": {
+        "mode": "match",
+        "acceptedAnswers": [
+          "ريدستون",
+          "redstone",
+          "حجر أحمر"
+        ]
+      },
+      "media": {
+        "type": "image",
+        "assets": [
+          {
+            "url": "mock://img-redstone"
+          }
+        ],
+        "intent": "صورة واضحة لمادة الريدستون (Redstone Dust) موضوعة على الأرض بشكلها المألوف داخل اللعبة. يمنع إظهار واجهة الحقيبة (Inventory) التي تعرض اسمه، أو أي نصوص وصفية. يجب ألا تكون الصورة مزدحمة بعناصر ريدستون أخرى (مثل Repeater أو Comparator) لتجنب تشتيت اللاعب عن الهدف الأساسي."
+      },
+      "authoring": {
+        "scopeSlug": "minecraft",
+        "questionArchetype": "VISUAL_RECOGNITION",
+        "scopeVersion": "CURRENT JAVA + BEDROCK PARITY"
+      }
+    }
+  ]
+}
