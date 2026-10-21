@@ -25,6 +25,18 @@ Brevity must preserve uniqueness.
 - Fast-Answer Naming: Prefer the SHORTEST widely recognized unique designation.
 - Prompt & Answer Granularity Alignment (e.g. "وش هذا السلاح؟" -> "Ray Gun").
 
+### Cars World specialization
+
+When Bomb is used with the Cars World, apply the mechanic-specific fast-answer
+contract here: use the shortest unambiguous model or trim designation; reject
+generic labels such as `Turbo`, `Sport`, `RS`, or `GT` when they are ambiguous;
+align prompt granularity with the requested model/trim; normalize only
+punctuation, spacing, and equivalent Arabic/English transliterations; and do
+not accept a manufacturer-only fallback for a model question. Manufacturer
+branding may remain, but readable model/trim badges or plate text that answer
+the prompt must be cropped or obscured. This specializes Bomb and does not
+replace the global contextual leakage rule in QUESTION-CRAFT.
+
 ## Anti-Patterns
 - Complex multi-step reasoning.
 - Long prompts.

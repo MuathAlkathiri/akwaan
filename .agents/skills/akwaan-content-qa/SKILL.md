@@ -15,6 +15,16 @@ description: >-
 
 # Akwaan Content QA Workflow
 
+## Authority boundary
+
+This Skill is a QA workflow overlay. Global craft principles are owned by
+`ai/.opencode/knowledge/architecture/QUESTION-CRAFT.md`; the checks below
+translate those principles into review gates without redefining them. Mechanic
+Skills, World/Scope profiles, runtime policies, and validators remain
+authoritative for their own layers. Content Engine screening is a separate
+compatibility gate, and Human Admin review remains the final approval
+authority.
+
 ## 0. Mandatory QA Hard Gates (Fatal Errors)
 
 1. **`BATCH_MEDIA_TARGET_90_PERCENT` (Fatal)**:

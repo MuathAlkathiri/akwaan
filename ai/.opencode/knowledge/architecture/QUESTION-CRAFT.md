@@ -7,6 +7,29 @@ description: >-
 
 # Akwaan Content Authoring Workflow
 
+## Rule Ownership and Precedence
+
+This file is the canonical source for Akwaan's global content-craft rules. It
+does not replace the more specific contracts that make an item playable:
+
+| Concern | Canonical owner | Enforcement layer |
+| --- | --- | --- |
+| Global question craft, evidence, wording, and novelty principles | This file | Authoring guidance and QA contracts |
+| Mechanic interaction, payload, modality, and answer semantics | The mechanic Skill plus the runtime mechanic policy | Authoring and runtime validation |
+| World identity, presentation, and broad taste boundaries | The World `WORLD.md` | Authoring context |
+| Domain specialization and exclusions | Scope `SCOPE.md` / `KNOWLEDGE.md` | Authoring context |
+| Context resolution, tool use, and artifact workflow | Agent Skills | Workflow gates |
+| Authoring-pack shape and fixture validation | Python validators | Blocking pack validation |
+| Candidate screening and canonical `ContentItem` compatibility | Content Engine | Blocking candidate/runtime compatibility |
+| Final acceptance, rejection, and promotion decisions | Human Admin review | Authoritative human decision |
+
+Specific product decisions and runtime contracts take precedence over generic
+craft guidance. Within authoring context, mechanic rules take precedence over
+World and Scope defaults; Scope/Knowledge rules specialize the World profile,
+and World rules specialize global craft rather than duplicate it. Agent Skills, validators, and Content Engine checks
+operationalize these rules for their layer and must not silently redefine them.
+AI evaluation or a validator never constitutes human approval.
+
 ## 0. Canonical Product Principles (MANDATORY RESET R3)
 
 > **1. BATCH-LEVEL MEDIA TARGET: >= 90% OF ALL QUESTIONS**:
@@ -29,6 +52,14 @@ description: >-
 > - **`WIGOLO`**: The mandatory default acquisition workflow for all newly sourced real-world, anime, and video game media.
 > - **`PROGRAMMATIC_PUZZLE`**: Allowed exclusively for authored puzzle diagrams and geometric constructions.
 > - **Synthetic generated media for ordinary recognition is STRICTLY FORBIDDEN (0 count)**.
+
+>
+> **4. CONTEXTUAL ZERO ANSWER LEAKAGE (`CONTEXTUAL_ANSWER_LEAKAGE`)**:
+> Evaluate leakage against what the player must answer, not against branding in
+> the abstract. Manufacturer or world branding may remain when it does not
+> answer the prompt; readable model/trim text, badges, plates, or equivalent
+> answer-defining marks are fatal. A brand mark is also leakage when it is one
+> of the competing answers in a brand-choice question.
 
 >
 > **5. EXPERIENCE OVER KNOWLEDGE (GLOBAL AUTHORING RULE)**:
@@ -75,6 +106,10 @@ description: >-
 - **Prompt**: Challenge Topic ONLY (e.g. `"أكثر 5 لاعبين تسجيلًا للأهداف في تاريخ البريميرليغ"`). Zero tutorial text (`"رتب"`, `"تجنب الفخاخ"`).
 - **Visible Candidate Cards**: **ENTITY NAMES ONLY** (`"ألان شيرر"`, `"هاري كين"`, etc.). Zero stats, numbers, ranks, or notes.
 - **Hidden Metadata**: Exact ranks (1–5 or null), metrics, evidence, and cutoff dates.
+
+Mechanic-specific details in this document are global craft summaries. The
+selected mechanic Skill and runtime policy remain authoritative for payload,
+modality, cardinality, and answer semantics.
 
 ---
 
@@ -190,3 +225,12 @@ Do not do: `STRONG EVIDENCE` → `FORCE EXTRA INFERENCE` → `MAKE QUESTION LONG
 **Question First means:**
 Knowing what the player is being asked, the expected answer, why the interaction is satisfying, and the exact evidence required BEFORE sourcing media.
 It does NOT mean every question needs two parts, mechanical explanation, deduction, or avoiding direct identification. Do not let Question First become "Forced Complexity."
+
+## Concept Identity and Novelty (GLOBAL CRAFT CONTRACT)
+
+Every authored item carries a `metadata.conceptKey` with its subject and the
+property being asked. Exemplar material teaches the shape and taste of a good
+question, not a concrete generation target. Authors and validators must check
+approved/rejected/seen history so the same concept is not reintroduced under a
+new surface form. Duplicate screening may block a candidate, but it does not
+approve one; Human Admin review remains authoritative.
