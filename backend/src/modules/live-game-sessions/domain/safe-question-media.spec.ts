@@ -29,6 +29,28 @@ describe('toSafeQuestionMedia', () => {
     ).toEqual({ type: 'audio', url: 'https://cdn/a.mp3' });
   });
 
+  it('withholds altText from AUDIO — nothing renders it, and it names the song', () => {
+    // Every `altText` consumer in the app is an `<img alt=…>`; every audio
+    // component takes a URL and nothing else. On an audio question the caption
+    // is therefore pure leak surface, reaching devices that will never display
+    // it in a round whose whole question is the name of the song.
+    const projected = toSafeQuestionMedia({
+      type: ContentMediaType.AUDIO,
+      assets: [{ url: 'https://cdn/a.mp3', altText: 'أم كلثوم — أنت عمري' }],
+    } as never);
+    expect(projected).toEqual({ type: 'audio', url: 'https://cdn/a.mp3' });
+    expect(JSON.stringify(projected)).not.toContain('كلثوم');
+  });
+
+  it('keeps altText on IMAGE — there it is the accessible name', () => {
+    expect(
+      toSafeQuestionMedia({
+        type: ContentMediaType.IMAGE,
+        assets: [{ url: 'https://cdn/a.webp', altText: 'صورة السؤال' }],
+      } as never),
+    ).toMatchObject({ altText: 'صورة السؤال' });
+  });
+
   it('omits altText entirely when none was authored', () => {
     expect(
       toSafeQuestionMedia({

@@ -38,10 +38,17 @@ export function toSafeQuestionMedia(
   }
   const url = media.assets?.[0]?.url?.trim();
   if (!url) return null;
+  const isImage = media.type === ContentMediaType.IMAGE;
   const altText = media.assets[0]?.altText?.trim();
   return {
-    type: media.type === ContentMediaType.IMAGE ? 'image' : 'audio',
+    type: isImage ? 'image' : 'audio',
     url,
-    ...(altText ? { altText } : {}),
+    // A caption travels only where something renders it, and for audio nothing
+    // does: every `altText` consumer in the app is an `<img alt=…>`, and every
+    // audio component takes a URL and nothing else. So on an audio question the
+    // caption is pure leak surface — «أم كلثوم — أنت عمري» reaching a device
+    // that will never display it, in a round whose whole question is the name
+    // of the song. Images keep theirs: there it is the accessible name.
+    ...(isImage && altText ? { altText } : {}),
   };
 }

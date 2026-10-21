@@ -25,8 +25,31 @@ const MAX_STEP_LENGTH = 200;
 const MAX_STEPS = 8;
 const MAX_HIGHLIGHTS = 5;
 
+/**
+ * A media URL Akwaan will hand to a browser.
+ *
+ * Two shapes are accepted and nothing else: a first-party `/uploads/<key>`
+ * path, which is what every upload produces, or an absolute `http(s)` URL,
+ * which existing authored content and several mechanics' fixtures rely on.
+ *
+ * What this rejects is everything that is not a fetchable media address —
+ * `javascript:`, `data:`, `file:`, bare words, and anything over the cap. It
+ * deliberately does **not** restrict the host: an audio-only first-party rule
+ * is the right end state, but it cannot be enforced yet without evidence about
+ * existing authored content, so it is deferred rather than guessed at.
+ */
+const MEDIA_URL_PATTERN = /^(?:\/(?!\/)[^\s]*|https?:\/\/[^\s]+)$/i;
+const MAX_MEDIA_URL_LENGTH = 2048;
+
 export class ContentAssetDto {
-  @ApiProperty() @IsString() url: string;
+  @ApiProperty()
+  @IsString()
+  @MaxLength(MAX_MEDIA_URL_LENGTH)
+  @Matches(MEDIA_URL_PATTERN, {
+    message:
+      'url must be a first-party /uploads path or an absolute http(s) URL',
+  })
+  url: string;
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
