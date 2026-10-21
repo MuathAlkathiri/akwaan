@@ -212,10 +212,12 @@ export class EngineJobAdminService {
       throw new BadRequestException('targetCount must be between 1 and 50');
     }
     let contextHash: string;
+    let resolvedMechanicKey: string;
     try {
       const context = this.contexts.resolve(input);
       assertNoRuleConflicts(context.effectiveRules);
       contextHash = context.contextHash;
+      resolvedMechanicKey = context.mechanicKey;
     } catch (error) {
       if (
         error instanceof AuthoringContextUnavailableError ||
@@ -224,6 +226,17 @@ export class EngineJobAdminService {
         throw new BadRequestException(error.message);
       }
       throw error;
+    }
+
+    // Submission must enforce the same capability boundary as preflight. A
+    // caller may skip preflight, and an unsupported mechanic must never become
+    // a persisted job that can later reach queueing, budgeting, or a provider.
+    if (!generatorAnswerModeFor(resolvedMechanicKey)) {
+      const message = `MECHANIC_NOT_GENERATABLE: no authored answer mode for mechanic "${resolvedMechanicKey}"`;
+      throw new BadRequestException({
+        code: 'MECHANIC_NOT_GENERATABLE',
+        message,
+      });
     }
 
     const result = await this.jobs.submit({

@@ -129,38 +129,82 @@ describe('Content Engine generator capability preflight', () => {
     expect(result.diagnostic).toBeUndefined();
   });
 
-  it('currently submits an unsupported mechanic when the caller skips preflight', async () => {
-    const jobs = {
-      submit: jest.fn(async () => ({ jobId: 'job-moving-xo', created: true })),
-    };
-    const contexts = {
-      resolve: jest.fn(() => context('moving-xo')),
-    };
-    const config = {
-      get: jest.fn(() => undefined),
-    } as unknown as ConfigService;
-    const service = new EngineJobAdminService(
-      {} as never,
-      jobs as never,
-      { snapshot: jest.fn(async () => budgetSnapshot) } as never,
-      contexts as never,
-      {} as never,
-      config,
-    );
+  it.each(['moving-xo', 'bomb'])(
+    'rejects unsupported %s before job persistence when preflight is skipped',
+    async (mechanicKey) => {
+      const jobs = {
+        submit: jest.fn(async () => ({
+          jobId: `job-${mechanicKey}`,
+          created: true,
+        })),
+      };
+      const contexts = {
+        resolve: jest.fn(() => context(mechanicKey)),
+      };
+      const budget = {
+        snapshot: jest.fn(async () => budgetSnapshot),
+      };
+      const config = {
+        get: jest.fn(() => undefined),
+      } as unknown as ConfigService;
+      const service = new EngineJobAdminService(
+        {} as never,
+        jobs as never,
+        budget as never,
+        contexts as never,
+        {} as never,
+        config,
+      );
 
-    const result = await service.submit(request('moving-xo'));
+      await expect(service.submit(request(mechanicKey))).rejects.toMatchObject({
+        response: {
+          code: 'MECHANIC_NOT_GENERATABLE',
+          message: `MECHANIC_NOT_GENERATABLE: no authored answer mode for mechanic "${mechanicKey}"`,
+        },
+      });
+      expect(jobs.submit).not.toHaveBeenCalled();
+      expect(budget.snapshot).not.toHaveBeenCalled();
+    },
+  );
 
-    expect(result).toEqual({
-      jobId: 'job-moving-xo',
-      created: true,
-      contextHash: 'c'.repeat(64),
-    });
-    expect(jobs.submit).toHaveBeenCalledWith({
-      mechanicKey: 'moving-xo',
-      worldKey: 'puzzles',
-      scopeKey: 'wordplay-letters',
-      targetCount: 3,
-      contextRevision: 'c'.repeat(64),
-    });
-  });
+  it.each(['read-your-opponent', 'closest'])(
+    'preserves submission for generator-supported %s',
+    async (mechanicKey) => {
+      const jobs = {
+        submit: jest.fn(async () => ({
+          jobId: `job-${mechanicKey}`,
+          created: true,
+        })),
+      };
+      const contexts = {
+        resolve: jest.fn(() => context(mechanicKey)),
+      };
+      const config = {
+        get: jest.fn(() => undefined),
+      } as unknown as ConfigService;
+      const service = new EngineJobAdminService(
+        {} as never,
+        jobs as never,
+        {} as never,
+        contexts as never,
+        {} as never,
+        config,
+      );
+
+      const result = await service.submit(request(mechanicKey));
+
+      expect(result).toEqual({
+        jobId: `job-${mechanicKey}`,
+        created: true,
+        contextHash: 'c'.repeat(64),
+      });
+      expect(jobs.submit).toHaveBeenCalledWith({
+        mechanicKey,
+        worldKey: 'puzzles',
+        scopeKey: 'wordplay-letters',
+        targetCount: 3,
+        contextRevision: 'c'.repeat(64),
+      });
+    },
+  );
 });
