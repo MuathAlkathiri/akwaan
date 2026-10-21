@@ -1,0 +1,160 @@
+{
+  "version": 1,
+  "contract": "contentitem-validation-parity",
+  "cases": [
+    {
+      "id": "valid-ryo-multiple-choice",
+      "item": {
+        "prompt": {
+          "ar": "أي منتخب فاز بكأس العالم 2018؟"
+        },
+        "compatibleChallengeTypeKey": "ryo",
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "france",
+              "label": {
+                "ar": "فرنسا"
+              }
+            },
+            {
+              "id": "croatia",
+              "label": {
+                "ar": "كرواتيا"
+              }
+            }
+          ],
+          "correctOptionId": "france"
+        }
+      },
+      "context": {
+        "worldKey": "football",
+        "scopeKey": "world-cup",
+        "challengeTypeKey": "ryo"
+      },
+      "layers": {
+        "questionCraft": {
+          "applicable": true,
+          "expected": "pass"
+        },
+        "deterministicScreen": {
+          "applicable": true,
+          "expected": "pass",
+          "blockingCodes": []
+        },
+        "compatibility": {
+          "applicable": true,
+          "expected": "deferred",
+          "blockerCodes": []
+        }
+      }
+    },
+    {
+      "id": "missing-required-prompt",
+      "item": {
+        "prompt": {
+          "ar": "   "
+        },
+        "compatibleChallengeTypeKey": "ryo",
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "france",
+              "label": {
+                "ar": "فرنسا"
+              }
+            },
+            {
+              "id": "croatia",
+              "label": {
+                "ar": "كرواتيا"
+              }
+            }
+          ],
+          "correctOptionId": "france"
+        }
+      },
+      "context": {
+        "worldKey": "football",
+        "scopeKey": "world-cup",
+        "challengeTypeKey": "ryo"
+      },
+      "layers": {
+        "questionCraft": {
+          "applicable": false,
+          "expected": "not_applicable",
+          "reason": "Question Craft does not own the canonical prompt-required contract"
+        },
+        "deterministicScreen": {
+          "applicable": true,
+          "expected": "fail",
+          "blockingCodes": [
+            "PROMPT_REQUIRED"
+          ]
+        },
+        "compatibility": {
+          "applicable": true,
+          "expected": "blocked",
+          "blockerCodes": [
+            "CONTENT_PROMPT_REQUIRED"
+          ]
+        }
+      }
+    },
+    {
+      "id": "invalid-correct-option-id",
+      "item": {
+        "prompt": {
+          "ar": "أي منتخب فاز بكأس العالم 2018؟"
+        },
+        "compatibleChallengeTypeKey": "ryo",
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "france",
+              "label": {
+                "ar": "فرنسا"
+              }
+            },
+            {
+              "id": "croatia",
+              "label": {
+                "ar": "كرواتيا"
+              }
+            }
+          ],
+          "correctOptionId": "spain"
+        }
+      },
+      "context": {
+        "worldKey": "football",
+        "scopeKey": "world-cup",
+        "challengeTypeKey": "ryo"
+      },
+      "layers": {
+        "questionCraft": {
+          "applicable": false,
+          "expected": "not_applicable",
+          "reason": "Question Craft does not own canonical answer-payload structure"
+        },
+        "deterministicScreen": {
+          "applicable": true,
+          "expected": "fail",
+          "blockingCodes": [
+            "CORRECT_OPTION_NOT_IN_OPTIONS"
+          ]
+        },
+        "compatibility": {
+          "applicable": true,
+          "expected": "blocked",
+          "blockerCodes": [
+            "CORRECT_OPTION_NOT_IN_OPTIONS"
+          ]
+        }
+      }
+    }
+  ]
+}
