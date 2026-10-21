@@ -225,6 +225,16 @@ export class SubmitGameplayCommand {
           awaitingPresentationActivation:
             !runtime.serialize().presentationActivatedAt ||
             runtime.serialize().currentPresentation?.status === 'prepared',
+          // The authoritative window, read from the interaction rather than
+          // recomputed: a mode command issued during a timed item must be able
+          // to refuse once the clock has run out.
+          ...(round.interaction?.prompt?.deadlineAt
+            ? {
+                interactionDeadlineAt: new Date(
+                  round.interaction.prompt.deadlineAt,
+                ),
+              }
+            : {}),
           now,
         },
         {

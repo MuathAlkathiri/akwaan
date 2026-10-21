@@ -66,11 +66,16 @@ describe('Odd Piece recurring Fair-Start', () => {
     ).toEqual([{ capability: 'shared' }]);
   });
 
-  it('has no deadline before activation and anchors the full playtest window from activation', () => {
+  it('has no PUZZLE deadline before activation and anchors the full playtest window from activation', () => {
     const runtime = activeRuntime();
+    // No puzzle clock runs while the barrier is up — and since M3.1 the wait
+    // itself is bounded, so a shared screen that never arrives cannot freeze
+    // the challenge. Odd Piece keeps the default `activate` policy: the board
+    // is in the snapshot that opens it, so a late screen costs its own loading
+    // and nothing else.
     expect(
       pendingDeadline(runtime.serialize(), ODD_PIECE_GAMEPLAY_PLUGIN.deadline),
-    ).toBeUndefined();
+    ).toMatchObject({ kind: 'presentation-activation' });
     const activatedAt = new Date(NOW.getTime() + 12_000);
     runtime.activatePresentation('activate', 'controller', activatedAt);
     const deadline = pendingDeadline(
@@ -91,9 +96,12 @@ describe('Odd Piece recurring Fair-Start', () => {
       'controller',
       new Date(NOW.getTime() + 40_000),
     );
+    // No puzzle deadline governs a held generation; what governs instead is
+    // the barrier's own bounded wait, so an unacknowledged surface cannot
+    // freeze the challenge.
     expect(
       pendingDeadline(runtime.serialize(), ODD_PIECE_GAMEPLAY_PLUGIN.deadline),
-    ).toBeUndefined();
+    ).toMatchObject({ kind: 'presentation-activation', generation });
     expect(() =>
       runtime.activateCurrentPresentation(
         generation - 1,

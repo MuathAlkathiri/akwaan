@@ -270,6 +270,11 @@ export function LiveSessionProvider({
       expectedSessionRevision: number;
       expectedRuntimeRevision: number;
       presentationGeneration?: number;
+      presentationOutcome?:
+        | "ready"
+        | "media-unavailable"
+        | "autoplay-blocked"
+        | "retry";
     }) => {
       const socket = socketRef.current;
       if (!socket) return Promise.reject(new Error("No live session connection"));
@@ -281,6 +286,11 @@ export function LiveSessionProvider({
           expectedRuntimeRevision: input.expectedRuntimeRevision,
           ...(input.presentationGeneration !== undefined
             ? { presentationGeneration: input.presentationGeneration }
+            : {}),
+          // Omitted when `ready`, so an unchanged client still sends exactly
+          // the payload it always did.
+          ...(input.presentationOutcome && input.presentationOutcome !== "ready"
+            ? { presentationOutcome: input.presentationOutcome }
             : {}),
         });
         return Promise.resolve();

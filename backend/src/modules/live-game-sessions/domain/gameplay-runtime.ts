@@ -4,6 +4,7 @@ import {
   GameplayModeState,
   GameplayPresentationActivationResult,
   GameplaySessionEffect,
+  PresentationFailureReason,
   PresentationSurfaceCapability,
 } from './gameplay-mode.plugin';
 import {
@@ -114,6 +115,27 @@ export interface GameplayRuntimeState {
     capability: PresentationSurfaceCapability;
     connectionId: string;
   }>;
+  /**
+   * Why the presentation currently cannot proceed, when a surface has reported
+   * a failure rather than readiness.
+   *
+   * A barrier has three outcomes, not two: acknowledged, still waiting, and
+   * **cannot**. Before this, the third collapsed into the first — a clip that
+   * 404'd released the barrier exactly like a clip that had loaded, and the
+   * question started its blind window with nothing to hear. Holding the failure
+   * explicitly is what lets the clock stay stopped while the room is told why.
+   *
+   * Set only by the shared surface (or by a timeout under a mechanic whose
+   * policy is to fail) and cleared by a host retry, which opens a fresh
+   * generation. Carries no media metadata: a reason keyword, never a URL.
+   */
+  presentationFailure?: {
+    reason: PresentationFailureReason;
+    capability: PresentationSurfaceCapability;
+    at: string;
+    /** The generation that failed, for a recurring barrier. */
+    generation?: number;
+  };
   /** Additive checkpoint for recurring presentations; absent on legacy runtimes. */
   currentPresentation?: {
     generation: number;
@@ -695,6 +717,83 @@ export class GameplayRuntime {
    * runtime). Lets the lifecycle route a generation-scoped acknowledgement without
    * a full serialize.
    */
+  /**
+   * Record that a surface cannot present, instead of that it can.
+   *
+   * The barrier stays up. That is the entire point: the gameplay clock is only
+   * ever started by an activation, so refusing to activate is what keeps an
+   * unplayable question from burning its window. Readiness recorded so far is
+   * left alone — the other two phones really are ready, and a retry should not
+   * make them say so again.
+   *
+   * Idempotent on reason and capability, so a client that reports the same
+   * failure twice (a retried socket send, a duplicate `error` event) does not
+   * churn the revision.
+   */
+  recordPresentationFailure(input: {
+    reason: PresentationFailureReason;
+    capability: PresentationSurfaceCapability;
+    commandId: string;
+    actorId: string;
+    now: Date;
+  }): void {
+    const generation =
+      this.state.currentPresentation?.status === 'prepared'
+        ? this.state.currentPresentation.generation
+        : undefined;
+    const existing = this.state.presentationFailure;
+    if (
+      existing &&
+      existing.reason === input.reason &&
+      existing.capability === input.capability &&
+      existing.generation === generation
+    ) {
+      return;
+    }
+    this.state.presentationFailure = {
+      reason: input.reason,
+      capability: input.capability,
+      at: input.now.toISOString(),
+      ...(generation !== undefined ? { generation } : {}),
+    };
+    this.commit(
+      'presentation-failed',
+      input.commandId,
+      input.actorId,
+      input.now,
+      this.state.activeRound?.id,
+    );
+  }
+
+  /**
+   * Clear a recorded failure so the surfaces can try again.
+   *
+   * Only ever a *retry*: whatever reopens the barrier is responsible for giving
+   * the surfaces something new to acknowledge, because readiness already
+   * recorded against a generation that failed must not be allowed to satisfy
+   * the next attempt on its own.
+   */
+  clearPresentationFailure(
+    commandId: string,
+    actorId: string,
+    now: Date,
+  ): boolean {
+    if (!this.state.presentationFailure) return false;
+    this.state.presentationFailure = undefined;
+    this.commit(
+      'presentation-retry',
+      commandId,
+      actorId,
+      now,
+      this.state.activeRound?.id,
+    );
+    return true;
+  }
+
+  presentationFailure(): GameplayRuntimeState['presentationFailure'] {
+    return this.state.presentationFailure;
+  }
+
   currentPresentationCheckpoint():
     { generation: number; status: 'prepared' | 'activated' } | undefined {
     const checkpoint = this.state.currentPresentation;

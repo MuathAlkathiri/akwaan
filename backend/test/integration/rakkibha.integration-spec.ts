@@ -511,7 +511,14 @@ describe('Rakkibha race integration', () => {
     // Server: not activated, race clock not armed.
     const raw = await runtimeState(sessionId);
     expect(raw.presentationActivatedAt ?? null).toBeNull();
-    expect(scheduler().armedKeyFor(sessionId)).toBeFalsy();
+    // No GAMEPLAY clock before activation — the race clock stays stopped.
+    // Since M3.1 the wait itself is watched, so a shared screen that
+    // never arrives cannot freeze the challenge; what is armed is the
+    // bounded barrier, and this mechanic keeps the default `activate`
+    // policy so a late screen costs only its own loading.
+    expect(scheduler().armedKeyFor(sessionId)).toContain(
+      'presentation|initial',
+    );
 
     // Roles come from the persisted plan (the plan exists; only its projection is
     // gated), so we can pick a reference holder and a candidate holder to inspect.

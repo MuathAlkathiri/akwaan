@@ -20,7 +20,10 @@ import {
   isTerminalRuntimeStatus,
   type GameplayRuntimeState,
 } from '../domain/gameplay-runtime';
-import { GameplayDeadlineDeclaration } from '../domain/gameplay-mode.plugin';
+import {
+  GameplayDeadlineDeclaration,
+  PresentationTimeoutPolicy,
+} from '../domain/gameplay-mode.plugin';
 import { GameplayModeRegistry } from '../domain/gameplay-mode.registry';
 import {
   GameplayObserverRegistry,
@@ -50,6 +53,7 @@ import { GameplayDeadlineSynchronizer } from './gameplay-deadline.port';
  */
 type PendingDeadline = { key: string; deadlineAt: string } & (
   | { kind: 'mode-command'; commandType: string }
+  | { kind: 'presentation-activation'; generation?: number }
   | {
       kind: 'interaction';
       roundId: string;
@@ -69,6 +73,40 @@ const OPEN_INTERACTION_STATUSES = new Set([
   'closed',
   'adjudicating',
 ]);
+
+/**
+ * How long a prepared presentation may wait for its surfaces before the server
+ * activates it anyway.
+ *
+ * A fair-start barrier arms no gameplay deadline while it waits — that is the
+ * whole point, and it is why a surface that never acknowledges used to freeze
+ * the challenge with no timer watching it. This bounds that wait.
+ *
+ * Forced activation is the *generous* outcome, never the punitive one: it runs
+ * the mechanic's own `activatePresentation`, which re-anchors the window to the
+ * activation instant, so the room still gets its full playable time. The cost of
+ * the timeout is a clip that may not have finished buffering, not a lost window.
+ */
+export const PRESENTATION_ACTIVATION_TIMEOUT_SECONDS = Number(
+  process.env.PRESENTATION_ACTIVATION_TIMEOUT_SECONDS ?? 12,
+);
+
+/**
+ * The same bound for the INITIAL barrier, and deliberately a longer one.
+ *
+ * M3 bounded only the recurring checkpoint. The initial barrier — every
+ * `requiresPresentationActivation` mechanic's first screen, and اقرأ خصمك's
+ * first item — still returned no deadline at all, so a shared screen that never
+ * arrived froze the challenge exactly as before. This closes that.
+ *
+ * Longer because the wait is a different thing: a recurring barrier interrupts
+ * a session already running on warm clients, while this one covers a cold open
+ * — three devices loading an app for the first time. Twelve seconds is generous
+ * mid-challenge and tight at launch.
+ */
+export const PRESENTATION_INITIAL_TIMEOUT_SECONDS = Number(
+  process.env.PRESENTATION_INITIAL_TIMEOUT_SECONDS ?? 45,
+);
 
 /**
  * The active team's remaining Bomb clock, as an absolute instant.
@@ -123,7 +161,17 @@ export function pendingDeadline(
   state: GameplayRuntimeState | undefined,
   declaration?: GameplayDeadlineDeclaration,
   session?: ClockBearingSession,
+  options: {
+    /**
+     * Whether the mechanic holds a multi-surface barrier
+     * (`requiredPresentationSurfaces`). اقرأ خصمك carries no deadline
+     * declaration at all — its clock lives on the interaction — so the initial
+     * gate cannot be derived from the declaration alone.
+     */
+    multiSurface?: boolean;
+  } = {},
 ): PendingDeadline | undefined {
+  const multiSurface = options.multiSurface === true;
   const round = state?.activeRound;
   if (!state || !round || round.status !== 'active') return undefined;
   if (isTerminalRuntimeStatus(state.status)) return undefined;
@@ -133,6 +181,63 @@ export function pendingDeadline(
   // recorded its one-time presentation activation, so client cold-start never
   // burns gameplay time. This runs before source dispatch because Bomb's
   // deadline lives on the session clock rather than runtime state.
+  //
+  // Bounded since M3.1 — but strictly additively. M3 watched only the recurring
+  // checkpoint; the initial barrier returned no deadline at all, so a shared
+  // screen that never arrived froze the challenge exactly as before.
+  //
+  // The condition is deliberately "awaiting AND nothing is already running".
+  // A runtime that never recorded an activation but already holds an open,
+  // deadlined interaction is *playing*, not waiting — a legacy document from
+  // before activation was persisted looks exactly like that, and arming a
+  // barrier over it would take away the gameplay deadline it still needs. So
+  // this only ever arms where nothing was armed before.
+  const liveInteraction = round.interaction;
+  // The legacy guard, and it is needed for exactly one shape of mechanic.
+  //
+  // A mechanic that DECLARES `requiresPresentationActivation` already armed
+  // nothing before activation — that suppression predates M3.1 — so bounding
+  // its wait is purely additive and no guard is required. It also writes its
+  // deadline into runtime state while still awaiting, so reading that field as
+  // "already running" would wrongly disarm the bound.
+  //
+  // اقرأ خصمك is the exception: it declares no deadline at all and previously
+  // fell through to the interaction branch. A runtime of its shape that never
+  // recorded an activation but already holds an open, deadlined interaction is
+  // *playing* — a document from before activation was persisted looks exactly
+  // like that — and arming a barrier over it would take away the gameplay
+  // deadline it still needs.
+  const legacyInteractionRunning = Boolean(
+    !declaration?.requiresPresentationActivation &&
+    liveInteraction &&
+    OPEN_INTERACTION_STATUSES.has(liveInteraction.status) &&
+    liveInteraction.prompt.deadlineAt,
+  );
+  const awaitingInitial =
+    !state.presentationActivatedAt &&
+    !legacyInteractionRunning &&
+    (declaration?.requiresPresentationActivation === true || multiSurface);
+  if (awaitingInitial) {
+    // A recorded failure is a *stopped* barrier, not a running one. Re-arming
+    // against it would re-fire the same timeout against a clip that is still
+    // missing; the host's retry is what restarts the wait.
+    if (state.presentationFailure) return undefined;
+    const startedAt = state.activeRound?.startedAt ?? state.startedAt;
+    if (startedAt) {
+      const deadlineAt = new Date(
+        new Date(startedAt).getTime() +
+          PRESENTATION_INITIAL_TIMEOUT_SECONDS * 1000,
+      ).toISOString();
+      return {
+        kind: 'presentation-activation',
+        key: `${identity}|presentation|initial|${deadlineAt}`,
+        deadlineAt,
+      };
+    }
+  }
+
+  // The pre-existing suppression, unchanged: a declaring mechanic arms no
+  // gameplay deadline until it has recorded its one-time activation.
   if (
     declaration?.requiresPresentationActivation &&
     !state.presentationActivatedAt
@@ -140,12 +245,28 @@ export function pendingDeadline(
     return undefined;
   }
 
-  // A2 compatibility guard (recurring fair-start): while a recurring presentation
-  // is prepared, content is hidden again and no deadline may arm — mirroring the
-  // initial gate above. Recurring deadline re-anchoring at activation is A3; this
-  // only prevents A2 from arming a stale deadline during the awaiting window.
+  // Recurring fair-start: while a recurring presentation is prepared, content is
+  // hidden again and no *gameplay* deadline may arm — mirroring the initial gate
+  // above, and preventing a stale deadline from arming during the awaiting
+  // window. What arms instead is the bounded activation deadline: the barrier is
+  // now watched by a timer, so a surface that never acknowledges stops being a
+  // frozen challenge and becomes a late one.
   if (state.currentPresentation?.status === 'prepared') {
-    return undefined;
+    // As above: a failed barrier is stopped, and only a host retry restarts it.
+    if (state.presentationFailure) return undefined;
+    const checkpoint = state.currentPresentation;
+    const deadlineAt = new Date(
+      new Date(checkpoint.preparedAt).getTime() +
+        PRESENTATION_ACTIVATION_TIMEOUT_SECONDS * 1000,
+    ).toISOString();
+    return {
+      kind: 'presentation-activation',
+      // The generation is the identity. A later generation is a different
+      // barrier, and a timer armed for the one before it must not act on it.
+      key: `${identity}|presentation|${checkpoint.generation}|${deadlineAt}`,
+      deadlineAt,
+      generation: checkpoint.generation,
+    };
   }
 
   // The mechanic's own declaration wins when it has one, which preserves the
@@ -212,6 +333,7 @@ export function pendingDeadline(
 
 import { SubmitGameplayCommand } from './submit-gameplay-command.use-case';
 import { GameplayInteractionUseCases } from './gameplay-interaction.use-cases';
+import { PresentationReady } from './gameplay-runtime.lifecycle';
 
 /**
  * The single owner of gameplay deadline timers.
@@ -348,7 +470,9 @@ export class GameplayDeadlineScheduler
       this.converge(
         sessionId,
         usable,
-        pendingDeadline(usable, declaration, session as never),
+        pendingDeadline(usable, declaration, session as never, {
+          multiSurface: this.isMultiSurface(usable),
+        }),
       );
       return;
     }
@@ -357,7 +481,9 @@ export class GameplayDeadlineScheduler
     const state = runtime?.serialize();
     const pending =
       state && session
-        ? pendingDeadline(state, this.declarationFor(state), session as never)
+        ? pendingDeadline(state, this.declarationFor(state), session as never, {
+            multiSurface: this.isMultiSurface(state),
+          })
         : undefined;
     this.converge(sessionId, session && runtime ? state : undefined, pending);
   }
@@ -515,6 +641,42 @@ export class GameplayDeadlineScheduler
     }
   }
 
+  /**
+   * What this mechanic wants when its held presentation runs out of time.
+   *
+   * `activate` unless the plugin says otherwise, which is deliberately the
+   * pre-existing behaviour: a mechanic that never opts in is unaffected by this
+   * whole mechanism, and an unregistered or throwing plugin falls back to the
+   * same safe answer rather than stranding a session.
+   */
+  /** Whether this mechanic holds a multi-surface barrier, safely. */
+  private isMultiSurface(state: GameplayRuntimeState): boolean {
+    try {
+      return (
+        this.modes.resolve(state.modeKey, state.modeVersion)
+          .requiredPresentationSurfaces !== undefined
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  private timeoutPolicyFor(
+    state: GameplayRuntimeState,
+  ): PresentationTimeoutPolicy {
+    try {
+      const plugin = this.modes.resolve(state.modeKey, state.modeVersion);
+      return (
+        plugin.presentationTimeoutPolicy?.({
+          runtimeState: state.runtimeState,
+          roundState: state.activeRound?.modeState ?? {},
+        }) ?? 'activate'
+      );
+    } catch {
+      return 'activate';
+    }
+  }
+
   private async expire(sessionId: string, expectedKey: string): Promise<void> {
     this.timers.delete(sessionId);
     this.armed.delete(sessionId);
@@ -523,7 +685,9 @@ export class GameplayDeadlineScheduler
       const runtime = await this.runtimes.findBySessionId(sessionId);
       const state = runtime?.serialize();
       const pending = state
-        ? pendingDeadline(state, this.declarationFor(state), session as never)
+        ? pendingDeadline(state, this.declarationFor(state), session as never, {
+            multiSurface: this.isMultiSurface(state),
+          })
         : undefined;
       const round = state?.activeRound;
       // The identity check that makes a stale timer harmless. A deadline that
@@ -543,7 +707,36 @@ export class GameplayDeadlineScheduler
         kind: 'user' as const,
         actorId: session.controllerActorId,
       };
-      if (pending.kind === 'interaction') {
+      if (pending.kind === 'presentation-activation') {
+        // The barrier expired. What that means is the mechanic's call, and the
+        // two answers are genuinely different outcomes rather than two routes
+        // to the same one.
+        const presentation = this.moduleRef.get(PresentationReady, {
+          strict: false,
+        });
+        const policy = this.timeoutPolicyFor(state!);
+        await presentation.execute({
+          sessionId,
+          actor,
+          commandId: randomUUID(),
+          expectedSessionRevision: session.revision,
+          expectedRuntimeRevision: runtime.revision,
+          ...(pending.generation !== undefined
+            ? { presentationGeneration: pending.generation }
+            : {}),
+          // `activate`: the room loses its buffering, not its question — the
+          // mechanic's own hook still re-anchors a full window.
+          // `fail`: the clock stays stopped and the host is told why. Forcing
+          // a ten-second blind window onto a clip nobody can hear would not be
+          // a degraded question, it would be an unanswerable one.
+          ...(policy === 'fail'
+            ? { presentationOutcome: 'readiness-timeout' as const }
+            : { forcePresentationActivation: true }),
+        });
+        this.logger.warn(
+          `Presentation ${pending.generation ?? 'initial'} for ${sessionId} was not acknowledged in time; policy=${policy}`,
+        );
+      } else if (pending.kind === 'interaction') {
         // The ordinary resolution path, run by the server instead of the host.
         // It calls the plugin's own `createOutcome`, so an unanswered item is
         // scored by the mechanic's authored rules for a missing submission

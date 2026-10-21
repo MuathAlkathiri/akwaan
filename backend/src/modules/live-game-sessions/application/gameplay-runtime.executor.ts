@@ -13,6 +13,7 @@ import {
   LiveSessionNotFoundError,
 } from '../domain/live-session.errors';
 import { GameplayRuntime } from '../domain/gameplay-runtime';
+import type { PresentationFailureReason } from '../domain/gameplay-mode.plugin';
 import { LiveGameSession } from '../domain/live-game-session';
 import { LIVE_SESSION_CLOCK, LiveSessionClock } from './live-session-clock';
 import { GameplayRuntimeSnapshotMapper } from './gameplay-runtime.snapshot';
@@ -48,6 +49,29 @@ export interface GameplayRuntimeCommand {
    * checkpoint (a legacy/initial acknowledgement omits it and is unaffected).
    */
   presentationGeneration?: number;
+  /**
+   * Server-initiated activation of a prepared presentation whose surfaces never
+   * acknowledged in time.
+   *
+   * Set only by the deadline scheduler, never by a client: the socket DTOs do
+   * not carry it. It skips the surface-capability check (there is no acking
+   * connection to bind) and activates the named generation directly, which is
+   * what keeps an unacknowledged barrier from freezing the challenge for ever.
+   * It never *shortens* a window — activation re-anchors the deadline to the
+   * activation instant exactly as a real acknowledgement would.
+   */
+  forcePresentationActivation?: boolean;
+  /**
+   * What this acknowledgement is actually saying.
+   *
+   * `ready` (the default, and what every existing caller means) is "this
+   * surface can present". `media-unavailable` and `autoplay-blocked` are the
+   * shared screen saying it *cannot* — which must not release the barrier,
+   * because the gameplay clock starts at activation and a question nobody can
+   * hear should not have one running. `retry` is the host clearing a recorded
+   * failure and reopening the barrier.
+   */
+  presentationOutcome?: 'ready' | PresentationFailureReason | 'retry';
 }
 
 @Injectable()

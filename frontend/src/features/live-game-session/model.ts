@@ -124,6 +124,33 @@ export interface GameplayRuntimeSnapshot {
      * acknowledgement; the client never invents or increments a generation.
      */
     generation?: number;
+    /**
+     * The clip this surface is being asked to be ready for.
+     *
+     * Projected only to the `shared` capability — the surface that plays it —
+     * and only while a presentation is held. A barrier that hid the asset it
+     * was waiting on would be readiness in name only: the screen would
+     * acknowledge, the clock would start, and the buffering would happen
+     * afterwards. Nothing else about the item travels with it.
+     */
+    preloadAudioUrl?: string;
+    /**
+     * Which question is being held, counted from one. Held state is otherwise
+     * redacted wholesale, so without this the waiting screen could only ever
+     * name question 1 — which is wrong the moment an audio item 2 or 3 holds.
+     */
+    itemOrdinal?: number;
+    /**
+     * Why the barrier is stuck, when it is. A reason keyword only — it renders
+     * on a television in front of both teams, so it names the class of failure
+     * and nothing about the asset. `canRetry` is the server's answer to whether
+     * THIS actor may act on it, so phones see the message and the host gets the
+     * control.
+     */
+    failure?: {
+      reason: "media-unavailable" | "autoplay-blocked" | "readiness-timeout";
+      canRetry: boolean;
+    };
   };
   activeRound?: {
     id: string;

@@ -68,6 +68,16 @@ export interface LiveSessionContextValue {
     expectedSessionRevision: number;
     expectedRuntimeRevision: number;
     presentationGeneration?: number;
+    /**
+     * What this surface is saying. `ready` (the default) is "I can present";
+     * the failure reasons are "I cannot", which leaves the barrier up so the
+     * gameplay clock never starts; `retry` is the host reopening it.
+     */
+    presentationOutcome?:
+      | "ready"
+      | "media-unavailable"
+      | "autoplay-blocked"
+      | "retry";
   }) => Promise<void>;
   adoptSnapshot?: (snapshot: LiveSessionSnapshot) => void;
   resync?: () => void;

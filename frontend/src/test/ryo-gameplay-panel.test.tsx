@@ -142,6 +142,9 @@ describe("اقرأ خصمك — the phone's fair-start surface", () => {
     expect(mocks.presentationReadySocket).toHaveBeenCalledWith({
       expectedSessionRevision: 4,
       expectedRuntimeRevision: 7,
+      // Since M3.1 an acknowledgement states what it is. A phone with no clip
+      // to wait on is ready the moment it mounts, exactly as before.
+      presentationOutcome: "ready",
     });
   });
 
@@ -163,6 +166,7 @@ describe("اقرأ خصمك — the phone's fair-start surface", () => {
     expect(mocks.presentationReadySocket).toHaveBeenLastCalledWith({
       expectedSessionRevision: 4,
       expectedRuntimeRevision: 8,
+      presentationOutcome: "ready",
     });
 
     // Re-rendering the same awaited revision never re-sends.
@@ -241,6 +245,7 @@ describe("اقرأ خصمك — the phone's fair-start surface", () => {
       expectedSessionRevision: 4,
       expectedRuntimeRevision: 7,
       presentationGeneration: 2,
+      presentationOutcome: "ready",
     });
   });
 
@@ -274,6 +279,7 @@ describe("اقرأ خصمك — the phone's fair-start surface", () => {
       expectedSessionRevision: 4,
       expectedRuntimeRevision: 7,
       presentationGeneration: 3,
+      presentationOutcome: "ready",
     });
   });
 });

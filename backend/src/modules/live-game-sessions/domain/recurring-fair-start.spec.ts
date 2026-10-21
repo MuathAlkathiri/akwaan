@@ -1,6 +1,9 @@
 import { GameplayRuntime } from './gameplay-runtime';
 import { GameplayModePlugin, GameplayModeState } from './gameplay-mode.plugin';
-import { pendingDeadline } from '../application/gameplay-deadline.scheduler';
+import {
+  PRESENTATION_ACTIVATION_TIMEOUT_SECONDS,
+  pendingDeadline,
+} from '../application/gameplay-deadline.scheduler';
 
 /**
  * A3 recurring fair-start — deadline semantics, proven end to end on the runtime
@@ -96,15 +99,38 @@ function initiallyActivated(): GameplayRuntime {
   return runtime;
 }
 
+/**
+ * What a prepared generation must arm: never the gameplay deadline, always the
+ * bounded activation deadline.
+ *
+ * These two facts are one contract. Suppressing the gameplay deadline is what
+ * stops a held item burning its clock; arming the activation deadline is what
+ * stops a surface that never acknowledges freezing the challenge instead. A test
+ * that only asserted the first would pass for a runtime that hangs for ever.
+ */
+function expectAwaitingActivation(
+  runtime: GameplayRuntime,
+  preparedAt: Date,
+  generation: number,
+): void {
+  const pending = deadlineOf(runtime);
+  expect(pending?.kind).toBe('presentation-activation');
+  expect(Date.parse(pending!.deadlineAt)).toBe(
+    preparedAt.getTime() + PRESENTATION_ACTIVATION_TIMEOUT_SECONDS * 1000,
+  );
+  expect((pending as { generation: number }).generation).toBe(generation);
+}
+
 describe('recurring fair-start deadline', () => {
-  it('a prepared generation has no pending deadline', () => {
+  it('a prepared generation arms the bounded activation deadline, not the gameplay one', () => {
     const runtime = initiallyActivated();
-    runtime.prepareNextPresentation(
+    const preparedAt = new Date(LAUNCH.getTime() + 40_000);
+    const generation = runtime.prepareNextPresentation(
       'cmd-prep1',
       CONTROLLER,
-      new Date(LAUNCH.getTime() + 40_000),
+      preparedAt,
     );
-    expect(deadlineOf(runtime)).toBeUndefined();
+    expectAwaitingActivation(runtime, preparedAt, generation);
   });
 
   it('the scheduler cannot arm a stale deadline while a generation is prepared', () => {
@@ -112,13 +138,16 @@ describe('recurring fair-start deadline', () => {
     // The runtime still carries the initial window's deadlineAt, but preparing a
     // recurring generation suppresses it until the generation activates.
     const beforePrepare = anchor(runtime);
-    runtime.prepareNextPresentation(
+    const preparedAt = new Date(LAUNCH.getTime() + 40_000);
+    const generation = runtime.prepareNextPresentation(
       'cmd-prep',
       CONTROLLER,
-      new Date(LAUNCH.getTime() + 40_000),
+      preparedAt,
     );
     expect(anchor(runtime)).toBe(beforePrepare); // prepare never moves the clock
-    expect(deadlineOf(runtime)).toBeUndefined();
+    // The stale gameplay deadline is gone, and what replaced it is the barrier's
+    // own bounded wait rather than nothing at all.
+    expectAwaitingActivation(runtime, preparedAt, generation);
   });
 
   it('activation re-anchors a full window from activatedAt', () => {
@@ -153,13 +182,15 @@ describe('recurring fair-start deadline', () => {
     const gen1Deadline = anchor(runtime);
     expect(gen1Deadline).toBe(act1.getTime() + DURATION_MS);
 
+    const preparedAt2 = new Date(LAUNCH.getTime() + 200_000);
     const g2 = runtime.prepareNextPresentation(
       'cmd-p2',
       CONTROLLER,
-      new Date(LAUNCH.getTime() + 200_000),
+      preparedAt2,
     );
-    // While generation 2 is prepared, generation 1's deadline can no longer govern.
-    expect(deadlineOf(runtime)).toBeUndefined();
+    // While generation 2 is prepared, generation 1's deadline can no longer
+    // govern — and generation 2's own wait is bounded.
+    expectAwaitingActivation(runtime, preparedAt2, g2);
     const act2 = new Date(LAUNCH.getTime() + 220_000); // long loading delay
     runtime.activateCurrentPresentation(g2, 'cmd-a2', CONTROLLER, act2);
     const pending = deadlineOf(runtime);

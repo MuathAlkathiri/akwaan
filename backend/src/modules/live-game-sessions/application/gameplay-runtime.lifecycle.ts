@@ -370,6 +370,131 @@ export class PresentationReady {
       const previousSessionRevision = session.revision;
       const previousRuntimeRevision = runtime.revision;
 
+      const outcome = command.presentationOutcome ?? 'ready';
+
+      // A runtime that is gone can neither be failed nor retried, exactly as it
+      // can no longer be activated. All three are writes to a challenge that
+      // has already ended — an abort while the room was waiting on a clip is
+      // the case this covers.
+      if (outcome !== 'ready' && runtime.isTerminal) {
+        throw new LiveSessionDomainError(
+          'PRESENTATION_SURFACE_INVALID',
+          'The challenge is no longer active',
+        );
+      }
+
+      // Generation scoping applies to every outcome, not just readiness. A
+      // failure or a retry carrying a generation the server has already moved
+      // past is a report about a barrier that no longer exists, and letting it
+      // through would let a stale screen fail the item that replaced the one it
+      // was actually looking at.
+      if (outcome !== 'ready') {
+        const scoped = runtime.currentPresentationCheckpoint();
+        if (scoped && command.presentationGeneration !== scoped.generation) {
+          throw new LiveSessionDomainError(
+            'STALE_PRESENTATION_GENERATION',
+            'Presentation generation is not current',
+          );
+        }
+      }
+
+      // A host clearing a failure so the surfaces can try again.
+      //
+      // Reopening is a *new generation* wherever one exists: readiness recorded
+      // against the generation that failed must not be allowed to satisfy the
+      // retry on its own, or the screen that could not play the clip would be
+      // counted as ready for the clip it still cannot play.
+      if (outcome === 'retry') {
+        if (!isController) {
+          throw new LiveSessionDomainError(
+            'PRESENTATION_SURFACE_INVALID',
+            'Only the session host can retry a failed presentation',
+          );
+        }
+        const cleared = runtime.clearPresentationFailure(
+          command.commandId,
+          actor.actorId,
+          now,
+        );
+        if (cleared && runtime.currentPresentationCheckpoint()) {
+          runtime.prepareNextPresentation(
+            `${command.commandId}:retry`,
+            actor.actorId,
+            now,
+          );
+        }
+        await context.saveRuntime(runtime, previousRuntimeRevision);
+        return {
+          session,
+          runtime,
+          previousRuntimeRevision,
+          sessionChanged: false,
+          runtimeChanged: cleared,
+        };
+      }
+
+      // A surface reporting that it *cannot* present.
+      //
+      // The barrier stays up and nothing activates, so the gameplay clock never
+      // starts. Only the shared screen can say this: it is the only surface
+      // that plays the clip, and a phone's local trouble is not the room's.
+      if (outcome !== 'ready') {
+        const failing = runtime.requiredPresentationSurfaces();
+        const capability = failing?.length
+          ? this.resolveSurfaceCapability(actor, isController, failing)
+          : 'shared';
+        if (capability !== 'shared') {
+          throw new LiveSessionDomainError(
+            'PRESENTATION_SURFACE_INVALID',
+            'Only the shared screen can report a presentation failure',
+          );
+        }
+        // An already-activated generation cannot be un-started. The room is
+        // playing; a late failure report is noise, not a reason to stop a
+        // question whose clock is already running.
+        const current = runtime.currentPresentationCheckpoint();
+        if (
+          (current && current.status === 'activated') ||
+          (!current && runtime.serialize().presentationActivatedAt)
+        ) {
+          return {
+            session,
+            runtime,
+            previousRuntimeRevision,
+            sessionChanged: false,
+            runtimeChanged: false,
+          };
+        }
+        runtime.recordPresentationFailure({
+          reason: outcome,
+          capability: 'shared',
+          commandId: command.commandId,
+          actorId: actor.actorId,
+          now,
+        });
+        await context.saveRuntime(runtime, previousRuntimeRevision);
+        return {
+          session,
+          runtime,
+          previousRuntimeRevision,
+          sessionChanged: false,
+          runtimeChanged: true,
+        };
+      }
+
+      // A readiness acknowledgement while a failure stands clears nothing by
+      // itself — but it does mean the surface recovered, so the stale failure
+      // must not keep the room looking at an error for a barrier that is now
+      // satisfiable. (A retry opens a new generation; this covers the simpler
+      // case of the same surface succeeding on a later attempt.)
+      if (runtime.presentationFailure()) {
+        runtime.clearPresentationFailure(
+          `${command.commandId}:recovered`,
+          actor.actorId,
+          now,
+        );
+      }
+
       // Recurring contract: once a recurring presentation has been prepared, every
       // acknowledgement is generation-scoped. The client echoes the generation the
       // server projected; a stale or future generation, or a missing one, is
@@ -413,7 +538,14 @@ export class PresentationReady {
             'The challenge is no longer active',
           );
         }
-        const requiredRecurring = runtime.requiredPresentationSurfaces();
+        // A forced activation has no acking connection to derive a capability
+        // from, so it deliberately resolves to the single-surface branch below
+        // and activates this generation directly. Everything before this point
+        // still applies: the generation must be current, the runtime must not be
+        // terminal, and an already-activated generation is still a no-op.
+        const requiredRecurring = command.forcePresentationActivation
+          ? undefined
+          : runtime.requiredPresentationSurfaces();
         if (requiredRecurring && requiredRecurring.length > 0) {
           if (!command.connectionId) {
             throw new LiveSessionDomainError(

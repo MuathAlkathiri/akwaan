@@ -675,7 +675,12 @@ describe('Bomb board lifecycle integration', () => {
         }>
       ).some((team) => team.clock.running || team.clock.startedAt),
     ).toBe(false);
-    expect(scheduler.armedKeyFor(sessionId)).toBeFalsy();
+    // No GAMEPLAY clock before activation — Bomb's team clock stays stopped.
+    // Since M3.1 the wait itself is watched, so a shared screen that
+    // never arrives cannot freeze the challenge; what is armed is the
+    // bounded barrier, and this mechanic keeps the default `activate`
+    // policy so a late screen costs only its own loading.
+    expect(scheduler.armedKeyFor(sessionId)).toContain('presentation|initial');
 
     await expect(
       app.get(PresentationReady).execute({

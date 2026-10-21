@@ -35,7 +35,10 @@ import {
 } from '../../src/modules/live-game-sessions/application/live-participant.use-cases';
 import { UpdateParticipantPresence } from '../../src/modules/live-game-sessions/application/update-participant-presence.use-case';
 import { GetGameplayRuntime } from '../../src/modules/live-game-sessions/application/gameplay-runtime.queries';
-import { GameplayDeadlineScheduler } from '../../src/modules/live-game-sessions/application/gameplay-deadline.scheduler';
+import {
+  GameplayDeadlineScheduler,
+  PRESENTATION_ACTIVATION_TIMEOUT_SECONDS,
+} from '../../src/modules/live-game-sessions/application/gameplay-deadline.scheduler';
 import { GameplayObserverRegistry } from '../../src/modules/live-game-sessions/application/gameplay-observer.registry';
 import { GameplayInteractionUseCases } from '../../src/modules/live-game-sessions/application/gameplay-interaction.use-cases';
 import { PresentationReady } from '../../src/modules/live-game-sessions/application/gameplay-runtime.lifecycle';
@@ -43,7 +46,10 @@ import {
   GAMEPLAY_RUNTIME_REPOSITORY,
   GameplayRuntimeRepository,
 } from '../../src/modules/live-game-sessions/domain/gameplay-runtime.repository';
-import { RYO_MODE_KEY } from '../../src/modules/live-game-sessions/domain/ryo-gameplay.plugin';
+import {
+  RYO_MODE_KEY,
+  RYO_TIMER_SECONDS,
+} from '../../src/modules/live-game-sessions/domain/ryo-gameplay.plugin';
 import { LIVE_SESSION_TRANSITION_PUBLISHER } from '../../src/modules/live-game-sessions/application/live-session-transition.publisher';
 
 /**
@@ -381,6 +387,12 @@ describe('RYO deadline lifecycle integration', () => {
     connectionId: string,
   ) => {
     const document = (await rawRuntime(sessionId))!;
+    // A recurring barrier scopes every acknowledgement to the server-issued
+    // generation; the initial one has none. Read from the committed document so
+    // a caller never has to know which kind of barrier it is closing.
+    const generation = document.state.currentPresentation?.generation as
+      number | undefined;
+    const prepared = document.state.currentPresentation?.status === 'prepared';
     return app.get(PresentationReady).execute({
       sessionId,
       actor,
@@ -388,6 +400,9 @@ describe('RYO deadline lifecycle integration', () => {
       commandId: uuid(),
       expectedRuntimeRevision: Number(document.state.revision),
       expectedSessionRevision: await sessionRevision(sessionId),
+      ...(prepared && generation !== undefined
+        ? { presentationGeneration: generation }
+        : {}),
     });
   };
 
@@ -483,7 +498,10 @@ describe('RYO deadline lifecycle integration', () => {
     expect(interaction.status).toBe('prepared');
     expect(interaction.prompt.deadlineAt).toBeUndefined();
     const armed = app.get(GameplayDeadlineScheduler).armedKeyFor(sessionId);
-    expect(armed).toBeUndefined();
+    // No GAMEPLAY deadline — and since M3.1 the wait itself is bounded, so a
+    // shared screen that never arrives cannot freeze the challenge. What is
+    // armed is the barrier, never the item's clock.
+    expect(armed).toContain('presentation|initial');
 
     // Every surface acknowledges — and only then does the item open with a
     // real, armed 25-second clock anchored to this moment.
@@ -548,7 +566,10 @@ describe('RYO deadline lifecycle integration', () => {
     expect(
       held.state.activeRound.interaction.prompt.deadlineAt,
     ).toBeUndefined();
-    expect(scheduler.armedKeyFor(sessionId)).toBeUndefined();
+    // Again: the bounded barrier, not the item's clock. Since M3.1 the wait
+    // itself is watched, so a decider that never arrives cannot freeze the
+    // challenge — and its late arrival still costs it nothing.
+    expect(scheduler.armedKeyFor(sessionId)).toContain('presentation|initial');
 
     // The deciding phone finally acks, cold-starting long after launch. The
     // full window is anchored here, so setup-and-launch latency is free time.
@@ -607,6 +628,303 @@ describe('RYO deadline lifecycle integration', () => {
     expect(secondArmed).toBeDefined();
     expect(secondArmed).not.toEqual(firstArmed);
     expect(secondArmed).toContain(String(nextInteraction.id));
+  }, 120_000);
+
+  /**
+   * Give the persisted items audio, the way a Music scope would have authored
+   * them.
+   *
+   * The seeded fixtures are text-only on purpose — media would mean an asset
+   * record, object storage and a pipeline none of which this suite is testing.
+   * What the barrier actually reads is the narrowed `media` already inside
+   * `itemsJson`, so writing that directly exercises the real predicate on real
+   * persisted state. Everything downstream is production code.
+   */
+  /**
+   * Poll committed state instead of sleeping a fixed interval.
+   *
+   * A flat `settle()` races the scheduler whenever the machine is busy — these
+   * suites run alongside four others — and a test that passes alone and fails in
+   * a group is worse than no test. This waits for the state the assertion is
+   * actually about.
+   */
+  const waitForRuntime = async (
+    sessionId: string,
+    predicate: (document: Record<string, never>) => boolean,
+    label: string,
+    timeoutMs = 15_000,
+  ) => {
+    const deadline = Date.now() + timeoutMs;
+    let last: unknown;
+    while (Date.now() < deadline) {
+      const document = (await rawRuntime(sessionId)) as Record<string, never>;
+      last = document;
+      if (document && predicate(document)) return document;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error(
+      `Timed out waiting for ${label}: ${JSON.stringify(last)?.slice(0, 600)}`,
+    );
+  };
+
+  const giveItemsAudio = async (sessionId: string, indexes: number[]) => {
+    const document = (await rawRuntime(sessionId))!;
+    const items = JSON.parse(
+      String(document.state.runtimeState.itemsJson),
+    ) as Array<Record<string, unknown>>;
+    for (const index of indexes) {
+      items[index] = {
+        ...items[index],
+        media: { type: 'audio', url: `https://cdn.example/clip-${index}.mp3` },
+      };
+    }
+    await database
+      .collection('gameplay_runtimes')
+      .updateOne(
+        { _id: document._id },
+        { $set: { 'state.runtimeState.itemsJson': JSON.stringify(items) } },
+      );
+  };
+
+  it('holds an AUDIO item 2 behind a readiness barrier instead of starting its clock', async () => {
+    // The M1 fairness gap, stated directly. Item 1 always had a barrier; items
+    // 2 and 3 opened the instant the previous item resolved, so a clip that had
+    // not finished buffering spent the team's blind window loading.
+    const { sessionId, participants } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+    await activateRyo(sessionId, participants);
+    await giveItemsAudio(sessionId, [1]);
+
+    await expireDeadlineInMongo(sessionId);
+    await converge(sessionId);
+
+    const held = await waitForRuntime(
+      sessionId,
+      (document) =>
+        (document.state as Record<string, never>).currentPresentation?.[
+          'status'
+        ] === 'prepared',
+      'the audio item to be held behind a readiness barrier',
+    );
+    // A fresh generation is open, and the item is prepared with NO clock.
+    expect(held.state.currentPresentation.status).toBe('prepared');
+    expect(held.state.activeRound.interaction.status).toBe('prepared');
+    expect(held.state.activeRound.interaction.prompt.deadlineAt).toBeFalsy();
+    // And the wait itself is watched, so it cannot become a frozen challenge.
+    expect(app.get(GameplayDeadlineScheduler).armedKeyFor(sessionId)).toContain(
+      'presentation',
+    );
+  }, 120_000);
+
+  it('anchors the audio item window at activation, not at the previous resolution', async () => {
+    const { sessionId, participants } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+    await activateRyo(sessionId, participants);
+    await giveItemsAudio(sessionId, [1]);
+
+    await expireDeadlineInMongo(sessionId);
+    await converge(sessionId);
+    await waitForRuntime(
+      sessionId,
+      (document) =>
+        (document.state as Record<string, never>).currentPresentation?.[
+          'status'
+        ] === 'prepared',
+      'the audio item to be held',
+    );
+
+    // A visible loading delay, then the three devices acknowledge. Every ack
+    // happens after this instant, so activation does too — which is what makes
+    // the window assertion below exact without depending on round-trip timing.
+    await settle(400);
+    const beforeAcks = Date.now();
+    await activateRyo(sessionId, participants);
+
+    const open = await waitForRuntime(
+      sessionId,
+      (document) =>
+        (document.state as Record<string, never>).currentPresentation?.[
+          'status'
+        ] === 'activated',
+      'the acknowledged generation to activate',
+    );
+    expect(open.state.activeRound.interaction.status).toBe('open');
+    // The BSON date comes back as a Date; stringifying it drops milliseconds,
+    // so compare the raw instant to keep the whole window.
+    const deadlineAt = new Date(
+      open.state.activeRound.interaction.prompt.deadlineAt as never,
+    ).getTime();
+    // The full window, measured from the acknowledgement — so the loading delay
+    // was paid by the barrier and not out of the team's answering time. A
+    // resolution-anchored clock would have been shaved by the 400ms wait.
+    expect(deadlineAt - beforeAcks).toBeGreaterThanOrEqual(
+      RYO_TIMER_SECONDS * 1000,
+    );
+    expect(app.get(GameplayDeadlineScheduler).armedKeyFor(sessionId)).toContain(
+      String(open.state.activeRound.interaction.id),
+    );
+  }, 120_000);
+
+  /** Report an outcome from the shared screen, the way the real surface does. */
+  const reportOutcome = async (
+    sessionId: string,
+    outcome: 'media-unavailable' | 'autoplay-blocked' | 'retry',
+  ) => {
+    const document = (await rawRuntime(sessionId))!;
+    const generation = document.state.currentPresentation?.generation as
+      number | undefined;
+    return app.get(PresentationReady).execute({
+      sessionId,
+      actor: { kind: 'user', actorId: controllerId } as LiveSessionActor,
+      connectionId: 'sock-shared',
+      commandId: uuid(),
+      expectedRuntimeRevision: Number(document.state.revision),
+      expectedSessionRevision: await sessionRevision(sessionId),
+      ...(generation !== undefined
+        ? { presentationGeneration: generation }
+        : {}),
+      presentationOutcome: outcome,
+    });
+  };
+
+  it('a dead clip stops the barrier instead of starting a silent question', async () => {
+    // The M3.1 correction, end to end. Before this a 404 released the barrier
+    // exactly like a loaded clip, and the item opened with a running clock and
+    // nothing to hear — scored, for both teams, unanswerably.
+    const { sessionId, participants } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+    await activateRyo(sessionId, participants);
+    await giveItemsAudio(sessionId, [1]);
+
+    await expireDeadlineInMongo(sessionId);
+    await converge(sessionId);
+    const held = await waitForRuntime(
+      sessionId,
+      (document) =>
+        (document.state as Record<string, never>).currentPresentation?.[
+          'status'
+        ] === 'prepared',
+      'the audio item to be held',
+    );
+    if (['completed', 'cancelled'].includes(String(held.status))) return;
+
+    await reportOutcome(sessionId, 'media-unavailable');
+
+    const failed = (await rawRuntime(sessionId))!;
+    expect(failed.state.presentationFailure).toMatchObject({
+      reason: 'media-unavailable',
+      capability: 'shared',
+    });
+    // No activation, so no clock: the interaction is still held and carries no
+    // deadline at all.
+    expect(failed.state.currentPresentation.status).toBe('prepared');
+    expect(failed.state.activeRound.interaction.status).toBe('prepared');
+    expect(failed.state.activeRound.interaction.prompt.deadlineAt).toBeFalsy();
+    // And the scheduler stops re-arming against it rather than re-firing the
+    // same timeout for ever.
+    await converge(sessionId);
+    expect(
+      app.get(GameplayDeadlineScheduler).armedKeyFor(sessionId),
+    ).toBeUndefined();
+  }, 120_000);
+
+  it('a timed-out audio barrier fails rather than force-starting the question', async () => {
+    const { sessionId, participants } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+    await activateRyo(sessionId, participants);
+    await giveItemsAudio(sessionId, [1]);
+
+    await expireDeadlineInMongo(sessionId);
+    await converge(sessionId);
+    const held = await waitForRuntime(
+      sessionId,
+      (document) =>
+        (document.state as Record<string, never>).currentPresentation?.[
+          'status'
+        ] === 'prepared',
+      'the audio item to be held',
+    );
+    if (['completed', 'cancelled'].includes(String(held.status))) return;
+
+    // Nobody acknowledges at all. M3 would have force-activated here; اقرأ خصمك
+    // asks for `fail` on an audio item, so the clock stays stopped.
+    await database.collection('gameplay_runtimes').updateOne(
+      { _id: held._id as never },
+      {
+        $set: {
+          'state.currentPresentation.preparedAt': new Date(
+            Date.now() - (PRESENTATION_ACTIVATION_TIMEOUT_SECONDS + 5) * 1000,
+          ).toISOString(),
+        },
+      },
+    );
+    await converge(sessionId);
+
+    const failed = await waitForRuntime(
+      sessionId,
+      (document) =>
+        (document.state as Record<string, never>).presentationFailure !==
+        undefined,
+      'the timed-out audio barrier to be recorded as a failure',
+    );
+    expect(failed.state.presentationFailure.reason).toBe('readiness-timeout');
+    expect(failed.state.currentPresentation.status).toBe('prepared');
+    expect(failed.state.activeRound.interaction.prompt.deadlineAt).toBeFalsy();
+  }, 120_000);
+
+  it('a host retry reopens the barrier and a healthy clip then starts a FULL window', async () => {
+    const { sessionId, participants } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+    await activateRyo(sessionId, participants);
+    await giveItemsAudio(sessionId, [1]);
+
+    await expireDeadlineInMongo(sessionId);
+    await converge(sessionId);
+    const held = await waitForRuntime(
+      sessionId,
+      (document) =>
+        (document.state as Record<string, never>).currentPresentation?.[
+          'status'
+        ] === 'prepared',
+      'the audio item to be held',
+    );
+    if (['completed', 'cancelled'].includes(String(held.status))) return;
+    const failedGeneration = Number(held.state.currentPresentation.generation);
+
+    await reportOutcome(sessionId, 'media-unavailable');
+    await reportOutcome(sessionId, 'retry');
+
+    const reopened = (await rawRuntime(sessionId))!;
+    expect(reopened.state.presentationFailure).toBeUndefined();
+    // A fresh generation: readiness recorded against the one that failed must
+    // not be allowed to satisfy the retry on its own.
+    expect(Number(reopened.state.currentPresentation.generation)).toBe(
+      failedGeneration + 1,
+    );
+    expect(reopened.state.currentPresentation.readiness).toEqual([]);
+
+    const beforeAcks = Date.now();
+    await activateRyo(sessionId, participants);
+    const open = await waitForRuntime(
+      sessionId,
+      (document) =>
+        (document.state as Record<string, never>).currentPresentation?.[
+          'status'
+        ] === 'activated',
+      'the retried generation to activate',
+    );
+    expect(open.state.activeRound.interaction.status).toBe('open');
+    // The recovery cost the room nothing: a whole window, anchored after it.
+    expect(
+      new Date(
+        open.state.activeRound.interaction.prompt.deadlineAt as never,
+      ).getTime() - beforeAcks,
+    ).toBeGreaterThanOrEqual(RYO_TIMER_SECONDS * 1000);
   }, 120_000);
 
   it('resolves an expired RYO item, advances, and finishes the challenge', async () => {

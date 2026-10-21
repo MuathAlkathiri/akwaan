@@ -548,11 +548,49 @@ export function MarhalaQuestionImage({
   );
 }
 
-export function MarhalaQuestionAudio({ url }: { url: string }) {
+/**
+ * The one question-audio element, now able to take a server-authoritative replay.
+ *
+ * Every prop beyond `url` is optional and defaults to the behaviour this
+ * component has always had, because مرحلة, ركّبها, إكس أو المتحرك and الأقرب all
+ * render it and none of them replays, stops at a deadline or reports readiness.
+ * اقرأ خصمك is the only caller that passes them.
+ */
+export function MarhalaQuestionAudio({
+  url,
+  replaySignal,
+  stopped = false,
+  onReady,
+  onUnplayable,
+}: {
+  url: string;
+  /**
+   * A monotonic counter from authoritative state. Every *increase* restarts the
+   * clip; the first value seen is only a baseline. It is deliberately not a
+   * boolean or an event — a snapshot can be re-delivered, and a counter is what
+   * makes "the server has authorised one more replay than I have played"
+   * answerable from state alone.
+   */
+  replaySignal?: number;
+  /** The authoritative window has closed; playback must not continue past it. */
+  stopped?: boolean;
+  /** The clip can play. Fires once per source. */
+  onReady?: () => void;
+  /** The clip cannot play, so a barrier waiting on it must stop waiting. */
+  onUnplayable?: () => void;
+}) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasError, setHasError] = useState(false);
   const resolvedUrl = getMediaUrl(url);
+  // Readiness is reported at most once per source: a `canplay` that fires again
+  // after a seek is not a second arrival.
+  const reportedFor = useRef<string | null>(null);
+  const report = (callback: (() => void) | undefined, key: string) => {
+    if (reportedFor.current === key) return;
+    reportedFor.current = key;
+    callback?.();
+  };
 
   useEffect(() => {
     setIsPlaying(false);
@@ -619,6 +657,73 @@ export function MarhalaQuestionAudio({ url }: { url: string }) {
     }
   };
 
+  // Server-authorised replay. The baseline is established on the first value
+  // seen for a source, so an initial snapshot — or a reconnect that redelivers
+  // one — never replays a request the room already heard. Only an *increase*
+  // restarts, so a repeated snapshot at the same sequence is inert and a signal
+  // this client missed is still recovered from the next snapshot that carries a
+  // higher one.
+  const playedSignal = useRef<{ key: string; value: number } | null>(null);
+  useEffect(() => {
+    if (replaySignal === undefined || !resolvedUrl) return;
+    const seen = playedSignal.current;
+    if (!seen || seen.key !== resolvedUrl) {
+      playedSignal.current = { key: resolvedUrl, value: replaySignal };
+      return;
+    }
+    if (replaySignal <= seen.value) return;
+    playedSignal.current = { key: resolvedUrl, value: replaySignal };
+    restartAudio();
+    // `restartAudio` is recreated every render and is not part of this effect's
+    // identity; the signal and the source are.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replaySignal, resolvedUrl]);
+
+  // The window closed. A clip still playing underneath a resolved question —
+  // or underneath the next one — is the audio equivalent of a stale screen.
+  useEffect(() => {
+    if (!stopped) return;
+    const element = audioRef.current;
+    if (!element) return;
+    try {
+      element.pause();
+    } catch {
+      /* playback unavailable in this environment */
+    }
+    setIsPlaying(false);
+  }, [stopped]);
+
+  // Leaving the question for any reason — resolution, the next item, abort,
+  // unmount — must never leave audio running under what replaces it.
+  useEffect(() => {
+    // Captured on mount, not read at cleanup time: React may have already
+    // detached the ref by the time an unmount cleanup runs, and a cleanup that
+    // silently no-ops is exactly the "audio kept playing under the next
+    // screen" bug this exists to prevent.
+    const element = audioRef.current;
+    return () => {
+      try {
+        element?.pause();
+      } catch {
+        /* playback unavailable in this environment */
+      }
+    };
+  }, []);
+
+  // A source that will never play must not hold a readiness barrier open. The
+  // barrier's own timeout would eventually release it, but reporting the
+  // failure releases it immediately and keeps the bound a backstop rather than
+  // the normal path.
+  useEffect(() => {
+    if (!resolvedUrl) return;
+    reportedFor.current = null;
+    const element = audioRef.current;
+    // jsdom and some browsers report a clip already buffered without ever
+    // firing `canplay` again, so the current state counts as an arrival.
+    if (element && element.readyState >= 3) report(onReady, resolvedUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedUrl]);
+
   return (
     <div
       data-testid="marhala-question-audio"
@@ -631,7 +736,11 @@ export function MarhalaQuestionAudio({ url }: { url: string }) {
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}
-        onError={() => setHasError(true)}
+        onCanPlay={() => report(onReady, resolvedUrl)}
+        onError={() => {
+          setHasError(true);
+          report(onUnplayable, resolvedUrl);
+        }}
       />
 
       <div className="flex items-center gap-2">

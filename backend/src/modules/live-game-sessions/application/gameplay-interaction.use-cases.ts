@@ -28,6 +28,7 @@ import { ScoringService } from '../../scoring/application/scoring.service';
 import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 import {
   advanceRyoChallengeState,
+  ryoItemHasAudio,
   openRyoItemAssignments,
   RYO_MODE_KEY,
   ryoAnsweringTeam,
@@ -353,6 +354,24 @@ export class GameplayInteractionUseCases {
     });
     const plugin = this.requireInteractionPlugin(runtime);
     const item = { ...items[nextIndex], itemIndex: nextIndex };
+    // Fair-start for items 2 and 3, and only where it buys fairness.
+    //
+    // Item 1 has always held a barrier; items 2 and 3 opened with a running
+    // clock the moment the previous item resolved. For a text question that is
+    // correct — the prompt is in the same snapshot that starts the clock, so
+    // there is nothing to wait for. For an audio question it is not: the clip
+    // starts buffering only once the screen has it, and every second of that
+    // came out of a ~10-second blind window. So the barrier is raised exactly
+    // where the asset is, and a text item keeps its existing lifecycle
+    // untouched.
+    const awaitingAudio = ryoItemHasAudio(advancedRuntimeState, nextIndex);
+    if (awaitingAudio) {
+      runtime.prepareNextPresentation(
+        `${events[0].id}:presentation`,
+        'system',
+        now,
+      );
+    }
     runtime.prepareInteraction(
       plugin.preparePrompt(
         {
@@ -360,9 +379,11 @@ export class GameplayInteractionUseCases {
           runtimeId: runtime.id,
           roundId: round.id,
           activeTeamId: answeringTeamId,
-          // Always the canonical lifecycle past the first activation: subsequent
-          // items are prepared then opened immediately with their deadline.
-          awaitingPresentationActivation: false,
+          // An audio item is prepared without a clock and held until its
+          // surfaces acknowledge; `activatePresentation` then opens it and
+          // anchors the deadline to that instant. A text item keeps the
+          // canonical lifecycle: prepared, then opened immediately below.
+          awaitingPresentationActivation: awaitingAudio,
         },
         {
           itemJson: JSON.stringify(item),
@@ -376,6 +397,7 @@ export class GameplayInteractionUseCases {
       'system',
       now,
     );
+    if (awaitingAudio) return;
     runtime.mutateInteraction(
       `${events[0].id}:open`,
       'system',

@@ -39,6 +39,9 @@ export class GameplayAuthorization {
     const connectedPlayer =
       participant?.role === 'team-player' && participant.connected;
     if (requirement === 'connected-player') return connectedPlayer;
+    if (requirement === 'controller-or-connected-player') {
+      return controller || connectedPlayer;
+    }
     const activeTeamPlayer =
       connectedPlayer &&
       Boolean(runtime.activeRound?.activeTeamId) &&

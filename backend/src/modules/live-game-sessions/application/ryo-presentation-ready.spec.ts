@@ -672,6 +672,306 @@ describe('PresentationReady (recurring generation)', () => {
     expect(currentPresentation(h).status).toBe('prepared');
   });
 
+  // ── BOUNDED FAILURE PATH ──────────────────────────────────────────────────
+  //
+  // A barrier with no bound is a frozen challenge. The scheduler arms a
+  // deadline against a prepared generation and, when it expires, activates that
+  // generation on the server's own authority through this very use case. These
+  // prove the forced path is a *narrow* escape hatch: it skips the surface
+  // capability check and nothing else.
+  it('force-activates a generation whose surfaces never acknowledged', async () => {
+    const { h, generation } = await preparedHarness();
+    h.setNow(T_ACT);
+    await h.useCase.execute({
+      sessionId: SESSION_ID,
+      actor: CONTROLLER_ACTOR,
+      commandId: 'cmd-forced',
+      expectedRuntimeRevision: h.runtime.revision,
+      expectedSessionRevision: h.session.revision,
+      presentationGeneration: generation,
+      forcePresentationActivation: true,
+    });
+    expect(currentPresentation(h).status).toBe('activated');
+    expect(currentPresentation(h).activatedAt).toBe(T_ACT.toISOString());
+  });
+
+  it('force-activation needs no connection id and records no readiness', async () => {
+    const { h, generation } = await preparedHarness();
+    h.setNow(T_ACT);
+    // A real multi-surface acknowledgement without a connection is refused —
+    // this one is not, because there is no surface to bind. It must also not
+    // invent provenance for surfaces that never acknowledged anything.
+    await h.useCase.execute({
+      sessionId: SESSION_ID,
+      actor: CONTROLLER_ACTOR,
+      commandId: 'cmd-forced-noconn',
+      expectedRuntimeRevision: h.runtime.revision,
+      expectedSessionRevision: h.session.revision,
+      presentationGeneration: generation,
+      forcePresentationActivation: true,
+    });
+    expect(currentPresentation(h).readiness).toEqual([]);
+  });
+
+  it('force-activation still refuses a stale generation', async () => {
+    const { h, generation } = await preparedHarness();
+    h.setNow(T_ACT);
+    await expect(
+      h.useCase.execute({
+        sessionId: SESSION_ID,
+        actor: CONTROLLER_ACTOR,
+        commandId: 'cmd-forced-stale',
+        expectedRuntimeRevision: h.runtime.revision,
+        expectedSessionRevision: h.session.revision,
+        presentationGeneration: generation - 1,
+        forcePresentationActivation: true,
+      }),
+    ).rejects.toMatchObject({ code: 'STALE_PRESENTATION_GENERATION' });
+    expect(currentPresentation(h).status).toBe('prepared');
+  });
+
+  it('a late real acknowledgement after a forced activation is a safe no-op', async () => {
+    const { h, generation } = await preparedHarness();
+    h.setNow(T_ACT);
+    await h.useCase.execute({
+      sessionId: SESSION_ID,
+      actor: CONTROLLER_ACTOR,
+      commandId: 'cmd-forced-first',
+      expectedRuntimeRevision: h.runtime.revision,
+      expectedSessionRevision: h.session.revision,
+      presentationGeneration: generation,
+      forcePresentationActivation: true,
+    });
+    const activatedAt = currentPresentation(h).activatedAt;
+    // The shared screen finally finishes buffering and acks. The window must
+    // not be re-anchored under a room that is already playing.
+    await recurAck(h, CONTROLLER_ACTOR, CONN_SHARED, 'cmd-late', generation);
+    expect(currentPresentation(h).activatedAt).toBe(activatedAt);
+  });
+
+  // ── FAILURE OUTCOMES (M3.1) ───────────────────────────────────────────────
+  //
+  // A barrier has three outcomes, not two. Before this, "cannot present"
+  // collapsed into "ready": a clip that 404'd released the barrier exactly like
+  // one that had loaded, and the question started its blind window in silence.
+  const report = (
+    h: Harness,
+    outcome:
+      'media-unavailable' | 'autoplay-blocked' | 'readiness-timeout' | 'retry',
+    actor: LiveSessionActor,
+    commandId: string,
+    generation?: number,
+  ) => {
+    h.setNow(T_ACT);
+    return h.useCase.execute({
+      sessionId: SESSION_ID,
+      actor,
+      commandId,
+      expectedRuntimeRevision: h.runtime.revision,
+      expectedSessionRevision: h.session.revision,
+      connectionId: CONN_SHARED,
+      ...(generation !== undefined
+        ? { presentationGeneration: generation }
+        : {}),
+      presentationOutcome: outcome,
+    });
+  };
+
+  it('records a media failure without activating', async () => {
+    const { h, generation } = await preparedHarness();
+    await report(
+      h,
+      'media-unavailable',
+      CONTROLLER_ACTOR,
+      'cmd-fail',
+      generation,
+    );
+    // The clock is only ever started by an activation, so refusing to activate
+    // IS the mechanism that keeps an unplayable question from burning its
+    // window. Nothing here is advisory.
+    expect(currentPresentation(h).status).toBe('prepared');
+    expect(h.runtime.presentationFailure()).toMatchObject({
+      reason: 'media-unavailable',
+      capability: 'shared',
+      generation,
+    });
+  });
+
+  it('records an autoplay block as its own reason, not as a media failure', async () => {
+    const { h, generation } = await preparedHarness();
+    await report(
+      h,
+      'autoplay-blocked',
+      CONTROLLER_ACTOR,
+      'cmd-block',
+      generation,
+    );
+    // The host's fix differs: the clip is fine and the browser wants a gesture.
+    expect(h.runtime.presentationFailure()?.reason).toBe('autoplay-blocked');
+    expect(currentPresentation(h).status).toBe('prepared');
+  });
+
+  it('refuses a failure report from a phone — only the shared screen plays it', async () => {
+    const { h, generation } = await preparedHarness();
+    await expect(
+      report(h, 'media-unavailable', ANSWERER_ACTOR, 'cmd-phone', generation),
+    ).rejects.toMatchObject({ code: 'PRESENTATION_SURFACE_INVALID' });
+    expect(h.runtime.presentationFailure()).toBeUndefined();
+  });
+
+  it('leaves readiness already recorded by other surfaces alone', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurAck(h, ANSWERER_ACTOR, CONN_ANSWER, 'cmd-a', generation);
+    await report(h, 'media-unavailable', CONTROLLER_ACTOR, 'cmd-f', generation);
+    // The two phones really are ready. A retry should not make them say so again.
+    expect(
+      currentPresentation(h).readiness.map((entry) => entry.capability),
+    ).toContain('answering');
+  });
+
+  it('is idempotent for a repeated identical failure report', async () => {
+    const { h, generation } = await preparedHarness();
+    await report(
+      h,
+      'media-unavailable',
+      CONTROLLER_ACTOR,
+      'cmd-f1',
+      generation,
+    );
+    const revision = h.runtime.revision;
+    await report(
+      h,
+      'media-unavailable',
+      CONTROLLER_ACTOR,
+      'cmd-f2',
+      generation,
+    );
+    expect(h.runtime.revision).toBe(revision);
+  });
+
+  it('lets a later readiness clear a standing failure and activate', async () => {
+    const { h, generation } = await preparedHarness();
+    await report(h, 'media-unavailable', CONTROLLER_ACTOR, 'cmd-f', generation);
+    await recurBarrier(h, generation);
+    // The surface recovered on its own. The room must not be left staring at a
+    // stale error for a barrier that is now satisfiable.
+    expect(h.runtime.presentationFailure()).toBeUndefined();
+    expect(currentPresentation(h).status).toBe('activated');
+  });
+
+  it('lets the host retry, which opens a FRESH generation', async () => {
+    const { h, generation } = await preparedHarness();
+    await report(h, 'media-unavailable', CONTROLLER_ACTOR, 'cmd-f', generation);
+    await report(h, 'retry', CONTROLLER_ACTOR, 'cmd-retry', generation);
+    expect(h.runtime.presentationFailure()).toBeUndefined();
+    // Readiness recorded against the generation that failed must not satisfy
+    // the retry on its own — the surfaces have to say so again.
+    expect(currentPresentation(h).generation).toBe(generation + 1);
+    expect(currentPresentation(h).readiness).toEqual([]);
+    expect(currentPresentation(h).status).toBe('prepared');
+  });
+
+  it('refuses a retry from a player — recovery belongs to the host', async () => {
+    const { h, generation } = await preparedHarness();
+    await report(h, 'media-unavailable', CONTROLLER_ACTOR, 'cmd-f', generation);
+    await expect(
+      report(h, 'retry', ANSWERER_ACTOR, 'cmd-retry-player', generation),
+    ).rejects.toMatchObject({ code: 'PRESENTATION_SURFACE_INVALID' });
+    expect(h.runtime.presentationFailure()).toBeDefined();
+  });
+
+  it('ignores a failure reported after the generation already activated', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurBarrier(h, generation);
+    expect(currentPresentation(h).status).toBe('activated');
+    const activatedAt = currentPresentation(h).activatedAt;
+    await report(
+      h,
+      'media-unavailable',
+      CONTROLLER_ACTOR,
+      'cmd-late',
+      generation,
+    );
+    // The room is already playing. A late failure report is noise, not a reason
+    // to stop a question whose clock is running.
+    expect(currentPresentation(h).status).toBe('activated');
+    expect(currentPresentation(h).activatedAt).toBe(activatedAt);
+    expect(h.runtime.presentationFailure()).toBeUndefined();
+  });
+
+  it('a forced activation still wins a failure reported for an older generation', async () => {
+    const { h, generation } = await preparedHarness();
+    await report(h, 'media-unavailable', CONTROLLER_ACTOR, 'cmd-f', generation);
+    await report(h, 'retry', CONTROLLER_ACTOR, 'cmd-retry', generation);
+    const next = currentPresentation(h).generation;
+    await expect(
+      report(h, 'media-unavailable', CONTROLLER_ACTOR, 'cmd-stale', generation),
+    ).rejects.toMatchObject({ code: 'STALE_PRESENTATION_GENERATION' });
+    expect(currentPresentation(h).generation).toBe(next);
+  });
+
+  it('a timeout and a readiness landing together cannot both commit', async () => {
+    // The race §7 names. Both paths go through the same transaction and the
+    // same revision CAS, so whichever commits second is reading a revision that
+    // no longer exists — there is no window in which the clock both starts and
+    // does not.
+    const { h, generation } = await preparedHarness();
+    const revision = h.runtime.revision;
+    h.setNow(T_ACT);
+    const stale = {
+      sessionId: SESSION_ID,
+      actor: CONTROLLER_ACTOR,
+      expectedRuntimeRevision: revision,
+      expectedSessionRevision: h.session.revision,
+      presentationGeneration: generation,
+    };
+    // The server's timeout lands first and records the failure.
+    await h.useCase.execute({
+      ...stale,
+      commandId: 'cmd-timeout',
+      connectionId: CONN_SHARED,
+      presentationOutcome: 'readiness-timeout',
+    });
+    expect(h.runtime.presentationFailure()?.reason).toBe('readiness-timeout');
+    // The shared screen's acknowledgement, in flight at the same instant, was
+    // built against the revision the timeout has now consumed.
+    await expect(
+      h.useCase.execute({
+        ...stale,
+        commandId: 'cmd-ready',
+        connectionId: CONN_SHARED,
+      }),
+    ).rejects.toBeDefined();
+    expect(currentPresentation(h).status).toBe('prepared');
+  });
+
+  it('the screen recovers by acknowledging again at the current revision', async () => {
+    // And the loser of that race is not stranded: its next attempt reads the
+    // committed state, clears the stale failure and closes the barrier.
+    const { h, generation } = await preparedHarness();
+    await report(h, 'readiness-timeout', CONTROLLER_ACTOR, 'cmd-t', generation);
+    await recurBarrier(h, generation);
+    expect(h.runtime.presentationFailure()).toBeUndefined();
+    expect(currentPresentation(h).status).toBe('activated');
+  });
+
+  it('an aborted challenge refuses a late failure report as firmly as a late readiness', async () => {
+    // §7's abort-while-waiting case. A runtime that is gone cannot be failed
+    // any more than it can be activated — both are writes to a challenge that
+    // no longer exists.
+    const { h, generation } = await preparedHarness();
+    h.runtime.cancel('cmd-abort', CONTROLLER, T_ACT);
+    await expect(
+      report(
+        h,
+        'media-unavailable',
+        CONTROLLER_ACTOR,
+        'cmd-late-fail',
+        generation,
+      ),
+    ).rejects.toMatchObject({ code: 'PRESENTATION_SURFACE_INVALID' });
+  });
+
   it('rejects a stale generation', async () => {
     const { h, generation } = await preparedHarness();
     await expect(

@@ -21,6 +21,85 @@ export const RYO_MODE_KEY = 'read-your-opponent';
 export const RYO_TIMER_SECONDS = 25;
 
 /**
+ * Shortest gap between two accepted audio replays, in seconds.
+ *
+ * Anti-spam only, and a balance value rather than a contract: a shared clip
+ * that can be restarted on every keypress is a weapon, not a convenience. The
+ * cooldown is shared by everyone who may ask — both teams and the host — so
+ * the table gets one replay per window, not one each.
+ */
+export const RYO_REPLAY_COOLDOWN_SECONDS = Number(
+  process.env.RYO_REPLAY_COOLDOWN_SECONDS ?? 2,
+);
+
+/** The `SafeQuestionMedia.type` value that denotes playable audio. */
+const AUDIO_MEDIA_KIND = 'audio';
+
+/** Replay is a presentation signal; these are the only fields it writes. */
+interface RyoReplayState {
+  /** Monotonic per item, so a client can drop a duplicate or stale signal. */
+  audioReplaySequence: number;
+  /** When the accepted replay was authorised. The cooldown reads this. */
+  audioReplayAt: string;
+  /** The item the signal belongs to. */
+  audioReplayItemIndex: number;
+}
+
+/**
+ * Whether this item's question carries playable audio.
+ *
+ * Read from the same `items` projection the surfaces render, which already
+ * passed through `toSafeQuestionMedia` — so a text-only item is refused here
+ * without the command ever learning anything about the answer.
+ */
+export function ryoItemHasAudio(
+  runtimeState: GameplayModeState,
+  itemIndex: number,
+): boolean {
+  try {
+    const items = parse<{ media?: { type?: string; url?: string } }[]>(
+      runtimeState.itemsJson,
+      'items',
+    );
+    const media = items[itemIndex]?.media;
+    // Compared against a named constant rather than a quoted literal: the mode
+    // registry guard scans plugin sources for `type === '...'` to find command
+    // declarations, and a media-kind check written that way reads as one.
+    return media?.type === AUDIO_MEDIA_KIND && Boolean(media.url);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The audio URL of one item, for the shared screen to buffer before the clock
+ * starts.
+ *
+ * This is the *only* thing projected through the readiness barrier, and only to
+ * the shared surface. A barrier that hides the clip it is asking the screen to
+ * be ready for is readiness in name only: the screen would acknowledge, the
+ * deadline would anchor, and the buffering would start afterwards — which is
+ * exactly the unfairness the barrier exists to remove. No prompt, no options,
+ * no answer travels with it.
+ */
+export function ryoItemAudioUrl(
+  runtimeState: GameplayModeState,
+  itemIndex: number,
+): string | undefined {
+  if (!ryoItemHasAudio(runtimeState, itemIndex)) return undefined;
+  try {
+    const items = parse<{ media?: { url?: string } }[]>(
+      runtimeState.itemsJson,
+      'items',
+    );
+    const url = items[itemIndex]?.media?.url;
+    return typeof url === 'string' && url ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * The two authoritative team actions one RYO item opens, simultaneously.
  *
  * Both are live at once and neither can see the other — that blind simultaneity
@@ -302,12 +381,133 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   },
   validateRuntimeState: validateRuntime,
   validateRoundState: validateRound,
-  command: () => undefined,
-  handleCommand() {
-    throw new LiveSessionDomainError(
-      'MODE_COMMAND_UNAVAILABLE',
-      'RYO uses blind interaction submissions',
-    );
+  /**
+   * One mode command, and only one.
+   *
+   * Answers and decisions are *interaction submissions*, not mode commands —
+   * they are collected blind and resolved together. Replay is neither: it
+   * changes nothing that is scored, so putting it on the mode-command path
+   * keeps the submission set exactly as it was.
+   */
+  command: (type) =>
+    type === 'request-ryo-replay'
+      ? {
+          type,
+          authorization: 'controller-or-connected-player',
+          allowedRoundStatuses: ['active'],
+          validatePayload: (payload) => {
+            const value = payload as { itemIndex?: unknown };
+            if (
+              typeof value?.itemIndex !== 'number' ||
+              !Number.isInteger(value.itemIndex) ||
+              value.itemIndex < 0
+            ) {
+              throw new LiveSessionDomainError(
+                'INVALID_GAMEPLAY_COMMAND',
+                'A replay request must name the item it is replaying',
+              );
+            }
+            return { itemIndex: value.itemIndex };
+          },
+        }
+      : undefined,
+  /**
+   * Authorise one replay of the current clip.
+   *
+   * Writes three presentation fields and nothing else. It does not touch
+   * `phase`, `itemIndex`, team ownership, submissions, the score or any clock,
+   * and it never calls the activation path — a replay is a message to the
+   * shared screen, not a lifecycle event.
+   */
+  handleCommand(context, command) {
+    if (command.type !== 'request-ryo-replay') {
+      throw new LiveSessionDomainError(
+        'MODE_COMMAND_UNAVAILABLE',
+        'RYO uses blind interaction submissions',
+      );
+    }
+    // Read the phase before `validateRound`, which only admits the phases a
+    // *resolution* can occur in. An `intro` or `between_items` round is a
+    // legitimate state to ask from and an illegitimate one to replay in, so it
+    // deserves the specific refusal rather than a shape error.
+    const round = (command.roundState ?? {}) as GameplayModeState;
+    const requested = (command.payload as { itemIndex: number }).itemIndex;
+    const itemIndex = Number(round.itemIndex);
+    const now = context.now ?? new Date();
+
+    // An item still behind its readiness barrier is not being presented, so
+    // there is nothing to replay. Accepting one would also burn the shared
+    // cooldown before the question had opened, leaving the first real request
+    // refused.
+    if (
+      context.awaitingPresentationActivation ||
+      round.phase !== 'collecting'
+    ) {
+      throw new LiveSessionDomainError(
+        'RYO_REPLAY_UNAVAILABLE',
+        'Audio replay is only available while the item is open',
+      );
+    }
+    if (requested !== itemIndex) {
+      // A request that arrived after the question moved on would otherwise
+      // restart the *next* clip.
+      throw new LiveSessionDomainError(
+        'RYO_REPLAY_STALE_ITEM',
+        'The replay request targets an item that is no longer active',
+      );
+    }
+    const runtimeState = validateRuntime(command.runtimeState ?? {});
+    if (!ryoItemHasAudio(runtimeState, itemIndex)) {
+      throw new LiveSessionDomainError(
+        'RYO_REPLAY_NO_AUDIO',
+        'This question has no audio to replay',
+      );
+    }
+    if (
+      context.interactionDeadlineAt &&
+      now.getTime() >= context.interactionDeadlineAt.getTime()
+    ) {
+      throw new LiveSessionDomainError(
+        'RYO_REPLAY_WINDOW_CLOSED',
+        'The answering window has closed',
+      );
+    }
+
+    const previousAt = round.audioReplayAt
+      ? Date.parse(String(round.audioReplayAt))
+      : undefined;
+    const sameItem = Number(round.audioReplayItemIndex) === itemIndex;
+    if (
+      sameItem &&
+      previousAt !== undefined &&
+      Number.isFinite(previousAt) &&
+      now.getTime() - previousAt < RYO_REPLAY_COOLDOWN_SECONDS * 1000
+    ) {
+      // Rejected before anything is written, so a refused request mutates no
+      // state and broadcasts nothing.
+      throw new LiveSessionDomainError(
+        'RYO_REPLAY_COOLDOWN',
+        'The clip was replayed a moment ago; wait before asking again',
+      );
+    }
+
+    const replay: RyoReplayState = {
+      audioReplaySequence:
+        (sameItem ? Number(round.audioReplaySequence ?? 0) : 0) + 1,
+      audioReplayAt: now.toISOString(),
+      audioReplayItemIndex: itemIndex,
+    };
+    return {
+      // Validated only once the replay is authorised, so the shape contract is
+      // still enforced on everything that is written back.
+      runtimeState,
+      roundState: validateRound({ ...round, ...replay }),
+      eventType: 'ryo-audio-replay',
+      // Presentation identity and ordering only: which item, and which replay
+      // of it. No answer, no media metadata, no participant identity.
+      eventPayload: { ...replay },
+      effects: [],
+    };
   },
   /**
    * The prompts a team has actually been shown.
@@ -350,6 +550,11 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       phase: valid.phase ?? 'intro',
       scoreEventsJson: valid.scoreEventsJson ?? '[]',
       resultsJson: valid.resultsJson ?? '[]',
+      // The cooldown the server actually enforces, published so a client can
+      // show how long is left without hardcoding a second copy of the rule.
+      // The authority is still `handleCommand`: this only lets the UI agree
+      // with it, and a client that ignores it is refused exactly as before.
+      audioReplayCooldownSeconds: RYO_REPLAY_COOLDOWN_SECONDS,
       // Who is authoritative right now, from the same state the submission
       // check reads. The prompt carries these too, but a prompt is a snapshot:
       // after a disconnect handoff it still names whoever left, so a phone that
@@ -388,6 +593,27 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
         participantId: current.deciderParticipantId,
       },
     ];
+  },
+  /**
+   * What a timed-out barrier means for اقرأ خصمك: it depends on the item.
+   *
+   * A text item has everything it needs in the snapshot that opens it, so a
+   * late surface costs the room nothing but its own loading and activating is
+   * right. An audio item does not: the question *is* the clip. Starting a
+   * ten-second blind window on audio nobody can hear is not a harder question,
+   * it is an unanswerable one — and both teams are scored on it, so it is also
+   * unfair in a way that cannot be undone afterwards. So the clock stays
+   * stopped and the host is shown why.
+   */
+  presentationTimeoutPolicy({ runtimeState }) {
+    try {
+      const index = Number(validateRuntime(runtimeState).currentItemIndex ?? 0);
+      return ryoItemHasAudio(runtimeState, index) ? 'fail' : 'activate';
+    } catch {
+      // An unreadable runtime is not a reason to refuse to start; the mechanic's
+      // own validation will refuse it on its own path and say so properly.
+      return 'activate';
+    }
   },
   /**
    * At activation, open the held first item and anchor its clock to now.
@@ -483,6 +709,33 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     },
     projectPrompt(prompt, actor, runtimeState) {
       const result = { ...prompt.publicPayload };
+      // Only the shared screen plays the clip, so only the shared screen needs
+      // its URL. Every phone was receiving it inside `itemJson` and rendering
+      // nothing with it — a filename like `umm-kulthum-enta-omri.mp3` sitting in
+      // the devtools of the very players being asked to name it. The *presence*
+      // of audio still travels, because a phone needs it to offer «إعادة
+      // المقطع»; the address does not.
+      if (!actor.controller && typeof result.itemJson === 'string') {
+        try {
+          const item = JSON.parse(result.itemJson) as {
+            media?: { type?: string; url?: string; altText?: unknown } | null;
+          };
+          if (item.media?.type === AUDIO_MEDIA_KIND) {
+            // `altText` goes with it. No surface renders a caption for audio —
+            // `MarhalaQuestionAudio` takes a URL and nothing else — so on a
+            // phone it is pure leak surface, and «أم كلثوم — أنت عمري» as alt
+            // text is the answer written out in full.
+            result.itemJson = JSON.stringify({
+              ...item,
+              media: { type: AUDIO_MEDIA_KIND },
+            });
+          }
+        } catch {
+          // A prompt whose item will not parse is left exactly as it was: this
+          // is a redaction, and it is not this function's job to decide that an
+          // unreadable prompt should become no prompt.
+        }
+      }
       if (actor.teamId === prompt.internalPayload.answeringTeamId)
         result.actorRole = 'answering';
       else if (actor.teamId === prompt.internalPayload.opposingTeamId)

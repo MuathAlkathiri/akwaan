@@ -6,6 +6,48 @@ import { GameplayAuthorization } from './gameplay-authorization';
 import { LiveSessionActor } from './live-session-actor';
 import { canSeeVisibility } from '../domain/gameplay-interaction.plugin';
 import { PresentationSurfaceCapability } from '../domain/gameplay-mode.plugin';
+import { RYO_MODE_KEY, ryoItemAudioUrl } from '../domain/ryo-gameplay.plugin';
+import type { GameplayRuntimeState } from '../domain/gameplay-runtime';
+
+/**
+ * The clip a held presentation is waiting on, if the mechanic in play has one.
+ *
+ * Keyed on the mode rather than asked of every plugin: اقرأ خصمك is currently
+ * the only mechanic whose fair-start barrier guards an asset, and inventing a
+ * plugin hook for one caller would be a contract nobody else implements. The
+ * index is the runtime's own `currentItemIndex`, which is the item being
+ * prepared in both the initial and the recurring case.
+ */
+function heldItemIndex(state: GameplayRuntimeState): number | undefined {
+  if (state.modeKey !== RYO_MODE_KEY) return undefined;
+  const index = Number(state.runtimeState.currentItemIndex ?? 0);
+  return Number.isInteger(index) && index >= 0 ? index : undefined;
+}
+
+function preloadAudioUrl(state: GameplayRuntimeState): string | undefined {
+  const index = heldItemIndex(state);
+  if (index === undefined) return undefined;
+  try {
+    return ryoItemAudioUrl(state.runtimeState, index);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Which question is being held, counted from one.
+ *
+ * Held state is redacted wholesale — no prompt, no options, not even an item
+ * index — which was right while only the *first* item could ever be held: the
+ * waiting screen could simply say "question 1 of 3". Now that an audio item 2
+ * or 3 holds too, that label would be a lie on a television. An ordinal is not
+ * content: the room watched the previous question resolve, so it already knows
+ * which one is coming.
+ */
+function heldItemOrdinal(state: GameplayRuntimeState): number | undefined {
+  const index = heldItemIndex(state);
+  return index === undefined ? undefined : Math.min(index + 1, 3);
+}
 
 export interface GameplayRuntimeSnapshot {
   runtimeId: string;
@@ -150,9 +192,26 @@ export class GameplayRuntimeSnapshotMapper {
         : undefined;
     // The safe shell: only this actor's capability (or no capability for a
     // spectator who is not part of the required set). Nothing sensitive.
+    const heldOrdinal = awaitingPresentation
+      ? heldItemOrdinal(state)
+      : undefined;
     const presentationSurface = awaitingPresentation
       ? {
           running: true,
+          ...(heldOrdinal !== undefined ? { itemOrdinal: heldOrdinal } : {}),
+          // Why the barrier is stuck, when it is. A reason keyword only — it is
+          // rendered on a television in front of both teams, so it says which
+          // *class* of failure happened and nothing about the asset. `canRetry`
+          // is the server's answer to "may this actor act on it", so the phones
+          // show the message and only the host gets the button.
+          ...(state.presentationFailure
+            ? {
+                failure: {
+                  reason: state.presentationFailure.reason,
+                  canRetry: projectionActor.controller === true,
+                },
+              }
+            : {}),
           // Safe, server-issued identity the client echoes back on its recurring
           // acknowledgement. Never any readiness/connection/count detail.
           ...(recurringPreparing && state.currentPresentation
@@ -183,6 +242,18 @@ export class GameplayRuntimeSnapshotMapper {
                 return {
                   required: capability !== undefined,
                   ...(capability ? { capability } : {}),
+                  // The clip the shared screen is being asked to be ready for,
+                  // and nothing else about the item. Projected only to the
+                  // `shared` surface, which is the one that plays it; a phone
+                  // acking the same generation never sees it. Without this the
+                  // barrier would ask the screen to confirm readiness for an
+                  // asset it had not been given, which is not readiness.
+                  ...(capability === 'shared'
+                    ? (() => {
+                        const url = preloadAudioUrl(state);
+                        return url ? { preloadAudioUrl: url } : {};
+                      })()
+                    : {}),
                 };
               })()
             : {}),

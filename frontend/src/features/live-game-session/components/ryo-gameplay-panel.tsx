@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { HelpCircle, Lock, Swords, Unlock } from "lucide-react";
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
@@ -22,6 +22,100 @@ import {
 } from "../match/ryo-decision.presentation";
 import type { GameplayRuntimeSnapshot } from "../model";
 import { MarhalaQuestionAudio } from "./marhala-screen";
+import { getMediaUrl } from "@/lib/api/media-url";
+import { useRyoAudioReplay } from "../hooks/use-ryo-audio-replay";
+
+/**
+ * «إعادة المقطع» — one control, rendered on whichever surface the actor holds.
+ *
+ * Both teams hear the same clip, so replay belongs to the table rather than to
+ * a turn: the server authorises the host or any connected player on either
+ * side, and this renders exactly what the server says. The cooldown shown is
+ * the server's own, counted down against server time; the button being enabled
+ * is never what makes a replay legal.
+ */
+/**
+ * The barrier could not be satisfied, said out loud.
+ *
+ * Shown on every surface, because a room staring at a loader with no
+ * explanation is the failure mode this replaces — but only the host is offered
+ * the control, and the server decides that (`canRetry`), not this component.
+ *
+ * The text names the class of problem and never the asset: these words are on a
+ * television in front of both teams, and «تعذّر تحميل umm-kulthum-enta-omri»
+ * would hand one of them the answer.
+ */
+function RyoPresentationFailure({
+  reason,
+  canRetry,
+  busy,
+  onRecover,
+}: {
+  reason: "media-unavailable" | "autoplay-blocked" | "readiness-timeout";
+  canRetry: boolean;
+  busy: boolean;
+  onRecover: () => void;
+}) {
+  // Autoplay is a different problem with a different fix: the clip is fine, the
+  // browser simply will not start it without a gesture — and the button IS the
+  // gesture, so the host does not reload anything.
+  const blocked = reason === "autoplay-blocked";
+  return (
+    <div
+      className="flex max-w-md flex-col items-center gap-3 text-center"
+      role="status"
+      data-testid="ryo-presentation-failure"
+    >
+      <p className="text-lg font-black text-foreground">
+        {blocked ? "الصوت متوقف في المتصفح" : "تعذّر تحميل المقطع الصوتي"}
+      </p>
+      <p className="text-sm font-bold text-muted-foreground">
+        {blocked
+          ? "اضغط لتفعيل الصوت قبل بدء السؤال"
+          : "لم يبدأ وقت السؤال — الفريقان لم يخسرا شيئاً"}
+      </p>
+      {canRetry && (
+        <Button
+          type="button"
+          onClick={onRecover}
+          disabled={busy}
+          className="font-black"
+          data-testid="ryo-presentation-recover"
+        >
+          {blocked ? "تفعيل الصوت" : "إعادة المحاولة"}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function RyoReplayButton({
+  onRequest,
+  disabled,
+  cooldownMs,
+  compact = false,
+}: {
+  onRequest: () => void;
+  disabled: boolean;
+  cooldownMs: number;
+  compact?: boolean;
+}) {
+  const waiting = cooldownMs > 0;
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size={compact ? "default" : "sm"}
+      onClick={onRequest}
+      disabled={disabled}
+      data-testid="ryo-replay-button"
+      aria-label="إعادة تشغيل المقطع الصوتي للجميع"
+      className={cn("font-bold", compact && "w-full")}
+    >
+      {waiting ? `إعادة المقطع (${Math.ceil(cooldownMs / 1000)})` : "إعادة المقطع"}
+    </Button>
+  );
+}
 
 /**
  * The item as the runtime republishes it — which is as the author wrote it. The
@@ -43,6 +137,20 @@ interface RyoItem {
   answerMode: "multiple_choice" | "closest";
   options?: Array<{ id: string; label: AuthoredText }> | null;
 }
+
+/**
+ * How long the shared screen waits for a clip before reporting ready anyway.
+ *
+ * Shorter than the server's own `PRESENTATION_ACTIVATION_TIMEOUT_SECONDS`, so
+ * the ordinary slow-network case is resolved by the surface that knows why it
+ * is slow, and the server's bound stays what it is for: a surface that has
+ * stopped answering at all. A question whose clip never loads still opens —
+ * with a full window and a visible playback error — rather than hanging the
+ * table.
+ */
+export const RYO_AUDIO_READY_TIMEOUT_MS = Number(
+  process.env.NEXT_PUBLIC_RYO_AUDIO_READY_TIMEOUT_MS ?? 8000,
+);
 
 function parseItem(value: unknown): RyoItem | undefined {
   if (typeof value !== "string") return undefined;
@@ -90,8 +198,171 @@ export function RyoGameplayPanel({
       ?.awaitingPresentation === true;
   const ackedRef = useRef<string | null>(null);
   const inFlightRef = useRef<string | null>(null);
+  // The clip this surface is being asked to be ready for, present only on the
+  // shared screen and only while a presentation is held.
+  const preloadAudioUrl = runtime.presentationSurface?.preloadAudioUrl;
+  // Readiness that actually means something — and, since M3.1, readiness that
+  // can come back **negative**.
+  //
+  // Acknowledging on mount would anchor the window before the clip had loaded a
+  // byte. But acknowledging on `error` or on a timeout, as M3 did, is worse than
+  // that: it reports success for a clip that will never play, and the question
+  // then burns its blind window in silence. So this produces a verdict, and only
+  // one of its three values releases the barrier.
+  const preloadRef = useRef<HTMLAudioElement | null>(null);
+  const [audioVerdict, setAudioVerdict] = useState<{
+    url: string;
+    verdict: "ready" | "media-unavailable" | "autoplay-blocked";
+  } | null>(null);
+  const verdict =
+    preloadAudioUrl && audioVerdict?.url === preloadAudioUrl
+      ? audioVerdict.verdict
+      : undefined;
+  const audioGateOpen = !preloadAudioUrl || verdict === "ready";
+
+  /**
+   * Prove the clip can actually be *heard*, not merely that it downloaded.
+   *
+   * `canplaythrough` says the bytes are there and decodable. It says nothing
+   * about whether this browser will let them out of the speakers: an autoplay
+   * policy refuses `play()` long after the media is perfectly ready, and a
+   * question that silently eats its own timer behind that refusal looks
+   * identical to a question nobody could answer.
+   *
+   * The probe plays at **zero volume rather than muted** on purpose. Browsers
+   * grant muted autoplay freely, so a muted probe would report success for
+   * exactly the case it exists to catch; `volume = 0` is inaudible to the room
+   * while still being, to the policy, ordinary audible playback.
+   */
+  const probePlayable = useCallback(async (): Promise<
+    "ready" | "media-unavailable" | "autoplay-blocked"
+  > => {
+    const element = preloadRef.current;
+    if (!element) return "media-unavailable";
+    const restore = element.volume;
+    try {
+      element.volume = 0;
+      await element.play();
+      element.pause();
+      element.currentTime = 0;
+      return "ready";
+    } catch (error) {
+      // `NotAllowedError` is the policy refusing; anything else is the asset.
+      return (error as { name?: string })?.name === "NotAllowedError"
+        ? "autoplay-blocked"
+        : "media-unavailable";
+    } finally {
+      try {
+        element.volume = restore;
+      } catch {
+        /* element gone */
+      }
+    }
+  }, []);
+
+  const settleAudio = useCallback(
+    async (url: string, outcome?: "media-unavailable") => {
+      if (outcome) {
+        setAudioVerdict({ url, verdict: outcome });
+        return;
+      }
+      setAudioVerdict({ url, verdict: await probePlayable() });
+    },
+    [probePlayable],
+  );
+
+  useEffect(() => {
+    if (!preloadAudioUrl) return;
+    setAudioVerdict(null);
+    // Bounded, and deliberately shorter than the server's own timeout so the
+    // surface that knows *why* it is slow is the one that reports it. A stall
+    // is a failure now, not a silent pass: the clock does not start on a clip
+    // that never arrived.
+    const timer = setTimeout(
+      () => void settleAudio(preloadAudioUrl, "media-unavailable"),
+      RYO_AUDIO_READY_TIMEOUT_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [preloadAudioUrl, settleAudio]);
+  const failure = runtime.presentationSurface?.failure;
+  const [recovering, setRecovering] = useState(false);
+  // A ref, not the state above. Three presses inside one tick do not re-render
+  // between themselves, so a state flag is still `false` for the second — and
+  // a double-tapped retry would open three generations, each invalidating the
+  // last, leaving the room acknowledging a barrier that keeps moving.
+  const recoveringRef = useRef(false);
+  useEffect(() => {
+    recoveringRef.current = false;
+    setRecovering(false);
+  }, [runtime.revision]);
+
+  /**
+   * The host's way out of a failed barrier, and it is two different things.
+   *
+   * Autoplay blocked: the clip is fine and the browser is waiting for a
+   * gesture. This click **is** the gesture, so the right move is to probe again
+   * right here — if sound is now permitted the surface simply reports ready and
+   * the question starts, with no server round trip to reopen anything.
+   *
+   * Anything else: the asset did not arrive. Ask the server to reopen the
+   * barrier, which issues a fresh generation and makes every surface say so
+   * again — readiness recorded against the generation that failed must not be
+   * allowed to satisfy the retry.
+   */
+  const recoverPresentation = useCallback(() => {
+    if (!snapshot || !presentationReadySocket || recoveringRef.current) return;
+    recoveringRef.current = true;
+    setRecovering(true);
+    const generation = runtime.presentationSurface?.generation;
+    const send = (
+      outcome: "ready" | "media-unavailable" | "autoplay-blocked" | "retry",
+    ) =>
+      presentationReadySocket({
+        expectedSessionRevision: snapshot.revision,
+        expectedRuntimeRevision: runtime.revision,
+        ...(generation !== undefined
+          ? { presentationGeneration: generation }
+          : {}),
+        presentationOutcome: outcome,
+      }).catch(() => {
+        // A refused recovery leaves the failure standing, which is the honest
+        // outcome: the host can press again.
+        recoveringRef.current = false;
+        setRecovering(false);
+      });
+
+    if (failure?.reason === "autoplay-blocked") {
+      void probePlayable().then((next) => {
+        if (preloadAudioUrl) setAudioVerdict({ url: preloadAudioUrl, verdict: next });
+        void send(next === "ready" ? "ready" : next);
+      });
+      return;
+    }
+    void send("retry");
+  }, [
+    snapshot,
+    presentationReadySocket,
+    runtime,
+    failure,
+    probePlayable,
+    preloadAudioUrl,
+  ]);
+
   useEffect(() => {
     if (!awaiting || !runtime || !snapshot || !presentationReadySocket) return;
+    // Three outcomes reach the server, not one. A surface that cannot present
+    // says so explicitly; the server records it and leaves the barrier up,
+    // which is what keeps the gameplay clock stopped. Still probing means say
+    // nothing yet.
+    const outcome = preloadAudioUrl
+      ? verdict === undefined
+        ? undefined
+        : verdict === "ready"
+          ? "ready"
+          : verdict
+      : "ready";
+    if (outcome === undefined) return;
+    if (!audioGateOpen && runtime.presentationSurface?.failure) return;
     // Recurring fair-start: echo the server-projected generation, with a SEMANTIC
     // identity (generation + capability + socket connection epoch) so an ordinary
     // revision bump does not re-acknowledge, a reconnect (new epoch) does, and a
@@ -99,12 +370,15 @@ export function RyoGameplayPanel({
     // no generation and keeps its existing revision-keyed identity.
     const generation = runtime.presentationSurface?.generation;
     const capability = runtime.presentationSurface?.capability;
+    // The outcome is part of the identity: a surface that reported a failure
+    // and then recovered must be able to say so, and `ready` must not be
+    // suppressed by a `media-unavailable` already sent for the same generation.
     const key =
       generation !== undefined
         ? `${runtime.mode.key}:gen${generation}:${capability ?? "single"}:conn${
             connectionEpoch ?? 0
-          }`
-        : `${runtime.mode.key}:${runtime.revision}:initial`;
+          }:${outcome}`
+        : `${runtime.mode.key}:${runtime.revision}:initial:${outcome}`;
     if (ackedRef.current === key || inFlightRef.current === key) return;
     inFlightRef.current = key;
     presentationReadySocket({
@@ -113,6 +387,7 @@ export function RyoGameplayPanel({
       ...(generation !== undefined
         ? { presentationGeneration: generation }
         : {}),
+      presentationOutcome: outcome,
     })
       .then(() => {
         ackedRef.current = key;
@@ -123,7 +398,16 @@ export function RyoGameplayPanel({
       .finally(() => {
         if (inFlightRef.current === key) inFlightRef.current = null;
       });
-  }, [awaiting, runtime, snapshot, presentationReadySocket, connectionEpoch]);
+  }, [
+    awaiting,
+    runtime,
+    snapshot,
+    presentationReadySocket,
+    connectionEpoch,
+    audioGateOpen,
+    preloadAudioUrl,
+    verdict,
+  ]);
   const remainingMs = useInteractionDeadline(prompt?.deadlineAt, terminal);
   // Which *side* has locked in, from the server's redacted projection: it publishes
   // that a submission exists and its kind, never the choice inside it. `kind`
@@ -165,6 +449,42 @@ export function RyoGameplayPanel({
       : prompt?.payload.deciderParticipantId,
   );
   const itemIndex = Number(runtime.modeState.currentItemIndex ?? 0);
+  // The clip exists for this item. The URL does not travel to a phone — only
+  // the shared screen plays it — so presence, not address, is what gates the
+  // control here.
+  const hasAudio = item?.media?.type === "audio";
+  const replay = useRyoAudioReplay(runtime, {
+    hasAudio: Boolean(hasAudio),
+    itemIndex,
+    eligiblePhase:
+      String(round?.modeState.phase ?? "") === "collecting" && !terminal,
+  });
+  const [replaySending, setReplaySending] = useState(false);
+  // The guard is a ref, not the state above. Two taps inside one tick — an
+  // impatient finger, or a stuck touch event — do not re-render between
+  // themselves, so a state flag is still `false` for the second and the server
+  // receives both. The ref closes synchronously; the state is only what renders.
+  const replaySendingRef = useRef(false);
+  const requestReplay = () => {
+    if (!replay.canRequest || replaySendingRef.current) return;
+    // Presentational only, exactly as every other controller does it: this
+    // closes the double-tap window between the press and the next authoritative
+    // snapshot. It never decides whether the replay happened — the server does,
+    // and a refusal simply leaves the next snapshot unchanged.
+    replaySendingRef.current = true;
+    setReplaySending(true);
+    gameplayCommand("gameplay-command", {
+      roundId: round?.id,
+      commandType: "request-ryo-replay",
+      payload: { itemIndex },
+    });
+  };
+  // Any authoritative movement releases the local guard, so a refused request
+  // cannot leave the button stuck.
+  useEffect(() => {
+    replaySendingRef.current = false;
+    setReplaySending(false);
+  }, [runtime.revision, itemIndex]);
   const answeringTeamId = String(round?.modeState.answeringTeamId ?? "");
   const opposingTeamId = String(round?.modeState.opposingTeamId ?? "");
   const team = (id: string) =>
@@ -197,15 +517,48 @@ export function RyoGameplayPanel({
       <ChallengeFrame
         {...(phone ? {} : { eyebrow: "اقرأ خصمك" })}
         compact={phone}
-        title="السؤال 1 من 3"
-        progressValue={0}
+        // Named by the server. Hardcoding "1 من 3" was right while only the
+        // first item could be held; an audio item 2 or 3 holds too now.
+        title={`السؤال ${runtime.presentationSurface?.itemOrdinal ?? 1} من 3`}
+        progressValue={
+          ((runtime.presentationSurface?.itemOrdinal ?? 1) - 1) * (100 / 3)
+        }
         className={phone ? "flex min-h-0 flex-1 flex-col" : "mx-auto max-w-3xl"}
       >
         <div
-          className="grid place-items-center py-16"
+          className="grid place-items-center gap-4 py-16"
           data-testid="ryo-preparing"
         >
-          <AkwaanLoader label="نجهّز التحدي…" />
+          {failure ? (
+            <RyoPresentationFailure
+              reason={failure.reason}
+              canRetry={failure.canRetry}
+              busy={recovering}
+              onRecover={recoverPresentation}
+            />
+          ) : (
+            <AkwaanLoader
+              label={preloadAudioUrl ? "نحمّل المقطع…" : "نجهّز التحدي…"}
+            />
+          )}
+          {/* The whole point of the barrier: buffer the clip BEFORE the clock
+              starts. Nothing is played here and nothing is shown — the element
+              exists to load, and then to be *probed*, because bytes arriving is
+              not the same as sound coming out. It stays mounted through a
+              failure so the host's retry has something to re-probe. */}
+          {preloadAudioUrl && (
+            <audio
+              ref={preloadRef}
+              data-testid="ryo-audio-preload"
+              src={getMediaUrl(preloadAudioUrl)}
+              preload="auto"
+              className="hidden"
+              onCanPlayThrough={() => void settleAudio(preloadAudioUrl)}
+              onError={() =>
+                void settleAudio(preloadAudioUrl, "media-unavailable")
+              }
+            />
+          )}
         </div>
       </ChallengeFrame>
     );
@@ -230,6 +583,10 @@ export function RyoGameplayPanel({
         setMyDecision={setMyDecision}
         submit={submit}
         outcome={interaction?.outcome?.payload}
+        replayCooldownMs={replay.cooldownMs}
+        canReplay={replay.canRequest && !replaySending}
+        showReplay={Boolean(hasAudio)}
+        onReplay={requestReplay}
       />
     );
   }
@@ -275,7 +632,24 @@ export function RyoGameplayPanel({
               />
             )}
             {item.media?.type === "audio" && item.media.url && (
-              <MarhalaQuestionAudio url={item.media.url} />
+              <>
+                <MarhalaQuestionAudio
+                  url={item.media.url}
+                  replaySignal={replay.signal}
+                  // The window is the authority on playback too: a clip still
+                  // running after the deadline is talking over the reveal.
+                  stopped={terminal || remainingMs === 0}
+                />
+                {runtime.availableActions.includes(
+                  "mode:request-ryo-replay",
+                ) && (
+                  <RyoReplayButton
+                    onRequest={requestReplay}
+                    disabled={!replay.canRequest || replaySending}
+                    cooldownMs={replay.cooldownMs}
+                  />
+                )}
+              </>
             )}
             {/* The question is the largest thing on screen, at a size that reads
                 from three metres on a television. */}
@@ -484,6 +858,10 @@ function PhoneRyoController({
   setMyDecision,
   submit,
   outcome,
+  replayCooldownMs,
+  canReplay,
+  showReplay,
+  onReplay,
 }: {
   runtime: GameplayRuntimeSnapshot;
   item?: RyoItem;
@@ -501,6 +879,10 @@ function PhoneRyoController({
   setMyDecision: (decision: string) => void;
   submit: (payload: Record<string, string | number>) => void;
   outcome?: Record<string, unknown>;
+  replayCooldownMs: number;
+  canReplay: boolean;
+  showReplay: boolean;
+  onReplay: () => void;
 }) {
   const completed = runtime.modeState.phase === "completed";
   const numericAnswerValid =
@@ -548,6 +930,22 @@ function PhoneRyoController({
             <h2 className="flex shrink-0 items-center justify-center text-base font-black leading-relaxed text-foreground">
               <BidiText>{authoredText(item.prompt)}</BidiText>
             </h2>
+
+            {/* The clip plays on the shared screen, so a phone offers no
+                playback of its own — only the request to hear it again. Both
+                teams get it: they are listening to the same thing, and a side
+                that missed it is not a side that should have to answer blind.
+                Hidden entirely for a text question. */}
+            {showReplay && (
+              <div className="shrink-0" data-testid="ryo-phone-replay">
+                <RyoReplayButton
+                  compact
+                  onRequest={onReplay}
+                  disabled={!canReplay}
+                  cooldownMs={replayCooldownMs}
+                />
+              </div>
+            )}
 
             {role === "answering" &&
               canSubmit &&

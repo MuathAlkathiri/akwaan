@@ -1,4 +1,5 @@
 import {
+  IsIn,
   IsInt,
   IsObject,
   IsOptional,
@@ -7,7 +8,11 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { GameplayCommandPayload } from '../domain/gameplay-mode.plugin';
+import {
+  GameplayCommandPayload,
+  PRESENTATION_FAILURE_REASONS,
+  type PresentationFailureReason,
+} from '../domain/gameplay-mode.plugin';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsEnum } from 'class-validator';
 import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.constants';
 
@@ -54,6 +59,18 @@ export class GameplayRuntimeMutationDto {
   @IsInt()
   @Min(1)
   presentationGeneration?: number;
+
+  /**
+   * What this acknowledgement says: that the surface is ready, that it cannot
+   * present, or (host only) that a recorded failure should be retried.
+   *
+   * Explicitly enumerated rather than a free string. `forcePresentationActivation`
+   * is deliberately NOT declared anywhere on a DTO — it is the one input that
+   * skips the surface check, and with `forbidNonWhitelisted` the wire rejects it.
+   */
+  @IsOptional()
+  @IsIn([...PRESENTATION_FAILURE_REASONS, 'ready', 'retry'])
+  presentationOutcome?: PresentationFailureReason | 'ready' | 'retry';
 }
 
 export class StartRakkibhaDto {

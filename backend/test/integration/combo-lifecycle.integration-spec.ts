@@ -1325,8 +1325,14 @@ describe('combo lifecycle integration', () => {
         sessionId,
       ))!.serialize();
       expect(runtime.presentationActivatedAt ?? null).toBeNull();
-      // Reducer: no deadline armed while preparing.
-      expect(scheduler().armedKeyFor(sessionId)).toBeFalsy();
+      // Reducer: no QUESTION clock armed while preparing — and since M3.1 the
+      // wait itself is watched, so a shared screen that never arrives cannot
+      // freeze the challenge. Combo keeps the default `activate` policy: its
+      // board is in the snapshot that opens it, so a late screen costs its own
+      // loading and nothing else.
+      expect(scheduler().armedKeyFor(sessionId)).toContain(
+        'presentation|initial',
+      );
       // Client: told only that it is preparing; no question/plan is projected.
       const view = await app
         .get(GetLiveGameSession)

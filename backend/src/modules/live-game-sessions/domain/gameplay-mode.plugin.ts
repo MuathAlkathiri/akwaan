@@ -21,6 +21,41 @@ export type GameplayCommandPayload = Record<string, GameplayStateValue>;
 export type PresentationSurfaceCapability = 'shared' | 'answering' | 'decision';
 
 /**
+ * Why a surface could not present.
+ *
+ * Deliberately a small closed set of keywords rather than a message: it is
+ * projected to every client in the session, including the two teams, so it has
+ * to be safe to render on a television. It names the *class* of failure so the
+ * host knows which control to reach for — reload the clip, or let the browser
+ * play it — and nothing about the asset that failed.
+ */
+export const PRESENTATION_FAILURE_REASONS = [
+  /** The asset could not be fetched or decoded: 404, wrong type, bad bytes. */
+  'media-unavailable',
+  /** It could be fetched, but browser policy refuses to play it unprompted. */
+  'autoplay-blocked',
+  /** Nobody reported anything in time; the mechanic's policy is to not start. */
+  'readiness-timeout',
+] as const;
+export type PresentationFailureReason =
+  (typeof PRESENTATION_FAILURE_REASONS)[number];
+
+/**
+ * What the server does when a held presentation runs out of time.
+ *
+ * The default is `activate`, which is the behaviour every fair-start mechanic
+ * had before a failure outcome existed: a late screen costs the room its
+ * buffering, not its question. That is right when the content is already on
+ * screen and the barrier only guarded layout — a board, a grid, a prompt.
+ *
+ * `fail` is for content the question cannot be asked without. Starting a
+ * ten-second blind window on a clip nobody can hear is not a degraded
+ * question, it is an unanswerable one, so اقرأ خصمك asks for `fail` when the
+ * held item carries audio — and for `activate` when it does not.
+ */
+export type PresentationTimeoutPolicy = 'activate' | 'fail';
+
+/**
  * One surface that must acknowledge before a multi-surface mechanic activates.
  *
  * `capability` is the only thing projected to any client. `participantId` is a
@@ -40,6 +75,15 @@ export type GameplayAuthorizationRequirement =
   | 'active-team-player'
   | 'controller-or-active-team-player'
   | 'controller-or-active-participant'
+  /**
+   * The host, or **any** connected team player on either team.
+   *
+   * Distinct from `controller-or-active-participant`, which admits only the one
+   * participant the round has made active. Used where an action belongs to the
+   * table rather than to a turn — replaying a shared audio clip, where both
+   * teams are listening to the same thing and either may ask to hear it again.
+   */
+  | 'controller-or-connected-player'
   | 'active-participant'
   | 'observer-safe'
   | 'internal';
@@ -75,6 +119,15 @@ export interface GameplayPluginContext {
   eligibleParticipants?: readonly EligibleParticipant[];
   initialState?: GameplayModeState;
   runtimeState?: GameplayModeState;
+  /**
+   * The active interaction's authoritative deadline, where the round has one.
+   *
+   * A mode command issued during a timed interaction may need to refuse once
+   * the window has closed, and the deadline lives on the interaction rather
+   * than in mode state. Supplied by the session layer; mechanics without a
+   * timed command ignore it.
+   */
+  interactionDeadlineAt?: Date;
   /**
    * True while a multi-surface mechanic has not yet activated its first
    * presentation. A mechanic that holds its initial item's clock until every
@@ -181,6 +234,9 @@ export const MODE_COMMAND_TYPES: readonly string[] = [
   'lock-la-tahriqha-dish',
   'advance-la-tahriqha',
   'expire-la-tahriqha-dish',
+  // اقرأ خصمك: replay the shared audio clip. Presentation only — it moves no
+  // phase, no clock and no score.
+  'request-ryo-replay',
 ];
 
 export interface GameplayCommandDefinition {
@@ -328,6 +384,19 @@ export interface GameplayModePlugin {
     runtimeState: GameplayModeState;
     roundState: GameplayModeState;
   }): PresentationSurfaceRequirement[] | undefined;
+  /**
+   * What this mechanic wants when a held presentation times out.
+   *
+   * Optional and additive: a mechanic that does not answer keeps `activate`,
+   * which is exactly what every fair-start mechanic did before failure existed.
+   * Answered per held item, because the right policy can depend on what is
+   * being held — اقرأ خصمك fails an audio item and activates a text one from
+   * the same hook.
+   */
+  presentationTimeoutPolicy?(context: {
+    runtimeState: GameplayModeState;
+    roundState: GameplayModeState;
+  }): PresentationTimeoutPolicy;
   /**
    * Fair-start hook (optional, additive): return the mode runtime state after
    * presentation activation. Mechanics with runtime-owned clocks can re-anchor

@@ -243,6 +243,10 @@ export class LiveSessionSocket {
     expectedRuntimeRevision: number;
     commandId: string;
     presentationGeneration?: number;
+    presentationOutcome?:
+      | "media-unavailable"
+      | "autoplay-blocked"
+      | "retry";
   }): void {
     if (!this.socket?.connected) {
       throw new Error("Live session connection is not available");
@@ -255,6 +259,9 @@ export class LiveSessionSocket {
       clientTimestamp: new Date().toISOString(),
       ...(input.presentationGeneration !== undefined
         ? { presentationGeneration: input.presentationGeneration }
+        : {}),
+      ...(input.presentationOutcome
+        ? { presentationOutcome: input.presentationOutcome }
         : {}),
     });
   }
