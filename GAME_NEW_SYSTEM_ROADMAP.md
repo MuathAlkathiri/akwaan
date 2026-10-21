@@ -1520,6 +1520,52 @@ Related principle worth preserving: **randomness that adds reads as a gift; rand
 **One scoring module only** (§0.3). Every mechanic registers its rule there; no mechanic computes points locally.
 
 ---
+### 6.7 Closest content directions — 🟡 PRODUCT-APPROVED (2026-10-16), authoring assets updated, no runtime change
+
+**Scope of this record.** A content/authoring decision only. It creates no ChallengeType, changes no gameplay,
+scoring, slider contract or runtime behaviour, and touches no Production data. `closest` remains the single
+shared runtime mechanic described in §6.6.
+
+**The decision.** Closest supports **two legitimate content directions**, and **the World and its Scope decide
+which direction is appropriate** for a given item.
+
+| Direction | What the player does | Where it belongs |
+| --- | --- | --- |
+| **Knowledge-anchored** | The answer is a real quantity. A team that knows it wins; a team that reasons from ordinary familiarity lands close. | Knowledge Worlds, where consistent with that World and Scope |
+| **Reasoning-derived** | The prompt supplies what is needed; the answer is reached by visualising, counting, comparing or approximating. | Any World, and the **only** direction `puzzles` permits |
+
+**A factual numeric answer is not a defect, and is not a qualification either.** The governing test is whether a
+team that does not know the exact answer still has an anchor — familiarity with the subject, or information
+supplied in the prompt. A question offering neither is a lottery and is invalid in both directions. Each item
+must additionally carry meaningful uncertainty, a stable and defensible answer, and a calibrated slider; the
+nine-point rubric lives in `ai/.opencode/skills/challenge-types/closest/SKILL.md`.
+
+**Puzzles is unchanged and remains reasoning-only.** `PUZZLES_WORLD_NO_TRIVIA` and
+`PUZZLE_ITSELF_IS_THE_CHALLENGE` (§23.11) stay authoritative in **every** Puzzles Scope, including
+`puzzles/numbers-estimation`. **No knowledge-trivia exception is created for any Puzzles Scope.** A
+knowledge-anchored Closest item authored in Puzzles is good work in the wrong World.
+
+**Knowledge Worlds do not inherit Puzzles restrictions** — and do not thereby accept ordinary trivia. Each
+World's own anti-patterns continue to apply; `football`, for example, already rejects *generic stat counting*
+and *volatile seasonal stats* in its World profile, and `football/world-cup` already excludes live rankings and
+disputed unofficial records.
+
+**No new World or Scope is required, and none was created.** The existing taxonomy already carries both
+directions: eleven knowledge Worlds for the first, and `puzzles` plus any other World for the second. The six
+forward Puzzles Scopes of §23.11 are unchanged.
+
+**Why this record exists.** Two live Content Engine pilots (§30) authored Closest content into
+`puzzles/numbers-estimation` and produced 13 candidates, none acceptable. The post-mortem found the mechanic's
+authoring guidance had been narrowed to reasoning-only, which is correct for Puzzles and wrong for the mechanic.
+This record separates the two so neither constrains the other.
+
+**Authoring assets updated** (source only; no DB, no R2, no deployment): the shared Closest Skill now states both
+directions and carries the quality rubric; `puzzles/numbers-estimation` exemplars state why that Scope takes one
+direction. Generated candidates now declare an `answerBasis` of `reasoning` or `knowledge-anchored`, shown to the
+human reviewer, who remains the final authority.
+
+---
+
 
 ## 9. World Design Guardrail
 
@@ -2445,6 +2491,18 @@ Difficulty must not become obscure-for-obscure automotive trivia.
 
 Both teams discuss simultaneously; any team may press **«جاوب»**. The first valid team claim receives
 **first-answer priority**; they then choose which of the four pieces is the odd piece.
+
+> **Clarification — 2026-10-15 (evidence-based; the rows above are historical and are not rewritten).**
+> A read-only check of the public Production `/worlds` endpoint shows `عالم السيارات` with
+> `availability: "available"`, `scopeCount: 4` and `challengeConfigurationCount: 4`. That is evidence the
+> **World and its Scopes and board configurations exist in Production** — it is **not** evidence that
+> `odd-piece` content exists, that `odd-piece` occupies a bound slot, or that production gameplay has been
+> played. Public World availability does not prove content readiness.
+> **Still unverified** (needs an authorized Admin read, not performed): the count of `odd-piece` ContentItems
+> in Production, which mechanic occupies each Cars slot, and whether the Production Cars Scope slugs match the
+> canonical manifest set (`cars-mix`, `german-cars`, `japanese-cars`, `supercars`) — Production shows four
+> Arabic Scope names including «سيارات أمريكية», which has no counterpart in that manifest list.
+> Until those are read, **Cars World rollout and Production content/media remain ⬜ NOT STARTED as recorded.**
 
 - Correct → that team wins the puzzle reward — **+1 point for the puzzle** (current Product Design reward).
 - Wrong → that team's attempt is consumed and the opposing team receives an opportunity to answer the **same**
@@ -3736,6 +3794,10 @@ filters by the Match's selected Scopes, permanently excludes owner-account expos
 separates account exhaustion from catalog insufficiency. Selection/reservation is not exposure: the first and
 recurring puzzles are spent only after their Fair-Start presentation generation activates. This is verified in
 source and isolated test data; no runtime/dev or Production catalog was provisioned or mutated.
+
+> **Reaffirmed 2026-10-16 (§6.7).** The approved Closest content-direction decision permits knowledge-anchored
+> numerical estimation in knowledge Worlds. It creates **no exception here.** Both invariants remain
+> authoritative in every Puzzles Scope including `numbers-estimation`, which stays reasoning-only.
 
 **Answer contract (V1).** Moving XO consumes exactly two item answer modes: **`match`** and
 **`multiple_choice`**. **`closest` is deliberately excluded from V1** — the mechanic needs a binary result
@@ -5253,3 +5315,651 @@ runtime content: no item has been promoted, so none of it is `IMPLEMENTED & VERI
   - ⬜ **Production gameplay NOT RUN:** no production gameplay has occurred.
   - ⚠️ **`RUNTIME_MEDIA_ATTRIBUTION_FOLLOWUP` is retained as a known consideration, not a release gate.**
     Attribution ingredients are recorded where known; no credits surface exists and none is required to ship.
+---
+
+## 30. Akwaan Content Engine V1 — 🚧 IN PROGRESS (design 2026-10-15; status corrected 2026-10-16 — see §30.6)
+
+**Status discipline for this section.** Design approval ≠ implementation. Nothing below exists in code except
+where a row says ✅ and names an existing path.
+
+### 30.1 Problem
+
+Producing even ten acceptable items costs excessive manual effort, and generated candidates have historically
+been trivial, repetitive, mechanically weak, or paired with poor media. The goal is to reduce human authoring
+time **without** weakening quality, fairness or factual defensibility.
+
+### 30.2 Approved direction
+
+- A **general-purpose** engine covering all Worlds, Scopes and Mechanics — Odd Piece is a specialization, not
+  the system.
+- Output is the canonical **`ContentItem`**, created through the existing `ContentItemService` so that
+  `ContentItemCompatibilityPolicy` and the READY gate apply unchanged. ✅ those exist.
+- Reuse, do not duplicate: authoring manifest and context resolver, World/Scope/Mechanic Skills, deterministic
+  validators, Admin services, media infrastructure, R2 storage, and `promote_approved_content.py`.
+- **Deterministic screening first, AI judgement second, human approval last and authoritative.**
+- **Factual verification is a separate stage from quality judgement.** Claims resolve to `SUPPORTED`,
+  `CONTRADICTED`, `UNSUPPORTED` or `UNRESOLVED`; only `SUPPORTED` advances automatically, `CONTRADICTED`
+  blocks, and the other two escalate to a human. Model confidence is never treated as factual correctness.
+- Media enrichment stays separate from content authoring **except** for media-native mechanics
+  (`odd-piece`, `bomb`, `marhala`), where content and media must be planned jointly.
+- **No new CMS, no microservice, no agent framework, no queue in V1.**
+- Target operating budget **SAR 100/month**, with spending caps enforced from Phase 1 — reserve before the
+  call, reconcile against reported usage, and refuse a batch when model pricing or usage is unknown.
+
+### 30.3 Phases
+
+| Phase | Scope | Status |
+| --- | --- | --- |
+| 0 | Documentation and authoring foundation: `odd-piece` Skill, scoped media clause, provenance vocabulary, this record | ✅ IMPLEMENTED — source only, uncommitted (§30.6) |
+| 1 | Vertical slice: one text mechanic, one Scope, generate → screen → verify → judge → human review → ContentItem draft → READY. Budget caps included. | 🚧 IN PROGRESS — pipeline through DRAFT verified locally; judge unreachable; READY never exercised (§30.6) |
+| 2 | Quality hardening, novelty backfill, model benchmark harness | 🚧 IN PROGRESS — authoring/screening hardening done; novelty backfill and benchmark harness ⬜ NOT STARTED |
+| 3 | Media sourcing and vision verification (`bomb`) — sourcing only, no editing | ⬜ NOT STARTED |
+| 4 | Odd Piece specialization, including mask-bounded localized editing behind a flag | ⬜ NOT STARTED |
+| 5 | Scale safeguards | ⬜ NOT STARTED |
+
+### 30.4 Deliberately open — not decided by this record
+
+Model provider and per-role model selection; benchmark acceptance thresholds (any figure used in the pilot is
+**provisional**, not an approved product KPI); the monthly cap value and who may authorize an overrun;
+billing route; whether `assetOrigin` becomes a READY blocker or stays advisory like the existing rights model;
+whether `ContentItem` should gain a `createdBy` actor field (**no path records one today**); and whether to
+backfill the novelty index from Production content.
+
+### 30.5 Phase 0 record
+
+Documentation only. No runtime, schema, DB, R2 or deployment change.
+
+| Change | Path |
+| --- | --- |
+| `odd-piece` authoring Skill written (replaced a one-line stub that was registered AUTHORABLE) | `ai/.opencode/skills/challenge-types/odd-piece/SKILL.md` |
+| Scoped `ODD_PIECE_AUTHENTIC_PART_COMPOSITION` appended; all FIFA rules byte-for-byte unchanged | `.agents/skills/akwaan-media/SKILL.md` |
+| Asset provenance vocabulary documented as PROPOSED — `assetOrigin`, `sourceUrl`, `licenceNote`, `editedRegion`, `editModel` | `ai/.opencode/knowledge/architecture/MEDIA-CONTRACT.md` |
+| This section and the 2026-10-15 status entry | `GAME_NEW_SYSTEM_ROADMAP.md` |
+
+The runtime `odd-piece` contract is **unchanged**: 3 puzzles per Challenge, 4 pieces per puzzle, exact
+three-plus-one identity split, stable `localId`s, server-only `vehicleIdentity`, and the mandatory full
+target-vehicle reveal — all already enforced by `backend/src/modules/world-content/domain/odd-piece-content.policy.ts`.
+
+### 30.6 Status correction — 2026-10-16
+
+The 2026-10-15 header said **NOT IMPLEMENTED**. That was accurate when written and is no longer. This section
+states what is true, and is deliberately explicit about what is **not**, because "implemented" has meant four
+different things in this record before.
+
+**What exists and was verified locally.** A `backend/src/modules/content-engine/` NestJS module — budget ledger
+with atomic reservation, generation jobs with lease fencing, deterministic screening, factual verification with
+fail-closed evidence retrieval, an Admin HTTP surface, and a React review workspace at
+`/admin/content-engine`. The full lifecycle preflight → submit → generate → screen → verify → human review →
+canonical DRAFT through the existing `ContentItemService` runs end to end against an isolated `rs0` test
+database, with idempotent republication. Backend and frontend typecheck, lint and build; the engine and
+world-content suites pass.
+
+**What is NOT true, stated plainly:**
+
+- ⬜ **Nothing is committed.** Every engine file is untracked working-tree content. No branch, no push, no PR.
+- ⬜ **Nothing is deployed.** No Render or Vercel build has ever carried this code. The public site is unaffected.
+- ⬜ **No Production or application-database use.** The engine has never written outside `*_test` databases;
+  the local application database carries zero `engine_*` collections.
+- ⬜ **No ContentItem has ever been published from the engine**, in any environment. DRAFT creation is proven
+  only inside an integration test. No READY promotion has ever been exercised.
+- ⚠️ **The Quality Judge is implemented but unreachable.** It requires a `SUPPORTED` factual state, and the
+  Phase 2c safety decision — retrieved text alone does not establish entailment — makes `SUPPORTED` unreachable
+  from the current retriever. Every candidate therefore routes to a human, who is the real quality judge today.
+- ⚠️ **Phase 1 used `closest`, not `read-your-opponent`.** The design named RYO; the pilot Scope selection in
+  Phase 2c chose Puzzles/Closest. Both answer modes are supported by the generator.
+
+**Live pilots run so far — 2 paid requests, SAR 0.00985 total, 13 candidates, 0 accepted as written.**
+
+| Pilot | Target | Candidates | Outcome |
+| --- | --- | --- | --- |
+| 01 (2026-10-16) | `puzzles/numbers-estimation/closest`, 10 | 2 screened out, 8 queued | 0 accepted — generic numeric trivia |
+| 02 (2026-10-16) | same, 3 | 0 screened out, 3 queued | 0 accepted — 2 of 3 reproduced worked examples |
+
+Both pilots informed §6.7. Content quality, not engine correctness, is the open problem: the pipeline did
+exactly what it was built to do in both runs.
+
+**Budget.** Enforced from Phase 1 as designed: reserve before the call, settle against reported usage, refuse on
+unknown pricing. Observed cost is ~SAR 0.005 per small batch against the SAR 100/month target, so spend is not
+the binding constraint — human review throughput is.
+
+### 30.7 Generation model selection — ⬜ NO MODEL APPROVED (2026-10-16)
+
+**No AI model is approved as Akwaan's default or production content-generation model.** Model selection is
+**deferred until cross-mechanic evaluation**, and nothing below should be read as adopting one.
+
+**What has actually been measured.** Two models, one mechanic (`closest`), two Worlds, three candidates per
+World per model — twelve candidates in total, every one of them generated into an isolated `*_test` database.
+
+| Pilot | Model | Candidates | Factually correct | Provisional ACCEPT |
+| --- | --- | --- | --- | --- |
+| Phase 2h | `google/gemini-2.5-flash-lite` | 6 | 0 / 6 | **0 / 6** |
+| Phase 2i | `openai/gpt-5` | 6 | 6 / 6 | **5 / 6** |
+
+**These are small pilot samples, not production acceptance rates.** Six candidates per model, one mechanic.
+They are experimental evidence about a single mechanic, and the sample is far too small to support a rate, a
+ranking, or an adoption decision.
+
+**What "ACCEPT" means here, and what it does not.** An ACCEPT in a pilot report is one agent's provisional
+judgement that a candidate looks suitable as written. It is **not** human approval, **not** factual-gate
+clearance, **not** DRAFT publication, and **not** READY promotion. No pilot candidate has received any of
+those: the Quality Judge has never executed, every claim across every pilot resolved `UNSUPPORTED`, and no
+ContentItem has ever been created from the engine in any environment (§30.6).
+
+**Known limits of the GPT-5 evidence.** Of its six candidates, one reproduced a retired worked example from the
+mechanic profile and one seated its answer on the slider's exact midpoint — both caught afterwards by hand, and
+both now carried by deterministic warnings. GPT-5 also costs roughly **24×** Flash-Lite per batch
+(SAR ~0.126 against ~0.005), which is immaterial against the SAR 100/month target but is not nothing at volume.
+
+**Per-mechanic model selection remains a possible future option, not an approved implementation decision.**
+Nothing in the engine selects a model per mechanic today, and no such capability is approved.
+
+**Before any model is adopted**, evaluation must cover the mechanics Akwaan actually ships, not one. The engine
+currently generates **two of eighteen** manifest mechanics — `read-your-opponent` and `closest` — so most of
+that evaluation is blocked on authoring and schema work rather than on model choice (see the Phase 2j readiness
+audit). One known blocker is recorded here because it is provider-specific: the multiple-choice generation
+schema uses `minItems`/`maxItems`, which OpenAI strict structured outputs rejects, so an `openai/*` RYO batch
+would fail before inference the way the first GPT-5 Closest batch did.
+
+### 30.8 RYO authoring rationale — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-10-17), source only
+
+**Product decision.** Generated RYO candidates now carry structured authoring rationale, approved as authoring
+metadata. **No gameplay rule changed**: options, scoring, timers, the Steal/Trust payoff matrix of §6.1 and
+mechanic ownership are all untouched, and the 2–4 option rule is unchanged.
+
+| Field | What it holds |
+| --- | --- |
+| `concept` | The knowledge or misconception the question turns on, and why it is worth betting on |
+| `distractorRationale` | One entry per **incorrect** option, **keyed by option id**, saying why a real player might pick it |
+| `estimatedConfidence` | One of `near-certain` · `likely` · `even` · `unlikely` · `near-impossible`, plus a line of reasoning |
+
+Keying rationale to option ids rather than array position was deliberate: a positional list silently
+mis-attributes itself the moment options are reordered or edited.
+
+**Confidence is an authoring hypothesis, never measured player performance.** Five coarse bands are used
+instead of a percentage precisely so a generated number cannot read as if it had been observed. The mechanic
+needs `likely` or `even` — at either extreme the Steal/Trust decision answers itself — and a band outside that
+range is surfaced as the author's own declaration, **as a warning, never a rejection**.
+
+**These fields never reach a player.** They live beside the draft, not inside it, so they are not part of the
+`CreateContentItemDto` a candidate publishes through; the published ContentItem contains no trace of them, and
+the RYO runtime projects named fields rather than spreading the item. Both barriers are covered by tests,
+including one that publishes a DRAFT and asserts the stored document contains none of the rationale text.
+
+**Backwards compatible.** Candidates without rationale screen exactly as before — absent fields are recorded as
+absent rather than defaulted, so nothing fabricates a value for historical content.
+
+**Validation is structural only.** The screen checks that a rationale names a real *incorrect* option exactly
+once and that the confidence band is one of the five. It does not and cannot judge whether a rationale is good
+or a band accurate. The factual gate is unchanged and still fail-closed.
+
+**Status boundary.** Source only — ⬜ not committed, ⬜ not deployed, ⬜ no ContentItem created from it, and
+⬜ no generation model approved (§30.7 stands). The RYO cross-model pilot it prepares has **not** been run.
+
+### 30.9 RYO cross-model pilot (Phase 2m) and the screening defect it exposed — 2026-10-17
+
+**The pilot ran as authorized.** `read-your-opponent` · `general-knowledge/science` · 3 candidates per model ·
+one paid request each · **SAR 0.115854 settled** against a SAR 0.35 cap · zero outstanding reservations.
+
+| Model | Factually correct | Provisionally ACCEPT | Exemplar copies | Settled |
+| --- | --- | --- | --- | --- |
+| `google/gemini-2.5-flash-lite` | 3 / 3 | **0 / 3** | **3 / 3** | SAR 0.004760 |
+| `openai/gpt-5` | 3 / 3 | 3 / 3 | 0 / 3 | SAR 0.111094 |
+
+Both models produced factually correct, mechanic-native RYO content. The separation was **originality**:
+Flash-Lite returned the Scope's three worked examples almost verbatim, including identical option sets.
+
+> **"Provisionally ACCEPT" is one agent's gameplay assessment.** It is not human approval, not factual-gate
+> clearance, not DRAFT publication and not READY promotion. All six candidates resolved `UNSUPPORTED` with
+> `automaticAdvance: false`; the Quality Judge executed on none of them; no ContentItem was created.
+
+**The defect the pilot exposed — ✅ CONFIRMED THEN FIXED.** `exemplarImitation()` was called only from the
+Closest screening path, so no multiple-choice candidate was ever compared against the exemplars it was shown.
+All three Flash-Lite copies screened completely clean.
+
+**This record does not rewrite the pilot.** Phase 2m ran with the defect present, and its results stand as
+reported. The fix below did not exist during it.
+
+**Phase 2n fix — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-10-17), source only.** The existing check is now also
+called from the multiple-choice path, against the same corpus, with RYO's `concept` included on the candidate
+side. No second similarity engine, no change to severity — it remains a **warning**, because only a reviewer can
+call an item derivative. The finding was renamed `CLOSEST_RESEMBLES_EXEMPLAR` → `CANDIDATE_RESEMBLES_EXEMPLAR`,
+since it is mechanic-neutral and the old name read as a mistake the first time it fired on an RYO candidate.
+
+Verified by replaying the **preserved Phase 2m artifacts** through the updated screen: all three Flash-Lite
+copies now raise the warning, all three GPT-5 originals stay clean. Regression tests read those artifacts
+directly rather than re-typing the questions.
+
+**Review guidance strengthened.** The RYO Skill now separates five independent review judgements — factual
+correctness, originality, distractor plausibility, opponent-prediction uncertainty, and **answer clarity /
+dispute risk in actual gameplay**. The last is new and is reviewer guidance, never an automatic rejection: a
+scientifically defensible answer can still be unsuitable if ordinary players would reasonably read the question
+differently. Phase 2m's mercury-versus-gallium and iris-versus-pupil candidates are recorded as the worked
+cases.
+
+**Status unchanged where it matters.** ⬜ **No generation model is approved** — §30.7 stands, and three
+candidates per model settles nothing. ⬜ Not committed, ⬜ not deployed, ⬜ no ContentItem, ⬜ no READY.
+**Any further paid comparison requires separate operator authorization**; the Phase 2m authorization was
+specific to that pilot and is spent.
+
+### 30.10 RYO originality guidance (Phase 2o) — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-10-17), source only
+
+**The weakness, measured rather than assumed.** Phase 2n fixed the *screening* blind spot but not the
+*instruction* that produced the copies. Inspecting the resolved prompts showed an asymmetry:
+
+| | RYO prompt (before) | Closest prompt (before) |
+| --- | --- | --- |
+| Task block | **220 chars**, generic | 2,951 chars, mechanic rules |
+| Ends on | "The correct answer must never appear in the prompt text." | the retired-subject instruction |
+| "retired subject" position | 55.7%, 83.7% — buried mid-document | **98.4%** — the last thing read |
+
+`CLOSEST_TASK_GUIDANCE` carried the originality instruction and was appended **only** for `closest`. The
+multiple-choice path appended nothing, so an RYO prompt's strongest position — the end — said nothing about
+originality, and its nearest mention sat thousands of characters earlier inside a Scope file. That is the
+instruction-side cause of the three verbatim copies in §30.9.
+
+**What was implemented.** The originality instruction was hoisted out of the Closest-specific block into a
+single shared `ORIGINALITY_GUIDANCE`, appended **last to every prompt regardless of mechanic**, and a
+`RYO_TASK_GUIDANCE` block was added where the multiple-choice path previously appended nothing. One prompt
+pipeline, one source of truth, no model-specific instructions. The guidance states that exemplars teach
+properties; that every example is a retired subject; and that copying, paraphrasing, reusing a subject, answer
+target or option set, or evading detection through superficial rewording are all out of bounds — while keeping
+factual defensibility, distractor plausibility and opponent-prediction uncertainty attached, so originality
+cannot be bought with a weaker question.
+
+**Verified in the resolved prompt, not in a document.** Both mechanics now end on the identical block —
+asserted by a test comparing the two prompts' tails byte-for-byte. RYO's task block grew 220 → 2,673 chars and
+its final "retired subject" moved from 83.7% to **97.7%**.
+
+**Exemplar presentation.** The four Science exemplars were kept — none was removed, and removing examples to
+improve a benchmark result was explicitly out of scope. Their framing changed: the section is now "Worked
+examples — every one is a RETIRED subject" rather than "Accepted exemplars", and each item carries its own
+`RETIRED — do not reuse this subject` line naming the reusable *property*. The header previously promised a
+property "named in bold beneath" each item that the Science file did not actually have; it does now.
+
+**Screening remains an independent safeguard, unweakened.** `CANDIDATE_RESEMBLES_EXEMPLAR` is unchanged —
+same matcher, same 70% threshold, same non-blocking severity. Replaying the preserved Phase 2m artifacts still
+flags all three Flash-Lite copies and still leaves all three GPT-5 originals clean.
+
+**Reproducible fingerprint for the next comparison.** Both models receive an identical context:
+`contextHash 0002349892745dd5b320015c51cb48f36eb2d5ddf9daa26c79d30bed94fc0cab`, 37,208 prompt chars,
+~12,403 prompt tokens. Recalculated worst-case reservations at 1,800 output tokens per candidate:
+**Flash-Lite SAR 0.012752 · GPT-5 SAR 0.260640 · combined SAR 0.273392** — within the SAR 0.30 per-batch and
+SAR 0.35 combined limits, so **no budget change is required**.
+
+**Status unchanged where it matters.** ⬜ **No generation model is approved** — §30.7 stands. ⬜ Not committed,
+⬜ not deployed, ⬜ no ContentItem, ⬜ no DRAFT, ⬜ no READY. **The next paid comparison requires separate
+operator authorization.** Phase 2m's results and Phase 2n's findings are unchanged by this record.
+
+### 30.11 Puzzles / Spot the Error cross-model pilot (Phase 2p) — 2026-10-17
+
+**Preflight verdict: the Scope is supported.** `puzzles/spot-the-error` resolves in the canonical manifest,
+`excludedChallengeTypeIds` is empty and `read-your-opponent` is `SHARED`, and the Scope's `intruder-element`
+family already specifies `multiple_choice` — RYO's answer mode. Its identity ("infer an objective rule, then
+find what violates it", exactly one breach, text-only) matches the pilot's content requirements directly. No
+incompatibility; no substitution was needed.
+
+**One gap closed first.** The Scope had **no `EXEMPLARS.md`** — the 55-scope gap recorded in Phase 2j. Four
+were authored inside the existing architecture, each verified computationally for a *unique* breach before
+being written down. Both models received them identically.
+
+**Executed as authorized.** 2 paid requests · identical context
+(`contextHash 97fdb64e1ed1ced5f37cbae554243377313a4993db26b7f8662cdaccc5110d2e`, 39,270 chars) ·
+**SAR 0.154312 settled** against a SAR 0.35 cap · zero outstanding reservations · no ContentItem, DRAFT or
+READY.
+
+| Model | Generated | Screened out | Logically sound | Provisional ACCEPT | Settled |
+| --- | --- | --- | --- | --- | --- |
+| `openai/gpt-5` | 3 | 1 (`DUPLICATE_IN_BATCH`) | 2 / 3 | **2 / 3** | SAR 0.148571 |
+| `google/gemini-2.5-flash-lite` | 3 | 0 | 1 / 3 | **0 / 3** | SAR 0.005741 |
+
+Evaluated blind — candidates were shuffled under neutral identifiers and the model mapping was withheld until
+the review was complete.
+
+> **"Provisional ACCEPT" is one agent's gameplay assessment**, not human approval, not factual-gate clearance,
+> not publication. All candidates resolved `UNSUPPORTED`; the Quality Judge executed on none.
+
+**The headline is logical validity, not style.** Flash-Lite produced one candidate whose keyed answer
+contradicted its own stated rationale, and one whose stated rule was factually wrong about its own options.
+GPT-5 produced two sound script-structural puzzles (palindromes; Arabic letter connectivity) and one whose
+sequence admitted **two** valid single-element repairs — a breach of the Scope's "exactly one element" rule
+that the model explicitly, and wrongly, claimed to have checked.
+
+**A new screening limitation, found by this pilot.** `DUPLICATE_IN_BATCH` normalizes the **prompt text only**.
+In this Scope the prompt is a generic stem — «ما العنصر الدخيل؟» — and the puzzle lives in the options, so two
+entirely different puzzles were flagged as duplicates and one sound candidate was screened out. The check is
+correct for Scopes where the prompt carries the content and wrong here. **Not fixed in this phase**; the
+targeted change is to include option labels in the duplicate key.
+
+**Status unchanged where it matters.** ⬜ **No generation model is approved** — §30.7 stands; three candidates
+per model settles nothing. ⬜ Not committed, ⬜ not deployed, ⬜ no ContentItem, ⬜ no DRAFT, ⬜ no READY.
+**Any further paid comparison requires separate operator authorization.**
+
+### 30.12 Mechanic-aware duplicate detection (Phase 2q) — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-10-17), source only
+
+**Root cause.** `DeterministicScreenService` computed batch-duplicate identity from the **normalized prompt
+alone**. For multiple choice that is the wrong unit: the prompt is often a generic stem and the puzzle lives in
+the options. The §30.11 pilot produced two unrelated Spot-the-Error puzzles under «ما العنصر الدخيل؟» and the
+second was blocked as a duplicate.
+
+**Historical record preserved.** During Phase 2p that candidate **was genuinely blocked** and is reported as
+such. The fix below did not exist during that pilot and does not change its result.
+
+**New identity, multiple choice only.** Normalized prompt **plus the normalized option labels, sorted**, so the
+same puzzle is still caught when its options are reshuffled or its generated ids are regenerated — and two
+different option sets under one stem are not. Option ids are excluded deliberately (generated, not semantic);
+so are authoring rationale, confidence, provider and model. Both halves pass through the same canonical
+`normalizeAnswer` the runtime grades with, so whitespace, punctuation, diacritics, tatweel and Arabic
+letter-form variants already collapse.
+
+**Answer-key conflicts are surfaced, not swallowed.** Where an identical puzzle reappears with a *different*
+correct answer, the screen now raises **`CONFLICTING_ANSWER_KEY_IN_BATCH`** (blocking) instead of
+`DUPLICATE_IN_BATCH`: at most one key can be right, and the two cases call for different reviewer action.
+
+**`closest` is unchanged** — its prompt carries the question, so prompt-only identity is correct there, and it
+remains a non-blocking `DUPLICATE_PROMPT_IN_BATCH` warning. The two modes are now namespaced so their keys
+cannot meet.
+
+**Verified by replaying the preserved Phase 2p artifacts**: both «ما العنصر الدخيل؟» puzzles now pass duplicate
+screening, every unrelated finding — including all three `DANGLING_DEMONSTRATIVE` warnings — is unchanged, and
+no candidate gained a finding. 12 regression tests cover the ten required cases.
+
+**This changes screening only.** It does not clear the factual gate, which remains fail-closed and
+`UNSUPPORTED` for every pilot candidate, and it does not make the Quality Judge reachable. ⬜ **No generation
+model is approved** (§30.7). ⬜ Not committed, ⬜ not deployed, ⬜ no ContentItem, ⬜ no DRAFT, ⬜ no READY.
+
+### 30.13 Hierarchical rules — R1: effective rule resolution & provenance — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-10-17), source only
+
+**Approved direction (design):** `Core → Mechanic → World → Scope`, mechanic identity invariant, Worlds and
+Scopes specializing within explicitly configurable bounds. **R1 delivers representation, resolution and
+provenance only — no enforcement.**
+
+**What exists now.** `AuthoringContextService` resolves an `EffectiveRuleSet` from the six canonical sources it
+already loads, and `ResolvedAuthoringContext` carries it. Rules are declared inside the profiles that own them,
+in a fenced ```` ```akwaan-rules ```` JSON block — **no second source of truth, no rules registry, no parallel
+loader**.
+
+| Canonical source | Layer |
+| --- | --- |
+| `QUESTION-CRAFT.md` (global) | `core` |
+| mechanic `SKILL.md` | `mechanic` |
+| `WORLD.md` | `world` |
+| `SCOPE.md` · `KNOWLEDGE.md` · `EXEMPLARS.md` | `scope` |
+
+Six sources map onto four layers; Scope-owned material contributes Scope rules and **no source is discarded**.
+A rule's layer comes from the profile that declared it, so a World profile cannot assert a `core` rule.
+
+**R1 is explicitly not a merge engine.** Where two layers declare the same rule id, **both definitions are
+preserved with their provenance** for R2 conflict analysis. Nothing is overridden, and **no candidate is
+rejected because a rule exists**.
+
+**Fixture — one rule, not a migration.** `read-your-opponent/SKILL.md` declares
+`ryo.answer-option-count` as an integer range of 2–4. That restates roadmap §6.1 and the bound already enforced
+by `ANSWER_OPTIONS_REQUIRED` / `ANSWER_OPTIONS_TOO_MANY`; **no new gameplay rule was invented**, no Worlds or
+Scopes were migrated, and `excludedChallengeTypeIds` was not touched.
+
+**Verified locally.** The same mechanic in two different Worlds yields an **identical rule-set digest with
+different `contextHash`** — mechanic identity inherited consistently. A context with no structured block
+resolves a valid empty set and its `contextHash` is **byte-identical to the value recorded in §§30.10–30.11**
+(`533cd552…`), so unaffected contexts did not move. Tests: **606 backend unit (34 suites) · 120 integration ·
+typecheck · lint · build**, including 25 contract tests and 10 malformed-input cases that all fail explicitly
+rather than silently.
+
+**Persistence: no schema change, no migration.** The rule-set digest records in the existing free-form
+`stageCheckpoints.context_resolved` details beside `contextHash`. Historical jobs simply lack the key.
+
+**Coverage limitation, stated plainly.** Exactly **one** structured rule exists, on one mechanic. **51 of 59
+Scopes, all 12 World profiles and 17 of 18 mechanic profiles declare none.** An empty rule set means *nothing
+was declared*, **not** that a context has no requirements: the prose in every profile remains active in the
+generation prompt and is not machine-verifiable. This single fixture is **not** hierarchical coverage.
+
+**Remaining:** ⬜ R2 invariants and conflict detection · ⬜ R3 bounded World/Scope configuration · ⬜ R4 mapping
+rules to findings and `NOT_VERIFIED` reporting · ⬜ R5 targeted validators (puzzle-family validators stay
+separate, per §2r). ⬜ Not committed, ⬜ not deployed, ⬜ no ContentItem, ⬜ no DRAFT, ⬜ no READY. ⬜ **No
+generation model is approved** (§30.7).
+
+### 30.14 Hierarchical rules — R2: mechanic invariants & conflict detection — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-10-17), source only
+
+**Two policies, deliberately distinct.** `invariant` is immutable — a narrower layer may restate it identically
+(accepted as redundant and recorded) but may not change, weaken or **narrow** it. `bounded` permits
+specialization: a narrower layer may declare a **subset of the bounds currently in force**. An immutable rule
+and a configurable range are different things, and a flag that allowed an invariant to narrow would be neither.
+
+**Restrictions compose against what is in force, not against the original.** A Scope must fit inside a World's
+narrowing, so `[2,4]` mechanic → `[2,3]` World → `[3,3]` Scope resolves to `[3,3]`, while a Scope asking for
+`[3,4]` is refused even though it sits inside the mechanic's range. Narrower declarations are **restrictions on**
+a rule, never replacements of it, and no original declaration is erased when the effective value is derived.
+
+**Conflict codes** — each carries rule id, offending layer, source path, attempted value, the parent constraint
+with its layer and source, the policy, and a human-readable explanation:
+
+| Code | Raised when |
+| --- | --- |
+| `RULE_INVARIANT_MODIFIED` | any change to an invariant, narrowing included |
+| `RULE_BOUND_WIDENED` | a declaration is a strict superset of the constraint in force |
+| `RULE_BOUND_OUT_OF_RANGE` | a declaration falls outside it without being a superset |
+| `RULE_POLICY_CONFLICT` | the same id is restated under a different policy |
+| `RULE_POLICY_UNDECLARED` | an owning declaration carries no policy, so nothing may specialize it |
+| `RULE_POLICY_INVALID` | an unrecognised policy, rejected at parse time |
+
+**Three guards, none bypassable.** Admin **preflight** reports conflicts as structured data with
+`resolvable: false`; **submit** refuses to queue a conflicting job; and **job execution** asserts immediately
+after context resolution — before the first checkpoint and before generation — so a job queued *before* a
+profile changed cannot reach the provider. A conflict routes to the existing await-review convention rather
+than to retry, because a configuration error does not fix itself; **no new job lifecycle state or pipeline
+stage was added**. All three call sites of `AuthoringContextService.resolve` are covered.
+
+**Fixtures — two rules on one mechanic, no invention.** `ryo.answer-option-count` is `bounded` `[2,4]`
+(roadmap §6.1; a World may legitimately require exactly four options). `ryo.items-per-challenge` is `invariant`
+`[3,3]` because the runtime enforces it — the RYO launcher refuses a Challenge that is not exactly three items
+— and §6.1 explains why three is load-bearing. No World, Scope or Signature assignment was changed, and
+`excludedChallengeTypeIds` was not touched.
+
+**Verified locally: 625 backend unit (35 suites) · 120 integration · typecheck · lint · build.** Includes 39
+rule-contract tests covering identical invariant restatement, invariant modification and narrowing, valid
+World-then-Scope narrowing, widening, out-of-range, Scope re-expansion, policy mismatch and undeclared policy;
+plus 5 guard tests proving generation is never reached, nothing is checkpointed, retries re-enter the guard,
+and a clean configuration proceeds.
+
+**Scope of the claim.** R2 checks **configuration consistency only**. A conflict-free rule set is **not**
+evidence that generated content satisfies those rules — nothing yet validates a candidate against a rule, and
+prose guidance remains active and unverified. Structured coverage is still **two rules on one of 18 mechanics**;
+51 of 59 Scopes and all 12 World profiles declare none.
+
+**Remaining:** ⬜ R3 bounded World/Scope configuration · ⬜ R4 rule-to-finding mapping and `NOT_VERIFIED`
+reporting · ⬜ R5 targeted validators. ⬜ Not committed, ⬜ not deployed, ⬜ no ContentItem, ⬜ no DRAFT,
+⬜ no READY. ⬜ **No generation model is approved** (§30.7).
+
+---
+
+## 31. Music × اقرأ خصمك — server-authoritative audio replay & audio readiness (M2 → M3.1)
+
+Making «اقرأ خصمك» playable with a **Music** Scope. The mechanic already rendered audio; what it lacked was a
+way to hear a clip again, and any guarantee that the clip was audible *before* the ten-second blind window
+started. Three phases, all **backend+frontend source only** — ⬜ not committed, ⬜ not deployed, ⬜ no runtime
+data mutated, ⬜ no feature flag changed.
+
+Builds directly on §24. Nothing here replaces Fair-Start; M3.1 extends its barrier with an outcome it never had.
+
+### 31.1 M2 — server-authoritative replay — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-10-17), backend only
+
+One mode command, `request-ryo-replay`, on the existing gameplay-command channel. No new channel, no new
+gateway event, no new phase, no migration.
+
+Authorized by a new `controller-or-connected-player` requirement — the host, or **any** connected player on
+either team, since both sides hear the same clip. This is deliberately wider than
+`controller-or-active-participant`, which admits only the one participant the round has made active: replay
+belongs to the table, not to a turn.
+
+Eligible only while the item is `collecting`, for the active item, with audio media present, before the
+authoritative deadline, and outside a shared cooldown (`RYO_REPLAY_COOLDOWN_SECONDS`, default 2). The cooldown
+lives in **persisted round state**, not process memory, so it survives reconnect; concurrent requests are
+resolved by the existing runtime revision CAS rather than new machinery.
+
+An accepted replay writes exactly three presentation fields and raises `ryo-audio-replay` carrying only item
+index and a monotonic sequence — no answer, no media metadata, no participant identity. `deadlineAt`, phase,
+item index, ownership, submissions and score are untouched, and the activation path is never invoked. A
+refused request writes nothing.
+
+**Delivery is persist-then-publish with no outbox — at-most-once, not exactly-once.** The sequence number
+travels in every subsequent snapshot, so a missed signal self-heals on reconnect.
+
+### 31.2 M3 — replay UI & the audio readiness barrier — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-10-18)
+
+«إعادة المقطع» on the shared screen and on both teams' phones. The shared screen restarts the clip when
+`audioReplaySequence` rises for the current item — read from the **snapshot, not the event**, which is why a
+missed signal recovers, a redelivered snapshot is inert, and a reconnect replays nothing. Cooldown is rendered
+from the server's own value against server time; the button being enabled is never what makes a replay legal.
+
+**M1's fairness gap closed.** §24 held a barrier for RYO item 1 only; items 2 and 3 opened with a running
+clock the instant the previous item resolved, so a clip that had not finished buffering spent the team's blind
+window loading. An **audio** item 2 or 3 now raises a recurring barrier through the existing
+`prepareNextPresentation` architecture — no second barrier, no new lifecycle state. **Text items keep their
+existing lifecycle unchanged.**
+
+Because held state is otherwise redacted wholesale, the shared screen could not buffer the clip it was being
+asked to be ready for. The barrier therefore projects the upcoming **audio URL alone**, to the `shared`
+capability actor only.
+
+**Media safety:** the audio `url` and `altText` are now withheld from non-controller actors. Every phone was
+receiving them inside `itemJson` and rendering neither — a filename or caption naming the song, sitting in the
+devtools of the players being asked to name it. The *presence* of audio still travels, because a phone needs
+it to offer the replay button.
+
+### 31.3 M3.1 — audio failure recovery & shared presentation safety — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-10-18), approved PASS
+
+**The defect M3.1 corrects: audio readiness is not audio success.** M3 treated an error, and a timeout, as
+readiness — a clip that 404'd released the barrier exactly like one that had loaded, and the question then
+started a ten-second blind window with nothing to hear. Both teams are scored on that item, and it cannot be
+undone afterwards.
+
+**A barrier now has three outcomes, not two.** The acknowledgement carries an explicit
+`presentationOutcome`: `ready`, `media-unavailable`, `autoplay-blocked`, `readiness-timeout`, or `retry`.
+A failure records on the runtime and **does not activate** — and since the gameplay clock is only ever started
+by an activation, refusing to activate *is* the mechanism, not an advisory flag.
+
+**Playability is probed, not assumed.** `canplaythrough` proves bytes are decodable and says nothing about
+whether the browser will let them out of the speakers. The shared screen therefore probes `play()` at
+**`volume = 0` rather than muted** — browsers grant muted autoplay freely, so a muted probe would report
+success for exactly the case the probe exists to catch. `NotAllowedError` is reported as `autoplay-blocked`;
+anything else is `media-unavailable`.
+
+**Recovery is host-owned and uses the canonical lifecycle.** The server answers whether *this* actor may act
+(`canRetry`); phones see the reason, the host gets the control. A dead asset → `retry`, which opens a **fresh
+generation**, because readiness recorded against the generation that failed must not satisfy the retry on its
+own. An autoplay block → the host's click *is* the gesture the policy was waiting for, so the surface
+re-probes in place rather than re-fetching a clip that was never the problem. Failure text names the class of
+problem and never the asset — these words appear on a television in front of both teams.
+
+#### Shared presentation-activation deadline — approved as a reusable capability
+
+**A prepared presentation previously armed no deadline at all.** M3 bounded only the *recurring* checkpoint;
+the **initial** barrier — RYO item 1, and every `requiresPresentationActivation` mechanic's first screen —
+could still freeze a challenge indefinitely with no timer watching it. M3.1 closes both.
+
+| Barrier | Bound | Default |
+| --- | --- | --- |
+| Initial | `PRESENTATION_INITIAL_TIMEOUT_SECONDS` | 45s — a cold open loads three devices for the first time |
+| Recurring | `PRESENTATION_ACTIVATION_TIMEOUT_SECONDS` | 12s — warm clients mid-session |
+| Client-side readiness | `NEXT_PUBLIC_RYO_AUDIO_READY_TIMEOUT_MS` | 8s — deliberately shorter, so the surface that knows *why* it is slow reports first and the server's bound stays a backstop |
+
+**What a timeout means is the mechanic's call, not the scheduler's.** A new optional
+`presentationTimeoutPolicy` hook answers `activate` (the default, and exactly what every fair-start mechanic
+did before failure existed) or `fail`. **A mechanic that does not implement it is untouched by this
+mechanism.** اقرأ خصمك answers per held item: `fail` for audio, `activate` for text and image, because a board
+already in the snapshot costs only its own loading while a question that *is* a clip cannot be asked at all.
+Forced activation remains the generous outcome — it re-anchors a **full** window and never shortens one.
+
+The initial bound is **strictly additive**: it only ever arms where nothing was armed before. A mechanic
+declaring `requiresPresentationActivation` already suppressed its deadline pre-M3.1, so bounding it needs no
+guard; اقرأ خصمك, which declares no deadline and previously fell through to the interaction branch, keeps a
+guard so a legacy runtime holding an open deadlined interaction is recognised as *playing* rather than
+waiting, and never loses the clock it still needs.
+
+#### Three guards, each proven load-bearing
+
+Each was a real defect found by its own test during M3.1, fixed in the code rather than the assertion, and
+then confirmed by **mutating the guard and watching exactly that test fail**:
+
+| Guard | Defect without it |
+| --- | --- |
+| Generation scoping on every outcome | A stale shared screen could fail the item that replaced the one it was looking at |
+| Terminal check on every outcome | An aborted challenge could still be written to |
+| Retry guard held in a ref, not React state | A double-tapped retry opened three competing generations, each invalidating the last |
+
+The same ref-vs-state defect was separately fixed for the replay button. `forcePresentationActivation` is
+server-only and declared on no DTO; both transports validate with `forbidNonWhitelisted`, and the
+`presentationOutcome` set is closed — both facts are asserted rather than trusted.
+
+#### Verification evidence (2026-10-18)
+
+| Gate | Result |
+| --- | --- |
+| Backend unit — all | **2,636 / 2,636**, 222 suites |
+| └ `live-game-sessions` | 889 / 889, 54 suites |
+| Frontend | **1,643 / 1,644** — one pre-existing failure, below |
+| Backend typecheck · lint · `nest build` | ✅ · ✅ · ✅ |
+| Frontend typecheck · lint · `next build` | ✅ · ✅ · ✅ |
+
+**Integration suites were executed individually, and the numbers below are from uncontended runs.** Running
+four Mongo-backed suites together on the development machine produced failures that vanished on isolated
+re-runs (اكشفني failed in a group of four, then passed 3/3 alone; RYO showed three failures while a frontend
+suite and two builds ran concurrently, then passed 13/13 cleanly). **That is machine contention, not a code
+result**, and no contended run is reported here as evidence either way.
+
+| Suite | Result |
+| --- | --- |
+| `ryo-deadline-lifecycle` | **13 / 13** |
+| `combo-lifecycle` | 33 / 33 |
+| `bomb-board-lifecycle` | 21 / 21 |
+| `marhala` + `moving-xo` + `odd-piece` (+ RYO) | 64 / 64 |
+| `challenge-abort` + `content-exposure` | 37 / 37 |
+| `la-tahriqha` + `first-note` | 8 / 8 |
+| `ekshifni` · `rakkibha` · `laqatha` · `mechanic-tutorial` | 3/3 · 3/3 · 2/2 · 12/12 |
+
+**Assertion changes, stated exactly.** Three specs (`bomb-board`, `combo`, `rakkibha`) each had **one**
+`armedKeyFor(...)` assertion changed from `toBeFalsy()` to `toContain('presentation|initial')`;
+`ryo-deadline-lifecycle` had **two** changed from `toBeUndefined()` to the same, and gained **5 net new
+tests** (one M3-era test whose premise M3.1 reverses — a timed-out audio barrier force-starting the question —
+was replaced by its successor asserting the opposite). Two domain specs (`recurring-fair-start`,
+`odd-piece-fair-start`) were updated the same way in M3/M3.1. Every one of these asserts the deliberate
+contract change — no gameplay clock before activation, but the wait is now watched — and each was
+**strengthened**, not weakened: the old assertion would pass for a runtime that hangs for ever.
+
+**⚠️ Pre-existing, NOT an M3.1 regression.** The frontend suite carries one failure:
+`player-world-api-boundary › never labels a World or mechanic as قريبًا`, caused by
+`frontend/src/features/content-engine-review/content-engine-review-workspace.tsx` — an **untracked** file from
+the Content Engine review work, never committed, not in M3.1's changed set, and containing a string that
+appears in **none** of M3.1's frontend files. The identical single failure was present before M3.1 existed.
+It is tracked as a Content Engine issue and must not be described as an M3.1 regression or as passing.
+
+### 31.4 Known debt carried forward
+
+- ⚠️ **Media URLs are not opaque.** The shared screen still receives a real filename that can name the song.
+  Closing this needs signed or opaque URLs at enrichment time — upstream of this work, deliberately not built
+  here.
+- ⚠️ `toSafeQuestionMedia` is unchanged, so other mechanics still pass audio URLs to phones. The redaction is
+  اقرأ خصمك-local; generalising it is a separate decision.
+- ⚠️ **At-most-once delivery stands.** No outbox was added; a replay can be durably recorded without ever
+  being announced. The sequence number in the next snapshot is the mitigation.
+- ⚠️ The autoplay probe proves the browser permits playback, not that the room's speakers are audible.
+- ⚠️ `combo-lifecycle › never lets a stale hand-over deadline affect the question it opened` failed once under
+  contention and has passed every isolated run since. It operates on an already-activated runtime, which
+  M3.1's gate cannot reach. Pre-existing flakiness, worth investigating independently.
+- ⚠️ Four concurrent Mongo-backed integration suites are unreliable on the development machine; CI should pace
+  them.
+
+### 31.5 Status
+
+✅ **M2, M3 and M3.1 are IMPLEMENTED & VERIFIED LOCALLY. M3.1 is approved PASS.**
+
+⬜ Not committed · ⬜ not pushed · ⬜ not deployed · ⬜ no runtime DB mutation · ⬜ no feature flag changed.
+No `PRESENTATION_INITIAL_TIMEOUT_SECONDS`, `PRESENTATION_ACTIVATION_TIMEOUT_SECONDS`,
+`RYO_REPLAY_COOLDOWN_SECONDS` or `NEXT_PUBLIC_RYO_AUDIO_READY_TIMEOUT_MS` is written to any `.env`; all four
+use code defaults.
+
+⬜ **The real multi-device Production playtest remains unexecuted**, as it does for §24. Local verification is
+not a physical retest and must not be described as one.
+
+⬜ **R3 and R4 (Content Engine, §30) are NOT STARTED and untouched by this work.**
+
+---
