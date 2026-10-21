@@ -20,7 +20,15 @@ type LayerExpectation = {
   expected: 'pass' | 'fail' | 'deferred' | 'blocked' | 'not_applicable';
   blockingCodes?: string[];
   blockerCodes?: string[];
+  diagnosticContains?: string[];
   reason?: string;
+};
+
+type MechanicValidatorExpectation = LayerExpectation & {
+  key: 'one-clue';
+  baseFixture: 'one-clue.valid.json';
+  overrides: Record<string, unknown>;
+  diagnosticCodes: string[];
 };
 
 type ParityCase = {
@@ -40,6 +48,7 @@ type ParityCase = {
     deterministicScreen: LayerExpectation;
     compatibility: LayerExpectation;
   };
+  mechanicValidator?: MechanicValidatorExpectation;
 };
 
 type ParityFixture = {
@@ -57,7 +66,11 @@ const EXPECTED_CASE_IDS = new Set([
   'valid-ryo-multiple-choice',
   'missing-required-prompt',
   'invalid-correct-option-id',
+  'normalized-mc-answer-leakage',
+  'normalized-match-duplicate',
+  'match-public-truth-leakage',
 ]);
+const CHALLENGE_KEYS = new Set(['ryo', 'match']);
 const LAYER_NAMES = new Set([
   'questionCraft',
   'deterministicScreen',
@@ -69,7 +82,7 @@ const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as ParityFixture;
 function assertFixtureContract(document: ParityFixture): void {
   expect(document.version).toBe(1);
   expect(document.contract).toBe('contentitem-validation-parity');
-  expect(document.cases).toHaveLength(3);
+  expect(document.cases).toHaveLength(6);
   expect(new Set(document.cases.map((item) => item.id))).toEqual(
     EXPECTED_CASE_IDS,
   );
@@ -78,19 +91,31 @@ function assertFixtureContract(document: ParityFixture): void {
     expect(item.item.prompt).toEqual(
       expect.objectContaining({ ar: expect.any(String) }),
     );
-    expect(item.item.answerPayload.mode).toBe('multiple_choice');
-    expect(item.item.answerPayload.options).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: expect.any(String) }),
-      ]),
-    );
-    expect(
-      (item.item.answerPayload.options as unknown[]).length,
-    ).toBeGreaterThanOrEqual(2);
-    expect(item.item.answerPayload.correctOptionId).toEqual(expect.any(String));
+    if (item.item.answerPayload.mode === 'multiple_choice') {
+      expect(item.item.answerPayload.options).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: expect.any(String) }),
+        ]),
+      );
+      expect(
+        (item.item.answerPayload.options as unknown[]).length,
+      ).toBeGreaterThanOrEqual(2);
+      expect(item.item.answerPayload.correctOptionId).toEqual(
+        expect.any(String),
+      );
+    } else if (item.item.answerPayload.mode === 'match') {
+      expect(item.item.answerPayload.acceptedAnswers).toEqual(
+        expect.arrayContaining([expect.any(String)]),
+      );
+    } else {
+      throw new Error(
+        `unsupported answer payload mode: ${String(item.item.answerPayload.mode)}`,
+      );
+    }
     expect(item.item.compatibleChallengeTypeKey).toBe(
       item.context.challengeTypeKey,
     );
+    expect(CHALLENGE_KEYS).toContain(item.context.challengeTypeKey);
     expect(new Set(Object.keys(item.layers))).toEqual(LAYER_NAMES);
 
     for (const [layerName, expectation] of Object.entries(item.layers)) {
@@ -102,9 +127,14 @@ function assertFixtureContract(document: ParityFixture): void {
         expect(expectation.expected).toBe('not_applicable');
         expect(expectation.reason).toEqual(expect.any(String));
       }
+      if (expectation.diagnosticContains !== undefined) {
+        expect(expectation.diagnosticContains).toEqual(expect.any(Array));
+      }
       if (layerName === 'deterministicScreen') {
         expect(expectation.blockingCodes).toEqual(expect.any(Array));
-        if (expectation.expected === 'pass') {
+        if (!expectation.applicable) {
+          expect(expectation.blockingCodes).toEqual([]);
+        } else if (expectation.expected === 'pass') {
           expect(expectation.blockingCodes).toEqual([]);
         } else {
           expect(expectation.blockingCodes!.length).toBeGreaterThan(0);
@@ -112,12 +142,24 @@ function assertFixtureContract(document: ParityFixture): void {
       }
       if (layerName === 'compatibility') {
         expect(expectation.blockerCodes).toEqual(expect.any(Array));
-        if (expectation.expected === 'deferred') {
+        if (!expectation.applicable) {
+          expect(expectation.blockerCodes).toEqual([]);
+        } else if (expectation.expected === 'deferred') {
           expect(expectation.blockerCodes).toEqual([]);
         } else {
           expect(expectation.blockerCodes!.length).toBeGreaterThan(0);
         }
       }
+    }
+
+    if (item.mechanicValidator !== undefined) {
+      expect(item.mechanicValidator.key).toBe('one-clue');
+      expect(item.mechanicValidator.baseFixture).toBe('one-clue.valid.json');
+      expect(item.mechanicValidator.applicable).toBe(true);
+      expect(item.mechanicValidator.expected).toBe('fail');
+      expect(item.mechanicValidator.overrides).toEqual(expect.any(Object));
+      expect(item.mechanicValidator.diagnosticCodes).toEqual(expect.any(Array));
+      expect(item.mechanicValidator.diagnosticCodes.length).toBeGreaterThan(0);
     }
   }
 }
@@ -136,7 +178,8 @@ function referencesFor(item: ParityCase): {
 } {
   expect(item.context.worldKey).toBe('football');
   expect(item.context.scopeKey).toBe('world-cup');
-  expect(item.context.challengeTypeKey).toBe('ryo');
+  expect(CHALLENGE_KEYS).toContain(item.context.challengeTypeKey);
+  const isRyo = item.context.challengeTypeKey === 'ryo';
   return {
     scope: scope({
       id: 'parity-scope-world-cup',
@@ -144,11 +187,11 @@ function referencesFor(item: ParityCase): {
     }),
     worldStatus: WorldContentStatus.DRAFT,
     challengeType: challengeType({
-      id: 'parity-challenge-ryo',
-      name: 'Read Your Opponent',
-      slug: 'read-your-opponent',
-      family: ChallengeFamily.RYO,
-      answerMode: ChallengeAnswerMode.RYO,
+      id: isRyo ? 'parity-challenge-ryo' : 'parity-challenge-match',
+      name: isRyo ? 'Read Your Opponent' : 'Parity Match',
+      slug: isRyo ? 'read-your-opponent' : 'parity-match',
+      family: isRyo ? ChallengeFamily.RYO : ChallengeFamily.COOP,
+      answerMode: isRyo ? ChallengeAnswerMode.RYO : ChallengeAnswerMode.MATCH,
     }),
   };
 }
@@ -163,18 +206,40 @@ describe('ContentItem parity fixture contract (test-only)', () => {
     expect(() => assertFixtureContract(malformed)).toThrow();
   });
 
+  it('rejects unknown validation layer names', () => {
+    const malformed = {
+      ...fixture,
+      cases: fixture.cases.map((item, index) =>
+        index === 0
+          ? {
+              ...item,
+              layers: {
+                ...item.layers,
+                unexpected: {
+                  applicable: false,
+                  expected: 'not_applicable',
+                  reason: 'unsupported layer',
+                },
+              },
+            }
+          : item,
+      ),
+    } as unknown as ParityFixture;
+    expect(() => assertFixtureContract(malformed)).toThrow();
+  });
+
   for (const item of fixture.cases) {
     it(`${item.id}: invokes the applicable real validation layers`, () => {
       assertFixtureContract(fixture);
       const draft = draftFor(item.item);
 
-      const screen = new DeterministicScreenService({
-        get: () => undefined,
-      } as unknown as ConfigService);
-      screen.beginBatch();
-      const screenResult = screen.screen(draft);
       const screenExpectation = item.layers.deterministicScreen;
       if (screenExpectation.applicable) {
+        const screen = new DeterministicScreenService({
+          get: () => undefined,
+        } as unknown as ConfigService);
+        screen.beginBatch();
+        const screenResult = screen.screen(draft);
         expect(screenResult.passed).toBe(screenExpectation.expected === 'pass');
         expect(
           screenResult.findings
@@ -186,7 +251,10 @@ describe('ContentItem parity fixture contract (test-only)', () => {
       const compatibility = new CandidateCompatibilityService(
         new ContentItemCompatibilityPolicy(),
       ).evaluate({
-        mechanicKey: 'read-your-opponent',
+        mechanicKey:
+          item.context.challengeTypeKey === 'ryo'
+            ? 'read-your-opponent'
+            : 'parity-match',
         draft,
         references: referencesFor(item),
       });

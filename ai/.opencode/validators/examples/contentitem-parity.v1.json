@@ -155,6 +155,169 @@
           ]
         }
       }
+    },
+    {
+      "id": "normalized-mc-answer-leakage",
+      "item": {
+        "prompt": {
+          "ar": "هل فاز هلال بالبطولة؟"
+        },
+        "compatibleChallengeTypeKey": "ryo",
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "al-hilal",
+              "label": {
+                "ar": "الهلال"
+              }
+            },
+            {
+              "id": "al-nasr",
+              "label": {
+                "ar": "النصر"
+              }
+            }
+          ],
+          "correctOptionId": "al-hilal"
+        }
+      },
+      "context": {
+        "worldKey": "football",
+        "scopeKey": "world-cup",
+        "challengeTypeKey": "ryo"
+      },
+      "layers": {
+        "questionCraft": {
+          "applicable": false,
+          "expected": "not_applicable",
+          "reason": "Question Craft does not inspect canonical multiple-choice correct-option labels"
+        },
+        "deterministicScreen": {
+          "applicable": true,
+          "expected": "fail",
+          "blockingCodes": [
+            "ANSWER_LEAKAGE"
+          ]
+        },
+        "compatibility": {
+          "applicable": true,
+          "expected": "deferred",
+          "blockerCodes": []
+        }
+      }
+    },
+    {
+      "id": "normalized-match-duplicate",
+      "item": {
+        "prompt": {
+          "ar": "ما اسم النادي؟"
+        },
+        "compatibleChallengeTypeKey": "match",
+        "answerPayload": {
+          "mode": "match",
+          "acceptedAnswers": [
+            "الأهلي",
+            "الاهلي"
+          ]
+        }
+      },
+      "context": {
+        "worldKey": "football",
+        "scopeKey": "world-cup",
+        "challengeTypeKey": "match"
+      },
+      "layers": {
+        "questionCraft": {
+          "applicable": false,
+          "expected": "not_applicable",
+          "reason": "Question Craft does not own accepted-answer duplicate validation"
+        },
+        "deterministicScreen": {
+          "applicable": false,
+          "expected": "not_applicable",
+          "blockingCodes": [],
+          "reason": "Deterministic screening does not evaluate match payloads"
+        },
+        "compatibility": {
+          "applicable": true,
+          "expected": "blocked",
+          "blockerCodes": [
+            "DUPLICATE_ACCEPTED_ANSWER"
+          ]
+        }
+      },
+      "mechanicValidator": {
+        "key": "one-clue",
+        "baseFixture": "one-clue.valid.json",
+        "applicable": true,
+        "expected": "fail",
+        "diagnosticCodes": [
+          "duplicate_accepted_answer"
+        ],
+        "overrides": {
+          "answerPayload": {
+            "acceptedAnswers": [
+              "الأهلي",
+              "الاهلي"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "match-public-truth-leakage",
+      "item": {
+        "prompt": {
+          "ar": "من هو أسطورة الكرة؟"
+        },
+        "compatibleChallengeTypeKey": "match",
+        "answerPayload": {
+          "mode": "match",
+          "acceptedAnswers": [
+            "أسطورة الكرة"
+          ]
+        }
+      },
+      "context": {
+        "worldKey": "football",
+        "scopeKey": "world-cup",
+        "challengeTypeKey": "match"
+      },
+      "layers": {
+        "questionCraft": {
+          "applicable": true,
+          "expected": "fail",
+          "diagnosticContains": [
+            "Zero Answer Leakage Violation"
+          ]
+        },
+        "deterministicScreen": {
+          "applicable": false,
+          "expected": "not_applicable",
+          "blockingCodes": [],
+          "reason": "Deterministic screening does not evaluate match payloads"
+        },
+        "compatibility": {
+          "applicable": true,
+          "expected": "deferred",
+          "blockerCodes": []
+        }
+      },
+      "mechanicValidator": {
+        "key": "one-clue",
+        "baseFixture": "one-clue.valid.json",
+        "applicable": true,
+        "expected": "fail",
+        "diagnosticCodes": [
+          "public_truth_leakage"
+        ],
+        "overrides": {
+          "prompt": {
+            "ar": "من هو أسطورة الكرة؟"
+          }
+        }
+      }
     }
   ]
 }

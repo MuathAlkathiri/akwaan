@@ -14,14 +14,19 @@ FIXTURE = VALIDATOR_ROOT / "examples" / "contentitem-parity.v1.json"
 sys.path.insert(0, str(VALIDATOR_ROOT))
 
 from validate_question_craft import validate_single_item  # noqa: E402
+from validate_one_clue import validate as validate_one_clue  # noqa: E402
 
 
 EXPECTED_CASES = {
     "valid-ryo-multiple-choice",
     "missing-required-prompt",
     "invalid-correct-option-id",
+    "normalized-mc-answer-leakage",
+    "normalized-match-duplicate",
+    "match-public-truth-leakage",
 }
 LAYER_NAMES = {"questionCraft", "deterministicScreen", "compatibility"}
+CHALLENGE_KEYS = {"ryo", "match"}
 
 
 def load_fixture() -> Dict[str, Any]:
@@ -41,8 +46,12 @@ def assert_contract(document: Dict[str, Any]) -> None:
     cases = document.get("cases")
     check(isinstance(cases, list), "fixture cases must be a list")
     check(
+        len(cases) == len(EXPECTED_CASES),
+        "fixture must contain exactly the approved number of cases",
+    )
+    check(
         {case.get("id") for case in cases} == EXPECTED_CASES,
-        "fixture case IDs do not match the approved three cases",
+        "fixture case IDs do not match the approved six cases",
     )
 
     for case in cases:
@@ -66,6 +75,10 @@ def assert_contract(document: Dict[str, Any]) -> None:
             == context.get("challengeTypeKey"),
             f"{case.get('id')}: item/context challenge keys differ",
         )
+        check(
+            context.get("challengeTypeKey") in CHALLENGE_KEYS,
+            f"{case.get('id')}: unsupported symbolic challenge key",
+        )
 
         prompt = item.get("prompt")
         payload = item.get("answerPayload")
@@ -75,19 +88,25 @@ def assert_contract(document: Dict[str, Any]) -> None:
             isinstance(payload, dict),
             f"{case.get('id')}: answer payload must be an object",
         )
-        check(
-            payload.get("mode") == "multiple_choice",
-            f"{case.get('id')}: expected multiple-choice payload",
-        )
-        check(
-            isinstance(payload.get("options"), list)
-            and len(payload["options"]) >= 2,
-            f"{case.get('id')}: realistic options are required",
-        )
-        check(
-            isinstance(payload.get("correctOptionId"), str),
-            f"{case.get('id')}: correct option ID is missing",
-        )
+        if payload.get("mode") == "multiple_choice":
+            check(
+                isinstance(payload.get("options"), list)
+                and len(payload["options"]) >= 2,
+                f"{case.get('id')}: realistic options are required",
+            )
+            check(
+                isinstance(payload.get("correctOptionId"), str),
+                f"{case.get('id')}: correct option ID is missing",
+            )
+        elif payload.get("mode") == "match":
+            check(
+                isinstance(payload.get("acceptedAnswers"), list)
+                and len(payload["acceptedAnswers"]) >= 1
+                and all(isinstance(answer, str) for answer in payload["acceptedAnswers"]),
+                f"{case.get('id')}: realistic accepted answers are required",
+            )
+        else:
+            check(False, f"{case.get('id')}: unsupported answer payload mode")
 
         for layer_name, expectation in layers.items():
             check(isinstance(expectation, dict), f"{case.get('id')}: {layer_name} missing")
@@ -114,13 +133,27 @@ def assert_contract(document: Dict[str, Any]) -> None:
                     bool(expectation.get("reason")),
                     f"{case.get('id')}: non-applicable {layer_name} needs a reason",
                 )
+            if "diagnosticContains" in expectation:
+                check(
+                    isinstance(expectation["diagnosticContains"], list)
+                    and all(
+                        isinstance(value, str) and value
+                        for value in expectation["diagnosticContains"]
+                    ),
+                    f"{case.get('id')}: diagnosticContains must be non-empty strings",
+                )
 
         screen = layers["deterministicScreen"]
         check(
             isinstance(screen.get("blockingCodes"), list),
             f"{case.get('id')}: screen blockingCodes must be a list",
         )
-        if screen["expected"] == "pass":
+        if not screen["applicable"]:
+            check(
+                screen["blockingCodes"] == [],
+                f"{case.get('id')}: non-applicable screen cannot expect blockers",
+            )
+        elif screen["expected"] == "pass":
             check(
                 screen["blockingCodes"] == [],
                 f"{case.get('id')}: passing screen case cannot expect blockers",
@@ -136,7 +169,12 @@ def assert_contract(document: Dict[str, Any]) -> None:
             isinstance(compatibility.get("blockerCodes"), list),
             f"{case.get('id')}: compatibility blockerCodes must be a list",
         )
-        if compatibility["expected"] == "deferred":
+        if not compatibility["applicable"]:
+            check(
+                compatibility["blockerCodes"] == [],
+                f"{case.get('id')}: non-applicable compatibility cannot expect blockers",
+            )
+        elif compatibility["expected"] == "deferred":
             check(
                 compatibility["blockerCodes"] == [],
                 f"{case.get('id')}: deferred case cannot expect blockers",
@@ -147,6 +185,59 @@ def assert_contract(document: Dict[str, Any]) -> None:
                 f"{case.get('id')}: blocked case needs blockers",
             )
 
+        mechanic = case.get("mechanicValidator")
+        if mechanic is not None:
+            check(
+                isinstance(mechanic, dict),
+                f"{case.get('id')}: mechanicValidator must be an object",
+            )
+            check(
+                set(mechanic).issubset(
+                    {
+                        "key",
+                        "baseFixture",
+                        "applicable",
+                        "expected",
+                        "diagnosticCodes",
+                        "overrides",
+                    }
+                ),
+                f"{case.get('id')}: unknown mechanicValidator field",
+            )
+            check(
+                mechanic.get("key") == "one-clue",
+                f"{case.get('id')}: unsupported mechanic validator",
+            )
+            check(
+                mechanic.get("baseFixture") == "one-clue.valid.json",
+                f"{case.get('id')}: mechanic fixture must use the canonical One Clue fixture",
+            )
+            check(mechanic.get("applicable") is True, f"{case.get('id')}: mechanic validator must apply")
+            check(mechanic.get("expected") in {"pass", "fail"}, f"{case.get('id')}: invalid mechanic expectation")
+            check(
+                isinstance(mechanic.get("diagnosticCodes"), list)
+                and all(isinstance(code, str) and code for code in mechanic["diagnosticCodes"]),
+                f"{case.get('id')}: mechanic diagnostic codes are required",
+            )
+            check(isinstance(mechanic.get("overrides"), dict), f"{case.get('id')}: mechanic overrides are required")
+
+
+def merge_fixture(target: dict[str, Any], patch: dict[str, Any]) -> None:
+    """Test-only deep merge for applying fixture overrides to native examples."""
+    for key, value in patch.items():
+        if isinstance(value, dict) and isinstance(target.get(key), dict):
+            merge_fixture(target[key], value)
+        else:
+            target[key] = value
+
+
+def load_mechanic_fixture(case: dict[str, Any]) -> dict[str, Any]:
+    mechanic = case["mechanicValidator"]
+    source = VALIDATOR_ROOT / "examples" / mechanic["baseFixture"]
+    item = json.loads(source.read_text(encoding="utf-8"))
+    merge_fixture(item, mechanic["overrides"])
+    return item
+
 
 class ContentItemParityFixtureTests(unittest.TestCase):
     @classmethod
@@ -154,12 +245,22 @@ class ContentItemParityFixtureTests(unittest.TestCase):
         cls.document = load_fixture()
         assert_contract(cls.document)
 
-    def test_contract_has_exactly_three_complete_cases(self) -> None:
-        self.assertEqual(len(self.document["cases"]), 3)
+    def test_contract_has_exactly_six_complete_cases(self) -> None:
+        self.assertEqual(len(self.document["cases"]), 6)
 
     def test_contract_rejects_incomplete_case_sets(self) -> None:
         malformed = dict(self.document)
         malformed["cases"] = self.document["cases"][:2]
+        with self.assertRaises(AssertionError):
+            assert_contract(malformed)
+
+    def test_contract_rejects_unknown_layer_names(self) -> None:
+        malformed = json.loads(json.dumps(self.document))
+        malformed["cases"][0]["layers"]["unexpected"] = {
+            "applicable": False,
+            "expected": "not_applicable",
+            "reason": "unsupported layer",
+        }
         with self.assertRaises(AssertionError):
             assert_contract(malformed)
 
@@ -177,11 +278,34 @@ class ContentItemParityFixtureTests(unittest.TestCase):
 
     def test_canonical_payload_cases_are_explicitly_not_applicable_to_question_craft(self) -> None:
         for case in self.document["cases"]:
-            if case["id"] == "valid-ryo-multiple-choice":
-                continue
             expectation = case["layers"]["questionCraft"]
-            self.assertFalse(expectation["applicable"])
-            self.assertEqual(expectation["expected"], "not_applicable")
+            if not expectation["applicable"]:
+                self.assertEqual(expectation["expected"], "not_applicable")
+
+    def test_question_craft_leakage_uses_its_existing_contract(self) -> None:
+        case = next(
+            case
+            for case in self.document["cases"]
+            if case["id"] == "match-public-truth-leakage"
+        )
+        item = dict(case["item"])
+        item["id"] = case["id"]
+        errors = validate_single_item(item)
+        for expected in case["layers"]["questionCraft"]["diagnosticContains"]:
+            self.assertTrue(
+                any(expected in error for error in errors),
+                f"expected Question Craft diagnostic {expected!r}, got {errors}",
+            )
+
+    def test_mechanic_validator_expectations_use_real_one_clue_validator(self) -> None:
+        for case in self.document["cases"]:
+            mechanic = case.get("mechanicValidator")
+            if not mechanic or not mechanic["applicable"]:
+                continue
+            errors = validate_one_clue(load_mechanic_fixture(case))
+            self.assertEqual(mechanic["expected"], "fail")
+            for expected in mechanic["diagnosticCodes"]:
+                self.assertIn(expected, errors, f"{case['id']}: {errors}")
 
 
 if __name__ == "__main__":
