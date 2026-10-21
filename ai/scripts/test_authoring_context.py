@@ -3,6 +3,19 @@ import os
 import subprocess
 import unittest
 
+
+# Scratch artifacts belong in the git-ignored workbench, never the repository
+# root (AGENTS.md section 5). `validate_novelty_ambiguity.py` keys self-collision
+# on `os.path.basename`, so redirecting the directory while keeping the file name
+# preserves the dedup semantics these tests assert.
+_SCRATCH_DIR = os.path.join("ai", "workbench", "artifacts")
+
+
+def _scratch(filename):
+    os.makedirs(_SCRATCH_DIR, exist_ok=True)
+    return os.path.join(_SCRATCH_DIR, filename)
+
+
 def run_resolver(mechanic, world, scope):
     cmd = ["python3", "ai/scripts/resolve_authoring_context.py", "--mechanic", mechanic, "--world", world, "--scope", scope]
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -100,22 +113,25 @@ class TestAuthoringContext(unittest.TestCase):
         res = run_resolver("marhala", "video-games", "fifa")
         meta_part = res.stdout.split("=== CONTEXT ===")[0].replace("=== METADATA ===", "").strip()
         
-        with open("test_artifact_valid.json", "w") as f:
+        valid_path = _scratch("test_artifact_valid.json")
+        stale_path = _scratch("test_artifact_stale.json")
+
+        with open(valid_path, "w") as f:
             f.write(meta_part)
             
-        cmd = ["python3", "ai/scripts/validate_authoring_context.py", "test_artifact_valid.json"]
+        cmd = ["python3", "ai/scripts/validate_authoring_context.py", valid_path]
         v_res = subprocess.run(cmd, capture_output=True, text=True)
         self.assertEqual(v_res.returncode, 0)
         self.assertIn("VALIDATION_PASSED", v_res.stdout)
         
         stale = json.loads(meta_part)
         stale["_authoringContext"]["composedHash"] = "badhash"
-        with open("test_artifact_stale.json", "w") as f:
+        with open(stale_path, "w") as f:
             json.dump(stale, f)
-        v_res = subprocess.run(["python3", "ai/scripts/validate_authoring_context.py", "test_artifact_stale.json"], capture_output=True, text=True)
+        v_res = subprocess.run(["python3", "ai/scripts/validate_authoring_context.py", stale_path], capture_output=True, text=True)
         self.assertNotEqual(v_res.returncode, 0)
 
-        for f in ["test_artifact_valid.json", "test_artifact_stale.json"]:
+        for f in [valid_path, stale_path]:
             if os.path.exists(f): os.remove(f)
 
 
@@ -137,9 +153,10 @@ class TestNoveltyAndAmbiguity(unittest.TestCase):
     def run_check(self, item):
         import subprocess
         import json
-        with open("temp_test_item.json", "w") as f:
+        path = _scratch("temp_test_item.json")
+        with open(path, "w") as f:
             json.dump([item], f)
-        res = subprocess.run(["python3", "ai/scripts/validate_novelty_ambiguity.py", "temp_test_item.json"], capture_output=True, text=True)
+        res = subprocess.run(["python3", "ai/scripts/validate_novelty_ambiguity.py", path], capture_output=True, text=True)
         return res.stdout
 
     def test_ambiguity_gta_regression(self):
@@ -205,9 +222,10 @@ class TestSelfCollisionAndHistory(unittest.TestCase):
             
     def run_check(self, item, filename="test_artifact.json"):
         import subprocess, json
-        with open(filename, "w") as f:
+        path = _scratch(filename)
+        with open(path, "w") as f:
             json.dump([item], f)
-        res = subprocess.run(["python3", "ai/scripts/validate_novelty_ambiguity.py", filename], capture_output=True, text=True)
+        res = subprocess.run(["python3", "ai/scripts/validate_novelty_ambiguity.py", path], capture_output=True, text=True)
         return res.stdout
 
     def test_self_collision_logic(self):
@@ -263,9 +281,10 @@ class TestSelfCollisionAndHistory(unittest.TestCase):
 class TestAnswerIntegrityStructure(unittest.TestCase):
     def run_check(self, item):
         import subprocess, json
-        with open("temp_struct.json", "w") as f:
+        path = _scratch("temp_struct.json")
+        with open(path, "w") as f:
             json.dump([item], f)
-        res = subprocess.run(["python3", "ai/scripts/validate_novelty_ambiguity.py", "temp_struct.json"], capture_output=True, text=True)
+        res = subprocess.run(["python3", "ai/scripts/validate_novelty_ambiguity.py", path], capture_output=True, text=True)
         return res.stdout
 
     def test_empty_answers_rejected(self):

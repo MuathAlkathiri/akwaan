@@ -39,9 +39,24 @@ Avoid breaking the core experience of puzzles.
   vocabulary.
 - Ownership: this World is the exclusive home of two mechanics — `moving-xo`
   (إكس أو المتحرك), the Puzzles **Signature**, and `rakkibha` (ركّبها), an
-  independent preserved mechanic with its own runtime, validators and content.
-  Neither replaces the other, and Moving XO is **not** a renamed ركّبها. Neither
-  is intended to run across Anime, Football, or Video Games.
+  independent mechanic with its own runtime, validators and content. Neither
+  replaces the other, and Moving XO is **not** a renamed ركّبها. Neither is
+  intended to run across Anime, Football, or Video Games.
+- Current product direction (approved 2026-10-21): **`moving-xo` is the active
+  authoring target for this World; `rakkibha` is retired from current product
+  usage and is not authored against today.**
+
+  Retired from *product direction* — not removed. ركّبها's runtime, schemas,
+  validators, Skills and visual assembly patterns are deliberately preserved for
+  possible future reactivation, and nothing here authorises deleting them,
+  deactivating a challenge configuration, or mutating a runtime record. A
+  mechanic nobody is currently authoring for is not a mechanic that has been
+  taken out of the product; conflating the two is how a reversible pause becomes
+  an irreversible deletion.
+
+  ⬜ **Runtime removal and database deactivation are NOT VERIFIED and NOT
+  AUTHORIZED.** No claim is made here about what any environment currently
+  serves.
 - Scopes: the six forward Scopes approved 2026-10-06 with canonical slugs
   approved 2026-10-09 (roadmap §23.11) — `observation-illusions`,
   `wordplay-letters`, `numbers-estimation`, `assembly-rotation`, `paths-motion`
@@ -60,7 +75,9 @@ Avoid breaking the core experience of puzzles.
     contract and `ai/.opencode/validators/validate_moving_xo.py` for the checks.
     The backend's `ContentItemCompatibilityPolicy` is the gate that actually
     holds at READY.
-  - `rakkibha` — see `ai/.opencode/validators/RAKKIBHA.md`, unchanged.
+  - `rakkibha` — see `ai/.opencode/validators/RAKKIBHA.md`, unchanged. Retained
+    and still valid; simply not an active authoring target under the current
+    product direction above.
   The earlier blanket rule — no Puzzles item `ready` until the Rakkibha contract
   exists — is **superseded**: that precondition is satisfied, and it never
   applied to a mechanic Rakkibha does not own.

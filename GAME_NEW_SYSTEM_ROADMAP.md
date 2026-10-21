@@ -40,6 +40,33 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
+### Where things stand — 2026-10-21 · PUZZLES CANONICAL FAMILY LIBRARY V1 REVISED — 🚧 IN PROGRESS
+
+✅ **Canonical Puzzle Family Library V1 — Product Revision (2026-10-21):**
+Human Product approved a focused 1-to-1 canonical family revision in `wordplay-letters`:
+- **Retired:** `dot-count` (counting visible dots on text degraded into mechanical manual tallying without puzzle discovery).
+- **Replacement:** `dotless-disambiguation` (Arabic authoring identity: **قراءة الكلام بدون نقاط**).
+- **Core Solve:** Undotted target word skeleton + readable surrounding sentence context $\implies$ correct dotted reading.
+- **Approved Visual Direction:** Surrounding sentence normally readable; only ONE target word rendered without dots in a neutral frame; 4 normally dotted choices below. Full-sentence dot removal was visually prototyped and rejected as default.
+- **Mechanic Fit:** Read Your Opponent `EXCELLENT` (priming traps), Moving XO `EXCELLENT` (6–9s inference), Bomb `LIMITED`, Closest `DO_NOT_FORCE`.
+- **Pilot Impact:** `PILOT-01-WRD-06` is reopened for reauthoring (`REAUTHOR REQUIRED / RETIRED FAMILY — HUMAN PRODUCT REVIEW PENDING`). No final replacement question has been approved yet.
+- **Library Count Invariant:** Total Canonical Family Library V1 remains exactly **78 Families** across all six Scopes (`wordplay-letters` remains exactly 15).
+- **Status Invariant:** Production Puzzles content remains 0 real items; Moving XO remains dev/local only.
+
+✅ **Canonical Puzzle Family Library V1 is Human Product Approved across all six forward Puzzles Scopes.**
+A major Product/Authoring architecture milestone was reached: **78 canonical Puzzle Families** are defined and
+validated across the six forward Scopes (`observation-illusions`: 14, `wordplay-letters`: 15, `numbers-estimation`: 12,
+`assembly-rotation`: 13, `paths-motion`: 12, `spot-the-error`: 12). All 14-field family contracts, cognitive solves,
+mechanic fit ratings, anti-patterns, and validation rules are documented directly in each Scope's `SCOPE.md` and
+`KNOWLEDGE.md`. Context resolution across mechanics (`resolve_authoring_context.py`) and test suite verification
+(`test_authoring_context.py`) are fully validated (16/16 tests PASS).
+
+**What this is NOT.** This is an authoring architecture milestone. It does **not** mean production Puzzles content
+exists, real question batches were authored, ContentItems were created, or content was promoted. **Production forward
+Puzzles content remains 0 real items.** Moving XO remains local/dev runtime only and is **not deployed to Production**.
+The next content milestone is the **First Real Forward Puzzles Content Pilot** (open work). See §23.11.
+
+
 ### Where things stand — 2026-10-10 (later) · PRODUCTION PUZZLES LEGACY TAXONOMY CLEANUP COMPLETE — 🚧 IN PROGRESS
 
 ✅ **The Production Puzzles taxonomy is now exactly the six forward Scopes.** The legacy taxonomy was removed
@@ -4006,9 +4033,55 @@ Scope row degrades a historical Match to an empty Scope name rather than breakin
 only by `SCOPE_NOT_EMPTY` and the legacy-questions guard, which counts **0** for all five Scopes. Hard deletion
 after content removal is therefore safe for the 37 historical Matches.
 
+#### Canonical Puzzle Family Library V1 — ✅ PRODUCT/AUTHORING APPROVED (2026-10-20)
+
+Human Product has **APPROVED** Canonical Family Library V1 across all six forward Puzzles Scopes. This settles the
+authoring knowledge foundation for Puzzles World before any production content generation begins.
+
+| # | Scope (player-facing Arabic) | Canonical technical slug | Approved Families | Primary Cognitive Identity |
+|---|---|---|:---:|---|
+| 1 | قوة الملاحظة والخداع البصري | `observation-illusions` | **14** | Notice what is already present in the static visual (`«Did you notice it?»`) |
+| 2 | التلاعب بالكلمات والحروف | `wordplay-letters` | **15** | Language structure itself is manipulated, dissected, or reassembled |
+| 3 | أرقام وتقديرات | `numbers-estimation` | **12** | Playful numerical intuition, visual estimation, and pattern discovery (not worksheets) |
+| 4 | تركيب وتدوير | `assembly-rotation` | **13** | Mentally manipulate, fold, slice, assemble, or rotate the object itself |
+| 5 | مسارات وحركة | `paths-motion` | **12** | Simulate dynamic physical evolution across time or deterministic kinetic chains |
+| 6 | اكتشف الخطأ | `spot-the-error` | **12** | Infer an objective rule from material, then locate the single element breaking it |
+| **Total** | **All six Scopes** | | **78** | **Approved Canonical Puzzle Families (V1)** |
+
+**Status discipline.** This milestone means:
+- ✅ Product/Authoring architecture approved.
+- ✅ Canonical Family Libraries authored directly in the existing `SCOPE.md` and `KNOWLEDGE.md` profiles.
+- ✅ Context resolution (`resolve_authoring_context.py`) and test suite (`test_authoring_context.py`) verified (16/16 PASS).
+
+It explicitly does **NOT** mean:
+- Production forward Puzzles content exists (remains **⬜ 0 real items**).
+- Real question batches have been authored or generated.
+- ContentItems were created or promoted.
+- Database was mutated.
+- Moving XO was deployed to Production (remains local/dev runtime only, §23.11).
+- Puzzles World is launch-ready or gameplay production-verified.
+- Media enrichment was performed.
+
+**Approved Family Library governance.**
+- **Canonical generation flow:** `Scope ➔ Approved Family ➔ Mechanic Fit ➔ Difficulty Levers ➔ Original Question Craft ➔ QA`.
+- Generators must strictly **READ** from registered approved Families; generators must **NEVER** silently declare or invent new canonical Families during batch authoring.
+- **New Family flow:** `Candidate proposal ➔ distinctness proof ➔ cross-Scope overlap audit ➔ mechanic-fit audit ➔ abstract interaction examples ➔ Human Product approval ➔ canonical library addition`.
+
+**Notable approved architectural decisions:**
+- **`plural-form` inside `wordplay-letters`:** «جمع الكلمات ومفرداتها» is an internal Family, **not** a Scope. Product identity is anchored on fast recognition/production of familiar Modern Standard Arabic vocabulary (صندوق ➔ صناديق، مفتاح ➔ مفاتيح). Obscurity is explicitly rejected as a difficulty lever.
+- **Separation of dot operations & Product Revision (2026-10-21):** `dotless-disambiguation` (recovering an undotted target skeleton via sentence context; Closest `DO_NOT_FORCE`) and `dot-shift` (transforming words across the same letter skeleton; Closest `DO_NOT_FORCE`) are separate canonical Families. Visible-dot counting (`dot-count`) was retired by Human Product and replaced 1-to-1 with `dotless-disambiguation` (Arabic authoring name: **قراءة الكلام بدون نقاط**). Target-only undotted word within a normally readable sentence is the approved visual direction; full-sentence dot removal was prototyped and rejected as default. RYO `EXCELLENT`, Moving XO `EXCELLENT`, Bomb `LIMITED`, Closest `DO_NOT_FORCE`. Pilot item `PILOT-01-WRD-06` is reopened as `REAUTHOR REQUIRED / RETIRED FAMILY (HUMAN PRODUCT REVIEW PENDING)`. Total library count remains exactly **78 Families** across all six Scopes (`wordplay-letters` remains exactly 15).
+- **Rejection of worksheet drift:** Direct school arithmetic drill (`digital-sum-root`) was rejected. Patterns must produce short discoverable "aha!" insights.
+- **Rejection of physics textbook recall:** `pendulum-collision-transfer` was rejected; all `paths-motion` puzzles must be visually self-contained and deterministic.
+- **Overlap cleanup:** `spot-the-error` does not duplicate `observation-illusions` ownership of impossible Escher geometries (`impossible-object-perception`) or isolated asymmetry defects (`visual-asymmetry-detection`).
+- **Honest Closest ratings:** Exact derived logical/algebraic answers (`missing-number-pattern`, `number-relationship-grid`, `balance-scale-weight`) are rated `DO_NOT_FORCE` or `LIMITED`. Proximity scoring is reserved for genuine continuous/discrete quantities (`visual-quantity-estimate`, `proportion-estimate`, `geometric-area-estimate`, `time-angle-intuition`, `between-two-anchors`).
+- **Rejection of index-as-distance:** Treating categorical step/item indexes (1..N) as fake numeric sliders is strictly forbidden across all Scopes.
+- **Media standard:** Static vector illustrations with unambiguous directional indicators are the safe approved default for `paths-motion`; animation is not required.
+- **Detailed specifications:** Complete 14-field contracts, interaction shapes, anti-patterns, and difficulty levers remain documented directly in each Scope's [`KNOWLEDGE.md`](ai/.opencode/skills/worlds/puzzles/scopes/) file.
+
 #### Still pending (rollout / replacement)
 
-**real Puzzles content authoring/promotion** *(Production forward Scopes hold **0 real items**)* ·
+**First Real Forward Puzzles Content Pilot** *(open work: validate that approved Family Library V1 produces diverse, mechanic-native content without trivia/worksheet drift; Production forward Scopes hold **0 real items**)* ·
+**real Puzzles content authoring/promotion** ·
 **LOCAL runtime Phases 2–5** *(the local runtime still carries the stale 5-Scope / 321-item taxonomy; only
 Production has been replaced)* · **stale gameplay lifecycle debt** *(the 11 preserved chains)* *(the 21 provisioned items are temporary smoke content)* · **deliberate ركّبها
 replacement/removal** · **Series stale-binding cleanup** · **Production rollout** · **deployment**.
@@ -5961,5 +6034,90 @@ use code defaults.
 not a physical retest and must not be described as one.
 
 ⬜ **R3 and R4 (Content Engine, §30) are NOT STARTED and untouched by this work.**
+
+---
+
+## 32. Puzzles mechanic ownership — Moving XO active, ركّبها retired from product direction (2026-10-21)
+
+**Operator product decision, recorded. Documentation and authoring assets only — no runtime change.**
+
+### 32.1 The decision
+
+| Mechanic | Product direction | Implementation |
+| --- | --- | --- |
+| `moving-xo` (إكس أو المتحرك) | ✅ **Active authoring target.** The 78-family Canonical Puzzle Family Library V1 is authored exclusively for it. | Unchanged |
+| `rakkibha` (ركّبها) | 🟡 **Retired from current product usage.** Not authored against; **not required** for Family Library coverage or validation. | **Preserved in full** — runtime, schemas, validators, Skills and visual assembly patterns, for possible future reactivation |
+
+**Retirement from product direction is not removal.** ركّبها's implementation is
+deliberately retained: 28 backend source files, 24 frontend files, 3 validator
+assets and 15 Skills/manifest references remain in place and were not touched.
+A mechanic nobody is currently authoring for is not a mechanic that has been
+taken out of the product, and conflating the two is how a reversible pause
+becomes an irreversible deletion.
+
+⬜ **Runtime removal and database deactivation are NOT VERIFIED and NOT
+AUTHORIZED.** No challenge configuration was changed, no ContentItem was
+touched, and no claim is made about what any environment currently serves.
+Historical implementation records — including §23.11 and the Rakkibha contract
+in `ai/.opencode/validators/RAKKIBHA.md` — remain intact.
+
+### 32.2 Authoring alignment performed
+
+- `WORLD.md` now carries the product direction alongside the unchanged ownership
+  record, and the `rakkibha` authoring gate is marked retained-but-inactive
+  rather than deleted.
+- All six Scope profiles now name **Moving XO** explicitly as the library's
+  target, with a note that a `closest` entry in `Supported Modes` is an *answer
+  mode inside Moving XO authoring*, not a second mechanic claim.
+- `observation-illusions` — the canonical reference template — was brought into
+  line with the five Scopes it is cited by: it previously lacked the `Status`
+  banner and framed families as multi-mechanic.
+
+### 32.3 Exemplar reconciliation against Family Library V1
+
+`numbers-estimation/EXEMPLARS.md` named two families V1 does not contain. Four
+of its five worked items are now marked ⬜ **WITHHELD** — recorded, not approved
+generation guidance — because none maps onto an approved family without
+stretching it. One (`missing-number-pattern`) is approved.
+
+`spot-the-error/EXEMPLARS.md` resolves cleanly against V1. Its undotted-letter
+item carries a routing note: the 2026-10-21 creation of
+`wordplay-letters/dotless-disambiguation` gives Arabic letter-dot material an
+owner elsewhere, so the two Scopes are separated by the **solve** (infer a rule
+and locate the breach → اكتشف الخطأ) rather than by the material.
+
+**No family was invented, and no unresolved example was rewritten or deleted.**
+
+### 32.4 Validation — ✅ PASSED (structural)
+
+Six Scopes · **78 families, 78 unique IDs, 0 duplicates** · no retired family
+(`dot-count`, `quantity-intuition`, `numeric-pattern`, `digital-sum-root`)
+reintroduced · every approved exemplar family reference resolves · the canonical
+resolver loads the revised rules for all six Scopes under `moving-xo` with no
+`AUTHORING_BLOCKED`, and the WITHHELD markers and routing note reach the
+generation context · `test_authoring_context.py` **16/16 PASS**, substantiating
+the figure previously claimed.
+
+Its scratch output was redirected from the repository root to the git-ignored
+`ai/workbench/artifacts/` (AGENTS.md §5). The validator keys self-collision on
+`os.path.basename`, so the dedup semantics are unchanged. The four pre-existing
+root JSON files were **held, not deleted**; no new root artifact was created.
+
+### 32.5 Status — 🚧 NOT FULLY CLOSED
+
+✅ Mechanic ownership aligned · ✅ library scoped to Moving XO · ✅ structural
+validation passed.
+
+Open product decisions, deliberately not resolved here:
+
+- ⬜ The four **WITHHELD** `numbers-estimation` exemplars need a human mapping or
+  a retirement decision.
+- ⬜ `PILOT-01-WRD-06` stays excluded from approved generation until a
+  replacement receives human approval.
+
+⬜ **The Family Library is NOT marked implemented or verified.** It is an
+approved authoring architecture: Production forward Puzzles content remains
+**0 real items**, and Moving XO remains local/dev only. ⬜ Not committed,
+⬜ not deployed.
 
 ---

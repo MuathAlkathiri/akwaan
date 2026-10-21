@@ -1,5 +1,8 @@
 # Scope: Observation and Visual Illusions (قوة الملاحظة والخداع البصري)
 
+> **Status:** APPROVED CANONICAL FAMILY LIBRARY V1 — HUMAN PRODUCT APPROVED (2026-10-20)  
+> Canonical reference template for the other five Puzzles Scopes.
+
 - `scopeId`: `puzzles.observation-illusions`
 - `worldId`: `puzzles`
 - Player-facing Arabic name: **قوة الملاحظة والخداع البصري**
@@ -21,27 +24,38 @@
 - `PUZZLE_ITSELF_IS_THE_CHALLENGE` — the puzzle must be self-contained in what
   the player is shown. No outside lookup, no recall dependency.
 
-## Puzzle families (Moving XO authoring)
+## Puzzle families (Approved Canonical Library V1)
 
-Families are authoring guidance for the Puzzles Signature mechanic. They are
-**not** a database field and carry no runtime behaviour — see
-`ai/.opencode/knowledge/architecture/MOVING-XO.md`.
+Families are authoring guidance for the Puzzles Signature mechanic, **Moving XO**, which is the World's
+active authoring target (WORLD.md, product direction 2026-10-21). They are **not** a database field and
+carry no runtime behaviour — see `ai/.opencode/knowledge/architecture/MOVING-XO.md`.
 
-Every family answers on a **text-only** phone within the **15-second** window,
-while the prompt and media sit on the shared screen.
+The `Supported Modes` column records the answer modes a family can express. A mode is not a second
+mechanic claim: where a family notes `closest`, that is the Closest *answer mode* inside Moving XO
+authoring, not an instruction to author this library for ركّبها, which is retired from current product
+usage.
 
-| Family | Arabic | Media | Answer modes |
-|---|---|---|---|
-| `hidden-detail` | تفصيلة مخفية | required | `multiple_choice` |
-| `illusion-perception` | خداع بصري | required | `multiple_choice` |
-| `visual-count` | عدّ بصري | required | `multiple_choice` |
+The complete **14-Family Library (Approved Canonical Library V1)**, with detailed cognitive operations, difficulty levers, mechanic-native notes, and anti-patterns, is documented in [`KNOWLEDGE.md`](./KNOWLEDGE.md).
 
-- **`hidden-detail`** — A detail that is present and overlooked. Findable at shared-screen distance.
-  - Reject: A detail only visible by zooming or peering close.
-- **`illusion-perception`** — A perceptual effect the player names or resolves.
-  - Reject: Illusions needing an explanation longer than the answer itself.
-- **`visual-count`** — Counting a small, clearly separated set.
-  - Reject: Counts above roughly a dozen, or overlapping shapes, inside 15s.
+For the Puzzles Signature mechanic (**Moving XO**), every family answers on a **text-only** phone within the **15-second** window while the prompt and media sit on the shared screen.
+
+### Approved Canonical Family Summary (V1):
+| # | Family ID | Arabic Title | Moving XO Fit | Media | Supported Modes |
+|---|---|---|:---:|:---:|:---:|
+| 1 | `hidden-detail` | التفصيلة المخفية والتمويه | GOOD | Required | `multiple_choice`, `closest` (limited: 1D scalar/count) |
+| 2 | `figure-ground-reversal` | انعكاس الشكل والأرضية والفضاء السلبي | EXCELLENT | Required | `multiple_choice`, `match` |
+| 3 | `illusory-contour` | الحدود والأشكال الوهمية | EXCELLENT | Required | `multiple_choice`, `match` |
+| 4 | `size-distortion-illusion` | خداع الحجم والأبعاد | EXCELLENT | Required | `multiple_choice`, `closest` |
+| 5 | `color-contrast-illusion` | خداع اللون والسطوع | EXCELLENT | Required | `multiple_choice`, `match` |
+| 6 | `perspective-depth-trap` | فخ المنظور والعمق | EXCELLENT | Required | `multiple_choice`, `closest` (limited: 1D depth) |
+| 7 | `impossible-object-perception` | المجسمات والتراكيب المستحيلة | EXCELLENT | Required | `multiple_choice` |
+| 8 | `count-in-clutter` | العدّ البصري في الزحام | EXCELLENT | Required | `multiple_choice`, `closest` |
+| 9 | `spot-the-difference` | الفروقات بين المشهدين | EXCELLENT | Required | `multiple_choice`, `closest` (limited: 1D count delta) |
+| 10 | `visual-match-scan` | المطابقة البصرية الدقيقة | EXCELLENT | Required | `multiple_choice` |
+| 11 | `reflection-fidelity` | انعكاس المرآة والمسطحات | EXCELLENT | Required | `multiple_choice`, `match`, `closest` |
+| 12 | `overlapping-boundary-trace` | تداخل الأشكال والمسارات المغلقة | EXCELLENT | Required | `multiple_choice`, `closest` |
+| 13 | `visual-closure-fragment` | التعرف عبر الاكتمال البصري | EXCELLENT | Required | `multiple_choice`, `match` |
+| 14 | `visual-asymmetry-detection` | ملاحظة كسر التناظر | EXCELLENT | Required | `multiple_choice`, `closest` |
 
 ## Safety
 
