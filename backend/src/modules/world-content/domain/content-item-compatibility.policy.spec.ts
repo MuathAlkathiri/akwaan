@@ -125,6 +125,27 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
     ).toContain('ANSWER_OPTIONS_REQUIRED');
   });
 
+  it('currently accepts five RYO multiple-choice options at the canonical policy layer', () => {
+    // Characterization only: deterministic screening and the generator schema
+    // reject five options, but the current ContentItem policy owns only the
+    // lower bound and correct-option integrity. This test must not become a
+    // new maximum until the product decision is made.
+    const options = ['a', 'b', 'c', 'd', 'e'].map((id) => ({
+      id,
+      label: { ar: `خيار ${id}` },
+    }));
+    expect(
+      codes({
+        item: contentItem({
+          answerPayload: multipleChoicePayload({
+            options,
+            correctOptionId: 'a',
+          }),
+        }),
+      }),
+    ).not.toContain('ANSWER_OPTIONS_TOO_MANY');
+  });
+
   it('requires accepted answers for match mode', () => {
     expect(
       codes({
@@ -1474,20 +1495,28 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
         },
       );
 
-      it('accepts audio or video where the Scope only demands a resolved asset', () => {
-        // paths-motion can be a short clip of the mechanism running.
-        expect(
-          judge(
-            puzzleItem({
-              media: {
-                type: ContentMediaType.VIDEO,
-                assets: [{ url: 'https://cdn.akwaan.test/gears.mp4' }],
-              },
-            }),
-            'paths-motion',
-          ),
-        ).toEqual([]);
-      });
+      it.each([
+        [ContentMediaType.IMAGE, 'puzzle.png'],
+        [ContentMediaType.AUDIO, 'puzzle.mp3'],
+        [ContentMediaType.VIDEO, 'puzzle.mp4'],
+      ])(
+        'accepts %s where the Scope only demands a resolved asset',
+        (type, filename) => {
+          // Characterization only: the current contract checks for a resolved
+          // asset URL, not an image-only media type.
+          expect(
+            judge(
+              puzzleItem({
+                media: {
+                  type,
+                  assets: [{ url: `https://cdn.akwaan.test/${filename}` }],
+                },
+              }),
+              'paths-motion',
+            ),
+          ).toEqual([]);
+        },
+      );
 
       it.each(['wordplay-letters', 'numbers-estimation', 'spot-the-error'])(
         '%s is text-native or mixed and is never blocked for media',

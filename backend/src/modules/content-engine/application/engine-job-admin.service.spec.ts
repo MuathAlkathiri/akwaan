@@ -128,4 +128,39 @@ describe('Content Engine generator capability preflight', () => {
     expect(result.generatorSupported).toBeUndefined();
     expect(result.diagnostic).toBeUndefined();
   });
+
+  it('currently submits an unsupported mechanic when the caller skips preflight', async () => {
+    const jobs = {
+      submit: jest.fn(async () => ({ jobId: 'job-moving-xo', created: true })),
+    };
+    const contexts = {
+      resolve: jest.fn(() => context('moving-xo')),
+    };
+    const config = {
+      get: jest.fn(() => undefined),
+    } as unknown as ConfigService;
+    const service = new EngineJobAdminService(
+      {} as never,
+      jobs as never,
+      { snapshot: jest.fn(async () => budgetSnapshot) } as never,
+      contexts as never,
+      {} as never,
+      config,
+    );
+
+    const result = await service.submit(request('moving-xo'));
+
+    expect(result).toEqual({
+      jobId: 'job-moving-xo',
+      created: true,
+      contextHash: 'c'.repeat(64),
+    });
+    expect(jobs.submit).toHaveBeenCalledWith({
+      mechanicKey: 'moving-xo',
+      worldKey: 'puzzles',
+      scopeKey: 'wordplay-letters',
+      targetCount: 3,
+      contextRevision: 'c'.repeat(64),
+    });
+  });
 });
