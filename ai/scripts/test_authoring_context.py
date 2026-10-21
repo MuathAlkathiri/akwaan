@@ -138,6 +138,17 @@ class TestAuthoringContext(unittest.TestCase):
         v_res = subprocess.run(["python3", "ai/scripts/validate_authoring_context.py", stale_path], capture_output=True, text=True)
         self.assertNotEqual(v_res.returncode, 0)
 
+        generation_stale = json.loads(meta_part)
+        generation_stale["_authoringContext"]["generationComposedHash"] = "badhash"
+        with open(stale_path, "w") as f:
+            json.dump(generation_stale, f)
+        v_res = subprocess.run(
+            ["python3", "ai/scripts/validate_authoring_context.py", stale_path],
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(v_res.returncode, 0)
+
         for f in [valid_path, stale_path]:
             if os.path.exists(f): os.remove(f)
 

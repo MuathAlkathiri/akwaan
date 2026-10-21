@@ -82,10 +82,10 @@ a four-digit number is not a year because it is large.
 
 | Prompt (abridged) | Why it fails |
 |---|---|
-| «كم هدفًا سجّل اللاعب الفلاني في مسيرته حتى الآن؟» | *Generic stat counting* (World anti-pattern) and the answer moves while he plays. Pinning it to a date fixes the drift and leaves it a lookup. |
-| «كم بلغ عدد الحضور في مباراة دور المجموعات بين منتخبين في نسخة ١٩٦٢؟» | No anchor whatsoever — a wiki lookup with a slider. Fails **Accessibility**. |
-| «كم هدفًا سيُسجَّل في البطولة القادمة؟» | Not yet a fact. An answer that does not exist cannot be graded. |
-| «كم عدد الدول التي استضافت البطولة؟» | Answerable, but the set is contested — co-hosts, and editions not yet played. State the exact edition range or choose another quantity. |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"world-cup-rejected-career-total","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «كم هدفًا سجّل اللاعب الفلاني في مسيرته حتى الآن؟» | *Generic stat counting* (World anti-pattern) and the answer moves while he plays. Pinning it to a date fixes the drift and leaves it a lookup. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"world-cup-rejected-attendance-lookup","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «كم بلغ عدد الحضور في مباراة دور المجموعات بين منتخبين في نسخة ١٩٦٢؟» | No anchor whatsoever — a wiki lookup with a slider. Fails **Accessibility**. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"world-cup-rejected-future-total","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «كم هدفًا سيُسجَّل في البطولة القادمة؟» | Not yet a fact. An answer that does not exist cannot be graded. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"world-cup-rejected-host-count","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «كم عدد الدول التي استضافت البطولة؟» | Answerable, but the set is contested — co-hosts, and editions not yet played. State the exact edition range or choose another quantity. <!-- /AKWAAN_EXEMPLAR_META --> |
 
 The thread: each either has no way in, or has an answer that will not hold
 still. Neither is a complaint about the question being factual.

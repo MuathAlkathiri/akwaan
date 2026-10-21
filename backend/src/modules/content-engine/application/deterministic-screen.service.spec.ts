@@ -1006,6 +1006,22 @@ describe('DeterministicScreenService — closest', () => {
       ).toContain('CANDIDATE_RESEMBLES_EXEMPLAR');
     });
 
+    it('still screens a historical WITHHELD exemplar for duplicate reuse', () => {
+      const withheld = [
+        '<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"withheld-example","status":"WITHHELD","reusePolicy":"DO_NOT_REGENERATE"} -->',
+        '> «غرفة طولها ٦ أمتار وعرضها ٤ أمتار، وبلاط أرضيتها مربّع. كم بلاطة تغطي الأرضية؟»',
+        '- Domain: tile counts for ordinary room floors, 0–300',
+        '<!-- /AKWAAN_EXEMPLAR_META -->',
+      ].join('\n');
+      service.beginBatch(withheld);
+      expect(
+        warnings(closest(), {
+          domainDescription:
+            'Tile counts for ordinary room floors, up to 300 tiles.',
+        }),
+      ).toContain('CANDIDATE_RESEMBLES_EXEMPLAR');
+    });
+
     it('leaves an unrelated candidate alone', () => {
       service.beginBatch(EXEMPLARS);
       expect(

@@ -7,6 +7,10 @@ import {
 import { createHash } from 'crypto';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
+import {
+  ExemplarMetadataError,
+  resolveExemplarDocument,
+} from './exemplar-metadata';
 
 /** Exactly the blocking codes `ai/scripts/resolve_authoring_context.py` emits. */
 export const AUTHORING_BLOCKERS = [
@@ -22,6 +26,7 @@ export const AUTHORING_BLOCKERS = [
   'REQUIRED_WORLD_PROFILE_MISSING',
   'REQUIRED_SCOPE_PROFILE_MISSING',
   'REQUIRED_SCOPE_KNOWLEDGE_MISSING',
+  'EXEMPLAR_METADATA_INVALID',
 ] as const;
 export type AuthoringBlocker = (typeof AUTHORING_BLOCKERS)[number];
 
@@ -44,7 +49,12 @@ export interface ResolvedAuthoringContext {
   world: string;
   scope: string;
   knowledge: string;
+  /** Explicitly APPROVED exemplar blocks only; safe for generation prompts. */
   exemplars: string;
+  /** Untouched source, reserved for audit and deterministic duplicate screening. */
+  historicalExemplars: string;
+  /** Non-blocking diagnostics for legacy/unclassified material. */
+  exemplarDiagnostics: string[];
   /** sha256 over every byte that shaped this context. */
   contextHash: string;
   sources: Record<string, string>;
@@ -246,6 +256,24 @@ export class AuthoringContextService {
       });
     }
 
+    let approvedExemplars = '';
+    let exemplarDiagnostics: string[] = [];
+    if (exemplarsPresent) {
+      try {
+        const document = resolveExemplarDocument(exemplarsText);
+        approvedExemplars = document.approvedText;
+        exemplarDiagnostics = document.diagnostics;
+      } catch (error) {
+        if (error instanceof ExemplarMetadataError) {
+          throw new AuthoringContextUnavailableError(
+            'EXEMPLAR_METADATA_INVALID',
+            error.message,
+          );
+        }
+        throw error;
+      }
+    }
+
     // Resolved from the bodies just read, never from disk a second time, so
     // the rules and the prompt can never describe different files.
     const effectiveRules = resolveEffectiveRules([
@@ -254,7 +282,7 @@ export class AuthoringContextService {
       { slot: 'world', source: sources.world, text: worldText },
       { slot: 'scope', source: sources.scope, text: scopeText },
       { slot: 'knowledge', source: sources.knowledge, text: knowledgeText },
-      { slot: 'exemplars', source: sources.exemplars, text: exemplarsText },
+      { slot: 'exemplars', source: sources.exemplars, text: approvedExemplars },
     ]);
 
     const contextHash = createHash('sha256')
@@ -282,7 +310,9 @@ export class AuthoringContextService {
       world: worldText,
       scope: scopeText,
       knowledge: knowledgeText,
-      exemplars: exemplarsText,
+      exemplars: approvedExemplars,
+      historicalExemplars: exemplarsText,
+      exemplarDiagnostics,
       contextHash,
       sources,
       effectiveRules,

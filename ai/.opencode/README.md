@@ -40,6 +40,27 @@ from the canonical catalog after structural changes.
 pre-ContentItem workspace snapshot. It is not active authoring input and must
 not be used as the source of current Worlds, Scopes, mechanics, or aliases.
 
+### Scope exemplar metadata contract
+
+Scope `EXEMPLARS.md` entries may carry explicit, versioned metadata in an HTML
+comment pair. The comment payload is strict JSON and is the only authoritative
+status source; headings, prose, emoji, reconciliation tables, and legacy
+`Status:` lines are not parsed as metadata:
+
+```html
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"scope-example-01","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE"} -->
+...historical exemplar content...
+<!-- /AKWAAN_EXEMPLAR_META -->
+```
+
+Allowed statuses are `APPROVED`, `WITHHELD`, `REJECTED`, `RETIRED`, and
+`INVALID_TEST_SAMPLE`. `APPROVED` means generation-eligible teaching material,
+not gameplay or publication approval. Every entry remains
+`DO_NOT_REGENERATE`; an optional `routingNote` records a mechanic or Scope
+boundary. Unknown or malformed metadata is invalid and must fail closed. An
+unmarked legacy entry remains historical until its status is explicitly
+reviewed; it is never inferred from “retired subject” prose.
+
 ## Active Ownership
 
 - `knowledge/architecture/`: global contracts.

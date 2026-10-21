@@ -74,6 +74,7 @@ both collapse the bet.
 Each heading names the **property** the item demonstrates. That property is what
 you reuse. The puzzle, its answer and its options are spent.
 
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-01-numeric-intruder","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE"} -->
 ### 1. An intruder in a numeric set
 
 **RETIRED — do not reuse this subject.** Reusable property: *a shared arithmetic
@@ -91,7 +92,9 @@ property that is invisible until you look for it.*
 - **The property:** one property binds three members and excludes the fourth,
   and no competing rule separates them differently. Verify that before
   authoring — a set where two readings are possible is invalid.
+<!-- /AKWAAN_EXEMPLAR_META -->
 
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-02-dotless-intruder","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE","routingNote":"Use here only when the solve is to infer a rule and locate one breach; read-only dotless disambiguation belongs to wordplay-letters."} -->
 ### 2. An intruder by the shape of the writing — `intruder-element` ⚠️ see routing note
 
 **RETIRED — do not reuse this subject.** Reusable property: *a rule about the
@@ -110,7 +113,9 @@ script itself, visible on the screen, requiring no knowledge whatsoever.*
 - **The property:** the rule lives in the writing, not the meaning. This is the
   purest form of `PUZZLE_ITSELF_IS_THE_CHALLENGE` — nothing outside the screen
   helps, and no vocabulary advantage exists.
+<!-- /AKWAAN_EXEMPLAR_META -->
 
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-03-invalid-transformation-step","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE"} -->
 ### 3. One wrong step in a sequence
 
 **RETIRED — do not reuse this subject.** Reusable property: *a generative rule
@@ -128,7 +133,9 @@ where exactly one term can be corrected to restore it.*
 - **The property:** changing exactly one term restores the rule, and no other
   single change does. That last clause is the whole test — check it before
   authoring, because a sequence with two valid repairs has two correct answers.
+<!-- /AKWAAN_EXEMPLAR_META -->
 
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-04-order-violation","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE"} -->
 ### 4. A breach of an ordering
 
 **RETIRED — do not reuse this subject.** Reusable property: *an ordering every
@@ -146,6 +153,7 @@ player already shares, with exactly one member out of place.*
 - **The property:** the ordering is universally shared structure, not a fact
   some players happen to know. Removing the one misplaced member leaves a
   correctly ordered list, and removing any other does not.
+<!-- /AKWAAN_EXEMPLAR_META -->
 
 ---
 
@@ -153,10 +161,10 @@ player already shares, with exactly one member out of place.*
 
 | Puzzle (abridged) | Why it fails |
 |---|---|
-| «ما العنصر الدخيل؟ برشلونة · ريال مدريد · مانشستر · ميلان» — the intruder is the one not in Spain | A fact check wearing a puzzle costume. Violates `PUZZLES_WORLD_NO_TRIVIA`: you solve it by knowing geography, not by inferring a rule from the material. |
-| «٢ · ٤ · ٦ · ٩ · ١٠ · ١٢» — "find the error" | ٩ breaks "even", but so does the reading "ascending by two", under which ١٠ is also wrong. Two defensible breaches, so two defensible answers. |
-| «ما العنصر الدخيل؟ أحمر · أزرق · أخضر · دائرة» | The rule is visible at a glance and nobody misses it. Certainty near 100%: the opponent always steals and the bet is free. |
-| «أي معادلة خاطئة؟» with four long arithmetic expressions | The rule is announced, not inferred, and the solve is computation rather than insight. The Scope excludes anything needing paper. |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-rejected-geography-intruder","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «ما العنصر الدخيل؟ برشلونة · ريال مدريد · مانشستر · ميلان» — the intruder is the one not in Spain | A fact check wearing a puzzle costume. Violates `PUZZLES_WORLD_NO_TRIVIA`: you solve it by knowing geography, not by inferring a rule from the material. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-rejected-ambiguous-sequence","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «٢ · ٤ · ٦ · ٩ · ١٠ · ١٢» — "find the error" | ٩ breaks "even", but so does the reading "ascending by two", under which ١٠ is also wrong. Two defensible breaches, so two defensible answers. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-rejected-obvious-intruder","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «ما العنصر الدخيل؟ أحمر · أزرق · أخضر · دائرة» | The rule is visible at a glance and nobody misses it. Certainty near 100%: the opponent always steals and the bet is free. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-rejected-announced-arithmetic","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «أي معادلة خاطئة؟» with four long arithmetic expressions | The rule is announced, not inferred, and the solve is computation rather than insight. The Scope excludes anything needing paper. <!-- /AKWAAN_EXEMPLAR_META --> |
 
 The thread: each either removes the two-step solve, or leaves more than one
 defensible answer, or removes the opponent's decision.

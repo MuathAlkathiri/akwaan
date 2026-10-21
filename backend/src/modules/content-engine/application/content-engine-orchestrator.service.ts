@@ -99,7 +99,10 @@ export class ContentEngineOrchestratorService {
       });
 
       if (await this.stopIfCancelled(job)) return;
-      this.screen.beginBatch(context.exemplars, context.mechanic);
+      // Screening intentionally sees the untouched historical corpus so
+      // withheld/rejected subjects remain detectable as duplicates. The
+      // generator only receives context.exemplars (the APPROVED-only view).
+      this.screen.beginBatch(context.historicalExemplars, context.mechanic);
       for (const row of rows) {
         if (row.status !== 'generated') continue;
         const result = this.screen.screen(row.draft ?? {}, row.authoring);

@@ -167,17 +167,54 @@ describeIf(
       it.each([
         ['football', 'world-cup'],
         ['puzzles', 'numbers-estimation'],
-      ])('resolves %s/%s with its own exemplars', (worldKey, scopeKey) => {
+      ])('resolves %s/%s with a safe exemplar view', (worldKey, scopeKey) => {
         const context = service.resolve({
           mechanicKey: 'closest',
           worldKey,
           scopeKey,
         });
-        expect(context.exemplars.length).toBeGreaterThan(0);
+        expect(context.historicalExemplars.length).toBeGreaterThan(0);
         expect(context.scope.length).toBeGreaterThan(0);
         expect(context.knowledge.length).toBeGreaterThan(0);
-        // Exemplar subjects are retired; the file has to say so.
-        expect(context.exemplars).toMatch(/retired subject/);
+      });
+
+      it('excludes unclassified football examples from generation', () => {
+        const context = service.resolve({
+          mechanicKey: 'closest',
+          worldKey: 'football',
+          scopeKey: 'world-cup',
+        });
+        expect(context.exemplars).toBe('');
+        expect(context.exemplarDiagnostics).toEqual([
+          expect.stringContaining('EXEMPLAR_STATUS_UNCLASSIFIED'),
+        ]);
+        expect(context.historicalExemplars).toMatch(/knowledge-anchored/);
+      });
+
+      it('keeps only explicitly approved blocks in generation', () => {
+        const fromPython = python([
+          '--mechanic',
+          'closest',
+          '--world',
+          'puzzles',
+          '--scope',
+          'numbers-estimation',
+        ]);
+        const context = service.resolve({
+          mechanicKey: 'closest',
+          worldKey: 'puzzles',
+          scopeKey: 'numbers-estimation',
+        });
+        expect(context.exemplars).toMatch(/missing-number-pattern/);
+        expect(context.exemplars).not.toMatch(/Counting under a structure/);
+        expect(context.exemplars).not.toMatch(/WITHHELD/);
+        expect(context.historicalExemplars).toMatch(
+          /Counting under a structure/,
+        );
+        const pythonExemplars = fromPython.stdout
+          .split('## 6. HUMAN PRODUCT EXEMPLARS\n', 2)[1]
+          .trim();
+        expect(pythonExemplars).toBe(context.exemplars);
       });
 
       it('gives each World its own exemplars, not a shared set', () => {
@@ -210,7 +247,7 @@ describeIf(
           /PUZZLE_ITSELF_IS_THE_CHALLENGE/,
         );
         // And it does say knowledge-anchored content belongs there.
-        expect(football.exemplars).toMatch(/knowledge-anchored/);
+        expect(football.historicalExemplars).toMatch(/knowledge-anchored/);
       });
 
       it('keeps the Puzzles Scope reasoning-only', () => {
@@ -220,7 +257,7 @@ describeIf(
           scopeKey: 'numbers-estimation',
         });
         expect(puzzles.scope).toMatch(/PUZZLES_WORLD_NO_TRIVIA/);
-        expect(puzzles.exemplars).toMatch(/Puzzles permits only/);
+        expect(puzzles.historicalExemplars).toMatch(/Puzzles permits only/);
       });
     });
 
@@ -284,9 +321,10 @@ describeIf(
       });
 
       it('leaves contextHash untouched for a context with no structured block', () => {
-        // Byte-identical to the current canonical source snapshot. The prior
-        // Phase 2o/2p fixture became stale when the committed Puzzles family
-        // library changed the Scope/World authoring inputs.
+        // Byte-identical to the current canonical source snapshot. The
+        // versioned exemplar metadata markers are source, so this fixture is
+        // intentionally refreshed when those markers are migrated; the
+        // production hash algorithm and job identity remain unchanged.
         expect(
           service.resolve({
             mechanicKey: 'closest',
@@ -294,7 +332,7 @@ describeIf(
             scopeKey: 'numbers-estimation',
           }).contextHash,
         ).toBe(
-          '521567dc7f4251e4beddd5513bcb8a09b4bcdcb97176637edd53f01ce4b07147',
+          'd016e5a053fdd814eaadc2d3a114b547c3e6b931f16186c87350df12fec65c75',
         );
       });
 
@@ -340,6 +378,9 @@ describeIf(
         scopeKey: 'paths-motion',
       });
       expect(context.mechanicKey).toBe('distributed-information');
+      expect(context.exemplars).toBe('');
+      expect(context.historicalExemplars).toBe('');
+      expect(context.exemplarDiagnostics).toEqual([]);
     });
   },
 );

@@ -33,6 +33,21 @@ def validate_artifact(filepath):
     if ctx.get("composedHash") != rebuilt_meta.get("composedHash"):
         print("VALIDATION_FAILED: STALE_AUTHORING_CONTEXT (Hash mismatch)")
         sys.exit(1)
+
+    # Newer artifacts also carry the generation-visible composition hash. It
+    # is provenance only; the legacy composedHash remains the job/retry
+    # identity contract. Keep this check optional so historical artifacts stay
+    # valid while filtered artifacts cannot silently drift.
+    if (
+        ctx.get("generationComposedHash") is not None
+        and ctx.get("generationComposedHash")
+        != rebuilt_meta.get("generationComposedHash")
+    ):
+        print(
+            "VALIDATION_FAILED: STALE_AUTHORING_CONTEXT "
+            "(Generation context hash mismatch)"
+        )
+        sys.exit(1)
         
     print("VALIDATION_PASSED: Context provenance verified.")
 

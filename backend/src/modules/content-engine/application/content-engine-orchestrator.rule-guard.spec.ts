@@ -41,6 +41,8 @@ const context = (conflicts: RuleConflict[]) => ({
   scope: '',
   knowledge: '',
   exemplars: '',
+  historicalExemplars: '',
+  exemplarDiagnostics: [],
   contextHash: 'c'.repeat(64),
   sources: {},
   effectiveRules: ruleSet(conflicts),
@@ -127,5 +129,73 @@ describe('rule-conflict guard before any paid call', () => {
     await service.run(job as never);
     expect(checkpoint).toHaveBeenCalled();
     expect(generate).toHaveBeenCalled();
+  });
+});
+
+describe('exemplar corpus wiring', () => {
+  it('screens historical exemplars while generation context remains filtered', async () => {
+    const beginBatch = jest.fn();
+    const screen = jest.fn(() => ({ passed: true, findings: [] }));
+    const context = {
+      mechanicKey: 'closest',
+      worldKey: 'puzzles',
+      scopeKey: 'numbers-estimation',
+      global: '',
+      mechanic: 'MECHANIC-PROFILE',
+      world: '',
+      scope: '',
+      knowledge: '',
+      exemplars: 'APPROVED-ONLY',
+      historicalExemplars: 'WITHHELD-HISTORICAL-CORPUS',
+      exemplarDiagnostics: [],
+      contextHash: 'c'.repeat(64),
+      sources: {},
+      effectiveRules: ruleSet([]),
+    };
+    const rows = [
+      {
+        _id: 'candidate-1',
+        jobId: 'job-1',
+        status: 'generated',
+        draft: {},
+        authoring: {},
+      },
+    ];
+    const find = jest.fn(() => ({
+      sort: () => ({ lean: () => ({ exec: async () => rows }) }),
+    }));
+    const updateOne = jest.fn(() => ({
+      exec: async () => ({ matchedCount: 1 }),
+    }));
+    const awaitReview = jest.fn(async () => undefined);
+    const service = new ContentEngineOrchestratorService(
+      { find, updateOne } as never,
+      {
+        checkpoint: jest.fn(async () => undefined),
+        awaitReview,
+        releaseForRetry: jest.fn(async () => undefined),
+        isCancellationRequested: async () => false,
+        holdsLease: async () => true,
+      } as never,
+      {
+        hasLedgerEntry: async () => false,
+        reservationIds: async () => [],
+      } as never,
+      { resolve: () => context } as never,
+      { generate: jest.fn() } as never,
+      { beginBatch, screen } as never,
+      { verify: jest.fn() } as never,
+      { evaluate: jest.fn(() => ({ preDraft: { blockers: [] } })) } as never,
+      { judge: jest.fn() } as never,
+    );
+
+    await service.run(job as never);
+
+    expect(beginBatch).toHaveBeenCalledWith(
+      'WITHHELD-HISTORICAL-CORPUS',
+      'MECHANIC-PROFILE',
+    );
+    expect(screen).toHaveBeenCalled();
+    expect(awaitReview).toHaveBeenCalled();
   });
 });

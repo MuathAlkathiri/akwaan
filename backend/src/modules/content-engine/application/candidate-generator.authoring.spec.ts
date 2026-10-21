@@ -37,6 +37,8 @@ const context = (over: Partial<ResolvedAuthoringContext> = {}) =>
     scope: 'SCOPE-TEXT',
     knowledge: 'KNOWLEDGE-TEXT',
     exemplars: '',
+    historicalExemplars: '',
+    exemplarDiagnostics: [],
     contextHash: 'hash',
     ...over,
   }) as ResolvedAuthoringContext;
@@ -354,6 +356,19 @@ describe('buildPrompt', () => {
     );
     expect(prompt).toContain('## 6. EXEMPLARS');
     expect(prompt).toContain('EXEMPLAR-TEXT');
+  });
+
+  it('does not leak the historical exemplar corpus into the generation prompt', () => {
+    const prompt = service().buildPrompt(
+      context({
+        exemplars: 'APPROVED-EXEMPLAR',
+        historicalExemplars: 'WITHHELD-ANSWER-MUST-NOT-LEAK',
+      }),
+      3,
+      'multiple_choice',
+    );
+    expect(prompt).toContain('APPROVED-EXEMPLAR');
+    expect(prompt).not.toContain('WITHHELD-ANSWER-MUST-NOT-LEAK');
   });
 
   it('puts the exemplars after the Scope and before the task', () => {

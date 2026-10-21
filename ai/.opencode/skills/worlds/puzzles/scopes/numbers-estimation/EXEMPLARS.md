@@ -76,6 +76,7 @@ So the test for **this Scope** is:
 
 ## Historical worked examples (legacy Closest format; not active generation guidance)
 
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"numbers-estimation-01-counting-structure","status":"WITHHELD","reusePolicy":"DO_NOT_REGENERATE"} -->
 ### 1. Counting under a structure — ⬜ WITHHELD (no V1 family; was `quantity-intuition`)
 
 **The property:** a structure whose total is computable exactly *and* approximable roughly, so knowing and reasoning both pay.
@@ -90,7 +91,9 @@ So the test for **this Scope** is:
 - Player strategy: a rough rectangle — twelve rows averaging about six — lands
   near 72 in seconds. The exact solver gets 78. Both are rewarded; that gap is
   the mechanic working.
+<!-- /AKWAAN_EXEMPLAR_META -->
 
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"numbers-estimation-02-repeated-doubling","status":"WITHHELD","reusePolicy":"DO_NOT_REGENERATE"} -->
 ### 2. Repeated doubling — ⬜ WITHHELD (no V1 family; was `numeric-pattern`)
 
 **The property:** a growth rule most people underestimate, which makes the spread of team answers wide and the reveal satisfying.
@@ -104,7 +107,9 @@ So the test for **this Scope** is:
 - Player strategy: recognising the doubling. A player who counts 2, 4, 8 and
   loses track still lands in the right neighbourhood; a player who thinks
   "six folds, so about twelve layers" is wrong in an instructive way.
+<!-- /AKWAAN_EXEMPLAR_META -->
 
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"numbers-estimation-03-elimination-logic","status":"WITHHELD","reusePolicy":"DO_NOT_REGENERATE"} -->
 ### 3. Elimination logic — ⬜ WITHHELD (no V1 family; was `quantity-intuition`)
 
 **The property:** one insight collapses the whole problem, and the long route arrives at the same place.
@@ -118,7 +123,9 @@ So the test for **this Scope** is:
 - Player strategy: every match eliminates exactly one competitor, so 63 must go.
   The player who adds 32 + 16 + 8 + 4 + 2 + 1 arrives the long way at the same
   place. This is the «آه، شفتها» the Scope asks for.
+<!-- /AKWAAN_EXEMPLAR_META -->
 
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"numbers-estimation-04-supplied-measurements","status":"WITHHELD","reusePolicy":"DO_NOT_REGENERATE"} -->
 ### 4. Estimating from supplied measurements — ⬜ WITHHELD (V1 `proportion-estimate` is a ratio estimate, not an exact count)
 
 **The property:** every quantity the player needs is in the prompt, so nothing depends on what they happen to know.
@@ -132,7 +139,9 @@ So the test for **this Scope** is:
 - Grid: (150 − 0) / 5 = 30 ✔
 - Player strategy: fifteen tiles along the length, ten across the width. Every
   number the player needs is in the prompt — that is what makes it fair.
+<!-- /AKWAAN_EXEMPLAR_META -->
 
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"numbers-estimation-05-missing-number-pattern","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE"} -->
 ### 5. A sequence with one defensible continuation — `missing-number-pattern`
 
 **The property:** exactly one rule fits, so the answer is defensible and the near-misses are still meaningful.
@@ -145,6 +154,7 @@ So the test for **this Scope** is:
 - Grid: (42 − 0) / 1 = 42 ✔
 - Player strategy: the gaps run 4, 6, 8, 10 — so the next gap is 12. One rule,
   one continuation. A sequence admitting two readings is invalid here.
+<!-- /AKWAAN_EXEMPLAR_META -->
 
 ---
 
@@ -154,13 +164,13 @@ These were really generated for this Scope. Each names the rule it broke.
 
 | Prompt (abridged) | Value | Why it fails |
 |---|---|---|
-| «كم عدد الأهداف التي سجّلها لاعب مشهور في مسيرته حتى الآن؟» | 895 | Recall, and a figure that changes week to week. Violates `PUZZLES_WORLD_NO_TRIVIA`; no durable answer. |
-| «كم عدد الدول التي استضافت كأس العالم؟» | 8 | Recall — and factually wrong. A player cannot reason toward it from the prompt. |
-| «كم عدد الألقاب التي فاز بها نادٍ معيّن؟» | 15 | Pure recall. Either you know it or the slider is a lottery. No estimation gradient. |
-| «كم عدد الألوان الأساسية في نموذج RGB؟» | 3 | The acronym spells the answer, and a 2–5 range is four positions — a multiple-choice question wearing a slider. |
-| «كم عدد الأيام في السنة الكبيسة؟» | 366 | Definition recall. Nothing to estimate. |
-| «كم متوسط عدد أقمار الكواكب في المجموعة الشمسية؟» | 25 | Wrong, and the true figure moves with every new discovery. Unstable answers cannot be graded. |
-| «كم متوسط عدد سكان المدن الكبرى؟» | 10,500,000 | The comparison set is never defined — city proper or metropolitan area, and which cities? Unanswerable as posed. |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"numbers-estimation-rejected-career-total","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «كم عدد الأهداف التي سجّلها لاعب مشهور في مسيرته حتى الآن؟» | 895 | Recall, and a figure that changes week to week. Violates `PUZZLES_WORLD_NO_TRIVIA`; no durable answer. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"numbers-estimation-rejected-world-cup-hosts","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «كم عدد الدول التي استضافت كأس العالم؟» | 8 | Recall — and factually wrong. A player cannot reason toward it from the prompt. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"numbers-estimation-rejected-club-titles","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «كم عدد الألقاب التي فاز بها نادٍ معيّن؟» | 15 | Pure recall. Either you know it or the slider is a lottery. No estimation gradient. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"numbers-estimation-rejected-rgb-colors","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «كم عدد الألوان الأساسية في نموذج RGB؟» | 3 | The acronym spells the answer, and a 2–5 range is four positions — a multiple-choice question wearing a slider. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"numbers-estimation-rejected-leap-year","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «كم عدد الأيام في السنة الكبيسة؟» | 366 | Definition recall. Nothing to estimate. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"numbers-estimation-rejected-moon-count","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «كم متوسط عدد أقمار الكواكب في المجموعة الشمسية؟» | 25 | Wrong, and the true figure moves with every new discovery. Unstable answers cannot be graded. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"numbers-estimation-rejected-city-average","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «كم متوسط عدد سكان المدن الكبرى؟» | 10,500,000 | The comparison set is never defined — city proper or metropolitan area, and which cities? Unanswerable as posed. <!-- /AKWAAN_EXEMPLAR_META --> |
 
 The common thread: each asks *what do you know*, and this Scope asks *what does
 your sense of quantity say*.

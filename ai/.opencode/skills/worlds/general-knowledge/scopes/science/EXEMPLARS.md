@@ -113,11 +113,11 @@ you reuse. The question, its answer and its options are spent.
 
 | Prompt (abridged) | Why it fails RYO |
 |---|---|
-| «ما الكوكب الذي يُلقَّب بالكوكب الأحمر؟» | Certainty near 100%. The opponent steals every time and the decision is free. The question is not *wrong* — it is simply not an RYO question. |
-| «من وضع نظرية النسبية؟» | Same defect. A correct, fair, recognizable question with no mind game in it. |
-| «ما الكتلة الذرية للروثينيوم بثلاث منازل عشرية؟» | Certainty near 0%, and the Scope excludes meaningless numeric precision outright. The opponent simply trusts. |
-| «كم عدد أقمار زحل؟» | The answer moves — confirmed moons rise with each announcement — so it cannot be graded a season later. |
-| «ما أكبر كوكب؟ المشتري · الأرض · القمر · الشمس» | Three distractors are not plausible planets at all. Visible elimination collapses it back to certainty. |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"science-rejected-red-planet-certainty","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «ما الكوكب الذي يُلقَّب بالكوكب الأحمر؟» | Certainty near 100%. The opponent steals every time and the decision is free. The question is not *wrong* — it is simply not an RYO question. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"science-rejected-relativity-recall","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «من وضع نظرية النسبية؟» | Same defect. A correct, fair, recognizable question with no mind game in it. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"science-rejected-ruthenium-precision","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «ما الكتلة الذرية للروثينيوم بثلاث منازل عشرية؟» | Certainty near 0%, and the Scope excludes meaningless numeric precision outright. The opponent simply trusts. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"science-rejected-saturn-moons","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «كم عدد أقمار زحل؟» | The answer moves — confirmed moons rise with each announcement — so it cannot be graded a season later. <!-- /AKWAAN_EXEMPLAR_META --> |
+| <!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"science-rejected-largest-planet-distractors","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} --> «ما أكبر كوكب؟ المشتري · الأرض · القمر · الشمس» | Three distractors are not plausible planets at all. Visible elimination collapses it back to certainty. <!-- /AKWAAN_EXEMPLAR_META --> |
 
 The thread: each either removes the Steal/Trust decision or removes fairness.
 A good RYO item keeps both alive at once.

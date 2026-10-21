@@ -5,6 +5,8 @@ import hashlib
 import sys
 from datetime import datetime
 
+from exemplar_metadata import ExemplarMetadataError, resolve_exemplar_document
+
 def hash_file(filepath):
     if not os.path.exists(filepath):
         return None
@@ -91,10 +93,19 @@ def main():
     ctx_scope = read_req(scope_profile, "AUTHORING_BLOCKED — REQUIRED_SCOPE_PROFILE_MISSING")
     ctx_know = read_req(knowledge_profile, "AUTHORING_BLOCKED — REQUIRED_SCOPE_KNOWLEDGE_MISSING")
     
-    ctx_exemplars = ""
-    if os.path.exists(exemplars_profile):
+    ctx_exemplars_historical = ""
+    exemplar_document = None
+    exemplars_present = os.path.exists(exemplars_profile)
+    if exemplars_present:
         with open(exemplars_profile, "r", encoding="utf-8") as f:
-            ctx_exemplars = f.read()
+            ctx_exemplars_historical = f.read()
+        try:
+            exemplar_document = resolve_exemplar_document(ctx_exemplars_historical)
+        except ExemplarMetadataError as exc:
+            print(f"AUTHORING_BLOCKED — EXEMPLAR_METADATA_INVALID ({exc})")
+            sys.exit(1)
+    ctx_exemplars = exemplar_document.approved_text if exemplar_document else ""
+    exemplar_diagnostics = list(exemplar_document.diagnostics) if exemplar_document else []
 
     # 6. Compose
     composed = f"""
@@ -128,10 +139,38 @@ def main():
         "world": hash_file(world_profile),
         "scope": hash_file(scope_profile),
         "knowledge": hash_file(knowledge_profile),
-        "exemplars": hash_file(exemplars_profile) if ctx_exemplars else None
+        "exemplars": hash_file(exemplars_profile) if exemplars_present else None
     }
-    
-    composed_hash = hashlib.sha256(composed.encode("utf-8")).hexdigest()
+
+    # `composedHash` is deliberately retained as the legacy, full-source
+    # provenance hash. The generation prompt is filtered, but changing job
+    # identity/hash semantics here would invalidate retries and artifacts.
+    historical_composed = f"""
+# ==========================================
+# AKWAAN AUTHORING CONTEXT
+# MECHANIC: {mechanic_key} | WORLD: {world_key} | SCOPE: {scope_key}
+# ==========================================
+
+## 1. GLOBAL GOVERNANCE
+{ctx_global}
+
+## 2. MECHANIC PROFILE ({mechanic_key})
+{ctx_mechanic}
+
+## 3. WORLD EXPERIENCE ({world_key})
+{ctx_world}
+
+## 4. SCOPE BOUNDARIES
+{ctx_scope}
+
+## 5. SCOPE KNOWLEDGE
+{ctx_know}
+
+## 6. HUMAN PRODUCT EXEMPLARS
+{ctx_exemplars_historical if ctx_exemplars_historical else 'No exemplars recorded yet.'}
+"""
+    composed_hash = hashlib.sha256(historical_composed.encode("utf-8")).hexdigest()
+    generation_composed_hash = hashlib.sha256(composed.encode("utf-8")).hexdigest()
 
     metadata = {
         "_authoringContext": {
@@ -146,10 +185,12 @@ def main():
                 "world": world_profile,
                 "scope": scope_profile,
                 "knowledge": knowledge_profile,
-                "exemplars": exemplars_profile if ctx_exemplars else None
+                "exemplars": exemplars_profile if exemplars_present else None
             },
             "profileHashes": hashes,
-            "composedHash": composed_hash
+            "composedHash": composed_hash,
+            "generationComposedHash": generation_composed_hash,
+            "exemplarDiagnostics": exemplar_diagnostics,
         }
     }
 
