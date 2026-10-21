@@ -104,6 +104,13 @@ class TestAuthoringContext(unittest.TestCase):
         for scope in self.manifest["worlds"]["puzzles"]["scopes"]:
             self.assertEqual(run_resolver("moving-xo", "puzzles", scope).returncode, 0)
 
+        moving_context = run_resolver("moving-xo", "puzzles", "wordplay-letters").stdout
+        mechanic_section = moving_context.split("## 2. MECHANIC PROFILE (moving-xo)", 1)[1].split(
+            "## 3. WORLD EXPERIENCE", 1
+        )[0]
+        self.assertNotIn("distributed-information", mechanic_section)
+        self.assertNotIn("RAKKIBHA", mechanic_section.upper())
+
         resolved_rakkibha = run_resolver("rakkibha", "puzzles", "wordplay-letters")
         self.assertEqual(resolved_rakkibha.returncode, 0)
         self.assertIn('"mechanicKey": "distributed-information"', resolved_rakkibha.stdout)

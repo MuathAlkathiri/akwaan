@@ -91,16 +91,20 @@ optional media shown there too, and truth only in `answerPayload`. Authoring
 metadata (sources, notes, tags) stays in `metadata`.
 
 Every item belongs to one of the six forward Puzzles Scopes and, within it, to
-one **Puzzle Family** named in that Scope's `SCOPE.md`:
+one **Puzzle Family** named in that Scope's `SCOPE.md`. Those six Scope tables
+are the sole authority for the approved 78-family library; this Skill
+intentionally does not duplicate the family list. Resolve the assigned Scope
+through the canonical authoring manifest and use only the family IDs and
+supported answer modes declared by that Scope profile.
 
-| Scope | Families |
-| --- | --- |
-| `observation-illusions` | `hidden-detail`, `illusion-perception`, `visual-count` |
-| `wordplay-letters` | `anagram-rearrange`, `letter-operation`, `hidden-word` |
-| `numbers-estimation` | `quantity-intuition`, `proportion-estimate`, `numeric-pattern` |
-| `assembly-rotation` | `net-fold`, `silhouette-match`, `view-projection` |
-| `paths-motion` | `path-trace`, `mechanism-outcome` |
-| `spot-the-error` | `intruder-element`, `order-violation` |
+The forward Scope profiles are:
+
+- `observation-illusions`
+- `wordplay-letters`
+- `numbers-estimation`
+- `assembly-rotation`
+- `paths-motion`
+- `spot-the-error`
 
 The family is **authoring guidance, not a database field**. It is carried in the
 authored pack and checked by the validator; it is deliberately not persisted, so

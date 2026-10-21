@@ -4,7 +4,7 @@
     {
       "contentItemId": "moving-xo-fixture-observation",
       "scope": "observation-illusions",
-      "family": "visual-count",
+      "family": "count-in-clutter",
       "compatibleChallengeTypeIds": ["moving-xo"],
       "prompt": { "ar": "كم مثلثًا في الشكل؟" },
       "media": {
@@ -34,8 +34,12 @@
       "compatibleChallengeTypeIds": ["moving-xo"],
       "prompt": { "ar": "رتّب حروف «م ل ق» لتكوّن أداة كتابة." },
       "answerPayload": {
-        "mode": "match",
-        "acceptedAnswers": ["قلم"]
+        "mode": "multiple_choice",
+        "options": [
+          { "id": "qalam", "label": { "ar": "قلم" } },
+          { "id": "qalamah", "label": { "ar": "قلامة" } }
+        ],
+        "correctOptionId": "qalam"
       }
     },
     {
@@ -67,7 +71,7 @@
     {
       "contentItemId": "moving-xo-fixture-assembly",
       "scope": "assembly-rotation",
-      "family": "silhouette-match",
+      "family": "tangram-silhouette-fit",
       "compatibleChallengeTypeIds": ["moving-xo"],
       "prompt": { "ar": "أي ظل يطابق المجسّم المعروض؟" },
       "media": {
@@ -93,7 +97,7 @@
     {
       "contentItemId": "moving-xo-fixture-paths",
       "scope": "paths-motion",
-      "family": "path-trace",
+      "family": "gear-train-direction",
       "compatibleChallengeTypeIds": ["moving-xo"],
       "prompt": { "ar": "أي باب يصل إليه الخيط الأحمر؟" },
       "media": {

@@ -99,11 +99,12 @@ for knowledge in (ACTIVE / "skills" / "worlds").rglob("KNOWLEDGE.md"):
     if not (knowledge.parent / "SCOPE.md").exists():
         errors.append(f"KNOWLEDGE.md missing paired SCOPE.md: {knowledge.relative_to(ROOT)}")
 
-# Manifest world scopes match disk scopes in both directions.
-manifest = json.loads(text(ACTIVE / "manifest.json"))
+# Manifest world scopes match disk scopes in both directions. The authoring
+# manifest is the sole active registry; the older workspace snapshot remains
+# historical/compatibility material and must not drive this audit.
+manifest = json.loads(text(ACTIVE / "authoring-manifest.json"))
 declared_scopes: dict[str, set[str]] = {}
-for world in manifest["worlds"]:
-    world_slug = world["slug"]
+for world_slug, world in manifest["worlds"].items():
     scopes = set(world.get("scopes", []))
     declared_scopes[world_slug] = scopes
     world_dir = ACTIVE / "skills" / "worlds" / world_slug

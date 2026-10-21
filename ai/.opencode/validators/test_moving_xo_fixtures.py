@@ -32,6 +32,23 @@ BASE = {
     "scope": "wordplay-letters",
     "family": "anagram-rearrange",
     "prompt": {"ar": "رتّب حروف «م ل ق» لتكوّن أداة كتابة."},
+    "answerPayload": {
+        "mode": "multiple_choice",
+        "options": [
+            {"id": "qalam", "label": {"ar": "قلم"}},
+            {"id": "qalamah", "label": {"ar": "قلامة"}},
+        ],
+        "correctOptionId": "qalam",
+    },
+}
+
+MATCH_BASE = {
+    "contentItemId": "match-fixture",
+    "compatibleChallengeTypeIds": ["moving-xo"],
+    "scope": "observation-illusions",
+    "family": "figure-ground-reversal",
+    "prompt": {"ar": "ما الشكل المخفي في الفراغ؟"},
+    "media": {"type": "image", "assets": [{"url": "https://cdn.akwaan.test/match.png"}]},
     "answerPayload": {"mode": "match", "acceptedAnswers": ["قلم"]},
 }
 
@@ -39,7 +56,7 @@ VISUAL_BASE = {
     "contentItemId": "fixture-visual",
     "compatibleChallengeTypeIds": ["moving-xo"],
     "scope": "observation-illusions",
-    "family": "visual-count",
+    "family": "count-in-clutter",
     "prompt": {"ar": "كم مثلثًا في الشكل؟"},
     "media": {"type": "image", "assets": [{"url": "https://cdn.akwaan.test/t.png"}]},
     "answerPayload": {
@@ -136,9 +153,16 @@ def main() -> int:
     results.append(check("unknown scope rejected", validate(item(BASE, scope="chess")), True))
     results.append(check("missing scope rejected", validate(item(BASE, scope=None)), True))
     results.append(
+        check_mentions(
+            "retired family rejected",
+            validate(item(BASE, scope="numbers-estimation", family="numeric-pattern")),
+            "does not belong",
+        )
+    )
+    results.append(
         check(
             "family from another scope rejected",
-            validate(item(BASE, family="net-fold")),
+            validate(item(BASE, family="cube-net-fold")),
             True,
         )
     )
@@ -158,9 +182,9 @@ def main() -> int:
             "a family's own mode restriction is enforced",
             validate(
                 item(
-                    BASE,
+                    MATCH_BASE,
                     scope="numbers-estimation",
-                    family="numeric-pattern",
+                    family="visual-quantity-estimate",
                     answerPayload={"mode": "match", "acceptedAnswers": ["قلم"]},
                 )
             ),
@@ -176,7 +200,7 @@ def main() -> int:
         results.append(
             check_mentions(
                 f"numeric match answer rejected: {answer}",
-                validate(item(BASE, answerPayload={"mode": "match", "acceptedAnswers": [answer]})),
+                validate(item(MATCH_BASE, answerPayload={"mode": "match", "acceptedAnswers": [answer]})),
                 "does not fold",
             )
         )
@@ -185,7 +209,7 @@ def main() -> int:
             "an alias the normalizer already folds is rejected",
             # المثلث normalizes to مثلث, so listing both is one answer twice.
             validate(
-                item(BASE, answerPayload={"mode": "match", "acceptedAnswers": ["مثلث", "المثلث"]})
+                item(MATCH_BASE, answerPayload={"mode": "match", "acceptedAnswers": ["مثلث", "المثلث"]})
             ),
             "already covered by normalization",
         )
@@ -195,7 +219,7 @@ def main() -> int:
             "a sentence-length match answer is rejected",
             validate(
                 item(
-                    BASE,
+                    MATCH_BASE,
                     answerPayload={
                         "mode": "match",
                         "acceptedAnswers": ["القلم الذي يكتب بالحبر الأزرق"],
@@ -208,7 +232,7 @@ def main() -> int:
     results.append(
         check(
             "empty accepted answers rejected",
-            validate(item(BASE, answerPayload={"mode": "match", "acceptedAnswers": []})),
+            validate(item(MATCH_BASE, answerPayload={"mode": "match", "acceptedAnswers": []})),
             True,
         )
     )
@@ -317,7 +341,7 @@ def main() -> int:
                 item(
                     VISUAL_BASE,
                     scope="paths-motion",
-                    family="mechanism-outcome",
+                    family="gear-train-direction",
                     media={"type": "video", "assets": [{"url": "https://cdn.akwaan.test/g.mp4"}]},
                 )
             ),
@@ -344,7 +368,14 @@ def main() -> int:
                     BASE,
                     scope="spot-the-error",
                     family="order-violation",
-                    answerPayload={"mode": "match", "acceptedAnswers": ["قلم"]},
+                    answerPayload={
+                        "mode": "multiple_choice",
+                        "options": [
+                            {"id": "a", "label": {"ar": "أ"}},
+                            {"id": "b", "label": {"ar": "ب"}},
+                        ],
+                        "correctOptionId": "a",
+                    },
                 )
             ),
             False,

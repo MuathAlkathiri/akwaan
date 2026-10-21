@@ -31,9 +31,14 @@ Start with the ChallengeType. Research never chooses the mechanic.
 
 ## Workspace Manifest
 
-`manifest.json` is the machine-readable snapshot of the active workspace:
-ChallengeTypes and owned Patterns, Worlds and Scopes, validators, canonical
-content-item modes, and legacy archives. Regenerate it after structural changes.
+`authoring-manifest.json` is the sole canonical machine-readable authoring
+registry: mechanics and aliases, Worlds, Scopes, authoring profiles, and
+optional exemplars. `ai/scripts/generate_authoring_manifest.py` regenerates it
+from the canonical catalog after structural changes.
+
+`manifest.json` is retained as historical/compatibility material from the
+pre-ContentItem workspace snapshot. It is not active authoring input and must
+not be used as the source of current Worlds, Scopes, mechanics, or aliases.
 
 ## Active Ownership
 

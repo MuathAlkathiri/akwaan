@@ -284,7 +284,9 @@ describeIf(
       });
 
       it('leaves contextHash untouched for a context with no structured block', () => {
-        // Byte-identical to the hash recorded in Phase 2o and Phase 2p.
+        // Byte-identical to the current canonical source snapshot. The prior
+        // Phase 2o/2p fixture became stale when the committed Puzzles family
+        // library changed the Scope/World authoring inputs.
         expect(
           service.resolve({
             mechanicKey: 'closest',
@@ -292,7 +294,7 @@ describeIf(
             scopeKey: 'numbers-estimation',
           }).contextHash,
         ).toBe(
-          '533cd552f4db973c5620c2e7a663340298fb0b40578a37efa3055b830d111911',
+          '521567dc7f4251e4beddd5513bcb8a09b4bcdcb97176637edd53f01ce4b07147',
         );
       });
 

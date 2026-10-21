@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import unicodedata
 from pathlib import Path
@@ -39,48 +40,123 @@ from validate_one_clue import normalize
 
 ANSWER_MODES = {"multiple_choice", "match"}
 
-#: The six forward Puzzles Scopes and their Puzzle Families, transcribed from
-#: each Scope's own `SCOPE.md`. `media` is that family's policy:
-#:   required   — the image *is* the puzzle; a resolved asset is mandatory
-#:   optional   — the family plays either way
-#:   family-led — the Scope is mixed; the author's chosen framing decides
-#:   none       — a text-native family; media would only distract
-FAMILIES: dict[str, dict[str, dict]] = {
-    "observation-illusions": {
-        "hidden-detail": {"media": "required", "modes": {"multiple_choice"}},
-        "illusion-perception": {"media": "required", "modes": {"multiple_choice"}},
-        "visual-count": {"media": "required", "modes": {"multiple_choice"}},
-    },
-    "wordplay-letters": {
-        "anagram-rearrange": {"media": "none", "modes": {"multiple_choice", "match"}},
-        "letter-operation": {"media": "none", "modes": {"multiple_choice", "match"}},
-        "hidden-word": {"media": "optional", "modes": {"multiple_choice"}},
-    },
-    "numbers-estimation": {
-        "quantity-intuition": {"media": "optional", "modes": {"multiple_choice"}},
-        "proportion-estimate": {"media": "optional", "modes": {"multiple_choice"}},
-        "numeric-pattern": {"media": "none", "modes": {"multiple_choice"}},
-    },
-    "assembly-rotation": {
-        "net-fold": {"media": "required", "modes": {"multiple_choice"}},
-        "silhouette-match": {"media": "required", "modes": {"multiple_choice"}},
-        "view-projection": {"media": "required", "modes": {"multiple_choice"}},
-    },
-    "paths-motion": {
-        "path-trace": {"media": "required", "modes": {"multiple_choice"}},
-        "mechanism-outcome": {"media": "required", "modes": {"multiple_choice"}},
-    },
-    "spot-the-error": {
-        "intruder-element": {"media": "family-led", "modes": {"multiple_choice"}},
-        "order-violation": {"media": "family-led", "modes": {"multiple_choice", "match"}},
-    },
-}
+PUZZLES_SCOPES_DIR = Path(__file__).resolve().parents[1] / "skills" / "worlds" / "puzzles" / "scopes"
+AUTHORING_MANIFEST = Path(__file__).resolve().parents[2] / ".opencode" / "authoring-manifest.json"
 
 #: Scopes whose own boundary makes the image the puzzle. Mirrors
 #: `VISUAL_PUZZLE_SCOPE_SLUGS` in the backend; the backend enforces at Scope
 #: level because no family identifier is persisted, this validator can be
 #: stricter because the family is right there in the pack.
 VISUAL_SCOPES = {"observation-illusions", "assembly-rotation", "paths-motion"}
+
+_FAMILY_MODES = {"multiple_choice", "match", "closest"}
+
+
+def _table_cells(line: str) -> list[str]:
+    """Split one Markdown table row without treating an escaped pipe as a cell."""
+    return [cell.strip() for cell in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
+
+
+def _family_media_policy(scope: str, media_description: str) -> str:
+    """Derive the validator's media gate from Scope-owned family metadata.
+
+    The Scope table is authoritative for family IDs and answer modes. Its
+    media column describes the presentation, while the Scope boundary supplies
+    the gate: visual Scopes require an asset, text/typographic families are
+    text-native, and mixed Scopes leave the framing to the author/reviewer.
+    """
+    if scope in VISUAL_SCOPES:
+        return "required"
+    if re.search(r"\b(?:text|typographic)\b", media_description, re.IGNORECASE):
+        return "none"
+    return "family-led"
+
+
+def _load_scope_families(scope: str) -> dict[str, dict]:
+    """Load one Scope's approved family table, failing closed if it drifts.
+
+    Family IDs and answer modes deliberately come from the canonical Scope
+    Markdown instead of a second hand-maintained Python list. The parser is
+    anchored to the required `Approved Canonical Families` table shape and
+    rejects malformed or duplicate rows rather than guessing.
+    """
+    scope_file = PUZZLES_SCOPES_DIR / scope / "SCOPE.md"
+    if not scope_file.exists():
+        raise RuntimeError(f"canonical Puzzles Scope is missing: {scope_file}")
+    lines = scope_file.read_text(encoding="utf-8").splitlines()
+    heading = next(
+        (
+            index
+            for index, line in enumerate(lines)
+            if re.match(r"^### Approved Canonical Famil(?:y|ies)(?: Summary)?", line)
+        ),
+        None,
+    )
+    if heading is None:
+        raise RuntimeError(f"approved family table is missing: {scope_file}")
+
+    header = next(
+        (
+            index
+            for index in range(heading + 1, len(lines))
+            if lines[index].startswith("|")
+            and re.search(r"\bFamily(?: ID)?\b", lines[index])
+            and re.search(r"\b(?:Supported Modes|Answer Modes)\b", lines[index])
+        ),
+        None,
+    )
+    if header is None or header + 1 >= len(lines) or not lines[header + 1].startswith("|"):
+        raise RuntimeError(f"approved family table header is malformed: {scope_file}")
+
+    families: dict[str, dict] = {}
+    expected_number = 1
+    for line in lines[header + 2 :]:
+        if not line.startswith("|"):
+            break
+        cells = _table_cells(line)
+        if not cells or not cells[0].isdigit():
+            continue
+        if len(cells) < 5:
+            raise RuntimeError(f"approved family row is malformed: {scope_file}: {line}")
+        if int(cells[0]) != expected_number:
+            raise RuntimeError(f"approved family numbering is not contiguous: {scope_file}: {line}")
+        match = re.fullmatch(r"`([^`]+)`", cells[1])
+        if not match:
+            raise RuntimeError(f"approved family ID is not code-formatted: {scope_file}: {line}")
+        family = match.group(1).strip()
+        modes = set(re.findall(r"\b(?:multiple_choice|match|closest)\b", cells[-1]))
+        if not modes or not modes.issubset(_FAMILY_MODES):
+            raise RuntimeError(f"approved family modes are invalid: {scope_file}: {line}")
+        if family in families:
+            raise RuntimeError(f"duplicate approved family '{family}' in {scope_file}")
+        families[family] = {
+            "media": _family_media_policy(scope, cells[-2]),
+            "modes": modes,
+        }
+        expected_number += 1
+
+    if not families:
+        raise RuntimeError(f"approved family table has no rows: {scope_file}")
+    return families
+
+
+def _canonical_puzzles_scopes() -> list[str]:
+    """Read the Puzzles Scope list from the sole canonical registry."""
+    try:
+        manifest = json.loads(AUTHORING_MANIFEST.read_text(encoding="utf-8"))
+        scopes = manifest["worlds"]["puzzles"]["scopes"]
+    except (OSError, KeyError, TypeError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"canonical authoring manifest cannot be read: {AUTHORING_MANIFEST}") from exc
+    if not isinstance(scopes, list) or not scopes:
+        raise RuntimeError("canonical authoring manifest has no Puzzles Scopes")
+    return [str(scope) for scope in scopes]
+
+
+# This is generated at import time from the canonical manifest and the six
+# Scope-owned tables. There is no second family allowlist to maintain.
+FAMILIES: dict[str, dict[str, dict]] = {
+    scope: _load_scope_families(scope) for scope in _canonical_puzzles_scopes()
+}
 
 #: The nine retired Scopes, named so the failure explains itself instead of
 #: saying only "unknown". The twenty-one local smoke fixtures sit on these.
