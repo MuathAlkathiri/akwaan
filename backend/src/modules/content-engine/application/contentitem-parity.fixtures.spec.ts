@@ -26,10 +26,11 @@ type LayerExpectation = {
 };
 
 type MechanicValidatorExpectation = LayerExpectation & {
-  key: 'one-clue';
-  baseFixture: 'one-clue.valid.json';
-  overrides: Record<string, unknown>;
-  diagnosticCodes: string[];
+  key: 'one-clue' | 'closest';
+  baseFixture?: 'one-clue.valid.json';
+  overrides?: Record<string, unknown>;
+  diagnosticCodes?: string[];
+  diagnosticContains?: string[];
 };
 
 type ParityCase = {
@@ -42,6 +43,7 @@ type ParityCase = {
       assets: Array<{ url?: string }>;
     };
     answerPayload: Record<string, unknown>;
+    mechanicPayload?: Record<string, unknown>;
   };
   context: {
     worldKey: string;
@@ -80,8 +82,10 @@ const EXPECTED_CASE_IDS = new Set([
   'media-shape-missing-assets',
   'resolved-media-awaiting-ready',
   'moving-xo-visual-scope-media-required',
+  'valid-closest-numeric-range',
+  'closest-target-off-step',
 ]);
-const CHALLENGE_KEYS = new Set(['ryo', 'match', 'moving-xo']);
+const CHALLENGE_KEYS = new Set(['ryo', 'match', 'moving-xo', 'closest']);
 const WORLD_KEYS = new Set(['football', 'puzzles']);
 const SCOPE_KEYS = new Set(['world-cup', 'observation-illusions']);
 const LAYER_NAMES = new Set([
@@ -95,7 +99,7 @@ const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as ParityFixture;
 function assertFixtureContract(document: ParityFixture): void {
   expect(document.version).toBe(1);
   expect(document.contract).toBe('contentitem-validation-parity');
-  expect(document.cases).toHaveLength(11);
+  expect(document.cases).toHaveLength(13);
   expect(new Set(document.cases.map((item) => item.id))).toEqual(
     EXPECTED_CASE_IDS,
   );
@@ -120,6 +124,27 @@ function assertFixtureContract(document: ParityFixture): void {
       expect(item.item.answerPayload.acceptedAnswers).toEqual(
         expect.arrayContaining([expect.any(String)]),
       );
+    } else if (item.item.answerPayload.mode === 'closest') {
+      const target = item.item.answerPayload.correctValue as number;
+      expect(typeof target).toBe('number');
+      expect(Number.isFinite(target)).toBe(true);
+      const mechanicPayload = item.item.mechanicPayload;
+      expect(mechanicPayload).toEqual(expect.any(Object));
+      const slider = mechanicPayload?.closestSlider as
+        | { mode?: unknown; min?: number; max?: number; step?: number }
+        | undefined;
+      expect(slider).toEqual(expect.any(Object));
+      expect(slider?.mode).toBe('numeric-range');
+      expect(typeof slider?.min).toBe('number');
+      expect(typeof slider?.max).toBe('number');
+      expect(typeof slider?.step).toBe('number');
+      expect(Number.isFinite(slider?.min as number)).toBe(true);
+      expect(Number.isFinite(slider?.max as number)).toBe(true);
+      expect(Number.isFinite(slider?.step as number)).toBe(true);
+      expect(slider!.min as number).toBeLessThan(slider!.max as number);
+      expect(slider!.step as number).toBeGreaterThan(0);
+      expect(target).toBeGreaterThanOrEqual(slider!.min as number);
+      expect(target).toBeLessThanOrEqual(slider!.max as number);
     } else {
       throw new Error(
         `unsupported answer payload mode: ${String(item.item.answerPayload.mode)}`,
@@ -189,13 +214,28 @@ function assertFixtureContract(document: ParityFixture): void {
     }
 
     if (item.mechanicValidator !== undefined) {
-      expect(item.mechanicValidator.key).toBe('one-clue');
-      expect(item.mechanicValidator.baseFixture).toBe('one-clue.valid.json');
       expect(item.mechanicValidator.applicable).toBe(true);
-      expect(item.mechanicValidator.expected).toBe('fail');
-      expect(item.mechanicValidator.overrides).toEqual(expect.any(Object));
-      expect(item.mechanicValidator.diagnosticCodes).toEqual(expect.any(Array));
-      expect(item.mechanicValidator.diagnosticCodes.length).toBeGreaterThan(0);
+      if (item.mechanicValidator.key === 'one-clue') {
+        expect(item.mechanicValidator.baseFixture).toBe('one-clue.valid.json');
+        expect(item.mechanicValidator.expected).toBe('fail');
+        expect(item.mechanicValidator.overrides).toEqual(expect.any(Object));
+        expect(item.mechanicValidator.diagnosticCodes).toEqual(
+          expect.any(Array),
+        );
+        expect(item.mechanicValidator.diagnosticCodes!.length).toBeGreaterThan(
+          0,
+        );
+      } else if (item.mechanicValidator.key === 'closest') {
+        expect(item.mechanicValidator.baseFixture).toBeUndefined();
+        expect(item.mechanicValidator.overrides).toBeUndefined();
+        expect(item.mechanicValidator.diagnosticContains).toEqual(
+          expect.any(Array),
+        );
+      } else {
+        throw new Error(
+          `unsupported mechanic validator: ${item.mechanicValidator.key}`,
+        );
+      }
     }
   }
 }
@@ -204,6 +244,7 @@ function draftFor(item: ParityCase['item']): Record<string, unknown> {
   return {
     prompt: item.prompt,
     ...(item.media ? { media: item.media } : {}),
+    ...(item.mechanicPayload ? { mechanicPayload: item.mechanicPayload } : {}),
     answerPayload: item.answerPayload,
   };
 }
@@ -218,6 +259,7 @@ function referencesFor(item: ParityCase): {
     ryo: 'parity-challenge-ryo',
     match: 'parity-challenge-match',
     'moving-xo': 'parity-challenge-moving-xo',
+    closest: 'parity-challenge-closest',
   };
   const challengeProfiles: Record<
     string,
@@ -245,6 +287,12 @@ function referencesFor(item: ParityCase): {
       slug: 'moving-xo',
       family: ChallengeFamily.SIGNATURE,
       answerMode: ChallengeAnswerMode.MOVING_XO,
+    },
+    closest: {
+      name: 'Closest',
+      slug: 'closest',
+      family: ChallengeFamily.COOP,
+      answerMode: ChallengeAnswerMode.CLOSEST,
     },
   };
   const worldProfiles: Record<
@@ -317,6 +365,24 @@ describe('ContentItem parity fixture contract (test-only)', () => {
     expect(() => assertFixtureContract(malformed)).toThrow();
   });
 
+  it('rejects invalid symbolic challenge keys', () => {
+    const malformed = JSON.parse(JSON.stringify(fixture)) as ParityFixture;
+    malformed.cases[0].context.challengeTypeKey = 'unknown';
+    malformed.cases[0].item.compatibleChallengeTypeKey = 'unknown';
+    expect(() => assertFixtureContract(malformed)).toThrow();
+  });
+
+  it('rejects malformed Closest mechanic metadata', () => {
+    const malformed = JSON.parse(JSON.stringify(fixture)) as ParityFixture;
+    const closest = malformed.cases.find(
+      (item) => item.id === 'valid-closest-numeric-range',
+    )!;
+    (
+      closest.item.mechanicPayload!.closestSlider as Record<string, unknown>
+    ).mode = 'legacy';
+    expect(() => assertFixtureContract(malformed)).toThrow();
+  });
+
   for (const item of fixture.cases) {
     it(`${item.id}: invokes the applicable real validation layers`, () => {
       assertFixtureContract(fixture);
@@ -345,7 +411,9 @@ describe('ContentItem parity fixture contract (test-only)', () => {
             ? 'read-your-opponent'
             : item.context.challengeTypeKey === 'moving-xo'
               ? 'moving-xo'
-              : 'parity-match',
+              : item.context.challengeTypeKey === 'closest'
+                ? 'closest'
+                : 'parity-match',
         draft,
         references: referencesFor(item),
       });

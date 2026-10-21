@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -15,6 +16,7 @@ sys.path.insert(0, str(VALIDATOR_ROOT))
 
 from validate_question_craft import validate_single_item  # noqa: E402
 from validate_one_clue import validate as validate_one_clue  # noqa: E402
+from validate_closest import validate as validate_closest  # noqa: E402
 
 
 EXPECTED_CASES = {
@@ -29,9 +31,11 @@ EXPECTED_CASES = {
     "media-shape-missing-assets",
     "resolved-media-awaiting-ready",
     "moving-xo-visual-scope-media-required",
+    "valid-closest-numeric-range",
+    "closest-target-off-step",
 }
 LAYER_NAMES = {"questionCraft", "deterministicScreen", "compatibility"}
-CHALLENGE_KEYS = {"ryo", "match", "moving-xo"}
+CHALLENGE_KEYS = {"ryo", "match", "moving-xo", "closest"}
 WORLD_KEYS = {"football", "puzzles"}
 SCOPE_KEYS = {"world-cup", "observation-illusions"}
 
@@ -58,7 +62,7 @@ def assert_contract(document: Dict[str, Any]) -> None:
     )
     check(
         {case.get("id") for case in cases} == EXPECTED_CASES,
-        "fixture case IDs do not match the approved eleven cases",
+        "fixture case IDs do not match the approved thirteen cases",
     )
 
     for case in cases:
@@ -125,6 +129,40 @@ def assert_contract(document: Dict[str, Any]) -> None:
                 and all(isinstance(answer, str) for answer in payload["acceptedAnswers"]),
                 f"{case.get('id')}: realistic accepted answers are required",
             )
+        elif payload.get("mode") == "closest":
+            target = payload.get("correctValue")
+            check(
+                isinstance(target, (int, float))
+                and not isinstance(target, bool)
+                and math.isfinite(target),
+                f"{case.get('id')}: Closest correctValue must be finite",
+            )
+            mechanic_payload = item.get("mechanicPayload")
+            check(
+                isinstance(mechanic_payload, dict),
+                f"{case.get('id')}: Closest mechanicPayload is required",
+            )
+            slider = mechanic_payload.get("closestSlider")
+            check(
+                isinstance(slider, dict),
+                f"{case.get('id')}: Closest slider metadata is required",
+            )
+            check(
+                slider.get("mode") == "numeric-range",
+                f"{case.get('id')}: parity Closest fixtures require numeric-range",
+            )
+            low, high, step = slider.get("min"), slider.get("max"), slider.get("step")
+            check(
+                all(
+                    isinstance(value, (int, float))
+                    and not isinstance(value, bool)
+                    and math.isfinite(value)
+                    for value in (low, high, step)
+                ),
+                f"{case.get('id')}: Closest range metadata must be finite",
+            )
+            check(low < high and step > 0, f"{case.get('id')}: Closest range is invalid")
+            check(low <= target <= high, f"{case.get('id')}: Closest target is out of range")
         else:
             check(False, f"{case.get('id')}: unsupported answer payload mode")
 
@@ -244,27 +282,34 @@ def assert_contract(document: Dict[str, Any]) -> None:
                         "applicable",
                         "expected",
                         "diagnosticCodes",
+                        "diagnosticContains",
                         "overrides",
                     }
                 ),
                 f"{case.get('id')}: unknown mechanicValidator field",
             )
-            check(
-                mechanic.get("key") == "one-clue",
-                f"{case.get('id')}: unsupported mechanic validator",
-            )
-            check(
-                mechanic.get("baseFixture") == "one-clue.valid.json",
-                f"{case.get('id')}: mechanic fixture must use the canonical One Clue fixture",
-            )
             check(mechanic.get("applicable") is True, f"{case.get('id')}: mechanic validator must apply")
             check(mechanic.get("expected") in {"pass", "fail"}, f"{case.get('id')}: invalid mechanic expectation")
-            check(
-                isinstance(mechanic.get("diagnosticCodes"), list)
-                and all(isinstance(code, str) and code for code in mechanic["diagnosticCodes"]),
-                f"{case.get('id')}: mechanic diagnostic codes are required",
-            )
-            check(isinstance(mechanic.get("overrides"), dict), f"{case.get('id')}: mechanic overrides are required")
+            if mechanic.get("key") == "one-clue":
+                check(
+                    mechanic.get("baseFixture") == "one-clue.valid.json",
+                    f"{case.get('id')}: mechanic fixture must use the canonical One Clue fixture",
+                )
+                check(
+                    isinstance(mechanic.get("diagnosticCodes"), list)
+                    and all(isinstance(code, str) and code for code in mechanic["diagnosticCodes"]),
+                    f"{case.get('id')}: mechanic diagnostic codes are required",
+                )
+                check(isinstance(mechanic.get("overrides"), dict), f"{case.get('id')}: mechanic overrides are required")
+            elif mechanic.get("key") == "closest":
+                check("baseFixture" not in mechanic, f"{case.get('id')}: Closest uses the native item contract")
+                check(
+                    isinstance(mechanic.get("diagnosticContains"), list)
+                    and all(isinstance(value, str) and value for value in mechanic["diagnosticContains"]),
+                    f"{case.get('id')}: Closest diagnosticContains must be a string list",
+                )
+            else:
+                check(False, f"{case.get('id')}: unsupported mechanic validator")
 
 
 def merge_fixture(target: dict[str, Any], patch: dict[str, Any]) -> None:
@@ -290,8 +335,8 @@ class ContentItemParityFixtureTests(unittest.TestCase):
         cls.document = load_fixture()
         assert_contract(cls.document)
 
-    def test_contract_has_exactly_eleven_complete_cases(self) -> None:
-        self.assertEqual(len(self.document["cases"]), 11)
+    def test_contract_has_exactly_thirteen_complete_cases(self) -> None:
+        self.assertEqual(len(self.document["cases"]), 13)
 
     def test_contract_rejects_incomplete_case_sets(self) -> None:
         malformed = dict(self.document)
@@ -306,6 +351,22 @@ class ContentItemParityFixtureTests(unittest.TestCase):
             "expected": "not_applicable",
             "reason": "unsupported layer",
         }
+        with self.assertRaises(AssertionError):
+            assert_contract(malformed)
+
+    def test_contract_rejects_invalid_symbolic_keys(self) -> None:
+        malformed = json.loads(json.dumps(self.document))
+        malformed["cases"][0]["context"]["challengeTypeKey"] = "unknown"
+        malformed["cases"][0]["item"]["compatibleChallengeTypeKey"] = "unknown"
+        with self.assertRaises(AssertionError):
+            assert_contract(malformed)
+
+    def test_contract_rejects_malformed_closest_metadata(self) -> None:
+        malformed = json.loads(json.dumps(self.document))
+        closest = next(
+            case for case in malformed["cases"] if case["id"] == "valid-closest-numeric-range"
+        )
+        closest["item"]["mechanicPayload"]["closestSlider"]["mode"] = "legacy"
         with self.assertRaises(AssertionError):
             assert_contract(malformed)
 
@@ -342,15 +403,28 @@ class ContentItemParityFixtureTests(unittest.TestCase):
                 f"expected Question Craft diagnostic {expected!r}, got {errors}",
             )
 
-    def test_mechanic_validator_expectations_use_real_one_clue_validator(self) -> None:
+    def test_mechanic_validator_expectations_use_real_native_validators(self) -> None:
         for case in self.document["cases"]:
             mechanic = case.get("mechanicValidator")
             if not mechanic or not mechanic["applicable"]:
                 continue
-            errors = validate_one_clue(load_mechanic_fixture(case))
-            self.assertEqual(mechanic["expected"], "fail")
-            for expected in mechanic["diagnosticCodes"]:
-                self.assertIn(expected, errors, f"{case['id']}: {errors}")
+            if mechanic["key"] == "one-clue":
+                errors = validate_one_clue(load_mechanic_fixture(case))
+                self.assertEqual(mechanic["expected"], "fail")
+                for expected in mechanic["diagnosticCodes"]:
+                    self.assertIn(expected, errors, f"{case['id']}: {errors}")
+            else:
+                errors = validate_closest(case["item"])
+                self.assertEqual(
+                    mechanic["expected"] == "pass",
+                    not errors,
+                    f"{case['id']}: {errors}",
+                )
+                for expected in mechanic["diagnosticContains"]:
+                    self.assertTrue(
+                        any(expected in error for error in errors),
+                        f"{case['id']}: expected {expected!r}, got {errors}",
+                    )
 
 
 if __name__ == "__main__":

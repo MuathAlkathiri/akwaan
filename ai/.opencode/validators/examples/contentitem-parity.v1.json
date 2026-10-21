@@ -588,6 +588,115 @@
           ]
         }
       }
+    },
+    {
+      "id": "valid-closest-numeric-range",
+      "item": {
+        "prompt": {
+          "ar": "كم يبلغ عدد سكان مدينة الرياض تقريبًا بالملايين؟"
+        },
+        "compatibleChallengeTypeKey": "closest",
+        "mechanicPayload": {
+          "closestSlider": {
+            "mode": "numeric-range",
+            "min": 0,
+            "max": 20,
+            "step": 1,
+            "unit": "مليون نسمة"
+          }
+        },
+        "answerPayload": {
+          "mode": "closest",
+          "correctValue": 7
+        }
+      },
+      "context": {
+        "worldKey": "football",
+        "scopeKey": "world-cup",
+        "challengeTypeKey": "closest"
+      },
+      "layers": {
+        "questionCraft": {
+          "applicable": false,
+          "expected": "not_applicable",
+          "reason": "Question Craft does not own canonical Closest slider semantics"
+        },
+        "deterministicScreen": {
+          "applicable": true,
+          "expected": "pass",
+          "blockingCodes": []
+        },
+        "compatibility": {
+          "applicable": true,
+          "expected": "deferred",
+          "blockerCodes": [],
+          "deferredCodes": [
+            "READY_VALIDATION_PENDING"
+          ]
+        }
+      },
+      "mechanicValidator": {
+        "key": "closest",
+        "applicable": true,
+        "expected": "pass",
+        "diagnosticContains": []
+      }
+    },
+    {
+      "id": "closest-target-off-step",
+      "item": {
+        "prompt": {
+          "ar": "كم يبلغ عدد سكان مدينة الرياض تقريبًا بالملايين؟"
+        },
+        "compatibleChallengeTypeKey": "closest",
+        "mechanicPayload": {
+          "closestSlider": {
+            "mode": "numeric-range",
+            "min": 0,
+            "max": 20,
+            "step": 1,
+            "unit": "مليون نسمة"
+          }
+        },
+        "answerPayload": {
+          "mode": "closest",
+          "correctValue": 7.5
+        }
+      },
+      "context": {
+        "worldKey": "football",
+        "scopeKey": "world-cup",
+        "challengeTypeKey": "closest"
+      },
+      "layers": {
+        "questionCraft": {
+          "applicable": false,
+          "expected": "not_applicable",
+          "reason": "Question Craft does not own canonical Closest slider semantics"
+        },
+        "deterministicScreen": {
+          "applicable": true,
+          "expected": "fail",
+          "blockingCodes": [
+            "CLOSEST_SLIDER_TARGET_STEP_INVALID"
+          ]
+        },
+        "compatibility": {
+          "applicable": true,
+          "expected": "blocked",
+          "blockerCodes": [
+            "CLOSEST_SLIDER_TARGET_STEP_INVALID"
+          ]
+        }
+      },
+      "mechanicValidator": {
+        "key": "closest",
+        "applicable": true,
+        "expected": "fail",
+        "diagnosticContains": [
+          "not reachable from min"
+        ]
+      }
     }
   ]
 }
