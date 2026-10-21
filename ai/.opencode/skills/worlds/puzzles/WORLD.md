@@ -87,8 +87,12 @@ or Content Patterns.
 
 ## Question Palette
 
-- **High-Value Archetypes**:
-  - `PUZZLE_FAMILY` (Shared fragments, complementary halves, lateral thinking, sequence logic)
+- **Scoped Puzzle Family Guidance (not a global `questionArchetype`)**:
+  Moving XO family metadata describes the mechanic-native solving operation. The
+  canonical family IDs are owned by the six forward Puzzles Scope profiles and
+  are validated by `ai/.opencode/validators/validate_moving_xo.py`. Do not use
+  historical Rakkibha family vocabulary as Moving XO family IDs.
+- **High-Value Global Archetypes**:
   - `SEQUENCE` (Mathematical, visual, or alphabetic pattern progression)
   - `CONNECTION` (Word association, double meanings, riddle logic)
   - `ODD_ONE_OUT` (Geometric or logical outliers)

@@ -55,7 +55,8 @@ declared Scope; when the core material belongs to another Puzzle World Scope
 item for family diversity — repair it so the declared Scope's material is
 genuinely primary, or reject or move it. Confirm Scope Knowledge never supplies
 required solving material; when `mechanicPayload.puzzleFamily` is present,
-confirm it is a canonical family name that matches the actual solving operation.
+treat it as mechanic/scoped metadata (not a `questionArchetype`) and confirm
+it is a canonical family name that matches the actual solving operation.
 Confirm `mechanicPayload.authorSafetyConfirmation`, the declared interaction
 pattern, expected conversation, and any extension-only runtime blocker.
 

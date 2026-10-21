@@ -3,7 +3,8 @@
 For each item, validate in order: selected ChallengeType, owning Pattern, Scope
 compatibility, schema, interaction usefulness, payload correctness, automatic
 resolution, factual evidence, ambiguity, safety, leakage, media, duplication,
-reuse policy, and reveal value.
+reuse policy, and reveal value. `mechanicPayload.puzzleFamily`, when present,
+is mechanic/scoped metadata and is not a global `questionArchetype`.
 
 Record an explicit decision and next owner. Hard failures return for repair or
 replacement. Review never changes another Role's file silently.
@@ -21,7 +22,8 @@ puzzle, if the item needs the host screen, if the truth appears outside
 `answerPayload`, if the answer is ambiguous without an explicit accepted-solution
 policy, or if actor-specific visibility can leak teammate, opponent, future-item,
 or truth data. Confirm the scope is one of the six Puzzle World scopes and that a
-declared `mechanicPayload.puzzleFamily` matches the actual solving operation.
+declared `mechanicPayload.puzzleFamily` matches the actual solving operation;
+this field is mechanic/scoped metadata, not a global `questionArchetype`.
 
 One Clue review runs the manual monotonic ladder gate on every item: record each
 transition `1→2`, `2→3`, `3→4`, `4→5` and require every later clue to be more

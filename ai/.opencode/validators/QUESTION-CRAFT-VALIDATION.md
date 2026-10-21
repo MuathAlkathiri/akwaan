@@ -7,6 +7,13 @@ This validator audits authored ContentItem sets against:
 - Batch variety and diversity thresholds from `.opencode/knowledge/architecture/BATCH-VARIETY.md`
 - Anti-pattern detection and Zero Answer Leakage from `.opencode/knowledge/architecture/QUESTION-CRAFT.md`
 
+`questionArchetype` is optional authoring metadata. When it is supplied, it
+must be one of the 20 canonical global archetypes in
+`QUESTION-ARCHETYPES.md`. `PUZZLE_FAMILY` is not a global archetype, including
+when the item belongs to the Puzzles World. Moving XO `family`/`puzzleFamily`
+metadata is mechanic- and Scope-specific and is validated separately by
+`validate_moving_xo.py`.
+
 ## 2. Hard QA Gates (Errors)
 
 1. **Unknown Archetype**: If specified, `questionArchetype` must be in the 20 recognized canonical archetypes.
