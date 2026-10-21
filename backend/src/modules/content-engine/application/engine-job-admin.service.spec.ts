@@ -1,5 +1,8 @@
 import { ConfigService } from '@nestjs/config';
-import { AuthoringContextUnavailableError } from './authoring-context.service';
+import {
+  AuthoringContextService,
+  AuthoringContextUnavailableError,
+} from './authoring-context.service';
 import { EngineJobAdminService } from './engine-job-admin.service';
 
 const budgetSnapshot = {
@@ -65,7 +68,7 @@ describe('Content Engine generator capability preflight', () => {
     },
   );
 
-  it.each(['moving-xo', 'rakkibha', 'bomb'])(
+  it.each(['moving-xo', 'bomb'])(
     'keeps %s authoring-resolvable but blocks generation capability',
     async (mechanicKey) => {
       const { service, budget } = build(mechanicKey);
@@ -83,6 +86,31 @@ describe('Content Engine generator capability preflight', () => {
       expect(budget.estimate).not.toHaveBeenCalled();
     },
   );
+
+  it('returns the resolver blocker for retained-inactive Rakkibha', async () => {
+    const budget = {
+      snapshot: jest.fn(async () => budgetSnapshot),
+      estimate: jest.fn(() => 1_000),
+    };
+    const config = {
+      get: jest.fn(() => undefined),
+    } as unknown as ConfigService;
+    const service = new EngineJobAdminService(
+      {} as never,
+      {} as never,
+      budget as never,
+      new AuthoringContextService(config),
+      {} as never,
+      config,
+    );
+
+    const result = await service.preflight(request('rakkibha'));
+
+    expect(result.resolvable).toBe(false);
+    expect(result.blockedReason).toContain('MECHANIC_NOT_AUTHORABLE');
+    expect(result.generatorSupported).toBeUndefined();
+    expect(result.diagnostic).toBeUndefined();
+  });
 
   it('preserves authoring errors for invalid World/Scope combinations', async () => {
     const { service, contexts } = build('moving-xo');

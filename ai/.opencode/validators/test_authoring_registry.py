@@ -42,7 +42,7 @@ class CanonicalAuthoringRegistryTests(unittest.TestCase):
         mechanics = self.manifest["mechanics"]
         self.assertEqual(mechanics["moving-xo"]["status"], "AUTHORABLE")
         self.assertEqual(mechanics["moving-xo"]["boundWorld"], "puzzles")
-        self.assertEqual(mechanics["distributed-information"]["status"], "AUTHORABLE")
+        self.assertEqual(mechanics["distributed-information"]["status"], "RETAINED_INACTIVE")
         self.assertIn("rakkibha", mechanics["distributed-information"]["aliases"])
         self.assertEqual(mechanics["one-clue"]["status"], "LEGACY")
 

@@ -48,12 +48,19 @@ class TestAuthoringContext(unittest.TestCase):
     def test_mechanics_inventory(self):
         mechs = self.manifest["mechanics"]
         
-        expected_authorable = ["bomb", "marhala", "combo", "read-your-opponent", "closest", "top-5", "distributed-information", "moving-xo", "odd-piece", "first-note", "laqatha"]
+        expected_authorable = ["bomb", "marhala", "combo", "read-your-opponent", "closest", "top-5", "moving-xo", "odd-piece", "first-note", "laqatha"]
+        expected_retained_inactive = ["distributed-information"]
         expected_legacy = ["one-clue", "guess-your-teammate", "twenty-inquiries", "same-wavelength", "split", "split-clue", "who-among-us"]
         
         for k in expected_authorable:
             self.assertIn(k, mechs)
             self.assertEqual(mechs[k]["status"], "AUTHORABLE")
+            self.assertTrue(os.path.exists(mechs[k]["profile"]))
+
+        for k in expected_retained_inactive:
+            self.assertIn(k, mechs)
+            self.assertEqual(mechs[k]["status"], "RETAINED_INACTIVE")
+            self.assertIn("rakkibha", mechs[k].get("aliases", []))
             self.assertTrue(os.path.exists(mechs[k]["profile"]))
             
         for k in expected_legacy:
@@ -80,8 +87,11 @@ class TestAuthoringContext(unittest.TestCase):
         # top-5 + football + premier-league -> PASS
         self.assertEqual(run_resolver("top-5", "football", "premier-league").returncode, 0)
         
-        # distributed-information + puzzles + a forward Scope -> PASS
-        self.assertEqual(run_resolver("distributed-information", "puzzles", "wordplay-letters").returncode, 0)
+        # Retained Rakkibha identities are blocked from current authoring.
+        for mechanic in ("distributed-information", "rakkibha"):
+            retained = run_resolver(mechanic, "puzzles", "wordplay-letters")
+            self.assertNotEqual(retained.returncode, 0)
+            self.assertIn("AUTHORING_BLOCKED — MECHANIC_NOT_AUTHORABLE", retained.stdout)
         
         # odd-piece + cars + german-cars -> PASS
         self.assertEqual(run_resolver("odd-piece", "cars", "german-cars").returncode, 0)
@@ -112,8 +122,8 @@ class TestAuthoringContext(unittest.TestCase):
         self.assertNotIn("RAKKIBHA", mechanic_section.upper())
 
         resolved_rakkibha = run_resolver("rakkibha", "puzzles", "wordplay-letters")
-        self.assertEqual(resolved_rakkibha.returncode, 0)
-        self.assertIn('"mechanicKey": "distributed-information"', resolved_rakkibha.stdout)
+        self.assertNotEqual(resolved_rakkibha.returncode, 0)
+        self.assertIn("AUTHORING_BLOCKED — MECHANIC_NOT_AUTHORABLE", resolved_rakkibha.stdout)
         self.assertNotEqual(run_resolver("moving-xo", "anime", "naruto").returncode, 0)
 
     def test_provenance(self):

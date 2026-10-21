@@ -34,7 +34,9 @@ manifest = {
         "closest": {"category": "SHARED", "status": "AUTHORABLE", "profile": "ai/.opencode/skills/challenge-types/closest/SKILL.md"},
         
         "top-5": {"category": "SIGNATURE", "boundWorld": "football", "status": "AUTHORABLE", "profile": "ai/.opencode/skills/challenge-types/top-5/SKILL.md"},
-        "distributed-information": {"category": "SIGNATURE", "boundWorld": "puzzles", "status": "AUTHORABLE", "profile": "ai/.opencode/skills/challenge-types/distributed-information/SKILL.md", "aliases": ["rakkibha"]},
+        # Retained for historical/runtime compatibility; current authoring is
+        # exclusively Moving XO for the forward Puzzles direction.
+        "distributed-information": {"category": "SIGNATURE", "boundWorld": "puzzles", "status": "RETAINED_INACTIVE", "profile": "ai/.opencode/skills/challenge-types/distributed-information/SKILL.md", "aliases": ["rakkibha"]},
         # Puzzles Signature (roadmap §23.11). Registering it makes the mechanic
         # AUTHORABLE; source integration alone does not provision or activate a
         # runtime ChallengeType.

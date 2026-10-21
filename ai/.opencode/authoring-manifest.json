@@ -39,7 +39,7 @@
     "distributed-information": {
       "category": "SIGNATURE",
       "boundWorld": "puzzles",
-      "status": "AUTHORABLE",
+      "status": "RETAINED_INACTIVE",
       "profile": "ai/.opencode/skills/challenge-types/distributed-information/SKILL.md",
       "aliases": [
         "rakkibha"

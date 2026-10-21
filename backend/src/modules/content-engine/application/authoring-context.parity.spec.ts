@@ -370,17 +370,30 @@ describeIf(
       });
     });
 
-    it('accepts a registered alias exactly as the resolver does', () => {
-      // `rakkibha` is an alias of `distributed-information` in the manifest.
-      const context = service.resolve({
-        mechanicKey: 'rakkibha',
-        worldKey: 'puzzles',
-        scopeKey: 'paths-motion',
-      });
-      expect(context.mechanicKey).toBe('distributed-information');
-      expect(context.exemplars).toBe('');
-      expect(context.historicalExemplars).toBe('');
-      expect(context.exemplarDiagnostics).toEqual([]);
-    });
+    it.each(['distributed-information', 'rakkibha'])(
+      'rejects retained-inactive Rakkibha identity %s in parity with Python',
+      (mechanicKey) => {
+        expect(() =>
+          service.resolve({
+            mechanicKey,
+            worldKey: 'puzzles',
+            scopeKey: 'paths-motion',
+          }),
+        ).toThrow('AUTHORING_BLOCKED — MECHANIC_NOT_AUTHORABLE');
+
+        const fromPython = python([
+          '--mechanic',
+          mechanicKey,
+          '--world',
+          'puzzles',
+          '--scope',
+          'paths-motion',
+        ]);
+        expect(fromPython.ok).toBe(false);
+        expect(fromPython.stdout).toContain(
+          'AUTHORING_BLOCKED — MECHANIC_NOT_AUTHORABLE',
+        );
+      },
+    );
   },
 );
