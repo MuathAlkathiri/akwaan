@@ -15,6 +15,10 @@ export class WorldRepository {
     return this.model.findById(id).exec();
   }
 
+  findBySlug(slug: string): Promise<World | null> {
+    return this.model.findOne({ slug }).exec();
+  }
+
   create(data: Partial<World>): Promise<World> {
     return this.model.create(data);
   }

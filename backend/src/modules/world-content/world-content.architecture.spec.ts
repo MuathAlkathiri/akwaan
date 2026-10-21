@@ -102,6 +102,9 @@ describe('World Content architecture', () => {
           // Match orchestration is a designed consumer of World Content: it reads
           // boards, slot keys, and readiness. That whole edge is intentional.
           !path.includes(join('modules', 'match')) &&
+          // The Content Engine must reuse the canonical compatibility policy;
+          // evaluating an in-memory candidate is a designed read-only edge.
+          !path.includes(join('modules', 'content-engine')) &&
           !path.endsWith('app.module.ts') &&
           !path.includes(join('src', 'scripts')) &&
           readFileSync(path, 'utf8').includes('world-content/'),

@@ -6,6 +6,91 @@ a team that reasons well from what it does know should come close. The slider is
 the reasoning space — it tells the player what kind of quantity this is and how
 big the world of plausible answers is.
 
+## Two valid content directions
+
+Closest supports **both** of these, and neither is a lesser form of the other.
+
+**A — Knowledge-anchored estimation.** The answer is a real quantity a player
+may or may not know exactly. A team that knows it wins; a team that reasons from
+familiar reference points should land close. *How many goals were scored in a
+given World Cup? How tall is a landmark? In what year did an event happen?*
+
+**B — Reasoning-derived estimation.** The prompt supplies what the player needs,
+and the answer is reached by visualising, counting, comparing or approximating.
+*How many layers after folding a page ten times? How many tiles cover this
+floor?*
+
+The distinction that matters is **not** whether the answer is a fact. It is
+whether the player has an **anchor**:
+
+> Does a team that does not know the exact answer still have somewhere to stand?
+
+In direction A the anchor is familiarity — a sense of the right order of
+magnitude from ordinary life. In direction B the anchor is in the prompt. A
+question offering neither is a lottery, and that is the thing this mechanic
+cannot carry. "Has a knowable answer" is not the defect; **"has no way in" is.**
+
+### Which direction a World permits
+
+Subject matter is owned by the World and Scope profiles, not by this file. Where
+they disagree with anything here, they win.
+
+Most Worlds permit both directions. **`puzzles` permits direction B only** — its
+identity rules `PUZZLES_WORLD_NO_TRIVIA` and `PUZZLE_ITSELF_IS_THE_CHALLENGE`
+(roadmap §23.11) make recall-dependent solving invalid in every Puzzles Scope,
+and a slider does not exempt it. That is a World boundary, not a mechanic one:
+the same knowledge-anchored question that is excellent in `football` or
+`general-knowledge` is invalid in `puzzles`.
+
+Read the target Scope before authoring. Where a Scope supplies `EXEMPLARS.md`,
+those items govern.
+
+## The quality rubric
+
+Apply to every Closest item, in either direction. The first four are what make
+the round fun; the rest are what make it fair.
+
+| | Ask | Fails when |
+|---|---|---|
+| **Uncertainty** | Is the answer genuinely in doubt for most teams? | Everyone knows it, or nobody could place it |
+| **Guessability** | Does a team without the answer have an anchor? | No familiarity (A) and nothing supplied (B) |
+| **Discussion** | Is there something for a table to argue about? | One player knows and the rest watch |
+| **Accessibility** | Would an ordinary player recognise the subject? | Specialist knowledge, niche fandom, obscure record |
+| **Defensibility** | Is the number verifiable and unambiguous? | Undefined set, contested measure, "average of major cities" |
+| **Stability** | Will it still be right next year? | Career totals, current records, growing counts — unless pinned to a stated date |
+| **Calibration** | Is the span domain-first, with the target away from the ends? | Answer-shaped range, target at an endpoint, too few positions |
+| **Mechanic fit** | Does the slider add something a multiple choice would not? | Four positions; a yes/no in disguise |
+| **Distinctness** | Is this different from existing content and from the exemplars? | A worked example with the numbers changed |
+
+A known exact answer never invalidates an item on its own. Weigh it on the
+rubric.
+
+### Examples illustrate quality, never templates
+
+Every worked example in this file and in any Scope's `EXEMPLARS.md` is a
+**retired subject**. Its job is to show which property makes an item work. Do not
+reuse its subject, its wording, its numbers or its slider, and do not produce it
+with one value changed — that is the most common failure in review, and it is
+rejected on **Distinctness** every time.
+
+### What separates an anchored fact from a lottery
+
+Both of these are knowledge questions about football. One is strong Closest
+content and one is unusable, and the difference is not how factual they are.
+
+**Works** — *total goals scored across a named World Cup tournament.* A team
+that does not know reasons its way in: roughly sixty-odd matches, a couple of
+goals a match, so somewhere around 150. The anchor is ordinary familiarity with
+how football scores. The tournament is finished, so the number is fixed forever.
+Every team has something to say, and the team that knows is rewarded.
+
+**Fails** — *goals scored by one player across his career so far.* Nothing
+anchors it: a team either carries the figure or picks a number. It is also
+unstable, since it changes while he plays. Pinning it — «حتى نهاية موسم ٢٠٢٤» —
+fixes the stability half and leaves the anchor problem untouched.
+
+The test is the same in direction B, only the anchor moves into the prompt.
+
 ## Payload Contract
 `answerPayload.mode: 'closest'` with numeric `correctValue`, plus an explicit
 interaction on `mechanicPayload.closestSlider`.
@@ -75,7 +160,8 @@ one answer.
 2. Group them by natural domain.
 3. Prefer **one shared continuum** wherever the same reasoning space applies.
 
-Groups verified in Pilot 02 (Football) — *examples, not a global taxonomy*:
+Groups verified in Pilot 02 (Football) — *examples of grouping, not a global
+taxonomy and not approved subject matter for other Worlds*:
 World Cup career goals · Premier League club title count · World Cup national
 title count · World Cup finals field size · Premier League career goals ·
 Premier League single-season goals.
@@ -135,8 +221,17 @@ answer at its midpoint honestly, and neither the backend nor authoring may rejec
 an item for that alone.
 
 ## Anti-Patterns
-- Ordinary trivia with a slider bolted on: a question with one knowable answer
-  and no estimable span is not a Closest question.
+- **A question with no way in.** Not "the answer is a fact" — that is fine and
+  often excellent. The defect is an answer no team can place: an obscure record,
+  a specialist statistic, a quantity with no familiar reference point and nothing
+  supplied in the prompt. See the **Guessability** and **Accessibility** rows.
+- **An answer that moves.** A career total, a current record, a count that grows
+  with each new discovery decays after authoring and can no longer be graded.
+  Pin it to a stated date — «حتى نهاية موسم ٢٠٢٤» — or choose another quantity.
+  The quantity is not the problem; the open-ended "so far" is.
+- **An undefined set.** "The average population of major cities" has no answer
+  until *major* and *which cities* are stated.
+- **A worked example with the numbers changed.** See Distinctness.
 - A range so broad the slider is noise, or so narrow it is a coin flip.
 - A step too fine to hit on a phone.
 

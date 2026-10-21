@@ -22,6 +22,12 @@ export class ScopeRepository {
     return this.model.findById(id).exec();
   }
 
+  findBySlugInWorld(worldId: string, slug: string): Promise<Scope | null> {
+    return this.model
+      .findOne({ worldId: new Types.ObjectId(worldId), slug })
+      .exec();
+  }
+
   findByIds(ids: string[]): Promise<Scope[]> {
     if (!ids.length) return Promise.resolve([]);
     return this.model

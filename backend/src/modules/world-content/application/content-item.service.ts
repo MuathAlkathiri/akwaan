@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Types } from 'mongoose';
+import { ClientSession, Types } from 'mongoose';
 import { ContentItemCompatibilityPolicy } from '../domain/content-item-compatibility.policy';
 import {
   ChallengeFamily,
@@ -61,7 +61,10 @@ export class ContentItemService {
     return (await this.evaluate(toContentItemView(item))).report;
   }
 
-  async create(dto: CreateContentItemDto): Promise<ContentItemSummary> {
+  async create(
+    dto: CreateContentItemDto,
+    options?: { session?: ClientSession },
+  ): Promise<ContentItemSummary> {
     const scope = await this.requireScope(dto.scopeId);
     const worldId = String(scope.worldId);
     const candidate: ContentItemView = {
@@ -88,21 +91,24 @@ export class ContentItemService {
         this.policy.defaultReuseAcrossSessions(compatibleFamilies);
     }
 
-    const created = await this.contentItems.create({
-      scopeId: new Types.ObjectId(dto.scopeId),
-      worldId: new Types.ObjectId(worldId),
-      prompt: candidate.prompt,
-      compatibleChallengeTypeIds: candidate.compatibleChallengeTypeIds.map(
-        (id) => new Types.ObjectId(id),
-      ),
-      media: candidate.media,
-      revealMedia: candidate.revealMedia,
-      answerPayload: candidate.answerPayload,
-      mechanicPayload: candidate.mechanicPayload,
-      isReusableAcrossSessions: candidate.isReusableAcrossSessions,
-      status: candidate.status,
-      metadata: candidate.metadata,
-    } as Partial<ContentItem>);
+    const created = await this.contentItems.create(
+      {
+        scopeId: new Types.ObjectId(dto.scopeId),
+        worldId: new Types.ObjectId(worldId),
+        prompt: candidate.prompt,
+        compatibleChallengeTypeIds: candidate.compatibleChallengeTypeIds.map(
+          (id) => new Types.ObjectId(id),
+        ),
+        media: candidate.media,
+        revealMedia: candidate.revealMedia,
+        answerPayload: candidate.answerPayload,
+        mechanicPayload: candidate.mechanicPayload,
+        isReusableAcrossSessions: candidate.isReusableAcrossSessions,
+        status: candidate.status,
+        metadata: candidate.metadata,
+      } as Partial<ContentItem>,
+      options?.session,
+    );
     return this.summarize(created);
   }
 

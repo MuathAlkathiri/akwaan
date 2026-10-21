@@ -3,6 +3,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   Sparkles,
+  ScanSearch,
   Users,
   Network,
 } from "lucide-react";
@@ -59,6 +60,14 @@ export const adminNavigation: AdminNavigationItem[] = [
     showOnDashboard: true,
     dashboardTitle: "Generate Questions",
     dashboardDescription: "توليد أسئلة كمسودات للمراجعة قبل الحفظ.",
+  },
+  {
+    label: "مراجعة المحتوى",
+    href: "/admin/content-engine",
+    icon: ScanSearch,
+    showOnDashboard: true,
+    dashboardTitle: "Content Engine Review",
+    dashboardDescription: "مراجعة المرشحات واعتمادها كمسودات فقط.",
   },
   {
     label: "المستخدمين",

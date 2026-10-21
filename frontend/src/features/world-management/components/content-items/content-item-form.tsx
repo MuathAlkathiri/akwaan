@@ -68,6 +68,9 @@ interface ContentItemFormProps {
   contentItem?: ContentItem;
   defaultScopeId?: string;
   onSuccess: () => void;
+  /** Review candidates reuse this editor without writing a ContentItem yet. */
+  onSubmitOverride?: (payload: Record<string, unknown>) => Promise<void>;
+  submitLabel?: string;
 }
 
 export function ContentItemForm({
@@ -75,6 +78,8 @@ export function ContentItemForm({
   contentItem,
   defaultScopeId,
   onSuccess,
+  onSubmitOverride,
+  submitLabel,
 }: ContentItemFormProps) {
   const { data: scopes = [] } = useScopes(worldId);
   const { data: board } = useWorldBoard(worldId);
@@ -85,6 +90,7 @@ export function ContentItemForm({
       : emptyContentItemForm(defaultScopeId ?? ""),
   );
   const [localProblems, setLocalProblems] = useState<string[]>([]);
+  const [overridePending, setOverridePending] = useState(false);
   const isNewItem = !contentItem;
   const [uploading, setUploading] = useState(false);
 
@@ -304,7 +310,23 @@ export function ContentItemForm({
     const problems = findLocalFormProblems(values, { isNewItem });
     setLocalProblems(problems);
     if (problems.length) return;
-    const ok = await formSubmit.submit(buildContentItemPayload(values));
+    const payload = buildContentItemPayload(values);
+    if (onSubmitOverride) {
+      setOverridePending(true);
+      try {
+        await onSubmitOverride(payload);
+        onSuccess();
+      } catch {
+        setLocalProblems((current) => [
+          ...current,
+          "تعذر حفظ تعديلات المرشح. أعد تحميله وحاول مرة أخرى.",
+        ]);
+      } finally {
+        setOverridePending(false);
+      }
+      return;
+    }
+    const ok = await formSubmit.submit(payload);
     if (ok) onSuccess();
   };
 
@@ -534,9 +556,7 @@ export function ContentItemForm({
             try {
               const asset = await uploadContentItemAsset(file);
               set({ mediaUrls: [asset.url] });
-            } finally {
-              setUploading(false);
-            }
+            } finally { setUploading(false); }
           }}
         />
       )}
@@ -552,7 +572,9 @@ export function ContentItemForm({
             try {
               const asset = await uploadContentItemAsset(file);
               set({ revealMediaUrl: asset.url });
-            } finally { setUploading(false); }
+            } finally {
+              setUploading(false);
+            }
           }}
         />
       )}
@@ -598,12 +620,18 @@ export function ContentItemForm({
         issues={[...localProblems, ...formSubmit.issues]}
       />
 
-      <Button type="submit" disabled={formSubmit.isPending} className="w-full">
-        {formSubmit.isPending
+      <Button
+        type="submit"
+        disabled={formSubmit.isPending || overridePending}
+        className="w-full"
+      >
+        {formSubmit.isPending || overridePending
           ? "جاري الحفظ..."
-          : contentItem
-            ? "حفظ العنصر"
-            : "إضافة عنصر"}
+          : submitLabel
+            ? submitLabel
+            : contentItem
+              ? "حفظ العنصر"
+              : "إضافة عنصر"}
       </Button>
     </form>
   );

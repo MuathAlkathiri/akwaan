@@ -17,6 +17,7 @@ import { CatalogsModule } from './modules/catalogs/catalogs.module';
 import { HealthController } from './health.controller';
 import { WorldContentModule } from './modules/world-content/world-content.module';
 import { MediaRightsModule } from './modules/media-rights/media-rights.module';
+import { ContentEngineModule } from './modules/content-engine/content-engine.module';
 import { ScoringModule } from './modules/scoring/scoring.module';
 import { MatchModule } from './modules/match/match.module';
 
@@ -36,6 +37,7 @@ import { MatchModule } from './modules/match/match.module';
     ScoringModule,
     WorldContentModule,
     MediaRightsModule,
+    ContentEngineModule,
     QuestionsModule,
     QuestionHistoryModule,
     AiAgentModule,

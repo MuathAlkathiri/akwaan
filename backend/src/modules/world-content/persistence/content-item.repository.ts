@@ -32,8 +32,13 @@ export class ContentItemRepository {
     return this.model.findById(id).exec();
   }
 
-  create(data: Partial<ContentItem>): Promise<ContentItem> {
-    return this.model.create(data);
+  async create(
+    data: Partial<ContentItem>,
+    session?: ClientSession,
+  ): Promise<ContentItem> {
+    if (!session) return this.model.create(data);
+    const [created] = await this.model.create([data], { session });
+    return created;
   }
 
   updateById(
