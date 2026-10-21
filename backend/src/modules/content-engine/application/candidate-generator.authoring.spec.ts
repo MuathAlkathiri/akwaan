@@ -395,6 +395,29 @@ describe('buildPrompt', () => {
   });
 });
 
+describe('generator capability guard', () => {
+  it('rejects an unsupported mechanic before provider or budget work', async () => {
+    const budget = { reserve: jest.fn() };
+    const generator = new CandidateGeneratorService(
+      {} as never,
+      { holdsLease: async () => true } as never,
+      budget as never,
+      { get: () => undefined } as unknown as ConfigService,
+    );
+
+    await expect(
+      generator.generate({
+        jobId: 'job-unsupported',
+        leaseEpoch: 1,
+        attempt: 1,
+        context: context({ mechanicKey: 'moving-xo' }),
+        count: 1,
+      }),
+    ).rejects.toMatchObject({ code: 'MECHANIC_NOT_GENERATABLE' });
+    expect(budget.reserve).not.toHaveBeenCalled();
+  });
+});
+
 describe('parsing a closest candidate', () => {
   it('keeps the authoring rationale beside the draft, never inside it', () => {
     const [parsed] = parse([closestItem()]) as {

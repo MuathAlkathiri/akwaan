@@ -19,6 +19,7 @@ import {
   AuthoringContextService,
   AuthoringContextUnavailableError,
 } from './authoring-context.service';
+import { generatorAnswerModeFor } from './candidate-generator.service';
 import { ContentEngineOrchestratorService } from './content-engine-orchestrator.service';
 import { EngineBudgetService } from './engine-budget.service';
 import { GenerationJobService } from './generation-job.service';
@@ -28,6 +29,11 @@ export interface PreflightRequest {
   worldKey: string;
   scopeKey: string;
   targetCount: number;
+}
+
+export interface PreflightDiagnostic {
+  code: 'MECHANIC_NOT_GENERATABLE';
+  message: string;
 }
 
 /**
@@ -79,6 +85,9 @@ export class EngineJobAdminService {
     liveProviderEnabled: boolean;
     engineEnabled: boolean;
     budget: Awaited<ReturnType<EngineBudgetService['snapshot']>>;
+    /** Whether CandidateGeneratorService has an authored answer mode. */
+    generatorSupported?: boolean;
+    diagnostic?: PreflightDiagnostic;
     blockedReason?: string;
     ruleConflicts?: RuleConflict[];
   }> {
@@ -87,10 +96,12 @@ export class EngineJobAdminService {
     const liveProviderEnabled = this.truthy(ENGINE_LIVE_PROVIDER_ENABLED);
 
     let contextHash: string | undefined;
+    let resolvedMechanicKey: string | undefined;
     let ruleConflicts: RuleConflict[] = [];
     try {
       const context = this.contexts.resolve(input);
       contextHash = context.contextHash;
+      resolvedMechanicKey = context.mechanicKey;
       ruleConflicts = context.effectiveRules.conflicts;
     } catch (error) {
       if (error instanceof AuthoringContextUnavailableError) {
@@ -119,6 +130,22 @@ export class EngineJobAdminService {
         budget,
         blockedReason: new RuleConflictError(ruleConflicts).message,
         ruleConflicts,
+      };
+    }
+
+    const answerMode = generatorAnswerModeFor(resolvedMechanicKey!);
+    if (!answerMode) {
+      const message = `MECHANIC_NOT_GENERATABLE: no authored answer mode for mechanic "${resolvedMechanicKey}"`;
+      return {
+        resolvable: true,
+        contextHash,
+        pricingConfigured: false,
+        liveProviderEnabled,
+        engineEnabled,
+        budget,
+        generatorSupported: false,
+        diagnostic: { code: 'MECHANIC_NOT_GENERATABLE', message },
+        blockedReason: message,
       };
     }
 
@@ -153,6 +180,7 @@ export class EngineJobAdminService {
         liveProviderEnabled,
         engineEnabled,
         budget,
+        generatorSupported: true,
       };
     } catch (error) {
       if (error instanceof PricingUnavailableError) {
@@ -166,6 +194,7 @@ export class EngineJobAdminService {
           liveProviderEnabled,
           engineEnabled,
           budget,
+          generatorSupported: true,
           blockedReason: error.message,
         };
       }

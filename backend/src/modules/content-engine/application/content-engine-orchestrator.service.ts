@@ -12,7 +12,10 @@ import {
 } from '../domain/effective-rules';
 import { AuthoringContextService } from './authoring-context.service';
 import { CandidateCompatibilityService } from './candidate-compatibility.service';
-import { CandidateGeneratorService } from './candidate-generator.service';
+import {
+  CandidateGeneratorService,
+  CandidateParseError,
+} from './candidate-generator.service';
 import { DeterministicScreenService } from './deterministic-screen.service';
 import { EngineBudgetService } from './engine-budget.service';
 import { FactVerificationService } from './fact-verification.service';
@@ -232,6 +235,16 @@ export class ContentEngineOrchestratorService {
           leaseEpoch: job.leaseEpoch,
           reason: error.message,
         });
+        return;
+      }
+      if (
+        error instanceof CandidateParseError &&
+        error.code === 'MECHANIC_NOT_GENERATABLE'
+      ) {
+        // This is a deterministic capability boundary, not a transient
+        // provider failure. A queued job that bypassed preflight must fail
+        // without retrying or reaching another paid attempt.
+        await this.jobs.fail(job.jobId, job.leaseEpoch, error.message);
         return;
       }
       if (error instanceof AmbiguousProviderOutcomeError) {

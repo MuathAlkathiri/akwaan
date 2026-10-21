@@ -76,6 +76,16 @@ export const MECHANIC_ANSWER_MODES: Record<
 };
 
 /**
+ * The single capability lookup shared by preflight and execution. Keeping the
+ * lookup beside the generator's answer-mode map prevents the Admin seam from
+ * drifting into a second list of mechanics the engine claims to support.
+ */
+export const generatorAnswerModeFor = (
+  mechanicKey: string,
+): 'multiple_choice' | 'closest' | undefined =>
+  MECHANIC_ANSWER_MODES[mechanicKey];
+
+/**
  * What the model must return. Passed to the provider as `responseSchema`, so a
  * provider that supports structured output cannot drift from the shape, and
  * parsing is a validation step rather than a hope.
@@ -532,12 +542,7 @@ export class CandidateGeneratorService {
     }
 
     const count = this.batchSize(input.count);
-    const provider = this.provider;
-    if (!provider) {
-      throw new Error('No AiProvider is bound; refusing to generate');
-    }
-
-    const answerMode = MECHANIC_ANSWER_MODES[input.context.mechanicKey];
+    const answerMode = generatorAnswerModeFor(input.context.mechanicKey);
     if (!answerMode) {
       // Refuse rather than emit a shape the compatibility policy would reject
       // after the call has already been paid for.
@@ -545,6 +550,10 @@ export class CandidateGeneratorService {
         'MECHANIC_NOT_GENERATABLE',
         `no authored answer mode for mechanic "${input.context.mechanicKey}"`,
       );
+    }
+    const provider = this.provider;
+    if (!provider) {
+      throw new Error('No AiProvider is bound; refusing to generate');
     }
     const prompt = this.buildPrompt(input.context, count, answerMode);
     // Reserved *and* sent, so actual output cost cannot exceed what the cap

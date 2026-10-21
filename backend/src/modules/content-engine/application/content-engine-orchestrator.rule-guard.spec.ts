@@ -1,4 +1,5 @@
 import { ContentEngineOrchestratorService } from './content-engine-orchestrator.service';
+import { CandidateParseError } from './candidate-generator.service';
 import { EffectiveRuleSet, RuleConflict } from '../domain/effective-rules';
 
 /**
@@ -129,6 +130,60 @@ describe('rule-conflict guard before any paid call', () => {
     await service.run(job as never);
     expect(checkpoint).toHaveBeenCalled();
     expect(generate).toHaveBeenCalled();
+  });
+});
+
+describe('generator capability guard when preflight is bypassed', () => {
+  it('fails the job without retrying an unsupported mechanic', async () => {
+    const fail = jest.fn(async () => undefined);
+    const releaseForRetry = jest.fn(async () => undefined);
+    const generate = jest.fn(async () => {
+      throw new CandidateParseError(
+        'MECHANIC_NOT_GENERATABLE',
+        'no authored answer mode for mechanic "moving-xo"',
+      );
+    });
+    const service = new ContentEngineOrchestratorService(
+      {
+        find: () => ({
+          sort: () => ({
+            lean: () => ({
+              exec: async () => [],
+            }),
+          }),
+        }),
+      } as never,
+      {
+        checkpoint: jest.fn(async () => undefined),
+        awaitReview: jest.fn(async () => undefined),
+        releaseForRetry,
+        fail,
+        isCancellationRequested: async () => false,
+        holdsLease: async () => true,
+      } as never,
+      {
+        hasLedgerEntry: async () => false,
+        reservationIds: async () => [],
+      } as never,
+      {
+        resolve: () => context([]),
+      } as never,
+      { generate } as never,
+      { beginBatch: jest.fn(), screen: jest.fn() } as never,
+      { verify: jest.fn() } as never,
+      { evaluate: jest.fn() } as never,
+      { judge: jest.fn() } as never,
+    );
+
+    await service.run(job as never);
+
+    expect(generate).toHaveBeenCalled();
+    expect(fail).toHaveBeenCalledWith(
+      'job-1',
+      1,
+      expect.stringContaining('MECHANIC_NOT_GENERATABLE'),
+    );
+    expect(releaseForRetry).not.toHaveBeenCalled();
   });
 });
 
