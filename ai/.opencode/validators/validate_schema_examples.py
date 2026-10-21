@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Dependency-free validation for canonical schema fixtures."""
+"""Dependency-free validation for active authoring-pack schema fixtures.
+
+The historical ``CONTENTITEM.schema.json`` is intentionally not loaded here:
+the backend ContentItem DTO, persistence schema, and compatibility policy are
+the current contract and this script must not create a second one.
+"""
 
 from __future__ import annotations
 
@@ -121,6 +126,8 @@ def check(schema_path: Path, fixture_path: Path) -> list[str]:
 
 
 def main() -> int:
+    # These are authoring-pack schemas only.  Canonical ContentItem validation
+    # belongs to the backend policy and is covered by its own tests.
     pairs = [
         (
             ROOT / ".opencode/workflows/BATCH-MANIFEST.schema.json",

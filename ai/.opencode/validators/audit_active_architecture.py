@@ -16,6 +16,12 @@ from validate_one_clue import validate as validate_one_clue
 ROOT = Path(__file__).resolve().parents[2]
 ACTIVE = ROOT / ".opencode"
 HISTORICAL_DIR = ACTIVE / "legacy"
+# This schema predates the backend ContentItem DTO and policy.  It is retained
+# for historical authoring-pack fixtures, but must not be treated as an active
+# architecture contract by this audit.
+HISTORICAL_VALIDATOR_ASSETS = {
+    ACTIVE / "validators" / "CONTENTITEM.schema.json",
+}
 TEXT_SUFFIXES = {".md", ".json", ".py"}
 
 
@@ -25,6 +31,7 @@ def active_files() -> list[Path]:
         for path in ACTIVE.rglob("*")
         if path.is_file()
         and HISTORICAL_DIR not in path.parents
+        and path not in HISTORICAL_VALIDATOR_ASSETS
         and "node_modules" not in path.parts
     ]
 
@@ -116,6 +123,18 @@ for directory in scope_dirs:
     scope_slug = directory.name
     if scope_slug not in declared_scopes.get(world_slug, set()):
         errors.append(f"disk scope undeclared in manifest: {world_slug}/{scope_slug}")
+
+# The backend DTO, persistence schema, and compatibility policy are the
+# canonical ContentItem contract.  Keep this audit pointed at those sources
+# rather than maintaining a second JSON schema with a stale field vocabulary.
+canonical_content_item_sources = [
+    ROOT.parent / "backend" / "src" / "modules" / "world-content" / "dto" / "content-item.dto.ts",
+    ROOT.parent / "backend" / "src" / "modules" / "world-content" / "schemas" / "content-item.schema.ts",
+    ROOT.parent / "backend" / "src" / "modules" / "world-content" / "domain" / "content-item-compatibility.policy.ts",
+]
+for source in canonical_content_item_sources:
+    if not source.exists():
+        errors.append(f"missing canonical ContentItem authority: {source.relative_to(ROOT.parent)}")
 
 # ChallengeType contract completeness.
 required_sections = [
@@ -255,13 +274,6 @@ for path in files:
     name = path.name.lower()
     if any(part in name for part in ("cata" + "log-health", "sub" + "ject-health")):
         errors.append(f"retired health file active: {path.relative_to(ROOT)}")
-
-# Canonical mode set remains machine-resolvable.
-mode_set = {"ryo", "multiple_choice", "closest", "match", "vote", "split", "top_5", "distributed"}
-item_schema = json.loads(text(ACTIVE / "validators" / "CONTENTITEM.schema.json"))
-declared_modes = set(item_schema["properties"]["answerMode"]["enum"])
-if declared_modes != mode_set:
-    errors.append("ContentItem answer modes diverge from the canonical machine-resolvable set")
 
 if errors:
     print(f"FAIL: {len(errors)} architecture violation(s)")

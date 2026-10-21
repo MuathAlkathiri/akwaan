@@ -54,17 +54,21 @@ Factual accuracy remains mandatory whenever the item makes a factual claim.
 ## ContentItem Standard
 
 Every active output is a ContentItem with:
-- stable `id` and `scopeId`;
+- an owning `scopeId` (the backend derives `worldId` from that Scope);
 - `compatibleChallengeTypeIds`;
-- one owned `patternId`;
 - concise player-facing `prompt`;
-- `interactionPayload` appropriate to the mechanic;
-- deterministic `resolutionPayload` (`answerPayload` with canonical mode and `acceptedAnswers`);
+- deterministic `answerPayload`, with mechanic-specific structure enforced by
+  the backend `ContentItemCompatibilityPolicy`;
+- optional mechanic-specific `mechanicPayload`;
 - optional `media`;
+- optional `revealMedia`;
 - `isReusableAcrossSessions`;
-- provenance, authoring archetype (`questionArchetype`), and validation metadata.
+- lifecycle `status` and canonical metadata (`source`, `notes`, and `tags`).
 
-The runtime may support `ryo`, `multiple_choice`, `closest`, `match`, `vote`, `split`, `top_5`, and `distributed`. Every mode resolves without a human referee using canonical Arabic normalization.
+ChallengeType compatibility and answer-mode validity are defined by the backend
+DTO, schema, and `ContentItemCompatibilityPolicy`; mechanic Skills remain the
+authority for the native payload shape. Every supported mode must resolve
+without a human referee using the runtime's canonical answer handling.
 
 ## Media and Leakage
 
