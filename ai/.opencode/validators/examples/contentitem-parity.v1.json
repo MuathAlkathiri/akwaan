@@ -318,6 +318,276 @@
           }
         }
       }
+    },
+    {
+      "id": "scope-excludes-challenge-type",
+      "item": {
+        "prompt": {
+          "ar": "أي منتخب فاز بكأس العالم 2018؟"
+        },
+        "compatibleChallengeTypeKey": "ryo",
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "france",
+              "label": {
+                "ar": "فرنسا"
+              }
+            },
+            {
+              "id": "croatia",
+              "label": {
+                "ar": "كرواتيا"
+              }
+            }
+          ],
+          "correctOptionId": "france"
+        }
+      },
+      "context": {
+        "worldKey": "football",
+        "scopeKey": "world-cup",
+        "challengeTypeKey": "ryo",
+        "scopeExcludedChallengeTypeKey": "ryo"
+      },
+      "layers": {
+        "questionCraft": {
+          "applicable": false,
+          "expected": "not_applicable",
+          "reason": "Question Craft does not own Scope compatibility"
+        },
+        "deterministicScreen": {
+          "applicable": true,
+          "expected": "pass",
+          "blockingCodes": []
+        },
+        "compatibility": {
+          "applicable": true,
+          "expected": "blocked",
+          "blockerCodes": [
+            "CHALLENGE_TYPE_EXCLUDED_BY_SCOPE"
+          ]
+        }
+      }
+    },
+    {
+      "id": "challenge-type-answer-mode-mismatch",
+      "item": {
+        "prompt": {
+          "ar": "أي منتخب فاز بكأس العالم 2018؟"
+        },
+        "compatibleChallengeTypeKey": "match",
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "france",
+              "label": {
+                "ar": "فرنسا"
+              }
+            },
+            {
+              "id": "croatia",
+              "label": {
+                "ar": "كرواتيا"
+              }
+            }
+          ],
+          "correctOptionId": "france"
+        }
+      },
+      "context": {
+        "worldKey": "football",
+        "scopeKey": "world-cup",
+        "challengeTypeKey": "match"
+      },
+      "layers": {
+        "questionCraft": {
+          "applicable": false,
+          "expected": "not_applicable",
+          "reason": "Question Craft does not own ChallengeType compatibility"
+        },
+        "deterministicScreen": {
+          "applicable": true,
+          "expected": "pass",
+          "blockingCodes": []
+        },
+        "compatibility": {
+          "applicable": true,
+          "expected": "blocked",
+          "blockerCodes": [
+            "ANSWER_PAYLOAD_INCOMPATIBLE_WITH_CHALLENGE"
+          ]
+        }
+      }
+    },
+    {
+      "id": "media-shape-missing-assets",
+      "item": {
+        "prompt": {
+          "ar": "أي منتخب فاز بكأس العالم 2018؟"
+        },
+        "compatibleChallengeTypeKey": "ryo",
+        "media": {
+          "type": "image",
+          "assets": []
+        },
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "france",
+              "label": {
+                "ar": "فرنسا"
+              }
+            },
+            {
+              "id": "croatia",
+              "label": {
+                "ar": "كرواتيا"
+              }
+            }
+          ],
+          "correctOptionId": "france"
+        }
+      },
+      "context": {
+        "worldKey": "football",
+        "scopeKey": "world-cup",
+        "challengeTypeKey": "ryo"
+      },
+      "layers": {
+        "questionCraft": {
+          "applicable": false,
+          "expected": "not_applicable",
+          "reason": "Question Craft does not own canonical media shape"
+        },
+        "deterministicScreen": {
+          "applicable": true,
+          "expected": "pass",
+          "blockingCodes": []
+        },
+        "compatibility": {
+          "applicable": true,
+          "expected": "blocked",
+          "blockerCodes": [
+            "CONTENT_MEDIA_ASSETS_REQUIRED"
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolved-media-awaiting-ready",
+      "item": {
+        "prompt": {
+          "ar": "أي منتخب فاز بكأس العالم 2018؟"
+        },
+        "compatibleChallengeTypeKey": "ryo",
+        "media": {
+          "type": "image",
+          "assets": [
+            {
+              "url": "https://cdn.akwaan.test/puzzles/world-cup.png"
+            }
+          ]
+        },
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "france",
+              "label": {
+                "ar": "فرنسا"
+              }
+            },
+            {
+              "id": "croatia",
+              "label": {
+                "ar": "كرواتيا"
+              }
+            }
+          ],
+          "correctOptionId": "france"
+        }
+      },
+      "context": {
+        "worldKey": "football",
+        "scopeKey": "world-cup",
+        "challengeTypeKey": "ryo"
+      },
+      "layers": {
+        "questionCraft": {
+          "applicable": false,
+          "expected": "not_applicable",
+          "reason": "Question Craft does not own media asset readiness"
+        },
+        "deterministicScreen": {
+          "applicable": true,
+          "expected": "pass",
+          "blockingCodes": []
+        },
+        "compatibility": {
+          "applicable": true,
+          "expected": "deferred",
+          "blockerCodes": [],
+          "deferredCodes": [
+            "READY_VALIDATION_PENDING",
+            "MEDIA_ASSET_READINESS_PENDING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "moving-xo-visual-scope-media-required",
+      "item": {
+        "prompt": {
+          "ar": "كم مثلثًا في الشكل؟"
+        },
+        "compatibleChallengeTypeKey": "moving-xo",
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "four",
+              "label": {
+                "ar": "٤"
+              }
+            },
+            {
+              "id": "five",
+              "label": {
+                "ar": "٥"
+              }
+            }
+          ],
+          "correctOptionId": "five"
+        }
+      },
+      "context": {
+        "worldKey": "puzzles",
+        "scopeKey": "observation-illusions",
+        "challengeTypeKey": "moving-xo"
+      },
+      "layers": {
+        "questionCraft": {
+          "applicable": false,
+          "expected": "not_applicable",
+          "reason": "Question Craft does not own the persisted Scope media gate"
+        },
+        "deterministicScreen": {
+          "applicable": true,
+          "expected": "pass",
+          "blockingCodes": []
+        },
+        "compatibility": {
+          "applicable": true,
+          "expected": "blocked",
+          "blockerCodes": [
+            "PUZZLE_SCOPE_REQUIRES_MEDIA"
+          ]
+        }
+      }
     }
   ]
 }

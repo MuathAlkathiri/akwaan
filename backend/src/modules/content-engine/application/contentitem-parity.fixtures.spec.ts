@@ -20,6 +20,7 @@ type LayerExpectation = {
   expected: 'pass' | 'fail' | 'deferred' | 'blocked' | 'not_applicable';
   blockingCodes?: string[];
   blockerCodes?: string[];
+  deferredCodes?: string[];
   diagnosticContains?: string[];
   reason?: string;
 };
@@ -36,12 +37,17 @@ type ParityCase = {
   item: {
     prompt: { ar: string };
     compatibleChallengeTypeKey: string;
+    media?: {
+      type: string;
+      assets: Array<{ url?: string }>;
+    };
     answerPayload: Record<string, unknown>;
   };
   context: {
     worldKey: string;
     scopeKey: string;
     challengeTypeKey: string;
+    scopeExcludedChallengeTypeKey?: string;
   };
   layers: {
     questionCraft: LayerExpectation;
@@ -69,8 +75,15 @@ const EXPECTED_CASE_IDS = new Set([
   'normalized-mc-answer-leakage',
   'normalized-match-duplicate',
   'match-public-truth-leakage',
+  'scope-excludes-challenge-type',
+  'challenge-type-answer-mode-mismatch',
+  'media-shape-missing-assets',
+  'resolved-media-awaiting-ready',
+  'moving-xo-visual-scope-media-required',
 ]);
-const CHALLENGE_KEYS = new Set(['ryo', 'match']);
+const CHALLENGE_KEYS = new Set(['ryo', 'match', 'moving-xo']);
+const WORLD_KEYS = new Set(['football', 'puzzles']);
+const SCOPE_KEYS = new Set(['world-cup', 'observation-illusions']);
 const LAYER_NAMES = new Set([
   'questionCraft',
   'deterministicScreen',
@@ -82,7 +95,7 @@ const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as ParityFixture;
 function assertFixtureContract(document: ParityFixture): void {
   expect(document.version).toBe(1);
   expect(document.contract).toBe('contentitem-validation-parity');
-  expect(document.cases).toHaveLength(6);
+  expect(document.cases).toHaveLength(11);
   expect(new Set(document.cases.map((item) => item.id))).toEqual(
     EXPECTED_CASE_IDS,
   );
@@ -116,6 +129,25 @@ function assertFixtureContract(document: ParityFixture): void {
       item.context.challengeTypeKey,
     );
     expect(CHALLENGE_KEYS).toContain(item.context.challengeTypeKey);
+    expect(WORLD_KEYS).toContain(item.context.worldKey);
+    expect(SCOPE_KEYS).toContain(item.context.scopeKey);
+    if (item.context.scopeExcludedChallengeTypeKey !== undefined) {
+      expect(CHALLENGE_KEYS).toContain(
+        item.context.scopeExcludedChallengeTypeKey,
+      );
+    }
+    if (item.item.media !== undefined) {
+      expect(['none', 'image', 'audio', 'video']).toContain(
+        item.item.media.type,
+      );
+      expect(item.item.media.assets).toEqual(expect.any(Array));
+      for (const asset of item.item.media.assets) {
+        expect(asset).toEqual(expect.any(Object));
+        if (asset.url !== undefined) {
+          expect(asset.url).toEqual(expect.any(String));
+        }
+      }
+    }
     expect(new Set(Object.keys(item.layers))).toEqual(LAYER_NAMES);
 
     for (const [layerName, expectation] of Object.entries(item.layers)) {
@@ -129,6 +161,10 @@ function assertFixtureContract(document: ParityFixture): void {
       }
       if (expectation.diagnosticContains !== undefined) {
         expect(expectation.diagnosticContains).toEqual(expect.any(Array));
+      }
+      if (expectation.deferredCodes !== undefined) {
+        expect(expectation.deferredCodes).toEqual(expect.any(Array));
+        expect(expectation.deferredCodes.length).toBeGreaterThan(0);
       }
       if (layerName === 'deterministicScreen') {
         expect(expectation.blockingCodes).toEqual(expect.any(Array));
@@ -167,6 +203,7 @@ function assertFixtureContract(document: ParityFixture): void {
 function draftFor(item: ParityCase['item']): Record<string, unknown> {
   return {
     prompt: item.prompt,
+    ...(item.media ? { media: item.media } : {}),
     answerPayload: item.answerPayload,
   };
 }
@@ -176,22 +213,74 @@ function referencesFor(item: ParityCase): {
   worldStatus: WorldContentStatus;
   challengeType: ChallengeTypeView;
 } {
-  expect(item.context.worldKey).toBe('football');
-  expect(item.context.scopeKey).toBe('world-cup');
   expect(CHALLENGE_KEYS).toContain(item.context.challengeTypeKey);
-  const isRyo = item.context.challengeTypeKey === 'ryo';
+  const challengeIds: Record<string, string> = {
+    ryo: 'parity-challenge-ryo',
+    match: 'parity-challenge-match',
+    'moving-xo': 'parity-challenge-moving-xo',
+  };
+  const challengeProfiles: Record<
+    string,
+    {
+      name: string;
+      slug: string;
+      family: ChallengeFamily;
+      answerMode: ChallengeAnswerMode;
+    }
+  > = {
+    ryo: {
+      name: 'Read Your Opponent',
+      slug: 'read-your-opponent',
+      family: ChallengeFamily.RYO,
+      answerMode: ChallengeAnswerMode.RYO,
+    },
+    match: {
+      name: 'Parity Match',
+      slug: 'parity-match',
+      family: ChallengeFamily.COOP,
+      answerMode: ChallengeAnswerMode.MATCH,
+    },
+    'moving-xo': {
+      name: 'Moving XO',
+      slug: 'moving-xo',
+      family: ChallengeFamily.SIGNATURE,
+      answerMode: ChallengeAnswerMode.MOVING_XO,
+    },
+  };
+  const worldProfiles: Record<
+    string,
+    { id: string; scopeId: string; name: string }
+  > = {
+    football: {
+      id: 'parity-world-football',
+      scopeId: 'parity-scope-world-cup',
+      name: 'World Cup',
+    },
+    puzzles: {
+      id: 'parity-world-puzzles',
+      scopeId: 'parity-scope-observation-illusions',
+      name: 'Observation & Illusions',
+    },
+  };
+  const profile = challengeProfiles[item.context.challengeTypeKey];
+  const world = worldProfiles[item.context.worldKey];
+  expect(profile).toBeDefined();
+  expect(world).toBeDefined();
+  const excludedChallengeTypeKey = item.context.scopeExcludedChallengeTypeKey;
   return {
     scope: scope({
-      id: 'parity-scope-world-cup',
-      worldId: 'parity-world-football',
+      id: world.scopeId,
+      worldId: world.id,
+      name: world.name,
+      slug: item.context.scopeKey,
+      excludedChallengeTypeIds: excludedChallengeTypeKey
+        ? [challengeIds[excludedChallengeTypeKey]]
+        : [],
     }),
     worldStatus: WorldContentStatus.DRAFT,
     challengeType: challengeType({
-      id: isRyo ? 'parity-challenge-ryo' : 'parity-challenge-match',
-      name: isRyo ? 'Read Your Opponent' : 'Parity Match',
-      slug: isRyo ? 'read-your-opponent' : 'parity-match',
-      family: isRyo ? ChallengeFamily.RYO : ChallengeFamily.COOP,
-      answerMode: isRyo ? ChallengeAnswerMode.RYO : ChallengeAnswerMode.MATCH,
+      id: challengeIds[item.context.challengeTypeKey],
+      ...profile,
     }),
   };
 }
@@ -254,7 +343,9 @@ describe('ContentItem parity fixture contract (test-only)', () => {
         mechanicKey:
           item.context.challengeTypeKey === 'ryo'
             ? 'read-your-opponent'
-            : 'parity-match',
+            : item.context.challengeTypeKey === 'moving-xo'
+              ? 'moving-xo'
+              : 'parity-match',
         draft,
         references: referencesFor(item),
       });
@@ -266,6 +357,13 @@ describe('ContentItem parity fixture contract (test-only)', () => {
         expect(
           compatibility.preDraft.blockers.map((blocker) => blocker.code),
         ).toEqual(compatibilityExpectation.blockerCodes);
+        if (compatibilityExpectation.deferredCodes !== undefined) {
+          expect(
+            compatibility.deferredChecks.map((check) => check.code),
+          ).toEqual(
+            expect.arrayContaining(compatibilityExpectation.deferredCodes),
+          );
+        }
       }
     });
   }

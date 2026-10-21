@@ -24,9 +24,16 @@ EXPECTED_CASES = {
     "normalized-mc-answer-leakage",
     "normalized-match-duplicate",
     "match-public-truth-leakage",
+    "scope-excludes-challenge-type",
+    "challenge-type-answer-mode-mismatch",
+    "media-shape-missing-assets",
+    "resolved-media-awaiting-ready",
+    "moving-xo-visual-scope-media-required",
 }
 LAYER_NAMES = {"questionCraft", "deterministicScreen", "compatibility"}
-CHALLENGE_KEYS = {"ryo", "match"}
+CHALLENGE_KEYS = {"ryo", "match", "moving-xo"}
+WORLD_KEYS = {"football", "puzzles"}
+SCOPE_KEYS = {"world-cup", "observation-illusions"}
 
 
 def load_fixture() -> Dict[str, Any]:
@@ -51,7 +58,7 @@ def assert_contract(document: Dict[str, Any]) -> None:
     )
     check(
         {case.get("id") for case in cases} == EXPECTED_CASES,
-        "fixture case IDs do not match the approved six cases",
+        "fixture case IDs do not match the approved eleven cases",
     )
 
     for case in cases:
@@ -79,6 +86,19 @@ def assert_contract(document: Dict[str, Any]) -> None:
             context.get("challengeTypeKey") in CHALLENGE_KEYS,
             f"{case.get('id')}: unsupported symbolic challenge key",
         )
+        check(
+            context.get("worldKey") in WORLD_KEYS,
+            f"{case.get('id')}: unsupported symbolic World key",
+        )
+        check(
+            context.get("scopeKey") in SCOPE_KEYS,
+            f"{case.get('id')}: unsupported symbolic Scope key",
+        )
+        if "scopeExcludedChallengeTypeKey" in context:
+            check(
+                context["scopeExcludedChallengeTypeKey"] in CHALLENGE_KEYS,
+                f"{case.get('id')}: unsupported excluded challenge key",
+            )
 
         prompt = item.get("prompt")
         payload = item.get("answerPayload")
@@ -107,6 +127,22 @@ def assert_contract(document: Dict[str, Any]) -> None:
             )
         else:
             check(False, f"{case.get('id')}: unsupported answer payload mode")
+
+        if "media" in item:
+            media = item["media"]
+            check(isinstance(media, dict), f"{case.get('id')}: media must be an object")
+            check(
+                media.get("type") in {"none", "image", "audio", "video"},
+                f"{case.get('id')}: unsupported media type",
+            )
+            check(
+                isinstance(media.get("assets"), list),
+                f"{case.get('id')}: media assets must be a list",
+            )
+            for asset in media["assets"]:
+                check(isinstance(asset, dict), f"{case.get('id')}: media asset must be an object")
+                if "url" in asset:
+                    check(isinstance(asset["url"], str), f"{case.get('id')}: media asset URL must be a string")
 
         for layer_name, expectation in layers.items():
             check(isinstance(expectation, dict), f"{case.get('id')}: {layer_name} missing")
@@ -141,6 +177,15 @@ def assert_contract(document: Dict[str, Any]) -> None:
                         for value in expectation["diagnosticContains"]
                     ),
                     f"{case.get('id')}: diagnosticContains must be non-empty strings",
+                )
+            if "deferredCodes" in expectation:
+                check(
+                    isinstance(expectation["deferredCodes"], list)
+                    and all(
+                        isinstance(value, str) and value
+                        for value in expectation["deferredCodes"]
+                    ),
+                    f"{case.get('id')}: deferredCodes must be non-empty strings",
                 )
 
         screen = layers["deterministicScreen"]
@@ -245,8 +290,8 @@ class ContentItemParityFixtureTests(unittest.TestCase):
         cls.document = load_fixture()
         assert_contract(cls.document)
 
-    def test_contract_has_exactly_six_complete_cases(self) -> None:
-        self.assertEqual(len(self.document["cases"]), 6)
+    def test_contract_has_exactly_eleven_complete_cases(self) -> None:
+        self.assertEqual(len(self.document["cases"]), 11)
 
     def test_contract_rejects_incomplete_case_sets(self) -> None:
         malformed = dict(self.document)
