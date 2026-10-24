@@ -47,11 +47,11 @@ describe('manual question architecture integration', () => {
       .post('/admin/ai-generator/generate-reviewed')
       .set(auth())
       .send({ categoryId, count: 1 })
-      .expect(503);
+      .expect(400);
     expect(response.body).toMatchObject({
-      statusCode: 503,
-      code: 'AI_QUESTION_GENERATION_DISABLED',
-      message: 'AI question generation is currently disabled.',
+      statusCode: 400,
+      message: 'AI pipeline produced no drafts',
+      issueCodes: expect.arrayContaining(['AI_PROVIDER_DISABLED']),
     });
   });
 

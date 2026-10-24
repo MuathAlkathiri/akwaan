@@ -29,7 +29,10 @@ describe('Music HTTP lifecycle integration', () => {
 
   const deleted: string[] = [];
   let sequence = 0;
-  const storage = {
+  const storage: Pick<
+    LocalAudioStorageService,
+    'saveOriginal' | 'allocateSnippet' | 'publish' | 'delete'
+  > = {
     saveOriginal: jest.fn(async (): Promise<StoredLocalAudio> => {
       sequence += 1;
       return {
@@ -45,7 +48,8 @@ describe('Music HTTP lifecycle integration', () => {
         url: `/uploads/music/snippets/${filename}-snippet.mp3`,
       }),
     ),
-    delete: jest.fn(async (file?: StoredLocalAudio) => {
+    publish: jest.fn(async (): Promise<void> => undefined),
+    delete: jest.fn(async (file?: Pick<StoredLocalAudio, 'absolutePath'>) => {
       if (file) deleted.push(file.absolutePath);
     }),
   };
@@ -248,7 +252,7 @@ describe('Music HTTP lifecycle integration', () => {
         .send({ questionId, answer })
         .expect(201);
       expect(checked.body.data.isCorrect).toBe(true);
-      expect(checked.body.data.normalizedCorrectAnswer).toBe('الاماكن');
+      expect(checked.body.data.normalizedCorrectAnswer).toBe('اماكن');
     }
     const incorrect = await request(app.getHttpServer())
       .post('/music/questions/validate-answer')

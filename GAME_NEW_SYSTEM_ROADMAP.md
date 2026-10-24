@@ -5842,6 +5842,29 @@ prose guidance remains active and unverified. Structured coverage is still **two
 reporting · ⬜ R5 targeted validators. ⬜ Not committed, ⬜ not deployed, ⬜ no ContentItem, ⬜ no DRAFT,
 ⬜ no READY. ⬜ **No generation model is approved** (§30.7).
 
+### 30.15 Content Engine Mongo review integration and test isolation — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-10-24)
+
+| Slice | Local closure evidence |
+| --- | --- |
+| **2B-4E-5A — Mongo-backed Human Review** | ✅ **IMPLEMENTED & VERIFIED LOCALLY.** The existing isolated replica-set integration suite re-reads persisted reviewer identity, decision, revision, timestamps and audit events; it also proves Mongo's unique index rejects a second publication linkage for the same `contentItemId`. Existing concurrent review/draft creation, idempotent retry and transaction-rollback tests pass. A simulated transaction failure and retry is not a process-crash or failover test. |
+| **2B-4E-5B — test Mongo healthcheck** | ✅ **IMPLEMENTED & VERIFIED LOCALLY.** The `mongodb-test` healthcheck initiates `rs0` only on `NotYetInitialized`, reports that cycle unhealthy, and reports healthy only after the member reaches PRIMARY (`myState === 1`). The isolated integration runner observed the service healthy and completed its suites. |
+| **2B-4E-5C — Compose isolation** | ✅ **IMPLEMENTED & VERIFIED LOCALLY.** `docker-compose.test.yml` uses project `akwaan_integration`, keeps internal `mongodb-test:27017` connectivity and ephemeral `tmpfs` storage, and no longer publishes the conflicting host port `27018`. The test URI targets an `_test` database; development containers were preserved. |
+
+**Integration debt closed in test fixtures only.** The Music upload mock now supplies the existing storage
+service's `publish()` method, and its expected normalized answer matches the current normalizer. The Manual
+Question architecture test now asserts the existing reviewed-generation endpoint's HTTP 400 zero-draft response
+with `AI_PROVIDER_DISABLED`. Neither correction changes production endpoint or music behavior.
+
+**Validation:** targeted Music and Manual Question integration **2/2 suites, 11/11 tests passed**; full backend
+integration **36 suites passed, 1 skipped; 436 tests passed, 13 skipped**, including the Content Engine Human
+Review suites. Backend typecheck, targeted ESLint for the changed integration tests and `git diff --check`
+passed. Full backend lint still reports **36 unrelated pre-existing errors and 4 warnings**; the changed tests
+lint cleanly. The skipped tests remain open test coverage, not passing evidence.
+
+This is **local test and infrastructure verification only**. No production deployment or production runtime
+verification follows from these results. The broader Content Engine status, remaining R3/R4 work and historical
+pilot outcomes above are unchanged.
+
 ---
 
 ## 31. Music × اقرأ خصمك — server-authoritative audio replay & audio readiness (M2 → M3.1)

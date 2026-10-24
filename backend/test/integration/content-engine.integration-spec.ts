@@ -1527,6 +1527,49 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       ).toEqual(['assessed', 'approved']);
     });
 
+    it('persists review decisions and audit fields in MongoDB', async () => {
+      await seedReviewCandidate('review-persisted-audit');
+      await assessSupported('review-persisted-audit');
+      await approve('review-persisted-audit');
+
+      const persisted = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'review-persisted-audit' });
+
+      expect(persisted).toMatchObject({
+        candidateId: 'review-persisted-audit',
+        reviewStatus: 'approved',
+        reviewRevision: 2,
+        reviewDecision: {
+          decision: 'approved',
+          explanation: 'Approved after human review.',
+          reviewerId: actor.id,
+          reviewerEmail: actor.email,
+          revision: 2,
+        },
+      });
+      expect(persisted?.reviewDecision.decidedAt).toEqual(expect.any(Date));
+      expect(persisted?.reviewEvents).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            action: 'assessed',
+            actorId: actor.id,
+            actorEmail: actor.email,
+            revision: 1,
+            occurredAt: expect.any(Date),
+          }),
+          expect.objectContaining({
+            action: 'approved',
+            actorId: actor.id,
+            actorEmail: actor.email,
+            revision: 2,
+            explanation: 'Approved after human review.',
+            occurredAt: expect.any(Date),
+          }),
+        ]),
+      );
+    });
+
     it('supports structured rejection and refuses rejected publication', async () => {
       await seedReviewCandidate('review-rejected');
       const rejected = await review.reject(
@@ -1773,6 +1816,47 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
         await database.collection('engine_draft_publications').countDocuments({
           candidateId: 'review-publish-once',
         }),
+      ).toBe(1);
+    });
+
+    it('rejects a second publication linkage for the same ContentItem', async () => {
+      await seedReviewCandidate('review-publication-unique');
+      await assessSupported('review-publication-unique');
+      await approve('review-publication-unique');
+      const created = await review.createDraft(
+        'review-publication-unique',
+        2,
+        actor,
+      );
+
+      let duplicateError: unknown;
+      try {
+        await database.collection('engine_draft_publications').insertOne({
+          candidateId: 'different-candidate',
+          jobId: 'different-job',
+          reviewRevision: 2,
+          contentItemId: created.contentItemId,
+          createdBy: actor.id,
+          createdByEmail: actor.email,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      } catch (error) {
+        duplicateError = error;
+      }
+
+      expect(duplicateError).toMatchObject({ code: 11000 });
+      const original = await database
+        .collection('engine_draft_publications')
+        .findOne({ contentItemId: created.contentItemId });
+      expect(original).toMatchObject({
+        candidateId: 'review-publication-unique',
+        contentItemId: created.contentItemId,
+      });
+      expect(
+        await database
+          .collection('engine_draft_publications')
+          .countDocuments({ contentItemId: created.contentItemId }),
       ).toBe(1);
     });
 
