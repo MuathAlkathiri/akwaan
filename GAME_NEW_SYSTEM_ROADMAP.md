@@ -5425,7 +5425,7 @@ time **without** weakening quality, fairness or factual defensibility.
 | --- | --- | --- |
 | 0 | Documentation and authoring foundation: `odd-piece` Skill, scoped media clause, provenance vocabulary, this record | ✅ IMPLEMENTED — source only, uncommitted (§30.6) |
 | 1 | Vertical slice: one text mechanic, one Scope, generate → screen → verify → judge → human review → ContentItem draft → READY. Budget caps included. | 🚧 IN PROGRESS — pipeline through DRAFT verified locally; judge unreachable; READY never exercised (§30.6) |
-| 2 | Quality hardening, novelty backfill, model benchmark harness | 🚧 IN PROGRESS — authoring/screening hardening done; novelty backfill and benchmark harness ⬜ NOT STARTED |
+| 2 | Quality hardening, novelty backfill, model benchmark harness | 🚧 IN PROGRESS — authoring/screening hardening done; Phase 2A dataset ✅ (§30.16), Phase 2B-A offline diagnostic runner ✅ (§30.17), Phase 2B-B1 human-labeling contract ✅ (§30.18) and Phase 2B-B2 approved human assessments ✅ (§30.19) verified locally; Phase 2B-B3 bounded gameplay-first prompt/config slice and offline A/B preparation ✅ locally, paid evaluation ⬜ NOT RUN (§30.20); novelty backfill ⬜ NOT STARTED |
 | 3 | Media sourcing and vision verification (`bomb`) — sourcing only, no editing | ⬜ NOT STARTED |
 | 4 | Odd Piece specialization, including mask-bounded localized editing behind a flag | ⬜ NOT STARTED |
 | 5 | Scale safeguards | ⬜ NOT STARTED |
@@ -5864,6 +5864,220 @@ lint cleanly. The skipped tests remain open test coverage, not passing evidence.
 This is **local test and infrastructure verification only**. No production deployment or production runtime
 verification follows from these results. The broader Content Engine status, remaining R3/R4 work and historical
 pilot outcomes above are unchanged.
+
+### 30.16 Phase 2A curated benchmark dataset — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-10-24)
+
+**Closed scope.** Twelve preserved historical candidates — six `closest` and six `read-your-opponent` — were
+prepared as a versioned, machine-readable offline benchmark dataset after blind human review. The dataset copies
+the original draft, answer data, generator rationale, factual claims, deterministic findings, factual-verification
+state and evidence, compatibility evaluation and historical workflow state without regenerating, rewriting or
+repairing any candidate. Stable anonymous review IDs are the dataset identity; provider/model and original-source
+identity remain in a separate unblinding map and are not embedded in the human-review dataset.
+
+**Human dispositions:** **2 `ACCEPT_AS_WRITTEN` · 3 `REVISE` · 4 `REJECT` · 3 `HOLD_UNASSESSABLE`**.
+Acceptance has no ContentItem lifecycle effect and means neither READY nor factual `SUPPORTED`. Holds are not
+content-quality rejections: all three concern unresolved production eligibility for `general-knowledge/science`.
+Every historical candidate is benchmark-allowed for offline evaluation only; Phase 2A establishes production
+eligibility for none of the World/Scope/mechanic combinations.
+
+**Validation:** 12/12 unique review IDs; eight preserved source artifacts and every selected whole candidate
+record match their recorded SHA-256 hashes; 32 factual claims, 150 saved evidence rows and 30 historical findings
+are retained. The separate blind pack and source map are hash-pinned by the validation report. No provider,
+model, source path/alias/ordinal, original candidate ID or job ID appears in the dataset. The deterministic local
+builder fails closed on source, count, decision, blinding and lifecycle-boundary mismatches.
+
+**Observed sample failures:** incorrect numeric answers and internally inconsistent reasoning; invalid or
+ill-bounded Closest sliders; ambiguous or unstated RYO criteria; exemplar/duplication concerns; temperature-sensitive
+wording; and weak opponent-prediction value. This is evidence about this 12-candidate sample, not an approved model
+ranking or a numerical acceptance threshold.
+
+**Known limits.** Reviewer identity, review timestamp and verbatim reviewer notes were not available locally and
+remain explicitly unknown; the supplied approved finding summaries are not represented as verbatim notes. The
+sample covers only two mechanics and four World/Scope contexts. Historical screening and evidence states are
+preserved rather than replayed under current code. The dataset and reports are local ignored workbench artifacts,
+not production fixtures or canonical ContentItems.
+
+**Phase 2A closure boundary (before §30.17):** Phase 2A itself implemented no runner, scoring behavior,
+threshold, model approval or automated decision. No provider call, DB/R2 write, publication, deployment or
+production runtime verification was performed by that closure. §30.17 records the later, first offline runner
+slice without changing those other boundaries.
+
+### 30.17 Phase 2B-A offline diagnostic runner — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-10-24)
+
+**First slice only.** A deterministic CLI in the existing ignored workbench reads the verified Phase 2A dataset
+and its validation report, requires the exact validated dataset SHA-256, revalidates the 12-candidate schema,
+stable anonymous IDs, per-candidate content hashes, 2/3/4/3 decision distribution, blinding fields and human
+authority boundaries, then emits machine-readable JSON and a concise Markdown diagnostic report. It never reads
+the unblinding map and requires no network, credentials, MongoDB, R2 or provider.
+
+**Three authorities remain separate.** The output records (1) saved historical screening, factual,
+compatibility and workflow observations, (2) the explicit structured Phase 2A human judgments, and (3) new
+runner classifications with reason codes and provenance. It does not turn human-discovered defects into engine
+detections, does not treat `UNSUPPORTED` as false, keeps RYO-01 factual/compatibility stages `NOT_EVALUATED`,
+keeps historical duplicate signals separate from factual rejection, and never converts deferred compatibility
+into production eligibility. Unknown and non-comparable cases remain explicit; there is no aggregate quality
+score, accuracy percentage or confusion matrix.
+
+**Observed diagnostic summary:** 11 historical factual states are `UNSUPPORTED` and one is `NOT_EVALUATED`;
+11 compatibility states are `DEFERRED` and one is `NOT_EVALUATED`; one candidate was historically screening-
+blocked. All 12 factual evidence-versus-human comparisons are `NOT_COMPARABLE`. Production eligibility remains
+unresolved for three candidates and unestablished by Phase 2A for nine. Structured human coverage is complete
+for factual defensibility, but only 3/12 for originality, 6/12 for mechanic-native quality and 3/12 for
+multiplayer gameplay; no independent structured human structural-consistency dimension exists.
+
+**Verified locally:** **17/17 focused tests pass**, covering deterministic repeated execution and fixed output
+hashes; the valid dataset; outer dataset and inner content-snapshot tampering; missing/malformed fields; unique
+anonymous IDs; the approved disposition distribution; RYO-01's pre-verification block; `UNSUPPORTED` versus
+human contradiction; HOLD versus REJECT; compatibility deferral versus production eligibility; preservation of
+historical observations and structured human labels; and explicit report non-claims. Node syntax checks,
+Prettier checks for the runner/tests/generated reports and `git diff --check` pass. The diagnostic JSON SHA-256
+is `b75181418b9c764eb9282f60b15175ec5b407ca1f4b09c7c38c8cdc9549b2ec5`; Markdown is
+`9aa65e740463cad8e9bfa0d24110b88c4247d5e537650df7825a526dd91addae`.
+
+**Boundary.** This is saved-artifact diagnosis only: no live re-evaluation, screening replay, retrieval, model
+ranking, threshold, provider/model approval, candidate repair, ContentItem creation, READY promotion,
+publication, production evaluation or deployment. Later Phase 2B slices remain ⬜ **NOT STARTED**. The runner,
+tests and reports are local ignored workbench artifacts, not production runtime code.
+
+### 30.18 Phase 2B-B1 human-labeling schema and validation — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-10-24)
+
+**Contract prepared; no review performed.** A deterministic workbench CLI reuses the Phase 2B-A Phase 2A
+integrity verifier and generates a versioned JSON Schema, a blank machine-readable labeling template and a
+validation report for the exact 12 anonymous benchmark candidates. The template contains five independent
+quality dimensions (`factual_defensibility`, `structural_consistency`, `mechanic_native_quality`,
+`multiplayer_gameplay`, `originality`) plus a separate `world_scope_eligibility` assessment. All **72/72**
+assessments initialize to `UNASSESSED`; no earlier free-text note or structured result is converted into a new
+label. The Phase 2A disposition is retained only as immutable reference data, so `HOLD_UNASSESSABLE` remains
+distinct from a quality failure.
+
+**Strict bindings and completion semantics.** The validator requires the exact candidate set and ordering,
+unique anonymous IDs, canonical dimension and assessment vocabularies, required field shapes, the verified
+Phase 2A dataset SHA-256 and each candidate's original-content hash. It rejects altered Phase 2A dispositions,
+unexpected records or fields, provider/model identity leakage, unjustified `NOT_APPLICABLE`, and stale or false
+completion metadata. `TEMPLATE_READY`, `PARTIALLY_REVIEWED` and `REVIEW_COMPLETE` are derived independently at
+record and dataset level; `UNASSESSED` never counts as completion. Reviewer identity and timestamps remain
+explicitly null rather than invented.
+
+**Verified locally:** **15/15 focused B1 tests pass**, covering the valid blank template, deterministic output,
+12-candidate and 72-assessment completeness, immutable dispositions, unknown/duplicate IDs, invalid dimensions
+and values, missing fields, dataset-hash mismatch, blinding violations, partial review, full-review gating,
+`NOT_APPLICABLE` justification and stable validation output. The combined B1 and existing B-A regression run is
+**32/32 passing**. Generated hashes are schema
+`ea85bd9d5367fb550679fbe31e2d1090d82df5add7fd08bbfcddebb34c7f7e47`, blank template
+`52dd62fa425d3513f5b35bbc077e50e4f30ff9780a1f206f52f0f94144d3d76e`, and validation report
+`10378fd24d17dadcd05b7b8335fc77d3557bdaffebdf48d7d82ac13e72a9cb62`.
+
+**Boundary.** The schema, generator, tests and generated artifacts remain local ignored workbench material. This
+slice performs no human labeling and approves no model or content. Phase 2B-B2 and Phase 2B-B3 remain ⬜ **NOT
+STARTED**. No provider call, web retrieval, database/R2 mutation, ContentItem lifecycle change, publication,
+production runtime change or deployment occurred.
+
+### 30.19 Phase 2B-B2 approved human assessments — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-10-25)
+
+**Operator-approved labels recorded; no automated judgment.** The 12 Phase 2A benchmark candidates now have all
+**72/72** independent human assessments recorded in a separate completed B2 artifact: **17 `PASS` · 27 `FAIL`
+· 28 `UNCERTAIN` · 0 `UNASSESSED`**. All 12 World/Scope eligibility assessments remain `UNCERTAIN`. The workbench
+recorder matches candidates by anonymous review ID rather than display position and reuses the existing B1 schema,
+Phase 2A dataset integrity verifier, dataset binding and per-candidate original-content hashes. The original blank
+B1 template remains unchanged.
+
+**Provenance and authority remain explicit.** Every rationale is recorded as an operator-approved human
+assessment transcribed by Codex. No reviewer identity, historical timestamp or evidence reference was invented.
+The original Phase 2A dispositions remain immutable and separate — **2 `ACCEPT_AS_WRITTEN` · 3 `REVISE` · 4
+`REJECT` · 3 `HOLD_UNASSESSABLE`** — and remain benchmark-review history rather than publication decisions.
+Likewise, B2 labels are independent human judgments; they do not rewrite or masquerade as the saved historical
+screening, factual-verification or compatibility observations reported by Phase 2B-A.
+
+**Artifacts and reproducibility.** The completed artifact is
+`ai/workbench/artifacts/phase-2b-human-labeling/phase-2b-b2-human-assessments.v1.json` (SHA-256
+`1cfa34a28570f0175780fdaecb1d91bfa8e8bcdb71bc41d2442317fd4d647b24`); its validation report is
+`ai/workbench/artifacts/phase-2b-human-labeling/phase-2b-b2-human-assessments-validation.v1.json` (SHA-256
+`643691b94dba4a5b7fb2e0410732d39da585b6de51de990142d7bc1ac3ff3c10`). The deterministic recorder and focused
+tests are `ai/workbench/scripts/record_phase2b_human_assessments.mjs` and
+`ai/workbench/scripts/test_phase2b_human_assessments.mjs`. The unchanged blank B1 template remains SHA-256
+`52dd62fa425d3513f5b35bbc077e50e4f30ff9780a1f206f52f0f94144d3d76e`.
+
+**Verified locally:** B2 focused tests **12/12 passed**; the combined B2, B1 and B-A regression run **44/44
+passed**; the completed artifact passes the existing B1 schema validator; deterministic repeated generation,
+Node syntax, Prettier and `git diff --check` pass. All 12 IDs, mechanics, source bindings, content hashes and
+historical dispositions are preserved. `REVIEW_COMPLETE` means only that all required human-label fields were
+explicitly completed; it does **not** mean ContentItem `READY`, factual `SUPPORTED`, publication approval or
+production eligibility.
+
+**Boundary.** Phase 2B-B2 establishes a completed, locally validated human-label dataset. It does not establish
+factual-verifier reliability, production eligibility, quality thresholds, model rankings, or authorization to
+publish any ContentItem. At this B2 closure point Phase 2B-B3 remained ⬜ **NOT STARTED**; the later bounded B3
+implementation is recorded separately in §30.20. No provider call, database/R2 mutation,
+ContentItem lifecycle change, publication, production runtime change or deployment occurred.
+
+### 30.20 Phase 2B-B3 gameplay-first generation — 🚧 IN PROGRESS; BOUNDED SLICE + A/B PREPARATION ✅ VERIFIED LOCALLY (2026-10-25)
+
+**Product objective.** Generation should begin with the mechanic's player decision and table interaction, then
+choose subject matter inside the resolved World and Scope — not begin with ordinary trivia and wrap a mechanic
+around it. Canonical Skills, profiles and explicitly `APPROVED` exemplars remain the authoring authority;
+exemplars demonstrate gameplay properties rather than reusable subjects. Withheld, rejected, retired and
+unclassified historical examples remain excluded from generation guidance. Human Admin review remains final.
+
+**Approved mechanic direction.** Closest candidates should reward estimation, discussion and plausible competing
+guesses; a prompt that supplies every number and leaves only straightforward arithmetic is not the target. This
+does not remove either approved Closest direction or weaken factual, range, step-grid or World/Scope rules. RYO
+must create a clear, fair Steal/Trust prediction about an opponent's knowledge and performance. Its tension comes
+from knowledge demand and plausible alternatives, never ambiguity or trick wording. Initial experimental RYO
+difficulty targets are **25% easy · 50% medium · 25% relatively difficult**, configurable at generation time.
+They are batch guidance, not validated balance, measured player performance or proof of opponent-prediction
+quality; every tier must still pass the mechanic's certainty and fairness tests.
+
+**Bounded engineering slice implemented.** The existing `CandidateGeneratorService` prompt-composition and
+`ConfigService` seams now strengthen mechanic-native Closest and RYO task guidance and version the changed
+prompts as `closest-v2` and `mc-v2`. Closest explicitly refuses supplied-operation arithmetic worksheets while
+preserving reasoning-derived estimation; RYO separates clear/fair question difficulty from opponent-prediction
+quality and receives fail-closed configurable targets through
+`ENGINE_RYO_DIFFICULTY_EASY_PERCENT`, `ENGINE_RYO_DIFFICULTY_MEDIUM_PERCENT` and
+`ENGINE_RYO_DIFFICULTY_RELATIVELY_DIFFICULT_PERCENT` (defaults 25/50/25; non-negative total must equal 100).
+Canonical context and approved-only exemplar resolution remain verbatim. No persisted field, validator pipeline,
+runtime mechanic change, ContentItem lifecycle change, media path or automatic approval was added.
+
+**Local validation.** The focused generator suite passes **52/52** and Python authoring-context/exemplar tests
+pass **27/27**. The previously stale hard-coded `numbers-estimation` context hash was traced to the approved
+Puzzle Family/archetype ownership correction in commit `3522d54`: the TypeScript serialization algorithm did
+not change, while the canonical Puzzles `WORLD.md` source did. The fixture now records the reproducible current
+hash (`e489…`; the former source snapshot reproduces `b2f5…`). The complete backend unit suite passes
+**2,712/2,712 across 227 suites**. Backend typecheck and build, targeted ESLint and `git diff --check` pass.
+Integration expectations were advanced to the v2 prompt versions, but the Mongo-backed suite was not run in
+this slice because no database mutation was authorized. These tests verify prompt
+composition, configuration and compatibility boundaries; they do **not** prove better generated content.
+
+**Controlled A/B preparation verified locally; execution not authorized.** Experiment
+`phase-2b-b3-ab-2026-10-25-v1` defines **48 fresh candidates**: 12 Closest and 12 RYO in each arm, generated as
+eight calls of six against four canonically resolved World/Scope contexts. Arm A is pinned read-only to v1 commit
+`c1de4553f67a721ef34be8cc81b7f29b91307110`; arm B is source-hash pinned to `closest-v2` / `mc-v2`. The manifest
+binds context/source hashes, deterministic blind IDs, a private arm map, the B1/B2 review vocabulary and exact
+Phase 2A exclusion fingerprints. It requires post-generation duplicate checks and gives review completion no
+ContentItem lifecycle effect. RYO keeps a **3 easy / 6 medium / 3 relatively difficult** target per arm, explicitly
+as prompt guidance rather than guaranteed or persisted labels.
+
+Provider remains `openrouter`, but no model or pricing table is configured; actual cost and account rate limits
+therefore remain **UNKNOWN**. The preparation proposes a hard ceiling of **8 calls**, **150,000 total tokens** and
+**zero automatic retries**, while the monetary ceiling remains unset pending a pinned model and verified pricing.
+The engine and live-provider gates remain disabled. Provider/model/pricing selection, a monetary cap, baseline
+prompt materialization for the paid-stage harness and explicit operator authorization remain blockers. No
+provider call occurred, no candidate was generated or reviewed, and no quality improvement has been demonstrated.
+Outcomes must be reported by mechanic and B1/B2 dimension without claiming significance, universal thresholds or
+model superiority from this small experiment.
+
+### 30.21 Admin Content Generation Studio — 🟡 DESIGN APPROVED — NOT IMPLEMENTED (2026-10-25)
+
+The architecture audit approved a production-oriented Admin workflow that reuses the existing Content Engine
+job, authoring-context, screening, factual-verification, quality-judge, compatibility, human-review and
+canonical `ContentItem` lifecycle. The intended operator flow is World → Scope → compatible mechanic →
+bounded batch request → job progress → individual candidate review/edit/reject/approve → canonical draft.
+Batch guidance remains subordinate to canonical authoring rules, and generated content cannot enter gameplay
+without the existing authoritative human and lifecycle gates.
+
+This entry records **design and implementation planning only**. No Studio API, DTO, UI, schema, generation
+behavior or production workflow was added by the audit; implementation is ⬜ **NOT STARTED**. The deferred B3
+live A/B evaluation remains separate and was not completed by approving the Studio design. No production quality
+improvement, provider/model approval, deployment or production runtime verification has been demonstrated.
 
 ---
 
