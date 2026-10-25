@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Layers,
+  Play,
+  RefreshCw,
+  XCircle,
+} from "lucide-react";
+import {
   cancelJob,
   type EngineJobListResponse,
   type EngineJobStatus,
@@ -78,18 +84,18 @@ export function JobsHistoryPanel({
   }, [jobsQuery.data, statusFilter]);
 
   const allJobs = useMemo(() => {
-    const firstPage = jobsQuery.data?.items ?? [];
-    if (extraPages.length === 0) return firstPage;
-    const seen = new Set(firstPage.map((j) => j.jobId));
-    const merged = [...firstPage];
-    for (const row of extraPages) {
-      if (!seen.has(row.jobId)) {
-        seen.add(row.jobId);
-        merged.push(row);
+    const firstPageItems = jobsQuery.data?.items ?? [];
+    if (extraPages.length === 0) return firstPageItems;
+    const seen = new Set<string>();
+    const merged: EngineJobStatus[] = [];
+    for (const item of [...firstPageItems, ...extraPages]) {
+      if (!seen.has(item.jobId)) {
+        seen.add(item.jobId);
+        merged.push(item);
       }
     }
     return merged;
-  }, [jobsQuery.data, extraPages]);
+  }, [jobsQuery.data?.items, extraPages]);
 
   // Auto-select the first job if none is selected
   useEffect(() => {
@@ -98,41 +104,33 @@ export function JobsHistoryPanel({
     }
   }, [selectedJobId, allJobs, onSelectJobId]);
 
+  // Selected job resolution
+  const selectedJobFromList = useMemo(
+    () => allJobs.find((j) => j.jobId === selectedJobId) ?? null,
+    [allJobs, selectedJobId],
+  );
+
   const selectedJobDetailQuery = useQuery<EngineJobStatus>({
     queryKey: ["content-engine-job-detail", selectedJobId],
     queryFn: () => getJobStatus(selectedJobId!),
     enabled: Boolean(selectedJobId),
-    refetchInterval: (query) => {
-      const st = query.state.data?.status;
-      if (
-        (busyJobId && busyJobId === selectedJobId && busyAction === "run") ||
-        st === "leased"
-      ) {
-        return JOBS_POLL_INTERVAL_MS;
-      }
-      return false;
-    },
   });
 
-  const inspectedJob = useMemo(() => {
-    if (selectedJobDetailQuery.data) return selectedJobDetailQuery.data;
-    if (!selectedJobId) return null;
-    return allJobs.find((j) => j.jobId === selectedJobId) ?? null;
-  }, [selectedJobDetailQuery.data, selectedJobId, allJobs]);
+  const inspectedJob = selectedJobDetailQuery.data ?? selectedJobFromList;
 
-  const handleLoadMore = async () => {
+  const handleLoadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const nextPage = await listJobs({
-        cursor: nextCursor,
+      const page = await listJobs({
         limit: 20,
+        cursor: nextCursor,
         status: statusFilter || undefined,
       });
-      setExtraPages((prev) => [...prev, ...nextPage.items]);
-      setNextCursor(nextPage.nextCursor);
+      setExtraPages((prev) => [...prev, ...page.items]);
+      setNextCursor(page.nextCursor ?? null);
     } catch (err) {
-      const extracted = extractApiError(err, "تعذر تحميل المزيد من الدفعات");
+      const extracted = extractApiError(err, "فشل تحميل الدفعات الإضافية");
       setFeedback({
         type: "error",
         code: extracted.code,
@@ -141,7 +139,7 @@ export function JobsHistoryPanel({
     } finally {
       setLoadingMore(false);
     }
-  };
+  }, [nextCursor, loadingMore, statusFilter]);
 
   const handleRunJob = useCallback(
     async (jobId: string) => {
@@ -152,7 +150,7 @@ export function JobsHistoryPanel({
       setFeedback(null);
 
       try {
-        const result = await runJob(jobId);
+        const runOutcome = await runJob(jobId);
         const latest = await getJobStatus(jobId);
         queryClient.setQueryData(["content-engine-job-detail", jobId], latest);
         void queryClient.invalidateQueries({
@@ -162,32 +160,41 @@ export function JobsHistoryPanel({
           queryKey: ["content-engine-candidates"],
         });
 
-        setFeedback({
-          type: "info",
-          message: result.alreadyRunning
-            ? `الدفعة (${jobId}) قيد التشغيل بالفعل.`
-            : `تم تنفيذ الدفعة (${jobId}) بنجاح — الحالة الحالية: ${
-                JOB_STATUS_LABELS[latest.status]?.label ?? latest.status
-              }.`,
-        });
+        if (runOutcome.alreadyRunning) {
+          setFeedback({
+            type: "info",
+            message: `الدفعة (${jobId}) قيد التشغيل بالفعل بواسطة مشرف آخر.`,
+          });
+        } else if (latest.status === "awaiting_review") {
+          setFeedback({
+            type: "info",
+            message: `اكتمل تشغيل الدفعة (${jobId}) بنجاح وجاهزة للمراجعة.`,
+          });
+        }
       } catch (err) {
         const extracted = extractApiError(err, "فشل تشغيل الدفعة");
         try {
-          const recovered = await getJobStatus(jobId);
+          const fallback = await getJobStatus(jobId);
           queryClient.setQueryData(
             ["content-engine-job-detail", jobId],
-            recovered,
+            fallback,
           );
           void queryClient.invalidateQueries({
             queryKey: ["content-engine-jobs"],
           });
-          setFeedback({
-            type: "error",
-            code: extracted.code,
-            message: extracted.isTimeoutOrNetwork
-              ? `انتهت مهلة الطلب أو انقطع الاتصال؛ تمت إعادة قراءة حالة الدفعة (${recovered.status}) دون إعادة تشغيل مدفوع تلقائي: ${extracted.message}`
-              : extracted.message,
-          });
+          if (extracted.isTimeoutOrNetwork) {
+            setFeedback({
+              type: "error",
+              code: extracted.code,
+              message: `استغرق نداء التشغيل وقتاً أطول من المتوقع، ولكن تم جلب حالة الدفعة من الخادم بنجاح دون إعادة تشغيل مدفوع تلقائي: ${extracted.message}`,
+            });
+          } else {
+            setFeedback({
+              type: "error",
+              code: extracted.code,
+              message: extracted.message,
+            });
+          }
         } catch {
           setFeedback({
             type: "error",
@@ -243,28 +250,28 @@ export function JobsHistoryPanel({
 
   return (
     <section
-      className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900/70 p-5"
+      className="mb-8 rounded-2xl border border-border/80 bg-white p-6 sm:p-8 shadow-sm space-y-6 text-foreground"
       data-testid="jobs-history-panel"
     >
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      {/* Header & Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-5">
         <div>
-          <h2 className="text-base font-bold text-white">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">
             سجل دفعات التوليد ومراقبة التشغيل
           </h2>
-          <p className="mt-1 text-xs text-zinc-400">
-            متابعة الدفعات الحديثة، تشغيل الدفعة المحددة بالمعرّف فقط، الإلغاء،
-            والانتقال المباشر لمراجعة المرشحين.
+          <p className="mt-1 text-xs sm:text-sm text-slate-500">
+            متابعة الدفعات، تشغيل الدفعة المحددة بالمعرّف، الإلغاء، والانتقال لمراجعة المرشحين.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <label className="flex items-center gap-1.5 text-zinc-300">
-            <span>الحالة:</span>
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          <label className="flex items-center gap-2 text-slate-600 font-medium">
+            <span>تصفية الحالة:</span>
             <select
               data-testid="jobs-filter-status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-lg border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-xs text-white"
+              className="h-9 rounded-xl border border-input bg-white px-3 text-xs text-slate-900 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
             >
               <option value="">جميع الحالات</option>
               <option value="queued">في الانتظار (queued)</option>
@@ -287,8 +294,9 @@ export function JobsHistoryPanel({
                 void selectedJobDetailQuery.refetch();
               }
             }}
-            className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:border-zinc-500"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition"
           >
+            <RefreshCw className="size-3.5 text-slate-500" />
             تحديث السجل
           </button>
         </div>
@@ -296,15 +304,15 @@ export function JobsHistoryPanel({
 
       {feedback && (
         <div
-          className={`mb-4 rounded-lg border p-3 text-xs ${
+          className={`rounded-xl border p-4 text-xs shadow-sm ${
             feedback.type === "error"
-              ? "border-red-500/40 bg-red-950/40 text-red-200"
-              : "border-sky-500/40 bg-sky-950/40 text-sky-200"
+              ? "border-rose-200 bg-rose-50/70 text-rose-900"
+              : "border-sky-200 bg-sky-50/70 text-sky-900"
           }`}
           data-testid="jobs-feedback-banner"
         >
           {feedback.code && (
-            <span className="ml-2 rounded bg-zinc-900 px-1.5 py-0.5 font-mono text-[11px]">
+            <span className="ml-2 rounded-md bg-white border px-2 py-0.5 font-mono text-[11px] font-semibold">
               {feedback.code}
             </span>
           )}
@@ -312,22 +320,27 @@ export function JobsHistoryPanel({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Left: Jobs List */}
-        <div className="min-w-0 space-y-2 lg:col-span-6">
+        <div className="min-w-0 space-y-3 lg:col-span-6">
           {jobsQuery.isLoading && (
-            <p className="rounded-lg border border-zinc-800 bg-zinc-950 p-4 text-xs text-zinc-400">
-              جاري تحميل سجل الدفعات...
-            </p>
+            <div className="rounded-xl border border-border/80 bg-slate-50/50 p-6 text-center text-xs text-slate-500 space-y-2">
+              <div className="size-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent mx-auto" />
+              <p>جاري تحميل سجل الدفعات...</p>
+            </div>
           )}
 
           {!jobsQuery.isLoading && allJobs.length === 0 && (
-            <p
-              className="rounded-lg border border-zinc-800 bg-zinc-950 p-4 text-xs text-zinc-400"
+            <div
+              className="rounded-xl border border-dashed border-border/90 bg-slate-50/40 p-8 text-center text-xs text-slate-500"
               data-testid="jobs-empty-state"
             >
-              لا توجد دفعات مطابقة للفلتر الحالي.
-            </p>
+              <Layers className="size-8 mx-auto mb-2 text-slate-400 stroke-1" />
+              <p className="font-semibold text-slate-700">لا توجد دفعات مطابقة</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                لم يتم العثور على دفعات مطابقة للفلتر المحدد حالياً.
+              </p>
+            </div>
           )}
 
           {allJobs.map((item) => {
@@ -335,7 +348,7 @@ export function JobsHistoryPanel({
             const statusMeta = JOB_STATUS_LABELS[item.status] ?? {
               label: item.status,
               description: "",
-              badgeClass: "border-zinc-700 bg-zinc-900 text-zinc-200",
+              badgeClass: "border-slate-200 bg-slate-100 text-slate-700",
             };
             const itemWorld =
               item.worldKey ?? item.generationSpec?.worldKey ?? "—";
@@ -355,18 +368,18 @@ export function JobsHistoryPanel({
                 key={item.jobId}
                 data-testid={`job-row-${item.jobId}`}
                 onClick={() => onSelectJobId(item.jobId)}
-                className={`cursor-pointer rounded-xl border p-3.5 text-xs transition ${
+                className={`cursor-pointer rounded-2xl border p-4 text-xs transition shadow-sm ${
                   isSelected
-                    ? "border-amber-500/70 bg-amber-950/20"
-                    : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
+                    ? "border-amber-500 bg-amber-50/30 ring-1 ring-amber-500/20"
+                    : "border-border/80 bg-white hover:border-amber-300 hover:bg-amber-50/20"
                 }`}
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-mono font-semibold text-amber-300">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2.5">
+                  <span className="font-mono font-bold text-amber-800 text-sm">
                     {item.jobId}
                   </span>
                   <span
-                    className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${statusMeta.badgeClass}`}
+                    className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${statusMeta.badgeClass}`}
                     data-testid={`job-status-${item.jobId}`}
                   >
                     {isRunningThis
@@ -375,30 +388,32 @@ export function JobsHistoryPanel({
                   </span>
                 </div>
 
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-zinc-300">
-                  <span className="font-mono">
+                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-slate-800 font-medium">
+                  <span className="font-mono text-slate-900">
                     {itemWorld} / {itemScope} / {itemMechanic}
                   </span>
-                  <span>
-                    العدد المطلوب: <strong>{itemCount}</strong> · المرشحون:{" "}
-                    <strong>{candCount}</strong>
+                  <span className="text-slate-600 text-[11px]">
+                    العدد: <strong className="text-slate-900">{itemCount}</strong> · المرشحون:{" "}
+                    <strong className="text-slate-900">{candCount}</strong>
                   </span>
                 </div>
 
-                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-400">
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
                   <span>
                     المرحلة:{" "}
-                    {PIPELINE_STAGE_LABELS[item.pipelineStage] ??
-                      item.pipelineStage}{" "}
+                    <strong className="text-slate-700 font-mono">
+                      {PIPELINE_STAGE_LABELS[item.pipelineStage] ??
+                        item.pipelineStage}
+                    </strong>{" "}
                     · محاولات: {item.attempts}
                   </span>
-                  <span className="font-mono text-emerald-300">
+                  <span className="font-mono font-bold text-emerald-700">
                     {item.spentSar.toFixed(4)} ر.س
                   </span>
                 </div>
 
                 <div
-                  className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-zinc-800/80 pt-2"
+                  className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-2.5"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {isJobRunnable(item) && (
@@ -407,11 +422,14 @@ export function JobsHistoryPanel({
                       data-testid={`job-run-btn-${item.jobId}`}
                       onClick={() => void handleRunJob(item.jobId)}
                       disabled={busyJobId !== null}
-                      className="rounded-md bg-emerald-500 px-2.5 py-1 text-[11px] font-semibold text-zinc-950 hover:bg-emerald-400 disabled:opacity-40"
+                      className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition disabled:opacity-40"
                     >
-                      {busyJobId === item.jobId && busyAction === "run"
-                        ? "جاري التشغيل..."
-                        : "تشغيل هذه الدفعة"}
+                      <Play className="size-3" />
+                      <span>
+                        {busyJobId === item.jobId && busyAction === "run"
+                          ? "جاري التشغيل..."
+                          : "تشغيل هذه الدفعة"}
+                      </span>
                     </button>
                   )}
 
@@ -422,7 +440,7 @@ export function JobsHistoryPanel({
                         data-testid={`job-cancel-btn-${item.jobId}`}
                         onClick={() => void handleCancelJob(item.jobId)}
                         disabled={busyJobId !== null}
-                        className="rounded-md border border-red-500/40 bg-red-950/40 px-2.5 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-950/70 disabled:opacity-40"
+                        className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition disabled:opacity-40"
                       >
                         إلغاء
                       </button>
@@ -439,9 +457,9 @@ export function JobsHistoryPanel({
                         mechanicKey: itemMechanic === "—" ? "" : itemMechanic,
                       })
                     }
-                    className="rounded-md bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/30"
+                    className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-amber-600 transition"
                   >
-                    مراجعة المرشحين ({candCount})
+                    <span>مراجعة المرشحين ({candCount})</span>
                   </button>
                 </div>
               </div>
@@ -454,7 +472,7 @@ export function JobsHistoryPanel({
               data-testid="button-load-more-jobs"
               onClick={() => void handleLoadMore()}
               disabled={loadingMore}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 py-2 text-xs font-semibold text-zinc-200 hover:border-zinc-500 disabled:opacity-40"
+              className="w-full rounded-xl border border-slate-300 bg-white py-2.5 text-xs font-semibold text-slate-700 shadow-sm hover:border-slate-400 hover:bg-slate-50 transition disabled:opacity-40"
             >
               {loadingMore
                 ? "جاري تحميل المزيد..."
@@ -466,31 +484,35 @@ export function JobsHistoryPanel({
         {/* Right: Job Detail Inspector */}
         <div className="min-w-0 lg:col-span-6">
           {!inspectedJob ? (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 text-center text-xs text-zinc-400">
-              اختر دفعة من القائمة لعرض تفاصيل مواصفتها وتكلفتها وحالتها.
+            <div className="rounded-2xl border border-border/80 bg-slate-50/50 p-8 text-center text-xs text-slate-500">
+              <Layers className="size-8 mx-auto mb-2 text-slate-400 stroke-1" />
+              <p className="font-semibold text-slate-700">لم يتم اختيار دفعة</p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                اختر دفعة من القائمة لعرض تفاصيل مواصفتها وتكلفتها وحالتها التنفيذية.
+              </p>
             </div>
           ) : (
             <div
-              className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-xs text-zinc-300"
+              className="rounded-2xl border border-border/80 bg-slate-50/60 p-5 sm:p-6 text-xs text-slate-800 shadow-sm space-y-4"
               data-testid="job-detail-inspector"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
                 <div>
-                  <h3 className="text-sm font-bold text-white">
+                  <h3 className="text-base font-bold text-slate-900">
                     تفاصيل الدفعة:{" "}
-                    <span className="font-mono text-amber-300">
+                    <span className="font-mono text-amber-800 font-bold">
                       {inspectedJob.jobId}
                     </span>
                   </h3>
-                  <p className="mt-0.5 text-[11px] text-zinc-400">
+                  <p className="mt-0.5 text-[11px] text-slate-500">
                     {JOB_STATUS_LABELS[inspectedJob.status]?.description ?? ""}
                   </p>
                 </div>
 
                 <span
-                  className={`rounded-md border px-2.5 py-1 font-semibold ${
+                  className={`rounded-full border px-3 py-1 font-semibold ${
                     JOB_STATUS_LABELS[inspectedJob.status]?.badgeClass ??
-                    "border-zinc-700 bg-zinc-900 text-zinc-200"
+                    "border-slate-200 bg-slate-100 text-slate-700"
                   }`}
                   data-testid="inspector-job-status"
                 >
@@ -500,85 +522,87 @@ export function JobsHistoryPanel({
               </div>
 
               {/* Execution & Lifecycle Metadata */}
-              <dl className="mt-3 grid grid-cols-1 gap-2 rounded-lg border border-zinc-800/80 bg-zinc-900/50 p-3 text-[11px] sm:grid-cols-2">
-                <div>
-                  <dt className="text-zinc-400">الهدف (World / Scope / Mechanic):</dt>
-                  <dd className="font-mono font-semibold text-white">
-                    {inspectedJob.worldKey ??
-                      inspectedJob.generationSpec?.worldKey ??
-                      "—"}{" "}
-                    /{" "}
-                    {inspectedJob.scopeKey ??
-                      inspectedJob.generationSpec?.scopeKey ??
-                      "—"}{" "}
-                    /{" "}
-                    {inspectedJob.mechanicKey ??
-                      inspectedJob.generationSpec?.mechanicKey ??
-                      "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-zinc-400">المرحلة والمحاولات:</dt>
-                  <dd className="font-mono text-zinc-200">
-                    {PIPELINE_STAGE_LABELS[inspectedJob.pipelineStage] ??
-                      inspectedJob.pipelineStage}{" "}
-                    (محاولات: {inspectedJob.attempts})
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-zinc-400">التكلفة الفعلية والمحجوزة:</dt>
-                  <dd className="font-mono text-emerald-300">
-                    {inspectedJob.spentSar.toFixed(4)} ر.س (
-                    {inspectedJob.spentMicros.toLocaleString("en-US")} ميكرو) ·
-                    نداءات: {inspectedJob.providerCalls}
-                    {inspectedJob.outstandingReservedMicros > 0
-                      ? ` · محجوز: ${inspectedJob.outstandingReservedMicros.toLocaleString("en-US")} ميكرو`
-                      : ""}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-zinc-400">المشرف المنشئ والمنفّذ:</dt>
-                  <dd className="font-mono text-zinc-200">
-                    إنشاء:{" "}
-                    {inspectedJob.createdByEmail ||
-                      inspectedJob.createdBy ||
-                      "—"}{" "}
-                    · تشغيل:{" "}
-                    {inspectedJob.lastExecutedByEmail ||
-                      inspectedJob.lastExecutedBy ||
-                      "—"}
-                  </dd>
-                </div>
-              </dl>
+              <div className="rounded-xl border border-border/80 bg-white p-4 shadow-sm">
+                <dl className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 text-[11px]">
+                  <div>
+                    <dt className="text-slate-500">الهدف (World / Scope / Mechanic):</dt>
+                    <dd className="font-mono font-semibold text-slate-900">
+                      {inspectedJob.worldKey ??
+                        inspectedJob.generationSpec?.worldKey ??
+                        "—"}{" "}
+                      /{" "}
+                      {inspectedJob.scopeKey ??
+                        inspectedJob.generationSpec?.scopeKey ??
+                        "—"}{" "}
+                      /{" "}
+                      {inspectedJob.mechanicKey ??
+                        inspectedJob.generationSpec?.mechanicKey ??
+                        "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500">المرحلة والمحاولات:</dt>
+                    <dd className="font-mono font-medium text-slate-900">
+                      {PIPELINE_STAGE_LABELS[inspectedJob.pipelineStage] ??
+                        inspectedJob.pipelineStage}{" "}
+                      (محاولات: {inspectedJob.attempts})
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500">التكلفة الفعلية والمحجوزة:</dt>
+                    <dd className="font-mono text-emerald-700 font-bold">
+                      {inspectedJob.spentSar.toFixed(4)} ر.س (
+                      {inspectedJob.spentMicros.toLocaleString("en-US")} ميكرو) ·
+                      نداءات: {inspectedJob.providerCalls}
+                      {inspectedJob.outstandingReservedMicros > 0
+                        ? ` · محجوز: ${inspectedJob.outstandingReservedMicros.toLocaleString("en-US")} ميكرو`
+                        : ""}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500">المشرف المنشئ والمنفّذ:</dt>
+                    <dd className="font-mono text-slate-700">
+                      إنشاء:{" "}
+                      {inspectedJob.createdByEmail ||
+                        inspectedJob.createdBy ||
+                        "—"}{" "}
+                      · تشغيل:{" "}
+                      {inspectedJob.lastExecutedByEmail ||
+                        inspectedJob.lastExecutedBy ||
+                        "—"}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
 
               {/* Pinned Generation Specification */}
               {inspectedJob.generationSpec ? (
                 <div
-                  className="mt-3 rounded-lg border border-zinc-800/80 bg-zinc-900/50 p-3 text-[11px]"
+                  className="rounded-xl border border-border/80 bg-white p-4 shadow-sm text-[11px] space-y-2"
                   data-testid="inspector-generation-spec"
                 >
-                  <h4 className="font-semibold text-white">
+                  <h4 className="font-bold text-slate-900 border-b border-border/60 pb-2">
                     مواصفة التوليد المثبتة (Pinned Generation Specification v
                     {inspectedJob.generationSpec.specVersion})
                   </h4>
-                  <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 pt-1">
                     <div>
-                      <span className="text-zinc-400">المزود والنموذج: </span>
-                      <span className="font-mono text-zinc-200">
+                      <span className="text-slate-500">المزود والنموذج: </span>
+                      <span className="font-mono font-medium text-slate-900">
                         {inspectedJob.generationSpec.provider} /{" "}
                         {inspectedJob.generationSpec.generationModel}
                       </span>
                     </div>
                     <div>
-                      <span className="text-zinc-400">القالب والنمط: </span>
-                      <span className="font-mono text-zinc-200">
+                      <span className="text-slate-500">القالب والنمط: </span>
+                      <span className="font-mono font-medium text-slate-900">
                         {inspectedJob.generationSpec.promptVersion} (
                         {inspectedJob.generationSpec.answerMode})
                       </span>
                     </div>
                     <div>
-                      <span className="text-zinc-400">العدد والصعوبة: </span>
-                      <span className="font-mono text-zinc-200">
+                      <span className="text-slate-500">العدد والصعوبة: </span>
+                      <span className="font-mono font-medium text-slate-900">
                         {inspectedJob.generationSpec.targetCount} ·{" "}
                         {inspectedJob.generationSpec.difficulty
                           ? (DIFFICULTY_LABELS[
@@ -588,19 +612,19 @@ export function JobsHistoryPanel({
                       </span>
                     </div>
                     <div>
-                      <span className="text-zinc-400">
+                      <span className="text-slate-500">
                         الحرارة وسقف التوكنات:{" "}
                       </span>
-                      <span className="font-mono text-zinc-200">
+                      <span className="font-mono font-medium text-slate-900">
                         temp={inspectedJob.generationSpec.temperature} · maxTokens=
                         {inspectedJob.generationSpec.maxOutputTokens}
                       </span>
                     </div>
                   </div>
                   {inspectedJob.generationSpec.batchGuidance && (
-                    <div className="mt-2 border-t border-zinc-800 pt-2">
-                      <span className="text-zinc-400">التوجيه الإضافي: </span>
-                      <p className="mt-0.5 whitespace-pre-wrap text-zinc-200">
+                    <div className="border-t border-border/60 pt-2 text-slate-700">
+                      <span className="text-slate-500 block mb-0.5">التوجيه الإضافي: </span>
+                      <p className="whitespace-pre-wrap text-slate-800 bg-slate-50 p-2.5 rounded-lg border border-border/60">
                         {inspectedJob.generationSpec.batchGuidance}
                       </p>
                     </div>
@@ -608,7 +632,7 @@ export function JobsHistoryPanel({
                 </div>
               ) : (
                 <div
-                  className="mt-3 rounded-lg border border-red-500/40 bg-red-950/30 p-3 text-[11px] text-red-200"
+                  className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-[11px] text-rose-900"
                   data-testid="inspector-legacy-job-warning"
                 >
                   دفعة قديمة بدون مواصفة توليد مثبتة (provenanceComplete =
@@ -617,39 +641,39 @@ export function JobsHistoryPanel({
               )}
 
               {/* Candidate Counts */}
-              <div className="mt-3 rounded-lg border border-zinc-800/80 bg-zinc-900/50 p-3 text-[11px]">
-                <h4 className="font-semibold text-white">
+              <div className="rounded-xl border border-border/80 bg-white p-4 shadow-sm text-[11px]">
+                <h4 className="font-bold text-slate-900 mb-2">
                   ملخص المرشحين ({totalCandidatesCount(inspectedJob.candidates)})
                 </h4>
                 {Object.keys(inspectedJob.candidates ?? {}).length > 0 ? (
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {Object.entries(inspectedJob.candidates).map(
                       ([statusKey, count]) => (
                         <span
                           key={statusKey}
-                          className="rounded border border-zinc-700 bg-zinc-950 px-2.5 py-1 font-mono text-zinc-200"
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-slate-800 font-medium"
                         >
-                          {statusKey}: <strong>{count}</strong>
+                          {statusKey}: <strong className="text-slate-900">{count}</strong>
                         </span>
                       ),
                     )}
                   </div>
                 ) : (
-                  <p className="mt-1 text-zinc-400">
+                  <p className="text-slate-500">
                     لم يتم توليد مرشحين لهذه الدفعة بعد.
                   </p>
                 )}
               </div>
 
               {inspectedJob.awaitingReviewReason && (
-                <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-950/30 p-2.5 text-amber-200">
+                <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900 font-medium">
                   سبب انتظار المراجعة: {inspectedJob.awaitingReviewReason}
                 </p>
               )}
 
               {inspectedJob.lastError && (
                 <p
-                  className="mt-3 rounded-lg border border-red-500/40 bg-red-950/40 p-2.5 font-mono text-red-200"
+                  className="rounded-xl border border-rose-200 bg-rose-50 p-3 font-mono text-rose-900"
                   data-testid="inspector-last-error"
                 >
                   آخر خطأ مسجل: {inspectedJob.lastError}
@@ -657,18 +681,21 @@ export function JobsHistoryPanel({
               )}
 
               {/* Inspector Actions */}
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-zinc-800 pt-3">
+              <div className="flex flex-wrap items-center gap-3 pt-2">
                 {isJobRunnable(inspectedJob) && (
                   <button
                     type="button"
                     data-testid="inspector-run-job-btn"
                     onClick={() => void handleRunJob(inspectedJob.jobId)}
                     disabled={busyJobId !== null}
-                    className="rounded-lg bg-emerald-500 px-3.5 py-2 text-xs font-semibold text-zinc-950 hover:bg-emerald-400 disabled:opacity-40"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition disabled:opacity-40"
                   >
-                    {busyJobId === inspectedJob.jobId && busyAction === "run"
-                      ? "جاري تشغيل الدفعة..."
-                      : `تشغيل هذه الدفعة الآن (${inspectedJob.jobId})`}
+                    <Play className="size-3.5" />
+                    <span>
+                      {busyJobId === inspectedJob.jobId && busyAction === "run"
+                        ? "جاري تشغيل الدفعة..."
+                        : `تشغيل هذه الدفعة الآن (${inspectedJob.jobId})`}
+                    </span>
                   </button>
                 )}
 
@@ -679,9 +706,10 @@ export function JobsHistoryPanel({
                       data-testid="inspector-cancel-job-btn"
                       onClick={() => void handleCancelJob(inspectedJob.jobId)}
                       disabled={busyJobId !== null}
-                      className="rounded-lg border border-red-500/40 bg-red-950/40 px-3.5 py-2 text-xs font-semibold text-red-200 hover:bg-red-950/70 disabled:opacity-40"
+                      className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition disabled:opacity-40"
                     >
-                      إلغاء الدفعة
+                      <XCircle className="size-3.5" />
+                      <span>إلغاء الدفعة</span>
                     </button>
                   )}
 
@@ -705,10 +733,12 @@ export function JobsHistoryPanel({
                         "",
                     })
                   }
-                  className="rounded-lg bg-amber-500 px-3.5 py-2 text-xs font-semibold text-zinc-950 hover:bg-amber-400"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-600 transition"
                 >
-                  فتح مرشحي هذه الدفعة في مساحة المراجعة (
-                  {totalCandidatesCount(inspectedJob.candidates)})
+                  <span>
+                    فتح مرشحي هذه الدفعة في مساحة المراجعة (
+                    {totalCandidatesCount(inspectedJob.candidates)})
+                  </span>
                 </button>
               </div>
             </div>

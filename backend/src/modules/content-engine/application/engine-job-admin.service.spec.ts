@@ -1092,4 +1092,33 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
       });
     });
   });
+
+  describe('Authoring options runtime packaging regression', () => {
+    it('throws AuthoringContextUnavailableError(AUTHORING_MANIFEST_MISSING) when manifest is missing from root', () => {
+      const missingContexts = new AuthoringContextService({
+        get: () => '/nonexistent-docker-runtime-dir',
+      } as unknown as ConfigService);
+      expect(() => missingContexts.catalog()).toThrow(
+        AuthoringContextUnavailableError,
+      );
+      try {
+        missingContexts.catalog();
+      } catch (error) {
+        expect((error as AuthoringContextUnavailableError).code).toBe(
+          'AUTHORING_MANIFEST_MISSING',
+        );
+      }
+    });
+
+    it('resolves catalog cleanly when authoring root is correctly pointed to repository root', () => {
+      const validContexts = new AuthoringContextService({
+        get: (key: string) =>
+          key === 'ENGINE_AUTHORING_ROOT' ? undefined : undefined,
+      } as unknown as ConfigService);
+      const catalog = validContexts.catalog();
+      expect(catalog.globalProfilePresent).toBe(true);
+      expect(catalog.worlds.length).toBeGreaterThan(0);
+      expect(catalog.mechanics.length).toBeGreaterThan(0);
+    });
+  });
 });

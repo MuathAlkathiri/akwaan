@@ -395,14 +395,14 @@ export function ContentEngineReviewWorkspace() {
   return (
     <main className="mx-auto w-full max-w-[1440px] space-y-6 overflow-x-hidden px-4 py-8 sm:px-6 lg:px-10">
       <PageHeader
-        title="استوديو توليد ومراجعة المحتوى (Content Generation Studio)"
+        title="استوديو توليد المحتوى (Content Generation Studio)"
         description="توليد الدفعات من الخيارات القانونية، الفحص المسبق للتكلفة، التشغيل المحدد بالدفعة، والمراجعة البشرية قبل إنشاء مسودات ContentItem."
       />
 
       {/* Connected Studio Surfaces Navigation */}
       <nav
         aria-label="أقسام استوديو محرك المحتوى"
-        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/80 bg-white p-3 shadow-sm"
         data-testid="studio-surface-nav"
       >
         <div className="flex flex-wrap items-center gap-2">
@@ -410,10 +410,10 @@ export function ContentEngineReviewWorkspace() {
             type="button"
             data-testid="surface-tab-generate"
             onClick={() => setActiveSurface("generate")}
-            className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${
+            className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
               activeSurface === "generate"
-                ? "bg-amber-500 text-zinc-950"
-                : "bg-zinc-950 text-zinc-300 hover:bg-zinc-800"
+                ? "bg-amber-500 text-white shadow-sm"
+                : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
             }`}
           >
             1. التوليد والفحص المسبق (Generate)
@@ -422,10 +422,10 @@ export function ContentEngineReviewWorkspace() {
             type="button"
             data-testid="surface-tab-jobs"
             onClick={() => setActiveSurface("jobs")}
-            className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${
+            className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
               activeSurface === "jobs"
-                ? "bg-amber-500 text-zinc-950"
-                : "bg-zinc-950 text-zinc-300 hover:bg-zinc-800"
+                ? "bg-amber-500 text-white shadow-sm"
+                : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
             }`}
           >
             2. سجل الدفعات والتشغيل (Jobs)
@@ -434,10 +434,10 @@ export function ContentEngineReviewWorkspace() {
             type="button"
             data-testid="surface-tab-review"
             onClick={() => setActiveSurface("review")}
-            className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${
+            className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
               activeSurface === "review"
-                ? "bg-amber-500 text-zinc-950"
-                : "bg-zinc-950 text-zinc-300 hover:bg-zinc-800"
+                ? "bg-amber-500 text-white shadow-sm"
+                : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
             }`}
           >
             3. مراجعة المرشحين (Candidate Review)
@@ -446,15 +446,15 @@ export function ContentEngineReviewWorkspace() {
 
         {(activeJobId || filters.jobId) && (
           <div
-            className="flex min-w-0 max-w-full flex-wrap items-center gap-2 text-xs text-zinc-300"
+            className="flex min-w-0 max-w-full flex-wrap items-center gap-2 text-xs text-slate-600"
             data-testid="studio-preserved-context"
           >
-            <span className="text-zinc-400">الدفعة المحددة:</span>
-            <span className="break-all rounded bg-zinc-950 px-2 py-1 font-mono text-amber-300">
+            <span className="text-slate-500">الدفعة المحددة:</span>
+            <span className="break-all rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 font-mono text-amber-900 font-medium">
               {filters.jobId || activeJobId}
             </span>
             {filters.worldKey && (
-              <span className="break-all rounded bg-zinc-950 px-2 py-1 font-mono text-zinc-300">
+              <span className="break-all rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-slate-700">
                 {filters.worldKey}
                 {filters.scopeKey ? ` / ${filters.scopeKey}` : ""}
               </span>
@@ -464,24 +464,19 @@ export function ContentEngineReviewWorkspace() {
       </nav>
 
       {activeSurface === "generate" && (
-        <SectionCard
-          title="طلب دفعة جديدة"
-          description="اختر التركيبة، شاهد التقدير، ثم أرسل. التشغيل يدوي دائمًا ويستهدف الدفعة المحددة بالمعرّف فقط."
-        >
-          <BatchSubmissionPanel
-            initialJobId={activeJobId}
-            onActiveJobIdChange={setActiveJobId}
-            onJobSubmitted={(jobId) => {
-              setActiveJobId(jobId);
-              setFilters((current) => ({ ...current, jobId }));
-            }}
-            onBatchReady={handleCandidateHandoff}
-            onOpenJobsSurface={(jobId) => {
-              if (jobId) setActiveJobId(jobId);
-              setActiveSurface("jobs");
-            }}
-          />
-        </SectionCard>
+        <BatchSubmissionPanel
+          initialJobId={activeJobId}
+          onActiveJobIdChange={setActiveJobId}
+          onJobSubmitted={(jobId) => {
+            setActiveJobId(jobId);
+            setFilters((current) => ({ ...current, jobId }));
+          }}
+          onBatchReady={handleCandidateHandoff}
+          onOpenJobsSurface={(jobId) => {
+            if (jobId) setActiveJobId(jobId);
+            setActiveSurface("jobs");
+          }}
+        />
       )}
 
       {activeSurface === "jobs" && (
@@ -492,7 +487,7 @@ export function ContentEngineReviewWorkspace() {
         />
       )}
 
-      {(activeSurface === "review" || activeSurface === "generate") && (
+      {activeSurface === "review" && (
         <SectionCard
           title="المرشحون"
           description="تصفية حسب الدفعة والعالم والنطاق والحالة"
@@ -579,19 +574,19 @@ export function ContentEngineReviewWorkspace() {
         </SectionCard>
       )}
 
-      {candidate && (
+      {activeSurface === "review" && candidate && (
         <>
           {revisionConflict && (
             <div
               role="alert"
               data-testid="revision-conflict-banner"
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/50 bg-rose-500/10 p-4 text-sm text-rose-200"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900 shadow-sm"
             >
               <div className="space-y-1">
                 <p className="font-semibold">
                   تعارض في رقم مراجعة المرشح (Stale Revision Conflict)
                 </p>
-                <p className="text-xs opacity-90">
+                <p className="text-xs opacity-90 text-rose-700">
                   {revisionConflict.message}
                   {typeof revisionConflict.currentRevision === "number"
                     ? ` (المراجعة الحالية على الخادم: ${revisionConflict.currentRevision}، المراجعة المعروضة: ${candidate.reviewRevision})`
@@ -601,6 +596,7 @@ export function ContentEngineReviewWorkspace() {
               <Button
                 variant="outline"
                 size="sm"
+                className="border-rose-300 bg-white text-rose-900 hover:bg-rose-100"
                 data-testid="button-reload-conflicted-candidate"
                 onClick={() => void refresh()}
               >
@@ -689,20 +685,20 @@ export function ContentEngineReviewWorkspace() {
               <div
                 role="alert"
                 data-testid="stale-assessment-warning"
-                className="space-y-1.5 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-xs text-amber-200"
+                className="space-y-1.5 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-900"
               >
                 <div className="flex items-center gap-2 font-semibold">
-                  <ShieldAlert className="size-4 shrink-0 text-amber-400" />
+                  <ShieldAlert className="size-4 shrink-0 text-amber-600" />
                   <span>
                     تم إبطال التقييم السابق بعد تعديل جوهري — يلزم حفظ تقييم بشري جديد للمراجعة {candidate.reviewRevision}
                   </span>
                 </div>
                 {candidate.lastInvalidatedAssessments && (
-                  <p className="text-[11px] opacity-90">
+                  <p className="text-[11px] opacity-90 text-amber-800">
                     ملخص التقييم المؤرشف قبل التعديل (المراجعة{" "}
                     {candidate.lastInvalidatedAssessments.previousRevision}):{" "}
                     الحالة البشرية السابقة:{" "}
-                    <span className="font-mono">
+                    <span className="font-mono font-semibold">
                       {candidate.lastInvalidatedAssessments.humanAssessment
                         ?.factualState ?? "غير مقيم"}
                     </span>
@@ -720,19 +716,19 @@ export function ContentEngineReviewWorkspace() {
             {eligibility?.assessmentCurrent && candidate.humanAssessment && (
               <div
                 data-testid="current-assessment-badge"
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs text-emerald-200"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-300 bg-emerald-50 p-3.5 text-xs text-emerald-900"
               >
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="size-4 shrink-0 text-emerald-400" />
+                <div className="flex items-center gap-2 font-medium">
+                  <ShieldCheck className="size-4 shrink-0 text-emerald-600" />
                   <span>
                     التقييم البشري محدّث للنسخة الحالية (rev{" "}
                     {candidate.humanAssessment.assessedRevision ??
                       candidate.reviewRevision}
                     ) — الحالة الواقعية:{" "}
-                    <strong>{candidate.humanAssessment.factualState}</strong>
+                    <strong className="text-emerald-950 font-bold">{candidate.humanAssessment.factualState}</strong>
                   </span>
                 </div>
-                <span>
+                <span className="text-emerald-800 text-[11px]">
                   بواسطة {candidate.humanAssessment.reviewerEmail} · الأدلة المرفقة:{" "}
                   {candidate.humanAssessment.evidence?.length ?? 0}
                 </span>
@@ -925,9 +921,9 @@ export function ContentEngineReviewWorkspace() {
               value={candidate.compatibilityEvaluation}
             />
             {spending.data && (
-              <p className="rounded-lg bg-muted p-3 text-sm">
-                تكلفة الدفعة: {spending.data.spentSar.toFixed(4)} ر.س · محجوز:{" "}
-                {spending.data.reservedSar.toFixed(4)} ر.س
+              <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                تكلفة الدفعة: {(spending.data.spentSar ?? 0).toFixed(4)} ر.س · محجوز:{" "}
+                {(spending.data.reservedSar ?? 0).toFixed(4)} ر.س
               </p>
             )}
           </SectionCard>
@@ -1071,13 +1067,13 @@ export function ContentEngineReviewWorkspace() {
                 data-testid="approval-eligibility-panel"
                 className={`rounded-xl border p-3 text-xs ${
                   eligibility.approvalBlockers.length > 0
-                    ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-                    : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                    : "border-emerald-300 bg-emerald-50 text-emerald-900"
                 }`}
               >
                 {eligibility.approvalBlockers.length > 0 ? (
                   <div className="space-y-1">
-                    <p className="font-semibold">
+                    <p className="font-semibold text-amber-950">
                       متطلبات/موانع الاعتماد قبل اتخاذ القرار:
                     </p>
                     <ul className="list-disc space-y-0.5 pe-5">
@@ -1087,7 +1083,7 @@ export function ContentEngineReviewWorkspace() {
                     </ul>
                   </div>
                 ) : (
-                  <p className="font-semibold">
+                  <p className="font-semibold text-emerald-950">
                     المرشح مستوفٍ لشروط التقييم والتوافق وجاهز للاعتماد البشري.
                   </p>
                 )}
@@ -1114,9 +1110,9 @@ export function ContentEngineReviewWorkspace() {
               candidate.humanAssessment.factualState !== "SUPPORTED" && (
                 <div
                   data-testid="factual-override-section"
-                  className="space-y-2 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3"
+                  className="space-y-2 rounded-xl border border-amber-300 bg-amber-50/60 p-3 text-slate-900"
                 >
-                  <p className="text-xs font-semibold text-amber-300">
+                  <p className="text-xs font-semibold text-amber-900">
                     قرار تجاوز استثنائي للحالة الواقعية ({candidate.humanAssessment.factualState}) — لا يتم افتراض القبول بالدليل تلقائياً
                   </p>
                   <select

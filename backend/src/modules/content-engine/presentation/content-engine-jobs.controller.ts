@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Query,
+  ServiceUnavailableException,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { UserRole } from '../../users/schemas/user.schema';
+import { AuthoringContextUnavailableError } from '../application/authoring-context.service';
 import {
   EngineAdminActor,
   EngineJobAdminService,
@@ -66,7 +68,17 @@ export class ContentEngineJobsController {
    */
   @Get('options')
   async options() {
-    return envelope(await this.jobs.options());
+    try {
+      return envelope(await this.jobs.options());
+    } catch (error) {
+      if (error instanceof AuthoringContextUnavailableError) {
+        throw new ServiceUnavailableException({
+          code: error.code,
+          message: error.message,
+        });
+      }
+      throw error;
+    }
   }
 
   /** Read-only: resolvability, estimated cost, remaining budget, and planDigest. */

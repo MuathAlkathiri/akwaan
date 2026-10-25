@@ -29,9 +29,15 @@ test-media
 **/test-media
 deployment/backups
 
-# Authoring workspace and captured screenshots. Neither image reads them, and
-# together they add ~85MB to every build context, including Render's.
-ai
+# Authoring workspace: exclude heavy scratch/workbench, test outputs, and local node_modules (~95MB).
+# Preserves canonical runtime definitions in ai/.opencode/ (~1.2MB) required by Content Engine.
+ai/workbench
+ai/output
+ai/review
+ai/scripts
+ai/.opencode/node_modules
+ai/.opencode/legacy
+ai/.opencode/cache
 **/e2e-screenshots
 
 *.tsbuildinfo

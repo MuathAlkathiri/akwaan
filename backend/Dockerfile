@@ -48,6 +48,9 @@ COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=prod-deps --chown=node:node /app/backend/package.json ./backend/package.json
 COPY --from=prod-deps --chown=node:node /app/backend/node_modules ./backend/node_modules
 COPY --from=build --chown=node:node /app/backend/dist ./backend/dist
+COPY --from=build --chown=node:node /app/ai/.opencode ./ai/.opencode
+
+ENV ENGINE_AUTHORING_ROOT=/app
 
 RUN mkdir -p uploads .cache && chown -R node:node uploads .cache
 

@@ -25,32 +25,32 @@ export const JOB_STATUS_LABELS: Record<
   queued: {
     label: "في الانتظار (Queued)",
     description: "الدفعة مسجلة وتنتظر أمر التشغيل المباشر لهذه الدفعة تحديداً.",
-    badgeClass: "border-amber-500/40 bg-amber-950/40 text-amber-200",
+    badgeClass: "border-amber-200 bg-amber-50 text-amber-800",
   },
   leased: {
     label: "قيد التشغيل (Running)",
     description: "الدفعة مؤجرة حالياً وتعمل مراحل التوليد والفحص.",
-    badgeClass: "border-sky-500/40 bg-sky-950/40 text-sky-200",
+    badgeClass: "border-sky-200 bg-sky-50 text-sky-800",
   },
   awaiting_review: {
     label: "جاهزة للمراجعة (Awaiting Review)",
     description: "اكتمل التوليد الآلي وتنتظر الدفعة قرار المراجع البشري.",
-    badgeClass: "border-emerald-500/40 bg-emerald-950/40 text-emerald-200",
+    badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-800",
   },
   completed: {
     label: "مكتملة (Completed)",
     description: "اكتملت الدفعة بنجاح.",
-    badgeClass: "border-emerald-500/40 bg-emerald-950/40 text-emerald-200",
+    badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-800",
   },
   failed: {
     label: "فشلت (Failed)",
     description: "توقفت الدفعة بسبب خطأ؛ راجع سبب الفشل أدناه.",
-    badgeClass: "border-red-500/40 bg-red-950/40 text-red-200",
+    badgeClass: "border-rose-200 bg-rose-50 text-rose-800",
   },
   cancelled: {
     label: "ملغاة (Cancelled)",
     description: "تم إلغاء الدفعة بطلب من المشرف.",
-    badgeClass: "border-zinc-500/40 bg-zinc-900/60 text-zinc-300",
+    badgeClass: "border-slate-200 bg-slate-100 text-slate-700",
   },
 };
 
