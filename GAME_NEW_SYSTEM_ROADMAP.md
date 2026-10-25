@@ -6065,7 +6065,7 @@ provider call occurred, no candidate was generated or reviewed, and no quality i
 Outcomes must be reported by mechanic and B1/B2 dimension without claiming significance, universal thresholds or
 model superiority from this small experiment.
 
-### 30.21 Admin Content Generation Studio — 🟡 DESIGN APPROVED — NOT IMPLEMENTED (2026-10-25)
+### 30.21 Admin Content Generation Studio — ✅ PHASES A–C IMPLEMENTED & VERIFIED LOCALLY · ⬜ PHASE D NOT STARTED (2026-10-25)
 
 The architecture audit approved a production-oriented Admin workflow that reuses the existing Content Engine
 job, authoring-context, screening, factual-verification, quality-judge, compatibility, human-review and
@@ -6074,10 +6074,47 @@ bounded batch request → job progress → individual candidate review/edit/reje
 Batch guidance remains subordinate to canonical authoring rules, and generated content cannot enter gameplay
 without the existing authoritative human and lifecycle gates.
 
-This entry records **design and implementation planning only**. No Studio API, DTO, UI, schema, generation
-behavior or production workflow was added by the audit; implementation is ⬜ **NOT STARTED**. The deferred B3
-live A/B evaluation remains separate and was not completed by approving the Studio design. No production quality
-improvement, provider/model approval, deployment or production runtime verification has been demonstrated.
+#### Phase A: IMPLEMENTED & VERIFIED LOCALLY
+- Server-derived World, Scope, and mechanic authoring options based on canonical eligibility, generator capability, and runtime compatibility.
+- Versioned, immutable generation specifications (`GenerationSpecificationV1`) pinning World, Scope, mechanic, count, difficulty, guidance, prompt version, model, temperature, reasoning effort, and reference context hash.
+- Read-only preflight plan digest validation rejecting drifted or stale submissions.
+- Candidate count capacity enforcement rejecting batch counts exceeding generator limits.
+- Exact-job execution model eliminating race conditions and accidental execution of queued jobs.
+- Authenticated Admin actor attribution recorded on job creation and execution.
+- Deterministic cost planning matching preflight reservations to execution parameters.
+- Fail-closed handling for unconfigured model pricing, budget exhaustion, and legacy provenance corruption.
+
+#### Phase B: IMPLEMENTED & VERIFIED LOCALLY
+- Production Admin interface at `/admin/content-engine` integrating Generate, Jobs, and Candidate Review surfaces.
+- Server-driven selectors with cascading invalidation, capacity enforcement, and live diagnostic messaging.
+- Preflight cost breakdown rendering reserved micro-SAR and currency estimates before submission.
+- Real-time job monitoring, progress bars, cancellation controls, and exact-job execution triggers.
+- Read-only, cursor-paginated job history with status filtering and inspector modal.
+- Candidate handoff linking generated output directly into the review workspace.
+- Responsive layout verified across desktop and mobile (390×844) viewports.
+- Browser smoke test audit verified with real disabled-backend baseline and isolated test fixtures.
+
+#### Phase C: IMPLEMENTED & VERIFIED LOCALLY
+- Strict target immutability preventing World, Scope, mechanic, or status retargeting during candidate edits.
+- Assessment invalidation on material edits (`prompt`, `answerPayload`, `mechanicPayload`, `factualClaims`), with audit snapshots archived in `lastInvalidatedAssessments`.
+- Non-material metadata edit preservation advancing `assessedRevision` without invalidating quality or factual evaluations.
+- Post-approval edit safety: any edit performed after approval immediately voids the prior decision, requiring explicit re-approval before canonical DRAFT creation.
+- Contradicted factual evidence safeguards: automated contradictions cannot be masked as `SUPPORTED`.
+- Claim-associated evidence: overrides of contradicted claims strictly require claim-indexed evidence with explanatory notes (≥ 10 chars) and non-trivial justification (≥ 15 chars); bare URLs and routine weak overrides (`CLAIM_NOT_ANSWER_CRITICAL`, `CLAIM_CORRECTED`) fail closed.
+- Atomic CAS concurrency protection (`reviewRevision`) across edit, assess, approve, reject, and draft creation.
+- Idempotent canonical `ContentItem` DRAFT creation through transactional publication records.
+
+#### Phase D: NOT STARTED
+- Controlled live pilot.
+- Provider, model, pricing, and budget authorization.
+- Real generation and human review under production conditions.
+- Production rollout decisions and operational handover.
+
+#### Operational Boundaries Confirmed
+- ⬜ **No live paid generation has been verified.** Local verification exercised isolated mocked providers, deterministic fixtures, and disabled backend states.
+- ⬜ **No production deployment has been verified.** All code remains local on the feature branch.
+- ⬜ **No automatic READY promotion or publication exists in the Studio workflow.** Output is strictly canonical `ContentItem` in `DRAFT` status; publication to active gameplay requires the existing canonical READY pipeline.
+- ✅ **Existing canonical review policy remains authoritative:** human approval is last and authoritative, and must be renewed after any post-approval candidate edit.
 
 ---
 
