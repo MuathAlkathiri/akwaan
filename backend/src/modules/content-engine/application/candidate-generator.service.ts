@@ -30,8 +30,8 @@ export const OUTPUT_TOKENS_PER_CANDIDATE = 800;
 
 /** Prompt/schema revision, per mechanic. Bump when either changes. */
 export const PROMPT_VERSIONS: Record<string, string> = {
-  multiple_choice: 'mc-v1',
-  closest: 'closest-v1',
+  multiple_choice: 'mc-v2',
+  closest: 'closest-v2',
 };
 
 /** Back-compat for callers and stored candidates written before per-mechanic versions. */
@@ -66,6 +66,31 @@ export const RYO_TARGET_CONFIDENCE_BANDS: readonly RyoConfidenceBand[] = [
   'likely',
   'even',
 ];
+
+/**
+ * Experimental batch guidance, not measured player performance or balance.
+ *
+ * These live at the generator configuration seam because they control an
+ * experiment, not the canonical RYO mechanic. The Skill still owns the
+ * certainty/fairness contract and every configured mix must obey it.
+ */
+export const DEFAULT_RYO_DIFFICULTY_TARGETS = {
+  easy: 25,
+  medium: 50,
+  relativelyDifficult: 25,
+} as const;
+
+export const RYO_DIFFICULTY_CONFIG_KEYS = {
+  easy: 'ENGINE_RYO_DIFFICULTY_EASY_PERCENT',
+  medium: 'ENGINE_RYO_DIFFICULTY_MEDIUM_PERCENT',
+  relativelyDifficult: 'ENGINE_RYO_DIFFICULTY_RELATIVELY_DIFFICULT_PERCENT',
+} as const;
+
+interface RyoDifficultyTargets {
+  easy: number;
+  medium: number;
+  relativelyDifficult: number;
+}
 
 export const MECHANIC_ANSWER_MODES: Record<
   string,
@@ -342,6 +367,11 @@ export const ORIGINALITY_GUIDANCE = [
  * generic formatting instructions while Closest ended on mechanic rules.
  */
 export const RYO_TASK_GUIDANCE = [
+  'GAMEPLAY-FIRST INTENT. Design the Steal/Trust decision before choosing the',
+  'question. The subject must come from the resolved World and Scope, but the',
+  'reason this item exists is that an opposing team must predict whether the',
+  'answering team will get it right.',
+  '',
   'This mechanic is a bet, not a quiz. The opposing team does not answer — they',
   'choose Steal or Trust, blind, betting on whether the answering team gets it',
   'right. A failed steal costs them a point, so the bet has to be hard to call.',
@@ -357,6 +387,12 @@ export const RYO_TASK_GUIDANCE = [
   'nobody does they always trust. Either way the decision answers itself and the',
   'item is wasted. Aim for "likely" or "even".',
   '',
+  'Difficulty changes the knowledge demand and how plausible the alternatives',
+  'feel. It must never come from ambiguity, trick wording, an unstated criterion',
+  'or a disputable answer. Easy, medium and relatively difficult items all have',
+  'to be clear, fair and factually defensible. Difficulty is not proof that the',
+  'opponent-prediction decision will work; apply the certainty test separately.',
+  '',
   'Every option must be defensible. If you cannot say in one sentence why a real',
   'player might choose an incorrect option, that option is filler — replace it',
   'rather than writing a better sentence for it. Three obviously-wrong options',
@@ -364,6 +400,10 @@ export const RYO_TASK_GUIDANCE = [
 ].join('\n');
 
 export const CLOSEST_TASK_GUIDANCE = [
+  'GAMEPLAY-FIRST INTENT. Design the estimation conversation before choosing the',
+  'fact or writing the prompt. The item should give ordinary players plausible',
+  'competing guesses, something to discuss, and a meaningful slider decision.',
+  '',
   'Author each item in this order, and fill the schema fields in this order:',
   '  1. concept — the idea, before any wording or number. Then apply the anchor test below.',
   '  2. answerBasis — "reasoning" or "knowledge-anchored" (see 3 below).',
@@ -378,6 +418,11 @@ export const CLOSEST_TASK_GUIDANCE = [
   '  - reasoning — the prompt supplies what is needed and the answer is derived from it.',
   'Check the World and Scope sections: most Worlds permit both, some permit only one.',
   'If a Scope restricts you to reasoning, a knowledge question is good work in the wrong place.',
+  '',
+  'Do not author a worksheet problem that supplies every number and the exact',
+  'operation, leaving only straightforward arithmetic. A reasoning prompt may',
+  'supply necessary information, but the play must still be estimation,',
+  'visualisation, comparison or approximation with room for competing guesses.',
   '',
   'THE ANCHOR TEST. Before writing anything else, answer: does a team that does NOT',
   'know the exact answer still have somewhere to stand — familiarity with the subject,',
@@ -498,6 +543,55 @@ export class CandidateGeneratorService {
       : OUTPUT_TOKENS_PER_CANDIDATE;
   }
 
+  private ryoDifficultyTargets(): RyoDifficultyTargets {
+    const configured = {
+      easy: this.config.get<string>(RYO_DIFFICULTY_CONFIG_KEYS.easy),
+      medium: this.config.get<string>(RYO_DIFFICULTY_CONFIG_KEYS.medium),
+      relativelyDifficult: this.config.get<string>(
+        RYO_DIFFICULTY_CONFIG_KEYS.relativelyDifficult,
+      ),
+    };
+    const targets: RyoDifficultyTargets = {
+      easy:
+        configured.easy === undefined
+          ? DEFAULT_RYO_DIFFICULTY_TARGETS.easy
+          : Number(configured.easy),
+      medium:
+        configured.medium === undefined
+          ? DEFAULT_RYO_DIFFICULTY_TARGETS.medium
+          : Number(configured.medium),
+      relativelyDifficult:
+        configured.relativelyDifficult === undefined
+          ? DEFAULT_RYO_DIFFICULTY_TARGETS.relativelyDifficult
+          : Number(configured.relativelyDifficult),
+    };
+    const values = Object.values(targets);
+    const total = values.reduce((sum, value) => sum + value, 0);
+    if (
+      values.some((value) => !Number.isFinite(value) || value < 0) ||
+      Math.abs(total - 100) > 1e-9
+    ) {
+      throw new CandidateParseError(
+        'RYO_DIFFICULTY_TARGETS_INVALID',
+        `${RYO_DIFFICULTY_CONFIG_KEYS.easy}, ${RYO_DIFFICULTY_CONFIG_KEYS.medium} and ${RYO_DIFFICULTY_CONFIG_KEYS.relativelyDifficult} must be non-negative numbers totalling 100`,
+      );
+    }
+    return targets;
+  }
+
+  private ryoDifficultyGuidance(): string {
+    const targets = this.ryoDifficultyTargets();
+    return [
+      'EXPERIMENTAL DIFFICULTY MIX — batch guidance, not a quality score:',
+      `  - easy: ${targets.easy}%`,
+      `  - medium: ${targets.medium}%`,
+      `  - relatively difficult: ${targets.relativelyDifficult}%`,
+      'Aim for this mix across batches; do not force exact quotas in a small batch.',
+      'These targets are configurable and unvalidated. They do not measure player',
+      'performance and do not override the certainty, clarity or fairness rules.',
+    ].join('\n');
+  }
+
   buildPrompt(
     context: ResolvedAuthoringContext,
     count: number,
@@ -522,7 +616,9 @@ export class CandidateGeneratorService {
       `Author exactly ${count} candidate items for the mechanic above, inside this Scope.`,
       'Return JSON matching the provided schema. Arabic prompt text. No commentary.',
       'The correct answer must never appear in the prompt text.',
-      answerMode === 'closest' ? CLOSEST_TASK_GUIDANCE : RYO_TASK_GUIDANCE,
+      answerMode === 'closest'
+        ? CLOSEST_TASK_GUIDANCE
+        : [RYO_TASK_GUIDANCE, this.ryoDifficultyGuidance()].join('\n\n'),
       // Last, deliberately: the instruction a generator is most likely to act
       // on is the one it read most recently.
       ORIGINALITY_GUIDANCE,

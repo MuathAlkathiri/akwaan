@@ -1,10 +1,14 @@
 import { ConfigService } from '@nestjs/config';
 import {
   CLOSEST_CANDIDATE_SCHEMA,
+  DEFAULT_RYO_DIFFICULTY_TARGETS,
   ORIGINALITY_GUIDANCE,
+  PROMPT_VERSIONS,
+  RYO_DIFFICULTY_CONFIG_KEYS,
   RYO_CANDIDATE_SCHEMA,
   RYO_CONFIDENCE_BANDS,
   RYO_TARGET_CONFIDENCE_BANDS,
+  RYO_TASK_GUIDANCE,
   CLOSEST_TASK_GUIDANCE,
   CandidateGeneratorService,
   OUTPUT_TOKENS_PER_CANDIDATE,
@@ -18,12 +22,12 @@ import { ResolvedAuthoringContext } from './authoring-context.service';
  * its reply. They say nothing about whether a real model then writes good
  * puzzles — only a live pilot shows that.
  */
-const service = () =>
+const service = (config: Record<string, string> = {}) =>
   new CandidateGeneratorService(
     {} as never,
     {} as never,
     {} as never,
-    { get: () => undefined } as unknown as ConfigService,
+    { get: (key: string) => config[key] } as unknown as ConfigService,
   );
 
 const context = (over: Partial<ResolvedAuthoringContext> = {}) =>
@@ -228,6 +232,12 @@ describe('OpenAI strict structured-output compliance', () => {
 });
 
 describe('Closest task guidance', () => {
+  it('starts from the mechanic-native table experience', () => {
+    expect(CLOSEST_TASK_GUIDANCE).toMatch(/GAMEPLAY-FIRST INTENT/);
+    expect(CLOSEST_TASK_GUIDANCE).toMatch(/plausible[\s\S]*competing guesses/);
+    expect(CLOSEST_TASK_GUIDANCE).toMatch(/something to discuss/);
+  });
+
   it('states the anchor test, not an estimation-only test', () => {
     expect(CLOSEST_TASK_GUIDANCE).toContain('ANCHOR TEST');
     // The decisive sentence: a factual answer is not the defect.
@@ -262,6 +272,89 @@ describe('Closest task guidance', () => {
   it('defers to the World and Scope on which directions are permitted', () => {
     expect(CLOSEST_TASK_GUIDANCE).toMatch(
       /most Worlds permit both, some permit only one/,
+    );
+  });
+
+  it('rejects supplied-operation arithmetic without banning reasoning prompts', () => {
+    expect(CLOSEST_TASK_GUIDANCE).toMatch(
+      /supplies every number and the exact[\s\S]*straightforward arithmetic/,
+    );
+    expect(CLOSEST_TASK_GUIDANCE).toMatch(
+      /reasoning prompt may[\s\S]*supply necessary information/,
+    );
+    expect(CLOSEST_TASK_GUIDANCE).toMatch(
+      /estimation,[\s\S]*visualisation, comparison or approximation/,
+    );
+  });
+});
+
+describe('RYO gameplay and difficulty guidance', () => {
+  it('centres opponent prediction rather than ordinary quiz difficulty', () => {
+    expect(RYO_TASK_GUIDANCE).toMatch(/GAMEPLAY-FIRST INTENT/);
+    expect(RYO_TASK_GUIDANCE).toMatch(
+      /opposing team must predict whether the[\s\S]*answering team will get it right/,
+    );
+    expect(RYO_TASK_GUIDANCE).toMatch(
+      /Difficulty changes the knowledge demand[\s\S]*plausible the alternatives/,
+    );
+  });
+
+  it('keeps every difficulty tier clear, fair and separate from ambiguity', () => {
+    expect(RYO_TASK_GUIDANCE).toMatch(
+      /never come from ambiguity, trick wording, an unstated criterion/,
+    );
+    expect(RYO_TASK_GUIDANCE).toMatch(
+      /Easy, medium and relatively difficult items all have[\s\S]*clear, fair and factually defensible/,
+    );
+    expect(RYO_TASK_GUIDANCE).toMatch(
+      /Difficulty is not proof[\s\S]*apply the certainty test separately/,
+    );
+  });
+
+  it('uses the approved experimental 25/50/25 defaults', () => {
+    const prompt = service().buildPrompt(context(), 10, 'multiple_choice');
+    expect(DEFAULT_RYO_DIFFICULTY_TARGETS).toEqual({
+      easy: 25,
+      medium: 50,
+      relativelyDifficult: 25,
+    });
+    expect(prompt).toContain('easy: 25%');
+    expect(prompt).toContain('medium: 50%');
+    expect(prompt).toContain('relatively difficult: 25%');
+    expect(prompt).toMatch(/configurable and unvalidated/);
+    expect(prompt).toMatch(/do not force exact quotas in a small batch/i);
+  });
+
+  it('reads a configured mix deterministically from the existing config seam', () => {
+    const configured = service({
+      [RYO_DIFFICULTY_CONFIG_KEYS.easy]: '20',
+      [RYO_DIFFICULTY_CONFIG_KEYS.medium]: '60',
+      [RYO_DIFFICULTY_CONFIG_KEYS.relativelyDifficult]: '20',
+    });
+    const first = configured.buildPrompt(context(), 10, 'multiple_choice');
+    const second = configured.buildPrompt(context(), 10, 'multiple_choice');
+    expect(first).toBe(second);
+    expect(first).toContain('easy: 20%');
+    expect(first).toContain('medium: 60%');
+    expect(first).toContain('relatively difficult: 20%');
+  });
+
+  it('fails closed when configured targets do not total 100', () => {
+    const configured = service({
+      [RYO_DIFFICULTY_CONFIG_KEYS.easy]: '25',
+      [RYO_DIFFICULTY_CONFIG_KEYS.medium]: '25',
+      [RYO_DIFFICULTY_CONFIG_KEYS.relativelyDifficult]: '25',
+    });
+    expect(() =>
+      configured.buildPrompt(context(), 10, 'multiple_choice'),
+    ).toThrow(
+      expect.objectContaining({ code: 'RYO_DIFFICULTY_TARGETS_INVALID' }),
+    );
+  });
+
+  it('does not inject the RYO mix into Closest prompts', () => {
+    expect(service().buildPrompt(context(), 10, 'closest')).not.toContain(
+      'EXPERIMENTAL DIFFICULTY MIX',
     );
   });
 });
@@ -335,6 +428,15 @@ describe('originality guidance reaches every mechanic', () => {
 });
 
 describe('buildPrompt', () => {
+  it('versions both changed prompt contracts without changing payload schemas', () => {
+    expect(PROMPT_VERSIONS).toEqual({
+      multiple_choice: 'mc-v2',
+      closest: 'closest-v2',
+    });
+    expect(RYO_CANDIDATE_SCHEMA).toBeDefined();
+    expect(CLOSEST_CANDIDATE_SCHEMA).toBeDefined();
+  });
+
   it('carries every canonical section verbatim', () => {
     const prompt = service().buildPrompt(context(), 3, 'closest');
     for (const text of [
