@@ -653,7 +653,7 @@ export function ContentEngineReviewWorkspace() {
                 <span className="text-muted-foreground">حالة المسودة: </span>
                 {candidate.publishedContentItemId ? (
                   <span
-                    className="font-mono font-semibold text-emerald-400"
+                    className="font-mono font-semibold text-emerald-600"
                     data-testid="published-content-item-id"
                   >
                     DRAFT ({candidate.publishedContentItemId})
@@ -663,6 +663,33 @@ export function ContentEngineReviewWorkspace() {
                 )}
               </div>
             </div>
+
+            {candidate.publishedContentItemId && (
+              <div
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-300 bg-emerald-50/90 p-4 text-xs text-emerald-950 shadow-sm"
+                data-testid="draft-created-feedback"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Check className="size-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <p className="font-bold text-emerald-900 text-sm">
+                      تم إنشاء مسودة ContentItem بنجاح في قاعدة البيانات القانونية!
+                    </p>
+                    <p className="text-[11px] text-emerald-800 mt-0.5">
+                      معرّف المسودة: <span className="font-mono font-bold text-emerald-950">{candidate.publishedContentItemId}</span> · الحالة: <span className="font-semibold">DRAFT</span> (محمية ومفصولة عن أطوار اللعب حتى الاعتماد والترقية الخارجية).
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href={`/admin/content-items?search=${candidate.publishedContentItemId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg border border-emerald-400 bg-white px-3.5 py-1.5 font-semibold text-emerald-800 shadow-sm hover:bg-emerald-100/50 transition"
+                >
+                  عرض المسودة في إدارة المحتوى ↗
+                </a>
+              </div>
+            )}
 
             {candidate.targetResolutionError && (
               <div

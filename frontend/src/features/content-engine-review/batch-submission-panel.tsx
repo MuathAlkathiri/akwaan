@@ -700,6 +700,110 @@ export function BatchSubmissionPanel({
         </div>
       )}
 
+      {/* Stepper: 3-Step Guided Workflow */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 text-xs" data-testid="studio-stepper">
+        <div
+          className={`flex items-center gap-3 rounded-xl border p-3 transition ${
+            mechanicKey && !selectionBlockedDiagnostic
+              ? "border-emerald-200 bg-emerald-50/50 text-emerald-950"
+              : "border-amber-400 bg-amber-50/40 text-amber-950"
+          }`}
+        >
+          <div
+            className={`flex size-7 shrink-0 items-center justify-center rounded-lg font-bold text-xs ${
+              mechanicKey && !selectionBlockedDiagnostic
+                ? "bg-emerald-600 text-white"
+                : "bg-amber-500 text-white"
+            }`}
+          >
+            1
+          </div>
+          <div>
+            <p className="font-bold">الخطوة 1: إعداد التركيبة والتوجيه</p>
+            <p className="text-[11px] text-slate-500">العالم، النطاق، الميكانيكية، والعدد</p>
+          </div>
+        </div>
+
+        <div
+          className={`flex items-center gap-3 rounded-xl border p-3 transition ${
+            preflight && preflight.resolvable && preflight.submissionReady !== false
+              ? "border-emerald-200 bg-emerald-50/50 text-emerald-950"
+              : preflight
+                ? "border-amber-300 bg-amber-50/40 text-amber-950"
+                : "border-slate-200 bg-slate-50/70 text-slate-600"
+          }`}
+        >
+          <div
+            className={`flex size-7 shrink-0 items-center justify-center rounded-lg font-bold text-xs ${
+              preflight && preflight.resolvable && preflight.submissionReady !== false
+                ? "bg-emerald-600 text-white"
+                : preflight
+                  ? "bg-amber-500 text-white"
+                  : "bg-slate-300 text-slate-700"
+            }`}
+          >
+            2
+          </div>
+          <div>
+            <p className="font-bold">الخطوة 2: الفحص المسبق والميزانية</p>
+            <p className="text-[11px] text-slate-500">التكلفة التقديرية، الرصيد، والجاهزية</p>
+          </div>
+        </div>
+
+        <div
+          className={`flex items-center gap-3 rounded-xl border p-3 transition ${
+            job && isTerminalJobStatus(job.status)
+              ? "border-emerald-200 bg-emerald-50/50 text-emerald-950"
+              : job
+                ? "border-sky-300 bg-sky-50/40 text-sky-950"
+                : "border-slate-200 bg-slate-50/70 text-slate-600"
+          }`}
+        >
+          <div
+            className={`flex size-7 shrink-0 items-center justify-center rounded-lg font-bold text-xs ${
+              job && isTerminalJobStatus(job.status)
+                ? "bg-emerald-600 text-white"
+                : job
+                  ? "bg-sky-600 text-white"
+                  : "bg-slate-300 text-slate-700"
+            }`}
+          >
+            3
+          </div>
+          <div>
+            <p className="font-bold">الخطوة 3: اعتماد الخطة والتوليد</p>
+            <p className="text-[11px] text-slate-500">تسجيل الدفعة، التشغيل، ومراجعة المرشحين</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Selected Target Summary Pill */}
+      {selectedWorld && selectedScope && selectedMechanic && (
+        <div
+          className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200/80 bg-amber-50/30 px-4 py-2.5 text-xs text-slate-800"
+          data-testid="selected-target-summary"
+        >
+          <span className="font-bold text-amber-900">الملخص المختار:</span>
+          <span className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-slate-700">
+            العالم: <strong className="text-slate-900">{selectedWorld.name ?? selectedWorld.worldKey}</strong>
+          </span>
+          <span className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-slate-700">
+            النطاق: <strong className="text-slate-900">{selectedScope.name ?? selectedScope.scopeKey}</strong>
+          </span>
+          <span className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-slate-700">
+            الميكانيكية: <strong className="text-slate-900">{selectedMechanicCatalog?.name ?? selectedMechanic.mechanicKey}</strong>
+          </span>
+          <span className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-slate-700">
+            العدد: <strong className="text-slate-900">{targetCountInput} مرشحات</strong>
+          </span>
+          {selectedMechanic.supportsDifficultySelection && (
+            <span className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-slate-700">
+              الصعوبة: <strong className="text-slate-900">{DIFFICULTY_LABELS[difficulty] ?? difficulty}</strong>
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Generation Configuration Form */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
@@ -1051,8 +1155,8 @@ export function BatchSubmissionPanel({
         </div>
       )}
 
-      {/* General Error Alert */}
-      {error && (
+      {/* General Error Alert (deduplicated against preflight blocking reason) */}
+      {error && (!preflight?.blockedReason || error !== preflight.blockedReason) && (
         <div
           className="rounded-xl border border-rose-200 bg-rose-50/70 p-4 text-xs text-rose-900 shadow-sm"
           data-testid="batch-error-alert"
@@ -1085,249 +1189,358 @@ export function BatchSubmissionPanel({
           className="rounded-2xl border border-border/80 bg-slate-50/60 p-5 sm:p-6 shadow-sm text-xs text-slate-800 space-y-4"
           data-testid="preflight-results"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={`rounded-full border px-3 py-1 font-semibold ${
-                  preflight.resolvable && preflight.submissionReady !== false
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                    : "border-rose-200 bg-rose-50 text-rose-800"
-                }`}
-                data-testid="preflight-status-badge"
-              >
-                {preflight.resolvable && preflight.submissionReady !== false
-                  ? "الفحص المسبق صالح وجاهز للتسجيل"
-                  : preflight.resolvable
-                    ? "السياق قابل للحل لكن التسجيل محجوب"
-                    : "الفحص المسبق مرفوض"}
+          {/* Header & Primary 4-Question Cards */}
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="flex size-5 items-center justify-center rounded-full bg-amber-500/10 text-[11px] font-bold text-amber-700">
+                2
               </span>
-
-              {preflight.generationSpec && (
-                <span className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-mono text-slate-700">
-                  الإصدار: v{preflight.generationSpec.specVersion} · القالب:{" "}
-                  {preflight.generationSpec.promptVersion} · النمط:{" "}
-                  {preflight.generationSpec.answerMode}
-                </span>
-              )}
+              <h3 className="font-bold text-slate-900 text-sm">
+                نتائج الفحص المسبق والتحقق من الميزانية (Preflight & Budget Validation)
+              </h3>
             </div>
-
-            {preflight.planDigest && (
-              <span
-                className="font-mono text-[11px] text-slate-500 rounded-lg border border-slate-200 bg-white px-2.5 py-1"
-                data-testid="preflight-plan-digest"
-              >
-                بصمة الخطة (planDigest): {preflight.planDigest.slice(0, 16)}…
-              </span>
-            )}
+            <span
+              className={`rounded-full border px-3 py-1 font-semibold ${
+                preflight.resolvable && preflight.submissionReady !== false
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-rose-200 bg-rose-50 text-rose-800"
+              }`}
+              data-testid="preflight-status-badge"
+            >
+              {preflight.resolvable && preflight.submissionReady !== false
+                ? "الفحص المسبق صالح وجاهز للتسجيل"
+                : preflight.resolvable
+                  ? "السياق قابل للحل لكن التسجيل محجوب"
+                  : "الفحص المسبق مرفوض"}
+            </span>
           </div>
 
-          {/* Blocking Diagnostics & Rule Conflicts */}
+          {/* Primary View: 4 Key Decision Cards */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Card 1: هل الدفعة جاهزة؟ */}
+            <div className="rounded-xl border border-border/80 bg-white p-4 shadow-sm">
+              <span className="text-[11px] font-semibold text-slate-500 block mb-1">
+                هل الدفعة جاهزة؟
+              </span>
+              <div className="flex items-center gap-2">
+                {preflight.resolvable && preflight.submissionReady !== false ? (
+                  <span className="inline-flex items-center gap-1.5 font-bold text-emerald-700 text-sm">
+                    <CheckCircle2 className="size-4" />
+                    جاهزة للتسجيل والتشغيل
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 text-sm">
+                    <AlertTriangle className="size-4" />
+                    التشغيل محجوب حالياً
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-[11px] text-slate-500">
+                {preflight.resolvable && preflight.submissionReady !== false
+                  ? "شروط القواعد والميزانية مستوفاة"
+                  : "يلزم استيفاء شروط التسعير أو التفعيل"}
+              </p>
+            </div>
+
+            {/* Card 2: كم التكلفة المتوقعة؟ */}
+            <div className="rounded-xl border border-border/80 bg-white p-4 shadow-sm">
+              <span className="text-[11px] font-semibold text-slate-500 block mb-1">
+                كم التكلفة المتوقعة؟
+              </span>
+              <div className="text-base font-bold text-amber-700 font-mono">
+                {typeof preflight.estimatedSar === "number"
+                  ? `~ ${preflight.estimatedSar.toFixed(4)} ر.س`
+                  : typeof preflight.estimatedMicros === "number"
+                    ? `~ ${(preflight.estimatedMicros / 1_000_000).toFixed(4)} ر.س`
+                    : "غير متاح"}
+              </div>
+              <p className="mt-1 text-[11px] text-slate-500">
+                سقف تقديري أقصى (غير ملزم كحد أدنى)
+              </p>
+            </div>
+
+            {/* Card 3: كم الميزانية المتبقية؟ */}
+            <div className="rounded-xl border border-border/80 bg-white p-4 shadow-sm">
+              <span className="text-[11px] font-semibold text-slate-500 block mb-1">
+                كم الميزانية المتبقية؟
+              </span>
+              <div className="text-base font-bold text-emerald-700 font-mono">
+                {typeof preflight.budget?.availableMicros === "number"
+                  ? `${(preflight.budget.availableMicros / 1_000_000).toFixed(4)} ر.س`
+                  : "غير متاح"}
+              </div>
+              <p className="mt-1 text-[11px] text-slate-500">
+                من أصل{" "}
+                {typeof preflight.budget?.capMicros === "number"
+                  ? `${(preflight.budget.capMicros / 1_000_000).toFixed(4)} ر.س`
+                  : "—"}{" "}
+                للفترة
+              </p>
+            </div>
+
+            {/* Card 4: المزود والنموذج */}
+            <div className="rounded-xl border border-border/80 bg-white p-4 shadow-sm">
+              <span className="text-[11px] font-semibold text-slate-500 block mb-1">
+                المزود ونموذج التوليد
+              </span>
+              <div className="text-sm font-bold text-slate-900 truncate">
+                {preflight.generationSpec?.provider ??
+                  options?.engine.provider ??
+                  "غير محدد"}
+              </div>
+              <p className="mt-1 text-[11px] font-mono text-slate-600 truncate">
+                {preflight.generationSpec?.generationModel ??
+                  options?.engine.generationModel ??
+                  "لم يُحدد"}
+              </p>
+            </div>
+          </div>
+
+          {/* Actionable Blocker Message (Answers: ما الذي يمنع التشغيل؟) */}
           {(preflight.blockedReason ||
             preflight.diagnostic ||
             (preflight.ruleConflicts && preflight.ruleConflicts.length > 0)) && (
             <div
-              className="rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-rose-900"
+              className="rounded-xl border border-amber-300 bg-amber-50/90 p-4 text-xs text-amber-950"
               data-testid="preflight-blocking-diagnostic"
             >
-              <p className="font-semibold">
-                سبب الحجب ({preflight.blockedCode ?? preflight.diagnostic?.code ?? "BLOCKED"}):
-              </p>
-              <p className="mt-1 font-mono text-[11px]">
-                {preflight.blockedReason ?? preflight.diagnostic?.message}
-              </p>
-              {preflight.ruleConflicts && preflight.ruleConflicts.length > 0 && (
-                <ul className="mt-2 list-disc space-y-1 pr-4 text-[11px]">
-                  {preflight.ruleConflicts.map((conflict, idx) => (
-                    <li key={idx}>
-                      <strong>{conflict.field}</strong>: {conflict.message}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="size-4 shrink-0 text-amber-600 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold text-amber-900">
+                    ما الذي يمنع التشغيل؟ ({preflight.blockedCode ?? preflight.diagnostic?.code ?? "BLOCKED"}):
+                  </p>
+                  <p className="leading-relaxed font-medium">
+                    {preflight.blockedReason ?? preflight.diagnostic?.message}
+                  </p>
+                  {preflight.ruleConflicts && preflight.ruleConflicts.length > 0 && (
+                    <ul className="mt-1.5 list-disc space-y-1 pr-4 text-[11px] text-amber-800">
+                      {preflight.ruleConflicts.map((conflict, idx) => (
+                        <li key={idx}>
+                          <strong>{conflict.field}</strong>: {conflict.message}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Detailed Preflight Metrics Grid */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {/* Column 1: Model, Provider & Spec */}
-            <div className="rounded-xl border border-border/80 bg-white p-4 shadow-sm">
-              <h3 className="font-bold text-slate-900 border-b border-border/60 pb-2">
-                المزود ومواصفة التوليد
-              </h3>
-              <dl className="mt-2.5 space-y-1.5 text-[11px]">
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">المزود (Provider):</dt>
-                  <dd className="font-mono font-medium text-slate-900">
-                    {preflight.generationSpec?.provider ??
-                      options?.engine.provider ??
-                      "غير محدد"}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">نموذج التوليد:</dt>
-                  <dd className="font-mono font-medium text-slate-900">
-                    {preflight.generationSpec?.generationModel ??
-                      options?.engine.generationModel ??
-                      "غير محدد"}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">نموذج محكّم الجودة:</dt>
-                  <dd className="font-mono font-medium text-slate-900">
-                    {preflight.generationSpec?.qualityModel ??
-                      options?.engine.qualityModel ??
-                      "غير محدد"}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">العدد والصعوبة:</dt>
-                  <dd className="font-mono font-medium text-slate-900">
-                    {preflight.generationSpec?.targetCount ?? parsedTargetCount}{" "}
-                    مرشحات
-                    {preflight.generationSpec?.difficulty
-                      ? ` · ${preflight.generationSpec.difficulty}`
-                      : " · بدون صعوبة مخصصة"}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">حالة المحرك / المزود الحي:</dt>
-                  <dd className="text-slate-900 font-medium">
-                    {preflight.engineEnabled ? "المحرك مفعّل" : "المحرك معطّل"} ·{" "}
-                    {preflight.liveProviderEnabled
-                      ? "المزود الحي مفعّل"
-                      : "المزود الحي معطّل"}
-                  </dd>
-                </div>
-              </dl>
-            </div>
+          {/* Collapsible Advanced Technical Details & Token Accounting */}
+          <details
+            className="rounded-xl border border-border/80 bg-slate-50/50 p-4 text-xs text-slate-700 transition"
+            data-testid="preflight-advanced-details"
+          >
+            <summary className="cursor-pointer font-semibold text-slate-800 hover:text-slate-950 flex items-center justify-between">
+              <span>تفاصيل تقنية متقدمة ومحاسبة الرموز (Advanced Technical Details & Token Accounting)</span>
+              <span className="text-[11px] font-normal text-slate-500">انقر للعرض / الإخفاء</span>
+            </summary>
 
-            {/* Column 2: Cost Breakdown */}
-            <div
-              className="rounded-xl border border-border/80 bg-white p-4 shadow-sm"
-              data-testid="preflight-cost-breakdown"
-            >
-              <h3 className="font-bold text-slate-900 border-b border-border/60 pb-2">
-                تفصيل التكلفة التقديرية
-              </h3>
-              <dl className="mt-2.5 space-y-1.5 text-[11px]">
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">تكلفة التوليد الأساسية:</dt>
-                  <dd
-                    className="font-mono font-medium text-slate-900"
-                    data-testid="cost-generation-micros"
-                  >
-                    {formatSarFromMicros(preflight.generationEstimatedMicros)}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">
-                    مخصص محكّم الجودة الشرطي
-                    {preflight.judgeEligible === false
-                      ? " (غير مفعّل حالياً)"
-                      : " (مفعّل)"}
-                    :
-                  </dt>
-                  <dd
-                    className="font-mono font-medium text-slate-900"
-                    data-testid="cost-conditional-judge-micros"
-                  >
-                    {formatSarFromMicros(
-                      preflight.conditionalJudgeEstimatedMicros,
-                    )}
-                  </dd>
-                </div>
-                {preflight.maxJudgeEstimatedMicros !== undefined && (
-                  <div className="flex justify-between gap-2">
-                    <dt className="text-slate-500">
-                      السقف الأقصى لمحكّم الجودة:
-                    </dt>
-                    <dd className="font-mono text-slate-500">
-                      {formatSarFromMicros(preflight.maxJudgeEstimatedMicros)}
-                    </dd>
-                  </div>
+            <div className="mt-4 pt-3 border-t border-border/60 space-y-4">
+              {/* Identifiers & Digests */}
+              <div className="flex flex-wrap items-center gap-2">
+                {preflight.generationSpec && (
+                  <span className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-mono text-[11px] text-slate-700">
+                    الإصدار: v{preflight.generationSpec.specVersion} · القالب:{" "}
+                    {preflight.generationSpec.promptVersion} · النمط:{" "}
+                    {preflight.generationSpec.answerMode}
+                  </span>
                 )}
-                <div className="flex justify-between gap-2 border-t border-border/60 pt-2 font-semibold">
-                  <dt className="text-amber-900">السقف التقديري الإجمالي:</dt>
-                  <dd
-                    className="font-mono text-amber-700 font-bold"
-                    data-testid="cost-total-ceiling"
-                  >
-                    {typeof preflight.estimatedSar === "number"
-                      ? `${preflight.estimatedSar.toFixed(4)} ر.س (${(preflight.estimatedMicros ?? 0).toLocaleString("en-US")} ميكرو)`
-                      : formatSarFromMicros(preflight.estimatedMicros)}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">التسعير معرّف:</dt>
-                  <dd className="text-slate-900 font-medium">
-                    {preflight.pricingConfigured ? "نعم" : "لا (مفقود)"}
-                  </dd>
-                </div>
-              </dl>
-            </div>
 
-            {/* Column 3: Budget Constraints */}
-            <div
-              className="rounded-xl border border-border/80 bg-white p-4 shadow-sm"
-              data-testid="preflight-budget-constraints"
-            >
-              <h3 className="font-bold text-slate-900 border-b border-border/60 pb-2">
-                قيود الميزانية الشهرية والدفعة
-              </h3>
-              <dl className="mt-2.5 space-y-1.5 text-[11px]">
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">الفترة المحاسبية:</dt>
-                  <dd className="font-mono font-medium text-slate-900">
-                    {preflight.budget.periodKey}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">الرصيد المتاح شهرياً:</dt>
-                  <dd className="font-mono text-emerald-700 font-semibold">
-                    {formatSarFromMicros(preflight.budget.availableMicros)}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">السقف الشهري الكلي:</dt>
-                  <dd className="font-mono font-medium text-slate-900">
-                    {formatSarFromMicros(preflight.budget.capMicros)}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">ضمن سقف الدفعة الواحدة:</dt>
-                  <dd
-                    className={
-                      preflight.withinBatchCap === false
-                        ? "font-semibold text-rose-700"
-                        : "text-emerald-700 font-semibold"
-                    }
+                {preflight.planDigest && (
+                  <span
+                    className="font-mono text-[11px] text-slate-600 rounded-lg border border-slate-200 bg-white px-2.5 py-1"
+                    data-testid="preflight-plan-digest"
                   >
-                    {preflight.withinBatchCap === undefined
-                      ? "غير محسوب"
-                      : preflight.withinBatchCap
-                        ? "نعم (ضمن الحد)"
-                        : "لا (يتجاوز سقف الدفعة)"}
-                  </dd>
+                    بصمة الخطة (planDigest): {preflight.planDigest.slice(0, 16)}…
+                  </span>
+                )}
+              </div>
+
+              {/* Detailed Metrics Grid */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {/* Column 1: Model, Provider & Spec */}
+                <div className="rounded-xl border border-border/80 bg-white p-4 shadow-sm">
+                  <h4 className="font-bold text-slate-900 border-b border-border/60 pb-2">
+                    المزود ومواصفة التوليد
+                  </h4>
+                  <dl className="mt-2.5 space-y-1.5 text-[11px]">
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">المزود (Provider):</dt>
+                      <dd className="font-mono font-medium text-slate-900">
+                        {preflight.generationSpec?.provider ??
+                          options?.engine.provider ??
+                          "غير محدد"}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">نموذج التوليد:</dt>
+                      <dd className="font-mono font-medium text-slate-900">
+                        {preflight.generationSpec?.generationModel ??
+                          options?.engine.generationModel ??
+                          "غير محدد"}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">نموذج محكّم الجودة:</dt>
+                      <dd className="font-mono font-medium text-slate-900">
+                        {preflight.generationSpec?.qualityModel ??
+                          options?.engine.qualityModel ??
+                          "غير محدد"}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">العدد والصعوبة:</dt>
+                      <dd className="font-mono font-medium text-slate-900">
+                        {preflight.generationSpec?.targetCount ?? parsedTargetCount}{" "}
+                        مرشحات
+                        {preflight.generationSpec?.difficulty
+                          ? ` · ${preflight.generationSpec.difficulty}`
+                          : " · بدون صعوبة مخصصة"}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">حالة المحرك / المزود الحي:</dt>
+                      <dd className="text-slate-900 font-medium">
+                        {preflight.engineEnabled ? "المحرك مفعّل" : "المحرك معطّل"} ·{" "}
+                        {preflight.liveProviderEnabled
+                          ? "المزود الحي مفعّل"
+                          : "المزود الحي معطّل"}
+                      </dd>
+                    </div>
+                  </dl>
                 </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">ضمن الميزانية الشهرية:</dt>
-                  <dd
-                    className={
-                      preflight.withinMonthlyBudget === false
-                        ? "font-semibold text-rose-700"
-                        : "text-emerald-700 font-semibold"
-                    }
-                  >
-                    {preflight.withinMonthlyBudget === undefined
-                      ? "غير محسوب"
-                      : preflight.withinMonthlyBudget
-                        ? "نعم (ضمن المتاح)"
-                        : "لا (يتجاوز الرصيد الشهري)"}
-                  </dd>
+
+                {/* Column 2: Cost Breakdown */}
+                <div
+                  className="rounded-xl border border-border/80 bg-white p-4 shadow-sm"
+                  data-testid="preflight-cost-breakdown"
+                >
+                  <h4 className="font-bold text-slate-900 border-b border-border/60 pb-2">
+                    تفصيل التكلفة التقديرية
+                  </h4>
+                  <dl className="mt-2.5 space-y-1.5 text-[11px]">
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">تكلفة التوليد الأساسية:</dt>
+                      <dd
+                        className="font-mono font-medium text-slate-900"
+                        data-testid="cost-generation-micros"
+                      >
+                        {formatSarFromMicros(preflight.generationEstimatedMicros)}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">
+                        مخصص محكّم الجودة الشرطي
+                        {preflight.judgeEligible === false
+                          ? " (غير مفعّل حالياً)"
+                          : " (مفعّل)"}
+                        :
+                      </dt>
+                      <dd
+                        className="font-mono font-medium text-slate-900"
+                        data-testid="cost-conditional-judge-micros"
+                      >
+                        {formatSarFromMicros(
+                          preflight.conditionalJudgeEstimatedMicros,
+                        )}
+                      </dd>
+                    </div>
+                    {preflight.maxJudgeEstimatedMicros !== undefined && (
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-slate-500">
+                          السقف الأقصى لمحكّم الجودة:
+                        </dt>
+                        <dd className="font-mono text-slate-500">
+                          {formatSarFromMicros(preflight.maxJudgeEstimatedMicros)}
+                        </dd>
+                      </div>
+                    )}
+                    <div className="flex justify-between gap-2 border-t border-border/60 pt-2 font-semibold">
+                      <dt className="text-amber-900">السقف التقديري الإجمالي:</dt>
+                      <dd
+                        className="font-mono text-amber-700 font-bold"
+                        data-testid="cost-total-ceiling"
+                      >
+                        {typeof preflight.estimatedSar === "number"
+                          ? `${preflight.estimatedSar.toFixed(4)} ر.س (${(preflight.estimatedMicros ?? 0).toLocaleString("en-US")} ميكرو)`
+                          : formatSarFromMicros(preflight.estimatedMicros)}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">التسعير معرّف:</dt>
+                      <dd className="text-slate-900 font-medium">
+                        {preflight.pricingConfigured ? "نعم" : "لا (مفقود)"}
+                      </dd>
+                    </div>
+                  </dl>
                 </div>
-              </dl>
+
+                {/* Column 3: Budget Constraints */}
+                <div
+                  className="rounded-xl border border-border/80 bg-white p-4 shadow-sm"
+                  data-testid="preflight-budget-constraints"
+                >
+                  <h4 className="font-bold text-slate-900 border-b border-border/60 pb-2">
+                    قيود الميزانية الشهرية والدفعة
+                  </h4>
+                  <dl className="mt-2.5 space-y-1.5 text-[11px]">
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">الفترة المحاسبية:</dt>
+                      <dd className="font-mono font-medium text-slate-900">
+                        {preflight.budget.periodKey}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">الرصيد المتاح شهرياً:</dt>
+                      <dd className="font-mono text-emerald-700 font-semibold">
+                        {formatSarFromMicros(preflight.budget.availableMicros)}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">السقف الشهري الكلي:</dt>
+                      <dd className="font-mono font-medium text-slate-900">
+                        {formatSarFromMicros(preflight.budget.capMicros)}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">ضمن سقف الدفعة الواحدة:</dt>
+                      <dd
+                        className={
+                          preflight.withinBatchCap === false
+                            ? "font-semibold text-rose-700"
+                            : "text-emerald-700 font-semibold"
+                        }
+                      >
+                        {preflight.withinBatchCap === undefined
+                          ? "غير محسوب"
+                          : preflight.withinBatchCap
+                            ? "نعم (ضمن الحد)"
+                            : "لا (يتجاوز سقف الدفعة)"}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">ضمن الميزانية الشهرية:</dt>
+                      <dd
+                        className={
+                          preflight.withinMonthlyBudget === false
+                            ? "font-semibold text-rose-700"
+                            : "text-emerald-700 font-semibold"
+                        }
+                      >
+                        {preflight.withinMonthlyBudget === undefined
+                          ? "غير محسوب"
+                          : preflight.withinMonthlyBudget
+                            ? "نعم (ضمن المتاح)"
+                            : "لا (يتجاوز الرصيد الشهري)"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
             </div>
-          </div>
+          </details>
         </div>
       )}
 

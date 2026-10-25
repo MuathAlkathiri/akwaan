@@ -47,6 +47,7 @@ export function JobsHistoryPanel({
   const queryClient = useQueryClient();
 
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [extraPages, setExtraPages] = useState<EngineJobStatus[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -96,6 +97,18 @@ export function JobsHistoryPanel({
     }
     return merged;
   }, [jobsQuery.data?.items, extraPages]);
+
+  const filteredJobs = useMemo(() => {
+    if (!searchQuery.trim()) return allJobs;
+    const q = searchQuery.trim().toLowerCase();
+    return allJobs.filter(
+      (job) =>
+        job.jobId.toLowerCase().includes(q) ||
+        (job.worldKey ?? job.generationSpec?.worldKey ?? "").toLowerCase().includes(q) ||
+        (job.scopeKey ?? job.generationSpec?.scopeKey ?? "").toLowerCase().includes(q) ||
+        (job.mechanicKey ?? job.generationSpec?.mechanicKey ?? "").toLowerCase().includes(q),
+    );
+  }, [allJobs, searchQuery]);
 
   // Auto-select the first job if none is selected
   useEffect(() => {
@@ -265,6 +278,22 @@ export function JobsHistoryPanel({
         </div>
 
         <div className="flex flex-wrap items-center gap-3 text-xs">
+          <div className="flex flex-col gap-0.5">
+            <input
+              type="text"
+              data-testid="input-search-jobs"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="بحث في الدفعات المحملة..."
+              title="تصفية فورية للدفعات المحملة حالياً في القائمة (لا تشمل الدفعات السابقة غير المحملة من الخادم)"
+              aria-label="تصفية فورية للدفعات المحملة حالياً"
+              className="h-9 w-48 rounded-xl border border-input bg-white px-3 text-xs text-slate-900 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+            />
+            <span className="text-[10px] text-slate-400">
+              * تصفية النتائج المحملة فقط
+            </span>
+          </div>
+
           <label className="flex items-center gap-2 text-slate-600 font-medium">
             <span>تصفية الحالة:</span>
             <select
@@ -343,7 +372,7 @@ export function JobsHistoryPanel({
             </div>
           )}
 
-          {allJobs.map((item) => {
+          {filteredJobs.map((item) => {
             const isSelected = item.jobId === selectedJobId;
             const statusMeta = JOB_STATUS_LABELS[item.status] ?? {
               label: item.status,
