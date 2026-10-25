@@ -133,7 +133,7 @@ export class EngineBudgetService {
     return sarToMicros(sar);
   }
 
-  private batchCapMicros(): number {
+  batchCapMicros(): number {
     const configured = Number(
       this.config.get<string>('ENGINE_BATCH_CAP_SAR') ?? DEFAULT_BATCH_CAP_SAR,
     );
@@ -174,6 +174,12 @@ export class EngineBudgetService {
     return per * Math.max(0, input.callsExpected);
   }
 
+  /**
+   * Read-only view of the current period's budget state.
+   *
+   * Never upserts or mutates the `engine_budget` collection so preflight and
+   * status queries remain strictly side-effect free.
+   */
   async snapshot(now = new Date()): Promise<{
     periodKey: string;
     capMicros: number;
@@ -182,7 +188,6 @@ export class EngineBudgetService {
     availableMicros: number;
   }> {
     const periodKey = periodKeyOf(now);
-    await this.ensurePeriod(periodKey);
     const doc = await this.budgets.findOne({ periodKey }).lean().exec();
     const capMicros = doc?.capMicros ?? this.capMicros();
     const spentMicros = doc?.spentMicros ?? 0;

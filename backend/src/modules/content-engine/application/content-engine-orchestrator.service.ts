@@ -10,6 +10,13 @@ import {
   RuleConflictError,
   assertNoRuleConflicts,
 } from '../domain/effective-rules';
+import {
+  GenerationSpecValidationError,
+  GenerationSpecification,
+  PROMPT_VERSIONS,
+  generatorAnswerModeFor,
+  isGenerationSpecificationComplete,
+} from '../domain/generation-specification';
 import { AuthoringContextService } from './authoring-context.service';
 import { CandidateCompatibilityService } from './candidate-compatibility.service';
 import {
@@ -48,6 +55,78 @@ export class ContentEngineOrchestratorService {
     return { jobId: leased.jobId };
   }
 
+  async runJob(
+    jobId: string,
+    owner: string,
+    actor?: { actorId?: string | null; actorEmail?: string | null },
+  ): Promise<{ jobId: string } | null> {
+    const leased = await this.jobs.leaseById({
+      jobId,
+      owner,
+      executedBy: actor?.actorId,
+      executedByEmail: actor?.actorEmail,
+    });
+    if (!leased) return null;
+    await this.run(leased);
+    return { jobId: leased.jobId };
+  }
+
+  private async resolveProvenanceSpecification(job: LeasedJob): Promise<{
+    valid: boolean;
+    spec: GenerationSpecification | null;
+    reason?: string;
+  }> {
+    let candidateSpec: unknown = job.generationSpec;
+    if (
+      candidateSpec === undefined &&
+      typeof this.jobs.findById === 'function'
+    ) {
+      const stored = await this.jobs.findById(job.jobId);
+      if (stored && ('_id' in stored || 'status' in stored)) {
+        candidateSpec = stored.generationSpec ?? null;
+      }
+    }
+
+    if (candidateSpec === undefined) {
+      return { valid: true, spec: null };
+    }
+    if (!isGenerationSpecificationComplete(candidateSpec)) {
+      return {
+        valid: false,
+        spec: null,
+        reason:
+          'JOB_PROVENANCE_INSUFFICIENT: job lacks a complete, valid generationSpecification',
+      };
+    }
+    if (
+      candidateSpec.mechanicKey !== job.mechanicKey ||
+      candidateSpec.worldKey !== job.worldKey ||
+      candidateSpec.scopeKey !== job.scopeKey ||
+      candidateSpec.targetCount !== job.targetCount
+    ) {
+      return {
+        valid: false,
+        spec: null,
+        reason:
+          'JOB_PROVENANCE_INSUFFICIENT: generationSpec target fields do not match job record',
+      };
+    }
+    const expectedAnswerMode = generatorAnswerModeFor(job.mechanicKey);
+    if (
+      expectedAnswerMode &&
+      (candidateSpec.answerMode !== expectedAnswerMode ||
+        candidateSpec.promptVersion !== PROMPT_VERSIONS[expectedAnswerMode])
+    ) {
+      return {
+        valid: false,
+        spec: null,
+        reason:
+          'JOB_PROVENANCE_DRIFT: generationSpec answerMode or promptVersion does not match active generator',
+      };
+    }
+    return { valid: true, spec: candidateSpec };
+  }
+
   async run(job: LeasedJob): Promise<void> {
     try {
       if (await this.stopIfCancelled(job)) return;
@@ -60,6 +139,46 @@ export class ContentEngineOrchestratorService {
       // It sits before the first checkpoint and before generation, so a
       // conflicting context cannot reach a paid call.
       assertNoRuleConflicts(context.effectiveRules);
+
+      let rows = await this.rows(job.jobId);
+      const provenance = await this.resolveProvenanceSpecification(job);
+      if (!provenance.valid && !rows.length) {
+        await this.jobs.awaitReview({
+          jobId: job.jobId,
+          leaseEpoch: job.leaseEpoch,
+          reason: provenance.reason!,
+        });
+        return;
+      }
+
+      if (
+        provenance.spec &&
+        !rows.length &&
+        /^[a-f0-9]{64}$/.test(provenance.spec.contextHash)
+      ) {
+        if (provenance.spec.contextHash !== context.contextHash) {
+          await this.jobs.awaitReview({
+            jobId: job.jobId,
+            leaseEpoch: job.leaseEpoch,
+            reason:
+              'JOB_CONTEXT_DRIFT: authoring context has changed since the job specification was pinned',
+          });
+          return;
+        }
+        if (
+          /^[a-f0-9]{64}$/.test(provenance.spec.ruleSetDigest) &&
+          provenance.spec.ruleSetDigest !== context.effectiveRules.digest
+        ) {
+          await this.jobs.awaitReview({
+            jobId: job.jobId,
+            leaseEpoch: job.leaseEpoch,
+            reason:
+              'JOB_RULESET_DRIFT: effective authoring rules have changed since the job specification was pinned',
+          });
+          return;
+        }
+      }
+
       await this.jobs.checkpoint({
         jobId: job.jobId,
         leaseEpoch: job.leaseEpoch,
@@ -71,10 +190,15 @@ export class ContentEngineOrchestratorService {
           contextHash: context.contextHash,
           ruleSetDigest: context.effectiveRules.digest,
           structuredRuleCount: context.effectiveRules.rules.length,
+          ...(provenance.spec
+            ? {
+                specVersion: provenance.spec.specVersion,
+                promptVersion: provenance.spec.promptVersion,
+              }
+            : {}),
         },
       });
 
-      let rows = await this.rows(job.jobId);
       if (!rows.length) {
         if (await this.budget.hasLedgerEntry(job.jobId, 'generation')) {
           await this.jobs.awaitReview({
@@ -90,7 +214,14 @@ export class ContentEngineOrchestratorService {
           leaseEpoch: job.leaseEpoch,
           attempt: job.attempts,
           context,
-          count: job.targetCount,
+          count: provenance.spec?.targetCount ?? job.targetCount,
+          ...(provenance.spec
+            ? {
+                generationSpec: provenance.spec,
+                difficulty: provenance.spec.difficulty,
+                batchGuidance: provenance.spec.batchGuidance,
+              }
+            : {}),
         });
         rows = await this.rows(job.jobId);
       }
@@ -188,6 +319,7 @@ export class ContentEngineOrchestratorService {
             attempt: job.attempts,
             draft: row.draft ?? {},
             context,
+            ...(provenance.spec ? { generationSpec: provenance.spec } : {}),
           });
           await this.updateCandidate(job, String(row._id), {
             qualityEvaluation: result,
@@ -238,8 +370,9 @@ export class ContentEngineOrchestratorService {
         return;
       }
       if (
-        error instanceof CandidateParseError &&
-        error.code === 'MECHANIC_NOT_GENERATABLE'
+        error instanceof GenerationSpecValidationError ||
+        (error instanceof CandidateParseError &&
+          error.code === 'MECHANIC_NOT_GENERATABLE')
       ) {
         // This is a deterministic capability boundary, not a transient
         // provider failure. A queued job that bypassed preflight must fail

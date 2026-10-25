@@ -58,10 +58,22 @@ import {
   worldChallengeConfigurationName,
 } from "../../utils/world-content.labels";
 import type {
+  ChallengeAnswerMode,
+  ContentAnswerPayload,
   ContentItem,
   ContentItemStatus,
   ContentMediaType,
+  WorldChallengeConfiguration,
 } from "../../types";
+
+export interface LockedCandidateTarget {
+  scopeId: string;
+  scopeName?: string;
+  challengeTypeId: string;
+  challengeTypeName?: string;
+  challengeTypeSlug?: string;
+  challengeAnswerMode?: string;
+}
 
 interface ContentItemFormProps {
   worldId: string;
@@ -71,6 +83,8 @@ interface ContentItemFormProps {
   /** Review candidates reuse this editor without writing a ContentItem yet. */
   onSubmitOverride?: (payload: Record<string, unknown>) => Promise<void>;
   submitLabel?: string;
+  /** Locks Scope, Mechanic, and DRAFT status when editing a generated candidate. */
+  lockedCandidateTarget?: LockedCandidateTarget;
 }
 
 export function ContentItemForm({
@@ -80,6 +94,7 @@ export function ContentItemForm({
   onSuccess,
   onSubmitOverride,
   submitLabel,
+  lockedCandidateTarget,
 }: ContentItemFormProps) {
   const { data: scopes = [] } = useScopes(worldId);
   const { data: board } = useWorldBoard(worldId);
@@ -99,12 +114,53 @@ export function ContentItemForm({
 
   const selectedScope = scopes.find((scope) => scope.id === values.scopeId);
   // Mechanics the Scope excludes are not offered at all (roadmap 5.2).
-  const availableChallengeTypes = (board?.configurations ?? []).filter(
+  const boardChallengeTypes = (board?.configurations ?? []).filter(
     (configuration) =>
       !selectedScope?.excludedChallengeTypeIds.includes(
         configuration.challengeTypeId,
       ),
   );
+  // Off-board authoring: a candidate generated for an active World/Scope/Mechanic
+  // that is not currently placed on the World board still needs its mechanic
+  // metadata resolved so answer modes and locked selection render properly.
+  const availableChallengeTypes: WorldChallengeConfiguration[] =
+    lockedCandidateTarget &&
+    !boardChallengeTypes.some(
+      (cfg) => cfg.challengeTypeId === lockedCandidateTarget.challengeTypeId,
+    )
+      ? [
+          ...boardChallengeTypes,
+          {
+            id: `off-board-${lockedCandidateTarget.challengeTypeId}`,
+            worldId,
+            challengeTypeId: lockedCandidateTarget.challengeTypeId,
+            slotKey: "slot_1",
+            effectiveName:
+              lockedCandidateTarget.challengeTypeName ??
+              lockedCandidateTarget.challengeTypeSlug ??
+              "ميكانيكا المرشح",
+            sortOrder: 0,
+            isEnabled: true,
+            challengeType: {
+              id: lockedCandidateTarget.challengeTypeId,
+              name:
+                lockedCandidateTarget.challengeTypeName ??
+                lockedCandidateTarget.challengeTypeSlug ??
+                "ميكانيكا المرشح",
+              slug: lockedCandidateTarget.challengeTypeSlug ?? "",
+              family: "relational",
+              itemStructure: "discrete_triple",
+              answerMode: (lockedCandidateTarget.challengeAnswerMode ??
+                (values.answer.mode === "multiple_choice"
+                  ? "ryo"
+                  : values.answer.mode)) as ChallengeAnswerMode,
+              defaultPresentation: { inputType: "multiple-choice", timerSeconds: null },
+              scoringRuleId: "",
+              status: "active",
+            },
+          },
+        ]
+      : boardChallengeTypes;
   const selectedChallengeTypes = availableChallengeTypes.filter(
     (configuration) =>
       values.compatibleChallengeTypeIds.includes(configuration.challengeTypeId),
@@ -115,7 +171,7 @@ export function ContentItemForm({
     )?.contentPattern ?? "generic";
   // Only the payload modes every selected mechanic can consume, using the
   // compatibility table the backend enforces.
-  const availableModes = selectedChallengeTypes.length
+  const computedModes = selectedChallengeTypes.length
     ? selectedChallengeTypes
         .map(
           (configuration) =>
@@ -129,6 +185,12 @@ export function ContentItemForm({
           shared.filter((mode) => modes.includes(mode)),
         )
     : [];
+  const availableModes: ContentAnswerPayload["mode"][] =
+    computedModes.length > 0
+      ? computedModes
+      : lockedCandidateTarget
+        ? [values.answer.mode]
+        : [];
 
   const rakkibhaSelected = selectedChallengeTypes.some(
     (configuration) => configuration.challengeType.answerMode === "rakkibha",
@@ -307,19 +369,58 @@ export function ContentItemForm({
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const problems = findLocalFormProblems(values, { isNewItem });
+    const problems = findLocalFormProblems(values, {
+      isNewItem,
+      isCandidateReview: Boolean(lockedCandidateTarget || onSubmitOverride),
+    });
     setLocalProblems(problems);
     if (problems.length) return;
-    const payload = buildContentItemPayload(values);
+    const payload = buildContentItemPayload(
+      lockedCandidateTarget
+        ? {
+            ...values,
+            scopeId: lockedCandidateTarget.scopeId,
+            compatibleChallengeTypeIds: [
+              lockedCandidateTarget.challengeTypeId,
+            ],
+            status: "draft",
+          }
+        : values,
+    );
     if (onSubmitOverride) {
       setOverridePending(true);
       try {
         await onSubmitOverride(payload);
         onSuccess();
-      } catch {
+      } catch (err) {
+        const responseData = (
+          err as {
+            response?: {
+              data?: {
+                message?: string | string[];
+                fieldErrors?: Array<{ field?: string; message?: string }>;
+              };
+            };
+            message?: string;
+          }
+        )?.response?.data;
+        const fieldMessages = Array.isArray(responseData?.fieldErrors)
+          ? responseData.fieldErrors
+              .map((fe) =>
+                fe.field ? `${fe.field}: ${fe.message}` : fe.message,
+              )
+              .filter((msg): msg is string => Boolean(msg))
+          : [];
+        const topMessage = Array.isArray(responseData?.message)
+          ? responseData.message.join(" — ")
+          : typeof responseData?.message === "string"
+            ? responseData.message
+            : err instanceof Error && err.message
+              ? err.message
+              : "تعذر حفظ تعديلات المرشح. أعد تحميله وحاول مرة أخرى.";
         setLocalProblems((current) => [
           ...current,
-          "تعذر حفظ تعديلات المرشح. أعد تحميله وحاول مرة أخرى.",
+          ...(fieldMessages.length > 0 ? fieldMessages : [topMessage]),
         ]);
       } finally {
         setOverridePending(false);
@@ -332,13 +433,24 @@ export function ContentItemForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      {lockedCandidateTarget && (
+        <div
+          data-testid="locked-candidate-target-banner"
+          className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-950 dark:text-amber-200"
+        >
+          الهدف القانوني مثبت حسب مهمة التوليد (النطاق والميكانيكا وحالة المسودة
+          غير قابلة لإعادة التوجيه أثناء مراجعة المرشح).
+        </div>
+      )}
       <div>
         <label className="mb-2 block text-sm font-medium">النطاق</label>
         <Select
           value={values.scopeId}
-          onValueChange={(next: string) =>
-            set({ scopeId: next, compatibleChallengeTypeIds: [] })
-          }
+          disabled={Boolean(lockedCandidateTarget)}
+          onValueChange={(next: string) => {
+            if (lockedCandidateTarget) return;
+            set({ scopeId: next, compatibleChallengeTypeIds: [] });
+          }}
         >
           <SelectTrigger aria-label="النطاق">
             <SelectValue placeholder="اختر نطاقاً" />
@@ -352,7 +464,9 @@ export function ContentItemForm({
           </SelectContent>
         </Select>
         <p className="mt-1 text-xs text-muted-foreground">
-          العالم مشتق من النطاق تلقائياً.
+          {lockedCandidateTarget
+            ? "النطاق مثبت على هدف مهمة التوليد ولا يمكن تغييره."
+            : "العالم مشتق من النطاق تلقائياً."}
         </p>
       </div>
 
@@ -398,12 +512,14 @@ export function ContentItemForm({
             >
               <Checkbox
                 className="mt-0.5"
+                disabled={Boolean(lockedCandidateTarget)}
                 checked={values.compatibleChallengeTypeIds.includes(
                   configuration.challengeTypeId,
                 )}
-                onCheckedChange={() =>
-                  toggleChallengeType(configuration.challengeTypeId)
-                }
+                onCheckedChange={() => {
+                  if (lockedCandidateTarget) return;
+                  toggleChallengeType(configuration.challengeTypeId);
+                }}
               />
               <span className="min-w-0">
                 <span className="block font-medium">{challengeName}</span>
@@ -525,10 +641,12 @@ export function ContentItemForm({
         <div>
           <label className="mb-1.5 block text-sm font-medium">الحالة</label>
           <Select
-            value={values.status}
-            onValueChange={(next: string) =>
-              set({ status: next as ContentItemStatus })
-            }
+            value={lockedCandidateTarget ? "draft" : values.status}
+            disabled={Boolean(lockedCandidateTarget)}
+            onValueChange={(next: string) => {
+              if (lockedCandidateTarget) return;
+              set({ status: next as ContentItemStatus });
+            }}
           >
             <SelectTrigger aria-label="الحالة">
               <SelectValue />

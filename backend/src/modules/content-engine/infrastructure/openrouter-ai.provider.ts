@@ -214,7 +214,17 @@ export class OpenRouterAiProvider implements AiProvider {
     request: AiTextGenerationRequest,
   ): Promise<AiTextGenerationResult> {
     const apiKey = this.config.get<string>('OPENROUTER_API_KEY')?.trim();
-    const model = this.config.get<string>('ENGINE_GENERATION_MODEL')?.trim();
+    const model =
+      request.model?.trim() ||
+      this.config.get<string>('ENGINE_GENERATION_MODEL')?.trim();
+    const omitTemperature =
+      request.omitTemperature !== undefined
+        ? request.omitTemperature
+        : this.truthy('ENGINE_OMIT_TEMPERATURE');
+    const effort =
+      request.reasoningEffort !== undefined
+        ? (request.reasoningEffort ?? undefined)
+        : this.reasoningEffort();
     // Fail closed, before a request exists. A missing key or model is a
     // configuration error, never a reason to pick something else.
     if (!apiKey)
@@ -256,8 +266,7 @@ export class OpenRouterAiProvider implements AiProvider {
           // sending it leaves zero eligible endpoints and the request fails
           // outright rather than degrading. Config-driven so the setting is a
           // property of the deployed model, not a guess compiled in here.
-          ...(request.temperature !== undefined &&
-          !this.truthy('ENGINE_OMIT_TEMPERATURE')
+          ...(request.temperature !== undefined && !omitTemperature
             ? { temperature: request.temperature }
             : {}),
           // `max_tokens` bounds reasoning *and* visible output together, which
@@ -273,9 +282,7 @@ export class OpenRouterAiProvider implements AiProvider {
           // change the financial ceiling — `max_tokens` already does that —
           // but it is what leaves room for content inside the ceiling instead
           // of spending the whole allowance thinking and returning nothing.
-          ...(this.reasoningEffort()
-            ? { reasoning: { effort: this.reasoningEffort() } }
-            : {}),
+          ...(effort ? { reasoning: { effort } } : {}),
           // Structured output is required, not preferred: a prose reply is a
           // failed generation, and the schema is what makes that detectable.
           ...(request.responseSchema

@@ -5,8 +5,40 @@ import {
   AmbiguousProviderOutcomeError,
   ENGINE_AI_PROVIDER,
 } from '../domain/content-engine.constants';
+import { GenerationSpecification } from '../domain/generation-specification';
 import { ResolvedAuthoringContext } from './authoring-context.service';
 import { EngineBudgetService } from './engine-budget.service';
+
+export const QUALITY_JUDGE_MAX_OUTPUT_TOKENS = 900;
+export const QUALITY_JUDGE_DRAFT_TOKEN_ALLOWANCE = 200;
+
+export function composeQualityJudgePrompt(
+  mechanicText: string,
+  serializedDraft: string,
+): string {
+  return [
+    '# CANONICAL MECHANIC SKILL',
+    mechanicText ?? '',
+    '# ADVISORY QUALITY REVIEW',
+    'Evaluate only the candidate below against the canonical mechanic Skill.',
+    'Score every dimension 1-5, explain every score, and return actionable rejection feedback.',
+    'Do not claim factual verification. Do not override deterministic validation.',
+    serializedDraft,
+  ].join('\n\n');
+}
+
+export function estimateQualityJudgePromptTokens(
+  mechanicText: string,
+  serializedDraft?: string,
+): number {
+  if (serializedDraft !== undefined) {
+    return Math.ceil(
+      composeQualityJudgePrompt(mechanicText, serializedDraft).length / 3,
+    );
+  }
+  const basePrompt = composeQualityJudgePrompt(mechanicText, '');
+  return Math.ceil(basePrompt.length / 3) + QUALITY_JUDGE_DRAFT_TOKEN_ALLOWANCE;
+}
 
 export const QUALITY_DIMENSIONS = [
   'mechanicNativeGameplay',
@@ -81,14 +113,22 @@ export class QualityJudgeService {
     attempt: number;
     draft: Record<string, unknown>;
     context: ResolvedAuthoringContext;
+    generationSpec?: GenerationSpecification;
   }): Promise<QualityEvaluation> {
     if (!this.provider) throw new Error('No engine AiProvider is bound');
+    const serializedDraft = JSON.stringify(input.draft);
     const prompt = this.prompt(input.context, input.draft);
     const reservationId = `${input.jobId}:quality:${input.candidateId}:${input.attempt}`;
     const providerName =
-      this.config.get<string>('ENGINE_PROVIDER_NAME') ?? 'fake';
+      input.generationSpec?.provider ??
+      this.config.get<string>('ENGINE_PROVIDER_NAME') ??
+      'fake';
     const model =
-      this.config.get<string>('ENGINE_QUALITY_MODEL') ?? 'fake-model';
+      input.generationSpec?.qualityModel ??
+      this.config.get<string>('ENGINE_QUALITY_MODEL') ??
+      input.generationSpec?.generationModel ??
+      this.config.get<string>('ENGINE_GENERATION_MODEL') ??
+      'fake-model';
     await this.budget.reserve({
       reservationId,
       jobId: input.jobId,
@@ -96,18 +136,22 @@ export class QualityJudgeService {
       provider: providerName,
       model,
       expected: {
-        promptTokens: Math.ceil(prompt.length / 3),
-        maxOutputTokens: 900,
+        promptTokens: estimateQualityJudgePromptTokens(
+          input.context.mechanic,
+          serializedDraft,
+        ),
+        maxOutputTokens: QUALITY_JUDGE_MAX_OUTPUT_TOKENS,
       },
     });
 
     let raw: string;
     try {
       const response = await this.provider.generateText({
+        model,
         prompt,
         responseSchema: QUALITY_JUDGE_SCHEMA,
         temperature: 0,
-        maxOutputTokens: 900,
+        maxOutputTokens: QUALITY_JUDGE_MAX_OUTPUT_TOKENS,
       });
       raw = response.text;
       await this.budget.settle({ reservationId, usage: response.usage });
@@ -125,15 +169,7 @@ export class QualityJudgeService {
     context: ResolvedAuthoringContext,
     draft: Record<string, unknown>,
   ): string {
-    return [
-      '# CANONICAL MECHANIC SKILL',
-      context.mechanic,
-      '# ADVISORY QUALITY REVIEW',
-      'Evaluate only the candidate below against the canonical mechanic Skill.',
-      'Score every dimension 1-5, explain every score, and return actionable rejection feedback.',
-      'Do not claim factual verification. Do not override deterministic validation.',
-      JSON.stringify(draft),
-    ].join('\n\n');
+    return composeQualityJudgePrompt(context.mechanic, JSON.stringify(draft));
   }
 
   private parse(raw: string): QualityEvaluation {

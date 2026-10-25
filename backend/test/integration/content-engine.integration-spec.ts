@@ -1722,7 +1722,13 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
           expectedRevision: 0,
           factualState: 'CONTRADICTED',
           factualExplanation: 'One official source contradicts the answer.',
-          evidence: [{ url: 'https://example.test/contradiction' }],
+          evidence: [
+            {
+              url: 'https://example.test/contradiction',
+              title: 'Official patch note contradiction',
+              note: 'Official balance patch contradicts character ability detail.',
+            },
+          ],
           quality: {
             correctness: 2,
             mechanicFit: 4,
@@ -1909,6 +1915,698 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       expect(await database.collection('content_items').countDocuments()).toBe(
         0,
       );
+    });
+
+    describe('Phase C — candidate review hardening', () => {
+      it('prevents retargeting World, Scope, Mechanic, or non-DRAFT status during candidate edit', async () => {
+        const seeded = await seedReviewCandidate('phase-c-target-immutable');
+        await expect(
+          review.edit(
+            'phase-c-target-immutable',
+            {
+              expectedRevision: 0,
+              explanation: 'Attempt to retarget scopeId',
+              factualClaims: ['Mercy can heal allies'],
+              draft: {
+                prompt: { ar: 'أي بطل يملك قدرة الشفاء الجماعي؟' },
+                scopeId: String(new Types.ObjectId()),
+                answerPayload: {
+                  mode: 'multiple_choice',
+                  options: [
+                    { id: 'a', label: { ar: 'مرسي' } },
+                    { id: 'b', label: { ar: 'جنجي' } },
+                  ],
+                  correctOptionId: 'a',
+                },
+              },
+            },
+            actor,
+          ),
+        ).rejects.toThrow(/pinned|immutable|cannot be changed/i);
+
+        await expect(
+          review.edit(
+            'phase-c-target-immutable',
+            {
+              expectedRevision: 0,
+              explanation: 'Attempt to promote status to ready',
+              factualClaims: ['Mercy can heal allies'],
+              draft: {
+                prompt: { ar: 'أي بطل يملك قدرة الشفاء الجماعي؟' },
+                scopeId: String(seeded.scopeId),
+                status: 'ready',
+                answerPayload: {
+                  mode: 'multiple_choice',
+                  options: [
+                    { id: 'a', label: { ar: 'مرسي' } },
+                    { id: 'b', label: { ar: 'جنجي' } },
+                  ],
+                  correctOptionId: 'a',
+                },
+              },
+            },
+            actor,
+          ),
+        ).rejects.toThrow(/status|draft/i);
+      });
+
+      it('preserves assessments and approval on non-material metadata-only edits while recording audit events', async () => {
+        await seedReviewCandidate('phase-c-non-material');
+        await assessSupported('phase-c-non-material');
+        const edited = await review.edit(
+          'phase-c-non-material',
+          {
+            expectedRevision: 1,
+            explanation: 'Added editorial review note in metadata only.',
+            factualClaims: ['Mercy can heal allies'],
+            draft: {
+              prompt: { ar: 'أي بطل يملك قدرة الشفاء الجماعي؟' },
+              answerPayload: {
+                mode: 'multiple_choice',
+                options: [
+                  { id: 'a', label: { ar: 'مرسي' } },
+                  { id: 'b', label: { ar: 'جنجي' } },
+                ],
+                correctOptionId: 'a',
+              },
+              metadata: {
+                source: 'content-engine',
+                notes: 'Checked by senior editor',
+                tags: ['verified-note'],
+              },
+            },
+          },
+          actor,
+        );
+
+        expect(edited.reviewRevision).toBe(2);
+        expect(edited.factVerification).toMatchObject({ state: 'SUPPORTED' });
+        expect(edited.qualityEvaluation).toMatchObject({
+          recommendation: 'PASS',
+        });
+        expect(edited.humanAssessment).toMatchObject({
+          factualState: 'SUPPORTED',
+          assessedRevision: 2,
+          previousAssessedRevision: 1,
+        });
+        expect(edited.reviewEligibility.canApprove).toBe(true);
+
+        // Approval succeeds at revision 2 without needing to re-run human assessment.
+        const approved = await review.approve(
+          'phase-c-non-material',
+          { expectedRevision: 2, explanation: 'Approved after metadata edit.' },
+          actor,
+        );
+        expect(approved.reviewStatus).toBe('approved');
+      });
+
+      it('preserves historical assessment snapshot and records assessment_invalidated on material edits', async () => {
+        await seedReviewCandidate('phase-c-material-history');
+        await assessSupported('phase-c-material-history');
+
+        const edited = await review.edit(
+          'phase-c-material-history',
+          {
+            expectedRevision: 1,
+            explanation: 'Updated the prompt wording and options.',
+            factualClaims: ['Mercy heals allies with Caduceus Staff'],
+            draft: {
+              prompt: { ar: 'أي بطل يستخدم عصا الكادوسيوس للشفاء؟' },
+              answerPayload: {
+                mode: 'multiple_choice',
+                options: [
+                  { id: 'a', label: { ar: 'مرسي' } },
+                  { id: 'b', label: { ar: 'جنجي' } },
+                ],
+                correctOptionId: 'a',
+              },
+            },
+          },
+          actor,
+        );
+
+        expect(edited.humanAssessment).toBeNull();
+        expect(edited.factVerification).toBeNull();
+        expect(edited.qualityEvaluation).toBeNull();
+        expect(edited.lastInvalidatedAssessments).toMatchObject({
+          invalidatedAtRevision: 2,
+          previousRevision: 1,
+          factVerification: { state: 'SUPPORTED' },
+          qualityEvaluation: { recommendation: 'PASS' },
+          humanAssessment: expect.objectContaining({
+            factualState: 'SUPPORTED',
+            assessedRevision: 1,
+          }),
+        });
+        expect(edited.reviewEligibility.assessmentStale).toBe(true);
+        expect(
+          edited.reviewEvents.map((event: { action: string }) => event.action),
+        ).toEqual(['assessed', 'edited', 'assessment_invalidated']);
+      });
+
+      it('enforces evidence URLs for ACCEPTED_WITH_EVIDENCE and forbids weak overrides on CONTRADICTED claims', async () => {
+        await seedReviewCandidate('phase-c-factual-safety');
+        await review.assess(
+          'phase-c-factual-safety',
+          {
+            expectedRevision: 0,
+            factualState: 'UNSUPPORTED',
+            factualExplanation: 'Automated retrieval found no direct snippet.',
+            evidence: [],
+            quality: {
+              correctness: 4,
+              mechanicFit: 4,
+              clarity: 4,
+              multiplayerFit: 4,
+              originality: 4,
+              explanation: 'Good question structure.',
+            },
+          },
+          actor,
+        );
+
+        // Cannot use ACCEPTED_WITH_EVIDENCE without evidence URLs in humanAssessment.
+        await expect(
+          review.approve(
+            'phase-c-factual-safety',
+            {
+              expectedRevision: 1,
+              explanation: 'Try approving with evidence override',
+              factualOverrideCode: 'ACCEPTED_WITH_EVIDENCE',
+              factualOverrideExplanation: 'No evidence attached',
+            },
+            actor,
+          ),
+        ).rejects.toThrow(/evidence URL/i);
+
+        // CLAIM_NOT_ANSWER_CRITICAL is allowed for UNSUPPORTED when explicitly explained.
+        const approved = await review.approve(
+          'phase-c-factual-safety',
+          {
+            expectedRevision: 1,
+            explanation:
+              'Approved because the claim is background flavour only.',
+            factualOverrideCode: 'CLAIM_NOT_ANSWER_CRITICAL',
+            factualOverrideExplanation:
+              'The prompt is answerable without relying on the secondary claim.',
+          },
+          actor,
+        );
+        expect(approved.reviewStatus).toBe('approved');
+        expect(approved.reviewDecision).toMatchObject({
+          factualOverrideCode: 'CLAIM_NOT_ANSWER_CRITICAL',
+          exceptionalOverride: true,
+        });
+      });
+
+      it('validates normalized duplicate options, option count, and Closest slider math on edit', async () => {
+        await seedReviewCandidate('phase-c-edit-validation');
+
+        // Duplicate normalized Arabic options ('أحمد' vs 'احمد') must fail.
+        await expect(
+          review.edit(
+            'phase-c-edit-validation',
+            {
+              expectedRevision: 0,
+              explanation: 'Duplicate options test',
+              factualClaims: ['Claim'],
+              draft: {
+                prompt: { ar: 'من هو اللاعب؟' },
+                answerPayload: {
+                  mode: 'multiple_choice',
+                  options: [
+                    { id: 'a', label: { ar: 'أحمد' } },
+                    { id: 'b', label: { ar: 'احمد' } },
+                  ],
+                  correctOptionId: 'a',
+                },
+              },
+            },
+            actor,
+          ),
+        ).rejects.toThrow(/duplicates another option/i);
+
+        // 5 options (above max 4) must fail.
+        await expect(
+          review.edit(
+            'phase-c-edit-validation',
+            {
+              expectedRevision: 0,
+              explanation: 'Too many options test',
+              factualClaims: ['Claim'],
+              draft: {
+                prompt: { ar: 'من هو اللاعب؟' },
+                answerPayload: {
+                  mode: 'multiple_choice',
+                  options: [
+                    { id: 'a', label: { ar: 'خيار ١' } },
+                    { id: 'b', label: { ar: 'خيار ٢' } },
+                    { id: 'c', label: { ar: 'خيار ٣' } },
+                    { id: 'd', label: { ar: 'خيار ٤' } },
+                    { id: 'e', label: { ar: 'خيار ٥' } },
+                  ],
+                  correctOptionId: 'a',
+                },
+              },
+            },
+            actor,
+          ),
+        ).rejects.toThrow(/between 2 and 4 options/i);
+      });
+
+      it('fails closed during review when legacy job or candidate provenance is corrupted or mismatched', async () => {
+        const seeded = await seedReviewCandidate('phase-c-corrupted-spec');
+        await assessSupported('phase-c-corrupted-spec');
+
+        // Corrupt the job's generationSpec so its worldKey disagrees with job.worldKey
+        await database.collection('engine_jobs').updateOne(
+          { _id: new Types.ObjectId(seeded.jobId) },
+          {
+            $set: {
+              specVersion: 'generation-spec-v1',
+              generationSpec: {
+                specVersion: 'generation-spec-v1',
+                worldKey: 'different-world',
+                scopeKey: 'overwatch',
+                mechanicKey: 'read-your-opponent',
+              },
+            },
+          },
+        );
+
+        await expect(
+          review.approve(
+            'phase-c-corrupted-spec',
+            { expectedRevision: 1, explanation: 'Should fail closed' },
+            actor,
+          ),
+        ).rejects.toThrow(/generation specification/i);
+      });
+
+      describe('Phase C Final Safety Audit regression guarantees', () => {
+        it('rejects bare or unrelated URLs and requires claim-level evidence on contradicted candidates', async () => {
+          await seedReviewCandidate('safety-contradicted-bare-url');
+          await database.collection('engine_candidates').updateOne(
+            { candidateId: 'safety-contradicted-bare-url' },
+            {
+              $set: {
+                status: 'fact_blocked',
+                factVerification: { state: 'CONTRADICTED', confidence: 0.95 },
+                factualClaims: [
+                  'Mercy can heal allies',
+                  'Genji uses shurikens',
+                ],
+              },
+            },
+          );
+
+          // Bare URL without explanatory note or claim association fails
+          await expect(
+            review.assess(
+              'safety-contradicted-bare-url',
+              {
+                expectedRevision: 0,
+                factualState: 'CONTRADICTED',
+                factualExplanation: 'Contradiction identified.',
+                evidence: [{ url: 'https://example.test/unrelated' }],
+                quality: {
+                  correctness: 2,
+                  mechanicFit: 4,
+                  clarity: 4,
+                  multiplayerFit: 4,
+                  originality: 4,
+                  explanation: 'Quality requires review.',
+                },
+              },
+              actor,
+            ),
+          ).rejects.toThrow(
+            /Evidence for contradicted claims must include an explanatory title or note/,
+          );
+
+          // Multiple claims without claimIndex or claimText fails
+          await expect(
+            review.assess(
+              'safety-contradicted-bare-url',
+              {
+                expectedRevision: 0,
+                factualState: 'CONTRADICTED',
+                factualExplanation: 'Contradiction identified.',
+                evidence: [
+                  {
+                    url: 'https://example.test/patch-note',
+                    title: 'Valid title for patch',
+                    note: 'Valid explanatory note refuting contradiction.',
+                  },
+                ],
+                quality: {
+                  correctness: 2,
+                  mechanicFit: 4,
+                  clarity: 4,
+                  multiplayerFit: 4,
+                  originality: 4,
+                  explanation: 'Quality requires review.',
+                },
+              },
+              actor,
+            ),
+          ).rejects.toThrow(
+            /Evidence for contradicted claims must be associated with a specific factual claim/,
+          );
+
+          // Invalid claimIndex fails
+          await expect(
+            review.assess(
+              'safety-contradicted-bare-url',
+              {
+                expectedRevision: 0,
+                factualState: 'CONTRADICTED',
+                factualExplanation: 'Contradiction identified.',
+                evidence: [
+                  {
+                    url: 'https://example.test/patch-note',
+                    claimIndex: 99,
+                    title: 'Valid title for patch',
+                    note: 'Valid explanatory note refuting contradiction.',
+                  },
+                ],
+                quality: {
+                  correctness: 2,
+                  mechanicFit: 4,
+                  clarity: 4,
+                  multiplayerFit: 4,
+                  originality: 4,
+                  explanation: 'Quality requires review.',
+                },
+              },
+              actor,
+            ),
+          ).rejects.toThrow(/out of bounds for candidate factual claims/);
+        });
+
+        it('disallows silently turning contradicted automated verification into SUPPORTED during human assessment', async () => {
+          await seedReviewCandidate('safety-contradicted-to-supported');
+          await database.collection('engine_candidates').updateOne(
+            { candidateId: 'safety-contradicted-to-supported' },
+            {
+              $set: {
+                status: 'fact_blocked',
+                factVerification: { state: 'CONTRADICTED', confidence: 0.9 },
+                factualClaims: ['Mercy can heal allies'],
+              },
+            },
+          );
+
+          await expect(
+            review.assess(
+              'safety-contradicted-to-supported',
+              {
+                expectedRevision: 0,
+                factualState: 'SUPPORTED',
+                factualExplanation:
+                  'Attempting to mask contradiction as supported.',
+                evidence: [
+                  {
+                    url: 'https://example.test/proof',
+                    claimIndex: 0,
+                    title: 'Title of proof',
+                    note: 'Explanatory note of proof.',
+                  },
+                ],
+                quality: {
+                  correctness: 4,
+                  mechanicFit: 4,
+                  clarity: 4,
+                  multiplayerFit: 4,
+                  originality: 4,
+                  explanation: 'Quality is sound.',
+                },
+              },
+              actor,
+            ),
+          ).rejects.toThrow(
+            /contradictory automated factual verification; it cannot be marked SUPPORTED directly/,
+          );
+        });
+
+        it('executes valid explicit override for CONTRADICTED candidate and preserves contradiction history in DB and events', async () => {
+          await seedReviewCandidate('safety-valid-override');
+          await database.collection('engine_candidates').updateOne(
+            { candidateId: 'safety-valid-override' },
+            {
+              $set: {
+                status: 'fact_blocked',
+                factVerification: { state: 'CONTRADICTED', confidence: 0.92 },
+                factualClaims: ['Mercy can heal allies'],
+              },
+            },
+          );
+
+          // Correct assessment with claim-associated evidence and note
+          await review.assess(
+            'safety-valid-override',
+            {
+              expectedRevision: 0,
+              factualState: 'CONTRADICTED',
+              factualExplanation:
+                'Automated check found contradiction in legacy dataset.',
+              evidence: [
+                {
+                  url: 'https://example.test/official-patch-2026',
+                  claimIndex: 0,
+                  claimText: 'Mercy can heal allies',
+                  title: 'Overwatch Patch Notes 2026',
+                  note: 'Official Blizzard documentation confirms healing ability.',
+                },
+              ],
+              quality: {
+                correctness: 4,
+                mechanicFit: 4,
+                clarity: 4,
+                multiplayerFit: 4,
+                originality: 4,
+                explanation: 'Excellent gameplay structure.',
+              },
+            },
+            actor,
+          );
+
+          // Missing or short override explanation fails
+          await expect(
+            review.approve(
+              'safety-valid-override',
+              {
+                expectedRevision: 1,
+                explanation: 'Approved by admin.',
+                factualOverrideCode: 'ACCEPTED_WITH_EVIDENCE',
+                factualOverrideExplanation: 'too short',
+              },
+              actor,
+            ),
+          ).rejects.toThrow(/factualOverrideExplanation must be meaningful/);
+
+          // Valid approval with meaningful override explanation succeeds
+          const approved = await review.approve(
+            'safety-valid-override',
+            {
+              expectedRevision: 1,
+              explanation: 'Approved after verifying official documentation.',
+              factualOverrideCode: 'ACCEPTED_WITH_EVIDENCE',
+              factualOverrideExplanation:
+                'Official Blizzard patch notes 2026 explicitly verify this character mechanic.',
+            },
+            actor,
+          );
+
+          expect(approved.reviewStatus).toBe('approved');
+          expect(approved.reviewRevision).toBe(2);
+
+          const candidateInDb = await database
+            .collection('engine_candidates')
+            .findOne({ candidateId: 'safety-valid-override' });
+
+          expect(candidateInDb).toMatchObject({
+            reviewStatus: 'approved',
+            reviewDecision: {
+              decision: 'approved',
+              exceptionalOverride: true,
+              automatedContradictionOverridden: true,
+              factualOverrideCode: 'ACCEPTED_WITH_EVIDENCE',
+              originalFactVerification: {
+                state: 'CONTRADICTED',
+                confidence: 0.92,
+              },
+            },
+          });
+
+          const approvedEvent = candidateInDb?.reviewEvents.find(
+            (e: { action: string }) => e.action === 'approved',
+          );
+          expect(approvedEvent).toMatchObject({
+            action: 'approved',
+            actorId: actor.id,
+            revision: 2,
+            details: {
+              exceptionalOverride: true,
+              automatedContradictionOverridden: true,
+              originalFactVerificationState: 'CONTRADICTED',
+            },
+          });
+
+          // Draft creation verifies safety invariants and succeeds
+          const draft = await review.createDraft(
+            'safety-valid-override',
+            2,
+            actor,
+          );
+          expect(draft.status).toBe('draft');
+          expect(draft.alreadyCreated).toBe(false);
+        });
+
+        it('verifies non-material edit after approval voids prior approval, requiring re-approval before DRAFT creation', async () => {
+          await seedReviewCandidate('safety-post-approval-edit');
+          await assessSupported('safety-post-approval-edit');
+          await approve('safety-post-approval-edit');
+
+          // Candidate is currently approved at revision 2
+          const beforeEdit = await review.detail('safety-post-approval-edit');
+          expect(beforeEdit.reviewStatus).toBe('approved');
+          expect(beforeEdit.reviewRevision).toBe(2);
+
+          // Admin performs non-material metadata edit at revision 2 -> advances to revision 3
+          const afterEdit = await review.edit(
+            'safety-post-approval-edit',
+            {
+              expectedRevision: 2,
+              explanation: 'Updated metadata tags post-approval.',
+              factualClaims: ['Mercy can heal allies'],
+              draft: {
+                prompt: { ar: 'أي بطل يملك قدرة الشفاء الجماعي؟' },
+                answerPayload: {
+                  mode: 'multiple_choice',
+                  options: [
+                    { id: 'a', label: { ar: 'مرسي' } },
+                    { id: 'b', label: { ar: 'جنجي' } },
+                  ],
+                  correctOptionId: 'a',
+                },
+                metadata: {
+                  source: 'content-engine',
+                  tags: ['post-approval-tag'],
+                },
+              },
+            },
+            actor,
+          );
+
+          expect(afterEdit.reviewRevision).toBe(3);
+          expect(afterEdit.reviewStatus).toBe('pending');
+          expect(afterEdit.reviewDecision).toBeNull();
+          // Human assessment is preserved and carried forward
+          expect(afterEdit.humanAssessment).toMatchObject({
+            factualState: 'SUPPORTED',
+            assessedRevision: 3,
+            previousAssessedRevision: 1,
+          });
+          expect(afterEdit.reviewEligibility.canApprove).toBe(true);
+          expect(afterEdit.reviewEligibility.canCreateDraft).toBe(false);
+
+          // Calling createDraft at revision 3 fails closed because approval was voided
+          await expect(
+            review.createDraft('safety-post-approval-edit', 3, actor),
+          ).rejects.toThrow(/Candidate must be approved by a human reviewer/);
+
+          // Admin re-approves at revision 3 -> advances to revision 4
+          const reApproved = await review.approve(
+            'safety-post-approval-edit',
+            {
+              expectedRevision: 3,
+              explanation: 'Re-approved after confirming metadata update.',
+            },
+            actor,
+          );
+          expect(reApproved.reviewRevision).toBe(4);
+          expect(reApproved.reviewStatus).toBe('approved');
+          expect(reApproved.reviewEligibility.canCreateDraft).toBe(true);
+
+          // Draft creation at revision 4 succeeds
+          const draft = await review.createDraft(
+            'safety-post-approval-edit',
+            4,
+            actor,
+          );
+          expect(draft.status).toBe('draft');
+        });
+
+        it('enforces revision CAS checks and prevents concurrent overwrites or stale draft creation', async () => {
+          await seedReviewCandidate('safety-cas-enforcement');
+          await assessSupported('safety-cas-enforcement');
+
+          // Stale expectedRevision on approve throws ConflictException
+          await expect(
+            review.approve(
+              'safety-cas-enforcement',
+              { expectedRevision: 0, explanation: 'Stale approval attempt.' },
+              actor,
+            ),
+          ).rejects.toThrow(/Candidate changed; reload before reviewing/);
+
+          // Valid approval at revision 1 -> advances to revision 2
+          await review.approve(
+            'safety-cas-enforcement',
+            { expectedRevision: 1, explanation: 'Valid approval.' },
+            actor,
+          );
+
+          // Stale draft creation with revision 1 when candidate is at revision 2 fails
+          await expect(
+            review.createDraft('safety-cas-enforcement', 1, actor),
+          ).rejects.toThrow(
+            /Candidate changed; reload before creating a draft/,
+          );
+
+          // Concurrent edit attempt with stale revision 1 fails
+          await expect(
+            review.edit(
+              'safety-cas-enforcement',
+              {
+                expectedRevision: 1,
+                explanation: 'Concurrent edit attempt with stale revision.',
+                factualClaims: ['Mercy can heal allies'],
+                draft: {
+                  prompt: { ar: 'أي بطل يملك قدرة الشفاء الجماعي؟' },
+                  answerPayload: {
+                    mode: 'multiple_choice',
+                    options: [
+                      { id: 'a', label: { ar: 'مرسي' } },
+                      { id: 'b', label: { ar: 'جنجي' } },
+                    ],
+                    correctOptionId: 'a',
+                  },
+                },
+              },
+              actor,
+            ),
+          ).rejects.toThrow(/Candidate changed; reload before reviewing/);
+
+          // Valid draft creation at revision 2 succeeds
+          const draft1 = await review.createDraft(
+            'safety-cas-enforcement',
+            2,
+            actor,
+          );
+          expect(draft1.alreadyCreated).toBe(false);
+
+          // Duplicate draft creation returns idempotent response
+          const draft2 = await review.createDraft(
+            'safety-cas-enforcement',
+            2,
+            actor,
+          );
+          expect(draft2.alreadyCreated).toBe(true);
+          expect(draft2.contentItemId).toBe(draft1.contentItemId);
+        });
+      });
     });
   });
 

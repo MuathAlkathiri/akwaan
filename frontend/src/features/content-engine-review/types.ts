@@ -2,7 +2,45 @@ import type { ContentItem } from "@/features/world-management/types";
 
 export type ReviewStatus = "pending" | "approved" | "rejected";
 export type FactualState =
-  "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED" | "UNRESOLVED";
+  | "SUPPORTED"
+  | "UNSUPPORTED"
+  | "CONTRADICTED"
+  | "UNRESOLVED";
+
+export type FactualOverrideCode =
+  | "ACCEPTED_WITH_EVIDENCE"
+  | "CLAIM_NOT_ANSWER_CRITICAL"
+  | "CLAIM_CORRECTED";
+
+export interface ReviewEligibility {
+  assessmentCurrent: boolean;
+  assessmentStale: boolean;
+  evidenceCount: number;
+  requiresFactualOverride: boolean;
+  allowedFactualOverrideCodes: FactualOverrideCode[];
+  canApprove: boolean;
+  canCreateDraft: boolean;
+  approvalBlockers: string[];
+}
+
+export interface InvalidatedAssessmentSnapshot {
+  invalidatedAtRevision: number;
+  previousRevision: number;
+  invalidatedBy?: string;
+  invalidatedByEmail?: string;
+  invalidatedAt?: string;
+  reason?: string;
+  changedFields?: string[];
+  factVerification?: Record<string, unknown> | null;
+  qualityEvaluation?: Record<string, unknown> | null;
+  humanAssessment?: {
+    factualState?: FactualState;
+    factualExplanation?: string;
+    assessedRevision?: number;
+    reviewerEmail?: string;
+  } | null;
+  reviewDecision?: Record<string, unknown> | null;
+}
 
 export interface ReviewCandidate {
   id: string;
@@ -36,11 +74,20 @@ export interface ReviewCandidate {
   humanAssessment: {
     factualState: FactualState;
     factualExplanation: string;
-    evidence: Array<{ url: string; title?: string; note?: string }>;
+    evidence: Array<{
+      url: string;
+      title?: string;
+      note?: string;
+      claimIndex?: number;
+      claimText?: string;
+    }>;
     quality: QualityRubric;
+    assessedRevision?: number;
     reviewerEmail: string;
     assessedAt: string;
   } | null;
+  lastInvalidatedAssessments?: InvalidatedAssessmentSnapshot | null;
+  reviewEligibility?: ReviewEligibility;
   reviewDecision: Record<string, unknown> | null;
   reviewEvents: Array<{
     action: string;
@@ -49,19 +96,28 @@ export interface ReviewCandidate {
     revision: number;
     reasonCode?: string | null;
     explanation?: string | null;
+    details?: Record<string, unknown> | null;
   }>;
   publishedContentItemId: string | null;
   canonicalTarget?: {
     worldId: string;
+    worldKey?: string;
     scopeId: string;
+    scopeKey?: string;
+    scopeName?: string;
     challengeTypeId: string;
+    mechanicKey?: string;
+    challengeTypeName?: string;
+    challengeAnswerMode?: string;
   } | null;
+  targetResolutionError?: string | null;
   job: {
     id: string;
     mechanicKey: string;
     worldKey: string;
     scopeKey: string;
     status: string;
+    specVersion?: string | null;
   } | null;
 }
 

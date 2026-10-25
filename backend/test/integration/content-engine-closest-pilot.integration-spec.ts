@@ -172,6 +172,7 @@ describe('Content Engine — Puzzles closest pilot lifecycle', () => {
   });
 
   describe('full lifecycle', () => {
+    let planDigest: string;
     let jobId: string;
     let candidateId: string;
     let contentItemId: string;
@@ -187,12 +188,14 @@ describe('Content Engine — Puzzles closest pilot lifecycle', () => {
       // Live mode is off throughout: no paid call is reachable.
       expect(body.liveProviderEnabled).toBe(false);
       expect(body.estimatedMicros).toBeGreaterThan(0);
+      expect(body.planDigest).toMatch(/^[a-f0-9]{64}$/);
+      planDigest = body.planDigest;
     });
 
     it('2. submits the job', async () => {
       const body = (
         await asAdmin(api().post('/admin/content-engine/jobs'))
-          .send(PILOT)
+          .send({ ...PILOT, planDigest })
           .expect(201)
       ).body.data;
       jobId = body.jobId;
@@ -201,7 +204,7 @@ describe('Content Engine — Puzzles closest pilot lifecycle', () => {
 
     it('3-6. generates, screens, falls back on facts, and queues for review', async () => {
       await asAdmin(api().post('/admin/content-engine/jobs/run'))
-        .send({})
+        .send({ jobId })
         .expect(201);
 
       const status = (

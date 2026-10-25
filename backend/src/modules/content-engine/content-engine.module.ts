@@ -6,6 +6,7 @@ import { ContentItemCompatibilityPolicy } from '../world-content/domain/content-
 import { ChallengeTypeRepository } from '../world-content/persistence/challenge-type.repository';
 import { ContentItemRepository } from '../world-content/persistence/content-item.repository';
 import { ScopeRepository } from '../world-content/persistence/scope.repository';
+import { WorldChallengeConfigurationRepository } from '../world-content/persistence/world-challenge-configuration.repository';
 import { WorldRepository } from '../world-content/persistence/world.repository';
 import {
   ChallengeType,
@@ -16,6 +17,10 @@ import {
   ContentItemSchema,
 } from '../world-content/schemas/content-item.schema';
 import { Scope, ScopeSchema } from '../world-content/schemas/scope.schema';
+import {
+  WorldChallengeConfiguration,
+  WorldChallengeConfigurationSchema,
+} from '../world-content/schemas/world-challenge-configuration.schema';
 import { World, WorldSchema } from '../world-content/schemas/world.schema';
 import { AuthoringContextService } from './application/authoring-context.service';
 import { CandidateGeneratorService } from './application/candidate-generator.service';
@@ -85,6 +90,10 @@ import {
       { name: World.name, schema: WorldSchema },
       { name: Scope.name, schema: ScopeSchema },
       { name: ChallengeType.name, schema: ChallengeTypeSchema },
+      {
+        name: WorldChallengeConfiguration.name,
+        schema: WorldChallengeConfigurationSchema,
+      },
       { name: ContentItem.name, schema: ContentItemSchema },
       { name: EngineJobDocument.name, schema: EngineJobSchema },
       { name: EngineBudgetDocument.name, schema: EngineBudgetSchema },
@@ -104,23 +113,23 @@ import {
       //
       // Four independent conditions must hold before a paid call is possible:
       // the engine enabled, live mode explicitly on, a provider named, and a
-      // key present. Any one missing leaves the slot unbound and generation
-      // impossible — which is the Phase 1b/1c behaviour, preserved.
+      // key present. Any one missing leaves the slot unbound (`null`) and
+      // generation impossible — which is the Phase 1b/1c behaviour, preserved.
       provide: ENGINE_AI_PROVIDER,
       inject: [ConfigService],
-      useFactory: (config: ConfigService): AiProvider | undefined => {
+      useFactory: (config: ConfigService): AiProvider | null => {
         const truthy = (key: string) =>
           ['true', '1', 'yes', 'on'].includes(
             config.get<string>(key)?.trim().toLowerCase() ?? '',
           );
-        if (!truthy(CONTENT_ENGINE_ENABLED)) return undefined;
-        if (!truthy(ENGINE_LIVE_PROVIDER_ENABLED)) return undefined;
+        if (!truthy(CONTENT_ENGINE_ENABLED)) return null;
+        if (!truthy(ENGINE_LIVE_PROVIDER_ENABLED)) return null;
         const name = config
           .get<string>('ENGINE_PROVIDER_NAME')
           ?.trim()
           .toLowerCase();
-        if (name !== 'openrouter') return undefined;
-        if (!config.get<string>('OPENROUTER_API_KEY')?.trim()) return undefined;
+        if (name !== 'openrouter') return null;
+        if (!config.get<string>('OPENROUTER_API_KEY')?.trim()) return null;
         return new OpenRouterAiProvider(config);
       },
     },
@@ -153,6 +162,7 @@ import {
     WorldRepository,
     ScopeRepository,
     ChallengeTypeRepository,
+    WorldChallengeConfigurationRepository,
     ContentItemRepository,
     ContentItemCompatibilityPolicy,
     ContentItemService,

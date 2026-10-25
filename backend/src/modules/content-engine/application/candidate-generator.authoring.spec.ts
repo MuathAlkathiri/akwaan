@@ -694,3 +694,238 @@ describe('output budget', () => {
     expect(Number.isInteger(OUTPUT_TOKENS_PER_CANDIDATE)).toBe(true);
   });
 });
+
+describe('Phase A generation contract in CandidateGeneratorService', () => {
+  it('rejects candidate counts exceeding configured capacity rather than truncating', async () => {
+    const gen = new CandidateGeneratorService(
+      {} as never,
+      { holdsLease: async () => true } as never,
+      {} as never,
+      {
+        get: (key: string) => (key === 'ENGINE_BATCH_SIZE' ? '10' : undefined),
+      } as unknown as ConfigService,
+    );
+    await expect(
+      gen.generate({
+        jobId: 'job-1',
+        leaseEpoch: 1,
+        attempt: 1,
+        context: context({ mechanicKey: 'read-your-opponent' }),
+        count: 11,
+      }),
+    ).rejects.toMatchObject({
+      code: 'CANDIDATE_COUNT_EXCEEDS_CAPACITY',
+    });
+  });
+
+  it('supports single-difficulty RYO modes (easy, medium, relatively_difficult) and rejects Quality Judge "hard"', () => {
+    const gen = service();
+    const ryoCtx = context({ mechanicKey: 'read-your-opponent' });
+
+    const easyPrompt = gen.buildPrompt(ryoCtx, 3, 'multiple_choice', {
+      difficulty: 'easy',
+    });
+    expect(easyPrompt).toContain('- requested difficulty mode: easy');
+    expect(easyPrompt).toContain('- easy: 100%');
+
+    const relDiffPrompt = gen.buildPrompt(ryoCtx, 3, 'multiple_choice', {
+      difficulty: 'relatively_difficult',
+    });
+    expect(relDiffPrompt).toContain(
+      '- requested difficulty mode: relatively_difficult',
+    );
+    expect(relDiffPrompt).toContain('- relatively difficult: 100%');
+
+    expect(() =>
+      gen.buildPrompt(ryoCtx, 3, 'multiple_choice', {
+        difficulty: 'hard' as never,
+      }),
+    ).toThrow(/INVALID_DIFFICULTY_SELECTION/);
+  });
+
+  it('rejects difficulty selection for closest while keeping closest prompt versioned', () => {
+    const gen = service();
+    const closestCtx = context({ mechanicKey: 'closest' });
+
+    expect(() =>
+      gen.buildPrompt(closestCtx, 3, 'closest', {
+        difficulty: 'easy',
+      }),
+    ).toThrow(/DIFFICULTY_SELECTION_NOT_SUPPORTED/);
+  });
+
+  it('places batchGuidance immediately before ORIGINALITY_GUIDANCE as subordinate framing and rejects > 1,000 chars', () => {
+    const gen = service();
+    const ryoCtx = context({ mechanicKey: 'read-your-opponent' });
+
+    const prompt = gen.buildPrompt(ryoCtx, 3, 'multiple_choice', {
+      batchGuidance: 'Focus on classical Arabic idioms.',
+    });
+    const guidanceIdx = prompt.indexOf(
+      '## OPERATOR BATCH GUIDANCE (SUBORDINATE TO CANONICAL RULES)',
+    );
+    const originalityIdx = prompt.indexOf(ORIGINALITY_GUIDANCE);
+    expect(guidanceIdx).toBeGreaterThan(0);
+    expect(originalityIdx).toBeGreaterThan(guidanceIdx);
+    expect(prompt).toContain(
+      'strictly subordinate to the Global Governance, Mechanic Profile, World Profile, Scope Profile, Scope Knowledge',
+    );
+    expect(prompt).toContain('Focus on classical Arabic idioms.');
+
+    expect(() =>
+      gen.buildPrompt(ryoCtx, 3, 'multiple_choice', {
+        batchGuidance: 'x'.repeat(1001),
+      }),
+    ).toThrow(/BATCH_GUIDANCE_TOO_LONG/);
+  });
+
+  it('executes using pinned generationSpec (model, promptVersion, temperature, omitTemperature, reasoningEffort, difficulty, guidance, count, maxOutputTokens, contextHash) even when ConfigService drifts', async () => {
+    const updateOne = jest.fn(() => ({
+      exec: async () => ({ matchedCount: 1 }),
+    }));
+    const reserve = jest.fn(async () => ({ reservedMicros: 123 }));
+    const settle = jest.fn(async () => ({ actualMicros: 100 }));
+    const generateText = jest.fn(async () => ({
+      text: JSON.stringify({
+        candidates: [
+          {
+            concept: 'c1',
+            prompt: 'سؤال ١؟',
+            options: [
+              { id: 'a', label: 'أ' },
+              { id: 'b', label: 'ب' },
+            ],
+            correctOptionId: 'a',
+            distractorRationale: [{ optionId: 'b', why: 'w' }],
+            estimatedConfidence: { band: 'even', why: 'w' },
+            factualClaims: ['claim 1'],
+          },
+          {
+            concept: 'c2',
+            prompt: 'سؤال ٢؟',
+            options: [
+              { id: 'a', label: 'أ' },
+              { id: 'b', label: 'ب' },
+            ],
+            correctOptionId: 'a',
+            distractorRationale: [{ optionId: 'b', why: 'w' }],
+            estimatedConfidence: { band: 'likely', why: 'w' },
+            factualClaims: ['claim 2'],
+          },
+        ],
+      }),
+      usage: { promptTokens: 500, completionTokens: 200 },
+    }));
+
+    // Live ConfigService has drifted in every configurable dimension after job creation
+    const driftedConfig = {
+      get: (key: string) =>
+        ({
+          ENGINE_PROVIDER_NAME: 'drifted-provider',
+          ENGINE_GENERATION_MODEL: 'drifted-model',
+          ENGINE_QUALITY_MODEL: 'drifted-quality-model',
+          ENGINE_GENERATION_TEMPERATURE: '1.5',
+          ENGINE_OMIT_TEMPERATURE: 'true',
+          ENGINE_REASONING_EFFORT: 'high',
+          ENGINE_OUTPUT_TOKENS_PER_CANDIDATE: '400',
+          ENGINE_BATCH_SIZE: '1',
+          ENGINE_RYO_DIFFICULTY_EASY_PERCENT: '90',
+          ENGINE_RYO_DIFFICULTY_MEDIUM_PERCENT: '5',
+          ENGINE_RYO_DIFFICULTY_RELATIVELY_DIFFICULT_PERCENT: '5',
+        })[key],
+    } as unknown as ConfigService;
+
+    const gen = new CandidateGeneratorService(
+      { updateOne } as never,
+      { holdsLease: async () => true } as never,
+      { reserve, settle } as never,
+      driftedConfig,
+      { generateText } as never,
+    );
+
+    const ryoCtx = context({ mechanicKey: 'read-your-opponent' });
+    const pinnedContextHash = 'a'.repeat(64);
+    const pinnedSpec = {
+      specVersion: 'generation-spec-v1' as const,
+      worldKey: ryoCtx.worldKey,
+      scopeKey: ryoCtx.scopeKey,
+      mechanicKey: 'read-your-opponent',
+      answerMode: 'multiple_choice' as const,
+      targetCount: 2,
+      difficulty: 'relatively_difficult' as const,
+      ryoDifficultyTargets: {
+        easy: 0,
+        medium: 0,
+        relativelyDifficult: 100,
+      },
+      batchGuidance: 'Pinned guidance: focus on historical milestones.',
+      promptVersion: 'mc-v2',
+      provider: 'pinned-provider',
+      generationModel: 'pinned-gen-model',
+      qualityModel: 'pinned-quality-model',
+      temperature: 0.45,
+      omitTemperature: false,
+      reasoningEffort: 'low' as const,
+      outputTokensPerCandidate: 950,
+      maxOutputTokens: 1900,
+      contextHash: pinnedContextHash,
+      ruleSetDigest: 'b'.repeat(64),
+    };
+
+    const candidates = await gen.generate({
+      jobId: 'job-provenance-1',
+      leaseEpoch: 3,
+      attempt: 1,
+      context: ryoCtx,
+      count: 2,
+      generationSpec: pinnedSpec,
+    });
+
+    expect(candidates).toHaveLength(2);
+    expect(reserve).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'pinned-provider',
+        model: 'pinned-gen-model',
+        expected: expect.objectContaining({
+          maxOutputTokens: 1900,
+        }),
+      }),
+    );
+    expect(generateText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'pinned-gen-model',
+        promptVersion: 'mc-v2',
+        omitTemperature: false,
+        temperature: 0.45,
+        reasoningEffort: 'low',
+        maxOutputTokens: 1900,
+        prompt: expect.stringContaining(
+          'Pinned guidance: focus on historical milestones.',
+        ),
+      }),
+    );
+    const sentPrompt = (
+      generateText.mock.calls[0] as unknown as [{ prompt: string }]
+    )[0].prompt;
+    expect(sentPrompt).toContain(
+      '- requested difficulty mode: relatively_difficult',
+    );
+    expect(sentPrompt).toContain('- relatively difficult: 100%');
+    expect(sentPrompt).toContain(
+      'Author exactly 2 candidate items for the mechanic above',
+    );
+
+    expect(updateOne).toHaveBeenCalledWith(
+      { jobId: 'job-provenance-1', ordinal: 0 },
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          contextHash: pinnedContextHash,
+          promptVersion: 'mc-v2',
+          provider: 'pinned-provider',
+          model: 'pinned-gen-model',
+        }),
+      }),
+      { upsert: true },
+    );
+  });
+});

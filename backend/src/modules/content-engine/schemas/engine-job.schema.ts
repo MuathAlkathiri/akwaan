@@ -1,11 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, SchemaTypes } from 'mongoose';
 import {
   ENGINE_PIPELINE_STAGES,
   ENGINE_JOB_STATUSES,
   EnginePipelineStage,
   EngineJobStatus,
 } from '../domain/content-engine.constants';
+import { GenerationSpecification } from '../domain/generation-specification';
 
 /**
  * One generation job.
@@ -44,6 +45,33 @@ export class EngineJobDocument {
 
   @Prop({ type: Number, required: true, min: 1 })
   targetCount!: number;
+
+  /**
+   * Versioned, immutable generation specification captured at submission time.
+   * Absent on legacy jobs created before Phase A; execution fails closed when
+   * provenance is missing or incomplete.
+   */
+  @Prop({ type: String, default: null })
+  specVersion?: string | null;
+
+  @Prop({ type: SchemaTypes.Mixed, default: null })
+  generationSpec?: GenerationSpecification | null;
+
+  @Prop({ type: String, default: null })
+  planDigest?: string | null;
+
+  /** Authenticated Admin actor attribution captured at submission and run time. */
+  @Prop({ type: String, default: null })
+  createdBy?: string | null;
+
+  @Prop({ type: String, default: null })
+  createdByEmail?: string | null;
+
+  @Prop({ type: String, default: null })
+  lastExecutedBy?: string | null;
+
+  @Prop({ type: String, default: null })
+  lastExecutedByEmail?: string | null;
 
   @Prop({
     type: String,

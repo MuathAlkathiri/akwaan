@@ -1328,6 +1328,19 @@ export function findRakkibhaProblems(values: ContentItemFormValues): string[] {
   return problems;
 }
 
+export function normalizeArabicAnswerClient(raw: string): string {
+  return raw
+    .normalize("NFKC")
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, "")
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 export function findLocalFormProblems(
   values: ContentItemFormValues,
   /**
@@ -1338,9 +1351,69 @@ export function findLocalFormProblems(
    * keeps every existing caller — and every saved item — behaving exactly as
    * before.
    */
-  authoring: { isNewItem?: boolean } = {},
+  authoring: { isNewItem?: boolean; isCandidateReview?: boolean } = {},
 ): string[] {
   const problems: string[] = [];
+  if (authoring.isCandidateReview) {
+    if (values.answer.mode === "multiple_choice") {
+      const options = values.answer.options ?? [];
+      if (options.length < 2 || options.length > 4) {
+        problems.push("يجب أن يحتوي سؤال الاختيار المتعدد على خيارين إلى 4 خيارات.");
+      }
+      const seenNormalized = new Set<string>();
+      for (const option of options) {
+        const text = option.label ?? "";
+        const normalized = normalizeArabicAnswerClient(text);
+        if (!text.trim() || !normalized) {
+          problems.push("جميع خيارات الإجابة يجب أن تحتوي على نص عربي غير فارغ.");
+        } else if (seenNormalized.has(normalized)) {
+          problems.push("لا يمكن تكرار نص الخيارات بعد تطبيع النص العربي.");
+        } else {
+          seenNormalized.add(normalized);
+        }
+      }
+      if (
+        !values.answer.correctOptionId.trim() ||
+        !options.some((opt) => opt.id === values.answer.correctOptionId)
+      ) {
+        problems.push("حدد الخيار الصحيح من بين الخيارات المتاحة.");
+      }
+    } else if (values.answer.mode === "closest") {
+      const min = toNumber(values.answer.closestMin);
+      const max = toNumber(values.answer.closestMax);
+      const step = toNumber(values.answer.closestStep);
+      const target = toNumber(values.answer.correctValue);
+      if (target === undefined) {
+        problems.push("القيمة الصحيحة لمين أقرب مطلوبة ويجب أن تكون رقماً.");
+      }
+      if (
+        min !== undefined &&
+        max !== undefined &&
+        step !== undefined &&
+        min < max &&
+        step > 0 &&
+        target !== undefined &&
+        target >= min &&
+        target <= max
+      ) {
+        const stepsFromMin = (target - min) / step;
+        if (Math.abs(stepsFromMin - Math.round(stepsFromMin)) > 1e-6) {
+          problems.push(
+            "الإجابة الصحيحة يجب أن تقع على شبكة خطوات المؤشر (قابلة للوصول من الحد الأدنى بمضاعفات الخطوة).",
+          );
+        }
+      }
+    } else if (values.answer.mode === "match") {
+      const answers = toLines(values.answer.acceptedAnswers);
+      if (!answers.length) {
+        problems.push("أضف إجابة مقبولة واحدة على الأقل.");
+      }
+      const normalizedSet = new Set(answers.map(normalizeArabicAnswerClient));
+      if (normalizedSet.size !== answers.length) {
+        problems.push("لا يمكن تكرار الإجابات المقبولة بعد التطبيع.");
+      }
+    }
+  }
   if (values.answer.mode === "closest") {
     const interaction = values.answer.closestInteraction;
     if (authoring.isNewItem && !hasClosestSliderMode(interaction)) {

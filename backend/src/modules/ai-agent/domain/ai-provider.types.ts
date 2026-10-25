@@ -1,7 +1,11 @@
 export interface AiTextGenerationRequest {
+  model?: string;
+  promptVersion?: string;
   systemInstruction?: string;
   prompt: string;
   temperature?: number;
+  omitTemperature?: boolean;
+  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high' | null;
   maxOutputTokens?: number;
   responseSchema?: Record<string, unknown>;
   timeoutMs?: number;

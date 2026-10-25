@@ -1,9 +1,10 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
   IsIn,
   IsInt,
+  IsNotEmpty,
   IsObject,
   IsOptional,
   IsString,
@@ -13,6 +14,9 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+
+const trimString = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.trim() : value;
 
 export class ReviewCandidateQueryDto {
   @IsOptional() @IsString() jobId?: string;
@@ -28,13 +32,41 @@ export class CandidateEditDto {
   @ArrayMaxSize(20)
   @IsString({ each: true })
   factualClaims!: string[];
-  @IsString() @MaxLength(1000) explanation!: string;
+  @Transform(trimString)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(1000)
+  explanation!: string;
 }
 
 export class ReviewEvidenceDto {
-  @IsUrl({ require_protocol: true }) @MaxLength(2000) url!: string;
-  @IsOptional() @IsString() @MaxLength(200) title?: string;
-  @IsOptional() @IsString() @MaxLength(1000) note?: string;
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  claimIndex?: number;
+
+  @IsOptional()
+  @Transform(trimString)
+  @IsString()
+  @MaxLength(500)
+  claimText?: string;
+
+  @Transform(trimString)
+  @IsUrl({ require_protocol: true })
+  @MaxLength(2000)
+  url!: string;
+
+  @IsOptional()
+  @Transform(trimString)
+  @IsString()
+  @MaxLength(200)
+  title?: string;
+
+  @IsOptional()
+  @Transform(trimString)
+  @IsString()
+  @MaxLength(1000)
+  note?: string;
 }
 
 export class QualityRubricDto {
@@ -43,14 +75,22 @@ export class QualityRubricDto {
   @IsInt() @Min(1) @Max(5) clarity!: number;
   @IsInt() @Min(1) @Max(5) multiplayerFit!: number;
   @IsInt() @Min(1) @Max(5) originality!: number;
-  @IsString() @MaxLength(2000) explanation!: string;
+  @Transform(trimString)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  explanation!: string;
 }
 
 export class CandidateAssessmentDto {
   @IsInt() @Min(0) expectedRevision!: number;
   @IsIn(['SUPPORTED', 'UNSUPPORTED', 'CONTRADICTED', 'UNRESOLVED'])
   factualState!: 'SUPPORTED' | 'UNSUPPORTED' | 'CONTRADICTED' | 'UNRESOLVED';
-  @IsString() @MaxLength(2000) factualExplanation!: string;
+  @Transform(trimString)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  factualExplanation!: string;
   @IsArray()
   @ArrayMaxSize(20)
   @ValidateNested({ each: true })
@@ -61,7 +101,11 @@ export class CandidateAssessmentDto {
 
 export class CandidateApprovalDto {
   @IsInt() @Min(0) expectedRevision!: number;
-  @IsString() @MaxLength(2000) explanation!: string;
+  @Transform(trimString)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  explanation!: string;
   @IsOptional()
   @IsIn([
     'ACCEPTED_WITH_EVIDENCE',
@@ -71,6 +115,7 @@ export class CandidateApprovalDto {
   factualOverrideCode?:
     'ACCEPTED_WITH_EVIDENCE' | 'CLAIM_NOT_ANSWER_CRITICAL' | 'CLAIM_CORRECTED';
   @IsOptional()
+  @Transform(trimString)
   @IsString()
   @MaxLength(2000)
   factualOverrideExplanation?: string;
@@ -89,7 +134,11 @@ export class CandidateRejectionDto {
     'OTHER',
   ])
   reasonCode!: string;
-  @IsString() @MaxLength(2000) explanation!: string;
+  @Transform(trimString)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  explanation!: string;
 }
 
 export class CreateCandidateDraftDto {

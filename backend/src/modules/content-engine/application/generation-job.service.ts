@@ -1,11 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHash } from 'crypto';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import {
   CONTENT_ENGINE_ENABLED,
   DEFAULT_LEASE_MS,
+  ENGINE_JOB_STATUSES,
   EngineDisabledError,
   EnginePipelineStage,
   EngineJobStatus,
@@ -13,6 +14,14 @@ import {
   LeaseLostError,
   MAX_JOB_ATTEMPTS,
 } from '../domain/content-engine.constants';
+import {
+  GenerationSpecification,
+  buildGenerationSpecification,
+  computeGenerationRequestHash,
+  freezeGenerationSpecification,
+  generatorAnswerModeFor,
+  isGenerationSpecificationComplete,
+} from '../domain/generation-specification';
 import { EngineJobDocument } from '../schemas/engine-job.schema';
 
 export interface SubmitJobInput {
@@ -22,6 +31,10 @@ export interface SubmitJobInput {
   targetCount: number;
   /** Bumped when prompts or context change, so old work is not deduplicated. */
   contextRevision: string;
+  generationSpec?: GenerationSpecification | null;
+  planDigest?: string | null;
+  createdBy?: string | null;
+  createdByEmail?: string | null;
 }
 
 export interface LeasedJob {
@@ -32,11 +45,24 @@ export interface LeasedJob {
   scopeKey: string;
   targetCount: number;
   attempts: number;
+  generationSpec?: GenerationSpecification | null;
 }
 
-/** Stable identity of a request. Order-independent, revision-sensitive. */
-export const requestHashOf = (input: SubmitJobInput): string =>
-  createHash('sha256')
+/**
+ * Stable identity of a request.
+ *
+ * When a full `GenerationSpecification` is present, hashes the complete
+ * canonical specification (World, Scope, mechanic, count, difficulty,
+ * guidance, prompt version, model, temperature, and relevant config).
+ */
+export const requestHashOf = (input: SubmitJobInput): string => {
+  if (
+    input.generationSpec &&
+    isGenerationSpecificationComplete(input.generationSpec)
+  ) {
+    return computeGenerationRequestHash(input.generationSpec);
+  }
+  return createHash('sha256')
     .update(
       JSON.stringify([
         input.mechanicKey,
@@ -47,6 +73,7 @@ export const requestHashOf = (input: SubmitJobInput): string =>
       ]),
     )
     .digest('hex');
+};
 
 /**
  * Job lifecycle for the Content Engine.
@@ -89,10 +116,13 @@ export class GenerationJobService {
    * submissions race on the insert, exactly one wins, and both callers are
    * handed the same job. Nothing is deduplicated in application code.
    */
-  async submit(
-    input: SubmitJobInput,
-  ): Promise<{ jobId: string; created: boolean }> {
+  async submit(input: SubmitJobInput): Promise<{
+    jobId: string;
+    created: boolean;
+    generationSpec: GenerationSpecification | null;
+  }> {
     this.assertEnabled();
+    const resolvedSpec = this.resolveSpecificationForSubmit(input);
     const requestHash = requestHashOf(input);
 
     const before = await this.jobs
@@ -105,6 +135,13 @@ export class GenerationJobService {
             worldKey: input.worldKey,
             scopeKey: input.scopeKey,
             targetCount: input.targetCount,
+            specVersion: resolvedSpec?.specVersion ?? null,
+            generationSpec: resolvedSpec,
+            planDigest: input.planDigest ?? null,
+            createdBy: input.createdBy ?? null,
+            createdByEmail: input.createdByEmail ?? null,
+            lastExecutedBy: null,
+            lastExecutedByEmail: null,
             status: 'queued' as EngineJobStatus,
             leaseOwner: null,
             leaseExpiresAt: null,
@@ -123,14 +160,145 @@ export class GenerationJobService {
       .lean()
       .exec();
 
-    if (before) return { jobId: String(before._id), created: false };
+    if (before) {
+      return {
+        jobId: String(before._id),
+        created: false,
+        generationSpec: before.generationSpec
+          ? freezeGenerationSpecification(before.generationSpec)
+          : resolvedSpec,
+      };
+    }
 
     const created = await this.jobs.findOne({ requestHash }).lean().exec();
-    return { jobId: String(created!._id), created: true };
+    return {
+      jobId: String(created!._id),
+      created: true,
+      generationSpec: created?.generationSpec
+        ? freezeGenerationSpecification(created.generationSpec)
+        : resolvedSpec,
+    };
+  }
+
+  private resolveSpecificationForSubmit(
+    input: SubmitJobInput,
+  ): GenerationSpecification | null {
+    if (input.generationSpec) {
+      return freezeGenerationSpecification(input.generationSpec);
+    }
+    if (!generatorAnswerModeFor(input.mechanicKey)) {
+      return null;
+    }
+    try {
+      return buildGenerationSpecification({
+        config: this.config,
+        context: {
+          worldKey: input.worldKey,
+          scopeKey: input.scopeKey,
+          mechanicKey: input.mechanicKey,
+          contextHash: input.contextRevision,
+          effectiveRules: {
+            version: 1,
+            digest: createHash('sha256')
+              .update(`rules:${input.mechanicKey}:${input.contextRevision}`)
+              .digest('hex'),
+            rules: [],
+            resolved: [],
+            conflicts: [],
+            structuredSources: [],
+          },
+        },
+        targetCount: input.targetCount,
+      });
+    } catch {
+      return null;
+    }
   }
 
   async findById(jobId: string): Promise<EngineJobDocument | null> {
+    if (!Types.ObjectId.isValid(jobId)) return null;
     return this.jobs.findById(jobId).lean().exec();
+  }
+
+  /**
+   * Read-only paginated job listing ordered newest-first (`_id: -1`).
+   *
+   * Uses existing `engine_jobs` persistence with bounded page size (1..50,
+   * default 20) and deterministic cursor pagination (`_id < cursor`).
+   */
+  async list(input?: {
+    cursor?: string;
+    limit?: number;
+    status?: string;
+    worldKey?: string;
+    scopeKey?: string;
+    mechanicKey?: string;
+  }): Promise<{
+    items: Array<EngineJobDocument & { _id?: unknown }>;
+    nextCursor: string | null;
+  }> {
+    const rawLimit = input?.limit ?? 20;
+    if (
+      !Number.isFinite(rawLimit) ||
+      !Number.isInteger(rawLimit) ||
+      rawLimit < 1 ||
+      rawLimit > 50
+    ) {
+      throw new BadRequestException({
+        code: 'INVALID_PAGE_LIMIT',
+        message:
+          'INVALID_PAGE_LIMIT: limit must be an integer between 1 and 50',
+      });
+    }
+
+    const filter: Record<string, unknown> = {};
+    if (input?.cursor !== undefined && input.cursor.trim().length > 0) {
+      const trimmedCursor = input.cursor.trim();
+      if (!Types.ObjectId.isValid(trimmedCursor)) {
+        throw new BadRequestException({
+          code: 'INVALID_CURSOR',
+          message: 'INVALID_CURSOR: cursor must be a valid job identifier',
+        });
+      }
+      filter._id = { $lt: new Types.ObjectId(trimmedCursor) };
+    }
+    if (input?.status !== undefined && input.status.trim().length > 0) {
+      const trimmedStatus = input.status.trim() as EngineJobStatus;
+      if (!ENGINE_JOB_STATUSES.includes(trimmedStatus)) {
+        throw new BadRequestException({
+          code: 'INVALID_JOB_STATUS',
+          message: `INVALID_JOB_STATUS: unsupported status filter "${trimmedStatus}"`,
+        });
+      }
+      filter.status = trimmedStatus;
+    }
+    if (input?.worldKey !== undefined && input.worldKey.trim().length > 0) {
+      filter.worldKey = input.worldKey.trim();
+    }
+    if (input?.scopeKey !== undefined && input.scopeKey.trim().length > 0) {
+      filter.scopeKey = input.scopeKey.trim();
+    }
+    if (
+      input?.mechanicKey !== undefined &&
+      input.mechanicKey.trim().length > 0
+    ) {
+      filter.mechanicKey = input.mechanicKey.trim();
+    }
+
+    const rows = await this.jobs
+      .find(filter)
+      .sort({ _id: -1 })
+      .limit(rawLimit + 1)
+      .lean()
+      .exec();
+
+    const items = rows.slice(0, rawLimit);
+    const nextCursor =
+      rows.length > rawLimit && items.length > 0
+        ? String(items[items.length - 1]._id)
+        : null;
+
+    return { items, nextCursor };
   }
 
   /**
@@ -184,6 +352,75 @@ export class GenerationJobService {
       scopeKey: claimed.scopeKey,
       targetCount: claimed.targetCount,
       attempts: claimed.attempts,
+      generationSpec: claimed.generationSpec
+        ? freezeGenerationSpecification(claimed.generationSpec)
+        : null,
+    };
+  }
+
+  /**
+   * Claim one exact job by `jobId`.
+   *
+   * Used by targeted Admin execution so an Admin can never accidentally lease
+   * or execute a different queued job.
+   */
+  async leaseById(input: {
+    jobId: string;
+    owner: string;
+    leaseMs?: number;
+    now?: Date;
+    executedBy?: string | null;
+    executedByEmail?: string | null;
+  }): Promise<LeasedJob | null> {
+    this.assertEnabled();
+    if (!Types.ObjectId.isValid(input.jobId)) return null;
+    const now = input.now ?? new Date();
+    const expiresAt = new Date(
+      now.getTime() + (input.leaseMs ?? DEFAULT_LEASE_MS),
+    );
+
+    const claimed = await this.jobs
+      .findOneAndUpdate(
+        {
+          _id: new Types.ObjectId(input.jobId),
+          cancellationRequested: false,
+          attempts: { $lt: MAX_JOB_ATTEMPTS },
+          $or: [
+            { status: 'queued' },
+            { status: 'leased', leaseExpiresAt: { $lt: now } },
+          ],
+        },
+        {
+          $set: {
+            status: 'leased' as EngineJobStatus,
+            leaseOwner: input.owner,
+            leaseExpiresAt: expiresAt,
+            ...(input.executedBy !== undefined
+              ? { lastExecutedBy: input.executedBy }
+              : {}),
+            ...(input.executedByEmail !== undefined
+              ? { lastExecutedByEmail: input.executedByEmail }
+              : {}),
+          },
+          $inc: { leaseEpoch: 1, attempts: 1 },
+        },
+        { returnDocument: 'after' },
+      )
+      .lean()
+      .exec();
+
+    if (!claimed) return null;
+    return {
+      jobId: String(claimed._id),
+      leaseEpoch: claimed.leaseEpoch,
+      mechanicKey: claimed.mechanicKey,
+      worldKey: claimed.worldKey,
+      scopeKey: claimed.scopeKey,
+      targetCount: claimed.targetCount,
+      attempts: claimed.attempts,
+      generationSpec: claimed.generationSpec
+        ? freezeGenerationSpecification(claimed.generationSpec)
+        : null,
     };
   }
 

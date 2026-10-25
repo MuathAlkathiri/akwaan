@@ -21,7 +21,13 @@ export type CandidateReviewStatus = (typeof CANDIDATE_REVIEW_STATUSES)[number];
 @Schema({ _id: false })
 export class CandidateReviewEvent {
   @Prop({ type: String, required: true })
-  action!: 'edited' | 'assessed' | 'approved' | 'rejected' | 'draft_created';
+  action!:
+    | 'edited'
+    | 'assessment_invalidated'
+    | 'assessed'
+    | 'approved'
+    | 'rejected'
+    | 'draft_created';
 
   @Prop({ type: String, required: true }) actorId!: string;
   @Prop({ type: String, required: true }) actorEmail!: string;
@@ -145,6 +151,14 @@ export class EngineCandidateDocument {
 
   @Prop({ type: Object, default: null })
   humanAssessment!: Record<string, unknown> | null;
+
+  /**
+   * Historical snapshot of automated and human assessments invalidated by the
+   * most recent material human edit. Kept separate from active assessment
+   * fields so stale assessments can never satisfy approval gates.
+   */
+  @Prop({ type: Object, default: null })
+  lastInvalidatedAssessments!: Record<string, unknown> | null;
 
   @Prop({ type: Object, default: null })
   reviewDecision!: Record<string, unknown> | null;

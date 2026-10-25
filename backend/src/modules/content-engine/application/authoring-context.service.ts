@@ -91,6 +91,41 @@ interface Manifest {
   >;
 }
 
+export interface AuthoringCatalogMechanic {
+  mechanicKey: string;
+  category: string;
+  boundWorldKey: string | null;
+  status: string;
+  profilePath: string;
+  profilePresent: boolean;
+  aliases: string[];
+}
+
+export interface AuthoringCatalogScope {
+  worldKey: string;
+  scopeKey: string;
+  scopePath: string;
+  knowledgePath: string;
+  exemplarsPath: string;
+  scopeProfilePresent: boolean;
+  knowledgePresent: boolean;
+  exemplarsPresent: boolean;
+}
+
+export interface AuthoringCatalogWorld {
+  worldKey: string;
+  profilePath: string;
+  profilePresent: boolean;
+  scopeKeys: string[];
+}
+
+export interface AuthoringManifestCatalog {
+  globalProfilePresent: boolean;
+  worlds: AuthoringCatalogWorld[];
+  scopes: AuthoringCatalogScope[];
+  mechanics: AuthoringCatalogMechanic[];
+}
+
 /**
  * Canonical authoring context for the engine.
  *
@@ -144,16 +179,81 @@ export class AuthoringContextService {
   }
 
   /**
+   * Read-only view of the canonical authoring manifest and file presence.
+   *
+   * Used by server-derived authoring options so callers inspect canonical
+   * World, Scope, and Mechanic definitions through the single authoring
+   * authority rather than duplicating manifest paths.
+   */
+  catalog(): AuthoringManifestCatalog {
+    const root = this.root();
+    const manifest = this.manifest();
+    const globalPath = 'ai/.opencode/knowledge/architecture/QUESTION-CRAFT.md';
+    const globalProfilePresent = existsSync(join(root, globalPath));
+
+    const worlds: AuthoringCatalogWorld[] = Object.entries(manifest.worlds).map(
+      ([worldKey, world]) => ({
+        worldKey,
+        profilePath: world.profile,
+        profilePresent: existsSync(join(root, world.profile)),
+        scopeKeys: [...(world.scopes ?? [])],
+      }),
+    );
+
+    const scopes: AuthoringCatalogScope[] = Object.entries(manifest.scopes).map(
+      ([comboKey, scope]) => {
+        const slashIndex = comboKey.indexOf('/');
+        const scopeKey =
+          slashIndex >= 0 ? comboKey.slice(slashIndex + 1) : comboKey;
+        return {
+          worldKey: scope.world,
+          scopeKey,
+          scopePath: scope.scopePath,
+          knowledgePath: scope.knowledgePath,
+          exemplarsPath: scope.exemplarsPath,
+          scopeProfilePresent: existsSync(join(root, scope.scopePath)),
+          knowledgePresent: existsSync(join(root, scope.knowledgePath)),
+          exemplarsPresent: existsSync(join(root, scope.exemplarsPath)),
+        };
+      },
+    );
+
+    const mechanics: AuthoringCatalogMechanic[] = Object.entries(
+      manifest.mechanics,
+    ).map(([mechanicKey, mechanic]) => ({
+      mechanicKey,
+      category: mechanic.category ?? 'SHARED',
+      boundWorldKey: mechanic.boundWorld ?? null,
+      status: mechanic.status ?? 'LEGACY',
+      profilePath: mechanic.profile,
+      profilePresent: Boolean(
+        mechanic.profile && existsSync(join(root, mechanic.profile)),
+      ),
+      aliases: [...(mechanic.aliases ?? [])],
+    }));
+
+    return {
+      globalProfilePresent,
+      worlds,
+      scopes,
+      mechanics,
+    };
+  }
+
+  /**
    * Resolve one mechanic × World × Scope, or refuse with the canonical code.
    *
    * The order of checks mirrors the Python resolver exactly, because the code a
    * caller sees for a bad combination is part of the contract.
    */
-  resolve(input: {
-    mechanicKey: string;
-    worldKey: string;
-    scopeKey: string;
-  }): ResolvedAuthoringContext {
+  resolve(
+    input: {
+      mechanicKey: string;
+      worldKey: string;
+      scopeKey: string;
+    },
+    options?: { quiet?: boolean },
+  ): ResolvedAuthoringContext {
     const manifest = this.manifest();
 
     // 1. Mechanic, by canonical key or alias.
@@ -247,7 +347,7 @@ export class AuthoringContextService {
     const exemplarsText = exemplarsPresent
       ? readFileSync(exemplarsAbsolute, 'utf8')
       : '';
-    if (!exemplarsPresent) {
+    if (!exemplarsPresent && !options?.quiet) {
       this.logger.warn({
         event: 'engine_authoring_exemplars_missing',
         scope: `${input.worldKey}/${input.scopeKey}`,

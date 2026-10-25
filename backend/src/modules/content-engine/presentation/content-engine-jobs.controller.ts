@@ -5,6 +5,8 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -16,9 +18,14 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { UserRole } from '../../users/schemas/user.schema';
-import { EngineJobAdminService } from '../application/engine-job-admin.service';
 import {
+  EngineAdminActor,
+  EngineJobAdminService,
+} from '../application/engine-job-admin.service';
+import {
+  EngineJobListQueryDto,
   EngineJobRequestDto,
+  EnginePreflightRequestDto,
   EngineRunRequestDto,
 } from './content-engine-jobs.dto';
 
@@ -28,10 +35,9 @@ const envelope = <T>(data: T) => ({ data });
  * Starting work, as an authenticated admin action.
  *
  * Same guard stack, same role and same path prefix as the review controller —
- * this is one workspace, not a second surface. Nothing here is public, and no
- * route can raise a spending limit: the caps live in configuration and the
- * override fields in the ledger stay unwritten until an audited approval flow
- * exists.
+ * this is one workspace, not a second surface. Nothing here is public, actor
+ * attribution is derived strictly from the authenticated Admin user, and job
+ * execution always targets an explicit `jobId`.
  */
 @ApiTags('Content Engine Jobs')
 @ApiBearerAuth()
@@ -41,32 +47,79 @@ const envelope = <T>(data: T) => ({ data });
 export class ContentEngineJobsController {
   constructor(private readonly jobs: EngineJobAdminService) {}
 
-  /** Read-only: resolvability, estimated cost, and remaining budget. */
-  @Post('jobs/preflight')
-  async preflight(@Body() body: EngineJobRequestDto) {
-    return envelope(await this.jobs.preflight(body));
-  }
-
-  /** Idempotent: the same combination and context resolve to one job. */
-  @Post('jobs')
-  async submit(@Body() body: EngineJobRequestDto) {
-    return envelope(await this.jobs.submit(body));
+  private requireAdminActor(user?: AuthenticatedUser): EngineAdminActor {
+    if (!user?.id?.trim()) {
+      throw new UnauthorizedException({
+        code: 'AUTHENTICATED_ADMIN_REQUIRED',
+        message: 'Authenticated Admin context is required',
+      });
+    }
+    return {
+      actorId: user.id.trim(),
+      actorEmail: user.email?.trim() ?? '',
+    };
   }
 
   /**
-   * Run one queued job to completion, now.
+   * Read-only authoring options derived from canonical World/Scope eligibility,
+   * generator capability, and runtime ContentItem compatibility.
+   */
+  @Get('options')
+  async options() {
+    return envelope(await this.jobs.options());
+  }
+
+  /** Read-only: resolvability, estimated cost, remaining budget, and planDigest. */
+  @Post('jobs/preflight')
+  async preflight(@Body() body: EnginePreflightRequestDto) {
+    return envelope(await this.jobs.preflight(body));
+  }
+
+  /**
+   * Read-only paginated job listing ordered newest-first (`_id: -1`).
+   */
+  @Get('jobs')
+  async list(@Query() query: EngineJobListQueryDto) {
+    return envelope(await this.jobs.listJobs(query));
+  }
+
+  /**
+   * Idempotent: the same generation specification resolves to one job.
+   * Requires a matching preflight `planDigest` and attributes the job to the
+   * authenticated Admin.
+   */
+  @Post('jobs')
+  async submit(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: EngineJobRequestDto,
+  ) {
+    const actor = this.requireAdminActor(user);
+    return envelope(await this.jobs.submit(body, actor));
+  }
+
+  /**
+   * Run one specific queued job to completion, now.
    *
-   * The owner defaults to the authenticated admin, so a lease is always
-   * traceable to a person and two admins cannot collide on one identity.
+   * Requires an explicit `jobId` and derives lease ownership strictly from the
+   * authenticated Admin user — never from client-supplied owner fields.
    */
   @Post('jobs/run')
   async run(
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: EngineRunRequestDto,
   ) {
-    return envelope(
-      await this.jobs.runNow(body.owner?.trim() || `admin:${user.id}`),
-    );
+    const actor = this.requireAdminActor(user);
+    return envelope(await this.jobs.runJob(body?.jobId ?? '', actor));
+  }
+
+  /** Run one specific queued job by path parameter `:jobId`. */
+  @Post('jobs/:jobId/run')
+  async runById(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('jobId') jobId: string,
+  ) {
+    const actor = this.requireAdminActor(user);
+    return envelope(await this.jobs.runJob(jobId, actor));
   }
 
   @Get('jobs/:jobId')
@@ -77,7 +130,11 @@ export class ContentEngineJobsController {
   }
 
   @Post('jobs/:jobId/cancel')
-  async cancel(@Param('jobId') jobId: string) {
+  async cancel(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('jobId') jobId: string,
+  ) {
+    this.requireAdminActor(user);
     return envelope(await this.jobs.cancel(jobId));
   }
 }

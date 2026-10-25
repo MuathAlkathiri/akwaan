@@ -553,4 +553,29 @@ describe('reasoning token accounting', () => {
       (result as { diagnostics?: Record<string, unknown> }).diagnostics,
     ).toMatchObject({ reasoningTokens: 700 });
   });
+
+  it('uses pinned request.model, request.omitTemperature, and request.reasoningEffort rather than drifting to live ConfigService values', async () => {
+    const { seen, fetchImpl } = capture();
+    // Live ConfigService has drifted to a different model, omitTemperature=true, and effort=high
+    const driftedConfig = config({
+      ENGINE_GENERATION_MODEL: 'drifted/live-model',
+      ENGINE_OMIT_TEMPERATURE: 'true',
+      ENGINE_REASONING_EFFORT: 'high',
+    });
+
+    await new OpenRouterAiProvider(driftedConfig, fetchImpl).generateText({
+      ...request,
+      model: 'pinned/spec-model-v1',
+      omitTemperature: false,
+      temperature: 0.35,
+      reasoningEffort: 'low',
+      maxOutputTokens: 2_400,
+    });
+
+    const body = seen.body as Record<string, unknown>;
+    expect(body.model).toBe('pinned/spec-model-v1');
+    expect(body.temperature).toBe(0.35);
+    expect(body.reasoning).toEqual({ effort: 'low' });
+    expect(body.max_tokens).toBe(2_400);
+  });
 });

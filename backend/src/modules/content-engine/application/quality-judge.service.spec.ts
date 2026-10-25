@@ -96,4 +96,66 @@ describe('QualityJudgeService', () => {
       }),
     ).rejects.toThrow('QUALITY_JUDGE_RUBRIC_INVALID');
   });
+
+  it('executes using pinned generationSpec provider and qualityModel even when ConfigService environment drifts', async () => {
+    const provider = new FakeAiProvider({ text: JSON.stringify(rubric()) });
+    const driftedConfig = {
+      get: (key: string) =>
+        ({
+          ENGINE_PROVIDER_NAME: 'drifted-provider',
+          ENGINE_QUALITY_MODEL: 'drifted-quality-model',
+          ENGINE_GENERATION_MODEL: 'drifted-gen-model',
+        })[key],
+    } as never;
+    const localBudget = {
+      reserve: jest.fn(async () => ({ reservedMicros: 1 })),
+      settle: jest.fn(async () => ({ actualMicros: 1 })),
+    };
+
+    await new QualityJudgeService(
+      localBudget as never,
+      driftedConfig,
+      provider,
+    ).judge({
+      jobId: 'job-pinned',
+      candidateId: 'cand-1',
+      attempt: 1,
+      draft: { prompt: { ar: 'سؤال؟' } },
+      context,
+      generationSpec: {
+        specVersion: 'generation-spec-v1',
+        worldKey: 'puzzles',
+        scopeKey: 'wordplay-letters',
+        mechanicKey: 'read-your-opponent',
+        answerMode: 'multiple_choice',
+        targetCount: 2,
+        difficulty: 'mixed',
+        ryoDifficultyTargets: { easy: 25, medium: 50, relativelyDifficult: 25 },
+        batchGuidance: null,
+        promptVersion: 'mc-v2',
+        provider: 'pinned-provider',
+        generationModel: 'pinned-gen-model',
+        qualityModel: 'pinned-quality-model',
+        temperature: 0.8,
+        omitTemperature: false,
+        reasoningEffort: null,
+        outputTokensPerCandidate: 800,
+        maxOutputTokens: 1600,
+        contextHash: 'c'.repeat(64),
+        ruleSetDigest: 'r'.repeat(64),
+      },
+    });
+
+    expect(localBudget.reserve).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'pinned-provider',
+        model: 'pinned-quality-model',
+        expected: expect.objectContaining({
+          maxOutputTokens: 900,
+        }),
+      }),
+    );
+    expect(provider.calls[0].model).toBe('pinned-quality-model');
+    expect(provider.calls[0].maxOutputTokens).toBe(900);
+  });
 });
