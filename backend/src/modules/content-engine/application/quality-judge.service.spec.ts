@@ -158,4 +158,74 @@ describe('QualityJudgeService', () => {
     expect(provider.calls[0].model).toBe('pinned-quality-model');
     expect(provider.calls[0].maxOutputTokens).toBe(900);
   });
+
+  it('releases judge budget reservation when provider explicitly declines before running (definitelyNotBilled: true)', async () => {
+    const provider = {
+      generateText: jest.fn(async () => {
+        const error = new Error('OpenRouter responded 400: Bad Request');
+        (error as { definitelyNotBilled?: boolean }).definitelyNotBilled = true;
+        throw error;
+      }),
+    };
+    const localBudget = {
+      reserve: jest.fn(async () => ({ reservedMicros: 500 })),
+      settle: jest.fn(async () => ({ actualMicros: 0 })),
+    };
+
+    await expect(
+      new QualityJudgeService(
+        localBudget as never,
+        config,
+        provider as never,
+      ).judge({
+        jobId: 'job-rejected',
+        candidateId: 'cand-1',
+        attempt: 1,
+        draft: { prompt: { ar: 'سؤال؟' } },
+        context,
+      }),
+    ).rejects.toThrow('Ambiguous provider outcome during quality');
+
+    expect(localBudget.settle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reservationId: 'job-rejected:quality:cand-1:1',
+        providerRejected: true,
+      }),
+    );
+  });
+
+  it('charges full judge reservation when provider fails ambiguously (HTTP 500 / 504 / timeout)', async () => {
+    const provider = {
+      generateText: jest.fn(async () => {
+        const error = new Error('OpenRouter responded 504: Gateway Timeout');
+        (error as { definitelyNotBilled?: boolean }).definitelyNotBilled = false;
+        throw error;
+      }),
+    };
+    const localBudget = {
+      reserve: jest.fn(async () => ({ reservedMicros: 500 })),
+      settle: jest.fn(async () => ({ actualMicros: 500 })),
+    };
+
+    await expect(
+      new QualityJudgeService(
+        localBudget as never,
+        config,
+        provider as never,
+      ).judge({
+        jobId: 'job-504',
+        candidateId: 'cand-1',
+        attempt: 1,
+        draft: { prompt: { ar: 'سؤال؟' } },
+        context,
+      }),
+    ).rejects.toThrow('Ambiguous provider outcome during quality');
+
+    expect(localBudget.settle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reservationId: 'job-504:quality:cand-1:1',
+        timedOut: true,
+      }),
+    );
+  });
 });

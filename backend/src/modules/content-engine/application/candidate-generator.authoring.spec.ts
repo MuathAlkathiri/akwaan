@@ -928,4 +928,76 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
       { upsert: true },
     );
   });
+
+  describe('billing ambiguity settlement on provider failure', () => {
+    it('releases reservation when provider declined with definitelyNotBilled: true (HTTP 4xx)', async () => {
+      const reserve = jest.fn(async () => ({ reservedMicros: 1000 }));
+      const settle = jest.fn(async () => ({ actualMicros: 0 }));
+      const generateText = jest.fn(async () => {
+        const error = new Error('OpenRouter responded 400: Bad Request');
+        (error as { definitelyNotBilled?: boolean }).definitelyNotBilled = true;
+        throw error;
+      });
+
+      const gen = new CandidateGeneratorService(
+        { updateOne: jest.fn() } as never,
+        { holdsLease: async () => true } as never,
+        { reserve, settle } as never,
+        { get: () => 'fake' } as never,
+        { generateText } as never,
+      );
+
+      await expect(
+        gen.generate({
+          jobId: 'job-400',
+          leaseEpoch: 1,
+          attempt: 1,
+          context: context({ mechanicKey: 'closest' }),
+          count: 1,
+        }),
+      ).rejects.toThrow('Ambiguous provider outcome during generation');
+
+      expect(settle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reservationId: 'job-400:generation:1',
+          providerRejected: true,
+        }),
+      );
+    });
+
+    it('charges full reservation when provider fails ambiguously with definitelyNotBilled: false (HTTP 500/504)', async () => {
+      const reserve = jest.fn(async () => ({ reservedMicros: 1000 }));
+      const settle = jest.fn(async () => ({ actualMicros: 1000 }));
+      const generateText = jest.fn(async () => {
+        const error = new Error('OpenRouter responded 504: Gateway Timeout');
+        (error as { definitelyNotBilled?: boolean }).definitelyNotBilled = false;
+        throw error;
+      });
+
+      const gen = new CandidateGeneratorService(
+        { updateOne: jest.fn() } as never,
+        { holdsLease: async () => true } as never,
+        { reserve, settle } as never,
+        { get: () => 'fake' } as never,
+        { generateText } as never,
+      );
+
+      await expect(
+        gen.generate({
+          jobId: 'job-504',
+          leaseEpoch: 1,
+          attempt: 1,
+          context: context({ mechanicKey: 'closest' }),
+          count: 1,
+        }),
+      ).rejects.toThrow('Ambiguous provider outcome during generation');
+
+      expect(settle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reservationId: 'job-504:generation:1',
+          timedOut: true,
+        }),
+      );
+    });
+  });
 });

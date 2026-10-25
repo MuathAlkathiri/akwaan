@@ -3,7 +3,11 @@ import {
   CLOSEST_CANDIDATE_SCHEMA,
   RYO_CANDIDATE_SCHEMA,
 } from '../application/candidate-generator.service';
-import { OpenRouterAiProvider } from './openrouter-ai.provider';
+import {
+  OpenRouterAiProvider,
+  OpenRouterTimeoutError,
+  OpenRouterUnavailableError,
+} from './openrouter-ai.provider';
 
 /**
  * Request-shape compatibility.
@@ -577,5 +581,119 @@ describe('reasoning token accounting', () => {
     expect(body.temperature).toBe(0.35);
     expect(body.reasoning).toEqual({ effort: 'low' });
     expect(body.max_tokens).toBe(2_400);
+  });
+});
+
+describe('provider billing ambiguity and error classification', () => {
+  const fakeResponse = (status: number, body = '') =>
+    ({
+      ok: status >= 200 && status < 300,
+      status,
+      text: async () => body,
+      json: async () => JSON.parse(body || '{}'),
+    }) as unknown as Response;
+
+  it.each([400, 401, 402, 403, 404, 422, 429])(
+    'classifies HTTP %i as definitelyNotBilled: true (gateway front-door refusal)',
+    async (status) => {
+      const fetchImpl = (async () =>
+        fakeResponse(status, '{"error":"client_error"}')) as unknown as typeof fetch;
+      const provider = new OpenRouterAiProvider(config(), fetchImpl);
+
+      let thrown: unknown;
+      try {
+        await provider.generateText(request);
+      } catch (err) {
+        thrown = err;
+      }
+
+      expect(thrown).toBeInstanceOf(OpenRouterUnavailableError);
+      expect((thrown as OpenRouterUnavailableError).definitelyNotBilled).toBe(
+        true,
+      );
+    },
+  );
+
+  it.each([500, 502, 503, 504, 524])(
+    'classifies HTTP %i as definitelyNotBilled: false (ambiguous upstream failure)',
+    async (status) => {
+      const fetchImpl = (async () =>
+        fakeResponse(status, 'server error')) as unknown as typeof fetch;
+      const provider = new OpenRouterAiProvider(config(), fetchImpl);
+
+      let thrown: unknown;
+      try {
+        await provider.generateText(request);
+      } catch (err) {
+        thrown = err;
+      }
+
+      expect(thrown).toBeInstanceOf(OpenRouterUnavailableError);
+      expect((thrown as OpenRouterUnavailableError).definitelyNotBilled).toBe(
+        false,
+      );
+    },
+  );
+
+  it.each([408, 409, 425, 499, 418])(
+    'classifies non-allowlisted status HTTP %i as definitelyNotBilled: false (conservative fallback)',
+    async (status) => {
+      const fetchImpl = (async () =>
+        fakeResponse(status, 'error')) as unknown as typeof fetch;
+      const provider = new OpenRouterAiProvider(config(), fetchImpl);
+
+      let thrown: unknown;
+      try {
+        await provider.generateText(request);
+      } catch (err) {
+        thrown = err;
+      }
+
+      expect(thrown).toBeInstanceOf(OpenRouterUnavailableError);
+      expect((thrown as OpenRouterUnavailableError).definitelyNotBilled).toBe(
+        false,
+      );
+    },
+  );
+
+  it('classifies empty content (HTTP 200 with no message text) as definitelyNotBilled: false', async () => {
+    const fetchImpl = (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: '   ' } }],
+        usage: { total_tokens: 50 },
+      }),
+    })) as unknown as typeof fetch;
+    const provider = new OpenRouterAiProvider(config(), fetchImpl);
+
+    let thrown: unknown;
+    try {
+      await provider.generateText(request);
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect(thrown).toBeInstanceOf(OpenRouterUnavailableError);
+    expect((thrown as OpenRouterUnavailableError).definitelyNotBilled).toBe(
+      false,
+    );
+  });
+
+  it('classifies network abort or connection drop as OpenRouterTimeoutError (billingUnknown: true)', async () => {
+    const fetchImpl = (async () => {
+      throw new Error('ECONNRESET: connection reset by peer');
+    }) as unknown as typeof fetch;
+    const provider = new OpenRouterAiProvider(config(), fetchImpl);
+
+    let thrown: unknown;
+    try {
+      await provider.generateText(request);
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect(thrown).toBeInstanceOf(OpenRouterTimeoutError);
+    expect((thrown as OpenRouterTimeoutError).billingUnknown).toBe(true);
   });
 });

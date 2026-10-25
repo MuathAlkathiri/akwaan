@@ -156,7 +156,13 @@ export class QualityJudgeService {
       raw = response.text;
       await this.budget.settle({ reservationId, usage: response.usage });
     } catch (error) {
-      await this.budget.settle({ reservationId, timedOut: true });
+      const providerRejected =
+        (error as { definitelyNotBilled?: unknown })?.definitelyNotBilled ===
+        true;
+      await this.budget.settle({
+        reservationId,
+        ...(providerRejected ? { providerRejected: true } : { timedOut: true }),
+      });
       throw new AmbiguousProviderOutcomeError(
         'quality',
         error instanceof Error ? error.message : String(error),

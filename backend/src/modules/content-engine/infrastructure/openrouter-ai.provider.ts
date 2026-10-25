@@ -145,6 +145,35 @@ export class OpenRouterTimeoutError extends Error {
 }
 
 /**
+ * HTTP statuses from an LLM gateway (like OpenRouter) that are provably rejected
+ * at the gateway edge *before* dispatching to an upstream inference worker.
+ *
+ * Only explicit, well-defined client validation, authentication, and credit rejections
+ * belong here:
+ * - 400: Bad Request (schema invalid, unsupported parameter, malformed JSON)
+ * - 401: Unauthorized (missing or invalid API key)
+ * - 402: Payment Required (insufficient balance or credit limit reached)
+ * - 403: Forbidden (model access denied, region restricted)
+ * - 404: Not Found (invalid endpoint or model slug)
+ * - 422: Unprocessable Entity (semantic payload validation failure)
+ * - 429: Too Many Requests (gateway rate limiter rejected request before inference)
+ *
+ * Any other HTTP status — including 408 (Request Timeout), 409 (Conflict),
+ * 425 (Too Early), 499 (Client Closed Request), all 5xx server/gateway errors,
+ * and any unclassified status code — is treated conservatively as billing-ambiguous
+ * (definitelyNotBilled: false).
+ */
+export const DEFINITELY_UNBILLED_HTTP_STATUSES = new Set<number>([
+  400, // Bad Request
+  401, // Unauthorized
+  402, // Payment Required
+  403, // Forbidden
+  404, // Not Found
+  422, // Unprocessable Entity
+  429, // Too Many Requests
+]);
+
+/**
  * OpenRouter behind the existing `AiProvider` boundary.
  *
  * Why here and not in `AiProviderFactory`: the factory throws for any provider
@@ -326,12 +355,24 @@ export class OpenRouterAiProvider implements AiProvider {
 
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      // A rejected request was not billed for completion, but we do not assume
-      // it was free either — the caller settles whatever it reserved.
+      // A rejected request is only definitely unbilled if the provider explicitly
+      // declined it at the gateway before inference began (e.g. 400 Bad Request,
+      // 401 Unauthorized, 402 Payment Required, 403 Forbidden, 404 Not Found,
+      // 422 Unprocessable Entity, 429 Too Many Requests).
+      //
+      // Gateway timeouts (504), bad gateways (502), server errors (500, 503),
+      // and request timeouts (408) may occur after upstream model execution has
+      // already begun or completed, and the provider may still bill for tokens.
+      // Treating those as definitely not billed would let the ledger drift below
+      // real provider spend. We classify them as ambiguous (definitelyNotBilled: false),
+      // which settles at the full reserved amount and halts without auto-retrying.
+      const definitelyNotBilled = DEFINITELY_UNBILLED_HTTP_STATUSES.has(
+        response.status,
+      );
+
       throw new OpenRouterUnavailableError(
         `OpenRouter responded ${response.status}: ${body.slice(0, 600)}`,
-        // The provider answered and declined. It did not run the model.
-        true,
+        definitelyNotBilled,
       );
     }
 
