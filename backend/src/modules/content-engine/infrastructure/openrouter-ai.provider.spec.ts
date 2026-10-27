@@ -597,7 +597,10 @@ describe('provider billing ambiguity and error classification', () => {
     'classifies HTTP %i as definitelyNotBilled: true (gateway front-door refusal)',
     async (status) => {
       const fetchImpl = (async () =>
-        fakeResponse(status, '{"error":"client_error"}')) as unknown as typeof fetch;
+        fakeResponse(
+          status,
+          '{"error":"client_error"}',
+        )) as unknown as typeof fetch;
       const provider = new OpenRouterAiProvider(config(), fetchImpl);
 
       let thrown: unknown;

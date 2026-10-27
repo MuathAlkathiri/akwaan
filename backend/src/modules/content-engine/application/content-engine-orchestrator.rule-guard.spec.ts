@@ -462,4 +462,149 @@ describe('legacy job provenance guard and exact-job execution', () => {
       }),
     );
   });
+
+  it('executes Quality Judge when facts are UNRESOLVED (retriever disabled)', async () => {
+    const spec = completeSpec();
+    const candidateRow = {
+      _id: 'cand-doc-unresolved',
+      jobId: 'job-1',
+      candidateId: 'cand-unresolved',
+      status: 'screened_pass',
+      draft: { prompt: { ar: 'سؤال لغوي؟' } },
+      factualClaims: ['claim'],
+      factVerification: { state: 'UNRESOLVED', claims: [] },
+      compatibilityEvaluation: { preDraft: { blockers: [] } },
+      qualityEvaluation: null,
+    };
+    let generated = false;
+    const find = jest.fn(() => ({
+      sort: () => ({
+        lean: () => ({
+          exec: async () => (generated ? [candidateRow] : []),
+        }),
+      }),
+    }));
+    const updateOne = jest.fn(() => ({
+      exec: async () => ({ matchedCount: 1 }),
+    }));
+    const judge = jest.fn(async () => ({
+      scores: {},
+      reasons: {},
+      difficulty: 'medium',
+      recommendation: 'PASS',
+      rejectionFeedback: [],
+    }));
+    const service = new ContentEngineOrchestratorService(
+      { find, updateOne } as never,
+      {
+        checkpoint: jest.fn(async () => undefined),
+        awaitReview: jest.fn(async () => undefined),
+        releaseForRetry: jest.fn(async () => undefined),
+        isCancellationRequested: async () => false,
+        holdsLease: async () => true,
+      } as never,
+      {
+        hasLedgerEntry: async () => false,
+        reservationIds: async () => [],
+      } as never,
+      { resolve: () => context([]) } as never,
+      {
+        generate: jest.fn(async () => {
+          generated = true;
+          return [];
+        }),
+      } as never,
+      {
+        beginBatch: jest.fn(),
+        screen: jest.fn(() => ({ passed: true, findings: [] })),
+      } as never,
+      {
+        verify: jest.fn(async () => ({ state: 'UNRESOLVED', claims: [] })),
+      } as never,
+      { evaluate: jest.fn(() => ({ preDraft: { blockers: [] } })) } as never,
+      { judge } as never,
+    );
+
+    await service.run({
+      ...job,
+      generationSpec: spec,
+    } as never);
+
+    expect(judge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: 'job-1',
+        candidateId: 'cand-unresolved',
+      }),
+    );
+  });
+
+  it('blocks Quality Judge when facts are CONTRADICTED', async () => {
+    const spec = completeSpec();
+    const candidateRow = {
+      _id: 'cand-doc-contradicted',
+      jobId: 'job-1',
+      candidateId: 'cand-contradicted',
+      status: 'screened_pass',
+      draft: { prompt: { ar: 'سؤال متعارض؟' } },
+      factualClaims: ['claim'],
+      factVerification: { state: 'CONTRADICTED', claims: [] },
+      compatibilityEvaluation: { preDraft: { blockers: [] } },
+      qualityEvaluation: null,
+    };
+    let generated = false;
+    const find = jest.fn(() => ({
+      sort: () => ({
+        lean: () => ({
+          exec: async () => (generated ? [candidateRow] : []),
+        }),
+      }),
+    }));
+    const updateOne = jest.fn(() => ({
+      exec: async () => ({ matchedCount: 1 }),
+    }));
+    const judge = jest.fn(async () => ({
+      scores: {},
+      reasons: {},
+      difficulty: 'medium',
+      recommendation: 'PASS',
+      rejectionFeedback: [],
+    }));
+    const service = new ContentEngineOrchestratorService(
+      { find, updateOne } as never,
+      {
+        checkpoint: jest.fn(async () => undefined),
+        awaitReview: jest.fn(async () => undefined),
+        releaseForRetry: jest.fn(async () => undefined),
+        isCancellationRequested: async () => false,
+        holdsLease: async () => true,
+      } as never,
+      {
+        hasLedgerEntry: async () => false,
+        reservationIds: async () => [],
+      } as never,
+      { resolve: () => context([]) } as never,
+      {
+        generate: jest.fn(async () => {
+          generated = true;
+          return [];
+        }),
+      } as never,
+      {
+        beginBatch: jest.fn(),
+        screen: jest.fn(() => ({ passed: true, findings: [] })),
+      } as never,
+      {
+        verify: jest.fn(async () => ({ state: 'CONTRADICTED', claims: [] })),
+      } as never,
+      { evaluate: jest.fn(() => ({ preDraft: { blockers: [] } })) } as never,
+      { judge } as never,
+    );
+
+    await service.run({
+      ...job,
+      generationSpec: spec,
+    } as never);
+
+    expect(judge).not.toHaveBeenCalled();
+  });
 });

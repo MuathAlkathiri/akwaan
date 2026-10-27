@@ -62,6 +62,15 @@ import {
   resolveRyoMixedDifficultyTargets,
   validateTargetCount,
 } from '../domain/generation-specification';
+import {
+  resolveCanonicalWorld,
+  resolveCanonicalScope,
+  resolveCanonicalChallengeType,
+} from './authoring-target-resolver';
+import {
+  GenerationPlannerService,
+  GenerationPlan,
+} from './generation-planner.service';
 import { EngineCandidateDocument } from '../schemas/engine-candidate.schema';
 import { EngineJobDocument } from '../schemas/engine-job.schema';
 import {
@@ -437,8 +446,8 @@ export class EngineJobAdminService {
     }
 
     const [world, challengeType] = await Promise.all([
-      this.worlds.findBySlug(input.worldKey),
-      this.challengeTypes.findBySlug(input.mechanicKey),
+      resolveCanonicalWorld(this.worlds, input.worldKey),
+      resolveCanonicalChallengeType(this.challengeTypes, input.mechanicKey),
     ]);
 
     if (world && world.status === WorldContentStatus.ARCHIVED) {
@@ -485,7 +494,11 @@ export class EngineJobAdminService {
     }
 
     const scope = world
-      ? await this.scopes.findBySlugInWorld(String(world._id), input.scopeKey)
+      ? await resolveCanonicalScope(
+          this.scopes,
+          String(world._id),
+          input.scopeKey,
+        )
       : null;
 
     if (world && !scope) {
@@ -914,6 +927,7 @@ export class EngineJobAdminService {
     resolvable: boolean;
     submissionReady?: boolean;
     planDigest?: string;
+    generationPlan?: GenerationPlan;
     generationSpec?: GenerationSpecification;
     contextHash?: string;
     ruleSetDigest?: string;
@@ -1147,6 +1161,16 @@ export class EngineJobAdminService {
         providerReady: readiness.providerReady,
       });
 
+      const planner = new GenerationPlannerService();
+      const generationPlan = planner.plan({
+        worldKey: generationSpec.worldKey,
+        scopeKey: generationSpec.scopeKey,
+        mechanicKey: generationSpec.mechanicKey,
+        count: generationSpec.targetCount,
+        difficulty: generationSpec.difficulty,
+        batchGuidance: generationSpec.batchGuidance,
+      });
+
       const submissionReady =
         readiness.submissionReady && withinBatchCap && withinMonthlyBudget;
       const blockedCode = !readiness.submissionReady
@@ -1168,6 +1192,7 @@ export class EngineJobAdminService {
         resolvable: true,
         submissionReady,
         planDigest,
+        generationPlan,
         generationSpec,
         contextHash,
         ruleSetDigest,

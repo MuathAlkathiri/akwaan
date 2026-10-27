@@ -415,6 +415,21 @@ export const RYO_TASK_GUIDANCE = [
   'player might choose an incorrect option, that option is filler — replace it',
   'rather than writing a better sentence for it. Three obviously-wrong options',
   'turn a hard question into an easy one.',
+  '',
+  'THE 40-80% CONFIDENCE SWEET SPOT (BLUFF TENSION).',
+  'The core mechanic of Read-Your-Opponent is opponent prediction, not trivia recall.',
+  'If answering team certainty is near 100% (e.g. elementary plurals like "كتاب -> كتب" or',
+  '"طفل -> أطفال", universally known facts, or obvious common sense), the opponent always',
+  'steals with zero hesitation. The game collapses.',
+  'If answering team certainty is near 0% (obscure facts no human knows), the opponent',
+  'always trusts. The game collapses.',
+  'Every valid item MUST land in the contested 40-80% confidence sweet spot ("likely" or "even"),',
+  'where the answering team might know it or might fall for a plausible misconception.',
+  '',
+  'NEGATIVE ANTI-PATTERNS (THESE ARE REJECTED AUTOMATICALLY):',
+  '  - NEVER write elementary school grammar or common vocabulary (FAIL: "جمع كتاب؟ كتب").',
+  '  - NEVER write unsolvable anagrams (FAIL: Clue letters "ن م ب ج" but answer is "منجا" — missing "ا" and dropping "ب"). Clue letters must match answer letters with 100% multiset precision.',
+  '  - NEVER leak the answer in the prompt text (FAIL: Clue asks "ما الحيوان في جملة طائر العصفور يغرد؟" with answer "العصفور"). The answer must never appear in the prompt.',
 ].join('\n');
 
 export const CLOSEST_TASK_GUIDANCE = [
@@ -458,6 +473,11 @@ export const CLOSEST_TASK_GUIDANCE = [
   'Numbers should be reasonable to reach on a phone slider: aim for a span the step divides into at least a few dozen positions, not three or four.',
 ].join('\n');
 
+import {
+  GenerationPlannerService,
+  GenerationPlan,
+} from './generation-planner.service';
+
 export interface GenerateInput {
   jobId: string;
   leaseEpoch: number;
@@ -473,6 +493,7 @@ export interface BuildPromptOptions {
   difficulty?: RyoRequestedDifficulty | string | null;
   ryoDifficultyTargets?: Readonly<RyoDifficultyTargets> | null;
   batchGuidance?: string | null;
+  generationPlan?: GenerationPlan | null;
 }
 
 export function buildRyoDifficultyGuidance(
@@ -526,6 +547,19 @@ export function composeGenerationPrompt(
       : resolveRequestedDifficulty('read-your-opponent', options?.difficulty);
   const normalizedGuidance = normalizeBatchGuidance(options?.batchGuidance);
 
+  const planner = new GenerationPlannerService();
+  const generationPlan =
+    options?.generationPlan ??
+    planner.plan({
+      worldKey: context.worldKey ?? '',
+      scopeKey: context.scopeKey ?? '',
+      mechanicKey: context.mechanicKey ?? '',
+      count,
+      difficulty: resolvedDifficulty,
+      batchGuidance: normalizedGuidance,
+    });
+  const formattedPlan = planner.formatPlanForPrompt(generationPlan);
+
   return [
     '# AKWAAN AUTHORING CONTEXT',
     '## 1. GLOBAL GOVERNANCE',
@@ -543,6 +577,7 @@ export function composeGenerationPrompt(
     `Author exactly ${count} candidate items for the mechanic above, inside this Scope.`,
     'Return JSON matching the provided schema. Arabic prompt text. No commentary.',
     'The correct answer must never appear in the prompt text.',
+    formattedPlan,
     answerMode === 'closest'
       ? CLOSEST_TASK_GUIDANCE
       : [

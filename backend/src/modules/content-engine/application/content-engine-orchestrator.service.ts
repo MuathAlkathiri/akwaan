@@ -412,9 +412,12 @@ export class ContentEngineOrchestratorService {
     const compatibility = row.compatibilityEvaluation as {
       preDraft?: { blockers?: unknown[] };
     } | null;
+    const factState = facts?.state;
+    const isFactStateEligible =
+      factState === 'SUPPORTED' || factState === 'UNRESOLVED';
     return (
       row.status === 'screened_pass' &&
-      facts?.state === 'SUPPORTED' &&
+      isFactStateEligible &&
       !compatibility?.preDraft?.blockers?.length &&
       !row.qualityEvaluation
     );

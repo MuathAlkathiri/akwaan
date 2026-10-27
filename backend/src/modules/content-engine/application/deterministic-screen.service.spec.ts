@@ -152,6 +152,119 @@ describe('DeterministicScreenService', () => {
     ).toContain('ANSWER_LEAKAGE');
   });
 
+  it('catches whole-word leakage in phrase clues (Candidate 3 pilot case)', () => {
+    expect(
+      codes(
+        service,
+        draft({
+          prompt: { ar: 'ما الحيوان المختبئ في جملة "طائر العصفور يغرد"؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: 'a', label: { ar: 'العصفور' } },
+              { id: 'b', label: { ar: 'الصقر' } },
+            ],
+            correctOptionId: 'a',
+          },
+        }),
+      ),
+    ).toContain('ANSWER_LEAKAGE');
+  });
+
+  it('does not flag single-character answers embedded inside unrelated words (Candidate 4 pilot case)', () => {
+    expect(
+      codes(
+        service,
+        draft({
+          prompt: { ar: 'ما الكلمة التي تعني تقديم العون للآخرين؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: 'a', label: { ar: 'مساعدة' } },
+              { id: 'b', label: { ar: 'إهمال' } },
+            ],
+            correctOptionId: 'a',
+          },
+        }),
+      ),
+    ).not.toContain('ANSWER_LEAKAGE');
+
+    // Single character option 'ع' where prompt contains 'مساعدة'
+    expect(
+      codes(
+        service,
+        draft({
+          prompt: { ar: 'ما الكلمة المناسبة لمساعدة الصديق؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: 'a', label: { ar: 'ع' } },
+              { id: 'b', label: { ar: 'غ' } },
+            ],
+            correctOptionId: 'a',
+          },
+        }),
+      ),
+    ).not.toContain('ANSWER_LEAKAGE');
+  });
+
+  it('catches standalone single-character leakage when isolated by brackets/whitespace', () => {
+    expect(
+      codes(
+        service,
+        draft({
+          prompt: { ar: 'اختر الحرف المطابق: (ع)' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: 'a', label: { ar: 'ع' } },
+              { id: 'b', label: { ar: 'غ' } },
+            ],
+            correctOptionId: 'a',
+          },
+        }),
+      ),
+    ).toContain('ANSWER_LEAKAGE');
+  });
+
+  it('blocks anagram challenges with letter count / multiset mismatches (Candidate 1 pilot case)', () => {
+    expect(
+      codes(
+        service,
+        draft({
+          prompt: { ar: 'كون كلمة من الحروف التالية: ن م ب ج' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: 'a', label: { ar: 'منجا' } },
+              { id: 'b', label: { ar: 'تفاح' } },
+            ],
+            correctOptionId: 'a',
+          },
+        }),
+      ),
+    ).toContain('ANAGRAM_LETTER_MULTISET_MISMATCH');
+  });
+
+  it('passes anagram challenges when clue letters mathematically match answer letters', () => {
+    expect(
+      codes(
+        service,
+        draft({
+          prompt: { ar: 'كون كلمة من الحروف التالية: ن ج م' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: 'a', label: { ar: 'نجم' } },
+              { id: 'b', label: { ar: 'شمس' } },
+            ],
+            correctOptionId: 'a',
+          },
+        }),
+      ),
+    ).not.toContain('ANAGRAM_LETTER_MULTISET_MISMATCH');
+  });
+
   it('rejects a second candidate that asks the same thing', () => {
     expect(service.screen(draft()).passed).toBe(true);
     expect(codes(service, draft())).toContain('DUPLICATE_IN_BATCH');

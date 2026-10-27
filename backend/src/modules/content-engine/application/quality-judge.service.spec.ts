@@ -198,7 +198,8 @@ describe('QualityJudgeService', () => {
     const provider = {
       generateText: jest.fn(async () => {
         const error = new Error('OpenRouter responded 504: Gateway Timeout');
-        (error as { definitelyNotBilled?: boolean }).definitelyNotBilled = false;
+        (error as { definitelyNotBilled?: boolean }).definitelyNotBilled =
+          false;
         throw error;
       }),
     };
