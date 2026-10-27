@@ -77,21 +77,33 @@ const TutorialOptionDefinition = new MongooseSchema(
  */
 const TutorialOutcomeDefinition = new MongooseSchema(
   {
-    teamRole: { type: String, required: true, enum: ['answering', 'opposing'] },
-    delta: { type: Number, required: true },
+    teamRole: { type: String, enum: ['answering', 'opposing'] },
+    delta: { type: Number },
     reason: { type: String, required: true, trim: true },
-    correct: { type: Boolean, required: true },
+    correct: { type: Boolean },
+    teamADistance: { type: Number },
+    teamBDistance: { type: Number },
+    winnerTeam: { type: String, enum: ['team-a', 'team-b', null] },
+    tie: { type: Boolean },
+    mechanicTallyDelta: { type: Number },
+    matchPointDelta: { type: Number },
   },
   { _id: false },
 );
 
 export const TutorialScenarioDefinition = new MongooseSchema(
   {
+    kind: { type: String, enum: ['ryo', 'closest'], default: undefined },
+    version: { type: Number, enum: [1], default: undefined },
     prompt: { type: String, required: true, trim: true },
     options: { type: [TutorialOptionDefinition], default: [] },
-    correctOptionId: { type: String, required: true, trim: true },
-    answeringSelectionOptionId: { type: String, required: true, trim: true },
-    opposingDecision: { type: String, required: true, enum: ['TRUST', 'STEAL'] },
+    correctOptionId: { type: String, trim: true },
+    answeringSelectionOptionId: { type: String, trim: true },
+    opposingDecision: { type: String, enum: ['TRUST', 'STEAL'] },
+    teamAEstimate: { type: Number },
+    teamBEstimate: { type: Number },
+    correctValue: { type: Number },
+    unit: { type: String, trim: true, default: undefined },
     caption: { type: String, trim: true, default: undefined },
     outcome: { type: TutorialOutcomeDefinition, required: true, _id: false },
   },

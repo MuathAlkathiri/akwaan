@@ -50,6 +50,7 @@ export function ExplainerControls({
   phase,
   timeline,
   compact = false,
+  stackOnNarrow = false,
 }: {
   step: number;
   total: number;
@@ -57,9 +58,20 @@ export function ExplainerControls({
   phase: string;
   timeline: ExplainerTimeline;
   compact?: boolean;
+  /** Opt-in for mechanics whose reduced-motion controls need a second mobile row. */
+  stackOnNarrow?: boolean;
 }) {
-  const { reducedMotion, replay, skip, goTo, toggle, finished, playing, userPaused, suspended } =
-    timeline;
+  const {
+    reducedMotion,
+    replay,
+    skip,
+    goTo,
+    toggle,
+    finished,
+    playing,
+    userPaused,
+    suspended,
+  } = timeline;
   return (
     <div
       dir="rtl"
@@ -71,7 +83,14 @@ export function ExplainerControls({
         compact ? "space-y-1.5 p-2.5" : "space-y-3 p-4",
       )}
     >
-      <div className={cn("flex items-center justify-between", compact ? "gap-2" : "gap-3")}>
+      <div
+        className={cn(
+          "flex items-center justify-between",
+          compact ? "gap-2" : "gap-3",
+          stackOnNarrow &&
+            "flex-col items-stretch sm:flex-row sm:items-center sm:justify-between",
+        )}
+      >
         <div className="flex min-w-0 items-center gap-1.5">
           <span
             data-testid="explainer-phase"
@@ -89,13 +108,18 @@ export function ExplainerControls({
           )}
           <span
             data-testid="explainer-progress"
-            className="akwaan-numeral text-xs font-black text-muted-foreground"
+            className="akwaan-numeral shrink-0 whitespace-nowrap text-xs font-black text-muted-foreground"
           >
             {step + 1} / {total}
           </span>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div
+          className={cn(
+            "flex shrink-0 items-center gap-1.5",
+            stackOnNarrow && "justify-between sm:justify-start",
+          )}
+        >
           {reducedMotion ? (
             <>
               <Button

@@ -22,6 +22,8 @@ export interface RyoTutorialOutcome {
 }
 
 export interface RyoTutorialScenario {
+  kind?: "ryo";
+  version?: 1;
   prompt: string;
   options: RyoTutorialOption[];
   correctOptionId: string;
@@ -32,10 +34,38 @@ export interface RyoTutorialScenario {
   outcome: RyoTutorialOutcome;
 }
 
+export interface ClosestTutorialScenario {
+  kind: "closest";
+  version: 1;
+  prompt: string;
+  teamAEstimate: number;
+  teamBEstimate: number;
+  correctValue: number;
+  unit?: string;
+  caption?: string;
+  outcome: {
+    teamADistance: number;
+    teamBDistance: number;
+    winnerTeam: "team-a" | "team-b" | null;
+    tie: boolean;
+    mechanicTallyDelta: number;
+    matchPointDelta: 0;
+    reason: "closest.absolute-distance";
+  };
+}
+
+export type TutorialScenario = RyoTutorialScenario | ClosestTutorialScenario;
+
 export interface PublishedTutorial {
   mechanicKey: string;
   revision: number;
-  scenario: RyoTutorialScenario;
+  scenario: TutorialScenario;
+}
+
+export function tutorialScenarioKind(
+  scenario: TutorialScenario,
+): "ryo" | "closest" {
+  return scenario.kind === "closest" ? "closest" : "ryo";
 }
 
 /**

@@ -31,6 +31,7 @@ describe('Mechanic tutorial HTTP integration', () => {
   let userToken: string;
 
   const MECHANIC = 'read-your-opponent';
+  const CLOSEST_MECHANIC = 'closest';
   const COMPETITIVE_PROMPT =
     'من توّج بلقب كأس العالم 2014 بعد فوزه على الأرجنتين في النهائي؟';
 
@@ -45,6 +46,17 @@ describe('Mechanic tutorial HTTP integration', () => {
     correctOptionId: 'a',
     answeringSelectionOptionId: 'a',
     opposingDecision: 'STEAL',
+    ...overrides,
+  });
+
+  const closestScenario = (overrides: Record<string, unknown> = {}) => ({
+    kind: 'closest',
+    version: 1,
+    prompt: 'كم يبلغ ارتفاع برج المملكة تقريبًا؟',
+    teamAEstimate: 280,
+    teamBEstimate: 320,
+    correctValue: 302,
+    unit: 'متر',
     ...overrides,
   });
 
@@ -65,6 +77,18 @@ describe('Mechanic tutorial HTTP integration', () => {
       status: 'active',
       sortOrder: 0,
       defaultPresentation: { inputType: 'phone-multiple-choice' },
+    });
+    await database.collection('challenge_types').insertOne({
+      _id: new Types.ObjectId(),
+      name: 'مين أقرب',
+      slug: CLOSEST_MECHANIC,
+      family: 'coop',
+      itemStructure: 'discrete_triple',
+      answerMode: 'closest',
+      scoringRuleId: 'closest.absolute-distance',
+      status: 'active',
+      sortOrder: 1,
+      defaultPresentation: { inputType: 'phone-slider' },
     });
     // One competitive item, so the overlap guard has something real to catch.
     await database.collection('content_items').insertOne({
@@ -91,13 +115,17 @@ describe('Mechanic tutorial HTTP integration', () => {
     await database?.close();
   });
 
-  const admin = (method: 'get' | 'put' | 'post', path: string) =>
+  const admin = (
+    method: 'get' | 'put' | 'post',
+    path: string,
+    mechanic = MECHANIC,
+  ) =>
     request(app.getHttpServer())
-      [method](`/admin/mechanics/${MECHANIC}/tutorial${path}`)
+      [method](`/admin/mechanics/${mechanic}/tutorial${path}`)
       .set('Authorization', `Bearer ${adminToken}`);
 
-  const publicTutorial = () =>
-    request(app.getHttpServer()).get(`/mechanics/${MECHANIC}/tutorial`);
+  const publicTutorial = (mechanic = MECHANIC) =>
+    request(app.getHttpServer()).get(`/mechanics/${mechanic}/tutorial`);
 
   it('refuses the admin surface without an admin role', async () => {
     await request(app.getHttpServer())
@@ -137,7 +165,12 @@ describe('Mechanic tutorial HTTP integration', () => {
 
   it('derives the outcome from the real payoff rule rather than the request', async () => {
     const saved = await admin('put', '/draft')
-      .send(scenario({ answeringSelectionOptionId: 'b', opposingDecision: 'STEAL' }))
+      .send(
+        scenario({
+          answeringSelectionOptionId: 'b',
+          opposingDecision: 'STEAL',
+        }),
+      )
       .expect(200);
     // Wrong answer + steal is the one losing combination in the real matrix.
     expect(saved.body.data.draft.outcome).toMatchObject({
@@ -164,7 +197,12 @@ describe('Mechanic tutorial HTTP integration', () => {
     await admin('put', '/draft')
       .send({
         ...scenario(),
-        outcome: { teamRole: 'answering', delta: 99, reason: 'nope', correct: true },
+        outcome: {
+          teamRole: 'answering',
+          delta: 99,
+          reason: 'nope',
+          correct: true,
+        },
       })
       .expect(400);
 
@@ -230,6 +268,46 @@ describe('Mechanic tutorial HTTP integration', () => {
     expect(published.body.data.publishedRevision).toBe(2);
     const response = await publicTutorial().expect(200);
     expect(response.body.data.scenario.prompt).toBe('كم عدد قارات العالم؟');
+  });
+
+  it('keeps a Closest draft private and publishes its canonically derived outcome', async () => {
+    const saved = await admin('put', '/draft', CLOSEST_MECHANIC)
+      .send(closestScenario())
+      .expect(200);
+    expect(saved.body.data.draft).toMatchObject({
+      kind: 'closest',
+      version: 1,
+      outcome: {
+        teamADistance: 22,
+        teamBDistance: 18,
+        winnerTeam: 'team-b',
+        tie: false,
+        mechanicTallyDelta: 1,
+        matchPointDelta: 0,
+        reason: 'closest.absolute-distance',
+      },
+    });
+    expect(
+      (await publicTutorial(CLOSEST_MECHANIC).expect(200)).body.data,
+    ).toBeNull();
+
+    await admin('post', '/publish', CLOSEST_MECHANIC).send({}).expect(201);
+    const published = await publicTutorial(CLOSEST_MECHANIC).expect(200);
+    expect(published.body.data.scenario).toMatchObject({
+      kind: 'closest',
+      prompt: 'كم يبلغ ارتفاع برج المملكة تقريبًا؟',
+      outcome: { winnerTeam: 'team-b', matchPointDelta: 0 },
+    });
+  });
+
+  it('rejects a tutorial kind that does not match its mechanic', async () => {
+    const response = await admin('post', '/validate', MECHANIC)
+      .send(closestScenario())
+      .expect(201);
+    expect(response.body.data).toMatchObject({
+      valid: false,
+      issues: [{ code: 'TUTORIAL_MECHANIC_KIND_MISMATCH' }],
+    });
   });
 
   it('404s an unknown mechanic key rather than inventing one', async () => {

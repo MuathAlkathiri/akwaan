@@ -11,8 +11,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { RyoExplainer } from "./ryo-explainer";
 import { usePublishedTutorial } from "../use-published-tutorial";
+import {
+  MechanicTutorialRenderer,
+  supportsTutorialScenario,
+} from "../tutorial-renderer";
+import { tutorialScenarioKind } from "../tutorial-scenario";
 
 /**
  * The explainer as something a host *asks for*, not something they sit through.
@@ -32,7 +36,7 @@ import { usePublishedTutorial } from "../use-published-tutorial";
  * cleanup, so no timeline, tween or observer outlives the dialog. Opening builds
  * a fresh one and the demonstration always begins at its first beat.
  */
-export function RyoExplainerDialog({
+export function MechanicTutorialDialog({
   mechanicKey,
   launching = false,
   disabled = false,
@@ -45,6 +49,10 @@ export function RyoExplainerDialog({
 }) {
   const [open, setOpen] = useState(false);
   const { data: tutorial } = usePublishedTutorial(mechanicKey);
+  const supported = tutorial
+    ? supportsTutorialScenario(tutorial.scenario)
+    : false;
+  const kind = tutorial ? tutorialScenarioKind(tutorial.scenario) : null;
 
   // The Match always outranks the explanation. When the host launches, the
   // stage change unmounts this whole screen anyway — closing here first makes
@@ -66,7 +74,7 @@ export function RyoExplainerDialog({
           variant="outline"
           size="sm"
           data-testid="preflight-how-to-play"
-          disabled={disabled || launching || !tutorial}
+          disabled={disabled || launching || !tutorial || !supported}
           className="h-9 shrink-0 gap-1.5 font-black"
         >
           <HelpCircle className="size-4" aria-hidden />
@@ -83,7 +91,9 @@ export function RyoExplainerDialog({
       >
         <DialogHeader className="pe-8 text-start">
           <DialogTitle className="text-base font-black">
-            كيف نلعب «اقرأ خصمك»؟
+            {kind === "closest"
+              ? "كيف نلعب «مين أقرب»؟"
+              : "كيف نلعب «اقرأ خصمك»؟"}
           </DialogTitle>
           <DialogDescription className="text-xs leading-5">
             {tutorial?.scenario.caption ??
@@ -91,9 +101,16 @@ export function RyoExplainerDialog({
           </DialogDescription>
         </DialogHeader>
         {tutorial && (
-          <RyoExplainer scenario={tutorial.scenario} compact mode="player" />
+          <MechanicTutorialRenderer
+            scenario={tutorial.scenario}
+            compact
+            mode="player"
+          />
         )}
       </DialogContent>
     </Dialog>
   );
 }
+
+/** Backwards-compatible export for existing imports. */
+export const RyoExplainerDialog = MechanicTutorialDialog;

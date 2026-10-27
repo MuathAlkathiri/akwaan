@@ -1,15 +1,17 @@
 import { RyoPayoffMatrixRule } from '../../scoring/application/ryo-payoff-matrix.rule';
 import {
   deriveTutorialOutcome,
+  deriveClosestTutorialOutcome,
   findTutorialOverlap,
   TUTORIAL_CONTENT_ITEM_ID,
-  TutorialScenarioInput,
+  RyoTutorialScenarioInput,
   validateTutorialScenario,
+  validateMechanicTutorialScenario,
 } from './mechanic-tutorial.policy';
 
 const scenario = (
-  overrides: Partial<TutorialScenarioInput> = {},
-): TutorialScenarioInput => ({
+  overrides: Partial<RyoTutorialScenarioInput> = {},
+): RyoTutorialScenarioInput => ({
   prompt: 'كم لونًا في قوس قزح؟',
   options: [
     { id: 'a', label: 'سبعة' },
@@ -39,7 +41,9 @@ describe('tutorial scenario validation', () => {
     const issues = validateTutorialScenario(
       scenario({ options: scenario().options.slice(0, 3) }),
     );
-    expect(issues.map((issue) => issue.code)).toContain('TUTORIAL_OPTION_COUNT');
+    expect(issues.map((issue) => issue.code)).toContain(
+      'TUTORIAL_OPTION_COUNT',
+    );
   });
 
   it('rejects duplicated option ids', () => {
@@ -190,10 +194,69 @@ describe('tutorial / competitive overlap guard', () => {
   });
 
   it('clears a genuinely different question', () => {
-    expect(findTutorialOverlap('كم لونًا في قوس قزح؟', competitive)).toEqual([]);
+    expect(findTutorialOverlap('كم لونًا في قوس قزح؟', competitive)).toEqual(
+      [],
+    );
   });
 
   it('clears an empty prompt rather than matching everything', () => {
     expect(findTutorialOverlap('   ', competitive)).toEqual([]);
+  });
+});
+
+describe('generalized mechanic tutorial policy', () => {
+  const closest = {
+    kind: 'closest' as const,
+    version: 1 as const,
+    prompt: 'كم يبلغ ارتفاع هذا المبنى التقريبي؟',
+    teamAEstimate: 110,
+    teamBEstimate: 145,
+    correctValue: 120,
+    unit: 'متر',
+  };
+
+  it('accepts legacy RYO without a discriminator', () => {
+    expect(
+      validateMechanicTutorialScenario('read-your-opponent', scenario()),
+    ).toEqual([]);
+  });
+
+  it('rejects a scenario kind owned by another mechanic', () => {
+    expect(
+      validateMechanicTutorialScenario('read-your-opponent', closest).map(
+        (issue) => issue.code,
+      ),
+    ).toContain('TUTORIAL_MECHANIC_KIND_MISMATCH');
+  });
+
+  it('derives the Closest winner and distances with the live grader', () => {
+    expect(deriveClosestTutorialOutcome(closest)).toEqual({
+      teamADistance: 10,
+      teamBDistance: 25,
+      winnerTeam: 'team-a',
+      tie: false,
+      mechanicTallyDelta: 1,
+      matchPointDelta: 0,
+      reason: 'closest.absolute-distance',
+    });
+  });
+
+  it('preserves the canonical equal-distance tie', () => {
+    expect(
+      deriveClosestTutorialOutcome({
+        teamAEstimate: 110,
+        teamBEstimate: 130,
+        correctValue: 120,
+      }),
+    ).toMatchObject({ winnerTeam: null, tie: true, mechanicTallyDelta: 0 });
+  });
+
+  it('rejects non-finite Closest values', () => {
+    expect(
+      validateMechanicTutorialScenario('closest', {
+        ...closest,
+        teamBEstimate: Number.NaN,
+      }).map((issue) => issue.code),
+    ).toContain('TUTORIAL_CLOSEST_VALUE_INVALID');
   });
 });

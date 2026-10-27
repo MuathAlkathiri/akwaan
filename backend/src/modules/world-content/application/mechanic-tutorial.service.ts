@@ -5,9 +5,13 @@ import { ChallengeType } from '../schemas/challenge-type.schema';
 import { ContentItem } from '../schemas/content-item.schema';
 import {
   deriveTutorialOutcome,
+  deriveClosestTutorialOutcome,
   findTutorialOverlap,
+  ClosestTutorialScenarioInput,
+  RyoTutorialScenarioInput,
   TutorialScenarioInput,
-  validateTutorialScenario,
+  tutorialKind,
+  validateMechanicTutorialScenario,
 } from '../domain/mechanic-tutorial.policy';
 import { StoredTutorialScenario } from '../domain/world-content.types';
 import { WorldContentValidationError } from '../domain/world-content.errors';
@@ -73,9 +77,12 @@ export class MechanicTutorialService {
    */
   async saveDraft(mechanicKey: string, input: TutorialScenarioInput) {
     const mechanic = await this.findMechanic(mechanicKey);
-    const issues = validateTutorialScenario(input);
+    const issues = validateMechanicTutorialScenario(mechanic.slug, input);
     if (issues.length) {
-      throw new WorldContentValidationError(issues, 'Tutorial scenario invalid');
+      throw new WorldContentValidationError(
+        issues,
+        'Tutorial scenario invalid',
+      );
     }
 
     const draft = this.compose(input);
@@ -91,14 +98,18 @@ export class MechanicTutorialService {
 
   /** Dry-run: the same checks publish applies, without writing anything. */
   async validate(mechanicKey: string, input: TutorialScenarioInput) {
-    await this.findMechanic(mechanicKey);
-    const issues = validateTutorialScenario(input);
+    const mechanic = await this.findMechanic(mechanicKey);
+    const issues = validateMechanicTutorialScenario(mechanic.slug, input);
     const overlaps = issues.length ? [] : await this.overlaps(input.prompt);
     return {
       valid: issues.length === 0 && overlaps.length === 0,
       issues,
       competitiveOverlap: overlaps,
-      outcome: issues.length ? null : deriveTutorialOutcome(input),
+      outcome: issues.length
+        ? null
+        : tutorialKind(input) === 'closest'
+          ? deriveClosestTutorialOutcome(input as ClosestTutorialScenarioInput)
+          : deriveTutorialOutcome(input as RyoTutorialScenarioInput),
     };
   }
 
@@ -120,9 +131,12 @@ export class MechanicTutorialService {
       );
     }
 
-    const issues = validateTutorialScenario(draft);
+    const issues = validateMechanicTutorialScenario(mechanic.slug, draft);
     if (issues.length) {
-      throw new WorldContentValidationError(issues, 'Tutorial scenario invalid');
+      throw new WorldContentValidationError(
+        issues,
+        'Tutorial scenario invalid',
+      );
     }
 
     const overlaps = await this.overlaps(draft.prompt);
@@ -158,17 +172,34 @@ export class MechanicTutorialService {
   }
 
   private compose(input: TutorialScenarioInput): StoredTutorialScenario {
+    if (tutorialKind(input) === 'closest') {
+      const closest = input as ClosestTutorialScenarioInput;
+      return {
+        kind: 'closest',
+        version: 1,
+        prompt: closest.prompt.trim(),
+        teamAEstimate: closest.teamAEstimate,
+        teamBEstimate: closest.teamBEstimate,
+        correctValue: closest.correctValue,
+        ...(closest.unit?.trim() ? { unit: closest.unit.trim() } : {}),
+        ...(closest.caption?.trim() ? { caption: closest.caption.trim() } : {}),
+        outcome: deriveClosestTutorialOutcome(closest),
+      };
+    }
+    const ryo = input as RyoTutorialScenarioInput;
     return {
-      prompt: input.prompt.trim(),
-      options: input.options.map((option) => ({
+      kind: 'ryo',
+      version: 1,
+      prompt: ryo.prompt.trim(),
+      options: ryo.options.map((option) => ({
         id: option.id.trim(),
         label: option.label.trim(),
       })),
-      correctOptionId: input.correctOptionId.trim(),
-      answeringSelectionOptionId: input.answeringSelectionOptionId.trim(),
-      opposingDecision: input.opposingDecision,
-      ...(input.caption?.trim() ? { caption: input.caption.trim() } : {}),
-      outcome: deriveTutorialOutcome(input),
+      correctOptionId: ryo.correctOptionId.trim(),
+      answeringSelectionOptionId: ryo.answeringSelectionOptionId.trim(),
+      opposingDecision: ryo.opposingDecision,
+      ...(ryo.caption?.trim() ? { caption: ryo.caption.trim() } : {}),
+      outcome: deriveTutorialOutcome(ryo),
     };
   }
 
@@ -182,7 +213,9 @@ export class MechanicTutorialService {
       items.map((item) => ({
         contentItemId: String(item._id),
         prompt:
-          typeof item.prompt === 'string' ? item.prompt : (item.prompt?.ar ?? ''),
+          typeof item.prompt === 'string'
+            ? item.prompt
+            : (item.prompt?.ar ?? ''),
       })),
     );
   }
