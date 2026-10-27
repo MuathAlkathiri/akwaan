@@ -10,10 +10,9 @@ import { PendingButtonContent } from "@/components/ui/pending-button-content";
 import { WorldMedia } from "@/components/akwaan/world-media";
 import { teamIdentity, TEAM_SLOT_ORDER } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
-import { RyoExplainerDialog } from "@/features/challenge-explainer";
+import { MechanicTutorialDialog } from "@/features/challenge-explainer";
 
-/** The one mechanic with an animated explainer so far. */
-const RYO_CHALLENGE_KEY = "read-your-opponent";
+const TUTORIAL_RENDERER_MECHANICS = new Set(["read-your-opponent", "closest"]);
 import { occurrenceLabel } from "@/features/match-setup";
 import type { PreflightTeam, UnifiedPreflight } from "../types";
 
@@ -123,7 +122,8 @@ function ChallengeIdentityBanner({
   selectingTeamName?: string;
   worldImageUrl?: string;
 }) {
-  const summary = preflight.playerInstructions?.summary ?? preflight.description;
+  const summary =
+    preflight.playerInstructions?.summary ?? preflight.description;
   return (
     <section
       data-testid="preflight-identity"
@@ -190,7 +190,7 @@ function ChallengeExplanation({
   preflight: UnifiedPreflight;
   launching: boolean;
 }) {
-  const animated = preflight.challengeKey === RYO_CHALLENGE_KEY;
+  const animated = TUTORIAL_RENDERER_MECHANICS.has(preflight.challengeKey);
   return (
     <section
       data-testid="preflight-explainer"
@@ -214,7 +214,7 @@ function ChallengeExplanation({
             It is offered here and opened on demand, so the default screen stays
             about starting the challenge. */}
         {animated && (
-          <RyoExplainerDialog
+          <MechanicTutorialDialog
             mechanicKey={preflight.challengeKey}
             launching={launching}
           />
@@ -441,7 +441,9 @@ function PairingPanel({
  * the semantic status system, never a heavy warning pill.
  */
 function TeamRoster({ team, order }: { team: PreflightTeam; order: number }) {
-  const identity = teamIdentity(TEAM_SLOT_ORDER[order % TEAM_SLOT_ORDER.length]);
+  const identity = teamIdentity(
+    TEAM_SLOT_ORDER[order % TEAM_SLOT_ORDER.length],
+  );
   const target = team.maximum ?? team.minimum;
   const missing = Math.max(0, target - team.connectedCount);
 
@@ -466,47 +468,47 @@ function TeamRoster({ team, order }: { team: PreflightTeam; order: number }) {
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          {Array.from({ length: Math.max(target, team.participants.length) }).map(
-            (_, index) => {
-              const participant = team.participants[index];
-              if (!participant) {
-                return (
-                  <span
-                    key={`empty-${index}`}
-                    aria-hidden
-                    className="size-6 shrink-0 rounded-full border border-dashed border-border/70"
-                  />
-                );
-              }
-              const initial = participant.displayName.trim().charAt(0) || "؟";
-              return participant.connected ? (
+          {Array.from({
+            length: Math.max(target, team.participants.length),
+          }).map((_, index) => {
+            const participant = team.participants[index];
+            if (!participant) {
+              return (
                 <span
-                  key={participant.participantId}
-                  title={participant.displayName}
-                  className={cn(
-                    "grid size-6 shrink-0 place-items-center rounded-full text-[0.65rem] font-black",
-                    identity.surface,
-                    identity.text,
-                  )}
-                >
-                  {initial}
-                  <span className="sr-only">{participant.displayName}</span>
-                </span>
-              ) : (
-                <span
-                  key={participant.participantId}
-                  aria-label="غير متصل"
-                  title={participant.displayName}
-                  className="grid size-6 shrink-0 place-items-center rounded-full border border-dashed border-border text-[0.6rem] font-black text-disabled-foreground"
-                >
-                  {initial}
-                  <span className="sr-only">
-                    {participant.displayName} غير متصل
-                  </span>
-                </span>
+                  key={`empty-${index}`}
+                  aria-hidden
+                  className="size-6 shrink-0 rounded-full border border-dashed border-border/70"
+                />
               );
-            },
-          )}
+            }
+            const initial = participant.displayName.trim().charAt(0) || "؟";
+            return participant.connected ? (
+              <span
+                key={participant.participantId}
+                title={participant.displayName}
+                className={cn(
+                  "grid size-6 shrink-0 place-items-center rounded-full text-[0.65rem] font-black",
+                  identity.surface,
+                  identity.text,
+                )}
+              >
+                {initial}
+                <span className="sr-only">{participant.displayName}</span>
+              </span>
+            ) : (
+              <span
+                key={participant.participantId}
+                aria-label="غير متصل"
+                title={participant.displayName}
+                className="grid size-6 shrink-0 place-items-center rounded-full border border-dashed border-border text-[0.6rem] font-black text-disabled-foreground"
+              >
+                {initial}
+                <span className="sr-only">
+                  {participant.displayName} غير متصل
+                </span>
+              </span>
+            );
+          })}
         </div>
 
         <TeamReadinessStatus team={team} missing={missing} />

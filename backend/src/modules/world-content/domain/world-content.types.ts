@@ -504,7 +504,10 @@ export interface MechanicTutorial {
   draftUpdatedAt?: Date;
 }
 
-export interface StoredTutorialScenario {
+export interface StoredRyoTutorialScenario {
+  /** Absent on tutorials published before the V1 generalized contract. */
+  kind?: 'ryo';
+  version?: 1;
   prompt: string;
   options: { id: string; label: string }[];
   correctOptionId: string;
@@ -518,6 +521,31 @@ export interface StoredTutorialScenario {
     correct: boolean;
   };
 }
+
+export interface StoredClosestTutorialScenario {
+  kind: 'closest';
+  version: 1;
+  prompt: string;
+  teamAEstimate: number;
+  teamBEstimate: number;
+  correctValue: number;
+  unit?: string;
+  caption?: string;
+  outcome: {
+    teamADistance: number;
+    teamBDistance: number;
+    winnerTeam: 'team-a' | 'team-b' | null;
+    tie: boolean;
+    /** One item win in Closest's three-item mechanic tally. */
+    mechanicTallyDelta: number;
+    /** One demonstrated item never awards the Match point by itself. */
+    matchPointDelta: 0;
+    reason: 'closest.absolute-distance';
+  };
+}
+
+export type StoredTutorialScenario =
+  StoredRyoTutorialScenario | StoredClosestTutorialScenario;
 
 /** Uniform issue shape for every validation and readiness surface. */
 export interface WorldContentIssue {

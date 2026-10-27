@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
-  RyoExplainer,
+  MechanicTutorialRenderer,
+  type ClosestTutorialScenario,
   type RyoTutorialScenario,
+  type TutorialScenario,
 } from "@/features/challenge-explainer";
 import {
   fetchAdminTutorial,
@@ -41,6 +43,8 @@ import {
  */
 
 const EMPTY: TutorialScenarioDraft = {
+  kind: "ryo",
+  version: 1,
   prompt: "",
   options: [
     { id: "a", label: "" },
@@ -58,12 +62,220 @@ export function MechanicTutorialEditor({
 }: {
   mechanicKey: string;
 }) {
-  const [state, setState] = useState<AdminTutorialState | null>(null);
-  const [draft, setDraft] = useState<TutorialScenarioDraft>(EMPTY);
-  const [validation, setValidation] = useState<TutorialValidation | null>(null);
-  const [busy, setBusy] = useState<"load" | "save" | "check" | "publish" | null>(
-    "load",
+  return mechanicKey === "closest" ? (
+    <ClosestTutorialEditor mechanicKey={mechanicKey} />
+  ) : (
+    <RyoTutorialEditor mechanicKey={mechanicKey} />
   );
+}
+
+function ClosestTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+  const initial: TutorialScenarioDraft = {
+    kind: "closest",
+    version: 1,
+    prompt: "",
+    teamAEstimate: 0,
+    teamBEstimate: 0,
+    correctValue: 0,
+    unit: "",
+  };
+  const [state, setState] = useState<AdminTutorialState | null>(null);
+  const [draft, setDraft] = useState<TutorialScenarioDraft>(initial);
+  const [validation, setValidation] = useState<TutorialValidation | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetchAdminTutorial(mechanicKey)
+      .then((next) => {
+        if (!active) return;
+        setState(next);
+        const source = next.draft ?? next.published;
+        if (source?.kind === "closest") setDraft(stripOutcome(source));
+      })
+      .finally(() => active && setBusy(false));
+    return () => {
+      active = false;
+    };
+  }, [mechanicKey]);
+
+  const closest = draft as Omit<ClosestTutorialScenario, "outcome">;
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await action();
+    } catch (error) {
+      const issues = extractIssues(error);
+      setValidation({
+        valid: false,
+        issues,
+        competitiveOverlap: extractOverlap(issues),
+        outcome: null,
+      });
+      toast.error(issues[0]?.message ?? "تعذّرت العملية. حاول مرة ثانية.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const numberField = (
+    field: "teamAEstimate" | "teamBEstimate" | "correctValue",
+  ) => ({
+    value: closest[field],
+    onChange: (event: React.ChangeEvent<HTMLInputElement>) =>
+      setDraft(
+        (current) =>
+          ({
+            ...current,
+            [field]: Number(event.target.value),
+          }) as TutorialScenarioDraft,
+      ),
+  });
+  const preview = validation?.outcome
+    ? ({ ...closest, outcome: validation.outcome } as ClosestTutorialScenario)
+    : state?.draft?.kind === "closest"
+      ? state.draft
+      : null;
+
+  return (
+    <section
+      data-testid="mechanic-tutorial-editor"
+      className="space-y-3 rounded-[var(--radius)] border-2 border-border p-3"
+    >
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <span>
+          <h3 className="text-sm font-black">شرح مين أقرب</h3>
+          <p className="text-xs text-muted-foreground">
+            مثال رقمي تعليمي؛ المسافات والنتيجة مشتقة من قواعد اللعبة.
+          </p>
+        </span>
+        <PublishState state={state} />
+      </header>
+      <div className="space-y-1">
+        <FieldLabel htmlFor="tutorial-prompt">السؤال التعليمي</FieldLabel>
+        <Textarea
+          id="tutorial-prompt"
+          data-testid="tutorial-prompt"
+          value={closest.prompt}
+          onChange={(event) =>
+            setDraft({ ...closest, prompt: event.target.value })
+          }
+        />
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <NumberField
+          id="tutorial-team-a-estimate"
+          label="تقدير الفريق الأول"
+          {...numberField("teamAEstimate")}
+        />
+        <NumberField
+          id="tutorial-team-b-estimate"
+          label="تقدير الفريق الثاني"
+          {...numberField("teamBEstimate")}
+        />
+        <NumberField
+          id="tutorial-correct-value"
+          label="الإجابة الصحيحة"
+          {...numberField("correctValue")}
+        />
+        <div className="space-y-1">
+          <FieldLabel htmlFor="tutorial-unit">الوحدة</FieldLabel>
+          <Input
+            id="tutorial-unit"
+            value={closest.unit ?? ""}
+            onChange={(event) =>
+              setDraft({ ...closest, unit: event.target.value })
+            }
+          />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          data-testid="tutorial-save"
+          disabled={busy}
+          onClick={() =>
+            run(async () => {
+              setState(await saveTutorialDraft(mechanicKey, closest));
+              setValidation(null);
+            })
+          }
+        >
+          حفظ المسودة
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          data-testid="tutorial-validate"
+          disabled={busy}
+          onClick={() =>
+            run(async () =>
+              setValidation(await validateTutorialDraft(mechanicKey, closest)),
+            )
+          }
+        >
+          <Eye className="size-4" />
+          فحص ومعاينة
+        </Button>
+        <Button
+          type="button"
+          data-testid="tutorial-publish"
+          disabled={busy || !state?.draft}
+          onClick={() =>
+            run(async () => {
+              setState(await publishTutorial(mechanicKey));
+              setValidation(null);
+            })
+          }
+        >
+          <Send className="size-4" />
+          نشر
+        </Button>
+      </div>
+      {validation && <ValidationReport validation={validation} />}
+      {preview && (
+        <div data-testid="tutorial-preview">
+          <MechanicTutorialRenderer scenario={preview} compact mode="preview" />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function NumberField({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: number;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <Input
+        id={id}
+        data-testid={id}
+        type="number"
+        value={value}
+        onChange={onChange}
+      />
+    </div>
+  );
+}
+
+function RyoTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+  const [state, setState] = useState<AdminTutorialState | null>(null);
+  const [draft, setDraft] = useState<Omit<RyoTutorialScenario, "outcome">>(
+    EMPTY as Omit<RyoTutorialScenario, "outcome">,
+  );
+  const [validation, setValidation] = useState<TutorialValidation | null>(null);
+  const [busy, setBusy] = useState<
+    "load" | "save" | "check" | "publish" | null
+  >("load");
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -77,7 +289,10 @@ export function MechanicTutorialEditor({
         // published version is the sensible starting point, and only a mechanic
         // with neither starts blank.
         const source = next.draft ?? next.published;
-        if (source) setDraft(stripOutcome(source));
+        if (source && source.kind !== "closest")
+          setDraft(
+            stripOutcome(source) as Omit<RyoTutorialScenario, "outcome">,
+          );
         setLoadError(null);
       })
       .catch(() => active && setLoadError("ما قدرنا نحمّل الشرح التعليمي."))
@@ -149,8 +364,10 @@ export function MechanicTutorialEditor({
   // Previewable only once the server has derived an outcome for this draft —
   // the preview must never guess a score the rules did not produce.
   const previewScenario: RyoTutorialScenario | null = validation?.outcome
-    ? { ...draft, outcome: validation.outcome }
-    : (state?.draft ?? null);
+    ? ({ ...draft, outcome: validation.outcome } as RyoTutorialScenario)
+    : state?.draft && state.draft.kind !== "closest"
+      ? state.draft
+      : null;
 
   return (
     <section
@@ -284,7 +501,11 @@ export function MechanicTutorialEditor({
           <p className="text-xs font-black text-muted-foreground">
             معاينة بالشرح الحقيقي
           </p>
-          <RyoExplainer scenario={previewScenario} compact mode="preview" />
+          <MechanicTutorialRenderer
+            scenario={previewScenario}
+            compact
+            mode="preview"
+          />
         </div>
       )}
     </section>
@@ -407,7 +628,7 @@ function OptionPicker({
   );
 }
 
-function stripOutcome(scenario: RyoTutorialScenario): TutorialScenarioDraft {
+function stripOutcome(scenario: TutorialScenario): TutorialScenarioDraft {
   const { outcome: _outcome, ...rest } = scenario;
   return rest;
 }
@@ -418,7 +639,11 @@ function extractIssues(error: unknown) {
   )?.response?.data?.message;
   const issues = (payload as { issues?: unknown })?.issues;
   return Array.isArray(issues)
-    ? (issues as { code: string; message: string; details?: Record<string, unknown> }[])
+    ? (issues as {
+        code: string;
+        message: string;
+        details?: Record<string, unknown>;
+      }[])
     : [];
 }
 

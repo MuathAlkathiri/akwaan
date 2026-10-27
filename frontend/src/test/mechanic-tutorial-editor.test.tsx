@@ -1,5 +1,11 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, cleanup, within } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  cleanup,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MechanicTutorialEditor } from "@/features/world-management/components/challenge-types/mechanic-tutorial-editor";
 import type { AdminTutorialState } from "@/features/world-management/api/mechanic-tutorial-api";
@@ -41,7 +47,28 @@ const scenario = {
   },
 };
 
-const state = (overrides: Partial<AdminTutorialState> = {}): AdminTutorialState => ({
+const closestScenario = {
+  kind: "closest" as const,
+  version: 1 as const,
+  prompt: "كم يبلغ ارتفاع برج المملكة تقريبًا؟",
+  teamAEstimate: 280,
+  teamBEstimate: 320,
+  correctValue: 302,
+  unit: "متر",
+  outcome: {
+    teamADistance: 22,
+    teamBDistance: 18,
+    winnerTeam: "team-b" as const,
+    tie: false,
+    mechanicTallyDelta: 1,
+    matchPointDelta: 0 as const,
+    reason: "closest.absolute-distance" as const,
+  },
+};
+
+const state = (
+  overrides: Partial<AdminTutorialState> = {},
+): AdminTutorialState => ({
   mechanicKey: "read-your-opponent",
   mechanicName: "اقرأ خصمك",
   draft: null,
@@ -76,14 +103,62 @@ const mount = async () => {
   await waitFor(() => expect(api.fetchAdminTutorial).toHaveBeenCalled());
 };
 
+const mountClosest = async () => {
+  render(<MechanicTutorialEditor mechanicKey="closest" />);
+  await waitFor(() => expect(api.fetchAdminTutorial).toHaveBeenCalled());
+};
+
 describe("mechanic tutorial editor", () => {
+  it("authors and previews a Closest scenario with a server-derived outcome", async () => {
+    const user = userEvent.setup();
+    api.fetchAdminTutorial.mockResolvedValue(
+      state({
+        mechanicKey: "closest",
+        mechanicName: "مين أقرب",
+        draft: closestScenario,
+        hasUnpublishedChanges: true,
+      }),
+    );
+    api.validateTutorialDraft.mockResolvedValue({
+      valid: true,
+      issues: [],
+      competitiveOverlap: [],
+      outcome: closestScenario.outcome,
+    });
+
+    await mountClosest();
+    await waitFor(() =>
+      expect(screen.getByTestId("tutorial-team-a-estimate")).toHaveValue(280),
+    );
+    expect(screen.getByTestId("tutorial-team-b-estimate")).toHaveValue(320);
+    expect(screen.getByTestId("tutorial-correct-value")).toHaveValue(302);
+
+    await user.click(screen.getByTestId("tutorial-validate"));
+    const preview = await screen.findByTestId("tutorial-preview");
+    expect(
+      within(preview).getByTestId("closest-explainer"),
+    ).toBeInTheDocument();
+    expect(api.validateTutorialDraft).toHaveBeenCalledWith(
+      "closest",
+      expect.objectContaining({
+        kind: "closest",
+        version: 1,
+        teamAEstimate: 280,
+        teamBEstimate: 320,
+        correctValue: 302,
+      }),
+    );
+  });
+
   it("loads the mechanic's existing draft to continue from", async () => {
     api.fetchAdminTutorial.mockResolvedValue(
       state({ draft: scenario, draftUpdatedAt: "2026-10-12T00:00:00.000Z" }),
     );
     await mount();
     await waitFor(() =>
-      expect(screen.getByTestId("tutorial-prompt")).toHaveValue(scenario.prompt),
+      expect(screen.getByTestId("tutorial-prompt")).toHaveValue(
+        scenario.prompt,
+      ),
     );
     // Keyed by mechanic, never by World or Scope.
     expect(api.fetchAdminTutorial).toHaveBeenCalledWith("read-your-opponent");
@@ -95,9 +170,9 @@ describe("mechanic tutorial editor", () => {
     // Enumerate every control an editor can actually touch: the prompt, the four
     // options, and the three choices that drive the simulation. Nothing through
     // which a score could be asserted — that is derived server-side.
-    const controls = [...editor.querySelectorAll("input, select, textarea")].map(
-      (element) => element.getAttribute("data-testid"),
-    );
+    const controls = [
+      ...editor.querySelectorAll("input, select, textarea"),
+    ].map((element) => element.getAttribute("data-testid"));
     expect(controls.sort()).toEqual(
       [
         "tutorial-prompt",
@@ -159,7 +234,9 @@ describe("mechanic tutorial editor", () => {
           code: "TUTORIAL_OVERLAPS_COMPETITIVE_CONTENT",
           message: "هذا السؤال يطابق محتوى تنافسي قابل للعب.",
           details: {
-            matches: [{ contentItemId: "6a725e414c19c862fcb4c0a7", similarity: 1 }],
+            matches: [
+              { contentItemId: "6a725e414c19c862fcb4c0a7", similarity: 1 },
+            ],
           },
         },
       ],
@@ -223,7 +300,10 @@ describe("mechanic tutorial editor", () => {
         data: {
           message: {
             issues: [
-              { code: "TUTORIAL_PROMPT_REQUIRED", message: "السؤال التوضيحي مطلوب." },
+              {
+                code: "TUTORIAL_PROMPT_REQUIRED",
+                message: "السؤال التوضيحي مطلوب.",
+              },
             ],
           },
         },
@@ -243,7 +323,9 @@ describe("mechanic tutorial editor", () => {
   it("reports a load failure rather than rendering an empty editor", async () => {
     api.fetchAdminTutorial.mockRejectedValue(new Error("nope"));
     await mount();
-    expect(await screen.findByTestId("tutorial-editor-error")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("tutorial-editor-error"),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("tutorial-prompt")).toBeNull();
   });
 });
