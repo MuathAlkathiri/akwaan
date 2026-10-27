@@ -35,6 +35,11 @@ import {
   CandidateRejectionDto,
   ReviewCandidateQueryDto,
 } from '../presentation/content-engine-review.dto';
+import {
+  resolveCanonicalWorld,
+  resolveCanonicalScope,
+  resolveCanonicalChallengeType,
+} from './authoring-target-resolver';
 import { CandidateCompatibilityService } from './candidate-compatibility.service';
 import { DeterministicScreenService } from './deterministic-screen.service';
 
@@ -1078,10 +1083,11 @@ export class ContentEngineReviewService {
       }
     }
 
-    const world = await this.worlds.findBySlug(job.worldKey);
+    const world = await resolveCanonicalWorld(this.worlds, job.worldKey);
     if (!world)
       throw new BadRequestException(`World "${job.worldKey}" does not exist`);
-    const scope = await this.scopes.findBySlugInWorld(
+    const scope = await resolveCanonicalScope(
+      this.scopes,
       String(world._id),
       job.scopeKey,
     );
@@ -1089,7 +1095,10 @@ export class ContentEngineReviewService {
       throw new BadRequestException(
         `Scope "${job.scopeKey}" does not exist in the job World`,
       );
-    const challengeType = await this.challengeTypes.findBySlug(job.mechanicKey);
+    const challengeType = await resolveCanonicalChallengeType(
+      this.challengeTypes,
+      job.mechanicKey,
+    );
     if (!challengeType)
       throw new BadRequestException(
         `ChallengeType "${job.mechanicKey}" does not exist`,

@@ -970,7 +970,8 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
       const settle = jest.fn(async () => ({ actualMicros: 1000 }));
       const generateText = jest.fn(async () => {
         const error = new Error('OpenRouter responded 504: Gateway Timeout');
-        (error as { definitelyNotBilled?: boolean }).definitelyNotBilled = false;
+        (error as { definitelyNotBilled?: boolean }).definitelyNotBilled =
+          false;
         throw error;
       });
 

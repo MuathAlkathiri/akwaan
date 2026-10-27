@@ -346,15 +346,24 @@ export class DeterministicScreenService {
       (option) =>
         (option.id ?? '').trim() === (payload.correctOptionId ?? '').trim(),
     );
-    const correctLabel = normalizeAnswer(correct?.label?.ar ?? '');
+    const correctLabel = correct?.label?.ar ?? '';
     const normalizedPrompt = normalizeAnswer(prompt);
-    if (correctLabel && normalizedPrompt.includes(correctLabel)) {
+    if (correctLabel && this.detectAnswerLeakage(prompt, correctLabel)) {
       findings.push(
         blocking(
           'ANSWER_LEAKAGE',
           'the correct answer appears in the prompt text',
         ),
       );
+    }
+
+    // --- anagram letter multiset verification ----------------------------
+    const anagramFinding = this.checkAnagramLetterConsistency(
+      prompt,
+      correctLabel,
+    );
+    if (anagramFinding) {
+      findings.push(anagramFinding);
     }
 
     // --- text normalization ----------------------------------------------
@@ -975,5 +984,144 @@ export class DeterministicScreenService {
     );
 
     return findings;
+  }
+
+  /**
+   * Token-based answer leakage detector.
+   * Prevents false positives on single-letter options embedded in unrelated words (e.g. 'ع' in 'مساعدة')
+   * while strictly catching whole-word / phrase leakage (e.g. 'العصفور' in prompt).
+   */
+  detectAnswerLeakage(prompt: string, answerLabel: string): boolean {
+    if (!prompt || !answerLabel) return false;
+    const rawAnswer = answerLabel.trim();
+    if (!rawAnswer) return false;
+
+    // Single-character answer: only match if it appears as an isolated token
+    if (rawAnswer.length === 1 || normalizeAnswer(rawAnswer).length === 1) {
+      const singleChar = normalizeAnswer(rawAnswer).trim();
+      const tokens = prompt
+        .split(/[^\p{L}\p{N}]+/gu)
+        .map((t) => normalizeAnswer(t).trim())
+        .filter(Boolean);
+      return tokens.includes(singleChar);
+    }
+
+    // Multi-character answer: normalize and tokenize
+    const normAnswer = normalizeAnswer(rawAnswer).trim();
+    if (!normAnswer) return false;
+
+    const promptTokens = prompt
+      .split(/[^\p{L}\p{N}]+/gu)
+      .map((t) => normalizeAnswer(t).trim())
+      .filter(Boolean);
+
+    const answerTokens = normAnswer
+      .split(/[^\p{L}\p{N}]+/gu)
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    if (answerTokens.length === 0) return false;
+
+    const stripAl = (token: string): string =>
+      token.startsWith('ال') && token.length > 3 ? token.slice(2) : token;
+
+    // Single word answer
+    if (answerTokens.length === 1) {
+      const at = answerTokens[0];
+      const atBase = stripAl(at);
+      return promptTokens.some((pt) => {
+        const ptBase = stripAl(pt);
+        return pt === at || (atBase.length >= 3 && ptBase === atBase);
+      });
+    }
+
+    // Multi-word phrase answer: search for contiguous matching sub-sequence
+    for (let i = 0; i <= promptTokens.length - answerTokens.length; i++) {
+      let match = true;
+      for (let j = 0; j < answerTokens.length; j++) {
+        const pt = promptTokens[i + j];
+        const at = answerTokens[j];
+        const ptBase = stripAl(pt);
+        const atBase = stripAl(at);
+        if (pt !== at && !(atBase.length >= 3 && ptBase === atBase)) {
+          match = false;
+          break;
+        }
+      }
+      if (match) return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Mathematical multiset letter validation for anagrams and letter-rearrangement challenges.
+   * Catches hallucinated / impossible answers where clue letters do not match answer letters.
+   */
+  checkAnagramLetterConsistency(
+    prompt: string,
+    answerLabel: string,
+  ): ScreenFinding | null {
+    if (!prompt || !answerLabel) return null;
+
+    const isAnagram =
+      /(?:كون|تكوين|رتب|ترتيب|أعد ترتيب|اعد ترتيب|تجميع)\s+(?:كلمة|الحروف|حروف)/i.test(
+        prompt,
+      ) || /(?:الحروف التالية|من الحروف)/i.test(prompt);
+
+    if (!isAnagram) return null;
+
+    let letterRegion = '';
+    const colonMatch = prompt.match(/:\s*([^\n\.\?؟!]+)/);
+    if (colonMatch) {
+      letterRegion = colonMatch[1];
+    } else {
+      const parenMatch = prompt.match(/[\(（\[]([^\)）\]]+)[\)）\]]/);
+      if (parenMatch) {
+        letterRegion = parenMatch[1];
+      } else {
+        letterRegion = prompt;
+      }
+    }
+
+    const rawTokens = letterRegion.split(/[^\p{L}]+/gu).filter(Boolean);
+    const singleLetters = rawTokens.filter(
+      (t) => t.length === 1 && /[\u0621-\u064A]/.test(t),
+    );
+    if (singleLetters.length < 2) return null;
+
+    const normalizeLetter = (ch: string): string => {
+      if (/[أإآٱ]/.test(ch)) return 'ا';
+      if (ch === 'ة') return 'ه';
+      if (ch === 'ى') return 'ي';
+      return ch;
+    };
+
+    const clueNorm = singleLetters.map(normalizeLetter);
+    const answerNorm = answerLabel
+      .replace(/[^\u0621-\u064A]/g, '')
+      .split('')
+      .map(normalizeLetter);
+
+    const countMap = (arr: string[]): Record<string, number> => {
+      const m: Record<string, number> = {};
+      for (const c of arr) m[c] = (m[c] || 0) + 1;
+      return m;
+    };
+
+    const clueMap = countMap(clueNorm);
+    const ansMap = countMap(answerNorm);
+
+    const allKeys = new Set([...Object.keys(clueMap), ...Object.keys(ansMap)]);
+    for (const k of allKeys) {
+      if ((clueMap[k] || 0) !== (ansMap[k] || 0)) {
+        return blocking(
+          'ANAGRAM_LETTER_MULTISET_MISMATCH',
+          `clue letters do not match the answer letters (mismatch on letter "${k}")`,
+        );
+      }
+    }
+
+    return null;
   }
 }
