@@ -227,6 +227,8 @@ export const RYO_CANDIDATE_SCHEMA: Record<string, unknown> = {
             type: 'array',
             minItems: 1,
             items: { type: 'string' },
+            description:
+              'The answer-critical factual or logical claim(s) that justify why the correct answer is true. For knowledge questions, state the verifiable real-world fact. For self-contained puzzles, state the core mathematical, lexical, or logical rule/derivation proving the answer.',
           },
         },
       },
@@ -325,7 +327,12 @@ export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
             description:
               'Omit by returning null; null means an ordinary number.',
           },
-          factualClaims: { type: 'array', items: { type: 'string' } },
+          factualClaims: {
+            type: 'array',
+            items: { type: 'string' },
+            description:
+              'The answer-critical factual or logical claim(s) that justify why the correct value is true. For knowledge questions, state the verifiable real-world fact. For self-contained puzzles, state the core mathematical or estimation rule/derivation proving the value.',
+          },
         },
       },
     },
@@ -399,6 +406,7 @@ export const RYO_TASK_GUIDANCE = [
   '  2. prompt, then options (2-4) and correctOptionId.',
   '  3. distractorRationale — one entry per INCORRECT option, keyed by its id, saying why a real player might pick it.',
   '  4. estimatedConfidence — one of near-certain / likely / even / unlikely / near-impossible, with a line of reasoning.',
+  '  5. factualClaims — one or more concise statements asserting the answer-critical fact or logical derivation that proves the correct option. For knowledge questions, state the verifiable real-world fact. For self-contained puzzles or wordplay, state the definitive rule, mathematical calculation, or lexical derivation.',
   '',
   'THE CERTAINTY TEST. Would a reasonable opposing team have to think about Steal',
   'or Trust? If almost everyone knows the answer they always steal; if almost',
@@ -444,6 +452,7 @@ export const CLOSEST_TASK_GUIDANCE = [
   '  4. prompt — the Arabic question. For "reasoning" it must carry every number the strategy needs.',
   '  5. domainDescription, min, max, step — the natural span for this KIND of quantity, decided WITHOUT looking at the answer.',
   '  6. correctValue, then stepsFromMin — compute correctValue = min + stepsFromMin * step and check it holds exactly.',
+  '  7. factualClaims — one or more concise statements asserting the exact quantity, record, or derivation proving the correct value. For knowledge questions, state the verifiable real-world fact. For reasoning problems, state the derivation.',
   '',
   'TWO VALID DIRECTIONS. Closest takes both, and neither is lesser:',
   '  - knowledge-anchored — the answer is a real quantity. A team that knows it wins; a team',

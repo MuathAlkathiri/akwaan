@@ -235,7 +235,7 @@ export class GenerationPlannerService {
 
   private resolveCorrectnessRequirements(mechanicKey: string): string[] {
     const requirements = [
-      'Factually Defensible: Every statement, answer, and distractor must be verifiable against authoritative sources.',
+      'Factually & Logically Defensible: Every statement, answer, and distractor must be verifiable against authoritative sources (for knowledge) or provable by sound mathematical/spatial/lexical rules (for puzzles). Every candidate must state its answer-critical claim in factualClaims.',
       'Modern Standard Arabic: Strict adherence to standard Arabic grammar, correct hamzat (أ, إ, آ), proper taa marbuta (ة vs ه), and no typos.',
       'Mutually Exclusive Options: Options must be distinct; no overlapping or duplicate meanings.',
     ];

@@ -371,12 +371,13 @@ export class ContentEngineOrchestratorService {
       }
       if (
         error instanceof GenerationSpecValidationError ||
-        (error instanceof CandidateParseError &&
-          error.code === 'MECHANIC_NOT_GENERATABLE')
+        error instanceof CandidateParseError
       ) {
-        // This is a deterministic capability boundary, not a transient
-        // provider failure. A queued job that bypassed preflight must fail
-        // without retrying or reaching another paid attempt.
+        // This is a deterministic candidate schema or parser failure on the model's
+        // output (or a preflight capability boundary), not a transient network or
+        // ambiguous provider outcome. The provider has already billed, so retrying
+        // the identical prompt would only burn budget or trigger an ambiguous
+        // reconciliation halt on attempt 2. Fail closed deterministically.
         await this.jobs.fail(job.jobId, job.leaseEpoch, error.message);
         return;
       }
