@@ -544,8 +544,31 @@ export interface StoredClosestTutorialScenario {
   };
 }
 
+export interface StoredBombTutorialScenario {
+  kind: 'bomb';
+  version: 1;
+  prompt: string;
+  acceptedAnswer: string;
+  nextPrompt: string;
+  startingTeam: 'team-a' | 'team-b';
+  correctAtSecondsRemaining: number;
+  opponentExpiresAtSecondsRemaining: 0;
+  caption?: string;
+  outcome: {
+    passedToTeam: 'team-a' | 'team-b';
+    expiredTeam: 'team-a' | 'team-b';
+    winnerTeam: 'team-a' | 'team-b';
+    correctAnswerPassesTurn: true;
+    timerResetsOnPass: false;
+    matchPointDelta: 1;
+    reason: 'bomb.clock-expired';
+  };
+}
+
 export type StoredTutorialScenario =
-  StoredRyoTutorialScenario | StoredClosestTutorialScenario;
+  | StoredRyoTutorialScenario
+  | StoredClosestTutorialScenario
+  | StoredBombTutorialScenario;
 
 /** Uniform issue shape for every validation and readiness surface. */
 export interface WorldContentIssue {

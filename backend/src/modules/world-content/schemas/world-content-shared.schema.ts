@@ -87,13 +87,21 @@ const TutorialOutcomeDefinition = new MongooseSchema(
     tie: { type: Boolean },
     mechanicTallyDelta: { type: Number },
     matchPointDelta: { type: Number },
+    passedToTeam: { type: String, enum: ['team-a', 'team-b'] },
+    expiredTeam: { type: String, enum: ['team-a', 'team-b'] },
+    correctAnswerPassesTurn: { type: Boolean },
+    timerResetsOnPass: { type: Boolean },
   },
   { _id: false },
 );
 
 export const TutorialScenarioDefinition = new MongooseSchema(
   {
-    kind: { type: String, enum: ['ryo', 'closest'], default: undefined },
+    kind: {
+      type: String,
+      enum: ['ryo', 'closest', 'bomb'],
+      default: undefined,
+    },
     version: { type: Number, enum: [1], default: undefined },
     prompt: { type: String, required: true, trim: true },
     options: { type: [TutorialOptionDefinition], default: [] },
@@ -103,6 +111,11 @@ export const TutorialScenarioDefinition = new MongooseSchema(
     teamAEstimate: { type: Number },
     teamBEstimate: { type: Number },
     correctValue: { type: Number },
+    acceptedAnswer: { type: String, trim: true },
+    nextPrompt: { type: String, trim: true },
+    startingTeam: { type: String, enum: ['team-a', 'team-b'] },
+    correctAtSecondsRemaining: { type: Number },
+    opponentExpiresAtSecondsRemaining: { type: Number },
     unit: { type: String, trim: true, default: undefined },
     caption: { type: String, trim: true, default: undefined },
     outcome: { type: TutorialOutcomeDefinition, required: true, _id: false },

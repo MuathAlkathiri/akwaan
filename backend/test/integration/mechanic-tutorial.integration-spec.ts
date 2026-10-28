@@ -32,6 +32,7 @@ describe('Mechanic tutorial HTTP integration', () => {
 
   const MECHANIC = 'read-your-opponent';
   const CLOSEST_MECHANIC = 'closest';
+  const BOMB_MECHANIC = 'bomb';
   const COMPETITIVE_PROMPT =
     'من توّج بلقب كأس العالم 2014 بعد فوزه على الأرجنتين في النهائي؟';
 
@@ -58,6 +59,17 @@ describe('Mechanic tutorial HTTP integration', () => {
     correctValue: 302,
     unit: 'متر',
     ...overrides,
+  });
+
+  const bombScenario = () => ({
+    kind: 'bomb',
+    version: 1,
+    prompt: 'وش اسم الكوكب الأحمر؟',
+    acceptedAnswer: 'المريخ',
+    nextPrompt: 'وش اسم أكبر كوكب؟',
+    startingTeam: 'team-a',
+    correctAtSecondsRemaining: 18,
+    opponentExpiresAtSecondsRemaining: 0,
   });
 
   beforeAll(async () => {
@@ -89,6 +101,18 @@ describe('Mechanic tutorial HTTP integration', () => {
       status: 'active',
       sortOrder: 1,
       defaultPresentation: { inputType: 'phone-slider' },
+    });
+    await database.collection('challenge_types').insertOne({
+      _id: new Types.ObjectId(),
+      name: 'القنبلة',
+      slug: BOMB_MECHANIC,
+      family: 'coop',
+      itemStructure: 'continuous',
+      answerMode: 'match',
+      scoringRuleId: 'challenge.win',
+      status: 'active',
+      sortOrder: 2,
+      defaultPresentation: { inputType: 'phone-text' },
     });
     // One competitive item, so the overlap guard has something real to catch.
     await database.collection('content_items').insertOne({
@@ -308,6 +332,28 @@ describe('Mechanic tutorial HTTP integration', () => {
       valid: false,
       issues: [{ code: 'TUTORIAL_MECHANIC_KIND_MISMATCH' }],
     });
+  });
+
+  it('keeps Bomb private until publish and derives pass/expiry outcome', async () => {
+    const saved = await admin('put', '/draft', BOMB_MECHANIC)
+      .send(bombScenario())
+      .expect(200);
+    expect(saved.body.data.draft.outcome).toMatchObject({
+      passedToTeam: 'team-b',
+      expiredTeam: 'team-b',
+      winnerTeam: 'team-a',
+      correctAnswerPassesTurn: true,
+      timerResetsOnPass: false,
+      matchPointDelta: 1,
+      reason: 'bomb.clock-expired',
+    });
+    expect(
+      (await publicTutorial(BOMB_MECHANIC).expect(200)).body.data,
+    ).toBeNull();
+    await admin('post', '/publish', BOMB_MECHANIC).send({}).expect(201);
+    expect(
+      (await publicTutorial(BOMB_MECHANIC).expect(200)).body.data.scenario.kind,
+    ).toBe('bomb');
   });
 
   it('404s an unknown mechanic key rather than inventing one', async () => {
