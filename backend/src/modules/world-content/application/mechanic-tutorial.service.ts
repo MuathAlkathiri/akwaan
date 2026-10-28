@@ -6,8 +6,10 @@ import { ContentItem } from '../schemas/content-item.schema';
 import {
   deriveTutorialOutcome,
   deriveClosestTutorialOutcome,
+  deriveBombTutorialOutcome,
   findTutorialOverlap,
   ClosestTutorialScenarioInput,
+  BombTutorialScenarioInput,
   RyoTutorialScenarioInput,
   TutorialScenarioInput,
   tutorialKind,
@@ -109,7 +111,9 @@ export class MechanicTutorialService {
         ? null
         : tutorialKind(input) === 'closest'
           ? deriveClosestTutorialOutcome(input as ClosestTutorialScenarioInput)
-          : deriveTutorialOutcome(input as RyoTutorialScenarioInput),
+          : tutorialKind(input) === 'bomb'
+            ? deriveBombTutorialOutcome(input as BombTutorialScenarioInput)
+            : deriveTutorialOutcome(input as RyoTutorialScenarioInput),
     };
   }
 
@@ -172,6 +176,21 @@ export class MechanicTutorialService {
   }
 
   private compose(input: TutorialScenarioInput): StoredTutorialScenario {
+    if (tutorialKind(input) === 'bomb') {
+      const bomb = input as BombTutorialScenarioInput;
+      return {
+        kind: 'bomb',
+        version: 1,
+        prompt: bomb.prompt.trim(),
+        acceptedAnswer: bomb.acceptedAnswer.trim(),
+        nextPrompt: bomb.nextPrompt.trim(),
+        startingTeam: bomb.startingTeam,
+        correctAtSecondsRemaining: bomb.correctAtSecondsRemaining,
+        opponentExpiresAtSecondsRemaining: 0,
+        ...(bomb.caption?.trim() ? { caption: bomb.caption.trim() } : {}),
+        outcome: deriveBombTutorialOutcome(bomb),
+      };
+    }
     if (tutorialKind(input) === 'closest') {
       const closest = input as ClosestTutorialScenarioInput;
       return {

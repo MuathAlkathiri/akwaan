@@ -4,6 +4,7 @@ export { ExplainerDisclosure } from "./components/explainer-disclosure";
 export { RyoExplainerDialog } from "./components/explainer-dialog";
 export { MechanicTutorialDialog } from "./components/explainer-dialog";
 export { ClosestExplainer } from "./components/closest-explainer";
+export { BombExplainer } from "./components/bomb-explainer";
 export {
   MechanicTutorialRenderer,
   supportsTutorialScenario,
@@ -19,5 +20,6 @@ export {
 } from "./use-explainer-timeline";
 export * from "./ryo-demo-scenario";
 export * from "./closest-demo-scenario";
+export * from "./bomb-demo-scenario";
 export * from "./tutorial-scenario";
 export { usePublishedTutorial } from "./use-published-tutorial";

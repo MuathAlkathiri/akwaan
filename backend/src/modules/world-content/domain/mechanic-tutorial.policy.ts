@@ -70,9 +70,23 @@ export interface ClosestTutorialScenarioInput {
   caption?: string;
 }
 
+export interface BombTutorialScenarioInput {
+  kind: 'bomb';
+  version: 1;
+  prompt: string;
+  acceptedAnswer: string;
+  nextPrompt: string;
+  startingTeam: 'team-a' | 'team-b';
+  correctAtSecondsRemaining: number;
+  opponentExpiresAtSecondsRemaining: 0;
+  caption?: string;
+}
+
 /** Legacy callers still use the old name for an untagged RYO draft. */
 export type TutorialScenarioInput =
-  RyoTutorialScenarioInput | ClosestTutorialScenarioInput;
+  | RyoTutorialScenarioInput
+  | ClosestTutorialScenarioInput
+  | BombTutorialScenarioInput;
 
 /** The derived half — computed here, never accepted from a client. */
 export interface TutorialOutcome {
@@ -136,6 +150,31 @@ export interface ClosestTutorialOutcome {
   mechanicTallyDelta: number;
   matchPointDelta: 0;
   reason: 'closest.absolute-distance';
+}
+
+export interface BombTutorialOutcome {
+  passedToTeam: 'team-a' | 'team-b';
+  expiredTeam: 'team-a' | 'team-b';
+  winnerTeam: 'team-a' | 'team-b';
+  correctAnswerPassesTurn: true;
+  timerResetsOnPass: false;
+  matchPointDelta: 1;
+  reason: 'bomb.clock-expired';
+}
+
+export function deriveBombTutorialOutcome(
+  input: Pick<BombTutorialScenarioInput, 'startingTeam'>,
+): BombTutorialOutcome {
+  const passedToTeam = input.startingTeam === 'team-a' ? 'team-b' : 'team-a';
+  return {
+    passedToTeam,
+    expiredTeam: passedToTeam,
+    winnerTeam: input.startingTeam,
+    correctAnswerPassesTurn: true,
+    timerResetsOnPass: false,
+    matchPointDelta: 1,
+    reason: 'bomb.clock-expired',
+  };
 }
 
 /** Uses the same pure grader as live Closest; no Match is created or mutated. */
@@ -265,8 +304,45 @@ export function validateClosestTutorialScenario(
   return issues;
 }
 
-export function tutorialKind(input: TutorialScenarioInput): 'ryo' | 'closest' {
-  return input.kind === 'closest' ? 'closest' : 'ryo';
+export function validateBombTutorialScenario(
+  input: BombTutorialScenarioInput,
+): WorldContentIssue[] {
+  const issues: WorldContentIssue[] = [];
+  const add = (code: string, message: string) => issues.push({ code, message });
+  if (!input.prompt?.trim())
+    add('TUTORIAL_PROMPT_REQUIRED', 'السؤال التوضيحي مطلوب.');
+  if (!input.nextPrompt?.trim())
+    add('TUTORIAL_BOMB_NEXT_PROMPT_REQUIRED', 'سؤال انتقال القنبلة مطلوب.');
+  if (!input.acceptedAnswer?.trim())
+    add('TUTORIAL_BOMB_ANSWER_REQUIRED', 'الإجابة المقبولة مطلوبة.');
+  if (input.version !== 1)
+    add('TUTORIAL_VERSION_UNSUPPORTED', 'نسخة شرح القنبلة غير مدعومة.');
+  if (input.startingTeam !== 'team-a' && input.startingTeam !== 'team-b') {
+    add('TUTORIAL_BOMB_STARTING_TEAM_INVALID', 'فريق البداية غير صالح.');
+  }
+  if (
+    !Number.isFinite(input.correctAtSecondsRemaining) ||
+    input.correctAtSecondsRemaining <= 0 ||
+    input.correctAtSecondsRemaining > 30
+  ) {
+    add(
+      'TUTORIAL_BOMB_CLOCK_INVALID',
+      'وقت الإجابة الصحيحة يجب أن يكون بين 1 و30 ثانية.',
+    );
+  }
+  if (input.opponentExpiresAtSecondsRemaining !== 0) {
+    add(
+      'TUTORIAL_BOMB_EXPIRY_INVALID',
+      'عرض انتهاء القنبلة يجب أن ينتهي عند صفر.',
+    );
+  }
+  return issues;
+}
+
+export function tutorialKind(
+  input: TutorialScenarioInput,
+): 'ryo' | 'closest' | 'bomb' {
+  return input.kind === 'closest' || input.kind === 'bomb' ? input.kind : 'ryo';
 }
 
 export function validateMechanicTutorialScenario(
@@ -283,9 +359,13 @@ export function validateMechanicTutorialScenario(
       },
     ];
   }
-  return kind === 'closest'
-    ? validateClosestTutorialScenario(input as ClosestTutorialScenarioInput)
-    : validateTutorialScenario(input as RyoTutorialScenarioInput);
+  if (kind === 'closest')
+    return validateClosestTutorialScenario(
+      input as ClosestTutorialScenarioInput,
+    );
+  if (kind === 'bomb')
+    return validateBombTutorialScenario(input as BombTutorialScenarioInput);
+  return validateTutorialScenario(input as RyoTutorialScenarioInput);
 }
 
 export interface CompetitivePrompt {

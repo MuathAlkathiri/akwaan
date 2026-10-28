@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import {
   MechanicTutorialRenderer,
   type ClosestTutorialScenario,
+  type BombTutorialScenario,
   type RyoTutorialScenario,
   type TutorialScenario,
 } from "@/features/challenge-explainer";
@@ -64,8 +65,166 @@ export function MechanicTutorialEditor({
 }) {
   return mechanicKey === "closest" ? (
     <ClosestTutorialEditor mechanicKey={mechanicKey} />
+  ) : mechanicKey === "bomb" ? (
+    <BombTutorialEditor mechanicKey={mechanicKey} />
   ) : (
     <RyoTutorialEditor mechanicKey={mechanicKey} />
+  );
+}
+
+function BombTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+  const empty: Omit<BombTutorialScenario, "outcome"> = {
+    kind: "bomb",
+    version: 1,
+    prompt: "",
+    acceptedAnswer: "",
+    nextPrompt: "",
+    startingTeam: "team-a",
+    correctAtSecondsRemaining: 18,
+    opponentExpiresAtSecondsRemaining: 0,
+  };
+  const [state, setState] = useState<AdminTutorialState | null>(null);
+  const [draft, setDraft] = useState(empty);
+  const [validation, setValidation] = useState<TutorialValidation | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetchAdminTutorial(mechanicKey).then((next) => {
+      if (!active) return;
+      setState(next);
+      const source = next.draft ?? next.published;
+      if (source?.kind === "bomb")
+        setDraft(stripOutcome(source) as Omit<BombTutorialScenario, "outcome">);
+    });
+    return () => {
+      active = false;
+    };
+  }, [mechanicKey]);
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await action();
+    } catch (error) {
+      const issues = extractIssues(error);
+      setValidation({
+        valid: false,
+        issues,
+        competitiveOverlap: extractOverlap(issues),
+        outcome: null,
+      });
+      toast.error(issues[0]?.message ?? "تعذّرت العملية.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const preview = validation?.outcome
+    ? ({ ...draft, outcome: validation.outcome } as BombTutorialScenario)
+    : state?.draft?.kind === "bomb"
+      ? state.draft
+      : null;
+  return (
+    <section
+      data-testid="mechanic-tutorial-editor"
+      className="space-y-3 rounded-[var(--radius)] border-2 border-border p-3"
+    >
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <span>
+          <h3 className="text-sm font-black">شرح القنبلة</h3>
+          <p className="text-xs text-muted-foreground">
+            إجابة صحيحة تمرّر الضغط؛ انتهاء الساعة يحسم التحدي.
+          </p>
+        </span>
+        <PublishState state={state} />
+      </header>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="space-y-1">
+          <FieldLabel htmlFor="tutorial-prompt">السؤال الأول</FieldLabel>
+          <Textarea
+            id="tutorial-prompt"
+            value={draft.prompt}
+            onChange={(e) => setDraft({ ...draft, prompt: e.target.value })}
+          />
+        </div>
+        <div className="space-y-1">
+          <FieldLabel htmlFor="tutorial-next-prompt">
+            السؤال بعد التمرير
+          </FieldLabel>
+          <Textarea
+            id="tutorial-next-prompt"
+            value={draft.nextPrompt}
+            onChange={(e) => setDraft({ ...draft, nextPrompt: e.target.value })}
+          />
+        </div>
+        <div className="space-y-1">
+          <FieldLabel htmlFor="tutorial-answer">الإجابة المقبولة</FieldLabel>
+          <Input
+            id="tutorial-answer"
+            value={draft.acceptedAnswer}
+            onChange={(e) =>
+              setDraft({ ...draft, acceptedAnswer: e.target.value })
+            }
+          />
+        </div>
+        <NumberField
+          id="tutorial-correct-seconds"
+          label="الوقت المتبقي عند الإجابة"
+          value={draft.correctAtSecondsRemaining}
+          onChange={(e) =>
+            setDraft({
+              ...draft,
+              correctAtSecondsRemaining: Number(e.target.value),
+            })
+          }
+        />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy}
+          onClick={() =>
+            run(async () => {
+              setState(await saveTutorialDraft(mechanicKey, draft));
+              setValidation(null);
+            })
+          }
+        >
+          حفظ المسودة
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy}
+          onClick={() =>
+            run(async () =>
+              setValidation(await validateTutorialDraft(mechanicKey, draft)),
+            )
+          }
+        >
+          <Eye className="size-4" />
+          فحص ومعاينة
+        </Button>
+        <Button
+          type="button"
+          disabled={busy || !state?.draft}
+          onClick={() =>
+            run(async () => {
+              setState(await publishTutorial(mechanicKey));
+              setValidation(null);
+            })
+          }
+        >
+          <Send className="size-4" />
+          نشر
+        </Button>
+      </div>
+      {validation && <ValidationReport validation={validation} />}
+      {preview && (
+        <div data-testid="tutorial-preview">
+          <MechanicTutorialRenderer scenario={preview} compact mode="preview" />
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -289,7 +448,7 @@ function RyoTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
         // published version is the sensible starting point, and only a mechanic
         // with neither starts blank.
         const source = next.draft ?? next.published;
-        if (source && source.kind !== "closest")
+        if (source && source.kind !== "closest" && source.kind !== "bomb")
           setDraft(
             stripOutcome(source) as Omit<RyoTutorialScenario, "outcome">,
           );
@@ -365,7 +524,9 @@ function RyoTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   // the preview must never guess a score the rules did not produce.
   const previewScenario: RyoTutorialScenario | null = validation?.outcome
     ? ({ ...draft, outcome: validation.outcome } as RyoTutorialScenario)
-    : state?.draft && state.draft.kind !== "closest"
+    : state?.draft &&
+        state.draft.kind !== "closest" &&
+        state.draft.kind !== "bomb"
       ? state.draft
       : null;
 

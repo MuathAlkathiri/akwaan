@@ -28,10 +28,10 @@ export class TutorialOptionDto {
  * client could assert a result the game would not actually produce.
  */
 export class TutorialScenarioDto {
-  @ApiPropertyOptional({ enum: ['ryo', 'closest'] })
+  @ApiPropertyOptional({ enum: ['ryo', 'closest', 'bomb'] })
   @IsOptional()
-  @IsIn(['ryo', 'closest'])
-  kind?: 'ryo' | 'closest';
+  @IsIn(['ryo', 'closest', 'bomb'])
+  kind?: 'ryo' | 'closest' | 'bomb';
 
   @ApiPropertyOptional({ enum: [1] })
   @IsOptional()
@@ -41,7 +41,9 @@ export class TutorialScenarioDto {
   @ApiProperty() @IsString() @MinLength(1) @MaxLength(400) prompt: string;
 
   @ApiPropertyOptional({ type: [TutorialOptionDto] })
-  @ValidateIf((value: TutorialScenarioDto) => value.kind !== 'closest')
+  @ValidateIf(
+    (value: TutorialScenarioDto) => !value.kind || value.kind === 'ryo',
+  )
   @IsArray()
   @ArrayMinSize(TUTORIAL_OPTION_COUNT)
   @ArrayMaxSize(TUTORIAL_OPTION_COUNT)
@@ -50,7 +52,9 @@ export class TutorialScenarioDto {
   options?: TutorialOptionDto[];
 
   @ApiPropertyOptional()
-  @ValidateIf((value: TutorialScenarioDto) => value.kind !== 'closest')
+  @ValidateIf(
+    (value: TutorialScenarioDto) => !value.kind || value.kind === 'ryo',
+  )
   @IsString()
   @MinLength(1)
   correctOptionId?: string;
@@ -58,13 +62,17 @@ export class TutorialScenarioDto {
   @ApiPropertyOptional({
     description: 'The option the answering team is shown picking',
   })
-  @ValidateIf((value: TutorialScenarioDto) => value.kind !== 'closest')
+  @ValidateIf(
+    (value: TutorialScenarioDto) => !value.kind || value.kind === 'ryo',
+  )
   @IsString()
   @MinLength(1)
   answeringSelectionOptionId?: string;
 
   @ApiPropertyOptional({ enum: ['TRUST', 'STEAL'] })
-  @ValidateIf((value: TutorialScenarioDto) => value.kind !== 'closest')
+  @ValidateIf(
+    (value: TutorialScenarioDto) => !value.kind || value.kind === 'ryo',
+  )
   @IsIn(['TRUST', 'STEAL'])
   opposingDecision?: 'TRUST' | 'STEAL';
 
@@ -82,6 +90,35 @@ export class TutorialScenarioDto {
   @ValidateIf((value: TutorialScenarioDto) => value.kind === 'closest')
   @IsNumber()
   correctValue?: number;
+
+  @ApiPropertyOptional()
+  @ValidateIf((value: TutorialScenarioDto) => value.kind === 'bomb')
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  acceptedAnswer?: string;
+
+  @ApiPropertyOptional()
+  @ValidateIf((value: TutorialScenarioDto) => value.kind === 'bomb')
+  @IsString()
+  @MinLength(1)
+  @MaxLength(400)
+  nextPrompt?: string;
+
+  @ApiPropertyOptional({ enum: ['team-a', 'team-b'] })
+  @ValidateIf((value: TutorialScenarioDto) => value.kind === 'bomb')
+  @IsIn(['team-a', 'team-b'])
+  startingTeam?: 'team-a' | 'team-b';
+
+  @ApiPropertyOptional()
+  @ValidateIf((value: TutorialScenarioDto) => value.kind === 'bomb')
+  @IsNumber()
+  correctAtSecondsRemaining?: number;
+
+  @ApiPropertyOptional({ enum: [0] })
+  @ValidateIf((value: TutorialScenarioDto) => value.kind === 'bomb')
+  @IsIn([0])
+  opponentExpiresAtSecondsRemaining?: 0;
 
   @ApiPropertyOptional()
   @IsOptional()

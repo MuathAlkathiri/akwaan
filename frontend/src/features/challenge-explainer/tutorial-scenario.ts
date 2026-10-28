@@ -54,7 +54,53 @@ export interface ClosestTutorialScenario {
   };
 }
 
-export type TutorialScenario = RyoTutorialScenario | ClosestTutorialScenario;
+export interface BombTutorialScenario {
+  kind: "bomb";
+  version: 1;
+  prompt: string;
+  acceptedAnswer: string;
+  nextPrompt: string;
+  nextQuestion?: {
+    prompt: string;
+    acceptedAnswer: string;
+    media?: {
+      type: "image";
+      url: string;
+      altText: string;
+    };
+  };
+  /** The question shown after the opposing team returns pressure. */
+  returnQuestion?: {
+    prompt: string;
+    acceptedAnswer: string;
+    media?: {
+      type: "image";
+      url: string;
+      altText: string;
+    };
+  };
+  media?: {
+    type: "image";
+    url: string;
+    altText: string;
+  };
+  startingTeam: "team-a" | "team-b";
+  correctAtSecondsRemaining: number;
+  opponentExpiresAtSecondsRemaining: 0;
+  caption?: string;
+  outcome: {
+    passedToTeam: "team-a" | "team-b";
+    expiredTeam: "team-a" | "team-b";
+    winnerTeam: "team-a" | "team-b";
+    correctAnswerPassesTurn: true;
+    timerResetsOnPass: false;
+    matchPointDelta: 1;
+    reason: "bomb.clock-expired";
+  };
+}
+
+export type TutorialScenario =
+  RyoTutorialScenario | ClosestTutorialScenario | BombTutorialScenario;
 
 export interface PublishedTutorial {
   mechanicKey: string;
@@ -64,8 +110,10 @@ export interface PublishedTutorial {
 
 export function tutorialScenarioKind(
   scenario: TutorialScenario,
-): "ryo" | "closest" {
-  return scenario.kind === "closest" ? "closest" : "ryo";
+): "ryo" | "closest" | "bomb" {
+  return scenario.kind === "closest" || scenario.kind === "bomb"
+    ? scenario.kind
+    : "ryo";
 }
 
 /**

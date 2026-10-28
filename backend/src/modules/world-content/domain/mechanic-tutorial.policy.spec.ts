@@ -2,6 +2,7 @@ import { RyoPayoffMatrixRule } from '../../scoring/application/ryo-payoff-matrix
 import {
   deriveTutorialOutcome,
   deriveClosestTutorialOutcome,
+  deriveBombTutorialOutcome,
   findTutorialOverlap,
   TUTORIAL_CONTENT_ITEM_ID,
   RyoTutorialScenarioInput,
@@ -258,5 +259,32 @@ describe('generalized mechanic tutorial policy', () => {
         teamBEstimate: Number.NaN,
       }).map((issue) => issue.code),
     ).toContain('TUTORIAL_CLOSEST_VALUE_INVALID');
+  });
+
+  it('derives Bomb pass and expiry without resetting the timer', () => {
+    expect(deriveBombTutorialOutcome({ startingTeam: 'team-a' })).toEqual({
+      passedToTeam: 'team-b',
+      expiredTeam: 'team-b',
+      winnerTeam: 'team-a',
+      correctAnswerPassesTurn: true,
+      timerResetsOnPass: false,
+      matchPointDelta: 1,
+      reason: 'bomb.clock-expired',
+    });
+  });
+
+  it('validates a mechanic-native Bomb scenario', () => {
+    expect(
+      validateMechanicTutorialScenario('bomb', {
+        kind: 'bomb',
+        version: 1,
+        prompt: 'وش هذا؟',
+        acceptedAnswer: 'المريخ',
+        nextPrompt: 'وش التالي؟',
+        startingTeam: 'team-a',
+        correctAtSecondsRemaining: 18,
+        opponentExpiresAtSecondsRemaining: 0,
+      }),
+    ).toEqual([]);
   });
 });
