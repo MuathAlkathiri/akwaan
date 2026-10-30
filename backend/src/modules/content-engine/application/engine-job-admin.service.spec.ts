@@ -1121,4 +1121,211 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
       expect(catalog.mechanics.length).toBeGreaterThan(0);
     });
   });
+
+  describe('Slice 3D: Preflight lifecycle, performance & creative plan safety', () => {
+    it('preflight is strictly read-only and performs no job creation, lease acquisition, or LLM provider calls', async () => {
+      const candidates = {
+        create: jest.fn(),
+        findOneAndUpdate: jest.fn(),
+      };
+      const jobs = {
+        create: jest.fn(),
+        findOneAndUpdate: jest.fn(),
+        save: jest.fn(),
+      };
+      const orchestrator = {
+        runJob: jest.fn(),
+      };
+      const aiProvider = {
+        generateCandidates: jest.fn(),
+      };
+
+      const budget = {
+        snapshot: jest.fn(async () => budgetSnapshot),
+        estimate: jest.fn(() => 1_000),
+        batchCapMicros: jest.fn(() => 100_000),
+      };
+
+      const contexts = {
+        resolve: jest.fn(() => context('read-your-opponent')),
+      };
+
+      const service = new EngineJobAdminService(
+        candidates as never,
+        jobs as never,
+        budget as never,
+        contexts as never,
+        orchestrator as never,
+        makeConfig(),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        aiProvider as never,
+      );
+
+      const result = await service.preflight(request('read-your-opponent'));
+
+      expect(result.resolvable).toBe(true);
+      expect(result.submissionReady).toBe(true);
+
+      // Verify ZERO writes, ZERO lease acquisition, ZERO LLM calls
+      expect(candidates.create).not.toHaveBeenCalled();
+      expect(candidates.findOneAndUpdate).not.toHaveBeenCalled();
+      expect(jobs.create).not.toHaveBeenCalled();
+      expect(jobs.findOneAndUpdate).not.toHaveBeenCalled();
+      expect(jobs.save).not.toHaveBeenCalled();
+      expect(orchestrator.runJob).not.toHaveBeenCalled();
+      expect(aiProvider.generateCandidates).not.toHaveBeenCalled();
+    });
+
+    it('repeated preflight calls with identical source snapshots are deterministic', async () => {
+      const { service } = build('read-your-opponent');
+
+      const preflight1 = await service.preflight(request('read-your-opponent'));
+      const preflight2 = await service.preflight(request('read-your-opponent'));
+
+      expect(preflight1.planDigest).toBe(preflight2.planDigest);
+      expect(preflight1.generationPlan?.digest).toBe(
+        preflight2.generationPlan?.digest,
+      );
+      expect(preflight1.generationPlan?.slots).toEqual(
+        preflight2.generationPlan?.slots,
+      );
+      expect(preflight1.generationSpec).toEqual(preflight2.generationSpec);
+      expect(preflight1.estimatedMicros).toBe(preflight2.estimatedMicros);
+    });
+
+    it('returns supported V1 fallback plan without slots when canonical catalog is absent', async () => {
+      const { service } = build('closest');
+
+      const result = await service.preflight(request('closest'));
+
+      expect(result.resolvable).toBe(true);
+      expect(result.generationPlan).toBeDefined();
+      expect(result.generationPlan?.digest).toMatch(/^[a-f0-9]{64}$/);
+      // When catalog is absent for closest in this test setup, slots is undefined/empty
+      expect(result.generationPlan?.slots ?? []).toHaveLength(0);
+    });
+
+    it('status returns exact persisted pinnedPlan from stageCheckpoints.context_resolved', async () => {
+      const mockPinnedPlan = {
+        worldKey: 'puzzles',
+        scopeKey: 'wordplay-letters',
+        mechanicKey: 'read-your-opponent',
+        count: 3,
+        difficulty: 'mixed',
+        digest: 'sha256-pinned-plan-digest-1234',
+        slots: [
+          {
+            slotIndex: 0,
+            familyKey: 'letter-count',
+            familyNameAr: 'عد الأحرف',
+            mode: 'exploitation' as const,
+            difficulty: 'easy' as const,
+            cognitiveTask: 'عد الحروف',
+            creativeAngle: 'سهل',
+            mechanicFit: 'natural' as const,
+            selectionReason: 'تغطية منخفضة',
+          },
+        ],
+      };
+
+      const jobs = {
+        findById: jest.fn(async (id: string) => ({
+          _id: id,
+          jobId: id,
+          worldKey: 'puzzles',
+          scopeKey: 'wordplay-letters',
+          mechanicKey: 'read-your-opponent',
+          targetCount: 3,
+          status: 'awaiting_review',
+          pipelineStage: 'review',
+          attempts: 1,
+          stageCheckpoints: {
+            context_resolved: {
+              pinnedPlan: mockPinnedPlan,
+            },
+          },
+        })),
+      };
+
+      const budget = {
+        spentForJob: jest.fn(async () => ({
+          spentMicros: 0,
+          reservedMicros: 0,
+          calls: 0,
+        })),
+      };
+
+      const candidates = {
+        aggregate: jest.fn(async () => []),
+      };
+
+      const service = new EngineJobAdminService(
+        candidates as never,
+        jobs as never,
+        budget as never,
+        {} as never,
+        {} as never,
+        makeConfig(),
+      );
+
+      const status = await service.status('job-pinned-test');
+      expect(status?.pinnedPlan).toEqual(mockPinnedPlan);
+    });
+
+    it('status returns pinnedPlan: null for legacy jobs without checkpoints (no fabricated plan)', async () => {
+      const jobs = {
+        findById: jest.fn(async (id: string) => ({
+          _id: id,
+          jobId: id,
+          worldKey: 'puzzles',
+          scopeKey: 'wordplay-letters',
+          mechanicKey: 'read-your-opponent',
+          targetCount: 3,
+          status: 'completed',
+          pipelineStage: 'completed',
+          attempts: 1,
+        })),
+      };
+
+      const budget = {
+        spentForJob: jest.fn(async () => ({
+          spentMicros: 0,
+          reservedMicros: 0,
+          calls: 0,
+        })),
+      };
+
+      const candidates = {
+        aggregate: jest.fn(async () => []),
+      };
+
+      const service = new EngineJobAdminService(
+        candidates as never,
+        jobs as never,
+        budget as never,
+        {} as never,
+        {} as never,
+        makeConfig(),
+      );
+
+      const status = await service.status('job-legacy-test');
+      expect(status?.pinnedPlan).toBeNull();
+    });
+
+    it('preflight response contains only necessary UI fields and excludes internal secrets/credentials', async () => {
+      const { service } = build('read-your-opponent');
+
+      const result = await service.preflight(request('read-your-opponent'));
+
+      const resultRecord = result as unknown as Record<string, unknown>;
+      expect(resultRecord.apiKey).toBeUndefined();
+      expect(resultRecord.secret).toBeUndefined();
+      expect(resultRecord.password).toBeUndefined();
+      expect(resultRecord.systemPrompt).toBeUndefined();
+      expect(resultRecord.authorizationHeader).toBeUndefined();
+    });
+  });
 });

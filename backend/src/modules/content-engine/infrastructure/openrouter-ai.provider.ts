@@ -121,6 +121,15 @@ export const adaptSchemaForOpenAiStrict = (
           ? value
           : adaptSchemaForOpenAiStrict(value, `${path}.${key}`);
   }
+
+  // OpenAI strict mode requires additionalProperties: false on every object.
+  if (
+    (adapted.type === 'object' || adapted.properties !== undefined) &&
+    adapted.additionalProperties === undefined
+  ) {
+    adapted.additionalProperties = false;
+  }
+
   return adapted;
 };
 

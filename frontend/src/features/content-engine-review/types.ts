@@ -42,6 +42,36 @@ export interface InvalidatedAssessmentSnapshot {
   reviewDecision?: Record<string, unknown> | null;
 }
 
+export type SlotGenerationMode = "exploitation" | "exploration";
+
+export interface CreativeSlotAssignment {
+  slotIndex: number;
+  familyKey: string;
+  familyNameAr: string;
+  mode: SlotGenerationMode;
+  difficulty?: "easy" | "medium" | "hard" | string;
+  cognitiveTask?: string;
+  creativeAngle?: string;
+  mechanicFit?: string;
+  selectionReason?: string;
+}
+
+export interface FamilyComplianceStatus {
+  assignedFamilyKey: string;
+  detectedFamilyKey?: string;
+  isCompliant: boolean;
+  verificationMethod: "heuristic" | "manual_review" | "rule_evaluated";
+  mismatchReason?: string;
+  resolvedByReviewerId?: string;
+}
+
+export interface FamilyComplianceResolution {
+  resolvedByReviewer: boolean;
+  assignedFamilyKey: string;
+  reviewerExplanation: string;
+  resolvedAt?: string | Date;
+}
+
 export interface ReviewCandidate {
   id: string;
   candidateId: string;
@@ -61,6 +91,10 @@ export interface ReviewCandidate {
     distractorRationale?: Array<{ optionId: string; why: string }>;
     /** RYO: an authoring hypothesis about table difficulty, not a measurement. */
     estimatedConfidence?: { band: string; why: string };
+    /** Slice 3: Creative slot assignment from deterministic planner */
+    assignedSlot?: CreativeSlotAssignment;
+    /** Slice 3C: Family compliance evaluation */
+    familyCompliance?: FamilyComplianceStatus;
   } | null;
   factualClaims: string[];
   findings: Array<{
@@ -88,7 +122,19 @@ export interface ReviewCandidate {
   } | null;
   lastInvalidatedAssessments?: InvalidatedAssessmentSnapshot | null;
   reviewEligibility?: ReviewEligibility;
-  reviewDecision: Record<string, unknown> | null;
+  reviewDecision: {
+    decision?: string;
+    explanation?: string;
+    factualOverrideCode?: string;
+    factualOverrideExplanation?: string;
+    exceptionalOverride?: boolean;
+    familyComplianceResolution?: FamilyComplianceResolution | null;
+    reviewerId?: string;
+    reviewerEmail?: string;
+    decidedAt?: string | Date;
+    revision?: number;
+    [key: string]: unknown;
+  } | null;
   reviewEvents: Array<{
     action: string;
     actorEmail: string;

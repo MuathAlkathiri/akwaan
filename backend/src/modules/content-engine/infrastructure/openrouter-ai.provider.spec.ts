@@ -2,7 +2,9 @@ import { ConfigService } from '@nestjs/config';
 import {
   CLOSEST_CANDIDATE_SCHEMA,
   RYO_CANDIDATE_SCHEMA,
+  schemaWithCreativeSlots,
 } from '../application/candidate-generator.service';
+import { QUALITY_JUDGE_SCHEMA } from '../application/quality-judge.service';
 import {
   OpenRouterAiProvider,
   OpenRouterTimeoutError,
@@ -263,6 +265,53 @@ describe('the serialized request body OpenAI will validate', () => {
     expect(validateStrict(wire)).toEqual([]);
   });
 
+  it('serializes the Closest creative-slot schema with no strict-mode violations', async () => {
+    const wire = await serializedSchema(
+      schemaWithCreativeSlots(CLOSEST_CANDIDATE_SCHEMA),
+    );
+    expect(validateStrict(wire)).toEqual([]);
+    const item = (
+      wire.properties as {
+        candidates: {
+          items: {
+            required: string[];
+            properties: Record<string, unknown>;
+          };
+        };
+      }
+    ).candidates.items;
+    expect(item.required).toContain('slotIndex');
+    expect(item.properties.slotIndex).toBeDefined();
+  });
+
+  it('serializes the RYO creative-slot schema with no strict-mode violations on the wire', async () => {
+    const wire = await serializedSchema(
+      schemaWithCreativeSlots(RYO_CANDIDATE_SCHEMA),
+    );
+    expect(validateStrict(wire)).toEqual([]);
+    const item = (
+      wire.properties as {
+        candidates: {
+          items: {
+            required: string[];
+            properties: Record<string, unknown>;
+          };
+        };
+      }
+    ).candidates.items;
+    expect(item.required).toContain('slotIndex');
+    expect(item.properties.slotIndex).toBeDefined();
+  });
+
+  it('serializes the Quality Judge schema with no strict-mode violations and strict additionalProperties', async () => {
+    const wire = await serializedSchema(QUALITY_JUDGE_SCHEMA);
+    expect(validateStrict(wire)).toEqual([]);
+    expect(wire.additionalProperties).toBe(false);
+    const props = wire.properties as Record<string, Record<string, unknown>>;
+    expect(props.scores.additionalProperties).toBe(false);
+    expect(props.reasons.additionalProperties).toBe(false);
+  });
+
   it('keeps the canonical RYO schema constrained at source', () => {
     // The array bounds are deliberate and remain the source of truth. They are
     // removed only at the provider boundary, for the one provider that rejects
@@ -490,6 +539,27 @@ describe('provider-specific schema adaptation', () => {
   it('leaves the Closest schema untouched — it has nothing to strip', async () => {
     const wire = await wireSchema('openai/gpt-5', CLOSEST_CANDIDATE_SCHEMA);
     expect(wire).toEqual(CLOSEST_CANDIDATE_SCHEMA);
+    expect(validateStrict(wire)).toEqual([]);
+  });
+
+  it('automatically injects additionalProperties: false onto unadorned objects for OpenAI strict mode', async () => {
+    const looseSchema = {
+      type: 'object',
+      required: ['child'],
+      properties: {
+        child: {
+          type: 'object',
+          required: ['value'],
+          properties: { value: { type: 'string' } },
+        },
+      },
+    };
+    const wire = await wireSchema('openai/gpt-5', looseSchema);
+    expect(wire.additionalProperties).toBe(false);
+    expect(
+      (wire.properties as Record<string, Record<string, unknown>>).child
+        .additionalProperties,
+    ).toBe(false);
     expect(validateStrict(wire)).toEqual([]);
   });
 

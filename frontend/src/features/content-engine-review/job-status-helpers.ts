@@ -152,3 +152,51 @@ export const extractApiError = (
     isTimeoutOrNetwork,
   };
 };
+
+export const CANDIDATE_PIPELINE_STATUS_LABELS: Record<
+  string,
+  { label: string; badgeClass: string }
+> = {
+  screened_reject: {
+    label: "مرفوض آلياً (Screened Reject)",
+    badgeClass: "border-rose-300 bg-rose-100 text-rose-800 font-medium",
+  },
+  awaiting_review: {
+    label: "جاهز للمراجعة (Awaiting Review)",
+    badgeClass: "border-emerald-300 bg-emerald-100 text-emerald-800 font-medium",
+  },
+  screened_pass: {
+    label: "اجتاز الفحص (Screened Pass)",
+    badgeClass: "border-sky-300 bg-sky-100 text-sky-800 font-medium",
+  },
+  fact_blocked: {
+    label: "تعثر الحقائق (Fact Blocked)",
+    badgeClass: "border-amber-300 bg-amber-100 text-amber-800 font-medium",
+  },
+  generated: {
+    label: "تم التوليد (Generated)",
+    badgeClass: "border-slate-300 bg-slate-100 text-slate-700",
+  },
+  generation_failed: {
+    label: "فشل التوليد (Generation Failed)",
+    badgeClass: "border-rose-300 bg-rose-100 text-rose-800",
+  },
+};
+
+export const CANDIDATE_REVIEW_STATUS_LABELS: Record<
+  string,
+  { label: string; badgeClass: string }
+> = {
+  pending: {
+    label: "بانتظار القرار البشري",
+    badgeClass: "border-amber-200 bg-amber-50 text-amber-800",
+  },
+  approved: {
+    label: "معتمد بشرياً",
+    badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-800 font-medium",
+  },
+  rejected: {
+    label: "مرفوض بشرياً",
+    badgeClass: "border-rose-200 bg-rose-50 text-rose-800 font-medium",
+  },
+};

@@ -71,6 +71,7 @@ import {
   GenerationPlannerService,
   GenerationPlan,
 } from './generation-planner.service';
+import { HistoricalCoverageService } from './historical-coverage.service';
 import { EngineCandidateDocument } from '../schemas/engine-candidate.schema';
 import { EngineJobDocument } from '../schemas/engine-job.schema';
 import {
@@ -156,6 +157,10 @@ export class EngineJobAdminService {
     @Optional()
     @Inject(FACT_EVIDENCE_RETRIEVER)
     private readonly factRetriever?: FactEvidenceRetriever | null,
+    @Optional()
+    private readonly historicalCoverage?: HistoricalCoverageService,
+    @Optional()
+    private readonly planner?: GenerationPlannerService,
   ) {}
 
   private truthy(key: string): boolean {
@@ -1161,15 +1166,29 @@ export class EngineJobAdminService {
         providerReady: readiness.providerReady,
       });
 
-      const planner = new GenerationPlannerService();
-      const generationPlan = planner.plan({
-        worldKey: generationSpec.worldKey,
-        scopeKey: generationSpec.scopeKey,
-        mechanicKey: generationSpec.mechanicKey,
-        count: generationSpec.targetCount,
-        difficulty: generationSpec.difficulty,
-        batchGuidance: generationSpec.batchGuidance,
-      });
+      const planner =
+        this.planner ??
+        new GenerationPlannerService(this.contexts, this.historicalCoverage);
+      let generationPlan: GenerationPlan;
+      try {
+        generationPlan = await planner.planWithResolvedContext({
+          worldKey: generationSpec.worldKey,
+          scopeKey: generationSpec.scopeKey,
+          mechanicKey: generationSpec.mechanicKey,
+          count: generationSpec.targetCount,
+          difficulty: generationSpec.difficulty,
+          batchGuidance: generationSpec.batchGuidance,
+        });
+      } catch {
+        generationPlan = planner.plan({
+          worldKey: generationSpec.worldKey,
+          scopeKey: generationSpec.scopeKey,
+          mechanicKey: generationSpec.mechanicKey,
+          count: generationSpec.targetCount,
+          difficulty: generationSpec.difficulty,
+          batchGuidance: generationSpec.batchGuidance,
+        });
+      }
 
       const submissionReady =
         readiness.submissionReady && withinBatchCap && withinMonthlyBudget;
@@ -1670,6 +1689,14 @@ export class EngineJobAdminService {
         ? freezeGenerationSpecification(job.generationSpec)
         : null,
       planDigest: job.planDigest ?? null,
+      pinnedPlan:
+        (
+          job as unknown as {
+            stageCheckpoints?: {
+              context_resolved?: { pinnedPlan?: unknown };
+            };
+          }
+        )?.stageCheckpoints?.context_resolved?.pinnedPlan ?? null,
       provenanceComplete,
       createdBy: job.createdBy ?? null,
       createdByEmail: job.createdByEmail ?? null,

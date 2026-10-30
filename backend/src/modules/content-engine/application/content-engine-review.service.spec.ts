@@ -206,9 +206,11 @@ describe('ContentEngineReviewService enforcement characterization', () => {
     );
 
     expect(screen.beginBatch).toHaveBeenCalledTimes(1);
-    expect(screen.screen).toHaveBeenCalledWith(current.draft, {
-      rationale: 'keep',
-    });
+    expect(screen.screen).toHaveBeenCalledWith(
+      current.draft,
+      { rationale: 'keep' },
+      expect.anything(),
+    );
     expect(compatibility.evaluate).toHaveBeenCalled();
     expect(candidates.findOneAndUpdate).toHaveBeenCalledWith(
       {
@@ -718,6 +720,181 @@ describe('ContentEngineReviewService enforcement characterization', () => {
           }),
         }),
         { returnDocument: 'after', runValidators: true },
+      );
+    });
+  });
+
+  describe('Slice 3C Family Compliance Enforcement & Invalidation', () => {
+    it('blocks approval and throws ConflictException when candidate has FAMILY_COMPLIANCE_MISMATCH finding', async () => {
+      const current = candidate({
+        findings: [
+          {
+            code: 'FAMILY_COMPLIANCE_MISMATCH',
+            severity: 'warning',
+            message: 'Candidate content breaches assigned family directive',
+          },
+        ],
+      });
+      const { service } = build({ current });
+      await expect(
+        service.approve(
+          'candidate-1',
+          {
+            expectedRevision: 1,
+            explanation: 'Trying to approve mismatched candidate',
+          } as never,
+          actor,
+        ),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('computeReviewEligibility blocks canApprove when candidate has FAMILY_COMPLIANCE_MISMATCH finding', async () => {
+      const current = candidate({
+        findings: [
+          {
+            code: 'FAMILY_COMPLIANCE_MISMATCH',
+            severity: 'warning',
+            message: 'Candidate content breaches assigned family directive',
+          },
+        ],
+      });
+      const { service } = build({ current });
+      const presented = await service.detail('candidate-1');
+      expect(presented.reviewEligibility.canApprove).toBe(false);
+      expect(presented.reviewEligibility.canCreateDraft).toBe(false);
+      expect(
+        presented.reviewEligibility.approvalBlockers.some((b: string) =>
+          b.includes('FAMILY_COMPLIANCE_MISMATCH'),
+        ),
+      ).toBe(true);
+    });
+
+    it('allows approval of candidate with FAMILY_COMPLIANCE_UNVERIFIED recording manual_review in familyCompliance and reviewDecision', async () => {
+      const current = candidate({
+        findings: [
+          {
+            code: 'FAMILY_COMPLIANCE_UNVERIFIED',
+            severity: 'warning',
+            message: 'No automated structural rules for assigned family',
+          },
+        ],
+        authoring: {
+          assignedSlot: {
+            slotIndex: 0,
+            familyKey: 'trivia-history',
+          },
+        },
+      });
+      const { service, candidates } = build({ current });
+      await service.approve(
+        'candidate-1',
+        {
+          expectedRevision: 1,
+          explanation:
+            'Human reviewer confirmed candidate matches trivia-history family.',
+        } as never,
+        actor,
+      );
+      expect(candidates.findOneAndUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            reviewStatus: 'approved',
+            authoring: expect.objectContaining({
+              familyCompliance: expect.objectContaining({
+                assignedFamilyKey: 'trivia-history',
+                isCompliant: true,
+                verificationMethod: 'manual_review',
+                resolvedByReviewerId: 'reviewer-1',
+              }),
+            }),
+            reviewDecision: expect.objectContaining({
+              familyComplianceResolution: expect.objectContaining({
+                resolvedByReviewer: true,
+                assignedFamilyKey: 'trivia-history',
+                reviewerExplanation:
+                  'Human reviewer confirmed candidate matches trivia-history family.',
+              }),
+            }),
+          }),
+        }),
+        expect.anything(),
+      );
+    });
+
+    it('edit re-evaluates family compliance against modified draft and updates authoring', async () => {
+      const current = candidate({
+        authoring: {
+          assignedSlot: {
+            slotIndex: 0,
+            familyKey: 'anagram-rearrange',
+          },
+          familyCompliance: {
+            assignedFamilyKey: 'anagram-rearrange',
+            isCompliant: false,
+            verificationMethod: 'rule_evaluated',
+          },
+        },
+      });
+      const { service, candidates } = build({ current });
+      await service.edit(
+        'candidate-1',
+        {
+          expectedRevision: 1,
+          explanation: 'Fixing anagram prompt and options to match family',
+          draft: {
+            prompt: { ar: 'رتب الحروف: (س - م - ك)' },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [
+                { id: '1', label: { ar: 'سمك' } },
+                { id: '2', label: { ar: 'لحم' } },
+              ],
+              correctOptionId: '1',
+            },
+          },
+        } as never,
+        actor,
+      );
+      expect(candidates.findOneAndUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            authoring: expect.objectContaining({
+              familyCompliance: expect.objectContaining({
+                assignedFamilyKey: 'anagram-rearrange',
+                isCompliant: true,
+                verificationMethod: 'rule_evaluated',
+              }),
+            }),
+          }),
+        }),
+        expect.anything(),
+      );
+    });
+
+    it('allows normal approval of legacy V1 candidate without assignedSlot', async () => {
+      const current = candidate({
+        findings: [],
+        authoring: {},
+      });
+      const { service, candidates } = build({ current });
+      await service.approve(
+        'candidate-1',
+        {
+          expectedRevision: 1,
+          explanation: 'Approving legacy candidate',
+        } as never,
+        actor,
+      );
+      expect(candidates.findOneAndUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            reviewStatus: 'approved',
+          }),
+        }),
+        expect.anything(),
       );
     });
   });

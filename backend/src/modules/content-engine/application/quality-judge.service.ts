@@ -62,6 +62,7 @@ export interface QualityEvaluation {
 
 export const QUALITY_JUDGE_SCHEMA: Record<string, unknown> = {
   type: 'object',
+  additionalProperties: false,
   required: [
     'scores',
     'reasons',
@@ -72,6 +73,7 @@ export const QUALITY_JUDGE_SCHEMA: Record<string, unknown> = {
   properties: {
     scores: {
       type: 'object',
+      additionalProperties: false,
       required: QUALITY_DIMENSIONS,
       properties: Object.fromEntries(
         QUALITY_DIMENSIONS.map((key) => [
@@ -82,6 +84,7 @@ export const QUALITY_JUDGE_SCHEMA: Record<string, unknown> = {
     },
     reasons: {
       type: 'object',
+      additionalProperties: false,
       required: QUALITY_DIMENSIONS,
       properties: Object.fromEntries(
         QUALITY_DIMENSIONS.map((key) => [key, { type: 'string' }]),

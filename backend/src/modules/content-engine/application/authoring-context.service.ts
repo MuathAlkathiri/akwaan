@@ -4,6 +4,10 @@ import {
   EffectiveRuleSet,
   resolveEffectiveRules,
 } from '../domain/effective-rules';
+import {
+  CanonicalFamilyCatalog,
+  resolveCanonicalFamilies,
+} from '../domain/canonical-families';
 import { createHash } from 'crypto';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
@@ -67,6 +71,12 @@ export interface ResolvedAuthoringContext {
    * the generation prompt and is simply not machine-verifiable.
    */
   effectiveRules: EffectiveRuleSet;
+  /**
+   * Machine-readable approved content families declared by the Scope profiles.
+   *
+   * Empty for scopes that carry no structured catalog block.
+   */
+  canonicalFamilies: CanonicalFamilyCatalog;
 }
 
 interface ManifestMechanic {
@@ -241,6 +251,54 @@ export class AuthoringContextService {
   }
 
   /**
+   * Resolves canonical family catalog for a World × Scope directly.
+   *
+   * Reuses the canonical manifest and canonical Scope/Knowledge profiles,
+   * without requiring a specific mechanic binding.
+   */
+  resolveCanonicalFamiliesForScope(input: {
+    worldKey: string;
+    scopeKey: string;
+  }): CanonicalFamilyCatalog {
+    const manifest = this.manifest();
+    const world = manifest.worlds[input.worldKey];
+    if (!world) {
+      throw new AuthoringContextUnavailableError(
+        'UNKNOWN_WORLD',
+        input.worldKey,
+      );
+    }
+    const comboKey = `${input.worldKey}/${input.scopeKey}`;
+    const scope = manifest.scopes[comboKey];
+    if (!scope) {
+      const existsElsewhere = Object.keys(manifest.scopes).some((key) =>
+        key.endsWith(`/${input.scopeKey}`),
+      );
+      throw new AuthoringContextUnavailableError(
+        existsElsewhere ? 'SCOPE_WORLD_MISMATCH' : 'UNKNOWN_SCOPE',
+        input.scopeKey,
+      );
+    }
+
+    const scopeText = this.read(
+      scope.scopePath,
+      'REQUIRED_SCOPE_PROFILE_MISSING',
+    );
+    const knowledgeText = this.read(
+      scope.knowledgePath,
+      'REQUIRED_SCOPE_KNOWLEDGE_MISSING',
+    );
+
+    return resolveCanonicalFamilies(
+      [
+        { slot: 'scope', source: scope.scopePath, text: scopeText },
+        { slot: 'knowledge', source: scope.knowledgePath, text: knowledgeText },
+      ],
+      { worldKey: input.worldKey, scopeKey: input.scopeKey },
+    );
+  }
+
+  /**
    * Resolve one mechanic × World × Scope, or refuse with the canonical code.
    *
    * The order of checks mirrors the Python resolver exactly, because the code a
@@ -385,6 +443,14 @@ export class AuthoringContextService {
       { slot: 'exemplars', source: sources.exemplars, text: approvedExemplars },
     ]);
 
+    const canonicalFamilies = resolveCanonicalFamilies(
+      [
+        { slot: 'scope', source: sources.scope, text: scopeText },
+        { slot: 'knowledge', source: sources.knowledge, text: knowledgeText },
+      ],
+      { worldKey: input.worldKey, scopeKey: input.scopeKey },
+    );
+
     const contextHash = createHash('sha256')
       .update(
         JSON.stringify([
@@ -416,6 +482,7 @@ export class AuthoringContextService {
       contextHash,
       sources,
       effectiveRules,
+      canonicalFamilies,
     };
   }
 }

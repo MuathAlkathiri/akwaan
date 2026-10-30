@@ -88,6 +88,21 @@ export class ContentEngineReviewController {
     return envelope(await this.review.reject(candidateId, dto, user));
   }
 
+  @Post('candidates/:candidateId/rescreen')
+  async rescreen(
+    @Param('candidateId') candidateId: string,
+    @Body() dto: CreateCandidateDraftDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return envelope(
+      await this.review.rescreenCandidate(
+        candidateId,
+        dto.expectedRevision,
+        user,
+      ),
+    );
+  }
+
   @Post('candidates/:candidateId/create-draft')
   async createDraft(
     @Param('candidateId') candidateId: string,
