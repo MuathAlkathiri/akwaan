@@ -30,6 +30,8 @@ import { QualityJudgeService } from './application/quality-judge.service';
 import { CandidateCompatibilityService } from './application/candidate-compatibility.service';
 import { ContentEngineOrchestratorService } from './application/content-engine-orchestrator.service';
 import { ContentEngineReviewService } from './application/content-engine-review.service';
+import { HistoricalCoverageService } from './application/historical-coverage.service';
+import { GenerationPlannerService } from './application/generation-planner.service';
 import { EngineBudgetService } from './application/engine-budget.service';
 import { GenerationJobService } from './application/generation-job.service';
 import type { AiProvider } from '../ai-agent/domain/ai-provider.interface';
@@ -175,6 +177,8 @@ import {
     QualityJudgeService,
     ContentEngineOrchestratorService,
     ContentEngineReviewService,
+    HistoricalCoverageService,
+    GenerationPlannerService,
   ],
   exports: [
     EnginePricingService,
@@ -187,6 +191,8 @@ import {
     FactVerificationService,
     QualityJudgeService,
     ContentEngineOrchestratorService,
+    HistoricalCoverageService,
+    GenerationPlannerService,
   ],
 })
 export class ContentEngineModule {}

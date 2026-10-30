@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
@@ -23,7 +23,10 @@ import {
   CandidateGeneratorService,
   CandidateParseError,
 } from './candidate-generator.service';
-import { DeterministicScreenService } from './deterministic-screen.service';
+import {
+  DeterministicScreenService,
+  hasIncompleteHistoricalVerification,
+} from './deterministic-screen.service';
 import { EngineBudgetService } from './engine-budget.service';
 import { FactVerificationService } from './fact-verification.service';
 import { GenerationJobService, LeasedJob } from './generation-job.service';
@@ -31,6 +34,13 @@ import {
   QualityJudgeParseError,
   QualityJudgeService,
 } from './quality-judge.service';
+import {
+  GenerationPlannerService,
+  GenerationPlan,
+  computeGenerationPlanDigest,
+} from './generation-planner.service';
+import { CreativePlannerError } from '../domain/creative-plan.types';
+import { evaluateFamilyCompliance } from '../domain/family-compliance.policy';
 
 /** Durable, one-job-at-a-time Phase 1c runner. It is not a scheduler or queue. */
 @Injectable()
@@ -46,6 +56,8 @@ export class ContentEngineOrchestratorService {
     private readonly facts: FactVerificationService,
     private readonly compatibility: CandidateCompatibilityService,
     private readonly quality: QualityJudgeService,
+    @Optional()
+    private readonly planner?: GenerationPlannerService,
   ) {}
 
   async runNext(owner: string): Promise<{ jobId: string } | null> {
@@ -179,6 +191,75 @@ export class ContentEngineOrchestratorService {
         }
       }
 
+      const existingJob =
+        typeof this.jobs.findById === 'function'
+          ? await this.jobs.findById(job.jobId)
+          : null;
+      const existingPinnedPlan = (existingJob?.stageCheckpoints
+        ?.context_resolved?.pinnedPlan ??
+        (job as { stageCheckpoints?: Record<string, Record<string, unknown>> })
+          .stageCheckpoints?.context_resolved?.pinnedPlan) as
+        GenerationPlan | undefined;
+
+      let pinnedPlan = existingPinnedPlan;
+      if (pinnedPlan) {
+        const expectedCount = provenance.spec?.targetCount ?? job.targetCount;
+        const isMalformed =
+          !pinnedPlan.digest ||
+          typeof pinnedPlan.digest !== 'string' ||
+          !pinnedPlan.worldKey ||
+          !pinnedPlan.scopeKey ||
+          !pinnedPlan.mechanicKey ||
+          typeof pinnedPlan.count !== 'number';
+
+        if (isMalformed) {
+          await this.jobs.awaitReview({
+            jobId: job.jobId,
+            leaseEpoch: job.leaseEpoch,
+            reason:
+              'PINNED_PLAN_MALFORMED: existing pinned plan is missing required fields or valid digest',
+          });
+          return;
+        }
+
+        const isTargetMismatch =
+          pinnedPlan.worldKey !== job.worldKey ||
+          pinnedPlan.scopeKey !== job.scopeKey ||
+          pinnedPlan.mechanicKey !== job.mechanicKey ||
+          pinnedPlan.count !== expectedCount;
+
+        if (isTargetMismatch) {
+          await this.jobs.awaitReview({
+            jobId: job.jobId,
+            leaseEpoch: job.leaseEpoch,
+            reason:
+              'PINNED_PLAN_TARGET_MISMATCH: pinned plan target parameters do not match leased job',
+          });
+          return;
+        }
+
+        const expectedDigest = computeGenerationPlanDigest(pinnedPlan);
+        if (pinnedPlan.digest !== expectedDigest) {
+          await this.jobs.awaitReview({
+            jobId: job.jobId,
+            leaseEpoch: job.leaseEpoch,
+            reason:
+              'PINNED_PLAN_DIGEST_MISMATCH: pinned generation plan digest does not match its contents',
+          });
+          return;
+        }
+      } else if (this.planner) {
+        pinnedPlan = await this.planner.planWithResolvedContext({
+          worldKey: job.worldKey,
+          scopeKey: job.scopeKey,
+          mechanicKey: job.mechanicKey,
+          count: provenance.spec?.targetCount ?? job.targetCount,
+          difficulty: provenance.spec?.difficulty,
+          batchGuidance: provenance.spec?.batchGuidance,
+          seed: job.jobId,
+        });
+      }
+
       await this.jobs.checkpoint({
         jobId: job.jobId,
         leaseEpoch: job.leaseEpoch,
@@ -190,6 +271,21 @@ export class ContentEngineOrchestratorService {
           contextHash: context.contextHash,
           ruleSetDigest: context.effectiveRules.digest,
           structuredRuleCount: context.effectiveRules.rules.length,
+          ...(pinnedPlan
+            ? {
+                pinnedPlan,
+                planDigest: pinnedPlan.digest,
+                ...(pinnedPlan.catalogDigest
+                  ? { catalogDigest: pinnedPlan.catalogDigest }
+                  : {}),
+                ...(pinnedPlan.coverageDigest
+                  ? { coverageDigest: pinnedPlan.coverageDigest }
+                  : {}),
+                ...(pinnedPlan.slots
+                  ? { slotCount: pinnedPlan.slots.length }
+                  : {}),
+              }
+            : {}),
           ...(provenance.spec
             ? {
                 specVersion: provenance.spec.specVersion,
@@ -215,6 +311,7 @@ export class ContentEngineOrchestratorService {
           attempt: job.attempts,
           context,
           count: provenance.spec?.targetCount ?? job.targetCount,
+          generationPlan: pinnedPlan ?? undefined,
           ...(provenance.spec
             ? {
                 generationSpec: provenance.spec,
@@ -236,13 +333,65 @@ export class ContentEngineOrchestratorService {
       // Screening intentionally sees the untouched historical corpus so
       // withheld/rejected subjects remain detectable as duplicates. The
       // generator only receives context.exemplars (the APPROVED-only view).
-      this.screen.beginBatch(context.historicalExemplars, context.mechanic);
+      const screenSession = this.screen.createSession?.({
+        worldKey: job.worldKey,
+        scopeKey: job.scopeKey,
+        exemplars: context.historicalExemplars,
+        mechanicProfile: context.mechanic,
+      });
+
+      await this.screen.loadHistoricalScope?.(
+        {
+          worldKey: job.worldKey,
+          scopeKey: job.scopeKey,
+        },
+        screenSession,
+      );
+      if (screenSession) {
+        this.screen.beginBatch(context.historicalExemplars, context.mechanic, {
+          scopeKey: job.scopeKey,
+          worldKey: job.worldKey,
+          session: screenSession,
+        });
+      } else {
+        this.screen.beginBatch(context.historicalExemplars, context.mechanic);
+      }
       for (const row of rows) {
-        if (row.status !== 'generated') continue;
-        const result = this.screen.screen(row.draft ?? {}, row.authoring);
+        const needsScreening =
+          row.status === 'generated' ||
+          (row.status === 'screened_pass' &&
+            hasIncompleteHistoricalVerification(row.findings));
+        if (!needsScreening) continue;
+
+        const result = this.screen.screen(row.draft ?? {}, row.authoring, {
+          candidateId: row.candidateId ?? String(row._id),
+          scopeKey: job.scopeKey,
+          worldKey: job.worldKey,
+          session: screenSession,
+        });
+
+        const assignedFamilyKey = (
+          row.authoring as { assignedSlot?: { familyKey?: string } } | undefined
+        )?.assignedSlot?.familyKey;
+        const compliance = assignedFamilyKey
+          ? evaluateFamilyCompliance({
+              assignedFamilyKey,
+              draft: row.draft ?? {},
+              authoring: row.authoring,
+            })
+          : null;
+
         await this.updateCandidate(job, String(row._id), {
           status: result.passed ? 'screened_pass' : 'screened_reject',
           findings: result.findings,
+          ...(compliance
+            ? {
+                authoring: {
+                  ...(row.authoring ?? {}),
+                  familyCompliance: compliance,
+                },
+              }
+            : {}),
         });
       }
       await this.jobs.checkpoint({
@@ -366,6 +515,14 @@ export class ContentEngineOrchestratorService {
           jobId: job.jobId,
           leaseEpoch: job.leaseEpoch,
           reason: error.message,
+        });
+        return;
+      }
+      if (error instanceof CreativePlannerError) {
+        await this.jobs.awaitReview({
+          jobId: job.jobId,
+          leaseEpoch: job.leaseEpoch,
+          reason: `PLANNER_FAILURE: ${error.code} - ${error.message}`,
         });
         return;
       }

@@ -1,5 +1,6 @@
 import { FakeAiProvider } from '../testing/fake-ai.provider';
 import {
+  QUALITY_JUDGE_SCHEMA,
   QualityJudgeParseError,
   QualityJudgeService,
 } from './quality-judge.service';
@@ -65,6 +66,16 @@ describe('QualityJudgeService', () => {
     expect(result.recommendation).toBe('REJECT');
     expect(result.scores.overallPlayability).toBe(1);
     expect(provider.calls[0].prompt).toContain('CANONICAL MECHANIC RULES');
+  });
+
+  it('enforces additionalProperties: false explicitly on root, scores, and reasons in QUALITY_JUDGE_SCHEMA', () => {
+    expect(QUALITY_JUDGE_SCHEMA.additionalProperties).toBe(false);
+    const props = QUALITY_JUDGE_SCHEMA.properties as Record<
+      string,
+      Record<string, unknown>
+    >;
+    expect(props.scores.additionalProperties).toBe(false);
+    expect(props.reasons.additionalProperties).toBe(false);
   });
 
   it('rejects malformed or incomplete rubric output after settling the call', async () => {

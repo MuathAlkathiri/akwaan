@@ -242,9 +242,9 @@ export function BatchSubmissionPanel({
   );
 
   // Validation bounds
-  const minTargetCount = options?.limits.minTargetCount ?? 1;
-  const maxTargetCount = options?.limits.maxTargetCount ?? 10;
-  const maxGuidanceLength = options?.limits.maxBatchGuidanceLength ?? 1000;
+  const minTargetCount = options?.limits?.minTargetCount ?? 1;
+  const maxTargetCount = options?.limits?.maxTargetCount ?? 10;
+  const maxGuidanceLength = options?.limits?.maxBatchGuidanceLength ?? 1000;
 
   const parsedTargetCount = useMemo(() => {
     const n = Number(targetCountInput);
@@ -1539,6 +1539,110 @@ export function BatchSubmissionPanel({
                   </dl>
                 </div>
               </div>
+
+              {/* Creative Plan / Family Distribution Preview */}
+              <div
+                className="mt-4 rounded-xl border border-border/80 bg-white p-4 shadow-sm"
+                data-testid="preflight-creative-plan-section"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Layers className="size-4 text-amber-600" />
+                    <h4 className="font-bold text-slate-900 text-sm">
+                      توزيع الخطة الإبداعية والعائلات (Creative Plan Preview)
+                    </h4>
+                  </div>
+                  <span
+                    data-testid="preflight-plan-preview-badge"
+                    className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800"
+                  >
+                    معاينة تقديرية قبل الإطلاق (Estimated Preview)
+                  </span>
+                </div>
+
+                {preflight.generationPlan?.slots && preflight.generationPlan.slots.length > 0 ? (
+                  <div className="mt-3 space-y-3">
+                    {/* Diversity split summary */}
+                    <div className="flex flex-wrap items-center gap-3 text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                      <div>
+                        <span className="text-muted-foreground">الأسئلة المخططة: </span>
+                        <span className="font-bold font-mono text-slate-900">
+                          {preflight.generationPlan.slots.length}
+                        </span>
+                      </div>
+                      <div className="border-r border-slate-300 pr-3">
+                        <span className="text-muted-foreground">استغلال (Exploitation): </span>
+                        <span className="font-semibold text-blue-700">
+                          {preflight.generationPlan.diversityMetrics?.exploitationCount ??
+                            preflight.generationPlan.slots.filter((s) => s.mode === "exploitation").length}{" "}
+                          خانة
+                        </span>
+                      </div>
+                      <div className="border-r border-slate-300 pr-3">
+                        <span className="text-muted-foreground">استكشاف (Exploration): </span>
+                        <span className="font-semibold text-purple-700">
+                          {preflight.generationPlan.diversityMetrics?.explorationCount ??
+                            preflight.generationPlan.slots.filter((s) => s.mode === "exploration").length}{" "}
+                          خانة
+                        </span>
+                      </div>
+                      <div className="border-r border-slate-300 pr-3">
+                        <span className="text-muted-foreground">العائلات المتمايزة: </span>
+                        <span className="font-semibold text-emerald-700">
+                          {preflight.generationPlan.diversityMetrics?.distinctFamiliesCount ??
+                            new Set(preflight.generationPlan.slots.map((s) => s.familyKey)).size}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Slots distribution list */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                      {preflight.generationPlan.slots.map((slot) => (
+                        <div
+                          key={slot.slotIndex}
+                          data-testid={`preflight-slot-${slot.slotIndex}`}
+                          className="rounded-lg border border-slate-200 bg-white p-2.5 text-[11px] shadow-2xs flex flex-col justify-between"
+                        >
+                          <div className="flex items-center justify-between gap-1 mb-1.5">
+                            <span className="font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.2 rounded text-[10px]">
+                              #{slot.slotIndex + 1}
+                            </span>
+                            <span
+                              className={`rounded-full px-2 py-0.2 text-[10px] font-semibold border ${
+                                slot.mode === "exploration"
+                                  ? "border-purple-200 bg-purple-50 text-purple-700"
+                                  : "border-blue-200 bg-blue-50 text-blue-700"
+                              }`}
+                            >
+                              {slot.mode === "exploration" ? "استكشاف" : "استغلال"}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="font-bold text-slate-900 text-xs">
+                              {slot.familyNameAr || slot.familyKey}
+                            </div>
+                            <div className="font-mono text-[10px] text-muted-foreground dir-ltr">
+                              {slot.familyKey}
+                            </div>
+                          </div>
+                          {slot.cognitiveTask && (
+                            <div className="mt-1.5 text-slate-600 text-[10px] line-clamp-2 border-t border-slate-100 pt-1">
+                              {slot.cognitiveTask}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    data-testid="preflight-v1-fallback-note"
+                    className="mt-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 text-xs text-slate-600"
+                  >
+                    توليد تقليدي V1 (بدون تقسيم مسبق للعائلات الإبداعية) — لم يتم العثور على كتالوج عائلات معتمد لهذا النطاق أو أن التوليد يعمل بالنظام الأساسي.
+                  </div>
+                )}
+              </div>
             </div>
           </details>
         </div>
@@ -1722,6 +1826,53 @@ export function BatchSubmissionPanel({
               </span>
             </div>
           </div>
+
+          {job.pinnedPlan?.slots && job.pinnedPlan.slots.length > 0 && (
+            <div
+              className="mt-3 rounded-xl border border-emerald-200 bg-white p-4 shadow-sm"
+              data-testid="job-pinned-plan-section"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
+                <div className="flex items-center gap-2">
+                  <Layers className="size-4 text-emerald-600" />
+                  <h4 className="font-bold text-slate-900 text-xs">
+                    الخطة الإبداعية المثبتة للدفعة (Pinned Generation Plan)
+                  </h4>
+                </div>
+                <span
+                  data-testid="job-pinned-plan-badge"
+                  className="rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800"
+                >
+                  خطة مثبتة ومحمية (Pinned Plan)
+                </span>
+              </div>
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {job.pinnedPlan.slots.map((slot) => (
+                  <div
+                    key={slot.slotIndex}
+                    data-testid={`job-pinned-slot-${slot.slotIndex}`}
+                    className="rounded-lg border border-slate-200 bg-slate-50/70 px-2.5 py-1.5 text-[11px] flex items-center gap-2"
+                  >
+                    <span className="font-mono font-bold text-slate-700 bg-white px-1.5 py-0.2 rounded border border-slate-200 text-[10px]">
+                      #{slot.slotIndex + 1}
+                    </span>
+                    <span className="font-semibold text-slate-800">
+                      {slot.familyNameAr || slot.familyKey}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.2 text-[10px] font-semibold border ${
+                        slot.mode === "exploration"
+                          ? "border-purple-200 bg-purple-50 text-purple-700"
+                          : "border-blue-200 bg-blue-50 text-blue-700"
+                      }`}
+                    >
+                      {slot.mode === "exploration" ? "استكشاف" : "استغلال"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {job.provenanceComplete === false && (
             <p

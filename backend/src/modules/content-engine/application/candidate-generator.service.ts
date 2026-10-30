@@ -340,6 +340,52 @@ export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
 };
 
 /**
+ * Extends a candidate generation schema with an explicit `slotIndex` property
+ * for jobs with pinned creative slots. Preserves strict-mode requirements by
+ * marking the property in `required` and keeping `additionalProperties: false`.
+ */
+export function schemaWithCreativeSlots(
+  baseSchema: Record<string, unknown>,
+): Record<string, unknown> {
+  const candidatesProp = (
+    baseSchema.properties as {
+      candidates: {
+        type: string;
+        items: {
+          type: string;
+          additionalProperties: boolean;
+          required: string[];
+          properties: Record<string, unknown>;
+        };
+      };
+    }
+  ).candidates;
+
+  const baseItems = candidatesProp.items;
+  return {
+    ...baseSchema,
+    properties: {
+      ...(baseSchema.properties as Record<string, unknown>),
+      candidates: {
+        ...candidatesProp,
+        items: {
+          ...baseItems,
+          required: ['slotIndex', ...baseItems.required],
+          properties: {
+            slotIndex: {
+              type: 'integer',
+              description:
+                '0-based index of the assigned creative slot (from 0 to count-1) matching the slot directive in the prompt.',
+            },
+            ...baseItems.properties,
+          },
+        },
+      },
+    },
+  };
+}
+
+/**
  * What the Skills cannot say generically, said once for Closest.
  *
  * The Skill text is already in the prompt verbatim; this restates only the two
@@ -496,6 +542,7 @@ export interface GenerateInput {
   generationSpec?: GenerationSpecification;
   difficulty?: RyoRequestedDifficulty | string | null;
   batchGuidance?: string | null;
+  generationPlan?: GenerationPlan | null;
 }
 
 export interface BuildPromptOptions {
@@ -644,6 +691,14 @@ export interface CandidateAuthoring {
   domainDescription?: string;
   /** The model's own claim that correctValue = min + stepsFromMin * step. */
   stepsFromMin?: number;
+  assignedSlot?: {
+    slotIndex: number;
+    familyKey: string;
+    familyNameAr?: string;
+    mode?: string;
+    difficulty?: string;
+    cognitiveTask?: string;
+  };
 }
 
 /** Trimmed string, or undefined for anything empty or non-string. */
@@ -809,10 +864,20 @@ export class CandidateGeneratorService {
     if (!provider) {
       throw new Error('No AiProvider is bound; refusing to generate');
     }
+    if (
+      input.generationPlan?.slots &&
+      input.generationPlan.slots.length < count
+    ) {
+      throw new CandidateParseError(
+        'PLAN_SLOT_COUNT_MISMATCH',
+        `pinned generation plan declares ${input.generationPlan.slots.length} slots but requested count is ${count}`,
+      );
+    }
     const prompt = this.buildPrompt(input.context, count, answerMode, {
       difficulty: resolvedDifficulty,
       ryoDifficultyTargets: spec?.ryoDifficultyTargets,
       batchGuidance: normalizedGuidance,
+      generationPlan: input.generationPlan,
     });
     // Reserved *and* sent, so actual output cost cannot exceed what the cap
     // approved. Sized with headroom: a bound tight enough to truncate the JSON
@@ -858,16 +923,22 @@ export class CandidateGeneratorService {
       },
     });
 
+    const hasCreativeSlots = Boolean(input.generationPlan?.slots?.length);
+    const baseSchema =
+      answerMode === 'closest'
+        ? CLOSEST_CANDIDATE_SCHEMA
+        : RYO_CANDIDATE_SCHEMA;
+    const responseSchema = hasCreativeSlots
+      ? schemaWithCreativeSlots(baseSchema)
+      : baseSchema;
+
     let raw: string;
     try {
       const result = await provider.generateText({
         model,
         promptVersion,
         prompt,
-        responseSchema:
-          answerMode === 'closest'
-            ? CLOSEST_CANDIDATE_SCHEMA
-            : RYO_CANDIDATE_SCHEMA,
+        responseSchema,
         omitTemperature,
         ...(temperature !== undefined ? { temperature } : {}),
         ...(reasoningEffort ? { reasoningEffort } : {}),
@@ -922,7 +993,9 @@ export class CandidateGeneratorService {
       throw new LeaseLostError(input.jobId, input.leaseEpoch);
     }
 
-    const parsed = this.parse(raw, count, answerMode);
+    const parsed = this.parse(raw, count, answerMode, {
+      requireSlotIdentity: hasCreativeSlots,
+    });
     const saved: GeneratedCandidate[] = [];
     const effectiveContextHash = spec?.contextHash ?? input.context.contextHash;
 
@@ -933,6 +1006,25 @@ export class CandidateGeneratorService {
         ordinal,
         effectiveContextHash,
       );
+      const assignedSlot = input.generationPlan?.slots?.[ordinal];
+      const mergedAuthoring = {
+        ...(authoring ?? {}),
+        ...(assignedSlot
+          ? {
+              assignedSlot: {
+                slotIndex: assignedSlot.slotIndex,
+                familyKey: assignedSlot.familyKey,
+                familyNameAr: assignedSlot.familyNameAr,
+                mode: assignedSlot.mode,
+                difficulty: assignedSlot.difficulty,
+                cognitiveTask: assignedSlot.cognitiveTask,
+              },
+            }
+          : {}),
+      };
+      const candidateAuthoring =
+        Object.keys(mergedAuthoring).length > 0 ? mergedAuthoring : null;
+
       // Upsert on (jobId, ordinal): a recovered job refills the same slots
       // instead of growing a second batch.
       await this.candidates
@@ -951,7 +1043,7 @@ export class CandidateGeneratorService {
               attempt: input.attempt,
               failureReason: null,
               factualClaims,
-              authoring: authoring ?? null,
+              authoring: candidateAuthoring,
               factVerification: null,
               qualityEvaluation: null,
               compatibilityEvaluation: null,
@@ -1086,10 +1178,11 @@ export class CandidateGeneratorService {
     };
   }
 
-  private parse(
+  public parse(
     raw: string,
     count: number,
     answerMode: 'multiple_choice' | 'closest' = 'multiple_choice',
+    options?: { requireSlotIdentity?: boolean },
   ): ParsedCandidate[] {
     let payload: unknown;
     try {
@@ -1113,16 +1206,129 @@ export class CandidateGeneratorService {
         'no candidates returned',
       );
     }
-    if (candidates.length < count) {
+    if (candidates.length !== count) {
       throw new CandidateParseError(
         'CANDIDATE_COUNT_INVALID',
-        `expected ${count}, received ${candidates.length}`,
+        `expected exactly ${count} candidate(s), received ${candidates.length}`,
       );
     }
-    if (answerMode === 'closest') {
-      return candidates.slice(0, count).map((item) => this.parseClosest(item));
+
+    // Inspect for explicit slot indexing (slotIndex or slotNumber)
+    let orderedCandidates = candidates;
+    const explicitIndices: Array<number | null> = candidates.map(
+      (item, idx) => {
+        const itemObj =
+          item && typeof item === 'object'
+            ? (item as Record<string, unknown>)
+            : {};
+        const hasSlotIndex =
+          itemObj.slotIndex !== undefined && itemObj.slotIndex !== null;
+        const hasSlotNumber =
+          itemObj.slotNumber !== undefined && itemObj.slotNumber !== null;
+
+        if (!hasSlotIndex && !hasSlotNumber) {
+          if (options?.requireSlotIdentity) {
+            throw new CandidateParseError(
+              'SLOT_IDENTITY_MISSING',
+              `Candidate at index ${idx} is missing required slotIndex for pinned creative plan`,
+            );
+          }
+          return null;
+        }
+
+        let parsedSlotIndex: number | null = null;
+        if (hasSlotIndex) {
+          if (
+            typeof itemObj.slotIndex !== 'number' ||
+            !Number.isInteger(itemObj.slotIndex)
+          ) {
+            throw new CandidateParseError(
+              'SLOT_INDEX_OUT_OF_BOUNDS',
+              `slotIndex must be an integer, received ${itemObj.slotIndex}`,
+            );
+          }
+          parsedSlotIndex = itemObj.slotIndex;
+        }
+
+        let parsedSlotNumber: number | null = null;
+        if (hasSlotNumber) {
+          if (
+            typeof itemObj.slotNumber !== 'number' ||
+            !Number.isInteger(itemObj.slotNumber)
+          ) {
+            throw new CandidateParseError(
+              'SLOT_INDEX_OUT_OF_BOUNDS',
+              `slotNumber must be an integer, received ${itemObj.slotNumber}`,
+            );
+          }
+          parsedSlotNumber = itemObj.slotNumber;
+        }
+
+        if (parsedSlotIndex !== null && parsedSlotNumber !== null) {
+          const normNumber =
+            parsedSlotNumber >= 1 && parsedSlotNumber <= count
+              ? parsedSlotNumber - 1
+              : parsedSlotNumber;
+          if (parsedSlotIndex !== normNumber) {
+            throw new CandidateParseError(
+              'SLOT_INDEX_CONFLICT',
+              `Candidate has conflicting slotIndex (${parsedSlotIndex}) and slotNumber (${parsedSlotNumber})`,
+            );
+          }
+        }
+
+        if (parsedSlotIndex !== null) {
+          if (parsedSlotIndex >= 0 && parsedSlotIndex < count) {
+            return parsedSlotIndex;
+          }
+          throw new CandidateParseError(
+            'SLOT_INDEX_OUT_OF_BOUNDS',
+            `slotIndex ${parsedSlotIndex} is out of bounds for batch size ${count}`,
+          );
+        }
+
+        if (parsedSlotNumber !== null) {
+          if (parsedSlotNumber >= 1 && parsedSlotNumber <= count) {
+            return parsedSlotNumber - 1;
+          }
+          if (parsedSlotNumber >= 0 && parsedSlotNumber < count) {
+            return parsedSlotNumber;
+          }
+          throw new CandidateParseError(
+            'SLOT_INDEX_OUT_OF_BOUNDS',
+            `slotNumber ${parsedSlotNumber} is out of bounds for batch size ${count}`,
+          );
+        }
+
+        return null;
+      },
+    );
+
+    const hasExplicitIndices = explicitIndices.some((idx) => idx !== null);
+    if (hasExplicitIndices) {
+      if (explicitIndices.some((idx) => idx === null)) {
+        throw new CandidateParseError(
+          'SLOT_INDEX_PARTIALLY_SPECIFIED',
+          'Candidate response contains mixed explicit and omitted slot indices',
+        );
+      }
+      const uniqueIndices = new Set(explicitIndices as number[]);
+      if (uniqueIndices.size !== count) {
+        throw new CandidateParseError(
+          'DUPLICATE_SLOT_INDEX',
+          'Candidate response contains duplicate or incomplete slot indices',
+        );
+      }
+      orderedCandidates = new Array(count);
+      for (let i = 0; i < candidates.length; i++) {
+        orderedCandidates[explicitIndices[i] as number] = candidates[i];
+      }
     }
-    return candidates.slice(0, count).map((item) => {
+
+    if (answerMode === 'closest') {
+      return orderedCandidates.map((item) => this.parseClosest(item));
+    }
+    return orderedCandidates.map((item) => {
       const value = item as {
         concept?: unknown;
         prompt?: unknown;

@@ -24,12 +24,23 @@ import { EntityFormDialog } from "@/features/world-management/components/shared/
 import { ContentItemForm } from "@/features/world-management/components/content-items/content-item-form";
 import type { ContentItem } from "@/features/world-management/types";
 import * as api from "./api";
+import { DeduplicationPanel } from "./deduplication-panel";
+import { CreativeSlotInspector } from "./creative-slot-inspector";
+import {
+  hasIncompleteHistoricalVerification,
+  hasProvenDuplicate,
+  summarizeDeduplication,
+} from "./deduplication-findings";
 import type {
   FactualOverrideCode,
   FactualState,
   QualityRubric,
   ReviewCandidate,
 } from "./types";
+import {
+  CANDIDATE_PIPELINE_STATUS_LABELS,
+  CANDIDATE_REVIEW_STATUS_LABELS,
+} from "./job-status-helpers";
 
 export type StudioSurface = "generate" | "jobs" | "review";
 
@@ -54,7 +65,7 @@ const readInitialStudioState = (): PersistedStudioState => {
       jobId: "",
       worldKey: "",
       scopeKey: "",
-      status: "pending",
+      status: "awaiting_review",
     },
   };
 
@@ -79,7 +90,7 @@ const readInitialStudioState = (): PersistedStudioState => {
           jobId: parsed.filters.jobId ?? "",
           worldKey: parsed.filters.worldKey ?? "",
           scopeKey: parsed.filters.scopeKey ?? "",
-          status: parsed.filters.status ?? "pending",
+          status: parsed.filters.status ?? "awaiting_review",
         };
       }
     }
@@ -374,6 +385,46 @@ export function ContentEngineReviewWorkspace() {
     },
   });
 
+  const rescreenMutation = useMutation({
+    mutationFn: async () => {
+      if (!candidate) return;
+      return api.rescreenCandidate(
+        candidate.candidateId,
+        candidate.reviewRevision,
+      );
+    },
+    onSuccess: async () => {
+      setActionError(null);
+      setRevisionConflict(null);
+      await refresh();
+      showToast({ message: "اكتملت إعادة فحص التكرار وتحديث النتائج بنجاح." });
+    },
+    onError: (err) => {
+      const parsed = extractConflictDetails(err);
+      setActionError(parsed.message);
+      if (parsed.isConflict) {
+        setRevisionConflict({
+          message: parsed.message,
+          currentRevision: parsed.currentRevision,
+        });
+      }
+      showToast({
+        type: "error",
+        message:
+          parsed.message ||
+          "تعذر إعادة فحص التكرار. قد يكون المرشح قد تغيّر لدى مراجع آخر.",
+      });
+    },
+  });
+
+  const handleRescreen = async () => {
+    try {
+      await rescreenMutation.mutateAsync();
+    } catch {
+      // Error handled by mutation onError callback
+    }
+  };
+
   const editable = useMemo(
     () => (candidate ? toEditableContentItem(candidate) : null),
     [candidate],
@@ -524,47 +575,188 @@ export function ContentEngineReviewWorkspace() {
                 }))
               }
             >
-              <option value="">كل الحالات</option>
-              <option value="pending">بانتظار المراجعة</option>
-              <option value="approved">معتمد</option>
-              <option value="rejected">مرفوض</option>
-              <option value="fact_blocked">تدقيق الحقائق متعثر</option>
+              <option value="">كل الحالات (جميع المرشحين)</option>
+              <option value="awaiting_review">
+                جاهز للمراجعة البشرية (Awaiting Review)
+              </option>
+              <option value="screened_reject">
+                مرفوض في الفحص الحتمي (Screened Rejects)
+              </option>
+              <option value="pending">بانتظار القرار البشري (Pending Decision)</option>
+              <option value="approved">معتمد بشرياً (Approved)</option>
+              <option value="rejected">مرفوض بشرياً (Rejected)</option>
+              <option value="fact_blocked">تدقيق الحقائق متعثر (Fact Blocked)</option>
             </select>
           </div>
           <div className="grid gap-2 lg:grid-cols-2">
-            {(list.data ?? []).map((row) => (
-              <button
-                key={row.candidateId}
-                type="button"
-                data-testid={`candidate-row-${row.candidateId}`}
-                onClick={() => setSelectedId(row.candidateId)}
-                className={`rounded-xl border p-4 text-right transition-colors hover:bg-muted/50 ${
-                  selectedId === row.candidateId
-                    ? "border-amber-500/70 bg-amber-500/5"
-                    : ""
-                }`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-semibold">
-                    {row.draft?.prompt?.ar ?? "مرشح بلا سؤال"}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    {row.publishedContentItemId && (
-                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
-                        مسودة منشأة
-                      </span>
-                    )}
-                    <span className="rounded-full bg-muted px-2 py-1 text-xs">
-                      {row.reviewStatus}
+            {(list.data ?? []).map((row) => {
+              const isScreenedReject = row.status === "screened_reject";
+              const pipelineLabel =
+                CANDIDATE_PIPELINE_STATUS_LABELS[row.status] ?? {
+                  label: row.status,
+                  badgeClass: "border-slate-200 bg-slate-100 text-slate-700",
+                };
+              const reviewLabel =
+                CANDIDATE_REVIEW_STATUS_LABELS[row.reviewStatus] ?? {
+                  label: row.reviewStatus,
+                  badgeClass: "border-slate-200 bg-slate-100 text-slate-700",
+                };
+              const blockingFinding = row.findings?.find(
+                (f) => f.severity === "blocking",
+              );
+              const dedup = summarizeDeduplication(row.findings);
+
+              return (
+                <button
+                  key={row.candidateId}
+                  type="button"
+                  data-testid={`candidate-row-${row.candidateId}`}
+                  onClick={() => setSelectedId(row.candidateId)}
+                  className={`rounded-xl border p-4 text-right transition-colors ${
+                    isScreenedReject
+                      ? selectedId === row.candidateId
+                        ? "border-rose-500 bg-rose-100/50 ring-1 ring-rose-400"
+                        : "border-rose-200/90 bg-rose-50/40 hover:bg-rose-50/80"
+                      : selectedId === row.candidateId
+                        ? "border-amber-500/70 bg-amber-500/5"
+                        : "hover:bg-muted/50"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span
+                      className={`font-semibold ${
+                        isScreenedReject
+                          ? "text-rose-950 opacity-90 line-through decoration-rose-300"
+                          : ""
+                      }`}
+                    >
+                      {row.draft?.prompt?.ar ?? "مرشح بلا سؤال"}
                     </span>
+                    <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+                      {row.publishedContentItemId && (
+                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+                          مسودة منشأة
+                        </span>
+                      )}
+                      <span
+                        data-testid={`candidate-pipeline-badge-${row.candidateId}`}
+                        className={`rounded-full border px-2 py-0.5 text-[11px] ${pipelineLabel.badgeClass}`}
+                      >
+                        {pipelineLabel.label}
+                      </span>
+                      <span
+                        data-testid={`candidate-review-badge-${row.candidateId}`}
+                        className={`rounded-full border px-2 py-0.5 text-[11px] ${reviewLabel.badgeClass}`}
+                      >
+                        {reviewLabel.label}
+                      </span>
+                      {dedup.category !== "clean" && (
+                        <span
+                          data-testid={`candidate-dedup-badge-${row.candidateId}`}
+                          className={`rounded-full border px-2 py-0.5 text-[11px] ${dedup.badgeClass}`}
+                        >
+                          {dedup.category === "proven_duplicate"
+                            ? "تكرار مثبت"
+                            : dedup.category === "incomplete_verification"
+                              ? "فحص ناقص"
+                              : "شبهة تقاطع"}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {row.job?.worldKey} / {row.job?.scopeKey} ·{" "}
-                  {row.job?.mechanicKey} · rev {row.reviewRevision}
-                </p>
-              </button>
-            ))}
+
+                  {row.authoring?.assignedSlot && (
+                    <div
+                      data-testid={`candidate-creative-slot-row-${row.candidateId}`}
+                      className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]"
+                    >
+                      <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
+                        #{row.authoring.assignedSlot.slotIndex + 1}
+                      </span>
+                      <span
+                        data-testid={`candidate-slot-family-${row.candidateId}`}
+                        className="font-medium text-slate-800"
+                      >
+                        {row.authoring.assignedSlot.familyNameAr ||
+                          row.authoring.assignedSlot.familyKey}
+                      </span>
+                      <span
+                        data-testid={`candidate-slot-mode-${row.candidateId}`}
+                        className={`rounded-full px-2 py-0.2 border text-[10px] font-semibold ${
+                          row.authoring.assignedSlot.mode === "exploration"
+                            ? "border-purple-200 bg-purple-50 text-purple-700"
+                            : "border-blue-200 bg-blue-50 text-blue-700"
+                        }`}
+                      >
+                        {row.authoring.assignedSlot.mode === "exploration"
+                          ? "استكشاف"
+                          : "استغلال"}
+                      </span>
+                      {row.findings?.some(
+                        (f) => f.code === "FAMILY_COMPLIANCE_MISMATCH",
+                      ) ? (
+                        <span
+                          data-testid={`candidate-compliance-indicator-${row.candidateId}`}
+                          className="rounded-full border border-rose-300 bg-rose-50 px-2 py-0.2 text-[10px] font-bold text-rose-700"
+                        >
+                          تعارض مع العائلة
+                        </span>
+                      ) : row.findings?.some(
+                          (f) => f.code === "FAMILY_COMPLIANCE_UNVERIFIED",
+                        ) ? (
+                        <span
+                          data-testid={`candidate-compliance-indicator-${row.candidateId}`}
+                          className={`rounded-full border px-2 py-0.2 text-[10px] font-semibold ${
+                            row.reviewDecision?.familyComplianceResolution
+                              ?.resolvedByReviewer ||
+                            row.authoring.familyCompliance?.resolvedByReviewerId
+                              ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                              : "border-amber-300 bg-amber-50 text-amber-700"
+                          }`}
+                        >
+                          {row.reviewDecision?.familyComplianceResolution
+                            ?.resolvedByReviewer ||
+                          row.authoring.familyCompliance?.resolvedByReviewerId
+                            ? "عائلة معتمدة يدويًا"
+                            : "بانتظار التحقق"}
+                        </span>
+                      ) : (
+                        <span
+                          data-testid={`candidate-compliance-indicator-${row.candidateId}`}
+                          className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.2 text-[10px] font-medium text-emerald-700"
+                        >
+                          عائلة مطابقة
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {isScreenedReject && (
+                    <div
+                      data-testid={`candidate-blocking-reason-${row.candidateId}`}
+                      className="mt-2.5 flex items-start gap-1.5 rounded-lg border border-rose-200 bg-rose-100/70 p-2 text-xs text-rose-900"
+                    >
+                      <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-rose-600" />
+                      <div>
+                        <span className="font-semibold text-rose-950">
+                          سبب الرفض الآلي:{" "}
+                        </span>
+                        <span>
+                          {blockingFinding
+                            ? `${blockingFinding.code}: ${blockingFinding.message}`
+                            : "مخالفة معايير الفحص الحتمي الآلي"}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {row.job?.worldKey} / {row.job?.scopeKey} ·{" "}
+                    {row.job?.mechanicKey} · rev {row.reviewRevision}
+                  </p>
+                </button>
+              );
+            })}
             {!list.isLoading && !list.data?.length && (
               <p className="text-sm text-muted-foreground">
                 لا توجد مرشحات مطابقة.
@@ -608,7 +800,13 @@ export function ContentEngineReviewWorkspace() {
 
           <SectionCard
             title="تفاصيل المرشح"
-            description={`Revision ${candidate.reviewRevision} · ${candidate.status} · Review: ${candidate.reviewStatus}`}
+            description={`المراجعة ${candidate.reviewRevision} · مسار الفحص: ${
+              CANDIDATE_PIPELINE_STATUS_LABELS[candidate.status]?.label ??
+              candidate.status
+            } · القرار البشري: ${
+              CANDIDATE_REVIEW_STATUS_LABELS[candidate.reviewStatus]?.label ??
+              candidate.reviewStatus
+            }`}
             actions={
               editable && !candidate.publishedContentItemId ? (
                 <Button
@@ -621,6 +819,38 @@ export function ContentEngineReviewWorkspace() {
               ) : undefined
             }
           >
+            {candidate.status === "screened_reject" && (
+              <div
+                role="alert"
+                data-testid="screened-reject-banner"
+                className="flex items-start gap-3 rounded-xl border border-rose-300 bg-rose-50 p-4 text-xs text-rose-950 shadow-sm"
+              >
+                <AlertTriangle className="size-5 text-rose-600 shrink-0 mt-0.5" />
+                <div className="space-y-1.5 flex-1">
+                  <p className="font-bold text-sm text-rose-900">
+                    هذا المرشح مرفوض في الفحص الحتمي الآلي (Screened Reject)
+                  </p>
+                  <p className="text-rose-800">
+                    تم استبعاد هذا المرشح آلياً لعدم استيفائه معايير الفحص الحتمي.
+                    لا يمكن اعتماد المرشح أو إنشاء مسودة منه دون تعديله لتصحيح أسباب الرفض.
+                  </p>
+                  {candidate.findings
+                    ?.filter((f) => f.severity === "blocking")
+                    .map((finding, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-lg border border-rose-200 bg-white/90 p-2.5 text-rose-950"
+                      >
+                        <span className="font-mono font-bold text-rose-700 me-2">
+                          [{finding.code}]
+                        </span>
+                        <span>{finding.message}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
             {/* Target Identity & Canonical Resolution Context */}
             <div
               data-testid="candidate-target-context"
@@ -663,6 +893,16 @@ export function ContentEngineReviewWorkspace() {
                 )}
               </div>
             </div>
+
+            {/* Creative Slot & Canonical Family Compliance Inspector */}
+            <CreativeSlotInspector candidate={candidate} />
+
+            {/* Deduplication & Content Identity Panel */}
+            <DeduplicationPanel
+              candidate={candidate}
+              onRescreen={handleRescreen}
+              isRescreening={rescreenMutation.isPending}
+            />
 
             {candidate.publishedContentItemId && (
               <div
@@ -1178,6 +1418,35 @@ export function ContentEngineReviewWorkspace() {
                 </div>
               )}
 
+            {candidate.findings?.some((f) => f.code === "FAMILY_COMPLIANCE_UNVERIFIED") &&
+              !candidate.reviewDecision?.familyComplianceResolution?.resolvedByReviewer && (
+                <div
+                  data-testid="family-unverified-approval-notice"
+                  className="rounded-lg border border-amber-300 bg-amber-50/80 p-3 text-xs text-amber-950"
+                >
+                  <p className="font-semibold text-amber-900">
+                    ملاحظة توثيق العائلة (FAMILY_COMPLIANCE_UNVERIFIED):
+                  </p>
+                  <p className="mt-0.5 text-amber-800 text-[11px] leading-relaxed">
+                    هذا المرشح يتبع عائلة تتطلب تقييمًا بشريًا. سيتم توثيق شرح القرار المكتوب أعلاه كإقرار رسمي لتوافق المرشح مع العائلة المخصصة.
+                  </p>
+                </div>
+              )}
+
+            {candidate.findings?.some((f) => f.code === "FAMILY_COMPLIANCE_MISMATCH") && (
+              <div
+                data-testid="family-mismatch-approval-blocker-notice"
+                className="rounded-lg border border-rose-300 bg-rose-50/80 p-3 text-xs text-rose-950"
+              >
+                <p className="font-bold text-rose-900">
+                  ⛔ زر الاعتماد معطّل بسبب تعارض العائلة (FAMILY_COMPLIANCE_MISMATCH)
+                </p>
+                <p className="mt-0.5 text-rose-800 text-[11px] leading-relaxed">
+                  لا يمكن اعتماد هذا المرشح حتى يتم تعديل السؤال بالمحرر ليتوافق مع العائلة القانونية المخصصة.
+                </p>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2">
               <Button
                 data-testid="button-approve-candidate"
@@ -1537,13 +1806,66 @@ function MechanicAnswerSummary({ candidate }: { candidate: ReviewCandidate }) {
 }
 
 function deriveCandidateEligibility(candidate: ReviewCandidate) {
-  if (candidate.reviewEligibility) {
-    return candidate.reviewEligibility;
-  }
   const published = Boolean(candidate.publishedContentItemId);
   const hasBlockingFindings = candidate.findings?.some(
     (f) => f.severity === "blocking",
   );
+  const hasIncompleteHistorical = hasIncompleteHistoricalVerification(
+    candidate.findings,
+  );
+  const hasProvenDuplicates = hasProvenDuplicate(candidate.findings);
+  const hasFamilyMismatch = candidate.findings?.some(
+    (f) => f.code === "FAMILY_COMPLIANCE_MISMATCH",
+  );
+
+  if (candidate.reviewEligibility) {
+    const extraBlockers: string[] = [];
+    if (
+      hasProvenDuplicates &&
+      !candidate.reviewEligibility.approvalBlockers.some((b) =>
+        b.includes("تكرار"),
+      )
+    ) {
+      extraBlockers.push(
+        "تم رصد تكرار مثبت مع محتوى سابق؛ لا يمكن الاعتماد ويجب تعديل السؤال بالمحرر.",
+      );
+    }
+    if (
+      hasIncompleteHistorical &&
+      !candidate.reviewEligibility.approvalBlockers.some((b) =>
+        b.includes("غير مكتمل"),
+      )
+    ) {
+      extraBlockers.push(
+        "التحقق التاريخي من عدم التكرار غير مكتمل؛ يلزم إعادة فحص المرشح بنجاح قبل الاعتماد.",
+      );
+    }
+    if (
+      hasFamilyMismatch &&
+      !candidate.reviewEligibility.approvalBlockers.some((b) =>
+        b.includes("العائلة"),
+      )
+    ) {
+      extraBlockers.push(
+        "المرشح يتعارض مع العائلة المحددة له (FAMILY_COMPLIANCE_MISMATCH)؛ يلزم تعديل محتوى المرشح ليتطابق مع العائلة قبل الاعتماد.",
+      );
+    }
+
+    const mergedBlockers = [
+      ...candidate.reviewEligibility.approvalBlockers,
+      ...extraBlockers,
+    ];
+    return {
+      ...candidate.reviewEligibility,
+      canApprove:
+        candidate.reviewEligibility.canApprove && extraBlockers.length === 0,
+      canCreateDraft:
+        candidate.reviewEligibility.canCreateDraft &&
+        !hasIncompleteHistorical &&
+        !hasFamilyMismatch,
+      approvalBlockers: mergedBlockers,
+    };
+  }
   const assessment = candidate.humanAssessment;
   const assessedRevision = assessment?.assessedRevision ?? candidate.reviewRevision;
   const assessmentCurrent =
@@ -1587,7 +1909,22 @@ function deriveCandidateEligibility(candidate: ReviewCandidate) {
       `تعذر التحقق من الهدف القانوني: ${candidate.targetResolutionError}`,
     );
   }
-  if (hasBlockingFindings) {
+  if (hasProvenDuplicates) {
+    approvalBlockers.push(
+      "تم رصد تكرار مثبت مع محتوى سابق؛ لا يمكن الاعتماد ويجب تعديل السؤال بالمحرر.",
+    );
+  }
+  if (hasIncompleteHistorical) {
+    approvalBlockers.push(
+      "التحقق التاريخي من عدم التكرار غير مكتمل؛ يلزم إعادة فحص المرشح بنجاح قبل الاعتماد.",
+    );
+  }
+  if (hasFamilyMismatch) {
+    approvalBlockers.push(
+      "المرشح يتعارض مع العائلة المحددة له (FAMILY_COMPLIANCE_MISMATCH)؛ يلزم تعديل محتوى المرشح ليتطابق مع العائلة قبل الاعتماد.",
+    );
+  }
+  if (hasBlockingFindings && !hasProvenDuplicates) {
     approvalBlockers.push(
       "يحتوي المرشح على ملاحظات فحص آلي مانعة؛ يجب تعديله أولاً.",
     );
@@ -1618,7 +1955,9 @@ function deriveCandidateEligibility(candidate: ReviewCandidate) {
       !published &&
       candidate.reviewStatus === "approved" &&
       !candidate.targetResolutionError &&
-      !hasBlockingFindings,
+      !hasBlockingFindings &&
+      !hasIncompleteHistorical &&
+      !hasFamilyMismatch,
     approvalBlockers,
   };
 }

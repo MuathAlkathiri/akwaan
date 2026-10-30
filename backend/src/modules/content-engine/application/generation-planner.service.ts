@@ -1,5 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { createHash } from 'crypto';
+import { CanonicalFamilyCatalog } from '../domain/canonical-family.types';
+import {
+  GenerationSlot,
+  PlannerDiversityConfig,
+  ScopeDiversityConstraint,
+} from '../domain/creative-plan.types';
+import { allocateCreativeSlots } from '../domain/creative-slot-allocator';
+import { ScopeHistoricalCoverageReport } from '../domain/historical-coverage.types';
+import { AuthoringContextService } from './authoring-context.service';
+import { HistoricalCoverageService } from './historical-coverage.service';
 
 export interface GenerationPlanInput {
   worldKey: string;
@@ -8,6 +18,11 @@ export interface GenerationPlanInput {
   count: number;
   difficulty?: string | null;
   batchGuidance?: string | null;
+  catalog?: CanonicalFamilyCatalog | null;
+  coverage?: ScopeHistoricalCoverageReport | null;
+  diversityConfig?: Partial<PlannerDiversityConfig> | null;
+  scopeDiversityConstraints?: ScopeDiversityConstraint | null;
+  seed?: string | null;
 }
 
 export interface GenerationPlanMediaIntent {
@@ -29,10 +44,155 @@ export interface GenerationPlan {
   correctnessRequirements: string[];
   mediaIntent: GenerationPlanMediaIntent;
   digest: string;
+  catalogDigest?: string;
+  coverageDigest?: string;
+  slots?: GenerationSlot[];
+  diversityMetrics?: {
+    exploitationCount: number;
+    explorationCount: number;
+    distinctFamiliesCount: number;
+    diagnostics: string[];
+  };
+}
+
+/**
+ * Canonical digest algorithm for GenerationPlan.
+ * Cryptographically hashes the plan's execution specification, target parameters,
+ * canonical family slots, and provenance digests with SHA-256.
+ */
+export function computeGenerationPlanDigest(
+  plan: Pick<
+    GenerationPlan,
+    | 'worldKey'
+    | 'scopeKey'
+    | 'mechanicKey'
+    | 'count'
+    | 'difficulty'
+    | 'difficultyQuotas'
+    | 'archetypes'
+    | 'decisionLoopGuidelines'
+    | 'antiPatterns'
+    | 'correctnessRequirements'
+    | 'mediaIntent'
+  > & {
+    catalogDigest?: string;
+    coverageDigest?: string;
+    slots?: GenerationSlot[];
+  },
+): string {
+  const canonicalSummary: Record<string, unknown> = {
+    worldKey: plan.worldKey,
+    scopeKey: plan.scopeKey,
+    mechanicKey: plan.mechanicKey,
+    count: plan.count,
+    difficulty: plan.difficulty,
+    difficultyQuotas: plan.difficultyQuotas,
+    archetypes: plan.archetypes,
+    decisionLoopGuidelines: plan.decisionLoopGuidelines,
+    antiPatterns: plan.antiPatterns,
+    correctnessRequirements: plan.correctnessRequirements,
+    mediaIntent: plan.mediaIntent,
+  };
+
+  if (plan.catalogDigest) {
+    canonicalSummary.catalogDigest = plan.catalogDigest;
+  }
+  if (plan.coverageDigest) {
+    canonicalSummary.coverageDigest = plan.coverageDigest;
+  }
+  if (plan.slots && plan.slots.length > 0) {
+    canonicalSummary.slots = plan.slots;
+  }
+
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalSummary))
+    .digest('hex');
 }
 
 @Injectable()
 export class GenerationPlannerService {
+  constructor(
+    @Optional()
+    private readonly authoringContext?: AuthoringContextService,
+    @Optional()
+    private readonly historicalCoverage?: HistoricalCoverageService,
+  ) {}
+
+  /**
+   * High-level entry point (Slice 3B): Resolves authoritative canonical family catalog
+   * and live historical coverage for the requested Scope and executes deterministic creative
+   * slot allocation.
+   *
+   * Distinguishes:
+   * 1. Catalog genuinely absent -> preserves V1 behavior with diagnostic.
+   * 2. Catalog present but malformed -> fails closed with typed error.
+   * 3. Catalog present but zero compatible families -> fails closed with typed error.
+   * 4. Incomplete historical coverage -> fails closed with typed error.
+   */
+  async planWithResolvedContext(
+    input: Omit<GenerationPlanInput, 'catalog' | 'coverage'> & {
+      catalogOverride?: CanonicalFamilyCatalog | null;
+      coverageOverride?: ScopeHistoricalCoverageReport | null;
+    },
+  ): Promise<GenerationPlan> {
+    const worldKey = (input.worldKey ?? '').trim();
+    const scopeKey = (input.scopeKey ?? '').trim();
+
+    let catalog: CanonicalFamilyCatalog | null | undefined =
+      input.catalogOverride;
+
+    if (catalog === undefined) {
+      if (!this.authoringContext) {
+        throw new Error(
+          'AuthoringContextService is required to resolve canonical family catalog for scope',
+        );
+      }
+      try {
+        catalog = this.authoringContext.resolveCanonicalFamiliesForScope({
+          worldKey,
+          scopeKey,
+        });
+      } catch (err: unknown) {
+        // If the error indicates scope/world is missing from authoring manifest or catalog file is missing,
+        // treat genuinely absent as undefined/null to preserve V1 behavior.
+        // If it is a FamilyResolutionError or syntax error, rethrow to fail closed!
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (
+          errMsg.includes('UNKNOWN_WORLD') ||
+          errMsg.includes('UNKNOWN_SCOPE') ||
+          errMsg.includes('SCOPE_WORLD_MISMATCH') ||
+          errMsg.includes('REQUIRED_SCOPE_PROFILE_MISSING') ||
+          errMsg.includes('REQUIRED_SCOPE_KNOWLEDGE_MISSING')
+        ) {
+          catalog = null;
+        } else {
+          // Re-throw genuine malformed / syntax / parity errors
+          throw err;
+        }
+      }
+    }
+
+    let coverage: ScopeHistoricalCoverageReport | null | undefined =
+      input.coverageOverride;
+
+    if (coverage === undefined && catalog && catalog.families.length > 0) {
+      if (!this.historicalCoverage) {
+        throw new Error(
+          'HistoricalCoverageService is required to resolve historical coverage for scope',
+        );
+      }
+      coverage = await this.historicalCoverage.getCoverage({
+        worldKey,
+        scopeKey,
+      });
+    }
+
+    return this.plan({
+      ...input,
+      catalog,
+      coverage,
+    });
+  }
   /**
    * Builds a deterministic generation plan tailored to the requested World,
    * Scope, Mechanic, candidate count, and difficulty distribution.
@@ -53,7 +213,26 @@ export class GenerationPlannerService {
       this.resolveCorrectnessRequirements(mechanicKey);
     const mediaIntent = this.resolveMediaIntent(mechanicKey, worldKey);
 
-    const canonicalSummary = {
+    let slotAllocationResult:
+      ReturnType<typeof allocateCreativeSlots> | undefined;
+
+    if (input.catalog !== undefined && input.catalog !== null) {
+      slotAllocationResult = allocateCreativeSlots({
+        worldKey,
+        scopeKey,
+        mechanicKey,
+        count,
+        difficulty,
+        difficultyQuotas,
+        catalog: input.catalog,
+        coverage: input.coverage,
+        config: input.diversityConfig ?? undefined,
+        scopeConstraints: input.scopeDiversityConstraints ?? undefined,
+        seed: input.seed ?? undefined,
+      });
+    }
+
+    const digest = computeGenerationPlanDigest({
       worldKey,
       scopeKey,
       mechanicKey,
@@ -65,15 +244,37 @@ export class GenerationPlannerService {
       antiPatterns,
       correctnessRequirements,
       mediaIntent,
-    };
-
-    const digest = createHash('sha256')
-      .update(JSON.stringify(canonicalSummary))
-      .digest('hex');
+      catalogDigest: slotAllocationResult?.catalogDigest,
+      coverageDigest: slotAllocationResult?.coverageDigest,
+      slots: slotAllocationResult?.slots,
+    });
 
     return {
-      ...canonicalSummary,
+      worldKey,
+      scopeKey,
+      mechanicKey,
+      count,
+      difficulty,
+      difficultyQuotas,
+      archetypes,
+      decisionLoopGuidelines,
+      antiPatterns,
+      correctnessRequirements,
+      mediaIntent,
       digest,
+      ...(slotAllocationResult
+        ? {
+            catalogDigest: slotAllocationResult.catalogDigest,
+            coverageDigest: slotAllocationResult.coverageDigest,
+            slots: slotAllocationResult.slots,
+            diversityMetrics: {
+              exploitationCount: slotAllocationResult.exploitationCount,
+              explorationCount: slotAllocationResult.explorationCount,
+              distinctFamiliesCount: slotAllocationResult.distinctFamiliesCount,
+              diagnostics: slotAllocationResult.diagnostics,
+            },
+          }
+        : {}),
     };
   }
 
@@ -102,7 +303,12 @@ export class GenerationPlannerService {
       .map((req) => `  [v] ${req}`)
       .join('\n');
 
-    return [
+    const slotLines = (plan.slots ?? []).map(
+      (s) =>
+        `  - [Slot #${s.slotIndex + 1}] (${s.mode.toUpperCase()}) ${s.familyNameAr} [${s.familyKey}] | Tier: ${s.difficulty} | Task: ${s.cognitiveTask} | Direction: ${s.creativeAngle}`,
+    );
+
+    const sections = [
       '## TACTICAL GENERATION PLAN (MANDATORY EXECUTION SPECIFICATION)',
       `Target: ${plan.count} candidate item(s) for [${plan.mechanicKey}] in Scope [${plan.scopeKey}] (World: ${plan.worldKey}).`,
       `Plan Digest: ${plan.digest}`,
@@ -129,7 +335,18 @@ export class GenerationPlannerService {
       `  - Gameplay Media Required: ${plan.mediaIntent.gameplayMediaRequired ? 'YES' : 'NO (pure text/mechanic)'}`,
       `  - Display Artwork Policy: ${plan.mediaIntent.displayArtworkPolicy}`,
       `  - Approved Aspect Ratios: ${plan.mediaIntent.allowedAspectRatios.join(', ')}`,
-    ].join('\n');
+    ];
+
+    if (slotLines.length > 0) {
+      sections.push(
+        '',
+        '### 7. PER-QUESTION CREATIVE SLOTS (SLOT ALLOCATOR SPECIFICATION)',
+        'Each candidate in the batch MUST correspond strictly to its assigned slot index and canonical family directive:',
+        ...slotLines,
+      );
+    }
+
+    return sections.join('\n');
   }
 
   private computeDifficultyQuotas(

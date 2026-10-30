@@ -1426,3 +1426,1457 @@ describe('DeterministicScreenService — closest', () => {
     ).not.toContain('ANSWER_LEAKAGE');
   });
 });
+
+describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplication Integration', () => {
+  let service: DeterministicScreenService;
+
+  function mockQueryChain(result: any) {
+    const query: any = {};
+    query.sort = jest.fn().mockReturnValue(query);
+    query.limit = jest.fn().mockReturnValue(query);
+    query.lean = jest.fn().mockReturnValue(query);
+    query.select = jest.fn().mockReturnValue(query);
+    query.exec = jest.fn().mockResolvedValue(result);
+    return query;
+  }
+
+  function mockRejectChain(error: Error) {
+    const query: any = {};
+    query.sort = jest.fn().mockReturnValue(query);
+    query.limit = jest.fn().mockReturnValue(query);
+    query.lean = jest.fn().mockReturnValue(query);
+    query.select = jest.fn().mockReturnValue(query);
+    query.exec = jest.fn().mockRejectedValue(error);
+    return query;
+  }
+
+  beforeEach(() => {
+    service = new DeterministicScreenService(config);
+    service.beginBatch();
+  });
+
+  describe('Core Same-Batch Deduplication & Mechanics', () => {
+    it('blocks proven duplicate candidates within the same generation batch (DUPLICATE_IN_BATCH)', () => {
+      const cand1 = {
+        prompt: { ar: 'ما هي عاصمة فرنسا؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: '1', label: { ar: 'باريس' } },
+            { id: '2', label: { ar: 'لندن' } },
+          ],
+          correctOptionId: '1',
+        },
+      };
+      const cand2 = {
+        prompt: { ar: 'ما عاصمة دولة فرنسا؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: 'a', label: { ar: 'باريس' } },
+            { id: 'b', label: { ar: 'لندن' } },
+          ],
+          correctOptionId: 'a',
+        },
+      };
+
+      const res1 = service.screen(cand1, null, { scopeKey: 'capitals' });
+      expect(res1.passed).toBe(true);
+      expect(res1.findings.some((f) => f.code === 'DUPLICATE_IN_BATCH')).toBe(
+        false,
+      );
+
+      const res2 = service.screen(cand2, null, { scopeKey: 'capitals' });
+      expect(res2.passed).toBe(false);
+      expect(res2.findings.some((f) => f.code === 'DUPLICATE_IN_BATCH')).toBe(
+        true,
+      );
+    });
+
+    it('emits non-blocking warning for ambiguous potential overlap in same batch (POTENTIAL_OVERLAP_IN_BATCH)', () => {
+      const cand1 = {
+        prompt: { ar: 'من مخترع الهاتف؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: '1', label: { ar: 'ألكسندر غراهام بيل' } },
+            { id: '2', label: { ar: 'توماس إديسون' } },
+          ],
+          correctOptionId: '1',
+        },
+      };
+      const cand2 = {
+        prompt: { ar: 'من مخترع التليفون؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: 'a', label: { ar: 'ألكسندر غراهام بيل' } },
+            { id: 'b', label: { ar: 'نيكولا تيسلا' } },
+          ],
+          correctOptionId: 'a',
+        },
+      };
+
+      const res1 = service.screen(cand1, null, { scopeKey: 'inventions' });
+      expect(res1.passed).toBe(true);
+
+      const res2 = service.screen(cand2, null, { scopeKey: 'inventions' });
+      expect(res2.passed).toBe(true);
+      const overlapWarning = res2.findings.find(
+        (f) => f.code === 'POTENTIAL_OVERLAP_IN_BATCH',
+      );
+      expect(overlapWarning).toBeDefined();
+      expect(overlapWarning?.severity).toBe('warning');
+    });
+
+    it('passes distinct candidates without duplicate findings', () => {
+      const cand1 = {
+        prompt: { ar: 'ما هي عاصمة فرنسا؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: '1', label: { ar: 'باريس' } },
+            { id: '2', label: { ar: 'لندن' } },
+          ],
+          correctOptionId: '1',
+        },
+      };
+      const cand2 = {
+        prompt: { ar: 'ما هي عاصمة إيطاليا؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: 'a', label: { ar: 'روما' } },
+            { id: 'b', label: { ar: 'مدريد' } },
+          ],
+          correctOptionId: 'a',
+        },
+      };
+
+      const res1 = service.screen(cand1, null, { scopeKey: 'capitals' });
+      const res2 = service.screen(cand2, null, { scopeKey: 'capitals' });
+      expect(res1.passed).toBe(true);
+      expect(res2.passed).toBe(true);
+      expect(res2.findings.some((f) => f.code.includes('DUPLICATE'))).toBe(
+        false,
+      );
+      expect(res2.findings.some((f) => f.code.includes('OVERLAP'))).toBe(false);
+    });
+
+    it('blocks identical factual task even when distractors vary (DUPLICATE_HISTORICAL_CONTENT)', () => {
+      service.registerHistoricalRecords([
+        {
+          id: 'hist-germany',
+          sourceType: 'CANONICAL_READY',
+          scopeKey: 'capitals',
+          draft: {
+            prompt: { ar: 'ما هي عاصمة ألمانيا؟' },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [
+                { id: '1', label: { ar: 'برلين' } },
+                { id: '2', label: { ar: 'ميونيخ' } },
+                { id: '3', label: { ar: 'هامبورغ' } },
+                { id: '4', label: { ar: 'فرانكفورت' } },
+              ],
+              correctOptionId: '1',
+            },
+          },
+        },
+      ]);
+
+      const candidate = {
+        prompt: { ar: 'ما عاصمة ألمانيا؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: 'a', label: { ar: 'برلين' } },
+            { id: 'b', label: { ar: 'كولونيا' } },
+            { id: 'c', label: { ar: 'شتوتغارت' } },
+            { id: 'd', label: { ar: 'بون' } },
+          ],
+          correctOptionId: 'a',
+        },
+      };
+
+      const res = service.screen(candidate, null, { scopeKey: 'capitals' });
+      expect(res.passed).toBe(false);
+      expect(
+        res.findings.some((f) => f.code === 'DUPLICATE_HISTORICAL_CONTENT'),
+      ).toBe(true);
+    });
+
+    it('blocks identical clue challenge with reordered progression (DUPLICATE_HISTORICAL_CONTENT)', () => {
+      service.registerHistoricalRecords([
+        {
+          id: 'hist-clues-1',
+          sourceType: 'CANONICAL_READY',
+          scopeKey: 'puzzles',
+          draft: {
+            prompt: { ar: 'من أنا؟' },
+            answerPayload: {
+              mode: 'one_clue',
+              acceptedAnswers: ['ابن سينا'],
+            },
+            mechanicPayload: {
+              target: 'ابن سينا',
+              clues: [
+                { order: 1, text: 'طبيب وفيلسوف مسلم' },
+                { order: 2, text: 'مؤلف كتاب القانون في الطب' },
+                { order: 3, text: 'لقب بالشيخ الرئيس' },
+              ],
+            },
+          },
+        },
+      ]);
+
+      const candidate = {
+        prompt: { ar: 'خمن الشخصية:' },
+        answerPayload: {
+          mode: 'one_clue',
+          acceptedAnswers: ['ابن سينا'],
+        },
+        mechanicPayload: {
+          target: 'ابن سينا',
+          clues: [
+            { order: 1, text: 'مؤلف كتاب القانون في الطب' },
+            { order: 2, text: 'طبيب وفيلسوف مسلم' },
+            { order: 3, text: 'لقب بالشيخ الرئيس' },
+          ],
+        },
+      };
+
+      const res = service.screen(candidate, null, { scopeKey: 'puzzles' });
+      expect(res.passed).toBe(false);
+      expect(
+        res.findings.some((f) => f.code === 'DUPLICATE_HISTORICAL_CONTENT'),
+      ).toBe(true);
+    });
+
+    it('returns POTENTIAL_OVERLAP when Arabic aliases leave real-world identity unproven', () => {
+      service.registerHistoricalRecords([
+        {
+          id: 'hist-roosevelt',
+          sourceType: 'CANONICAL_READY',
+          scopeKey: 'leaders',
+          draft: {
+            prompt: {
+              ar: 'من كان رئيس الولايات المتحدة خلال الحرب العالمية الثانية؟',
+            },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [
+                { id: '1', label: { ar: 'فرانكلين روزفلت' } },
+                { id: '2', label: { ar: 'هاري ترومان' } },
+              ],
+              correctOptionId: '1',
+            },
+          },
+        },
+      ]);
+
+      const candidate = {
+        prompt: { ar: 'من كان رئيس أمريكا خلال الحرب العالمية الثانية؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: 'a', label: { ar: 'فرانكلين روزفلت' } },
+            { id: 'b', label: { ar: 'دوايت أيزنهاور' } },
+          ],
+          correctOptionId: 'a',
+        },
+      };
+
+      const res = service.screen(candidate, null, { scopeKey: 'leaders' });
+      expect(res.passed).toBe(true);
+      expect(
+        res.findings.some(
+          (f) => f.code === 'POTENTIAL_OVERLAP_HISTORICAL_CONTENT',
+        ),
+      ).toBe(true);
+    });
+
+    it('flags the same puzzle keyed to different answers in batch as CONFLICTING_ANSWER_KEY_IN_BATCH', () => {
+      const cand1 = {
+        prompt: { ar: 'ما هي عاصمة المغرب؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: '1', label: { ar: 'الرباط' } },
+            { id: '2', label: { ar: 'الدار البيضاء' } },
+          ],
+          correctOptionId: '1',
+        },
+      };
+
+      const cand2 = {
+        prompt: { ar: 'ما هي عاصمة المغرب؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: '1', label: { ar: 'الرباط' } },
+            { id: '2', label: { ar: 'الدار البيضاء' } },
+          ],
+          correctOptionId: '2',
+        },
+      };
+
+      const res1 = service.screen(cand1, null, { scopeKey: 'morocco' });
+      expect(res1.passed).toBe(true);
+
+      const res2 = service.screen(cand2, null, { scopeKey: 'morocco' });
+      expect(res2.passed).toBe(false);
+      expect(
+        res2.findings.some((f) => f.code === 'CONFLICTING_ANSWER_KEY_IN_BATCH'),
+      ).toBe(true);
+    });
+
+    it('returns POTENTIAL_OVERLAP warning for unsupported subjective consensus mechanics', () => {
+      service.registerHistoricalRecords([
+        {
+          id: 'hist-vote-1',
+          sourceType: 'CANONICAL_READY',
+          scopeKey: 'polls',
+          draft: {
+            prompt: { ar: 'ما هو أفضل وقت للقراءة؟' },
+            answerPayload: {
+              mode: 'vote',
+              consensusRule: 'majority',
+              options: [
+                { id: '1', label: { ar: 'الصباح' } },
+                { id: '2', label: { ar: 'المساء' } },
+              ],
+            },
+          },
+        },
+      ]);
+
+      const candidate = {
+        prompt: { ar: 'ما الوقت المفضل للقراءة؟' },
+        answerPayload: {
+          mode: 'vote',
+          consensusRule: 'majority',
+          options: [
+            { id: 'a', label: { ar: 'الصباح' } },
+            { id: 'b', label: { ar: 'الليل' } },
+          ],
+        },
+      };
+
+      const res = service.screen(candidate, null, { scopeKey: 'polls' });
+      const overlap = res.findings.find(
+        (f) => f.code === 'POTENTIAL_OVERLAP_HISTORICAL_CONTENT',
+      );
+      expect(overlap).toBeDefined();
+      expect(overlap?.severity).toBe('warning');
+    });
+  });
+
+  describe('Slice 2C Safety Hardening — 18 Mandatory Regression Scenarios', () => {
+    // 1. Genuinely empty historical inventory returns COMPLETE with zero records
+    it('1. genuinely empty historical inventory returns COMPLETE with zero records', async () => {
+      const mockContentItems = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockCandidates = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockJobs = { find: jest.fn().mockReturnValue(mockQueryChain([])) };
+      const mockPublications = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockWorlds = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+      };
+      const mockScopes = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+      };
+
+      const customService = new DeterministicScreenService(
+        config,
+        mockContentItems as any,
+        mockCandidates as any,
+        mockPublications as any,
+        mockJobs as any,
+        mockWorlds as any,
+        mockScopes as any,
+      );
+
+      const loadRes = await customService.loadHistoricalScope({
+        worldKey: 'w1',
+        scopeKey: 's1',
+      });
+      expect(loadRes.status).toBe('COMPLETE');
+      expect(loadRes.recordCount).toBe(0);
+      expect(loadRes.isTruncated).toBe(false);
+
+      const candidate = draft();
+      const res = customService.screen(candidate, null, { scopeKey: 's1' });
+      expect(res.passed).toBe(true);
+      expect(
+        res.findings.some((f) => f.code.startsWith('HISTORICAL_INVENTORY_')),
+      ).toBe(false);
+    });
+
+    // 2. MongoDB query failure returns UNAVAILABLE without fabricating records
+    it('2. MongoDB query failure returns UNAVAILABLE without fabricating records', async () => {
+      const mockContentItems = {
+        find: jest
+          .fn()
+          .mockReturnValue(
+            mockRejectChain(
+              new Error('MongoNetworkTimeout: connection dropped'),
+            ),
+          ),
+      };
+      const mockCandidates = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockJobs = { find: jest.fn().mockReturnValue(mockQueryChain([])) };
+      const mockPublications = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockWorlds = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+      };
+      const mockScopes = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+      };
+
+      const customService = new DeterministicScreenService(
+        config,
+        mockContentItems as any,
+        mockCandidates as any,
+        mockPublications as any,
+        mockJobs as any,
+        mockWorlds as any,
+        mockScopes as any,
+      );
+
+      const loadRes = await customService.loadHistoricalScope({
+        worldKey: 'w1',
+        scopeKey: 's1',
+      });
+      expect(loadRes.status).toBe('UNAVAILABLE');
+      expect(loadRes.recordCount).toBe(0);
+      expect(loadRes.error).toContain('MongoNetworkTimeout');
+
+      const res = customService.screen(draft(), null, { scopeKey: 's1' });
+      expect(res.passed).toBe(true);
+      const warn = res.findings.find(
+        (f) => f.code === 'HISTORICAL_INVENTORY_UNAVAILABLE',
+      );
+      expect(warn).toBeDefined();
+      expect(warn?.severity).toBe('warning');
+    });
+
+    // 3. Missing required model returns an explicit incomplete status rather than pretending coverage succeeded
+    it('3. missing required model returns an explicit incomplete status (UNAVAILABLE)', async () => {
+      const unconfiguredService = new DeterministicScreenService(config);
+
+      const loadRes = await unconfiguredService.loadHistoricalScope({
+        worldKey: 'w1',
+        scopeKey: 's1',
+      });
+      expect(loadRes.status).toBe('UNAVAILABLE');
+      expect(loadRes.recordCount).toBe(0);
+      expect(loadRes.error).toContain(
+        'Required Mongoose models are not injected',
+      );
+
+      const res = unconfiguredService.screen(draft(), null, { scopeKey: 's1' });
+      expect(res.passed).toBe(true);
+      expect(
+        res.findings.some((f) => f.code === 'HISTORICAL_INVENTORY_UNAVAILABLE'),
+      ).toBe(true);
+    });
+
+    // 4. An invalid Scope key/tuple returns NOT_CONFIGURED
+    it('4. an invalid Scope key/tuple returns NOT_CONFIGURED', async () => {
+      const mockContentItems = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockCandidates = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockJobs = { find: jest.fn().mockReturnValue(mockQueryChain([])) };
+      const mockPublications = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockWorlds = {
+        findOne: jest.fn().mockReturnValue(mockQueryChain(null)),
+      }; // World not found
+      const mockScopes = {
+        findOne: jest.fn().mockReturnValue(mockQueryChain(null)),
+      };
+
+      const customService = new DeterministicScreenService(
+        config,
+        mockContentItems as any,
+        mockCandidates as any,
+        mockPublications as any,
+        mockJobs as any,
+        mockWorlds as any,
+        mockScopes as any,
+      );
+
+      const loadRes = await customService.loadHistoricalScope({
+        worldKey: 'invalid-world',
+        scopeKey: 'invalid-scope',
+      });
+      expect(loadRes.status).toBe('NOT_CONFIGURED');
+      expect(loadRes.recordCount).toBe(0);
+
+      const res = customService.screen(draft(), null, {
+        scopeKey: 'invalid-scope',
+      });
+      expect(res.passed).toBe(true);
+      expect(
+        res.findings.some(
+          (f) => f.code === 'HISTORICAL_INVENTORY_NOT_CONFIGURED',
+        ),
+      ).toBe(true);
+    });
+
+    // 5. Historical inventory larger than the retrieval limit returns PARTIAL with isTruncated: true
+    it('5. historical inventory larger than the retrieval limit returns PARTIAL with isTruncated: true', async () => {
+      const fakeItems = Array.from({ length: 6 }, (_, idx) => ({
+        _id: `item-${idx}`,
+        status: 'READY',
+        prompt: { ar: `سؤال تاريخي رقم ${idx}` },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [{ id: '1', label: { ar: 'جواب' } }],
+          correctOptionId: '1',
+        },
+      }));
+
+      const mockContentItems = {
+        find: jest.fn().mockReturnValue(mockQueryChain(fakeItems)),
+      };
+      const mockCandidates = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockJobs = { find: jest.fn().mockReturnValue(mockQueryChain([])) };
+      const mockPublications = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockWorlds = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+      };
+      const mockScopes = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+      };
+
+      const customService = new DeterministicScreenService(
+        config,
+        mockContentItems as any,
+        mockCandidates as any,
+        mockPublications as any,
+        mockJobs as any,
+        mockWorlds as any,
+        mockScopes as any,
+      );
+
+      const loadRes = await customService.loadHistoricalScope({
+        worldKey: 'w1',
+        scopeKey: 's1',
+        limit: 5,
+      });
+      expect(loadRes.status).toBe('PARTIAL');
+      expect(loadRes.isTruncated).toBe(true);
+      expect(loadRes.recordCount).toBe(5);
+    });
+
+    // 6. Deterministic retrieval ordering returns the oldest records first (createdAt: 1, _id: 1)
+    it('6. deterministic retrieval ordering sorts by createdAt: 1, _id: 1', async () => {
+      const contentItemsQuery = mockQueryChain([]);
+      const candidatesQuery = mockQueryChain([]);
+      const mockContentItems = {
+        find: jest.fn().mockReturnValue(contentItemsQuery),
+      };
+      const mockCandidates = {
+        find: jest.fn().mockReturnValue(candidatesQuery),
+      };
+      const mockJobs = {
+        find: jest.fn().mockReturnValue(mockQueryChain([{ _id: 'job-1' }])),
+      };
+      const mockPublications = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockWorlds = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+      };
+      const mockScopes = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+      };
+
+      const customService = new DeterministicScreenService(
+        config,
+        mockContentItems as any,
+        mockCandidates as any,
+        mockPublications as any,
+        mockJobs as any,
+        mockWorlds as any,
+        mockScopes as any,
+      );
+
+      await customService.loadHistoricalScope({
+        worldKey: 'w1',
+        scopeKey: 's1',
+      });
+
+      expect(contentItemsQuery.sort).toHaveBeenCalledWith({
+        createdAt: 1,
+        _id: 1,
+      });
+      expect(candidatesQuery.sort).toHaveBeenCalledWith({
+        createdAt: 1,
+        _id: 1,
+      });
+    });
+
+    // 7. Duplicate matching a historical record inside the retrieved subset is blocked with DUPLICATE_HISTORICAL_CONTENT
+    it('7. blocks duplicate matching a historical record inside retrieved subset (DUPLICATE_HISTORICAL_CONTENT)', () => {
+      service.registerHistoricalRecords([
+        {
+          id: 'hist-item-spain',
+          sourceType: 'CANONICAL_READY',
+          scopeKey: 'capitals',
+          draft: {
+            prompt: { ar: 'ما هي عاصمة إسبانيا؟' },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [
+                { id: '1', label: { ar: 'مدريد' } },
+                { id: '2', label: { ar: 'برشلونة' } },
+              ],
+              correctOptionId: '1',
+            },
+          },
+        },
+      ]);
+
+      const candidate = {
+        prompt: { ar: 'ما عاصمة إسبانيا؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: 'a', label: { ar: 'مدريد' } },
+            { id: 'b', label: { ar: 'إشبيلية' } },
+          ],
+          correctOptionId: 'a',
+        },
+      };
+
+      const res = service.screen(candidate, null, { scopeKey: 'capitals' });
+      expect(res.passed).toBe(false);
+      const finding = res.findings.find(
+        (f) => f.code === 'DUPLICATE_HISTORICAL_CONTENT',
+      );
+      expect(finding).toBeDefined();
+      expect(finding?.severity).toBe('blocking');
+      expect(finding?.message).toContain('hist-item-spain');
+    });
+
+    // 8. Duplicate matching a historical record outside the retrieved subset is not blocked, but the candidate carries HISTORICAL_INVENTORY_PARTIAL
+    it('8. duplicate outside retrieved subset is not blocked, but carries HISTORICAL_INVENTORY_PARTIAL', async () => {
+      // Returned 3 items when limit is 2 -> triggers truncation, dropping the 3rd item (Paris)
+      const mockItems = [
+        {
+          _id: 'item-cairo',
+          status: 'READY',
+          prompt: { ar: 'ما هي عاصمة مصر؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [{ id: '1', label: { ar: 'القاهرة' } }],
+            correctOptionId: '1',
+          },
+        },
+        {
+          _id: 'item-riyadh',
+          status: 'READY',
+          prompt: { ar: 'ما هي عاصمة السعودية؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [{ id: '1', label: { ar: 'الرياض' } }],
+            correctOptionId: '1',
+          },
+        },
+        {
+          _id: 'item-paris', // Truncated out
+          status: 'READY',
+          prompt: { ar: 'ما هي عاصمة فرنسا؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [{ id: '1', label: { ar: 'باريس' } }],
+            correctOptionId: '1',
+          },
+        },
+      ];
+
+      const mockContentItems = {
+        find: jest.fn().mockReturnValue(mockQueryChain(mockItems)),
+      };
+      const mockCandidates = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockJobs = { find: jest.fn().mockReturnValue(mockQueryChain([])) };
+      const mockPublications = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockWorlds = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+      };
+      const mockScopes = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+      };
+
+      const customService = new DeterministicScreenService(
+        config,
+        mockContentItems as any,
+        mockCandidates as any,
+        mockPublications as any,
+        mockJobs as any,
+        mockWorlds as any,
+        mockScopes as any,
+      );
+
+      const loadRes = await customService.loadHistoricalScope({
+        worldKey: 'w1',
+        scopeKey: 's1',
+        limit: 2,
+      });
+      expect(loadRes.status).toBe('PARTIAL');
+      expect(loadRes.isTruncated).toBe(true);
+      expect(loadRes.recordCount).toBe(2);
+
+      // Candidate matches Paris (which was outside the retrieved subset)
+      const candidate = {
+        prompt: { ar: 'ما هي عاصمة فرنسا؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: 'a', label: { ar: 'باريس' } },
+            { id: 'b', label: { ar: 'ليون' } },
+          ],
+          correctOptionId: 'a',
+        },
+      };
+
+      const res = customService.screen(candidate, null, { scopeKey: 's1' });
+      expect(res.passed).toBe(true);
+      expect(
+        res.findings.some((f) => f.code === 'DUPLICATE_HISTORICAL_CONTENT'),
+      ).toBe(false);
+      const partialWarning = res.findings.find(
+        (f) => f.code === 'HISTORICAL_INVENTORY_PARTIAL',
+      );
+      expect(partialWarning).toBeDefined();
+      expect(partialWarning?.severity).toBe('warning');
+    });
+
+    // 9. Unavailable or partial historical inventory attaches explicit warning findings to all screened candidates
+    it('9. unavailable or partial historical inventory attaches explicit warning findings', async () => {
+      const mockItems = [
+        {
+          _id: 'i1',
+          status: 'READY',
+          prompt: { ar: 'سؤال 1' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [{ id: '1', label: { ar: 'ج1' } }],
+            correctOptionId: '1',
+          },
+        },
+        {
+          _id: 'i2',
+          status: 'READY',
+          prompt: { ar: 'سؤال 2' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [{ id: '1', label: { ar: 'ج2' } }],
+            correctOptionId: '1',
+          },
+        },
+      ];
+
+      const mockContentItems = {
+        find: jest.fn().mockReturnValue(mockQueryChain(mockItems)),
+      };
+      const mockCandidates = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockJobs = { find: jest.fn().mockReturnValue(mockQueryChain([])) };
+      const mockPublications = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockWorlds = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+      };
+      const mockScopes = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+      };
+
+      const customService = new DeterministicScreenService(
+        config,
+        mockContentItems as any,
+        mockCandidates as any,
+        mockPublications as any,
+        mockJobs as any,
+        mockWorlds as any,
+        mockScopes as any,
+      );
+
+      await customService.loadHistoricalScope({
+        worldKey: 'w1',
+        scopeKey: 's1',
+        limit: 1,
+      });
+      expect(customService.getHistoricalScopeStatus()?.status).toBe('PARTIAL');
+
+      const res = customService.screen(draft(), null, { scopeKey: 's1' });
+      expect(res.passed).toBe(true);
+      expect(
+        res.findings.some((f) => f.code === 'HISTORICAL_INVENTORY_PARTIAL'),
+      ).toBe(true);
+    });
+
+    // 10. Approved candidate with valid human approval provenance is admitted to historical screening inventory
+    it('10. approved candidate with valid human approval provenance is admitted to historical inventory', async () => {
+      const candidateDoc = {
+        candidateId: 'cand-approved-valid',
+        publishedContentItemId: null,
+        reviewStatus: 'approved',
+        reviewDecision: {
+          decision: 'approved',
+          reviewerId: 'reviewer-1',
+          reviewerEmail: 'reviewer@example.com',
+          revision: 2,
+        },
+        reviewEvents: [
+          {
+            action: 'approved',
+            actorId: 'reviewer-1',
+            actorEmail: 'reviewer@example.com',
+            revision: 2,
+            createdAt: new Date(),
+          },
+        ],
+        draft: {
+          prompt: { ar: 'ما هي عاصمة عمان؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: '1', label: { ar: 'مسقط' } },
+              { id: '2', label: { ar: 'صلالة' } },
+            ],
+            correctOptionId: '1',
+          },
+        },
+      };
+
+      const mockContentItems = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockCandidates = {
+        find: jest.fn().mockReturnValue(mockQueryChain([candidateDoc])),
+      };
+      const mockJobs = {
+        find: jest.fn().mockReturnValue(mockQueryChain([{ _id: 'job-oman' }])),
+      };
+      const mockPublications = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockWorlds = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+      };
+      const mockScopes = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+      };
+
+      const customService = new DeterministicScreenService(
+        config,
+        mockContentItems as any,
+        mockCandidates as any,
+        mockPublications as any,
+        mockJobs as any,
+        mockWorlds as any,
+        mockScopes as any,
+      );
+
+      const loadRes = await customService.loadHistoricalScope({
+        worldKey: 'w1',
+        scopeKey: 's1',
+      });
+      expect(loadRes.status).toBe('COMPLETE');
+      expect(loadRes.candidateCount).toBe(1);
+
+      const duplicateCand = {
+        prompt: { ar: 'ما عاصمة عمان؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: 'a', label: { ar: 'مسقط' } },
+            { id: 'b', label: { ar: 'نزوى' } },
+          ],
+          correctOptionId: 'a',
+        },
+      };
+
+      const res = customService.screen(duplicateCand, null, { scopeKey: 's1' });
+      expect(res.passed).toBe(false);
+      const finding = res.findings.find(
+        (f) => f.code === 'DUPLICATE_APPROVED_CANDIDATE',
+      );
+      expect(finding).toBeDefined();
+      expect(finding?.message).toContain('cand-approved-valid');
+    });
+
+    // 11. Approved candidate without matching approval review event is excluded
+    it('11. approved candidate without matching approval review event is excluded', async () => {
+      const candidateDoc = {
+        candidateId: 'cand-unproven',
+        publishedContentItemId: null,
+        reviewStatus: 'approved',
+        reviewDecision: { decision: 'approved', revision: 1 },
+        reviewEvents: [], // No matching event!
+        draft: {
+          prompt: { ar: 'ما هي عاصمة عمان؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: '1', label: { ar: 'مسقط' } },
+              { id: '2', label: { ar: 'صلالة' } },
+            ],
+            correctOptionId: '1',
+          },
+        },
+      };
+
+      const mockContentItems = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockCandidates = {
+        find: jest.fn().mockReturnValue(mockQueryChain([candidateDoc])),
+      };
+      const mockJobs = {
+        find: jest.fn().mockReturnValue(mockQueryChain([{ _id: 'job-oman' }])),
+      };
+      const mockPublications = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockWorlds = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+      };
+      const mockScopes = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+      };
+
+      const customService = new DeterministicScreenService(
+        config,
+        mockContentItems as any,
+        mockCandidates as any,
+        mockPublications as any,
+        mockJobs as any,
+        mockWorlds as any,
+        mockScopes as any,
+      );
+
+      const loadRes = await customService.loadHistoricalScope({
+        worldKey: 'w1',
+        scopeKey: 's1',
+      });
+      expect(loadRes.candidateCount).toBe(0);
+
+      const cand = {
+        prompt: { ar: 'ما عاصمة عمان؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: 'a', label: { ar: 'مسقط' } },
+            { id: 'b', label: { ar: 'صلالة' } },
+          ],
+          correctOptionId: 'a',
+        },
+      };
+
+      const res = customService.screen(cand, null, { scopeKey: 's1' });
+      expect(res.passed).toBe(true);
+      expect(
+        res.findings.some((f) => f.code === 'DUPLICATE_APPROVED_CANDIDATE'),
+      ).toBe(false);
+    });
+
+    // 12. Approved candidate with stale approval review event revision is excluded
+    it('12. approved candidate with stale approval review event revision is excluded', async () => {
+      const candidateDoc = {
+        candidateId: 'cand-stale',
+        publishedContentItemId: null,
+        reviewStatus: 'approved',
+        reviewDecision: { decision: 'approved', revision: 3 },
+        reviewEvents: [
+          { decision: 'approved', targetRevision: 2, createdAt: new Date() }, // Stale! revision 2 !== 3
+        ],
+        draft: {
+          prompt: { ar: 'ما هي عاصمة عمان؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [{ id: '1', label: { ar: 'مسقط' } }],
+            correctOptionId: '1',
+          },
+        },
+      };
+
+      const mockContentItems = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockCandidates = {
+        find: jest.fn().mockReturnValue(mockQueryChain([candidateDoc])),
+      };
+      const mockJobs = {
+        find: jest.fn().mockReturnValue(mockQueryChain([{ _id: 'job-oman' }])),
+      };
+      const mockPublications = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockWorlds = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+      };
+      const mockScopes = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+      };
+
+      const customService = new DeterministicScreenService(
+        config,
+        mockContentItems as any,
+        mockCandidates as any,
+        mockPublications as any,
+        mockJobs as any,
+        mockWorlds as any,
+        mockScopes as any,
+      );
+
+      const loadRes = await customService.loadHistoricalScope({
+        worldKey: 'w1',
+        scopeKey: 's1',
+      });
+      expect(loadRes.candidateCount).toBe(0);
+    });
+
+    // 13. Published candidate is excluded if publishedContentItemId already exists in ContentItem inventory
+    it('13. published candidate is excluded if already represented in canonical inventory', async () => {
+      const canonicalItem = {
+        _id: 'canonical-item-bahrain',
+        status: 'READY',
+        prompt: { ar: 'ما هي عاصمة البحرين؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [{ id: '1', label: { ar: 'المنامة' } }],
+          correctOptionId: '1',
+        },
+      };
+
+      const candidateDoc = {
+        candidateId: 'cand-bahrain',
+        publishedContentItemId: 'canonical-item-bahrain',
+        reviewStatus: 'approved',
+        reviewDecision: { decision: 'approved', revision: 1 },
+        reviewEvents: [
+          { decision: 'approved', targetRevision: 1, createdAt: new Date() },
+        ],
+        draft: {
+          prompt: { ar: 'ما هي عاصمة البحرين؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [{ id: '1', label: { ar: 'المنامة' } }],
+            correctOptionId: '1',
+          },
+        },
+      };
+
+      const mockContentItems = {
+        find: jest.fn().mockReturnValue(mockQueryChain([canonicalItem])),
+      };
+      const mockCandidates = {
+        find: jest.fn().mockReturnValue(mockQueryChain([candidateDoc])),
+      };
+      const mockJobs = {
+        find: jest
+          .fn()
+          .mockReturnValue(mockQueryChain([{ _id: 'job-bahrain' }])),
+      };
+      const mockPublications = {
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
+      };
+      const mockWorlds = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+      };
+      const mockScopes = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+      };
+
+      const customService = new DeterministicScreenService(
+        config,
+        mockContentItems as any,
+        mockCandidates as any,
+        mockPublications as any,
+        mockJobs as any,
+        mockWorlds as any,
+        mockScopes as any,
+      );
+
+      const loadRes = await customService.loadHistoricalScope({
+        worldKey: 'w1',
+        scopeKey: 's1',
+      });
+      expect(loadRes.status).toBe('COMPLETE');
+      expect(loadRes.canonicalCount).toBe(1);
+      expect(loadRes.candidateCount).toBe(0);
+      expect(loadRes.recordCount).toBe(1);
+    });
+
+    // 14. Orphaned publication candidate is excluded from historical screening inventory
+    it('14. orphaned publication candidate is excluded from historical screening inventory', async () => {
+      const candidateDoc = {
+        candidateId: 'cand-pub-linked',
+        publishedContentItemId: null, // Stored as null on candidate
+        reviewStatus: 'approved',
+        reviewDecision: { decision: 'approved', revision: 1 },
+        reviewEvents: [
+          { decision: 'approved', targetRevision: 1, createdAt: new Date() },
+        ],
+        draft: {
+          prompt: { ar: 'ما هي عاصمة الكويت؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [{ id: '1', label: { ar: 'الكويت' } }],
+            correctOptionId: '1',
+          },
+        },
+      };
+
+      const canonicalItem = {
+        _id: 'canonical-item-kuwait',
+        status: 'READY',
+        prompt: { ar: 'ما هي عاصمة الكويت؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [{ id: '1', label: { ar: 'الكويت' } }],
+          correctOptionId: '1',
+        },
+      };
+
+      // Publication record links cand-pub-linked to canonical-item-kuwait
+      const publicationDoc = {
+        candidateId: 'cand-pub-linked',
+        contentItemId: 'canonical-item-kuwait',
+      };
+
+      const mockContentItems = {
+        find: jest.fn().mockReturnValue(mockQueryChain([canonicalItem])),
+      };
+      const mockCandidates = {
+        find: jest.fn().mockReturnValue(mockQueryChain([candidateDoc])),
+      };
+      const mockJobs = {
+        find: jest
+          .fn()
+          .mockReturnValue(mockQueryChain([{ _id: 'job-kuwait' }])),
+      };
+      const mockPublications = {
+        find: jest.fn().mockReturnValue(mockQueryChain([publicationDoc])),
+      };
+      const mockWorlds = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+      };
+      const mockScopes = {
+        findOne: jest
+          .fn()
+          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+      };
+
+      const customService = new DeterministicScreenService(
+        config,
+        mockContentItems as any,
+        mockCandidates as any,
+        mockPublications as any,
+        mockJobs as any,
+        mockWorlds as any,
+        mockScopes as any,
+      );
+
+      const loadRes = await customService.loadHistoricalScope({
+        worldKey: 'w1',
+        scopeKey: 's1',
+      });
+      expect(loadRes.canonicalCount).toBe(1);
+      expect(loadRes.candidateCount).toBe(0);
+      expect(loadRes.recordCount).toBe(1);
+    });
+
+    // 15. Cross-Scope content can trigger cross-Scope duplicate advisories when configured, without silently widening the primary boundary
+    it('15. cross-scope content triggers advisory without widening primary boundary', () => {
+      service.registerHistoricalRecords([
+        {
+          id: 'hist-other-scope',
+          sourceType: 'CANONICAL_READY',
+          scopeKey: 'world-geography',
+          draft: {
+            prompt: { ar: 'ما هي عاصمة اليابان؟' },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [
+                { id: '1', label: { ar: 'طوكيو' } },
+                { id: '2', label: { ar: 'كيوتو' } },
+              ],
+              correctOptionId: '1',
+            },
+          },
+        },
+      ]);
+
+      const candidate = {
+        prompt: { ar: 'ما عاصمة اليابان؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: 'a', label: { ar: 'طوكيو' } },
+            { id: 'b', label: { ar: 'أوساكا' } },
+          ],
+          correctOptionId: 'a',
+        },
+      };
+
+      const res = service.screen(candidate, null, {
+        scopeKey: 'asian-history',
+      });
+      expect(res.passed).toBe(true);
+      const advisory = res.findings.find(
+        (f) => f.code === 'CROSS_SCOPE_ADVISORY',
+      );
+      expect(advisory).toBeDefined();
+      expect(advisory?.severity).toBe('warning');
+      expect(advisory?.message).toContain('world-geography');
+    });
+
+    // 16. Sequential generation jobs for different scopes do not share historical state
+    it('16. sequential generation jobs for different scopes do not share historical state', () => {
+      // Job 1
+      service.registerHistoricalRecords([
+        {
+          id: 'cap-1',
+          sourceType: 'CANONICAL_READY',
+          scopeKey: 'capitals',
+          draft: {
+            prompt: { ar: 'ما هي عاصمة فرنسا؟' },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [{ id: '1', label: { ar: 'باريس' } }],
+              correctOptionId: '1',
+            },
+          },
+        },
+      ]);
+
+      const resJob1 = service.screen(
+        {
+          prompt: { ar: 'ما هي عاصمة فرنسا؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: 'a', label: { ar: 'باريس' } },
+              { id: 'b', label: { ar: 'ليون' } },
+            ],
+            correctOptionId: 'a',
+          },
+        },
+        null,
+        { scopeKey: 'capitals' },
+      );
+      expect(resJob1.passed).toBe(false);
+
+      // Clean state for Job 2
+      service.clearHistoricalRecords();
+      service.beginBatch();
+
+      service.registerHistoricalRecords([
+        {
+          id: 'sci-1',
+          sourceType: 'CANONICAL_READY',
+          scopeKey: 'science',
+          draft: {
+            prompt: { ar: 'ما هو العنصر الأكثر وفرة في الكون؟' },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [
+                { id: '1', label: { ar: 'الهيدروجين' } },
+                { id: '2', label: { ar: 'الهيليوم' } },
+              ],
+              correctOptionId: '1',
+            },
+          },
+        },
+      ]);
+
+      // Capitals question screened in Job 2 (scope science) does not match cap-1 as primary duplicate
+      const resJob2 = service.screen(
+        {
+          prompt: { ar: 'ما هي عاصمة فرنسا؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: 'a', label: { ar: 'باريس' } },
+              { id: 'b', label: { ar: 'ليون' } },
+            ],
+            correctOptionId: 'a',
+          },
+        },
+        null,
+        { scopeKey: 'science' },
+      );
+      expect(resJob2.passed).toBe(true);
+      expect(
+        resJob2.findings.some((f) => f.code === 'DUPLICATE_HISTORICAL_CONTENT'),
+      ).toBe(false);
+    });
+
+    // 17. Existing deterministic structural validation continues to block broken candidates regardless of historical inventory status
+    it('17. structural validation continues to block broken candidates even when historical inventory is unavailable', () => {
+      // Historical status is set to UNAVAILABLE
+      (service as any).historicalScopeStatus = {
+        status: 'UNAVAILABLE',
+        recordCount: 0,
+        canonicalCount: 0,
+        candidateCount: 0,
+        isTruncated: false,
+        error: 'Network failure',
+      };
+
+      const brokenCand = {
+        prompt: { ar: 'هل باريس هي عاصمة فرنسا؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: '1', label: { ar: 'باريس' } },
+            { id: '2', label: { ar: 'ليون' } },
+          ],
+          correctOptionId: '1',
+        },
+      };
+
+      const res = service.screen(brokenCand);
+      expect(res.passed).toBe(false);
+      expect(res.findings.some((f) => f.code === 'ANSWER_LEAKAGE')).toBe(true);
+      expect(
+        res.findings.some((f) => f.code === 'HISTORICAL_INVENTORY_UNAVAILABLE'),
+      ).toBe(true);
+    });
+
+    // 18. Sound candidate lifecycle: generation -> screening -> review -> publication works end-to-end
+    it('18. sound candidate lifecycle works end-to-end with zero false positives', () => {
+      service.registerHistoricalRecords([
+        {
+          id: 'canberra-item',
+          sourceType: 'CANONICAL_READY',
+          scopeKey: 'capitals',
+          draft: {
+            prompt: { ar: 'ما هي عاصمة أستراليا؟' },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [
+                { id: '1', label: { ar: 'كانبيرا' } },
+                { id: '2', label: { ar: 'سيدني' } },
+              ],
+              correctOptionId: '1',
+            },
+          },
+        },
+      ]);
+
+      // Sound distinct candidate passes clean
+      const validCandidate = {
+        prompt: { ar: 'ما هي عاصمة كندا؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: '1', label: { ar: 'أوتاوا' } },
+            { id: '2', label: { ar: 'تورونتو' } },
+          ],
+          correctOptionId: '1',
+        },
+      };
+
+      const screen1 = service.screen(validCandidate, null, {
+        scopeKey: 'capitals',
+      });
+      expect(screen1.passed).toBe(true);
+      expect(
+        screen1.findings.filter((f) => f.severity === 'blocking'),
+      ).toHaveLength(0);
+
+      // Now screen duplicate of existing inventory -> blocks deterministically
+      const duplicateCandidate = {
+        prompt: { ar: 'ما عاصمة أستراليا؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: 'a', label: { ar: 'كانبيرا' } },
+            { id: 'b', label: { ar: 'ملبورن' } },
+          ],
+          correctOptionId: 'a',
+        },
+      };
+
+      const screen2 = service.screen(duplicateCandidate, null, {
+        scopeKey: 'capitals',
+      });
+      expect(screen2.passed).toBe(false);
+      expect(
+        screen2.findings.some((f) => f.code === 'DUPLICATE_HISTORICAL_CONTENT'),
+      ).toBe(true);
+    });
+  });
+});

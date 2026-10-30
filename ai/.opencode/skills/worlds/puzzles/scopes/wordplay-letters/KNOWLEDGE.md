@@ -520,3 +520,244 @@ When generating or reviewing an authored batch for `wordplay-letters`:
 4. **Mechanic Feasibility:** Must have at least 2 mechanics rated `GOOD` or `EXCELLENT`.
 5. **Human Product Sign-Off:** Canonical promotion requires formal Human Product Review approval.
 6. **Generator Write Protection:** Content generation scripts must strictly read from the registered library and **NEVER** write or declare new canonical Families during batch authoring.
+
+---
+
+## 11. Machine-Readable Family Catalog
+
+The block below is the structured form of the 15 canonical families approved for this Scope in §4 and §5 above. It exists so the engine can inspect family identities, modalities, and mechanic fit deterministically without parsing unstructured prose.
+
+```akwaan-families
+{
+  "version": 1,
+  "scope": "puzzles.wordplay-letters",
+  "families": [
+    {
+      "familyKey": "plural-form",
+      "name": "جمع الكلمات ومفرداتها المألوفة",
+      "description": "التعرف السريع على صيغة الجمع المألوفة أو المفرد المقابل لكلمات شائعة",
+      "playerSolve": "التعرف السريع على صيغة الجمع المألوفة أو المفرد المقابل لكلمات شائعة",
+      "modality": "morphology-lexical",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    },
+    {
+      "familyKey": "anagram-rearrange",
+      "name": "إعادة ترتيب الحروف والكلمات المبعثرة",
+      "description": "فك تبعثر حروف كلمة شائعة وإعادة تجميعها",
+      "playerSolve": "فك تبعثر مجموعة حروف محددة وتركيبها ذهنياً لتكوين كلمة عربية ذات معنى محدد",
+      "modality": "letter-permutation",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    },
+    {
+      "familyKey": "add-letter",
+      "name": "إضافة حرف لتوليد كلمة جديدة",
+      "description": "إضافة حرف واحد لكلمة لتوليد كلمة جديدة تلبي الوصف",
+      "playerSolve": "تحديد الحرف الواحد الذي إذا أُضيف للكلمة ينتج كلمة جديدة تطابق دلالة مطلوبة",
+      "modality": "letter-permutation",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    },
+    {
+      "familyKey": "remove-letter",
+      "name": "حذف حرف لتوليد معنى جديد",
+      "description": "حذف حرف من كلمة لتوليد معنى جديد",
+      "playerSolve": "تحديد الحرف الذي بحذفه تتحول الكلمة إلى كلمة أخرى تطابق المعنى المطلوب",
+      "modality": "letter-permutation",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    },
+    {
+      "familyKey": "substitute-letter",
+      "name": "استبدال حرف لتغيير الدلالة",
+      "description": "استبدال حرف واحد فقط بحرف آخر لتغيير المعنى",
+      "playerSolve": "استبدال حرف واحد فقط بحرف آخر في موقع محدد لتغيير دلالة الكلمة بالكامل",
+      "modality": "letter-permutation",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    },
+    {
+      "familyKey": "hidden-word",
+      "name": "الكلمة المخبأة بين ثنايا الجملة",
+      "description": "استخراج كلمة مخبأة عبر تقاطع كلمتين متتاليتين في جملة",
+      "playerSolve": "العثور على كلمة عربية ذات معنى محدد مخبأة بتتابع حروفها عبر كلمتين متجاورتين",
+      "modality": "morphology-lexical",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    },
+    {
+      "familyKey": "shared-letter-completion",
+      "name": "الحرف المشترك لإكمال الكلمات",
+      "description": "اكتشاف الحرف الواحد المكمل لعدة كلمات ناقصة",
+      "playerSolve": "اكتشاف الحرف الهجائي الواحد الذي يصلح وضعه في الفراغ لإكمال 3 أو 4 كلمات مختلفة",
+      "modality": "letter-permutation",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    },
+    {
+      "familyKey": "palindrome-symmetry",
+      "name": "الكلمات والجمل المتناظرة طردياً وعكسياً",
+      "description": "فحص التناظر الثنائي للكلمات التي تقرأ طردياً وعكسياً",
+      "playerSolve": "فحص الكلمات لاكتشاف التناظر اللفظي الذي يقرأ بنفس الترتيب من اليمين واليسار",
+      "modality": "orthography-dots",
+      "scalability": "MEDIUM",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "GOOD",
+        "bomb": "LIMITED",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    },
+    {
+      "familyKey": "letter-subtraction-math",
+      "name": "معادلات طرح وجمع الحروف اللفظية",
+      "description": "معادلات لفظية بسيطة لطرح وجمع الحروف",
+      "playerSolve": "إجراء عمليات حسابية لفظية بإضافة أو حذف حروف من كلمات للوصول إلى الكلمة الناتجة",
+      "modality": "letter-permutation",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    },
+    {
+      "familyKey": "dotless-disambiguation",
+      "name": "قراءة الكلام بدون نقاط",
+      "description": "تمييز الكلمة المقصودة من بين كلمات تشترك في نفس الرسم المجرد غير المنقوط بالاعتماد على سياق الجملة",
+      "playerSolve": "تمييز الكلمة الصحيحة المجردة من النقاط بالاعتماد الحصري على السياق اللغوي للجملة",
+      "modality": "orthography-dots",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "LIMITED",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    },
+    {
+      "familyKey": "dot-shift",
+      "name": "تحويل الكلمات بنقل وتغيير النقاط",
+      "description": "نقل أو تحريك أو إضافة نقطة على نفس رسم الحروف لتوليد كلمة جديدة",
+      "playerSolve": "تغيير مواقع أو عدد النقاط على رسم الكلمة لتوليد كلمة جديدة تطابق دلالة مطلوبة",
+      "modality": "orthography-dots",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    },
+    {
+      "familyKey": "letter-pattern-progression",
+      "name": "متتاليات الحروف والأبجدية",
+      "description": "متتالية حروف عربية وفق نمط أبجدي أو إعجامي منتظم",
+      "playerSolve": "استنتاج الحرف الناقص في متتالية حروف تتبع قاعدة أبجدية أو تركيبية محددة",
+      "modality": "orthography-dots",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    },
+    {
+      "familyKey": "word-inside-word",
+      "name": "كلمة في بطن كلمة",
+      "description": "استخراج كلمة ذات معنى مستقل موجودة ككتلة متصلة كاملة داخل كلمة أخرى",
+      "playerSolve": "العثور على كلمة فرعية كاملة المعنى كامنة داخل بنية كلمة رئيسية أكبر",
+      "modality": "morphology-lexical",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    },
+    {
+      "familyKey": "arabic-cipher-dhad",
+      "name": "شفرات الحروف والرموز البسيطة",
+      "description": "فك شفرة كلمة عربية قصيرة باستعمال مفتاح رموز بصري مباشر",
+      "playerSolve": "فك شفرة كلمة باستبدال الرموز أو الأرقام بالحروف العربية المقابلة لها وفق مفتاح محدد",
+      "modality": "orthography-dots",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "GOOD",
+        "bomb": "LIMITED",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    },
+    {
+      "familyKey": "word-ladder-mini",
+      "name": "سلالم الكلمات المصغرة",
+      "description": "سلم كلمات مصغر من 3 خطوات بتغيير حرف واحد في كل خطوة",
+      "playerSolve": "الانتقال من كلمة إلى كلمة أخرى عبر خطوة وسيطة بتغيير حرف واحد فقط في كل مرحلة",
+      "modality": "letter-permutation",
+      "scalability": "MEDIUM",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "GOOD",
+        "bomb": "LIMITED",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": ["multiple_choice"]
+    }
+  ]
+}
+```
+

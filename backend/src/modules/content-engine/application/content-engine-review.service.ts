@@ -41,7 +41,11 @@ import {
   resolveCanonicalChallengeType,
 } from './authoring-target-resolver';
 import { CandidateCompatibilityService } from './candidate-compatibility.service';
-import { DeterministicScreenService } from './deterministic-screen.service';
+import {
+  DeterministicScreenService,
+  hasIncompleteHistoricalVerification,
+} from './deterministic-screen.service';
+import { evaluateFamilyCompliance } from '../domain/family-compliance.policy';
 
 const REVIEWABLE_PIPELINE_STATUSES = [
   'awaiting_review',
@@ -338,7 +342,24 @@ export class ContentEngineReviewService {
       normalizedClaims,
     );
 
-    this.screen.beginBatch();
+    const editSession = this.screen.createSession?.({
+      worldKey: references.job.worldKey,
+      scopeKey: references.job.scopeKey,
+    });
+    if (typeof this.screen.loadHistoricalScope === 'function') {
+      await this.screen.loadHistoricalScope(
+        {
+          worldKey: references.job.worldKey,
+          scopeKey: references.job.scopeKey,
+        },
+        editSession,
+      );
+    }
+    this.screen.beginBatch?.(
+      undefined,
+      undefined,
+      editSession ? { session: editSession } : undefined,
+    );
     // The model's `stepsFromMin` describes the draft the model wrote. Once a
     // human edits the numbers that claim is void, so it is dropped rather than
     // used to block the editor — and `CLOSEST_SLIDER_TARGET_STEP_INVALID`
@@ -356,7 +377,28 @@ export class ContentEngineReviewService {
           ),
         )
       : null;
-    const screened = this.screen.screen(sanitizedDraft, retainedAuthoring);
+    const screened = this.screen.screen(sanitizedDraft, retainedAuthoring, {
+      candidateId,
+      scopeKey: references.job.scopeKey,
+      worldKey: references.job.worldKey,
+      session: editSession,
+    });
+    const assignedFamilyKey = (
+      retainedAuthoring as { assignedSlot?: { familyKey?: string } } | undefined
+    )?.assignedSlot?.familyKey;
+    const freshCompliance = assignedFamilyKey
+      ? evaluateFamilyCompliance({
+          assignedFamilyKey,
+          draft: sanitizedDraft,
+          authoring: retainedAuthoring,
+        })
+      : null;
+    const updatedAuthoring = retainedAuthoring
+      ? {
+          ...retainedAuthoring,
+          familyCompliance: freshCompliance,
+        }
+      : null;
     const compatibility = this.compatibility.evaluate({
       mechanicKey: references.job.mechanicKey,
       draft: sanitizedDraft,
@@ -403,7 +445,7 @@ export class ContentEngineReviewService {
           {
             $set: {
               draft: sanitizedDraft,
-              authoring: retainedAuthoring,
+              authoring: updatedAuthoring,
               factualClaims: normalizedClaims,
               findings: screened.findings,
               compatibilityEvaluation: compatibility,
@@ -504,7 +546,7 @@ export class ContentEngineReviewService {
         {
           $set: {
             draft: sanitizedDraft,
-            authoring: retainedAuthoring,
+            authoring: updatedAuthoring,
             factualClaims: normalizedClaims,
             findings: screened.findings,
             compatibilityEvaluation: compatibility,
@@ -765,6 +807,23 @@ export class ContentEngineReviewService {
     const contradictionOverridden =
       isAutoContradicted || assessment.factualState === 'CONTRADICTED';
 
+    const hasUnverifiedFamily = current.findings?.some(
+      (f) => f.code === 'FAMILY_COMPLIANCE_UNVERIFIED',
+    );
+    const assignedFamilyKey = (
+      current.authoring as { assignedSlot?: { familyKey?: string } } | undefined
+    )?.assignedSlot?.familyKey;
+
+    const familyComplianceResolution =
+      hasUnverifiedFamily && assignedFamilyKey
+        ? {
+            resolvedByReviewer: true,
+            assignedFamilyKey,
+            reviewerExplanation: explanation,
+            resolvedAt: new Date(),
+          }
+        : null;
+
     const decision = {
       decision: 'approved',
       explanation,
@@ -773,6 +832,7 @@ export class ContentEngineReviewService {
       exceptionalOverride: Boolean(overrideCode),
       factualStateAtApproval: assessment.factualState ?? 'SUPPORTED',
       automatedContradictionOverridden: contradictionOverridden,
+      familyComplianceResolution,
       originalFactVerification: current.factVerification ?? null,
       assessedRevision: assessment.assessedRevision ?? current.reviewRevision,
       reviewerId: actor.id,
@@ -780,6 +840,20 @@ export class ContentEngineReviewService {
       decidedAt: new Date(),
       revision: nextRevision,
     };
+
+    const resolvedAuthoring =
+      familyComplianceResolution && current.authoring
+        ? {
+            ...current.authoring,
+            familyCompliance: {
+              assignedFamilyKey,
+              isCompliant: true,
+              verificationMethod: 'manual_review',
+              resolvedByReviewerId: actor.id,
+            },
+          }
+        : null;
+
     const updated = await this.candidates
       .findOneAndUpdate(
         {
@@ -794,6 +868,7 @@ export class ContentEngineReviewService {
             ...(liveCompatibility
               ? { compatibilityEvaluation: liveCompatibility }
               : {}),
+            ...(resolvedAuthoring ? { authoring: resolvedAuthoring } : {}),
           },
           $inc: { reviewRevision: 1 },
           $push: {
@@ -874,6 +949,101 @@ export class ContentEngineReviewService {
       .lean()
       .exec();
     if (!updated) await this.throwCas(candidateId, dto.expectedRevision);
+    return this.detail(candidateId);
+  }
+
+  async rescreenCandidate(
+    candidateId: string,
+    expectedRevision: number,
+    actor: AuthenticatedUser,
+  ) {
+    const current = await this.requireCandidate(candidateId);
+    this.assertNotPublished(current);
+    if (current.reviewRevision !== expectedRevision) {
+      await this.throwCas(candidateId, expectedRevision);
+    }
+
+    const references = await this.references(current.jobId, current);
+    const sanitizedDraft = this.stripTargetFields(current.draft ?? {});
+
+    const session = this.screen.createSession?.({
+      worldKey: references.job.worldKey,
+      scopeKey: references.job.scopeKey,
+    });
+
+    if (typeof this.screen.loadHistoricalScope === 'function') {
+      await this.screen.loadHistoricalScope(
+        {
+          worldKey: references.job.worldKey,
+          scopeKey: references.job.scopeKey,
+        },
+        session,
+      );
+    }
+
+    const screened = this.screen.screen(
+      sanitizedDraft,
+      (current.authoring ?? null) as any,
+      {
+        candidateId,
+        scopeKey: references.job.scopeKey,
+        worldKey: references.job.worldKey,
+        session,
+      },
+    );
+
+    const nextRevision = expectedRevision + 1;
+    const nextStatus = screened.passed ? current.status : 'screened_reject';
+
+    const assignedFamilyKey = (
+      current.authoring as { assignedSlot?: { familyKey?: string } } | undefined
+    )?.assignedSlot?.familyKey;
+    const freshCompliance = assignedFamilyKey
+      ? evaluateFamilyCompliance({
+          assignedFamilyKey,
+          draft: sanitizedDraft,
+          authoring: current.authoring,
+        })
+      : null;
+    const updatedAuthoring = current.authoring
+      ? {
+          ...current.authoring,
+          familyCompliance: freshCompliance,
+        }
+      : null;
+
+    const updated = await this.candidates
+      .findOneAndUpdate(
+        {
+          candidateId,
+          reviewRevision: expectedRevision,
+          publishedContentItemId: null,
+        },
+        {
+          $set: {
+            findings: screened.findings,
+            status: nextStatus,
+            authoring: updatedAuthoring,
+          },
+          $inc: { reviewRevision: 1 },
+          $push: {
+            reviewEvents: this.event('edited', actor, nextRevision, {
+              explanation:
+                'Automated historical re-screen against catalog inventory',
+              details: {
+                reScreen: true,
+                screenPassed: screened.passed,
+                findingCodes: screened.findings.map((f) => f.code),
+              },
+            }),
+          },
+        },
+        { returnDocument: 'after', runValidators: true },
+      )
+      .lean()
+      .exec();
+
+    if (!updated) await this.throwCas(candidateId, expectedRevision);
     return this.detail(candidateId);
   }
 
@@ -1562,6 +1732,22 @@ export class ContentEngineReviewService {
         'Candidate has blocking deterministic findings',
       );
     }
+    if (hasIncompleteHistoricalVerification(candidate.findings)) {
+      throw new ConflictException({
+        code: 'HISTORICAL_VERIFICATION_INCOMPLETE',
+        message:
+          'Candidate historical duplicate verification is incomplete; approval requires a successful historical re-screen with complete inventory',
+      });
+    }
+    if (
+      candidate.findings?.some((f) => f.code === 'FAMILY_COMPLIANCE_MISMATCH')
+    ) {
+      throw new ConflictException({
+        code: 'FAMILY_COMPLIANCE_MISMATCH',
+        message:
+          'Candidate has a verified canonical family mismatch; approval requires editing the candidate to comply with its assigned family',
+      });
+    }
     const compatibility = candidate.compatibilityEvaluation as {
       preDraft?: { blockers?: unknown[] };
     } | null;
@@ -1715,6 +1901,22 @@ export class ContentEngineReviewService {
       throw new ConflictException(
         'Candidate has blocking deterministic findings and cannot create a draft',
       );
+    }
+    if (hasIncompleteHistoricalVerification(candidate.findings)) {
+      throw new ConflictException({
+        code: 'HISTORICAL_VERIFICATION_INCOMPLETE',
+        message:
+          'Candidate historical duplicate verification is incomplete; canonical draft creation is blocked',
+      });
+    }
+    if (
+      candidate.findings?.some((f) => f.code === 'FAMILY_COMPLIANCE_MISMATCH')
+    ) {
+      throw new ConflictException({
+        code: 'FAMILY_COMPLIANCE_MISMATCH',
+        message:
+          'Candidate has an unresolved canonical family compliance mismatch and cannot create a draft',
+      });
     }
     const assessment = candidate.humanAssessment as {
       factualState?: string;
@@ -1982,6 +2184,18 @@ export class ContentEngineReviewService {
         'يحتوي المرشح على ملاحظات فحص آلي مانعة (Blocking Findings)؛ يجب تعديله أولاً.',
       );
     }
+    if (hasIncompleteHistoricalVerification(candidate.findings)) {
+      approvalBlockers.push(
+        'التحقق التاريخي من عدم التكرار غير مكتمل؛ يلزم إعادة فحص المرشح بنجاح قبل الاعتماد.',
+      );
+    }
+    if (
+      candidate.findings?.some((f) => f.code === 'FAMILY_COMPLIANCE_MISMATCH')
+    ) {
+      approvalBlockers.push(
+        'المرشح يتعارض مع العائلة المحددة له (FAMILY_COMPLIANCE_MISMATCH)؛ يلزم تعديل محتوى المرشح ليتطابق مع العائلة قبل الاعتماد.',
+      );
+    }
     if (compatibilityBlockers.length > 0) {
       approvalBlockers.push(
         'يوجد تعارض في التوافق مع المحتوى القانوني (Compatibility Blockers).',
@@ -2019,6 +2233,10 @@ export class ContentEngineReviewService {
       reviewStatus === 'approved' &&
       !targetResolutionError &&
       !hasBlockingFindings &&
+      !hasIncompleteHistoricalVerification(candidate.findings) &&
+      !candidate.findings?.some(
+        (f) => f.code === 'FAMILY_COMPLIANCE_MISMATCH',
+      ) &&
       compatibilityBlockers.length === 0;
 
     return {

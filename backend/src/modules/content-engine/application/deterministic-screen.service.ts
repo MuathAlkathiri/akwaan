@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import {
@@ -8,11 +10,92 @@ import {
   type RyoConfidenceBand,
 } from './candidate-generator.service';
 import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
-import { ScreenFinding } from '../schemas/engine-candidate.schema';
+import {
+  ScreenFinding,
+  EngineCandidateDocument,
+} from '../schemas/engine-candidate.schema';
+import { EngineJobDocument } from '../schemas/engine-job.schema';
+import { EngineDraftPublicationDocument } from '../schemas/engine-draft-publication.schema';
+import { ContentItem } from '../../world-content/schemas/content-item.schema';
+import { ContentItemStatus } from '../../world-content/domain/world-content.constants';
+import { Scope } from '../../world-content/schemas/scope.schema';
+import { World } from '../../world-content/schemas/world.schema';
+import {
+  extractContentIdentity,
+  compareContentIdentities,
+} from '../domain/content-identity.policy';
+import {
+  ContentIdentity,
+  RawContentItemInput,
+} from '../domain/content-identity.types';
+import { hasTrustedCandidateApproval } from '../domain/candidate-approval-provenance';
+import { evaluateFamilyCompliance } from '../domain/family-compliance.policy';
 
 export interface ScreenResult {
   passed: boolean;
   findings: ScreenFinding[];
+}
+
+export type HistoricalScopeLoadStatus =
+  'COMPLETE' | 'PARTIAL' | 'UNAVAILABLE' | 'NOT_CONFIGURED';
+
+export interface HistoricalScopeLoadResult {
+  status: HistoricalScopeLoadStatus;
+  recordCount: number;
+  canonicalCount: number;
+  candidateCount: number;
+  isTruncated: boolean;
+  scopeKey?: string;
+  worldKey?: string;
+  error?: string;
+}
+
+export interface HistoricalContentRecord {
+  id: string;
+  sourceType: 'CANONICAL_READY' | 'CANONICAL_DRAFT' | 'APPROVED_CANDIDATE';
+  scopeKey?: string;
+  worldKey?: string;
+  draft: Record<string, unknown>;
+  identity?: ContentIdentity;
+}
+
+export interface ScreenOptions {
+  candidateId?: string;
+  scopeKey?: string;
+  worldKey?: string;
+  session?: DeterministicScreenSession;
+  historicalRecords?: HistoricalContentRecord[];
+}
+
+export interface DeterministicScreenSession {
+  worldKey?: string;
+  scopeKey?: string;
+  historicalScopeStatus?: HistoricalScopeLoadResult;
+  historicalRecords: HistoricalContentRecord[];
+  seenInBatch: Map<string, string>;
+  seenBatchCandidates: Array<{
+    identity: ContentIdentity;
+    candidateId?: string;
+    correctLabel: string;
+    rawPrompt: string;
+  }>;
+  exemplarPhrases: string[][];
+}
+
+export const INCOMPLETE_HISTORICAL_FINDING_CODES = [
+  'HISTORICAL_INVENTORY_PARTIAL',
+  'HISTORICAL_INVENTORY_UNAVAILABLE',
+  'HISTORICAL_INVENTORY_NOT_CONFIGURED',
+  'HISTORICAL_INVENTORY_SCOPE_MISMATCH',
+] as const;
+
+export function hasIncompleteHistoricalVerification(
+  findings?: Array<{ code: string }> | null,
+): boolean {
+  if (!findings || !Array.isArray(findings)) return false;
+  return findings.some((f) =>
+    INCOMPLETE_HISTORICAL_FINDING_CODES.includes(f.code as any),
+  );
 }
 
 /**
@@ -119,23 +202,6 @@ const mechanicRetiredPhrases = (profile?: string): string[][] => {
   return phrases;
 };
 
-/**
- * Order-independent identity for a multiple-choice puzzle.
- *
- * Built from the normalized prompt and the normalized option labels, sorted.
- * Both halves go through the same canonical normalizer the runtime grades
- * with, so whitespace, punctuation, diacritics and Arabic letter-form variants
- * already collapse before they reach here.
- */
-const multipleChoiceIdentity = (
-  normalizedPrompt: string,
-  normalizedLabels: string[],
-): string =>
-  `mc:${normalizedPrompt}|${[...normalizedLabels]
-    .filter(Boolean)
-    .sort()
-    .join('~')}`;
-
 const blocking = (code: string, message: string): ScreenFinding => ({
   code,
   severity: 'blocking',
@@ -172,41 +238,480 @@ const deferred = (code: string, message: string): ScreenFinding => ({
  */
 @Injectable()
 export class DeterministicScreenService {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    @Optional()
+    @InjectModel(ContentItem.name)
+    private readonly contentItems?: Model<ContentItem>,
+    @Optional()
+    @InjectModel(EngineCandidateDocument.name)
+    private readonly candidates?: Model<EngineCandidateDocument>,
+    @Optional()
+    @InjectModel(EngineDraftPublicationDocument.name)
+    private readonly publications?: Model<EngineDraftPublicationDocument>,
+    @Optional()
+    @InjectModel(EngineJobDocument.name)
+    private readonly jobs?: Model<EngineJobDocument>,
+    @Optional()
+    @InjectModel(World.name)
+    private readonly worlds?: Model<World>,
+    @Optional()
+    @InjectModel(Scope.name)
+    private readonly scopes?: Model<Scope>,
+  ) {}
 
-  /**
-   * Puzzle identities already seen in this batch, mapped to their answer.
-   *
-   * Identity is **not** the prompt. A multiple-choice prompt is often a generic
-   * stem — «ما العنصر الدخيل؟» — with the puzzle itself living in the options,
-   * so prompt-only identity reported two unrelated Spot-the-Error puzzles as
-   * duplicates and blocked a sound candidate (§30.11). The value stored is the
-   * candidate's normalized correct answer, which is what lets a repeat of the
-   * same puzzle with a *different* key be reported as the contradiction it is
-   * rather than as an ordinary duplicate.
-   *
-   * Keys are namespaced per answer mode so the two schemes cannot collide.
-   */
-  private seenInBatch = new Map<string, string>();
+  private readonly defaultSession: DeterministicScreenSession = {
+    historicalRecords: [],
+    seenInBatch: new Map<string, string>(),
+    seenBatchCandidates: [],
+    exemplarPhrases: [],
+  };
 
-  /**
-   * Phrases drawn from the retired examples a generator was shown.
-   *
-   * Two sources, one list: the Scope's `EXEMPLARS.md` and the worked examples
-   * inside the mechanic profile. Both are declared retired in their own text,
-   * and a generator reaches for whichever is nearest — Phase 2h copied the
-   * Scope's, Phase 2i copied the mechanic's. Keeping one list avoids a second
-   * place to maintain; the extractors stay narrow so prose about rules does
-   * not become a similarity target.
-   */
-  private exemplarPhrases: string[][] = [];
+  get historicalScopeStatus(): HistoricalScopeLoadResult | undefined {
+    return this.defaultSession.historicalScopeStatus;
+  }
 
-  beginBatch(exemplars?: string, mechanicProfile?: string): void {
-    this.seenInBatch = new Map<string, string>();
-    this.exemplarPhrases = [
+  set historicalScopeStatus(value: HistoricalScopeLoadResult | undefined) {
+    this.defaultSession.historicalScopeStatus = value;
+  }
+
+  get historicalRecords(): HistoricalContentRecord[] {
+    return this.defaultSession.historicalRecords;
+  }
+
+  set historicalRecords(value: HistoricalContentRecord[]) {
+    this.defaultSession.historicalRecords = value;
+  }
+
+  get seenBatchCandidates(): Array<{
+    identity: ContentIdentity;
+    candidateId?: string;
+    correctLabel: string;
+    rawPrompt: string;
+  }> {
+    return this.defaultSession.seenBatchCandidates;
+  }
+
+  set seenBatchCandidates(
+    value: Array<{
+      identity: ContentIdentity;
+      candidateId?: string;
+      correctLabel: string;
+      rawPrompt: string;
+    }>,
+  ) {
+    this.defaultSession.seenBatchCandidates = value;
+  }
+
+  get seenInBatch(): Map<string, string> {
+    return this.defaultSession.seenInBatch;
+  }
+
+  set seenInBatch(value: Map<string, string>) {
+    this.defaultSession.seenInBatch = value;
+  }
+
+  get batchScopeKey(): string | undefined {
+    return this.defaultSession.scopeKey;
+  }
+
+  set batchScopeKey(value: string | undefined) {
+    this.defaultSession.scopeKey = value;
+  }
+
+  get batchWorldKey(): string | undefined {
+    return this.defaultSession.worldKey;
+  }
+
+  set batchWorldKey(value: string | undefined) {
+    this.defaultSession.worldKey = value;
+  }
+
+  get exemplarPhrases(): string[][] {
+    return this.defaultSession.exemplarPhrases;
+  }
+
+  set exemplarPhrases(value: string[][]) {
+    this.defaultSession.exemplarPhrases = value;
+  }
+
+  createSession(options?: {
+    worldKey?: string;
+    scopeKey?: string;
+    exemplars?: string;
+    mechanicProfile?: string;
+    historicalRecords?: HistoricalContentRecord[];
+    historicalScopeStatus?: HistoricalScopeLoadResult;
+  }): DeterministicScreenSession {
+    return {
+      worldKey: options?.worldKey,
+      scopeKey: options?.scopeKey,
+      historicalScopeStatus: options?.historicalScopeStatus,
+      historicalRecords: options?.historicalRecords
+        ? [...options.historicalRecords]
+        : [],
+      seenInBatch: new Map<string, string>(),
+      seenBatchCandidates: [],
+      exemplarPhrases: [
+        ...exemplarPhrases(options?.exemplars),
+        ...mechanicRetiredPhrases(options?.mechanicProfile),
+      ],
+    };
+  }
+
+  private getActiveSession(
+    options?: ScreenOptions,
+  ): DeterministicScreenSession {
+    return options?.session ?? this.defaultSession;
+  }
+
+  getHistoricalScopeStatus(
+    session?: DeterministicScreenSession,
+  ): HistoricalScopeLoadResult | undefined {
+    return session
+      ? session.historicalScopeStatus
+      : this.defaultSession.historicalScopeStatus;
+  }
+
+  beginBatch(
+    exemplars?: string,
+    mechanicProfile?: string,
+    options?: {
+      scopeKey?: string;
+      worldKey?: string;
+      session?: DeterministicScreenSession;
+    },
+  ): void {
+    const session = options?.session ?? this.defaultSession;
+    session.seenInBatch = new Map<string, string>();
+    session.seenBatchCandidates = [];
+    if (options?.scopeKey) {
+      session.scopeKey = options.scopeKey;
+    }
+    if (options?.worldKey) {
+      session.worldKey = options.worldKey;
+    }
+    session.exemplarPhrases = [
       ...exemplarPhrases(exemplars),
       ...mechanicRetiredPhrases(mechanicProfile),
     ];
+  }
+
+  registerHistoricalRecords(
+    records: HistoricalContentRecord[],
+    session?: DeterministicScreenSession,
+  ): void {
+    const targetSession = session ?? this.defaultSession;
+    for (const record of records) {
+      if (!record.identity) {
+        record.identity = extractContentIdentity({
+          scopeKey: record.scopeKey,
+          worldKey: record.worldKey,
+          prompt: record.draft.prompt as any,
+          answerPayload: (record.draft.answerPayload ?? {}) as any,
+          mechanicPayload: record.draft.mechanicPayload as any,
+          media: record.draft.media as any,
+          revealMedia: record.draft.revealMedia as any,
+          metadata: (record.draft.metadata ?? {}) as any,
+        });
+      }
+      targetSession.historicalRecords.push(record);
+    }
+    if (!targetSession.historicalScopeStatus) {
+      targetSession.historicalScopeStatus = {
+        status: 'COMPLETE',
+        recordCount: targetSession.historicalRecords.length,
+        canonicalCount: targetSession.historicalRecords.filter((r) =>
+          r.sourceType.startsWith('CANONICAL_'),
+        ).length,
+        candidateCount: targetSession.historicalRecords.filter(
+          (r) => r.sourceType === 'APPROVED_CANDIDATE',
+        ).length,
+        isTruncated: false,
+        scopeKey: records[0]?.scopeKey ?? targetSession.scopeKey,
+        worldKey: records[0]?.worldKey ?? targetSession.worldKey,
+      };
+    }
+  }
+
+  clearHistoricalRecords(session?: DeterministicScreenSession): void {
+    const target = session ?? this.defaultSession;
+    target.historicalRecords = [];
+    target.historicalScopeStatus = undefined;
+    target.scopeKey = undefined;
+    target.worldKey = undefined;
+  }
+
+  /**
+   * Bounded read-only retrieval of existing canonical items and approved
+   * unpublished candidates for the given Scope.
+   * Published candidates already represented in canonical items are strictly excluded.
+   * Restores Slice 2A human approval provenance rules and deterministic ordering.
+   */
+  async loadHistoricalScope(
+    params: {
+      worldKey?: string;
+      scopeKey?: string;
+      limit?: number;
+    },
+    session?: DeterministicScreenSession,
+  ): Promise<HistoricalScopeLoadResult> {
+    const targetSession = session ?? this.defaultSession;
+    const { worldKey, scopeKey, limit = 500 } = params;
+
+    // Reset state before loading to prevent leakage across jobs
+    this.clearHistoricalRecords(targetSession);
+    targetSession.scopeKey = scopeKey;
+    targetSession.worldKey = worldKey;
+
+    if (!worldKey || !scopeKey) {
+      const result: HistoricalScopeLoadResult = {
+        status: 'NOT_CONFIGURED',
+        recordCount: 0,
+        canonicalCount: 0,
+        candidateCount: 0,
+        isTruncated: false,
+        scopeKey,
+        worldKey,
+        error: 'worldKey and scopeKey are required',
+      };
+      targetSession.historicalScopeStatus = result;
+      return result;
+    }
+
+    if (
+      !this.contentItems ||
+      !this.candidates ||
+      !this.publications ||
+      !this.worlds ||
+      !this.scopes
+    ) {
+      const result: HistoricalScopeLoadResult = {
+        status: 'UNAVAILABLE',
+        recordCount: 0,
+        canonicalCount: 0,
+        candidateCount: 0,
+        isTruncated: false,
+        scopeKey,
+        worldKey,
+        error:
+          'Required Mongoose models are not injected in DeterministicScreenService',
+      };
+      targetSession.historicalScopeStatus = result;
+      return result;
+    }
+
+    try {
+      const worldDoc = await this.worlds
+        .findOne({ slug: worldKey })
+        .lean()
+        .exec();
+      if (!worldDoc) {
+        const result: HistoricalScopeLoadResult = {
+          status: 'NOT_CONFIGURED',
+          recordCount: 0,
+          canonicalCount: 0,
+          candidateCount: 0,
+          isTruncated: false,
+          scopeKey,
+          worldKey,
+          error: `World "${worldKey}" not found in database catalog`,
+        };
+        targetSession.historicalScopeStatus = result;
+        return result;
+      }
+
+      const scopeDoc = await this.scopes
+        .findOne({ worldId: worldDoc._id, slug: scopeKey })
+        .lean()
+        .exec();
+      if (!scopeDoc) {
+        const result: HistoricalScopeLoadResult = {
+          status: 'NOT_CONFIGURED',
+          recordCount: 0,
+          canonicalCount: 0,
+          candidateCount: 0,
+          isTruncated: false,
+          scopeKey,
+          worldKey,
+          error: `Scope "${scopeKey}" not found in database catalog for World "${worldKey}"`,
+        };
+        targetSession.historicalScopeStatus = result;
+        return result;
+      }
+
+      const boundedLimit = Math.min(Math.max(limit, 1), 1000);
+      const queryLimit = boundedLimit + 1; // Limit-plus-one to detect truncation explicitly
+
+      // 1. Fetch canonical ContentItems in this Scope (READY and DRAFT) with deterministic sort
+      const itemsRaw = await this.contentItems
+        .find({
+          scopeId: scopeDoc._id,
+          status: { $in: [ContentItemStatus.READY, ContentItemStatus.DRAFT] },
+        })
+        .sort({ createdAt: 1, _id: 1 })
+        .limit(queryLimit)
+        .lean()
+        .exec();
+
+      const isCanonicalTruncated = itemsRaw.length > boundedLimit;
+      const items = isCanonicalTruncated
+        ? itemsRaw.slice(0, boundedLimit)
+        : itemsRaw;
+      const itemIds = items.map((item) => (item as any)._id.toString());
+
+      // 2. Query publications for these canonical items to avoid double comparison
+      const publishedCandidateIds = new Set<string>();
+      if (itemIds.length > 0) {
+        const pubDocs = await this.publications
+          .find({ contentItemId: { $in: itemIds } })
+          .lean()
+          .exec();
+        for (const pub of pubDocs) {
+          if (pub.candidateId) {
+            publishedCandidateIds.add(pub.candidateId);
+          }
+        }
+      }
+
+      const records: HistoricalContentRecord[] = [];
+
+      for (const item of items) {
+        const draft: Record<string, unknown> = {
+          prompt: item.prompt as any,
+          answerPayload: item.answerPayload as any,
+          mechanicPayload: item.mechanicPayload,
+          media: item.media,
+          revealMedia: item.revealMedia,
+          metadata: item.metadata,
+        };
+        const identity = extractContentIdentity({
+          scopeKey,
+          worldKey,
+          prompt: item.prompt as any,
+          answerPayload: item.answerPayload as any,
+          mechanicPayload: item.mechanicPayload,
+          media: item.media,
+          revealMedia: item.revealMedia,
+          metadata: item.metadata,
+        });
+
+        records.push({
+          id: (item as any)._id.toString(),
+          sourceType:
+            item.status === ContentItemStatus.READY
+              ? 'CANONICAL_READY'
+              : 'CANONICAL_DRAFT',
+          scopeKey,
+          worldKey,
+          draft,
+          identity,
+        });
+      }
+
+      // 3. Fetch approved candidates that have NOT been published to canonical items
+      let isCandidateTruncated = false;
+      let candidateCount = 0;
+
+      if (this.jobs) {
+        const jobDocs = await this.jobs
+          .find({ worldKey, scopeKey })
+          .select('_id')
+          .lean()
+          .exec();
+        const jobIds = jobDocs.map((j) => (j as any)._id.toString());
+
+        if (jobIds.length > 0) {
+          const candidatesRaw = await this.candidates
+            .find({
+              jobId: { $in: jobIds },
+              reviewStatus: 'approved',
+            })
+            .sort({ createdAt: 1, _id: 1 })
+            .limit(queryLimit)
+            .lean()
+            .exec();
+
+          isCandidateTruncated = candidatesRaw.length > boundedLimit;
+          const candidateDocs = isCandidateTruncated
+            ? candidatesRaw.slice(0, boundedLimit)
+            : candidatesRaw;
+
+          for (const cand of candidateDocs) {
+            // A. Skip if already published to canonical item
+            if (
+              cand.publishedContentItemId ||
+              publishedCandidateIds.has(cand.candidateId)
+            ) {
+              continue;
+            }
+
+            // B. Restore Slice 2A approval trust guarantees:
+            // Do NOT trust reviewStatus === 'approved' without corroborating reviewDecision & reviewEvents
+            if (!hasTrustedCandidateApproval(cand)) {
+              continue;
+            }
+
+            const candDraft = (cand.draft ?? {}) as Record<string, unknown>;
+            const identity = extractContentIdentity({
+              scopeKey,
+              worldKey,
+              prompt: candDraft.prompt as any,
+              answerPayload: (candDraft.answerPayload ?? {}) as any,
+              mechanicPayload: candDraft.mechanicPayload as any,
+              media: candDraft.media as any,
+              revealMedia: candDraft.revealMedia as any,
+              metadata: (cand.authoring ?? {}) as any,
+            });
+
+            records.push({
+              id: cand.candidateId,
+              sourceType: 'APPROVED_CANDIDATE',
+              scopeKey,
+              worldKey,
+              draft: candDraft,
+              identity,
+            });
+            candidateCount += 1;
+          }
+        }
+      }
+
+      this.registerHistoricalRecords(records, targetSession);
+
+      const isTruncated = isCanonicalTruncated || isCandidateTruncated;
+      const status: HistoricalScopeLoadStatus = isTruncated
+        ? 'PARTIAL'
+        : 'COMPLETE';
+
+      const result: HistoricalScopeLoadResult = {
+        status,
+        recordCount: records.length,
+        canonicalCount: items.length,
+        candidateCount,
+        isTruncated,
+        scopeKey,
+        worldKey,
+      };
+
+      targetSession.historicalScopeStatus = result;
+      return result;
+    } catch (err) {
+      const result: HistoricalScopeLoadResult = {
+        status: 'UNAVAILABLE',
+        recordCount: 0,
+        canonicalCount: 0,
+        candidateCount: 0,
+        isTruncated: false,
+        scopeKey,
+        worldKey,
+        error:
+          (err as Error)?.message ??
+          'Database query error during historical retrieval',
+      };
+      targetSession.historicalScopeStatus = result;
+      return result;
+    }
   }
 
   /**
@@ -239,6 +744,7 @@ export class DeterministicScreenService {
   screen(
     draft: Record<string, unknown>,
     authoring?: Record<string, unknown> | null,
+    screenOptions?: ScreenOptions,
   ): ScreenResult {
     const findings: ScreenFinding[] = [];
 
@@ -263,7 +769,10 @@ export class DeterministicScreenService {
 
     // --- answer payload integrity (mirrors the backend policy's rules) ---
     if (payload.mode === 'closest') {
-      findings.push(...this.screenClosest(draft, prompt, authoring));
+      findings.push(
+        ...this.screenClosest(draft, prompt, authoring, screenOptions),
+      );
+      findings.push(...this.screenFamilyCompliance(draft, authoring));
       findings.push(...this.deferredNotes());
       return {
         passed: !findings.some((finding) => finding.severity === 'blocking'),
@@ -404,38 +913,10 @@ export class DeterministicScreenService {
 
     // --- duplication ------------------------------------------------------
     if (normalizedPrompt) {
-      // Prompt plus the option set, order-independent. Option *ids* are
-      // generated and carry no meaning, so they are excluded deliberately:
-      // regenerating them must not make the same puzzle look new. Sorting the
-      // labels is what catches a reshuffle. Authoring rationale, confidence
-      // and provider metadata are excluded — none of them is the puzzle.
-      const identity = multipleChoiceIdentity(
-        normalizedPrompt,
-        normalizedLabels,
+      findings.push(
+        ...this.screenDeduplication(draft, authoring, screenOptions),
       );
-      const seenAnswer = this.seenInBatch.get(identity);
-      if (seenAnswer !== undefined) {
-        if (seenAnswer === correctLabel) {
-          findings.push(
-            blocking(
-              'DUPLICATE_IN_BATCH',
-              'another candidate asks the same thing',
-            ),
-          );
-        } else {
-          // The same puzzle keyed two different ways. At most one can be
-          // right, so this is reported as the contradiction it is rather than
-          // being waved through as two independent items.
-          findings.push(
-            blocking(
-              'CONFLICTING_ANSWER_KEY_IN_BATCH',
-              'another candidate offers this same puzzle with a different correct answer',
-            ),
-          );
-        }
-      } else {
-        this.seenInBatch.set(identity, correctLabel);
-      }
+
       const known = this.knownSubjects();
       if (correctLabel && known.has(correctLabel)) {
         findings.push(
@@ -459,13 +940,66 @@ export class DeterministicScreenService {
     // included on the candidate side for the reason Phase 2i established: an
     // Arabic prompt can share no words with an English worked example while
     // the concept restates it almost exactly.
-    findings.push(...this.exemplarImitation(prompt, [authoring?.concept]));
+    findings.push(
+      ...this.exemplarImitation(prompt, [authoring?.concept], screenOptions),
+    );
+    findings.push(...this.screenFamilyCompliance(draft, authoring));
     findings.push(...this.deferredNotes());
 
     return {
       passed: !findings.some((finding) => finding.severity === 'blocking'),
       findings,
     };
+  }
+
+  private screenFamilyCompliance(
+    draft: Record<string, unknown>,
+    authoring?: Record<string, unknown> | null,
+  ): ScreenFinding[] {
+    const findings: ScreenFinding[] = [];
+    const assignedSlot = (
+      authoring as { assignedSlot?: { familyKey?: string } } | undefined
+    )?.assignedSlot;
+
+    if (!assignedSlot?.familyKey) {
+      return findings;
+    }
+
+    const compliance = evaluateFamilyCompliance({
+      assignedFamilyKey: assignedSlot.familyKey,
+      draft,
+      authoring,
+    });
+
+    if (
+      compliance.detectedFamilyKey &&
+      compliance.detectedFamilyKey !== compliance.assignedFamilyKey
+    ) {
+      findings.push(
+        warning(
+          'FAMILY_COMPLIANCE_MISMATCH',
+          compliance.mismatchReason ??
+            `candidate matches structural pattern for "${compliance.detectedFamilyKey}" but assigned slot was "${compliance.assignedFamilyKey}"`,
+        ),
+      );
+    } else if (
+      !compliance.isCompliant &&
+      compliance.verificationMethod === 'manual_review'
+    ) {
+      findings.push(
+        warning(
+          'FAMILY_COMPLIANCE_UNVERIFIED',
+          compliance.mismatchReason ??
+            `candidate family compliance with "${compliance.assignedFamilyKey}" could not be verified automatically`,
+        ),
+      );
+    } else if (!compliance.isCompliant && compliance.mismatchReason) {
+      findings.push(
+        warning('FAMILY_COMPLIANCE_MISMATCH', compliance.mismatchReason),
+      );
+    }
+
+    return findings;
   }
 
   /**
@@ -481,6 +1015,7 @@ export class DeterministicScreenService {
     draft: Record<string, unknown>,
     prompt: string,
     authoring?: Record<string, unknown> | null,
+    options?: ScreenOptions,
   ): ScreenFinding[] {
     const findings: ScreenFinding[] = [];
     const payload = draft.answerPayload as {
@@ -748,48 +1283,303 @@ export class DeterministicScreenService {
     }
 
     findings.push(...this.timeStability(prompt));
-    findings.push(...this.batchDuplicate(prompt));
+    findings.push(...this.batchDuplicate(prompt, options));
+    findings.push(...this.screenHistoricalOnly(draft, authoring, options));
     findings.push(
-      ...this.exemplarImitation(prompt, [
-        authoring?.domainDescription,
-        // The GPT-5 batch reproduced the mechanic profile's worked example,
-        // and the match lived here: its Arabic prompt shared no words with the
-        // English description, but its `concept` restated it almost verbatim.
-        authoring?.concept,
-      ]),
+      ...this.exemplarImitation(
+        prompt,
+        [
+          authoring?.domainDescription,
+          // The GPT-5 batch reproduced the mechanic profile's worked example,
+          // and the match lived here: its Arabic prompt shared no words with the
+          // English description, but its `concept` restated it almost verbatim.
+          authoring?.concept,
+        ],
+        options,
+      ),
     );
 
     return findings;
   }
 
   /**
+   * Screen candidate strictly against historical records (READY, DRAFT, APPROVED_CANDIDATE).
+   */
+  private screenHistoricalOnly(
+    draft: Record<string, unknown>,
+    authoring?: Record<string, unknown> | null,
+    options?: ScreenOptions,
+  ): ScreenFinding[] {
+    const findings: ScreenFinding[] = [];
+    const session = this.getActiveSession(options);
+    const scopeKey = options?.scopeKey ?? session.scopeKey;
+    const worldKey = options?.worldKey ?? session.worldKey;
+
+    // 1. Evaluate historical retrieval status and emit incomplete-verification telemetry findings
+    if (session.historicalScopeStatus) {
+      if (session.historicalScopeStatus.status === 'UNAVAILABLE') {
+        findings.push(
+          warning(
+            'HISTORICAL_INVENTORY_UNAVAILABLE',
+            `Historical scope inventory could not be verified (${session.historicalScopeStatus.error ?? 'database retrieval failed'}); duplicate screening against existing content was skipped.`,
+          ),
+        );
+      } else if (session.historicalScopeStatus.status === 'PARTIAL') {
+        findings.push(
+          warning(
+            'HISTORICAL_INVENTORY_PARTIAL',
+            `Historical scope inventory verification is partial; inventory exceeds retrieval bounds (${session.historicalScopeStatus.recordCount} records checked, older content truncated).`,
+          ),
+        );
+      } else if (session.historicalScopeStatus.status === 'NOT_CONFIGURED') {
+        findings.push(
+          warning(
+            'HISTORICAL_INVENTORY_NOT_CONFIGURED',
+            `Historical scope inventory could not be verified; world "${worldKey ?? ''}" or scope "${scopeKey ?? ''}" is not configured in database catalog.`,
+          ),
+        );
+      }
+
+      if (
+        session.historicalScopeStatus.scopeKey &&
+        scopeKey &&
+        session.historicalScopeStatus.scopeKey !== scopeKey
+      ) {
+        findings.push(
+          warning(
+            'HISTORICAL_INVENTORY_SCOPE_MISMATCH',
+            `Historical inventory loaded for "${session.historicalScopeStatus.scopeKey}" does not match target scope "${scopeKey}".`,
+          ),
+        );
+      }
+    } else if (scopeKey || session.scopeKey) {
+      // Scope was specified or targeted, but loadHistoricalScope was never called
+      findings.push(
+        warning(
+          'HISTORICAL_INVENTORY_UNAVAILABLE',
+          'Historical scope inventory was not loaded; duplicate screening against existing content was skipped.',
+        ),
+      );
+    }
+
+    const candidateInput: RawContentItemInput = {
+      scopeKey,
+      worldKey,
+      prompt: draft.prompt as any,
+      answerPayload: (draft.answerPayload ?? {}) as any,
+      mechanicPayload: draft.mechanicPayload as any,
+      media: draft.media as any,
+      revealMedia: draft.revealMedia as any,
+      metadata: {
+        ...(authoring ?? {}),
+        familyKey:
+          (draft.metadata as any)?.familyKey ?? (authoring as any)?.familyKey,
+      },
+    };
+
+    const candidateIdentity = extractContentIdentity(candidateInput);
+
+    const allHistorical = [
+      ...session.historicalRecords,
+      ...(options?.historicalRecords ?? []),
+    ];
+    const seenHistIds = new Set<string>();
+
+    for (const record of allHistorical) {
+      if (seenHistIds.has(record.id)) continue;
+      seenHistIds.add(record.id);
+
+      if (options?.candidateId && record.id === options.candidateId) continue;
+
+      const recordIdentity =
+        record.identity ??
+        extractContentIdentity({
+          scopeKey: record.scopeKey,
+          worldKey: record.worldKey,
+          prompt: record.draft.prompt as any,
+          answerPayload: (record.draft.answerPayload ?? {}) as any,
+          mechanicPayload: record.draft.mechanicPayload as any,
+          media: record.draft.media as any,
+          revealMedia: record.draft.revealMedia as any,
+          metadata: (record.draft.metadata ?? {}) as any,
+        });
+
+      const comparison = compareContentIdentities(
+        candidateIdentity,
+        recordIdentity,
+      );
+
+      if (comparison.isCrossScope) {
+        if (
+          comparison.result === 'DUPLICATE' ||
+          comparison.result === 'POTENTIAL_OVERLAP'
+        ) {
+          findings.push(
+            warning(
+              'CROSS_SCOPE_ADVISORY',
+              `Cross-Scope match with ${record.id} (${record.scopeKey ?? 'external'}): ${comparison.explanation}`,
+            ),
+          );
+        }
+        continue;
+      }
+
+      if (comparison.result === 'DUPLICATE') {
+        const code =
+          record.sourceType === 'CANONICAL_READY'
+            ? 'DUPLICATE_HISTORICAL_CONTENT'
+            : record.sourceType === 'CANONICAL_DRAFT'
+              ? 'DUPLICATE_HISTORICAL_DRAFT'
+              : 'DUPLICATE_APPROVED_CANDIDATE';
+        findings.push(
+          blocking(
+            code,
+            `Duplicate of ${record.sourceType} item ${record.id}: ${comparison.explanation}`,
+          ),
+        );
+      } else if (comparison.result === 'POTENTIAL_OVERLAP') {
+        const code =
+          record.sourceType === 'CANONICAL_READY'
+            ? 'POTENTIAL_OVERLAP_HISTORICAL_CONTENT'
+            : record.sourceType === 'CANONICAL_DRAFT'
+              ? 'POTENTIAL_OVERLAP_HISTORICAL_DRAFT'
+              : 'POTENTIAL_OVERLAP_APPROVED_CANDIDATE';
+        findings.push(
+          warning(
+            code,
+            `Potential overlap with ${record.sourceType} item ${record.id}: ${comparison.explanation}`,
+          ),
+        );
+      }
+    }
+
+    return findings;
+  }
+
+  /**
+   * Complete mechanic-aware deduplication screen:
+   * 1. Screens against bounded historical records (canonical READY, DRAFT, approved candidates).
+   * 2. Screens against previously evaluated candidates in the current batch.
+   */
+  private screenDeduplication(
+    draft: Record<string, unknown>,
+    authoring?: Record<string, unknown> | null,
+    options?: ScreenOptions,
+  ): ScreenFinding[] {
+    const findings: ScreenFinding[] = [];
+    const session = this.getActiveSession(options);
+    const scopeKey = options?.scopeKey ?? session.scopeKey;
+    const worldKey = options?.worldKey ?? session.worldKey;
+
+    const candidateInput: RawContentItemInput = {
+      scopeKey,
+      worldKey,
+      prompt: draft.prompt as any,
+      answerPayload: (draft.answerPayload ?? {}) as any,
+      mechanicPayload: draft.mechanicPayload as any,
+      media: draft.media as any,
+      revealMedia: draft.revealMedia as any,
+      metadata: {
+        ...(authoring ?? {}),
+        familyKey:
+          (draft.metadata as any)?.familyKey ?? (authoring as any)?.familyKey,
+      },
+    };
+
+    const candidateIdentity = extractContentIdentity(candidateInput);
+
+    // 1. Screen against Historical Records
+    findings.push(...this.screenHistoricalOnly(draft, authoring, options));
+
+    // 2. Screen against In-Batch Candidates
+    for (const prev of session.seenBatchCandidates) {
+      if (options?.candidateId && prev.candidateId === options.candidateId) {
+        continue;
+      }
+
+      const comparison = compareContentIdentities(
+        candidateIdentity,
+        prev.identity,
+      );
+
+      if (comparison.isCrossScope) {
+        if (
+          comparison.result === 'DUPLICATE' ||
+          comparison.result === 'POTENTIAL_OVERLAP'
+        ) {
+          findings.push(
+            warning(
+              'CROSS_SCOPE_ADVISORY',
+              `Cross-Scope match with batch candidate ${prev.candidateId ?? 'item'}: ${comparison.explanation}`,
+            ),
+          );
+        }
+        continue;
+      }
+
+      if (comparison.result === 'DUPLICATE') {
+        if (comparison.reasonCode === 'SAME_PUZZLE_CONFLICTING_ANSWER') {
+          findings.push(
+            blocking(
+              'CONFLICTING_ANSWER_KEY_IN_BATCH',
+              'another candidate offers this same puzzle with a different correct answer',
+            ),
+          );
+        } else {
+          findings.push(
+            blocking(
+              'DUPLICATE_IN_BATCH',
+              'another candidate asks the same thing',
+            ),
+          );
+        }
+        break;
+      } else if (comparison.result === 'POTENTIAL_OVERLAP') {
+        findings.push(
+          warning(
+            'POTENTIAL_OVERLAP_IN_BATCH',
+            `another candidate in this batch potentially overlaps: ${comparison.explanation}`,
+          ),
+        );
+        break;
+      }
+    }
+
+    // Record candidate in batch tracking
+    const promptText = ((draft.prompt as { ar?: string })?.ar ?? '').trim();
+    const payload = draft.answerPayload as any;
+    const correctOption = payload?.options?.find(
+      (opt: any) => opt.id === payload?.correctOptionId,
+    );
+    const correctLabel = correctOption?.label?.ar ?? '';
+
+    session.seenBatchCandidates.push({
+      candidateId: options?.candidateId,
+      identity: candidateIdentity,
+      correctLabel,
+      rawPrompt: promptText,
+    });
+
+    return findings;
+  }
+
+  /**
    * A candidate that reuses an exemplar's subject.
-   *
-   * Mechanic-neutral: the finding was once named for Closest because that was
-   * the only path calling it, which read as a mistake the first time it fired
-   * on a multiple-choice candidate.
-   *
-   * Both live pilots showed the generator reaching for the nearest concrete
-   * pattern: with no exemplars it copied the mechanic profile's football
-   * illustrations, and with exemplars it reproduced two of them with the
-   * numbers changed. This measures word overlap against the exemplar text —
-   * lexical, not semantic, and deliberately a warning. It cannot establish that
-   * a candidate is derivative, only that it looks worth a second glance, and a
-   * reviewer decides. The threshold is set high so ordinary shared vocabulary
-   * ("tiles", "room") does not trip it.
    */
   private exemplarImitation(
     prompt: string,
     rationale: unknown[],
+    options?: ScreenOptions,
   ): ScreenFinding[] {
-    if (!this.exemplarPhrases.length) return [];
+    const session = this.getActiveSession(options);
+    if (!session.exemplarPhrases.length) return [];
     const extra = rationale
       .filter((value): value is string => typeof value === 'string')
       .join(' ');
     const candidate = words(`${prompt} ${extra}`);
     if (candidate.length < 4) return [];
     const candidateSet = new Set(candidate);
-    for (const phrase of this.exemplarPhrases) {
+    for (const phrase of session.exemplarPhrases) {
       if (phrase.length < 4) continue;
       const shared = phrase.filter((word) => candidateSet.has(word)).length;
       if (shared / phrase.length >= EXEMPLAR_OVERLAP_THRESHOLD) {
@@ -806,14 +1596,6 @@ export class DeterministicScreenService {
 
   /**
    * Phrases that mark an answer as a moving target.
-   *
-   * A value that drifts after authoring cannot be graded — the first live pilot
-   * produced two career totals qualified with «حتى الآن», both already stale by
-   * the time a reviewer would see them. The markers are multi-word and
-   * deliberately few, because the cost of a false positive here is a reviewer's
-   * attention, not a rejection: this is a warning, never blocking. Deciding
-   * whether a particular quantity really moves is a judgement, and judgement
-   * stays with the human.
    */
   private timeStability(prompt: string): ScreenFinding[] {
     const folded = prompt
@@ -832,19 +1614,16 @@ export class DeterministicScreenService {
 
   /**
    * Repeat prompts inside one batch.
-   *
-   * The multiple-choice path has always done this; the closest path returned
-   * before reaching it, so a batch could carry the same question ten times
-   * unremarked.
    */
-  private batchDuplicate(prompt: string): ScreenFinding[] {
-    // Closest is unchanged: its prompt carries the question, so prompt-only
-    // identity is correct there. Namespaced so it cannot meet a
-    // multiple-choice key.
+  private batchDuplicate(
+    prompt: string,
+    options?: ScreenOptions,
+  ): ScreenFinding[] {
+    const session = this.getActiveSession(options);
     const normalized = normalizeAnswer(prompt);
     if (!normalized) return [];
     const identity = `closest:${normalized}`;
-    if (this.seenInBatch.has(identity)) {
+    if (session.seenInBatch.has(identity)) {
       return [
         warning(
           'DUPLICATE_PROMPT_IN_BATCH',
@@ -852,7 +1631,7 @@ export class DeterministicScreenService {
         ),
       ];
     }
-    this.seenInBatch.set(identity, '');
+    session.seenInBatch.set(identity, '');
     return [];
   }
 

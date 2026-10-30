@@ -71,6 +71,17 @@ export const rejectCandidate = (
     ),
   );
 
+export const rescreenCandidate = (
+  candidateId: string,
+  expectedRevision: number,
+) =>
+  unwrap<ReviewCandidate>(
+    apiClient.post(
+      `/admin/content-engine/candidates/${candidateId}/rescreen`,
+      { expectedRevision },
+    ),
+  );
+
 export const createCanonicalDraft = (
   candidateId: string,
   expectedRevision: number,
@@ -237,6 +248,29 @@ export interface EnginePreflight {
   resolvable: boolean;
   submissionReady?: boolean;
   planDigest?: string;
+  generationPlan?: {
+    digest?: string;
+    catalogDigest?: string;
+    coverageDigest?: string;
+    slots?: Array<{
+      slotIndex: number;
+      familyKey: string;
+      familyNameAr: string;
+      mode: "exploitation" | "exploration";
+      difficulty?: string;
+      cognitiveTask?: string;
+      creativeAngle?: string;
+      mechanicFit?: string;
+      selectionReason?: string;
+    }>;
+    diversityMetrics?: {
+      exploitationCount: number;
+      explorationCount: number;
+      distinctFamiliesCount: number;
+      diagnostics: string[];
+    };
+    [key: string]: unknown;
+  };
   generationSpec?: EngineGenerationSpecification;
   contextHash?: string;
   ruleSetDigest?: string;
@@ -300,6 +334,29 @@ export interface EngineJobStatus {
   specVersion?: number | null;
   generationSpec?: EngineGenerationSpecification | null;
   planDigest?: string | null;
+  pinnedPlan?: {
+    digest?: string;
+    catalogDigest?: string;
+    coverageDigest?: string;
+    slots?: Array<{
+      slotIndex: number;
+      familyKey: string;
+      familyNameAr: string;
+      mode: "exploitation" | "exploration";
+      difficulty?: string;
+      cognitiveTask?: string;
+      creativeAngle?: string;
+      mechanicFit?: string;
+      selectionReason?: string;
+    }>;
+    diversityMetrics?: {
+      exploitationCount: number;
+      explorationCount: number;
+      distinctFamiliesCount: number;
+      diagnostics: string[];
+    };
+    [key: string]: unknown;
+  } | null;
   provenanceComplete?: boolean;
   createdBy?: string | null;
   createdByEmail?: string | null;
