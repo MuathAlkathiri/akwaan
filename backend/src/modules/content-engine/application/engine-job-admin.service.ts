@@ -938,6 +938,8 @@ export class EngineJobAdminService {
     ruleSetDigest?: string;
     estimatedMicros?: number;
     estimatedSar?: number;
+    totalEstimatedMicros?: number;
+    totalEstimatedSar?: number;
     generationEstimatedMicros?: number;
     conditionalJudgeEstimatedMicros?: number;
     maxJudgeEstimatedMicros?: number;
@@ -1153,9 +1155,14 @@ export class EngineJobAdminService {
         typeof this.budget.batchCapMicros === 'function'
           ? this.budget.batchCapMicros()
           : undefined;
+      const totalEstimatedMicros =
+        generationEstimatedMicros + maxJudgeEstimatedMicros;
       const withinBatchCap =
-        batchCapMicros !== undefined ? estimatedMicros <= batchCapMicros : true;
-      const withinMonthlyBudget = estimatedMicros <= budget.availableMicros;
+        batchCapMicros !== undefined
+          ? totalEstimatedMicros <= batchCapMicros
+          : true;
+      const withinMonthlyBudget =
+        totalEstimatedMicros <= budget.availableMicros;
 
       const planDigest = computePreflightPlanDigest({
         spec: generationSpec,
@@ -1202,9 +1209,9 @@ export class EngineJobAdminService {
       const blockedReason = !readiness.submissionReady
         ? (readiness.blockedReason ?? undefined)
         : !withinBatchCap
-          ? `BATCH_CAP_EXCEEDED: estimated cost ${estimatedMicros} micros exceeds batch cap ${batchCapMicros} micros`
+          ? `BATCH_CAP_EXCEEDED: estimated total job cost ${totalEstimatedMicros} micros exceeds batch cap ${batchCapMicros} micros`
           : !withinMonthlyBudget
-            ? `MONTHLY_BUDGET_EXCEEDED: estimated cost ${estimatedMicros} micros exceeds available monthly budget ${budget.availableMicros} micros`
+            ? `MONTHLY_BUDGET_EXCEEDED: estimated total job cost ${totalEstimatedMicros} micros exceeds available monthly budget ${budget.availableMicros} micros`
             : undefined;
 
       return {
@@ -1217,6 +1224,8 @@ export class EngineJobAdminService {
         ruleSetDigest,
         estimatedMicros,
         estimatedSar: microsToSar(estimatedMicros),
+        totalEstimatedMicros,
+        totalEstimatedSar: microsToSar(totalEstimatedMicros),
         generationEstimatedMicros,
         conditionalJudgeEstimatedMicros,
         maxJudgeEstimatedMicros,
@@ -1412,10 +1421,10 @@ export class EngineJobAdminService {
         });
       }
 
-      const { estimatedMicros } = this.estimateBatchCost(
-        resolvedContext,
-        generationSpec,
-      );
+      const costPlan = this.estimateBatchCost(resolvedContext, generationSpec);
+      const { estimatedMicros } = costPlan;
+      const totalEstimatedMicros =
+        costPlan.generationEstimatedMicros + costPlan.maxJudgeEstimatedMicros;
 
       const budget =
         typeof this.budget?.snapshot === 'function'
@@ -1425,16 +1434,19 @@ export class EngineJobAdminService {
         typeof this.budget?.batchCapMicros === 'function'
           ? this.budget.batchCapMicros()
           : undefined;
-      if (batchCapMicros !== undefined && estimatedMicros > batchCapMicros) {
+      if (
+        batchCapMicros !== undefined &&
+        totalEstimatedMicros > batchCapMicros
+      ) {
         throw new BadRequestException({
           code: 'BATCH_CAP_EXCEEDED',
-          message: `BATCH_CAP_EXCEEDED: estimated cost ${estimatedMicros} micros exceeds batch cap ${batchCapMicros} micros`,
+          message: `BATCH_CAP_EXCEEDED: estimated total job cost ${totalEstimatedMicros} micros exceeds batch cap ${batchCapMicros} micros`,
         });
       }
-      if (budget && estimatedMicros > budget.availableMicros) {
+      if (budget && totalEstimatedMicros > budget.availableMicros) {
         throw new BadRequestException({
           code: 'MONTHLY_BUDGET_EXCEEDED',
-          message: `MONTHLY_BUDGET_EXCEEDED: estimated cost ${estimatedMicros} micros exceeds available monthly budget ${budget.availableMicros} micros`,
+          message: `MONTHLY_BUDGET_EXCEEDED: estimated total job cost ${totalEstimatedMicros} micros exceeds available monthly budget ${budget.availableMicros} micros`,
         });
       }
 

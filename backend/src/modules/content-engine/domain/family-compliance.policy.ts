@@ -158,6 +158,55 @@ export function evaluateFamilyCompliance(
         }
       }
 
+      if (assignedFamilyKey === 'letter-subtraction-math') {
+        const mathCheck = verifyLetterSubtractionMathRule(
+          promptText,
+          correctLabel,
+          concept,
+        );
+        if (!mathCheck.passed) {
+          return {
+            assignedFamilyKey,
+            detectedFamilyKey: detectedFamily,
+            isCompliant: false,
+            verificationMethod: 'rule_evaluated',
+            mismatchReason: mathCheck.reason,
+          };
+        }
+      }
+
+      if (assignedFamilyKey === 'dotless-disambiguation') {
+        const dotlessCheck = verifyDotlessSkeletonRule(
+          promptText,
+          correctLabel,
+        );
+        if (!dotlessCheck.passed) {
+          return {
+            assignedFamilyKey,
+            detectedFamilyKey: detectedFamily,
+            isCompliant: false,
+            verificationMethod: 'rule_evaluated',
+            mismatchReason: dotlessCheck.reason,
+          };
+        }
+      }
+
+      if (assignedFamilyKey === 'dot-shift') {
+        const dotShiftCheck = verifyDotShiftSkeletonRule(
+          promptText,
+          correctLabel,
+        );
+        if (!dotShiftCheck.passed) {
+          return {
+            assignedFamilyKey,
+            detectedFamilyKey: detectedFamily,
+            isCompliant: false,
+            verificationMethod: 'rule_evaluated',
+            mismatchReason: dotShiftCheck.reason,
+          };
+        }
+      }
+
       return {
         assignedFamilyKey,
         detectedFamilyKey: detectedFamily,
@@ -183,6 +232,7 @@ export function evaluateFamilyCompliance(
     'plural-form',
     'dot-shift',
     'dotless-disambiguation',
+    'letter-subtraction-math',
     'add-letter',
     'remove-letter',
     'substitute-letter',
@@ -218,6 +268,19 @@ function detectStructuralFamily(input: {
   const { prompt, correctLabel, concept } = input;
   const combined = `${prompt} ${concept}`;
 
+  // Letter arithmetic / subtraction & addition math
+  // (Tested before anagram to prevent false matches on words like "ترتيب" inside arithmetic concepts)
+  if (
+    /(?:[−\-\+]\s*[\(（\[].+?[\)）\]]|[\(（\[].+?[\)）\]]\s*[−\-\+])/i.test(
+      prompt,
+    ) ||
+    /(?:معادلة|معادلات)\s*(?:حروف|الحروف|طرح|جمع)/i.test(combined) ||
+    /(?:اطرح|احذف|ناقص).*(?:وأضف|واضف|ثم أضف|ثم اضف|زائد)/i.test(combined) ||
+    /(?:عملية حسابية لفظية|طرح وجمع الحروف|معادلات طرح)/i.test(combined)
+  ) {
+    return 'letter-subtraction-math';
+  }
+
   // Anagram / Rearrange
   if (
     /(?:كون|تكوين|رتب|ترتيب|أعد ترتيب|اعد ترتيب|تجميع)\s+(?:كلمة|الحروف|حروف)/i.test(
@@ -250,13 +313,15 @@ function detectStructuralFamily(input: {
   }
 
   // Dot-shift / Dotless
-  if (/(?:نقل نقطة|تحريك نقطة|غير مكان النقطة|نقل النقاط)/i.test(combined)) {
+  if (/(?:[أا]?نقل|تحريك|تغيير|غير)\s+(?:مكان\s+)?(?:ال)?نقط/i.test(combined)) {
     return 'dot-shift';
   }
   if (
-    /(?:بدون نقاط|غير منقوطة|أعد النقاط|اعد النقاط|تنقيط الحروف)/i.test(
+    /(?:بدون نقاط|بلا نقاط|دون نقاط|غير منقوطة|غير المنقوطة|غير منقوط|من غير نقاط|مجردة من النقاط|أعد النقاط|اعد النقاط|تنقيط الحروف|تنقيط)/i.test(
       combined,
-    )
+    ) ||
+    /[\u066E\u066F\u06BA\u0620\u067E\u06A1]/.test(prompt) ||
+    /\[[^\]]*[\u066E\u066F\u06BA][^\]]*\]/.test(prompt)
   ) {
     return 'dotless-disambiguation';
   }
@@ -391,5 +456,243 @@ function verifyPalindromeRule(answerLabel: string): {
       )}" reversed)`,
     };
   }
+  return { passed: true };
+}
+
+/**
+ * Canonical dotless Arabic rasm mapping.
+ * Reduces all homoglyphic Arabic letters to their shared dotless palaeographic skeleton.
+ */
+export function toArabicDotlessRasm(text: string): string {
+  return text
+    .replace(/[أإآٱء]/g, 'ا')
+    .replace(/[بتث]/g, 'ٮ')
+    .replace(/[يجحخ]/g, (match) => (match === 'ي' ? 'ٮ' : 'ح'))
+    .replace(/[دذ]/g, 'د')
+    .replace(/[رز]/g, 'ر')
+    .replace(/[سش]/g, 'س')
+    .replace(/[صض]/g, 'ص')
+    .replace(/[طظ]/g, 'ط')
+    .replace(/[عغ]/g, 'ع')
+    .replace(/[فق]/g, 'ڡ')
+    .replace(/[ن]/g, 'ٮ')
+    .replace(/[ةه]/g, 'ه')
+    .replace(/ى/g, 'ٮ')
+    .replace(/[^\u0600-\u06FF]/gu, '');
+}
+
+/**
+ * Validates that an answer word shares the exact dotless skeleton (rasm) of a clue token.
+ */
+export function verifyDotlessSkeletonRule(
+  prompt: string,
+  answerLabel: string,
+): { passed: boolean; reason?: string } {
+  if (!prompt || !answerLabel) {
+    return {
+      passed: false,
+      reason: 'Missing prompt or answer text for dotless skeleton validation',
+    };
+  }
+
+  const bracketMatch = prompt.match(/\[([^\d\]]+)\]/);
+  const quoteMatch = prompt.match(/[«"']([^»"']+)[\»"']/);
+  const parenMatch = prompt.match(/[\(（]([^\)）]+)[\)）]/);
+
+  const rawClue = bracketMatch?.[1] || quoteMatch?.[1] || parenMatch?.[1];
+  if (!rawClue) {
+    if (/[\u066E\u066F\u06BA]/.test(prompt)) {
+      return { passed: true };
+    }
+    return {
+      passed: false,
+      reason: 'Prompt lacks explicit dotless clue token (e.g. [حٮر] or «...»)',
+    };
+  }
+
+  const clueRasm = toArabicDotlessRasm(rawClue);
+  const answerRasm = toArabicDotlessRasm(answerLabel);
+
+  if (!clueRasm || !answerRasm) {
+    return { passed: true };
+  }
+
+  if (clueRasm !== answerRasm) {
+    return {
+      passed: false,
+      reason: `Dotless skeleton mismatch: answer "${answerLabel}" (rasm: "${answerRasm}") does not match clue "${rawClue}" (rasm: "${clueRasm}")`,
+    };
+  }
+
+  return { passed: true };
+}
+
+/**
+ * Validates deterministic letter arithmetic (subtraction and addition):
+ * 1. Checks that subtracted letters exist in the base word.
+ * 2. Checks that the calculated letter multiset matches the answer word multiset.
+ * 3. Enforces that in-place replacement or sequential concatenation holds unless reordering is explicitly requested.
+ */
+export function verifyLetterSubtractionMathRule(
+  prompt: string,
+  answerLabel: string,
+  concept?: string,
+): { passed: boolean; reason?: string } {
+  if (!prompt || !answerLabel) {
+    return {
+      passed: false,
+      reason: 'Missing prompt or answer text for letter arithmetic validation',
+    };
+  }
+
+  const normPrompt = prompt.replace(/[−–—]/g, '-');
+
+  const eqMatch = normPrompt.match(
+    /[\(（\[]?([\u0621-\u064A]+)[\)）\]]?\s*(\s*[-\+]\s*[\(（\[]?[\u0621-\u064A]+[\)）\]]?)+/,
+  );
+
+  if (!eqMatch) {
+    return { passed: true };
+  }
+
+  const fullEq = eqMatch[0];
+  const firstOpIdx = fullEq.search(/[-\+]/);
+  const baseRaw = fullEq.slice(0, firstOpIdx).replace(/[^\u0621-\u064A]/g, '');
+  const opsRegion = fullEq.slice(firstOpIdx);
+
+  if (!baseRaw) {
+    return { passed: true };
+  }
+
+  const baseLetters = extractArabicLetters(baseRaw);
+  const currentMultiset = letterFrequencyMap(baseLetters);
+
+  const opRegex = /([-\+])\s*[\(（\[]?([\u0621-\u064A]+)[\)）\]]?/g;
+  let opMatch: RegExpExecArray | null;
+  const subtractions: string[] = [];
+  const additions: string[] = [];
+
+  while ((opMatch = opRegex.exec(opsRegion)) !== null) {
+    const op = opMatch[1];
+    const letters = extractArabicLetters(opMatch[2]);
+    if (op === '-') {
+      for (const l of letters) {
+        if (!currentMultiset[l] || currentMultiset[l] <= 0) {
+          return {
+            passed: false,
+            reason: `Invalid letter arithmetic: attempted to subtract letter "${l}" which is not present in base word "${baseRaw}"`,
+          };
+        }
+        currentMultiset[l] -= 1;
+        if (currentMultiset[l] === 0) delete currentMultiset[l];
+        subtractions.push(l);
+      }
+    } else if (op === '+') {
+      for (const l of letters) {
+        currentMultiset[l] = (currentMultiset[l] || 0) + 1;
+        additions.push(l);
+      }
+    }
+  }
+
+  const answerLetters = extractArabicLetters(answerLabel);
+  const ansMultiset = letterFrequencyMap(answerLetters);
+
+  const allKeys = new Set([
+    ...Object.keys(currentMultiset),
+    ...Object.keys(ansMultiset),
+  ]);
+  for (const k of allKeys) {
+    if ((currentMultiset[k] || 0) !== (ansMultiset[k] || 0)) {
+      return {
+        passed: false,
+        reason: `Letter arithmetic result mismatch: calculated letter "${k}" count (${
+          currentMultiset[k] || 0
+        }) does not match answer "${answerLabel}" count (${
+          ansMultiset[k] || 0
+        })`,
+      };
+    }
+  }
+
+  const requiresReorderingExplicitly =
+    /(?:ترتيب|إعادة ترتيب|اعد ترتيب|تبديل الحروف|عكس)/i.test(
+      `${prompt} ${concept ?? ''}`,
+    );
+
+  let inPlaceMatch = false;
+  if (subtractions.length === 1 && additions.length === 1) {
+    const subL = subtractions[0];
+    const addL = additions[0];
+    const replaced = baseLetters
+      .map((ch) => (ch === subL ? addL : ch))
+      .join('');
+    if (replaced === answerLetters.join('')) {
+      inPlaceMatch = true;
+    }
+  }
+
+  const linearRemaining = baseLetters
+    .filter((ch) => !subtractions.includes(ch))
+    .join('');
+  const appendMatch =
+    linearRemaining + additions.join('') === answerLetters.join('') ||
+    additions.join('') + linearRemaining === answerLetters.join('');
+
+  if (!inPlaceMatch && !appendMatch && !requiresReorderingExplicitly) {
+    const promptMentionsReorder = /(?:ترتيب|رتب|أعد ترتيب|اعد ترتيب)/i.test(
+      prompt,
+    );
+    if (!promptMentionsReorder) {
+      return {
+        passed: false,
+        reason: `Letter arithmetic requires letter reordering to form "${answerLabel}", but prompt does not specify reordering instructions`,
+      };
+    }
+  }
+
+  return { passed: true };
+}
+
+/**
+ * Validates dot-shift transformations: ensures the base word and answer share
+ * the identical dotless skeleton (rasm).
+ */
+export function verifyDotShiftSkeletonRule(
+  prompt: string,
+  answerLabel: string,
+): { passed: boolean; reason?: string } {
+  if (!prompt || !answerLabel) {
+    return {
+      passed: false,
+      reason: 'Missing prompt or answer text for dot-shift validation',
+    };
+  }
+
+  const parenMatch = prompt.match(/[\(（]([^\)）]+)[\)）]/);
+  const quoteMatch = prompt.match(/[«"']([^»"']+)[\»"']/);
+  const baseRaw = parenMatch?.[1] || quoteMatch?.[1];
+
+  if (!baseRaw) {
+    return { passed: true };
+  }
+
+  const baseClean = baseRaw.replace(/[^\u0621-\u064A]/g, '');
+  const ansClean = answerLabel.replace(/[^\u0621-\u064A]/g, '');
+
+  if (!baseClean || !ansClean) {
+    return { passed: true };
+  }
+
+  const baseRasm = toArabicDotlessRasm(baseClean);
+  const ansRasm = toArabicDotlessRasm(ansClean);
+
+  if (baseRasm !== ansRasm) {
+    return {
+      passed: false,
+      reason: `Dot-shift skeleton mismatch: base word "${baseClean}" (rasm: "${baseRasm}") does not share dotless skeleton with answer "${ansClean}" (rasm: "${ansRasm}")`,
+    };
+  }
+
   return { passed: true };
 }

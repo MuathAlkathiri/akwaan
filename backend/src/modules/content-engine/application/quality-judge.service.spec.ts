@@ -168,6 +168,9 @@ describe('QualityJudgeService', () => {
     );
     expect(provider.calls[0].model).toBe('pinned-quality-model');
     expect(provider.calls[0].maxOutputTokens).toBe(900);
+    expect(provider.calls[0].temperature).toBe(0);
+    expect(provider.calls[0].omitTemperature).toBe(false);
+    expect(provider.calls[0].reasoningEffort).toBeNull();
   });
 
   it('releases judge budget reservation when provider explicitly declines before running (definitelyNotBilled: true)', async () => {

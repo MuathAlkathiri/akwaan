@@ -233,5 +233,193 @@ describe('FamilyCompliance Policy', () => {
         'does not exhibit expected structural patterns',
       );
     });
+
+    describe('letter arithmetic (letter-subtraction-math)', () => {
+      it('verifies compliant letter arithmetic equation from real pilot data without false anagram mismatch', () => {
+        const result = evaluateFamilyCompliance({
+          assignedFamilyKey: 'letter-subtraction-math',
+          draft: {
+            prompt: { ar: '(سحاب) − (ح) + (ر) = ؟' },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [
+                { id: 'a', label: { ar: 'سراب' } },
+                { id: 'b', label: { ar: 'سرب' } },
+              ],
+              correctOptionId: 'a',
+            },
+          },
+          authoring: {
+            concept:
+              'معادلة حروف تنتج كلمة بعد طرح وإضافة حرف، مع فخ إعادة ترتيب الحروف الباقية.',
+          },
+        });
+        expect(result.isCompliant).toBe(true);
+        expect(result.assignedFamilyKey).toBe('letter-subtraction-math');
+        expect(result.detectedFamilyKey).toBe('letter-subtraction-math');
+        expect(result.verificationMethod).toBe('rule_evaluated');
+      });
+
+      it('rejects letter arithmetic when subtracted letter is not present in base word', () => {
+        const result = evaluateFamilyCompliance({
+          assignedFamilyKey: 'letter-subtraction-math',
+          draft: {
+            prompt: { ar: '(سحاب) − (ك) + (ر) = ؟' },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [{ id: 'a', label: { ar: 'سراب' } }],
+              correctOptionId: 'a',
+            },
+          },
+        });
+        expect(result.isCompliant).toBe(false);
+        expect(result.verificationMethod).toBe('rule_evaluated');
+        expect(result.mismatchReason).toContain(
+          'not present in base word "سحاب"',
+        );
+      });
+
+      it('rejects letter arithmetic when calculated letter multiset does not match answer', () => {
+        const result = evaluateFamilyCompliance({
+          assignedFamilyKey: 'letter-subtraction-math',
+          draft: {
+            prompt: { ar: '(سحاب) − (ح) + (ر) = ؟' },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [{ id: 'a', label: { ar: 'سرب' } }],
+              correctOptionId: 'a',
+            },
+          },
+        });
+        expect(result.isCompliant).toBe(false);
+        expect(result.verificationMethod).toBe('rule_evaluated');
+        expect(result.mismatchReason).toContain(
+          'Letter arithmetic result mismatch',
+        );
+      });
+
+      it('rejects letter arithmetic that requires anagram reordering when prompt does not specify reordering', () => {
+        const result = evaluateFamilyCompliance({
+          assignedFamilyKey: 'letter-subtraction-math',
+          draft: {
+            // سحاب - ح + ر = سبار (transposes ب and ر without reordering instructions)
+            prompt: { ar: '(سحاب) − (ح) + (ر) = ؟' },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [{ id: 'a', label: { ar: 'سبار' } }],
+              correctOptionId: 'a',
+            },
+          },
+        });
+        expect(result.isCompliant).toBe(false);
+        expect(result.verificationMethod).toBe('rule_evaluated');
+        expect(result.mismatchReason).toContain(
+          'requires letter reordering to form "سبار", but prompt does not specify reordering instructions',
+        );
+      });
+
+      it('verifies letter arithmetic that requires anagram reordering when prompt explicitly specifies reordering', () => {
+        const result = evaluateFamilyCompliance({
+          assignedFamilyKey: 'letter-subtraction-math',
+          draft: {
+            prompt: {
+              ar: 'اطرح (ح) من (سحاب) ثم أضف (ر) وأعد ترتيب الحروف لتكوين الكلمة:',
+            },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [{ id: 'a', label: { ar: 'سبار' } }],
+              correctOptionId: 'a',
+            },
+          },
+        });
+        expect(result.isCompliant).toBe(true);
+        expect(result.verificationMethod).toBe('rule_evaluated');
+      });
+    });
+
+    describe('dotless Arabic disambiguation (dotless-disambiguation)', () => {
+      it('verifies compliant dotless Arabic puzzle using authentic dotless rasm from real pilot', () => {
+        const result = evaluateFamilyCompliance({
+          assignedFamilyKey: 'dotless-disambiguation',
+          draft: {
+            prompt: {
+              ar: 'أي كلمة تناسب الفراغ؟ «أخرج الخباز الـ [حٮر] الساخن من الفرن»',
+            },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [
+                { id: 'a', label: { ar: 'خبز' } },
+                { id: 'b', label: { ar: 'حبر' } },
+              ],
+              correctOptionId: 'a',
+            },
+          },
+          authoring: {
+            concept:
+              'فخ سياقي: كلمة بلا نقاط بهيكل واحد يوحي بالمعنى الشائع لكن السياق يحسمها.',
+          },
+        });
+        expect(result.isCompliant).toBe(true);
+        expect(result.assignedFamilyKey).toBe('dotless-disambiguation');
+        expect(result.detectedFamilyKey).toBe('dotless-disambiguation');
+        expect(result.verificationMethod).toBe('rule_evaluated');
+      });
+
+      it('rejects dotless puzzle when answer does not match the dotless clue skeleton', () => {
+        const result = evaluateFamilyCompliance({
+          assignedFamilyKey: 'dotless-disambiguation',
+          draft: {
+            prompt: {
+              ar: 'أي كلمة تناسب الفراغ؟ «أخرج الخباز الـ [حٮر] الساخن من الفرن»',
+            },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [{ id: 'a', label: { ar: 'كتاب' } }],
+              correctOptionId: 'a',
+            },
+          },
+        });
+        expect(result.isCompliant).toBe(false);
+        expect(result.verificationMethod).toBe('rule_evaluated');
+        expect(result.mismatchReason).toContain('Dotless skeleton mismatch');
+      });
+    });
+
+    describe('dot shift transformations (dot-shift)', () => {
+      it('verifies compliant dot-shift puzzle when base word and answer share dotless skeleton', () => {
+        const result = evaluateFamilyCompliance({
+          assignedFamilyKey: 'dot-shift',
+          draft: {
+            prompt: {
+              ar: 'في كلمة (حبر) انقل النقطة إلى موضع آخر لتحصل على الكلمة التالية:',
+            },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [{ id: 'a', label: { ar: 'خبر' } }],
+              correctOptionId: 'a',
+            },
+          },
+        });
+        expect(result.isCompliant).toBe(true);
+        expect(result.verificationMethod).toBe('rule_evaluated');
+      });
+
+      it('rejects dot-shift puzzle when base word and answer do not share dotless skeleton', () => {
+        const result = evaluateFamilyCompliance({
+          assignedFamilyKey: 'dot-shift',
+          draft: {
+            prompt: { ar: 'في كلمة (حبر) انقل النقطة لتحصل على:' },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [{ id: 'a', label: { ar: 'سماء' } }],
+              correctOptionId: 'a',
+            },
+          },
+        });
+        expect(result.isCompliant).toBe(false);
+        expect(result.verificationMethod).toBe('rule_evaluated');
+        expect(result.mismatchReason).toContain('Dot-shift skeleton mismatch');
+      });
+    });
   });
 });

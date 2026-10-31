@@ -661,8 +661,21 @@ export function composeGenerationPrompt(
   ].join('\n\n');
 }
 
+/**
+ * Estimates generation prompt tokens from prompt character length for preflight reservations.
+ *
+ * Calibrated against real pilot usage data (where 90,519 characters produced 42,064
+ * prompt tokens, reflecting ~2.15 chars/token for Arabic text, system guidelines, and JSON schemas).
+ * Uses a conservative 2.0 characters per token to ensure preflight budget reservations safely
+ * account for byte-pair tokenization overhead.
+ *
+ * Note: A character-based estimate is a preflight reservation guideline, not a guaranteed provider
+ * billing ceiling. Providers bill on their own tokenizer metrics returned in completion usage.
+ */
 export function estimateGenerationPromptTokens(prompt: string): number {
-  return Math.ceil(prompt.length / 3);
+  const trimmed = prompt?.trim() ?? '';
+  if (!trimmed) return 0;
+  return Math.ceil(trimmed.length / 2.0);
 }
 
 export {

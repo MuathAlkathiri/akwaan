@@ -154,6 +154,8 @@ export class QualityJudgeService {
         prompt,
         responseSchema: QUALITY_JUDGE_SCHEMA,
         temperature: 0,
+        omitTemperature: false,
+        reasoningEffort: null,
         maxOutputTokens: QUALITY_JUDGE_MAX_OUTPUT_TOKENS,
       });
       raw = response.text;

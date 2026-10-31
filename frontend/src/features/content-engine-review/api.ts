@@ -276,6 +276,8 @@ export interface EnginePreflight {
   ruleSetDigest?: string;
   estimatedMicros?: number;
   estimatedSar?: number;
+  totalEstimatedMicros?: number;
+  totalEstimatedSar?: number;
   generationEstimatedMicros?: number;
   conditionalJudgeEstimatedMicros?: number;
   maxJudgeEstimatedMicros?: number;

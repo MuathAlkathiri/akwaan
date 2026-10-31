@@ -1248,10 +1248,10 @@ export function BatchSubmissionPanel({
                 كم التكلفة المتوقعة؟
               </span>
               <div className="text-base font-bold text-amber-700 font-mono">
-                {typeof preflight.estimatedSar === "number"
-                  ? `~ ${preflight.estimatedSar.toFixed(4)} ر.س`
-                  : typeof preflight.estimatedMicros === "number"
-                    ? `~ ${(preflight.estimatedMicros / 1_000_000).toFixed(4)} ر.س`
+                {typeof (preflight.totalEstimatedSar ?? preflight.estimatedSar) === "number"
+                  ? `~ ${(preflight.totalEstimatedSar ?? preflight.estimatedSar)!.toFixed(4)} ر.س`
+                  : typeof (preflight.totalEstimatedMicros ?? preflight.estimatedMicros) === "number"
+                    ? `~ ${((preflight.totalEstimatedMicros ?? preflight.estimatedMicros)! / 1_000_000).toFixed(4)} ر.س`
                     : "غير متاح"}
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
@@ -1463,9 +1463,9 @@ export function BatchSubmissionPanel({
                         className="font-mono text-amber-700 font-bold"
                         data-testid="cost-total-ceiling"
                       >
-                        {typeof preflight.estimatedSar === "number"
-                          ? `${preflight.estimatedSar.toFixed(4)} ر.س (${(preflight.estimatedMicros ?? 0).toLocaleString("en-US")} ميكرو)`
-                          : formatSarFromMicros(preflight.estimatedMicros)}
+                        {typeof (preflight.totalEstimatedSar ?? preflight.estimatedSar) === "number"
+                          ? `${(preflight.totalEstimatedSar ?? preflight.estimatedSar)!.toFixed(4)} ر.س (${(preflight.totalEstimatedMicros ?? preflight.estimatedMicros ?? 0).toLocaleString("en-US")} ميكرو)`
+                          : formatSarFromMicros(preflight.totalEstimatedMicros ?? preflight.estimatedMicros)}
                       </dd>
                     </div>
                     <div className="flex justify-between gap-2">
