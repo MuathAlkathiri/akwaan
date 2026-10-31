@@ -12,6 +12,7 @@ import {
   CLOSEST_TASK_GUIDANCE,
   CandidateGeneratorService,
   OUTPUT_TOKENS_PER_CANDIDATE,
+  estimateGenerationPromptTokens,
 } from './candidate-generator.service';
 import { ResolvedAuthoringContext } from './authoring-context.service';
 
@@ -999,6 +1000,16 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
           timedOut: true,
         }),
       );
+    });
+  });
+
+  describe('estimateGenerationPromptTokens', () => {
+    it('estimates prompt tokens conservatively at 2 chars/token for Arabic/JSON content', () => {
+      // 90,519 characters (as seen in pilot) yields 45,260 estimated tokens (safe ceiling over 42,064 actual)
+      expect(estimateGenerationPromptTokens('a'.repeat(90_519))).toBe(45_260);
+      expect(estimateGenerationPromptTokens('')).toBe(0);
+      expect(estimateGenerationPromptTokens('   ')).toBe(0);
+      expect(estimateGenerationPromptTokens('سحاب')).toBe(2);
     });
   });
 });

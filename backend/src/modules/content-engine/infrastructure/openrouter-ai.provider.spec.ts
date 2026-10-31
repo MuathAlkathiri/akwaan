@@ -652,6 +652,27 @@ describe('reasoning token accounting', () => {
     expect(body.reasoning).toEqual({ effort: 'low' });
     expect(body.max_tokens).toBe(2_400);
   });
+
+  it('does not leak generation ENGINE_REASONING_EFFORT and ENGINE_OMIT_TEMPERATURE to quality judge or other non-generation models', async () => {
+    const { seen, fetchImpl } = capture();
+    const generationConfig = config({
+      ENGINE_GENERATION_MODEL: 'anthropic/claude-sonnet-5.5',
+      ENGINE_OMIT_TEMPERATURE: 'true',
+      ENGINE_REASONING_EFFORT: 'low',
+    });
+
+    await new OpenRouterAiProvider(generationConfig, fetchImpl).generateText({
+      ...request,
+      model: 'openai/gpt-4o-mini',
+      temperature: 0,
+      responseSchema: { type: 'object' },
+    });
+
+    const body = seen.body as Record<string, unknown>;
+    expect(body.model).toBe('openai/gpt-4o-mini');
+    expect(body.temperature).toBe(0);
+    expect(body.reasoning).toBeUndefined();
+  });
 });
 
 describe('provider billing ambiguity and error classification', () => {

@@ -55,13 +55,30 @@ export const periodKeyOf = (date: Date): string =>
 /**
  * Money for the Content Engine.
  *
- * Three guarantees, each resting on one atomic Mongo operation rather than on
- * application-level sequencing:
+ * ARCHITECTURAL BOUNDARY: SOFTWARE BUDGET GUARDS VS. UPSTREAM PROVIDER LIMITS
+ * -------------------------------------------------------------------------
+ * This service implements application-level (software) preflight, job-level batch-cap,
+ * and monthly-cap enforcement. It guards against dispatching LLM calls when:
+ * 1. An individual call or aggregate job commitments exceed ENGINE_BATCH_CAP_SAR.
+ * 2. Cumulative monthly commitments exceed ENGINE_MONTHLY_CAP_SAR.
  *
- * 1. **A reservation cannot overdraw.** The conditional `$inc` below admits a
- *    reservation only if `spent + reserved + amount <= cap`, evaluated by the
- *    server inside the same write. Concurrent reservations therefore serialize
- *    on the document; there is no read-then-write window to lose.
+ * IMPORTANT DISTINCTION:
+ * - Software budget guards are pre-call reservation checks based on character-to-token
+ *   heuristics and rate cards. They are necessary to prevent issuing unauthorized calls.
+ * - However, once an HTTP request has been sent to an upstream provider (OpenRouter,
+ *   Anthropic, OpenAI), provider billing is governed strictly by the upstream provider's
+ *   actual token accounting. If the provider generates more tokens (or reasoning tokens)
+ *   than estimated, settle() records the full actual cost truthfully.
+ * - Upstream hard financial limits cannot be guaranteed solely by client software;
+ *   they MUST be independently configured on the provider side (e.g. OpenRouter API
+ *   key spending limits or prepaid credit balance).
+ *
+ * Three core guarantees, each resting on atomic Mongo operations:
+ *
+ * 1. **A reservation cannot overdraw.** Conditional `$inc` operations with `$expr`
+ *    admit a reservation only if `spent + reserved + amount <= cap`, evaluated by
+ *    the server inside the same write. This is enforced concurrently for both the
+ *    individual Job (ENGINE_BATCH_CAP_SAR) and the Monthly Period (ENGINE_MONTHLY_CAP_SAR).
  * 2. **Reconciliation is idempotent.** The ledger entry moves out of `reserved`
  *    under a conditional update keyed by its unique `reservationId`. A second
  *    settle matches nothing and returns without touching the budget.
@@ -71,9 +88,8 @@ export const periodKeyOf = (date: Date): string =>
  * **Stated limitation — this is a bound on estimates, not on bills.** A
  * reservation is computed from an expected token count. If a provider returns
  * far more tokens than expected, the settled cost exceeds the reservation, the
- * overage is recorded on the entry (`exceededReservation`), and the period's
- * `spentMicros` may finish above `capMicros`. Nothing here can un-spend money
- * that has already been billed. The engine's defence is a deliberately
+ * overage is recorded on the entry (`exceededReservation`), and `spentMicros`
+ * may finish above `capMicros`. The engine's defense is a deliberately
  * generous estimate, a bounded retry count, and refusing *subsequent* work once
  * the cap is reached — not a promise the cap is inviolable.
  *
@@ -159,6 +175,28 @@ export class EngineBudgetService {
     );
   }
 
+  /** Creates or aligns the job budget document on first use. Safe under concurrency. */
+  private async ensureJobBudget(
+    jobId: string,
+    capMicros: number,
+  ): Promise<void> {
+    const jobKey = `job:${jobId}`;
+    await this.budgets.updateOne(
+      { periodKey: jobKey },
+      {
+        $setOnInsert: {
+          periodKey: jobKey,
+          spentMicros: 0,
+          reservedMicros: 0,
+        },
+        $set: {
+          capMicros,
+        },
+      },
+      { upsert: true },
+    );
+  }
+
   /** What a batch would cost, before anything is committed. */
   estimate(input: {
     provider: string;
@@ -229,17 +267,50 @@ export class EngineBudgetService {
     spentMicros: number;
     reservedMicros: number;
     calls: number;
+    jobCapMicros: number;
+    availableMicros: number;
   }> {
     const rows = await this.ledger.find({ jobId }).lean().exec();
+    const spentMicros = rows.reduce(
+      (total, row) => total + (row.actualMicros ?? 0),
+      0,
+    );
+    const reservedMicros = rows
+      .filter((row) => row.status === 'reserved')
+      .reduce((total, row) => total + row.reservedMicros, 0);
+    const jobCapMicros = this.batchCapMicros();
+    const availableMicros = Math.max(
+      0,
+      jobCapMicros - spentMicros - reservedMicros,
+    );
     return {
-      spentMicros: rows.reduce(
-        (total, row) => total + (row.actualMicros ?? 0),
-        0,
-      ),
-      reservedMicros: rows
-        .filter((row) => row.status === 'reserved')
-        .reduce((total, row) => total + row.reservedMicros, 0),
+      spentMicros,
+      reservedMicros,
       calls: rows.length,
+      jobCapMicros,
+      availableMicros,
+    };
+  }
+
+  /** Read-only snapshot of a specific job's committed budget. */
+  async jobBudgetSnapshot(jobId: string): Promise<{
+    jobId: string;
+    capMicros: number;
+    spentMicros: number;
+    reservedMicros: number;
+    availableMicros: number;
+  }> {
+    const jobKey = `job:${jobId}`;
+    const doc = await this.budgets.findOne({ periodKey: jobKey }).lean().exec();
+    const capMicros = doc?.capMicros ?? this.batchCapMicros();
+    const spentMicros = doc?.spentMicros ?? 0;
+    const reservedMicros = doc?.reservedMicros ?? 0;
+    return {
+      jobId,
+      capMicros,
+      spentMicros,
+      reservedMicros,
+      availableMicros: Math.max(0, capMicros - spentMicros - reservedMicros),
     };
   }
 
@@ -252,6 +323,7 @@ export class EngineBudgetService {
   async reserve(input: ReserveInput): Promise<{ reservedMicros: number }> {
     const now = input.now ?? new Date();
     const periodKey = periodKeyOf(now);
+    const jobKey = `job:${input.jobId}`;
 
     // Fail closed on unknown pricing *first*: no ledger row, no reservation.
     const amount = this.pricing.estimateMicros(
@@ -272,56 +344,118 @@ export class EngineBudgetService {
       .exec();
     if (existing) return { reservedMicros: existing.reservedMicros };
 
+    // Ensure documents exist before entering the transaction. Safe under concurrency.
+    await this.ensureJobBudget(input.jobId, batchCap);
     await this.ensurePeriod(periodKey);
 
-    // The whole guarantee is this one write. `$expr` lets the condition read
-    // the document's own fields, so "is there room" and "take the room" are a
-    // single atomic act.
-    const updated = await this.budgets
-      .findOneAndUpdate(
-        {
-          periodKey,
-          $expr: {
-            $lte: [
-              { $add: ['$spentMicros', '$reservedMicros', amount] },
-              '$capMicros',
-            ],
-          },
-        },
-        { $inc: { reservedMicros: amount } },
-        { returnDocument: 'after' },
-      )
-      .lean()
-      .exec();
-
-    if (!updated) {
-      const state = await this.snapshot(now);
-      throw new BudgetExceededError('monthly', amount, state.availableMicros);
-    }
-
     try {
-      await this.ledger.create({
-        reservationId: input.reservationId,
-        jobId: input.jobId,
-        stage: input.stage,
-        provider: input.provider,
-        model: input.model,
-        reservedMicros: amount,
-        status: 'reserved',
-        usageKnown: false,
+      return await this.inTransaction(async (session) => {
+        // Idempotency check inside transaction in case a concurrent worker just committed
+        const existingInSession = await this.ledger
+          .findOne({ reservationId: input.reservationId }, null, { session })
+          .lean()
+          .exec();
+        if (existingInSession) {
+          return { reservedMicros: existingInSession.reservedMicros };
+        }
+
+        // 1. Atomic Job-Level Budget Check & Reservation
+        // Enforces ENGINE_BATCH_CAP_SAR against aggregate job commitments.
+        const updatedJob = await this.budgets
+          .findOneAndUpdate(
+            {
+              periodKey: jobKey,
+              $expr: {
+                $lte: [
+                  { $add: ['$spentMicros', '$reservedMicros', amount] },
+                  '$capMicros',
+                ],
+              },
+            },
+            { $inc: { reservedMicros: amount } },
+            { returnDocument: 'after', session },
+          )
+          .lean()
+          .exec();
+
+        if (!updatedJob) {
+          const jobDoc = await this.budgets
+            .findOne({ periodKey: jobKey }, null, { session })
+            .lean()
+            .exec();
+          const currentJobCommitted = jobDoc
+            ? jobDoc.spentMicros + jobDoc.reservedMicros
+            : batchCap;
+          const available = Math.max(0, batchCap - currentJobCommitted);
+          throw new BudgetExceededError('batch', amount, available);
+        }
+
+        // 2. Atomic Monthly Period Budget Check & Reservation
+        // Enforces ENGINE_MONTHLY_CAP_SAR against cumulative monthly commitments.
+        const updatedMonthly = await this.budgets
+          .findOneAndUpdate(
+            {
+              periodKey,
+              $expr: {
+                $lte: [
+                  { $add: ['$spentMicros', '$reservedMicros', amount] },
+                  '$capMicros',
+                ],
+              },
+            },
+            { $inc: { reservedMicros: amount } },
+            { returnDocument: 'after', session },
+          )
+          .lean()
+          .exec();
+
+        if (!updatedMonthly) {
+          const monthlyDoc = await this.budgets
+            .findOne({ periodKey }, null, { session })
+            .lean()
+            .exec();
+          const monthlyCap = this.capMicros();
+          const currentMonthlyCommitted = monthlyDoc
+            ? monthlyDoc.spentMicros + monthlyDoc.reservedMicros
+            : monthlyCap;
+          const available = Math.max(0, monthlyCap - currentMonthlyCommitted);
+          throw new BudgetExceededError('monthly', amount, available);
+        }
+
+        // 3. Ledger creation inside transaction
+        await this.ledger.create(
+          [
+            {
+              reservationId: input.reservationId,
+              jobId: input.jobId,
+              stage: input.stage,
+              provider: input.provider,
+              model: input.model,
+              reservedMicros: amount,
+              status: 'reserved',
+              usageKnown: false,
+            },
+          ],
+          { session },
+        );
+
+        return { reservedMicros: amount };
       });
-    } catch (error) {
-      // Give the money back rather than stranding it: a duplicate key here
-      // means a concurrent caller already owns this reservation id.
-      await this.budgets
-        .updateOne({ periodKey }, { $inc: { reservedMicros: -amount } })
-        .exec();
-      const existingEntry = await this.ledger
-        .findOne({ reservationId: input.reservationId })
-        .lean()
-        .exec();
-      if (existingEntry)
-        return { reservedMicros: existingEntry.reservedMicros };
+    } catch (error: unknown) {
+      // If duplicate key error occurs, a concurrent worker committed under this reservationId.
+      const isDuplicate =
+        (error as { code?: number })?.code === 11000 ||
+        (error as Error)?.message?.includes('duplicate key') ||
+        (error as Error)?.message?.includes('E11000');
+      if (isDuplicate) {
+        const existingEntry = await this.ledger
+          .findOne({ reservationId: input.reservationId })
+          .lean()
+          .exec();
+        if (existingEntry) {
+          return { reservedMicros: existingEntry.reservedMicros };
+        }
+      }
       throw error;
     }
 
@@ -406,6 +540,21 @@ export class EngineBudgetService {
           { session },
         )
         .exec();
+
+      if (entry.jobId) {
+        await this.budgets
+          .updateOne(
+            { periodKey: `job:${entry.jobId}` },
+            {
+              $inc: {
+                reservedMicros: -entry.reservedMicros,
+                spentMicros: actualMicros,
+              },
+            },
+            { session },
+          )
+          .exec();
+      }
       return won;
     });
     if (!claimed) return null; // lost the race; the winner did the accounting
@@ -449,6 +598,16 @@ export class EngineBudgetService {
           { session },
         )
         .exec();
+
+      if (entry.jobId) {
+        await this.budgets
+          .updateOne(
+            { periodKey: `job:${entry.jobId}` },
+            { $inc: { reservedMicros: -entry.reservedMicros } },
+            { session },
+          )
+          .exec();
+      }
       return true;
     });
   }
@@ -524,6 +683,21 @@ export class EngineBudgetService {
             { session },
           )
           .exec();
+
+        if (entry.jobId) {
+          await this.budgets
+            .updateOne(
+              { periodKey: `job:${entry.jobId}` },
+              {
+                $inc: {
+                  reservedMicros: -entry.reservedMicros,
+                  spentMicros: entry.reservedMicros,
+                },
+              },
+              { session },
+            )
+            .exec();
+        }
         return true;
       });
       if (done) reclaimed += 1;

@@ -252,17 +252,24 @@ export class OpenRouterAiProvider implements AiProvider {
     request: AiTextGenerationRequest,
   ): Promise<AiTextGenerationResult> {
     const apiKey = this.config.get<string>('OPENROUTER_API_KEY')?.trim();
-    const model =
-      request.model?.trim() ||
-      this.config.get<string>('ENGINE_GENERATION_MODEL')?.trim();
+    const configuredGenModel = this.config
+      .get<string>('ENGINE_GENERATION_MODEL')
+      ?.trim();
+    const model = request.model?.trim() || configuredGenModel;
+    const isGenerationModel =
+      !request.model || request.model.trim() === configuredGenModel;
     const omitTemperature =
       request.omitTemperature !== undefined
         ? request.omitTemperature
-        : this.truthy('ENGINE_OMIT_TEMPERATURE');
+        : isGenerationModel
+          ? this.truthy('ENGINE_OMIT_TEMPERATURE')
+          : false;
     const effort =
       request.reasoningEffort !== undefined
         ? (request.reasoningEffort ?? undefined)
-        : this.reasoningEffort();
+        : isGenerationModel
+          ? this.reasoningEffort()
+          : undefined;
     // Fail closed, before a request exists. A missing key or model is a
     // configuration error, never a reason to pick something else.
     if (!apiKey)
