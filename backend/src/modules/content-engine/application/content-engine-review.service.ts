@@ -46,6 +46,11 @@ import {
   hasIncompleteHistoricalVerification,
 } from './deterministic-screen.service';
 import { evaluateFamilyCompliance } from '../domain/family-compliance.policy';
+import { draftProvenanceMetadata } from '../domain/library-sourcing';
+import {
+  factVerificationAfterEdit,
+  seedsForCandidate,
+} from '../domain/structured-seed-binding';
 
 const REVIEWABLE_PIPELINE_STATUSES = [
   'awaiting_review',
@@ -343,6 +348,7 @@ export class ContentEngineReviewService {
     );
 
     const editSession = this.screen.createSession?.({
+      librarySeeds: references.job.generationSpec?.sourcing?.seeds,
       worldKey: references.job.worldKey,
       scopeKey: references.job.scopeKey,
     });
@@ -536,6 +542,10 @@ export class ContentEngineReviewService {
       );
     }
 
+    const editedSeeds = seedsForCandidate(
+      references.job.generationSpec?.sourcing,
+      current.sourcing,
+    );
     const updated = await this.candidates
       .findOneAndUpdate(
         {
@@ -549,9 +559,17 @@ export class ContentEngineReviewService {
             authoring: updatedAuthoring,
             factualClaims: normalizedClaims,
             findings: screened.findings,
+            librarySimilarity: screened.librarySimilarity ?? null,
             compatibilityEvaluation: compatibility,
             status: screened.passed ? 'awaiting_review' : 'screened_reject',
-            factVerification: null,
+            factVerification: editedSeeds.length
+              ? factVerificationAfterEdit({
+                  draft: sanitizedDraft,
+                  seeds: editedSeeds,
+                  claims: normalizedClaims,
+                  today: new Date().toISOString().slice(0, 10),
+                })
+              : null,
             qualityEvaluation: null,
             humanAssessment: null,
             lastInvalidatedAssessments: invalidatedSnapshot,
@@ -697,10 +715,19 @@ export class ContentEngineReviewService {
       }
     }
 
+    // A covered candidate already carries its row's source, so a reviewer who
+    // accepts it has evidence on record. A library candidate that lost coverage
+    // cannot escape by having its claims emptied.
+    const seedBinding = (
+      current.factVerification as { seedBinding?: { covered?: boolean } } | null
+    )?.seedBinding;
+    const mustProveFacts =
+      (hasFactualClaims || Boolean(current.sourcing)) &&
+      autoFactState !== 'SUPPORTED' &&
+      seedBinding?.covered !== true;
     if (
       dto.factualState === 'SUPPORTED' &&
-      (current.status === 'fact_blocked' ||
-        (hasFactualClaims && autoFactState !== 'SUPPORTED')) &&
+      (current.status === 'fact_blocked' || mustProveFacts) &&
       normalizedEvidence.length === 0
     ) {
       throw new BadRequestException({
@@ -967,6 +994,7 @@ export class ContentEngineReviewService {
     const sanitizedDraft = this.stripTargetFields(current.draft ?? {});
 
     const session = this.screen.createSession?.({
+      librarySeeds: references.job.generationSpec?.sourcing?.seeds,
       worldKey: references.job.worldKey,
       scopeKey: references.job.scopeKey,
     });
@@ -1021,6 +1049,7 @@ export class ContentEngineReviewService {
         },
         {
           $set: {
+            librarySimilarity: screened.librarySimilarity ?? null,
             findings: screened.findings,
             status: nextStatus,
             authoring: updatedAuthoring,
@@ -1165,6 +1194,11 @@ export class ContentEngineReviewService {
     const sanitizedDraft = this.stripTargetFields(candidate.draft);
     const raw = {
       ...sanitizedDraft,
+      ...draftProvenanceMetadata(
+        sanitizedDraft,
+        candidate.sourcing,
+        candidate.factVerification,
+      ),
       scopeId: String(refs.scope._id),
       compatibleChallengeTypeIds: [String(refs.challengeType._id)],
       status: ContentItemStatus.DRAFT,

@@ -425,13 +425,14 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       expect(state.availableMicros).toBe(sarToMicros(99));
     });
 
-    it('never admits more than the cap under concurrent reservations', async () => {
-      // 100 SAR cap, 150 parallel reservations of 1 SAR each.
+    it('never admits more than the monthly cap under concurrent reservations', async () => {
+      // 100 SAR cap, 150 parallel reservations of 1 SAR each. Each is its own
+      // job, so only the monthly cap can refuse them.
       const attempts = await Promise.allSettled(
         Array.from({ length: 150 }, (_, i) =>
           budget.reserve({
             reservationId: `race-${i}`,
-            jobId: 'j',
+            jobId: `race-job-${i}`,
             stage: 'generation',
             provider: 'fake',
             model: 'fake-model',
@@ -452,6 +453,31 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       expect(state.spentMicros + state.reservedMicros).toBeLessThanOrEqual(
         state.capMicros,
       );
+    }, 60_000);
+
+    it('never admits more than the per-job cap under concurrent reservations', async () => {
+      // 25 SAR job cap, 40 parallel reservations of 1 SAR each on one job.
+      const attempts = await Promise.allSettled(
+        Array.from({ length: 40 }, (_, i) =>
+          budget.reserve({
+            reservationId: `job-race-${i}`,
+            jobId: 'one-job',
+            stage: 'generation',
+            provider: 'fake',
+            model: 'fake-model',
+            expected: ONE_SAR_CALL,
+          }),
+        ),
+      );
+
+      expect(attempts.filter((r) => r.status === 'fulfilled')).toHaveLength(25);
+      expect(
+        attempts.filter(
+          (r) =>
+            r.status === 'rejected' && r.reason instanceof BudgetExceededError,
+        ),
+      ).toHaveLength(15);
+      expect((await budget.snapshot()).reservedMicros).toBe(sarToMicros(25));
     }, 60_000);
 
     it('rejects a single call larger than the per-batch cap', async () => {
@@ -711,7 +737,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
         .collection('engine_candidates')
         .findOne({ jobId: held.jobId, ordinal: 0 });
       expect(stored!.contextHash).toBe(resolved.contextHash);
-      expect(stored!.promptVersion).toBe('mc-v2');
+      expect(stored!.promptVersion).toBe('mc-v3');
       expect(stored!.status).toBe('generated');
 
       // The call was reserved and settled — never unaccounted.
@@ -1124,7 +1150,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
     it('generates a canonical closest payload and passes screening', async () => {
       const { row, contentItems } = await runClosest(CLOSEST_BATCH);
       expect(row).toBeTruthy();
-      expect(row!.promptVersion).toBe('closest-v2');
+      expect(row!.promptVersion).toBe('closest-v3');
 
       const draft = row!.draft as {
         answerPayload: {
@@ -1226,7 +1252,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       });
       await localOrchestrator.runNext('mc-worker');
       const row = await conn.collection('engine_candidates').findOne({});
-      expect(row!.promptVersion).toBe('mc-v2');
+      expect(row!.promptVersion).toBe('mc-v3');
       expect(
         (row!.draft as { answerPayload: { mode: string } }).answerPayload.mode,
       ).toBe('multiple_choice');
@@ -1345,15 +1371,16 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       expect(result.qualityCalls).toBe(0);
     }, 60_000);
 
-    it('skips the judge when retrieval fails outright', async () => {
-      // Retrieval failure is a different fact from "no evidence exists", and
-      // both must stop short of a paid judgement.
+    it('still judges when retrieval fails outright', async () => {
+      // Retrieval failing says nothing about the claim, unlike "no evidence
+      // exists". Quality is judged separately from facts (§30.22), so the
+      // candidate is judged and the fact stays UNRESOLVED for a human.
       const result = await withRetriever(async () => {
         throw new Error('retrieval unavailable');
       });
       expect(result.facts).toBe('UNRESOLVED');
-      expect(result.judged).toBe(false);
-      expect(result.qualityCalls).toBe(0);
+      expect(result.judged).toBe(true);
+      expect(result.qualityCalls).toBeGreaterThan(0);
     }, 60_000);
 
     it('skips the judge when evidence contradicts the claim', async () => {

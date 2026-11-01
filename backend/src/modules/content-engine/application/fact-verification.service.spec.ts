@@ -68,4 +68,54 @@ describe('FactVerificationService', () => {
     expect(result.state).toBe('UNRESOLVED');
     expect(result.automaticAdvance).toBe(false);
   });
+
+  describe('verifyAnchored', () => {
+    const covered = {
+      covered: true as const,
+      libraryId: 'LIB-069',
+      verifiedAnswer: '96 نقطة',
+      revalidateAfter: null,
+      evidence: {
+        ...evidence('supports'),
+        method: 'structured-seed' as const,
+        verifiedOn: '2026-11-01',
+        revalidateAfter: null,
+        sourceWarning: null,
+      },
+    };
+
+    it('reaches SUPPORTED only when the model claims are verified too', async () => {
+      const verified = await service(async () => [
+        evidence('supports'),
+      ]).verifyAnchored(['claim'], covered);
+      expect(verified.state).toBe('SUPPORTED');
+      expect(verified.automaticAdvance).toBe(true);
+      expect(verified.claims[0].evidence[0]).toMatchObject({
+        method: 'structured-seed',
+      });
+    });
+
+    it('keeps normal verification for the model claims', async () => {
+      const retrieve = jest.fn(async () => [evidence('mentions')]);
+      const result = await service(retrieve).verifyAnchored(['claim'], covered);
+      expect(retrieve).toHaveBeenCalled();
+      expect(result.state).toBe('UNSUPPORTED');
+      expect(result.automaticAdvance).toBe(false);
+      expect(result.seedBinding).toBe(covered);
+    });
+
+    it('sends an uncovered candidate through normal verification', async () => {
+      const notCovered = {
+        covered: false as const,
+        reason: 'WINDOW_CHANGED' as const,
+        libraryId: 'LIB-069',
+      };
+      const result = await service(async () => [
+        evidence('contradicts'),
+      ]).verifyAnchored(['claim'], notCovered);
+      expect(result.state).toBe('CONTRADICTED');
+      expect(result.claims).toHaveLength(1);
+      expect(result.seedBinding).toEqual(notCovered);
+    });
+  });
 });

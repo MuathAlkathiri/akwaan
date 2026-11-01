@@ -687,6 +687,76 @@ describe("Admin Content Generation Studio — Phase B UI", () => {
     expect(submitBtn).toBeDisabled();
   });
 
+  it("shows the library split and lets the operator run both jobs of a request", async () => {
+    vi.spyOn(api, "getAuthoringOptions").mockResolvedValue(
+      mockAuthoringOptions(),
+    );
+    vi.spyOn(api, "preflightJob").mockResolvedValue({
+      ...mockPreflightResponse(),
+      sourcingPlan: {
+        anchoredCount: 7,
+        exploratoryCount: 3,
+        overflowCount: 0,
+        fallbackReason: null,
+        libraryIds: ["LIB-009"],
+        jobCount: 2,
+      },
+    });
+    vi.spyOn(api, "submitJob").mockResolvedValue({
+      jobId: "671000000000000000000099",
+      created: true,
+      contextHash: "c".repeat(64),
+      planDigest: "d".repeat(64),
+      jobs: [
+        {
+          jobId: "671000000000000000000099",
+          created: true,
+          mode: "library_anchored",
+          targetCount: 7,
+        },
+        {
+          jobId: "671000000000000000000100",
+          created: true,
+          mode: "exploratory",
+          targetCount: 3,
+        },
+      ],
+    });
+    vi.spyOn(api, "getJobStatus").mockResolvedValue(
+      mockJobStatus({ status: "queued", pipelineStage: "pending" }),
+    );
+    const runSpy = vi
+      .spyOn(api, "runJob")
+      .mockResolvedValue({ jobId: "x", alreadyRunning: false });
+
+    render(
+      <WithQueryClient>
+        <BatchSubmissionPanel onBatchReady={vi.fn()} />
+      </WithQueryClient>,
+    );
+
+    const preflightBtn = await screen.findByTestId("button-preflight");
+    await waitFor(() => expect(preflightBtn).not.toBeDisabled());
+    fireEvent.click(preflightBtn);
+
+    expect(
+      await screen.findByTestId("preflight-sourcing-plan"),
+    ).toHaveTextContent("من المكتبة: 7");
+
+    const submitBtn = await screen.findByTestId("button-submit-job");
+    await waitFor(() => expect(submitBtn).not.toBeDisabled());
+    fireEvent.click(submitBtn);
+
+    fireEvent.click(
+      await screen.findByTestId(
+        "button-run-sibling-job-671000000000000000000100",
+      ),
+    );
+    await waitFor(() =>
+      expect(runSpy).toHaveBeenCalledWith("671000000000000000000100"),
+    );
+  });
+
   it("8 & 9 & 10: targets exact jobId on execution, prevents duplicate clicks, polls while leased, and stops polling on terminal state", async () => {
     vi.spyOn(api, "getAuthoringOptions").mockResolvedValue(
       mockAuthoringOptions(),

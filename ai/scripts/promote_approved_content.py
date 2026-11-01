@@ -846,6 +846,24 @@ class Manifest:
         return counts
 
 
+def promoted_metadata(marker: str, metadata: dict) -> dict:
+    """The metadata an item keeps across promotion.
+
+    Content Engine provenance travels with the item, so a promoted question can
+    still be traced to its library rows and re-verified. Keys are added only when
+    present: items without them must promote exactly as they always have.
+    """
+    promoted = {
+        "source": marker,
+        "notes": metadata.get("notes"),
+        "tags": metadata.get("tags"),
+    }
+    for key in ("generationMode", "libraryIds", "revalidateAfter"):
+        if metadata.get(key) is not None:
+            promoted[key] = metadata[key]
+    return promoted
+
+
 def build_manifest(milestone: Milestone, source: AdminApi, index: RuntimeIndex) -> Manifest:
     """Read exactly the milestone's Scopes out of the source runtime.
 
@@ -892,11 +910,7 @@ def build_manifest(milestone: Milestone, source: AdminApi, index: RuntimeIndex) 
                             "media": media,
                             "isReusableAcrossSessions": bool(raw.get("isReusableAcrossSessions")),
                             "status": raw.get("status") or "ready",
-                            "metadata": {
-                                "source": marker,
-                                "notes": ((raw.get("metadata") or {}).get("notes")),
-                                "tags": ((raw.get("metadata") or {}).get("tags")),
-                            },
+                            "metadata": promoted_metadata(marker, raw.get("metadata") or {}),
                         },
                     )
                 )

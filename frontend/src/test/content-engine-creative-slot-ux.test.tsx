@@ -242,6 +242,44 @@ describe("Content Engine Slice 3D: Review Studio Creative Slot & Visibility UX",
       );
     });
 
+    it("shows the highest pinned-row similarity on anchored candidates only", async () => {
+      const anchored = mockCandidate({
+        candidateId: "cand-anchored",
+        sourcing: {
+          mode: "library_anchored",
+          libraryIds: ["LIB-057"],
+          sourceWarnings: [],
+        },
+        librarySimilarity: { libraryId: "LIB-057", similarity: 0.4321 },
+      });
+      const exploratory = mockCandidate({
+        candidateId: "cand-exploratory",
+        sourcing: { mode: "exploratory", libraryIds: [], sourceWarnings: [] },
+        librarySimilarity: null,
+      });
+      vi.spyOn(api, "listCandidates").mockResolvedValue([
+        anchored,
+        exploratory,
+      ]);
+      vi.spyOn(api, "getCandidate").mockResolvedValue(anchored);
+
+      render(
+        <WithQueryClient>
+          <ContentEngineReviewWorkspace />
+        </WithQueryClient>,
+      );
+      fireEvent.click(await screen.findByTestId("surface-tab-review"));
+
+      const score = await screen.findByTestId(
+        "candidate-library-similarity-cand-anchored",
+      );
+      expect(score).toHaveTextContent("0.43");
+      expect(score).toHaveTextContent("LIB-057");
+      expect(
+        screen.queryByTestId("candidate-library-similarity-cand-exploratory"),
+      ).not.toBeInTheDocument();
+    });
+
     it("renders structural mismatch warning with approval blocked notice", () => {
       const candidate = mockCandidate({
         findings: [

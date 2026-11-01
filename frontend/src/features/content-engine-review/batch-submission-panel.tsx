@@ -28,6 +28,7 @@ import {
   type RyoRequestedDifficulty,
   runJob,
   submitJob,
+  type EngineSubmittedJob,
 } from "./api";
 import {
   DIFFICULTY_LABELS,
@@ -112,6 +113,7 @@ export function BatchSubmissionPanel({
   const [planDriftMessage, setPlanDriftMessage] = useState<string | null>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(initialJobId);
   const [job, setJob] = useState<EngineJobStatus | null>(null);
+  const [submittedJobs, setSubmittedJobs] = useState<EngineSubmittedJob[]>([]);
   const [busy, setBusy] = useState<
     "preflight" | "submit" | "run" | "cancel" | null
   >(null);
@@ -448,6 +450,7 @@ export function BatchSubmissionPanel({
         ...buildRequestPayload(),
         planDigest: preflight.planDigest,
       });
+      setSubmittedJobs(submitted.jobs ?? []);
       handleActiveJobChange(submitted.jobId);
       onJobSubmitted?.(submitted.jobId);
       const fetched = await getJobStatus(submitted.jobId);
@@ -1358,6 +1361,19 @@ export function BatchSubmissionPanel({
                 )}
               </div>
 
+              {preflight.sourcingPlan && (
+                <p
+                  data-testid="preflight-sourcing-plan"
+                  className="text-[11px] text-slate-700"
+                >
+                  من المكتبة: {preflight.sourcingPlan.anchoredCount} · استكشافي:{" "}
+                  {preflight.sourcingPlan.exploratoryCount} · عدد الدفعات:{" "}
+                  {preflight.sourcingPlan.jobCount}
+                  {preflight.sourcingPlan.fallbackReason &&
+                    " · لا توجد صفوف معتمدة لهذا النطاق والآلية"}
+                </p>
+              )}
+
               {/* Detailed Metrics Grid */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 {/* Column 1: Model, Provider & Spec */}
@@ -1711,6 +1727,29 @@ export function BatchSubmissionPanel({
             )}
           </button>
         )}
+
+        {submittedJobs.length > 1 &&
+          submittedJobs
+            .filter((sibling) => sibling.jobId !== job?.jobId)
+            .map((sibling) => (
+              <button
+                key={sibling.jobId}
+                type="button"
+                data-testid={`button-run-sibling-job-${sibling.jobId}`}
+                onClick={() => handleRunExactJob(sibling.jobId)}
+                disabled={busy !== null}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 px-6 py-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition disabled:opacity-40"
+              >
+                <Play className="size-4" />
+                <span>
+                  تشغيل الدفعة{" "}
+                  {sibling.mode === "library_anchored"
+                    ? "المرتبطة بالمكتبة"
+                    : "الاستكشافية"}{" "}
+                  ({sibling.targetCount})
+                </span>
+              </button>
+            ))}
 
         {job && !isTerminalJobStatus(job.status) && !job.cancellationRequested && (
           <button

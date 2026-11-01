@@ -44,7 +44,8 @@
     "migrate:canonical-mechanic-slugs": "ts-node -r tsconfig-paths/register src/scripts/migrate-canonical-mechanic-slugs.ts",
     "migrate:canonical-mechanic-slugs:dist": "node dist/scripts/migrate-canonical-mechanic-slugs.js",
     "provision:production-mechanics": "ts-node -r tsconfig-paths/register src/scripts/provision-production-mechanics.ts",
-    "provision:production-mechanics:dist": "node dist/scripts/provision-production-mechanics.js"
+    "provision:production-mechanics:dist": "node dist/scripts/provision-production-mechanics.js",
+    "import:content-library": "ts-node -r tsconfig-paths/register src/scripts/import-content-library.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1109.0",
@@ -90,6 +91,7 @@
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.6",
+    "exceljs": "^4.4.0",
     "jest": "^29.7.0",
     "prettier": "^3.1.0",
     "supertest": "^6.3.3",
