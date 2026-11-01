@@ -1,3 +1,7 @@
+import {
+  GenerationSpecification,
+  specificationForSourcing,
+} from '../domain/generation-specification';
 import { ContentEngineOrchestratorService } from './content-engine-orchestrator.service';
 import { CandidateParseError } from './candidate-generator.service';
 import { EffectiveRuleSet, RuleConflict } from '../domain/effective-rules';
@@ -535,6 +539,114 @@ describe('legacy job provenance guard and exact-job execution', () => {
         jobId: 'job-1',
         candidateId: 'cand-unresolved',
       }),
+    );
+  });
+
+  it('verifies a library-anchored candidate against its pinned row', async () => {
+    const base = completeSpec() as unknown as GenerationSpecification;
+    const spec = specificationForSourcing(
+      base,
+      {
+        version: 1,
+        mode: 'library_anchored',
+        batchKey: 'batch',
+        anchoredPercent: 70,
+        batchTargetCount: base.targetCount,
+        fallbackReason: null,
+        slots: Array.from({ length: base.targetCount }, (_, slotIndex) => ({
+          slotIndex,
+          libraryIds: ['LIB-1'],
+        })),
+        seeds: [
+          {
+            libraryId: 'LIB-1',
+            role: 'FACT_SEED',
+            questionText: 'من سؤال المكتبة؟',
+            verifiedAnswer: 'هجر',
+            canonicalAnswer: 'هجر',
+            canonicalNumber: null,
+            sourceUrl: 'https://example.test/row',
+            verifiedOn: '2026-11-01',
+            revalidateAfter: null,
+            sourceWarning: null,
+          },
+        ],
+        hooks: [],
+      },
+      base.targetCount,
+    );
+    const candidateRow = {
+      _id: 'cand-doc-anchored',
+      jobId: 'job-1',
+      candidateId: 'cand-anchored',
+      status: 'screened_pass',
+      draft: {
+        prompt: { ar: 'سؤال جديد؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          correctOptionId: 'a',
+          options: [{ id: 'a', label: { ar: 'هجر' } }],
+        },
+      },
+      factualClaims: ['claim'],
+      factVerification: null,
+      sourcing: { mode: 'library_anchored', libraryIds: ['LIB-1'] },
+      compatibilityEvaluation: { preDraft: { blockers: [] } },
+      qualityEvaluation: null,
+    };
+    let generated = false;
+    const find = jest.fn(() => ({
+      sort: () => ({
+        lean: () => ({
+          exec: async () => (generated ? [candidateRow] : []),
+        }),
+      }),
+    }));
+    const verify = jest.fn();
+    const verifyAnchored = jest.fn(async () => ({
+      state: 'UNRESOLVED',
+      claims: [],
+    }));
+    const service = new ContentEngineOrchestratorService(
+      {
+        find,
+        updateOne: jest.fn(() => ({
+          exec: async () => ({ matchedCount: 1 }),
+        })),
+      } as never,
+      {
+        checkpoint: jest.fn(async () => undefined),
+        awaitReview: jest.fn(async () => undefined),
+        releaseForRetry: jest.fn(async () => undefined),
+        isCancellationRequested: async () => false,
+        holdsLease: async () => true,
+      } as never,
+      {
+        hasLedgerEntry: async () => false,
+        reservationIds: async () => [],
+      } as never,
+      { resolve: () => context([]) } as never,
+      {
+        generate: jest.fn(async () => {
+          generated = true;
+          return [];
+        }),
+      } as never,
+      {
+        beginBatch: jest.fn(),
+        screen: jest.fn(() => ({ passed: true, findings: [] })),
+      } as never,
+      { verify, verifyAnchored } as never,
+      { evaluate: jest.fn(() => ({ preDraft: { blockers: [] } })) } as never,
+      { judge: jest.fn() } as never,
+    );
+
+    await service.run({ ...job, generationSpec: spec } as never);
+
+    expect(verify).not.toHaveBeenCalled();
+    expect(verifyAnchored).toHaveBeenCalledWith(
+      ['claim'],
+      expect.objectContaining({ covered: true, libraryId: 'LIB-1' }),
     );
   });
 

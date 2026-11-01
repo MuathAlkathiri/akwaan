@@ -465,6 +465,34 @@ describe('draftProvenanceMetadata', () => {
     });
   });
 
+  it('flags a covered item for re-verification', () => {
+    expect(
+      draftProvenanceMetadata({}, sourcing, {
+        seedBinding: { covered: true, revalidateAfter: '2027-05-31' },
+      }).metadata?.revalidateAfter,
+    ).toBe('2027-05-31');
+  });
+
+  it('sets no date for a row that does not go stale, or lost coverage', () => {
+    for (const seedBinding of [
+      { covered: true, revalidateAfter: null },
+      { covered: false, reason: 'ANSWER_CHANGED' },
+    ]) {
+      expect(
+        draftProvenanceMetadata({}, sourcing, { seedBinding }).metadata,
+      ).not.toHaveProperty('revalidateAfter');
+    }
+  });
+
+  it('ignores a revalidation date a human edit left in the draft', () => {
+    expect(
+      draftProvenanceMetadata(
+        { metadata: { revalidateAfter: '2099-01-01' } },
+        sourcing,
+      ).metadata,
+    ).not.toHaveProperty('revalidateAfter');
+  });
+
   it('ignores provenance a human edit left in the draft', () => {
     expect(
       draftProvenanceMetadata(

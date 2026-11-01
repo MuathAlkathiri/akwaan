@@ -41,6 +41,10 @@ import {
 } from './generation-planner.service';
 import { CreativePlannerError } from '../domain/creative-plan.types';
 import { evaluateFamilyCompliance } from '../domain/family-compliance.policy';
+import {
+  bindStructuredSeed,
+  seedsForCandidate,
+} from '../domain/structured-seed-binding';
 
 /** Durable, one-job-at-a-time Phase 1c runner. It is not a scheduler or queue. */
 @Injectable()
@@ -404,7 +408,20 @@ export class ContentEngineOrchestratorService {
       for (const row of rows) {
         if (row.status !== 'screened_pass' || row.factVerification) continue;
         if (await this.stopIfCancelled(job)) return;
-        const result = await this.facts.verify(row.factualClaims ?? []);
+        const seeds = seedsForCandidate(
+          provenance.spec?.sourcing,
+          row.sourcing,
+        );
+        const result = seeds.length
+          ? await this.facts.verifyAnchored(
+              row.factualClaims ?? [],
+              bindStructuredSeed({
+                draft: row.draft,
+                seeds,
+                today: new Date().toISOString().slice(0, 10),
+              }),
+            )
+          : await this.facts.verify(row.factualClaims ?? []);
         await this.updateCandidate(job, String(row._id), {
           factVerification: result,
           ...(result.state === 'CONTRADICTED'

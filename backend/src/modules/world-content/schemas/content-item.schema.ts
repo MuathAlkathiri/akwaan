@@ -81,6 +81,7 @@ const ContentMetadataSchema = new MongooseSchema(
     tags: { type: [String], default: undefined },
     generationMode: { type: String, default: undefined },
     libraryIds: { type: [String], default: undefined },
+    revalidateAfter: { type: String, default: undefined },
   },
   { _id: false },
 );
@@ -145,6 +146,7 @@ export class ContentItem extends Document {
     tags?: string[];
     generationMode?: string;
     libraryIds?: string[];
+    revalidateAfter?: string;
   };
 }
 

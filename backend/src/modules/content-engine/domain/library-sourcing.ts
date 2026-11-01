@@ -206,13 +206,20 @@ export const sourcingForSlot = (
 export const draftProvenanceMetadata = (
   draft: Record<string, unknown>,
   sourcing: { mode: SourcingMode; libraryIds: string[] } | null | undefined,
+  factVerification?: Record<string, unknown> | null,
 ): { metadata?: Record<string, unknown> } => {
   const merged = { ...((draft.metadata ?? {}) as Record<string, unknown>) };
   delete merged.generationMode;
   delete merged.libraryIds;
+  delete merged.revalidateAfter;
   if (sourcing) {
     merged.generationMode = sourcing.mode;
     merged.libraryIds = sourcing.libraryIds;
+  }
+  const binding = factVerification?.seedBinding as
+    { covered?: boolean; revalidateAfter?: string | null } | undefined;
+  if (binding?.covered && binding.revalidateAfter) {
+    merged.revalidateAfter = binding.revalidateAfter;
   }
   return Object.keys(merged).length ? { metadata: merged } : {};
 };

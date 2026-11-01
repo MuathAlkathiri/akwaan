@@ -4,10 +4,14 @@ import {
   FACT_EVIDENCE_RETRIEVER,
   ClaimVerificationResult,
   FactEvidenceRetriever,
-  FactEvidenceState,
   FactVerificationResult,
   RetrievedFactEvidence,
+  StructuredSeedBinding,
 } from '../domain/fact-verification.types';
+import {
+  aggregateFactStates,
+  withSeedBinding,
+} from '../domain/structured-seed-binding';
 
 /** Factual verification is retrieval-backed and independent from quality. */
 @Injectable()
@@ -39,12 +43,20 @@ export class FactVerificationService {
         reason: 'CLAIM_LIMIT_REACHED',
       });
     }
-    const state = this.aggregate(results.map((result) => result.state));
+    const state = aggregateFactStates(results.map((result) => result.state));
     return {
       state,
       claims: results,
       automaticAdvance: state === 'SUPPORTED',
     };
+  }
+
+  /** Normal verification, with a library row vouching for the answer if it can. */
+  async verifyAnchored(
+    claims: string[],
+    binding: StructuredSeedBinding,
+  ): Promise<FactVerificationResult> {
+    return withSeedBinding(await this.verify(claims), binding);
   }
 
   private async verifyClaim(claim: string): Promise<ClaimVerificationResult> {
@@ -142,13 +154,6 @@ export class FactVerificationService {
     } catch {
       return false;
     }
-  }
-
-  private aggregate(states: FactEvidenceState[]): FactEvidenceState {
-    if (states.includes('CONTRADICTED')) return 'CONTRADICTED';
-    if (states.includes('UNRESOLVED')) return 'UNRESOLVED';
-    if (states.includes('UNSUPPORTED')) return 'UNSUPPORTED';
-    return 'SUPPORTED';
   }
 
   private maxAttempts(): number {

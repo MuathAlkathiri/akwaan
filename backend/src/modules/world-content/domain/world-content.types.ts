@@ -494,6 +494,7 @@ export interface ContentItemView {
     tags?: string[];
     generationMode?: string;
     libraryIds?: string[];
+    revalidateAfter?: string;
   };
 }
 
