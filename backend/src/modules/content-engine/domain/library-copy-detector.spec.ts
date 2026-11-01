@@ -130,6 +130,7 @@ describe('findLibraryCopy on the real rows', () => {
   it('covers every row that can anchor RYO or Closest today', () => {
     expect(LIBRARY_COPY_CASES.map((entry) => entry.libraryId)).toEqual([
       'LIB-009',
+      'LIB-010',
       'LIB-017',
       'LIB-018',
       'LIB-019',

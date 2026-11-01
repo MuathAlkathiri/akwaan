@@ -31,7 +31,7 @@ class TestAuthoringContext(unittest.TestCase):
         scopes = self.manifest["scopes"]
         
         self.assertEqual(len(worlds), 12, "Should have exactly 12 worlds")
-        self.assertEqual(len(scopes), 59, "Should have exactly 59 scopes")
+        self.assertEqual(len(scopes), 61, "Should have exactly 61 scopes")
         
         total_scopes = 0
         for w, wdata in worlds.items():
@@ -39,7 +39,7 @@ class TestAuthoringContext(unittest.TestCase):
             for s in wdata["scopes"]:
                 self.assertIn(f"{w}/{s}", scopes)
         
-        self.assertEqual(total_scopes, 59, "Sum of per-world scopes must equal 59")
+        self.assertEqual(total_scopes, 61, "Sum of per-world scopes must equal 61")
         
         for s_slug, s_data in scopes.items():
             self.assertTrue(os.path.exists(s_data["scopePath"]))

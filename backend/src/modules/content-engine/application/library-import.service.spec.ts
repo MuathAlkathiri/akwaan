@@ -4,6 +4,7 @@ import ExcelJS from 'exceljs';
 import mongoose, { Model } from 'mongoose';
 import {
   isLibraryHookWriterEligible,
+  isLibraryRowEligibleForMechanic,
   isLibraryRowGenerationEligible,
   LIBRARY_HOOK_COLUMNS,
   LIBRARY_REQUIRED_COLUMNS,
@@ -134,7 +135,7 @@ describe('library workbook import', () => {
   it('never lets PARK or REJECT rows reach generation', async () => {
     const rows = await fixtureRows();
     const eligible = rows.filter(isLibraryRowGenerationEligible);
-    expect(eligible).toHaveLength(16);
+    expect(eligible).toHaveLength(17);
     expect(
       eligible.every(
         (row) => row.reviewStatus === 'APPROVED' && row.scopeStatus === 'MATCH',
@@ -146,7 +147,7 @@ describe('library workbook import', () => {
     const byId = new Map(
       (await fixtureRows()).map((row) => [row.libraryId, row]),
     );
-    for (const id of ['LIB-004', 'LIB-010', 'LIB-024', 'LIB-035', 'LIB-077']) {
+    for (const id of ['LIB-004', 'LIB-024', 'LIB-035', 'LIB-077']) {
       expect(byId.get(id)?.reviewStatus).toBe('APPROVED');
       expect(isLibraryRowGenerationEligible(byId.get(id)!)).toBe(false);
     }
@@ -287,7 +288,7 @@ describe('LibraryImportService', () => {
     expect(await service.importWorkbook({ rows, hooks: [] })).toMatchObject({
       total: 78,
       approved: 21,
-      generationEligible: 16,
+      generationEligible: 17,
       created: 78,
       updated: 0,
       unchanged: 0,
@@ -393,6 +394,72 @@ describe('LibraryImportService', () => {
     ]);
     expect(await find('la-liga', 'top-5')).toEqual(['LIB-074']);
     expect(await find('la-liga', 'read-your-opponent')).toEqual([]);
+  });
+});
+
+describe('the Closest guard', () => {
+  const rowWith = (answer: string) =>
+    mapLibrarySheetRow({
+      id: 'LIB-1',
+      question: 'س؟',
+      world: 'football',
+      scope: 'saudi-league',
+      scope_status: 'MATCH',
+      akwaan_fit: 'RYO / Closest (عدد)',
+      role: 'FACT_SEED',
+      review_status: 'APPROVED',
+      asof_needed: 'N',
+      verified_answer: answer,
+      verified_on: '2026-11-01',
+      source_url: 'https://example.com/a',
+    });
+
+  it('keeps a row with a name answer out of Closest, but not RYO', () => {
+    const row = rowWith('محمد الدعيع');
+    expect(row.canonicalNumber).toBeNull();
+    expect(isLibraryRowEligibleForMechanic(row, 'closest')).toBe(false);
+    expect(isLibraryRowEligibleForMechanic(row, 'read-your-opponent')).toBe(
+      true,
+    );
+  });
+
+  it('keeps a row with a numeric answer in Closest', () => {
+    expect(isLibraryRowEligibleForMechanic(rowWith('96 نقطة'), 'closest')).toBe(
+      true,
+    );
+  });
+
+  it('applies when rows are read for a job', async () => {
+    const { service } = fakeModel();
+    await service.importWorkbook({
+      rows: [rowWith('محمد الدعيع')],
+      hooks: [],
+    });
+    const find = (mechanicKey: string) =>
+      service.findEligible({
+        worldKey: 'football',
+        scopeKey: 'saudi-league',
+        mechanicKey,
+      });
+    expect(await find('closest')).toEqual([]);
+    expect(await find('read-your-opponent')).toHaveLength(1);
+  });
+});
+
+describe('the newly matched saudi-national-team row', () => {
+  it('feeds LIB-010 to RYO only', async () => {
+    const { service } = fakeModel();
+    await service.importWorkbook(await fixtureWorkbook());
+    const find = async (mechanicKey: string) =>
+      (
+        await service.findEligible({
+          worldKey: 'football',
+          scopeKey: 'saudi-national-team',
+          mechanicKey,
+        })
+      ).map((row) => row.libraryId);
+    expect(await find('read-your-opponent')).toEqual(['LIB-010']);
+    expect(await find('closest')).toEqual([]);
   });
 });
 

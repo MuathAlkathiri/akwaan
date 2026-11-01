@@ -200,7 +200,7 @@ describe('Verified question library on real Mongo', () => {
       expect(await library.importWorkbook(workbook)).toMatchObject({
         total: 78,
         approved: 21,
-        generationEligible: 16,
+        generationEligible: 17,
         created: 78,
         updated: 0,
         unchanged: 0,

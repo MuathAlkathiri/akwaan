@@ -2,7 +2,10 @@
 """
 Canonical provisioning tool for Active World Scope Expansion.
 
-This script safely provisions the 6 approved missing Scopes:
+This script safely provisions the approved missing Scopes:
+  - World: 'football' (عالم كرة القدم):
+      - 'uefa-super-cup' (كأس السوبر الأوروبي)
+      - 'saudi-national-team' (المنتخب السعودي)
   - World: 'video-games' (عالم الالعاب الالكترونية):
       - 'minecraft' (ماينكرافت)
       - 'god-of-war' (قود اوف وار)
@@ -53,10 +56,29 @@ PLAN_PATH_DEFAULT = "/tmp/akwaan-active-world-scopes-plan.json"
 CANONICAL_WORLD_ALIASES: dict[str, tuple[str, ...]] = {
     "video-games": ("video-games", "world-1785784447249", "عالم الالعاب الالكترونية", "عالم الألعاب الإلكترونية", "فيديو قيمز"),
     "puzzles": ("puzzles", "world-1786388973542", "عالم الالغاز", "عالم الألغاز"),
+    "football": ("football", "test", "عالم كرة القدم", "كرة قدم"),
 }
 
 # The approved active-world scopes
 APPROVED_SCOPES_SPEC: dict[str, list[dict[str, Any]]] = {
+    # Football / عالم كرة القدم — approved 2026-11-01. Both Scopes need this
+    # record before a DRAFT can exist; the file alone only permits generation.
+    "football": [
+        {
+            "name": "كأس السوبر الأوروبي",
+            "slug": "uefa-super-cup",
+            "description": "مواجهة بطلي أوروبا السنوية عبر تاريخ البطولة",
+            "status": "active",
+            "excludedChallengeTypeIds": [],
+        },
+        {
+            "name": "المنتخب السعودي",
+            "slug": "saudi-national-team",
+            "description": "المنتخب السعودي الأول وتاريخه في البطولات",
+            "status": "active",
+            "excludedChallengeTypeIds": [],
+        },
+    ],
     "video-games": [
         {
             "name": "ماينكرافت",

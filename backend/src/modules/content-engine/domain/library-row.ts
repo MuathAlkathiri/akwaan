@@ -422,6 +422,18 @@ export const isLibraryRowGenerationEligible = (
   Boolean(row.worldKey) &&
   Boolean(row.scopeKey);
 
+/**
+ * Eligibility for one mechanic. A Closest target must be a number: a name would
+ * pin a row no Closest question can be built from or bound to.
+ */
+export const isLibraryRowEligibleForMechanic = (
+  row: EligibilityFields & Pick<LibraryRow, 'mechanicKeys' | 'canonicalNumber'>,
+  mechanicKey: string,
+): boolean =>
+  isLibraryRowGenerationEligible(row) &&
+  row.mechanicKeys.includes(mechanicKey) &&
+  (mechanicKey !== 'closest' || row.canonicalNumber !== null);
+
 /** Approval covers the fact; only exemplar candidates lend their wording. */
 export const libraryExemplarWording = (
   row: EligibilityFields & Pick<LibraryRow, 'questionText'>,

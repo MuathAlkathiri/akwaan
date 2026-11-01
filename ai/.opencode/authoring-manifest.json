@@ -142,7 +142,9 @@
         "la-liga",
         "premier-league",
         "saudi-league",
+        "saudi-national-team",
         "serie-a",
+        "uefa-super-cup",
         "world-cup"
       ]
     },
@@ -341,6 +343,18 @@
       "scopePath": "ai/.opencode/skills/worlds/football/scopes/serie-a/SCOPE.md",
       "knowledgePath": "ai/.opencode/skills/worlds/football/scopes/serie-a/KNOWLEDGE.md",
       "exemplarsPath": "ai/.opencode/skills/worlds/football/scopes/serie-a/EXEMPLARS.md"
+    },
+    "football/uefa-super-cup": {
+      "world": "football",
+      "scopePath": "ai/.opencode/skills/worlds/football/scopes/uefa-super-cup/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/football/scopes/uefa-super-cup/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/football/scopes/uefa-super-cup/EXEMPLARS.md"
+    },
+    "football/saudi-national-team": {
+      "world": "football",
+      "scopePath": "ai/.opencode/skills/worlds/football/scopes/saudi-national-team/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/football/scopes/saudi-national-team/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/football/scopes/saudi-national-team/EXEMPLARS.md"
     },
     "general-knowledge/history": {
       "world": "general-knowledge",
