@@ -493,6 +493,39 @@ describe("Content Engine Slice 3D: Review Studio Creative Slot & Visibility UX",
       expect(approveBtn).toBeDisabled();
     });
 
+    it("shows every leakage warning to the reviewer, even with the same code", async () => {
+      const warned = mockCandidate({
+        candidateId: "cand-warned",
+        findings: [
+          {
+            code: "POSSIBLE_ANSWER_LEAKAGE",
+            severity: "warning",
+            message: "the word in the prompt resembles the answer",
+          },
+          {
+            code: "POSSIBLE_ANSWER_LEAKAGE",
+            severity: "warning",
+            message: "only the correct option shares this word",
+          },
+        ],
+      });
+      vi.spyOn(api, "listCandidates").mockResolvedValue([warned]);
+      vi.spyOn(api, "getCandidate").mockResolvedValue(warned);
+
+      render(
+        <WithQueryClient>
+          <ContentEngineReviewWorkspace />
+        </WithQueryClient>,
+      );
+      fireEvent.click(await screen.findByTestId("surface-tab-review"));
+      fireEvent.click(await screen.findByTestId("candidate-row-cand-warned"));
+
+      const findings = await screen.findAllByTestId("candidate-finding");
+      expect(findings).toHaveLength(2);
+      expect(findings[0]).toHaveTextContent("resembles the answer");
+      expect(findings[1]).toHaveTextContent("only the correct option");
+    });
+
     it("displays unverified notice in approval section when compliance is pending", async () => {
       const unverifiedCandidate = mockCandidate({
         candidateId: "cand-unverified",
