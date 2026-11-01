@@ -16,6 +16,7 @@ import {
   LibraryWorkbookError,
   readLibraryWorkbook,
 } from '../infrastructure/library-workbook.reader';
+import { bindStructuredSeed } from '../domain/structured-seed-binding';
 import { EngineLibraryHookDocument } from '../schemas/engine-library-hook.schema';
 import {
   EngineLibraryRowDocument,
@@ -437,6 +438,52 @@ describe('weak source warning', () => {
         source_url: sourceUrl,
       }).sourceWarning,
     ).toBe(expected);
+  });
+});
+
+describe('LIB-021 against its stored answer', () => {
+  const bind = async (correctLabel: string) => {
+    const row = (await fixtureRows()).find((r) => r.libraryId === 'LIB-021')!;
+    return bindStructuredSeed({
+      draft: {
+        prompt: { ar: 'ما كان عمل دوما قبل أن يتحول؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          correctOptionId: 'a',
+          options: [{ id: 'a', label: { ar: correctLabel } }],
+        },
+      },
+      seeds: [
+        {
+          libraryId: row.libraryId,
+          role: row.role,
+          questionText: row.questionText,
+          verifiedAnswer: row.verifiedAnswer!,
+          canonicalAnswer: row.canonicalAnswer,
+          canonicalNumber: row.canonicalNumber,
+          sourceUrl: row.sourceUrl!,
+          verifiedOn: row.verifiedOn!,
+          revalidateAfter: row.revalidateAfter,
+          sourceWarning: row.sourceWarning,
+        },
+      ],
+      today: '2026-11-01',
+    });
+  };
+
+  it('binds on the exact answer text and keeps its source warning', async () => {
+    const binding = await bind('زعيم طائفة دينية');
+    expect(binding.covered).toBe(true);
+    expect(binding.covered && binding.evidence.sourceWarning).toBe(
+      'WEAK_SOURCE',
+    );
+  });
+
+  it('does not bind on the old wording', async () => {
+    expect(await bind('زعيم طائفة «الجنة الأبدية»')).toMatchObject({
+      covered: false,
+      reason: 'ANSWER_CHANGED',
+    });
   });
 });
 
