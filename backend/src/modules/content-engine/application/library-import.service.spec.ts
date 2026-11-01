@@ -9,6 +9,7 @@ import {
   LIBRARY_REQUIRED_COLUMNS,
   LibraryHook,
   LibraryRow,
+  mapLibrarySheetRow,
 } from '../domain/library-row';
 import {
   LibraryWorkbook,
@@ -408,9 +409,34 @@ describe('weak source warning', () => {
     expect(isLibraryRowGenerationEligible(row)).toBe(true);
   });
 
-  it('flags no other row', async () => {
-    const flagged = (await fixtureRows()).filter((row) => row.sourceWarning);
-    expect(flagged.map((row) => row.libraryId)).toEqual(['LIB-021']);
+  it('flags every row citing a weak host, and only those', async () => {
+    const rows = await fixtureRows();
+    expect(
+      rows.filter((row) => row.sourceWarning).map((row) => row.libraryId),
+    ).toEqual(['LIB-021', 'LIB-059']);
+  });
+
+  it.each([
+    ['https://daddyjim.ai/one-piece/manga-chapter/Chapter-579', 'WEAK_SOURCE'],
+    ['https://www.oddscalendar.com/football/standings', 'WEAK_SOURCE'],
+    ['https://otakumode.com/otapedia/x', 'WEAK_SOURCE'],
+    ['https://blog.otakumode.com/x', 'WEAK_SOURCE'],
+    ['https://notdaddyjim.ai/x', null],
+    ['https://en.wikipedia.org/wiki/x', null],
+  ])('reads the host of %s', (sourceUrl, expected) => {
+    expect(
+      mapLibrarySheetRow({
+        id: 'LIB-1',
+        question: 'س؟',
+        scope_status: 'MATCH',
+        role: 'FACT_SEED',
+        review_status: 'APPROVED',
+        asof_needed: 'N',
+        verified_answer: 'ج',
+        verified_on: '2026-11-01',
+        source_url: sourceUrl,
+      }).sourceWarning,
+    ).toBe(expected);
   });
 });
 

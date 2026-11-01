@@ -58,7 +58,11 @@ export const LIBRARY_APPROVED_HOOK_IDS: readonly string[] = [
  * usable and carries a warning into review, so the warning clears itself when
  * the source is replaced.
  */
-export const LIBRARY_WEAK_SOURCE_HOSTS: readonly string[] = ['otakumode.com'];
+export const LIBRARY_WEAK_SOURCE_HOSTS: readonly string[] = [
+  'daddyjim.ai',
+  'oddscalendar.com',
+  'otakumode.com',
+];
 export type LibrarySourceWarning = 'WEAK_SOURCE';
 
 /** An `asof_needed` row with no event estimate is re-checked after this long. */
@@ -280,7 +284,11 @@ const sourceWarningFor = (
 ): LibrarySourceWarning | null => {
   if (!sourceUrl || !isHttpUrl(sourceUrl)) return null;
   const host = new URL(sourceUrl).hostname.replace(/^www\./, '');
-  return LIBRARY_WEAK_SOURCE_HOSTS.includes(host) ? 'WEAK_SOURCE' : null;
+  return LIBRARY_WEAK_SOURCE_HOSTS.some(
+    (weak) => host === weak || host.endsWith(`.${weak}`),
+  )
+    ? 'WEAK_SOURCE'
+    : null;
 };
 
 const hashRow = (row: object): string =>
