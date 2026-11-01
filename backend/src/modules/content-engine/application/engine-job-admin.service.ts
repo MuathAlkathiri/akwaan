@@ -27,7 +27,6 @@ import {
   BudgetExceededError,
   CONTENT_ENGINE_ENABLED,
   ENGINE_AI_PROVIDER,
-  ENGINE_EVIDENCE_RETRIEVAL_ENABLED,
   ENGINE_LIVE_PROVIDER_ENABLED,
   microsToSar,
   PricingUnavailableError,
@@ -161,7 +160,7 @@ export class EngineJobAdminService {
     private readonly aiProvider?: AiProvider | null,
     @Optional()
     @Inject(FACT_EVIDENCE_RETRIEVER)
-    private readonly factRetriever?: FactEvidenceRetriever | null,
+    _factRetriever?: FactEvidenceRetriever | null,
     @Optional()
     private readonly historicalCoverage?: HistoricalCoverageService,
     @Optional()
@@ -173,15 +172,6 @@ export class EngineJobAdminService {
   private truthy(key: string): boolean {
     return ['true', '1', 'yes', 'on'].includes(
       this.config.get<string>(key)?.trim().toLowerCase() ?? '',
-    );
-  }
-
-  private isJudgeEligible(): boolean {
-    if (this.factRetriever) return true;
-    return (
-      this.truthy(CONTENT_ENGINE_ENABLED) &&
-      this.truthy(ENGINE_EVIDENCE_RETRIEVAL_ENABLED) &&
-      this.truthy('WIGOLO_ENABLED')
     );
   }
 
@@ -250,11 +240,12 @@ export class EngineJobAdminService {
       },
     });
 
-    const judgeEligible = this.isJudgeEligible();
-    const judgeCallsExpected = judgeEligible ? generationSpec.targetCount : 0;
-    const conditionalJudgeEstimatedMicros = judgeEligible
-      ? maxJudgeEstimatedMicros
-      : 0;
+    // Retrieval off or failing leaves claims UNRESOLVED, and the orchestrator
+    // judges those, so every candidate can reach the judge whatever the
+    // retrieval config says. Estimating less would understate the bill.
+    const judgeEligible = true;
+    const judgeCallsExpected = generationSpec.targetCount;
+    const conditionalJudgeEstimatedMicros = maxJudgeEstimatedMicros;
     const estimatedMicros =
       generationEstimatedMicros + conditionalJudgeEstimatedMicros;
 
@@ -452,7 +443,7 @@ export class EngineJobAdminService {
             maxOutputTokens: QUALITY_JUDGE_MAX_OUTPUT_TOKENS,
           },
         });
-        estimatedMicros = genProbe + (this.isJudgeEligible() ? judgeProbe : 0);
+        estimatedMicros = genProbe + judgeProbe;
         pricingConfigured = true;
       } catch (error) {
         if (error instanceof PricingUnavailableError) {

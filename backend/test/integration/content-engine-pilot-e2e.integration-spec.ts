@@ -567,10 +567,13 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
           .expect(201)
       ).body.data;
 
-      expect(preflight.judgeEligible).toBe(false);
-      expect(preflight.conditionalJudgeEstimatedMicros).toBe(0);
+      // No retriever is bound here, so claims stay UNRESOLVED and get judged.
+      expect(preflight.judgeEligible).toBe(true);
+      expect(preflight.conditionalJudgeEstimatedMicros).toBe(
+        preflight.maxJudgeEstimatedMicros,
+      );
       expect(preflight.estimatedMicros).toBe(
-        preflight.generationEstimatedMicros,
+        preflight.generationEstimatedMicros + preflight.maxJudgeEstimatedMicros,
       );
 
       const submitted = (
