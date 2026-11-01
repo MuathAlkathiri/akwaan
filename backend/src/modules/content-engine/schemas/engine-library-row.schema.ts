@@ -8,6 +8,7 @@ import {
   LibraryRole,
   LibraryScopeStatus,
   LibrarySheetRow,
+  LibrarySourceWarning,
   LibraryTop5Facts,
 } from '../domain/library-row';
 
@@ -44,6 +45,10 @@ export class EngineLibraryRowDocument {
   @Prop({ type: String, default: null }) canonicalAnswer!: string | null;
   @Prop({ type: Number, default: null }) canonicalNumber!: number | null;
   @Prop({ type: String, default: null }) sourceUrl!: string | null;
+
+  @Prop({ type: String, default: null })
+  sourceWarning!: LibrarySourceWarning | null;
+
   @Prop({ type: String, default: null }) verifiedOn!: string | null;
   @Prop({ type: Boolean, required: true }) asofNeeded!: boolean;
 

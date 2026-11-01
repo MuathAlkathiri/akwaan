@@ -492,6 +492,8 @@ export interface ContentItemView {
     source?: string;
     notes?: string;
     tags?: string[];
+    generationMode?: string;
+    libraryIds?: string[];
   };
 }
 

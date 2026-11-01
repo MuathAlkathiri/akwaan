@@ -1,12 +1,21 @@
 import ExcelJS from 'exceljs';
 import {
+  LIBRARY_HOOK_COLUMNS,
   LIBRARY_REQUIRED_COLUMNS,
+  LibraryHook,
   LibraryRow,
   LibrarySheetRow,
+  mapLibraryHookRow,
   mapLibrarySheetRow,
 } from '../domain/library-row';
 
 export const LIBRARY_SHEET_NAME = 'Library';
+export const LIBRARY_HOOKS_SHEET_NAME = 'Hooks';
+
+export interface LibraryWorkbook {
+  rows: LibraryRow[];
+  hooks: LibraryHook[];
+}
 
 export class LibraryWorkbookError extends Error {
   constructor(readonly problems: string[]) {
@@ -29,13 +38,16 @@ const cellText = (value: ExcelJS.CellValue): string => {
   return '';
 };
 
-const readSheetRows = (sheet: ExcelJS.Worksheet): LibrarySheetRow[] => {
+const readSheetRows = (
+  sheet: ExcelJS.Worksheet,
+  requiredColumns: readonly string[],
+): LibrarySheetRow[] => {
   const columns = new Map<number, string>();
   sheet.getRow(1).eachCell((cell, column) => {
     columns.set(column, cellText(cell.value));
   });
 
-  const missing = LIBRARY_REQUIRED_COLUMNS.filter(
+  const missing = requiredColumns.filter(
     (column) => ![...columns.values()].includes(column),
   );
   if (missing.length) {
@@ -58,13 +70,37 @@ const readSheetRows = (sheet: ExcelJS.Worksheet): LibrarySheetRow[] => {
   return rows;
 };
 
+const readUnique = <T>(
+  sheetRows: LibrarySheetRow[],
+  map: (row: LibrarySheetRow) => T,
+  idOf: (row: T) => string,
+  problems: string[],
+): T[] => {
+  const mapped: T[] = [];
+  const seen = new Set<string>();
+  for (const sheetRow of sheetRows) {
+    try {
+      const row = map(sheetRow);
+      if (seen.has(idOf(row))) {
+        problems.push(`${idOf(row)}: duplicate id`);
+        continue;
+      }
+      seen.add(idOf(row));
+      mapped.push(row);
+    } catch (error) {
+      problems.push((error as Error).message);
+    }
+  }
+  return mapped;
+};
+
 /**
  * Reads the whole workbook or nothing. A single bad row refuses the import, so a
  * half-understood file can never leave the library half-updated.
  */
 export const readLibraryWorkbook = async (
   file: Buffer,
-): Promise<LibraryRow[]> => {
+): Promise<LibraryWorkbook> => {
   const workbook = new ExcelJS.Workbook();
   // exceljs declares its own Buffer shape, which Node's generic Buffer misses.
   await workbook.xlsx.load(file as unknown as ExcelJS.Buffer);
@@ -72,24 +108,27 @@ export const readLibraryWorkbook = async (
   if (!sheet) {
     throw new LibraryWorkbookError([`missing sheet "${LIBRARY_SHEET_NAME}"`]);
   }
+  const hooksSheet = workbook.getWorksheet(LIBRARY_HOOKS_SHEET_NAME);
+  if (!hooksSheet) {
+    throw new LibraryWorkbookError([
+      `missing sheet "${LIBRARY_HOOKS_SHEET_NAME}"`,
+    ]);
+  }
 
   const problems: string[] = [];
-  const rows: LibraryRow[] = [];
-  const seen = new Set<string>();
-  for (const sheetRow of readSheetRows(sheet)) {
-    try {
-      const row = mapLibrarySheetRow(sheetRow);
-      if (seen.has(row.libraryId)) {
-        problems.push(`${row.libraryId}: duplicate id`);
-        continue;
-      }
-      seen.add(row.libraryId);
-      rows.push(row);
-    } catch (error) {
-      problems.push((error as Error).message);
-    }
-  }
+  const rows = readUnique(
+    readSheetRows(sheet, LIBRARY_REQUIRED_COLUMNS),
+    mapLibrarySheetRow,
+    (row) => row.libraryId,
+    problems,
+  );
+  const hooks = readUnique(
+    readSheetRows(hooksSheet, LIBRARY_HOOK_COLUMNS),
+    mapLibraryHookRow,
+    (hook) => hook.hookId,
+    problems,
+  );
   if (!rows.length && !problems.length) problems.push('no rows found');
   if (problems.length) throw new LibraryWorkbookError(problems);
-  return rows;
+  return { rows, hooks };
 };

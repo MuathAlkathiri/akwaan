@@ -46,6 +46,7 @@ import {
   hasIncompleteHistoricalVerification,
 } from './deterministic-screen.service';
 import { evaluateFamilyCompliance } from '../domain/family-compliance.policy';
+import { draftProvenanceMetadata } from '../domain/library-sourcing';
 
 const REVIEWABLE_PIPELINE_STATUSES = [
   'awaiting_review',
@@ -1165,6 +1166,7 @@ export class ContentEngineReviewService {
     const sanitizedDraft = this.stripTargetFields(candidate.draft);
     const raw = {
       ...sanitizedDraft,
+      ...draftProvenanceMetadata(sanitizedDraft, candidate.sourcing),
       scopeId: String(refs.scope._id),
       compatibleChallengeTypeIds: [String(refs.challengeType._id)],
       status: ContentItemStatus.DRAFT,

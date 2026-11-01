@@ -3,14 +3,19 @@ import { join } from 'path';
 import ExcelJS from 'exceljs';
 import mongoose, { Model } from 'mongoose';
 import {
+  isLibraryHookWriterEligible,
   isLibraryRowGenerationEligible,
+  LIBRARY_HOOK_COLUMNS,
   LIBRARY_REQUIRED_COLUMNS,
+  LibraryHook,
   LibraryRow,
 } from '../domain/library-row';
 import {
+  LibraryWorkbook,
   LibraryWorkbookError,
   readLibraryWorkbook,
 } from '../infrastructure/library-workbook.reader';
+import { EngineLibraryHookDocument } from '../schemas/engine-library-hook.schema';
 import {
   EngineLibraryRowDocument,
   EngineLibraryRowSchema,
@@ -23,52 +28,67 @@ import { LibraryImportService } from './library-import.service';
 
 const FIXTURE = join(__dirname, '../testing/fixtures/akwaan_library_v1.xlsx');
 
-const fixtureRows = (): Promise<LibraryRow[]> =>
+const fixtureWorkbook = (): Promise<LibraryWorkbook> =>
   readLibraryWorkbook(readFileSync(FIXTURE));
 
-type Stored = LibraryRow & { retired: boolean };
+const fixtureRows = async (): Promise<LibraryRow[]> =>
+  (await fixtureWorkbook()).rows;
 
-/** Enough of the Model for the service, with counted writes. */
-const fakeModel = () => {
+type Stored = (LibraryRow | LibraryHook) & { retired: boolean };
+
+/** Enough of a Model for the service, with counted writes. */
+const fakeCollection = (idField: 'libraryId' | 'hookId') => {
   const docs = new Map<string, Stored>();
   const writes = { bulkWrite: 0, updateMany: 0 };
+  const idOf = (row: Stored) =>
+    (row as unknown as Record<string, string>)[idField];
   const query = (rows: Stored[]) => ({
     sort: () => query(rows),
     lean: () => ({ exec: () => Promise.resolve(rows) }),
   });
   const model = {
     find: (filter: Record<string, unknown>) => {
-      const rows = [...docs.values()].filter(
-        (doc) =>
-          (filter.worldKey === undefined || doc.worldKey === filter.worldKey) &&
-          (filter.scopeKey === undefined || doc.scopeKey === filter.scopeKey) &&
+      const rows = [...docs.values()].filter((doc) => {
+        const row = doc as unknown as Record<string, unknown>;
+        return (
+          (filter.worldKey === undefined || row.worldKey === filter.worldKey) &&
+          (filter.scopeKey === undefined || row.scopeKey === filter.scopeKey) &&
           (filter.mechanicKeys === undefined ||
             doc.mechanicKeys.includes(filter.mechanicKeys as string)) &&
-          (filter.retired === undefined || doc.retired === filter.retired),
-      );
+          (filter.retired === undefined || doc.retired === filter.retired)
+        );
+      });
       return query(rows);
     },
     bulkWrite: (ops: Array<{ updateOne: { update: { $set: Stored } } }>) => {
       writes.bulkWrite += 1;
       for (const op of ops) {
         const row = op.updateOne.update.$set;
-        docs.set(row.libraryId, row);
+        docs.set(idOf(row), row);
       }
       return Promise.resolve();
     },
-    updateMany: (filter: { libraryId: { $in: string[] } }) => {
+    updateMany: (filter: Record<string, { $in: string[] }>) => {
       writes.updateMany += 1;
-      for (const id of filter.libraryId.$in) {
+      for (const id of filter[idField].$in) {
         docs.get(id)!.retired = true;
       }
       return Promise.resolve();
     },
   };
+  return { docs, writes, model };
+};
+
+const fakeModel = () => {
+  const rows = fakeCollection('libraryId');
+  const hooks = fakeCollection('hookId');
   return {
-    docs,
-    writes,
+    docs: rows.docs,
+    hookDocs: hooks.docs,
+    writes: rows.writes,
     service: new LibraryImportService(
-      model as unknown as Model<EngineLibraryRowDocument>,
+      rows.model as unknown as Model<EngineLibraryRowDocument>,
+      hooks.model as unknown as Model<EngineLibraryHookDocument>,
     ),
   };
 };
@@ -79,6 +99,7 @@ const workbookWith = async (
 ): Promise<Buffer> => {
   const headers = [...LIBRARY_REQUIRED_COLUMNS, ...extraHeaders];
   const workbook = new ExcelJS.Workbook();
+  workbook.addWorksheet('Hooks').addRow([...LIBRARY_HOOK_COLUMNS]);
   const sheet = workbook.addWorksheet('Library');
   sheet.addRow(headers);
   for (const row of rows) {
@@ -205,6 +226,7 @@ describe('library workbook import', () => {
 
   it('refuses a workbook missing a required column', async () => {
     const workbook = new ExcelJS.Workbook();
+    workbook.addWorksheet('Hooks').addRow([...LIBRARY_HOOK_COLUMNS]);
     workbook.addWorksheet('Library').addRow(['id', 'question']);
     await expect(
       readLibraryWorkbook(Buffer.from(await workbook.xlsx.writeBuffer())),
@@ -225,7 +247,7 @@ describe('LibraryImportService', () => {
     const { service, writes } = fakeModel();
     const rows = await fixtureRows();
 
-    expect(await service.importRows(rows)).toMatchObject({
+    expect(await service.importWorkbook({ rows, hooks: [] })).toMatchObject({
       total: 78,
       approved: 21,
       generationEligible: 16,
@@ -234,7 +256,7 @@ describe('LibraryImportService', () => {
       unchanged: 0,
       retired: 0,
     });
-    expect(await service.importRows(rows)).toMatchObject({
+    expect(await service.importWorkbook({ rows, hooks: [] })).toMatchObject({
       created: 0,
       updated: 0,
       unchanged: 78,
@@ -246,26 +268,28 @@ describe('LibraryImportService', () => {
   it('updates a changed row by id and leaves the others alone', async () => {
     const { service, docs } = fakeModel();
     const rows = await fixtureRows();
-    await service.importRows(rows);
+    await service.importWorkbook({ rows, hooks: [] });
 
     const edited = rows.map((row) =>
       row.libraryId === 'LIB-069'
         ? { ...row, canonicalNumber: 97, rowHash: 'changed' }
         : row,
     );
-    expect(await service.importRows(edited)).toMatchObject({
+    expect(
+      await service.importWorkbook({ rows: edited, hooks: [] }),
+    ).toMatchObject({
       created: 0,
       updated: 1,
       unchanged: 77,
     });
     expect(docs.size).toBe(78);
-    expect(docs.get('LIB-069')?.canonicalNumber).toBe(97);
+    expect((docs.get('LIB-069') as LibraryRow).canonicalNumber).toBe(97);
   });
 
   it('applies a demotion, so a withdrawn approval stops feeding', async () => {
     const { service } = fakeModel();
     const rows = await fixtureRows();
-    await service.importRows(rows);
+    await service.importWorkbook({ rows, hooks: [] });
     const target = {
       worldKey: 'football',
       scopeKey: 'saudi-league',
@@ -275,20 +299,21 @@ describe('LibraryImportService', () => {
       (await service.findEligible(target)).map((row) => row.libraryId),
     ).toEqual(['LIB-069']);
 
-    await service.importRows(
-      rows.map((row) =>
+    await service.importWorkbook({
+      rows: rows.map((row) =>
         row.libraryId === 'LIB-069'
           ? { ...row, reviewStatus: 'PARK', rowHash: 'demoted' }
           : row,
       ),
-    );
+      hooks: [],
+    });
     expect(await service.findEligible(target)).toEqual([]);
   });
 
   it('retires a dropped row and restores it when it returns', async () => {
     const { service, docs } = fakeModel();
     const rows = await fixtureRows();
-    await service.importRows(rows);
+    await service.importWorkbook({ rows, hooks: [] });
     const target = {
       worldKey: 'anime',
       scopeKey: 'demon-slayer',
@@ -296,11 +321,13 @@ describe('LibraryImportService', () => {
     };
 
     const without = rows.filter((row) => row.libraryId !== 'LIB-021');
-    expect(await service.importRows(without)).toMatchObject({ retired: 1 });
+    expect(
+      await service.importWorkbook({ rows: without, hooks: [] }),
+    ).toMatchObject({ retired: 1 });
     expect(docs.get('LIB-021')?.retired).toBe(true);
     expect(await service.findEligible(target)).toEqual([]);
 
-    expect(await service.importRows(rows)).toMatchObject({
+    expect(await service.importWorkbook({ rows, hooks: [] })).toMatchObject({
       updated: 1,
       retired: 0,
     });
@@ -311,7 +338,7 @@ describe('LibraryImportService', () => {
 
   it('finds rows by Scope and mechanic, not by Scope alone', async () => {
     const { service } = fakeModel();
-    await service.importRows(await fixtureRows());
+    await service.importWorkbook(await fixtureWorkbook());
     const find = async (scopeKey: string, mechanicKey: string) =>
       (
         await service.findEligible({
@@ -329,6 +356,61 @@ describe('LibraryImportService', () => {
     ]);
     expect(await find('la-liga', 'top-5')).toEqual(['LIB-074']);
     expect(await find('la-liga', 'read-your-opponent')).toEqual([]);
+  });
+});
+
+describe('library hooks', () => {
+  it('imports all twelve and offers only H01-H07 to the writer', async () => {
+    const { hooks } = await fixtureWorkbook();
+    expect(hooks).toHaveLength(12);
+    expect(
+      hooks.filter(isLibraryHookWriterEligible).map((hook) => hook.hookId),
+    ).toEqual(['H01', 'H02', 'H03', 'H04', 'H05', 'H06', 'H07']);
+  });
+
+  it('never offers X01-X05 to the writer for any mechanic', async () => {
+    const { service, hookDocs } = fakeModel();
+    await service.importWorkbook(await fixtureWorkbook());
+    expect(hookDocs.has('X01')).toBe(true);
+    for (const mechanicKey of [
+      'read-your-opponent',
+      'closest',
+      'top-5',
+      'bomb',
+    ]) {
+      const ids = (await service.findWriterHooks(mechanicKey)).map(
+        (hook) => hook.hookId,
+      );
+      expect(ids.filter((id) => id.startsWith('X'))).toEqual([]);
+    }
+  });
+
+  it('refuses an anti-pattern even if its id were listed as approved', () => {
+    expect(
+      isLibraryHookWriterEligible({ hookId: 'H01', type: 'ANTI-PATTERN' }),
+    ).toBe(false);
+  });
+
+  it('matches hooks to the mechanic they were written for', async () => {
+    const { service } = fakeModel();
+    await service.importWorkbook(await fixtureWorkbook());
+    const ids = async (mechanicKey: string) =>
+      (await service.findWriterHooks(mechanicKey)).map((hook) => hook.hookId);
+    expect(await ids('read-your-opponent')).toEqual(['H01', 'H03', 'H07']);
+    expect(await ids('closest')).toEqual(['H02']);
+  });
+});
+
+describe('weak source warning', () => {
+  it('flags LIB-021 and keeps it eligible', async () => {
+    const row = (await fixtureRows()).find((r) => r.libraryId === 'LIB-021')!;
+    expect(row.sourceWarning).toBe('WEAK_SOURCE');
+    expect(isLibraryRowGenerationEligible(row)).toBe(true);
+  });
+
+  it('flags no other row', async () => {
+    const flagged = (await fixtureRows()).filter((row) => row.sourceWarning);
+    expect(flagged.map((row) => row.libraryId)).toEqual(['LIB-021']);
   });
 });
 

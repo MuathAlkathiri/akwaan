@@ -113,6 +113,31 @@ export interface EngineSubmitJobRequest extends EngineJobRequest {
   planDigest: string;
 }
 
+export type EngineSourcingMode = "library_anchored" | "exploratory";
+
+/** One job of a request; a library-anchored request resolves to up to two. */
+export interface EngineSubmittedJob {
+  jobId: string;
+  created: boolean;
+  mode: EngineSourcingMode;
+  targetCount: number;
+}
+
+export interface EngineSourcingPlan {
+  anchoredCount: number;
+  exploratoryCount: number;
+  overflowCount: number;
+  fallbackReason: string | null;
+  libraryIds: string[];
+  jobCount: number;
+}
+
+export interface EngineCandidateSourcing {
+  mode: EngineSourcingMode;
+  libraryIds: string[];
+  sourceWarnings: Array<{ libraryId: string; code: string }>;
+}
+
 export interface EngineGenerationSpecification {
   specVersion: number;
   worldKey: string;
@@ -248,6 +273,7 @@ export interface EnginePreflight {
   resolvable: boolean;
   submissionReady?: boolean;
   planDigest?: string;
+  sourcingPlan?: EngineSourcingPlan;
   generationPlan?: {
     digest?: string;
     catalogDigest?: string;
@@ -416,6 +442,7 @@ export const submitJob = (data: EngineSubmitJobRequest) =>
   unwrap<{
     jobId: string;
     created: boolean;
+    jobs?: EngineSubmittedJob[];
     contextHash: string;
     planDigest?: string;
     specVersion?: number;

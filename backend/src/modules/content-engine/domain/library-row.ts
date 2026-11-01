@@ -36,8 +36,43 @@ export const LIBRARY_ROLES = [
 ] as const;
 export type LibraryRole = (typeof LIBRARY_ROLES)[number];
 
+export const LIBRARY_HOOK_TYPES = ['HOOK', 'ANTI-PATTERN'] as const;
+export type LibraryHookType = (typeof LIBRARY_HOOK_TYPES)[number];
+
+/**
+ * Human Product approval, 2026-11-01. The workbook still marks every hook
+ * PROPOSED, so approval is recorded here and not read from the sheet.
+ */
+export const LIBRARY_APPROVED_HOOK_IDS: readonly string[] = [
+  'H01',
+  'H02',
+  'H03',
+  'H04',
+  'H05',
+  'H06',
+  'H07',
+];
+
+/**
+ * Sources a human has judged weak but still acceptable. A row citing one stays
+ * usable and carries a warning into review, so the warning clears itself when
+ * the source is replaced.
+ */
+export const LIBRARY_WEAK_SOURCE_HOSTS: readonly string[] = ['otakumode.com'];
+export type LibrarySourceWarning = 'WEAK_SOURCE';
+
 /** An `asof_needed` row with no event estimate is re-checked after this long. */
 export const LIBRARY_DEFAULT_REVALIDATE_MONTHS = 12;
+
+export const LIBRARY_HOOK_COLUMNS = [
+  'id',
+  'type',
+  'name_ar',
+  'description',
+  'akwaan_fit',
+  'caution',
+  'status',
+] as const;
 
 export const LIBRARY_REQUIRED_COLUMNS = [
   'id',
@@ -100,6 +135,7 @@ export interface LibraryRow {
   /** The numeric target of a Closest row. Derived, for review. */
   canonicalNumber: number | null;
   sourceUrl: string | null;
+  sourceWarning: LibrarySourceWarning | null;
   verifiedOn: string | null;
   asofNeeded: boolean;
   /** Treated as an estimate: it schedules a re-check and proves nothing. */
@@ -107,6 +143,18 @@ export interface LibraryRow {
   revalidateAfter: string | null;
   top5: LibraryTop5Facts | null;
   /** Every source cell, so nothing the workbook said is lost to this mapping. */
+  raw: LibrarySheetRow;
+  rowHash: string;
+}
+
+export interface LibraryHook {
+  hookId: string;
+  type: LibraryHookType;
+  nameAr: string;
+  description: string;
+  mechanicKeys: string[];
+  caution: string | null;
+  status: string | null;
   raw: LibrarySheetRow;
   rowHash: string;
 }
@@ -227,7 +275,15 @@ const isHttpUrl = (value: string): boolean => {
   }
 };
 
-const hashRow = (row: Omit<LibraryRow, 'rowHash'>): string =>
+const sourceWarningFor = (
+  sourceUrl: string | null,
+): LibrarySourceWarning | null => {
+  if (!sourceUrl || !isHttpUrl(sourceUrl)) return null;
+  const host = new URL(sourceUrl).hostname.replace(/^www\./, '');
+  return LIBRARY_WEAK_SOURCE_HOSTS.includes(host) ? 'WEAK_SOURCE' : null;
+};
+
+const hashRow = (row: object): string =>
   createHash('sha256').update(JSON.stringify(row), 'utf8').digest('hex');
 
 /**
@@ -312,6 +368,7 @@ export const mapLibrarySheetRow = (row: LibrarySheetRow): LibraryRow => {
     canonicalAnswer,
     canonicalNumber: parseCanonicalNumber(mechanicKeys, canonicalAnswer),
     sourceUrl,
+    sourceWarning: sourceWarningFor(sourceUrl),
     verifiedOn,
     asofNeeded,
     nextEventDateEstimate,
@@ -352,3 +409,29 @@ export const libraryExemplarWording = (
   isLibraryRowGenerationEligible(row) && row.role === 'EXEMPLAR_CANDIDATE'
     ? row.questionText
     : null;
+
+export const mapLibraryHookRow = (row: LibrarySheetRow): LibraryHook => {
+  const hookId = row.id?.trim();
+  if (!hookId) throw new LibraryRowError('(blank id)', 'hook has no id');
+  const type = oneOf(hookId, 'type', row.type, LIBRARY_HOOK_TYPES);
+  if (!row.name_ar || !row.description) {
+    throw new LibraryRowError(hookId, 'hook needs name_ar and description');
+  }
+  const mapped: Omit<LibraryHook, 'rowHash'> = {
+    hookId,
+    type,
+    nameAr: row.name_ar,
+    description: row.description,
+    mechanicKeys: parseMechanicKeys(row.akwaan_fit),
+    caution: row.caution ?? null,
+    status: row.status ?? null,
+    raw: row,
+  };
+  return { ...mapped, rowHash: hashRow(mapped) };
+};
+
+/** Anti-patterns stay out by type, even if an id were ever listed as approved. */
+export const isLibraryHookWriterEligible = (
+  hook: Pick<LibraryHook, 'hookId' | 'type'>,
+): boolean =>
+  hook.type === 'HOOK' && LIBRARY_APPROVED_HOOK_IDS.includes(hook.hookId);

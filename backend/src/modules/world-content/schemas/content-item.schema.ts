@@ -79,6 +79,8 @@ const ContentMetadataSchema = new MongooseSchema(
     source: { type: String, trim: true },
     notes: { type: String, trim: true },
     tags: { type: [String], default: undefined },
+    generationMode: { type: String, default: undefined },
+    libraryIds: { type: [String], default: undefined },
   },
   { _id: false },
 );
@@ -137,7 +139,13 @@ export class ContentItem extends Document {
   status: ContentItemStatus;
 
   @Prop({ type: ContentMetadataSchema, default: undefined })
-  metadata?: { source?: string; notes?: string; tags?: string[] };
+  metadata?: {
+    source?: string;
+    notes?: string;
+    tags?: string[];
+    generationMode?: string;
+    libraryIds?: string[];
+  };
 }
 
 export const ContentItemSchema = SchemaFactory.createForClass(ContentItem);

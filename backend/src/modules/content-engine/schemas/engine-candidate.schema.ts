@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import type { sourcingForSlot } from '../domain/library-sourcing';
 import { HydratedDocument } from 'mongoose';
 
 export const CANDIDATE_STATUSES = [
@@ -127,6 +128,13 @@ export class EngineCandidateDocument {
    */
   @Prop({ type: Object, default: null })
   authoring!: Record<string, unknown> | null;
+
+  /**
+   * Which mode produced this candidate and from which library rows. Kept out of
+   * `authoring` so no edit path can rewrite where a question came from.
+   */
+  @Prop({ type: Object, default: null })
+  sourcing!: ReturnType<typeof sourcingForSlot> | null;
 
   @Prop({ type: Object, default: null })
   factVerification!: Record<string, unknown> | null;

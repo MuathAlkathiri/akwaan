@@ -31,6 +31,11 @@ import { EngineCandidateDocument } from '../schemas/engine-candidate.schema';
 import { ResolvedAuthoringContext } from './authoring-context.service';
 import { EngineBudgetService } from './engine-budget.service';
 import { GenerationJobService } from './generation-job.service';
+import {
+  GenerationSourcing,
+  renderSourcingPrompt,
+  sourcingForSlot,
+} from '../domain/library-sourcing';
 
 /**
  * Output tokens allowed per requested candidate.
@@ -48,8 +53,8 @@ export const OUTPUT_TOKENS_PER_CANDIDATE = 800;
 
 /** Prompt/schema revision, per mechanic. Bump when either changes. */
 export const PROMPT_VERSIONS: Record<string, string> = {
-  multiple_choice: 'mc-v2',
-  closest: 'closest-v2',
+  multiple_choice: 'mc-v3',
+  closest: 'closest-v3',
 };
 
 /** Back-compat for callers and stored candidates written before per-mechanic versions. */
@@ -550,6 +555,7 @@ export interface BuildPromptOptions {
   ryoDifficultyTargets?: Readonly<RyoDifficultyTargets> | null;
   batchGuidance?: string | null;
   generationPlan?: GenerationPlan | null;
+  sourcing?: GenerationSourcing | null;
 }
 
 export function buildRyoDifficultyGuidance(
@@ -615,6 +621,7 @@ export function composeGenerationPrompt(
       batchGuidance: normalizedGuidance,
     });
   const formattedPlan = planner.formatPlanForPrompt(generationPlan);
+  const sourcingPrompt = renderSourcingPrompt(options?.sourcing);
 
   return [
     '# AKWAAN AUTHORING CONTEXT',
@@ -644,6 +651,7 @@ export function composeGenerationPrompt(
             fallbackTargetsResolver,
           ),
         ].join('\n\n'),
+    ...(sourcingPrompt ? [sourcingPrompt] : []),
     ...(normalizedGuidance
       ? [
           [
@@ -891,6 +899,7 @@ export class CandidateGeneratorService {
       ryoDifficultyTargets: spec?.ryoDifficultyTargets,
       batchGuidance: normalizedGuidance,
       generationPlan: input.generationPlan,
+      sourcing: spec?.sourcing,
     });
     // Reserved *and* sent, so actual output cost cannot exceed what the cap
     // approved. Sized with headroom: a bound tight enough to truncate the JSON
@@ -936,7 +945,11 @@ export class CandidateGeneratorService {
       },
     });
 
-    const hasCreativeSlots = Boolean(input.generationPlan?.slots?.length);
+    // Library rows bind to slots by id. Position alone would let a reordered
+    // response attach one row's provenance to another row's question.
+    const hasCreativeSlots =
+      Boolean(input.generationPlan?.slots?.length) ||
+      spec?.sourcing?.mode === 'library_anchored';
     const baseSchema =
       answerMode === 'closest'
         ? CLOSEST_CANDIDATE_SCHEMA
@@ -1057,6 +1070,9 @@ export class CandidateGeneratorService {
               failureReason: null,
               factualClaims,
               authoring: candidateAuthoring,
+              sourcing: spec?.sourcing
+                ? sourcingForSlot(spec.sourcing, ordinal)
+                : null,
               factVerification: null,
               qualityEvaluation: null,
               compatibilityEvaluation: null,

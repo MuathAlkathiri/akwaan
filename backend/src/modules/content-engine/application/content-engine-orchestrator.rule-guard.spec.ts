@@ -317,7 +317,7 @@ describe('legacy job provenance guard and exact-job execution', () => {
     difficulty: 'mixed',
     ryoDifficultyTargets: { easy: 25, medium: 50, relativelyDifficult: 25 },
     batchGuidance: null,
-    promptVersion: 'mc-v2',
+    promptVersion: 'mc-v3',
     provider: 'pinned-provider',
     generationModel: 'pinned-gen-model',
     qualityModel: 'pinned-quality-model',

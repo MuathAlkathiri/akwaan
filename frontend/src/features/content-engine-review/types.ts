@@ -1,3 +1,4 @@
+import type { EngineCandidateSourcing } from "./api";
 import type { ContentItem } from "@/features/world-management/types";
 
 export type ReviewStatus = "pending" | "approved" | "rejected";
@@ -96,6 +97,7 @@ export interface ReviewCandidate {
     /** Slice 3C: Family compliance evaluation */
     familyCompliance?: FamilyComplianceStatus;
   } | null;
+  sourcing?: EngineCandidateSourcing | null;
   factualClaims: string[];
   findings: Array<{
     code: string;

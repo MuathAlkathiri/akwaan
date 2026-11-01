@@ -2,8 +2,15 @@ import 'dotenv/config';
 import { readFile } from 'fs/promises';
 import mongoose from 'mongoose';
 import { LibraryImportService } from '../modules/content-engine/application/library-import.service';
-import { isLibraryRowGenerationEligible } from '../modules/content-engine/domain/library-row';
+import {
+  isLibraryRowGenerationEligible,
+  LibraryRow,
+} from '../modules/content-engine/domain/library-row';
 import { readLibraryWorkbook } from '../modules/content-engine/infrastructure/library-workbook.reader';
+import {
+  EngineLibraryHookDocument,
+  EngineLibraryHookSchema,
+} from '../modules/content-engine/schemas/engine-library-hook.schema';
 import {
   EngineLibraryRowDocument,
   EngineLibraryRowSchema,
@@ -40,9 +47,7 @@ export const assertImportTarget = (
   }
 };
 
-const printDerivedValues = (
-  rows: Awaited<ReturnType<typeof readLibraryWorkbook>>,
-): void => {
+const printDerivedValues = (rows: LibraryRow[]): void => {
   const approved = rows.filter((row) => row.reviewStatus === 'APPROVED');
   console.table(
     approved.map((row) => ({
@@ -54,6 +59,7 @@ const printDerivedValues = (
       answer: row.canonicalAnswer,
       number: row.canonicalNumber,
       revalidateAfter: row.revalidateAfter,
+      warning: row.sourceWarning,
     })),
   );
   console.log(
@@ -67,8 +73,8 @@ const main = async (): Promise<void> => {
   const workbookPath = argv.find((arg) => !arg.startsWith('--'));
   if (!workbookPath) throw new Error('Pass the workbook path');
 
-  const rows = await readLibraryWorkbook(await readFile(workbookPath));
-  printDerivedValues(rows);
+  const workbook = await readLibraryWorkbook(await readFile(workbookPath));
+  printDerivedValues(workbook.rows);
   if (!argv.includes('--apply')) {
     console.log('Dry run: nothing was written.');
     return;
@@ -79,12 +85,18 @@ const main = async (): Promise<void> => {
   await mongoose.connect(uri, { autoIndex: false });
   try {
     assertImportTarget(mongoose.connection.name, databaseArgument(argv));
-    const model = mongoose.model(
+    const rows = mongoose.model(
       EngineLibraryRowDocument.name,
       EngineLibraryRowSchema,
     );
-    await model.createIndexes();
-    console.log(await new LibraryImportService(model).importRows(rows));
+    const hooks = mongoose.model(
+      EngineLibraryHookDocument.name,
+      EngineLibraryHookSchema,
+    );
+    await Promise.all([rows.createIndexes(), hooks.createIndexes()]);
+    console.log(
+      await new LibraryImportService(rows, hooks).importWorkbook(workbook),
+    );
   } finally {
     await mongoose.disconnect();
   }
