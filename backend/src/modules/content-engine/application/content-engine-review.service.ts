@@ -348,6 +348,7 @@ export class ContentEngineReviewService {
     );
 
     const editSession = this.screen.createSession?.({
+      librarySeeds: references.job.generationSpec?.sourcing?.seeds,
       worldKey: references.job.worldKey,
       scopeKey: references.job.scopeKey,
     });
@@ -992,6 +993,7 @@ export class ContentEngineReviewService {
     const sanitizedDraft = this.stripTargetFields(current.draft ?? {});
 
     const session = this.screen.createSession?.({
+      librarySeeds: references.job.generationSpec?.sourcing?.seeds,
       worldKey: references.job.worldKey,
       scopeKey: references.job.scopeKey,
     });

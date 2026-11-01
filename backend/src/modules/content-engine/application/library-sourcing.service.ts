@@ -97,6 +97,9 @@ export class LibrarySourcingService {
         canonicalAnswer: row.canonicalAnswer,
         canonicalNumber: row.canonicalNumber,
         sourceUrl: row.sourceUrl!,
+        ...(row.sourceUrls.length > 1
+          ? { additionalSourceUrls: row.sourceUrls.slice(1) }
+          : {}),
         verifiedOn: row.verifiedOn!,
         revalidateAfter: row.revalidateAfter,
         sourceWarning: row.sourceWarning,

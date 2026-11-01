@@ -37,10 +37,10 @@ export const windowTokens = (text: string): string[] => {
 const sameTokens = (a: string[], b: string[]): boolean =>
   a.length === b.length && a.every((token, index) => token === b[index]);
 
-const promptOf = (draft: Record<string, unknown> | null): string =>
+export const promptOf = (draft: Record<string, unknown> | null): string =>
   (draft?.prompt as { ar?: string } | undefined)?.ar ?? '';
 
-const answersRow = (
+export const answersRow = (
   draft: Record<string, unknown> | null,
   seed: LibrarySeed,
 ): boolean => {
@@ -73,6 +73,9 @@ const evidenceFrom = (seed: LibrarySeed): StructuredSeedEvidence => ({
   sourceId: seed.libraryId,
   sourceName: 'Akwaan verified library',
   url: seed.sourceUrl,
+  ...(seed.additionalSourceUrls
+    ? { additionalSourceUrls: seed.additionalSourceUrls }
+    : {}),
   excerpt: seed.verifiedAnswer,
   retrievedAt: seed.verifiedOn,
   relation: 'supports',

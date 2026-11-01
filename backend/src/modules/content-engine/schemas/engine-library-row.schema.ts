@@ -45,6 +45,7 @@ export class EngineLibraryRowDocument {
   @Prop({ type: String, default: null }) canonicalAnswer!: string | null;
   @Prop({ type: Number, default: null }) canonicalNumber!: number | null;
   @Prop({ type: String, default: null }) sourceUrl!: string | null;
+  @Prop({ type: [String], default: [] }) sourceUrls!: string[];
 
   @Prop({ type: String, default: null })
   sourceWarning!: LibrarySourceWarning | null;

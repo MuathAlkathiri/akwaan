@@ -338,6 +338,7 @@ export class ContentEngineOrchestratorService {
       // withheld/rejected subjects remain detectable as duplicates. The
       // generator only receives context.exemplars (the APPROVED-only view).
       const screenSession = this.screen.createSession?.({
+        librarySeeds: provenance.spec?.sourcing?.seeds,
         worldKey: job.worldKey,
         scopeKey: job.scopeKey,
         exemplars: context.historicalExemplars,

@@ -36,6 +36,8 @@ export interface LibrarySeed {
   canonicalAnswer: string | null;
   canonicalNumber: number | null;
   sourceUrl: string;
+  /** Sources after the first, when the row cites more than one. */
+  additionalSourceUrls?: string[];
   verifiedOn: string;
   revalidateAfter: string | null;
   sourceWarning: LibrarySourceWarning | null;

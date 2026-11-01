@@ -596,7 +596,8 @@ describe('ContentEngineReviewService enforcement characterization', () => {
         1,
       );
       const current = unresolved({ covered: true, libraryId: 'LIB-1' });
-      const { service, candidates } = build({
+      const createSession = jest.fn(() => ({}));
+      const { service, candidates, screen } = build({
         current,
         canonicalReferences: true,
         jobOverride: {
@@ -609,6 +610,9 @@ describe('ContentEngineReviewService enforcement characterization', () => {
           generationSpec,
         },
       });
+
+      (screen as unknown as { createSession: unknown }).createSession =
+        createSession;
 
       await service.edit(
         'candidate-1',
@@ -632,6 +636,18 @@ describe('ContentEngineReviewService enforcement characterization', () => {
         reason: 'ANSWER_CHANGED',
       });
       expect(set.factVerification.automaticAdvance).toBe(false);
+
+      // The copy check must see the pinned rows on the edit path, and on the
+      // re-screen path, or a reviewer's save would quietly skip it.
+      await service.rescreenCandidate('candidate-1', 1, actor);
+      expect(createSession).toHaveBeenCalledTimes(2);
+      for (const [options] of createSession.mock.calls as unknown as Array<
+        [{ librarySeeds: Array<{ libraryId: string }> }]
+      >) {
+        expect(options.librarySeeds.map((seed) => seed.libraryId)).toEqual([
+          'LIB-1',
+        ]);
+      }
     });
   });
 

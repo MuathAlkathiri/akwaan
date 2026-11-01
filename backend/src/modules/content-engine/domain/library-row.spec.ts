@@ -158,6 +158,48 @@ describe('mapLibrarySheetRow', () => {
     ).toThrow(LibraryRowError);
   });
 
+  it('accepts a second source after " | "', () => {
+    const row = mapLibrarySheetRow(
+      approvedRow({
+        source_url: 'https://a.example/x | https://b.example/y',
+      }),
+    );
+    expect(row.sourceUrl).toBe('https://a.example/x');
+    expect(row.sourceUrls).toEqual([
+      'https://a.example/x',
+      'https://b.example/y',
+    ]);
+  });
+
+  it('refuses a third source', () => {
+    expect(() =>
+      mapLibrarySheetRow(
+        approvedRow({
+          source_url:
+            'https://a.example | https://b.example | https://c.example',
+        }),
+      ),
+    ).toThrow('at most 2');
+  });
+
+  it('refuses a bad second source', () => {
+    expect(() =>
+      mapLibrarySheetRow(
+        approvedRow({ source_url: 'https://a.example | not-a-url' }),
+      ),
+    ).toThrow(LibraryRowError);
+  });
+
+  it('flags a row whose second source is weak', () => {
+    expect(
+      mapLibrarySheetRow(
+        approvedRow({
+          source_url: 'https://en.wikipedia.org/x | https://otakumode.com/y',
+        }),
+      ).sourceWarning,
+    ).toBe('WEAK_SOURCE');
+  });
+
   it('stores a PARK row that has no answer yet', () => {
     expect(
       mapLibrarySheetRow(

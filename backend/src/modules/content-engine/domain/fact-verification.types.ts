@@ -39,6 +39,7 @@ export interface FactEvidenceRetriever {
  */
 export interface StructuredSeedEvidence extends RetrievedFactEvidence {
   method: 'structured-seed';
+  additionalSourceUrls?: string[];
   verifiedOn: string;
   revalidateAfter: string | null;
   sourceWarning: LibrarySourceWarning | null;

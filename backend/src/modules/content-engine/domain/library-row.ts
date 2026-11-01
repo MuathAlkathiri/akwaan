@@ -65,6 +65,9 @@ export const LIBRARY_WEAK_SOURCE_HOSTS: readonly string[] = [
 ];
 export type LibrarySourceWarning = 'WEAK_SOURCE';
 
+/** `source_url` may name a second source, separated by " | ". */
+export const LIBRARY_MAX_SOURCE_URLS = 2;
+
 /** An `asof_needed` row with no event estimate is re-checked after this long. */
 export const LIBRARY_DEFAULT_REVALIDATE_MONTHS = 12;
 
@@ -138,7 +141,9 @@ export interface LibraryRow {
   canonicalAnswer: string | null;
   /** The numeric target of a Closest row. Derived, for review. */
   canonicalNumber: number | null;
+  /** The lead source. `sourceUrls` holds every source the row cites. */
   sourceUrl: string | null;
+  sourceUrls: string[];
   sourceWarning: LibrarySourceWarning | null;
   verifiedOn: string | null;
   asofNeeded: boolean;
@@ -279,16 +284,12 @@ const isHttpUrl = (value: string): boolean => {
   }
 };
 
-const sourceWarningFor = (
-  sourceUrl: string | null,
-): LibrarySourceWarning | null => {
-  if (!sourceUrl || !isHttpUrl(sourceUrl)) return null;
+const isWeakSource = (sourceUrl: string): boolean => {
+  if (!isHttpUrl(sourceUrl)) return false;
   const host = new URL(sourceUrl).hostname.replace(/^www\./, '');
   return LIBRARY_WEAK_SOURCE_HOSTS.some(
     (weak) => host === weak || host.endsWith(`.${weak}`),
-  )
-    ? 'WEAK_SOURCE'
-    : null;
+  );
 };
 
 const hashRow = (row: object): string =>
@@ -324,12 +325,22 @@ export const mapLibrarySheetRow = (row: LibrarySheetRow): LibraryRow => {
   }
 
   const verifiedOn = parseIsoDate(libraryId, 'verified_on', row.verified_on);
-  const sourceUrl = row.source_url ?? null;
+  const sourceUrls = (row.source_url ?? '')
+    .split('|')
+    .map((url) => url.trim())
+    .filter(Boolean);
+  const [sourceUrl = null] = sourceUrls;
+  if (sourceUrls.length > LIBRARY_MAX_SOURCE_URLS) {
+    throw new LibraryRowError(
+      libraryId,
+      `source_url lists ${sourceUrls.length} URLs, at most ${LIBRARY_MAX_SOURCE_URLS}`,
+    );
+  }
   if (reviewStatus === 'APPROVED') {
     if (!row.verified_answer) {
       throw new LibraryRowError(libraryId, 'APPROVED without verified_answer');
     }
-    if (!sourceUrl || !isHttpUrl(sourceUrl)) {
+    if (!sourceUrl || !sourceUrls.every(isHttpUrl)) {
       throw new LibraryRowError(
         libraryId,
         'APPROVED without an http(s) source_url',
@@ -376,7 +387,8 @@ export const mapLibrarySheetRow = (row: LibrarySheetRow): LibraryRow => {
     canonicalAnswer,
     canonicalNumber: parseCanonicalNumber(mechanicKeys, canonicalAnswer),
     sourceUrl,
-    sourceWarning: sourceWarningFor(sourceUrl),
+    sourceUrls,
+    sourceWarning: sourceUrls.some(isWeakSource) ? 'WEAK_SOURCE' : null,
     verifiedOn,
     asofNeeded,
     nextEventDateEstimate,
