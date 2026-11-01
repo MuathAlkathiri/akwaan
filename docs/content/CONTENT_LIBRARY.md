@@ -62,16 +62,14 @@ They apply to library content only.
 
 ## Open items
 
-- **H5, semantic answer leakage:** the screen catches exact leaks only, and
-  anchored writers now see the answer. Separate task after the integration pass.
+- **Answer leakage by meaning:** rules catch forms of the answer, numbers and
+  arithmetic. A clue that names the answer in other words needs world knowledge,
+  so it stays with the reviewer. See `answer-leakage.policy.ts`.
 - **Top-5 generation:** the validator exists and nothing feeds it yet.
 - **`revalidateAfter`:** stored and carried through promotion. Nothing acts on it
   yet, and "since" questions stay open-ended until something does.
 - **Two-run batches:** a request can create two jobs, each started by hand.
 - **A no-op edit clears `fact_blocked`:** harmless until something can produce
   CONTRADICTED, and must be fixed before an evidence assessor is added.
-- **The judge on UNRESOLVED:** the code runs it, and the integration test
-  `skips the judge when retrieval fails outright` says it must not. C1 used to
-  hide this. One of the two needs to change.
-- **`never admits more than the cap`:** this test puts all 150 reservations on
-  one job, so the per-job cap stops it before the monthly cap it means to test.
+
+Paid-pilot blockers are in `PILOT_READINESS.md`.

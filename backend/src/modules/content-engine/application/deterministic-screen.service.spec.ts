@@ -2879,4 +2879,85 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
       ).toBe(true);
     });
   });
+
+  describe('H5: leakage beyond the exact answer', () => {
+    const closest = (prompt: string, correctValue: number) =>
+      draft({
+        prompt: { ar: prompt },
+        answerPayload: { mode: 'closest', correctValue },
+        mechanicPayload: {
+          closestSlider: {
+            mode: 'numeric-range',
+            min: 0,
+            max: 2000,
+            step: 1,
+          },
+        },
+      });
+
+    it('blocks a Closest target written with separators', () => {
+      expect(codes(service, closest('العدد ١٬٠٢٤ يساوي كم؟', 1024))).toContain(
+        'ANSWER_LEAKAGE',
+      );
+    });
+
+    it('blocks a Closest target written in words', () => {
+      expect(
+        codes(service, closest('ألف وأربعة وعشرون هو كم؟', 1024)),
+      ).toContain('ANSWER_LEAKAGE');
+    });
+
+    it('blocks a supplied arithmetic worksheet', () => {
+      expect(
+        codes(
+          service,
+          closest(
+            'صندوق فيه 12 صفًا في كل صف 12 علبة، كم علبة في الصندوق؟',
+            144,
+          ),
+        ),
+      ).toContain('ANSWER_DERIVABLE');
+    });
+
+    it('blocks the answer behind an attached article', () => {
+      expect(
+        codes(
+          service,
+          draft({
+            prompt: { ar: 'من الذي يلقب بالأسد في الغابة؟' },
+            answerPayload: {
+              mode: 'multiple_choice',
+              options: [
+                { id: 'a', label: { ar: 'الأسد' } },
+                { id: 'b', label: { ar: 'النمر' } },
+              ],
+              correctOptionId: 'a',
+            },
+          }),
+        ),
+      ).toContain('ANSWER_LEAKAGE');
+    });
+
+    it('keeps a resemblance as a warning, so it never rejects', () => {
+      const result = service.screen(
+        draft({
+          prompt: { ar: 'ما ملك الغابة من بين الأسود؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: 'a', label: { ar: 'أسد' } },
+              { id: 'b', label: { ar: 'نمر' } },
+            ],
+            correctOptionId: 'a',
+          },
+        }),
+      );
+      expect(result.findings).toContainEqual(
+        expect.objectContaining({
+          code: 'POSSIBLE_ANSWER_LEAKAGE',
+          severity: 'warning',
+        }),
+      );
+    });
+  });
 });
