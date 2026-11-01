@@ -216,6 +216,41 @@ describe('library workbook import', () => {
     );
   });
 
+  it('refuses an APPROVED Top-5 row that breaks the Top-5 rules', async () => {
+    const file = await workbookWith([
+      {
+        id: 'LIB-1',
+        question: 'اختر هدافي الدوري',
+        world: 'football',
+        scope: 'la-liga',
+        scope_status: 'MATCH',
+        akwaan_fit: 'Top-5',
+        asof_needed: 'N',
+        role: 'FACT_SEED',
+        review_status: 'APPROVED',
+        verified_answer: 'ألف (2020)',
+        source_url: 'https://example.com',
+        verified_on: '2026-11-01',
+        top5_correct_5: 'ألف (2020)، باء (2021)',
+        top5_traps_5: 'جيم',
+      },
+    ]);
+    await expect(readLibraryWorkbook(file)).rejects.toThrow(
+      'LIB-1: TOP5_CORRECT_COUNT_INVALID',
+    );
+  });
+
+  it('leaves a parked Top-5 row alone until it is approved', async () => {
+    const file = await workbookWith([
+      {
+        ...parkedSheetRow('LIB-1'),
+        akwaan_fit: 'Top-5 (أول 4)',
+        top5_correct_5: 'ألف (2020)',
+      },
+    ]);
+    await expect(readLibraryWorkbook(file)).resolves.toBeDefined();
+  });
+
   it('refuses a duplicate id', async () => {
     const file = await workbookWith([
       parkedSheetRow('LIB-1'),

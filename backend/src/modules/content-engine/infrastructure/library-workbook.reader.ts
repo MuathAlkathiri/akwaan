@@ -8,6 +8,7 @@ import {
   mapLibraryHookRow,
   mapLibrarySheetRow,
 } from '../domain/library-row';
+import { validateLibraryTop5Row } from '../domain/top5-library.policy';
 
 export const LIBRARY_SHEET_NAME = 'Library';
 export const LIBRARY_HOOKS_SHEET_NAME = 'Hooks';
@@ -122,6 +123,17 @@ export const readLibraryWorkbook = async (
     (row) => row.libraryId,
     problems,
   );
+  for (const row of rows) {
+    if (
+      row.reviewStatus !== 'APPROVED' ||
+      !row.mechanicKeys.includes('top-5')
+    ) {
+      continue;
+    }
+    for (const found of validateLibraryTop5Row(row)) {
+      problems.push(`${row.libraryId}: ${found.code}: ${found.message}`);
+    }
+  }
   const hooks = readUnique(
     readSheetRows(hooksSheet, LIBRARY_HOOK_COLUMNS),
     mapLibraryHookRow,
