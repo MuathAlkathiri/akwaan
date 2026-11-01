@@ -1193,9 +1193,10 @@ export function ContentEngineReviewWorkspace() {
               </div>
             )}
             <div className="space-y-2">
-              {candidate.findings.map((finding) => (
+              {candidate.findings.map((finding, index) => (
                 <div
-                  key={finding.code}
+                  key={`${finding.code}-${index}`}
+                  data-testid="candidate-finding"
                   className="flex gap-2 rounded-lg border p-3 text-sm"
                 >
                   {finding.severity === "blocking" && (
