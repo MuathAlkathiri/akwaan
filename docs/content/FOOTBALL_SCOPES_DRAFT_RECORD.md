@@ -24,8 +24,8 @@ edited, and the status below is a statement of this branch only.
   exclude national team content. Duplicates are checked per Scope, so the same
   fact could appear in both.
 - **Knowledge:** stable facts only, with no coaches, squads or records. Those
-  need dated research before use. The facts stated were written from memory and
-  have not been source-checked.
+  need dated research before use. The owner has checked the stated facts against
+  sources.
 
 ## Library rows
 
