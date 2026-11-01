@@ -10,7 +10,7 @@ import sys
 CANONICAL_WORLDS = {
     "anime": ["attack-on-titan", "bleach", "naruto", "one-piece", "demon-slayer", "dragon-ball", "jujutsu-kaisen"],
     "cars": ["cars-mix", "german-cars", "japanese-cars", "supercars"],
-    "football": ["champions-league", "premier-league", "saudi-league", "world-cup", "football-legends", "la-liga", "serie-a"],
+    "football": ["champions-league", "premier-league", "saudi-league", "world-cup", "football-legends", "la-liga", "serie-a", "uefa-super-cup", "saudi-national-team"],
     "general-knowledge": ["history", "human-body-nature", "inventions-discoveries", "science"],
     "movies": ["disney-pixar", "harry-potter", "marvel", "movies-mix"],
     "music": ["arabic-music", "gulf-music", "international-music", "saudi-music"],

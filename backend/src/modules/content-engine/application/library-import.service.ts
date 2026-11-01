@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
   isLibraryHookWriterEligible,
+  isLibraryRowEligibleForMechanic,
   isLibraryRowGenerationEligible,
   LibraryHook,
   LibraryRow,
@@ -143,7 +144,9 @@ export class LibraryImportService {
       .sort({ libraryId: 1 })
       .lean()
       .exec();
-    return rows.filter(isLibraryRowGenerationEligible);
+    return rows.filter((row) =>
+      isLibraryRowEligibleForMechanic(row, target.mechanicKey),
+    );
   }
 
   /** Approved hooks written for this mechanic. Anti-patterns never pass. */
