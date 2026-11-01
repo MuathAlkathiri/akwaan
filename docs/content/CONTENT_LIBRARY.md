@@ -43,8 +43,10 @@ character n-gram similarity. The check is deterministic and runs on generation,
 edit and re-screen. It catches reordering and light rewording. It does not catch
 a full rewrite in different words, so a reviewer is still the last check.
 
-`library-copy-holdout.ts` pins what it misses. Update those expectations
-deliberately if the threshold or vocabulary changes.
+Review shows each anchored candidate's highest similarity to a pinned row, so a
+near miss is visible even when it passes. `library-copy-detector.spec.ts` records
+the known misses as known-gap tests. They do not fail the build, and one turns
+red when the detector starts catching it.
 
 ## Top-5 rows
 
@@ -57,3 +59,14 @@ They apply to library content only.
 - Traps come only from the approved `top5_traps_5` list.
 - The question states its window, and carries no `اختر` or `(5 من 10)` wording.
 - Cards carry names only, with no years or notes.
+
+## Open items
+
+- **H5, semantic answer leakage:** the screen catches exact leaks only, and
+  anchored writers now see the answer. Separate task after the integration pass.
+- **Top-5 generation:** the validator exists and nothing feeds it yet.
+- **`revalidateAfter`:** stored and carried through promotion. Nothing acts on it
+  yet, and "since" questions stay open-ended until something does.
+- **Two-run batches:** a request can create two jobs, each started by hand.
+- **A no-op edit clears `fact_blocked`:** harmless until something can produce
+  CONTRADICTED, and must be fixed before an evidence assessor is added.

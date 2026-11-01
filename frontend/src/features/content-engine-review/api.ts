@@ -138,6 +138,11 @@ export interface EngineCandidateSourcing {
   sourceWarnings: Array<{ libraryId: string; code: string }>;
 }
 
+export interface EngineLibrarySimilarity {
+  libraryId: string;
+  similarity: number;
+}
+
 export interface EngineGenerationSpecification {
   specVersion: number;
   worldKey: string;

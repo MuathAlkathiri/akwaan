@@ -13,6 +13,7 @@ import {
   DEFAULT_LIBRARY_COPY_THRESHOLD,
   entityTokens,
   findLibraryCopy,
+  highestLibrarySimilarity,
   resolveLibraryCopyThreshold,
   sharesEntity,
   textSimilarity,
@@ -157,15 +158,47 @@ describe('findLibraryCopy on the real rows', () => {
   });
 
   /**
-   * Known limits, pinned so a threshold or vocabulary change shows up here.
-   * This batch was never tuned against.
+   * Known gaps: real copies the detector misses, all from the batch it was never
+   * tuned on. `it.failing` records them without failing the build, and turns red
+   * the day one is caught, so that day the entry can be promoted to a real test.
    */
-  it('misses these heavier rewrites', () => {
+  describe('known gaps', () => {
+    it.failing.each([
+      [
+        'LIB-057',
+        'أمام أي خصم حقق السومة أول هاتريك له في دوري المحترفين بقميص الأهلي؟',
+        'هجر',
+      ],
+      [
+        'LIB-057',
+        'أول ثلاثية للسومة بقميص الأهلي في الدوري كانت في شباك من؟',
+        'هجر',
+      ],
+      [
+        'LIB-059',
+        'من الذي نقل لوفي وجينبي بغواصته بعيدًا عن حرب مارينفورد؟',
+        'ترافالغار لو',
+      ],
+      ['LIB-059', 'من أنقذ لوفي وجينبي بغواصته في مارينفورد؟', 'ترافالغار لو'],
+      ['LIB-061', 'كم ملك يشاركون في الريفيري؟', 50],
+    ] as Array<[string, string, string | number]>)(
+      '%s: should reject "%s"',
+      (libraryId, prompt, answer) => {
+        expect(
+          findLibraryCopy(
+            draftFor(answer, prompt),
+            [rows.get(libraryId)!],
+            THRESHOLD,
+          ),
+        ).not.toBeNull();
+      },
+    );
+  });
+
+  it('catches the rest of the held-out copies', () => {
     expect(
-      verdicts(LIBRARY_COPY_HOLDOUT, 'copies')
-        .filter((v) => !v.rejected)
-        .map((v) => v.libraryId),
-    ).toEqual(['LIB-057', 'LIB-057', 'LIB-059', 'LIB-059', 'LIB-061']);
+      verdicts(LIBRARY_COPY_HOLDOUT, 'copies').filter((v) => v.rejected),
+    ).toHaveLength(7);
   });
 
   it('wrongly rejects these close variants', () => {
@@ -192,6 +225,27 @@ describe('findLibraryCopy on the real rows', () => {
     const prompt = 'اجتماع الريفيري يحضره كم ملك؟';
     expect(findLibraryCopy(draftFor(50, prompt), [seed], 0.5)).not.toBeNull();
     expect(findLibraryCopy(draftFor(50, prompt), [seed], 0.95)).toBeNull();
+  });
+});
+
+describe('highestLibrarySimilarity', () => {
+  const seed = (libraryId: string, questionText: string) =>
+    ({ libraryId, questionText }) as LibrarySeed;
+
+  it('reports the closest pinned row, even under the threshold', () => {
+    expect(
+      highestLibrarySimilarity(
+        draftFor(1, 'كم هدفًا سجل الهلال في موسم 2023؟'),
+        [
+          seed('LIB-1', 'من سفينة شانكس؟'),
+          seed('LIB-2', 'كم هدفًا سجل النصر في موسم 2023؟'),
+        ],
+      ),
+    ).toMatchObject({ libraryId: 'LIB-2' });
+  });
+
+  it('is null when the job pinned no rows', () => {
+    expect(highestLibrarySimilarity(draftFor(1, 'سؤال؟'), [])).toBeNull();
   });
 });
 

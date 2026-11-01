@@ -124,7 +124,7 @@ export const sharesEntity = (
   return shared > 0 && shared / entities.length >= ENTITY_OVERLAP;
 };
 
-export interface LibraryCopyMatch {
+export interface LibrarySimilarity {
   libraryId: string;
   similarity: number;
 }
@@ -134,7 +134,7 @@ export const findLibraryCopy = (
   draft: Record<string, unknown> | null,
   seeds: readonly LibrarySeed[],
   threshold: number,
-): LibraryCopyMatch | null => {
+): LibrarySimilarity | null => {
   const prompt = promptOf(draft);
   for (const seed of seeds) {
     if (!answersRow(draft, seed)) continue;
@@ -145,6 +145,23 @@ export const findLibraryCopy = (
     }
   }
   return null;
+};
+
+/**
+ * The closest any pinned row comes to this question, whatever the verdict. A
+ * reviewer reads this to judge a near miss the threshold let through.
+ */
+export const highestLibrarySimilarity = (
+  draft: Record<string, unknown> | null,
+  seeds: readonly LibrarySeed[],
+): LibrarySimilarity | null => {
+  const prompt = promptOf(draft);
+  return seeds.reduce<LibrarySimilarity | null>((highest, seed) => {
+    const similarity = textSimilarity(seed.questionText, prompt);
+    return highest && highest.similarity >= similarity
+      ? highest
+      : { libraryId: seed.libraryId, similarity };
+  }, null);
 };
 
 export const resolveLibraryCopyThreshold = (config?: ConfigService): number => {

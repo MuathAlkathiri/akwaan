@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import type { LibrarySimilarity } from '../domain/library-copy-detector';
 import type { sourcingForSlot } from '../domain/library-sourcing';
 import { HydratedDocument } from 'mongoose';
 
@@ -135,6 +136,10 @@ export class EngineCandidateDocument {
    */
   @Prop({ type: Object, default: null })
   sourcing!: ReturnType<typeof sourcingForSlot> | null;
+
+  /** The closest pinned row, shown to reviewers. Null when none were pinned. */
+  @Prop({ type: Object, default: null })
+  librarySimilarity!: LibrarySimilarity | null;
 
   @Prop({ type: Object, default: null })
   factVerification!: Record<string, unknown> | null;

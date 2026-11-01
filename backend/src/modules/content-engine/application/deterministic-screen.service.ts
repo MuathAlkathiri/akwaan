@@ -32,6 +32,8 @@ import { hasTrustedCandidateApproval } from '../domain/candidate-approval-proven
 import { evaluateFamilyCompliance } from '../domain/family-compliance.policy';
 import {
   findLibraryCopy,
+  highestLibrarySimilarity,
+  LibrarySimilarity,
   resolveLibraryCopyThreshold,
 } from '../domain/library-copy-detector';
 import type { LibrarySeed } from '../domain/library-sourcing';
@@ -39,6 +41,8 @@ import type { LibrarySeed } from '../domain/library-sourcing';
 export interface ScreenResult {
   passed: boolean;
   findings: ScreenFinding[];
+  /** Set when the job pinned library rows. */
+  librarySimilarity?: LibrarySimilarity | null;
 }
 
 export type HistoricalScopeLoadStatus =
@@ -758,14 +762,16 @@ export class DeterministicScreenService {
     const result = this.screenContent(draft, authoring, screenOptions);
     const seeds = screenOptions?.session?.librarySeeds ?? [];
     if (!seeds.length) return result;
+    const librarySimilarity = highestLibrarySimilarity(draft, seeds);
     const copy = findLibraryCopy(
       draft,
       seeds,
       resolveLibraryCopyThreshold(this.config),
     );
-    if (!copy) return result;
+    if (!copy) return { ...result, librarySimilarity };
     return {
       passed: false,
+      librarySimilarity,
       findings: [
         ...result.findings,
         blocking(

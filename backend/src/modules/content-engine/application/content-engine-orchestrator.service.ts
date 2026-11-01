@@ -389,6 +389,7 @@ export class ContentEngineOrchestratorService {
         await this.updateCandidate(job, String(row._id), {
           status: result.passed ? 'screened_pass' : 'screened_reject',
           findings: result.findings,
+          librarySimilarity: result.librarySimilarity ?? null,
           ...(compliance
             ? {
                 authoring: {

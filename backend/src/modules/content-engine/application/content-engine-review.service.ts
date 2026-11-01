@@ -559,6 +559,7 @@ export class ContentEngineReviewService {
             authoring: updatedAuthoring,
             factualClaims: normalizedClaims,
             findings: screened.findings,
+            librarySimilarity: screened.librarySimilarity ?? null,
             compatibilityEvaluation: compatibility,
             status: screened.passed ? 'awaiting_review' : 'screened_reject',
             factVerification: editedSeeds.length
@@ -1048,6 +1049,7 @@ export class ContentEngineReviewService {
         },
         {
           $set: {
+            librarySimilarity: screened.librarySimilarity ?? null,
             findings: screened.findings,
             status: nextStatus,
             authoring: updatedAuthoring,

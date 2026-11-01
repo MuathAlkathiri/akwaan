@@ -675,6 +675,16 @@ export function ContentEngineReviewWorkspace() {
                           ? `من المكتبة: ${row.sourcing.libraryIds.join("، ")}`
                           : "استكشافي"}
                       </span>
+                      {row.sourcing.mode === "library_anchored" &&
+                        row.librarySimilarity && (
+                          <span
+                            data-testid={`candidate-library-similarity-${row.candidateId}`}
+                            className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-700"
+                          >
+                            أعلى تشابه: {row.librarySimilarity.similarity.toFixed(2)} (
+                            {row.librarySimilarity.libraryId})
+                          </span>
+                        )}
                       {row.sourcing.sourceWarnings?.map((warning) => (
                         <span
                           key={warning.libraryId}

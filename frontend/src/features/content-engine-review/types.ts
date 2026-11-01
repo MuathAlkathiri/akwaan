@@ -1,4 +1,7 @@
-import type { EngineCandidateSourcing } from "./api";
+import type {
+  EngineCandidateSourcing,
+  EngineLibrarySimilarity,
+} from "./api";
 import type { ContentItem } from "@/features/world-management/types";
 
 export type ReviewStatus = "pending" | "approved" | "rejected";
@@ -98,6 +101,7 @@ export interface ReviewCandidate {
     familyCompliance?: FamilyComplianceStatus;
   } | null;
   sourcing?: EngineCandidateSourcing | null;
+  librarySimilarity?: EngineLibrarySimilarity | null;
   factualClaims: string[];
   findings: Array<{
     code: string;
