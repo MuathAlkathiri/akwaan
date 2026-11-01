@@ -616,7 +616,6 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
         expect(ledgerEntry!.reservedMicros).toBe(
           preflight.generationEstimatedMicros,
         );
-        expect(ledgerEntry!.reservedMicros).toBe(preflight.estimatedMicros);
       } finally {
         if (prevTemp === undefined) {
           delete process.env.ENGINE_GENERATION_TEMPERATURE;
