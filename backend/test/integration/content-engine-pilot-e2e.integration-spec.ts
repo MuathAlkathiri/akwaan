@@ -441,15 +441,17 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
 
   describe('distinct job identity, exact-job isolation, cancellation, and legacy provenance', () => {
     it('creates distinct jobs for different guidance/difficulty and executes only the targeted job', async () => {
+      // The fake always answers with three candidates, so these must ask for
+      // three: a count mismatch fails the job, and this test needs it to finish.
       const reqA = {
         ...PILOT,
-        targetCount: 2,
+        targetCount: 3,
         difficulty: 'easy',
         batchGuidance: 'Focus on support heroes.',
       };
       const reqB = {
         ...PILOT,
-        targetCount: 2,
+        targetCount: 3,
         difficulty: 'relatively_difficult',
         batchGuidance: 'Focus on map lore.',
       };

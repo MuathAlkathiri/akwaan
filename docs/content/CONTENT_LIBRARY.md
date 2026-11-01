@@ -70,3 +70,8 @@ They apply to library content only.
 - **Two-run batches:** a request can create two jobs, each started by hand.
 - **A no-op edit clears `fact_blocked`:** harmless until something can produce
   CONTRADICTED, and must be fixed before an evidence assessor is added.
+- **The judge on UNRESOLVED:** the code runs it, and the integration test
+  `skips the judge when retrieval fails outright` says it must not. C1 used to
+  hide this. One of the two needs to change.
+- **`never admits more than the cap`:** this test puts all 150 reservations on
+  one job, so the per-job cap stops it before the monthly cap it means to test.
