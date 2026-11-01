@@ -64,7 +64,10 @@ They apply to library content only.
 
 - **Answer leakage by meaning:** rules catch forms of the answer, numbers and
   arithmetic. A clue that names the answer in other words needs world knowledge,
-  so it stays with the reviewer. See `answer-leakage.policy.ts`.
+  so it stays with the reviewer. On a held-out batch the rules flagged 12 of 22
+  leaky questions and blocked no clean ones. Misses are recorded as known gaps in
+  `answer-leakage.holdout.spec.ts`: inflected forms, grammar, and arithmetic
+  that needs a step the question does not spell out.
 - **Top-5 generation:** the validator exists and nothing feeds it yet.
 - **`revalidateAfter`:** stored and carried through promotion. Nothing acts on it
   yet, and "since" questions stay open-ended until something does.
