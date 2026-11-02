@@ -1,6 +1,10 @@
 import { createHash } from 'crypto';
 import { ConfigService } from '@nestjs/config';
-import { LibraryRole, LibrarySourceWarning } from './library-row';
+import {
+  LibraryClosestFacts,
+  LibraryRole,
+  LibrarySourceWarning,
+} from './library-row';
 
 /**
  * How a generation request is split between the verified library and free
@@ -41,6 +45,8 @@ export interface LibrarySeed {
   verifiedOn: string;
   revalidateAfter: string | null;
   sourceWarning: LibrarySourceWarning | null;
+  /** The scale the fact was verified on, when the row states one. */
+  closest?: LibraryClosestFacts;
 }
 
 export interface LibraryHookSeed {
@@ -48,6 +54,13 @@ export interface LibraryHookSeed {
   nameAr: string;
   description: string;
   caution: string | null;
+}
+
+/** One bank entry a job pinned, so a later import cannot move its anchors. */
+export interface AnchorBankEntry {
+  anchorId: string;
+  labelAr: string;
+  value: number;
 }
 
 export interface AnchoredSlot {
@@ -68,6 +81,8 @@ export interface GenerationSourcing {
   seeds: LibrarySeed[];
   /** Exploratory jobs only. */
   hooks: LibraryHookSeed[];
+  /** Closest jobs in a World with a bank. Absent means numeric-range only. */
+  anchorBank?: AnchorBankEntry[];
 }
 
 export interface SourcingAllocation {
@@ -239,6 +254,11 @@ const renderSeed = (seed: LibrarySeed): string => {
     `<library_row id="${asData(seed.libraryId)}" use="${isExemplar ? 'fact_and_style' : 'fact_only'}">`,
     `  <asks>${asData(seed.questionText)}</asks>`,
     `  <verified_answer>${asData(seed.verifiedAnswer)}</verified_answer>`,
+    ...(seed.closest?.mode === 'between-anchors'
+      ? [
+          `  <scale left="${asData(seed.closest.leftAnchor ?? '')}" right="${asData(seed.closest.rightAnchor ?? '')}" min="${seed.closest.min}" max="${seed.closest.max}"/>`,
+        ]
+      : []),
     '</library_row>',
   ].join('\n');
 };
@@ -285,13 +305,32 @@ const renderExploratory = (sourcing: GenerationSourcing): string =>
     ),
   ].join('\n');
 
+const renderAnchorBank = (bank: readonly AnchorBankEntry[]): string =>
+  [
+    '## ANCHOR BANK',
+    'A slider may run between two anchors instead of plain numbers, as `between-anchors`, only when the question lives on a real continuum and both anchors help a player reason about it. Otherwise use `numeric-range` and return null for both anchor ids. Plain numbers stay the default.',
+    'For `between-anchors`, choose both anchors from this bank by id. The range is set from their values, so the answer must sit strictly between them. No other anchor can be used.',
+    '',
+    ...bank.map(
+      (anchor) =>
+        `<anchor id="${asData(anchor.anchorId)}" value="${anchor.value}">${asData(anchor.labelAr)}</anchor>`,
+    ),
+  ].join('\n');
+
 /** The only route by which library content or hooks enter a prompt. */
 export const renderSourcingPrompt = (
   sourcing: GenerationSourcing | null | undefined,
 ): string | null => {
   if (!sourcing) return null;
-  if (sourcing.mode === 'library_anchored') return renderAnchored(sourcing);
-  return sourcing.hooks.length ? renderExploratory(sourcing) : null;
+  const blocks = [
+    sourcing.mode === 'library_anchored'
+      ? renderAnchored(sourcing)
+      : sourcing.hooks.length
+        ? renderExploratory(sourcing)
+        : null,
+    sourcing.anchorBank?.length ? renderAnchorBank(sourcing.anchorBank) : null,
+  ].filter(Boolean);
+  return blocks.length ? blocks.join('\n\n') : null;
 };
 
 const isNonEmptyString = (value: unknown): value is string =>

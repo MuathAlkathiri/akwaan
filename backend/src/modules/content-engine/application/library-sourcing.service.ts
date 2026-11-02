@@ -8,6 +8,7 @@ import {
 } from '../domain/generation-specification';
 import {
   allocateLibrarySourcing,
+  AnchorBankEntry,
   GenerationSourcing,
   LIBRARY_SOURCING_VERSION,
   LibraryHookSeed,
@@ -49,9 +50,12 @@ export class LibrarySourcingService {
       scopeKey: spec.scopeKey,
       mechanicKey: spec.mechanicKey,
     };
-    const [rows, hooks] = await Promise.all([
+    const [rows, hooks, anchors] = await Promise.all([
       this.library.findEligible(target),
       this.library.findWriterHooks(spec.mechanicKey),
+      spec.mechanicKey === 'closest'
+        ? this.library.findAnchorBank(spec.worldKey)
+        : [],
     ]);
     const anchoredPercent = resolveLibraryAnchoredPercent(this.config);
 
@@ -103,7 +107,13 @@ export class LibrarySourcingService {
         verifiedOn: row.verifiedOn!,
         revalidateAfter: row.revalidateAfter,
         sourceWarning: row.sourceWarning,
+        ...(row.closest ? { closest: row.closest } : {}),
       }));
+    const anchorBank = anchors.map((anchor): AnchorBankEntry => ({
+      anchorId: anchor.anchorId,
+      labelAr: anchor.labelAr,
+      value: anchor.year!,
+    }));
     const hookSeeds = hooks.map((hook): LibraryHookSeed => ({
       hookId: hook.hookId,
       nameAr: hook.nameAr,
@@ -112,7 +122,15 @@ export class LibrarySourcingService {
     }));
 
     const batchKey = createHash('sha256')
-      .update(JSON.stringify([seedKey, allocation.slots, seeds, hookSeeds]))
+      .update(
+        JSON.stringify([
+          seedKey,
+          allocation.slots,
+          seeds,
+          hookSeeds,
+          ...(anchorBank.length ? [anchorBank] : []),
+        ]),
+      )
       .digest('hex');
     const sourcingFor = (mode: SourcingMode): GenerationSourcing => ({
       version: LIBRARY_SOURCING_VERSION,
@@ -124,6 +142,7 @@ export class LibrarySourcingService {
       slots: mode === 'library_anchored' ? allocation.slots : [],
       seeds: mode === 'library_anchored' ? seeds : [],
       hooks: mode === 'exploratory' ? hookSeeds : [],
+      ...(anchorBank.length ? { anchorBank } : {}),
     });
 
     return {

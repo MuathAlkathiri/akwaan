@@ -8,6 +8,10 @@ import {
 } from '../modules/content-engine/domain/library-row';
 import { readLibraryWorkbook } from '../modules/content-engine/infrastructure/library-workbook.reader';
 import {
+  EngineLibraryAnchorDocument,
+  EngineLibraryAnchorSchema,
+} from '../modules/content-engine/schemas/engine-library-anchor.schema';
+import {
   EngineLibraryHookDocument,
   EngineLibraryHookSchema,
 } from '../modules/content-engine/schemas/engine-library-hook.schema';
@@ -93,9 +97,19 @@ const main = async (): Promise<void> => {
       EngineLibraryHookDocument.name,
       EngineLibraryHookSchema,
     );
-    await Promise.all([rows.createIndexes(), hooks.createIndexes()]);
+    const anchors = mongoose.model(
+      EngineLibraryAnchorDocument.name,
+      EngineLibraryAnchorSchema,
+    );
+    await Promise.all([
+      rows.createIndexes(),
+      hooks.createIndexes(),
+      anchors.createIndexes(),
+    ]);
     console.log(
-      await new LibraryImportService(rows, hooks).importWorkbook(workbook),
+      await new LibraryImportService(rows, hooks, anchors).importWorkbook(
+        workbook,
+      ),
     );
   } finally {
     await mongoose.disconnect();

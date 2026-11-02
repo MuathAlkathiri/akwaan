@@ -17,6 +17,7 @@ import {
   readLibraryWorkbook,
 } from '../infrastructure/library-workbook.reader';
 import { bindStructuredSeed } from '../domain/structured-seed-binding';
+import { EngineLibraryAnchorDocument } from '../schemas/engine-library-anchor.schema';
 import { EngineLibraryHookDocument } from '../schemas/engine-library-hook.schema';
 import {
   EngineLibraryRowDocument,
@@ -39,7 +40,7 @@ const fixtureRows = async (): Promise<LibraryRow[]> =>
 type Stored = (LibraryRow | LibraryHook) & { retired: boolean };
 
 /** Enough of a Model for the service, with counted writes. */
-const fakeCollection = (idField: 'libraryId' | 'hookId') => {
+const fakeCollection = (idField: 'libraryId' | 'hookId' | 'anchorId') => {
   const docs = new Map<string, Stored>();
   const writes = { bulkWrite: 0, updateMany: 0 };
   const idOf = (row: Stored) =>
@@ -91,6 +92,8 @@ const fakeModel = () => {
     service: new LibraryImportService(
       rows.model as unknown as Model<EngineLibraryRowDocument>,
       hooks.model as unknown as Model<EngineLibraryHookDocument>,
+      fakeCollection('anchorId')
+        .model as unknown as Model<EngineLibraryAnchorDocument>,
     ),
   };
 };

@@ -36,7 +36,8 @@ import {
   LibrarySimilarity,
   resolveLibraryCopyThreshold,
 } from '../domain/library-copy-detector';
-import type { LibrarySeed } from '../domain/library-sourcing';
+import { closestAnchorIssues } from '../domain/closest-anchor.policy';
+import type { AnchorBankEntry, LibrarySeed } from '../domain/library-sourcing';
 
 export interface ScreenResult {
   passed: boolean;
@@ -91,6 +92,11 @@ export interface DeterministicScreenSession {
   exemplarPhrases: string[][];
   /** The rows this job pinned. Empty for everything but anchored jobs. */
   librarySeeds?: readonly LibrarySeed[];
+  /**
+   * The anchors this job pinned. Set for every sourced job, even when empty, so
+   * an anchor on such a job has to be in it. Absent only outside the library.
+   */
+  anchorBank?: readonly AnchorBankEntry[];
 }
 
 export const INCOMPLETE_HISTORICAL_FINDING_CODES = [
@@ -354,11 +360,13 @@ export class DeterministicScreenService {
     historicalRecords?: HistoricalContentRecord[];
     historicalScopeStatus?: HistoricalScopeLoadResult;
     librarySeeds?: readonly LibrarySeed[];
+    anchorBank?: readonly AnchorBankEntry[];
   }): DeterministicScreenSession {
     return {
       worldKey: options?.worldKey,
       scopeKey: options?.scopeKey,
       librarySeeds: options?.librarySeeds ?? [],
+      anchorBank: options?.anchorBank,
       historicalScopeStatus: options?.historicalScopeStatus,
       historicalRecords: options?.historicalRecords
         ? [...options.historicalRecords]
@@ -1117,6 +1125,23 @@ export class DeterministicScreenService {
     const mode = slider.mode;
     const min = slider.min;
     const max = slider.max;
+    if (
+      mode === 'between-anchors' &&
+      finite(min) &&
+      finite(max) &&
+      finite(target)
+    ) {
+      findings.push(
+        ...closestAnchorIssues({
+          leftAnchor: slider.leftAnchor,
+          rightAnchor: slider.rightAnchor,
+          min,
+          max,
+          target,
+          bank: options?.session?.anchorBank,
+        }).map((issue) => blocking(issue.code, issue.message)),
+      );
+    }
     const step = slider.step;
     const unit = slider.unit;
     const displayFormat = slider.displayFormat;

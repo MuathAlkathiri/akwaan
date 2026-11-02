@@ -1175,6 +1175,28 @@ export function ContentEngineReviewWorkspace() {
                 <p className="text-xs font-semibold text-muted-foreground">
                   شريط التقدير — تحقّق أن المدى من طبيعة السؤال وأن الهدف قابل للوصول
                 </p>
+                {(() => {
+                  const slider = (
+                    candidate.draft?.mechanicPayload as {
+                      closestSlider?: {
+                        mode?: string;
+                        min?: number;
+                        max?: number;
+                        leftAnchor?: string;
+                        rightAnchor?: string;
+                      };
+                    }
+                  ).closestSlider;
+                  return slider?.mode === "between-anchors" ? (
+                    <p
+                      className="text-sm"
+                      data-testid="candidate-closest-anchors"
+                    >
+                      بين المرجعين: {slider.leftAnchor} ({slider.min}) و
+                      {slider.rightAnchor} ({slider.max})
+                    </p>
+                  ) : null;
+                })()}
                 <pre
                   className="overflow-x-auto rounded-xl bg-muted p-3 text-xs"
                   dir="ltr"

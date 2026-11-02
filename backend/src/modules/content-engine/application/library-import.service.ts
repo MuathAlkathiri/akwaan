@@ -4,10 +4,12 @@ import { Model } from 'mongoose';
 import {
   isLibraryHookWriterEligible,
   isLibraryRowGenerationEligible,
+  LibraryAnchor,
   LibraryHook,
   LibraryRow,
 } from '../domain/library-row';
 import { LibraryWorkbook } from '../infrastructure/library-workbook.reader';
+import { EngineLibraryAnchorDocument } from '../schemas/engine-library-anchor.schema';
 import { EngineLibraryHookDocument } from '../schemas/engine-library-hook.schema';
 import { EngineLibraryRowDocument } from '../schemas/engine-library-row.schema';
 
@@ -20,6 +22,7 @@ export interface LibraryImportSummary {
   unchanged: number;
   retired: number;
   hooks: { total: number; writerEligible: number };
+  anchors: { total: number };
 }
 
 /** The operations `sync` needs, common to both library collections. */
@@ -49,21 +52,34 @@ export class LibraryImportService {
     private readonly rows: Model<EngineLibraryRowDocument>,
     @InjectModel(EngineLibraryHookDocument.name)
     private readonly hooks: Model<EngineLibraryHookDocument>,
+    @InjectModel(EngineLibraryAnchorDocument.name)
+    private readonly anchors: Model<EngineLibraryAnchorDocument>,
   ) {}
 
   async importWorkbook(
     workbook: LibraryWorkbook,
   ): Promise<LibraryImportSummary> {
+    const sheets = workbook.sheets ?? ['Library', 'Hooks'];
     const rowsOutcome = await this.sync(
       this.rows as unknown as SyncModel,
       'libraryId',
       workbook.rows,
+      (row) => sheets.includes(row.sourceSheet ?? 'Library'),
     );
-    await this.sync(
-      this.hooks as unknown as SyncModel,
-      'hookId',
-      workbook.hooks,
-    );
+    if (sheets.includes('Hooks')) {
+      await this.sync(
+        this.hooks as unknown as SyncModel,
+        'hookId',
+        workbook.hooks,
+      );
+    }
+    if (sheets.includes('Anchors')) {
+      await this.sync(
+        this.anchors as unknown as SyncModel,
+        'anchorId',
+        workbook.anchors ?? [],
+      );
+    }
     return {
       total: workbook.rows.length,
       approved: workbook.rows.filter((row) => row.reviewStatus === 'APPROVED')
@@ -76,17 +92,19 @@ export class LibraryImportService {
         writerEligible: workbook.hooks.filter(isLibraryHookWriterEligible)
           .length,
       },
+      anchors: { total: workbook.anchors?.length ?? 0 },
     };
   }
 
   private async sync(
     model: SyncModel,
-    idField: 'libraryId' | 'hookId',
-    incoming: Array<LibraryRow | LibraryHook>,
+    idField: 'libraryId' | 'hookId' | 'anchorId',
+    incoming: Array<LibraryRow | LibraryHook | LibraryAnchor>,
+    canRetire: (row: { sourceSheet?: string }) => boolean = () => true,
   ): Promise<SyncOutcome> {
     const idOf = (row: object) => (row as Record<string, string>)[idField];
     const stored = await model
-      .find({}, { [idField]: 1, rowHash: 1, retired: 1 })
+      .find({}, { [idField]: 1, rowHash: 1, retired: 1, sourceSheet: 1 })
       .lean()
       .exec();
     const storedById = new Map(stored.map((row) => [idOf(row), row]));
@@ -97,7 +115,12 @@ export class LibraryImportService {
     });
     const incomingIds = new Set(incoming.map(idOf));
     const dropped = stored
-      .filter((row) => !row.retired && !incomingIds.has(idOf(row)))
+      .filter(
+        (row) =>
+          !row.retired &&
+          !incomingIds.has(idOf(row)) &&
+          canRetire(row as { sourceSheet?: string }),
+      )
       .map(idOf);
 
     if (changed.length) {
@@ -144,6 +167,18 @@ export class LibraryImportService {
       .lean()
       .exec();
     return rows.filter(isLibraryRowGenerationEligible);
+  }
+
+  /** The anchors this World may use. An anchor with no value has no position. */
+  async findAnchorBank(
+    worldKey: string,
+  ): Promise<EngineLibraryAnchorDocument[]> {
+    const anchors = await this.anchors
+      .find({ worldKey, retired: false })
+      .sort({ anchorId: 1 })
+      .lean()
+      .exec();
+    return anchors.filter((anchor) => anchor.year !== null);
   }
 
   /** Approved hooks written for this mechanic. Anti-patterns never pass. */

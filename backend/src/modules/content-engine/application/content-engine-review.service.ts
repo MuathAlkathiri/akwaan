@@ -349,6 +349,9 @@ export class ContentEngineReviewService {
 
     const editSession = this.screen.createSession?.({
       librarySeeds: references.job.generationSpec?.sourcing?.seeds,
+      anchorBank: references.job.generationSpec?.sourcing
+        ? (references.job.generationSpec.sourcing.anchorBank ?? [])
+        : undefined,
       worldKey: references.job.worldKey,
       scopeKey: references.job.scopeKey,
     });
@@ -995,6 +998,9 @@ export class ContentEngineReviewService {
 
     const session = this.screen.createSession?.({
       librarySeeds: references.job.generationSpec?.sourcing?.seeds,
+      anchorBank: references.job.generationSpec?.sourcing
+        ? (references.job.generationSpec.sourcing.anchorBank ?? [])
+        : undefined,
       worldKey: references.job.worldKey,
       scopeKey: references.job.scopeKey,
     });

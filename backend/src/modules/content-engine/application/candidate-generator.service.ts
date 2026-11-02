@@ -32,6 +32,7 @@ import { ResolvedAuthoringContext } from './authoring-context.service';
 import { EngineBudgetService } from './engine-budget.service';
 import { GenerationJobService } from './generation-job.service';
 import {
+  AnchorBankEntry,
   GenerationSourcing,
   renderSourcingPrompt,
   sourcingForSlot,
@@ -53,8 +54,8 @@ export const OUTPUT_TOKENS_PER_CANDIDATE = 800;
 
 /** Prompt/schema revision, per mechanic. Bump when either changes. */
 export const PROMPT_VERSIONS: Record<string, string> = {
-  multiple_choice: 'mc-v3',
-  closest: 'closest-v3',
+  multiple_choice: 'mc-v4',
+  closest: 'closest-v4',
 };
 
 /** Back-compat for callers and stored candidates written before per-mechanic versions. */
@@ -246,10 +247,10 @@ export const RYO_CANDIDATE_SCHEMA: Record<string, unknown> = {
  *
  * The slider is authored **before** the answer is looked at (the Skill's
  * domain-first rule), so the schema asks for the domain span and the target as
- * separate facts rather than letting one be derived from the other. Only
- * `numeric-range` is offered: `between-anchors` needs two authored anchor
- * labels whose quality is a judgement call, and the first pilot has no way to
- * assess them.
+ * separate facts rather than letting one be derived from the other. Plain
+ * `numeric-range` is the base; `between-anchors` exists only through
+ * `schemaWithAnchorBank`, because its labels are a judgement a human makes once,
+ * when curating the bank, and never the model.
  */
 export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
   type: 'object',
@@ -343,6 +344,55 @@ export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
     },
   },
 };
+
+/**
+ * Lets a Closest job use its World's anchor bank. The ids are an enum, so a
+ * model cannot name an anchor outside the bank; `null` keeps `numeric-range`.
+ */
+export function schemaWithAnchorBank(
+  baseSchema: Record<string, unknown>,
+  bank: readonly AnchorBankEntry[],
+): Record<string, unknown> {
+  const candidatesProp = (
+    baseSchema.properties as {
+      candidates: {
+        items: { required: string[]; properties: Record<string, unknown> };
+      };
+    }
+  ).candidates;
+  const anchorId = {
+    type: ['string', 'null'],
+    enum: [...bank.map((anchor) => anchor.anchorId), null],
+    description: 'An anchor id from the bank, or null for numeric-range.',
+  };
+  return {
+    ...baseSchema,
+    properties: {
+      ...(baseSchema.properties as Record<string, unknown>),
+      candidates: {
+        ...candidatesProp,
+        items: {
+          ...candidatesProp.items,
+          required: [
+            ...candidatesProp.items.required,
+            'interactionMode',
+            'leftAnchorId',
+            'rightAnchorId',
+          ],
+          properties: {
+            ...candidatesProp.items.properties,
+            interactionMode: {
+              type: 'string',
+              enum: ['numeric-range', 'between-anchors'],
+            },
+            leftAnchorId: anchorId,
+            rightAnchorId: anchorId,
+          },
+        },
+      },
+    },
+  };
+}
 
 /**
  * Extends a candidate generation schema with an explicit `slotIndex` property
@@ -950,9 +1000,12 @@ export class CandidateGeneratorService {
     const hasCreativeSlots =
       Boolean(input.generationPlan?.slots?.length) ||
       spec?.sourcing?.mode === 'library_anchored';
+    const anchorBank = spec?.sourcing?.anchorBank ?? [];
     const baseSchema =
       answerMode === 'closest'
-        ? CLOSEST_CANDIDATE_SCHEMA
+        ? anchorBank.length
+          ? schemaWithAnchorBank(CLOSEST_CANDIDATE_SCHEMA, anchorBank)
+          : CLOSEST_CANDIDATE_SCHEMA
         : RYO_CANDIDATE_SCHEMA;
     const responseSchema = hasCreativeSlots
       ? schemaWithCreativeSlots(baseSchema)
@@ -1021,6 +1074,7 @@ export class CandidateGeneratorService {
 
     const parsed = this.parse(raw, count, answerMode, {
       requireSlotIdentity: hasCreativeSlots,
+      anchorBank,
     });
     const saved: GeneratedCandidate[] = [];
     const effectiveContextHash = spec?.contextHash ?? input.context.contextHash;
@@ -1107,8 +1161,14 @@ export class CandidateGeneratorService {
    * numbers here because a NaN would otherwise travel all the way to a Mongo
    * document before anything noticed.
    */
-  private parseClosest(item: unknown): ParsedCandidate {
+  private parseClosest(
+    item: unknown,
+    anchorBank: readonly AnchorBankEntry[] = [],
+  ): ParsedCandidate {
     const value = item as {
+      interactionMode?: unknown;
+      leftAnchorId?: unknown;
+      rightAnchorId?: unknown;
       concept?: unknown;
       answerBasis?: unknown;
       playerReasoningStrategy?: unknown;
@@ -1154,6 +1214,24 @@ export class CandidateGeneratorService {
         ? value.unit.trim()
         : undefined;
 
+    // The range is the anchors' real values, set here and not by the model. An
+    // id outside the bank keeps its raw text, so the screen rejects this one
+    // candidate instead of a parse error losing the whole paid batch.
+    const anchoredSlider = () => {
+      const anchorFor = (id: unknown) =>
+        anchorBank.find((anchor) => anchor.anchorId === id);
+      const left = anchorFor(value.leftAnchorId);
+      const right = anchorFor(value.rightAnchorId);
+      return {
+        mode: 'between-anchors',
+        min: left?.value ?? num(value.min, 'min'),
+        max: right?.value ?? num(value.max, 'max'),
+        step: num(value.step, 'step'),
+        leftAnchor: left?.labelAr ?? String(value.leftAnchorId ?? ''),
+        rightAnchor: right?.labelAr ?? String(value.rightAnchorId ?? ''),
+      };
+    };
+
     return {
       factualClaims,
       draft: {
@@ -1166,16 +1244,23 @@ export class CandidateGeneratorService {
           // changes nothing and misleads a reviewer.
         },
         mechanicPayload: {
-          closestSlider: {
-            mode: 'numeric-range',
-            min: num(value.min, 'min'),
-            max: num(value.max, 'max'),
-            step: num(value.step, 'step'),
-            // A calendar year is a value, not an amount: the policy forbids a
-            // unit on one, so it is dropped rather than passed through.
-            ...(unit && displayFormat !== 'calendar-year' ? { unit } : {}),
-            ...(displayFormat === 'calendar-year' ? { displayFormat } : {}),
-          },
+          closestSlider:
+            value.interactionMode === 'between-anchors'
+              ? anchoredSlider()
+              : {
+                  mode: 'numeric-range',
+                  min: num(value.min, 'min'),
+                  max: num(value.max, 'max'),
+                  step: num(value.step, 'step'),
+                  // A calendar year is a value, not an amount: the policy
+                  // forbids a unit on one, so it is dropped, not passed through.
+                  ...(unit && displayFormat !== 'calendar-year'
+                    ? { unit }
+                    : {}),
+                  ...(displayFormat === 'calendar-year'
+                    ? { displayFormat }
+                    : {}),
+                },
         },
         metadata: {
           notes: text(value.domainDescription)
@@ -1211,7 +1296,10 @@ export class CandidateGeneratorService {
     raw: string,
     count: number,
     answerMode: 'multiple_choice' | 'closest' = 'multiple_choice',
-    options?: { requireSlotIdentity?: boolean },
+    options?: {
+      requireSlotIdentity?: boolean;
+      anchorBank?: readonly AnchorBankEntry[];
+    },
   ): ParsedCandidate[] {
     let payload: unknown;
     try {
@@ -1355,7 +1443,9 @@ export class CandidateGeneratorService {
     }
 
     if (answerMode === 'closest') {
-      return orderedCandidates.map((item) => this.parseClosest(item));
+      return orderedCandidates.map((item) =>
+        this.parseClosest(item, options?.anchorBank),
+      );
     }
     return orderedCandidates.map((item) => {
       const value = item as {

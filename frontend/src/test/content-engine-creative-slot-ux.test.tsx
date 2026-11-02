@@ -242,6 +242,42 @@ describe("Content Engine Slice 3D: Review Studio Creative Slot & Visibility UX",
       );
     });
 
+    it("shows the anchors of a between-anchors slider to the reviewer", async () => {
+      const anchored = mockCandidate({
+        candidateId: "cand-anchored-scale",
+        draft: {
+          prompt: { ar: "متى صدر الألبوم؟" },
+          answerPayload: { mode: "closest", correctValue: 2005 },
+          mechanicPayload: {
+            closestSlider: {
+              mode: "between-anchors",
+              min: 1990,
+              max: 2020,
+              leftAnchor: "أول ألبوم",
+              rightAnchor: "آخر ألبوم",
+            },
+          },
+        },
+      });
+      vi.spyOn(api, "listCandidates").mockResolvedValue([anchored]);
+      vi.spyOn(api, "getCandidate").mockResolvedValue(anchored);
+
+      render(
+        <WithQueryClient>
+          <ContentEngineReviewWorkspace />
+        </WithQueryClient>,
+      );
+      fireEvent.click(await screen.findByTestId("surface-tab-review"));
+      fireEvent.click(
+        await screen.findByTestId("candidate-row-cand-anchored-scale"),
+      );
+
+      const anchors = await screen.findByTestId("candidate-closest-anchors");
+      expect(anchors).toHaveTextContent("أول ألبوم");
+      expect(anchors).toHaveTextContent("آخر ألبوم");
+      expect(anchors).toHaveTextContent("1990");
+    });
+
     it("shows the highest pinned-row similarity on anchored candidates only", async () => {
       const anchored = mockCandidate({
         candidateId: "cand-anchored",

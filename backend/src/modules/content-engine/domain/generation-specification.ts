@@ -33,8 +33,8 @@ export const generatorAnswerModeFor = (
   ];
 
 export const PROMPT_VERSIONS: Record<GeneratorAnswerMode, string> = {
-  multiple_choice: 'mc-v3',
-  closest: 'closest-v3',
+  multiple_choice: 'mc-v4',
+  closest: 'closest-v4',
 };
 
 export const RYO_REQUESTED_DIFFICULTIES = [

@@ -435,8 +435,8 @@ describe('originality guidance reaches every mechanic', () => {
 describe('buildPrompt', () => {
   it('versions both changed prompt contracts without changing payload schemas', () => {
     expect(PROMPT_VERSIONS).toEqual({
-      multiple_choice: 'mc-v3',
-      closest: 'closest-v3',
+      multiple_choice: 'mc-v4',
+      closest: 'closest-v4',
     });
     expect(RYO_CANDIDATE_SCHEMA).toBeDefined();
     expect(CLOSEST_CANDIDATE_SCHEMA).toBeDefined();
@@ -864,7 +864,7 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
         relativelyDifficult: 100,
       },
       batchGuidance: 'Pinned guidance: focus on historical milestones.',
-      promptVersion: 'mc-v3',
+      promptVersion: 'mc-v4',
       provider: 'pinned-provider',
       generationModel: 'pinned-gen-model',
       qualityModel: 'pinned-quality-model',
@@ -899,7 +899,7 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
     expect(generateText).toHaveBeenCalledWith(
       expect.objectContaining({
         model: 'pinned-gen-model',
-        promptVersion: 'mc-v3',
+        promptVersion: 'mc-v4',
         omitTemperature: false,
         temperature: 0.45,
         reasoningEffort: 'low',
@@ -925,7 +925,7 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
       expect.objectContaining({
         $set: expect.objectContaining({
           contextHash: pinnedContextHash,
-          promptVersion: 'mc-v3',
+          promptVersion: 'mc-v4',
           provider: 'pinned-provider',
           model: 'pinned-gen-model',
         }),

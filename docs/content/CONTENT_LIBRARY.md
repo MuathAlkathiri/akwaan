@@ -24,6 +24,35 @@ Only rows that are `APPROVED`, have `scope_status` of `MATCH`, and have the role
 A row citing a host in `LIBRARY_WEAK_SOURCE_HOSTS` stays usable and carries a
 `WEAK_SOURCE` warning into review.
 
+## Anchored Closest
+
+A Closest row can run between two anchors instead of plain numbers. The `Examples`
+sheet maps to the code like this:
+
+| Sheet column | Code |
+|---|---|
+| `interaction_mode` | `closestSlider.mode` |
+| `anchor_left`, `anchor_right` | `leftAnchor`, `rightAnchor` |
+| `range_min`, `range_max` | `min`, `max`, the real values of the two anchors |
+| `answer_numeric` | `correctValue` |
+| `anchor_step` (optional) | `step` |
+
+**The anchor bank is the rule.** The `Anchors` sheet (`id`, `label_ar`, `year`,
+`source_url`, `note`) is curated by a human, and that curation is what judges
+anchor quality. A job pins its World's bank, the writer's schema allows only those
+ids, and the range comes from their values. An anchor with no `year` has no
+position, so it is never offered. Anchors must be distinct, bracket the target,
+never equal it, and never state it. A fact bound to an anchored row covers only
+that same scale. Worlds with no bank stay `numeric-range`.
+
+An `Examples` row has no World, status or date of its own, so it defaults to the
+`celebrities` World and `NEW_SCOPE`. It reaches generation only once the sheet
+gives `scope_status` of `MATCH` and a `verified_on` date. `anchor_years_internal`
+is stored and never sent to the writer.
+
+Importing retires only rows dropped from the sheets a file carries, so a
+Celebrities file cannot retire the football library, or the reverse.
+
 ## Generation
 
 A request splits into a library-anchored job and an exploratory job, because one

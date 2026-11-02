@@ -599,7 +599,7 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
         expect(fake.calls).toHaveLength(1);
         const call = fake.calls[0];
         expect(call.model).toBe('fake-model');
-        expect(call.promptVersion).toBe('mc-v3');
+        expect(call.promptVersion).toBe('mc-v4');
         expect(call.temperature).toBe(0.8);
         expect(call.maxOutputTokens).toBe(2 * 800);
         expect(call.prompt).toContain(

@@ -24,6 +24,7 @@ import {
   sourcingForSlot,
 } from '../domain/library-sourcing';
 import { readLibraryWorkbook } from '../infrastructure/library-workbook.reader';
+import { EngineLibraryAnchorDocument } from '../schemas/engine-library-anchor.schema';
 import { EngineLibraryHookDocument } from '../schemas/engine-library-hook.schema';
 import { EngineLibraryRowDocument } from '../schemas/engine-library-row.schema';
 import { LibraryImportService } from './library-import.service';
@@ -87,6 +88,9 @@ const library = async (): Promise<LibraryImportService> => {
             .map((hook) => ({ ...hook, retired: false })),
         ),
     } as unknown as Model<EngineLibraryHookDocument>,
+    {
+      find: () => answer([]),
+    } as unknown as Model<EngineLibraryAnchorDocument>,
   );
 };
 

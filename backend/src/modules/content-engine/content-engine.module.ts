@@ -75,6 +75,10 @@ import {
   EngineDraftPublicationSchema,
 } from './schemas/engine-draft-publication.schema';
 import {
+  EngineLibraryAnchorDocument,
+  EngineLibraryAnchorSchema,
+} from './schemas/engine-library-anchor.schema';
+import {
   EngineLibraryHookDocument,
   EngineLibraryHookSchema,
 } from './schemas/engine-library-hook.schema';
@@ -117,6 +121,10 @@ import {
       },
       { name: EngineLibraryRowDocument.name, schema: EngineLibraryRowSchema },
       { name: EngineLibraryHookDocument.name, schema: EngineLibraryHookSchema },
+      {
+        name: EngineLibraryAnchorDocument.name,
+        schema: EngineLibraryAnchorSchema,
+      },
     ]),
   ],
   controllers: [ContentEngineReviewController, ContentEngineJobsController],

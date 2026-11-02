@@ -737,7 +737,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
         .collection('engine_candidates')
         .findOne({ jobId: held.jobId, ordinal: 0 });
       expect(stored!.contextHash).toBe(resolved.contextHash);
-      expect(stored!.promptVersion).toBe('mc-v3');
+      expect(stored!.promptVersion).toBe('mc-v4');
       expect(stored!.status).toBe('generated');
 
       // The call was reserved and settled — never unaccounted.
@@ -1150,7 +1150,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
     it('generates a canonical closest payload and passes screening', async () => {
       const { row, contentItems } = await runClosest(CLOSEST_BATCH);
       expect(row).toBeTruthy();
-      expect(row!.promptVersion).toBe('closest-v3');
+      expect(row!.promptVersion).toBe('closest-v4');
 
       const draft = row!.draft as {
         answerPayload: {
@@ -1252,7 +1252,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       });
       await localOrchestrator.runNext('mc-worker');
       const row = await conn.collection('engine_candidates').findOne({});
-      expect(row!.promptVersion).toBe('mc-v3');
+      expect(row!.promptVersion).toBe('mc-v4');
       expect(
         (row!.draft as { answerPayload: { mode: string } }).answerPayload.mode,
       ).toBe('multiple_choice');

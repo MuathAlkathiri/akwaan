@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { closestAnchorIssues } from './closest-anchor.policy';
 
 /**
  * The verified question library: human-approved facts held beside the Skills,
@@ -71,6 +72,47 @@ export const LIBRARY_MAX_SOURCE_URLS = 2;
 /** An `asof_needed` row with no event estimate is re-checked after this long. */
 export const LIBRARY_DEFAULT_REVALIDATE_MONTHS = 12;
 
+/** The Celebrities workbook's sheet of worked examples. */
+export const LIBRARY_EXAMPLE_COLUMNS = [
+  'id',
+  'scope',
+  'celebrity',
+  'fit',
+  'question_example',
+  'answer',
+  'answer_numeric',
+  'source_url',
+  'confidence',
+  'caveat',
+  'review_status',
+  'interaction_mode',
+  'anchor_left',
+  'anchor_right',
+  'anchor_years_internal',
+  'range_min',
+  'range_max',
+] as const;
+
+export const LIBRARY_ANCHOR_COLUMNS = [
+  'id',
+  'label_ar',
+  'year',
+  'source_url',
+  'note',
+] as const;
+
+/** The World of a workbook whose rows do not name one. */
+export const LIBRARY_EXAMPLES_DEFAULT_WORLD = 'celebrities';
+
+export const LIBRARY_ROW_SHEETS = ['Library', 'Examples'] as const;
+export type LibraryRowSheet = (typeof LIBRARY_ROW_SHEETS)[number];
+
+export const CLOSEST_INTERACTION_MODES = [
+  'numeric-range',
+  'between-anchors',
+] as const;
+export type ClosestInteractionMode = (typeof CLOSEST_INTERACTION_MODES)[number];
+
 export const LIBRARY_HOOK_COLUMNS = [
   'id',
   'type',
@@ -120,8 +162,32 @@ export interface LibraryTop5Facts {
   trapAttestation: string | null;
 }
 
+/** The scale a Closest row was verified on. */
+export interface LibraryClosestFacts {
+  mode: ClosestInteractionMode;
+  min: number;
+  max: number;
+  step: number | null;
+  leftAnchor: string | null;
+  rightAnchor: string | null;
+}
+
+/** One curated anchor. Only a human adds to the bank. */
+export interface LibraryAnchor {
+  anchorId: string;
+  worldKey: string;
+  labelAr: string;
+  year: number | null;
+  sourceUrl: string | null;
+  note: string | null;
+  raw: LibrarySheetRow;
+  rowHash: string;
+}
+
 export interface LibraryRow {
   libraryId: string;
+  /** Re-imports retire only rows from a sheet the workbook actually carries. */
+  sourceSheet: LibraryRowSheet;
   sourceRef: string | null;
   worldKey: string | null;
   scopeKey: string | null;
@@ -151,6 +217,7 @@ export interface LibraryRow {
   nextEventDateEstimate: string | null;
   revalidateAfter: string | null;
   top5: LibraryTop5Facts | null;
+  closest: LibraryClosestFacts | null;
   /** Every source cell, so nothing the workbook said is lost to this mapping. */
   raw: LibrarySheetRow;
   rowHash: string;
@@ -266,10 +333,52 @@ const parseTop5 = (row: LibrarySheetRow): LibraryTop5Facts | null => {
   };
 };
 
+const finiteNumber = (value: string | undefined): number | null => {
+  if (value === undefined || !value.trim()) return null;
+  const parsed = Number(toWesternDigits(value).trim());
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseClosestFacts = (
+  libraryId: string,
+  row: LibrarySheetRow,
+): LibraryClosestFacts | null => {
+  if (!row.interaction_mode) return null;
+  const mode = oneOf(
+    libraryId,
+    'interaction_mode',
+    row.interaction_mode,
+    CLOSEST_INTERACTION_MODES,
+  );
+  const min = finiteNumber(row.range_min);
+  const max = finiteNumber(row.range_max);
+  if (min === null || max === null || min >= max) {
+    throw new LibraryRowError(
+      libraryId,
+      'range_min and range_max must be numbers with range_min below range_max',
+    );
+  }
+  const step = finiteNumber(row.anchor_step);
+  if (row.anchor_step && (step === null || step <= 0)) {
+    throw new LibraryRowError(libraryId, 'anchor_step must be positive');
+  }
+  return {
+    mode,
+    min,
+    max,
+    step,
+    leftAnchor: mode === 'between-anchors' ? (row.anchor_left ?? null) : null,
+    rightAnchor: mode === 'between-anchors' ? (row.anchor_right ?? null) : null,
+  };
+};
+
 const parseCanonicalNumber = (
   mechanicKeys: string[],
   canonicalAnswer: string | null,
+  answerNumeric: string | undefined,
 ): number | null => {
+  const stated = finiteNumber(answerNumeric);
+  if (stated !== null) return stated;
   if (!canonicalAnswer || !mechanicKeys.includes('closest')) return null;
   const match = /^\d+/.exec(toWesternDigits(canonicalAnswer));
   return match ? Number(match[0]) : null;
@@ -300,7 +409,10 @@ const hashRow = (row: object): string =>
  * carry the proof that approval stands on; otherwise a typo in the workbook would
  * quietly become an unverified fact.
  */
-export const mapLibrarySheetRow = (row: LibrarySheetRow): LibraryRow => {
+export const mapLibrarySheetRow = (
+  row: LibrarySheetRow,
+  options: { sourceSheet?: LibraryRowSheet; undatedApproval?: boolean } = {},
+): LibraryRow => {
   const libraryId = row.id?.trim();
   if (!libraryId) throw new LibraryRowError('(blank id)', 'row has no id');
 
@@ -346,7 +458,7 @@ export const mapLibrarySheetRow = (row: LibrarySheetRow): LibraryRow => {
         'APPROVED without an http(s) source_url',
       );
     }
-    if (!verifiedOn) {
+    if (!verifiedOn && !options.undatedApproval) {
       throw new LibraryRowError(libraryId, 'APPROVED without verified_on');
     }
   }
@@ -360,6 +472,9 @@ export const mapLibrarySheetRow = (row: LibrarySheetRow): LibraryRow => {
   const mechanicKeys = parseMechanicKeys(row.akwaan_fit);
   const verifiedAnswer = row.verified_answer ?? null;
   const top5 = parseTop5(row);
+  // A parked row may still be a sketch, so only an approval is held to its scale.
+  const closest =
+    reviewStatus === 'APPROVED' ? parseClosestFacts(libraryId, row) : null;
   // A Top-5 answer is its five entries, so it has no single value to derive.
   const canonicalAnswer =
     verifiedAnswer && !top5
@@ -368,6 +483,7 @@ export const mapLibrarySheetRow = (row: LibrarySheetRow): LibraryRow => {
 
   const mapped: Omit<LibraryRow, 'rowHash'> = {
     libraryId,
+    sourceSheet: options.sourceSheet ?? 'Library',
     sourceRef: row.src ?? null,
     worldKey: !row.world || row.world === NO_WORLD_MARKER ? null : row.world,
     scopeKey: row.scope ?? null,
@@ -385,7 +501,11 @@ export const mapLibrarySheetRow = (row: LibrarySheetRow): LibraryRow => {
       .filter(Boolean),
     verifiedAnswer,
     canonicalAnswer,
-    canonicalNumber: parseCanonicalNumber(mechanicKeys, canonicalAnswer),
+    canonicalNumber: parseCanonicalNumber(
+      mechanicKeys,
+      canonicalAnswer,
+      row.answer_numeric,
+    ),
     sourceUrl,
     sourceUrls,
     sourceWarning: sourceUrls.some(isWeakSource) ? 'WEAK_SOURCE' : null,
@@ -398,6 +518,7 @@ export const mapLibrarySheetRow = (row: LibrarySheetRow): LibraryRow => {
           addMonths(verifiedOn, LIBRARY_DEFAULT_REVALIDATE_MONTHS))
         : null,
     top5,
+    closest,
     raw: row,
   };
   return { ...mapped, rowHash: hashRow(mapped) };
@@ -405,7 +526,12 @@ export const mapLibrarySheetRow = (row: LibrarySheetRow): LibraryRow => {
 
 type EligibilityFields = Pick<
   LibraryRow,
-  'reviewStatus' | 'scopeStatus' | 'role' | 'worldKey' | 'scopeKey'
+  | 'reviewStatus'
+  | 'scopeStatus'
+  | 'role'
+  | 'worldKey'
+  | 'scopeKey'
+  | 'verifiedOn'
 >;
 
 /**
@@ -420,7 +546,8 @@ export const isLibraryRowGenerationEligible = (
   row.scopeStatus === 'MATCH' &&
   (row.role === 'FACT_SEED' || row.role === 'EXEMPLAR_CANDIDATE') &&
   Boolean(row.worldKey) &&
-  Boolean(row.scopeKey);
+  Boolean(row.scopeKey) &&
+  Boolean(row.verifiedOn);
 
 /** Approval covers the fact; only exemplar candidates lend their wording. */
 export const libraryExemplarWording = (
@@ -455,3 +582,81 @@ export const isLibraryHookWriterEligible = (
   hook: Pick<LibraryHook, 'hookId' | 'type'>,
 ): boolean =>
   hook.type === 'HOOK' && LIBRARY_APPROVED_HOOK_IDS.includes(hook.hookId);
+
+/**
+ * The Examples sheet in the Library sheet's terms, so one mapper holds every
+ * rule. Its rows name no status beyond review, so they stay gated (`NEW_SCOPE`)
+ * until the sheet says otherwise, and `anchor_years_internal` stays in `raw`.
+ */
+export const mapLibraryExampleRow = (row: LibrarySheetRow): LibraryRow =>
+  mapLibrarySheetRow(
+    {
+      ...row,
+      question: row.question_example,
+      verified_answer: row.answer,
+      akwaan_fit: row.fit,
+      world: row.world ?? LIBRARY_EXAMPLES_DEFAULT_WORLD,
+      scope_status: row.scope_status ?? 'NEW_SCOPE',
+      role: row.role ?? 'FACT_SEED',
+      asof_needed: row.asof_needed ?? 'N',
+    },
+    { sourceSheet: 'Examples', undatedApproval: true },
+  );
+
+export const mapLibraryAnchorRow = (
+  row: LibrarySheetRow,
+  defaultWorld = LIBRARY_EXAMPLES_DEFAULT_WORLD,
+): LibraryAnchor => {
+  const anchorId = row.id?.trim();
+  if (!anchorId) throw new LibraryRowError('(blank id)', 'anchor has no id');
+  if (!row.label_ar)
+    throw new LibraryRowError(anchorId, 'anchor has no label_ar');
+  const year = finiteNumber(row.year);
+  if (row.year && year === null) {
+    throw new LibraryRowError(anchorId, `year "${row.year}" is not a number`);
+  }
+  if (row.source_url && !isHttpUrl(row.source_url)) {
+    throw new LibraryRowError(anchorId, 'source_url must be http(s)');
+  }
+  const mapped: Omit<LibraryAnchor, 'rowHash'> = {
+    anchorId,
+    worldKey: row.world ?? defaultWorld,
+    labelAr: row.label_ar,
+    year,
+    sourceUrl: row.source_url ?? null,
+    note: row.note ?? null,
+    raw: row,
+  };
+  return { ...mapped, rowHash: hashRow(mapped) };
+};
+
+/**
+ * Applies the anchor rules to an approved row as it arrives. A row's anchors
+ * must come from the bank of its own World.
+ */
+export const validateLibraryClosestRow = (
+  row: Pick<LibraryRow, 'closest' | 'canonicalNumber' | 'worldKey'>,
+  anchors: readonly LibraryAnchor[],
+): string[] => {
+  if (!row.closest) return [];
+  if (row.canonicalNumber === null) {
+    return ['interaction_mode needs a numeric answer'];
+  }
+  const { mode, min, max, leftAnchor, rightAnchor } = row.closest;
+  if (mode === 'numeric-range') {
+    return row.canonicalNumber < min || row.canonicalNumber > max
+      ? [`answer ${row.canonicalNumber} is outside the range`]
+      : [];
+  }
+  return closestAnchorIssues({
+    leftAnchor,
+    rightAnchor,
+    min,
+    max,
+    target: row.canonicalNumber,
+    bank: anchors
+      .filter((anchor) => anchor.worldKey === row.worldKey)
+      .filter((anchor) => anchor.year !== null)
+      .map((anchor) => ({ labelAr: anchor.labelAr, value: anchor.year! })),
+  }).map((issue) => `${issue.code}: ${issue.message}`);
+};

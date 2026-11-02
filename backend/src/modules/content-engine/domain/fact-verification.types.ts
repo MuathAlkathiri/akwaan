@@ -48,6 +48,7 @@ export interface StructuredSeedEvidence extends RetrievedFactEvidence {
 export const SEED_NOT_COVERED_REASONS = [
   'ANSWER_CHANGED',
   'WINDOW_CHANGED',
+  'SCALE_CHANGED',
   'EVIDENCE_EXPIRED',
 ] as const;
 export type SeedNotCoveredReason = (typeof SEED_NOT_COVERED_REASONS)[number];

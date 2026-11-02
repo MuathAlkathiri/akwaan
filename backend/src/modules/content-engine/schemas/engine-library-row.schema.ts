@@ -3,9 +3,12 @@ import { HydratedDocument } from 'mongoose';
 import {
   LIBRARY_REVIEW_STATUSES,
   LIBRARY_ROLES,
+  LIBRARY_ROW_SHEETS,
   LIBRARY_SCOPE_STATUSES,
+  LibraryClosestFacts,
   LibraryReviewStatus,
   LibraryRole,
+  LibraryRowSheet,
   LibraryScopeStatus,
   LibrarySheetRow,
   LibrarySourceWarning,
@@ -22,6 +25,10 @@ import {
 @Schema({ collection: 'engine_library_rows', timestamps: true })
 export class EngineLibraryRowDocument {
   @Prop({ type: String, required: true }) libraryId!: string;
+
+  @Prop({ type: String, required: true, enum: LIBRARY_ROW_SHEETS })
+  sourceSheet!: LibraryRowSheet;
+
   @Prop({ type: String, default: null }) sourceRef!: string | null;
   @Prop({ type: String, default: null }) worldKey!: string | null;
   @Prop({ type: String, default: null }) scopeKey!: string | null;
@@ -58,6 +65,7 @@ export class EngineLibraryRowDocument {
 
   @Prop({ type: String, default: null }) revalidateAfter!: string | null;
   @Prop({ type: Object, default: null }) top5!: LibraryTop5Facts | null;
+  @Prop({ type: Object, default: null }) closest!: LibraryClosestFacts | null;
   @Prop({ type: Object, required: true }) raw!: LibrarySheetRow;
   @Prop({ type: String, required: true }) rowHash!: string;
 

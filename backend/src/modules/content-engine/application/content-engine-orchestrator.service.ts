@@ -339,6 +339,9 @@ export class ContentEngineOrchestratorService {
       // generator only receives context.exemplars (the APPROVED-only view).
       const screenSession = this.screen.createSession?.({
         librarySeeds: provenance.spec?.sourcing?.seeds,
+        anchorBank: provenance.spec?.sourcing
+          ? (provenance.spec.sourcing.anchorBank ?? [])
+          : undefined,
         worldKey: job.worldKey,
         scopeKey: job.scopeKey,
         exemplars: context.historicalExemplars,

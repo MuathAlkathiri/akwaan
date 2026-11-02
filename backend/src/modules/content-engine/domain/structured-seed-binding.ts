@@ -68,6 +68,28 @@ export const answersRow = (
   );
 };
 
+/**
+ * A value on an anchored scale means something only on that scale, so a row
+ * verified between two anchors vouches for those anchors. A numeric row is a
+ * plain quantity and any honest range can hold it.
+ */
+const keepsScale = (
+  draft: Record<string, unknown> | null,
+  seed: LibrarySeed,
+): boolean => {
+  if (seed.closest?.mode !== 'between-anchors') return true;
+  const slider = (
+    draft?.mechanicPayload as { closestSlider?: Record<string, unknown> }
+  )?.closestSlider;
+  return (
+    slider?.mode === 'between-anchors' &&
+    slider.min === seed.closest.min &&
+    slider.max === seed.closest.max &&
+    slider.leftAnchor === seed.closest.leftAnchor &&
+    slider.rightAnchor === seed.closest.rightAnchor
+  );
+};
+
 const evidenceFrom = (seed: LibrarySeed): StructuredSeedEvidence => ({
   method: 'structured-seed',
   sourceId: seed.libraryId,
@@ -118,14 +140,23 @@ export const bindStructuredSeed = (input: {
     };
   }
 
-  const current = inWindow.find(
+  const onScale = inWindow.filter((seed) => keepsScale(input.draft, seed));
+  if (!onScale.length) {
+    return {
+      covered: false,
+      reason: 'SCALE_CHANGED',
+      libraryId: inWindow[0].libraryId,
+    };
+  }
+
+  const current = onScale.find(
     (seed) => !seed.revalidateAfter || seed.revalidateAfter >= input.today,
   );
   if (!current) {
     return {
       covered: false,
       reason: 'EVIDENCE_EXPIRED',
-      libraryId: inWindow[0].libraryId,
+      libraryId: onScale[0].libraryId,
     };
   }
   return {

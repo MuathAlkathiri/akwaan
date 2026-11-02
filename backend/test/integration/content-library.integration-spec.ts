@@ -1,3 +1,4 @@
+import ExcelJS from 'exceljs';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { INestApplication } from '@nestjs/common';
@@ -9,6 +10,8 @@ import { LibraryImportService } from '../../src/modules/content-engine/applicati
 import { ENGINE_AI_PROVIDER } from '../../src/modules/content-engine/domain/content-engine.constants';
 import {
   isLibraryRowGenerationEligible,
+  LIBRARY_ANCHOR_COLUMNS,
+  LIBRARY_EXAMPLE_COLUMNS,
   LibraryRow,
   mapLibrarySheetRow,
 } from '../../src/modules/content-engine/domain/library-row';
@@ -92,7 +95,35 @@ describe('Verified question library on real Mongo', () => {
   const rows = () => database.collection('engine_library_rows');
 
   /** Answers an anchored call by slot, so each behaviour lands on one candidate. */
+  /** Every anchored Closest slot keeps the row's scale and answer. */
+  const respondClosest = (prompt: string): string => {
+    const count = Number(/Author exactly (\d+) candidate/.exec(prompt)![1]);
+    const anchored = prompt.includes('## LIBRARY-ANCHORED SLOTS');
+    return JSON.stringify({
+      candidates: Array.from({ length: count }, (_, slotIndex) => ({
+        ...(anchored ? { slotIndex } : {}),
+        concept: 'A date fans can place between two releases.',
+        answerBasis: 'knowledge-anchored',
+        playerReasoningStrategy: 'Place it between the two known releases.',
+        prompt: `متى ظهرت الخريطة الجديدة في الإصدار رقم ${slotIndex + 3}؟`,
+        domainDescription: 'Release years of the series.',
+        min: 0,
+        max: 0,
+        step: 1,
+        correctValue: 2019,
+        stepsFromMin: 3,
+        unit: null,
+        displayFormat: null,
+        interactionMode: 'between-anchors',
+        leftAnchorId: 'ANC-1',
+        rightAnchorId: 'ANC-2',
+        factualClaims: ['A claim the model wrote'],
+      })),
+    });
+  };
+
   const respond = (prompt: string): string => {
+    if (prompt.includes('## ANCHOR BANK')) return respondClosest(prompt);
     if (!prompt.includes('## LIBRARY-ANCHORED SLOTS')) {
       const count = Number(/Author exactly (\d+) candidate/.exec(prompt)![1]);
       return JSON.stringify({
@@ -170,6 +201,43 @@ describe('Verified question library on real Mongo', () => {
     adminToken = await loginForToken(app, fixtureCredentials.admin);
     library = app.get(LibraryImportService, { strict: false });
     workbook = await readLibraryWorkbook(readFileSync(FIXTURE));
+
+    // Screening reads the Scope's history, so it must exist before jobs run.
+    const worldId = new Types.ObjectId();
+    await database.collection('worlds').insertOne({
+      _id: worldId,
+      name: 'Video Games',
+      slug: TARGET.worldKey,
+      status: 'draft',
+      sortOrder: 0,
+    });
+    await database.collection('scopes').insertOne({
+      worldId,
+      name: 'Overwatch',
+      slug: TARGET.scopeKey,
+      excludedChallengeTypeIds: [],
+      status: 'draft',
+      sortOrder: 0,
+    });
+    await database.collection('challenge_types').updateOne(
+      { slug: TARGET.mechanicKey },
+      {
+        $setOnInsert: {
+          name: 'Read Your Opponent',
+          family: 'ryo',
+          itemStructure: 'discrete_triple',
+          answerMode: 'ryo',
+          defaultPresentation: {
+            inputType: 'multiple_choice',
+            timerSeconds: null,
+          },
+          scoringRuleId: 'ryo-payoff-matrix',
+          status: 'draft',
+          sortOrder: 0,
+        },
+      },
+      { upsert: true },
+    );
   }, 120_000);
 
   afterAll(async () => {
@@ -315,6 +383,138 @@ describe('Verified question library on real Mongo', () => {
     });
   });
 
+  describe('a Celebrities-shaped workbook', () => {
+    const bankRow = {
+      id: 'CEL-9001',
+      world: TARGET.worldKey,
+      scope: TARGET.scopeKey,
+      scope_status: 'MATCH',
+      verified_on: '2026-11-01',
+      fit: 'Closest (سنة)',
+      question_example: 'متى صدرت هذه الخريطة؟',
+      answer: '2019',
+      answer_numeric: 2019,
+      source_url: 'https://example.test/row',
+      review_status: 'APPROVED',
+      interaction_mode: 'between-anchors',
+      anchor_left: 'الإصدار الأول',
+      anchor_right: 'الإصدار الأخير',
+      anchor_years_internal: '2016-2022',
+      range_min: 2016,
+      range_max: 2022,
+    };
+
+    const workbookFile = async () => {
+      const file = new ExcelJS.Workbook();
+      const columns = [
+        ...LIBRARY_EXAMPLE_COLUMNS,
+        'world',
+        'scope_status',
+        'verified_on',
+      ];
+      const examples = file.addWorksheet('Examples');
+      examples.addRow(columns);
+      examples.addRow(
+        columns.map(
+          (column) => (bankRow as Record<string, unknown>)[column] ?? null,
+        ),
+      );
+      const anchors = file.addWorksheet('Anchors');
+      anchors.addRow([...LIBRARY_ANCHOR_COLUMNS, 'world']);
+      anchors.addRow([
+        'ANC-1',
+        'الإصدار الأول',
+        2016,
+        null,
+        null,
+        'video-games',
+      ]);
+      anchors.addRow([
+        'ANC-2',
+        'الإصدار الأخير',
+        2022,
+        null,
+        null,
+        'video-games',
+      ]);
+      return Buffer.from(await file.xlsx.writeBuffer());
+    };
+
+    const closestRequest = {
+      ...TARGET,
+      mechanicKey: 'closest',
+      targetCount: 3,
+    };
+
+    afterAll(async () => {
+      await database.collection('engine_jobs').deleteMany({});
+      await database.collection('engine_candidates').deleteMany({});
+      await database.collection('engine_cost_ledger').deleteMany({});
+      await database
+        .collection('engine_library_rows')
+        .deleteOne({ libraryId: 'CEL-9001' });
+      fake.calls.length = 0;
+    });
+
+    it('imports beside the football library without retiring it', async () => {
+      await library.importWorkbook(workbook);
+      const parsed = await readLibraryWorkbook(await workbookFile());
+      expect(await library.importWorkbook(parsed)).toMatchObject({
+        created: 1,
+        retired: 0,
+        anchors: { total: 2 },
+      });
+      expect(await rows().countDocuments({ retired: true })).toBe(0);
+      expect(
+        (await library.findAnchorBank(TARGET.worldKey)).map((a) => a.anchorId),
+      ).toEqual(['ANC-1', 'ANC-2']);
+    });
+
+    it('runs an anchored Closest job from the bank to bound evidence', async () => {
+      const plan = (
+        await asAdmin(api().post('/admin/content-engine/jobs/preflight'))
+          .send(closestRequest)
+          .expect(201)
+      ).body.data;
+      const { jobs } = (
+        await asAdmin(api().post('/admin/content-engine/jobs'))
+          .send({ ...closestRequest, planDigest: plan.planDigest })
+          .expect(201)
+      ).body.data;
+      const anchored = jobs.find(
+        (job: { mode: string }) => job.mode === 'library_anchored',
+      );
+      await asAdmin(
+        api().post(`/admin/content-engine/jobs/${anchored.jobId}/run`),
+      ).expect(201);
+
+      const call = fake.calls.find((entry) =>
+        entry.prompt.includes('Author exactly'),
+      )!;
+      expect(call.prompt).toContain('## ANCHOR BANK');
+      expect(call.prompt).not.toContain('2016-2022');
+
+      const [candidate] = await database
+        .collection('engine_candidates')
+        .find({ jobId: anchored.jobId })
+        .sort({ ordinal: 1 })
+        .toArray();
+      expect(candidate.draft.mechanicPayload.closestSlider).toEqual({
+        mode: 'between-anchors',
+        min: 2016,
+        max: 2022,
+        step: 1,
+        leftAnchor: 'الإصدار الأول',
+        rightAnchor: 'الإصدار الأخير',
+      });
+      expect(candidate.status).not.toBe('screened_reject');
+      expect(candidate.factVerification.seedBinding).toMatchObject({
+        covered: true,
+        libraryId: 'CEL-9001',
+      });
+    });
+  });
+
   describe('a request split into two jobs', () => {
     const REQUEST = { ...TARGET, targetCount: 10, difficulty: 'mixed' };
     let plan: {
@@ -339,43 +539,6 @@ describe('Verified question library on real Mongo', () => {
       jobs.find((job) => job.mode === 'exploratory')!;
 
     beforeAll(async () => {
-      // Screening reads the Scope's history, so it must exist before jobs run.
-      const worldId = new Types.ObjectId();
-      await database.collection('worlds').insertOne({
-        _id: worldId,
-        name: 'Video Games',
-        slug: TARGET.worldKey,
-        status: 'draft',
-        sortOrder: 0,
-      });
-      await database.collection('scopes').insertOne({
-        worldId,
-        name: 'Overwatch',
-        slug: TARGET.scopeKey,
-        excludedChallengeTypeIds: [],
-        status: 'draft',
-        sortOrder: 0,
-      });
-      await database.collection('challenge_types').updateOne(
-        { slug: TARGET.mechanicKey },
-        {
-          $setOnInsert: {
-            name: 'Read Your Opponent',
-            family: 'ryo',
-            itemStructure: 'discrete_triple',
-            answerMode: 'ryo',
-            defaultPresentation: {
-              inputType: 'multiple_choice',
-              timerSeconds: null,
-            },
-            scoringRuleId: 'ryo-payoff-matrix',
-            status: 'draft',
-            sortOrder: 0,
-          },
-        },
-        { upsert: true },
-      );
-
       await library.importWorkbook({
         ...workbook,
         rows: [...workbook.rows, ...ROWS],
