@@ -12,6 +12,9 @@ Difficulty Tagging: `mechanicPayload.marhalaDifficulty: 'easy' | 'medium' | 'har
 ## Modality Constraints
 - Allowed: `image`, `audio`, `none`.
 
+## Image Brief
+Image items use source class `FETCH_REAL`; see *Image Brief* in `.agents/skills/akwaan-media/SKILL.md`. Text and audio items need no image.
+
 ## Anti-Patterns
 - Too difficult for "Easy".
 - Too trivial for "Hard".

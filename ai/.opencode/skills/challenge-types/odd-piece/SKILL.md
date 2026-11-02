@@ -185,6 +185,16 @@ roundel on the headlight makes the puzzle trivial.
 must show the authentic target vehicle, unedited. Record source and licence
 information for every asset.
 
+## Image Brief
+
+Follow *Image Brief* in `.agents/skills/akwaan-media/SKILL.md`.
+
+- Source class: `EDIT_REAL` for pieces, `FETCH_REAL` for the reveal.
+- Fetch a real photo of each part first, then apply only the mask-bounded edits
+  `ODD_PIECE_AUTHENTIC_PART_COMPOSITION` allows.
+- Never generate a part or vehicle. If no real photo exists, reject the puzzle.
+- Record `assetOrigin`, and for edits also `editedRegion` and `editModel`.
+
 ## Scope Compatibility
 
 Cars World only — `odd-piece` is bound to `cars` and is not intended to run in

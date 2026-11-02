@@ -43,6 +43,22 @@ Production promotion or release readiness.
 **The media quality gates below remain mandatory** — leakage, clarity, framing, and the mechanic invariants.
 Those are gameplay correctness, not rights.
 
+**`AUTHENTIC_REAL_PERSON_ONLY`**: any image of a real person, in any mechanic, is an authentic photograph. Never
+AI-generated, synthetic, lookalike, generic-substitute, or edited to change identity. Enforced by review, not by
+code. Rights being advisory does not relax this rule.
+
+## Image Brief
+
+Every image request states: subject, what the image must show, what it must not show, framing, and source class.
+
+- **Source classes**: `FETCH_REAL` (a real image found on the internet) or `EDIT_REAL` (a real image with localized
+  edits). Nothing else is permitted unless a mechanic says so.
+- **Search**: use the established Wigolo workflow. Prefer official or stable sources. Reject an image that fails a
+  gate; do not fix it by generating one.
+- **Record**: source URL and known licence notes in `04-assets.json`. Never invent them.
+- **Inspect**: open the image and confirm the subject. A filename or search result proves nothing
+  (`NO_FALSE_VISUAL_VERIFICATION`).
+
 ## Visual Media Guidelines & Inspection
 
 1. **Integral Gameplay Support**:

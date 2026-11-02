@@ -37,6 +37,17 @@ branding may remain, but readable model/trim badges or plate text that answer
 the prompt must be cropped or obscured. This specializes Bomb and does not
 replace the global contextual leakage rule in QUESTION-CRAFT.
 
+## Image Brief
+
+Follow *Image Brief* in `.agents/skills/akwaan-media/SKILL.md`.
+
+- Source class: `FETCH_REAL`.
+- Exceptions: FIFA cards use `AUTHENTIC_BLANK_CARD_COMPOSITION`, and text-only items need no image.
+- Celebrity photos follow `AUTHENTIC_REAL_PERSON_ONLY`.
+- Must show: one subject, recognizable within a second at shared-screen distance.
+- Must not show: the answer as text, a watermark, or a caption.
+- Pair media by subject, never by position.
+
 ## Anti-Patterns
 - Complex multi-step reasoning.
 - Long prompts.

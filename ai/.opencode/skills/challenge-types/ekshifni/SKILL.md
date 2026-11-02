@@ -48,6 +48,15 @@ the sixth region: it stays revealable after the value has bottomed out.
 - **Progressive Reveal:** Masks must be designed to create tension. Avoid one mask giving away the entire face, or masks covering purely irrelevant background.
 - **Fractional Coordinates:** Mask shapes MUST strictly fall within `0.0` to `1.0`. `x + width <= 1.0` and `y + height <= 1.0`.
 
+## Image Brief
+
+Follow *Image Brief* in `.agents/skills/akwaan-media/SKILL.md`.
+
+- Source class: `FETCH_REAL` only. `AUTHENTIC_REAL_PERSON_ONLY` applies.
+- Choose the image first, then author the masks, because masks are fractions of that image.
+- Must show: one person dominating the frame, with eyes, hair and mouth visible.
+- Must not show: a name, caption or logo outside the masks.
+
 ## Modality Constraints
 - Allowed: `image`
 - FORBIDDEN: `audio`, `video`, `none`
