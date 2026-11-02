@@ -10,6 +10,7 @@ import sys
 CANONICAL_WORLDS = {
     "anime": ["attack-on-titan", "bleach", "naruto", "one-piece", "demon-slayer", "dragon-ball", "jujutsu-kaisen"],
     "cars": ["cars-mix", "german-cars", "japanese-cars", "supercars"],
+    "celebrities": ["arab-acting-stars", "non-arab-acting-stars", "arab-music-stars", "non-arab-music-stars", "arab-sports-stars", "non-arab-sports-stars", "arab-content-creators", "non-arab-content-creators", "arab-media-stars", "non-arab-media-stars"],
     "football": ["champions-league", "premier-league", "saudi-league", "world-cup", "football-legends", "la-liga", "serie-a", "uefa-super-cup", "saudi-national-team"],
     "general-knowledge": ["history", "human-body-nature", "inventions-discoveries", "science"],
     "movies": ["disney-pixar", "harry-potter", "marvel", "movies-mix"],
@@ -43,6 +44,7 @@ manifest = {
         "moving-xo": {"category": "SIGNATURE", "boundWorld": "puzzles", "status": "AUTHORABLE", "profile": "ai/.opencode/skills/challenge-types/moving-xo/SKILL.md"},
         "odd-piece": {"category": "SIGNATURE", "boundWorld": "cars", "status": "AUTHORABLE", "profile": "ai/.opencode/skills/challenge-types/odd-piece/SKILL.md", "aliases": ["intruder-part", "intruder"]},
         "first-note": {"category": "SIGNATURE", "boundWorld": "music", "status": "AUTHORABLE", "profile": "ai/.opencode/skills/challenge-types/first-note/SKILL.md", "aliases": ["first_note"]},
+        "ekshifni": {"category": "SIGNATURE", "boundWorld": "celebrities", "status": "AUTHORABLE", "profile": "ai/.opencode/skills/challenge-types/ekshifni/SKILL.md"},
         "laqatha": {"category": "SIGNATURE", "boundWorld": "movies", "status": "AUTHORABLE", "profile": "ai/.opencode/skills/challenge-types/laqatha/SKILL.md"},
         
         "one-clue": {"category": "SHARED", "status": "LEGACY", "profile": "ai/.opencode/skills/challenge-types/one-clue/SKILL.md"},
