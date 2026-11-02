@@ -35,7 +35,7 @@ Everything below is stable. Current projects, teams, shows, awards, follower cou
 Arab presenters, broadcasters and commentators and the public work they are known for.
 
 ## Key Territories
-- **Recognizable names:** Essam Al-Shawali, Ahmad Al-Shugairi, Mona El-Shazly, Bassem Youssef, George Kurdahi.
+- **Recognizable names:** George Kordahi, Essam Al-Shawali, Ahmad Al-Shugairi, Raya Abirached, Bassem Youssef, Amr Adib, Marcel Ghanem, Lamees El-Hadidy, Ibrahim Eissa, Faisal Al-Qassem, Jamal Rayyan, Khadija Benguenna, Dawood Al-Shirian, Abdulrahman Al-Rashed, Turki Al-Dakhil, Tony Khalife, Hafid Derradji, Raouf Khlif, Khalil Al-Balushi, Fahad Al-Otaibi.
 - **Placement decision:** Essam Al-Shawali belongs here: his primary role is commentator and broadcaster, not athlete.
 
 ## Safety

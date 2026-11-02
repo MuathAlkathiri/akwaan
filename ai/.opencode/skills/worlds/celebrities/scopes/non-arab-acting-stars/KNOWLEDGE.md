@@ -35,7 +35,7 @@ Everything below is stable. Current projects, teams, shows, awards, follower cou
 Non-Arab actors and actresses and the public work they are known for.
 
 ## Key Territories
-- **Recognizable names:** Tom Hanks, Meryl Streep, Denzel Washington, Leonardo DiCaprio, Shah Rukh Khan, Jackie Chan.
+- **Recognizable names:** No names yet.
 
 ## Safety
 - Public career facts only.

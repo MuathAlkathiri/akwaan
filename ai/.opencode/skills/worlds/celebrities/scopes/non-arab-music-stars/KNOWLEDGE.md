@@ -35,7 +35,7 @@ Everything below is stable. Current projects, teams, shows, awards, follower cou
 Non-Arab singers and musicians and the public work they are known for.
 
 ## Key Territories
-- **Recognizable names:** Michael Jackson, Elvis Presley, Madonna, Beyoncé, Taylor Swift, Adele.
+- **Recognizable names:** No names yet.
 
 ## Safety
 - Public career facts only.

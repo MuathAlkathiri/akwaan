@@ -35,7 +35,7 @@ Everything below is stable. Current projects, teams, shows, awards, follower cou
 Arab singers and musicians and the public work they are known for.
 
 ## Key Territories
-- **Recognizable names:** Umm Kulthum, Fairuz, Abdel Halim Hafez, Mohammed Abdu, Amr Diab, Nancy Ajram.
+- **Recognizable names:** No names yet.
 
 ## Safety
 - Public career facts only.

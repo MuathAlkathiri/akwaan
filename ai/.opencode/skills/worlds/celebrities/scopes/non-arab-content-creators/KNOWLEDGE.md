@@ -35,7 +35,7 @@ Everything below is stable. Current projects, teams, shows, awards, follower cou
 Non-Arab online content creators and the public work they are known for.
 
 ## Key Territories
-- **Recognizable names:** MrBeast, PewDiePie, Khaby Lame.
+- **Recognizable names:** No names yet.
 
 ## Safety
 - Public career facts only.

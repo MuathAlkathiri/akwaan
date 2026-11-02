@@ -25,10 +25,10 @@ edited, and the status below is a statement of this branch only.
   explicit owner approval.
 - **Knowledge:** public career facts only, with no private life. Volatile facts
   need dated research. The exclusivity rule is in every Scope boundary.
-- **Names to check:** the "Recognizable names" lists were written from memory and
-  have not been source-checked. Listing a name is a placement decision, so the
-  owner should confirm each one. Only Essam Al-Shawali and Halima Boland come from
-  a recorded decision (§28.6). `arab-content-creators` lists no names on purpose.
+- **Names:** the "Recognizable names" lists hold only owner-approved names: 20 for
+  `arab-media-stars` and 8 for `arab-acting-stars` from the owner's workbook, plus
+  Halima Boland from the §28.6 decision. Essam Al-Shawali, the other §28.6
+  decision, is among the 20. The other eight Scopes say "no names yet".
 - **Old file:** `worlds/celebrities/SCOPE.md` still holds the taxonomy. Nothing
   reads it now that `WORLD.md` exists, and it was left in place for the owner to
   remove or keep.

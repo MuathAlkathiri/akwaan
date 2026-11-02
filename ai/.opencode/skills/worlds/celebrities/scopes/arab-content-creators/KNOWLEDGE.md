@@ -35,7 +35,7 @@ Everything below is stable. Current projects, teams, shows, awards, follower cou
 Arab online content creators and the public work they are known for.
 
 ## Key Territories
-- **Recognizable names:** None are listed, because who is prominent here changes quickly. Research them with a dated source.
+- **Recognizable names:** No names yet.
 
 ## Safety
 - Public career facts only.

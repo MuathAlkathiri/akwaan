@@ -35,7 +35,7 @@ Everything below is stable. Current projects, teams, shows, awards, follower cou
 Non-Arab athletes and the public work they are known for.
 
 ## Key Territories
-- **Recognizable names:** Lionel Messi, Cristiano Ronaldo, Usain Bolt, Serena Williams, Muhammad Ali, Michael Jordan.
+- **Recognizable names:** No names yet.
 
 ## Safety
 - Public career facts only.

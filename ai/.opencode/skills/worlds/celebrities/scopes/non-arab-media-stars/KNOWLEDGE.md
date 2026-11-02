@@ -35,7 +35,7 @@ Everything below is stable. Current projects, teams, shows, awards, follower cou
 Non-Arab presenters, broadcasters and commentators and the public work they are known for.
 
 ## Key Territories
-- **Recognizable names:** Oprah Winfrey, David Attenborough, Graham Norton, Jimmy Fallon, Piers Morgan.
+- **Recognizable names:** No names yet.
 
 ## Safety
 - Public career facts only.

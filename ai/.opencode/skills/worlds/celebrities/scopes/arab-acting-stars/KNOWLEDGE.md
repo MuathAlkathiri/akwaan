@@ -35,7 +35,7 @@ Everything below is stable. Current projects, teams, shows, awards, follower cou
 Arab actors and actresses and the public work they are known for.
 
 ## Key Territories
-- **Recognizable names:** Adel Imam, Nasser Al-Qasabi, Dureid Lahham, Yousra, Souad Hosni, Halima Boland.
+- **Recognizable names:** Adel Emam, Ahmed Helmy, Mona Zaki, Mohamed Henedy, Yasmin Abdelaziz, Nasser Al Qasabi, Abdullah Al Sadhan, Jamal Suliman, Halima Boland.
 - **Placement decision:** Halima Boland belongs here, her primary source of fame.
 
 ## Safety

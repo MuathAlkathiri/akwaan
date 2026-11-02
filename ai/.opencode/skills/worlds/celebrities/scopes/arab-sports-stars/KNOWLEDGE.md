@@ -35,7 +35,7 @@ Everything below is stable. Current projects, teams, shows, awards, follower cou
 Arab athletes and the public work they are known for.
 
 ## Key Territories
-- **Recognizable names:** Mohamed Salah, Majed Abdullah, Sami Al-Jaber, Riyad Mahrez, Achraf Hakimi, Ons Jabeur.
+- **Recognizable names:** No names yet.
 
 ## Safety
 - Public career facts only.
