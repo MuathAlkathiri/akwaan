@@ -1,0 +1,37 @@
+{
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "note": "Local tutorial preview only. Crops/resizes and the bounded reveal plate blur are adaptations; no media is uploaded to Production or R2.",
+  "assets": [
+    {
+      "file": "target-headlight.jpg",
+      "author": "LuvsMG481",
+      "source": "https://commons.wikimedia.org/wiki/File:2021_BMW_M4_Competition_G82_front.jpg",
+      "modification": "Cropped to remove badge/plate leakage."
+    },
+    {
+      "file": "target-brake.jpg",
+      "author": "ランフラット",
+      "source": "https://commons.wikimedia.org/wiki/File:G82_M4_Front_Brake.jpg",
+      "modification": "Displayed as a resized detail."
+    },
+    {
+      "file": "target-diffuser.jpg",
+      "author": "Duboyong",
+      "source": "https://commons.wikimedia.org/wiki/File:Diffuser_on_BMW_M4.jpg",
+      "modification": "Displayed as a resized detail."
+    },
+    {
+      "file": "intruder-headlight.jpg",
+      "author": "Alexander-93 (Alexander Migl)",
+      "source": "https://commons.wikimedia.org/wiki/File:Mercedes-AMG_C_63_(W206)_IMG_0305.jpg",
+      "modification": "Cropped to remove badge/plate leakage."
+    },
+    {
+      "file": "reveal-g82-blurred-plate.jpg",
+      "author": "LuvsMG481",
+      "source": "https://commons.wikimedia.org/wiki/File:2021_BMW_M4_Competition_G82_front.jpg",
+      "modification": "Bounded deterministic blur over the readable license plate."
+    }
+  ]
+}
