@@ -1,8 +1,29 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SAMPLE_TUTORIAL_SCENARIO } from "@/features/challenge-explainer";
+import {
+  SAMPLE_TUTORIAL_SCENARIO,
+  SAMPLE_COMBO_TUTORIAL_SCENARIO,
+  SAMPLE_BOMB_TUTORIAL_SCENARIO,
+  SAMPLE_CLOSEST_TUTORIAL_SCENARIO,
+  SAMPLE_TOP5_TUTORIAL_SCENARIO,
+  SAMPLE_MARHALA_TUTORIAL_SCENARIO,
+  SAMPLE_LAQATHA_TUTORIAL_SCENARIO,
+  SAMPLE_FIRST_NOTE_TUTORIAL_SCENARIO,
+  SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO,
+  SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO,
+  SAMPLE_LA_TAHRIQHA_TUTORIAL_SCENARIO,
+  SUPPORTED_TUTORIAL_MECHANIC_KEYS,
+  type TutorialScenario,
+} from "@/features/challenge-explainer";
 
 /**
  * The published tutorial the mechanic serves. `null` is the real no-content
@@ -11,7 +32,7 @@ import { SAMPLE_TUTORIAL_SCENARIO } from "@/features/challenge-explainer";
 let publishedTutorial: {
   mechanicKey: string;
   revision: number;
-  scenario: typeof SAMPLE_TUTORIAL_SCENARIO;
+  scenario: TutorialScenario;
 } | null = null;
 
 vi.mock("@/features/challenge-explainer/use-published-tutorial", () => ({
@@ -239,8 +260,18 @@ function match(
       worldSubtotals: [],
     },
     standings: [
-      { teamId: "team-a", name: "أسود الشمال", signedTotal: 0, displayTotal: 0 },
-      { teamId: "team-b", name: "صقور الرياض", signedTotal: 0, displayTotal: 0 },
+      {
+        teamId: "team-a",
+        name: "أسود الشمال",
+        signedTotal: 0,
+        displayTotal: 0,
+      },
+      {
+        teamId: "team-b",
+        name: "صقور الرياض",
+        signedTotal: 0,
+        displayTotal: 0,
+      },
     ],
     availableActions: ["match:launch-challenge", "match:cancel"],
   } as LiveSessionMatchSnapshot;
@@ -310,9 +341,7 @@ describe("challenge preflight", () => {
 
     // No QR anywhere on the board.
     expect(screen.queryByTestId("preflight-join-code")).toBeNull();
-    await user.click(
-      screen.getByTestId("unified-position-2#slot_1"),
-    );
+    await user.click(screen.getByTestId("unified-position-2#slot_1"));
 
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalledTimes(1));
     // The runtime is not started by a tile click.
@@ -358,9 +387,9 @@ describe("challenge preflight", () => {
     expect(screen.getByTestId("preflight-team-team-b").textContent).toContain(
       "سارة",
     );
-    expect(
-      screen.getByTestId("preflight-team-team-a").dataset.ready,
-    ).toBe("false");
+    expect(screen.getByTestId("preflight-team-team-a").dataset.ready).toBe(
+      "false",
+    );
     expect(screen.getByTestId("preflight-team-team-b").dataset.ready).toBe(
       "true",
     );
@@ -371,9 +400,10 @@ describe("challenge preflight", () => {
     // to stay scannable while the explainer plays, and "who has arrived" is the
     // answer to the question this card asks, not a separate card above it.
     expect(
-      screen.getByTestId("preflight-join-toggle").compareDocumentPosition(
-        screen.getByTestId("preflight-readiness"),
-      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      screen
+        .getByTestId("preflight-join-toggle")
+        .compareDocumentPosition(screen.getByTestId("preflight-readiness")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
@@ -394,7 +424,9 @@ describe("challenge preflight", () => {
     expect(enlarged).toBe(inline);
 
     // The join code and copy control the room relies on are still there.
-    expect(screen.getByTestId("preflight-join-code").textContent).toBe("ABC123");
+    expect(screen.getByTestId("preflight-join-code").textContent).toBe(
+      "ABC123",
+    );
 
     fireEvent.keyDown(dialog, { key: "Escape", code: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -479,9 +511,9 @@ describe("challenge preflight", () => {
     const user = userEvent.setup();
     renderRouter(match({ stage: "preflight", preflight: readyPreflight() }));
 
-    expect(screen.getByTestId("preflight-players-paired").textContent).toContain(
-      "اللاعبين متصلين وجاهزين",
-    );
+    expect(
+      screen.getByTestId("preflight-players-paired").textContent,
+    ).toContain("اللاعبين متصلين وجاهزين");
     // No QR taking over the screen, but the code is one tap away.
     expect(screen.queryByTestId("preflight-join-code")).toBeNull();
     await user.click(screen.getByTestId("preflight-join-toggle"));
@@ -559,7 +591,7 @@ describe("challenge preflight", () => {
         status: 400,
         data: {
           code: "MATCH_CHALLENGE_NOT_READY",
-          message: 'أسود الشمال: 1 connected, 2 required',
+          message: "أسود الشمال: 1 connected, 2 required",
         },
       },
     });
@@ -686,7 +718,9 @@ describe("challenge preflight", () => {
       // The demo and its playback strip are offered, not mounted.
       expect(screen.getByTestId("preflight-how-to-play")).toBeInTheDocument();
       expect(screen.queryByTestId("ryo-explainer")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("explainer-controls")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("explainer-controls"),
+      ).not.toBeInTheDocument();
       // And the rest of the card is untouched.
       expect(screen.getByTestId("preflight-start")).toBeInTheDocument();
       expect(screen.getByTestId("preflight-turn-chip")).toBeInTheDocument();
@@ -706,6 +740,18 @@ describe("challenge preflight", () => {
 
       await user.click(screen.getByTestId("preflight-how-to-play"));
       const dialog = await screen.findByTestId("explainer-dialog");
+      expect(dialog).toHaveClass(
+        "!inset-0",
+        "!h-[100dvh]",
+        "!max-w-none",
+        "!translate-x-0",
+        "!translate-y-0",
+        "bg-background",
+      );
+      expect(screen.getByTestId("explainer-stage")).toHaveClass("min-h-full");
+      expect(screen.getByTestId("explainer-stage-content")).toHaveClass(
+        "my-auto",
+      );
       // The real explainer, not a second implementation of it.
       expect(within(dialog).getByTestId("ryo-explainer")).toHaveAttribute(
         "data-variant",
@@ -714,7 +760,9 @@ describe("challenge preflight", () => {
       // The host-facing dialog is the demonstration alone: narration yes,
       // transport no. A 16-second loop that comes round by itself does not
       // need a play button.
-      expect(within(dialog).getByTestId("explainer-caption")).toBeInTheDocument();
+      expect(
+        within(dialog).getByTestId("explainer-caption"),
+      ).toBeInTheDocument();
       expect(
         within(dialog).queryByTestId("explainer-controls"),
       ).not.toBeInTheDocument();
@@ -728,7 +776,9 @@ describe("challenge preflight", () => {
 
       await user.keyboard("{Escape}");
       await waitFor(() =>
-        expect(screen.queryByTestId("explainer-dialog")).not.toBeInTheDocument(),
+        expect(
+          screen.queryByTestId("explainer-dialog"),
+        ).not.toBeInTheDocument(),
       );
       // Closing tears the demo down rather than leaving a timeline running.
       expect(screen.queryByTestId("ryo-explainer")).not.toBeInTheDocument();
@@ -758,7 +808,9 @@ describe("challenge preflight", () => {
       // Escape first, because the dialog is modal — then launch for real.
       await user.keyboard("{Escape}");
       await waitFor(() =>
-        expect(screen.queryByTestId("explainer-dialog")).not.toBeInTheDocument(),
+        expect(
+          screen.queryByTestId("explainer-dialog"),
+        ).not.toBeInTheDocument(),
       );
       await user.click(screen.getByTestId("preflight-start"));
       await waitFor(() => expect(mocks.launch).toHaveBeenCalledTimes(1));
@@ -775,7 +827,11 @@ describe("challenge preflight", () => {
           preflight: preflight({
             challengeKey: "read-your-opponent",
             challengeName: "اقرأ خصمك",
-            playerInstructions: { summary: "س", steps: ["خطوة"], highlights: [] },
+            playerInstructions: {
+              summary: "س",
+              steps: ["خطوة"],
+              highlights: [],
+            },
           }),
         }),
       );
@@ -825,7 +881,11 @@ describe("challenge preflight", () => {
           preflight: preflight({
             challengeKey: "read-your-opponent",
             challengeName: "اقرأ خصمك",
-            playerInstructions: { summary: "س", steps: ["خطوة"], highlights: [] },
+            playerInstructions: {
+              summary: "س",
+              steps: ["خطوة"],
+              highlights: [],
+            },
           }),
         }),
       );
@@ -861,7 +921,9 @@ describe("challenge preflight", () => {
       await act(async () => {
         await Promise.resolve();
       });
-      await userEvent.setup().click(screen.getByTestId("preflight-how-to-play"));
+      await userEvent
+        .setup()
+        .click(screen.getByTestId("preflight-how-to-play"));
       expect(await screen.findByTestId("ryo-explainer")).toBeInTheDocument();
 
       // The demo is a picture of a round, not a round. Nothing it does may reach
@@ -933,6 +995,159 @@ describe("challenge preflight", () => {
       expect(dialog.textContent).toContain("سؤال تعليمي آخر؟");
     });
 
+    it("selects the Closest renderer for a published Closest tutorial", async () => {
+      publishedTutorial = {
+        mechanicKey: "closest",
+        revision: 1,
+        scenario: {
+          kind: "closest",
+          version: 1,
+          prompt: "كم يبلغ ارتفاع برج المملكة تقريبًا؟",
+          teamAEstimate: 280,
+          teamBEstimate: 320,
+          correctValue: 302,
+          unit: "متر",
+          outcome: {
+            teamADistance: 22,
+            teamBDistance: 18,
+            winnerTeam: "team-b",
+            tie: false,
+            mechanicTallyDelta: 1,
+            matchPointDelta: 0,
+            reason: "closest.absolute-distance",
+          },
+        },
+      };
+      renderRouter(
+        match({
+          stage: "preflight",
+          preflight: preflight({
+            challengeKey: "closest",
+            challengeName: "مين أقرب",
+          }),
+        }),
+      );
+
+      await userEvent
+        .setup()
+        .click(screen.getByTestId("preflight-how-to-play"));
+      expect(
+        await screen.findByTestId("closest-explainer"),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("ryo-explainer")).not.toBeInTheDocument();
+    });
+
+    it("selects the Combo renderer for a published Combo tutorial", async () => {
+      publishedTutorial = {
+        mechanicKey: "combo",
+        revision: 1,
+        scenario: SAMPLE_COMBO_TUTORIAL_SCENARIO,
+      };
+      renderRouter(
+        match({
+          stage: "preflight",
+          preflight: preflight({
+            challengeKey: "combo",
+            challengeName: "الكومبو",
+          }),
+        }),
+      );
+
+      await userEvent
+        .setup()
+        .click(screen.getByTestId("preflight-how-to-play"));
+      expect(await screen.findByTestId("combo-explainer")).toBeInTheDocument();
+      expect(screen.queryByTestId("ryo-explainer")).not.toBeInTheDocument();
+    });
+
+    it("selects the Bomb renderer for a published Bomb tutorial", async () => {
+      publishedTutorial = {
+        mechanicKey: "bomb",
+        revision: 1,
+        scenario: SAMPLE_BOMB_TUTORIAL_SCENARIO,
+      };
+      renderRouter(
+        match({
+          stage: "preflight",
+          preflight: preflight({
+            challengeKey: "bomb",
+            challengeName: "القنبلة",
+          }),
+        }),
+      );
+
+      await userEvent
+        .setup()
+        .click(screen.getByTestId("preflight-how-to-play"));
+      expect(await screen.findByTestId("bomb-explainer")).toBeInTheDocument();
+      expect(screen.queryByTestId("ryo-explainer")).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ["read-your-opponent", "ryo-explainer", SAMPLE_TUTORIAL_SCENARIO],
+      [
+        "closest",
+        "closest-explainer",
+        {
+          ...SAMPLE_CLOSEST_TUTORIAL_SCENARIO,
+        },
+      ],
+      ["bomb", "bomb-explainer", SAMPLE_BOMB_TUTORIAL_SCENARIO],
+      ["top-5", "top5-explainer", SAMPLE_TOP5_TUTORIAL_SCENARIO],
+      ["combo", "combo-explainer", SAMPLE_COMBO_TUTORIAL_SCENARIO],
+      ["marhala", "marhala-explainer", SAMPLE_MARHALA_TUTORIAL_SCENARIO],
+      ["laqatha", "laqatha-explainer", SAMPLE_LAQATHA_TUTORIAL_SCENARIO],
+      [
+        "first-note",
+        "first-note-explainer",
+        SAMPLE_FIRST_NOTE_TUTORIAL_SCENARIO,
+      ],
+      [
+        "odd-piece",
+        "odd-piece-explainer",
+        SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO,
+      ],
+      ["ekshifni", "ekshifni-explainer", SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO],
+      [
+        "la-tahriqha",
+        "la-tahriqha-explainer",
+        SAMPLE_LA_TAHRIQHA_TUTORIAL_SCENARIO,
+      ],
+    ] as const)(
+      "offers the production preflight dialog and shared renderer for %s",
+      async (mechanicKey, rendererTestId, scenario) => {
+        publishedTutorial = {
+          mechanicKey,
+          revision: 1,
+          scenario: scenario as TutorialScenario,
+        };
+        renderRouter(
+          match({
+            stage: "preflight",
+            preflight: preflight({
+              challengeKey: mechanicKey,
+              challengeName: mechanicKey,
+            }),
+          }),
+        );
+
+        expect(SUPPORTED_TUTORIAL_MECHANIC_KEYS).toContain(mechanicKey);
+        await userEvent
+          .setup()
+          .click(screen.getByTestId("preflight-how-to-play"));
+        const dialog = await screen.findByTestId("explainer-dialog");
+        expect(dialog).toBeInTheDocument();
+        expect(within(dialog).getByTestId(rendererTestId)).toBeInTheDocument();
+        expect(dialog).toHaveAttribute("data-state", "open");
+        await userEvent.setup().keyboard("{Escape}");
+        await waitFor(() =>
+          expect(
+            screen.queryByTestId("explainer-dialog"),
+          ).not.toBeInTheDocument(),
+        );
+      },
+    );
+
     it("leaves every other mechanic on its authored numbered steps", () => {
       renderRouter(
         match({ stage: "preflight", preflight: withInstructions() }),
@@ -942,7 +1157,9 @@ describe("challenge preflight", () => {
       ).toBeInTheDocument();
       expect(screen.queryByTestId("ryo-explainer")).not.toBeInTheDocument();
       // No mechanic without an authored demonstration offers one.
-      expect(screen.queryByTestId("preflight-how-to-play")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("preflight-how-to-play"),
+      ).not.toBeInTheDocument();
       expect(screen.getByTestId("preflight-explainer")).toHaveAttribute(
         "data-animated",
         "false",
@@ -954,14 +1171,16 @@ describe("challenge preflight", () => {
         match({ stage: "preflight", preflight: withInstructions() }),
       );
       const block = screen.getByTestId("preflight-player-instructions");
-      expect(screen.getByRole("heading", { name: "ركّبها" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "ركّبها" }),
+      ).toBeInTheDocument();
       expect(screen.getByText("اقرأ خصمك قبل ما يقرأك.")).toBeInTheDocument();
       // One title for the region — on the card — and no second near-identical
       // heading repeating it inside the steps list.
       expect(block.textContent).not.toContain("كيف نلعب؟");
-      expect(
-        screen.getByTestId("preflight-explainer").textContent,
-      ).toContain("شرح التحدي");
+      expect(screen.getByTestId("preflight-explainer").textContent).toContain(
+        "شرح التحدي",
+      );
       const orderedElements = [
         screen.getByRole("heading", { name: "ركّبها" }),
         screen.getByText("اقرأ خصمك قبل ما يقرأك."),
@@ -1006,9 +1225,7 @@ describe("challenge preflight", () => {
       expect(
         screen.getByTestId("preflight-instructions-fallback").textContent,
       ).toContain("شرح التحدي بيتضاف قريب");
-      expect(
-        screen.queryByTestId("preflight-player-instructions"),
-      ).toBeNull();
+      expect(screen.queryByTestId("preflight-player-instructions")).toBeNull();
     });
 
     it("renders instructions without disturbing the QR, scopes, or launch", () => {
@@ -1020,9 +1237,9 @@ describe("challenge preflight", () => {
       expect(screen.getByTestId("preflight-join-code").textContent).toBe(
         "ABC123",
       );
-      expect(view.querySelectorAll(".preflight-secondary-surface")).toHaveLength(
-        4,
-      );
+      expect(
+        view.querySelectorAll(".preflight-secondary-surface"),
+      ).toHaveLength(4);
       expect(screen.getByTestId("qr-enlarge-trigger")).toBeInTheDocument();
       expect(view.textContent).not.toContain("/join/live-session/ABC123");
       // Low-value Scope metadata is intentionally not part of the briefing.

@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -6,6 +14,7 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 import { UserRole } from '../../users/schemas/user.schema';
 import { MechanicTutorialService } from '../application/mechanic-tutorial.service';
 import { TutorialScenarioDto } from '../dto/mechanic-tutorial.dto';
+import { TutorialScenarioInput } from '../domain/mechanic-tutorial.policy';
 import { envelope } from './world-content.http';
 
 /**
@@ -34,7 +43,9 @@ export class AdminMechanicTutorialsController {
     @Param('mechanicKey') mechanicKey: string,
     @Body() dto: TutorialScenarioDto,
   ) {
-    return envelope(this.tutorials.saveDraft(mechanicKey, dto));
+    return envelope(
+      this.tutorials.saveDraft(mechanicKey, dto as TutorialScenarioInput),
+    );
   }
 
   /** Dry-run the publish checks, including the competitive-overlap guard. */
@@ -43,7 +54,9 @@ export class AdminMechanicTutorialsController {
     @Param('mechanicKey') mechanicKey: string,
     @Body() dto: TutorialScenarioDto,
   ) {
-    return envelope(this.tutorials.validate(mechanicKey, dto));
+    return envelope(
+      this.tutorials.validate(mechanicKey, dto as TutorialScenarioInput),
+    );
   }
 
   @Post('publish')

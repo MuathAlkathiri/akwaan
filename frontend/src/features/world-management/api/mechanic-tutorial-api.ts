@@ -1,5 +1,5 @@
 import apiClient from "@/lib/api/client";
-import type { RyoTutorialScenario } from "@/features/challenge-explainer";
+import type { TutorialScenario } from "@/features/challenge-explainer";
 
 /**
  * The Admin side of a mechanic's tutorial.
@@ -11,13 +11,17 @@ import type { RyoTutorialScenario } from "@/features/challenge-explainer";
  */
 
 /** What an editor authors. The outcome is derived server-side and never sent. */
-export type TutorialScenarioDraft = Omit<RyoTutorialScenario, "outcome">;
+export type TutorialScenarioDraft = TutorialScenario extends infer Scenario
+  ? Scenario extends { outcome: unknown }
+    ? Omit<Scenario, "outcome">
+    : never
+  : never;
 
 export interface AdminTutorialState {
   mechanicKey: string;
   mechanicName: string;
-  draft: RyoTutorialScenario | null;
-  published: RyoTutorialScenario | null;
+  draft: TutorialScenario | null;
+  published: TutorialScenario | null;
   publishedRevision: number;
   publishedAt: string | null;
   draftUpdatedAt: string | null;
@@ -26,9 +30,13 @@ export interface AdminTutorialState {
 
 export interface TutorialValidation {
   valid: boolean;
-  issues: { code: string; message: string; details?: Record<string, unknown> }[];
+  issues: {
+    code: string;
+    message: string;
+    details?: Record<string, unknown>;
+  }[];
   competitiveOverlap: { contentItemId: string; similarity: number }[];
-  outcome: RyoTutorialScenario["outcome"] | null;
+  outcome: TutorialScenario["outcome"] | null;
 }
 
 const base = (mechanicKey: string) =>
