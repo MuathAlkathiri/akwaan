@@ -3048,18 +3048,121 @@ function stripOutcome(scenario: TutorialScenario): TutorialScenarioDraft {
   return rest;
 }
 
+type TutorialEditorIssue = {
+  code: string;
+  message: string;
+  details?: Record<string, unknown>;
+};
+
+const TUTORIAL_ISSUE_COPY: Record<string, string> = {
+  TUTORIAL_PROMPT_REQUIRED: "أدخل السؤال التعليمي قبل فحص ومعاينة الشرح.",
+  TUTORIAL_VERSION_UNSUPPORTED: "نسخة الشرح غير مدعومة.",
+  TUTORIAL_CLOSEST_VALUE_INVALID:
+    "أدخل أرقامًا صحيحة لتقديرات الفريقين والإجابة.",
+  TUTORIAL_OPTION_COUNT: "أضف خيارات الإجابة المطلوبة.",
+  TUTORIAL_OPTION_INCOMPLETE: "أكمل نصوص خيارات الإجابة.",
+  TUTORIAL_CORRECT_OPTION_UNKNOWN: "حدد الإجابة الصحيحة من الخيارات.",
+  TUTORIAL_SELECTION_UNKNOWN: "حدد اختيار الفريق المجيب من الخيارات.",
+  TUTORIAL_DECISION_INVALID: "اختر قرارًا صالحًا للفريق الخصم.",
+  TUTORIAL_OVERLAPS_COMPETITIVE_CONTENT:
+    "عدّل السؤال لأنه يطابق سؤالًا تنافسيًا موجودًا.",
+  TUTORIAL_BOMB_ANSWER_REQUIRED: "أدخل الإجابة المقبولة للقنبلة.",
+  TUTORIAL_BOMB_NEXT_PROMPT_REQUIRED: "أدخل سؤال انتقال القنبلة.",
+  TUTORIAL_BOMB_CLOCK_INVALID: "اضبط وقت الإجابة بين ثانية و30 ثانية.",
+  TUTORIAL_MECHANIC_KIND_MISMATCH: "نوع الشرح لا يطابق الميكانيكا المختارة.",
+};
+
+const CLASS_VALIDATION_COPY: [RegExp, string][] = [
+  [
+    /^prompt must be longer than or equal to 1 characters?$/,
+    "أدخل السؤال التعليمي قبل فحص ومعاينة الشرح.",
+  ],
+  [
+    /^prompt should not be empty$/,
+    "أدخل السؤال التعليمي قبل فحص ومعاينة الشرح.",
+  ],
+  [/^version must be one of the following values:/, "نسخة الشرح غير مدعومة."],
+  [
+    /^(teamAEstimate|teamBEstimate|correctValue) must be a number/,
+    "أدخل أرقامًا صحيحة لتقديرات الفريقين والإجابة.",
+  ],
+];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function localizeTutorialIssue(code: string, message: string): string {
+  if (TUTORIAL_ISSUE_COPY[code]) return TUTORIAL_ISSUE_COPY[code];
+  return (
+    CLASS_VALIDATION_COPY.find(([pattern]) => pattern.test(message))?.[1] ??
+    message
+  );
+}
+
+function normalizeTutorialIssues(values: unknown[]): TutorialEditorIssue[] {
+  return values.flatMap((value, index) => {
+    if (typeof value === "string") {
+      return [
+        {
+          code: `REQUEST_VALIDATION_${index}`,
+          message: localizeTutorialIssue("", value),
+        },
+      ];
+    }
+    if (!isRecord(value) || typeof value.message !== "string") return [];
+
+    const details = isRecord(value.details) ? { ...value.details } : {};
+    if (typeof value.property === "string") details.property = value.property;
+    if (isRecord(value.constraints)) details.constraints = value.constraints;
+
+    return [
+      {
+        code:
+          typeof value.code === "string"
+            ? value.code
+            : `REQUEST_VALIDATION_${index}`,
+        message: localizeTutorialIssue(
+          typeof value.code === "string" ? value.code : "",
+          value.message,
+        ),
+        ...(Object.keys(details).length ? { details } : {}),
+      },
+    ];
+  });
+}
+
 function extractIssues(error: unknown) {
-  const payload = (
-    error as { response?: { data?: { message?: { issues?: unknown } } } }
-  )?.response?.data?.message;
-  const issues = (payload as { issues?: unknown })?.issues;
-  return Array.isArray(issues)
-    ? (issues as {
-        code: string;
-        message: string;
-        details?: Record<string, unknown>;
-      }[])
-    : [];
+  const response = (
+    error as {
+      response?: { status?: number; data?: unknown };
+    }
+  )?.response;
+  if (!isRecord(response?.data)) return [];
+
+  const data = response.data;
+  if (Array.isArray(data.issues)) {
+    return normalizeTutorialIssues(data.issues);
+  }
+
+  if (isRecord(data.message) && Array.isArray(data.message.issues)) {
+    return normalizeTutorialIssues(data.message.issues);
+  }
+
+  const isBadRequest =
+    response.status === 400 ||
+    data.statusCode === 400 ||
+    data.error === "Bad Request";
+  if (!isBadRequest) return [];
+
+  if (typeof data.message === "string") {
+    return normalizeTutorialIssues([data.message]);
+  }
+  if (Array.isArray(data.message)) {
+    return normalizeTutorialIssues(data.message);
+  }
+
+  return [];
 }
 
 function extractOverlap(
