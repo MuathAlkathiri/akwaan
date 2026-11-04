@@ -83,6 +83,11 @@ export const SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO: EkshifniTutorialScenario = {
       shape: { x: 0.31, y: 0.5, width: 0.3, height: 0.18 },
     },
     {
+      id: "r6",
+      number: 6,
+      shape: { x: 0.39, y: 0.12, width: 0.2, height: 0.06 },
+    },
+    {
       id: "r3",
       number: 3,
       shape: { x: 0.4, y: 0.26, width: 0.2, height: 0.08 },
@@ -96,11 +101,6 @@ export const SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO: EkshifniTutorialScenario = {
       id: "r5",
       number: 5,
       shape: { x: 0.43, y: 0.2, width: 0.12, height: 0.045 },
-    },
-    {
-      id: "r6",
-      number: 6,
-      shape: { x: 0.39, y: 0.12, width: 0.2, height: 0.06 },
     },
   ],
   wrongSubmittedAnswer: "لجين عمران",

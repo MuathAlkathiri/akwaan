@@ -67,7 +67,15 @@ export const SCOPED_TUTORIAL_FIELD_CLASSIFICATION: Record<
     derivedOrValidated: ['outcome', 'winnerTeam', 'distances'],
   },
   bomb: {
-    exampleEditable: ['prompt', 'acceptedAnswer', 'nextPrompt', 'caption'],
+    exampleEditable: [
+      'prompt',
+      'acceptedAnswer',
+      'nextPrompt',
+      'nextQuestion',
+      'returnQuestion',
+      'media',
+      'caption',
+    ],
     flowLocked: [
       'startingTeam',
       'correctAtSecondsRemaining',
@@ -151,16 +159,19 @@ export const SCOPED_TUTORIAL_FIELD_CLASSIFICATION: Record<
       'hotspot',
       'wrongPoint',
       'correctPoint',
+      'tutorialMediaDisclosure',
       'caption',
     ],
     // Reveal privacy and scoring are runtime contracts, not authorable DTO
     // fields; the generic V2 validator and renderer own those invariants.
-    flowLocked: ['version'],
+    flowLocked: ['version', 'tutorialRevealMode'],
     derivedOrValidated: [
       'outcome',
       'hotspotContainment',
       'revealPrivacy',
       'scoring',
+      'team1Tap',
+      'team2Tap',
     ],
   },
   ekshifni: {

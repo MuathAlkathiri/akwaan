@@ -295,14 +295,16 @@ export function EkshifniExplainer({
                   <Eye className="mx-auto size-10 text-brand-gold" />
                   <p className="font-black">اختاروا رقم النافذة</p>
                   <div className="grid grid-cols-3 gap-2">
-                    {scenario.regions.map((region) => (
-                      <span
-                        key={region.id}
-                        className="grid size-11 place-items-center rounded-lg border font-black"
-                      >
-                        {region.number}
-                      </span>
-                    ))}
+                    {[...scenario.regions]
+                      .sort((a, b) => a.number - b.number)
+                      .map((region) => (
+                        <span
+                          key={region.id}
+                          className="grid size-11 place-items-center rounded-lg border font-black"
+                        >
+                          {region.number}
+                        </span>
+                      ))}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     أو جاوبوا مباشرة

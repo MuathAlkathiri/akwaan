@@ -27,6 +27,14 @@ describe("EkshifniExplainer", () => {
     expect(SUPPORTED_TUTORIAL_KINDS).not.toContain("one-clue");
   });
 
+  it("keeps the authored reveal order aligned with the server-derived outcome", () => {
+    expect(
+      SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO.regions
+        .slice(0, 3)
+        .map((region) => region.id),
+    ).toEqual(SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO.outcome.revealedRegionIds);
+  });
+
   it("does not disclose identity before resolution and preserves lifecycle controls", () => {
     render(
       <EkshifniExplainer
