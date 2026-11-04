@@ -30,12 +30,18 @@ import {
 import {
   fetchAdminTutorial as fetchAdminTutorialRequest,
   publishTutorial as publishTutorialRequest,
+  restoreScopedTutorial as restoreScopedTutorialRequest,
   saveTutorialDraft as saveTutorialDraftRequest,
   validateTutorialDraft as validateTutorialDraftRequest,
+  withdrawScopedTutorial as withdrawScopedTutorialRequest,
   type AdminTutorialState,
   type TutorialScenarioDraft,
   type TutorialValidation,
 } from "../../api/mechanic-tutorial-api";
+import {
+  fetchTutorialWorldOptions,
+  type TutorialWorldOption,
+} from "../../api/world-content.api";
 
 function fetchAdminTutorial(mechanicKey: string, worldId?: string) {
   return worldId
@@ -67,6 +73,18 @@ function publishTutorial(mechanicKey: string, worldId?: string) {
   return worldId
     ? publishTutorialRequest(mechanicKey, worldId)
     : publishTutorialRequest(mechanicKey);
+}
+
+function withdrawScopedTutorial(mechanicKey: string, worldId: string) {
+  return withdrawScopedTutorialRequest(worldId, mechanicKey);
+}
+
+function restoreScopedTutorial(
+  mechanicKey: string,
+  worldId: string,
+  revision: number,
+) {
+  return restoreScopedTutorialRequest(worldId, mechanicKey, revision);
 }
 
 /**
@@ -110,30 +128,351 @@ export function MechanicTutorialEditor({
   mechanicKey: string;
   worldId?: string;
 }) {
+  const [worldOptions, setWorldOptions] = useState<TutorialWorldOption[]>([]);
+  const [selectedWorldId, setSelectedWorldId] = useState(worldId ?? "");
+  const [scopeRevision, setScopeRevision] = useState(0);
+
+  useEffect(() => {
+    setSelectedWorldId(worldId ?? "");
+  }, [mechanicKey, worldId]);
+
+  useEffect(() => {
+    let active = true;
+    // Tests and historical callers may provide an explicit scope. In the
+    // normal mechanic editor, derive options from real World board records.
+    if (worldId) return () => undefined;
+    setWorldOptions([]);
+    if (typeof fetchTutorialWorldOptions !== "function") return () => undefined;
+    void fetchTutorialWorldOptions(mechanicKey)
+      .then((options) => {
+        if (!active) return;
+        setWorldOptions(options);
+      })
+      .catch(() => {
+        if (active) setWorldOptions([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [mechanicKey, worldId]);
+
+  const scopeWorldId = selectedWorldId || undefined;
+
   return mechanicKey === "closest" ? (
-    <ClosestTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
+    <TutorialEditorScope
+      mechanicKey={mechanicKey}
+      worldId={scopeWorldId}
+      worldOptions={worldOptions}
+      onWorldChange={setSelectedWorldId}
+      onLifecycleChange={() => setScopeRevision((value) => value + 1)}
+    >
+      <ClosestTutorialEditor
+        key={`${mechanicKey}:${scopeWorldId ?? "generic"}:${scopeRevision}`}
+        mechanicKey={mechanicKey}
+        worldId={scopeWorldId}
+      />
+    </TutorialEditorScope>
   ) : mechanicKey === "bomb" ? (
-    <BombTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
+    <TutorialEditorScope
+      mechanicKey={mechanicKey}
+      worldId={scopeWorldId}
+      worldOptions={worldOptions}
+      onWorldChange={setSelectedWorldId}
+      onLifecycleChange={() => setScopeRevision((value) => value + 1)}
+    >
+      <BombTutorialEditor
+        key={`${mechanicKey}:${scopeWorldId ?? "generic"}:${scopeRevision}`}
+        mechanicKey={mechanicKey}
+        worldId={scopeWorldId}
+      />
+    </TutorialEditorScope>
   ) : mechanicKey === "one-clue" ? (
-    <OneClueTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
+    <TutorialEditorScope
+      mechanicKey={mechanicKey}
+      worldId={scopeWorldId}
+      worldOptions={worldOptions}
+      onWorldChange={setSelectedWorldId}
+      onLifecycleChange={() => setScopeRevision((value) => value + 1)}
+    >
+      <OneClueTutorialEditor
+        key={`${mechanicKey}:${scopeWorldId ?? "generic"}:${scopeRevision}`}
+        mechanicKey={mechanicKey}
+        worldId={scopeWorldId}
+      />
+    </TutorialEditorScope>
   ) : mechanicKey === "top-5" ? (
-    <Top5TutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
+    <TutorialEditorScope
+      mechanicKey={mechanicKey}
+      worldId={scopeWorldId}
+      worldOptions={worldOptions}
+      onWorldChange={setSelectedWorldId}
+      onLifecycleChange={() => setScopeRevision((value) => value + 1)}
+    >
+      <Top5TutorialEditor
+        key={`${mechanicKey}:${scopeWorldId ?? "generic"}:${scopeRevision}`}
+        mechanicKey={mechanicKey}
+        worldId={scopeWorldId}
+      />
+    </TutorialEditorScope>
   ) : mechanicKey === "combo" ? (
-    <ComboTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
+    <TutorialEditorScope
+      mechanicKey={mechanicKey}
+      worldId={scopeWorldId}
+      worldOptions={worldOptions}
+      onWorldChange={setSelectedWorldId}
+      onLifecycleChange={() => setScopeRevision((value) => value + 1)}
+    >
+      <ComboTutorialEditor
+        key={`${mechanicKey}:${scopeWorldId ?? "generic"}:${scopeRevision}`}
+        mechanicKey={mechanicKey}
+        worldId={scopeWorldId}
+      />
+    </TutorialEditorScope>
   ) : mechanicKey === "marhala" ? (
-    <MarhalaTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
+    <TutorialEditorScope
+      mechanicKey={mechanicKey}
+      worldId={scopeWorldId}
+      worldOptions={worldOptions}
+      onWorldChange={setSelectedWorldId}
+      onLifecycleChange={() => setScopeRevision((value) => value + 1)}
+    >
+      <MarhalaTutorialEditor
+        key={`${mechanicKey}:${scopeWorldId ?? "generic"}:${scopeRevision}`}
+        mechanicKey={mechanicKey}
+        worldId={scopeWorldId}
+      />
+    </TutorialEditorScope>
   ) : mechanicKey === "laqatha" ? (
-    <LaqathaTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
+    <TutorialEditorScope
+      mechanicKey={mechanicKey}
+      worldId={scopeWorldId}
+      worldOptions={worldOptions}
+      onWorldChange={setSelectedWorldId}
+      onLifecycleChange={() => setScopeRevision((value) => value + 1)}
+    >
+      <LaqathaTutorialEditor
+        key={`${mechanicKey}:${scopeWorldId ?? "generic"}:${scopeRevision}`}
+        mechanicKey={mechanicKey}
+        worldId={scopeWorldId}
+      />
+    </TutorialEditorScope>
   ) : mechanicKey === "first-note" ? (
-    <FirstNoteTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
+    <TutorialEditorScope
+      mechanicKey={mechanicKey}
+      worldId={scopeWorldId}
+      worldOptions={worldOptions}
+      onWorldChange={setSelectedWorldId}
+      onLifecycleChange={() => setScopeRevision((value) => value + 1)}
+    >
+      <FirstNoteTutorialEditor
+        key={`${mechanicKey}:${scopeWorldId ?? "generic"}:${scopeRevision}`}
+        mechanicKey={mechanicKey}
+        worldId={scopeWorldId}
+      />
+    </TutorialEditorScope>
   ) : mechanicKey === "odd-piece" ? (
-    <OddPieceTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
+    <TutorialEditorScope
+      mechanicKey={mechanicKey}
+      worldId={scopeWorldId}
+      worldOptions={worldOptions}
+      onWorldChange={setSelectedWorldId}
+      onLifecycleChange={() => setScopeRevision((value) => value + 1)}
+    >
+      <OddPieceTutorialEditor
+        key={`${mechanicKey}:${scopeWorldId ?? "generic"}:${scopeRevision}`}
+        mechanicKey={mechanicKey}
+        worldId={scopeWorldId}
+      />
+    </TutorialEditorScope>
   ) : mechanicKey === "ekshifni" ? (
-    <EkshifniTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
+    <TutorialEditorScope
+      mechanicKey={mechanicKey}
+      worldId={scopeWorldId}
+      worldOptions={worldOptions}
+      onWorldChange={setSelectedWorldId}
+      onLifecycleChange={() => setScopeRevision((value) => value + 1)}
+    >
+      <EkshifniTutorialEditor
+        key={`${mechanicKey}:${scopeWorldId ?? "generic"}:${scopeRevision}`}
+        mechanicKey={mechanicKey}
+        worldId={scopeWorldId}
+      />
+    </TutorialEditorScope>
   ) : mechanicKey === "la-tahriqha" ? (
-    <LaTahriqhaTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
+    <TutorialEditorScope
+      mechanicKey={mechanicKey}
+      worldId={scopeWorldId}
+      worldOptions={worldOptions}
+      onWorldChange={setSelectedWorldId}
+      onLifecycleChange={() => setScopeRevision((value) => value + 1)}
+    >
+      <LaTahriqhaTutorialEditor
+        key={`${mechanicKey}:${scopeWorldId ?? "generic"}:${scopeRevision}`}
+        mechanicKey={mechanicKey}
+        worldId={scopeWorldId}
+      />
+    </TutorialEditorScope>
   ) : (
-    <RyoTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
+    <TutorialEditorScope
+      mechanicKey={mechanicKey}
+      worldId={scopeWorldId}
+      worldOptions={worldOptions}
+      onWorldChange={setSelectedWorldId}
+      onLifecycleChange={() => setScopeRevision((value) => value + 1)}
+    >
+      <RyoTutorialEditor
+        key={`${mechanicKey}:${scopeWorldId ?? "generic"}:${scopeRevision}`}
+        mechanicKey={mechanicKey}
+        worldId={scopeWorldId}
+      />
+    </TutorialEditorScope>
+  );
+}
+
+function TutorialEditorScope({
+  mechanicKey,
+  worldId,
+  worldOptions,
+  onWorldChange,
+  onLifecycleChange,
+  children,
+}: {
+  mechanicKey: string;
+  worldId?: string;
+  worldOptions: TutorialWorldOption[];
+  onWorldChange: (worldId: string) => void;
+  onLifecycleChange: () => void;
+  children: React.ReactNode;
+}) {
+  const selected = worldOptions.find((option) => option.worldId === worldId);
+  const [scopeState, setScopeState] = useState<AdminTutorialState | null>(null);
+  const [scopeBusy, setScopeBusy] = useState(false);
+
+  useEffect(() => {
+    if (!worldId) {
+      setScopeState(null);
+      return;
+    }
+    setScopeState(null);
+    let active = true;
+    fetchAdminTutorial(mechanicKey, worldId)
+      .then((next) => {
+        if (active) setScopeState(next);
+      })
+      .catch(() => {
+        if (active) setScopeState(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [mechanicKey, worldId]);
+
+  const runScopedAction = async (action: () => Promise<AdminTutorialState>) => {
+    setScopeBusy(true);
+    try {
+      const next = await action();
+      setScopeState(next);
+      onLifecycleChange();
+      toast.success("تم تحديث نشر مثال العالم.");
+    } catch (error) {
+      toast.error(extractIssues(error)[0]?.message ?? "تعذّرت العملية.");
+    } finally {
+      setScopeBusy(false);
+    }
+  };
+  return (
+    <div className="space-y-3" data-testid="mechanic-tutorial-scope">
+      <div className="rounded-[var(--radius)] border border-border bg-muted/20 p-3">
+        <label
+          htmlFor="tutorial-world-scope"
+          className="mb-1 block text-xs font-black text-muted-foreground"
+        >
+          نطاق مثال الشرح
+        </label>
+        <select
+          id="tutorial-world-scope"
+          data-testid="tutorial-world-selector"
+          value={worldId ?? ""}
+          onChange={(event) => onWorldChange(event.target.value)}
+          className="h-10 w-full rounded-[var(--radius)] border border-border bg-background px-2 text-sm font-bold"
+        >
+          <option value="">عام / الافتراضي</option>
+          {worldOptions.map((option) => (
+            <option key={option.worldId} value={option.worldId}>
+              {option.worldName} · {option.effectiveName}
+              {!option.isEnabled ? " · غير مفعّل" : ""}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          {selected
+            ? `مثال خاص بعالم ${selected.worldName}. نفس التسلسل والقواعد والنتيجة تبقى ثابتة.`
+            : `مثال عام للمكانيكا ${mechanicKey}. سيستخدمه اللاعب عند عدم وجود نشر خاص بالعالم.`}
+        </p>
+        {worldId && scopeState && (
+          <div
+            className="mt-3 space-y-2 rounded-lg border border-border/70 bg-background/70 p-2"
+            data-testid="tutorial-scope-lifecycle"
+          >
+            <p
+              className="text-xs font-bold text-muted-foreground"
+              data-testid="tutorial-scope-resolution"
+            >
+              {scopeState.published
+                ? "اللاعبون يستلمون مثال هذا العالم المنشور."
+                : scopeState.generic?.published
+                  ? "لا يوجد نشر خاص؛ اللاعبون يستلمون المثال العام."
+                  : "لا يوجد مثال منشور لهذا العالم أو للمكانيكا."}
+            </p>
+            {scopeState.published && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={scopeBusy}
+                onClick={() =>
+                  void runScopedAction(() =>
+                    withdrawScopedTutorial(mechanicKey, worldId),
+                  )
+                }
+              >
+                سحب نشر مثال العالم
+              </Button>
+            )}
+            {(scopeState.revisions?.length ?? 0) > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold text-muted-foreground">
+                  استعادة مراجعة منشورة سابقة
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {scopeState.revisions?.map((revision) => (
+                    <Button
+                      key={revision.revision}
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={scopeBusy}
+                      onClick={() =>
+                        void runScopedAction(() =>
+                          restoreScopedTutorial(
+                            mechanicKey,
+                            worldId,
+                            revision.revision,
+                          ),
+                        )
+                      }
+                    >
+                      مراجعة {revision.revision}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {children}
+    </div>
   );
 }
 

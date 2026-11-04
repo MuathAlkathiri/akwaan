@@ -25,9 +25,15 @@ const api = vi.hoisted(() => ({
   saveTutorialDraft: vi.fn(),
   validateTutorialDraft: vi.fn(),
   publishTutorial: vi.fn(),
+  withdrawScopedTutorial: vi.fn(),
+  restoreScopedTutorial: vi.fn(),
+}));
+const worldApi = vi.hoisted(() => ({
+  fetchTutorialWorldOptions: vi.fn(),
 }));
 
 vi.mock("@/features/world-management/api/mechanic-tutorial-api", () => api);
+vi.mock("@/features/world-management/api/world-content.api", () => worldApi);
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
@@ -139,6 +145,8 @@ const state = (
 
 beforeEach(() => {
   for (const fn of Object.values(api)) fn.mockReset();
+  worldApi.fetchTutorialWorldOptions.mockReset();
+  worldApi.fetchTutorialWorldOptions.mockResolvedValue([]);
   api.fetchAdminTutorial.mockResolvedValue(state());
   Object.defineProperty(window, "matchMedia", {
     writable: true,
@@ -181,6 +189,147 @@ const mountEkshifni = async () => {
 };
 
 describe("mechanic tutorial editor", () => {
+  it("offers board-backed World scopes without changing the generic flow", async () => {
+    const user = userEvent.setup();
+    worldApi.fetchTutorialWorldOptions.mockResolvedValue([
+      {
+        worldId: "world-1",
+        worldName: "عالم السيارات",
+        worldSlug: "cars",
+        configurationId: "configuration-1",
+        effectiveName: "القطعة الدخيلة",
+        isEnabled: true,
+      },
+    ]);
+    api.fetchAdminTutorial.mockImplementation(
+      async (mechanicKey: string, worldId?: string) =>
+        state({ mechanicKey, draft: worldId ? null : undefined }),
+    );
+
+    render(<MechanicTutorialEditor mechanicKey="read-your-opponent" />);
+    await waitFor(() =>
+      expect(screen.getByTestId("tutorial-world-selector")).toBeInTheDocument(),
+    );
+    expect(worldApi.fetchTutorialWorldOptions).toHaveBeenCalledWith(
+      "read-your-opponent",
+    );
+    expect(
+      screen.getByRole("option", { name: /عالم السيارات/ }),
+    ).toBeInTheDocument();
+
+    await user.selectOptions(
+      screen.getByTestId("tutorial-world-selector"),
+      "world-1",
+    );
+    await waitFor(() =>
+      expect(api.fetchAdminTutorial).toHaveBeenCalledWith(
+        "read-your-opponent",
+        "world-1",
+      ),
+    );
+    expect(
+      screen.getByText(/مثال خاص بعالم عالم السيارات/),
+    ).toBeInTheDocument();
+  });
+
+  it("resets unsaved fields when changing tutorial scope", async () => {
+    const user = userEvent.setup();
+    worldApi.fetchTutorialWorldOptions.mockResolvedValue([
+      {
+        worldId: "world-1",
+        worldName: "عالم السيارات",
+        worldSlug: "cars",
+        configurationId: "configuration-1",
+        effectiveName: "القطعة الدخيلة",
+        isEnabled: true,
+      },
+    ]);
+    api.fetchAdminTutorial.mockImplementation(
+      async (mechanicKey: string, worldId?: string) =>
+        state({ mechanicKey, draft: null, worldId }),
+    );
+
+    render(<MechanicTutorialEditor mechanicKey="read-your-opponent" />);
+    const selector = await screen.findByTestId("tutorial-world-selector");
+    const prompt = screen.getByTestId("tutorial-prompt");
+    await user.type(prompt, "مسودة لا تنتقل");
+    await user.selectOptions(selector, "world-1");
+
+    await waitFor(() =>
+      expect(api.fetchAdminTutorial).toHaveBeenCalledWith(
+        "read-your-opponent",
+        "world-1",
+      ),
+    );
+    expect(screen.getByTestId("tutorial-prompt")).toHaveValue("");
+  });
+
+  it("exposes scoped withdrawal and revision restore without touching generic state", async () => {
+    const user = userEvent.setup();
+    worldApi.fetchTutorialWorldOptions.mockResolvedValue([
+      {
+        worldId: "world-1",
+        worldName: "عالم السيارات",
+        worldSlug: "cars",
+        configurationId: "configuration-1",
+        effectiveName: "القطعة الدخيلة",
+        isEnabled: true,
+      },
+    ]);
+    api.fetchAdminTutorial.mockResolvedValue(
+      state({
+        worldId: "world-1",
+        published: scenario,
+        generic: { published: true, publishedRevision: 1 },
+        revisions: [
+          {
+            revision: 1,
+            publishedAt: "2026-01-01T00:00:00.000Z",
+            restoredFromRevision: null,
+          },
+        ],
+      }),
+    );
+    api.withdrawScopedTutorial.mockResolvedValue(
+      state({
+        worldId: "world-1",
+        published: null,
+        generic: { published: true, publishedRevision: 1 },
+        revisions: [],
+      }),
+    );
+
+    render(<MechanicTutorialEditor mechanicKey="read-your-opponent" />);
+    await user.selectOptions(
+      await screen.findByTestId("tutorial-world-selector"),
+      "world-1",
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("tutorial-scope-lifecycle"),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByTestId("tutorial-scope-resolution").textContent,
+    ).toContain("مثال هذا العالم");
+    expect(
+      screen.getByRole("button", { name: "سحب نشر مثال العالم" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "مراجعة 1" }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "سحب نشر مثال العالم" }),
+    );
+    await waitFor(() =>
+      expect(api.withdrawScopedTutorial).toHaveBeenCalledWith(
+        "world-1",
+        "read-your-opponent",
+      ),
+    );
+  });
+
   it("loads, validates, and previews an Ekshifni draft", async () => {
     const user = userEvent.setup();
     api.fetchAdminTutorial.mockResolvedValue(
