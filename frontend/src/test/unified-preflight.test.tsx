@@ -1,5 +1,4 @@
 import {
-  act,
   fireEvent,
   render,
   screen,
@@ -11,23 +10,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   SAMPLE_TUTORIAL_SCENARIO,
-  SAMPLE_COMBO_TUTORIAL_SCENARIO,
-  SAMPLE_BOMB_TUTORIAL_SCENARIO,
-  SAMPLE_CLOSEST_TUTORIAL_SCENARIO,
-  SAMPLE_TOP5_TUTORIAL_SCENARIO,
-  SAMPLE_MARHALA_TUTORIAL_SCENARIO,
-  SAMPLE_LAQATHA_TUTORIAL_SCENARIO,
-  SAMPLE_FIRST_NOTE_TUTORIAL_SCENARIO,
-  SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO,
-  SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO,
-  SAMPLE_LA_TAHRIQHA_TUTORIAL_SCENARIO,
-  SUPPORTED_TUTORIAL_MECHANIC_KEYS,
   type TutorialScenario,
 } from "@/features/challenge-explainer";
 
 /**
  * The published tutorial the mechanic serves. `null` is the real no-content
- * state, which the Preflight must handle by keeping its authored instructions.
+ * state, which the Preflight must handle with an explicit unavailable message.
  */
 let publishedTutorial: {
   mechanicKey: string;
@@ -116,7 +104,6 @@ const preflight = (
   challengeKey: "rakkibha",
   challengeName: "ركّبها",
   description: "لا أحد يملك المعلومة كاملة",
-  instructions: "اجمعوا المقاطع ثم أجيبوا",
   requiresPhones: true,
   selectedScopes: [
     { scopeId: "s0", name: "نطاق أول" },
@@ -680,54 +667,13 @@ describe("challenge preflight", () => {
     }
   });
 
-  describe("player instructions", () => {
-    const withInstructions = () =>
-      preflight({
-        playerInstructions: {
-          summary: "اقرأ خصمك قبل ما يقرأك.",
-          steps: ["اختر توقعك بسرية", "اكشفوا في نفس اللحظة", "قارنوا النتيجة"],
-          highlights: ["لا تكشف توقعك بدري"],
-        },
-      });
-
-    it("offers the demo for اقرأ خصمك instead of occupying the screen with it", () => {
-      // Phase 1 of the education strategy: the Preflight is for starting a
-      // challenge, so the authored steps are the default surface for every
-      // mechanic and the demonstration is one action away.
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "read-your-opponent",
-            challengeName: "اقرأ خصمك",
-            playerInstructions: {
-              summary: "اقرأ خصمك قبل ما يقرأك.",
-              steps: ["اختر توقعك بسرية", "اكشفوا في نفس اللحظة"],
-              highlights: [],
-            },
-          }),
-        }),
-      );
-      const block = screen.getByTestId("preflight-explainer");
-      expect(block.textContent).toContain("شرح التحدي");
-      expect(block).toHaveAttribute("data-animated", "true");
-      // The authored steps are what a host reads by default.
-      expect(
-        screen.getByTestId("preflight-player-instructions"),
-      ).toBeInTheDocument();
-      // The demo and its playback strip are offered, not mounted.
-      expect(screen.getByTestId("preflight-how-to-play")).toBeInTheDocument();
-      expect(screen.queryByTestId("ryo-explainer")).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId("explainer-controls"),
-      ).not.toBeInTheDocument();
-      // And the rest of the card is untouched.
-      expect(screen.getByTestId("preflight-start")).toBeInTheDocument();
-      expect(screen.getByTestId("preflight-turn-chip")).toBeInTheDocument();
-    });
-
-    it("opens the real GSAP demo on «كيف تلعب؟» and unmounts it on close", async () => {
-      const user = userEvent.setup();
+  describe("GSAP-only explanation", () => {
+    it("offers the published GSAP demo without legacy instruction text", async () => {
+      publishedTutorial = {
+        mechanicKey: "read-your-opponent",
+        revision: 1,
+        scenario: SAMPLE_TUTORIAL_SCENARIO,
+      };
       renderRouter(
         match({
           stage: "preflight",
@@ -738,286 +684,21 @@ describe("challenge preflight", () => {
         }),
       );
 
-      await user.click(screen.getByTestId("preflight-how-to-play"));
-      const dialog = await screen.findByTestId("explainer-dialog");
-      expect(dialog).toHaveClass(
-        "!inset-0",
-        "!h-[100dvh]",
-        "!max-w-none",
-        "!translate-x-0",
-        "!translate-y-0",
-        "bg-background",
-      );
-      expect(screen.getByTestId("explainer-stage")).toHaveClass("min-h-full");
-      expect(screen.getByTestId("explainer-stage-content")).toHaveClass(
-        "my-auto",
-      );
-      // The real explainer, not a second implementation of it.
-      expect(within(dialog).getByTestId("ryo-explainer")).toHaveAttribute(
-        "data-variant",
-        "compact",
-      );
-      // The host-facing dialog is the demonstration alone: narration yes,
-      // transport no. A 16-second loop that comes round by itself does not
-      // need a play button.
-      expect(
-        within(dialog).getByTestId("explainer-caption"),
-      ).toBeInTheDocument();
-      expect(
-        within(dialog).queryByTestId("explainer-controls"),
-      ).not.toBeInTheDocument();
-      expect(
-        within(dialog).queryByTestId("explainer-progress"),
-      ).not.toBeInTheDocument();
-      // And no counter describing a sequence of questions that does not exist.
-      expect(dialog.textContent).not.toContain("السؤال 1 من 3");
-      // Said plainly to be a teaching example, never the Match's own question.
-      expect(dialog.textContent).toContain("مو سؤال المباراة");
+      const explainer = screen.getByTestId("preflight-explainer");
+      expect(explainer).toHaveAttribute("data-animated", "true");
+      expect(screen.getByTestId("preflight-how-to-play")).toBeEnabled();
+      expect(screen.queryByTestId("preflight-player-instructions")).toBeNull();
+      expect(screen.queryByTestId("preflight-highlight")).toBeNull();
 
-      await user.keyboard("{Escape}");
-      await waitFor(() =>
-        expect(
-          screen.queryByTestId("explainer-dialog"),
-        ).not.toBeInTheDocument(),
-      );
-      // Closing tears the demo down rather than leaving a timeline running.
-      expect(screen.queryByTestId("ryo-explainer")).not.toBeInTheDocument();
-      // And the Preflight is still there behind it.
-      expect(screen.getByTestId("preflight-start")).toBeInTheDocument();
-      expect(screen.getByTestId("preflight-join-code")).toBeInTheDocument();
-    });
-
-    it("closes the explanation when the real challenge starts", async () => {
-      const user = userEvent.setup();
-      mocks.launch.mockImplementation(() => new Promise(() => {}));
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "read-your-opponent",
-            challengeName: "اقرأ خصمك",
-            readyToLaunch: true,
-            allTeamsReady: true,
-            blockingReasons: [],
-          }),
-        }),
-      );
-      await user.click(screen.getByTestId("preflight-how-to-play"));
-      expect(await screen.findByTestId("explainer-dialog")).toBeInTheDocument();
-
-      // Escape first, because the dialog is modal — then launch for real.
-      await user.keyboard("{Escape}");
-      await waitFor(() =>
-        expect(
-          screen.queryByTestId("explainer-dialog"),
-        ).not.toBeInTheDocument(),
-      );
-      await user.click(screen.getByTestId("preflight-start"));
-      await waitFor(() => expect(mocks.launch).toHaveBeenCalledTimes(1));
-
-      // A launch in flight leaves no explanation open over it, and offers none.
-      expect(screen.queryByTestId("explainer-dialog")).toBeNull();
-      expect(screen.getByTestId("preflight-how-to-play")).toBeDisabled();
-    });
-
-    it("keeps the explanation, joining and launch as three distinct regions", () => {
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "read-your-opponent",
-            challengeName: "اقرأ خصمك",
-            playerInstructions: {
-              summary: "س",
-              steps: ["خطوة"],
-              highlights: [],
-            },
-          }),
-        }),
-      );
-      const ordered = [
-        screen.getByTestId("preflight-identity"),
-        screen.getByTestId("preflight-explainer"),
-        screen.getByTestId("preflight-start-section"),
-      ];
-      for (const [index, element] of ordered.entries()) {
-        for (const following of ordered.slice(index + 1)) {
-          expect(element.compareDocumentPosition(following)).toBe(
-            Node.DOCUMENT_POSITION_FOLLOWING,
-          );
-        }
-      }
-      // Joining stays available beside the demo, never behind it.
-      expect(screen.getByTestId("preflight-join-code")).toBeInTheDocument();
-      expect(screen.getByTestId("preflight-readiness")).toBeInTheDocument();
-    });
-
-    it("never lets the explainer decide whether Start is enabled", () => {
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "read-your-opponent",
-            challengeName: "اقرأ خصمك",
-            readyToLaunch: true,
-            allTeamsReady: true,
-          }),
-        }),
-      );
-      // Start reads only the server's `readyToLaunch` — the explanation, open
-      // or closed, has no say in it.
-      expect(screen.getByTestId("preflight-how-to-play")).toBeInTheDocument();
-      expect(screen.getByTestId("preflight-start")).toBeEnabled();
-      expect(screen.getByTestId("preflight-explainer")).toHaveAttribute(
-        "data-launching",
-        "false",
-      );
-    });
-
-    it("keeps the explainer above the start button and below the chips", () => {
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "read-your-opponent",
-            challengeName: "اقرأ خصمك",
-            playerInstructions: {
-              summary: "س",
-              steps: ["خطوة"],
-              highlights: [],
-            },
-          }),
-        }),
-      );
-      const ordered = [
-        screen.getByRole("heading", { name: "اقرأ خصمك" }),
-        screen.getByTestId("preflight-turn-chip"),
-        screen.getByTestId("preflight-explainer"),
-        screen.getByTestId("preflight-start"),
-      ];
-      for (const [index, element] of ordered.entries()) {
-        for (const following of ordered.slice(index + 1)) {
-          expect(element.compareDocumentPosition(following)).toBe(
-            Node.DOCUMENT_POSITION_FOLLOWING,
-          );
-        }
-      }
-    });
-
-    it("drives no gameplay command while the demo plays", async () => {
-      const fetchSpy = vi.fn();
-      vi.stubGlobal("fetch", fetchSpy);
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "read-your-opponent",
-            challengeName: "اقرأ خصمك",
-            readyToLaunch: true,
-            allTeamsReady: true,
-          }),
-        }),
-      );
-      await act(async () => {
-        await Promise.resolve();
-      });
       await userEvent
         .setup()
         .click(screen.getByTestId("preflight-how-to-play"));
-      expect(await screen.findByTestId("ryo-explainer")).toBeInTheDocument();
-
-      // The demo is a picture of a round, not a round. Nothing it does may reach
-      // the session: no launch, no prepare, no cancel, no request at all.
-      expect(mocks.launch).not.toHaveBeenCalled();
-      expect(mocks.prepare).not.toHaveBeenCalled();
-      expect(mocks.cancel).not.toHaveBeenCalled();
-      expect(fetchSpy).not.toHaveBeenCalled();
-      vi.unstubAllGlobals();
+      expect(await screen.findByTestId("explainer-dialog")).toBeInTheDocument();
+      expect(screen.getByTestId("ryo-explainer")).toBeInTheDocument();
     });
 
-    it("falls back to the authored steps when no tutorial is published", async () => {
-      // The content-safety outcome: with nothing approved to show, the Preflight
-      // teaches from the canonical instructions rather than an unapproved
-      // fixture. The action stays visible but inert, so the absence reads as
-      // "nothing to show yet" rather than a missing feature.
+    it("shows an explicit unavailable state when no tutorial is published", () => {
       publishedTutorial = null;
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "read-your-opponent",
-            challengeName: "اقرأ خصمك",
-            playerInstructions: {
-              summary: "فريق يجاوب بالسر، والفريق الثاني يحاول يقرأه.",
-              steps: [
-                "فريق الدور يختار إجابته بالسر.",
-                "بنفس الوقت، الفريق الثاني يقرر: يثق أو يسرق.",
-                "تنكشف الإجابة والقرار مع بعض.",
-              ],
-              highlights: [],
-            },
-          }),
-        }),
-      );
-
-      expect(
-        screen.getByTestId("preflight-player-instructions"),
-      ).toBeInTheDocument();
-      expect(screen.getByTestId("preflight-how-to-play")).toBeDisabled();
-      expect(screen.queryByTestId("ryo-explainer")).not.toBeInTheDocument();
-
-      // And nothing of a tutorial leaks into the page.
-      expect(document.body.textContent).not.toContain(
-        SAMPLE_TUTORIAL_SCENARIO.prompt,
-      );
-    });
-
-    it("teaches whatever scenario the mechanic publishes", async () => {
-      // Mechanic-keyed, not World-keyed: the same Match World would show a
-      // different demonstration if the mechanic published a different one.
-      const user = userEvent.setup();
-      publishedTutorial = {
-        mechanicKey: "read-your-opponent",
-        revision: 7,
-        scenario: { ...SAMPLE_TUTORIAL_SCENARIO, prompt: "سؤال تعليمي آخر؟" },
-      };
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "read-your-opponent",
-            challengeName: "اقرأ خصمك",
-          }),
-        }),
-      );
-      await user.click(screen.getByTestId("preflight-how-to-play"));
-      const dialog = await screen.findByTestId("explainer-dialog");
-      expect(dialog.textContent).toContain("سؤال تعليمي آخر؟");
-    });
-
-    it("selects the Closest renderer for a published Closest tutorial", async () => {
-      publishedTutorial = {
-        mechanicKey: "closest",
-        revision: 1,
-        scenario: {
-          kind: "closest",
-          version: 1,
-          prompt: "كم يبلغ ارتفاع برج المملكة تقريبًا؟",
-          teamAEstimate: 280,
-          teamBEstimate: 320,
-          correctValue: 302,
-          unit: "متر",
-          outcome: {
-            teamADistance: 22,
-            teamBDistance: 18,
-            winnerTeam: "team-b",
-            tie: false,
-            mechanicTallyDelta: 1,
-            matchPointDelta: 0,
-            reason: "closest.absolute-distance",
-          },
-        },
-      };
       renderRouter(
         match({
           stage: "preflight",
@@ -1028,236 +709,12 @@ describe("challenge preflight", () => {
         }),
       );
 
-      await userEvent
-        .setup()
-        .click(screen.getByTestId("preflight-how-to-play"));
-      expect(
-        await screen.findByTestId("closest-explainer"),
-      ).toBeInTheDocument();
-      expect(screen.queryByTestId("ryo-explainer")).not.toBeInTheDocument();
-    });
-
-    it("selects the Combo renderer for a published Combo tutorial", async () => {
-      publishedTutorial = {
-        mechanicKey: "combo",
-        revision: 1,
-        scenario: SAMPLE_COMBO_TUTORIAL_SCENARIO,
-      };
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "combo",
-            challengeName: "الكومبو",
-          }),
-        }),
-      );
-
-      await userEvent
-        .setup()
-        .click(screen.getByTestId("preflight-how-to-play"));
-      expect(await screen.findByTestId("combo-explainer")).toBeInTheDocument();
-      expect(screen.queryByTestId("ryo-explainer")).not.toBeInTheDocument();
-    });
-
-    it("selects the Bomb renderer for a published Bomb tutorial", async () => {
-      publishedTutorial = {
-        mechanicKey: "bomb",
-        revision: 1,
-        scenario: SAMPLE_BOMB_TUTORIAL_SCENARIO,
-      };
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "bomb",
-            challengeName: "القنبلة",
-          }),
-        }),
-      );
-
-      await userEvent
-        .setup()
-        .click(screen.getByTestId("preflight-how-to-play"));
-      expect(await screen.findByTestId("bomb-explainer")).toBeInTheDocument();
-      expect(screen.queryByTestId("ryo-explainer")).not.toBeInTheDocument();
-    });
-
-    it.each([
-      ["read-your-opponent", "ryo-explainer", SAMPLE_TUTORIAL_SCENARIO],
-      [
-        "closest",
-        "closest-explainer",
-        {
-          ...SAMPLE_CLOSEST_TUTORIAL_SCENARIO,
-        },
-      ],
-      ["bomb", "bomb-explainer", SAMPLE_BOMB_TUTORIAL_SCENARIO],
-      ["top-5", "top5-explainer", SAMPLE_TOP5_TUTORIAL_SCENARIO],
-      ["combo", "combo-explainer", SAMPLE_COMBO_TUTORIAL_SCENARIO],
-      ["marhala", "marhala-explainer", SAMPLE_MARHALA_TUTORIAL_SCENARIO],
-      ["laqatha", "laqatha-explainer", SAMPLE_LAQATHA_TUTORIAL_SCENARIO],
-      [
-        "first-note",
-        "first-note-explainer",
-        SAMPLE_FIRST_NOTE_TUTORIAL_SCENARIO,
-      ],
-      [
-        "odd-piece",
-        "odd-piece-explainer",
-        SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO,
-      ],
-      ["ekshifni", "ekshifni-explainer", SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO],
-      [
-        "la-tahriqha",
-        "la-tahriqha-explainer",
-        SAMPLE_LA_TAHRIQHA_TUTORIAL_SCENARIO,
-      ],
-    ] as const)(
-      "offers the production preflight dialog and shared renderer for %s",
-      async (mechanicKey, rendererTestId, scenario) => {
-        publishedTutorial = {
-          mechanicKey,
-          revision: 1,
-          scenario: scenario as TutorialScenario,
-        };
-        renderRouter(
-          match({
-            stage: "preflight",
-            preflight: preflight({
-              challengeKey: mechanicKey,
-              challengeName: mechanicKey,
-            }),
-          }),
-        );
-
-        expect(SUPPORTED_TUTORIAL_MECHANIC_KEYS).toContain(mechanicKey);
-        await userEvent
-          .setup()
-          .click(screen.getByTestId("preflight-how-to-play"));
-        const dialog = await screen.findByTestId("explainer-dialog");
-        expect(dialog).toBeInTheDocument();
-        expect(within(dialog).getByTestId(rendererTestId)).toBeInTheDocument();
-        expect(dialog).toHaveAttribute("data-state", "open");
-        await userEvent.setup().keyboard("{Escape}");
-        await waitFor(() =>
-          expect(
-            screen.queryByTestId("explainer-dialog"),
-          ).not.toBeInTheDocument(),
-        );
-      },
-    );
-
-    it("leaves every other mechanic on its authored numbered steps", () => {
-      renderRouter(
-        match({ stage: "preflight", preflight: withInstructions() }),
-      );
-      expect(
-        screen.getByTestId("preflight-player-instructions"),
-      ).toBeInTheDocument();
-      expect(screen.queryByTestId("ryo-explainer")).not.toBeInTheDocument();
-      // No mechanic without an authored demonstration offers one.
-      expect(
-        screen.queryByTestId("preflight-how-to-play"),
-      ).not.toBeInTheDocument();
-      expect(screen.getByTestId("preflight-explainer")).toHaveAttribute(
-        "data-animated",
-        "false",
-      );
-    });
-
-    it("renders the authored summary, ordered steps and highlights", () => {
-      renderRouter(
-        match({ stage: "preflight", preflight: withInstructions() }),
-      );
-      const block = screen.getByTestId("preflight-player-instructions");
-      expect(
-        screen.getByRole("heading", { name: "ركّبها" }),
-      ).toBeInTheDocument();
-      expect(screen.getByText("اقرأ خصمك قبل ما يقرأك.")).toBeInTheDocument();
-      // One title for the region — on the card — and no second near-identical
-      // heading repeating it inside the steps list.
-      expect(block.textContent).not.toContain("كيف نلعب؟");
+      expect(screen.getByTestId("preflight-how-to-play")).toBeDisabled();
       expect(screen.getByTestId("preflight-explainer").textContent).toContain(
-        "شرح التحدي",
+        "لا يوجد شرح منشور لهذا التحدي بعد",
       );
-      const orderedElements = [
-        screen.getByRole("heading", { name: "ركّبها" }),
-        screen.getByText("اقرأ خصمك قبل ما يقرأك."),
-        screen.getByTestId("preflight-turn-chip"),
-        block,
-        screen.getByTestId("preflight-highlight"),
-        screen.getByTestId("preflight-start"),
-      ];
-      for (const [index, element] of orderedElements.entries()) {
-        for (const following of orderedElements.slice(index + 1)) {
-          expect(element.compareDocumentPosition(following)).toBe(
-            Node.DOCUMENT_POSITION_FOLLOWING,
-          );
-        }
-      }
-
-      // The steps read top to bottom in exactly the authored order.
-      const steps = within(block)
-        .getAllByRole("listitem")
-        .map((node) => node.lastElementChild?.textContent);
-      expect(steps).toEqual([
-        "اختر توقعك بسرية",
-        "اكشفوا في نفس اللحظة",
-        "قارنوا النتيجة",
-      ]);
-      expect(screen.getByTestId("preflight-highlight").textContent).toContain(
-        "لا تكشف توقعك بدري",
-      );
-      // The honest placeholder is only for records with none.
-      expect(
-        screen.queryByTestId("preflight-instructions-fallback"),
-      ).toBeNull();
-    });
-
-    it("shows a short honest placeholder when a mechanic authored none", () => {
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({ playerInstructions: undefined }),
-        }),
-      );
-      expect(
-        screen.getByTestId("preflight-instructions-fallback").textContent,
-      ).toContain("شرح التحدي بيتضاف قريب");
       expect(screen.queryByTestId("preflight-player-instructions")).toBeNull();
-    });
-
-    it("renders instructions without disturbing the QR, scopes, or launch", () => {
-      renderRouter(
-        match({ stage: "preflight", preflight: withInstructions() }),
-      );
-      const view = screen.getByTestId("challenge-preflight");
-      // The join flow is untouched by the new block.
-      expect(screen.getByTestId("preflight-join-code").textContent).toBe(
-        "ABC123",
-      );
-      expect(
-        view.querySelectorAll(".preflight-secondary-surface"),
-      ).toHaveLength(4);
-      expect(screen.getByTestId("qr-enlarge-trigger")).toBeInTheDocument();
-      expect(view.textContent).not.toContain("/join/live-session/ABC123");
-      // Low-value Scope metadata is intentionally not part of the briefing.
-      expect(view.textContent).not.toContain("نطاق أول");
-      expect(view.textContent).toContain("العالم الثالث");
-      // Launch is still governed only by the server's readiness.
-      expect(
-        screen.getByTestId("preflight-start").hasAttribute("disabled"),
-      ).toBe(true);
-    });
-
-    it("does not present the verbose World override in the briefing", () => {
-      renderRouter(
-        match({ stage: "preflight", preflight: withInstructions() }),
-      );
-      const view = screen.getByTestId("challenge-preflight");
-      expect(view.textContent).not.toContain("اجمعوا المقاطع ثم أجيبوا");
-      expect(view.textContent).toContain("اقرأ خصمك قبل ما يقرأك.");
+      expect(screen.queryByTestId("preflight-highlight")).toBeNull();
     });
   });
 

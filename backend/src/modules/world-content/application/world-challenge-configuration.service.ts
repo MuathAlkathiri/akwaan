@@ -44,7 +44,8 @@ export interface WorldBoardView {
  *
  * Assignment is deliberately lightweight: the slot and the mechanic are the only
  * required decisions. Runtime belongs to the mechanic; player-facing name,
- * description, and instructions may vary per World.
+ * description may vary per World; tutorial content is authored only through
+ * the mechanic-centric GSAP editor.
  */
 @Injectable()
 export class WorldChallengeConfigurationService {
@@ -114,7 +115,6 @@ export class WorldChallengeConfigurationService {
       slotKey: dto.slotKey,
       ...(dto.displayName ? { displayName: dto.displayName } : {}),
       ...(dto.description ? { description: dto.description } : {}),
-      ...(dto.instructions ? { instructions: dto.instructions } : {}),
       sortOrder: dto.sortOrder ?? 0,
       isEnabled: dto.isEnabled ?? true,
     };
@@ -132,7 +132,6 @@ export class WorldChallengeConfigurationService {
         slotKey: projected.slotKey,
         displayName: dto.displayName,
         description: dto.description,
-        instructions: dto.instructions,
         icon: dto.icon,
         sortOrder: projected.sortOrder,
         isEnabled: projected.isEnabled,
@@ -178,9 +177,6 @@ export class WorldChallengeConfigurationService {
       ...(dto.description === undefined
         ? {}
         : { description: dto.description }),
-      ...(dto.instructions === undefined
-        ? {}
-        : { instructions: dto.instructions }),
       ...(dto.sortOrder === undefined ? {} : { sortOrder: dto.sortOrder }),
       ...(dto.isEnabled === undefined ? {} : { isEnabled: dto.isEnabled }),
     };
@@ -204,9 +200,6 @@ export class WorldChallengeConfigurationService {
         ...(dto.description === undefined
           ? {}
           : { description: dto.description }),
-        ...(dto.instructions === undefined
-          ? {}
-          : { instructions: dto.instructions }),
         ...(dto.icon === undefined ? {} : { icon: dto.icon }),
       },
       file,

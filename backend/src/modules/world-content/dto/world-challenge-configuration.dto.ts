@@ -40,12 +40,6 @@ export class CreateWorldChallengeConfigurationDto {
   @MaxLength(500)
   description?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  @MaxLength(1000)
-  instructions?: string;
-
   @IsOptional()
   @ValidateNested()
   @Type(() => ContentAssetDto)

@@ -372,12 +372,6 @@ export class MatchSnapshotComposer
       challengeKey: pending.challengeTypeSlug,
       challengeName: position?.displayName ?? pending.challengeTypeSlug,
       ...(position?.description ? { description: position.description } : {}),
-      ...(position?.instructions
-        ? { instructions: position.instructions }
-        : {}),
-      ...(position?.playerInstructions
-        ? { playerInstructions: position.playerInstructions }
-        : {}),
       requiresPhones: pending.requiresPhones,
       selectedScopes: occurrence
         ? await this.describeScopes(
@@ -478,10 +472,6 @@ export class MatchSnapshotComposer
       challengeKey: position.challengeTypeSlug,
       challengeName: position.displayName,
       ...(position.description ? { description: position.description } : {}),
-      ...(position.instructions ? { instructions: position.instructions } : {}),
-      ...(position.playerInstructions
-        ? { playerInstructions: position.playerInstructions }
-        : {}),
       // The mechanic's own launcher declares this; nothing infers it from a slug.
       requiresPhones: launcher?.launchRequirements.requiresPhones ?? false,
       launchability,

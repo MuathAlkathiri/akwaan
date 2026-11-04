@@ -58,11 +58,6 @@ export function ConfigurationCard({
               {configuration.description}
             </p>
           )}
-          {configuration.instructions && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              التعليمات: {configuration.instructions}
-            </p>
-          )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button

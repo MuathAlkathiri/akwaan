@@ -73,9 +73,6 @@ export function ConfigurationForm({
   const [description, setDescription] = useState(
     configuration?.description ?? "",
   );
-  const [instructions, setInstructions] = useState(
-    configuration?.instructions ?? "",
-  );
   const [sortOrder, setSortOrder] = useState(configuration?.sortOrder ?? 0);
   const [isEnabled, setIsEnabled] = useState(configuration?.isEnabled ?? true);
   const [localProblems, setLocalProblems] = useState<string[]>([]);
@@ -131,7 +128,6 @@ export function ConfigurationForm({
           slotKey,
           displayName,
           description,
-          instructions,
           sortOrder,
           isEnabled,
         },
@@ -217,14 +213,6 @@ export function ConfigurationForm({
             value={description}
             placeholder="وصف مختصر مناسب لهذا العالم (اختياري)"
             onChange={(event) => setDescription(event.target.value)}
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">التعليمات</label>
-          <Textarea
-            value={instructions}
-            placeholder="تعليمات اللاعب في هذا العالم (اختياري)"
-            onChange={(event) => setInstructions(event.target.value)}
           />
         </div>
       </div>

@@ -70,19 +70,11 @@ export interface ReadinessReport {
  * canonical across every World. Absent on legacy mechanics authored before it
  * existed.
  */
-export interface PlayerInstructions {
-  summary: string;
-  steps: string[];
-  highlights?: string[];
-}
-
 export interface ChallengePresentation {
   inputType: string;
   timerSeconds: number | null;
   soundPack?: string | null;
   revealStyle?: string | null;
-  /** Player-facing "how this challenge works". Mechanic-canonical, World-invariant. */
-  playerInstructions?: PlayerInstructions | null;
 }
 
 export interface BoardSlot {
@@ -182,7 +174,6 @@ export interface WorldChallengeConfiguration {
   /** What players see: the label, or the mechanic's own name. */
   effectiveName: string;
   description?: string;
-  instructions?: string;
   icon?: ContentAsset;
   sortOrder: number;
   isEnabled: boolean;
