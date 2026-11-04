@@ -133,6 +133,34 @@ describe("BombExplainer", () => {
     expect(screen.getByTestId("bomb-team-b-clock")).toHaveTextContent("0:24");
   });
 
+  it("keeps the second accepted answer when rendered from a text-only published payload", async () => {
+    reduceMotion();
+    const user = userEvent.setup();
+    const publishedScenario = {
+      ...SAMPLE_BOMB_TUTORIAL_SCENARIO,
+      media: undefined,
+      nextQuestion: {
+        prompt: SAMPLE_BOMB_TUTORIAL_SCENARIO.nextQuestion!.prompt,
+        acceptedAnswer:
+          SAMPLE_BOMB_TUTORIAL_SCENARIO.nextQuestion!.acceptedAnswer,
+      },
+      returnQuestion: {
+        prompt: SAMPLE_BOMB_TUTORIAL_SCENARIO.returnQuestion!.prompt,
+        acceptedAnswer:
+          SAMPLE_BOMB_TUTORIAL_SCENARIO.returnQuestion!.acceptedAnswer,
+      },
+    };
+    render(<BombExplainer scenario={publishedScenario} mode="preview" />);
+
+    for (let index = 0; index < 7; index += 1) {
+      await user.click(screen.getByTestId("explainer-next"));
+    }
+
+    expect(screen.getByTestId("bomb-phone-answer")).toHaveValue("زحل");
+    expect(screen.getByText(/زحل — صحيحة/)).toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
   it("falls back safely when the illustrated question media fails", async () => {
     reduceMotion();
     const user = userEvent.setup();

@@ -103,6 +103,24 @@ const FirstNoteTutorialBidDefinition = new MongooseSchema(
   { _id: false },
 );
 
+const BombTutorialMediaDefinition = new MongooseSchema(
+  {
+    type: { type: String, enum: ['image'], required: true },
+    url: { type: String, required: true, trim: true },
+    altText: { type: String, required: true, trim: true },
+  },
+  { _id: false },
+);
+
+const BombTutorialQuestionDefinition = new MongooseSchema(
+  {
+    prompt: { type: String, required: true, trim: true },
+    acceptedAnswer: { type: String, required: true, trim: true },
+    media: { type: BombTutorialMediaDefinition, default: undefined },
+  },
+  { _id: false },
+);
+
 const OddPieceTutorialMediaDefinition = new MongooseSchema(
   {
     imageUrl: { type: String, required: true, trim: true },
@@ -323,6 +341,15 @@ export const TutorialScenarioDefinition = new MongooseSchema(
     correctValue: { type: Number },
     acceptedAnswer: { type: String, trim: true, default: undefined },
     nextPrompt: { type: String, trim: true, default: undefined },
+    nextQuestion: {
+      type: BombTutorialQuestionDefinition,
+      default: undefined,
+    },
+    returnQuestion: {
+      type: BombTutorialQuestionDefinition,
+      default: undefined,
+    },
+    media: { type: BombTutorialMediaDefinition, default: undefined },
     correctAtSecondsRemaining: { type: Number },
     opponentExpiresAtSecondsRemaining: { type: Number },
     unit: { type: String, trim: true, default: undefined },
@@ -352,6 +379,26 @@ export const TutorialScenarioDefinition = new MongooseSchema(
     targetReveal: { type: OddPieceTutorialMediaDefinition, default: undefined },
     intruderPartIdentity: { type: String, trim: true, default: undefined },
     intruderPartLabel: { type: String, trim: true, default: undefined },
+    tutorialRevealMode: {
+      type: String,
+      enum: ['original-comparison', 'hotspot-detail'],
+      default: undefined,
+    },
+    tutorialMediaDisclosure: {
+      type: String,
+      trim: true,
+      default: undefined,
+    },
+    team1Tap: {
+      type: OddPieceTutorialPointDefinition,
+      default: undefined,
+      _id: false,
+    },
+    team2Tap: {
+      type: OddPieceTutorialPointDefinition,
+      default: undefined,
+      _id: false,
+    },
     modifiedImage: {
       type: OddPieceTutorialHotspotImageDefinition,
       default: undefined,

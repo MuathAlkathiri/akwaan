@@ -599,6 +599,49 @@ export class MechanicTutorialService {
         prompt: bomb.prompt.trim(),
         acceptedAnswer: bomb.acceptedAnswer.trim(),
         nextPrompt: bomb.nextPrompt.trim(),
+        ...(bomb.media
+          ? {
+              media: {
+                type: 'image' as const,
+                url: bomb.media.url.trim(),
+                altText: bomb.media.altText.trim(),
+              },
+            }
+          : {}),
+        ...(bomb.nextQuestion
+          ? {
+              nextQuestion: {
+                prompt: bomb.nextQuestion.prompt.trim(),
+                acceptedAnswer: bomb.nextQuestion.acceptedAnswer.trim(),
+                ...(bomb.nextQuestion.media
+                  ? {
+                      media: {
+                        type: 'image' as const,
+                        url: bomb.nextQuestion.media.url.trim(),
+                        altText: bomb.nextQuestion.media.altText.trim(),
+                      },
+                    }
+                  : {}),
+              },
+            }
+          : {}),
+        ...(bomb.returnQuestion
+          ? {
+              returnQuestion: {
+                prompt: bomb.returnQuestion.prompt.trim(),
+                acceptedAnswer: bomb.returnQuestion.acceptedAnswer.trim(),
+                ...(bomb.returnQuestion.media
+                  ? {
+                      media: {
+                        type: 'image' as const,
+                        url: bomb.returnQuestion.media.url.trim(),
+                        altText: bomb.returnQuestion.media.altText.trim(),
+                      },
+                    }
+                  : {}),
+              },
+            }
+          : {}),
         startingTeam: bomb.startingTeam,
         correctAtSecondsRemaining: bomb.correctAtSecondsRemaining,
         opponentExpiresAtSecondsRemaining: 0,
@@ -773,6 +816,17 @@ export class MechanicTutorialService {
           intruderPartLabel: oddPiece.intruderPartLabel.trim(),
           modifiedImage: oddPiece.modifiedImage,
           originalImage: oddPiece.originalImage,
+          ...(oddPiece.tutorialRevealMode
+            ? { tutorialRevealMode: oddPiece.tutorialRevealMode }
+            : {}),
+          ...(oddPiece.tutorialMediaDisclosure?.trim()
+            ? {
+                tutorialMediaDisclosure:
+                  oddPiece.tutorialMediaDisclosure.trim(),
+              }
+            : {}),
+          ...(oddPiece.team1Tap ? { team1Tap: { ...oddPiece.team1Tap } } : {}),
+          ...(oddPiece.team2Tap ? { team2Tap: { ...oddPiece.team2Tap } } : {}),
           hotspot: oddPiece.hotspot,
           wrongPoint: oddPiece.wrongPoint,
           correctPoint: oddPiece.correctPoint,

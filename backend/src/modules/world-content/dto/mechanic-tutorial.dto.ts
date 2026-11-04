@@ -21,6 +21,44 @@ export class TutorialOptionDto {
   @ApiProperty() @IsString() @MinLength(1) @MaxLength(160) label: string;
 }
 
+class BombTutorialMediaDto {
+  @ApiProperty({ enum: ['image'] })
+  @IsIn(['image'])
+  type: 'image';
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  url: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(240)
+  altText: string;
+}
+
+class BombTutorialQuestionDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(400)
+  prompt: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(160)
+  acceptedAnswer: string;
+
+  @ApiPropertyOptional({ type: BombTutorialMediaDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BombTutorialMediaDto)
+  media?: BombTutorialMediaDto;
+}
+
 export class EkshifniTutorialShapeDto {
   @ApiProperty({ minimum: 0, maximum: 1 }) @IsNumber() x: number;
   @ApiProperty({ minimum: 0, maximum: 1 }) @IsNumber() y: number;
@@ -442,6 +480,24 @@ export class TutorialScenarioDto {
   @MaxLength(400)
   nextPrompt?: string;
 
+  @ApiPropertyOptional({ type: BombTutorialQuestionDto })
+  @ValidateIf((value: TutorialScenarioDto) => value.kind === 'bomb')
+  @ValidateNested()
+  @Type(() => BombTutorialQuestionDto)
+  nextQuestion?: BombTutorialQuestionDto;
+
+  @ApiPropertyOptional({ type: BombTutorialQuestionDto })
+  @ValidateIf((value: TutorialScenarioDto) => value.kind === 'bomb')
+  @ValidateNested()
+  @Type(() => BombTutorialQuestionDto)
+  returnQuestion?: BombTutorialQuestionDto;
+
+  @ApiPropertyOptional({ type: BombTutorialMediaDto })
+  @ValidateIf((value: TutorialScenarioDto) => value.kind === 'bomb')
+  @ValidateNested()
+  @Type(() => BombTutorialMediaDto)
+  media?: BombTutorialMediaDto;
+
   @ApiPropertyOptional()
   @ValidateIf((value: TutorialScenarioDto) => value.kind === 'bomb')
   @IsNumber()
@@ -753,6 +809,45 @@ export class TutorialScenarioDto {
   @ValidateNested()
   @Type(() => OddPieceTutorialPointDto)
   correctPoint?: OddPieceTutorialPointDto;
+
+  @ApiPropertyOptional({ enum: ['original-comparison', 'hotspot-detail'] })
+  @ValidateIf(
+    (value: TutorialScenarioDto) =>
+      value.kind === 'odd-piece' && value.version === 2,
+  )
+  @IsOptional()
+  @IsIn(['original-comparison', 'hotspot-detail'])
+  tutorialRevealMode?: 'original-comparison' | 'hotspot-detail';
+
+  @ApiPropertyOptional()
+  @ValidateIf(
+    (value: TutorialScenarioDto) =>
+      value.kind === 'odd-piece' && value.version === 2,
+  )
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  tutorialMediaDisclosure?: string;
+
+  @ApiPropertyOptional({ type: OddPieceTutorialPointDto })
+  @ValidateIf(
+    (value: TutorialScenarioDto) =>
+      value.kind === 'odd-piece' && value.version === 2,
+  )
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => OddPieceTutorialPointDto)
+  team1Tap?: OddPieceTutorialPointDto;
+
+  @ApiPropertyOptional({ type: OddPieceTutorialPointDto })
+  @ValidateIf(
+    (value: TutorialScenarioDto) =>
+      value.kind === 'odd-piece' && value.version === 2,
+  )
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => OddPieceTutorialPointDto)
+  team2Tap?: OddPieceTutorialPointDto;
 
   @ApiPropertyOptional()
   @ValidateIf((value: TutorialScenarioDto) => value.kind === 'marhala')

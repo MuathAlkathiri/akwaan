@@ -508,6 +508,17 @@ export interface StoredBombTutorialScenario {
   prompt: string;
   acceptedAnswer: string;
   nextPrompt: string;
+  nextQuestion?: {
+    prompt: string;
+    acceptedAnswer: string;
+    media?: { type: 'image'; url: string; altText: string };
+  };
+  returnQuestion?: {
+    prompt: string;
+    acceptedAnswer: string;
+    media?: { type: 'image'; url: string; altText: string };
+  };
+  media?: { type: 'image'; url: string; altText: string };
   startingTeam: 'team-a' | 'team-b';
   correctAtSecondsRemaining: number;
   opponentExpiresAtSecondsRemaining: 0;
@@ -835,6 +846,10 @@ export interface StoredOddPieceV2TutorialScenario {
   intruderPartLabel: string;
   modifiedImage: OddPieceHotspotImage;
   originalImage: OddPieceHotspotImage;
+  tutorialRevealMode?: 'original-comparison' | 'hotspot-detail';
+  tutorialMediaDisclosure?: string;
+  team1Tap?: { x: number; y: number };
+  team2Tap?: { x: number; y: number };
   hotspot: { polygon: Array<{ x: number; y: number }>; tolerance: number };
   wrongPoint: { x: number; y: number };
   correctPoint: { x: number; y: number };

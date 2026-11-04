@@ -107,10 +107,28 @@ export interface BombTutorialScenarioInput {
   prompt: string;
   acceptedAnswer: string;
   nextPrompt: string;
+  /** Optional authored follow-up question shown after the handoff. */
+  nextQuestion?: BombTutorialQuestionInput;
+  /** Optional authored return question shown after the opponent's answer. */
+  returnQuestion?: BombTutorialQuestionInput;
+  /** Optional media for the first question; text-only tutorials are valid. */
+  media?: BombTutorialMediaInput;
   startingTeam: 'team-a' | 'team-b';
   correctAtSecondsRemaining: number;
   opponentExpiresAtSecondsRemaining: 0;
   caption?: string;
+}
+
+export interface BombTutorialMediaInput {
+  type: 'image';
+  url: string;
+  altText: string;
+}
+
+export interface BombTutorialQuestionInput {
+  prompt: string;
+  acceptedAnswer: string;
+  media?: BombTutorialMediaInput;
 }
 
 export interface OneClueTutorialClueInput {
@@ -309,6 +327,10 @@ export interface OddPieceV2TutorialScenarioInput {
   intruderPartLabel: string;
   modifiedImage: OddPieceHotspotImage;
   originalImage: OddPieceHotspotImage;
+  tutorialRevealMode?: 'original-comparison' | 'hotspot-detail';
+  tutorialMediaDisclosure?: string;
+  team1Tap?: { x: number; y: number };
+  team2Tap?: { x: number; y: number };
   hotspot: { polygon: Array<{ x: number; y: number }>; tolerance: number };
   wrongPoint: { x: number; y: number };
   correctPoint: { x: number; y: number };
@@ -746,6 +768,45 @@ export function validateOddPieceTutorialScenario(
         'TUTORIAL_ODD_PIECE_ORIGINAL_IMAGE_REQUIRED',
         'الصورة الأصلية مطلوبة.',
       );
+    if (
+      input.tutorialRevealMode &&
+      !['original-comparison', 'hotspot-detail'].includes(
+        input.tutorialRevealMode,
+      )
+    ) {
+      add(
+        'TUTORIAL_ODD_PIECE_REVEAL_MODE_INVALID',
+        'نمط كشف القطعة الدخيلة غير صالح.',
+      );
+    }
+    if (
+      input.tutorialRevealMode === 'hotspot-detail' &&
+      !input.tutorialMediaDisclosure?.trim()
+    ) {
+      add(
+        'TUTORIAL_ODD_PIECE_DISCLOSURE_REQUIRED',
+        'نمط الكشف الموضعي يحتاج إفصاحًا عن مادة المعاينة.',
+      );
+    }
+    for (const [name, point] of [
+      ['team1Tap', input.team1Tap],
+      ['team2Tap', input.team2Tap],
+    ] as const) {
+      if (!point) continue;
+      if (
+        !Number.isFinite(point.x) ||
+        !Number.isFinite(point.y) ||
+        point.x < 0 ||
+        point.x > 1 ||
+        point.y < 0 ||
+        point.y > 1
+      ) {
+        add(
+          'TUTORIAL_ODD_PIECE_TAP_INVALID',
+          `${name} يجب أن يكون نقطة مطبّعة.`,
+        );
+      }
+    }
 
     const polygonIssues = validateNormalizedPolygon(
       input.hotspot?.polygon ?? [],
@@ -1698,6 +1759,37 @@ export function validateBombTutorialScenario(
       'TUTORIAL_BOMB_EXPIRY_INVALID',
       'عرض انتهاء القنبلة يجب أن ينتهي عند صفر.',
     );
+  for (const [name, question] of [
+    ['nextQuestion', input.nextQuestion],
+    ['returnQuestion', input.returnQuestion],
+  ] as const) {
+    if (!question) continue;
+    if (!question.prompt?.trim())
+      add(
+        'TUTORIAL_BOMB_FOLLOW_UP_PROMPT_REQUIRED',
+        `${name} يحتاج سؤالًا نصيًا.`,
+      );
+    if (!question.acceptedAnswer?.trim())
+      add(
+        'TUTORIAL_BOMB_FOLLOW_UP_ANSWER_REQUIRED',
+        `${name} يحتاج إجابة مقبولة.`,
+      );
+    if (question.media) {
+      if (question.media.type !== 'image')
+        add(
+          'TUTORIAL_BOMB_MEDIA_TYPE_INVALID',
+          `${name} يحتوي نوع وسائط غير مدعوم.`,
+        );
+      if (!question.media.url?.trim() || !question.media.altText?.trim())
+        add('TUTORIAL_BOMB_MEDIA_INCOMPLETE', `${name} يحتوي وسائط ناقصة.`);
+    }
+  }
+  if (input.media) {
+    if (input.media.type !== 'image')
+      add('TUTORIAL_BOMB_MEDIA_TYPE_INVALID', 'وسائط القنبلة غير مدعومة.');
+    if (!input.media.url?.trim() || !input.media.altText?.trim())
+      add('TUTORIAL_BOMB_MEDIA_INCOMPLETE', 'وسائط القنبلة ناقصة.');
+  }
   return issues;
 }
 
