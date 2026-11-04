@@ -215,6 +215,26 @@ describe("mechanic tutorial editor", () => {
     );
   });
 
+  it("locks the RYO opposing decision for a World-scoped example", async () => {
+    api.fetchAdminTutorial.mockResolvedValue(
+      state({
+        draft: {
+          kind: "ryo",
+          version: 1,
+          ...scenario,
+        },
+      }),
+    );
+    render(
+      <MechanicTutorialEditor
+        mechanicKey="read-your-opponent"
+        worldId="anime-world"
+      />,
+    );
+    await waitFor(() => expect(api.fetchAdminTutorial).toHaveBeenCalled());
+    expect(screen.getByTestId("tutorial-decision")).toBeDisabled();
+  });
+
   it("loads, validates, and previews a One Clue draft", async () => {
     const user = userEvent.setup();
     api.fetchAdminTutorial.mockResolvedValue(

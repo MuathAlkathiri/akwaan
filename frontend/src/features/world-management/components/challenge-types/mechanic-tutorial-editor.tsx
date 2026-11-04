@@ -28,14 +28,46 @@ import {
   SAMPLE_LA_TAHRIQHA_TUTORIAL_SCENARIO,
 } from "@/features/challenge-explainer";
 import {
-  fetchAdminTutorial,
-  publishTutorial,
-  saveTutorialDraft,
-  validateTutorialDraft,
+  fetchAdminTutorial as fetchAdminTutorialRequest,
+  publishTutorial as publishTutorialRequest,
+  saveTutorialDraft as saveTutorialDraftRequest,
+  validateTutorialDraft as validateTutorialDraftRequest,
   type AdminTutorialState,
   type TutorialScenarioDraft,
   type TutorialValidation,
 } from "../../api/mechanic-tutorial-api";
+
+function fetchAdminTutorial(mechanicKey: string, worldId?: string) {
+  return worldId
+    ? fetchAdminTutorialRequest(mechanicKey, worldId)
+    : fetchAdminTutorialRequest(mechanicKey);
+}
+
+function saveTutorialDraft(
+  mechanicKey: string,
+  scenario: TutorialScenarioDraft,
+  worldId?: string,
+) {
+  return worldId
+    ? saveTutorialDraftRequest(mechanicKey, scenario, worldId)
+    : saveTutorialDraftRequest(mechanicKey, scenario);
+}
+
+function validateTutorialDraft(
+  mechanicKey: string,
+  scenario: TutorialScenarioDraft,
+  worldId?: string,
+) {
+  return worldId
+    ? validateTutorialDraftRequest(mechanicKey, scenario, worldId)
+    : validateTutorialDraftRequest(mechanicKey, scenario);
+}
+
+function publishTutorial(mechanicKey: string, worldId?: string) {
+  return worldId
+    ? publishTutorialRequest(mechanicKey, worldId)
+    : publishTutorialRequest(mechanicKey);
+}
 
 /**
  * Authoring the demonstration a mechanic teaches with.
@@ -73,37 +105,45 @@ const EMPTY: TutorialScenarioDraft = {
 
 export function MechanicTutorialEditor({
   mechanicKey,
+  worldId,
 }: {
   mechanicKey: string;
+  worldId?: string;
 }) {
   return mechanicKey === "closest" ? (
-    <ClosestTutorialEditor mechanicKey={mechanicKey} />
+    <ClosestTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
   ) : mechanicKey === "bomb" ? (
-    <BombTutorialEditor mechanicKey={mechanicKey} />
+    <BombTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
   ) : mechanicKey === "one-clue" ? (
-    <OneClueTutorialEditor mechanicKey={mechanicKey} />
+    <OneClueTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
   ) : mechanicKey === "top-5" ? (
-    <Top5TutorialEditor mechanicKey={mechanicKey} />
+    <Top5TutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
   ) : mechanicKey === "combo" ? (
-    <ComboTutorialEditor mechanicKey={mechanicKey} />
+    <ComboTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
   ) : mechanicKey === "marhala" ? (
-    <MarhalaTutorialEditor mechanicKey={mechanicKey} />
+    <MarhalaTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
   ) : mechanicKey === "laqatha" ? (
-    <LaqathaTutorialEditor mechanicKey={mechanicKey} />
+    <LaqathaTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
   ) : mechanicKey === "first-note" ? (
-    <FirstNoteTutorialEditor mechanicKey={mechanicKey} />
+    <FirstNoteTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
   ) : mechanicKey === "odd-piece" ? (
-    <OddPieceTutorialEditor mechanicKey={mechanicKey} />
+    <OddPieceTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
   ) : mechanicKey === "ekshifni" ? (
-    <EkshifniTutorialEditor mechanicKey={mechanicKey} />
+    <EkshifniTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
   ) : mechanicKey === "la-tahriqha" ? (
-    <LaTahriqhaTutorialEditor mechanicKey={mechanicKey} />
+    <LaTahriqhaTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
   ) : (
-    <RyoTutorialEditor mechanicKey={mechanicKey} />
+    <RyoTutorialEditor mechanicKey={mechanicKey} worldId={worldId} />
   );
 }
 
-function LaTahriqhaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+function LaTahriqhaTutorialEditor({
+  mechanicKey,
+  worldId,
+}: {
+  mechanicKey: string;
+  worldId?: string;
+}) {
   const initial = stripOutcome(
     SAMPLE_LA_TAHRIQHA_TUTORIAL_SCENARIO,
   ) as TutorialScenarioDraft;
@@ -114,7 +154,7 @@ function LaTahriqhaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   const la = draft as Omit<LaTahriqhaTutorialScenario, "outcome">;
   useEffect(() => {
     let active = true;
-    fetchAdminTutorial(mechanicKey)
+    fetchAdminTutorial(mechanicKey, worldId)
       .then((next) => {
         if (!active) return;
         setState(next);
@@ -125,7 +165,7 @@ function LaTahriqhaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
     return () => {
       active = false;
     };
-  }, [mechanicKey]);
+  }, [mechanicKey, worldId]);
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
     try {
@@ -202,6 +242,7 @@ function LaTahriqhaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
         min={5}
         max={120}
         value={la.dishWindowSeconds}
+        disabled={Boolean(worldId)}
         onChange={(event) =>
           update({ dishWindowSeconds: Number(event.target.value) })
         }
@@ -277,6 +318,7 @@ function LaTahriqhaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
       <div className="grid gap-2 sm:grid-cols-2">
         <Input
           value={la.captainRotation.teamA.join("،")}
+          disabled={Boolean(worldId)}
           onChange={(event) =>
             update({
               captainRotation: {
@@ -292,6 +334,7 @@ function LaTahriqhaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
         />
         <Input
           value={la.captainRotation.teamB.join("،")}
+          disabled={Boolean(worldId)}
           onChange={(event) =>
             update({
               captainRotation: {
@@ -311,7 +354,9 @@ function LaTahriqhaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           type="button"
           disabled={busy}
           onClick={() =>
-            run(async () => setState(await saveTutorialDraft(mechanicKey, la)))
+            run(async () =>
+              setState(await saveTutorialDraft(mechanicKey, la, worldId)),
+            )
           }
         >
           <CheckCircle2 className="size-4" /> حفظ مسودة
@@ -322,7 +367,9 @@ function LaTahriqhaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () =>
-              setValidation(await validateTutorialDraft(mechanicKey, la)),
+              setValidation(
+                await validateTutorialDraft(mechanicKey, la, worldId),
+              ),
             )
           }
         >
@@ -334,7 +381,7 @@ function LaTahriqhaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy || !state?.draft}
           onClick={() =>
             run(async () => {
-              setState(await publishTutorial(mechanicKey));
+              setState(await publishTutorial(mechanicKey, worldId));
               setValidation(null);
             })
           }
@@ -352,7 +399,13 @@ function LaTahriqhaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   );
 }
 
-function OddPieceTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+function OddPieceTutorialEditor({
+  mechanicKey,
+  worldId,
+}: {
+  mechanicKey: string;
+  worldId?: string;
+}) {
   const initial = stripOutcome(
     SAMPLE_ODD_PIECE_V1_TUTORIAL_SCENARIO,
   ) as TutorialScenarioDraft;
@@ -363,7 +416,7 @@ function OddPieceTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   const odd = draft as Omit<OddPieceLegacyTutorialScenario, "outcome">;
   useEffect(() => {
     let active = true;
-    fetchAdminTutorial(mechanicKey)
+    fetchAdminTutorial(mechanicKey, worldId)
       .then((next) => {
         if (!active) return;
         setState(next);
@@ -374,7 +427,7 @@ function OddPieceTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
     return () => {
       active = false;
     };
-  }, [mechanicKey]);
+  }, [mechanicKey, worldId]);
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
     try {
@@ -447,7 +500,9 @@ function OddPieceTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           type="button"
           disabled={busy}
           onClick={() =>
-            run(async () => setState(await saveTutorialDraft(mechanicKey, odd)))
+            run(async () =>
+              setState(await saveTutorialDraft(mechanicKey, odd, worldId)),
+            )
           }
         >
           <CheckCircle2 className="size-4" /> حفظ مسودة
@@ -458,7 +513,9 @@ function OddPieceTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () =>
-              setValidation(await validateTutorialDraft(mechanicKey, odd)),
+              setValidation(
+                await validateTutorialDraft(mechanicKey, odd, worldId),
+              ),
             )
           }
         >
@@ -470,7 +527,7 @@ function OddPieceTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy || !state?.draft}
           onClick={() =>
             run(async () => {
-              setState(await publishTutorial(mechanicKey));
+              setState(await publishTutorial(mechanicKey, worldId));
               setValidation(null);
             })
           }
@@ -488,7 +545,13 @@ function OddPieceTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   );
 }
 
-function FirstNoteTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+function FirstNoteTutorialEditor({
+  mechanicKey,
+  worldId,
+}: {
+  mechanicKey: string;
+  worldId?: string;
+}) {
   const initial: TutorialScenarioDraft = {
     kind: "first-note",
     version: 1,
@@ -514,7 +577,7 @@ function FirstNoteTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
 
   useEffect(() => {
     let active = true;
-    fetchAdminTutorial(mechanicKey)
+    fetchAdminTutorial(mechanicKey, worldId)
       .then((next) => {
         if (!active) return;
         setState(next);
@@ -525,7 +588,7 @@ function FirstNoteTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
     return () => {
       active = false;
     };
-  }, [mechanicKey]);
+  }, [mechanicKey, worldId]);
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -596,6 +659,7 @@ function FirstNoteTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
             type="number"
             min={1}
             max={15}
+            disabled={Boolean(worldId)}
             data-testid={`tutorial-first-note-bid-${index + 1}`}
             value={bid.seconds}
             onChange={(event) =>
@@ -649,7 +713,9 @@ function FirstNoteTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () => {
-              setState(await saveTutorialDraft(mechanicKey, firstNote));
+              setState(
+                await saveTutorialDraft(mechanicKey, firstNote, worldId),
+              );
               setValidation(null);
             })
           }
@@ -664,7 +730,7 @@ function FirstNoteTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           onClick={() =>
             run(async () =>
               setValidation(
-                await validateTutorialDraft(mechanicKey, firstNote),
+                await validateTutorialDraft(mechanicKey, firstNote, worldId),
               ),
             )
           }
@@ -677,7 +743,7 @@ function FirstNoteTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy || !state?.draft}
           onClick={() =>
             run(async () => {
-              setState(await publishTutorial(mechanicKey));
+              setState(await publishTutorial(mechanicKey, worldId));
               setValidation(null);
             })
           }
@@ -695,7 +761,13 @@ function FirstNoteTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   );
 }
 
-function LaqathaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+function LaqathaTutorialEditor({
+  mechanicKey,
+  worldId,
+}: {
+  mechanicKey: string;
+  worldId?: string;
+}) {
   const initial: TutorialScenarioDraft = {
     kind: "laqatha",
     version: 1,
@@ -721,7 +793,7 @@ function LaqathaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
 
   useEffect(() => {
     let active = true;
-    fetchAdminTutorial(mechanicKey)
+    fetchAdminTutorial(mechanicKey, worldId)
       .then((next) => {
         if (!active) return;
         setState(next);
@@ -732,7 +804,7 @@ function LaqathaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
     return () => {
       active = false;
     };
-  }, [mechanicKey]);
+  }, [mechanicKey, worldId]);
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -850,7 +922,7 @@ function LaqathaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () => {
-              setState(await saveTutorialDraft(mechanicKey, laqatha));
+              setState(await saveTutorialDraft(mechanicKey, laqatha, worldId));
               setValidation(null);
             })
           }
@@ -864,7 +936,9 @@ function LaqathaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () =>
-              setValidation(await validateTutorialDraft(mechanicKey, laqatha)),
+              setValidation(
+                await validateTutorialDraft(mechanicKey, laqatha, worldId),
+              ),
             )
           }
         >
@@ -876,7 +950,7 @@ function LaqathaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy || !state?.draft}
           onClick={() =>
             run(async () => {
-              setState(await publishTutorial(mechanicKey));
+              setState(await publishTutorial(mechanicKey, worldId));
               setValidation(null);
             })
           }
@@ -894,7 +968,13 @@ function LaqathaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   );
 }
 
-function MarhalaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+function MarhalaTutorialEditor({
+  mechanicKey,
+  worldId,
+}: {
+  mechanicKey: string;
+  worldId?: string;
+}) {
   const initial: TutorialScenarioDraft = {
     kind: "marhala",
     version: 1,
@@ -919,7 +999,7 @@ function MarhalaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
 
   useEffect(() => {
     let active = true;
-    fetchAdminTutorial(mechanicKey)
+    fetchAdminTutorial(mechanicKey, worldId)
       .then((next) => {
         if (!active) return;
         setState(next);
@@ -930,7 +1010,7 @@ function MarhalaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
     return () => {
       active = false;
     };
-  }, [mechanicKey]);
+  }, [mechanicKey, worldId]);
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -1010,6 +1090,7 @@ function MarhalaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
         />
         <select
           value={marhala.difficulty}
+          disabled={Boolean(worldId)}
           onChange={(event) =>
             update({
               difficulty: event.target
@@ -1031,7 +1112,7 @@ function MarhalaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () => {
-              setState(await saveTutorialDraft(mechanicKey, marhala));
+              setState(await saveTutorialDraft(mechanicKey, marhala, worldId));
               setValidation(null);
             })
           }
@@ -1045,7 +1126,9 @@ function MarhalaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () =>
-              setValidation(await validateTutorialDraft(mechanicKey, marhala)),
+              setValidation(
+                await validateTutorialDraft(mechanicKey, marhala, worldId),
+              ),
             )
           }
         >
@@ -1057,7 +1140,7 @@ function MarhalaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy || !state?.draft}
           onClick={() =>
             run(async () => {
-              setState(await publishTutorial(mechanicKey));
+              setState(await publishTutorial(mechanicKey, worldId));
               setValidation(null);
             })
           }
@@ -1075,7 +1158,13 @@ function MarhalaTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   );
 }
 
-function Top5TutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+function Top5TutorialEditor({
+  mechanicKey,
+  worldId,
+}: {
+  mechanicKey: string;
+  worldId?: string;
+}) {
   const initial: TutorialScenarioDraft = {
     kind: "top-5",
     version: 1,
@@ -1100,7 +1189,7 @@ function Top5TutorialEditor({ mechanicKey }: { mechanicKey: string }) {
 
   useEffect(() => {
     let active = true;
-    fetchAdminTutorial(mechanicKey)
+    fetchAdminTutorial(mechanicKey, worldId)
       .then((next) => {
         if (!active) return;
         setState(next);
@@ -1111,7 +1200,7 @@ function Top5TutorialEditor({ mechanicKey }: { mechanicKey: string }) {
     return () => {
       active = false;
     };
-  }, [mechanicKey]);
+  }, [mechanicKey, worldId]);
 
   const top5 = draft as Omit<Top5TutorialScenario, "outcome">;
   const run = async (action: () => Promise<void>) => {
@@ -1199,6 +1288,7 @@ function Top5TutorialEditor({ mechanicKey }: { mechanicKey: string }) {
             id="tutorial-top5-start"
             data-testid="tutorial-top5-start"
             value={top5.startingTeam}
+            disabled={Boolean(worldId)}
             onChange={(event) =>
               update({
                 startingTeam: event.target.value as "team-a" | "team-b",
@@ -1276,6 +1366,7 @@ function Top5TutorialEditor({ mechanicKey }: { mechanicKey: string }) {
             <select
               data-testid={`tutorial-top5-decision-${index}`}
               value={decision.action}
+              disabled={Boolean(worldId)}
               onChange={(event) =>
                 update({
                   decisions: top5.decisions.map((item, itemIndex) =>
@@ -1301,7 +1392,7 @@ function Top5TutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () => {
-              setState(await saveTutorialDraft(mechanicKey, top5));
+              setState(await saveTutorialDraft(mechanicKey, top5, worldId));
               setValidation(null);
             })
           }
@@ -1315,7 +1406,9 @@ function Top5TutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () =>
-              setValidation(await validateTutorialDraft(mechanicKey, top5)),
+              setValidation(
+                await validateTutorialDraft(mechanicKey, top5, worldId),
+              ),
             )
           }
         >
@@ -1327,7 +1420,7 @@ function Top5TutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy || !state?.draft}
           onClick={() =>
             run(async () => {
-              setState(await publishTutorial(mechanicKey));
+              setState(await publishTutorial(mechanicKey, worldId));
               setValidation(null);
             })
           }
@@ -1345,7 +1438,13 @@ function Top5TutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   );
 }
 
-function ComboTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+function ComboTutorialEditor({
+  mechanicKey,
+  worldId,
+}: {
+  mechanicKey: string;
+  worldId?: string;
+}) {
   const initial: TutorialScenarioDraft = {
     kind: "combo",
     version: 1,
@@ -1364,7 +1463,7 @@ function ComboTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
 
   useEffect(() => {
     let active = true;
-    fetchAdminTutorial(mechanicKey)
+    fetchAdminTutorial(mechanicKey, worldId)
       .then((next) => {
         if (!active) return;
         setState(next);
@@ -1375,7 +1474,7 @@ function ComboTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
     return () => {
       active = false;
     };
-  }, [mechanicKey]);
+  }, [mechanicKey, worldId]);
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -1471,7 +1570,7 @@ function ComboTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () => {
-              setState(await saveTutorialDraft(mechanicKey, combo));
+              setState(await saveTutorialDraft(mechanicKey, combo, worldId));
               setValidation(null);
             })
           }
@@ -1485,7 +1584,9 @@ function ComboTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () =>
-              setValidation(await validateTutorialDraft(mechanicKey, combo)),
+              setValidation(
+                await validateTutorialDraft(mechanicKey, combo, worldId),
+              ),
             )
           }
         >
@@ -1497,7 +1598,7 @@ function ComboTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy || !state?.draft}
           onClick={() =>
             run(async () => {
-              setState(await publishTutorial(mechanicKey));
+              setState(await publishTutorial(mechanicKey, worldId));
               setValidation(null);
             })
           }
@@ -1515,7 +1616,13 @@ function ComboTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   );
 }
 
-function EkshifniTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+function EkshifniTutorialEditor({
+  mechanicKey,
+  worldId,
+}: {
+  mechanicKey: string;
+  worldId?: string;
+}) {
   const initial = stripOutcome(
     SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO,
   ) as TutorialScenarioDraft;
@@ -1527,7 +1634,7 @@ function EkshifniTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   useEffect(() => {
     let active = true;
     setBusy(true);
-    fetchAdminTutorial(mechanicKey)
+    fetchAdminTutorial(mechanicKey, worldId)
       .then((next) => {
         if (!active) return;
         setState(next);
@@ -1538,7 +1645,7 @@ function EkshifniTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
     return () => {
       active = false;
     };
-  }, [mechanicKey]);
+  }, [mechanicKey, worldId]);
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
     try {
@@ -1630,7 +1737,7 @@ function EkshifniTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () => {
-              setState(await saveTutorialDraft(mechanicKey, ekshifni));
+              setState(await saveTutorialDraft(mechanicKey, ekshifni, worldId));
               setValidation(null);
             })
           }
@@ -1644,7 +1751,9 @@ function EkshifniTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () =>
-              setValidation(await validateTutorialDraft(mechanicKey, ekshifni)),
+              setValidation(
+                await validateTutorialDraft(mechanicKey, ekshifni, worldId),
+              ),
             )
           }
         >
@@ -1657,7 +1766,7 @@ function EkshifniTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy || !state?.draft}
           onClick={() =>
             run(async () => {
-              setState(await publishTutorial(mechanicKey));
+              setState(await publishTutorial(mechanicKey, worldId));
               setValidation(null);
             })
           }
@@ -1676,7 +1785,13 @@ function EkshifniTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   );
 }
 
-function OneClueTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+function OneClueTutorialEditor({
+  mechanicKey,
+  worldId,
+}: {
+  mechanicKey: string;
+  worldId?: string;
+}) {
   const initial = stripOutcome(
     SAMPLE_ONE_CLUE_TUTORIAL_SCENARIO,
   ) as TutorialScenarioDraft;
@@ -1689,7 +1804,7 @@ function OneClueTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   useEffect(() => {
     let active = true;
     setBusy(true);
-    fetchAdminTutorial(mechanicKey)
+    fetchAdminTutorial(mechanicKey, worldId)
       .then((next) => {
         if (!active) return;
         setState(next);
@@ -1700,7 +1815,7 @@ function OneClueTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
     return () => {
       active = false;
     };
-  }, [mechanicKey]);
+  }, [mechanicKey, worldId]);
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -1796,7 +1911,7 @@ function OneClueTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () => {
-              setState(await saveTutorialDraft(mechanicKey, oneClue));
+              setState(await saveTutorialDraft(mechanicKey, oneClue, worldId));
               setValidation(null);
             })
           }
@@ -1810,7 +1925,9 @@ function OneClueTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () =>
-              setValidation(await validateTutorialDraft(mechanicKey, oneClue)),
+              setValidation(
+                await validateTutorialDraft(mechanicKey, oneClue, worldId),
+              ),
             )
           }
         >
@@ -1823,7 +1940,7 @@ function OneClueTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy || !state?.draft}
           onClick={() =>
             run(async () => {
-              setState(await publishTutorial(mechanicKey));
+              setState(await publishTutorial(mechanicKey, worldId));
               setValidation(null);
             })
           }
@@ -1842,7 +1959,13 @@ function OneClueTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   );
 }
 
-function BombTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+function BombTutorialEditor({
+  mechanicKey,
+  worldId,
+}: {
+  mechanicKey: string;
+  worldId?: string;
+}) {
   const empty: Omit<BombTutorialScenario, "outcome"> = {
     kind: "bomb",
     version: 1,
@@ -1859,7 +1982,7 @@ function BombTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     let active = true;
-    fetchAdminTutorial(mechanicKey).then((next) => {
+    fetchAdminTutorial(mechanicKey, worldId).then((next) => {
       if (!active) return;
       setState(next);
       const source = next.draft ?? next.published;
@@ -1869,7 +1992,7 @@ function BombTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
     return () => {
       active = false;
     };
-  }, [mechanicKey]);
+  }, [mechanicKey, worldId]);
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
     try {
@@ -1939,6 +2062,7 @@ function BombTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           id="tutorial-correct-seconds"
           label="الوقت المتبقي عند الإجابة"
           value={draft.correctAtSecondsRemaining}
+          disabled={Boolean(worldId)}
           onChange={(e) =>
             setDraft({
               ...draft,
@@ -1954,7 +2078,7 @@ function BombTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () => {
-              setState(await saveTutorialDraft(mechanicKey, draft));
+              setState(await saveTutorialDraft(mechanicKey, draft, worldId));
               setValidation(null);
             })
           }
@@ -1967,7 +2091,9 @@ function BombTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () =>
-              setValidation(await validateTutorialDraft(mechanicKey, draft)),
+              setValidation(
+                await validateTutorialDraft(mechanicKey, draft, worldId),
+              ),
             )
           }
         >
@@ -1979,7 +2105,7 @@ function BombTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy || !state?.draft}
           onClick={() =>
             run(async () => {
-              setState(await publishTutorial(mechanicKey));
+              setState(await publishTutorial(mechanicKey, worldId));
               setValidation(null);
             })
           }
@@ -1998,7 +2124,13 @@ function BombTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   );
 }
 
-function ClosestTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+function ClosestTutorialEditor({
+  mechanicKey,
+  worldId,
+}: {
+  mechanicKey: string;
+  worldId?: string;
+}) {
   const initial: TutorialScenarioDraft = {
     kind: "closest",
     version: 1,
@@ -2015,7 +2147,7 @@ function ClosestTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
 
   useEffect(() => {
     let active = true;
-    fetchAdminTutorial(mechanicKey)
+    fetchAdminTutorial(mechanicKey, worldId)
       .then((next) => {
         if (!active) return;
         setState(next);
@@ -2026,7 +2158,7 @@ function ClosestTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
     return () => {
       active = false;
     };
-  }, [mechanicKey]);
+  }, [mechanicKey, worldId]);
 
   const closest = draft as Omit<ClosestTutorialScenario, "outcome">;
   const run = async (action: () => Promise<void>) => {
@@ -2125,7 +2257,7 @@ function ClosestTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () => {
-              setState(await saveTutorialDraft(mechanicKey, closest));
+              setState(await saveTutorialDraft(mechanicKey, closest, worldId));
               setValidation(null);
             })
           }
@@ -2139,7 +2271,9 @@ function ClosestTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy}
           onClick={() =>
             run(async () =>
-              setValidation(await validateTutorialDraft(mechanicKey, closest)),
+              setValidation(
+                await validateTutorialDraft(mechanicKey, closest, worldId),
+              ),
             )
           }
         >
@@ -2152,7 +2286,7 @@ function ClosestTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
           disabled={busy || !state?.draft}
           onClick={() =>
             run(async () => {
-              setState(await publishTutorial(mechanicKey));
+              setState(await publishTutorial(mechanicKey, worldId));
               setValidation(null);
             })
           }
@@ -2176,11 +2310,13 @@ function NumberField({
   label,
   value,
   onChange,
+  disabled = false,
 }: {
   id: string;
   label: string;
   value: number;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="space-y-1">
@@ -2190,13 +2326,20 @@ function NumberField({
         data-testid={id}
         type="number"
         value={value}
+        disabled={disabled}
         onChange={onChange}
       />
     </div>
   );
 }
 
-function RyoTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
+function RyoTutorialEditor({
+  mechanicKey,
+  worldId,
+}: {
+  mechanicKey: string;
+  worldId?: string;
+}) {
   const [state, setState] = useState<AdminTutorialState | null>(null);
   const [draft, setDraft] = useState<Omit<RyoTutorialScenario, "outcome">>(
     EMPTY as Omit<RyoTutorialScenario, "outcome">,
@@ -2210,7 +2353,7 @@ function RyoTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
   useEffect(() => {
     let active = true;
     setBusy("load");
-    fetchAdminTutorial(mechanicKey)
+    fetchAdminTutorial(mechanicKey, worldId)
       .then((next) => {
         if (!active) return;
         setState(next);
@@ -2229,7 +2372,7 @@ function RyoTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
     return () => {
       active = false;
     };
-  }, [mechanicKey]);
+  }, [mechanicKey, worldId]);
 
   const run = async (
     kind: Exclude<typeof busy, null | "load">,
@@ -2258,7 +2401,7 @@ function RyoTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
 
   const onSave = () =>
     run("save", async () => {
-      const next = await saveTutorialDraft(mechanicKey, draft);
+      const next = await saveTutorialDraft(mechanicKey, draft, worldId);
       setState(next);
       setValidation(null);
       toast.success("انحفظت المسودة.");
@@ -2266,14 +2409,14 @@ function RyoTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
 
   const onCheck = () =>
     run("check", async () => {
-      const result = await validateTutorialDraft(mechanicKey, draft);
+      const result = await validateTutorialDraft(mechanicKey, draft, worldId);
       setValidation(result);
       if (result.valid) toast.success("الشرح جاهز للنشر.");
     });
 
   const onPublish = () =>
     run("publish", async () => {
-      const next = await publishTutorial(mechanicKey);
+      const next = await publishTutorial(mechanicKey, worldId);
       setState(next);
       setValidation(null);
       toast.success(`تم النشر — المراجعة رقم ${next.publishedRevision}.`);
@@ -2379,6 +2522,7 @@ function RyoTutorialEditor({ mechanicKey }: { mechanicKey: string }) {
             id="tutorial-decision"
             data-testid="tutorial-decision"
             value={draft.opposingDecision}
+            disabled={Boolean(worldId)}
             onChange={(event) =>
               setDraft((current) => ({
                 ...current,
@@ -2463,7 +2607,9 @@ function FieldLabel({
 function PublishState({ state }: { state: AdminTutorialState | null }) {
   if (!state) return null;
   const label = !state.published
-    ? "غير منشور"
+    ? state.generic?.published
+      ? "مثال العالم غير منشور — سيُستخدم المثال العام"
+      : "غير منشور"
     : state.hasUnpublishedChanges
       ? `منشور (مراجعة ${state.publishedRevision}) — فيه تعديلات غير منشورة`
       : `منشور (مراجعة ${state.publishedRevision})`;

@@ -38,17 +38,24 @@ import { tutorialScenarioKind } from "../tutorial-scenario";
  */
 export function MechanicTutorialDialog({
   mechanicKey,
+  worldId,
   launching = false,
   disabled = false,
 }: {
   /** The mechanic whose published tutorial to show. */
   mechanicKey: string;
+  /** Authoritative World identity from Match preflight, when available. */
+  worldId?: string;
   /** The real challenge is starting. */
   launching?: boolean;
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const { data: tutorial } = usePublishedTutorial(mechanicKey);
+  const {
+    data: tutorial,
+    isError,
+    isLoading,
+  } = usePublishedTutorial(mechanicKey, worldId);
   const supported = tutorial
     ? supportsTutorialScenario(tutorial.scenario)
     : false;
@@ -68,19 +75,33 @@ export function MechanicTutorialDialog({
           published tutorial the Preflight keeps its authored instructions
           rather than opening an empty dialog or falling back to an unapproved
           fixture. */}
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          data-testid="preflight-how-to-play"
-          disabled={disabled || launching || !tutorial || !supported}
-          className="h-9 shrink-0 gap-1.5 font-black"
-        >
-          <HelpCircle className="size-4" aria-hidden />
-          كيف تلعب؟
-        </Button>
-      </DialogTrigger>
+      <div className="flex shrink-0 items-center gap-2">
+        <DialogTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-testid="preflight-how-to-play"
+            disabled={
+              disabled || launching || isLoading || !tutorial || !supported
+            }
+            className="h-9 shrink-0 gap-1.5 font-black"
+          >
+            <HelpCircle className="size-4" aria-hidden />
+            كيف تلعب؟
+          </Button>
+        </DialogTrigger>
+        {isError && (
+          <span className="max-w-44 text-[0.68rem] font-bold leading-4 text-destructive">
+            تعذّر تحميل شرح هذا التحدي
+          </span>
+        )}
+        {!isLoading && !isError && !tutorial && (
+          <span className="max-w-52 text-[0.68rem] font-bold leading-4 text-muted-foreground">
+            لا يوجد شرح منشور لهذا التحدي بعد
+          </span>
+        )}
+      </div>
       <DialogContent
         dir="rtl"
         data-testid="explainer-dialog"
@@ -88,7 +109,7 @@ export function MechanicTutorialDialog({
         // Keeping this on the existing Radix portal preserves focus trapping,
         // Escape handling, scroll lock and unmount cleanup while ensuring no
         // Header, Footer or page artwork can show around the presentation.
-        className="!inset-0 !top-0 !start-0 !h-[100dvh] !max-h-[100dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 flex flex-col gap-3 overflow-y-auto rounded-none bg-background p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-8"
+        className="!inset-0 !top-0 !start-0 !h-[100dvh] !max-h-[100dvh] !w-full !max-w-none !translate-x-0 !translate-y-0 flex flex-col gap-3 overflow-y-auto rounded-none bg-background p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-8"
       >
         <div
           data-testid="explainer-stage"
