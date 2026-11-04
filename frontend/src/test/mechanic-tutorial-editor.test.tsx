@@ -31,12 +31,14 @@ const api = vi.hoisted(() => ({
 const worldApi = vi.hoisted(() => ({
   fetchTutorialWorldOptions: vi.fn(),
 }));
+const toast = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+}));
 
 vi.mock("@/features/world-management/api/mechanic-tutorial-api", () => api);
 vi.mock("@/features/world-management/api/world-content.api", () => worldApi);
-vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
-}));
+vi.mock("sonner", () => ({ toast }));
 
 const scenario = {
   prompt: "كم لونًا في قوس قزح؟",
@@ -146,6 +148,8 @@ const state = (
 beforeEach(() => {
   for (const fn of Object.values(api)) fn.mockReset();
   worldApi.fetchTutorialWorldOptions.mockReset();
+  toast.success.mockReset();
+  toast.error.mockReset();
   worldApi.fetchTutorialWorldOptions.mockResolvedValue([]);
   api.fetchAdminTutorial.mockResolvedValue(state());
   Object.defineProperty(window, "matchMedia", {
@@ -643,6 +647,60 @@ describe("mechanic tutorial editor", () => {
     api.publishTutorial.mockRejectedValue({
       response: {
         data: {
+          code: "WORLD_CONTENT_VALIDATION_FAILED",
+          message: "Tutorial scenario invalid",
+          issues: [
+            {
+              code: "TUTORIAL_PROMPT_REQUIRED",
+              message: "السؤال التوضيحي مطلوب.",
+            },
+          ],
+        },
+      },
+    });
+    await mount();
+    await waitFor(() =>
+      expect(screen.getByTestId("tutorial-publish")).toBeEnabled(),
+    );
+    await user.click(screen.getByTestId("tutorial-publish"));
+
+    const report = await screen.findByTestId("tutorial-validation");
+    expect(report).toHaveAttribute("data-valid", "false");
+    expect(report.textContent).toContain(
+      "أدخل السؤال التعليمي قبل فحص ومعاينة الشرح.",
+    );
+  });
+
+  it("shows the localized message for an empty Closest DTO rejection", async () => {
+    const user = userEvent.setup();
+    api.validateTutorialDraft.mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          statusCode: 400,
+          error: "Bad Request",
+          message: "prompt must be longer than or equal to 1 characters",
+        },
+      },
+    });
+    await mountClosest();
+    await user.click(screen.getByTestId("tutorial-validate"));
+
+    const report = await screen.findByTestId("tutorial-validation");
+    expect(report.textContent).toContain(
+      "أدخل السؤال التعليمي قبل فحص ومعاينة الشرح.",
+    );
+    expect(toast.error).toHaveBeenCalledWith(
+      "أدخل السؤال التعليمي قبل فحص ومعاينة الشرح.",
+    );
+  });
+
+  it("supports the legacy nested issue response", async () => {
+    const user = userEvent.setup();
+    api.validateTutorialDraft.mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
           message: {
             issues: [
               {
@@ -655,14 +713,50 @@ describe("mechanic tutorial editor", () => {
       },
     });
     await mount();
-    await waitFor(() =>
-      expect(screen.getByTestId("tutorial-publish")).toBeEnabled(),
-    );
-    await user.click(screen.getByTestId("tutorial-publish"));
+    await user.click(screen.getByTestId("tutorial-validate"));
+
+    expect(
+      (await screen.findByTestId("tutorial-validation")).textContent,
+    ).toContain("أدخل السؤال التعليمي قبل فحص ومعاينة الشرح.");
+  });
+
+  it("shows every class-validator message from an error array once", async () => {
+    const user = userEvent.setup();
+    api.validateTutorialDraft.mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          statusCode: 400,
+          error: "Bad Request",
+          message: [
+            "prompt must be longer than or equal to 1 characters",
+            "version must be one of the following values: 1, 2",
+          ],
+        },
+      },
+    });
+    await mountClosest();
+    await user.click(screen.getByTestId("tutorial-validate"));
 
     const report = await screen.findByTestId("tutorial-validation");
-    expect(report).toHaveAttribute("data-valid", "false");
-    expect(report.textContent).toContain("السؤال التوضيحي مطلوب.");
+    expect(report.textContent).toContain(
+      "أدخل السؤال التعليمي قبل فحص ومعاينة الشرح.",
+    );
+    expect(report.textContent).toContain("نسخة الشرح غير مدعومة.");
+    expect(toast.error).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the generic fallback for an unexpected network failure", async () => {
+    const user = userEvent.setup();
+    api.validateTutorialDraft.mockRejectedValue(new Error("network down"));
+    await mountClosest();
+    await user.click(screen.getByTestId("tutorial-validate"));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "تعذّرت العملية. حاول مرة ثانية.",
+      ),
+    );
   });
 
   it("reports a load failure rather than rendering an empty editor", async () => {
