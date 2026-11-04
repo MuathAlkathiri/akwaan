@@ -55,7 +55,6 @@ const position = (
   challengeKey: index === 1 ? "read-your-opponent" : `mechanic-${index}`,
   challengeName: `تحدي ${occurrenceIndex}-${index}`,
   description: `وصف ${occurrenceIndex}-${index}`,
-  instructions: `تعليمات ${occurrenceIndex}-${index}`,
   // Only the mechanic in slot_2 has a launcher; only slot_3 says it needs phones,
   // so the warning cannot be coming from a slug list on this side.
   requiresPhones: slotKey === "slot_3" || slotKey === "slot_2",

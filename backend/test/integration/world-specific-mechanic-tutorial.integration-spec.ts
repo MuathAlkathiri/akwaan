@@ -97,7 +97,6 @@ describe('World-specific mechanic tutorial HTTP integration', () => {
       defaultPresentation: {
         inputType: 'multiple_choice',
         timerSeconds: 10,
-        playerInstructions: { summary: 'شرح', steps: [] },
       },
       scoringRuleId: 'ryo.default',
       status: WorldContentStatus.DRAFT,

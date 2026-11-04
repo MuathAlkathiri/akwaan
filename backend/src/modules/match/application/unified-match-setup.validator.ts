@@ -64,10 +64,6 @@ export class UnifiedMatchSetupValidator {
           challengeTypeSlug: slot.challengeTypeSlug,
           displayName: slot.displayName,
           ...(slot.description ? { description: slot.description } : {}),
-          ...(slot.instructions ? { instructions: slot.instructions } : {}),
-          ...(slot.playerInstructions
-            ? { playerInstructions: slot.playerInstructions }
-            : {}),
         })),
       );
       await this.contentPool.assertOccurrencePool({

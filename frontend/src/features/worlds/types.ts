@@ -42,7 +42,6 @@ export interface PlayableBoardSlot {
   family: string;
   displayName: string;
   description?: string;
-  instructions?: string;
   sortOrder: number;
 }
 

@@ -85,7 +85,6 @@ export function toConfigurationView(
     slotKey: document.slotKey,
     ...(document.displayName ? { displayName: document.displayName } : {}),
     ...(document.description ? { description: document.description } : {}),
-    ...(document.instructions ? { instructions: document.instructions } : {}),
     sortOrder: document.sortOrder ?? 0,
     isEnabled: document.isEnabled ?? false,
   };

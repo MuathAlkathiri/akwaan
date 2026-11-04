@@ -151,7 +151,6 @@ describe('ChallengeTypePolicy', () => {
       timerSeconds: null,
       soundPack: null,
       revealStyle: null,
-      playerInstructions: null,
     });
   });
 
@@ -213,21 +212,11 @@ describe('ChallengeTypePolicy', () => {
         scoringRuleId: SCORING_RULE_IDS.CHALLENGE_WIN,
       });
       // The readiness warning is what mislabels a mechanic "not programmed"; with
-      // the Match-scoring rule and its complete instructions, Marhala raises none.
+      // the Match-scoring rule and complete mechanic configuration, Marhala raises none.
       expect(policy.warnings(marhala)).toEqual([]);
       expect(warnCodes(policy, marhala)).not.toContain(
         'SCORING_RULE_AWAITING_MECHANIC',
       );
-    });
-
-    it('reports a missing-metadata gap without implying the mechanic is unprogrammed', () => {
-      const missingInstructions = challengeType({
-        scoringRuleId: SCORING_RULE_IDS.CHALLENGE_WIN,
-        defaultPresentation: presentation({ playerInstructions: null }),
-      });
-      const problems = warnCodes(policy, missingInstructions);
-      expect(problems).toContain('CHALLENGE_TYPE_PLAYER_INSTRUCTIONS_MISSING');
-      expect(problems).not.toContain('SCORING_RULE_AWAITING_MECHANIC');
     });
   });
 
