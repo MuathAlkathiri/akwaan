@@ -50,9 +50,16 @@ import type {
   WorldContentStatus,
 } from "../../types";
 import { MechanicTutorialEditor } from "./mechanic-tutorial-editor";
+import { SUPPORTED_TUTORIAL_MECHANIC_KEYS } from "@/features/challenge-explainer";
 
-/** The one mechanic with an authored demonstration so far. */
-const RYO_MECHANIC_KEY = "read-your-opponent";
+/** Mechanics with the versioned, server-validated tutorial workflow. */
+export const TUTORIAL_MECHANIC_KEYS = new Set<string>(
+  SUPPORTED_TUTORIAL_MECHANIC_KEYS,
+);
+
+export function shouldRenderTutorialEditor(slug?: string): boolean {
+  return Boolean(slug && TUTORIAL_MECHANIC_KEYS.has(slug));
+}
 
 interface ChallengeTypeFormProps {
   challengeType?: ChallengeType;
@@ -204,7 +211,11 @@ export function ChallengeTypeForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1.5 block text-sm font-medium">العائلة</label>
-          <Select value={family} onValueChange={onFamilyChange} disabled={runtimeOwned}>
+          <Select
+            value={family}
+            onValueChange={onFamilyChange}
+            disabled={runtimeOwned}
+          >
             <SelectTrigger aria-label="العائلة">
               <SelectValue />
             </SelectTrigger>
@@ -227,7 +238,11 @@ export function ChallengeTypeForm({
           <label className="mb-1.5 block text-sm font-medium">
             نمط الإجابة
           </label>
-          <Select value={answerMode} onValueChange={onAnswerModeChange} disabled={runtimeOwned}>
+          <Select
+            value={answerMode}
+            onValueChange={onAnswerModeChange}
+            disabled={runtimeOwned}
+          >
             <SelectTrigger aria-label="نمط الإجابة">
               <SelectValue />
             </SelectTrigger>
@@ -300,9 +315,7 @@ export function ChallengeTypeForm({
       <PresentationFields value={presentation} onChange={setPresentation} />
 
       <PlayerInstructionsFields
-        value={
-          presentation.playerInstructions ?? { summary: "", steps: [] }
-        }
+        value={presentation.playerInstructions ?? { summary: "", steps: [] }}
         onChange={(playerInstructions) =>
           setPresentation((current) => ({ ...current, playerInstructions }))
         }
@@ -313,9 +326,10 @@ export function ChallengeTypeForm({
       {/* The animated demonstration, for mechanics that have one. Keyed by the
           mechanic's own slug — the canonical identifier — and only offered for
           a saved mechanic, since a draft has no key to publish under yet. */}
-      {challengeType?.slug === RYO_MECHANIC_KEY && (
-        <MechanicTutorialEditor mechanicKey={challengeType.slug} />
-      )}
+      {challengeType?.slug &&
+        shouldRenderTutorialEditor(challengeType.slug) && (
+          <MechanicTutorialEditor mechanicKey={challengeType.slug} />
+        )}
 
       <UploadField
         label="أيقونة المكانيكا"
@@ -334,7 +348,8 @@ export function ChallengeTypeForm({
 
       {runtimeOwned && (
         <p className="text-xs text-muted-foreground">
-          العائلة ونمط الإجابة والبنية وقاعدة نقاط المباراة والمعرّف مرتبطة بتنفيذ التشغيل ولا يمكن تعديلها يدويًا.
+          العائلة ونمط الإجابة والبنية وقاعدة نقاط المباراة والمعرّف مرتبطة
+          بتنفيذ التشغيل ولا يمكن تعديلها يدويًا.
         </p>
       )}
       <AdvancedSlugField slugField={slugField} disabled={runtimeOwned} />

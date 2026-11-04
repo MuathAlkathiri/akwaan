@@ -221,6 +221,7 @@ function ChallengeExplanation({
         {animated && (
           <MechanicTutorialDialog
             mechanicKey={preflight.challengeKey}
+            worldId={preflight.worldId}
             launching={launching}
           />
         )}

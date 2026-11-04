@@ -30,7 +30,9 @@ import { ProductionMechanicLifecycleRepository } from './persistence/production-
 import { ChallengeTypesController } from './presentation/challenge-types.controller';
 import {
   AdminMechanicTutorialsController,
+  AdminWorldMechanicTutorialsController,
   MechanicTutorialsController,
+  WorldMechanicTutorialsController,
 } from './presentation/mechanic-tutorials.controller';
 import { MechanicTutorialService } from './application/mechanic-tutorial.service';
 import { ContentItemsController } from './presentation/content-items.controller';
@@ -49,6 +51,11 @@ import {
   WorldChallengeConfigurationSchema,
 } from './schemas/world-challenge-configuration.schema';
 import { World, WorldSchema } from './schemas/world.schema';
+import {
+  ScopedMechanicTutorial,
+  ScopedMechanicTutorialSchema,
+} from './schemas/scoped-mechanic-tutorial.schema';
+import { ScopedMechanicTutorialRepository } from './persistence/scoped-mechanic-tutorial.repository';
 
 /**
  * World -> Scope -> ChallengeType -> ContentItem.
@@ -68,6 +75,10 @@ import { World, WorldSchema } from './schemas/world.schema';
         schema: WorldChallengeConfigurationSchema,
       },
       { name: ContentItem.name, schema: ContentItemSchema },
+      {
+        name: ScopedMechanicTutorial.name,
+        schema: ScopedMechanicTutorialSchema,
+      },
     ]),
   ],
   controllers: [
@@ -78,7 +89,9 @@ import { World, WorldSchema } from './schemas/world.schema';
     WorldChallengeConfigurationsController,
     ChallengeTypesController,
     AdminMechanicTutorialsController,
+    AdminWorldMechanicTutorialsController,
     MechanicTutorialsController,
+    WorldMechanicTutorialsController,
     ContentItemsController,
   ],
   providers: [
@@ -99,6 +112,7 @@ import { World, WorldSchema } from './schemas/world.schema';
     WorldChallengeConfigurationRepository,
     ContentItemRepository,
     ProductionMechanicLifecycleRepository,
+    ScopedMechanicTutorialRepository,
     // application
     WorldService,
     ScopeService,

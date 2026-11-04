@@ -484,6 +484,8 @@ export interface PublishedTutorial {
   mechanicKey: string;
   revision: number;
   scenario: TutorialScenario;
+  source?: "world" | "generic";
+  worldId?: string | null;
 }
 
 export function tutorialScenarioKind(

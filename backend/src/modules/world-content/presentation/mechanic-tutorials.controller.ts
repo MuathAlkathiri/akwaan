@@ -65,6 +65,93 @@ export class AdminMechanicTutorialsController {
   }
 }
 
+/** World-scoped example authoring. Global ADMIN remains the only role allowed. */
+@ApiTags('World Management')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
+@Controller('admin/worlds/:worldId/mechanics/:mechanicKey/tutorial')
+export class AdminWorldMechanicTutorialsController {
+  constructor(private readonly tutorials: MechanicTutorialService) {}
+
+  @Get()
+  get(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+  ) {
+    return envelope(this.tutorials.getScopedForAdmin(worldId, mechanicKey));
+  }
+
+  @Put('draft')
+  saveDraft(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+    @Body() dto: TutorialScenarioDto,
+  ) {
+    return envelope(
+      this.tutorials.saveScopedDraft(
+        worldId,
+        mechanicKey,
+        dto as TutorialScenarioInput,
+      ),
+    );
+  }
+
+  @Post('validate')
+  validate(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+    @Body() dto: TutorialScenarioDto,
+  ) {
+    return envelope(
+      this.tutorials.validateScoped(
+        worldId,
+        mechanicKey,
+        dto as TutorialScenarioInput,
+      ),
+    );
+  }
+
+  @Post('publish')
+  publish(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+  ) {
+    return envelope(this.tutorials.publishScoped(worldId, mechanicKey));
+  }
+
+  @Get('revisions')
+  revisions(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+  ) {
+    return envelope(this.tutorials.listScopedRevisions(worldId, mechanicKey));
+  }
+
+  @Post('revisions/:revision/restore')
+  restore(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+    @Param('revision') revision: string,
+  ) {
+    return envelope(
+      this.tutorials.restoreScopedRevision(
+        worldId,
+        mechanicKey,
+        Number(revision),
+      ),
+    );
+  }
+
+  @Post('withdraw')
+  withdraw(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+  ) {
+    return envelope(this.tutorials.withdrawScoped(worldId, mechanicKey));
+  }
+}
+
 /**
  * The read surface hosts actually use.
  *
@@ -85,5 +172,19 @@ export class MechanicTutorialsController {
   @Get()
   published(@Param('mechanicKey') mechanicKey: string) {
     return envelope(this.tutorials.getPublished(mechanicKey));
+  }
+}
+
+@ApiTags('Player Catalog')
+@Controller('worlds/:worldId/mechanics/:mechanicKey/tutorial')
+export class WorldMechanicTutorialsController {
+  constructor(private readonly tutorials: MechanicTutorialService) {}
+
+  @Get()
+  published(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+  ) {
+    return envelope(this.tutorials.getPublishedForWorld(worldId, mechanicKey));
   }
 }

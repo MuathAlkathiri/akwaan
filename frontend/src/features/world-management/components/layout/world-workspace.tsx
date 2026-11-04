@@ -8,6 +8,7 @@ import { WorldHeader } from "../worlds";
 import { ScopeSection } from "../scopes";
 import { BoardSection } from "../world-challenge-configurations";
 import { ContentItemSection } from "../content-items";
+import { TutorialExamplesSection } from "../world-tutorials/tutorial-examples-section";
 import type { World } from "../../types";
 
 /**
@@ -28,6 +29,7 @@ export function WorldWorkspace({ world }: { world: World }) {
           <TabsTrigger value="board">لوحة التحديات</TabsTrigger>
           <TabsTrigger value="scopes">النطاقات</TabsTrigger>
           <TabsTrigger value="content">المحتوى</TabsTrigger>
+          <TabsTrigger value="tutorials">أمثلة الشرح</TabsTrigger>
         </TabsList>
         <TabsContent id="world-board" value="board" className="mt-4">
           <BoardSection worldId={world.id} />
@@ -37,6 +39,9 @@ export function WorldWorkspace({ world }: { world: World }) {
         </TabsContent>
         <TabsContent id="world-content" value="content" className="mt-4">
           <ContentItemSection worldId={world.id} />
+        </TabsContent>
+        <TabsContent id="world-tutorials" value="tutorials" className="mt-4">
+          <TutorialExamplesSection worldId={world.id} />
         </TabsContent>
       </Tabs>
     </div>

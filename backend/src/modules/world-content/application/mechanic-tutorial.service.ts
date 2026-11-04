@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { ChallengeType } from '../schemas/challenge-type.schema';
 import { ContentItem } from '../schemas/content-item.schema';
 import {
@@ -35,6 +35,14 @@ import {
 } from '../domain/mechanic-tutorial.policy';
 import { StoredTutorialScenario } from '../domain/world-content.types';
 import { WorldContentValidationError } from '../domain/world-content.errors';
+import {
+  SCOPED_TUTORIAL_FLOW_CONTRACT_VERSION,
+  isScopedTutorialMechanicKey,
+  validateScopedTutorialFlow,
+} from '../domain/scoped-mechanic-tutorial.policy';
+import { WorldChallengeConfigurationRepository } from '../persistence/world-challenge-configuration.repository';
+import { WorldRepository } from '../persistence/world.repository';
+import { ScopedMechanicTutorialRepository } from '../persistence/scoped-mechanic-tutorial.repository';
 
 /**
  * Draft, validate, publish and read a mechanic's educational demonstration.
@@ -55,6 +63,9 @@ export class MechanicTutorialService {
     private readonly challengeTypes: Model<ChallengeType>,
     @InjectModel(ContentItem.name)
     private readonly contentItems: Model<ContentItem>,
+    private readonly worlds: WorldRepository,
+    private readonly configurations: WorldChallengeConfigurationRepository,
+    private readonly scopedTutorials: ScopedMechanicTutorialRepository,
   ) {}
 
   /** Admin view: both documents, so an editor can see what hosts currently get. */
@@ -229,6 +240,310 @@ export class MechanicTutorialService {
     mechanic.markModified('tutorial');
     await mechanic.save();
     return this.getForAdmin(mechanicKey);
+  }
+
+  /** Admin view for one World/mechanic pair. */
+  async getScopedForAdmin(worldId: string, mechanicKey: string) {
+    const pair = await this.requireScopedPair(worldId, mechanicKey);
+    const record = await this.scopedTutorials.findByPair(
+      worldId,
+      String(pair.mechanic._id),
+    );
+    const generic = pair.mechanic.tutorial;
+    return {
+      worldId,
+      challengeTypeId: String(pair.mechanic._id),
+      mechanicKey: pair.mechanic.slug,
+      mechanicName: pair.mechanic.name,
+      associated: true,
+      generic: {
+        published: Boolean(generic?.published),
+        publishedRevision: generic?.publishedRevision ?? 0,
+      },
+      draft: record?.draft ?? null,
+      published: record?.published ?? null,
+      publishedRevision: record?.publishedRevision ?? 0,
+      publishedAt: record?.publishedAt ?? null,
+      draftUpdatedAt: record?.draftUpdatedAt ?? null,
+      withdrawnAt: record?.withdrawnAt ?? null,
+      hasUnpublishedChanges: hasUnpublishedChanges(
+        record?.draft as StoredTutorialScenario | undefined,
+        record?.published as StoredTutorialScenario | undefined,
+      ),
+      revisions: (record?.revisionHistory ?? []).map((revision) => ({
+        revision: revision.revision,
+        publishedAt: revision.publishedAt,
+        restoredFromRevision: revision.restoredFromRevision ?? null,
+      })),
+    };
+  }
+
+  async saveScopedDraft(
+    worldId: string,
+    mechanicKey: string,
+    input: TutorialScenarioInput,
+  ) {
+    const pair = await this.requireScopedPair(worldId, mechanicKey);
+    const record = await this.scopedTutorials.findByPair(
+      worldId,
+      String(pair.mechanic._id),
+    );
+    const issues = await this.validateScopedInput(
+      pair.mechanic,
+      mechanicKey,
+      input,
+    );
+    if (issues.length) {
+      throw new WorldContentValidationError(
+        issues,
+        'Scoped tutorial scenario invalid',
+      );
+    }
+    const draft = this.compose(input) as unknown as Record<string, unknown>;
+    const value =
+      record ??
+      (await this.scopedTutorials.create({
+        worldId: new Types.ObjectId(worldId),
+        challengeTypeId: pair.mechanic._id,
+        mechanicKey: pair.mechanic.slug,
+        scenarioVersion: Number((draft.version as number | undefined) ?? 1),
+        flowContractVersion: SCOPED_TUTORIAL_FLOW_CONTRACT_VERSION,
+        revisionHistory: [],
+      }));
+    value.draft = draft;
+    value.draftUpdatedAt = new Date();
+    value.flowContractVersion = SCOPED_TUTORIAL_FLOW_CONTRACT_VERSION;
+    value.scenarioVersion = Number((draft.version as number | undefined) ?? 1);
+    await value.save();
+    return this.getScopedForAdmin(worldId, mechanicKey);
+  }
+
+  async validateScoped(
+    worldId: string,
+    mechanicKey: string,
+    input: TutorialScenarioInput,
+  ) {
+    const pair = await this.requireScopedPair(worldId, mechanicKey);
+    const issues = await this.validateScopedInput(
+      pair.mechanic,
+      mechanicKey,
+      input,
+    );
+    const overlaps = issues.length ? [] : await this.overlapsFor(input);
+    return {
+      valid: issues.length === 0 && overlaps.length === 0,
+      issues,
+      competitiveOverlap: overlaps,
+      outcome: issues.length ? null : this.compose(input).outcome,
+    };
+  }
+
+  async publishScoped(worldId: string, mechanicKey: string) {
+    const pair = await this.requireScopedPair(worldId, mechanicKey);
+    const record = await this.scopedTutorials.findByPair(
+      worldId,
+      String(pair.mechanic._id),
+    );
+    const draft = record?.draft as unknown as TutorialScenarioInput | null;
+    if (!record || !draft) {
+      throw new WorldContentValidationError(
+        [
+          {
+            code: 'SCOPED_TUTORIAL_DRAFT_MISSING',
+            message: 'لا توجد مسودة للنشر.',
+          },
+        ],
+        'No scoped tutorial draft to publish',
+      );
+    }
+    const issues = await this.validateScopedInput(
+      pair.mechanic,
+      mechanicKey,
+      draft,
+    );
+    if (issues.length) {
+      throw new WorldContentValidationError(
+        issues,
+        'Scoped tutorial scenario invalid',
+      );
+    }
+    const overlaps = await this.overlapsFor(draft);
+    if (overlaps.length) {
+      throw new WorldContentValidationError(
+        [
+          {
+            code: 'TUTORIAL_OVERLAPS_COMPETITIVE_CONTENT',
+            message:
+              'هذا السؤال يطابق محتوى تنافسي قابل للعب. اختر سؤالًا تعليميًا مختلفًا.',
+            details: { matches: overlaps },
+          },
+        ],
+        'Tutorial overlaps competitive content',
+      );
+    }
+    const published = this.compose(draft) as unknown as Record<string, unknown>;
+    const previous = record.published;
+    const nextRevision = (record.publishedRevision ?? 0) + 1;
+    if (previous && record.publishedRevision > 0) {
+      record.revisionHistory.push({
+        revision: record.publishedRevision,
+        scenario: JSON.parse(JSON.stringify(previous)),
+        publishedAt: record.publishedAt ?? new Date(),
+      });
+    }
+    record.published = published;
+    record.publishedRevision = nextRevision;
+    record.publishedAt = new Date();
+    record.withdrawnAt = null;
+    record.flowContractVersion = SCOPED_TUTORIAL_FLOW_CONTRACT_VERSION;
+    await record.save();
+    return this.getScopedForAdmin(worldId, mechanicKey);
+  }
+
+  async listScopedRevisions(worldId: string, mechanicKey: string) {
+    const pair = await this.requireScopedPair(worldId, mechanicKey);
+    const record = await this.scopedTutorials.findByPair(
+      worldId,
+      String(pair.mechanic._id),
+    );
+    return (record?.revisionHistory ?? []).map((revision) => ({
+      revision: revision.revision,
+      publishedAt: revision.publishedAt,
+      restoredFromRevision: revision.restoredFromRevision ?? null,
+      scenario: revision.scenario,
+    }));
+  }
+
+  async restoreScopedRevision(
+    worldId: string,
+    mechanicKey: string,
+    revision: number,
+  ) {
+    const pair = await this.requireScopedPair(worldId, mechanicKey);
+    const record = await this.scopedTutorials.findByPair(
+      worldId,
+      String(pair.mechanic._id),
+    );
+    const historical = record?.revisionHistory.find(
+      (entry) => entry.revision === revision,
+    );
+    if (!record || !historical) {
+      throw new NotFoundException({
+        code: 'SCOPED_TUTORIAL_REVISION_NOT_FOUND',
+        message: `No scoped tutorial revision ${revision} exists`,
+      });
+    }
+    record.draft = JSON.parse(JSON.stringify(historical.scenario));
+    record.draftUpdatedAt = new Date();
+    await record.save();
+    return this.publishScoped(worldId, mechanicKey);
+  }
+
+  async withdrawScoped(worldId: string, mechanicKey: string) {
+    const pair = await this.requireScopedPair(worldId, mechanicKey);
+    const record = await this.scopedTutorials.findByPair(
+      worldId,
+      String(pair.mechanic._id),
+    );
+    if (!record) return this.getScopedForAdmin(worldId, mechanicKey);
+    record.published = null;
+    record.publishedAt = null;
+    record.withdrawnAt = new Date();
+    await record.save();
+    return this.getScopedForAdmin(worldId, mechanicKey);
+  }
+
+  /** World-aware public resolver. Drafts and revision history never escape. */
+  async getPublishedForWorld(worldId: string, mechanicKey: string) {
+    try {
+      const pair = await this.requireScopedPair(worldId, mechanicKey);
+      const record = await this.scopedTutorials.findByPair(
+        worldId,
+        String(pair.mechanic._id),
+      );
+      if (record?.published) {
+        return {
+          source: 'world' as const,
+          worldId,
+          mechanicKey: pair.mechanic.slug,
+          revision: record.publishedRevision,
+          scenario: record.published,
+        };
+      }
+      const generic = pair.mechanic.tutorial?.published;
+      return generic
+        ? {
+            source: 'generic' as const,
+            worldId: null,
+            mechanicKey: pair.mechanic.slug,
+            revision: pair.mechanic.tutorial?.publishedRevision ?? 0,
+            scenario: generic,
+          }
+        : null;
+    } catch {
+      try {
+        const generic = await this.getPublished(mechanicKey);
+        return generic
+          ? { ...generic, source: 'generic' as const, worldId: null }
+          : null;
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  private async validateScopedInput(
+    mechanic: ChallengeType,
+    mechanicKey: string,
+    input: TutorialScenarioInput,
+  ) {
+    const issues = validateMechanicTutorialScenario(mechanic.slug, input);
+    if (!isScopedTutorialMechanicKey(mechanicKey)) {
+      issues.push({
+        code: 'SCOPED_TUTORIAL_MECHANIC_UNSUPPORTED',
+        message: 'This mechanic is not eligible for World-specific tutorials.',
+      });
+      return issues;
+    }
+    const baseline = mechanic.tutorial?.published ?? mechanic.tutorial?.draft;
+    issues.push(
+      ...validateScopedTutorialFlow(
+        mechanicKey,
+        input,
+        baseline as unknown as TutorialScenarioInput | null | undefined,
+      ),
+    );
+    return issues;
+  }
+
+  private async requireScopedPair(worldId: string, mechanicKey: string) {
+    if (!Types.ObjectId.isValid(worldId)) {
+      throw new NotFoundException({
+        code: 'WORLD_NOT_FOUND',
+        message: 'World not found',
+      });
+    }
+    const [world, mechanic] = await Promise.all([
+      this.worlds.findById(worldId),
+      this.findMechanic(mechanicKey),
+    ]);
+    if (!world) {
+      throw new NotFoundException({
+        code: 'WORLD_NOT_FOUND',
+        message: 'World not found',
+      });
+    }
+    const configuration = await this.configurations.findByWorldAndChallengeType(
+      worldId,
+      String(mechanic._id),
+    );
+    if (!configuration) {
+      throw new NotFoundException({
+        code: 'WORLD_MECHANIC_NOT_ASSOCIATED',
+        message: 'This mechanic is not associated with the World',
+      });
+    }
+    return { world, mechanic, configuration };
   }
 
   private compose(input: TutorialScenarioInput): StoredTutorialScenario {
