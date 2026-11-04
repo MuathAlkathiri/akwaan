@@ -31,6 +31,11 @@ export function isStoryPath(pathname: string) {
   return pathname === "/how-to-play";
 }
 
+/** Development-only fullscreen tutorial preview surface. */
+export function isFullscreenTutorialPreviewPath(pathname: string) {
+  return pathname.startsWith("/dev/explainer/");
+}
+
 /**
  * Whether this route belongs to the player-facing visual environment.
  *
@@ -81,6 +86,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const isHostMatch = isHostMatchPath(pathname);
   const isPairedMatch = pathname.startsWith("/join/");
   const isAuth = isAuthPath(pathname);
+  const isFullscreenTutorialPreview = isFullscreenTutorialPreviewPath(pathname);
   // The retired identity painted a dark purple canvas behind every authenticated
   // player screen. Akwaan is one warm room: the surface comes from the tokens, and
   // nothing paints over it.
@@ -98,9 +104,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {hasPageArtwork && <AkwaanBackground />}
       {/* The live Match renders its own header HUD from inside the session (so the
           score can reach it); the shell supplies the header everywhere else. */}
-      {!isAuth && !isPairedMatch && !isHostMatch && (
-        <Header merged={hasPageArtwork} />
-      )}
+      {!isAuth &&
+        !isPairedMatch &&
+        !isHostMatch &&
+        !isFullscreenTutorialPreview && <Header merged={hasPageArtwork} />}
       <main
         data-testid="app-main"
         className={cn(
@@ -119,7 +126,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* The footer belongs to the website, not to a game surface: a live Match
           and a paired phone own their whole screen, and the login page is a
           single focused card. */}
-      {!isAuth && !isPairedMatch && !isHostMatch && <Footer />}
+      {!isAuth &&
+        !isPairedMatch &&
+        !isHostMatch &&
+        !isFullscreenTutorialPreview && <Footer />}
       <Toaster />
     </div>
   );
