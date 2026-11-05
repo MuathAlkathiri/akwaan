@@ -1511,6 +1511,7 @@ function Top5TutorialEditor({
     title: "",
     rankingBasis: "",
     sourceLabel: "",
+    instruction: "احتفظ بها أو دسّها للخصم",
     startingTeam: "team-a",
     entries: Array.from({ length: 10 }, (_, index) => ({
       id: `entry-${index + 1}`,
@@ -1617,6 +1618,17 @@ function Top5TutorialEditor({
             data-testid="tutorial-top5-source"
             value={top5.sourceLabel}
             onChange={(event) => update({ sourceLabel: event.target.value })}
+          />
+        </div>
+        <div className="space-y-1 sm:col-span-2">
+          <FieldLabel htmlFor="tutorial-top5-instruction">
+            تعليمات القرار
+          </FieldLabel>
+          <Input
+            id="tutorial-top5-instruction"
+            data-testid="tutorial-top5-instruction"
+            value={top5.instruction ?? ""}
+            onChange={(event) => update({ instruction: event.target.value })}
           />
         </div>
         <div className="space-y-1">
@@ -2319,6 +2331,28 @@ function BombTutorialEditor({
   const [draft, setDraft] = useState(empty);
   const [validation, setValidation] = useState<TutorialValidation | null>(null);
   const [busy, setBusy] = useState(false);
+  const updateQuestion = (
+    key: "nextQuestion" | "returnQuestion",
+    patch: Partial<NonNullable<typeof draft.nextQuestion>>,
+  ) => {
+    setDraft((current) => {
+      const question = {
+        prompt: "",
+        acceptedAnswer: "",
+        ...current[key],
+        ...patch,
+      };
+      const hasAuthoredValue = Boolean(
+        question.prompt.trim() ||
+          question.acceptedAnswer.trim() ||
+          question.media,
+      );
+      return {
+        ...current,
+        [key]: hasAuthoredValue ? question : undefined,
+      };
+    });
+  };
   useEffect(() => {
     let active = true;
     fetchAdminTutorial(mechanicKey, worldId).then((next) => {
@@ -2373,6 +2407,7 @@ function BombTutorialEditor({
           <FieldLabel htmlFor="tutorial-prompt">السؤال الأول</FieldLabel>
           <Textarea
             id="tutorial-prompt"
+            data-testid="tutorial-bomb-prompt"
             value={draft.prompt}
             onChange={(e) => setDraft({ ...draft, prompt: e.target.value })}
           />
@@ -2383,6 +2418,7 @@ function BombTutorialEditor({
           </FieldLabel>
           <Textarea
             id="tutorial-next-prompt"
+            data-testid="tutorial-bomb-next-prompt"
             value={draft.nextPrompt}
             onChange={(e) => setDraft({ ...draft, nextPrompt: e.target.value })}
           />
@@ -2391,6 +2427,7 @@ function BombTutorialEditor({
           <FieldLabel htmlFor="tutorial-answer">الإجابة المقبولة</FieldLabel>
           <Input
             id="tutorial-answer"
+            data-testid="tutorial-bomb-answer"
             value={draft.acceptedAnswer}
             onChange={(e) =>
               setDraft({ ...draft, acceptedAnswer: e.target.value })
@@ -2409,11 +2446,68 @@ function BombTutorialEditor({
             })
           }
         />
+        <div className="space-y-1">
+          <FieldLabel htmlFor="tutorial-next-question-prompt">
+            سؤال الفريق الثاني
+          </FieldLabel>
+          <Textarea
+            id="tutorial-next-question-prompt"
+            data-testid="tutorial-bomb-next-question-prompt"
+            value={draft.nextQuestion?.prompt ?? ""}
+            onChange={(event) =>
+              updateQuestion("nextQuestion", { prompt: event.target.value })
+            }
+          />
+        </div>
+        <div className="space-y-1">
+          <FieldLabel htmlFor="tutorial-next-question-answer">
+            إجابة سؤال الفريق الثاني
+          </FieldLabel>
+          <Input
+            id="tutorial-next-question-answer"
+            data-testid="tutorial-bomb-next-question-answer"
+            value={draft.nextQuestion?.acceptedAnswer ?? ""}
+            onChange={(event) =>
+              updateQuestion("nextQuestion", {
+                acceptedAnswer: event.target.value,
+              })
+            }
+          />
+        </div>
+        <div className="space-y-1">
+          <FieldLabel htmlFor="tutorial-return-question-prompt">
+            سؤال العودة للفريق الأول
+          </FieldLabel>
+          <Textarea
+            id="tutorial-return-question-prompt"
+            data-testid="tutorial-bomb-return-question-prompt"
+            value={draft.returnQuestion?.prompt ?? ""}
+            onChange={(event) =>
+              updateQuestion("returnQuestion", { prompt: event.target.value })
+            }
+          />
+        </div>
+        <div className="space-y-1">
+          <FieldLabel htmlFor="tutorial-return-question-answer">
+            إجابة سؤال العودة
+          </FieldLabel>
+          <Input
+            id="tutorial-return-question-answer"
+            data-testid="tutorial-bomb-return-question-answer"
+            value={draft.returnQuestion?.acceptedAnswer ?? ""}
+            onChange={(event) =>
+              updateQuestion("returnQuestion", {
+                acceptedAnswer: event.target.value,
+              })
+            }
+          />
+        </div>
       </div>
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
           variant="outline"
+          data-testid="tutorial-save"
           disabled={busy}
           onClick={() =>
             run(async () => {
@@ -2427,6 +2521,7 @@ function BombTutorialEditor({
         <Button
           type="button"
           variant="outline"
+          data-testid="tutorial-validate"
           disabled={busy}
           onClick={() =>
             run(async () =>
@@ -2441,6 +2536,7 @@ function BombTutorialEditor({
         </Button>
         <Button
           type="button"
+          data-testid="tutorial-publish"
           disabled={busy || !state?.draft}
           onClick={() =>
             run(async () => {

@@ -162,6 +162,23 @@ describe("Top 5 mechanic tutorial", () => {
     );
   });
 
+  it("never submits a parent form when Skip is used", async () => {
+    const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <Top5Explainer
+          scenario={SAMPLE_TOP5_TUTORIAL_SCENARIO}
+          mode="preview"
+        />
+      </form>,
+    );
+
+    const skip = screen.getByTestId("explainer-skip");
+    expect(skip).toHaveAttribute("type", "button");
+    await userEvent.setup().click(skip);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("keeps all ten cards in the complete reveal before the compact result", async () => {
     Object.defineProperty(window, "matchMedia", {
       writable: true,

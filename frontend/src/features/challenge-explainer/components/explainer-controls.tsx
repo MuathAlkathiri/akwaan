@@ -129,6 +129,7 @@ export function ExplainerControls({
           {reducedMotion ? (
             <>
               <Button
+                type="button"
                 size="sm"
                 variant="outline"
                 data-testid="explainer-prev"
@@ -139,6 +140,7 @@ export function ExplainerControls({
                 السابق
               </Button>
               <Button
+                type="button"
                 size="sm"
                 variant="outline"
                 data-testid="explainer-next"
@@ -151,6 +153,7 @@ export function ExplainerControls({
             </>
           ) : (
             <Button
+              type="button"
               size="sm"
               variant="outline"
               data-testid="explainer-play-toggle"
@@ -171,6 +174,7 @@ export function ExplainerControls({
             </Button>
           )}
           <Button
+            type="button"
             size="sm"
             variant="outline"
             data-testid="explainer-skip"
@@ -182,6 +186,7 @@ export function ExplainerControls({
             <span className="hidden sm:inline">تخطّي</span>
           </Button>
           <Button
+            type="button"
             size="sm"
             data-testid="explainer-replay"
             onClick={replay}
