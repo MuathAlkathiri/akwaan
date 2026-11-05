@@ -276,7 +276,7 @@ export function RyoExplainer({
                   </p>
                   <p
                     className={cn(
-                      "font-bold opacity-90",
+                      "font-bold",
                       compact ? "text-[0.7rem]" : "text-sm",
                     )}
                   >
@@ -289,7 +289,7 @@ export function RyoExplainer({
                     )}
                   >
                     <div className="min-w-0">
-                      <p className={compact ? "text-[0.6rem] font-bold opacity-80" : "text-xs font-bold opacity-80"}>
+                      <p className={compact ? "text-[0.6rem] font-bold" : "text-xs font-bold"}>
                         الإجابة المُرسلة
                       </p>
                       <p className={cn("break-words font-black", compact ? "text-sm" : "text-lg")}>
@@ -297,7 +297,7 @@ export function RyoExplainer({
                       </p>
                     </div>
                     <div className="min-w-0">
-                      <p className={compact ? "text-[0.6rem] font-bold opacity-80" : "text-xs font-bold opacity-80"}>
+                      <p className={compact ? "text-[0.6rem] font-bold" : "text-xs font-bold"}>
                         الإجابة الصحيحة
                       </p>
                       <p className={cn("break-words font-black", compact ? "text-sm" : "text-lg")}>
@@ -766,15 +766,18 @@ function LockIndicator({
       className={cn(
         "flex items-center justify-between gap-2 rounded-[var(--radius)] border-2 p-3 font-bold transition-colors duration-base ease-akwaan",
         identity.border,
-        locked ? identity.solid : cn(identity.surface, identity.text),
+        // Unlocked: navy text on the team tint. A team hue is not guaranteed
+        // 4.5:1 against its own 12% tint, so the team is carried by the tint,
+        // the border and the lock marker instead of the label text.
+        locked ? identity.solid : cn(identity.surface, "text-foreground"),
       )}
     >
       <span className="min-w-0">
-        <span className="block text-[0.7rem] font-bold opacity-80">{role}</span>
+        <span className="block text-[0.7rem] font-bold">{role}</span>
         <strong className="block truncate font-black">{name}</strong>
       </span>
       <span className="flex shrink-0 items-center gap-1.5 text-xs font-black">
-        <Icon className="size-4" aria-hidden />
+        <Icon className={cn("size-4", !locked && identity.text)} aria-hidden />
         {locked ? "اختار" : "يختار…"}
       </span>
     </p>

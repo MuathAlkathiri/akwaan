@@ -355,10 +355,10 @@ function OddPieceHotspotExplainer({
                       className={cn(
                         "rounded-full px-2 py-0.5 text-[0.65rem]",
                         step.id === "claim" || step.id === "team-1-answering"
-                          ? "bg-brand-gold text-brand-dark"
+                          ? "bg-brand-gold text-brand-navy"
                           : step.id === "handoff" ||
                               step.id === "team-2-correct"
-                            ? "bg-brand-gold text-brand-dark"
+                            ? "bg-brand-gold text-brand-navy"
                             : "bg-muted text-muted-foreground",
                       )}
                     >
@@ -441,7 +441,7 @@ function OddPieceHotspotExplainer({
                               className="block h-full w-full object-contain"
                               draggable={false}
                             />
-                            <span className="absolute bottom-1 start-1 rounded bg-brand-gold/95 px-1.5 py-0.5 text-[0.6rem] font-black text-brand-dark">
+                            <span className="absolute bottom-1 start-1 rounded bg-brand-gold/95 px-1.5 py-0.5 text-[0.6rem] font-black text-brand-navy">
                               أصلية
                             </span>
                           </div>
@@ -474,7 +474,7 @@ function OddPieceHotspotExplainer({
                             top: `${team1Tap.y * 100}%`,
                           }}
                         >
-                          <div className="flex size-9 items-center justify-center rounded-full bg-rose-600/90 text-white shadow-lg ring-4 ring-rose-400/50 animate-bounce">
+                          <div className="flex size-9 items-center justify-center rounded-full bg-rose-600/90 text-white shadow-lg ring-4 ring-rose-400/50 animate-bounce motion-reduce:animate-none">
                             <X className="size-5 stroke-[3]" />
                           </div>
                         </div>
@@ -519,7 +519,7 @@ function OddPieceHotspotExplainer({
                               stroke="rgb(251, 113, 133)"
                               strokeWidth={0.009}
                               strokeLinejoin="round"
-                              className="animate-pulse"
+                              className="animate-pulse motion-reduce:animate-none"
                             />
                           </svg>
                         </>
@@ -791,14 +791,14 @@ function OddPieceHotspotExplainer({
                   {step.id === "claim" && (
                     <Button
                       size="sm"
-                      className="w-full font-black text-xs h-10 bg-brand-gold text-brand-dark ring-2 ring-brand-gold"
+                      className="w-full font-black text-xs h-10 bg-brand-gold text-brand-navy ring-2 ring-brand-gold"
                     >
                       <span>تم الحجز — الفريق الأول</span>
                     </Button>
                   )}
 
                   {step.id === "team-1-answering" && (
-                    <div className="rounded-lg bg-brand-gold/15 p-3 text-sm font-black text-brand-gold border border-brand-gold/30">
+                    <div className="rounded-lg bg-brand-gold/15 p-3 text-sm font-black text-brand-navy border border-brand-gold/30">
                       اضغط على مكان القطعة الدخيلة
                     </div>
                   )}
@@ -810,7 +810,7 @@ function OddPieceHotspotExplainer({
                   )}
 
                   {step.id === "handoff" && (
-                    <div className="rounded-lg bg-brand-gold/20 p-3 text-sm font-black text-brand-dark dark:text-brand-gold border border-brand-gold/40">
+                    <div className="rounded-lg bg-brand-gold/20 p-3 text-sm font-black text-brand-navy dark:text-brand-gold border border-brand-gold/40">
                       الفريق الأول أخطأ — دور الفريق الثاني الآن
                     </div>
                   )}
@@ -873,7 +873,7 @@ function OddPieceHotspotExplainer({
             className="mt-2 space-y-1.5 leading-relaxed"
             data-testid="odd-piece-media-credits"
           >
-            <p className="font-bold text-brand-gold">{scenario.caption}</p>
+            <p className="font-bold text-brand-navy">{scenario.caption}</p>
             <p>
               {scenario.tutorialMediaDisclosure ??
                 "هذه المعاينة تعليمية فقط وليست محتوى إنتاجياً."}

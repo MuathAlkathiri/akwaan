@@ -157,7 +157,11 @@ describe("a persistent status may still be legible", () => {
       "src/features/live-game-session/match/components/challenge-countdown.tsx",
     );
     expect(countdown).toMatch(/seconds <= 3[\s\S]*text-sem-error/);
-    expect(countdown).toMatch(/seconds <= 6[\s\S]*text-brand-gold/);
+    expect(countdown).toMatch(/seconds <= 6[\s\S]*text-warning/);
+    // Brand gold cannot reach legible contrast on the cream room, so the digits
+    // never take it; urgency also carries a non-colour cue.
+    expect(countdown).not.toMatch(/text-brand-gold/);
+    expect(countdown).toMatch(/challenge-countdown-urgent-cue/);
   });
 });
 

@@ -235,7 +235,7 @@ export function BombExplainer({
             </div>
           )}
           {returned && (
-            <div className="flex items-center gap-2 rounded-full bg-brand-gold/15 px-4 py-2 font-black text-brand-gold-foreground">
+            <div className="flex items-center gap-2 rounded-full bg-brand-gold/15 px-4 py-2 font-black text-brand-navy">
               <Bomb className="size-5" />
               عاد الضغط للفريق الأول — سؤال جديد
             </div>

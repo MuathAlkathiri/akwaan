@@ -126,7 +126,7 @@ export function OneClueExplainer({
                   winner
                 />
               </div>
-              <p className="rounded-full bg-brand-gold/15 px-5 py-2 text-lg font-black text-brand-gold">
+              <p className="rounded-full bg-brand-gold/15 px-5 py-2 text-lg font-black text-brand-navy">
                 الفريق الثاني يفوز · +1 نقطة مباراة
               </p>
             </section>
@@ -140,7 +140,7 @@ export function OneClueExplainer({
                 الإجابة الصحيحة
               </p>
               <p className="text-4xl font-black">{scenario.acceptedAnswer}</p>
-              <p className="text-xl font-black text-brand-gold">
+              <p className="text-xl font-black text-brand-navy">
                 الفريق الثاني +3
               </p>
             </section>
@@ -165,7 +165,7 @@ export function OneClueExplainer({
               {(step.id === "second-clue" || step.id === "third-clue") && (
                 <p
                   data-one-clue-tradeoff
-                  className="mx-auto w-fit rounded-full bg-brand-gold/15 px-3 py-1 text-xs font-black text-brand-gold"
+                  className="mx-auto w-fit rounded-full bg-brand-gold/15 px-3 py-1 text-xs font-black text-brand-navy"
                 >
                   دليل أوضح · نقاط أقل
                 </p>
@@ -213,7 +213,7 @@ export function OneClueExplainer({
                 <p className="text-sm font-black text-muted-foreground">
                   نتيجة التحدي
                 </p>
-                <p className="text-3xl font-black text-brand-gold">
+                <p className="text-3xl font-black text-brand-navy">
                   فوز الفريق الثاني
                 </p>
               </>
