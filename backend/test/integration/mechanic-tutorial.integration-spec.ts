@@ -90,6 +90,7 @@ describe('Mechanic tutorial HTTP integration', () => {
       kind: 'top-5',
       version: 1,
       prompt: 'من أكثر خمسة هدافين؟',
+      caption: 'مثال توضيحي فقط — البطاقات والبيانات هنا غير تنافسية.',
       title: 'أفضل 5 هدافين',
       rankingBasis: 'أهداف الدوري',
       sourceLabel: 'مثال تعليمي',
@@ -631,6 +632,11 @@ describe('Mechanic tutorial HTTP integration', () => {
       expect(saved.body.data.draft.kind).toBe(input.kind);
       expect(saved.body.data.draft.outcome).toBeDefined();
       expect(saved.body.data.published).toBeNull();
+      if (mechanic === 'top-5') {
+        expect(saved.body.data.draft.caption).toBe(input.caption);
+        const reloaded = await admin('get', '', mechanic).expect(200);
+        expect(reloaded.body.data.draft.caption).toBe(input.caption);
+      }
       expect(
         JSON.stringify(await publicTutorial(mechanic).expect(200)),
       ).not.toContain(String(input.prompt));
@@ -650,6 +656,11 @@ describe('Mechanic tutorial HTTP integration', () => {
       const publicRevisionOne = await publicTutorial(mechanic).expect(200);
       expect(publicRevisionOne.body.data.revision).toBe(1);
       expect(publicRevisionOne.body.data.scenario.kind).toBe(input.kind);
+      if (mechanic === 'top-5') {
+        expect(publicRevisionOne.body.data.scenario.caption).toBe(
+          input.caption,
+        );
+      }
       expect(Object.keys(publicRevisionOne.body.data)).not.toContain('draft');
 
       const expectedPrompt =

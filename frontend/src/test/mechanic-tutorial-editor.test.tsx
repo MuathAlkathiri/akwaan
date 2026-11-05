@@ -525,7 +525,7 @@ describe("mechanic tutorial editor", () => {
     );
   });
 
-  it("rehydrates and saves the required Top 5 decision instruction", async () => {
+  it("rehydrates and saves the Top 5 caption and decision instruction", async () => {
     const user = userEvent.setup();
     api.fetchAdminTutorial.mockResolvedValue(
       state({
@@ -543,18 +543,45 @@ describe("mechanic tutorial editor", () => {
         hasUnpublishedChanges: true,
       }),
     );
+    api.validateTutorialDraft.mockResolvedValue({
+      valid: true,
+      issues: [],
+      competitiveOverlap: [],
+      outcome: top5Scenario.outcome,
+    });
 
     await mountTop5();
     expect(screen.getByTestId("tutorial-top5-instruction")).toHaveValue(
       "احتفظ بها أو دسّها للخصم",
+    );
+    expect(screen.getByTestId("tutorial-top5-caption")).toHaveValue(
+      top5Scenario.caption,
     );
     await user.click(screen.getByTestId("tutorial-save"));
     expect(api.saveTutorialDraft).toHaveBeenCalledWith(
       "top-5",
       expect.objectContaining({
         instruction: "احتفظ بها أو دسّها للخصم",
+        caption: top5Scenario.caption,
+        entries: top5Scenario.entries,
+        decisions: top5Scenario.decisions,
       }),
     );
+
+    await user.click(screen.getByTestId("tutorial-validate"));
+    expect(api.validateTutorialDraft).toHaveBeenCalledWith(
+      "top-5",
+      expect.objectContaining({
+        caption: top5Scenario.caption,
+        entries: top5Scenario.entries,
+        decisions: top5Scenario.decisions,
+      }),
+    );
+    expect(
+      within(await screen.findByTestId("tutorial-preview")).getByTestId(
+        "top5-explainer",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("authors and previews a Closest scenario with a server-derived outcome", async () => {
