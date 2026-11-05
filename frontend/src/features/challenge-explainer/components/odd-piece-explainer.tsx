@@ -9,7 +9,7 @@ import { ChallengeFrame } from "@/features/live-game-session/match/components/ch
 import { ChallengeCountdown } from "@/features/live-game-session/match/components/challenge-countdown";
 import { SharedScreenFrame } from "@/features/how-to-play/components/device-frames";
 import type { ExplainerMode } from "./ryo-explainer";
-import { ExplainerCaption, ExplainerControls } from "./explainer-controls";
+import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
 import type { OddPieceLegacyDemoStepId } from "../odd-piece-demo-scenario";
 import {
   ODD_PIECE_V1_DEMO_STEPS,
@@ -263,7 +263,7 @@ function OddPieceHotspotExplainer({
       data-variant={compact ? "compact" : "full"}
       className={cn("w-full", compact ? "space-y-3" : "space-y-6")}
     >
-      {mode === "preview" ? (
+      {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
           step={timeline.index}
           total={ODD_PIECE_V2_DEMO_STEPS.length}
@@ -816,7 +816,7 @@ function OddPieceHotspotExplainer({
                   )}
 
                   {step.id === "team-2-correct" && (
-                    <div className="rounded-lg bg-emerald-500/20 p-2 text-xs font-black text-emerald-700 dark:text-emerald-300 border border-emerald-500/40">
+                    <div className="rounded-lg bg-emerald-500/20 p-2 text-xs font-black text-foreground dark:text-emerald-300 border border-emerald-500/40">
                       ✅ إجابة صحيحة — تم التقاط القطعة!
                     </div>
                   )}
@@ -912,7 +912,7 @@ function OddPieceLegacyExplainer({
       data-variant={compact ? "compact" : "full"}
       className={cn("w-full", compact ? "space-y-3" : "space-y-6")}
     >
-      {mode === "preview" ? (
+      {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
           step={timeline.index}
           total={ODD_PIECE_V1_DEMO_STEPS.length}
@@ -1040,7 +1040,7 @@ function OddPieceLegacyReveal({
         className="max-h-56 mx-auto rounded-lg object-contain"
       />
       <p className="font-black text-sm">{scenario.targetVehicleLabel}</p>
-      <p className="text-xs text-emerald-600 font-bold">
+      <p className="text-xs text-success font-bold">
         الفريق الثاني +1 Match point
       </p>
       <p className="text-xs text-muted-foreground">
@@ -1084,7 +1084,7 @@ function StatusTeam({
         className={cn(
           "mt-0.5 text-[0.65rem] font-bold text-muted-foreground",
           lost && "text-destructive",
-          winner && "text-emerald-700 dark:text-emerald-400",
+          winner && "text-success dark:text-emerald-400",
         )}
       >
         {lost

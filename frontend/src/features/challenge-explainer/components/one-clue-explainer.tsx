@@ -11,7 +11,7 @@ import {
 import type { OneClueTutorialScenario } from "../tutorial-scenario";
 import { ONE_CLUE_DEMO_STEPS } from "../one-clue-demo-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerCaption, ExplainerControls } from "./explainer-controls";
+import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
 import type { ExplainerMode } from "./ryo-explainer";
 
 export function OneClueExplainer({
@@ -80,7 +80,7 @@ export function OneClueExplainer({
       data-demo-step={step.id}
       className={compact ? "space-y-3" : "space-y-5"}
     >
-      {mode === "preview" ? (
+      {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
           step={timeline.index}
           total={ONE_CLUE_DEMO_STEPS.length}
@@ -135,7 +135,7 @@ export function OneClueExplainer({
               data-testid="one-clue-item-reveal"
               className="flex h-full min-h-[19rem] flex-col items-center justify-center gap-4 text-center"
             >
-              <Check className="size-12 text-emerald-500" />
+              <Check className="size-12 text-success" />
               <p className="text-sm font-black text-muted-foreground">
                 الإجابة الصحيحة
               </p>

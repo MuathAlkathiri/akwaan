@@ -34,13 +34,33 @@ export function ExplainerCaption({
       aria-live="polite"
       className={
         compact
-          ? "text-center text-sm font-bold leading-6 text-muted-foreground"
+          ? // The step instruction on the shared screen (production player mode).
+            // Body size from sm; each min-height is a floor reserving the longest
+            // sample caption's measured lines (3 < sm, 2 < lg, 1 from lg), so the
+            // tutorial does not jump between steps. It never clips longer copy.
+            "text-center text-sm font-bold leading-6 text-muted-foreground min-h-[4.5rem] sm:text-base sm:leading-7 sm:min-h-[3.5rem] lg:min-h-[1.75rem]"
           : "text-center text-base font-bold leading-7 text-muted-foreground"
       }
     >
       {caption}
     </p>
   );
+}
+
+/**
+ * Whether an explainer shows its transport: phase, step counter and buttons.
+ *
+ * Preview always does. The shared-screen player hides it while the demo plays
+ * itself, because a host only needs the demonstration and the narration. Under
+ * reduced motion the timeline never plays on its own, so the player must show
+ * the same controls too — they switch to Previous / Next in that mode. Without
+ * them a reduced-motion viewer would be left on the first step.
+ */
+export function showsExplainerControls(
+  mode: "player" | "preview",
+  timeline: Pick<ExplainerTimeline, "reducedMotion">,
+): boolean {
+  return mode === "preview" || timeline.reducedMotion;
 }
 
 export function ExplainerControls({
@@ -203,7 +223,13 @@ export function ExplainerControls({
         aria-live="polite"
         className={cn(
           "font-bold leading-relaxed text-foreground",
-          compact ? "text-[0.72rem] min-h-[2rem]" : "text-sm min-h-[2.5rem]",
+          // The caption is the instruction a room reads off the shared screen, so
+          // compact mode no longer shrinks it below body size. Each min-height
+          // reserves the longest caption's measured line count at that width
+          // (3 lines < sm, 2 lines < lg, 1 line from lg) so steps never jump.
+          compact
+            ? "text-sm sm:text-base min-h-[3.75rem] sm:min-h-[3rem] lg:min-h-[2rem]"
+            : "text-sm min-h-[2.5rem]",
         )}
       >
         {caption}

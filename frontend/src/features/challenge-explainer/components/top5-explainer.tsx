@@ -18,7 +18,7 @@ import type {
   Top5TutorialScenario,
 } from "../tutorial-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerCaption, ExplainerControls } from "./explainer-controls";
+import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
 import type { ExplainerMode } from "./ryo-explainer";
 
 const teamIds = ["team-a", "team-b"] as const;
@@ -199,7 +199,7 @@ export function Top5Explainer({
       data-variant={compact ? "compact" : "full"}
       className={compact ? "space-y-3" : "space-y-6"}
     >
-      {mode === "preview" ? (
+      {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
           step={at}
           total={TOP5_DEMO_STEPS.length}
@@ -422,7 +422,7 @@ function FinalResultScene({ scenario }: { scenario: Top5TutorialScenario }) {
               "rounded-lg border-2 px-2 py-2",
               teamIdentity("team-a").border,
               teamIdentity("team-a").surface,
-              teamIdentity("team-a").text,
+              "text-foreground",
             )}
           >
             {teamNames["team-a"]} · {firstTeamScore}
@@ -432,7 +432,7 @@ function FinalResultScene({ scenario }: { scenario: Top5TutorialScenario }) {
               "rounded-lg border-2 px-2 py-2",
               teamIdentity("team-b").border,
               teamIdentity("team-b").surface,
-              teamIdentity("team-b").text,
+              "text-foreground",
             )}
           >
             {teamNames["team-b"]} · {secondTeamScore}
@@ -442,7 +442,7 @@ function FinalResultScene({ scenario }: { scenario: Top5TutorialScenario }) {
         <p className="mt-3 text-lg font-black sm:text-xl">
           {teamNames[scenario.outcome.winnerTeam]} يفوز بالتحدي
         </p>
-        <p className="mt-1 text-base font-black text-sem-success sm:text-lg">
+        <p className="mt-1 text-base font-black text-foreground sm:text-lg">
           +{scenario.outcome.matchPointDelta} نقطة في المباراة
         </p>
         <p className="mt-2 text-xs font-bold text-muted-foreground">
@@ -651,7 +651,8 @@ function Top5Phone({
           "rounded-lg border-2 px-1.5 py-1 text-center text-[0.65rem] font-black",
           identity.border,
           identity.surface,
-          identity.text,
+          // Navy on the team tint; the border and tint carry the team.
+          "text-foreground",
         )}
       >
         {teamNames[team]} {active ? "· صاحب القرار" : "· ينتظر"}

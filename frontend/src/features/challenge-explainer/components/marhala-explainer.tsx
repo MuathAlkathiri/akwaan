@@ -26,7 +26,7 @@ import {
   type MarhalaDemoStepId,
 } from "../marhala-demo-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerCaption, ExplainerControls } from "./explainer-controls";
+import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
 import type { ExplainerMode } from "./ryo-explainer";
 
 const TEAMS: { id: string; name: string }[] = [
@@ -100,7 +100,7 @@ export function MarhalaExplainer({
       data-demo-step={step.id}
       className={compact ? "space-y-3" : "space-y-6"}
     >
-      {mode === "preview" ? (
+      {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
           step={timeline.index}
           total={MARHALA_DEMO_STEPS.length}

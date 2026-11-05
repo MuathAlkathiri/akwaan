@@ -25,7 +25,7 @@ import {
   type FirstNoteDemoStepId,
 } from "../first-note-demo-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerCaption, ExplainerControls } from "./explainer-controls";
+import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
 import type { ExplainerMode } from "./ryo-explainer";
 
 const auctionReward = (seconds: number) =>
@@ -95,7 +95,7 @@ export function FirstNoteExplainer({
       data-variant={compact ? "compact" : "full"}
       className={compact ? "space-y-3" : "space-y-6"}
     >
-      {mode === "preview" ? (
+      {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
           step={timeline.index}
           total={FIRST_NOTE_DEMO_STEPS.length}
@@ -466,7 +466,7 @@ function FirstNotePhoneScene({
             {correct ? (
               <>
                 <Check
-                  className="mx-auto size-4 text-emerald-600"
+                  className="mx-auto size-4 text-success"
                   aria-hidden
                 />
                 <p className="mt-1 text-xs font-black">سرقة ناجحة</p>
