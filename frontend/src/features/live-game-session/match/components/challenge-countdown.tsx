@@ -1,5 +1,6 @@
 "use client";
 
+import { AlarmClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -16,9 +17,15 @@ import { cn } from "@/lib/utils";
  *    once a second. `.akwaan-numeral` carries this along with LTR isolation.
  *  - **Arabic word order.** "ثانية ٢٢" is backwards. The prominent form prints the
  *    bare numeral with a small "ثانية" beneath it; the chip form says "22 ثانية".
- *  - **The last three seconds.** Neutral, then brand gold, then the error red. The
+ *  - **The last three seconds.** Neutral, then warning, then the error red. The
  *    colour is a *transient* state on a transient element, which is the one place
  *    `--sem-error` is allowed to appear.
+ *
+ * Urgency is never carried by colour alone: from the warning threshold on, a static
+ * alarm icon appears (no animation, so reduced motion keeps the cue). Brand gold is
+ * not used for the digits — it cannot reach legible contrast on the cream room. The
+ * prominent numeral is large text, where `--warning` clears 3:1; the small chip
+ * keeps navy digits and takes the warning colour on its border and fill instead.
  */
 export function ChallengeCountdown({
   remainingMs,
@@ -40,14 +47,15 @@ export function ChallengeCountdown({
    * observed in the browser, where the whole window rendered as a warning.
    */
   const urgency = seconds <= 3 ? "critical" : seconds <= 6 ? "warning" : "calm";
-  const tone =
-    urgency === "critical"
-      ? "text-sem-error"
-      : urgency === "warning"
-        ? "text-brand-gold"
-        : "text-foreground";
+  const urgent = urgency !== "calm";
 
   if (variant === "chip") {
+    const chipTone =
+      urgency === "critical"
+        ? "text-sem-error"
+        : urgency === "warning"
+          ? "border-warning bg-warning-subtle text-foreground"
+          : "text-foreground";
     return (
       <span
         data-testid="challenge-countdown"
@@ -56,10 +64,17 @@ export function ChallengeCountdown({
         aria-label={`الوقت المتبقي ${seconds} ثانية`}
         className={cn(
           "inline-flex items-baseline gap-1 rounded-full border border-border px-2.5 py-1 text-sm font-black transition-colors duration-fast ease-akwaan",
-          tone,
+          chipTone,
           className,
         )}
       >
+        {urgent && (
+          <AlarmClock
+            data-testid="challenge-countdown-urgent-cue"
+            className="size-3.5 shrink-0 self-center"
+            aria-hidden
+          />
+        )}
         <span className="akwaan-numeral">{seconds}</span>
         <span className="text-[0.7rem] font-bold">ثانية</span>
       </span>
@@ -74,15 +89,27 @@ export function ChallengeCountdown({
       aria-label={`الوقت المتبقي ${seconds} ثانية`}
       className={cn(
         "flex flex-col items-center leading-none transition-colors duration-fast ease-akwaan",
-        tone,
+        urgency === "critical"
+          ? "text-sem-error"
+          : urgency === "warning"
+            ? "text-warning"
+            : "text-foreground",
         className,
       )}
     >
       {/* Second-largest on the screen, and second by a real margin: at `text-6xl` the
           clock rendered at 72px against a 40px question, which inverted the hierarchy
           — the room read the timer first and the question second. */}
-      <span className="akwaan-numeral text-3xl font-black sm:text-4xl">
+      <span className="relative akwaan-numeral text-3xl font-black sm:text-4xl">
         {seconds}
+        {/* Out of flow, so the numeral neither moves nor re-centres when it appears. */}
+        {urgent && (
+          <AlarmClock
+            data-testid="challenge-countdown-urgent-cue"
+            className="absolute end-full top-1/2 me-1.5 size-5 -translate-y-1/2 sm:size-6"
+            aria-hidden
+          />
+        )}
       </span>
       <span className="mt-1 text-xs font-bold text-muted-foreground">ثانية</span>
     </div>

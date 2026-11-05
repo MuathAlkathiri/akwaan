@@ -141,7 +141,7 @@ export function EkshifniExplainer({
                   <Score name="الفريق الأول" value={6} />
                   <Score name="الفريق الثاني" value={8} winner />
                 </div>
-                <p className="rounded-full bg-brand-gold/15 px-5 py-2 text-lg font-black text-brand-gold">
+                <p className="rounded-full bg-brand-gold/15 px-5 py-2 text-lg font-black text-brand-navy">
                   الفريق الثاني يفوز · +1 نقطة مباراة
                 </p>
               </section>
@@ -162,7 +162,7 @@ export function EkshifniExplainer({
                     <span className="rounded-full bg-muted px-2 py-1">
                       الصورة 1 من 3
                     </span>
-                    <span className="rounded-full border border-brand-gold/50 px-2 py-1 text-brand-gold">
+                    <span className="rounded-full border border-brand-gold/50 px-2 py-1 text-brand-navy">
                       {openRegionNumbers.length > 0
                         ? `مفتوح: ${openRegionNumbers.join(" · ")}`
                         : "محجوبة بالكامل"}
@@ -186,7 +186,7 @@ export function EkshifniExplainer({
                     </header>
                     {!fullReveal && (
                       <p className="text-center text-sm font-black">
-                        <span className="text-brand-gold">{initiative}</span>{" "}
+                        <span className="text-brand-navy">{initiative}</span>{" "}
                         يختار النافذة ·{" "}
                         <span className="text-muted-foreground">
                           الإجابة مفتوحة للفريقين
@@ -234,7 +234,7 @@ export function EkshifniExplainer({
                     <p className="text-2xl font-black">
                       {scenario.celebrityIdentity}
                     </p>
-                    <p className="font-black text-brand-gold">
+                    <p className="font-black text-brand-navy">
                       الفريق الثاني +2
                     </p>
                   </div>
@@ -334,7 +334,7 @@ function Answer({ value, team }: { value: string; team: string }) {
       </div>
       <div className="flex items-center justify-between rounded-lg border px-3 py-2 text-xs font-black">
         <span>القيمة الآن</span>
-        <span className="text-brand-gold">3 نقاط</span>
+        <span className="text-brand-navy">3 نقاط</span>
       </div>
       <div className="rounded-xl bg-primary px-3 py-3 font-black text-primary-foreground">
         إرسال الإجابة

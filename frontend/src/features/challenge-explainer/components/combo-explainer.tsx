@@ -285,7 +285,7 @@ function ComboQuestion({
             className="mt-3 rounded-lg bg-sem-success p-2 text-sem-reveal-foreground"
             data-testid="combo-tutorial-reveal"
           >
-            <p className="text-xs font-bold opacity-80">الإجابة الصحيحة</p>
+            <p className="text-xs font-bold">الإجابة الصحيحة</p>
             <p className="font-black">{stage.correctAnswer}</p>
             <p className="mt-1 text-xs font-bold">إجابة صحيحة · +1</p>
           </div>
@@ -347,7 +347,7 @@ function ComboDecision({
           <p className="mt-0.5 text-[0.62rem] font-bold text-muted-foreground">
             المتوسط يصير أصعب
           </p>
-          <p className="mt-0.5 text-[0.62rem] font-black text-brand-gold">
+          <p className="mt-0.5 text-[0.62rem] font-black text-brand-navy">
             قد تخسر {points} إذا أخطأت
           </p>
         </div>
@@ -361,7 +361,7 @@ function ComboDecision({
         </Button>
       </div>
       {continued && (
-        <p className="text-xs font-black text-brand-gold">
+        <p className="text-xs font-black text-brand-navy">
           اختار الفريق: واصل الكومبو
         </p>
       )}
@@ -477,7 +477,7 @@ function ComboPhone({
                 كمّل
               </Button>
               {step === "continue" && (
-                <p className="text-[0.62rem] font-black text-brand-gold">
+                <p className="text-[0.62rem] font-black text-brand-navy">
                   تم اختيار كمّل
                 </p>
               )}
