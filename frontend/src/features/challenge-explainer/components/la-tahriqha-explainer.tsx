@@ -28,7 +28,7 @@ import {
   type LaTahriqhaDemoStepId,
 } from "../la-tahriqha-demo-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerCaption, ExplainerControls } from "./explainer-controls";
+import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
 import type { ExplainerMode } from "./ryo-explainer";
 
 const SELECTION_STEPS: readonly LaTahriqhaDemoStepId[] = [
@@ -161,7 +161,7 @@ export function LaTahriqhaExplainer({
       data-variant={compact ? "compact" : "full"}
       className={compact ? "space-y-3" : "space-y-6"}
     >
-      {mode === "preview" ? (
+      {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
           step={timeline.index}
           total={LA_TAHRIQHA_DEMO_STEPS.length}
@@ -600,13 +600,13 @@ function CaptainRotationTransition({
           aria-hidden
         />
         <div className="min-w-0 flex-1 rounded-xl border-2 border-brand-gold/60 bg-brand-gold/10 p-3">
-          <p className="text-[0.65rem] font-bold text-amber-900/70">
+          <p className="text-[0.65rem] font-bold text-amber-900">
             القائد الجديد
           </p>
           <p className="mt-1 truncate text-base font-black text-amber-950">
             {result.captains.teamA} · {result.captains.teamB}
           </p>
-          <p className="mt-1 text-[0.62rem] font-bold text-amber-900/70">
+          <p className="mt-1 text-[0.62rem] font-bold text-amber-900">
             النقاش للجميع · التثبيت للقائد
           </p>
         </div>

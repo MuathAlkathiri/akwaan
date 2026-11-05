@@ -151,7 +151,7 @@
     --popover-foreground: var(--brand-navy);
     /* Muted: recessed surfaces — inactive tiles, wells, quiet chips. */
     --muted: 42 26% 92%;
-    --muted-foreground: 218 15% 45%;
+    --muted-foreground: 218 15% 40%;
     --secondary: 42 30% 90%;
     --secondary-foreground: 219 45% 20%;
 

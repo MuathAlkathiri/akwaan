@@ -28,7 +28,7 @@ import {
   type RyoTutorialScenario,
 } from "../tutorial-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerCaption, ExplainerControls } from "./explainer-controls";
+import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
 
 /**
  * A miniature, faithful run of one "اقرأ خصمك" item.
@@ -164,7 +164,7 @@ export function RyoExplainer({
       data-variant={compact ? "compact" : "full"}
       className={compact ? "space-y-3" : "space-y-6"}
     >
-      {mode === "preview" ? (
+      {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
           step={at}
           total={RYO_DEMO_STEPS.length}
@@ -492,7 +492,8 @@ function PhoneColumn({
             : "px-3 py-1.5 text-xs",
           identity.border,
           identity.surface,
-          identity.text,
+          // Navy on the team tint; the border and tint carry the team.
+          "text-foreground",
         )}
       >
         {label}

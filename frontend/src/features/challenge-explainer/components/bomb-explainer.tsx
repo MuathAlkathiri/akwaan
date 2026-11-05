@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { BOMB_DEMO_STEPS } from "../bomb-demo-scenario";
 import type { BombTutorialScenario } from "../tutorial-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerCaption, ExplainerControls } from "./explainer-controls";
+import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
 import type { ExplainerMode } from "./ryo-explainer";
 
 type BombStepId = (typeof BOMB_DEMO_STEPS)[number]["id"];
@@ -136,7 +136,7 @@ export function BombExplainer({
       className={cn(compact ? "space-y-2 text-sm" : "space-y-3")}
       data-testid="bomb-explainer"
     >
-      {mode === "preview" ? (
+      {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
           step={at}
           total={BOMB_DEMO_STEPS.length}

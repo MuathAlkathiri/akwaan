@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import type { EkshifniTutorialScenario } from "../tutorial-scenario";
 import { EKSHIFNI_DEMO_STEPS } from "../ekshifni-demo-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerCaption, ExplainerControls } from "./explainer-controls";
+import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
 import type { ExplainerMode } from "./ryo-explainer";
 
 export function EkshifniExplainer({
@@ -94,7 +94,7 @@ export function EkshifniExplainer({
       data-demo-step={step.id}
       className={compact ? "space-y-3" : "space-y-5"}
     >
-      {mode === "preview" ? (
+      {showsExplainerControls(mode, timeline) ? (
         <div className="h-[9rem] sm:h-[7rem]">
           <ExplainerControls
             step={timeline.index}
@@ -239,7 +239,7 @@ export function EkshifniExplainer({
                     </p>
                   </div>
                 ) : step.id === "correct" ? (
-                  <p className="text-center font-black text-emerald-600">
+                  <p className="text-center font-black text-success">
                     <Check className="me-1 inline size-5" />
                     إجابة صحيحة · نقطتان
                   </p>

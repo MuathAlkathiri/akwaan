@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import type { ComboTutorialScenario } from "../tutorial-scenario";
 import { COMBO_DEMO_STEPS, type ComboDemoStepId } from "../combo-demo-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerCaption, ExplainerControls } from "./explainer-controls";
+import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
 import type { ExplainerMode } from "./ryo-explainer";
 
 const stageLabel: Record<1 | 2 | 3 | 4, string> = {
@@ -110,7 +110,7 @@ export function ComboExplainer({
       data-demo-step={step.id}
       className={compact ? "space-y-3" : "space-y-6"}
     >
-      {mode === "preview" ? (
+      {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
           step={at}
           total={COMBO_DEMO_STEPS.length}
@@ -326,10 +326,10 @@ function ComboDecision({
           >
             ثبّت
           </p>
-          <p className="mt-0.5 text-[0.62rem] font-bold text-muted-foreground">
+          <p className="mt-0.5 text-[0.62rem] font-bold text-foreground">
             اسحب {points}
           </p>
-          <p className="mt-0.5 text-[0.62rem] font-black text-sem-success">
+          <p className="mt-0.5 text-[0.62rem] font-black text-foreground">
             تضمن {points}
           </p>
         </div>
@@ -396,7 +396,7 @@ function ComboOutcome({ answer }: { answer: string }) {
           </p>
         </div>
       </div>
-      <p className="mt-2 text-xs font-bold text-muted-foreground">
+      <p className="mt-2 text-xs font-bold text-foreground">
         ضاعت النقطتان غير المثبتتين. نقاط الكومبو لا تُضاف إلى نتيجة المباراة؛
         فائز التحدي يُحسم من جولتي الفريقين.
       </p>

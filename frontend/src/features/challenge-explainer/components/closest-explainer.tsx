@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { CLOSEST_DEMO_STEPS } from "../closest-demo-scenario";
 import type { ClosestTutorialScenario } from "../tutorial-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerCaption, ExplainerControls } from "./explainer-controls";
+import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
 import type { ExplainerMode } from "./ryo-explainer";
 
 const idx = Object.fromEntries(
@@ -219,7 +219,7 @@ export function ClosestExplainer({
       data-mobile-scene={mobileScene}
       className="space-y-3"
     >
-      {mode === "preview" ? (
+      {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
           step={at}
           total={CLOSEST_DEMO_STEPS.length}
@@ -367,7 +367,7 @@ export function ClosestExplainer({
                         : `${scenario.outcome.winnerTeam === "team-a" ? "الفريق الأول" : "الفريق الثاني"} هو الأقرب`}
                     </p>
                     {!scenario.outcome.tie && (
-                      <p className="mt-1 text-sm text-sem-success">
+                      <p className="mt-1 text-sm text-foreground">
                         +1 في حصيلة التحدي الداخلية
                       </p>
                     )}
