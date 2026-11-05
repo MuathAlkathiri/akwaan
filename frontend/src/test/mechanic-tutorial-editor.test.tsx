@@ -11,6 +11,7 @@ import { MechanicTutorialEditor } from "@/features/world-management/components/c
 import type { AdminTutorialState } from "@/features/world-management/api/mechanic-tutorial-api";
 import {
   SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO,
+  SAMPLE_TOP5_TUTORIAL_SCENARIO,
   type OneClueTutorialScenario,
 } from "@/features/challenge-explainer";
 
@@ -83,7 +84,20 @@ const bombScenario = {
   version: 1 as const,
   prompt: "ما هو أكبر كوكب؟",
   acceptedAnswer: "المشتري",
-  nextPrompt: "كم ضلعًا للمثلث؟",
+  nextPrompt: "وش اسم هذا الكوكب؟",
+  nextQuestion: {
+    prompt: "وش اسم هذا الكوكب؟",
+    acceptedAnswer: "زحل",
+    media: {
+      type: "image" as const,
+      url: "https://example.test/tutorial-media.webp",
+      altText: "وسيط اختباري للتحقق من الحفظ",
+    },
+  },
+  returnQuestion: {
+    prompt: "كم ضلعًا للمثلث؟",
+    acceptedAnswer: "ثلاثة",
+  },
   startingTeam: "team-a" as const,
   correctAtSecondsRemaining: 18,
   opponentExpiresAtSecondsRemaining: 0 as const,
@@ -96,6 +110,11 @@ const bombScenario = {
     matchPointDelta: 1 as const,
     reason: "bomb.clock-expired" as const,
   },
+};
+
+const top5Scenario = {
+  ...SAMPLE_TOP5_TUTORIAL_SCENARIO,
+  instruction: "احتفظ بها أو دسّها للخصم",
 };
 
 const oneClueScenario: OneClueTutorialScenario = {
@@ -179,6 +198,11 @@ const mountClosest = async () => {
 
 const mountBomb = async () => {
   render(<MechanicTutorialEditor mechanicKey="bomb" />);
+  await waitFor(() => expect(api.fetchAdminTutorial).toHaveBeenCalled());
+};
+
+const mountTop5 = async () => {
+  render(<MechanicTutorialEditor mechanicKey="top-5" />);
   await waitFor(() => expect(api.fetchAdminTutorial).toHaveBeenCalled());
 };
 
@@ -455,6 +479,81 @@ describe("mechanic tutorial editor", () => {
     expect(api.validateTutorialDraft).toHaveBeenCalledWith(
       "bomb",
       expect.objectContaining({ kind: "bomb", version: 1 }),
+    );
+  });
+
+  it("rehydrates and saves every canonical Bomb question field", async () => {
+    const user = userEvent.setup();
+    api.fetchAdminTutorial.mockResolvedValue(
+      state({
+        mechanicKey: "bomb",
+        mechanicName: "القنبلة",
+        draft: bombScenario,
+        hasUnpublishedChanges: true,
+      }),
+    );
+    api.saveTutorialDraft.mockResolvedValue(
+      state({
+        mechanicKey: "bomb",
+        mechanicName: "القنبلة",
+        draft: bombScenario,
+        hasUnpublishedChanges: true,
+      }),
+    );
+
+    await mountBomb();
+    expect(
+      screen.getByTestId("tutorial-bomb-next-question-prompt"),
+    ).toHaveValue(bombScenario.nextQuestion.prompt);
+    expect(
+      screen.getByTestId("tutorial-bomb-next-question-answer"),
+    ).toHaveValue(bombScenario.nextQuestion.acceptedAnswer);
+    expect(
+      screen.getByTestId("tutorial-bomb-return-question-prompt"),
+    ).toHaveValue(bombScenario.returnQuestion.prompt);
+    expect(
+      screen.getByTestId("tutorial-bomb-return-question-answer"),
+    ).toHaveValue(bombScenario.returnQuestion.acceptedAnswer);
+
+    await user.click(screen.getByTestId("tutorial-save"));
+    expect(api.saveTutorialDraft).toHaveBeenCalledWith(
+      "bomb",
+      expect.objectContaining({
+        nextQuestion: bombScenario.nextQuestion,
+        returnQuestion: bombScenario.returnQuestion,
+      }),
+    );
+  });
+
+  it("rehydrates and saves the required Top 5 decision instruction", async () => {
+    const user = userEvent.setup();
+    api.fetchAdminTutorial.mockResolvedValue(
+      state({
+        mechanicKey: "top-5",
+        mechanicName: "أفضل 5",
+        draft: top5Scenario,
+        hasUnpublishedChanges: true,
+      }),
+    );
+    api.saveTutorialDraft.mockResolvedValue(
+      state({
+        mechanicKey: "top-5",
+        mechanicName: "أفضل 5",
+        draft: top5Scenario,
+        hasUnpublishedChanges: true,
+      }),
+    );
+
+    await mountTop5();
+    expect(screen.getByTestId("tutorial-top5-instruction")).toHaveValue(
+      "احتفظ بها أو دسّها للخصم",
+    );
+    await user.click(screen.getByTestId("tutorial-save"));
+    expect(api.saveTutorialDraft).toHaveBeenCalledWith(
+      "top-5",
+      expect.objectContaining({
+        instruction: "احتفظ بها أو دسّها للخصم",
+      }),
     );
   });
 
