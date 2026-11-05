@@ -1621,6 +1621,15 @@ function Top5TutorialEditor({
           />
         </div>
         <div className="space-y-1 sm:col-span-2">
+          <FieldLabel htmlFor="tutorial-top5-caption">وصف الشرح</FieldLabel>
+          <Input
+            id="tutorial-top5-caption"
+            data-testid="tutorial-top5-caption"
+            value={top5.caption ?? ""}
+            onChange={(event) => update({ caption: event.target.value })}
+          />
+        </div>
+        <div className="space-y-1 sm:col-span-2">
           <FieldLabel htmlFor="tutorial-top5-instruction">
             تعليمات القرار
           </FieldLabel>
