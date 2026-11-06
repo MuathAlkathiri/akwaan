@@ -80,15 +80,54 @@ but remains unselectable by every production board.
   database connected; API `/worlds` 200; `/dev/*` previews and harnesses 404; the live Match bundle carries the V2
   hotspot commands. **Not verified in production:** any gameplay (creating a Match would mutate production data),
   the running Render SHA (not exposed), and any content-engine job.
-- **⚠️ KNOWN DEBT:** intermittent cross-suite integration flakes (`bomb-board-lifecycle`, `marhala-lifecycle`: a
-  session `GET` returns 404 mid-suite only inside a full sequential run; both pass 5/5 in isolation on `main` and
-  on the branches; root cause not established); frontend suite still has the 4 failures pre-existing on `main`
-  (`akwaan-shell`, `copy-standards`, `player-world-api-boundary`, `world-management`); revision-conflict aborts are
+- **⚠️ KNOWN DEBT:** ~~intermittent cross-suite integration flakes (`bomb-board-lifecycle`, `marhala-lifecycle`: a
+  session `GET` returns 404 mid-suite only inside a full sequential run; root cause not established)~~ — **fixed in #32,
+  see the update below**; ~~frontend suite still has the 4 failures pre-existing on `main`~~ — **fixed in #29**;
+  revision-conflict aborts are
   logged at ERROR level under normal concurrent acknowledgements (noise); Odd-Piece V2 content is blocked on
   identity-verified, rights-reviewed original/modified pairs and on §30.22 engine media support.
 - **Blocking product decisions for V2 activation:** approve rights-cleared content source and pairs; approve
   launcher activation (removing the V2 gate) and the Cars board/Scope reconciliation; then a production gameplay
   smoke.
+
+**Update — 2026-11-06 (later the same day).** Follow-on engineering PRs, each merged after its checks; main is
+`1181dd9`. No production data, content, media or board binding was changed.
+
+| Workstream | PR · commit → merge | Engineering Ready | Git merged | Production deployed |
+|---|---|---|---|---|
+| Frontend test baseline + interface-emoji fix | #29 · `5d5bef5`, `1499436` → `6b7a62e` | ✅ | ✅ | ✅ Vercel `7598027184` |
+| `/health` reports the deployed commit | #30 · `324f88b` → `cba5116` | ✅ | ✅ | ✅ Render **SHA-verified**: `/health` returned `cba5116` |
+| Integration harness: bind each suite's server to 127.0.0.1 | #32 · `d44a3d5` → `1181dd9` | ✅ | ✅ | ✅ Render SHA-verified `1181dd9`; Vercel correctly skipped (no frontend change) |
+| Verified Facts Library + Celebrities/Football authoring manifest | #31 (integration of `feat/celebrities-world`) | ✅ verified | ⬜ **HELD** | ⬜ |
+
+- **Frontend (#29):** the full frontend suite is green for the first time — 166 files, 1,802 tests. The
+  copy-standards failure was a real defect: 🔍/🔎 pictographs in two Odd-Piece explainer labels and one V2 panel label
+  (the latter introduced by #23); replaced by lucide `Search`. The other three were stale assertions.
+- **Deployed-version evidence (#30):** `/health` now includes `commit`, from Render's documented
+  `RENDER_GIT_COMMIT`; only a well-formed SHA is reported, otherwise `null`. A healthy response with the wrong commit
+  is a stale deploy, so backend deployment is now verified by SHA rather than by health alone.
+- **✅ FIXED & VERIFIED — integration port collisions (#32).** Root cause: Supertest, given a non-listening server,
+  binds `listen(0)` (wildcard) per request and calls `127.0.0.1:<port>`; on macOS that bind succeeds on a port another
+  local process holds on `127.0.0.1`, which then answers. Evidence: every 404 the app sent was logged and the failing
+  404s were absent; a two-server probe reproduced the shadowing; measured collision rate ≈ 0.03% per bind with the six
+  local VS Code loopback listeners. Fix: `createIntegrationTestApp` binds once with `app.listen(0, '127.0.0.1')`.
+  Validation under deliberate port pressure (1,500 loopback ports held): before 1 of 3 Bomb+Marhala runs failed,
+  after 8 of 8 passed; full integration suite **472 passed / 0 failed**, Jest exits without `--forceExit`. A
+  deterministic test (`http-port-binding.integration-spec.ts`) guards the bind. Linux/Docker CI refuses the overlapping
+  bind, so this was a local-environment flake.
+- **⚠️ KNOWN DEBT — intermittent suite-wide timeouts.** `ryo-deadline-lifecycle` and `unified-match-preflight` were
+  seen timing out whole suites. They appeared together with port pressure and did not recur after #32 (both passed
+  with `--detectOpenHandles`, no open handles), but they did not reproduce on demand on `main` either, so a causal
+  link is **not proven**. Re-investigate if they recur.
+- **⬜ PR #31 held — owner decisions required:** (1) approve the new production schema — merging auto-creates the
+  `engine_library_rows` / `engine_library_hooks` collections and three indexes on deploy (all other schema changes
+  are additive with null/undefined defaults); (2) confirm the judge policy (main skips the paid judge after a failed
+  retrieval; the branch had chosen to judge); (3) reconcile its library prompt content with the upcoming Authoring
+  Knowledge Library before any generation-agent integration.
+- **⬜ Production Video Games audit — not run.** Needs authorized Admin credentials. Public, unauthenticated facts:
+  the Video Games World is active with 222 READY items across 7 Scopes (Minecraft, God of War and Resident Evil hold
+  18 each — the 126-item pack's per-Scope shape), which contradicts this roadmap's "not promoted" entries; Celebrities
+  is listed as upcoming with 10 Scopes in Production. The read-only audit script is ready.
 
 ### Where things stand — 2026-11-06 · CHALLENGE EXPLAINER ACCESSIBILITY (P1 + P2) — ✅ IMPLEMENTED & VERIFIED — PRODUCTION
 
