@@ -90,6 +90,23 @@ const REMOVED_LEGACY_SYMBOLS = [
 const WORLD_PREPARATION_PLACEHOLDERS = ["قيد التجهيز", "قريبًا", "قريباً"] as const;
 
 /**
+ * Sentences where «قريبًا» means "close" rather than "coming soon". They are
+ * stripped, by exact phrase, before the placeholder scan — so the label stays
+ * forbidden everywhere, including elsewhere in the same file.
+ */
+const CONTEXTUAL_NON_LABEL_USES = [
+  // Marhala tutorial narration: the trailing team is still close on the board.
+  "الفريق الثاني ما زال قريبًا",
+] as const;
+
+function withoutContextualUses(text: string): string {
+  return CONTEXTUAL_NON_LABEL_USES.reduce(
+    (remaining, phrase) => remaining.split(phrase).join(""),
+    text,
+  );
+}
+
+/**
  * The one production file allowed to use the label: the home roadmap row.
  *
  * It used to be exempt because its cards were hardcoded content-category
@@ -214,7 +231,7 @@ describe("no sequential Match journey survives in production source", () => {
       // World or mechanic is merely being prepared.
       const offenders = sources
         .filter((file) => file.path !== ROADMAP_TEASER_FILE)
-        .filter((file) => file.text.includes(phrase))
+        .filter((file) => withoutContextualUses(file.text).includes(phrase))
         .map((file) => file.path);
       expect(offenders).toEqual([]);
     },
