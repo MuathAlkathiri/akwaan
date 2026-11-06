@@ -6881,7 +6881,7 @@ database, content, media or schema mutation occurred. The follow-ups above remai
 Two Product Owner decisions, taken after the Phase 2A Reference Library audit. Both change
 only canonical authoring guidance; scoring, payload and response schemas are unchanged.
 
-### 33.1 Media is mechanic-appropriate (Batch 1) — ✅ IMPLEMENTED & VERIFIED LOCALLY
+### 33.1 Media is mechanic-appropriate (Batch 1) — ✅ IMPLEMENTED & VERIFIED · ✅ MERGED · ✅ DEPLOYED
 
 - There is **no universal batch-wide media quota**. The ≈ ≥90% media-bearing target of §23.2
   applies only to batches whose mechanic naturally supports media, and counts only media that
@@ -6893,7 +6893,7 @@ only canonical authoring guidance; scoring, payload and response schemas are unc
 - Unchanged: answer-leakage prevention, authenticity, factual verification, media safety, and
   the separation of media intent (authoring) from verified asset (media enrichment).
 
-### 33.2 Closest year estimates (Batch 2) — ✅ IMPLEMENTED & VERIFIED LOCALLY
+### 33.2 Closest year estimates (Batch 2) — ✅ IMPLEMENTED & VERIFIED · ✅ MERGED · ✅ DEPLOYED
 
 - Year recall stays META-TRIVIA, rejected by default for every mechanic except Closest.
 - Closest may use a year only as an inferable estimate: a recognizable event native to the
@@ -6911,12 +6911,32 @@ only canonical authoring guidance; scoring, payload and response schemas are unc
   answer at the exact slider midpoint. Kept unchanged for history and duplicate screening;
   never a positive reference, never Gold, not rewritten.
 
-### 33.3 Status
+### 33.3 Status — ✅ MERGED · ✅ DEPLOYED (2026-11-06)
 
-Batches 1–2 are implemented and verified locally on `feat/media-policy-reconciliation`
-(backend content-engine suite, TypeScript↔Python parity, Python authoring suites), committed
-on that branch and opened as a pull request for review. ⬜ Not merged, ⬜ not deployed. Once
-deployed they change the live generation prompts, because the backend image ships
-`ai/.opencode`.
+Batches 1–2 were implemented and verified locally on `feat/media-policy-reconciliation`
+(backend content-engine suite, TypeScript↔Python parity, Python authoring suites), then
+committed and reviewed as PR #36.
+
+**Release (2026-11-06).** ✅ PR #36 merged to `main` as
+`f9dc5d01b78acf956fa63f3bc59ed5662285f26f`. ✅ Vercel production deployment `7605623053`
+succeeded for that commit, and ✅ Render `/health` reports the same commit, through the normal
+auto-deploys (no manual deployment). No runtime database, content, media, scoring or schema
+mutation occurred.
+
+**What "deployed" covers.** Verified: the running backend commit and its build. The backend
+image copies `ai/.opencode` from that commit and sets `ENGINE_AUTHORING_ROOT`, and that
+commit's files carry both policies and the World Cup rejection. Before merge, prompts were
+rendered from the same files with the real resolver and composer. ⬜ **Not independently
+verified:** the prompt production actually assembles. No read-only endpoint exposes it,
+admin credentials were not used, and no generation job was run. The content-QA agent Skill
+(`.agents/`) is review guidance, not part of the backend image.
+
+**Follow-ups (not resolved here):**
+- ⬜ Prompt optimization: `QUESTION-CRAFT.md` still carries media-only gates and WIGOLO
+  sourcing wording the text-only generator cannot act on, and the wording of
+  `RENDERABLE_MEDIA_REQUIRED` assumes an attached asset.
+- ⬜ Year inferability stays an authoring and QA judgment; the 31 held Reference Library
+  year items await separate content QA.
+- ⬜ The Google Drive roadmap mirror updates only when `main` is checked out and pulled locally.
 
 ---
