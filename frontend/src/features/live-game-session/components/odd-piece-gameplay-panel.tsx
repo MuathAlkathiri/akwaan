@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
@@ -733,7 +734,7 @@ function HotspotResolution({
           className="text-xs font-bold"
           data-testid="odd-piece-v2-toggle-modified"
         >
-          🔍 الصورة المعدّلة (مع موضع الحل)
+          <Search aria-hidden="true" /> الصورة المعدّلة (مع موضع الحل)
         </Button>
         {originalImage && (
           <Button

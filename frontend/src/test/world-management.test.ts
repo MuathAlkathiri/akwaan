@@ -143,6 +143,8 @@ describe("mechanic and configuration payloads", () => {
       slotKey: "slot_3" as const,
       displayName: "مين أقرب",
       description: "وصف كرة القدم",
+      // Retired with legacy text instructions (b1de094); a value left in old
+      // form state must not reach an API that now rejects unknown fields.
       instructions: "اختر الإجابة الأقرب",
       sortOrder: 3,
       isEnabled: true,
@@ -152,7 +154,6 @@ describe("mechanic and configuration payloads", () => {
       slotKey: "slot_3",
       displayName: "مين أقرب",
       description: "وصف كرة القدم",
-      instructions: "اختر الإجابة الأقرب",
       sortOrder: 3,
       isEnabled: true,
     });

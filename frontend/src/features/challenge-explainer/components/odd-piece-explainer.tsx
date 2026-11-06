@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
-import { Check, MousePointer2, X, ZoomIn } from "lucide-react";
+import { Check, MousePointer2, Search, X, ZoomIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChallengeFrame } from "@/features/live-game-session/match/components/challenge-frame";
@@ -567,7 +567,8 @@ function OddPieceHotspotExplainer({
                               )}
                               data-testid="odd-piece-v2-toggle-modified"
                             >
-                              🔍 الصورة المعدّلة (مع تحديد القطعة)
+                              <Search aria-hidden="true" /> الصورة المعدّلة (مع
+                              تحديد القطعة)
                             </Button>
                             <Button
                               type="button"
@@ -599,8 +600,9 @@ function OddPieceHotspotExplainer({
                             </Button>
                           </>
                         ) : (
-                          <div className="rounded-full bg-[hsl(var(--brand-navy))] px-3 py-1 text-[0.68rem] font-black text-white">
-                            🔎 الصورة المعدّلة · تحديد الحل بعد الحسم
+                          <div className="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--brand-navy))] px-3 py-1 text-[0.68rem] font-black text-white">
+                            <Search className="size-3" aria-hidden="true" />
+                            الصورة المعدّلة · تحديد الحل بعد الحسم
                           </div>
                         )}
                       </div>
