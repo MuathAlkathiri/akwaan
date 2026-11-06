@@ -1,5 +1,6 @@
 import { GenerationPlannerService } from './generation-planner.service';
 import { ScopeHistoricalCoverageReport } from '../domain/historical-coverage.types';
+import { resolveCanonicalFamilies } from '../domain/canonical-families';
 
 describe('GenerationPlannerService', () => {
   let planner: GenerationPlannerService;
@@ -481,6 +482,49 @@ describe('GenerationPlannerService', () => {
           count: 3,
         }),
       ).rejects.toThrow('MALFORMED_JSON');
+    });
+
+    it('3b. plans a legacy Scope with no family blocks as V1 instead of failing closed', async () => {
+      // The real resolver's answer for a Scope whose SCOPE/KNOWLEDGE profiles
+      // carry no family blocks: a valid, empty catalog — not an error.
+      const legacyCatalog = resolveCanonicalFamilies(
+        [
+          {
+            slot: 'scope',
+            source: 'SCOPE.md',
+            text: '# Overwatch\n\nHeroes and maps.',
+          },
+          {
+            slot: 'knowledge',
+            source: 'KNOWLEDGE.md',
+            text: '## Facts\n\n- Tracer is a hero.',
+          },
+        ],
+        { worldKey: 'video-games', scopeKey: 'overwatch' },
+      );
+      expect(legacyCatalog.families).toEqual([]);
+
+      const getCoverage = jest.fn();
+      const integratedPlanner = new GenerationPlannerService(
+        {
+          resolveCanonicalFamiliesForScope: jest
+            .fn()
+            .mockReturnValue(legacyCatalog),
+        } as any,
+        { getCoverage } as any,
+      );
+
+      const plan = await integratedPlanner.planWithResolvedContext({
+        worldKey: 'video-games',
+        scopeKey: 'overwatch',
+        mechanicKey: 'read-your-opponent',
+        count: 2,
+      });
+
+      expect(plan.slots).toBeUndefined();
+      expect(plan.catalogDigest).toBeUndefined();
+      expect(plan.digest).toBeDefined();
+      expect(getCoverage).not.toHaveBeenCalled();
     });
 
     it('4. strictly excludes families with DO_NOT_FORCE mechanic compatibility', async () => {

@@ -293,6 +293,8 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
   // the socket so the server can bind the ack to this exact connection and
   // withdraw it on disconnect. Single-surface mechanics keep the HTTP ack.
   const multiSurface = gameplay?.presentationSurface?.running === true;
+  const deferOddPieceHotspotAck =
+    gameplay?.mode.key === ODD_PIECE_MODE_KEY && gameplay.mode.version === 2;
   // The acknowledgement is keyed to the exact runtime revision, and is pinned
   // ONLY once the request has actually been issued and accepted. An attempt that
   // could not be delivered (or that the server rejected) leaves the key open, so
@@ -308,7 +310,7 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
   const retryOwedRef = useRef(false);
   const [retryTick, setRetryTick] = useState(0);
   useEffect(() => {
-    if (!awaiting || !gameplay || !snapshot) return;
+    if (!awaiting || !gameplay || !snapshot || deferOddPieceHotspotAck) return;
     const ack = multiSurface ? presentationReadySocket : presentationReady;
     if (!ack) return;
     // Recurring fair-start: the server projects a `generation` on the surface only
@@ -380,6 +382,7 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
     multiSurface,
     connectionEpoch,
     retryTick,
+    deferOddPieceHotspotAck,
   ]);
 
   // Which mechanics can hold their stage up through a recurring wait.
@@ -437,7 +440,7 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
   ]);
 
   if (!gameplay) return null;
-  if (awaiting && !transition.keepStageMounted) {
+  if (awaiting && !transition.keepStageMounted && !deferOddPieceHotspotAck) {
     // Two different waits, and only one of them is a page opening.
     //
     // A cold open has nothing on screen yet, so the full branded loader is

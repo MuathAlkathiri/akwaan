@@ -34,6 +34,7 @@ import {
   PresentationSurfaceRequirement,
 } from '../domain/gameplay-mode.plugin';
 import { LiveSessionActor } from './live-session-actor';
+import { LiveGameSession } from '../domain/live-game-session';
 
 export function resolveGameplayRoundParticipant<
   T extends TeamParticipantEligibilityCandidate,
@@ -441,7 +442,7 @@ export class PresentationReady {
       if (outcome !== 'ready') {
         const failing = runtime.requiredPresentationSurfaces();
         const capability = failing?.length
-          ? this.resolveSurfaceCapability(actor, isController, failing)
+          ? this.resolveSurfaceCapability(actor, isController, failing, session)
           : 'shared';
         if (capability !== 'shared') {
           throw new LiveSessionDomainError(
@@ -504,7 +505,15 @@ export class PresentationReady {
       // deadline/exposure re-anchoring is deferred to A3, so no session effects are
       // applied and no deadline is synchronised here.
       const checkpoint = runtime.currentPresentationCheckpoint();
-      if (checkpoint) {
+      // A recurring generation remains in the runtime after activation. If a
+      // participant reconnects during the live puzzle, its projection carries
+      // a generation-less reconnect surface; handle that acknowledgement via
+      // the active-surface bookkeeping below instead of rejecting it as a
+      // missing recurring generation.
+      const reconnectingActiveSurface =
+        checkpoint?.status === 'activated' &&
+        command.presentationGeneration === undefined;
+      if (checkpoint && !reconnectingActiveSurface) {
         let recurringSessionChanged = false;
         if (command.presentationGeneration === undefined) {
           throw new LiveSessionDomainError(
@@ -557,6 +566,7 @@ export class PresentationReady {
             actor,
             isController,
             requiredRecurring,
+            session,
           );
           if (!capability) {
             throw new LiveSessionDomainError(
@@ -568,6 +578,8 @@ export class PresentationReady {
             generation: checkpoint.generation,
             capability,
             connectionId: command.connectionId,
+            participantId:
+              actor.kind === 'participant' ? actor.participantId : undefined,
             commandId: command.commandId,
             actorId: actor.actorId,
             now,
@@ -637,6 +649,7 @@ export class PresentationReady {
           actor,
           isController,
           required,
+          session,
         );
         if (!capability) {
           throw new LiveSessionDomainError(
@@ -650,6 +663,7 @@ export class PresentationReady {
           command.commandId,
           actor.actorId,
           now,
+          actor.kind === 'participant' ? actor.participantId : undefined,
         );
         let sessionChanged = false;
         if (runtime.areAllRequiredSurfacesReady()) {
@@ -754,6 +768,7 @@ export class PresentationReady {
     actor: LiveSessionActor,
     isController: boolean,
     required: PresentationSurfaceRequirement[],
+    session: LiveGameSession,
   ): PresentationSurfaceCapability | undefined {
     if (isController) {
       const surface = required.find(
@@ -762,8 +777,15 @@ export class PresentationReady {
       return surface ? 'shared' : undefined;
     }
     if (actor.kind === 'participant') {
+      const participant = session
+        .serialize()
+        .participants.find((candidate) => candidate.id === actor.participantId);
       const surface = required.find(
-        (candidate) => candidate.participantId === actor.participantId,
+        (candidate) =>
+          candidate.participantId === actor.participantId ||
+          (candidate.participantId === undefined &&
+            candidate.teamId !== undefined &&
+            candidate.teamId === participant?.teamId),
       );
       return surface
         ? (surface.capability as PresentationSurfaceCapability)

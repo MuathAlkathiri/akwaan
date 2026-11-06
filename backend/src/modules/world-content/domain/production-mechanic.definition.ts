@@ -64,14 +64,6 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
         timerSeconds: 30,
         soundPack: null,
         revealStyle: null,
-        playerInstructions: {
-          summary: 'أربع قطع، ثلاث من نفس السيارة وواحدة دخيلة.',
-          steps: [
-            'إذا عرفتم القطعة اضغطوا «جاوب».',
-            'أول فريق يحجز الإجابة يختار القطعة.',
-            'إذا أخطأ، تنتقل الفرصة للفريق الثاني.',
-          ],
-        },
       },
     },
   }),
@@ -248,14 +240,6 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
         timerSeconds: 3,
         soundPack: null,
         revealStyle: null,
-        playerInstructions: {
-          summary: 'كل فيلم له 5 أدلة تظهر بالتدريج.',
-          steps: [
-            'كل ما جاوبتوا بدري، نقاطكم أعلى.',
-            'اضغطوا «جاوب» لحجز الإجابة.',
-            'إذا غلطتم تكمل الفرصة للفريق الثاني.',
-          ],
-        },
       },
     },
   }),
@@ -273,13 +257,6 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
         timerSeconds: 15,
         soundPack: null,
         revealStyle: null,
-        playerInstructions: {
-          summary: 'زايدوا على أقل مدة تقدرون تعرفون منها الأغنية.',
-          steps: [
-            'أقل مزايدة تسمع نفس المدة وتجاوب أول.',
-            'إذا غلطتوا، للفريق الثاني محاولة سرقة بنفس المقطع.',
-          ],
-        },
       },
     },
   }),
@@ -304,14 +281,6 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
         timerSeconds: 180,
         soundPack: null,
         revealStyle: null,
-        playerInstructions: {
-          summary: 'كل صورة تبدأ بـ 5 نقاط، وكل كشف ينقّص نقطة.',
-          steps: [
-            'صاحب الدور يختار رقم الجزء اللي يبغى يكشفه.',
-            'الإجابة مفتوحة للفريقين — أول إجابة صحيحة تأخذ النقاط.',
-            'إذا غلطتم، الدور والفرصة تنتقل للفريق الثاني.',
-          ],
-        },
       },
     },
   }),
@@ -334,15 +303,6 @@ export const PRODUCTION_MECHANICS: readonly ProductionMechanicDefinition[] = [
         timerSeconds: LA_TAHRIQHA_DEFAULT_DISH_SECONDS,
         soundPack: null,
         revealStyle: null,
-        playerInstructions: {
-          summary:
-            'ثلاثة صحيحة تعطيكم 3، وأربعة تعطيكم 4، والخمسة كاملة تعطيكم 7.',
-          steps: [
-            'قائد الطبق يختار المكوّنات، ويتغيّر مع كل طبق.',
-            'بقية الفريق يشوفون نفس الطبق ويناقشون قبل التثبيت.',
-            'مكوّن واحد غلط يحرق الطبق ويصفّر نقاطه.',
-          ],
-        },
       },
     },
   }),

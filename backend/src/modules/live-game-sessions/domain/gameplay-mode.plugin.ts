@@ -67,6 +67,8 @@ export interface PresentationSurfaceRequirement {
   capability: PresentationSurfaceCapability;
   /** Server-derived binding for participant-bound surfaces. */
   participantId?: string;
+  /** Server-derived team binding when any eligible teammate may acknowledge. */
+  teamId?: string;
 }
 
 export type GameplayAuthorizationRequirement =
@@ -148,6 +150,8 @@ export interface GameplayPluginContext {
   presentationKind?: 'initial' | 'recurring';
   /** The recurring presentation generation being activated (recurring only). */
   presentationGeneration?: number;
+  /** Server-derived participant identities whose surfaces acknowledged this activation. */
+  presentationReadyParticipantIds?: readonly string[];
 }
 
 /**
@@ -210,6 +214,11 @@ export const MODE_COMMAND_TYPES: readonly string[] = [
   'submit-odd-piece',
   'advance-odd-piece',
   'expire-odd-piece',
+  'claim-odd-piece-hotspot',
+  'submit-odd-piece-hotspot',
+  'advance-odd-piece-hotspot',
+  'expire-odd-piece-hotspot-discussion',
+  'expire-odd-piece-hotspot-answer',
   // القطها.
   'claim-laqatha',
   'submit-laqatha',

@@ -10,10 +10,14 @@ import { PendingButtonContent } from "@/components/ui/pending-button-content";
 import { WorldMedia } from "@/components/akwaan/world-media";
 import { teamIdentity, TEAM_SLOT_ORDER } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
-import { RyoExplainerDialog } from "@/features/challenge-explainer";
+import {
+  MechanicTutorialDialog,
+  SUPPORTED_TUTORIAL_MECHANIC_KEYS,
+} from "@/features/challenge-explainer";
 
-/** The one mechanic with an animated explainer so far. */
-const RYO_CHALLENGE_KEY = "read-your-opponent";
+const TUTORIAL_RENDERER_MECHANICS = new Set<string>(
+  SUPPORTED_TUTORIAL_MECHANIC_KEYS,
+);
 import { occurrenceLabel } from "@/features/match-setup";
 import type { PreflightTeam, UnifiedPreflight } from "../types";
 
@@ -123,7 +127,7 @@ function ChallengeIdentityBanner({
   selectingTeamName?: string;
   worldImageUrl?: string;
 }) {
-  const summary = preflight.playerInstructions?.summary ?? preflight.description;
+  const summary = preflight.description;
   return (
     <section
       data-testid="preflight-identity"
@@ -174,11 +178,10 @@ function ChallengeIdentityBanner({
 /**
  * "شرح التحدي" — the left region.
  *
- * An animated demonstration where the mechanic has one, the authored numbered
- * steps everywhere else. The explainer is a presentation-only simulation: it
- * holds no session, sends no command, and cannot touch readiness, Fair-Start or
- * Match state. Canonical `playerInstructions` stay on the projection untouched,
- * so withdrawing a demo loses nothing.
+ * The GSAP demonstration is the only mechanic explanation. It is a
+ * presentation-only simulation: it holds no session, sends no command, and
+ * cannot touch readiness, Fair-Start or Match state. When no tutorial is
+ * published, the dialog itself exposes an explicit unavailable state.
  *
  * `launching` only dims the region — a purely visual handoff while the
  * authoritative stage change does the real work. It never gates the launch.
@@ -190,7 +193,7 @@ function ChallengeExplanation({
   preflight: UnifiedPreflight;
   launching: boolean;
 }) {
-  const animated = preflight.challengeKey === RYO_CHALLENGE_KEY;
+  const animated = TUTORIAL_RENDERER_MECHANICS.has(preflight.challengeKey);
   return (
     <section
       data-testid="preflight-explainer"
@@ -214,28 +217,13 @@ function ChallengeExplanation({
             It is offered here and opened on demand, so the default screen stays
             about starting the challenge. */}
         {animated && (
-          <RyoExplainerDialog
+          <MechanicTutorialDialog
             mechanicKey={preflight.challengeKey}
+            worldId={preflight.worldId}
             launching={launching}
           />
         )}
       </header>
-      {/* Every mechanic now shows the same canonical authored instructions —
-          the explainer supplements them, it does not replace them. */}
-      <PlayerInstructionsBrief instructions={preflight.playerInstructions} />
-      {preflight.playerInstructions?.highlights?.find((item) =>
-        item.trim(),
-      ) && (
-        <p
-          data-testid="preflight-highlight"
-          className="flex items-start gap-2 rounded-xl border border-brand-gold/25 bg-brand-gold/5 px-3 py-2 text-sm font-bold text-foreground/90"
-        >
-          <span aria-hidden className="mt-0.5 text-brand-gold">
-            ★
-          </span>
-          {preflight.playerInstructions.highlights.find((item) => item.trim())}
-        </p>
-      )}
     </section>
   );
 }
@@ -441,7 +429,9 @@ function PairingPanel({
  * the semantic status system, never a heavy warning pill.
  */
 function TeamRoster({ team, order }: { team: PreflightTeam; order: number }) {
-  const identity = teamIdentity(TEAM_SLOT_ORDER[order % TEAM_SLOT_ORDER.length]);
+  const identity = teamIdentity(
+    TEAM_SLOT_ORDER[order % TEAM_SLOT_ORDER.length],
+  );
   const target = team.maximum ?? team.minimum;
   const missing = Math.max(0, target - team.connectedCount);
 
@@ -466,47 +456,47 @@ function TeamRoster({ team, order }: { team: PreflightTeam; order: number }) {
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          {Array.from({ length: Math.max(target, team.participants.length) }).map(
-            (_, index) => {
-              const participant = team.participants[index];
-              if (!participant) {
-                return (
-                  <span
-                    key={`empty-${index}`}
-                    aria-hidden
-                    className="size-6 shrink-0 rounded-full border border-dashed border-border/70"
-                  />
-                );
-              }
-              const initial = participant.displayName.trim().charAt(0) || "؟";
-              return participant.connected ? (
+          {Array.from({
+            length: Math.max(target, team.participants.length),
+          }).map((_, index) => {
+            const participant = team.participants[index];
+            if (!participant) {
+              return (
                 <span
-                  key={participant.participantId}
-                  title={participant.displayName}
-                  className={cn(
-                    "grid size-6 shrink-0 place-items-center rounded-full text-[0.65rem] font-black",
-                    identity.surface,
-                    identity.text,
-                  )}
-                >
-                  {initial}
-                  <span className="sr-only">{participant.displayName}</span>
-                </span>
-              ) : (
-                <span
-                  key={participant.participantId}
-                  aria-label="غير متصل"
-                  title={participant.displayName}
-                  className="grid size-6 shrink-0 place-items-center rounded-full border border-dashed border-border text-[0.6rem] font-black text-disabled-foreground"
-                >
-                  {initial}
-                  <span className="sr-only">
-                    {participant.displayName} غير متصل
-                  </span>
-                </span>
+                  key={`empty-${index}`}
+                  aria-hidden
+                  className="size-6 shrink-0 rounded-full border border-dashed border-border/70"
+                />
               );
-            },
-          )}
+            }
+            const initial = participant.displayName.trim().charAt(0) || "؟";
+            return participant.connected ? (
+              <span
+                key={participant.participantId}
+                title={participant.displayName}
+                className={cn(
+                  "grid size-6 shrink-0 place-items-center rounded-full text-[0.65rem] font-black",
+                  identity.surface,
+                  identity.text,
+                )}
+              >
+                {initial}
+                <span className="sr-only">{participant.displayName}</span>
+              </span>
+            ) : (
+              <span
+                key={participant.participantId}
+                aria-label="غير متصل"
+                title={participant.displayName}
+                className="grid size-6 shrink-0 place-items-center rounded-full border border-dashed border-border text-[0.6rem] font-black text-disabled-foreground"
+              >
+                {initial}
+                <span className="sr-only">
+                  {participant.displayName} غير متصل
+                </span>
+              </span>
+            );
+          })}
         </div>
 
         <TeamReadinessStatus team={team} missing={missing} />
@@ -561,76 +551,6 @@ function readinessPhrase(missing: number): string {
   if (missing === 1) return "باقي لاعب واحد";
   if (missing === 2) return "باقي لاعبين";
   return `بانتظار ${missing} لاعبين`;
-}
-
-/**
- * "كيف نلعب؟" — the mechanic's own player-facing explanation.
- *
- * Authored on the ChallengeType and carried verbatim through the Match projection;
- * this component renders it and never invents copy. A mechanic authored before
- * instructions existed simply has none, and gets a short, honest placeholder
- * rather than a blank — the real copy is data the admins fill in, not a string
- * hardcoded here.
- */
-function PlayerInstructionsBrief({
-  instructions,
-}: {
-  instructions: UnifiedPreflight["playerInstructions"];
-}) {
-  const steps = (instructions?.steps ?? []).filter((step) => step.trim());
-
-  if (steps.length === 0) {
-    return (
-      <p
-        data-testid="preflight-instructions-fallback"
-        className="rounded-[var(--radius)] bg-muted p-3 text-sm leading-6 text-muted-foreground"
-      >
-        شرح التحدي بيتضاف قريب. اسألوا المضيف لو تبون تفاصيل أكثر.
-      </p>
-    );
-  }
-
-  return (
-    <div
-      data-testid="preflight-player-instructions"
-      className="space-y-2 text-foreground/85"
-    >
-      {/* No heading of its own: the card above is already titled «شرح التحدي»
-          and the action beside it is «كيف تلعب؟». A third near-identical label
-          here read as three competing titles for one region. */}
-      <ol className="list-none space-y-2">
-        {/* All authored steps, not a forced three — correctness over a fixed count. */}
-        {steps.map((step, index) => (
-          <li
-            key={index}
-            className="preflight-secondary-surface flex min-h-11 items-start gap-3 rounded-xl p-2"
-          >
-            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-black text-primary-foreground">
-              {index + 1}
-            </span>
-            <span className="text-sm leading-6">
-              <strong className="block font-black">{stepTitle(step)}</strong>
-              {stepSupport(step) && (
-                <span className="text-foreground/75">{stepSupport(step)}</span>
-              )}
-            </span>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
-}
-
-/** Keep authored wording intact while giving long steps a scannable heading. */
-function stepTitle(step: string): string {
-  return step.split(/[،.!؟]/, 1)[0]?.trim() || step;
-}
-
-function stepSupport(step: string): string {
-  const title = stepTitle(step);
-  return title === step
-    ? ""
-    : step.slice(title.length).replace(/^[،.!؟\s]+/, "");
 }
 
 function blockingSummary(preflight: UnifiedPreflight): string {

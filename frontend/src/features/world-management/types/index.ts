@@ -70,19 +70,11 @@ export interface ReadinessReport {
  * canonical across every World. Absent on legacy mechanics authored before it
  * existed.
  */
-export interface PlayerInstructions {
-  summary: string;
-  steps: string[];
-  highlights?: string[];
-}
-
 export interface ChallengePresentation {
   inputType: string;
   timerSeconds: number | null;
   soundPack?: string | null;
   revealStyle?: string | null;
-  /** Player-facing "how this challenge works". Mechanic-canonical, World-invariant. */
-  playerInstructions?: PlayerInstructions | null;
 }
 
 export interface BoardSlot {
@@ -182,7 +174,6 @@ export interface WorldChallengeConfiguration {
   /** What players see: the label, or the mechanic's own name. */
   effectiveName: string;
   description?: string;
-  instructions?: string;
   icon?: ContentAsset;
   sortOrder: number;
   isEnabled: boolean;
@@ -334,6 +325,48 @@ export interface OddPiecePayload {
     vehicleLabel: string;
     media: { type: "image"; assets: ContentAsset[] };
   }>;
+}
+
+export type OddPieceDifficulty = "easy" | "medium" | "hard";
+export type OddPieceAssetOrigin = "authentic" | "ai-edited";
+
+export interface OddPieceHotspotPoint {
+  x: number;
+  y: number;
+}
+
+export interface OddPieceHotspotProvenance {
+  assetOrigin: OddPieceAssetOrigin;
+  sourceUrl: string;
+  licenceNote?: string;
+  editedRegion?: string;
+  editModel?: string;
+}
+
+export interface OddPieceHotspotImage {
+  media: { type: "image"; assets: ContentAsset[] };
+  width: number;
+  height: number;
+  orientation: "landscape" | "portrait" | "square";
+  provenance: OddPieceHotspotProvenance;
+}
+
+export interface OddPieceHotspotPayload {
+  variant: "odd-piece";
+  version: 2;
+  difficulty: OddPieceDifficulty;
+  modifiedImage: OddPieceHotspotImage;
+  originalImage: OddPieceHotspotImage;
+  targetVehicleIdentity: string;
+  targetVehicleLabel: string;
+  intruderVehicleIdentity: string;
+  intruderVehicleLabel: string;
+  intruderPartIdentity: string;
+  intruderPartLabel: string;
+  hotspot: {
+    polygon: OddPieceHotspotPoint[];
+    tolerance: number;
+  };
 }
 
 export interface ScoringRuleOption {

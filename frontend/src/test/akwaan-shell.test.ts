@@ -1,7 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createElement } from "react";
+import { render, screen } from "@testing-library/react";
 import { readFileSync, readdirSync, statSync } from "fs";
 import { resolve } from "path";
-import { hasCosmicBackground, isHostMatchPath } from "@/components/layout";
+import {
+  Layout,
+  hasCosmicBackground,
+  isHostMatchPath,
+} from "@/components/layout";
 import { MATCH_SETUP_ROUTE } from "@/features/match-setup";
 
 /**
@@ -15,6 +21,24 @@ import { MATCH_SETUP_ROUTE } from "@/features/match-setup";
  */
 
 const SRC = resolve(process.cwd(), "src");
+
+// The shell's own decision is under test, not its children: stub them so a
+// render observes only whether the shell mounts the site header.
+let pathname = "/";
+vi.mock("next/navigation", () => ({ usePathname: () => pathname }));
+vi.mock("@/components/layout/header", () => ({
+  Header: () => createElement("div", { "data-testid": "site-header" }),
+}));
+vi.mock("@/components/layout/footer", () => ({ Footer: () => null }));
+vi.mock("@/components/ui/sonner", () => ({ Toaster: () => null }));
+vi.mock("@/components/akwaan/akwaan-background", () => ({
+  AkwaanBackground: () => null,
+}));
+
+function renderShellAt(path: string) {
+  pathname = path;
+  return render(createElement(Layout, null, createElement("p", null, "page")));
+}
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
@@ -40,11 +64,13 @@ describe("the cosmic background covers the player-facing Akwaan surfaces", () =>
 
   it("gives login its focused auth shell instead of the site background", () => {
     expect(hasCosmicBackground("/login")).toBe(false);
-    const layout = readFileSync(
-      resolve(SRC, "components/layout/index.tsx"),
-      "utf8",
-    );
-    expect(layout).toContain("!isAuth && !isPairedMatch");
+    // Behaviour, not source text: the shell mounts the site header on an
+    // ordinary page and leaves it off login.
+    const home = renderShellAt("/");
+    expect(screen.getByTestId("site-header")).toBeTruthy();
+    home.unmount();
+    renderShellAt("/login");
+    expect(screen.queryByTestId("site-header")).toBeNull();
 
     const authShell = readFileSync(
       resolve(SRC, "features/auth/components/auth-shell.tsx"),

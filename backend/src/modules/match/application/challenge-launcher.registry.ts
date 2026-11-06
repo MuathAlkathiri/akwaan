@@ -3,6 +3,7 @@ import { GameplayRuntimeState } from '../../live-game-sessions/domain/gameplay-r
 import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.constants';
 import { MatchChallengeReadinessRequirement } from '../domain/match-challenge-readiness';
 import { MatchDomainError } from '../domain/match.errors';
+import { OddPieceDifficulty } from '../../world-content/domain/world-content.types';
 
 export type { MatchChallengeReadinessRequirement };
 
@@ -32,6 +33,10 @@ export interface MatchSelectableContentItem {
   comboStage?: number;
   /** "المرحلة" risk band, from `mechanicPayload.marhalaDifficulty`. */
   marhalaDifficulty?: string;
+  /** Versioned mechanic contract; absent means the legacy payload. */
+  oddPieceVersion?: 1 | 2;
+  /** V2 difficulty tier, kept available to a future gated stratified draw. */
+  oddPieceDifficulty?: OddPieceDifficulty;
 }
 
 /**

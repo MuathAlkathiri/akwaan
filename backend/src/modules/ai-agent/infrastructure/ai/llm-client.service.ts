@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AiProviderFactory } from '../ai-provider.factory';
 import { AiProviderError } from '../providers/ai-provider.error';
+import { DisabledAiProvider } from '../providers/disabled-ai.provider';
 import {
   AI_PROVIDER_TOKEN,
   type AiProvider,
@@ -106,6 +107,18 @@ export class LlmClientService {
     this.providerFactory = new AiProviderFactory(config);
   }
 
+  /**
+   * AI_QUESTION_GENERATION_ENABLED=false must hold for every provider. Only the
+   * Gemini path went through the provider factory (which swaps in
+   * DisabledAiProvider); OpenRouter and LM Studio were called over HTTP
+   * directly, so a disabled deployment with those configured still made model
+   * calls. Refuse here, with the same typed error, before any network call.
+   */
+  private async refuseWhenGenerationDisabled(prompt: string): Promise<void> {
+    if (!this.providerFactory.isGenerationDisabled()) return;
+    await new DisabledAiProvider().generateText({ prompt });
+  }
+
   getRuntimeConfig(
     purpose: LlmPurpose,
     modelOverride?: string,
@@ -151,6 +164,7 @@ export class LlmClientService {
   }
 
   async complete(prompt: string, temperature?: number): Promise<string> {
+    await this.refuseWhenGenerationDisabled(prompt);
     const provider = (
       this.config.get<string>('AI_PROVIDER') ?? 'openrouter'
     ).toLowerCase();
@@ -233,6 +247,7 @@ export class LlmClientService {
     model: string;
     diagnostics?: Record<string, unknown>;
   }> {
+    await this.refuseWhenGenerationDisabled(input.userPrompt);
     const runtime = this.getRuntimeConfig(input.purpose, input.model);
     const { provider, baseUrl: base, model } = runtime;
     if (provider === 'gemini') {

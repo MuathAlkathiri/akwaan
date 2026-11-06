@@ -445,13 +445,15 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
       // three: a count mismatch fails the job, and this test needs it to finish.
       const reqA = {
         ...PILOT,
-        targetCount: 3,
+        // The suite's fake provider always returns PILOT.targetCount candidates,
+        // and the engine rightly fails a job whose output count differs.
+        targetCount: PILOT.targetCount,
         difficulty: 'easy',
         batchGuidance: 'Focus on support heroes.',
       };
       const reqB = {
         ...PILOT,
-        targetCount: 3,
+        targetCount: PILOT.targetCount,
         difficulty: 'relatively_difficult',
         batchGuidance: 'Focus on map lore.',
       };

@@ -55,7 +55,6 @@ const position = (
   challengeKey: index === 1 ? "read-your-opponent" : `mechanic-${index}`,
   challengeName: `تحدي ${occurrenceIndex}-${index}`,
   description: `وصف ${occurrenceIndex}-${index}`,
-  instructions: `تعليمات ${occurrenceIndex}-${index}`,
   // Only the mechanic in slot_2 has a launcher; only slot_3 says it needs phones,
   // so the warning cannot be coming from a slug list on this side.
   requiresPhones: slotKey === "slot_3" || slotKey === "slot_2",
@@ -122,8 +121,18 @@ function unifiedMatch(
       worldSubtotals: [],
     },
     standings: [
-      { teamId: "team-a", name: "أسود الشمال", signedTotal: 0, displayTotal: 0 },
-      { teamId: "team-b", name: "صقور الرياض", signedTotal: 0, displayTotal: 0 },
+      {
+        teamId: "team-a",
+        name: "أسود الشمال",
+        signedTotal: 0,
+        displayTotal: 0,
+      },
+      {
+        teamId: "team-b",
+        name: "صقور الرياض",
+        signedTotal: 0,
+        displayTotal: 0,
+      },
     ],
     availableActions: ["match:launch-challenge", "match:cancel"],
   } as LiveSessionMatchSnapshot;
@@ -285,9 +294,7 @@ describe("unified board", () => {
     renderBoard(unifiedMatch());
 
     // The badge is driven by the server capability, per position.
-    expect(
-      within(tile("0#slot_2")).getByText("يحتاج جوالات"),
-    ).toBeTruthy();
+    expect(within(tile("0#slot_2")).getByText("يحتاج جوالات")).toBeTruthy();
     const positions = OCCURRENCE_WORLDS.flatMap((worldId, occurrenceIndex) =>
       SLOTS.map((slotKey, index) =>
         position(occurrenceIndex, worldId, slotKey, index, {
@@ -345,7 +352,9 @@ describe("unified board", () => {
     // And the unimplemented-mechanic tile still reads the other way round: the
     // server's two reasons stay two different sentences on the board.
     expect(broken.textContent).not.toContain("غير مفعّل في أكوان");
-    expect(tile("0#slot_1").textContent).toContain("هذا التحدي مو مفعّل في أكوان");
+    expect(tile("0#slot_1").textContent).toContain(
+      "هذا التحدي مو مفعّل في أكوان",
+    );
     expect(tile("0#slot_1").textContent).not.toContain("ليست ضمن إعداد");
   });
 
@@ -364,7 +373,11 @@ describe("unified board", () => {
     });
     renderBoard(unifiedMatch({ positions }));
 
-    expect(screen.getAllByTestId(/^unified-position-/).filter((node) => node.tagName === "BUTTON")).toHaveLength(12);
+    expect(
+      screen
+        .getAllByTestId(/^unified-position-/)
+        .filter((node) => node.tagName === "BUTTON"),
+    ).toHaveLength(12);
   });
 
   it("reports a board that arrived with no positions instead of drawing an empty grid", () => {
@@ -410,7 +423,9 @@ describe("unified board", () => {
     expect(tile("0#slot_2").tagName).toBe("BUTTON");
     // The turn alternated, and the progress moved by one.
     expect(screen.getByTestId("board-progress").textContent).toBe("1/12");
-    expect(screen.getByTestId("selecting-team-board").textContent).toContain("صقور الرياض");
+    expect(screen.getByTestId("selecting-team-board").textContent).toContain(
+      "صقور الرياض",
+    );
   });
 
   it("offers a way back into a running challenge", () => {
@@ -434,7 +449,11 @@ describe("unified board", () => {
   it("gives a shared screen no launch controls", () => {
     renderBoard(unifiedMatch(), "shared-screen");
 
-    expect(screen.getAllByTestId(/^unified-position-/).every((node) => node.tagName !== "BUTTON")).toBe(true);
+    expect(
+      screen
+        .getAllByTestId(/^unified-position-/)
+        .every((node) => node.tagName !== "BUTTON"),
+    ).toBe(true);
     expect(screen.getByTestId("unified-board").textContent).toContain(
       "بانتظار المتحكّم",
     );

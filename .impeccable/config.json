@@ -1,0 +1,21 @@
+{
+  "telemetry": false,
+  "hook": {
+    "quiet": true
+  },
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "ai-color-palette",
+        "value": "*",
+        "files": [
+          "frontend/src/legacy/**"
+        ],
+        "createdAt": "2026-11-05T19:37:36.251Z",
+        "reason": "Agent: retired classic game; legacy-detachment.test.ts keeps it out of the app bundle and routes"
+      }
+    ]
+  }
+}

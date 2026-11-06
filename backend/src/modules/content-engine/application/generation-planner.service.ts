@@ -171,6 +171,14 @@ export class GenerationPlannerService {
           throw err;
         }
       }
+      // A Scope whose profiles declare no family blocks resolves to a valid
+      // empty catalog (see resolveCanonicalFamilies). That is the legacy,
+      // catalog-absent case, not a malformed one: the slot allocator rejects
+      // an empty family list, so handing it over would fail every job for
+      // every legacy Scope closed. Plan it as V1.
+      if (catalog && catalog.families.length === 0) {
+        catalog = null;
+      }
     }
 
     let coverage: ScopeHistoricalCoverageReport | null | undefined =

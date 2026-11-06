@@ -63,8 +63,7 @@ export interface EkshifniBoardRegion {
  * decimals of a percentage is far finer than a pixel at any size this renders
  * at, so nothing moves and the markup stays legible.
  */
-const percent = (value: number) =>
-  `${Math.round(value * 1_000_000) / 10_000}%`;
+const percent = (value: number) => `${Math.round(value * 1_000_000) / 10_000}%`;
 
 /**
  * One clear window: the same picture, drawn again and clipped to this rectangle.
@@ -77,12 +76,14 @@ function ClearWindow({
   src,
   region,
   isNewest,
+  tutorialPresentation,
 }: {
   src: string;
   region: EkshifniBoardRegion & {
     shape: NonNullable<EkshifniBoardRegion["shape"]>;
   };
   isNewest: boolean;
+  tutorialPresentation: boolean;
 }) {
   const { x, y, width, height } = region.shape;
   return (
@@ -93,7 +94,11 @@ function ClearWindow({
         // The one that just opened, so the room registers the change without a
         // line of copy. Drawn from committed state, not a timer, so a screen
         // that rejoins mid-image sees the same board rather than a replay.
-        isNewest && "ring-2 ring-brand-gold",
+        tutorialPresentation
+          ? isNewest
+            ? "ring-2 ring-inset ring-brand-gold"
+            : "ring-1 ring-inset ring-brand-gold/80"
+          : isNewest && "ring-2 ring-brand-gold",
       )}
       style={{
         left: percent(x),
@@ -127,6 +132,8 @@ export function EkshifniBoard({
   newestRegionId,
   imageClassName = "max-h-[58vh]",
   showNumbers = true,
+  resolveMediaUrl = true,
+  presentation = "default",
 }: {
   url: string;
   altText: string;
@@ -137,8 +144,12 @@ export function EkshifniBoard({
   /** How tall the picture may get. Never changes its aspect. */
   imageClassName?: string;
   showNumbers?: boolean;
+  /** Local tutorial assets are served by the frontend rather than the media API. */
+  resolveMediaUrl?: boolean;
+  /** Optional visual treatment for the fullscreen tutorial; gameplay stays default. */
+  presentation?: "default" | "tutorial" | "tutorial-compact";
 }) {
-  const src = getMediaUrl(url) || url;
+  const src = resolveMediaUrl ? getMediaUrl(url) || url : url;
   const [broken, setBroken] = useState(false);
   /**
    * A projection that lost geometry is a projection to distrust.
@@ -159,6 +170,8 @@ export function EkshifniBoard({
       shape: NonNullable<EkshifniBoardRegion["shape"]>;
     } => Boolean(region.shape),
   );
+  const tutorialPresentation = presentation !== "default";
+  const compactTutorialPresentation = presentation === "tutorial-compact";
 
   return (
     <div className="flex justify-center">
@@ -234,6 +247,7 @@ export function EkshifniBoard({
                 src={src}
                 region={region}
                 isNewest={region.id === newestRegionId}
+                tutorialPresentation={tutorialPresentation}
               />
             ))}
         {/* Still shut, and numbered — the whole player-facing vocabulary of
@@ -248,7 +262,11 @@ export function EkshifniBoard({
               <div
                 key={region.id}
                 data-testid={`ekshifni-marker-${region.number}`}
-                className="absolute grid place-items-center rounded-md border-2 border-primary-foreground/50 bg-primary/25 ring-1 ring-inset ring-primary/40"
+                className={cn(
+                  "absolute grid place-items-center rounded-md border-2 border-primary-foreground/50 bg-primary/25 ring-1 ring-inset ring-primary/40",
+                  tutorialPresentation &&
+                    "border-primary-foreground/80 bg-primary/10 ring-2 ring-inset ring-brand-gold/70",
+                )}
                 style={{
                   left: percent(region.shape.x),
                   top: percent(region.shape.y),
@@ -256,9 +274,41 @@ export function EkshifniBoard({
                   height: percent(region.shape.height),
                 }}
               >
-                <span className="akwaan-numeral text-2xl font-black text-primary-foreground drop-shadow sm:text-3xl">
-                  {region.number}
-                </span>
+                {tutorialPresentation ? (
+                  compactTutorialPresentation ? (
+                    <span
+                      data-ekshifni-label={region.number}
+                      className="akwaan-numeral -translate-y-px text-[0.5rem] font-black leading-none text-primary-foreground drop-shadow lg:translate-y-0 lg:text-[0.65rem]"
+                    >
+                      {region.number}
+                    </span>
+                  ) : region.number <= 2 ? (
+                    <span
+                      data-ekshifni-label={region.number}
+                      className="akwaan-numeral text-2xl font-black text-primary-foreground drop-shadow sm:text-3xl"
+                    >
+                      {region.number}
+                    </span>
+                  ) : (
+                    <span
+                      data-ekshifni-label={region.number}
+                      className="akwaan-numeral absolute grid min-w-7 place-items-center rounded-full border border-white/80 bg-[hsl(var(--brand-navy)/.92)] px-1 py-0.5 text-base font-black leading-none text-primary-foreground shadow-sm sm:min-w-8 sm:text-lg"
+                      style={{
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        ...(region.number === 3 || region.number === 6
+                          ? { right: "calc(100% + 0.25rem)" }
+                          : { left: "calc(100% + 0.25rem)" }),
+                      }}
+                    >
+                      {region.number}
+                    </span>
+                  )
+                ) : (
+                  <span className="akwaan-numeral text-2xl font-black text-primary-foreground drop-shadow sm:text-3xl">
+                    {region.number}
+                  </span>
+                )}
               </div>
             ))}
       </div>

@@ -1,5 +1,4 @@
 import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.constants';
-import { PlayerInstructions } from '../../world-content/domain/world-content.types';
 import { ConfiguredWorldOccurrence } from './configured-world-occurrence';
 import { MatchBoardPositionKey } from './match-board-position-key';
 import {
@@ -31,8 +30,6 @@ export interface MatchBoardPositionConfiguration {
   challengeTypeSlug: string;
   displayName: string;
   description?: string;
-  instructions?: string;
-  playerInstructions?: PlayerInstructions;
 }
 
 /** A configured position merged with the progress the Match owns for it. */
@@ -53,8 +50,6 @@ export interface UnifiedBoardSlotDefinition {
   challengeTypeSlug: string;
   displayName: string;
   description?: string;
-  instructions?: string;
-  playerInstructions?: PlayerInstructions;
 }
 
 /** The World facts a Match captures once, at configuration time. */
@@ -111,10 +106,6 @@ export class UnifiedMatchBoardPolicy {
           challengeTypeSlug: slot.challengeTypeSlug,
           displayName: slot.displayName,
           ...(slot.description ? { description: slot.description } : {}),
-          ...(slot.instructions ? { instructions: slot.instructions } : {}),
-          ...(slot.playerInstructions
-            ? { playerInstructions: slot.playerInstructions }
-            : {}),
         });
       }
     }

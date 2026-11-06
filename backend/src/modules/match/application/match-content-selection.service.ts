@@ -258,6 +258,18 @@ export class MatchContentSelector {
       ...(typeof payload.marhalaDifficulty === 'string'
         ? { marhalaDifficulty: payload.marhalaDifficulty }
         : {}),
+      ...(payload.variant === 'odd-piece'
+        ? {
+            oddPieceVersion:
+              payload.version === 2 ? (2 as const) : (1 as const),
+            ...(payload.version === 2 &&
+            (payload.difficulty === 'easy' ||
+              payload.difficulty === 'medium' ||
+              payload.difficulty === 'hard')
+              ? { oddPieceDifficulty: payload.difficulty }
+              : {}),
+          }
+        : {}),
       ...(typeof payload.variant === 'string'
         ? { mechanicVariant: payload.variant }
         : {}),

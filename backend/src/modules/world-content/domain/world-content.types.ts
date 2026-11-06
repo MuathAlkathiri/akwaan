@@ -35,40 +35,13 @@ export interface ContentAssetRef {
  * the ContentItem alone, so one mechanic plays text, image, audio, and video
  * content without any per-World or per-mechanic media configuration.
  */
-/**
- * How a mechanic is explained to players, authored on the ChallengeType.
- *
- * Belongs to the mechanic and nothing below it: a Scope changes the *content* a
- * challenge draws, never how the challenge works, so Bomb + Naruto and Bomb +
- * Dragon Ball read the same instructions. It rides inside presentation because
- * presentation is already the mechanic-canonical, World-invariant object
- * (`ChallengePresentationPolicy`: "a World cannot override the timer, input, or
- * reveal behaviour"); instructions obey the same rule.
- *
- * Deliberately prose about *rules*, not tunable numbers. A step says "a wrong
- * answer hands the pressure to the other team", never "the timer is 30 seconds" —
- * the second would go stale the moment `timerSeconds` is retuned, and that value
- * is already canonical config the UI can render live.
- */
-export interface PlayerInstructions {
-  /** One line: the whole idea of the mechanic. */
-  summary: string;
-  /** Ordered "how to play" steps, in the order authored. */
-  steps: string[];
-  /** Optional rules players must not miss. Absent, never an empty array. */
-  highlights?: string[];
-}
-
 export interface ChallengePresentation {
   inputType: string;
   timerSeconds: number | null;
+  /** Optional secondary window used by Odd Piece V2's authoritative answer phase. */
+  answerTimerSeconds?: number | null;
   soundPack?: string | null;
   revealStyle?: string | null;
-  /**
-   * Player-facing explanation, or absent on a legacy record authored before this
-   * field existed. Absent is a readiness concern (below), never a crash.
-   */
-  playerInstructions?: PlayerInstructions | null;
 }
 
 /**
@@ -84,52 +57,16 @@ export interface ChallengePresentation {
 export function normalizePresentation(
   presentation: Partial<ChallengePresentation> | undefined | null,
 ): ChallengePresentation {
-  return {
+  const normalized: ChallengePresentation = {
     inputType: presentation?.inputType ?? '',
     timerSeconds: presentation?.timerSeconds ?? null,
     soundPack: presentation?.soundPack ?? null,
     revealStyle: presentation?.revealStyle ?? null,
-    playerInstructions: normalizePlayerInstructions(
-      presentation?.playerInstructions,
-    ),
   };
-}
-
-/**
- * A player-instructions object trimmed to what is real, or null when nothing was
- * authored. Whitespace-only rows collapse away rather than reaching a player as
- * an empty bullet, so a half-filled form normalizes to "not authored yet" and is
- * caught by the readiness guard rather than shown.
- */
-export function normalizePlayerInstructions(
-  value: Partial<PlayerInstructions> | undefined | null,
-): PlayerInstructions | null {
-  if (!value) return null;
-  const summary = (value.summary ?? '').trim();
-  const steps = (value.steps ?? [])
-    .map((step) => (step ?? '').trim())
-    .filter(Boolean);
-  const highlights = (value.highlights ?? [])
-    .map((entry) => (entry ?? '').trim())
-    .filter(Boolean);
-  if (!summary && steps.length === 0 && highlights.length === 0) return null;
-  return {
-    summary,
-    steps,
-    ...(highlights.length ? { highlights } : {}),
-  };
-}
-
-/** True when a mechanic carries player instructions complete enough to show. */
-export function hasCompletePlayerInstructions(
-  presentation: Partial<ChallengePresentation> | undefined | null,
-): boolean {
-  const instructions = normalizePlayerInstructions(
-    presentation?.playerInstructions,
-  );
-  return Boolean(
-    instructions && instructions.summary && instructions.steps.length > 0,
-  );
+  if (presentation && 'answerTimerSeconds' in presentation) {
+    normalized.answerTimerSeconds = presentation.answerTimerSeconds ?? null;
+  }
+  return normalized;
 }
 
 export interface WorldView {
@@ -172,7 +109,6 @@ export interface WorldChallengeConfigurationView {
   /** Optional presentation overrides for this World. */
   displayName?: string;
   description?: string;
-  instructions?: string;
   sortOrder: number;
   isEnabled: boolean;
 }
@@ -408,6 +344,55 @@ export interface OddPiecePayload {
   pieces: OddPieceVisual[];
 }
 
+/** A normalized point used by the V2 hotspot contract. */
+export interface OddPieceNormalizedPoint {
+  x: number;
+  y: number;
+}
+
+export type OddPieceDifficulty = 'easy' | 'medium' | 'hard';
+export type OddPieceAssetOrigin = 'authentic' | 'ai-edited';
+
+/** Provenance recorded on every V2 image; rights remain an advisory concern. */
+export interface OddPieceMediaProvenance {
+  assetOrigin: OddPieceAssetOrigin;
+  sourceUrl: string;
+  licenceNote?: string;
+  editedRegion?: string;
+  editModel?: string;
+}
+
+/** One V2 image, with the source dimensions needed to interpret normalized taps. */
+export interface OddPieceHotspotImage {
+  media: ContentItemMedia;
+  width: number;
+  height: number;
+  orientation: 'landscape' | 'portrait' | 'square';
+  provenance: OddPieceMediaProvenance;
+}
+
+/**
+ * Cars Signature V2 authoring contract. The polygon and tolerance are server
+ * owned; no answer-bearing field is projected before the puzzle is resolved.
+ */
+export interface OddPieceHotspotPayload {
+  variant: 'odd-piece';
+  version: 2;
+  difficulty: OddPieceDifficulty;
+  modifiedImage: OddPieceHotspotImage;
+  originalImage: OddPieceHotspotImage;
+  targetVehicleIdentity: string;
+  targetVehicleLabel: string;
+  intruderVehicleIdentity: string;
+  intruderVehicleLabel: string;
+  intruderPartIdentity: string;
+  intruderPartLabel: string;
+  hotspot: {
+    polygon: OddPieceNormalizedPoint[];
+    tolerance: number;
+  };
+}
+
 /**
  * "اكشفني" (Celebrities Signature) authoring: six reveal regions over the item's
  * one canonical celebrity image.
@@ -507,7 +492,10 @@ export interface MechanicTutorial {
   draftUpdatedAt?: Date;
 }
 
-export interface StoredTutorialScenario {
+export interface StoredRyoTutorialScenario {
+  /** Absent on tutorials published before the V1 generalized contract. */
+  kind?: 'ryo';
+  version?: 1;
   prompt: string;
   options: { id: string; label: string }[];
   correctOptionId: string;
@@ -521,6 +509,415 @@ export interface StoredTutorialScenario {
     correct: boolean;
   };
 }
+
+export interface StoredClosestTutorialScenario {
+  kind: 'closest';
+  version: 1;
+  prompt: string;
+  teamAEstimate: number;
+  teamBEstimate: number;
+  correctValue: number;
+  unit?: string;
+  caption?: string;
+  outcome: {
+    teamADistance: number;
+    teamBDistance: number;
+    winnerTeam: 'team-a' | 'team-b' | null;
+    tie: boolean;
+    /** One item win in Closest's three-item mechanic tally. */
+    mechanicTallyDelta: number;
+    /** One demonstrated item never awards the Match point by itself. */
+    matchPointDelta: 0;
+    reason: 'closest.absolute-distance';
+  };
+}
+
+export interface StoredBombTutorialScenario {
+  kind: 'bomb';
+  version: 1;
+  prompt: string;
+  acceptedAnswer: string;
+  nextPrompt: string;
+  nextQuestion?: {
+    prompt: string;
+    acceptedAnswer: string;
+    media?: { type: 'image'; url: string; altText: string };
+  };
+  returnQuestion?: {
+    prompt: string;
+    acceptedAnswer: string;
+    media?: { type: 'image'; url: string; altText: string };
+  };
+  media?: { type: 'image'; url: string; altText: string };
+  startingTeam: 'team-a' | 'team-b';
+  correctAtSecondsRemaining: number;
+  opponentExpiresAtSecondsRemaining: 0;
+  caption?: string;
+  outcome: {
+    passedToTeam: 'team-a' | 'team-b';
+    expiredTeam: 'team-a' | 'team-b';
+    winnerTeam: 'team-a' | 'team-b';
+    correctAnswerPassesTurn: true;
+    timerResetsOnPass: false;
+    matchPointDelta: 1;
+    reason: 'bomb.clock-expired';
+  };
+}
+
+export interface StoredOneClueTutorialScenario {
+  kind: 'one-clue';
+  version: 1;
+  prompt: string;
+  clues: Array<{
+    order: 1 | 2 | 3 | 4 | 5;
+    value: 5 | 4 | 3 | 2 | 1;
+    text: string;
+  }>;
+  acceptedAnswer: string;
+  firstSubmittedAnswer: string;
+  secondSubmittedAnswer: string;
+  caption?: string;
+  outcome: {
+    itemCount: 3;
+    firstLockedTeam: 'team-a';
+    firstLockedAtClue: 2;
+    firstLockedValue: 4;
+    firstAnswerCorrect: false;
+    eliminatedTeam: 'team-a';
+    continuingTeam: 'team-b';
+    correctTeam: 'team-b';
+    correctAtClue: 3;
+    correctValue: 3;
+    itemPoints: { 'team-a': 0; 'team-b': 3 };
+    finalTotals: { 'team-a': 5; 'team-b': 7 };
+    winnerTeam: 'team-b';
+    matchPointDelta: 1;
+    reason: 'one-clue.progressive-lock';
+  };
+}
+
+export interface StoredEkshifniTutorialScenario {
+  kind: 'ekshifni';
+  version: 1;
+  prompt: string;
+  celebrityIdentity: string;
+  image: {
+    url: string;
+    altText: string;
+    sha256: string;
+    provenanceNote: string;
+  };
+  regions: Array<{
+    id: string;
+    number: 1 | 2 | 3 | 4 | 5 | 6;
+    shape: { x: number; y: number; width: number; height: number };
+  }>;
+  wrongSubmittedAnswer: string;
+  correctSubmittedAnswer: string;
+  caption?: string;
+  outcome: {
+    imageCount: 3;
+    openingInitiative: ['team-a', 'team-b', 'team-a'];
+    revealedRegionIds: string[];
+    resolvedValue: 2;
+    wrongTeam: 'team-a';
+    initiativeAfterWrong: 'team-b';
+    temporarilyParkedTeam: 'team-a';
+    eligibilityRestoredBy: 'opponent-reveal';
+    correctTeam: 'team-b';
+    imagePoints: { 'team-a': 0; 'team-b': 2 };
+    finalTotals: { 'team-a': 6; 'team-b': 8 };
+    winnerTeam: 'team-b';
+    matchPointDelta: 1;
+    reason: 'ekshifni.clear-window-open-race';
+  };
+}
+
+export interface StoredTop5TutorialScenario {
+  kind: 'top-5';
+  version: 1;
+  prompt: string;
+  title: string;
+  rankingBasis: string;
+  sourceLabel: string;
+  entries: Array<{ id: string; label: string; rank: number | null }>;
+  decisions: Array<{ action: 'keep' | 'give' }>;
+  startingTeam: 'team-a' | 'team-b';
+  instruction?: string;
+  caption?: string;
+  outcome: {
+    entries: Array<{ id: string; label: string; rank: number | null }>;
+    ownership: Array<{
+      turn: number;
+      entryId: string;
+      actingTeam: 'team-a' | 'team-b';
+      ownerTeam: 'team-a' | 'team-b';
+      action: 'keep' | 'give';
+    }>;
+    top5Counts: Record<'team-a' | 'team-b', number>;
+    trapCounts: Record<'team-a' | 'team-b', number>;
+    revealOrder: string[];
+    winnerTeam: 'team-a' | 'team-b';
+    matchPointDelta: 1;
+    reason: 'top-5.win';
+  };
+}
+
+export interface StoredComboTutorialStage {
+  stage: 1 | 2 | 3;
+  prompt: string;
+  correctAnswer: string;
+  submittedAnswer: string;
+}
+
+export interface StoredComboTutorialScenario {
+  kind: 'combo';
+  version: 1;
+  /** Compatibility summary for shared tutorial indexing; stage prompts are canonical. */
+  prompt: string;
+  stages: StoredComboTutorialStage[];
+  caption?: string;
+  outcome: {
+    decision: 'continue-combo';
+    breakArmedAtStage: 2;
+    forcedQuestionStage: 3;
+    correctStagesBeforeBreak: 2;
+    unbankedPointsBeforeForcedQuestion: 2;
+    forcedQuestionEarned: 0;
+    bankedPoints: 0;
+    endedBy: 'combo-break';
+    reason: 'combo.push-your-luck';
+  };
+}
+
+export interface StoredMarhalaTutorialScenario {
+  kind: 'marhala';
+  version: 1;
+  prompt: string;
+  correctAnswer: string;
+  submittedAnswer: string;
+  teamAPosition: number;
+  teamBPosition: number;
+  activeTeam: 'team-a' | 'team-b';
+  difficulty: 'easy' | 'medium' | 'hard';
+  movement: number;
+  baseLanding: number;
+  tile: 'normal' | 'boost' | 'trap' | 'finish';
+  finalLanding: number;
+  caption?: string;
+  outcome: {
+    teamAPosition: number;
+    teamBPosition: number;
+    activeTeam: 'team-a' | 'team-b';
+    difficulty: 'easy' | 'medium' | 'hard';
+    movement: number;
+    baseLanding: number;
+    tile: 'normal' | 'boost' | 'trap' | 'finish';
+    finalLanding: number;
+    correct: true;
+    matchPointDelta: 0;
+    reason: 'marhala.tutorial-turn';
+  };
+}
+
+export interface StoredLaqathaTutorialClue {
+  order: 1 | 2 | 3 | 4 | 5;
+  value: 5 | 4 | 3 | 2 | 1;
+  text: string;
+}
+
+export interface StoredLaqathaTutorialScenario {
+  kind: 'laqatha';
+  version: 1;
+  prompt: string;
+  title: string;
+  clues: StoredLaqathaTutorialClue[];
+  acceptedAnswers: string[];
+  firstSubmittedAnswer: string;
+  secondSubmittedAnswer: string;
+  caption?: string;
+  outcome: {
+    questionCount: 3;
+    firstClaimTeam: 'team-a';
+    firstClaimAtClue: 2;
+    firstClaimReward: 4;
+    firstClaimFailed: true;
+    secondClaimTeam: 'team-b';
+    secondClaimAtClue: 3;
+    secondClaimReward: 3;
+    winnerTeam: 'team-b';
+    points: { 'team-a': 0; 'team-b': 3 };
+    reason: 'laqatha.claim-race';
+  };
+}
+
+export interface StoredFirstNoteTutorialScenario {
+  kind: 'first-note';
+  version: 1;
+  prompt: string;
+  title: string;
+  clueLabel?: string;
+  contextualClue: string;
+  bids: Array<{ team: 'team-a' | 'team-b'; seconds: number }>;
+  acceptedAnswers: string[];
+  firstSubmittedAnswer: string;
+  stealSubmittedAnswer: string;
+  caption?: string;
+  outcome: {
+    songCount: 3;
+    bids: Array<{ team: 'team-a' | 'team-b'; seconds: number }>;
+    finalBidSeconds: 3;
+    auctionWinner: 'team-a';
+    firstAnswerTeam: 'team-a';
+    firstAnswerFailed: true;
+    stealTeam: 'team-b';
+    stolen: true;
+    firstCorrectReward: 3;
+    stealReward: 1;
+    points: { 'team-a': 0; 'team-b': 1 };
+    reason: 'first-note.auction-steal';
+  };
+}
+
+export interface StoredLaTahriqhaTutorialScenario {
+  kind: 'la-tahriqha';
+  version: 1;
+  prompt: string;
+  dishWindowSeconds: number;
+  dishes: Array<{
+    id: string;
+    name: string;
+    ingredients: Array<{ id: string; label: string; correct: boolean }>;
+    teamASelection: string[];
+    teamBSelection: string[];
+  }>;
+  captainRotation: { teamA: string[]; teamB: string[] };
+  caption?: string;
+  outcome: {
+    dishCount: 3;
+    dishResults: Array<{
+      dishIndex: number;
+      dishId: string;
+      dishName: string;
+      captains: { teamA: string; teamB: string };
+      teamA: {
+        selected: string[];
+        correctIds: string[];
+        wrongIds: string[];
+        points: number;
+        burned: boolean;
+        perfect: boolean;
+        understaffed: boolean;
+      };
+      teamB: {
+        selected: string[];
+        correctIds: string[];
+        wrongIds: string[];
+        points: number;
+        burned: boolean;
+        perfect: boolean;
+        understaffed: boolean;
+      };
+    }>;
+    finalTotals: { 'team-a': number; 'team-b': number };
+    winnerTeam: 'team-a' | 'team-b' | null;
+    tie: boolean;
+    matchPointDelta: 0 | 1;
+    reason: 'la-tahriqha.challenge-win';
+  };
+}
+
+export interface StoredOddPieceV1TutorialScenario {
+  kind: 'odd-piece';
+  version: 1;
+  prompt: string;
+  targetVehicleIdentity: string;
+  targetVehicleLabel: string;
+  intruderVehicleIdentity: string;
+  intruderVehicleLabel: string;
+  pieces: Array<{
+    id: string;
+    imageUrl: string;
+    altText: string;
+    vehicleIdentity: string;
+    vehicleLabel: string;
+  }>;
+  wrongSelectionPieceId: string;
+  correctSelectionPieceId: string;
+  targetReveal: { imageUrl: string; altText: string };
+  caption?: string;
+  outcome: {
+    firstClaimTeam: 'team-a';
+    firstClaimPieceId: string;
+    firstClaimCorrect: false;
+    handoffTeam: 'team-b';
+    secondClaimPieceId: string;
+    secondClaimCorrect: true;
+    winnerTeam: 'team-b';
+    points: { 'team-a': 0; 'team-b': 1 };
+    matchPointDelta: 1;
+    intruderPieceId: string;
+    targetVehicleLabel: string;
+    targetReveal: { imageUrl: string; altText: string };
+    puzzleCount: 3;
+    reason: 'odd-piece.claim-handoff';
+  };
+}
+
+export interface StoredOddPieceV2TutorialScenario {
+  kind: 'odd-piece';
+  version: 2;
+  prompt: string;
+  targetVehicleIdentity: string;
+  targetVehicleLabel: string;
+  intruderVehicleIdentity: string;
+  intruderVehicleLabel: string;
+  intruderPartIdentity: string;
+  intruderPartLabel: string;
+  modifiedImage: OddPieceHotspotImage;
+  originalImage: OddPieceHotspotImage;
+  tutorialRevealMode?: 'original-comparison' | 'hotspot-detail';
+  tutorialMediaDisclosure?: string;
+  team1Tap?: { x: number; y: number };
+  team2Tap?: { x: number; y: number };
+  hotspot: { polygon: Array<{ x: number; y: number }>; tolerance: number };
+  wrongPoint: { x: number; y: number };
+  correctPoint: { x: number; y: number };
+  caption?: string;
+  outcome: {
+    firstClaimTeam: 'team-a';
+    firstClaimPieceId: string;
+    firstClaimCorrect: false;
+    handoffTeam: 'team-b';
+    secondClaimPieceId: string;
+    secondClaimCorrect: true;
+    winnerTeam: 'team-b';
+    points: { 'team-a': 0; 'team-b': 1 };
+    matchPointDelta: 1;
+    intruderPieceId: string;
+    targetVehicleLabel: string;
+    targetReveal: { imageUrl: string; altText: string };
+    puzzleCount: 3;
+    reason: 'odd-piece.claim-handoff';
+  };
+}
+
+export type StoredOddPieceTutorialScenario =
+  StoredOddPieceV1TutorialScenario | StoredOddPieceV2TutorialScenario;
+
+export type StoredTutorialScenario =
+  | StoredRyoTutorialScenario
+  | StoredClosestTutorialScenario
+  | StoredBombTutorialScenario
+  | StoredOneClueTutorialScenario
+  | StoredEkshifniTutorialScenario
+  | StoredTop5TutorialScenario
+  | StoredComboTutorialScenario
+  | StoredMarhalaTutorialScenario
+  | StoredLaqathaTutorialScenario
+  | StoredFirstNoteTutorialScenario
+  | StoredLaTahriqhaTutorialScenario
+  | StoredOddPieceTutorialScenario;
 
 /** Uniform issue shape for every validation and readiness surface. */
 export interface WorldContentIssue {

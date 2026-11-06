@@ -35,8 +35,6 @@ export class WorldChallengeConfiguration extends Document {
 
   @Prop({ trim: true }) description?: string;
 
-  @Prop({ trim: true }) instructions?: string;
-
   @Prop({ type: ContentAssetDefinition, _id: false }) icon?: ContentAssetRef;
 
   @Prop({ default: 0 }) sortOrder: number;

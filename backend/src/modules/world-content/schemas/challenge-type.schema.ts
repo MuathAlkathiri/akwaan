@@ -75,9 +75,9 @@ export class ChallengeType extends Document {
    * The mechanic's educational demonstration, draft and published.
    *
    * It lives here because the ChallengeType is already the canonical per-mechanic
-   * record and already carries `defaultPresentation.playerInstructions` — the
-   * other mechanic-level teaching content. A separate tutorial collection would
-   * be a second authoring system for the same thing.
+   * record and already carries the mechanic's canonical presentation. A
+   * separate tutorial collection would be a second authoring system for the
+   * same thing; GSAP tutorials are stored in the dedicated versioned fields.
    */
   @Prop({ type: MechanicTutorialDefinition, default: undefined, _id: false })
   tutorial?: MechanicTutorial;

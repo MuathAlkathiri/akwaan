@@ -34,13 +34,33 @@ export function ExplainerCaption({
       aria-live="polite"
       className={
         compact
-          ? "text-center text-sm font-bold leading-6 text-muted-foreground"
+          ? // The step instruction on the shared screen (production player mode).
+            // Body size from sm; each min-height is a floor reserving the longest
+            // sample caption's measured lines (3 < sm, 2 < lg, 1 from lg), so the
+            // tutorial does not jump between steps. It never clips longer copy.
+            "text-center text-sm font-bold leading-6 text-muted-foreground min-h-[4.5rem] sm:text-base sm:leading-7 sm:min-h-[3.5rem] lg:min-h-[1.75rem]"
           : "text-center text-base font-bold leading-7 text-muted-foreground"
       }
     >
       {caption}
     </p>
   );
+}
+
+/**
+ * Whether an explainer shows its transport: phase, step counter and buttons.
+ *
+ * Preview always does. The shared-screen player hides it while the demo plays
+ * itself, because a host only needs the demonstration and the narration. Under
+ * reduced motion the timeline never plays on its own, so the player must show
+ * the same controls too — they switch to Previous / Next in that mode. Without
+ * them a reduced-motion viewer would be left on the first step.
+ */
+export function showsExplainerControls(
+  mode: "player" | "preview",
+  timeline: Pick<ExplainerTimeline, "reducedMotion">,
+): boolean {
+  return mode === "preview" || timeline.reducedMotion;
 }
 
 export function ExplainerControls({
@@ -50,6 +70,7 @@ export function ExplainerControls({
   phase,
   timeline,
   compact = false,
+  stackOnNarrow = false,
 }: {
   step: number;
   total: number;
@@ -57,9 +78,20 @@ export function ExplainerControls({
   phase: string;
   timeline: ExplainerTimeline;
   compact?: boolean;
+  /** Opt-in for mechanics whose reduced-motion controls need a second mobile row. */
+  stackOnNarrow?: boolean;
 }) {
-  const { reducedMotion, replay, skip, goTo, toggle, finished, playing, userPaused, suspended } =
-    timeline;
+  const {
+    reducedMotion,
+    replay,
+    skip,
+    goTo,
+    toggle,
+    finished,
+    playing,
+    userPaused,
+    suspended,
+  } = timeline;
   return (
     <div
       dir="rtl"
@@ -71,13 +103,26 @@ export function ExplainerControls({
         compact ? "space-y-1.5 p-2.5" : "space-y-3 p-4",
       )}
     >
-      <div className={cn("flex items-center justify-between", compact ? "gap-2" : "gap-3")}>
+      <div
+        className={cn(
+          "flex items-center justify-between",
+          compact ? "gap-2" : "gap-3",
+          stackOnNarrow &&
+            "flex-col items-stretch sm:flex-row sm:items-center sm:justify-between",
+        )}
+      >
         <div className="flex min-w-0 items-center gap-1.5">
           <span
             data-testid="explainer-phase"
             className="rounded-full border-2 border-border px-2.5 py-0.5 text-[0.7rem] font-black text-muted-foreground"
           >
-            {phase === "resolved" ? "الكشف" : "الاختيار"}
+            {phase === "resolved"
+              ? "الكشف"
+              : phase === "ownership"
+                ? "الملكية"
+                : phase === "simulation"
+                  ? "تسريع"
+                  : "الاختيار"}
           </span>
           {suspended && !userPaused && !reducedMotion && (
             <span
@@ -89,16 +134,22 @@ export function ExplainerControls({
           )}
           <span
             data-testid="explainer-progress"
-            className="akwaan-numeral text-xs font-black text-muted-foreground"
+            className="akwaan-numeral shrink-0 whitespace-nowrap text-xs font-black text-muted-foreground"
           >
             {step + 1} / {total}
           </span>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div
+          className={cn(
+            "flex shrink-0 items-center gap-1.5",
+            stackOnNarrow && "justify-between sm:justify-start",
+          )}
+        >
           {reducedMotion ? (
             <>
               <Button
+                type="button"
                 size="sm"
                 variant="outline"
                 data-testid="explainer-prev"
@@ -109,6 +160,7 @@ export function ExplainerControls({
                 السابق
               </Button>
               <Button
+                type="button"
                 size="sm"
                 variant="outline"
                 data-testid="explainer-next"
@@ -121,6 +173,7 @@ export function ExplainerControls({
             </>
           ) : (
             <Button
+              type="button"
               size="sm"
               variant="outline"
               data-testid="explainer-play-toggle"
@@ -141,6 +194,7 @@ export function ExplainerControls({
             </Button>
           )}
           <Button
+            type="button"
             size="sm"
             variant="outline"
             data-testid="explainer-skip"
@@ -152,6 +206,7 @@ export function ExplainerControls({
             <span className="hidden sm:inline">تخطّي</span>
           </Button>
           <Button
+            type="button"
             size="sm"
             data-testid="explainer-replay"
             onClick={replay}
@@ -168,7 +223,13 @@ export function ExplainerControls({
         aria-live="polite"
         className={cn(
           "font-bold leading-relaxed text-foreground",
-          compact ? "text-[0.72rem] min-h-[2rem]" : "text-sm min-h-[2.5rem]",
+          // The caption is the instruction a room reads off the shared screen, so
+          // compact mode no longer shrinks it below body size. Each min-height
+          // reserves the longest caption's measured line count at that width
+          // (3 lines < sm, 2 lines < lg, 1 line from lg) so steps never jump.
+          compact
+            ? "text-sm sm:text-base min-h-[3.75rem] sm:min-h-[3rem] lg:min-h-[2rem]"
+            : "text-sm min-h-[2.5rem]",
         )}
       >
         {caption}

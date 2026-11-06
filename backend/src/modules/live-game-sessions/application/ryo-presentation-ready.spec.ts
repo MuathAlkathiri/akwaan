@@ -1150,6 +1150,59 @@ describe('PresentationReady (recurring generation)', () => {
     );
   });
 
+  // ── RECONNECT DURING A LIVE GENERATION (Odd Piece V2, Phase C.2) ──────────
+  //
+  // A surface that reconnects while the recurring generation is already live
+  // projects a generation-less reconnect surface. Its acknowledgement belongs to
+  // the active-surface bookkeeping; refusing it as a missing generation left a
+  // reconnected phone unable to rejoin the puzzle. Before activation the
+  // generation is still required (see "requires a generation once a recurring
+  // presentation exists").
+  it('accepts a generation-less reconnect acknowledgement from a participant once active', async () => {
+    const { h, generation } = await preparedHarness();
+    await recurBarrier(h, generation);
+    const activatedAt = currentPresentation(h).activatedAt;
+    h.runtime.withdrawCurrentPresentationReadiness(CONN_ANSWER);
+
+    await expect(
+      recurAck(
+        h,
+        ANSWERER_ACTOR,
+        'conn-answer-2',
+        'cmd-reconnect-answer',
+        undefined,
+      ),
+    ).resolves.toBeDefined();
+
+    expect(currentPresentation(h).status).toBe('activated');
+    expect(currentPresentation(h).generation).toBe(generation);
+    expect(currentPresentation(h).activatedAt).toBe(activatedAt);
+  });
+
+  it('accepts a generation-less reconnect acknowledgement from the shared screen once active', async () => {
+    const { h, generation } = await preparedHarness();
+    const initialActivatedAt = h.runtime.serialize().presentationActivatedAt;
+    await recurBarrier(h, generation);
+    const activatedAt = currentPresentation(h).activatedAt;
+    h.runtime.withdrawCurrentPresentationReadiness(CONN_SHARED);
+
+    await expect(
+      recurAck(
+        h,
+        CONTROLLER_ACTOR,
+        'conn-shared-2',
+        'cmd-reconnect-shared',
+        undefined,
+      ),
+    ).resolves.toBeDefined();
+
+    expect(currentPresentation(h).status).toBe('activated');
+    expect(currentPresentation(h).activatedAt).toBe(activatedAt);
+    expect(h.runtime.serialize().presentationActivatedAt).toBe(
+      initialActivatedAt,
+    );
+  });
+
   // ── ABORT / CAS ───────────────────────────────────────────────────────────
   it('refuses to activate a terminal runtime (post-abort)', async () => {
     const { h, generation } = await preparedHarness();

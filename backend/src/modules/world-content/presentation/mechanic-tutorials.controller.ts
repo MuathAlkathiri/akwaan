@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -6,6 +14,7 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 import { UserRole } from '../../users/schemas/user.schema';
 import { MechanicTutorialService } from '../application/mechanic-tutorial.service';
 import { TutorialScenarioDto } from '../dto/mechanic-tutorial.dto';
+import { TutorialScenarioInput } from '../domain/mechanic-tutorial.policy';
 import { envelope } from './world-content.http';
 
 /**
@@ -34,7 +43,9 @@ export class AdminMechanicTutorialsController {
     @Param('mechanicKey') mechanicKey: string,
     @Body() dto: TutorialScenarioDto,
   ) {
-    return envelope(this.tutorials.saveDraft(mechanicKey, dto));
+    return envelope(
+      this.tutorials.saveDraft(mechanicKey, dto as TutorialScenarioInput),
+    );
   }
 
   /** Dry-run the publish checks, including the competitive-overlap guard. */
@@ -43,12 +54,101 @@ export class AdminMechanicTutorialsController {
     @Param('mechanicKey') mechanicKey: string,
     @Body() dto: TutorialScenarioDto,
   ) {
-    return envelope(this.tutorials.validate(mechanicKey, dto));
+    return envelope(
+      this.tutorials.validate(mechanicKey, dto as TutorialScenarioInput),
+    );
   }
 
   @Post('publish')
   publish(@Param('mechanicKey') mechanicKey: string) {
     return envelope(this.tutorials.publish(mechanicKey));
+  }
+}
+
+/** World-scoped example authoring. Global ADMIN remains the only role allowed. */
+@ApiTags('World Management')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
+@Controller('admin/worlds/:worldId/mechanics/:mechanicKey/tutorial')
+export class AdminWorldMechanicTutorialsController {
+  constructor(private readonly tutorials: MechanicTutorialService) {}
+
+  @Get()
+  get(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+  ) {
+    return envelope(this.tutorials.getScopedForAdmin(worldId, mechanicKey));
+  }
+
+  @Put('draft')
+  saveDraft(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+    @Body() dto: TutorialScenarioDto,
+  ) {
+    return envelope(
+      this.tutorials.saveScopedDraft(
+        worldId,
+        mechanicKey,
+        dto as TutorialScenarioInput,
+      ),
+    );
+  }
+
+  @Post('validate')
+  validate(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+    @Body() dto: TutorialScenarioDto,
+  ) {
+    return envelope(
+      this.tutorials.validateScoped(
+        worldId,
+        mechanicKey,
+        dto as TutorialScenarioInput,
+      ),
+    );
+  }
+
+  @Post('publish')
+  publish(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+  ) {
+    return envelope(this.tutorials.publishScoped(worldId, mechanicKey));
+  }
+
+  @Get('revisions')
+  revisions(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+  ) {
+    return envelope(this.tutorials.listScopedRevisions(worldId, mechanicKey));
+  }
+
+  @Post('revisions/:revision/restore')
+  restore(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+    @Param('revision') revision: string,
+  ) {
+    return envelope(
+      this.tutorials.restoreScopedRevision(
+        worldId,
+        mechanicKey,
+        Number(revision),
+      ),
+    );
+  }
+
+  @Post('withdraw')
+  withdraw(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+  ) {
+    return envelope(this.tutorials.withdrawScoped(worldId, mechanicKey));
   }
 }
 
@@ -72,5 +172,19 @@ export class MechanicTutorialsController {
   @Get()
   published(@Param('mechanicKey') mechanicKey: string) {
     return envelope(this.tutorials.getPublished(mechanicKey));
+  }
+}
+
+@ApiTags('Player Catalog')
+@Controller('worlds/:worldId/mechanics/:mechanicKey/tutorial')
+export class WorldMechanicTutorialsController {
+  constructor(private readonly tutorials: MechanicTutorialService) {}
+
+  @Get()
+  published(
+    @Param('worldId') worldId: string,
+    @Param('mechanicKey') mechanicKey: string,
+  ) {
+    return envelope(this.tutorials.getPublishedForWorld(worldId, mechanicKey));
   }
 }

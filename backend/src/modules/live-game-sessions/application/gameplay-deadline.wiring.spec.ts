@@ -500,6 +500,12 @@ describe('a mechanic may own more than one deadline window', () => {
       if (plugin.key === 'moving-xo') continue;
       const declaration = plugin.deadline;
       if (declaration?.source !== 'runtime-state') continue;
+      if (plugin.key === 'odd-piece' && plugin.version === 2) {
+        expect(declaration.commandTypeByPhase).toEqual({
+          answering: 'expire-odd-piece-hotspot-answer',
+        });
+        continue;
+      }
       // No other mechanic declares a per-phase map, so each still arms its one
       // command in its one set of phases.
       expect(declaration.commandTypeByPhase).toBeUndefined();

@@ -51,6 +51,8 @@ export interface ExplainerTimelineOptions {
 export interface ExplainerTimeline {
   /** The step currently on screen. */
   index: number;
+  /** Normalized progress through the current step, driven by GSAP time. */
+  stepProgress: number;
   /** True while the timeline is actually running. */
   playing: boolean;
   /** True while the final beat is the one on screen. */
@@ -93,10 +95,13 @@ export function useExplainerTimeline(
   scope: React.RefObject<HTMLElement | null>,
   options: ExplainerTimelineOptions = {},
 ): ExplainerTimeline {
-  const { visibilityThreshold = EXPLAINER_VISIBILITY_THRESHOLD, stopped = false } =
-    options;
+  const {
+    visibilityThreshold = EXPLAINER_VISIBILITY_THRESHOLD,
+    stopped = false,
+  } = options;
   const reducedMotion = usePrefersReducedMotion();
   const [index, setIndex] = useState(0);
+  const [stepProgress, setStepProgress] = useState(0);
   const [userPaused, setUserPaused] = useState(false);
   // Starts visible, unconditionally. This value is rendered (the controls show a
   // suspended hint), so it must not be derived from anything that differs
@@ -127,12 +132,33 @@ export function useExplainerTimeline(
     if (!element) return;
 
     const context = gsap.context(() => {
+      const starts = holds.reduce<number[]>((positions, _hold, step) => {
+        positions.push(
+          (positions[step - 1] ?? 0) + (step === 0 ? 0 : holds[step - 1]),
+        );
+        return positions;
+      }, []);
       const timeline = gsap.timeline({
         // One timeline for every loop. `repeat: -1` is what keeps a replay from
         // allocating a new one each cycle, and the trailing hold below is what
         // stops the payoff being yanked away the instant it lands.
         repeat: -1,
         paused: true,
+        onUpdate: () => {
+          const time = timeline.time();
+          let step = last;
+          for (let candidate = 0; candidate < starts.length; candidate += 1) {
+            if (time < starts[candidate] + holds[candidate]) {
+              step = candidate;
+              break;
+            }
+          }
+          const duration = holds[step] || 1;
+          setIndex(step);
+          setStepProgress(
+            Math.min(1, Math.max(0, (time - starts[step]) / duration)),
+          );
+        },
       });
       holds.forEach((hold, step) => {
         timeline.call(() => setIndex(step), undefined, step === 0 ? 0 : ">");
@@ -140,6 +166,9 @@ export function useExplainerTimeline(
       });
       timeline.to({}, { duration: EXPLAINER_LOOP_HOLD_SECONDS });
       timelineRef.current = timeline;
+      element.dataset.explainerTimelineInitCount = String(
+        Number(element.dataset.explainerTimelineInitCount ?? "0") + 1,
+      );
     }, element);
     setTimelineReady(true);
 
@@ -154,7 +183,7 @@ export function useExplainerTimeline(
     // and `scope` is a ref, so this does not re-run when the surrounding screen
     // re-renders. A readiness or presence update must never restart playback
     // from the first beat under the host's eyes.
-  }, [holds, reducedMotion, stopped, scope]);
+  }, [holds, last, reducedMotion, stopped, scope]);
 
   /** Apply the precedence policy. The single place playback starts or stops. */
   useEffect(() => {
@@ -172,12 +201,42 @@ export function useExplainerTimeline(
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[entries.length - 1];
-        if (entry) setOnScreen(entry.intersectionRatio >= visibilityThreshold);
+        if (entry) {
+          const rect = element.getBoundingClientRect();
+          const geometricallyVisible =
+            rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight;
+          // A fixed Radix dialog can report a transient non-intersecting sample
+          // while its portal is settling even though its box is already visible.
+          // Geometry is the safe fallback for that case; once genuinely outside
+          // the viewport the same check becomes false again.
+          setOnScreen(
+            entry.isIntersecting
+              ? entry.intersectionRatio >= visibilityThreshold
+              : geometricallyVisible,
+          );
+        }
       },
       { threshold: [0, visibilityThreshold, 1] },
     );
     observer.observe(element);
-    return () => observer.disconnect();
+    // Radix dialogs animate from a hidden/zero-area portal. IntersectionObserver
+    // may deliver that first sample before the content settles and not emit a
+    // second one, leaving a visibly open explainer suspended forever. Re-check
+    // after the opening frame and once after the short entrance transition; the
+    // observer still owns ongoing scroll/visibility recovery.
+    const refreshAfterMount = () => {
+      const rect = element.getBoundingClientRect();
+      setOnScreen(
+        rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight,
+      );
+    };
+    const frame = window.requestAnimationFrame(refreshAfterMount);
+    const settle = window.setTimeout(refreshAfterMount, 350);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(settle);
+      observer.disconnect();
+    };
   }, [reducedMotion, scope, visibilityThreshold]);
 
   useEffect(() => {
@@ -190,12 +249,14 @@ export function useExplainerTimeline(
 
   const replay = useCallback(() => {
     setIndex(0);
+    setStepProgress(0);
     setUserPaused(false);
     timelineRef.current?.restart(true);
   }, []);
 
   const skip = useCallback(() => {
     setIndex(last);
+    setStepProgress(1);
     const timeline = timelineRef.current;
     if (!timeline) return;
     // Park on the final beat rather than rolling straight into the next loop:
@@ -209,7 +270,11 @@ export function useExplainerTimeline(
   }, [last]);
 
   const goTo = useCallback(
-    (next: number) => setIndex(Math.min(Math.max(next, 0), last)),
+    (next: number) => {
+      const clamped = Math.min(Math.max(next, 0), last);
+      setIndex(clamped);
+      setStepProgress(clamped === last ? 1 : 0);
+    },
     [last],
   );
 
@@ -217,6 +282,7 @@ export function useExplainerTimeline(
 
   return {
     index,
+    stepProgress,
     playing: shouldPlay && timelineReady,
     finished: index >= last,
     userPaused,

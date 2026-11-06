@@ -13,11 +13,7 @@ import {
   productionMechanicSystemFields,
 } from './production-mechanic.definition';
 import { issue } from './world-content.errors';
-import {
-  ChallengeTypeView,
-  hasCompletePlayerInstructions,
-  WorldContentIssue,
-} from './world-content.types';
+import { ChallengeTypeView, WorldContentIssue } from './world-content.types';
 
 /**
  * Rules that make a mechanic definition coherent on its own, before any World
@@ -118,19 +114,6 @@ export class ChallengeTypePolicy {
   /** Warnings do not block activation but are surfaced to the admin. */
   warnings(challengeType: ChallengeTypeView): WorldContentIssue[] {
     const warnings: WorldContentIssue[] = [];
-    // Player instructions are authored data, and a mechanic on a live board
-    // without them shows players a fallback rather than an explanation. That is
-    // a coverage gap to surface, never a reason to block the listing — a legacy
-    // record must still read and a draft is allowed to be incomplete.
-    if (!hasCompletePlayerInstructions(challengeType.defaultPresentation)) {
-      warnings.push(
-        issue(
-          'CHALLENGE_TYPE_PLAYER_INSTRUCTIONS_MISSING',
-          `Challenge type "${challengeType.name}" has no player instructions; players will see the fallback until a summary and at least one step are authored`,
-          { challengeTypeId: challengeType.id },
-        ),
-      );
-    }
     if (this.scoringRules.isRegistered(challengeType.scoringRuleId)) {
       const declaration = this.scoringRules.declaration(
         challengeType.scoringRuleId,

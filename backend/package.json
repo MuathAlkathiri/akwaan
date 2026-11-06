@@ -43,6 +43,7 @@
     "migrate:gameplay-runtime-indexes:dist": "node dist/scripts/migrate-gameplay-runtime-indexes.js",
     "migrate:canonical-mechanic-slugs": "ts-node -r tsconfig-paths/register src/scripts/migrate-canonical-mechanic-slugs.ts",
     "migrate:canonical-mechanic-slugs:dist": "node dist/scripts/migrate-canonical-mechanic-slugs.js",
+    "migrate:remove-legacy-tutorial-text": "ts-node -r tsconfig-paths/register src/scripts/migrate-remove-legacy-tutorial-text.ts",
     "provision:production-mechanics": "ts-node -r tsconfig-paths/register src/scripts/provision-production-mechanics.ts",
     "provision:production-mechanics:dist": "node dist/scripts/provision-production-mechanics.js",
     "import:content-library": "ts-node -r tsconfig-paths/register src/scripts/import-content-library.ts"

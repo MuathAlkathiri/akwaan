@@ -52,7 +52,6 @@ export interface PlayableBoardSlot {
   family: BoardSlot['family'];
   displayName: string;
   description?: string;
-  instructions?: string;
   sortOrder: number;
 }
 
@@ -186,7 +185,6 @@ function toPlayableSlot(slot: BoardSlot): PlayableBoardSlot {
     family: slot.family,
     displayName: slot.displayName,
     ...(slot.description ? { description: slot.description } : {}),
-    ...(slot.instructions ? { instructions: slot.instructions } : {}),
     sortOrder: slot.sortOrder,
   };
 }

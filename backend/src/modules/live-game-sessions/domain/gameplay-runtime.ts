@@ -108,12 +108,14 @@ export interface GameplayRuntimeState {
    * be withdrawn. `capability` is the safe surface keyword; `connectionId` is the
    * server-observed socket identity that acked (the controller shared surface is
    * bound to the controller's own socket connection id, a participant-bound
-   * surface to that participant's acking connection). Cleared once the runtime
-   * activates; a disconnected acking connection is withdrawn by id.
+   * surface to that participant's acking connection). One-shot mechanics clear
+   * these entries on activation; Odd Piece V2 retains them so a disconnected
+   * phone can be revoked after activation.
    */
   presentationReady?: Array<{
     capability: PresentationSurfaceCapability;
     connectionId: string;
+    participantId?: string;
   }>;
   /**
    * Why the presentation currently cannot proceed, when a surface has reported
@@ -145,6 +147,7 @@ export interface GameplayRuntimeState {
     readiness: Array<{
       capability: PresentationSurfaceCapability;
       connectionId: string;
+      participantId?: string;
     }>;
   };
   runtimeState: GameplayModeState;
@@ -425,6 +428,17 @@ export class GameplayRuntime {
       );
       return [];
     }
+    const required = this.requiredPresentationSurfaces() ?? [];
+    const readyParticipants = required
+      .map((surface) => {
+        const ready = this.state.presentationReady?.find(
+          (entry) => entry.capability === surface.capability,
+        );
+        return ready?.participantId ?? surface.participantId;
+      })
+      .filter((participantId): participantId is string =>
+        Boolean(participantId),
+      );
     const reanchored = this.plugin.activatePresentation?.(
       this.state.runtimeState,
       now,
@@ -435,6 +449,7 @@ export class GameplayRuntime {
         activeTeamId: this.state.activeRound?.activeTeamId,
         activeParticipantId: this.state.activeRound?.activeParticipantId,
         runtimeState: this.state.runtimeState,
+        presentationReadyParticipantIds: readyParticipants,
       },
     );
     if (reanchored) {
@@ -450,7 +465,12 @@ export class GameplayRuntime {
       this.state.runtimeState = this.plugin.validateRuntimeState(runtimeState);
     }
     this.state.presentationActivatedAt = now.toISOString();
-    this.state.presentationReady = [];
+    // V2 keeps the identity/connection provenance live after activation so a
+    // phone disconnect can revoke its image-readiness claim. Other mechanics
+    // retain the historical one-shot barrier semantics.
+    if (!(this.state.modeKey === 'odd-piece' && this.state.modeVersion === 2)) {
+      this.state.presentationReady = [];
+    }
     this.commit(
       'presentation-activated',
       commandId,
@@ -489,6 +509,7 @@ export class GameplayRuntime {
     generation: number;
     capability: PresentationSurfaceCapability;
     connectionId: string;
+    participantId?: string;
     commandId: string;
     actorId: string;
     now: Date;
@@ -515,6 +536,7 @@ export class GameplayRuntime {
     checkpoint.readiness.push({
       capability: input.capability,
       connectionId: input.connectionId,
+      ...(input.participantId ? { participantId: input.participantId } : {}),
     });
     this.commit(
       'presentation-surface-ready',
@@ -565,6 +587,17 @@ export class GameplayRuntime {
         'Presentation generation is not current',
       );
     if (checkpoint.status === 'activated') return [];
+    const required = this.requiredPresentationSurfaces() ?? [];
+    const readyParticipants = required
+      .map((surface) => {
+        const ready = checkpoint.readiness.find(
+          (entry) => entry.capability === surface.capability,
+        );
+        return ready?.participantId ?? surface.participantId;
+      })
+      .filter((participantId): participantId is string =>
+        Boolean(participantId),
+      );
     const reanchored = this.plugin.activatePresentation?.(
       this.state.runtimeState,
       now,
@@ -577,6 +610,7 @@ export class GameplayRuntime {
         runtimeState: this.state.runtimeState,
         presentationKind: 'recurring',
         presentationGeneration: generation,
+        presentationReadyParticipantIds: readyParticipants,
       },
     );
     let effects: readonly GameplaySessionEffect[] = [];
@@ -597,6 +631,19 @@ export class GameplayRuntime {
     }
     checkpoint.status = 'activated';
     checkpoint.activatedAt = now.toISOString();
+    if (this.state.modeKey === 'odd-piece' && this.state.modeVersion === 2) {
+      this.state.presentationReady = [
+        ...(this.state.presentationReady ?? []),
+        ...checkpoint.readiness.filter(
+          (entry) =>
+            !this.state.presentationReady?.some(
+              (existing) =>
+                existing.capability === entry.capability &&
+                existing.connectionId === entry.connectionId,
+            ),
+        ),
+      ];
+    }
     checkpoint.readiness = [];
     this.commit(
       'presentation-activated',
@@ -639,11 +686,54 @@ export class GameplayRuntime {
   /** Withdraw a specific acknowledged connection's readiness (disconnect). */
   clearSurfaceReadiness(connectionId: string): void {
     if (!this.state.presentationReady) return;
+    const removed = this.state.presentationReady.filter(
+      (entry) => entry.connectionId === connectionId,
+    );
     const next = this.state.presentationReady.filter(
       (entry) => entry.connectionId !== connectionId,
     );
     if (next.length !== this.state.presentationReady.length) {
       this.state.presentationReady = next;
+      const remainingParticipantIds = new Set(
+        next
+          .map((entry) => entry.participantId)
+          .filter((participantId): participantId is string =>
+            Boolean(participantId),
+          ),
+      );
+      const removedParticipantIds = new Set(
+        removed
+          .map((entry) => entry.participantId)
+          .filter((participantId): participantId is string =>
+            Boolean(participantId),
+          ),
+      );
+      if (removedParticipantIds.size) {
+        try {
+          const acknowledged = JSON.parse(
+            String(
+              this.state.runtimeState.presentationReadyParticipantIdsJson ??
+                '[]',
+            ),
+          );
+          if (Array.isArray(acknowledged)) {
+            this.state.runtimeState = {
+              ...this.state.runtimeState,
+              presentationReadyParticipantIdsJson: JSON.stringify(
+                acknowledged.filter(
+                  (participantId) =>
+                    typeof participantId !== 'string' ||
+                    !removedParticipantIds.has(participantId) ||
+                    remainingParticipantIds.has(participantId),
+                ),
+              ),
+            };
+          }
+        } catch {
+          // Invalid readiness metadata is already treated as no acknowledged
+          // participant by the V2 plugin and is safe to leave untouched here.
+        }
+      }
       this.commit(
         'presentation-readiness-withdrawn',
         'system',
@@ -680,6 +770,7 @@ export class GameplayRuntime {
     commandId: string,
     actorId: string,
     now: Date,
+    participantId?: string,
   ): void {
     const existing = this.state.presentationReady ?? [];
     const next = [
@@ -688,10 +779,40 @@ export class GameplayRuntime {
           entry.capability !== capability ||
           entry.connectionId !== connectionId,
       ),
-      { capability, connectionId },
+      {
+        capability,
+        connectionId,
+        ...(participantId ? { participantId } : {}),
+      },
     ];
     if (JSON.stringify(existing) === JSON.stringify(next)) return;
     this.state.presentationReady = next;
+    if (participantId) {
+      let acknowledged: string[] = [];
+      try {
+        const parsed = JSON.parse(
+          String(
+            this.state.runtimeState.presentationReadyParticipantIdsJson ?? '[]',
+          ),
+        );
+        if (Array.isArray(parsed)) {
+          acknowledged = parsed.filter(
+            (value): value is string => typeof value === 'string',
+          );
+        }
+      } catch {
+        acknowledged = [];
+      }
+      if (!acknowledged.includes(participantId)) {
+        this.state.runtimeState = {
+          ...this.state.runtimeState,
+          presentationReadyParticipantIdsJson: JSON.stringify([
+            ...acknowledged,
+            participantId,
+          ]),
+        };
+      }
+    }
     this.commit(
       'presentation-surface-ready',
       commandId,

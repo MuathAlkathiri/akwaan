@@ -127,7 +127,8 @@ export function LiveSessionProvider({
         dispatch({ type: "connection", connection });
         // A fresh live connection (initial connect or a reconnect) starts a new
         // epoch; the server treats it as a new socket that must acknowledge again.
-        if (connection === "connected") setConnectionEpoch((epoch) => epoch + 1);
+        if (connection === "connected")
+          setConnectionEpoch((epoch) => epoch + 1);
       },
       onError: (error) => dispatch({ type: "error", error }),
       onResyncing: () =>
@@ -271,28 +272,40 @@ export function LiveSessionProvider({
       expectedRuntimeRevision: number;
       presentationGeneration?: number;
       presentationOutcome?:
-        | "ready"
-        | "media-unavailable"
-        | "autoplay-blocked"
-        | "retry";
+        "ready" | "media-unavailable" | "autoplay-blocked" | "retry";
     }) => {
       const socket = socketRef.current;
-      if (!socket) return Promise.reject(new Error("No live session connection"));
+      if (!socket)
+        return Promise.reject(new Error("No live session connection"));
       try {
-        socket.presentationReady({
-          sessionId,
-          commandId: crypto.randomUUID(),
-          expectedSessionRevision: input.expectedSessionRevision,
-          expectedRuntimeRevision: input.expectedRuntimeRevision,
-          ...(input.presentationGeneration !== undefined
-            ? { presentationGeneration: input.presentationGeneration }
-            : {}),
-          // Omitted when `ready`, so an unchanged client still sends exactly
-          // the payload it always did.
-          ...(input.presentationOutcome && input.presentationOutcome !== "ready"
-            ? { presentationOutcome: input.presentationOutcome }
-            : {}),
-        });
+        socket.presentationReady(
+          {
+            sessionId,
+            commandId: crypto.randomUUID(),
+            expectedSessionRevision: input.expectedSessionRevision,
+            expectedRuntimeRevision: input.expectedRuntimeRevision,
+            ...(input.presentationGeneration !== undefined
+              ? { presentationGeneration: input.presentationGeneration }
+              : {}),
+            // Omitted when `ready`, so an unchanged client still sends exactly
+            // the payload it always did.
+            ...(input.presentationOutcome &&
+            input.presentationOutcome !== "ready"
+              ? { presentationOutcome: input.presentationOutcome }
+              : {}),
+          },
+          () => {
+            const latest = snapshotRef.current;
+            if (!latest?.gameplay) return undefined;
+            return {
+              expectedSessionRevision: latest.revision,
+              expectedRuntimeRevision: latest.gameplay.revision,
+              ...(input.presentationGeneration !== undefined
+                ? { presentationGeneration: input.presentationGeneration }
+                : {}),
+            };
+          },
+        );
         return Promise.resolve();
       } catch (error) {
         return Promise.reject(error);

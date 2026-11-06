@@ -181,3 +181,47 @@ describe('LlmClientService LM Studio compatibility diagnostics', () => {
     });
   });
 });
+
+describe('LlmClientService when AI question generation is disabled', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  const disabled = (provider: string) =>
+    new LlmClientService({
+      get: (key: string) =>
+        ({
+          AI_QUESTION_GENERATION_ENABLED: 'false',
+          AI_PROVIDER: provider,
+          OPENROUTER_API_KEY: 'configured-but-must-not-be-used',
+          LM_STUDIO_BASE_URL: 'http://127.0.0.1:1234/v1',
+        })[key],
+    } as unknown as ConfigService);
+
+  it.each(['openrouter', 'lmstudio'])(
+    'refuses a %s completion without any network call',
+    async (provider) => {
+      const fetchSpy = jest.spyOn(global, 'fetch');
+
+      await expect(disabled(provider).complete('prompt')).rejects.toMatchObject(
+        { code: 'AI_PROVIDER_DISABLED' },
+      );
+      expect(fetchSpy).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['openrouter', 'lmstudio'])(
+    'refuses a %s structured generation without any network call',
+    async (provider) => {
+      const fetchSpy = jest.spyOn(global, 'fetch');
+
+      await expect(
+        disabled(provider).generateStructured({
+          purpose: 'question-writing',
+          systemPrompt: 'system',
+          userPrompt: 'user',
+          schema: {},
+        }),
+      ).rejects.toMatchObject({ code: 'AI_PROVIDER_DISABLED' });
+      expect(fetchSpy).not.toHaveBeenCalled();
+    },
+  );
+});

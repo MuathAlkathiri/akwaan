@@ -12,7 +12,6 @@ import {
 import { issue } from './world-content.errors';
 import {
   ChallengeTypeView,
-  PlayerInstructions,
   WorldChallengeConfigurationView,
   WorldContentIssue,
   WorldView,
@@ -26,9 +25,6 @@ export interface BoardSlot {
   family: ChallengeFamily;
   displayName: string;
   description?: string;
-  instructions?: string;
-  /** Mechanic-canonical player explanation, from the ChallengeType. */
-  playerInstructions?: PlayerInstructions;
   itemStructure: ChallengeItemStructure;
   answerMode: ChallengeAnswerMode;
   scoringRuleId: string;
@@ -129,18 +125,6 @@ export class BoardDefinitionPolicy {
         displayName: configuration.displayName ?? challengeType.name,
         ...(configuration.description
           ? { description: configuration.description }
-          : {}),
-        ...(configuration.instructions
-          ? { instructions: configuration.instructions }
-          : {}),
-        // Canonical, World-invariant: it comes from the mechanic, not from the
-        // per-World configuration, so every World that plays this mechanic shows
-        // the same explanation.
-        ...(challengeType.defaultPresentation.playerInstructions
-          ? {
-              playerInstructions:
-                challengeType.defaultPresentation.playerInstructions,
-            }
           : {}),
         itemStructure: challengeType.itemStructure,
         answerMode: challengeType.answerMode,

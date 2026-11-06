@@ -114,6 +114,57 @@ export const fetchWorldBoard = (worldId: string) =>
     apiClient.get(`/admin/worlds/${worldId}/challenge-configurations`),
   );
 
+/**
+ * World choices for the mechanic-centric tutorial editor.  The list is derived
+ * from the same board configuration records the server uses to authorize a
+ * scoped tutorial; no World names or slugs are hard-coded in the client.
+ */
+export interface TutorialWorldOption {
+  worldId: string;
+  worldName: string;
+  worldSlug: string;
+  configurationId: string;
+  effectiveName: string;
+  isEnabled: boolean;
+}
+
+export async function fetchTutorialWorldOptions(
+  mechanicKey: string,
+): Promise<TutorialWorldOption[]> {
+  const worlds = await fetchWorlds();
+  const boards = await Promise.all(
+    worlds.map(async (world) => {
+      try {
+        return { world, board: await fetchWorldBoard(world.id) };
+      } catch {
+        // A stale/deleted World must not make the entire mechanic editor
+        // unusable. The server remains authoritative when a scope is selected.
+        return null;
+      }
+    }),
+  );
+
+  return boards
+    .flatMap((entry) => {
+      if (!entry) return [];
+      const configuration = entry.board.configurations.find(
+        (candidate) => candidate.challengeType.slug === mechanicKey,
+      );
+      if (!configuration) return [];
+      return [
+        {
+          worldId: entry.world.id,
+          worldName: entry.world.name,
+          worldSlug: entry.world.slug,
+          configurationId: configuration.id,
+          effectiveName: configuration.effectiveName,
+          isEnabled: configuration.isEnabled,
+        },
+      ];
+    })
+    .sort((left, right) => left.worldName.localeCompare(right.worldName));
+}
+
 export const createWorldChallengeConfiguration = (
   worldId: string,
   data: Payload,
