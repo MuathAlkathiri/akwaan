@@ -56,7 +56,7 @@ This World supplies presentation context only.
   - `WHO_SAID_OR_DID_IT` (e.g. Legendary historic World Cup moments)
   - `BEFORE_AFTER` (e.g. `"بيب غوارديولا درب أي نادٍ ألماني قبل مانشستر سيتي؟"`)
 - **Archetypes to Limit**:
-  - Exact year memorization (e.g. `"في أي سنة فاز نادي X بكأس Y؟"`) -> Replace with `BEFORE_AFTER` or `SEQUENCE`.
+  - Exact year memorization (e.g. `"في أي سنة فاز نادي X بكأس Y؟"`) -> Replace with `BEFORE_AFTER` or `SEQUENCE`. This limit applies to every mechanic except Closest, where a year estimate is governed by the Closest mechanic Skill's year conditions.
   - Generic `"من هو اللاعب؟"` without a distinct cognitive shape.
 - **Content Dimensions to Rotate Through**:
   - Players, Clubs, Managers, Stadiums & Landmarks, Historical Moments, Tournaments & Trophies, Transfers & Career Paths, Kits & Badges, Nicknames, National Teams.

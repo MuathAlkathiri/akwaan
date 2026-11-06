@@ -62,20 +62,6 @@ ordinary football sense — a side plays six or seven matches, so even a goal a
 game is remarkable, and the real figure is higher still. Note how the prompt
 states the year: that is what makes the answer permanent.
 
-### 3. A date on a familiar timeline
-
-> «في أي عام أُقيمت أول بطولة لكأس العالم؟»
-
-- `correctValue`: **1930**
-- Domain: founding years of major international competitions, 1900–1960
-- `min` 1900 · `max` 1960 · `step` 1 · `displayFormat: 'calendar-year'`, no unit
-- Grid: (1930 − 1900) / 1 = 30 ✔
-
-**The property:** a year is a continuum every player can reason on. "Before the
-second war, after football turned professional" brackets it within a decade
-without knowing it. The calendar-year format is **authored**, never inferred —
-a four-digit number is not a year because it is large.
-
 ---
 
 ## Rejected exemplars
@@ -89,3 +75,35 @@ a four-digit number is not a year because it is large.
 
 The thread: each either has no way in, or has an answer that will not hold
 still. Neither is a complaint about the question being factual.
+
+### Rejected by the Product Owner (2026-11-06)
+
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"world-cup-rejected-first-tournament-year","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} -->
+### A date on a familiar timeline
+
+> «في أي عام أُقيمت أول بطولة لكأس العالم؟»
+
+- `correctValue`: **1930**
+- Domain: founding years of major international competitions, 1900–1960
+- `min` 1900 · `max` 1960 · `step` 1 · `displayFormat: 'calendar-year'`, no unit
+- Grid: (1930 − 1900) / 1 = 30 ✔
+
+**The property:** a year is a continuum every player can reason on. "Before the
+second war, after football turned professional" brackets it within a decade
+without knowing it. The calendar-year format is **authored**, never inferred —
+a four-digit number is not a year because it is large.
+<!-- /AKWAAN_EXEMPLAR_META -->
+
+**Owner decision, 2026-11-06.** This item was listed above as accepted exemplar 3. It is
+kept here, unchanged, as a historical record of what *not* to model. It is a
+content-quality rejection: 1930 is historically correct. It fails the Closest Skill's
+*Year questions* rules because:
+
+1. It mainly rewards memorizing a famous date: recognizable, not inferable.
+2. The player-visible prompt gives no reasoning support. The bracket in its
+   *property* note is never shown to players.
+3. It creates little team discussion: one player knows it and the rest follow.
+4. The answer is the exact slider midpoint (1930 in 1900–1960).
+5. A team that leaves the slider at the midpoint without knowing the year may score perfectly.
+
+Do not rewrite it into a replacement. It stays visible to duplicate screening.

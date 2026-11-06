@@ -245,7 +245,8 @@ class ExemplarMetadataTests(unittest.TestCase):
         paths = sorted(Path("ai/.opencode/skills/worlds").glob("**/EXEMPLARS.md"))
         self.assertEqual(len(paths), 8)
         expected_counts = {
-            "football/scopes/world-cup": 4,
+            # 5 since 2026-11-06: owner-rejected first-tournament-year record.
+            "football/scopes/world-cup": 5,
             "general-knowledge/scopes/science": 5,
             "puzzles/scopes/numbers-estimation": 12,
             "puzzles/scopes/spot-the-error": 8,

@@ -3812,6 +3812,7 @@ evidence (§16.1), never upgraded here.
 - **Media-first target:** ≈ **≥90% media-bearing** content (image/audio/video/meaningful visual interaction)
   per batch **where the mechanic naturally supports media**; media must carry **gameplay information** —
   decorative media does not count. Intent: stop the catalog degrading into trivia + cosmetic gimmick.
+  *(Clarified 2026-11-06, §33.1: there is no universal batch-wide quota outside such mechanics.)*
 - **Text-native exceptions remain valid:** Top-5, intentional Football Bomb name-fragment items, and any
   mechanic where text itself is the interaction.
 - **Wigolo-first authentic media:** when authentic real media exists (footballers, moments/stadiums, anime
@@ -6817,7 +6818,7 @@ approved authoring architecture: Production forward Puzzles content remains
 **0 real items**, and Moving XO remains local/dev only. ⬜ Not committed,
 ⬜ not deployed.
 
-### 32.6 Mechanic-safe exemplars and owner exemplar decisions — ✅ IMPLEMENTED & VERIFIED LOCALLY · 🚧 IN REVIEW, NOT MERGED (2026-11-06)
+### 32.6 Mechanic-safe exemplars and owner exemplar decisions — ✅ IMPLEMENTED & VERIFIED · ✅ MERGED · ✅ DEPLOYED (2026-11-06)
 
 **Engine-side (Phase 1A).** An APPROVED exemplar now enters a generation prompt only for
 the mechanics it names in a new `mechanics` metadata field (canonical manifest keys). An
@@ -6865,7 +6866,57 @@ resolver, the validator and parity tests.
 
 Local verification: backend unit suite, TypeScript↔Python parity, the Python authoring
 suites and the exemplar validator pass. Committed on the feature branch
-`feat/exemplar-mechanic-targeting` and opened as a pull request for review. ⬜ Not merged,
-⬜ not deployed.
+`feat/exemplar-mechanic-targeting` and reviewed as PR #35.
+
+**Release (2026-11-06).** ✅ PR #35 merged to `main` as
+`e1c8dd1db9bf26e528c56f9a2f77753a1e6e4d80`. ✅ Vercel production deployment succeeded and
+✅ Render `/health` reports the same commit. The change ships through the backend image's
+authoring files (`ENGINE_AUTHORING_ROOT`), so it affects generation prompts only. No runtime
+database, content, media or schema mutation occurred. The follow-ups above remain open.
+
+---
+
+## 33. Authoring policy reconciliation — Reference Library Phase 2B (2026-11-06)
+
+Two Product Owner decisions, taken after the Phase 2A Reference Library audit. Both change
+only canonical authoring guidance; scoring, payload and response schemas are unchanged.
+
+### 33.1 Media is mechanic-appropriate (Batch 1) — ✅ IMPLEMENTED & VERIFIED LOCALLY
+
+- There is **no universal batch-wide media quota**. The ≈ ≥90% media-bearing target of §23.2
+  applies only to batches whose mechanic naturally supports media, and counts only media that
+  carries gameplay information. `QUESTION-CRAFT.md` had turned it into an unconditional hard
+  gate (`BATCH_MEDIA_TARGET_90_PERCENT`, ≥173/192); that gate is replaced by
+  `MEDIA_ONLY_WHERE_IT_CARRIES_GAMEPLAY`, here and in the content-QA agent Skill.
+- Text-only questions are valid when media adds nothing; decorative media is never added to
+  reach a target. Media-native mechanics keep their required media.
+- Unchanged: answer-leakage prevention, authenticity, factual verification, media safety, and
+  the separation of media intent (authoring) from verified asset (media enrichment).
+
+### 33.2 Closest year estimates (Batch 2) — ✅ IMPLEMENTED & VERIFIED LOCALLY
+
+- Year recall stays META-TRIVIA, rejected by default for every mechanic except Closest.
+- Closest may use a year only as an inferable estimate: a recognizable event native to the
+  World/Scope, a reasoning path open to players who do not know the year, exactly one
+  defensible year, and no give-away clue. A famous date that players simply know or
+  blind-guess is not enough; arbitrary or obscure dates stay rejected. Puzzles remains
+  reasoning-only, so year recall is still invalid there.
+- These conditions are authoring and QA requirements; no validator can check inferability.
+- The 31 held year-as-number references in the Reference Library stay held pending separate
+  content QA. No content was released, rewritten or promoted.
+- **Owner rejection (2026-11-06):** the illustrative World Cup item «في أي عام أُقيمت أول بطولة
+  لكأس العالم؟» (1930, slider 1900–1960) is now a REJECTED exemplar record
+  (`world-cup-rejected-first-tournament-year`). It was correct, but it rewards memorizing a
+  famous date, gives players no reasoning support, creates little discussion, and puts the
+  answer at the exact slider midpoint. Kept unchanged for history and duplicate screening;
+  never a positive reference, never Gold, not rewritten.
+
+### 33.3 Status
+
+Batches 1–2 are implemented and verified locally on `feat/media-policy-reconciliation`
+(backend content-engine suite, TypeScript↔Python parity, Python authoring suites), committed
+on that branch and opened as a pull request for review. ⬜ Not merged, ⬜ not deployed. Once
+deployed they change the live generation prompts, because the backend image ships
+`ai/.opencode`.
 
 ---
