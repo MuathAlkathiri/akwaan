@@ -567,10 +567,13 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
           .expect(201)
       ).body.data;
 
-      expect(preflight.judgeEligible).toBe(false);
-      expect(preflight.conditionalJudgeEstimatedMicros).toBe(0);
+      // No retriever is bound here, so claims stay UNRESOLVED and get judged.
+      expect(preflight.judgeEligible).toBe(true);
+      expect(preflight.conditionalJudgeEstimatedMicros).toBe(
+        preflight.maxJudgeEstimatedMicros,
+      );
       expect(preflight.estimatedMicros).toBe(
-        preflight.generationEstimatedMicros,
+        preflight.generationEstimatedMicros + preflight.maxJudgeEstimatedMicros,
       );
 
       const submitted = (
@@ -613,7 +616,11 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
         expect(ledgerEntry!.reservedMicros).toBe(
           preflight.generationEstimatedMicros,
         );
-        expect(ledgerEntry!.reservedMicros).toBe(preflight.estimatedMicros);
+        // The quote now includes the judge, so the generation reservation is
+        // exactly the total minus the judge's share.
+        expect(preflight.estimatedMicros).toBe(
+          ledgerEntry!.reservedMicros + preflight.maxJudgeEstimatedMicros,
+        );
       } finally {
         if (prevTemp === undefined) {
           delete process.env.ENGINE_GENERATION_TEMPERATURE;

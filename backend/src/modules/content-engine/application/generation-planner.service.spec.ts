@@ -484,6 +484,45 @@ describe('GenerationPlannerService', () => {
       expect(getCoverage).not.toHaveBeenCalled();
     });
 
+    it('3c. plans an empty catalog as V1 when plan() is called directly', () => {
+      const plan = new GenerationPlannerService().plan({
+        worldKey: 'football',
+        scopeKey: 'world-cup',
+        mechanicKey: 'closest',
+        count: 6,
+        catalog: {
+          version: 1,
+          worldKey: 'football',
+          scopeKey: 'world-cup',
+          families: [],
+          digest: 'empty',
+          structuredSources: [],
+        } as never,
+      });
+      expect(plan.slots).toBeUndefined();
+      expect(plan.catalogDigest).toBeUndefined();
+      expect(plan.digest).toBeDefined();
+    });
+
+    it('3d. still fails closed on a catalog whose families are malformed', () => {
+      expect(() =>
+        new GenerationPlannerService().plan({
+          worldKey: 'football',
+          scopeKey: 'world-cup',
+          mechanicKey: 'closest',
+          count: 6,
+          catalog: {
+            version: 1,
+            worldKey: 'football',
+            scopeKey: 'world-cup',
+            families: 'not-a-list',
+            digest: 'bad',
+            structuredSources: [],
+          } as never,
+        }),
+      ).toThrow('non-empty array');
+    });
+
     it('4. strictly excludes families with DO_NOT_FORCE mechanic compatibility', async () => {
       const mockAuthoringContext = {
         resolveCanonicalFamiliesForScope: jest.fn().mockReturnValue({

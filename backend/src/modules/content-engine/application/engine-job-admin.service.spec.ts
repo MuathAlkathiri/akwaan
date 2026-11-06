@@ -853,7 +853,7 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
   });
 
   describe('Cost planning parity with execution (prompt composition, token limits, conditional judge allowance)', () => {
-    it('computes preflight cost from the actual composed prompt and outputTokensPerCandidate, and omits judge cost when fact retriever is disabled while still validating qualityModel pricing', async () => {
+    it('computes preflight cost from the actual composed prompt and outputTokensPerCandidate, and includes judge cost even when the fact retriever is disabled', async () => {
       const estimateCalls: Array<{
         provider: string;
         model: string;
@@ -908,13 +908,17 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
         targetCount: 4,
       });
 
-      expect(preflightWithoutGuidance.judgeEligible).toBe(false);
-      expect(preflightWithoutGuidance.conditionalJudgeEstimatedMicros).toBe(0);
-      expect(preflightWithoutGuidance.maxJudgeEstimatedMicros).toBeGreaterThan(
-        0,
+      // Retrieval is off, so claims stay UNRESOLVED and the judge still runs.
+      expect(preflightWithoutGuidance.judgeEligible).toBe(true);
+      expect(preflightWithoutGuidance.conditionalJudgeEstimatedMicros).toBe(
+        preflightWithoutGuidance.maxJudgeEstimatedMicros,
       );
       expect(preflightWithoutGuidance.estimatedMicros).toBe(
-        preflightWithoutGuidance.generationEstimatedMicros,
+        preflightWithoutGuidance.generationEstimatedMicros! +
+          preflightWithoutGuidance.maxJudgeEstimatedMicros!,
+      );
+      expect(preflightWithoutGuidance.maxJudgeEstimatedMicros).toBeGreaterThan(
+        0,
       );
 
       // Verify exact token ceiling: 4 candidates * 950 tokens = 3800 maxOutputTokens for generation
@@ -945,7 +949,7 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
         preflightWithoutGuidance.planDigest,
       );
 
-      // When FACT_EVIDENCE_RETRIEVER is bound, conditionalJudgeEstimatedMicros is included (1 call per candidate)
+      // The retriever changes nothing: every candidate can reach the judge (1 call per candidate)
       const serviceWithRetriever = new EngineJobAdminService(
         {} as never,
         {} as never,

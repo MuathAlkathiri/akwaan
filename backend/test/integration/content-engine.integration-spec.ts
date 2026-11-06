@@ -457,6 +457,30 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       );
     }, 60_000);
 
+    it('never admits more than the per-job cap under concurrent reservations', async () => {
+      // 25 SAR job cap, 40 parallel reservations of 1 SAR each on one job.
+      const attempts = await Promise.allSettled(
+        Array.from({ length: 40 }, (_, i) =>
+          budget.reserve({
+            reservationId: `job-race-${i}`,
+            jobId: 'one-job',
+            stage: 'generation',
+            provider: 'fake',
+            model: 'fake-model',
+            expected: ONE_SAR_CALL,
+          }),
+        ),
+      );
+      expect(attempts.filter((r) => r.status === 'fulfilled')).toHaveLength(25);
+      expect(
+        attempts.filter(
+          (r) =>
+            r.status === 'rejected' && r.reason instanceof BudgetExceededError,
+        ),
+      ).toHaveLength(15);
+      expect((await budget.snapshot()).reservedMicros).toBe(sarToMicros(25));
+    }, 60_000);
+
     it('rejects a single call larger than the per-batch cap', async () => {
       await expect(
         budget.reserve({
