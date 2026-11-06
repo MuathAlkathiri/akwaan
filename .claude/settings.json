@@ -20,5 +20,8 @@
     "additionalDirectories": [
       "/tmp"
     ]
+  },
+  "env": {
+    "IMPECCABLE_LIVE_COPY_AGENT": "chat"
   }
 }
