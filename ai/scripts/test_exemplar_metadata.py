@@ -1,3 +1,4 @@
+import json
 import unittest
 from pathlib import Path
 
@@ -17,6 +18,16 @@ except ModuleNotFoundError:
 
 OPEN = '<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"sample-one","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE"} -->'
 CLOSE = "<!-- /AKWAAN_EXEMPLAR_META -->"
+RYO = "read-your-opponent"
+KNOWN = ["read-your-opponent", "closest", "one-clue", "bomb"]
+
+
+def block(fields, body=None):
+    """One complete exemplar block with the given metadata and body."""
+
+    payload = {"version": 1, "reusePolicy": "DO_NOT_REGENERATE", **fields}
+    body = body if body is not None else f"{str(fields['id']).upper()} BODY"
+    return f"<!-- AKWAAN_EXEMPLAR_META {json.dumps(payload)} -->\n{body}\n{CLOSE}"
 
 
 class ExemplarMetadataTests(unittest.TestCase):
@@ -36,11 +47,17 @@ class ExemplarMetadataTests(unittest.TestCase):
         )
 
     def test_only_approved_content_enters_generation_view(self):
-        approved = OPEN + "\nAPPROVED BODY\n" + CLOSE
-        withheld = OPEN.replace("sample-one", "sample-two").replace(
-            '"APPROVED"', '"WITHHELD"'
-        ) + "\nWITHHELD BODY\n" + CLOSE
-        document = resolve_exemplar_document("\n".join([approved, withheld]))
+        approved = block(
+            {"id": "sample-one", "status": "APPROVED", "mechanics": [RYO]},
+            "APPROVED BODY",
+        )
+        withheld = block(
+            {"id": "sample-two", "status": "WITHHELD", "mechanics": [RYO]},
+            "WITHHELD BODY",
+        )
+        document = resolve_exemplar_document(
+            "\n".join([approved, withheld]), mechanic_key=RYO
+        )
         self.assertIn("APPROVED BODY", document.approved_text)
         self.assertIn('"DO_NOT_REGENERATE"', document.approved_text)
         self.assertNotIn("WITHHELD BODY", document.approved_text)
@@ -48,7 +65,7 @@ class ExemplarMetadataTests(unittest.TestCase):
 
     def test_unclassified_legacy_entry_is_excluded_and_diagnosed(self):
         document = resolve_exemplar_document(
-            "### 1. Legacy example\n> answer text\n"
+            "### 1. Legacy example\n> answer text\n", mechanic_key=RYO
         )
         self.assertEqual(document.approved_text, "")
         self.assertTrue(
@@ -107,6 +124,122 @@ class ExemplarMetadataTests(unittest.TestCase):
         )
         entries = parse_exemplar_metadata(text)
         self.assertEqual([e.metadata.exemplar_id for e in entries], ["table-row"])
+
+    # -- mechanic targeting (mirrors exemplar-metadata.spec.ts) ---------------
+
+    def test_targeted_exemplar_reaches_only_its_mechanic(self):
+        ryo_only = block({"id": "ryo-only", "status": "APPROVED", "mechanics": [RYO]})
+        self.assertIn("RYO-ONLY BODY", resolve_exemplar_document(ryo_only, mechanic_key=RYO).approved_text)
+        for mechanic in ("closest", "one-clue", "bomb"):
+            document = resolve_exemplar_document(ryo_only, mechanic_key=mechanic)
+            self.assertEqual(document.approved_text, "")
+            self.assertEqual(document.diagnostics, ("EXEMPLAR_MECHANIC_EXCLUDED: ryo-only",))
+            self.assertIn("RYO-ONLY BODY", document.historical_text)
+
+    def test_explicit_multi_mechanic_targeting(self):
+        shared = block({"id": "shared", "status": "APPROVED", "mechanics": [RYO, "closest"]})
+        for mechanic in (RYO, "closest"):
+            self.assertIn("SHARED BODY", resolve_exemplar_document(shared, mechanic_key=mechanic).approved_text)
+        self.assertEqual(resolve_exemplar_document(shared, mechanic_key="one-clue").approved_text, "")
+
+    def test_missing_target_is_never_a_wildcard(self):
+        legacy = block({"id": "legacy-approved", "status": "APPROVED"})
+        for mechanic in KNOWN:
+            document = resolve_exemplar_document(legacy, mechanic_key=mechanic)
+            self.assertEqual(document.approved_text, "")
+            self.assertEqual(document.diagnostics, ("EXEMPLAR_UNTARGETED_EXCLUDED: legacy-approved",))
+
+    def test_selection_is_per_entry_with_ordered_diagnostics(self):
+        document = resolve_exemplar_document(
+            "\n".join([
+                block({"id": "ryo-only", "status": "APPROVED", "mechanics": [RYO]}),
+                block({"id": "closest-only", "status": "APPROVED", "mechanics": ["closest"]}),
+                block({"id": "untargeted", "status": "APPROVED"}),
+            ]),
+            mechanic_key=RYO,
+        )
+        self.assertIn("RYO-ONLY BODY", document.approved_text)
+        self.assertNotIn("CLOSEST-ONLY BODY", document.approved_text)
+        self.assertNotIn("UNTARGETED BODY", document.approved_text)
+        self.assertEqual(document.diagnostics, (
+            "EXEMPLAR_UNTARGETED_EXCLUDED: untargeted",
+            "EXEMPLAR_MECHANIC_EXCLUDED: closest-only",
+        ))
+
+    def test_non_approved_targeted_entries_are_never_positive(self):
+        for status in ("REJECTED", "WITHHELD", "RETIRED", "INVALID_TEST_SAMPLE"):
+            document = resolve_exemplar_document(
+                block({"id": "not-approved", "status": status, "mechanics": [RYO]}),
+                mechanic_key=RYO,
+            )
+            self.assertEqual(document.approved_text, "")
+            self.assertIn("NOT-APPROVED BODY", document.historical_text)
+
+    def test_non_canonical_target_is_rejected(self):
+        for target in ("not-a-mechanic", "ryo"):
+            with self.assertRaisesRegex(ExemplarMetadataError, "unknown mechanic"):
+                resolve_exemplar_document(
+                    block({"id": "typo", "status": "APPROVED", "mechanics": [target]}),
+                    mechanic_key=RYO,
+                    known_mechanics=KNOWN,
+                )
+
+    def test_malformed_targeting_is_rejected(self):
+        for mechanics in ([], RYO, [7], [""], ["Read-Your-Opponent"], ["read your opponent"], ["closest", "closest"]):
+            with self.subTest(mechanics=mechanics):
+                with self.assertRaises(ExemplarMetadataError):
+                    parse_exemplar_metadata(
+                        block({"id": "bad-target", "status": "APPROVED", "mechanics": mechanics})
+                    )
+
+    # -- approval provenance --------------------------------------------------
+
+    def _approved(self, **extra):
+        return block({"id": "with-provenance", "status": "APPROVED", "mechanics": ["closest"], **extra})
+
+    def test_provenance_is_parsed(self):
+        metadata = parse_exemplar_metadata(self._approved(
+            approvedBy="product-owner", approvedAt="2026-11-06", sourceRef="reference-library-v11:MM-003",
+        ))[0].metadata
+        self.assertEqual(metadata.mechanics, ("closest",))
+        self.assertEqual(metadata.approved_by, "product-owner")
+        self.assertEqual(metadata.approved_at, "2026-11-06")
+        self.assertEqual(metadata.source_ref, "reference-library-v11:MM-003")
+
+    def test_provenance_is_optional(self):
+        self.assertIsNone(parse_exemplar_metadata(self._approved())[0].metadata.approved_by)
+
+    def test_invalid_provenance_is_rejected(self):
+        cases = [
+            {"approvedBy": "product-owner"},
+            {"approvedAt": "2026-11-06"},
+            {"approvedBy": "", "approvedAt": "2026-11-06"},
+            {"approvedBy": " po ", "approvedAt": "2026-11-06"},
+            {"approvedBy": "a\nb", "approvedAt": "2026-11-06"},
+            {"approvedBy": "x" * 121, "approvedAt": "2026-11-06"},
+            {"approvedBy": "po", "approvedAt": "06/11/2026"},
+            {"approvedBy": "po", "approvedAt": "2026-02-30"},
+            {"approvedBy": "po", "approvedAt": "2026-11-06T10:00:00Z"},
+            {"sourceRef": ""},
+            {"sourceRef": 42},
+        ]
+        for extra in cases:
+            with self.subTest(extra=extra):
+                with self.assertRaises(ExemplarMetadataError):
+                    parse_exemplar_metadata(self._approved(**extra))
+
+    def test_approval_fields_require_approved_status(self):
+        with self.assertRaisesRegex(ExemplarMetadataError, "only valid on APPROVED"):
+            parse_exemplar_metadata(block({
+                "id": "rejected-with-approver", "status": "REJECTED",
+                "approvedBy": "product-owner", "approvedAt": "2026-11-06",
+            }))
+
+    def test_source_ref_is_allowed_on_any_status(self):
+        metadata = parse_exemplar_metadata(
+            block({"id": "rejected-ref", "status": "REJECTED", "sourceRef": "MM-002"})
+        )[0].metadata
+        self.assertEqual(metadata.source_ref, "MM-002")
 
     def test_all_existing_files_parse(self):
         paths = sorted(Path("ai/.opencode/skills/worlds").glob("**/EXEMPLARS.md"))

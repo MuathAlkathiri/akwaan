@@ -18,7 +18,17 @@ the earlier family vocabulary. Reconciled against the approved 12 families:
 | 2 | Repeated doubling | — | ⬜ **WITHHELD** |
 | 3 | Elimination logic | — | ⬜ **WITHHELD** |
 | 4 | Estimating from supplied measurements | — | ⬜ **WITHHELD** |
-| 5 | A sequence with one defensible continuation | `missing-number-pattern` | ✅ **APPROVED** |
+| 5 | A sequence with one defensible continuation | `missing-number-pattern` | ⛔ **REJECTED** (Product Owner, 2026-11-06; supersedes ✅ APPROVED) |
+
+**Owner decision — 2026-11-06 (supersedes the 2026-10-21 state of item 5).** Item 5 is
+**REJECTED** by the Product Owner. The sequence ending in 42 is straightforward pattern
+calculation; its Closest slider framing does not make for meaningful Closest play (its
+own family marks Closest `DO_NOT_FORCE`); and as written it is not a valid Moving XO
+exemplar, which needs multiple-choice options with rule distractors. It carries no
+mechanic target, its body is kept below unchanged as a historical record, and it stays
+in duplicate screening. It is never generation guidance. The rejection concerns this
+example, not number-sequence or numeric puzzles in general. Items 1–4 remain WITHHELD,
+an open decision.
 
 **Why four are withheld.** Each named a family V1 does not contain
 (`quantity-intuition`, `numeric-pattern`), and none maps onto an approved family
@@ -141,7 +151,7 @@ So the test for **this Scope** is:
   number the player needs is in the prompt — that is what makes it fair.
 <!-- /AKWAAN_EXEMPLAR_META -->
 
-<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"numbers-estimation-05-missing-number-pattern","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE"} -->
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"numbers-estimation-05-missing-number-pattern","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} -->
 ### 5. A sequence with one defensible continuation — `missing-number-pattern`
 
 **The property:** exactly one rule fits, so the answer is defensible and the near-misses are still meaningful.
