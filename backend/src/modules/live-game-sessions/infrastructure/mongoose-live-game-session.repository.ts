@@ -63,6 +63,16 @@ export class MongooseLiveGameSessionRepository implements LiveGameSessionReposit
     }));
   }
 
+  async findSessionIdsInBombCountdown(): Promise<string[]> {
+    // Bounded by the `status` index; `ready` is a seconds-long state.
+    const rows = await this.model
+      .find({ status: 'ready', modeKey: 'bomb' }, { sessionId: 1, _id: 0 })
+      .limit(500)
+      .lean()
+      .exec();
+    return rows.map((row) => row.sessionId);
+  }
+
   async save(
     session: LiveGameSession,
     expectedRevision: number,

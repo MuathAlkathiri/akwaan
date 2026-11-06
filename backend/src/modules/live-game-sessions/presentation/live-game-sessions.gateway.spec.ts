@@ -1,3 +1,4 @@
+import { PresenceConnectionRegistry } from '../application/presence-connection.registry';
 import { LiveGameSessionsGateway } from './live-game-sessions.gateway';
 import { validate } from 'class-validator';
 import { LiveSessionSocketMutationDto } from './live-game-session.dto';
@@ -79,6 +80,7 @@ describe('LiveGameSessionsGateway', () => {
       noOp as never,
       gameplay as never,
       noOp as never,
+      new PresenceConnectionRegistry(),
     );
     const client = {
       data: {

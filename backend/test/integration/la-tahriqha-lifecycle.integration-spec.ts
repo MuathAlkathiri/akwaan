@@ -754,18 +754,42 @@ describe('لا تحرقها lifecycle integration', () => {
     expect(await exposedCount()).toBe(3);
   }, 180_000);
 
-  it('keeps the captaincy and the set across a reconnect mid-dish', async () => {
+  it('hands captaincy off immediately, preserves the set and deadline, and does not reclaim on reconnect', async () => {
     const session = await startSession();
     await launch(session.sessionId);
     await present(session.sessionId);
     const [teamA] = session.teamIds;
     const chosen = (await correctIds(session.sessionId)).slice(0, 2);
     const captain = await play(session, teamA, chosen, false);
+    const deadline = (await rawState(session.sessionId)).deadlineAt;
+    const teammate = session.roster[0].find(
+      (member) => member.participantId !== captain.participantId,
+    )!;
 
     // The captain's phone drops and comes back on a new socket.
     await app
       .get(UpdateParticipantPresence)
-      .disconnected(session.sessionId, `socket-${captain.participantId}`);
+      .disconnected(
+        session.sessionId,
+        captain.participantId,
+        `socket-${captain.participantId}`,
+      );
+    const handedOff = await projection(
+      session.sessionId,
+      actorFor(session, teamA, teammate.participantId),
+    );
+    expect(handedOff.isDishCaptain).toBe(true);
+    expect(JSON.parse(String(handedOff.ownSelectedJson))).toEqual(chosen);
+    expect(
+      (
+        JSON.parse(String(handedOff.captainParticipantIdsJson)) as Record<
+          string,
+          string
+        >
+      )[teamA],
+    ).toBe(teammate.participantId);
+    expect((await rawState(session.sessionId)).deadlineAt).toBe(deadline);
+
     await app
       .get(UpdateParticipantPresence)
       .connected(
@@ -773,28 +797,78 @@ describe('لا تحرقها lifecycle integration', () => {
         captain.participantId,
         `socket-${captain.participantId}-again`,
       );
-
-    const resumed = await projection(session.sessionId, captain);
-    expect(resumed.isDishCaptain).toBe(true);
-    expect(JSON.parse(String(resumed.ownSelectedJson))).toEqual(chosen);
-    expect(
-      (
-        JSON.parse(String(resumed.captainParticipantIdsJson)) as Record<
-          string,
-          string
-        >
-      )[teamA],
-    ).toBe(captain.participantId);
-    // The clock was not restarted by the reconnection.
-    expect(resumed.phase).toBe('selecting');
-    await command(session.sessionId, captain, 'select-la-tahriqha-ingredient', {
-      ingredientId: (await correctIds(session.sessionId))[2],
-    });
-    await command(session.sessionId, captain, 'lock-la-tahriqha-dish');
+    expect((await captains(session.sessionId))[teamA]).toBe(
+      teammate.participantId,
+    );
+    expect((await rawState(session.sessionId)).deadlineAt).toBe(deadline);
+    await command(
+      session.sessionId,
+      actorFor(session, teamA, teammate.participantId),
+      'select-la-tahriqha-ingredient',
+      {
+        ingredientId: (await correctIds(session.sessionId))[2],
+      },
+    );
+    await command(
+      session.sessionId,
+      actorFor(session, teamA, teammate.participantId),
+      'lock-la-tahriqha-dish',
+    );
     expect(
       (await dishResults(session.sessionId)).length +
         Number((await rawState(session.sessionId)).phase === 'selecting'),
     ).toBeGreaterThan(0);
+  }, 120_000);
+
+  it('preserves a stranded dish until a teammate returns, then hands it off without changing its deadline', async () => {
+    const session = await startSession();
+    await launch(session.sessionId);
+    await present(session.sessionId);
+    const [teamA] = session.teamIds;
+    const chosen = (await correctIds(session.sessionId)).slice(0, 2);
+    const captain = await play(session, teamA, chosen, false);
+    const deadline = (await rawState(session.sessionId)).deadlineAt;
+    const teammates = session.roster[0].filter(
+      (member) => member.participantId !== captain.participantId,
+    );
+
+    for (const member of teammates) {
+      await app
+        .get(UpdateParticipantPresence)
+        .disconnected(
+          session.sessionId,
+          member.participantId,
+          `socket-${member.participantId}`,
+        );
+    }
+    await app
+      .get(UpdateParticipantPresence)
+      .disconnected(
+        session.sessionId,
+        captain.participantId,
+        `socket-${captain.participantId}`,
+      );
+
+    expect((await captains(session.sessionId))[teamA]).toBe(
+      captain.participantId,
+    );
+    expect((await rawState(session.sessionId)).deadlineAt).toBe(deadline);
+
+    const returning = teammates[0];
+    await app
+      .get(UpdateParticipantPresence)
+      .connected(
+        session.sessionId,
+        returning.participantId,
+        `socket-${returning.participantId}-again`,
+      );
+    const resumed = await projection(
+      session.sessionId,
+      actorFor(session, teamA, returning.participantId),
+    );
+    expect(resumed.isDishCaptain).toBe(true);
+    expect(JSON.parse(String(resumed.ownSelectedJson))).toEqual(chosen);
+    expect((await rawState(session.sessionId)).deadlineAt).toBe(deadline);
   }, 120_000);
 
   it('keeps a player who was still connecting at launch in the rotation', async () => {
@@ -808,7 +882,11 @@ describe('لا تحرقها lifecycle integration', () => {
     const latecomer = session.roster[0][1];
     await app
       .get(UpdateParticipantPresence)
-      .disconnected(session.sessionId, `socket-${latecomer.participantId}`);
+      .disconnected(
+        session.sessionId,
+        latecomer.participantId,
+        `socket-${latecomer.participantId}`,
+      );
     await launch(session.sessionId);
     await present(session.sessionId);
 

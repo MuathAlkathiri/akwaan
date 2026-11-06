@@ -40,6 +40,14 @@ const STALE_REVISION_CODES = [
  */
 const RESYNC_REPLY_TIMEOUT_MS = 5_000;
 
+/**
+ * Recovery reconnects allowed inside one window. The server asks a live socket
+ * to reconnect when its presence entry was removed elsewhere; a bound keeps a
+ * misbehaving server from turning that into a reconnect storm.
+ */
+const MAX_PRESENCE_RECOVERIES = 5;
+const PRESENCE_RECOVERY_WINDOW_MS = 5 * 60_000;
+
 function isStaleRevisionAck(ack: unknown): boolean {
   if (!ack || typeof ack !== "object") return false;
   const code = (ack as { code?: unknown }).code;
@@ -50,6 +58,8 @@ export class LiveSessionSocket {
   private socket?: Socket;
   private heartbeat?: number;
   private recoverSnapshot?: () => void;
+  /** Marks the current connection as intentionally closed by this client. */
+  private closeCurrent?: () => void;
 
   connect(input: {
     sessionId: string;
@@ -71,6 +81,21 @@ export class LiveSessionSocket {
     this.socket = socket;
     let connectedBefore = false;
     let resyncPending = false;
+    /**
+     * The server asked this socket to reconnect (presence recovery).
+     *
+     * A Socket.IO v4 client never reconnects by itself after a disconnect the
+     * *server* initiated ("io server disconnect"), and every other server-side
+     * refusal (bad token, revoked credential) must stay final. So recovery is
+     * explicit: only a disconnect that follows the server's own recovery
+     * request is turned back into a connection.
+     */
+    let recoveryRequested = false;
+    let closed = false;
+    this.closeCurrent = () => {
+      closed = true;
+    };
+    const recoveries: number[] = [];
     /** Revisions of the snapshot currently on screen. */
     let adopted: SnapshotRevisions = {};
     /**
@@ -106,6 +131,7 @@ export class LiveSessionSocket {
       }
     };
     socket.on("connect", () => {
+      recoveryRequested = false;
       input.onConnection("connected");
       socket.emit(
         input.participant
@@ -126,15 +152,45 @@ export class LiveSessionSocket {
       connectedBefore = true;
     });
     socket.io.on("reconnect_attempt", () => input.onConnection("reconnecting"));
-    socket.on("disconnect", () => {
+    socket.on("disconnect", (reason?: string) => {
       resyncPending = false;
       requestAgain = false;
       if (resyncTimer !== undefined) {
         clearTimeout(resyncTimer);
         resyncTimer = undefined;
       }
+      if (recoveryRequested && !closed) {
+        // Our own recovery disconnect, or the server's fallback drop after it:
+        // reconnect now. A new connection re-subscribes, restores the snapshot
+        // and re-acknowledges readiness under a new connection epoch.
+        input.onConnection("reconnecting");
+        if (
+          reason === "io server disconnect" ||
+          reason === "io client disconnect"
+        ) {
+          socket.connect();
+        }
+        return;
+      }
       input.onConnection("disconnected");
     });
+    socket.on(
+      "live-session:presence-recovery",
+      (payload: { sessionId?: string } | undefined) => {
+        if (payload?.sessionId !== input.sessionId || recoveryRequested) return;
+        const now = Date.now();
+        while (
+          recoveries.length &&
+          now - recoveries[0] > PRESENCE_RECOVERY_WINDOW_MS
+        ) {
+          recoveries.shift();
+        }
+        if (recoveries.length >= MAX_PRESENCE_RECOVERIES) return;
+        recoveries.push(now);
+        recoveryRequested = true;
+        socket.disconnect();
+      },
+    );
     socket.on("connect_error", (error) => {
       input.onConnection("error");
       input.onError({ code: "CONNECTION_ERROR", message: error.message });
@@ -343,6 +399,8 @@ export class LiveSessionSocket {
   }
 
   disconnect(): void {
+    this.closeCurrent?.();
+    this.closeCurrent = undefined;
     if (this.heartbeat) window.clearInterval(this.heartbeat);
     this.heartbeat = undefined;
     this.socket?.disconnect();

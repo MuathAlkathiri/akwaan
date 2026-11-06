@@ -134,6 +134,18 @@ import { MovingXoTurnSupplier } from './application/moving-xo-turn.supplier';
 import { StartComboGameplay } from './application/start-combo-gameplay.use-case';
 import { StartOneClueGameplay } from './application/start-one-clue-gameplay.use-case';
 import { WithdrawPresentationReadiness } from './application/withdraw-presentation-readiness.use-case';
+import {
+  createPresenceInstance,
+  PRESENCE_INSTANCE,
+} from './application/presence-instance';
+import { PresenceConnectionRegistry } from './application/presence-connection.registry';
+import { PresenceEffectsReconciler } from './application/presence-effects.reconciler';
+import { PresenceOwnershipService } from './application/presence-ownership.service';
+import { MongooseInstanceLeaseRepository } from './infrastructure/mongoose-instance-lease.repository';
+import {
+  BackendInstanceLeaseDocument,
+  BackendInstanceLeaseSchema,
+} from './infrastructure/backend-instance-lease.schema';
 import { StartOddPieceGameplay } from './application/start-odd-piece-gameplay.use-case';
 import { StartLaqathaGameplay } from './application/start-laqatha-gameplay.use-case';
 import { StartFirstNoteGameplay } from './application/start-first-note-gameplay.use-case';
@@ -199,6 +211,9 @@ const applicationProviders = [
   StartComboGameplay,
   StartOneClueGameplay,
   WithdrawPresentationReadiness,
+  PresenceConnectionRegistry,
+  PresenceEffectsReconciler,
+  PresenceOwnershipService,
   StartOddPieceGameplay,
   StartLaqathaGameplay,
   StartEkshifniGameplay,
@@ -228,6 +243,10 @@ const applicationProviders = [
       {
         name: LiveSessionPresenceDocument.name,
         schema: LiveSessionPresenceSchema,
+      },
+      {
+        name: BackendInstanceLeaseDocument.name,
+        schema: BackendInstanceLeaseSchema,
       },
     ]),
   ],
@@ -266,6 +285,13 @@ const applicationProviders = [
     },
     MongooseLiveGameSessionRepository,
     MongooseParticipantPresenceRepository,
+    MongooseInstanceLeaseRepository,
+    {
+      // One identity per process: every presence entry this instance writes
+      // carries it, and its lease proves the instance is alive.
+      provide: PRESENCE_INSTANCE,
+      useFactory: () => createPresenceInstance(),
+    },
     MongooseLiveSessionJoinAccessRepository,
     MongooseGameplayRuntimeRepository,
     MongooseGameplayTransactionUnitOfWork,

@@ -32,6 +32,9 @@ class MemoryRepository implements LiveGameSessionRepository {
   async findByParentQuestion() {
     return this.session ?? null;
   }
+  async findSessionIdsInBombCountdown() {
+    return [];
+  }
   async findOwnedSessionRefs() {
     return [];
   }

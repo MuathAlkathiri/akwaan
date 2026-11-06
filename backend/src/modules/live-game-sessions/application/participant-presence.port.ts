@@ -2,6 +2,14 @@ import { ParticipantPresenceProjection } from '../domain/participant-presence';
 
 export const PARTICIPANT_PRESENCE = Symbol('PARTICIPANT_PRESENCE');
 
+/** One stored presence entry and the participant row it belongs to. */
+export interface StoredPresenceEntry {
+  sessionId: string;
+  participantId: string;
+  /** Exactly as stored: `<owner>:<socketId>`, or a bare legacy socket id. */
+  entry: string;
+}
+
 /**
  * The one writer of participant presence.
  *
@@ -11,13 +19,19 @@ export const PARTICIPANT_PRESENCE = Symbol('PARTICIPANT_PRESENCE');
  * callback arriving late from a socket that already died cannot take down the
  * socket that replaced it. Both were unfixable while presence was a counter.
  *
+ * Connections are owner-scoped: this instance records and removes only its
+ * own entries (`<instanceId>:<socketId>`). Another instance's entry is removed
+ * only by its exact stored value, and only once that owner is proven dead.
+ * There is no global reset.
+ *
  * Nothing here touches the live session document, and nothing that writes the
  * live session document touches presence. That separation is the batch.
  */
 export interface ParticipantPresence {
   /**
-   * Records an open connection. Returns false when the participant already
-   * holds the maximum number of devices, in which case nothing is recorded.
+   * Records an open connection owned by this instance. Returns false when the
+   * participant already holds the maximum number of devices, in which case
+   * nothing is recorded.
    */
   connect(input: {
     sessionId: string;
@@ -27,15 +41,16 @@ export interface ParticipantPresence {
   }): Promise<boolean>;
 
   /**
-   * Records that one specific connection closed. Idempotent, and safe to call
-   * for a connection that was never recorded or was already removed.
+   * Records that one of this instance's connections closed. Idempotent, and
+   * safe for a connection that was never recorded or was already removed.
+   * Returns true only when this call removed the entry.
    */
   disconnect(input: {
     sessionId: string;
     participantId: string;
     connectionId: string;
     now: Date;
-  }): Promise<void>;
+  }): Promise<boolean>;
 
   /** Liveness ping from an existing connection. Never changes connectedness. */
   touch(sessionId: string, participantId: string, now: Date): Promise<void>;
@@ -43,12 +58,18 @@ export interface ParticipantPresence {
   /** Observed presence for a session, for merging onto a read aggregate. */
   read(sessionId: string): Promise<Map<string, ParticipantPresenceProjection>>;
 
+  /** The raw socket ids currently recorded for a session, any owner. */
+  connectionIds(sessionId: string): Promise<Set<string>>;
+
   /**
-   * Drops every recorded connection.
-   *
-   * Called once at boot: connections live in a process, so none of them
-   * survived the restart that just happened and all of them would otherwise be
-   * reported as open for ever.
+   * Removes exactly one stored entry, by its stored value. Returns true only
+   * when this call removed it, so concurrent removers cannot both succeed.
    */
-  clearAll(): Promise<void>;
+  removeExact(input: StoredPresenceEntry): Promise<boolean>;
+
+  /** Every stored entry, for the dead-owner sweep. */
+  listEntries(): Promise<StoredPresenceEntry[]>;
+
+  /** The stored entries of one participant row, exactly as stored. */
+  entriesFor(sessionId: string, participantId: string): Promise<string[]>;
 }

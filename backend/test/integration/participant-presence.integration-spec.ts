@@ -22,6 +22,7 @@ import { LiveGameSession } from '../../src/modules/live-game-sessions/domain/liv
 import { CORE_TIMED_TURNS_MODE } from '../../src/modules/live-game-sessions/domain/live-game-mode.registry';
 import { GameplayAuthorization } from '../../src/modules/live-game-sessions/application/gameplay-authorization';
 import { GameplayRuntimeState } from '../../src/modules/live-game-sessions/domain/gameplay-runtime';
+import { PresenceOwnershipService } from '../../src/modules/live-game-sessions/application/presence-ownership.service';
 
 /**
  * Presence against real Mongo, because the bug was a persistence race.
@@ -405,23 +406,63 @@ describe('participant presence ownership integration', () => {
     ).toBe(true);
   });
 
-  it('I — connections do not survive a restart, because sockets do not', async () => {
-    const { sessionId, participantId } = await seedSession();
-    await presence.connect({
-      sessionId,
-      participantId,
-      connectionId: 'socket-A',
-      now: NOW,
-    });
-    expect((await connectedOf(sessionId, participantId)).connected).toBe(true);
+  it("I — a dead instance's connections are swept; a live peer's survive", async () => {
+    // There is no boot-time reset any more: presence belongs to the instance
+    // that owns each socket. A crashed owner's entries go once its lease is
+    // provably stale; a live peer's are never touched.
+    const dead = await seedSession();
+    const live = await seedSession();
+    const leases = database.collection('backend_instance_leases');
+    await leases.insertMany([
+      {
+        _id: 'crashed-instance' as never,
+        kind: 'instance',
+        protocol: 2,
+        lastSeenAt: new Date(Date.now() - 120_000),
+      },
+      {
+        _id: 'peer-instance' as never,
+        kind: 'instance',
+        protocol: 2,
+        lastSeenAt: new Date(),
+      },
+    ]);
+    const rows = database.collection('live_session_presence');
+    await rows.insertMany([
+      {
+        sessionId: dead.sessionId,
+        participantId: dead.participantId,
+        connections: ['crashed-instance:socket-A'],
+      },
+      {
+        sessionId: live.sessionId,
+        participantId: live.participantId,
+        connections: ['peer-instance:socket-B'],
+      },
+    ]);
+    expect(
+      (await connectedOf(dead.sessionId, dead.participantId)).connected,
+    ).toBe(true);
 
-    // What the boot hook does. Presence is an observation of this process's
-    // sockets, and none of them survived.
-    await presence.clearAll();
+    const ownership = app.get(PresenceOwnershipService);
+    await ownership.tick();
+    // One stale observation is not proof.
+    expect(
+      (await connectedOf(dead.sessionId, dead.participantId)).connected,
+    ).toBe(true);
+    await leases.updateOne(
+      { _id: 'peer-instance' as never },
+      { $currentDate: { lastSeenAt: true } },
+    );
+    const swept = await ownership.tick();
+    expect(swept.deadOwners).toEqual(['crashed-instance']);
 
-    const participant = await connectedOf(sessionId, participantId);
-    expect(participant.connected).toBe(false);
-    expect(participant.connectedDeviceCount).toBe(0);
+    const gone = await connectedOf(dead.sessionId, dead.participantId);
+    expect(gone.connected).toBe(false);
+    expect(gone.connectedDeviceCount).toBe(0);
+    expect(
+      (await connectedOf(live.sessionId, live.participantId)).connected,
+    ).toBe(true);
   });
 
   it('the persisted session document carries no presence at all', async () => {
