@@ -40,6 +40,106 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
+### Where things stand — 2026-11-06 · OPEN WORK CLOSURE — ✅ MERGED & DEPLOYED · Odd-Piece V2 ⬜ NOT ACTIVATED
+
+All open engineering work from the stale primary checkout was finished, verified and released through PRs #23–#27.
+Main is `dcb520e`. **No production data, content, media or board binding was changed.** Odd-Piece V2 ships its code
+but remains unselectable by every production board.
+
+| Workstream | PR · commits → merge | Engineering Ready | Git merged | Production deployed | Content Ready | Runtime activated | Player verified |
+|---|---|---|---|---|---|---|---|
+| Cars Odd-Piece V2 + C.2 lifecycle fixes (§16.7) | #23 · `3fbd091`, `87d1b36` → `2f43b2b` | ✅ | ✅ | ✅ Vercel `7589575897`; Render healthy after `main` auto-deploy | ⬜ no rights-cleared original/modified pairs | ⬜ gated by design | ⬜ |
+| Fair-Start readiness withdraw retry | #24 · `1ea1286` → `dc69249` | ✅ | ✅ | ✅ (in Vercel `7589910162`; backend via auto-deploy) | n/a | 🟡 no flag; active once Render runs `main` (SHA not exposed; health ok) | ⬜ |
+| Integration baseline repair (3 product defects) | #25 · `ac79271`, `bc83d39`, `acc2038`, `634e866` → `0523da5` | ✅ | ✅ | ✅ Vercel `7589910162`; backend via auto-deploy | n/a | 🟡 no flag; active once Render runs `main` (SHA not exposed) | ⬜ no production engine job run |
+| Impeccable advisory setup | #26 · `1f45c2b` → `858ea43` | ✅ | ✅ | n/a (tooling only) | n/a | n/a | n/a |
+| GSAP tutorials — Top 5 round-trip test + 9 dev previews | #27 · `9c13356` → `dcb520e` | ✅ | ✅ | ✅ Vercel `7590026865` (`/dev/*` return 404 in production) | n/a | n/a | n/a |
+
+- **Odd-Piece V2 (#23).** Backend runtime, canonical V2 payload validation, Admin hotspot editor, shared-screen and
+  phone panels, Reveal, and the two C.2 lifecycle fixes with regression tests. **Production gate:** the selector tags
+  stored V2 payloads `oddPieceVersion: 2` and the launcher refuses them; new selector tests prove a V2-only pool
+  refuses to launch (both fail if the tagging is removed). **Content-engine compatibility:** engine drafts enter
+  through the canonical `contentItems.create` → `ContentItemCompatibilityPolicy` → version-aware
+  `validateOddPiecePayload`, the same validation Admin authoring uses; the engine does not generate odd-piece
+  content today (§30.22 not implemented). **Live E2E re-run on the merged code:** isolated Nest + Mongo replica set
+  + Socket.IO, one shared screen and four phones — image readiness, zoom/pan, claim ownership, 5s window,
+  wrong→opponent handoff, privacy (no identity/sensitive leak), reconnect and final scoring all PASS
+  (`ai/workbench/artifacts/odd-piece-v2-phase-c2-live-review-rebased/`, local only). Frontend production build now
+  passes locally (the earlier Google Fonts DNS blocker no longer reproduces).
+- **Runtime (#24).** A disconnect's Fair-Start readiness withdrawal that lost a revision race was logged and dropped,
+  leaving a departed surface counted as ready (seen twice in the C.2 run; pre-existing on `main`). It now retries
+  with the same bounded re-read pattern as `ReassignTeamActions`.
+- **Baseline repair (#25).** Backend integration on `main` had 29 deterministic failures; now **467 passed, 0
+  failed**. Product defects fixed: (1) the content-engine planner failed **every job for every Scope without
+  family blocks** (all except `wordplay-letters`) as `PLANNER_FAILURE`, while preflight still quoted a V1 plan;
+  (2) a failed evidence retrieval still bought a paid quality judgement, contrary to the approved §30 design;
+  (3) `AI_QUESTION_GENERATION_ENABLED=false` was ignored by the legacy generator for OpenRouter/LM Studio. The
+  Docker integration env and `.env.test.example` were also unbootable and are fixed.
+- **Test harness (#23).** `createIntegrationTestApp` now waits for model indexes; a transient Mongo `LockTimeout`
+  during background index builds made the driver retry a test callback whose side effects had already run.
+- **Production smoke (read-only):** public `/`, `/how-to-play`, `/login`, `/matches` 200; API `/health` ok with
+  database connected; API `/worlds` 200; `/dev/*` previews and harnesses 404; the live Match bundle carries the V2
+  hotspot commands. **Not verified in production:** any gameplay (creating a Match would mutate production data),
+  the running Render SHA (not exposed), and any content-engine job.
+- **⚠️ KNOWN DEBT:** intermittent cross-suite integration flakes (`bomb-board-lifecycle`, `marhala-lifecycle`: a
+  session `GET` returns 404 mid-suite only inside a full sequential run; both pass 5/5 in isolation on `main` and
+  on the branches; root cause not established); frontend suite still has the 4 failures pre-existing on `main`
+  (`akwaan-shell`, `copy-standards`, `player-world-api-boundary`, `world-management`); revision-conflict aborts are
+  logged at ERROR level under normal concurrent acknowledgements (noise); Odd-Piece V2 content is blocked on
+  identity-verified, rights-reviewed original/modified pairs and on §30.22 engine media support.
+- **Blocking product decisions for V2 activation:** approve rights-cleared content source and pairs; approve
+  launcher activation (removing the V2 gate) and the Cars board/Scope reconciliation; then a production gameplay
+  smoke.
+
+### Where things stand — 2026-11-06 · CHALLENGE EXPLAINER ACCESSIBILITY (P1 + P2) — ✅ IMPLEMENTED & VERIFIED — PRODUCTION
+
+Two accessibility releases for the shared-screen challenge explainers and the Match countdown. **Presentation only:**
+no gameplay, scoring, timing, realtime, backend or database change.
+
+| Release | Git | Production |
+|---|---|---|
+| P1 — contrast + countdown | PR #21 · commit `bb4838a` · merged as `f4ac2af` | ✅ Vercel production deployment of `f4ac2af` succeeded; deployed bundle verified to carry the fixes |
+| P2 — readability + reduced-motion navigation | PR #22 · commit `2ea91cb` · merged as `636dbdd` | ✅ Vercel production deployment `7587224155` of `636dbdd` succeeded; deployed CSS/JS verified to carry the fixes |
+
+- **P1:** brand gold is no longer readable text on light surfaces (1.7–2.0:1 → 15–16.6:1, navy); RYO/Combo
+  correct-answer reveal labels and team labels pass AA; the countdown warning uses `--warning` on the large numeral
+  and navy digits on the chip, plus a static alarm icon so urgency is not colour-only; undefined
+  `text-brand-dark` removed; Odd-Piece `animate-bounce`/`animate-pulse` gated for reduced motion.
+- **P2:** `--muted-foreground` 45% → 40% lightness (muted-text AA failures on tints and `bg-muted` 15 → 0, nothing
+  worse); compact step captions 16px from `sm` with measured min-height floors; remaining semantic-tint copy and
+  team labels at body contrast; one-to-one `emerald-*` → `text-success` correct-answer migrations.
+- **Reduced-motion bug fixed (P2):** the production tutorial dialog renders explainers in player mode, which
+  showed no transport; under `prefers-reduced-motion` the timeline never plays, so viewers were stuck on step 1.
+  `showsExplainerControls()` now shows Previous / Next in the player under reduced motion only (30 regression
+  tests; 18 fail without the fix).
+- **Evidence:** full frontend suite matched an unchanged `main` baseline (same 4 pre-existing failures:
+  `akwaan-shell`, `copy-standards`, `player-world-api-boundary`, `world-management`); typecheck, lint, production
+  build PASS; rendered contrast checks, real-dialog normal/reduced-motion checks locally; public `/`,
+  `/how-to-play`, `/login` smoke at 1440/390 with no overflow or console errors.
+- **Not verified in production:** the tutorial dialog itself and the countdown warning state, because both open
+  only inside a live Match and creating one would mutate the production database.
+- **Remaining accessibility debt (⚠️ KNOWN DEBT):** site footer tagline 4.4:1; Bomb input placeholder 2.3:1; raw
+  team colours in Top 5 and the Odd-Piece winner-card tint (product review); keyboard focus drops when Next
+  disables on the final reduced-motion step. Details: `frontend/DESIGN.md`.
+
+**Open-work closure (2026-11-06):** completed and released — see the closure block above (PRs #23–#27).
+
+### Where things stand — 2026-10-31 · AKWAAN CONTENT ENGINE V2 (SLICES 2 & 3A–3D) — 🟢 MERGED INTO REMOTE GIT MAIN (PR #9)
+
+✅ **Content Engine V2 Core Architecture Merged into Remote Git `main` (2026-10-31 · PR #9):**
+Content Engine V2 Slices 2 (Content Identity & Deduplication Engine) and 3A–3D (Deterministic Creative Planner, Canonical Catalog & Review Studio Visibility) were integrated, validated in clean tree isolation, and merged into remote `main` via PR #9 (feature commit `65c43522f182b98c1853746b461717f8b7b15ce5`, merge commit `c18122186b0f110733f908da45d1580b3340d42d`).
+- **Scope:** 48 changed files (`+18,311` / `-214`) across backend domain/application/presentation and frontend Review Studio.
+- **Verification Baseline:** Backend 28/28 suites passed (636 passed, 7 skipped, 643 total); Frontend 5/5 files passed (33 passed); TypeScript and ESLint 0 errors.
+- **Capabilities Delivered:** Content identity hashing and deduplication screening; deterministic seeded creative slot allocation (70/30 exploitation/exploration); machine-readable canonical family catalog (`akwaan-families`); historical coverage integration; durable `GenerationPlan` checkpoint pinning with lease fencing; independent family compliance evaluation; approval blocking on family mismatch and proven duplicate; manual resolution audit trails; Review Studio Creative Slot Inspector and preflight distribution preview.
+- **Operational & Production Boundaries (Strict Invariants):**
+  - ✅ **MERGED INTO REMOTE GIT MAIN:** Code merged into `main` on GitHub.
+  - ⬜ **DEPLOYED TO PRODUCTION:** **Not deployed.** Backend (Render) and frontend (Vercel) have not been deployed with these changes.
+  - ⬜ **VERIFIED IN PRODUCTION:** **Not verified in production.** Zero production jobs executed; zero live AI generation calls or paid LLM tokens spent; zero runtime DB or R2 mutations. No real `ContentItem` documents were created in the production database.
+  - ⬜ **Production Puzzles Content Remains 0 Real Items:** Controlled live pilot (Phase D) remains open work. See §30.23.
+- **Correction — 2026-11-06 (evidence-based).** `render.yaml` auto-deploys `main`, and every later Vercel
+  production deployment of `main` contains this code, so «Not deployed» above no longer holds: it is deployed but
+  unexercised in production. The «fallback compatibility for V1 batches lacking catalog entries» did not hold at run
+  time — every Scope without family blocks failed planning — until PR #25 (`ac79271`) fixed it.
+
 ### Where things stand — 2026-10-21 · PUZZLES CANONICAL FAMILY LIBRARY V1 REVISED — 🚧 IN PROGRESS
 
 ✅ **Canonical Puzzle Family Library V1 — Product Revision (2026-10-21):**
@@ -66,6 +166,22 @@ exists, real question batches were authored, ContentItems were created, or conte
 Puzzles content remains 0 real items.** Moving XO remains local/dev runtime only and is **not deployed to Production**.
 The next content milestone is the **First Real Forward Puzzles Content Pilot** (open work). See §23.11.
 
+### Where things stand — 2026-10-15 · AKWAAN CONTENT ENGINE V1 — 🟡 DESIGN APPROVED — NOT IMPLEMENTED
+
+**A design decision and an authoring foundation, not a milestone.** An architecture audit, a V1 design and an
+implementation-readiness review were completed for an automated Content Engine that would generate canonical
+`ContentItem` content (never legacy `Question` documents), screen it deterministically, verify claims against
+evidence, score it with an AI judge, and hand it to a human who remains the only approving authority.
+
+**Nothing is implemented.** No engine module, no job collections, no provider call, no generated content, no
+DB or R2 write, no deployment. Design approval is explicitly **not** implementation approval.
+
+**Phase 0 — the only work actually performed — is documentation and authoring foundation:** the `odd-piece`
+authoring Skill (previously a one-line stub while registered AUTHORABLE), a scoped
+`ODD_PIECE_AUTHENTIC_PART_COMPOSITION` media clause, and a proposed asset-provenance vocabulary. See §30.
+
+**Open and deliberately unresolved:** model provider selection (Gemini / GPT / Claude), benchmark thresholds,
+monthly cap enforcement value, whether `assetOrigin` ever becomes a READY blocker, and the Phase-1 Scope.
 
 ### Where things stand — 2026-10-10 (later) · PRODUCTION PUZZLES LEGACY TAXONOMY CLEANUP COMPLETE — 🚧 IN PROGRESS
 
@@ -322,7 +438,7 @@ deployment is verified while Cars World rollout remains deliberately separate an
   the single deadline owner. RYO multi-surface fairness is verified. Concise evidence: backend **180 suites / 1,697
   tests**; frontend **89 files / 925 tests**; focused Fair-Start/mechanic **16 suites / 290 tests**; real-Mongo
   integrations **5 suites / 86 tests**; typecheck, build, changed-file lint, and diff check PASS.
-- **Cars `odd-piece` — ✅ IMPLEMENTED & VERIFIED IN SOURCE / LOCALLY (`49c65b0`).** Each Challenge has exactly
+- **Cars `odd-piece` V1 — ✅ IMPLEMENTED & VERIFIED IN SOURCE / LOCALLY (`49c65b0`; historical release record only).** Each Challenge has exactly
   3 puzzles and each puzzle has exactly 4 visual pieces with enforced 3+1 vehicle identity, stable piece IDs, and
   persisted server-controlled order. The canonical CAS claim flow gives the first authoritative claimant priority;
   a wrong attempt is consumed and transfers the same puzzle to the opponent; each puzzle awards +1 internally and
@@ -335,6 +451,9 @@ deployment is verified while Cars World rollout remains deliberately separate an
   frontend **92 files / 934 tests**; Cars real-Mongo lifecycle PASS; **88 unique shared-regression real-Mongo tests
   passed**; typechecks, builds, lint, and diff check PASS. One suite-order-only Marhala transient was isolated and
   the clean Marhala rerun passed **24/24**; it is not classified as a Cars regression.
+- **Cars `odd-piece` V2 — ✅ IMPLEMENTED & VERIFIED LOCALLY (current target; see §16.7).** V2 is the approved
+  Single-Image Hotspot redesign with Phase A–D and GSAP V3.2 local evidence. It remains uncommitted, unpushed,
+  undeployed, and gated from the Production launcher; the V1 deployment facts above do not include V2.
 
 | Release boundary | State |
 |---|---|
@@ -1504,49 +1623,6 @@ Remaining open: ⬜ the rest of the Closest catalog authoring, ⬜ Production Cl
 
 ---
 
-## 7. Selection and Turn Order
-
-### 7.1 Challenge selection is system-determined (decided)
-
-The 4-of-6 draft, rotation, and pick/ban logic is **cancelled and must not be built** (§0.2).
-
-Two reasons, both decisive:
-
-**UX weight.** Challenge selection adds a heavy step to setup for no gain.
-
-**Uninformed choice.** A first-time player does not know what "Split Clue" is. Asking them to select or deselect mechanics they have never experienced is a choice without information — pure burden. (This constraint expires with experience, which is why the flexibility system in §15.2 is gated on it.)
-
-Related principle worth preserving: **randomness that adds reads as a gift; randomness that removes reads as a punishment.** Any future variety mechanism must add or substitute, never silently delete something the player wanted.
-
-### 7.2 What remains
-
-**World selection:** players choose 3 Worlds at setup. This is now the only meaningful pre-match choice, which raises its stakes — the World-selection screen must clearly communicate each World's Signature mechanic, since that is the differentiator being chosen.
-
-**Challenge order:** varied per match by the system (§3.5), not player-drafted.
-
-**Turn order within a challenge:** applies only to turn-based Signature mechanics. RYO, Co-op, and Relational are **simultaneous by design** — precisely what makes them tamper-proof without a host (§10.4).
-
----
-
-## 8. Scoring
-
-| Source | Points |
-|---|---|
-| RYO — Trust + correct | +1 answering team |
-| RYO — Trust + wrong | +1 opposing team |
-| RYO — Steal + correct | +1 opposing team |
-| RYO — Steal + wrong | −1 opposing team |
-| Co-op success | +1 per item |
-| Relational match/consensus | +1 per item |
-| Signature mechanic | Declared per mechanic in the scoring registry (§4.1) |
-
-**Perfect-clear bonus: +1 for clearing all 3 items of a challenge — but only for Co-op, Relational, and Signature challenges.** It does **not** apply to RYO, where the payoff matrix already supplies the tension and "perfect" is ambiguous (points there depend on the opponent's choice, not only on correctness).
-
-**Negative totals:** clamp at 0 for display, but preserve the true signed delta in the event log — the post-match stat card needs real values.
-
-**One scoring module only** (§0.3). Every mechanic registers its rule there; no mechanic computes points locally.
-
----
 ### 6.7 Closest content directions — 🟡 PRODUCT-APPROVED (2026-10-16), authoring assets updated, no runtime change
 
 **Scope of this record.** A content/authoring decision only. It creates no ChallengeType, changes no gameplay,
@@ -1593,6 +1669,49 @@ human reviewer, who remains the final authority.
 
 ---
 
+## 7. Selection and Turn Order
+
+### 7.1 Challenge selection is system-determined (decided)
+
+The 4-of-6 draft, rotation, and pick/ban logic is **cancelled and must not be built** (§0.2).
+
+Two reasons, both decisive:
+
+**UX weight.** Challenge selection adds a heavy step to setup for no gain.
+
+**Uninformed choice.** A first-time player does not know what "Split Clue" is. Asking them to select or deselect mechanics they have never experienced is a choice without information — pure burden. (This constraint expires with experience, which is why the flexibility system in §15.2 is gated on it.)
+
+Related principle worth preserving: **randomness that adds reads as a gift; randomness that removes reads as a punishment.** Any future variety mechanism must add or substitute, never silently delete something the player wanted.
+
+### 7.2 What remains
+
+**World selection:** players choose 3 Worlds at setup. This is now the only meaningful pre-match choice, which raises its stakes — the World-selection screen must clearly communicate each World's Signature mechanic, since that is the differentiator being chosen.
+
+**Challenge order:** varied per match by the system (§3.5), not player-drafted.
+
+**Turn order within a challenge:** applies only to turn-based Signature mechanics. RYO, Co-op, and Relational are **simultaneous by design** — precisely what makes them tamper-proof without a host (§10.4).
+
+---
+
+## 8. Scoring
+
+| Source | Points |
+|---|---|
+| RYO — Trust + correct | +1 answering team |
+| RYO — Trust + wrong | +1 opposing team |
+| RYO — Steal + correct | +1 opposing team |
+| RYO — Steal + wrong | −1 opposing team |
+| Co-op success | +1 per item |
+| Relational match/consensus | +1 per item |
+| Signature mechanic | Declared per mechanic in the scoring registry (§4.1) |
+
+**Perfect-clear bonus: +1 for clearing all 3 items of a challenge — but only for Co-op, Relational, and Signature challenges.** It does **not** apply to RYO, where the payoff matrix already supplies the tension and "perfect" is ambiguous (points there depend on the opponent's choice, not only on correctness).
+
+**Negative totals:** clamp at 0 for display, but preserve the true signed delta in the event log — the post-match stat card needs real values.
+
+**One scoring module only** (§0.3). Every mechanic registers its rule there; no mechanic computes points locally.
+
+---
 
 ## 9. World Design Guardrail
 
@@ -2461,10 +2580,17 @@ media intent; no new media pipeline is invented. Prefer a recognizable musical c
 meaningful. Avoid obvious answer leakage (e.g. immediately exposing the song title through spoken lyrics where that
 would trivialize the question).
 
-### 16.7 القطعة الدخيلة — Cars Signature product design *(approved 2026-08-29)*
+### 16.7 القطعة الدخيلة — Cars Signature product design *(approved 2026-08-29; V1 history + V2 reconciliation)*
 
-Cars previously had **no approved Signature mechanic**. Product Design is approved and preserved below; source
-implementation is now verified locally, while rollout and production remain separate and unstarted.
+Cars previously had **no approved Signature mechanic**. The original release record below is the historical
+four-piece **Odd Piece V1** record. It remains valid for V1 compatibility and must not be read as evidence that the
+newer single-image **V2** was committed, pushed, deployed, or published.
+
+#### Historical V1 release state *(2026-09-01; preserved)*
+
+Product Design was approved for V1 and its source implementation/deployment evidence remains historical. V1 uses
+four independent visual car-part images, `pieceId` selection, three matching target-vehicle pieces, and one
+intruder. Existing V1 sessions and historical records remain compatible.
 
 | Concern | Status |
 |---|---|
@@ -2476,7 +2602,112 @@ implementation is now verified locally, while rollout and production remain sepa
 | Code deployment | ✅ frontend exact-SHA deployment; backend healthy after `main` auto-deploy (exact Render SHA not publicly exposed) |
 | Production gameplay smoke | ⬜ **BLOCKED BY INTENTIONALLY UNROLLED CONTENT/BOARD** |
 
-#### Implementation state *(2026-09-01)*
+> **Clarification — 2026-10-15 (evidence-based; the rows above are historical and are not rewritten).**
+> A read-only check of the public Production `/worlds` endpoint shows `عالم السيارات` with
+> `availability: "available"`, `scopeCount: 4` and `challengeConfigurationCount: 4`. That is evidence the
+> **World and its Scopes and board configurations exist in Production** — it is **not** evidence that
+> `odd-piece` content exists, that `odd-piece` occupies a bound slot, or that production gameplay has been
+> played. Public World availability does not prove content readiness.
+> **Still unverified** (needs an authorized Admin read, not performed): the count of `odd-piece` ContentItems
+> in Production, which mechanic occupies each Cars slot, and whether the Production Cars Scope slugs match the
+> canonical manifest set (`cars-mix`, `german-cars`, `japanese-cars`, `supercars`) — Production shows four
+> Arabic Scope names including «سيارات أمريكية», which has no counterpart in that manifest list.
+> Until those are read, **Cars World rollout and Production content/media remain ⬜ NOT STARTED as recorded.**
+
+#### Current approved V2 — Single-Image Hotspot *(reconciled 2026-11-01)*
+
+V2 is the current approved product direction for future Odd Piece work. It replaces the V1 four-image question with
+one coherent modified vehicle photograph and one authoritative hotspot. V1 remains historical compatibility; the V1
+deployment record above did **not** deploy V2.
+
+| V2 concern | Status |
+|---|---|
+| Product design — Single-Image Hotspot | ✅ **APPROVED** |
+| Phase A backend/runtime | ✅ **IMPLEMENTED & VERIFIED LOCALLY** |
+| Phase B Admin authoring | ✅ **IMPLEMENTED & VERIFIED LOCALLY** |
+| Phase C player experience | ✅ **IMPLEMENTED & VERIFIED LOCALLY** |
+| Phases C.1/C.2 integration | ✅ **VERIFIED LOCALLY** with isolated Mongo, Nest, Socket.IO, one shared screen, and four participants |
+| Phase D Reveal/tutorial infrastructure | ✅ **IMPLEMENTED & VERIFIED LOCALLY** |
+| GSAP V3.2 product visual review | ✅ **APPROVED LOCALLY — 2026-11-01** |
+| Production launcher | ⬜ **GATED / NOT SELECTABLE FOR V2** |
+| Production content/media | ⬜ **NOT READY** |
+| Git/deployment | ✅ **MERGED (#23, `2f43b2b`) AND DEPLOYED — 2026-11-06**; still unselectable by production boards |
+
+##### Approved V2 gameplay contract
+
+- One coherent modified photograph of one vehicle, with exactly one foreign automotive part composited into it, plus
+  an original matching image for authoritative Reveal.
+- One Challenge contains three puzzles, progressively easy → medium → hard. The configurable discussion timer is
+  30 seconds by default; this remains a technical/playtest default, not a locked product value.
+- The same modified image is available on the shared screen and eligible phones. Both teams can pinch-to-zoom and
+  pan from the start.
+- The first authoritative **«جاوب»** claim owns the answer opportunity. Claim stops the discussion timer and it never
+  resumes for that puzzle.
+- The claiming team receives one five-second answer window and one authoritative normalized-coordinate tap. Server-
+  owned hotspot geometry and bounded tolerance decide the hit.
+- A wrong attempt or timeout transfers an independent five-second opportunity to the opponent. The opponent never
+  sees the first team's wrong coordinates, and no automatic opponent award occurs.
+- A claim cannot be made before discussion expiry resolves with zero points. A correct answer awards one internal
+  puzzle point. The Challenge winner receives the existing single Match point through canonical reconciliation and
+  tie behavior.
+- Authoritative Reveal highlights the actual foreign part, then compares original and modified compositions when a
+  valid original exists. Missing Reveal media remains a content-readiness blocker and must not be silently removed.
+- Fair-Start, CAS ownership, idempotency, reconnect, authoritative deadlines, privacy projections, and anti-spam
+  guarantees remain mandatory V2 invariants.
+
+##### V2 implementation evidence and phase status
+
+- **Phase A — backend/runtime:** versioned V1/V2 payloads and runtime; normalized polygon validation and hit testing;
+  discussion/answer deadlines; claim, answer, handoff, privacy-safe projections; and V1 compatibility are
+  implemented and locally verified.
+- **Phase B — Admin:** version-aware V1/V2 editor; original/modified image fields; hotspot polygon draw/edit/test;
+  difficulty and provenance metadata; canonical upload workflow; and readiness validation are implemented and
+  locally verified.
+- **Phase C — player experience:** shared-screen and phone projections; zoom/pan/tap; identity-bound Fair-Start;
+  reconnect/readiness handling; private wrong submissions; three-puzzle progression; and canonical Match scoring
+  are implemented and locally verified.
+- **Phases C.1/C.2 — live integration:** the isolated evidence uses the actual Nest backend, isolated Mongo replica
+  set, Socket.IO over WebSocket, one shared screen, and two Team 1 plus two Team 2 participant browsers. It records
+  readiness, claim ownership, both five-second windows, wrong-answer handoff, privacy, reconnect, and final scoring
+  (Team 1 wins 2–1); measured answer windows were 4.941s and 4.884s, with no pre-Reveal identity/sensitive leak.
+  Evidence: `ai/workbench/artifacts/odd-piece-v2-phase-c2-live-review/phase-c2-live-evidence-manifest.json`.
+- Two lifecycle fixes discovered in C.2 are recorded: bounded stale-revision retry for concurrent readiness
+  acknowledgements, and reconnect-safe presentation-surface bookkeeping. Shared lifecycle regression coverage was
+  added on 2026-11-06 and merged with V2 in PR #23 (`2f43b2b`): the reconnect
+  fix by two `ryo-presentation-ready.spec.ts` tests that fail without it, and the bounded stale-revision retry by
+  `match-socket.test.ts`.
+- **Phase D — Reveal/GSAP:** authoritative post-resolution hotspot Reveal, original/modified comparison when valid
+  media exists, V2 tutorial renderer, and historical V1 tutorial compatibility are implemented locally.
+- **GSAP V3.2 visual review:** approved locally on 2026-11-01 using the exact owner-supplied BMW image, enlarged
+  desktop answer surface, clean wheel outline/context detail, compact result hierarchy, responsive Chromium checks,
+  and a readable final hold. The evidence manifest records all assertions true, including 360/390/1440/1920
+  viewport fit, exact image integrity, lifecycle, and a 3.5-second final hold. Evidence:
+  `ai/workbench/artifacts/odd-piece-v2-gsap-v32-review/evidence-manifest.json`.
+- The dated local regression baseline for this reconciliation is frontend focused Odd Piece **12/12**, full tutorial
+  suites **90/90**, backend Odd Piece **22/22**, workspace typechecks, targeted lint, and Prettier checks passing.
+  The frontend production build remained blocked only by local `fonts.googleapis.com` DNS resolution.
+
+##### V2 media quality and production boundaries
+
+The accepted media rules are: one altered component; no duplicated visible component that trivially exposes the
+answer; realistic perspective, fitment, lighting, shadow, reflections, and registration; no obvious seams; a
+mobile-usable tight hotspot; detection through automotive observation rather than compositing defects; identical
+original/modified composition and dimensions; and visual proof in Reveal. The previous wheel, headlight, and
+bumper-mesh composites are rejected as Production content. The final BMW PNG is approved for synthetic tutorial
+presentation only; it does not establish authenticated BMW photography, Mercedes provenance, or a Production-ready
+original/modified pair.
+
+Remaining Production/content blockers are: identity-verified original/modified automotive pairs with provenance,
+transformation and rights review; attribution/share-alike handling; canonical ContentItem attachment and publication;
+the still-gated V2 launcher; Production end-to-end gameplay smoke; authorized verification of Cars content counts,
+board bindings, and Scope alignment; and the local frontend build's external Google Fonts DNS dependency. V2 remains
+in a dirty, uncommitted working tree. These are release/content gaps, not claims that local implementation failed.
+
+> **Update — 2026-11-06.** V2 is merged and deployed (#23) with the launcher gate intact, so «V2 remains in a dirty,
+> uncommitted working tree» above is historical. The production build now passes locally. Remaining blockers are
+> content/media and activation decisions only; see the 2026-11-06 closure block.
+
+#### Historical V1 implementation state *(2026-09-01; preserved)*
 
 - **Backend:** `odd-piece` GameplayModePlugin; launcher/start use case; content policy; registry/module integration;
   ChallengeType production-definition source; canonical CAS claim flow; existing scoring/convergence integration;
@@ -2492,7 +2723,12 @@ implementation is now verified locally, while rollout and production remain sepa
 - **Timer:** configurable **30-second technical/playtest default** — ⚠️ **PLAYTEST / CONFIGURATION VALUE — NOT
   LOCKED PRODUCT DESIGN**.
 
-#### Core identity
+#### Historical V1 gameplay contract *(preserved)*
+
+The following V1 contract is retained for existing sessions, records, and compatibility. It is not the current V2
+question design; the V2 contract is documented above.
+
+##### Core identity
 
 A **simultaneous visual recognition race**. Each puzzle shows **4 visual car parts/details** — exactly **3 belong
 to the same target vehicle**, **1 belongs to a different vehicle**. The objective is to identify the **odd / foreign
@@ -2503,7 +2739,7 @@ This is not ordinary `وش اسم السيارة؟`. It tests whether players ca
 headlights, interiors, steering wheels, wheels, dashboards, rear lights, body details, and other recognizable design
 elements.
 
-#### Challenge structure
+##### Challenge structure
 
 One Challenge contains **3 puzzles**; both teams see the same puzzle simultaneously. Difficulty increases
 progressively:
@@ -2514,35 +2750,23 @@ progressively:
 
 Difficulty must not become obscure-for-obscure automotive trivia.
 
-#### Answer race
+##### Answer race
 
 Both teams discuss simultaneously; any team may press **«جاوب»**. The first valid team claim receives
 **first-answer priority**; they then choose which of the four pieces is the odd piece.
-
-> **Clarification — 2026-10-15 (evidence-based; the rows above are historical and are not rewritten).**
-> A read-only check of the public Production `/worlds` endpoint shows `عالم السيارات` with
-> `availability: "available"`, `scopeCount: 4` and `challengeConfigurationCount: 4`. That is evidence the
-> **World and its Scopes and board configurations exist in Production** — it is **not** evidence that
-> `odd-piece` content exists, that `odd-piece` occupies a bound slot, or that production gameplay has been
-> played. Public World availability does not prove content readiness.
-> **Still unverified** (needs an authorized Admin read, not performed): the count of `odd-piece` ContentItems
-> in Production, which mechanic occupies each Cars slot, and whether the Production Cars Scope slugs match the
-> canonical manifest set (`cars-mix`, `german-cars`, `japanese-cars`, `supercars`) — Production shows four
-> Arabic Scope names including «سيارات أمريكية», which has no counterpart in that manifest list.
-> Until those are read, **Cars World rollout and Production content/media remain ⬜ NOT STARTED as recorded.**
 
 - Correct → that team wins the puzzle reward — **+1 point for the puzzle** (current Product Design reward).
 - Wrong → that team's attempt is consumed and the opposing team receives an opportunity to answer the **same**
   puzzle. The second team must still make its own selection — the point is **not** automatically awarded just
   because the first team was wrong.
 
-#### Team anti-spam principle
+##### Team anti-spam principle
 
 As with other Akwaan team interactions: any player on the team may initiate the team answer; the **first valid
 authoritative submission** represents the team; remaining team members become locked from duplicate submissions for
 that interaction. Implementation must be **server-authoritative**.
 
-#### Content/media contract direction
+##### Content/media contract direction
 
 This mechanic is inherently visual. The four pieces must be authentic, readable, and semantically correct. QA must
 verify, per puzzle:
@@ -2555,7 +2779,7 @@ verify, per puzzle:
 
 Reuse the established canonical Akwaan media pipeline — no Cars-specific media architecture is invented.
 
-#### Mandatory visual Reveal / proof
+##### Mandatory visual Reveal / proof
 
 After every puzzle resolves — whether the first attempt is correct, wrong and transferred, or both teams fail — the
 shared result state must reveal which of the four pieces was the intruder, identify the target vehicle that owns the
@@ -3779,6 +4003,10 @@ The existing `patterns-sequences` · `lateral-thinking` · `visual-puzzles` expa
 `PUZZLES_WORLD_NO_TRIVIA` and `PUZZLE_ITSELF_IS_THE_CHALLENGE` are unchanged: ordinary trivia in a cosmetic
 puzzle wrapper remains invalid in every Scope below.
 
+> **Reaffirmed 2026-10-16 (§6.7).** The approved Closest content-direction decision permits knowledge-anchored
+> numerical estimation in knowledge Worlds. It creates **no exception here.** Both invariants remain
+> authoritative in every Puzzles Scope including `numbers-estimation`, which stays reasoning-only.
+
 | Scope | Primary solve | Examples | The question it asks |
 |---|---|---|---|
 | **قوة الملاحظة والخداع البصري** | Notice what is already present | hidden detail · illusion · reflection · perspective · visual count · visual inconsistency, with **no inferred rule required** | «Did you notice it?» |
@@ -3821,10 +4049,6 @@ filters by the Match's selected Scopes, permanently excludes owner-account expos
 separates account exhaustion from catalog insufficiency. Selection/reservation is not exposure: the first and
 recurring puzzles are spent only after their Fair-Start presentation generation activates. This is verified in
 source and isolated test data; no runtime/dev or Production catalog was provisioned or mutated.
-
-> **Reaffirmed 2026-10-16 (§6.7).** The approved Closest content-direction decision permits knowledge-anchored
-> numerical estimation in knowledge Worlds. It creates **no exception here.** Both invariants remain
-> authoritative in every Puzzles Scope including `numbers-estimation`, which stays reasoning-only.
 
 **Answer contract (V1).** Moving XO consumes exactly two item answer modes: **`match`** and
 **`multiple_choice`**. **`closest` is deliberately excluded from V1** — the mechanic needs a binary result
@@ -6116,7 +6340,167 @@ without the existing authoritative human and lifecycle gates.
 - ⬜ **No automatic READY promotion or publication exists in the Studio workflow.** Output is strictly canonical `ContentItem` in `DRAFT` status; publication to active gameplay requires the existing canonical READY pipeline.
 - ✅ **Existing canonical review policy remains authoritative:** human approval is last and authoritative, and must be renewed after any post-approval candidate edit.
 
+### 30.22 Content Engine Media Architecture & Fallback System — 🟡 DESIGN APPROVED — NOT IMPLEMENTED (2026-10-26)
+
+**Operator product decisions and approved design corrections recorded. Architectural and documentation alignment only — no implementation changes, no runtime mutations, no R2 writes, no paid AI/media calls.**
+
+#### 1. Approved Product Decisions & Architecture Invariants
+
+1. **Separation of Gameplay Media and Display Artwork**
+   - **Gameplay Media**: Integral to the challenge's mechanics (e.g. Bomb player cards, Odd Piece car components, Laqatha visual clues). Essential for question solvability; governed by strict mechanic contracts.
+   - **Display Artwork**: Purely decorative, aesthetic enhancement (e.g. World Question Fallback, illustrative topic imagery).
+   - **Non-Substitution Invariant**: A World Question Fallback is **never a substitute for required gameplay media**. If a challenge type or Scope mandates media, missing item media remains a blocking readiness defect that the fallback cannot satisfy.
+   - **Audio-Visual Coexistence**: For audio-native challenges (e.g. Music × اقرأ خصمك), display artwork and gameplay audio must coexist independently. Display artwork must never interfere with audio playback, readiness probing, server-authoritative replay, or phone redaction.
+   - **Integrity**: Display artwork must never alter existing mechanic-specific media contracts, crop or obscure required gameplay images, or induce answer leakage.
+
+2. **Quality Validation Preceding Expensive Media Enrichment**
+   - Media enrichment must not incur financial or computational cost on candidates that fail basic gameplay, screening, or quality hurdles.
+   - **Lifecycle for Text-First Mechanics**:
+     1. Resolve canonical Skills, Scope profiles, and Knowledge context.
+     2. Construct an internal generation plan.
+     3. Generate mechanic-native candidates (text, options, distractors, factual claims, and structured media intents).
+     4. Execute deterministic gameplay validation (leakage, anagram multisets, option plausibility, formatting).
+     5. Execute applicable AI quality evaluation (Quality Judge).
+     6. **Enrich eligible candidates with media** (invoking canonical media providers only for surviving, quality-cleared candidates).
+     7. Validate media correctness, provenance, framing, and leakage.
+     8. Present candidates, evaluations, and media for authoritative human review.
+   - **Lifecycle for Media-Native Mechanics**: Content and media requirements must be planned jointly, but expensive retrieval, generation, or localized transformation must be deferred until core gameplay specifications pass preliminary validation.
+   - **Lifecycle Preservation**: Preserves the existing canonical approval and publication lifecycle; human approval remains the sole gate to canonical `DRAFT` ContentItem creation.
+
+3. **16:9 Aspect Ratio Exclusively for World Question Fallback Artwork**
+   - Dedicated World Question Fallback artwork uses a horizontal **16:9 composition** with visually calm, low-contrast center framing, suitable for living-room TV display.
+   - **No Blanket 16:9 on Gameplay Media**: 16:9 and `object-cover` must **never** be imposed on required gameplay media. Mechanic-specific images (e.g. FIFA blank cards, automotive parts, diagrams, typographic vectors) retain their native aspect ratios, uncropped visibility, and interaction requirements.
+
+4. **Human Media Review Surface Gating Automatic Production Enrichment**
+   - Automatic production media enrichment must **not** be activated until an adequate human media review surface is operational in the Studio.
+   - The Candidate Review workspace must explicitly support:
+     - High-resolution visual/audio asset preview.
+     - Sourcing, provider, and provenance metadata (including licence notes when known).
+     - Explicit media purpose indicator: `gameplay` vs `decorative`.
+     - Automated media correctness, dimension, and answer-leakage findings.
+     - One-click asset replacement, upload override, or rejection.
+     - Unambiguous visual distinction between question-specific media (`item.media`) and World fallback artwork.
+   - **Authoritative Gate**: Human approval remains mandatory; no automated process can publish media to active gameplay.
+
+5. **World-Level Scope & Pipeline Governance**
+   - **World-Level Fallback Only**: Initial implementation is strictly at the World level (one fallback asset per World; 10 total); no Scope-level fallbacks in V1.
+   - **Single Canonical Pipeline**: Reuse existing canonical media providers (`AssetResolutionModule`, `AssetService`, `WikimediaImageProvider`, `JikanAnimeImageProvider`, `YouTubeAssetProvider`, `ImageDownloadService`) and storage (`LocalImageStorageService`, `LocalAudioStorageService`, `R2MediaObjectStorage`). **No second or parallel media pipeline is permitted.**
+   - **Graceful Downgrade**: If decorative media enrichment fails or is unconfigured, the item gracefully falls back to the World Question Fallback with a non-blocking finding.
+   - **Fail-Closed on Gameplay Media**: If required gameplay media fails enrichment, the candidate is flagged as blocked (`media_blocked`) and cannot be approved without manual asset provision.
+   - **Zero Duplication**: Fallback assets are referenced centrally on the `World` entity; they are **never duplicated** into individual `ContentItem` records.
+
+#### 2. Two Independent Implementation Tracks
+
+- **Track A — Gameplay Visual Presentation**:
+  - `World.questionFallback` asset contract and Admin World management.
+  - Shared-screen visual precedence resolver: `Required Gameplay Media` $\rightarrow$ `Approved Decorative Media` $\rightarrow$ `World Question Fallback`.
+  - Mechanic-specific layout preservation and audio-visual coexistence.
+  - Strict isolation from concurrent Codex frontend work (GSAP explainer animations & tutorial scenarios).
+- **Track B — Content Engine Generation & Media**:
+  - Generation planning digest in preflight.
+  - Candidate quality & prompt calibration (preventing trivial grammar and 100% certainty anti-patterns).
+  - Deterministic screening hardening (orthographic anagram multiset check, single-char leakage precision).
+  - Quality Judge decoupling from evidence retrieval (allowing quality judging when facts are `UNRESOLVED` due to disabled retrieval).
+  - Post-validation media intent enrichment via canonical `AssetService`.
+  - Candidate Review media UX.
+  - Canonical World slug alias resolver (`CANONICAL_WORLD_ALIASES`) preventing runtime `World does not exist` approval blocks, with formal DB audit before any slug migration.
+
+#### 3. Current Implementation Status
+- ⬜ **NOT IMPLEMENTED.** All design decisions above are approved for architecture planning.
+- ⬜ No database schema migration, no media intent generation in Content Engine, no UI media review surface, and no frontend fallback renderer exists.
+- ⬜ Existing implementation statuses, historical records, and unresolved issues are preserved in full. Output remains canonical `ContentItem` in `DRAFT` status.
+
+### 30.23 Content Engine V2: Content Identity, Deduplication & Hybrid Creative Planner (Slices 2 & 3A–3D) — 🟢 MERGED INTO REMOTE GIT MAIN (PR #9) (2026-10-31)
+
+**Product objective & architectural evolution.** Content Engine V2 elevates batch content generation from unstructured, prompt-only generation into a rigorous, identity-aware, and strategy-driven pipeline. V2 delivers two foundational pillars:
+1. **Slice 2 (Content Identity & Deduplication Engine):** Prevents duplicate and overlapping questions across in-batch candidates and historical approved catalog items before reaching human review, with review-time approval safety and concurrency controls.
+2. **Slices 3A–3D (Hybrid Creative Planner):** Combines batch-level strategic allocation with deterministic per-question generation slots, canonical family assignments, coverage-aware weighting, durable pinned plans in checkpoints, independent compliance policy enforcement, and Review Studio visibility.
+
+The pipeline strictly preserves all V1 guarantees, backward compatibility for legacy jobs, and authoring boundaries: human approval remains the final and authoritative gate to canonical `ContentItem` in `DRAFT` status.
+
+#### 1. Implementation Slices Delivered
+
+- **Slice 2 — Content Identity & Deduplication Engine:**
+  - **Slice 2A (Domain Policy & Hashing):** Implements `ContentIdentityPolicy` (`domain/content-identity.policy.ts`) providing deterministic content identity hashing (SHA-256), prompt normalization, option multiset sorting, semantic signature extraction, and collision detection. Differentiates exact duplicates from prompt-only collisions, catches conflicting answer keys (`CONFLICTING_ANSWER_KEY_IN_BATCH`), and namespaces mechanic-specific identity keys.
+  - **Slice 2B (Deduplication Screening & Historical Coverage):** Integrates `DeterministicScreenService` with `HistoricalCoverageService` (`application/historical-coverage.service.ts`) to query existing approved `ContentItem` records within `{ worldKey, scopeKey, mechanicKey }`. Emits distinct screening findings: `PROVEN_DUPLICATE_IN_SCOPE` (exact match; blocks approval), `POTENTIAL_OVERLAP_IN_SCOPE` (semantic/lexical similarity; non-blocking warning requiring human review), and `HISTORICAL_VERIFICATION_INCOMPLETE` (failure/timeout querying catalog; blocks approval until re-screened).
+  - **Slice 2C (Concurrency & Lifecycle Durability):** Fenced lease renewal and CAS optimistic concurrency locking via `reviewRevision` across all candidate edits, assessments, approvals, rejections, and re-screen operations. Dedicated atomic re-screen endpoint (`POST /admin/content-engine/jobs/:jobId/candidates/:candidateId/rescreen`) re-verifies historical overlap against current database state under active job lease fencing.
+  - **Slice 2D (Review Studio Deduplication UX):** Admin Review Studio candidate workspace displays dedicated Deduplication Findings panel, blocking badges for proven duplicates with side-by-side diff/match evidence, overlap warning badges with operator acknowledgement, and one-click re-screen action with 409 conflict reload prompts. Hard-blocks approval for unacknowledged or blocking duplicate findings.
+
+- **Slice 3A — Deterministic Creative Slot Allocator:**
+  - Implements `CreativeSlotAllocator` (`domain/creative-slot-allocator.ts`) with deterministic seeded pseudo-random allocation (SHA-256 PRNG).
+  - Configurable exploitation/exploration ratio (default 70% exploitation / 30% exploration target; exploration active starting at batch size 3).
+  - Continuous saturation weighting applying smooth soft-cap discounts to over-represented canonical families without artificial cliffs or rigid small-batch rounding penalties.
+  - Scope-specific diversity constraints take strict precedence over generic global caps.
+  - Exploration targets meaningful cognitive and gameplay variation within approved canonical families, never obscure trivia or superficial novelty.
+
+- **Slice 3B — Canonical Catalog & Historical Coverage Integration:**
+  - Connects creative slot allocator to authoritative `CANONICAL_FAMILIES` catalog (`domain/canonical-families.ts`) and verified historical coverage data.
+  - Resolves approved canonical families per World and Scope, applying mechanic eligibility filters.
+  - Integrates verified human-approved coverage counts into family weight calculations.
+  - Emits fully structured creative generation slots formatted for downstream generator prompt integration while maintaining complete fallback compatibility for V1 batches lacking catalog entries.
+
+- **Slice 3C — Generator Integration, Pinned Plans & Family Compliance:**
+  - Integrates generation planner into `CandidateGeneratorService` with durable `GenerationPlan` pinning in `stageCheckpoints.context_resolved` under `leaseEpoch` fencing.
+  - Retries and stage resumptions faithfully recover the pinned generation plan without re-rolling seeds or shifting slot allocations.
+  - Per-candidate slot identity tracking via explicit `slotIndex` / `slotNumber` metadata or array indexing.
+  - Independent `FamilyComplianceEvaluation` (`domain/family-compliance.policy.ts`) comparing generated candidate subject/classification against assigned slot canonical family (`MATCH`, `MISMATCH`, `UNVERIFIED`).
+  - Approval and draft creation safety: verified `MISMATCH` strictly blocks candidate approval and canonical `ContentItem` DRAFT creation (`FAMILY_COMPLIANCE_BLOCKED`).
+  - Auditable manual resolution for `UNVERIFIED` candidates requiring operator judgment (`RESOLVED_VALID`, `RESOLVED_REASSIGN`, `RESOLVED_INVALID`) with mandatory explanation notes (≥ 10 chars).
+
+- **Slice 3D — Review Studio Visibility & Creative Plan Inspection:**
+  - Admin Review Studio (`/admin/content-engine`) integrates the **Creative Slot Inspector**, providing visual inspection of pinned plan distribution, slot-to-candidate mapping, and exploitation/exploration breakdown.
+  - Candidate cards surface canonical family badges, strategy tags (`Exploitation` / `Exploration`), and real-time family compliance indicators.
+  - Interactive manual-resolution modal for unverified compliance, enabling audit-trailed reassignments and validations with optimistic UI updates.
+  - Preflight generation distribution preview: bounded, read-only calculation (4–6 indexed queries, scoped by `{ worldKey, scopeKey }`, zero LLM calls, zero DB writes, zero job creations).
+  - Persisted pinned-plan inspection in job status and inspector modal with graceful legacy V1 fallback.
+
+#### 2. Git Integration & Remote Milestone
+
+- **Publication Milestone:** Successfully integrated and merged into GitHub `main` via **PR #9**.
+- **Remote Branch:** `feat/content-engine-v2-creative-planner`
+- **Feature Commit:** `65c43522f182b98c1853746b461717f8b7b15ce5`
+- **Parent Commit:** `b217927fcaef0fe9dc7a83d89764e09a46c8cec4` (origin/main)
+- **Merge Commit on Remote Main:** `c18122186b0f110733f908da45d1580b3340d42d`
+- **Scope & Footprint:** Exactly 48 changed files (`+18,311` insertions, `-214` deletions) with clean tree isolation. Zero unlisted files, zero GSAP or Odd-Piece overlaps.
+
+#### 3. Isolated Validation Results
+
+Executed against the exact isolated git tree (`e916ea2ec2bc8a18283e60298e00a2584f4272da`):
+- **Backend Test Suite:** **28 / 28 test suites passed**, **636 passed, 7 skipped, 643 total tests**.
+  - Deduplication & Content Identity: `content-identity.policy.spec.ts` (34/34), `deterministic-screen.service.spec.ts` (39/39), `slice-2c-concurrency-lifecycle.spec.ts` (14/14).
+  - Creative Planner & Allocation: `creative-slot-allocator.spec.ts` (14/14), `canonical-families.spec.ts` (12/12), `generation-planner.service.spec.ts` (18/18), `historical-coverage.service.spec.ts` (20/20).
+  - Generator Integration & Compliance: `slice-3c-generator-integration.spec.ts` (18/18), `family-compliance.policy.spec.ts` (12/12).
+  - Admin & Review Services: `content-engine-review.service.spec.ts` (34/34), `engine-job-admin.service.spec.ts` (29/29), `content-engine-jobs.controller.spec.ts` (7/7).
+  - Note on skipped tests (7 skipped): 3 in `authoring-context.parity.spec.ts` (optional disk exemplars in offline harness), 2 in `openrouter-ai.provider.spec.ts` (live external API calls prevented in unit tests), 2 in `pilot-failure-investigation.spec.ts` (historical live mock regression fixtures).
+- **Frontend Test Suite:** **5 / 5 test files passed, 33 / 33 tests passed**.
+  - `content-engine-creative-slot-ux.test.tsx` (10/10).
+  - `content-engine-deduplication-ux.test.tsx` (6/6).
+  - `content-engine-candidate-status.test.tsx` (3/3).
+  - `content-engine-review.test.ts` (8/8).
+  - `content-engine-studio.test.tsx` (6/6).
+- **Static Analysis & Linting:**
+  - Backend: `npm run typecheck --workspace backend` (0 errors), `npm run lint` (0 errors, 198 warnings).
+  - Frontend: `npm run typecheck --workspace frontend` (0 errors), `npm run lint` (0 errors, 1 next/image warning).
+
+#### 4. Operational & Deployment Boundaries
+
+- ✅ **IMPLEMENTED & VERIFIED LOCALLY:** Code implemented in TypeScript and verified with full local test suites.
+- ✅ **MERGED INTO REMOTE GIT MAIN:** Integrated into authoritative remote repository via PR #9 (`c18122186b0f110733f908da45d1580b3340d42d`).
+- ⬜ **DEPLOYED TO PRODUCTION:** **Not deployed.** Neither Render (backend) nor Vercel (frontend) has been deployed with this commit.
+- ⬜ **VERIFIED IN PRODUCTION:** **Not verified in production.** Zero production jobs executed; zero live AI generation calls or paid LLM tokens spent; zero runtime DB or R2 mutations. No real `ContentItem` documents were created in the production database.
+
+#### 5. Remaining Limitations, Known Debt & Unresolved Decisions
+
+- ⬜ **No Live Generation Model Approved (§30.7):** No production LLM (OpenAI GPT-4o, Claude 3.5 Sonnet, Gemini 1.5 Pro) is approved or funded with live API keys for autonomous generation.
+- ⬜ **Fact Verification Retrieval Incomplete:** The evidence retriever operates on mock/disabled providers; real fact verification requires an approved, reliable search/retrieval API.
+- ⬜ **Media Enrichment Pipeline Unimplemented (§30.22):** Track B media intent generation and Track A display fallback artwork are design-approved but not implemented. Candidates currently produce text-only drafts.
+- ⬜ **World Canonical Alias Migration:** Production database stores Arabic world/scope slugs (e.g. «سيارات أمريكية») that must be audited and aliased before strict canonical resolution can be enforced without risk.
+- ⬜ **Phase D Live Controlled Pilot Not Started (§30.21):** Production validation under real operator conditions with budget caps and live human review has not occurred.
+- ⬜ **Production Catalog Status:** Forward Puzzles catalog remains 0 real items in production DB.
+
 ---
+
+
 
 ## 31. Music × اقرأ خصمك — server-authoritative audio replay & audio readiness (M2 → M3.1)
 
