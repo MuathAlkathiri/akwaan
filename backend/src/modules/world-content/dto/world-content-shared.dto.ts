@@ -65,6 +65,13 @@ export class ChallengePresentationDto {
   @Max(MAX_TIMER_SECONDS)
   timerSeconds: number | null;
 
+  @ApiPropertyOptional({ nullable: true, minimum: MIN_TIMER_SECONDS })
+  @IsOptional()
+  @IsInt()
+  @Min(MIN_TIMER_SECONDS)
+  @Max(MAX_TIMER_SECONDS)
+  answerTimerSeconds?: number | null;
+
   @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsString()

@@ -5,7 +5,10 @@ import { LiveGameSession } from '../domain/live-game-session';
 import { GameplayAuthorization } from './gameplay-authorization';
 import { LiveSessionActor } from './live-session-actor';
 import { canSeeVisibility } from '../domain/gameplay-interaction.plugin';
-import { PresentationSurfaceCapability } from '../domain/gameplay-mode.plugin';
+import {
+  PresentationSurfaceCapability,
+  PresentationSurfaceRequirement,
+} from '../domain/gameplay-mode.plugin';
 import { RYO_MODE_KEY, ryoItemAudioUrl } from '../domain/ryo-gameplay.plugin';
 import type { GameplayRuntimeState } from '../domain/gameplay-runtime';
 
@@ -34,6 +37,25 @@ function preloadAudioUrl(state: GameplayRuntimeState): string | undefined {
   }
 }
 
+function preloadOddPieceImageUrl(
+  state: GameplayRuntimeState,
+): string | undefined {
+  if (state.modeKey !== 'odd-piece' || state.modeVersion !== 2)
+    return undefined;
+  try {
+    const puzzles = JSON.parse(
+      String(state.runtimeState.puzzlesJson),
+    ) as Array<{
+      modifiedImage?: { media?: { assets?: Array<{ url?: string }> } };
+    }>;
+    const puzzle = puzzles[Number(state.runtimeState.currentPuzzleIndex ?? 0)];
+    const url = puzzle?.modifiedImage?.media?.assets?.[0]?.url;
+    return typeof url === 'string' && url.trim() ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Which question is being held, counted from one.
  *
@@ -47,6 +69,23 @@ function preloadAudioUrl(state: GameplayRuntimeState): string | undefined {
 function heldItemOrdinal(state: GameplayRuntimeState): number | undefined {
   const index = heldItemIndex(state);
   return index === undefined ? undefined : Math.min(index + 1, 3);
+}
+
+function acknowledgedPresentationParticipants(
+  state: GameplayRuntimeState,
+): Set<string> {
+  try {
+    const value = JSON.parse(
+      String(state.runtimeState.presentationReadyParticipantIdsJson ?? '[]'),
+    );
+    return new Set(
+      Array.isArray(value)
+        ? value.filter((entry): entry is string => typeof entry === 'string')
+        : [],
+    );
+  } catch {
+    return new Set();
+  }
 }
 
 export interface GameplayRuntimeSnapshot {
@@ -70,6 +109,8 @@ export interface GameplayRuntimeSnapshot {
      */
     required?: boolean;
     capability?: PresentationSurfaceCapability;
+    /** Safe V2 modified image URL used for decode-before-activation. */
+    preloadImageUrl?: string;
   };
   activeRound?: {
     id: string;
@@ -190,6 +231,30 @@ export class GameplayRuntimeSnapshotMapper {
             roundState: state.activeRound?.modeState ?? {},
           })
         : undefined;
+    const activeOddPiecePhase =
+      state.modeKey === 'odd-piece' &&
+      state.modeVersion === 2 &&
+      ['open', 'answering'].includes(String(state.runtimeState.phase));
+    const reconnectSurface =
+      !awaitingPresentation &&
+      activeOddPiecePhase &&
+      actor.kind === 'participant' &&
+      projectionActor.participantId &&
+      !acknowledgedPresentationParticipants(state).has(
+        projectionActor.participantId,
+      ) &&
+      plugin.requiredPresentationSurfaces
+        ? plugin
+            .requiredPresentationSurfaces({
+              runtimeState: state.runtimeState,
+              roundState: state.activeRound?.modeState ?? {},
+            })
+            ?.find(
+              (surface): surface is PresentationSurfaceRequirement =>
+                surface.teamId !== undefined &&
+                surface.teamId === projectionActor.teamId,
+            )
+        : undefined;
     // The safe shell: only this actor's capability (or no capability for a
     // spectator who is not part of the required set). Nothing sensitive.
     const heldOrdinal = awaitingPresentation
@@ -227,8 +292,12 @@ export class GameplayRuntimeSnapshotMapper {
                     return true;
                   }
                   return (
-                    surface.participantId !== undefined &&
-                    projectionActor.participantId === surface.participantId
+                    (surface.participantId !== undefined &&
+                      projectionActor.participantId ===
+                        surface.participantId) ||
+                    (surface.participantId === undefined &&
+                      surface.teamId !== undefined &&
+                      projectionActor.teamId === surface.teamId)
                   );
                 })?.capability;
                 // Whether THIS actor is one of the surfaces that must
@@ -254,11 +323,23 @@ export class GameplayRuntimeSnapshotMapper {
                         return url ? { preloadAudioUrl: url } : {};
                       })()
                     : {}),
+                  ...(preloadOddPieceImageUrl(state)
+                    ? { preloadImageUrl: preloadOddPieceImageUrl(state) }
+                    : {}),
                 };
               })()
             : {}),
         }
-      : undefined;
+      : reconnectSurface
+        ? {
+            running: true,
+            required: true,
+            capability: reconnectSurface.capability,
+            ...(preloadOddPieceImageUrl(state)
+              ? { preloadImageUrl: preloadOddPieceImageUrl(state) }
+              : {}),
+          }
+        : undefined;
     const preparingModeState = { awaitingPresentation: true as const };
     const currentItem =
       state.modeKey === 'bomb' && projectedRound?.phase === 'presenting'

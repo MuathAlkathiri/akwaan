@@ -134,6 +134,7 @@ export interface GameplayRuntimeSnapshot {
      * afterwards. Nothing else about the item travels with it.
      */
     preloadAudioUrl?: string;
+    preloadImageUrl?: string;
     /**
      * Which question is being held, counted from one. Held state is otherwise
      * redacted wholesale, so without this the waiting screen could only ever

@@ -12,8 +12,8 @@ const socketHarness = vi.hoisted(() => {
     io: { on: vi.fn() },
   };
   socket.on.mockImplementation((event: string, handler: Handler) => {
-      handlers.set(event, handler);
-      return socket;
+    handlers.set(event, handler);
+    return socket;
   });
   socket.io.on.mockImplementation((event: string, handler: Handler) => {
     managerHandlers.set(event, handler);
@@ -31,10 +31,12 @@ describe("Match socket synchronization", () => {
     socketHarness.handlers.clear();
     socketHarness.managerHandlers.clear();
     socketHarness.io.mockImplementation(() => socketHarness.socket);
-    socketHarness.socket.on.mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-      socketHarness.handlers.set(event, handler);
-      return socketHarness.socket;
-    });
+    socketHarness.socket.on.mockImplementation(
+      (event: string, handler: (...args: unknown[]) => void) => {
+        socketHarness.handlers.set(event, handler);
+        return socketHarness.socket;
+      },
+    );
     socketHarness.socket.io.on.mockImplementation(
       (event: string, handler: (...args: unknown[]) => void) => {
         socketHarness.managerHandlers.set(event, handler);
@@ -252,7 +254,8 @@ describe("Match socket synchronization", () => {
     const [, , ack] = socketHarness.socket.emit.mock.calls.at(-1)!;
     (ack as (value: unknown) => void)({
       code: "STALE_RUNTIME_REVISION",
-      message: "Expected gameplay runtime revision 6, but current revision is 7",
+      message:
+        "Expected gameplay runtime revision 6, but current revision is 7",
     });
     vi.advanceTimersByTime(500);
 
@@ -271,6 +274,51 @@ describe("Match socket synchronization", () => {
         ([event]) => event === "live-session:request-snapshot",
       ),
     ).toBe(true);
+  });
+
+  it("retries a Fair-Start acknowledgement after a concurrent surface wins the revision", () => {
+    const client = new LiveSessionSocket();
+    client.connect({
+      sessionId: "session-1",
+      token: "token",
+      onSnapshot: vi.fn(),
+      onConnection: vi.fn(),
+      onError: vi.fn(),
+    });
+    socketHarness.handlers.get("connect")?.();
+    socketHarness.socket.emit.mockClear();
+    const fresh = vi.fn(() => ({
+      expectedSessionRevision: 4,
+      expectedRuntimeRevision: 8,
+      presentationGeneration: 2,
+    }));
+    client.presentationReady(
+      {
+        sessionId: "session-1",
+        expectedSessionRevision: 4,
+        expectedRuntimeRevision: 7,
+        commandId: "presentation-1",
+        presentationGeneration: 2,
+      },
+      fresh,
+    );
+    const [, , ack] = socketHarness.socket.emit.mock.calls.at(-1)!;
+    (ack as (value: unknown) => void)({
+      code: "STALE_RUNTIME_REVISION",
+      message:
+        "Expected gameplay runtime revision 7, but current revision is 8",
+    });
+    vi.advanceTimersByTime(250);
+    const retried = socketHarness.socket.emit.mock.calls.filter(
+      ([event]) => event === "live-session:presentation-ready",
+    );
+    expect(retried).toHaveLength(2);
+    expect(retried[1][1]).toMatchObject({
+      expectedSessionRevision: 4,
+      expectedRuntimeRevision: 8,
+      presentationGeneration: 2,
+    });
+    expect(fresh).toHaveBeenCalledTimes(1);
   });
 
   it("does not resend a command the server refused on its merits", () => {
@@ -324,7 +372,9 @@ describe("Match socket synchronization", () => {
       matchId: "match-1",
       matchRevision: 2,
     });
-    socketHarness.handlers.get("live-session:snapshot")?.({ sessionId: "session-1" });
+    socketHarness.handlers.get("live-session:snapshot")?.({
+      sessionId: "session-1",
+    });
     expect(onSnapshot).toHaveBeenCalledWith({ sessionId: "session-1" });
     connect();
     expect(

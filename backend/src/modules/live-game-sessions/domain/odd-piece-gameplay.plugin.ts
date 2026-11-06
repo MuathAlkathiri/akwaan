@@ -472,3 +472,7 @@ export const ODD_PIECE_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       .slice(0, Number(runtimeState.currentPuzzleIndex) + 1)
       .map((p) => p.id),
 };
+
+// Published through the canonical Odd Piece plugin surface so Match launchers
+// do not reach into a second live-session implementation path.
+export { ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN } from './odd-piece-hotspot-gameplay.plugin';

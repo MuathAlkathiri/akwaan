@@ -36,6 +36,7 @@ export const ChallengePresentationDefinition = new MongooseSchema(
   {
     inputType: { type: String, required: true, trim: true },
     timerSeconds: { type: Number, default: null },
+    answerTimerSeconds: { type: Number, default: null },
     soundPack: { type: String, trim: true, default: null },
     revealStyle: { type: String, trim: true, default: null },
   },

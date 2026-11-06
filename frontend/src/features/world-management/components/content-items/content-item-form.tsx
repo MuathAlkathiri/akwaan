@@ -607,6 +607,15 @@ export function ContentItemForm({
         <OddPieceFields
           value={values.oddPiece}
           onChange={(oddPiece) => set({ oddPiece })}
+          onUploadImage={async (file) => {
+            setUploading(true);
+            try {
+              const asset = await uploadContentItemAsset(file);
+              return asset.url;
+            } finally {
+              setUploading(false);
+            }
+          }}
         />
       )}
 

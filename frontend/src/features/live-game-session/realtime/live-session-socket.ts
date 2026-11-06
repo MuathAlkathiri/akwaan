@@ -18,6 +18,7 @@ type SnapshotListener = (snapshot: LiveSessionSnapshot) => void;
 
 /** Long enough for the resynced snapshot to arrive, short enough to feel instant. */
 const RETRY_DELAY_MS = 250;
+const MAX_PRESENTATION_RETRIES = 10;
 
 /**
  * The codes the server uses when a command was decided against a revision that
@@ -237,21 +238,54 @@ export class LiveSessionSocket {
    * multi-surface contract requires this — the plain HTTP acknowledgement cannot
    * carry a connection identity and is deliberately refused for multi-surface.
    */
-  presentationReady(input: {
-    sessionId: string;
-    expectedSessionRevision: number;
-    expectedRuntimeRevision: number;
-    commandId: string;
-    presentationGeneration?: number;
-    presentationOutcome?:
-      | "media-unavailable"
-      | "autoplay-blocked"
-      | "retry";
-  }): void {
+  presentationReady(
+    input: {
+      sessionId: string;
+      expectedSessionRevision: number;
+      expectedRuntimeRevision: number;
+      commandId: string;
+      presentationGeneration?: number;
+      presentationOutcome?: "media-unavailable" | "autoplay-blocked" | "retry";
+    },
+    retryWithFreshRevisions?: () => Record<string, unknown> | undefined,
+  ): void {
     if (!this.socket?.connected) {
       throw new Error("Live session connection is not available");
     }
-    this.socket.emit("live-session:presentation-ready", {
+    const emit = (command: Record<string, unknown>, attempt = 0): void => {
+      if (!this.socket?.connected) return;
+      this.socket.emit(
+        "live-session:presentation-ready",
+        command,
+        (ack: unknown) => {
+          if (!isStaleRevisionAck(ack) || !retryWithFreshRevisions) return;
+          // Multiple real surfaces commonly decode the same presentation at
+          // once. Retry only a stale revision, after refreshing the authoritative
+          // snapshot, so the acknowledgement race cannot leave a phone stuck in
+          // the Fair-Start gate. A changed generation/phase is deliberately not
+          // retried: that is a real lifecycle decision, not a transient race.
+          if (attempt >= MAX_PRESENTATION_RETRIES) return;
+          this.recoverSnapshot?.();
+          window.setTimeout(
+            () => {
+              const refreshed = retryWithFreshRevisions();
+              if (!refreshed || !this.socket?.connected) return;
+              emit(
+                {
+                  ...command,
+                  ...refreshed,
+                  commandId: crypto.randomUUID(),
+                  clientTimestamp: new Date().toISOString(),
+                },
+                attempt + 1,
+              );
+            },
+            RETRY_DELAY_MS * (attempt + 1),
+          );
+        },
+      );
+    };
+    emit({
       sessionId: input.sessionId,
       expectedSessionRevision: input.expectedSessionRevision,
       expectedRuntimeRevision: input.expectedRuntimeRevision,

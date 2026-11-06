@@ -58,6 +58,26 @@ export class ChallengePresentationPolicy {
       }
     }
 
+    if (
+      presentation.answerTimerSeconds !== undefined &&
+      presentation.answerTimerSeconds !== null
+    ) {
+      const timer = presentation.answerTimerSeconds;
+      if (
+        !Number.isInteger(timer) ||
+        timer < MIN_TIMER_SECONDS ||
+        timer > MAX_TIMER_SECONDS
+      ) {
+        issues.push(
+          issue(
+            'INVALID_PRESENTATION_ANSWER_TIMER',
+            `Answer timer must be null or a whole number of seconds between ${MIN_TIMER_SECONDS} and ${MAX_TIMER_SECONDS}`,
+            { path: `${path}.answerTimerSeconds`, value: timer },
+          ),
+        );
+      }
+    }
+
     for (const key of ['soundPack', 'revealStyle'] as const) {
       const value = presentation[key];
       if (value !== undefined && value !== null && !this.isIdentifier(value)) {
