@@ -566,13 +566,24 @@ export class ContentEngineOrchestratorService {
   }
 
   private mayJudge(row: EngineCandidateDocument): boolean {
-    const facts = row.factVerification as { state?: string } | null;
+    const facts = row.factVerification as {
+      state?: string;
+      claims?: Array<{ reason?: string }>;
+    } | null;
     const compatibility = row.compatibilityEvaluation as {
       preDraft?: { blockers?: unknown[] };
     } | null;
     const factState = facts?.state;
+    // UNRESOLVED is judge-eligible because retrieval may be switched off
+    // (roadmap §30: quality judging decoupled from *disabled* retrieval). A
+    // retrieval that failed is a different fact: it stops short of a paid
+    // judgement and goes to human review like any other unjudged candidate.
+    const retrievalFailed = (facts?.claims ?? []).some(
+      (claim) => claim.reason === 'RETRIEVAL_FAILED',
+    );
     const isFactStateEligible =
-      factState === 'SUPPORTED' || factState === 'UNRESOLVED';
+      factState === 'SUPPORTED' ||
+      (factState === 'UNRESOLVED' && !retrievalFailed);
     return (
       row.status === 'screened_pass' &&
       isFactStateEligible &&
