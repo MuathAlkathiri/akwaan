@@ -70,6 +70,12 @@
         "first_note"
       ]
     },
+    "ekshifni": {
+      "category": "SIGNATURE",
+      "boundWorld": "celebrities",
+      "status": "AUTHORABLE",
+      "profile": "ai/.opencode/skills/challenge-types/ekshifni/SKILL.md"
+    },
     "laqatha": {
       "category": "SIGNATURE",
       "boundWorld": "movies",
@@ -134,6 +140,21 @@
         "supercars"
       ]
     },
+    "celebrities": {
+      "profile": "ai/.opencode/skills/worlds/celebrities/WORLD.md",
+      "scopes": [
+        "arab-acting-stars",
+        "arab-content-creators",
+        "arab-media-stars",
+        "arab-music-stars",
+        "arab-sports-stars",
+        "non-arab-acting-stars",
+        "non-arab-content-creators",
+        "non-arab-media-stars",
+        "non-arab-music-stars",
+        "non-arab-sports-stars"
+      ]
+    },
     "football": {
       "profile": "ai/.opencode/skills/worlds/football/WORLD.md",
       "scopes": [
@@ -142,7 +163,9 @@
         "la-liga",
         "premier-league",
         "saudi-league",
+        "saudi-national-team",
         "serie-a",
+        "uefa-super-cup",
         "world-cup"
       ]
     },
@@ -300,6 +323,66 @@
       "knowledgePath": "ai/.opencode/skills/worlds/cars/scopes/supercars/KNOWLEDGE.md",
       "exemplarsPath": "ai/.opencode/skills/worlds/cars/scopes/supercars/EXEMPLARS.md"
     },
+    "celebrities/arab-acting-stars": {
+      "world": "celebrities",
+      "scopePath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-acting-stars/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-acting-stars/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-acting-stars/EXEMPLARS.md"
+    },
+    "celebrities/non-arab-acting-stars": {
+      "world": "celebrities",
+      "scopePath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-acting-stars/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-acting-stars/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-acting-stars/EXEMPLARS.md"
+    },
+    "celebrities/arab-music-stars": {
+      "world": "celebrities",
+      "scopePath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-music-stars/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-music-stars/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-music-stars/EXEMPLARS.md"
+    },
+    "celebrities/non-arab-music-stars": {
+      "world": "celebrities",
+      "scopePath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-music-stars/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-music-stars/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-music-stars/EXEMPLARS.md"
+    },
+    "celebrities/arab-sports-stars": {
+      "world": "celebrities",
+      "scopePath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-sports-stars/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-sports-stars/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-sports-stars/EXEMPLARS.md"
+    },
+    "celebrities/non-arab-sports-stars": {
+      "world": "celebrities",
+      "scopePath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-sports-stars/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-sports-stars/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-sports-stars/EXEMPLARS.md"
+    },
+    "celebrities/arab-content-creators": {
+      "world": "celebrities",
+      "scopePath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-content-creators/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-content-creators/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-content-creators/EXEMPLARS.md"
+    },
+    "celebrities/non-arab-content-creators": {
+      "world": "celebrities",
+      "scopePath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-content-creators/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-content-creators/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-content-creators/EXEMPLARS.md"
+    },
+    "celebrities/arab-media-stars": {
+      "world": "celebrities",
+      "scopePath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-media-stars/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-media-stars/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/celebrities/scopes/arab-media-stars/EXEMPLARS.md"
+    },
+    "celebrities/non-arab-media-stars": {
+      "world": "celebrities",
+      "scopePath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-media-stars/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-media-stars/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/celebrities/scopes/non-arab-media-stars/EXEMPLARS.md"
+    },
     "football/champions-league": {
       "world": "football",
       "scopePath": "ai/.opencode/skills/worlds/football/scopes/champions-league/SCOPE.md",
@@ -341,6 +424,18 @@
       "scopePath": "ai/.opencode/skills/worlds/football/scopes/serie-a/SCOPE.md",
       "knowledgePath": "ai/.opencode/skills/worlds/football/scopes/serie-a/KNOWLEDGE.md",
       "exemplarsPath": "ai/.opencode/skills/worlds/football/scopes/serie-a/EXEMPLARS.md"
+    },
+    "football/uefa-super-cup": {
+      "world": "football",
+      "scopePath": "ai/.opencode/skills/worlds/football/scopes/uefa-super-cup/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/football/scopes/uefa-super-cup/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/football/scopes/uefa-super-cup/EXEMPLARS.md"
+    },
+    "football/saudi-national-team": {
+      "world": "football",
+      "scopePath": "ai/.opencode/skills/worlds/football/scopes/saudi-national-team/SCOPE.md",
+      "knowledgePath": "ai/.opencode/skills/worlds/football/scopes/saudi-national-team/KNOWLEDGE.md",
+      "exemplarsPath": "ai/.opencode/skills/worlds/football/scopes/saudi-national-team/EXEMPLARS.md"
     },
     "general-knowledge/history": {
       "world": "general-knowledge",

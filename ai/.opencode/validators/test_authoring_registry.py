@@ -25,11 +25,13 @@ class CanonicalAuthoringRegistryTests(unittest.TestCase):
         cls.manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
 
     def test_canonical_manifest_inventory(self) -> None:
-        self.assertEqual(len(self.manifest["worlds"]), 12)
-        self.assertEqual(len(self.manifest["scopes"]), 59)
+        # 12 → 13 Worlds (Celebrities) and 59 → 71 Scopes (its 10 plus two
+        # Football Scopes), matching test_authoring_context.
+        self.assertEqual(len(self.manifest["worlds"]), 13)
+        self.assertEqual(len(self.manifest["scopes"]), 71)
         self.assertEqual(
             sum(len(world["scopes"]) for world in self.manifest["worlds"].values()),
-            59,
+            71,
         )
         for combo, scope in self.manifest["scopes"].items():
             world, slug = combo.split("/", 1)
