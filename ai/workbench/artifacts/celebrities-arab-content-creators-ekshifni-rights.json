@@ -42,11 +42,11 @@
     "gameplay_media_pass": "YES"
   },
   {
-    "celebrity": "Anas Marwah",
+    "celebrity": "Ahmed El Ghandour",
     "local_asset_path": "ai/review/media/anas_marwah.jpg",
     "original_source_url": "https://www.famousbirthdays.com/people/anas-marwah.html",
     "original_file_url": "https://www.famousbirthdays.com/faces/marwah-anas-image.jpg",
-    "author": "FamousBirthdays / Editorial",
+    "author": "Ashraf Hamdi",
     "exact_license": "Unknown / Editorial",
     "license_url": "",
     "attribution_text": "Image via FamousBirthdays",
@@ -60,7 +60,16 @@
     "production_rights_path_clear": "NO",
     "production_compliance_verified": "NO",
     "production_media_ready": "NO",
-    "gameplay_media_pass": "YES"
+    "gameplay_media_pass": "YES",
+    "provider": "Wikimedia Commons",
+    "originalFileUrl": "https://upload.wikimedia.org/wikipedia/commons/f/f3/Ahmed_El_Ghandour.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "sourcePageUrl": "https://commons.wikimedia.org/wiki/File:Ahmed_El_Ghandour.jpg",
+    "license": "CC BY 4.0",
+    "commercialUse": "YES",
+    "attributionRequired": "YES",
+    "shareAlike": "NO",
+    "dimensions": "1102x1712",
+    "localPath": "ai/review/media/ahmed_el_ghandour.jpg"
   },
   {
     "celebrity": "Noor Stars",
@@ -148,11 +157,11 @@
     "gameplay_media_pass": "YES"
   },
   {
-    "celebrity": "Joe Hattab",
+    "celebrity": "Faisal Al-Saif",
     "local_asset_path": "ai/review/media/joe_hattab.jpg",
     "original_source_url": "https://www.youtube.com/results?search_query=Joe%20Hattab",
     "original_file_url": "https://yt3.ggpht.com/1NNGoOGUBdjE78iR3xnWcZwVw0XBDtl8I9ACMAJ--5j0lUUKrOArzFFY2iycTWOnrsMdkdMo0Q=s1000-c-k-c0x00ffffff-no-rj",
-    "author": "Joe Hattab",
+    "author": "FShbib",
     "exact_license": "Creator Owned / Copyright",
     "license_url": "",
     "attribution_text": "Image from Official YouTube Channel",
@@ -166,7 +175,16 @@
     "production_rights_path_clear": "NO",
     "production_compliance_verified": "NO",
     "production_media_ready": "NO",
-    "gameplay_media_pass": "YES"
+    "gameplay_media_pass": "YES",
+    "provider": "Wikimedia Commons",
+    "originalFileUrl": "https://upload.wikimedia.org/wikipedia/commons/0/03/Faisal_Alsaif_2017.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "sourcePageUrl": "https://commons.wikimedia.org/wiki/File:Faisal_Alsaif_2017.jpg",
+    "license": "CC BY-SA 4.0",
+    "commercialUse": "YES",
+    "attributionRequired": "YES",
+    "shareAlike": "YES",
+    "dimensions": "5312x2988",
+    "localPath": "ai/review/media/faisal_al_saif.jpg"
   },
   {
     "celebrity": "Narin Beauty",

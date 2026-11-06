@@ -736,20 +736,21 @@
     "recognizability": "HIGH"
   },
   {
-    "personKey": "joe-hattab",
+    "personKey": "faisal-al-saif",
     "scope": "arab-content-creators",
-    "nameAr": "جو حطاب",
-    "nameEn": "Joe Hattab",
-    "realName": "جهاد حطاب",
-    "handle": "Joe Hattab",
-    "region": "Jordan",
+    "nameAr": "فيصل السيف",
+    "nameEn": "Faisal Al-Saif",
+    "realName": "فيصل السيف",
+    "handle": "Faisal Al-Saif",
+    "region": "Saudi Arabia",
     "primarySourceOfFame": "YouTube",
     "recognizabilityTier": "A",
     "overallGameplayValue": 5,
     "keepReason": "The definitive Arab travel vlogger.",
     "qualityStatus": "KEEP",
     "qualityReason": "Recognizable individual.",
-    "recognizability": "HIGH"
+    "recognizability": "HIGH",
+    "gender": "Male"
   },
   {
     "personKey": "osama-marwah",
@@ -768,20 +769,21 @@
     "recognizability": "HIGH"
   },
   {
-    "personKey": "anas-marwah",
+    "personKey": "ahmed-el-ghandour",
     "scope": "arab-content-creators",
-    "nameAr": "أنس مروة",
-    "nameEn": "Anas Marwah",
-    "realName": "أنس مروة",
-    "handle": "Anasala Family",
-    "region": "Syria",
+    "nameAr": "أحمد الغندور",
+    "nameEn": "Ahmed El Ghandour",
+    "realName": "أحمد الغندور",
+    "handle": "Ahmed El Ghandour",
+    "region": "Egypt",
     "primarySourceOfFame": "YouTube",
     "recognizabilityTier": "A",
     "overallGameplayValue": 5,
     "keepReason": "Face of the biggest Arab family channel.",
     "qualityStatus": "KEEP",
     "qualityReason": "Recognizable individual.",
-    "recognizability": "HIGH"
+    "recognizability": "HIGH",
+    "gender": "Male"
   },
   {
     "personKey": "noor-stars",
