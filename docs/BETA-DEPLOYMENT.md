@@ -239,7 +239,11 @@ Verify:
 
 ```bash
 curl -s https://akwaan-api.onrender.com/health
-# {"status":"ok","database":"connected"}
+# {"status":"ok","database":"connected","commit":"<sha Render deployed>"}
+
+# Which code is live? A 200 alone does not say. Compare the commit with main:
+[ "$(curl -s https://akwaan-api.onrender.com/health | sed -E 's/.*"commit":"?([0-9a-f]*).*/\1/')" \
+  = "$(git rev-parse origin/main)" ] && echo "backend runs main" || echo "backend is NOT on main"
 
 curl -si -o /dev/null -w '%{http_code}\n' \
   -H 'Origin: https://akwaan.vercel.app' \
