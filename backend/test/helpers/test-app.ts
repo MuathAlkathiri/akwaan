@@ -1,5 +1,7 @@
 import { INestApplication } from '@nestjs/common';
+import { getConnectionToken } from '@nestjs/mongoose';
 import { Test, TestingModuleBuilder } from '@nestjs/testing';
+import type { Connection } from 'mongoose';
 import { AllExceptionsFilter } from '../../src/common/filters/http-exception.filter';
 import { configureApiApplication } from '../../src/common/swagger/swagger.config';
 import { requireSafeTestDatabaseUri } from './test-database';
@@ -25,5 +27,14 @@ export async function createIntegrationTestApp(options?: {
   configureApiApplication(app);
   app.useGlobalFilters(new AllExceptionsFilter());
   await app.init();
+  // Mongoose builds every model's indexes in the background after boot. On a
+  // fresh suite database those builds hold collection locks, and a test's first
+  // transaction can then fail with a transient `LockTimeout` and be retried by
+  // the driver — re-running a test callback whose side effects already happened.
+  // Hand the app over only once the indexes are in place.
+  const connection = app.get<Connection>(getConnectionToken());
+  await Promise.all(
+    connection.modelNames().map((name) => connection.model(name).init()),
+  );
   return app;
 }
