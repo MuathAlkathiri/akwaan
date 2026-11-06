@@ -23,7 +23,7 @@ export class AiProviderFactory {
     // validate credentials, and this factory runs during bootstrap, so
     // resolving a real provider here is what made a disabled deployment fail to
     // start for want of a key it was never going to use.
-    if (this.generationDisabled()) {
+    if (this.isGenerationDisabled()) {
       this.logger.log(
         'AI question generation is disabled; skipping AI provider initialization',
       );
@@ -45,7 +45,8 @@ export class AiProviderFactory {
     }
   }
 
-  private generationDisabled(): boolean {
+  /** True when AI_QUESTION_GENERATION_ENABLED is explicitly switched off. */
+  isGenerationDisabled(): boolean {
     const raw = this.config
       .get<string>('AI_QUESTION_GENERATION_ENABLED')
       ?.trim()

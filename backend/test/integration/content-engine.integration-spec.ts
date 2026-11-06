@@ -427,11 +427,14 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
 
     it('never admits more than the cap under concurrent reservations', async () => {
       // 100 SAR cap, 150 parallel reservations of 1 SAR each.
+      // One job per reservation: the per-job batch cap (25 SAR) has its own
+      // unit coverage, and sharing one job would test it instead of the
+      // monthly cap this race is about.
       const attempts = await Promise.allSettled(
         Array.from({ length: 150 }, (_, i) =>
           budget.reserve({
             reservationId: `race-${i}`,
-            jobId: 'j',
+            jobId: `race-job-${i}`,
             stage: 'generation',
             provider: 'fake',
             model: 'fake-model',
