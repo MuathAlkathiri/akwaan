@@ -443,13 +443,15 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
     it('creates distinct jobs for different guidance/difficulty and executes only the targeted job', async () => {
       const reqA = {
         ...PILOT,
-        targetCount: 2,
+        // The suite's fake provider always returns PILOT.targetCount candidates,
+        // and the engine rightly fails a job whose output count differs.
+        targetCount: PILOT.targetCount,
         difficulty: 'easy',
         batchGuidance: 'Focus on support heroes.',
       };
       const reqB = {
         ...PILOT,
-        targetCount: 2,
+        targetCount: PILOT.targetCount,
         difficulty: 'relatively_difficult',
         batchGuidance: 'Focus on map lore.',
       };

@@ -26,6 +26,11 @@ services:
       MONGODB_URI: mongodb://mongodb-test:27017/akwaan_integration_test?replicaSet=rs0
       JWT_SECRET: docker-integration-only-secret
       EXTERNAL_INTEGRATIONS_DISABLED: "true"
+      # The default provider (gemini) refuses to boot without a key. Suites bind
+      # their own fake engine providers; this dead endpoint just lets the app
+      # start and makes any accidental model call fail fast and offline.
+      AI_PROVIDER: lmstudio
+      LMSTUDIO_BASE_URL: http://127.0.0.1:9/v1
       NODE_PATH: /workspace/backend/node_modules:/workspace/node_modules
     command: npm run test:backend:integration
     depends_on:

@@ -261,7 +261,6 @@ describe('World Management HTTP integration', () => {
       sortOrder: 2,
       displayName: 'اقرأ الأرقام',
       description: 'نسخة كرة القدم',
-      instructions: 'اختر الرقم الأقرب',
     }).expect(201);
 
     const duplicateMechanic = await configure({
