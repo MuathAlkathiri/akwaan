@@ -1,3 +1,4 @@
+import { traceStartupStep } from '../../../common/diagnostics/startup-diagnostics';
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -40,7 +41,9 @@ export class MongooseParticipantPresenceRepository
    * Instance-scoped presence belongs with that work, not ahead of it.
    */
   async onApplicationBootstrap(): Promise<void> {
-    await this.clearAll();
+    await traceStartupStep('ParticipantPresence.onApplicationBootstrap', () =>
+      this.clearAll(),
+    );
   }
 
   async connect(input: {
