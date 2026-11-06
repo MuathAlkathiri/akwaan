@@ -224,7 +224,19 @@ export class GenerationPlannerService {
     let slotAllocationResult:
       ReturnType<typeof allocateCreativeSlots> | undefined;
 
-    if (input.catalog !== undefined && input.catalog !== null) {
+    // `resolveCanonicalFamilies` answers a Scope with no family block with an
+    // empty catalog, not null. planWithResolvedContext already maps that to V1;
+    // this guard covers direct `plan()` callers too. A malformed `families`
+    // value still reaches the allocator and fails closed.
+    const declaresNoFamilies =
+      Array.isArray(input.catalog?.families) &&
+      input.catalog.families.length === 0;
+
+    if (
+      input.catalog !== undefined &&
+      input.catalog !== null &&
+      !declaresNoFamilies
+    ) {
       slotAllocationResult = allocateCreativeSlots({
         worldKey,
         scopeKey,
