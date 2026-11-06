@@ -1373,16 +1373,15 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       expect(result.qualityCalls).toBe(0);
     }, 60_000);
 
-    it('still judges when retrieval fails outright', async () => {
-      // Retrieval failing says nothing about the claim, unlike "no evidence
-      // exists". Quality is judged separately from facts (§30.22), so the
-      // candidate is judged and the fact stays UNRESOLVED for a human.
+    it('skips the judge when retrieval fails outright', async () => {
+      // Retrieval failure is a different fact from "no evidence exists", and
+      // both must stop short of a paid judgement.
       const result = await withRetriever(async () => {
         throw new Error('retrieval unavailable');
       });
       expect(result.facts).toBe('UNRESOLVED');
-      expect(result.judged).toBe(true);
-      expect(result.qualityCalls).toBeGreaterThan(0);
+      expect(result.judged).toBe(false);
+      expect(result.qualityCalls).toBe(0);
     }, 60_000);
 
     it('skips the judge when evidence contradicts the claim', async () => {
