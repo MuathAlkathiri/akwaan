@@ -13,7 +13,8 @@ Closest supports **both** of these, and neither is a lesser form of the other.
 **A — Knowledge-anchored estimation.** The answer is a real quantity a player
 may or may not know exactly. A team that knows it wins; a team that reasons from
 familiar reference points should land close. *How many goals were scored in a
-given World Cup? How tall is a landmark? In what year did an event happen?*
+given World Cup? How tall is a landmark? In what year did a recognizable event
+happen — when players can reason toward it (see *Year questions* below)?*
 
 **B — Reasoning-derived estimation.** The prompt supplies what the player needs,
 and the answer is reached by visualising, counting, comparing or approximating.
@@ -44,6 +45,42 @@ the same knowledge-anchored question that is excellent in `football` or
 
 Read the target Scope before authoring. Where a Scope supplies `EXEMPLARS.md`,
 those items govern.
+
+### Year questions
+
+Year recall is meta-trivia and rejected by default (`QUESTION-CRAFT.md`, rule 5).
+Closest is the narrow exception: a year is allowed as a **direction-A estimate**
+in a World that permits direction A, and only when every one of these holds:
+
+1. The event is recognizable and native to the World and Scope.
+2. A team that does not know the year can reason toward it from familiar
+   reference points (eras, sequences, before/after relations, a career or a
+   technology it knows), so a near miss rewards real estimation.
+3. Exactly one year is objectively defensible: no disputed date, no ambiguous
+   event definition (announced vs released, founded vs first held).
+4. The prompt supports reasoning without disclosing the year, and no clue
+   narrows it to a give-away.
+
+**Recognizable is not inferable.** Sort every year idea into one of three kinds:
+
+- **Inferable estimate — allowed.** A team that does not know the year can
+  build toward it from what ordinary players hold or what the prompt shows,
+  for example its place relative to another date they know, a sequence they can
+  count, or an era they can place. A near miss reflects better reasoning, and
+  the table has something to argue about.
+- **Recognizable but memorized — not enough on its own.** A famous date that
+  players either simply know or blind-guess. One player answers and the rest
+  watch, so it fails *Uncertainty* and *Discussion*. It needs a real reasoning
+  path, not just a famous subject.
+- **Arbitrary or obscure date trivia — rejected.** Nothing to estimate from;
+  a lookup or a lottery.
+
+A cosmetic hint stapled onto a date that remains unguessable does not move it
+up a kind. Weigh every year item on the rubric below, Guessability, Uncertainty
+and Discussion first, and treat an `exact-midpoint` target (see *Midpoint*) as
+a strong warning for years: a team that leaves the slider untouched should not
+win. The answer stays an ordinary `numeric-range` value with an authored
+`displayFormat: 'calendar-year'`; scoring and payload are unchanged.
 
 ## The quality rubric
 

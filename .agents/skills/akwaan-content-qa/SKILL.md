@@ -27,9 +27,11 @@ authority.
 
 ## 0. Mandatory QA Hard Gates (Fatal Errors)
 
-1. **`BATCH_MEDIA_TARGET_90_PERCENT` (Fatal)**:
-   - Batch achieves >= 90% media-bearing questions overall (>= 173 / 192 items).
-   - Media carries the cognitive challenge; decorative media is rejected.
+1. **`MEDIA_ONLY_WHERE_IT_CARRIES_GAMEPLAY` (Fatal)**:
+   - Every attached media item carries the cognitive challenge; decorative or irrelevant media is rejected.
+   - Every media-native mechanic carries its required media.
+   - No universal batch-wide media percentage applies. A ≈ ≥90% media-bearing target applies only to batches of mechanics that naturally support media (roadmap §23.2). A text-only question is valid when media would add no meaningful value.
+   - A media intent is not an attached or verified asset.
 
 2. **`EXTRA_CLUE_WITH_MEDIA` (Fatal)**:
    - When media is present, the prompt MUST NOT contain descriptive clauses, player records, club hints, or answer-defining biography.
@@ -41,6 +43,7 @@ authority.
 4. **`EXPERIENCE_GATE_FAILURE` (Fatal)**:
    - Does this question make the player recall or interact with the experience of the Scope, or does it merely test Wikipedia-style information about the Scope?
    - A technically correct, unambiguous question STILL FAILS if it feels like ordinary meta-trivia (e.g., release dates, studio history, sales numbers).
+   - Exception: a Closest year estimate passes this gate only when it meets every condition in the Closest Skill's *Year questions* section (recognizable event, players can reason toward the year, one defensible year, no give-away clue). A famous date players simply know or blind-guess is not enough; pure date recall and unanchored or obscure dates still fail.
    - Batches dominated by Category B/C (Factual/Meta) content must fail QA even if all answers are factually correct.
 
 

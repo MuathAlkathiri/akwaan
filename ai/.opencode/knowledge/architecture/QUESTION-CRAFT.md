@@ -32,8 +32,12 @@ AI evaluation or a validator never constitutes human approval.
 
 ## 0. Canonical Product Principles (MANDATORY RESET R3)
 
-> **1. BATCH-LEVEL MEDIA TARGET: >= 90% OF ALL QUESTIONS**:
-> Akwaan is an audiovisual party game. At least **>= 90% of all authored items across the entire batch** must carry meaningful media (Image, Audio, Clip, or Programmatic Diagram).
+> **1. MEDIA WHERE IT CARRIES THE GAMEPLAY — NO UNIVERSAL QUOTA**:
+> Akwaan is an audiovisual party game, so use media (Image, Audio, Clip, or Programmatic Diagram) whenever it materially supports the question. There is **no universal batch-wide media percentage**: a ≈ ≥90% media-bearing target applies only to batches whose mechanic naturally supports media (roadmap §23.2), and counts only media that carries gameplay information.
+> - A text-only question is valid when media would add no meaningful value. Never attach decorative or irrelevant media to an otherwise good question to reach a target.
+> - A mechanic that needs media keeps its media requirement (the rules below and the selected mechanic Skill).
+> - A media intent is a request for an asset, not an attached or verified asset. Authoring writes the intent; media enrichment sources and verifies the asset later, through the existing media pipeline.
+> - Leakage, authenticity, factual verification and media safety rules (2–4 below, `MEDIA-CONTRACT.md`) apply in full to every item that carries media.
 > - **Top-5**: Kept as interaction-native text (10 candidate cards, names only). No decorative images.
 > - **Football Bomb**: Exactly 1 name-completion item per 3-item scope set (famous surname in prompt -> less familiar first name in answer). The remaining 2/3 are media recognition.
 > - **Anime, Video Games, Puzzles Bomb**: **100% media-based recognition/micro-puzzles**. No name-completion templates outside Football.
@@ -66,7 +70,7 @@ AI evaluation or a validator never constitutes human approval.
 > Akwaan content must make players feel they are experiencing the subject, not taking a Wikipedia quiz.
 > - **EXPERIENCE-NATIVE (A - Preferred):** Gameplay situations, UI elements, audio cues (Ultimate lines, Killstreaks), mechanics, spatial/visual recognition, and situational knowledge. The player reaction should be "أوووه أعرفها!"
 > - **KNOWLEDGE-THROUGH-EXPERIENCE (B - Allowed):** Factual questions that a normal player naturally learns from experiencing the Scope itself.
-> - **META-TRIVIA (C - Default Rejection):** Release dates, developer names, sales figures, award counts, or generic "what year..." questions. Reject these by default unless there is a clear reason it creates excellent gameplay.
+> - **META-TRIVIA (C - Default Rejection):** Release dates, developer names, sales figures, award counts, or generic "what year..." questions. Reject these by default unless there is a clear reason it creates excellent gameplay. **Closest only:** a year question may qualify as a Closest estimate under the conditions in the Closest mechanic Skill. For every other mechanic this default rejection applies unchanged, and nothing outside this rule needs to be consulted.
 > - *Textual questions must evoke the experience.* Avoid sterile formulation like "ما اسم المدينة التي تقع فيها GTA V؟". Prefer: "تشوف Vinewood فوق الجبل وأنت تلف بالمدينة — وين أنت؟"
 
 >
@@ -115,7 +119,7 @@ modality, cardinality, and answer semantics.
 
 ## 3. Mandatory QA Hard Gates
 
-1. **`BATCH_MEDIA_TARGET_90_PERCENT`**: >= 90% of the entire batch carries meaningful media (>= 173/192).
+1. **`MEDIA_ONLY_WHERE_IT_CARRIES_GAMEPLAY`**: Every attached media item carries gameplay information (no decorative media), and every media-native mechanic carries its required media. No universal batch-wide percentage applies; a ≈ ≥90% target applies only to batches of mechanics that naturally support media (roadmap §23.2).
 2. **`EXTRA_CLUE_WITH_MEDIA`**: Zero descriptive adjectives or answer-defining clues when media is present.
 3. **`PROVENANCE_AND_WIGOLO_INTEGRITY`**: Valid `sourceMethod` (`WIGOLO`, `EXISTING_APPROVED_ASSET`, `PROGRAMMATIC_PUZZLE`, `INTENTIONAL_TEXT`).
 4. **`TOP5_VISIBLE_CANDIDATE_NAME_ONLY`**: 10 candidate cards show names only.

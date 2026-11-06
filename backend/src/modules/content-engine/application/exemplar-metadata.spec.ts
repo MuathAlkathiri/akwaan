@@ -338,7 +338,8 @@ describe('exemplar metadata contract', () => {
   it('parses the same eight repository EXEMPLARS.md files as the Python validator', () => {
     const root = resolve(__dirname, '../../../../../');
     const expected = new Map([
-      ['football/scopes/world-cup', 4],
+      // 5 since 2026-11-06: owner-rejected first-tournament-year record.
+      ['football/scopes/world-cup', 5],
       ['general-knowledge/scopes/science', 5],
       ['puzzles/scopes/numbers-estimation', 12],
       ['puzzles/scopes/spot-the-error', 8],

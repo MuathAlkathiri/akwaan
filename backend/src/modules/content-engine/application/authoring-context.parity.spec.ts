@@ -502,11 +502,15 @@ describeIf(
             scopeKey: 'numbers-estimation',
           }).contextHash,
         ).toBe(
-          // Refreshed 2026-11-06 (Phase 1C): only numbers-estimation/
-          // EXEMPLARS.md (item 05 rejected) and QUESTION-CRAFT.md (quality
-          // principle) changed. The previous value, e4897c1f…, reproduces
-          // exactly from the prior files, so the algorithm is unchanged.
-          '0ca63754aad3b31b96079ab41fffe97fe072c31c62a1c390a516be3c857dfd38',
+          // Refreshed 2026-11-06 (Phase 2B Batches 1–2): only QUESTION-CRAFT.md
+          // (Batch 1: universal 90% media quota replaced by the roadmap §23.2
+          // conditional rule; Batch 2: Closest year exception to META-TRIVIA)
+          // and the Closest SKILL.md (Batch 2: *Year questions*, then the
+          // pre-publication review's three-kind distinction) changed.
+          // The previous values, 0ca63754… (pre-Batch 1), f3942825…
+          // (Batch 1) and 6dd18592… (Batch 2), reproduce exactly from the
+          // prior files, so the algorithm is unchanged.
+          'c2205015e51e5c38df64665e540369a4ff1a700243ac984d529a7c187f335a86',
         );
       });
 
