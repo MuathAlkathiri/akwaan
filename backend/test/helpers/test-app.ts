@@ -36,5 +36,23 @@ export async function createIntegrationTestApp(options?: {
   await Promise.all(
     connection.modelNames().map((name) => connection.model(name).init()),
   );
+  await listenOnLoopback(app);
   return app;
+}
+
+/**
+ * Binds the suite's HTTP server once, to 127.0.0.1 on an OS-assigned port.
+ *
+ * Handed a server that is not listening, Supertest calls `listen(0)` — a
+ * wildcard bind — for every request, then sends that request to
+ * `127.0.0.1:<port>`. A wildcard bind can succeed on a port another local
+ * process already holds on 127.0.0.1 specifically, and the more specific socket
+ * then receives the request: tests saw 404/400 responses that this app never
+ * sent. Binding to 127.0.0.1 itself makes such a port unavailable to us, and a
+ * server that is already listening is reused by Supertest instead of rebound.
+ *
+ * `app.close()` in each suite's teardown closes this server.
+ */
+export async function listenOnLoopback(app: INestApplication): Promise<void> {
+  await app.listen(0, '127.0.0.1');
 }
