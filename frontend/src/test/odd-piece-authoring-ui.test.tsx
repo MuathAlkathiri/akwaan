@@ -25,4 +25,58 @@ describe("Odd Piece Admin fields", () => {
     ).toBeInTheDocument();
     expect(screen.getByDisplayValue("amg-c63")).toBeInTheDocument();
   });
+
+  it("exposes the V2 difficulty, provenance and normalized hotspot editor", () => {
+    render(
+      <OddPieceFields
+        value={{
+          ...value,
+          version: 2,
+          v2: {
+            difficulty: "medium",
+            modifiedImage: {
+              url: "https://media.test/modified.jpg",
+              width: "1200",
+              height: "800",
+              orientation: "landscape",
+              assetOrigin: "ai-edited",
+              sourceUrl: "https://source.test/modified",
+              licenceNote: "",
+              editedRegion: "front lamp",
+              editModel: "local-mask-v1",
+            },
+            originalImage: {
+              url: "https://media.test/original.jpg",
+              width: "1200",
+              height: "800",
+              orientation: "landscape",
+              assetOrigin: "authentic",
+              sourceUrl: "https://source.test/original",
+              licenceNote: "",
+              editedRegion: "",
+              editModel: "",
+            },
+            intruderVehicleIdentity: "amg-c63",
+            intruderVehicleLabel: "Mercedes-AMG C63",
+            intruderPartIdentity: "front-lamp",
+            intruderPartLabel: "المصباح الأمامي",
+            polygon: [
+              { x: 0.4, y: 0.4 },
+              { x: 0.6, y: 0.4 },
+              { x: 0.6, y: 0.6 },
+            ],
+            tolerance: "0.02",
+          },
+        }}
+        onChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId("odd-piece-v2-fields")).toBeInTheDocument();
+    expect(screen.getByTestId("odd-piece-v2-difficulty")).toHaveValue("medium");
+    expect(screen.getByTestId("odd-piece-hotspot-editor")).toBeInTheDocument();
+    expect(screen.getByTestId("odd-piece-hotspot-point-1")).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("https://source.test/modified"),
+    ).toBeInTheDocument();
+  });
 });

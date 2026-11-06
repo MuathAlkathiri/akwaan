@@ -14,7 +14,14 @@ import type {
   LaTahriqhaPayload,
   LaqathaPayload,
   FirstNotePayload,
+  OddPieceHotspotPayload,
+  OddPieceDifficulty,
 } from "../types";
+import {
+  validateHotspotTolerance,
+  validateNormalizedHotspotPolygon,
+  type NormalizedHotspotPoint,
+} from "./odd-piece-hotspot.geometry";
 
 /**
  * Content Item form state and its payload builder.
@@ -58,12 +65,45 @@ export interface OddPieceVisualFormState {
   imageUrl: string;
 }
 
+export interface OddPieceHotspotImageFormState {
+  url: string;
+  width: string;
+  height: string;
+  orientation: "landscape" | "portrait" | "square";
+  assetOrigin: "authentic" | "ai-edited";
+  sourceUrl: string;
+  licenceNote: string;
+  editedRegion: string;
+  editModel: string;
+}
+
+export interface OddPieceV2FormState {
+  difficulty: OddPieceDifficulty | "";
+  modifiedImage: OddPieceHotspotImageFormState;
+  originalImage: OddPieceHotspotImageFormState;
+  intruderVehicleIdentity: string;
+  intruderVehicleLabel: string;
+  intruderPartIdentity: string;
+  intruderPartLabel: string;
+  polygon: NormalizedHotspotPoint[];
+  tolerance: string;
+}
+
+export const ODD_PIECE_DIFFICULTIES = [
+  { value: "easy", label: "سهل" },
+  { value: "medium", label: "متوسط" },
+  { value: "hard", label: "صعب" },
+] as const;
+
 export interface OddPieceFormState {
   enabled: boolean;
+  /** Undefined is treated as the existing V1 editor for old callers/fixtures. */
+  version?: 1 | 2;
   targetVehicleIdentity: string;
   targetVehicleLabel: string;
   targetRevealImageUrl: string;
   pieces: OddPieceVisualFormState[];
+  v2?: OddPieceV2FormState;
 }
 
 export function hasOddPieceMechanic(
@@ -87,15 +127,89 @@ function emptyOddPieceState(): OddPieceFormState {
       vehicleLabel: "",
       imageUrl: "",
     })),
+    version: 1,
+    v2: emptyOddPieceV2State(),
+  };
+}
+
+function emptyHotspotImageState(): OddPieceHotspotImageFormState {
+  return {
+    url: "",
+    width: "",
+    height: "",
+    orientation: "landscape",
+    assetOrigin: "authentic",
+    sourceUrl: "",
+    licenceNote: "",
+    editedRegion: "",
+    editModel: "",
+  };
+}
+
+export function emptyOddPieceV2State(): OddPieceV2FormState {
+  return {
+    difficulty: "",
+    modifiedImage: emptyHotspotImageState(),
+    originalImage: emptyHotspotImageState(),
+    intruderVehicleIdentity: "",
+    intruderVehicleLabel: "",
+    intruderPartIdentity: "",
+    intruderPartLabel: "",
+    polygon: [],
+    // 2% of the normalized image edge: about 24px on a 1200px-wide source and
+    // 16px on an 800px-tall source. The field remains configurable and the
+    // shared contract caps it at 0.25; authors must opt into anything larger.
+    tolerance: "0.02",
+  };
+}
+
+function toHotspotImageState(
+  image: OddPieceHotspotPayload["modifiedImage"] | undefined,
+): OddPieceHotspotImageFormState {
+  if (!image) return emptyHotspotImageState();
+  return {
+    url: image.media?.assets?.[0]?.url ?? "",
+    width: image.width ? String(image.width) : "",
+    height: image.height ? String(image.height) : "",
+    orientation: image.orientation ?? "landscape",
+    assetOrigin: image.provenance?.assetOrigin ?? "authentic",
+    sourceUrl: image.provenance?.sourceUrl ?? "",
+    licenceNote: image.provenance?.licenceNote ?? "",
+    editedRegion: image.provenance?.editedRegion ?? "",
+    editModel: image.provenance?.editModel ?? "",
   };
 }
 
 export function toOddPieceFormState(
-  payload: Partial<OddPiecePayload> | undefined,
+  payload:
+    (Partial<OddPiecePayload> & Partial<OddPieceHotspotPayload>) | undefined,
 ): OddPieceFormState {
   if (payload?.variant !== "odd-piece") return emptyOddPieceState();
+  if (payload.version === 2) {
+    return {
+      ...emptyOddPieceState(),
+      enabled: true,
+      version: 2,
+      v2: {
+        difficulty: payload.difficulty ?? "",
+        modifiedImage: toHotspotImageState(payload.modifiedImage),
+        originalImage: toHotspotImageState(payload.originalImage),
+        intruderVehicleIdentity: payload.intruderVehicleIdentity ?? "",
+        intruderVehicleLabel: payload.intruderVehicleLabel ?? "",
+        intruderPartIdentity: payload.intruderPartIdentity ?? "",
+        intruderPartLabel: payload.intruderPartLabel ?? "",
+        polygon: payload.hotspot?.polygon ?? [],
+        tolerance:
+          payload.hotspot?.tolerance === undefined
+            ? "0.02"
+            : String(payload.hotspot.tolerance),
+      },
+    };
+  }
   return {
     enabled: true,
+    version: 1,
+    v2: emptyOddPieceV2State(),
     targetVehicleIdentity: payload.targetVehicleIdentity ?? "",
     targetVehicleLabel: payload.targetVehicleLabel ?? "",
     targetRevealImageUrl: payload.targetVehicleReveal?.assets?.[0]?.url ?? "",
@@ -972,6 +1086,54 @@ export function buildAnswerPayload(
   }
 }
 
+function buildHotspotImagePayload(image: OddPieceHotspotImageFormState) {
+  const width = Number(image.width);
+  const height = Number(image.height);
+  return {
+    media: {
+      type: "image" as const,
+      assets: [{ url: image.url.trim() }],
+    },
+    width,
+    height,
+    orientation: image.orientation,
+    provenance: {
+      assetOrigin: image.assetOrigin,
+      sourceUrl: image.sourceUrl.trim(),
+      ...(image.licenceNote.trim()
+        ? { licenceNote: image.licenceNote.trim() }
+        : {}),
+      ...(image.editedRegion.trim()
+        ? { editedRegion: image.editedRegion.trim() }
+        : {}),
+      ...(image.editModel.trim() ? { editModel: image.editModel.trim() } : {}),
+    },
+  };
+}
+
+function buildOddPieceV2Payload(
+  oddPiece: OddPieceFormState,
+): OddPieceHotspotPayload {
+  const v2 = oddPiece.v2 ?? emptyOddPieceV2State();
+  return {
+    variant: "odd-piece",
+    version: 2,
+    difficulty: v2.difficulty as OddPieceDifficulty,
+    modifiedImage: buildHotspotImagePayload(v2.modifiedImage),
+    originalImage: buildHotspotImagePayload(v2.originalImage),
+    targetVehicleIdentity: oddPiece.targetVehicleIdentity.trim(),
+    targetVehicleLabel: oddPiece.targetVehicleLabel.trim(),
+    intruderVehicleIdentity: v2.intruderVehicleIdentity.trim(),
+    intruderVehicleLabel: v2.intruderVehicleLabel.trim(),
+    intruderPartIdentity: v2.intruderPartIdentity.trim(),
+    intruderPartLabel: v2.intruderPartLabel.trim(),
+    hotspot: {
+      polygon: v2.polygon,
+      tolerance: Number(v2.tolerance),
+    },
+  };
+}
+
 export function buildContentItemPayload(values: ContentItemFormValues) {
   const mediaUrls = (
     values.firstNote.enabled ? [values.firstNote.audioUrl] : values.mediaUrls
@@ -1098,24 +1260,26 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
       }
     : undefined;
   const oddPieceMechanicPayload = values.oddPiece.enabled
-    ? {
-        variant: "odd-piece" as const,
-        targetVehicleIdentity: values.oddPiece.targetVehicleIdentity.trim(),
-        targetVehicleLabel: values.oddPiece.targetVehicleLabel.trim(),
-        targetVehicleReveal: {
-          type: "image" as const,
-          assets: [{ url: values.oddPiece.targetRevealImageUrl.trim() }],
-        },
-        pieces: values.oddPiece.pieces.map((piece) => ({
-          localId: piece.localId.trim(),
-          vehicleIdentity: piece.vehicleIdentity.trim(),
-          vehicleLabel: piece.vehicleLabel.trim(),
-          media: {
+    ? values.oddPiece.version === 2 && values.oddPiece.v2
+      ? buildOddPieceV2Payload(values.oddPiece)
+      : {
+          variant: "odd-piece" as const,
+          targetVehicleIdentity: values.oddPiece.targetVehicleIdentity.trim(),
+          targetVehicleLabel: values.oddPiece.targetVehicleLabel.trim(),
+          targetVehicleReveal: {
             type: "image" as const,
-            assets: [{ url: piece.imageUrl.trim() }],
+            assets: [{ url: values.oddPiece.targetRevealImageUrl.trim() }],
           },
-        })),
-      }
+          pieces: values.oddPiece.pieces.map((piece) => ({
+            localId: piece.localId.trim(),
+            vehicleIdentity: piece.vehicleIdentity.trim(),
+            vehicleLabel: piece.vehicleLabel.trim(),
+            media: {
+              type: "image" as const,
+              assets: [{ url: piece.imageUrl.trim() }],
+            },
+          })),
+        }
     : undefined;
   const ekshifniMechanicPayload = values.ekshifni.enabled
     ? {
@@ -1341,6 +1505,98 @@ export function normalizeArabicAnswerClient(raw: string): string {
     .toLowerCase();
 }
 
+function normalizedIdentity(value: string): string {
+  return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function findOddPieceV2Problems(values: ContentItemFormValues): string[] {
+  const { oddPiece } = values;
+  const v2 = oddPiece.v2;
+  if (!v2) return ["بيانات القطعة الدخيلة V2 غير موجودة."];
+  const problems: string[] = [];
+  if (
+    !oddPiece.targetVehicleIdentity.trim() ||
+    !oddPiece.targetVehicleLabel.trim()
+  )
+    problems.push("هوية السيارة الأساسية واسم الكشف مطلوبان.");
+  if (!v2.difficulty) problems.push("اختر صعوبة القطعة: سهل أو متوسط أو صعب.");
+  if (
+    !v2.intruderVehicleIdentity.trim() ||
+    !v2.intruderVehicleLabel.trim() ||
+    !v2.intruderPartIdentity.trim() ||
+    !v2.intruderPartLabel.trim()
+  )
+    problems.push("هوية السيارة والقطعة الدخيلة مطلوبة.");
+  if (
+    oddPiece.targetVehicleIdentity.trim() &&
+    v2.intruderVehicleIdentity.trim() &&
+    normalizedIdentity(oddPiece.targetVehicleIdentity) ===
+      normalizedIdentity(v2.intruderVehicleIdentity)
+  )
+    problems.push("يجب أن تختلف هوية السيارة الدخيلة عن السيارة الأساسية.");
+
+  const images = [
+    ["الصورة المعدّلة", v2.modifiedImage],
+    ["الصورة الأصلية", v2.originalImage],
+  ] as const;
+  images.forEach(([label, image]) => {
+    if (!image.url.trim()) problems.push(`${label} مطلوبة.`);
+    const width = Number(image.width);
+    const height = Number(image.height);
+    if (
+      !Number.isInteger(width) ||
+      width <= 0 ||
+      !Number.isInteger(height) ||
+      height <= 0
+    )
+      problems.push(`${label} تحتاج أبعاداً صحيحة.`);
+    if (!image.sourceUrl.trim()) problems.push(`مصدر ${label} مطلوب.`);
+    if (
+      image.assetOrigin === "ai-edited" &&
+      (!image.editedRegion.trim() || !image.editModel.trim())
+    )
+      problems.push(`${label} المعدّلة تحتاج منطقة التعديل ونموذجه.`);
+  });
+  const modifiedWidth = Number(v2.modifiedImage.width);
+  const modifiedHeight = Number(v2.modifiedImage.height);
+  const originalWidth = Number(v2.originalImage.width);
+  const originalHeight = Number(v2.originalImage.height);
+  if (
+    modifiedWidth > 0 &&
+    modifiedHeight > 0 &&
+    originalWidth > 0 &&
+    originalHeight > 0 &&
+    (modifiedWidth !== originalWidth || modifiedHeight !== originalHeight)
+  )
+    problems.push("الصورة المعدّلة والأصلية يجب أن تتطابقا في الأبعاد.");
+
+  const identities = [
+    oddPiece.targetVehicleIdentity,
+    oddPiece.targetVehicleLabel,
+    v2.intruderVehicleIdentity,
+    v2.intruderVehicleLabel,
+    v2.intruderPartIdentity,
+    v2.intruderPartLabel,
+  ]
+    .map(normalizedIdentity)
+    .filter((value) => value.length >= 3);
+  const modifiedMetadata = [
+    v2.modifiedImage.url,
+    v2.modifiedImage.sourceUrl,
+    v2.modifiedImage.licenceNote,
+    v2.modifiedImage.editedRegion,
+  ]
+    .map(normalizedIdentity)
+    .join("");
+  if (identities.some((identity) => modifiedMetadata.includes(identity)))
+    problems.push("بيانات الصورة المعدّلة يجب ألا تكشف هوية الإجابة.");
+
+  const tolerance = Number(v2.tolerance);
+  problems.push(...validateHotspotTolerance(tolerance));
+  problems.push(...validateNormalizedHotspotPolygon(v2.polygon));
+  return problems;
+}
+
 export function findLocalFormProblems(
   values: ContentItemFormValues,
   /**
@@ -1358,14 +1614,18 @@ export function findLocalFormProblems(
     if (values.answer.mode === "multiple_choice") {
       const options = values.answer.options ?? [];
       if (options.length < 2 || options.length > 4) {
-        problems.push("يجب أن يحتوي سؤال الاختيار المتعدد على خيارين إلى 4 خيارات.");
+        problems.push(
+          "يجب أن يحتوي سؤال الاختيار المتعدد على خيارين إلى 4 خيارات.",
+        );
       }
       const seenNormalized = new Set<string>();
       for (const option of options) {
         const text = option.label ?? "";
         const normalized = normalizeArabicAnswerClient(text);
         if (!text.trim() || !normalized) {
-          problems.push("جميع خيارات الإجابة يجب أن تحتوي على نص عربي غير فارغ.");
+          problems.push(
+            "جميع خيارات الإجابة يجب أن تحتوي على نص عربي غير فارغ.",
+          );
         } else if (seenNormalized.has(normalized)) {
           problems.push("لا يمكن تكرار نص الخيارات بعد تطبيع النص العربي.");
         } else {
@@ -1429,7 +1689,9 @@ export function findLocalFormProblems(
       const step = toNumber(values.answer.closestStep);
       const target = toNumber(values.answer.correctValue);
       if (min === undefined || max === undefined || min >= max)
-        problems.push("حدّد حدًّا أدنى وحدًّا أعلى صحيحين، والأدنى أقل من الأعلى.");
+        problems.push(
+          "حدّد حدًّا أدنى وحدًّا أعلى صحيحين، والأدنى أقل من الأعلى.",
+        );
       else if (target !== undefined && (target < min || target > max))
         problems.push("الإجابة الصحيحة يجب أن تقع داخل النطاق المحدد.");
       if (values.answer.closestStep.trim() && (step === undefined || step <= 0))
@@ -1503,39 +1765,43 @@ export function findLocalFormProblems(
     if (!values.firstNote.audioUrl.trim()) problems.push("مقطع الصوت مطلوب.");
   }
   if (values.oddPiece.enabled) {
-    const { oddPiece } = values;
-    if (
-      !oddPiece.targetVehicleIdentity.trim() ||
-      !oddPiece.targetVehicleLabel.trim() ||
-      !oddPiece.targetRevealImageUrl.trim()
-    )
-      problems.push("هوية السيارة الأساسية وصورتها الكاملة مطلوبة.");
-    if (
-      oddPiece.pieces.length !== 4 ||
-      oddPiece.pieces.some(
-        (piece) =>
-          !piece.localId.trim() ||
-          !piece.vehicleIdentity.trim() ||
-          !piece.vehicleLabel.trim() ||
-          !piece.imageUrl.trim(),
+    if (values.oddPiece.version === 2) {
+      problems.push(...findOddPieceV2Problems(values));
+    } else {
+      const { oddPiece } = values;
+      if (
+        !oddPiece.targetVehicleIdentity.trim() ||
+        !oddPiece.targetVehicleLabel.trim() ||
+        !oddPiece.targetRevealImageUrl.trim()
       )
-    )
-      problems.push("القطع الأربع تحتاج معرفاً وهوية واسماً وصورة.");
-    const ids = oddPiece.pieces.map((piece) => piece.localId.trim());
-    if (new Set(ids).size !== ids.length)
-      problems.push("معرفات القطع يجب أن تكون فريدة.");
-    const counts = new Map<string, number>();
-    oddPiece.pieces.forEach((piece) => {
-      const identity = piece.vehicleIdentity.trim();
-      counts.set(identity, (counts.get(identity) ?? 0) + 1);
-    });
-    if (
-      [...counts.values()].sort((a, b) => a - b).join(",") !== "1,3" ||
-      counts.get(oddPiece.targetVehicleIdentity.trim()) !== 3
-    )
-      problems.push(
-        "يجب أن تكون ثلاث قطع من السيارة الأساسية وقطعة واحدة دخيلة.",
-      );
+        problems.push("هوية السيارة الأساسية وصورتها الكاملة مطلوبة.");
+      if (
+        oddPiece.pieces.length !== 4 ||
+        oddPiece.pieces.some(
+          (piece) =>
+            !piece.localId.trim() ||
+            !piece.vehicleIdentity.trim() ||
+            !piece.vehicleLabel.trim() ||
+            !piece.imageUrl.trim(),
+        )
+      )
+        problems.push("القطع الأربع تحتاج معرفاً وهوية واسماً وصورة.");
+      const ids = oddPiece.pieces.map((piece) => piece.localId.trim());
+      if (new Set(ids).size !== ids.length)
+        problems.push("معرفات القطع يجب أن تكون فريدة.");
+      const counts = new Map<string, number>();
+      oddPiece.pieces.forEach((piece) => {
+        const identity = piece.vehicleIdentity.trim();
+        counts.set(identity, (counts.get(identity) ?? 0) + 1);
+      });
+      if (
+        [...counts.values()].sort((a, b) => a - b).join(",") !== "1,3" ||
+        counts.get(oddPiece.targetVehicleIdentity.trim()) !== 3
+      )
+        problems.push(
+          "يجب أن تكون ثلاث قطع من السيارة الأساسية وقطعة واحدة دخيلة.",
+        );
+    }
   }
   if (values.ekshifni.enabled) {
     const { ekshifni } = values;
@@ -1601,7 +1867,8 @@ export function findLocalFormProblems(
         `يجب اختيار ${LA_TAHRIQHA_CORRECT_COUNT} مكوّنات صحيحة بالضبط.`,
       );
     if (
-      laTahriqha.ingredients.length - correct !== LA_TAHRIQHA_DISTRACTOR_COUNT
+      laTahriqha.ingredients.length - correct !==
+      LA_TAHRIQHA_DISTRACTOR_COUNT
     )
       problems.push(
         `يجب ترك ${LA_TAHRIQHA_DISTRACTOR_COUNT} مكوّنات خاطئة محتملة.`,

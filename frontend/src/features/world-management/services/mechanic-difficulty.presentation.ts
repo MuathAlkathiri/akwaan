@@ -1,10 +1,11 @@
 import {
   COMBO_DIFFICULTIES,
   MARHALA_DIFFICULTIES,
+  ODD_PIECE_DIFFICULTIES,
   type ComboStageValue,
   type MarhalaDifficultyValue,
 } from "./content-item-form.service";
-import type { ContentItem } from "../types";
+import type { ContentItem, OddPieceDifficulty } from "../types";
 
 /**
  * "الصعوبة" in the authoring catalog, for the mechanics that author one.
@@ -89,9 +90,29 @@ export const MARHALA_DIFFICULTY_DIMENSION: MechanicDifficultyDimension<MarhalaDi
       )?.value,
   };
 
+/** Odd Piece V2: one authored hotspot puzzle per progression tier. */
+export const ODD_PIECE_DIFFICULTY_DIMENSION: MechanicDifficultyDimension<OddPieceDifficulty> =
+  {
+    key: "odd-piece",
+    mechanicName: "القطعة الدخيلة",
+    values: ODD_PIECE_DIFFICULTIES,
+    read: (item) => {
+      const payload = item.mechanicPayload;
+      if (payload?.variant !== "odd-piece" || payload.version !== 2)
+        return undefined;
+      return ODD_PIECE_DIFFICULTIES.find(
+        (entry) => entry.value === payload.difficulty,
+      )?.value;
+    },
+  };
+
 /** Every dimension the catalog knows, in the order its controls appear. */
 export const MECHANIC_DIFFICULTY_DIMENSIONS: readonly AnyDifficultyDimension[] =
-  [COMBO_DIFFICULTY_DIMENSION, MARHALA_DIFFICULTY_DIMENSION];
+  [
+    COMBO_DIFFICULTY_DIMENSION,
+    MARHALA_DIFFICULTY_DIMENSION,
+    ODD_PIECE_DIFFICULTY_DIMENSION,
+  ];
 
 /** The author-facing label, or undefined for content this mechanic never authored. */
 export function difficultyLabelOf<Value extends string | number>(

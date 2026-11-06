@@ -12,6 +12,7 @@ import {
   MatchContentExhaustedError,
 } from './content-exposure.service';
 import { isMovingXoPlayableItem } from './moving-xo-content.policy';
+import { ODD_PIECE_LAUNCHER_REQUIREMENTS } from './odd-piece-challenge.launcher';
 
 const ANIME = 'world-anime';
 const MATCH_ID = 'match-1';
@@ -337,6 +338,52 @@ describe('MatchContentSelector', () => {
     ];
 
     expect(await select(items, { requirements }).result).toEqual(['usable']);
+  });
+
+  describe('Odd Piece V2 production gate', () => {
+    // The gate lives in the launcher predicate, but it only holds if the
+    // selector tags a stored V2 payload as V2: an untagged item reads as a
+    // legacy V1 item and would be playable.
+    const oddPiece = (
+      id: string,
+      scopeId: string,
+      version?: number,
+    ): FakeItem =>
+      item(id, scopeId, {
+        answerPayload: { mode: ChallengeAnswerMode.ODD_PIECE },
+        mechanicPayload: {
+          variant: 'odd-piece',
+          ...(version === undefined ? {} : { version }),
+          ...(version === 2 ? { difficulty: 'easy' } : {}),
+        },
+      });
+
+    it('draws legacy and V1 puzzles but never a V2 hotspot puzzle', async () => {
+      const items = [
+        oddPiece('legacy', 's0'),
+        oddPiece('v1', 's1', 1),
+        oddPiece('v1-b', 's2', 1),
+        oddPiece('v2-a', 's0', 2),
+        oddPiece('v2-b', 's1', 2),
+        oddPiece('v2-c', 's3', 2),
+      ];
+
+      const selected = await select(items, {
+        requirements: ODD_PIECE_LAUNCHER_REQUIREMENTS,
+      }).result;
+
+      expect(selected.sort()).toEqual(['legacy', 'v1', 'v1-b']);
+    });
+
+    it('refuses to launch rather than play V2 when only V2 puzzles exist', async () => {
+      const items = POOL_0.map((scopeId) =>
+        oddPiece(`${scopeId}-v2`, scopeId, 2),
+      );
+
+      await expect(
+        select(items, { requirements: ODD_PIECE_LAUNCHER_REQUIREMENTS }).result,
+      ).rejects.toThrow();
+    });
   });
 
   describe('determinism', () => {

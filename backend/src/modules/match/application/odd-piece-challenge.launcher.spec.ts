@@ -30,6 +30,16 @@ describe('OddPieceChallengeLauncher', () => {
         mechanicVariant: 'odd-piece',
       }),
     ).toBe(true);
+    expect(
+      ODD_PIECE_LAUNCHER_REQUIREMENTS.isPlayableItem({
+        id: 'v2-item',
+        worldId: 'cars',
+        scopeId: 'scope',
+        answerMode: 'odd_piece',
+        mechanicVariant: 'odd-piece',
+        oddPieceVersion: 2,
+      }),
+    ).toBe(false);
   });
 
   it('launches through the canonical start use case', async () => {

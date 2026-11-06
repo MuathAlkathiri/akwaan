@@ -38,6 +38,8 @@ export interface ContentAssetRef {
 export interface ChallengePresentation {
   inputType: string;
   timerSeconds: number | null;
+  /** Optional secondary window used by Odd Piece V2's authoritative answer phase. */
+  answerTimerSeconds?: number | null;
   soundPack?: string | null;
   revealStyle?: string | null;
 }
@@ -61,6 +63,9 @@ export function normalizePresentation(
     soundPack: presentation?.soundPack ?? null,
     revealStyle: presentation?.revealStyle ?? null,
   };
+  if (presentation && 'answerTimerSeconds' in presentation) {
+    normalized.answerTimerSeconds = presentation.answerTimerSeconds ?? null;
+  }
   return normalized;
 }
 
@@ -364,6 +369,28 @@ export interface OddPieceHotspotImage {
   height: number;
   orientation: 'landscape' | 'portrait' | 'square';
   provenance: OddPieceMediaProvenance;
+}
+
+/**
+ * Cars Signature V2 authoring contract. The polygon and tolerance are server
+ * owned; no answer-bearing field is projected before the puzzle is resolved.
+ */
+export interface OddPieceHotspotPayload {
+  variant: 'odd-piece';
+  version: 2;
+  difficulty: OddPieceDifficulty;
+  modifiedImage: OddPieceHotspotImage;
+  originalImage: OddPieceHotspotImage;
+  targetVehicleIdentity: string;
+  targetVehicleLabel: string;
+  intruderVehicleIdentity: string;
+  intruderVehicleLabel: string;
+  intruderPartIdentity: string;
+  intruderPartLabel: string;
+  hotspot: {
+    polygon: OddPieceNormalizedPoint[];
+    tolerance: number;
+  };
 }
 
 /**

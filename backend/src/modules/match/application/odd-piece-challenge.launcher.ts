@@ -7,6 +7,7 @@ import {
 import { GameplayRuntimeState } from '../../live-game-sessions/domain/gameplay-runtime';
 import {
   ODD_PIECE_GAMEPLAY_PLUGIN,
+  ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN,
   ODD_PIECE_MODE_KEY,
   OddPieceChallengeResult,
   OddPieceResult,
@@ -33,7 +34,10 @@ export const ODD_PIECE_LAUNCHER_REQUIREMENTS = {
   },
   isPlayableItem: (item: MatchSelectableContentItem) =>
     item.answerMode === ChallengeAnswerMode.ODD_PIECE &&
-    item.mechanicVariant === 'odd-piece',
+    item.mechanicVariant === 'odd-piece' &&
+    // V2 is intentionally not selectable by existing production boards until
+    // migration, media-readiness and rollout gates are explicitly approved.
+    (item.oddPieceVersion === undefined || item.oddPieceVersion === 1),
 };
 
 @Injectable()
@@ -95,12 +99,16 @@ export class OddPieceChallengeLauncher
     runtime: GameplayRuntimeState;
     orderedContentItemIds: readonly string[];
   }): string[] {
+    const plugin =
+      input.runtime.modeVersion === 2
+        ? ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN
+        : ODD_PIECE_GAMEPLAY_PLUGIN;
     if (
       !input.runtime.presentationActivatedAt ||
-      !ODD_PIECE_GAMEPLAY_PLUGIN.presentedContentItemIds
+      !plugin.presentedContentItemIds
     )
       return [];
-    return ODD_PIECE_GAMEPLAY_PLUGIN.presentedContentItemIds({
+    return plugin.presentedContentItemIds({
       runtimeState: input.runtime.runtimeState,
       roundState: input.runtime.activeRound?.modeState ?? {},
       orderedContentItemIds: input.orderedContentItemIds,

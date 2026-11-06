@@ -34,6 +34,7 @@ import { ContentItemSection } from "@/features/world-management/components/conte
 import {
   MARHALA_DIFFICULTY_DIMENSION as MARHALA,
   COMBO_DIFFICULTY_DIMENSION as COMBO,
+  ODD_PIECE_DIFFICULTY_DIMENSION as ODD_PIECE,
   difficultyCoverage,
   difficultyDimensionsOf,
   difficultyLabelOf,
@@ -342,6 +343,29 @@ describe("which mechanics get catalog controls", () => {
         item("m", GTA, "easy"),
       ]).map((dimension) => dimension.key),
     ).toEqual(["combo", "marhala"]);
+  });
+
+  it("recognizes only version 2 Odd Piece difficulty metadata", () => {
+    const v2 = {
+      ...item("odd", GTA),
+      mechanicPayload: {
+        variant: "odd-piece",
+        version: 2,
+        difficulty: "hard",
+      },
+    } as ContentItem;
+    expect(
+      difficultyDimensionsOf([v2]).map((dimension) => dimension.key),
+    ).toEqual(["odd-piece"]);
+    expect(difficultyLabelOf(ODD_PIECE, v2)).toBe("صعب");
+    expect(
+      difficultyDimensionsOf([
+        {
+          ...v2,
+          mechanicPayload: { variant: "odd-piece", difficulty: "hard" },
+        } as ContentItem,
+      ]),
+    ).toEqual([]);
   });
 });
 
