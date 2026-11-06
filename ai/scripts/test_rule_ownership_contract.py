@@ -9,6 +9,8 @@ QUESTION_CRAFT = ROOT / "ai/.opencode/knowledge/architecture/QUESTION-CRAFT.md"
 AUTHORING_SKILL = ROOT / ".agents/skills/akwaan-content/SKILL.md"
 QA_SKILL = ROOT / ".agents/skills/akwaan-content-qa/SKILL.md"
 BOMB_SKILL = ROOT / "ai/.opencode/skills/challenge-types/bomb/SKILL.md"
+TOP5_SKILL = ROOT / "ai/.opencode/skills/challenge-types/top-5/SKILL.md"
+DI_SKILL = ROOT / "ai/.opencode/skills/challenge-types/distributed-information/SKILL.md"
 RESOLVER = ROOT / "ai/scripts/resolve_authoring_context.py"
 
 
@@ -19,6 +21,8 @@ class RuleOwnershipContractTests(unittest.TestCase):
         cls.authoring = AUTHORING_SKILL.read_text(encoding="utf-8")
         cls.qa = QA_SKILL.read_text(encoding="utf-8")
         cls.bomb = BOMB_SKILL.read_text(encoding="utf-8")
+        cls.top5 = TOP5_SKILL.read_text(encoding="utf-8")
+        cls.di = DI_SKILL.read_text(encoding="utf-8")
         cls.resolver = RESOLVER.read_text(encoding="utf-8")
 
     def test_global_contract_declares_each_owner_and_precedence(self):
@@ -66,6 +70,54 @@ class RuleOwnershipContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, self.bomb)
         self.assertIn("global contextual leakage rule", self.bomb)
+
+    def test_bomb_world_contracts_are_owned_by_the_bomb_skill(self):
+        # Phase 2B Batch 3B-1: moved out of the global profile, not dropped.
+        self.assertNotIn("World-Native Bomb Interaction Contracts", self.global_rules)
+        self.assertNotIn("Football Bomb", self.global_rules)
+        for marker in (
+            "### Football World specialization",
+            "exactly one\nname-completion item (`NAME_FRAGMENT`) and at least two media-recognition items",
+            "Football's name-fragment ratio does not generalise to any other World.",
+            "### Anime World specialization",
+            "### Video Games World specialization",
+            "### Puzzles World specialization",
+            "100% rapid visual\nmicro-puzzles",
+        ):
+            self.assertIn(marker, self.bomb)
+        self.assertEqual(self.bomb.count("No\nname-completion templates.")
+                         + self.bomb.count("No name-completion templates."), 3)
+        # Video Games Bomb: §25.2 (text/image only) is current; §23.4 audio superseded.
+        self.assertIn("roadmap\n§25.2 bans audio for forward Bomb and is the current policy", self.bomb)
+        self.assertIn("does not authorize authoring audio Bomb items", self.bomb)
+        self.assertIn("- FORBIDDEN: `audio`", self.bomb)
+
+    def test_global_pointer_names_required_mechanic_skills(self):
+        for marker in (
+            "`ai/.opencode/skills/challenge-types/bomb/SKILL.md`",
+            "`ai/.opencode/skills/challenge-types/top-5/SKILL.md`",
+            "Bomb authoring and QA\nrequire the Bomb Skill",
+            "Top-5 authoring and QA require the Top-5 Skill",
+            "This file alone is not enough",
+        ):
+            self.assertIn(marker, self.global_rules)
+
+    def test_top5_and_distributed_information_contracts_are_mechanic_owned(self):
+        self.assertNotIn("Top-5 Keep-or-Give Contract", self.global_rules)
+        self.assertNotIn("TOP5_VISIBLE_CANDIDATE_NAME_ONLY", self.global_rules)
+        for marker in (
+            "the challenge topic only",
+            "zero tutorial wording",
+            "entity names only",
+            "Zero stats, numbers, ranks, or notes",
+            "exact ranks (1–5, or none for a trap), metrics, evidence,\n  and cutoff dates",
+            "`TOP5_VISIBLE_CANDIDATE_NAME_ONLY`",
+        ):
+            self.assertIn(marker, self.top5)
+        # The QA overlay keeps its own Top-5 gate.
+        self.assertIn("TOP5_VISIBLE_CANDIDATE_NAME_ONLY", self.qa)
+        self.assertIn("visual clue cards, private diagrams, maps, or coordinate fragments", self.di)
+        self.assertNotIn("visual clue cards", self.global_rules)
 
     def test_resolver_uses_the_canonical_global_profile(self):
         self.assertIn("QUESTION-CRAFT.md", self.resolver)

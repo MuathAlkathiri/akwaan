@@ -35,13 +35,10 @@ AI evaluation or a validator never constitutes human approval.
 > **1. MEDIA WHERE IT CARRIES THE GAMEPLAY — NO UNIVERSAL QUOTA**:
 > Akwaan is an audiovisual party game, so use media (Image, Audio, Clip, or Programmatic Diagram) whenever it materially supports the question. There is **no universal batch-wide media percentage**: a ≈ ≥90% media-bearing target applies only to batches whose mechanic naturally supports media (roadmap §23.2), and counts only media that carries gameplay information.
 > - A text-only question is valid when media would add no meaningful value. Never attach decorative or irrelevant media to an otherwise good question to reach a target.
-> - A mechanic that needs media keeps its media requirement (the rules below and the selected mechanic Skill).
+> - A mechanic that needs media keeps its media requirement, as stated in the selected mechanic Skill.
 > - A media intent is a request for an asset, not an attached or verified asset. Authoring writes the intent; media enrichment sources and verifies the asset later, through the existing media pipeline.
 > - Leakage, authenticity, factual verification and media safety rules (2–4 below, `MEDIA-CONTRACT.md`) apply in full to every item that carries media.
-> - **Top-5**: Kept as interaction-native text (10 candidate cards, names only). No decorative images.
-> - **Football Bomb**: Exactly 1 name-completion item per 3-item scope set (famous surname in prompt -> less familiar first name in answer). The remaining 2/3 are media recognition.
-> - **Anime, Video Games, Puzzles Bomb**: **100% media-based recognition/micro-puzzles**. No name-completion templates outside Football.
-> - **Distributed Information**: Utilizes visual clue cards, private diagrams, maps, or coordinate fragments where visual clues enhance co-op deduction.
+> - Mechanic-specific media and text requirements (Bomb per World, Top-5 cards, Distributed Information clue media) are owned by those mechanic Skills and apply in full whenever that mechanic is authored.
 >
 > **2. EXTRA CLUE WITH MEDIA = FATAL HARD ERROR (`EXTRA_CLUE_WITH_MEDIA`)**:
 > When media is present, **NEVER provide descriptive clues, biographies, record trivia, or adjectives** in the prompt text.
@@ -91,25 +88,16 @@ AI evaluation or a validator never constitutes human approval.
 
 ---
 
-## 1. World-Native Bomb Interaction Contracts
+## 1. Mechanic-Specific Contracts
 
-- **Football Bomb**:
-  - Max 1 name-completion per 3-item set (`NAME_FRAGMENT`: famous surname -> first name, e.g. `"وش الاسم الأول لمودريتش؟"` -> `"لوكا"`).
-  - Min 2 player/stadium/crest image recognition items (`"من هذا اللاعب؟"`, `"وش اسم هذا الملعب؟"`).
-- **Anime Bomb**:
-  - 100% media recognition (`"من هذه الشخصية؟"`, `"وش اسم هذه المنظمة؟"`, `"وش اسم هذا الشيء؟"`).
-- **Video Games Bomb**:
-  - 100% game-native media (`"وش اسم هذا السلاح؟"`, `"وش اسم هذا المكان؟"`, `"وش هذا الصوت؟"`, `"من هذه الشخصية؟"`).
-- **Puzzles Bomb**:
-  - 100% rapid micro-puzzle visual targets (shape recognition, pattern step, visual count, spatial transformation).
-
----
-
-## 2. Top-5 Keep-or-Give Contract
-
-- **Prompt**: Challenge Topic ONLY (e.g. `"أكثر 5 لاعبين تسجيلًا للأهداف في تاريخ البريميرليغ"`). Zero tutorial text (`"رتب"`, `"تجنب الفخاخ"`).
-- **Visible Candidate Cards**: **ENTITY NAMES ONLY** (`"ألان شيرر"`, `"هاري كين"`, etc.). Zero stats, numbers, ranks, or notes.
-- **Hidden Metadata**: Exact ranks (1–5 or null), metrics, evidence, and cutoff dates.
+Per-mechanic contracts live in the mechanic Skill that the resolver loads for
+that mechanic: the World-native Bomb contracts (Football, Anime, Video Games,
+Puzzles) in `ai/.opencode/skills/challenge-types/bomb/SKILL.md`, and the Top-5
+prompt, visible-card and hidden-metadata contract in
+`ai/.opencode/skills/challenge-types/top-5/SKILL.md`. Bomb authoring and QA
+require the Bomb Skill; Top-5 authoring and QA require the Top-5 Skill. The
+complete canonical resolver output includes it. This file alone is not enough:
+authoring or reviewing either mechanic without its mechanic context is invalid.
 
 Mechanic-specific details in this document are global craft summaries. The
 selected mechanic Skill and runtime policy remain authoritative for payload,
@@ -117,14 +105,13 @@ modality, cardinality, and answer semantics.
 
 ---
 
-## 3. Mandatory QA Hard Gates
+## 2. Mandatory QA Hard Gates
 
 1. **`MEDIA_ONLY_WHERE_IT_CARRIES_GAMEPLAY`**: Every attached media item carries gameplay information (no decorative media), and every media-native mechanic carries its required media. No universal batch-wide percentage applies; a ≈ ≥90% target applies only to batches of mechanics that naturally support media (roadmap §23.2).
 2. **`EXTRA_CLUE_WITH_MEDIA`**: Zero descriptive adjectives or answer-defining clues when media is present.
 3. **`PROVENANCE_AND_WIGOLO_INTEGRITY`**: Valid `sourceMethod` (`WIGOLO`, `EXISTING_APPROVED_ASSET`, `PROGRAMMATIC_PUZZLE`, `INTENTIONAL_TEXT`).
-4. **`TOP5_VISIBLE_CANDIDATE_NAME_ONLY`**: 10 candidate cards show names only.
-5. **`CONTENT_PROMPT_NOT_MECHANIC_TUTORIAL`**: Zero tutorial wording in prompt.
-6. **`RENDERABLE_MEDIA_REQUIRED`**: Assets exist on disk and render properly in browser.
+4. **`CONTENT_PROMPT_NOT_MECHANIC_TUTORIAL`**: Zero tutorial wording in prompt.
+5. **`RENDERABLE_MEDIA_REQUIRED`**: Assets exist on disk and render properly in browser.
 
 ## EVIDENCE ≠ ANSWER
 When authoring content, explicitly distinguish between the **Evidence shown to the player** and the **Expected answer**.
