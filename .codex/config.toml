@@ -1,0 +1,7 @@
+# Project-scoped Codex settings for Akwaan.
+#
+# Impeccable live mode: keep copy-edit "Apply" inside the active chat agent.
+# Without this, when no chat session is polling, Impeccable falls back to
+# spawning `codex`/`claude` with approvals and sandboxing disabled.
+[shell_environment_policy]
+set = { IMPECCABLE_LIVE_COPY_AGENT = "chat" }
