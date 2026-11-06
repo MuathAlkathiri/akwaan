@@ -402,6 +402,45 @@ describe('Mechanic tutorial HTTP integration', () => {
     await database?.close();
   });
 
+  // The approved Top 5 tutorial as authored for production review. Kept separate
+  // from the synthetic extendedScenarios fixture so its derived outcome below is
+  // asserted against the exact data it was approved with.
+  const approvedTop5Scenario: (typeof extendedScenarios)['top-5'] = {
+    kind: 'top-5',
+    version: 1,
+    prompt: 'من أكثر خمسة لاعبين تسجيلاً للأهداف في تاريخ الدوري الإنجليزي؟',
+    caption: 'مثال توضيحي فقط — البطاقات والبيانات هنا غير تنافسية.',
+    title: 'أفضل 5 هدّافين في الدوري الإنجليزي',
+    rankingBasis: 'إجمالي أهداف اللاعب في الدوري الإنجليزي الممتاز',
+    sourceLabel: 'مثال تعليمي ثابت',
+    instruction: 'احتفظ بها أو دسّها للخصم',
+    startingTeam: 'team-a',
+    entries: [
+      { id: 'alan-shearer', label: 'آلان شيرر', rank: 1 },
+      { id: 'harry-kane', label: 'هاري كين', rank: 2 },
+      { id: 'wayne-rooney', label: 'واين روني', rank: 3 },
+      { id: 'andy-cole', label: 'آندي كول', rank: 4 },
+      { id: 'sergio-aguero', label: 'سيرخيو أغويرو', rank: 5 },
+      { id: 'frank-lampard', label: 'فرانك لامبارد', rank: null },
+      { id: 'mohamed-salah', label: 'محمد صلاح', rank: null },
+      { id: 'thierry-henry', label: 'تييري هنري', rank: null },
+      { id: 'ryan-giggs', label: 'راين غيغز', rank: null },
+      { id: 'robbie-fowler', label: 'روبي فاولر', rank: null },
+    ],
+    decisions: [
+      { action: 'keep' },
+      { action: 'give' },
+      { action: 'keep' },
+      { action: 'give' },
+      { action: 'give' },
+      { action: 'keep' },
+      { action: 'give' },
+      { action: 'give' },
+      { action: 'keep' },
+      { action: 'keep' },
+    ],
+  };
+
   const admin = (
     method: 'get' | 'put' | 'post',
     path: string,
@@ -617,6 +656,59 @@ describe('Mechanic tutorial HTTP integration', () => {
     expect(
       (await publicTutorial(BOMB_MECHANIC).expect(200)).body.data.scenario.kind,
     ).toBe('bomb');
+  });
+
+  it('round-trips the approved Top 5 draft with its caption and entry associations', async () => {
+    const input = approvedTop5Scenario;
+    const saved = await admin('put', '/draft', 'top-5').send(input).expect(200);
+    const reloaded = await admin('get', '', 'top-5').expect(200);
+    const draft = reloaded.body.data.draft;
+
+    expect(draft).toMatchObject({
+      kind: 'top-5',
+      version: 1,
+      prompt: input.prompt,
+      caption: input.caption,
+      title: input.title,
+      rankingBasis: input.rankingBasis,
+      sourceLabel: input.sourceLabel,
+      instruction: input.instruction,
+      startingTeam: input.startingTeam,
+      entries: input.entries,
+      decisions: input.decisions,
+    });
+    expect(draft.outcome.entries).toEqual(input.entries);
+    expect(draft.outcome.revealOrder).toEqual(
+      input.entries.map((entry) => entry.id),
+    );
+    expect(
+      draft.outcome.ownership.map(
+        ({ entryId, action }: { entryId: string; action: string }) => ({
+          entryId,
+          action,
+        }),
+      ),
+    ).toEqual(
+      input.entries.map((entry, index) => ({
+        entryId: entry.id,
+        action: input.decisions[index].action,
+      })),
+    );
+    expect(draft.outcome).toMatchObject({
+      top5Counts: { 'team-a': 4, 'team-b': 1 },
+      trapCounts: { 'team-a': 2, 'team-b': 3 },
+      winnerTeam: 'team-a',
+      matchPointDelta: 1,
+      reason: 'top-5.win',
+    });
+    expect(saved.body.data.draft).toEqual(draft);
+
+    const validation = await admin('post', '/validate', 'top-5')
+      .send(input)
+      .expect(201);
+    expect(validation.body.data.valid).toBe(true);
+    expect(validation.body.data.outcome).toEqual(draft.outcome);
+    expect((await publicTutorial('top-5').expect(200)).body.data).toBeNull();
   });
 
   it.each(EXTENDED_MECHANICS)(
