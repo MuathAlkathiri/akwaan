@@ -130,6 +130,10 @@ Before sourcing, ask: "What exactly must the player SEE/HEAR?" not "What is the 
 ## EXPERIENCE-NATIVE DOES NOT AUTOMATICALLY MEAN FUN
 Authentic gameplay media is necessary, but not sufficient. A question using authentic media is not automatically good just because it avoids Wikipedia trivia. It must still create a meaningful PLAYER MOMENT ("أوووه عرفتها" or "آه فهمت وش المطلوب").
 
+## VALID IS NOT THE SAME AS ENGAGING
+A puzzle being logically solvable and technically valid is insufficient. It must also create an engaging multiplayer gameplay experience through meaningful decisions, discussion, tension, or a satisfying discovery. This is not a ban on numeric puzzles or mathematical reasoning — numbers are welcome when the team experience is real.
+- *Regression (Product Owner, 2026-11-06):* `spot-the-error-03` (a doubling sequence with one wrong term) and `numbers-estimation-05` (a sequence ending in 42) were rejected: correct and solvable, but they play as conventional school exercises with little team interaction.
+
 ## PLAYABLE QUESTION GATE
 Every authored item must create at least one meaningful interaction, such as:
 - recognition, inference, recall, deduction, comparison, consequence reasoning, spatial recognition, mechanic understanding, identity recognition, contextual association, pattern recognition, prediction, risk/reward decision.

@@ -6,6 +6,8 @@ import {
   AuthoringContextService,
   AuthoringContextUnavailableError,
 } from './authoring-context.service';
+import { composeGenerationPrompt } from './candidate-generator.service';
+import { DeterministicScreenService } from './deterministic-screen.service';
 
 /**
  * Parity with `ai/scripts/resolve_authoring_context.py`.
@@ -191,7 +193,10 @@ describeIf(
         expect(context.historicalExemplars).toMatch(/knowledge-anchored/);
       });
 
-      it('keeps only explicitly approved blocks in generation', () => {
+      it('keeps the rejected exemplar out of generation, in both resolvers', () => {
+        // `missing-number-pattern` was APPROVED (2026-10-21), excluded as
+        // untargeted in Phase 1, then REJECTED by the Product Owner in
+        // Phase 1C. It must reach no prompt yet stay screened against.
         const fromPython = python([
           '--mechanic',
           'closest',
@@ -205,16 +210,28 @@ describeIf(
           worldKey: 'puzzles',
           scopeKey: 'numbers-estimation',
         });
-        expect(context.exemplars).toMatch(/missing-number-pattern/);
-        expect(context.exemplars).not.toMatch(/Counting under a structure/);
-        expect(context.exemplars).not.toMatch(/WITHHELD/);
+        expect(context.exemplars).toBe('');
+        // REJECTED is not an approved-but-excluded entry, so nothing is reported.
+        expect(context.exemplarDiagnostics.join('\n')).not.toContain(
+          'missing-number-pattern',
+        );
+        // Still screened against: duplicate protection is unchanged.
+        expect(context.historicalExemplars).toMatch(/missing-number-pattern/);
         expect(context.historicalExemplars).toMatch(
           /Counting under a structure/,
         );
         const pythonExemplars = fromPython.stdout
           .split('## 6. HUMAN PRODUCT EXEMPLARS\n', 2)[1]
           .trim();
-        expect(pythonExemplars).toBe(context.exemplars);
+        expect(pythonExemplars).toBe('No exemplars recorded yet.');
+        const pythonMetadata = JSON.parse(
+          fromPython.stdout
+            .split('=== METADATA ===\n', 2)[1]
+            .split('=== CONTEXT ===')[0],
+        ) as { _authoringContext: { exemplarDiagnostics: string[] } };
+        expect(pythonMetadata._authoringContext.exemplarDiagnostics).toEqual(
+          context.exemplarDiagnostics,
+        );
       });
 
       it('gives each World its own exemplars, not a shared set', () => {
@@ -228,7 +245,15 @@ describeIf(
           worldKey: 'puzzles',
           scopeKey: 'numbers-estimation',
         });
-        expect(football.exemplars).not.toEqual(puzzles.exemplars);
+        // Each World resolves its own exemplar source. Since Phase 1 neither
+        // currently has an exemplar eligible for Closest, so both generation
+        // views are legitimately empty; the sources and fingerprints differ.
+        expect(football.historicalExemplars).not.toEqual(
+          puzzles.historicalExemplars,
+        );
+        expect(football.historicalExemplars).not.toMatch(
+          /missing-number-pattern/,
+        );
         expect(football.contextHash).not.toEqual(puzzles.contextHash);
       });
 
@@ -258,6 +283,151 @@ describeIf(
         });
         expect(puzzles.scope).toMatch(/PUZZLES_WORLD_NO_TRIVIA/);
         expect(puzzles.historicalExemplars).toMatch(/Puzzles permits only/);
+      });
+    });
+
+    describe('Phase 1B/1C — spot-the-error exemplars targeted to Moving XO', () => {
+      // Product decisions: 01, 02 and 04 verified against their V1 families
+      // and targeted to `moving-xo` (1B). 03 and numbers-estimation-05 were
+      // then REJECTED by the Product Owner (1C) — kept as historical records,
+      // screened against, never generation guidance.
+      const TARGETED = [
+        'spot-the-error-01-numeric-intruder',
+        'spot-the-error-02-dotless-intruder',
+        'spot-the-error-04-order-violation',
+      ];
+      const REJECTED_03 = 'spot-the-error-03-invalid-transformation-step';
+      const REJECTED_05 = 'numbers-estimation-05-missing-number-pattern';
+      const SPOT = { worldKey: 'puzzles', scopeKey: 'spot-the-error' };
+      const NUMBERS = { worldKey: 'puzzles', scopeKey: 'numbers-estimation' };
+      const UNRELATED = ['closest', 'read-your-opponent', 'bomb'];
+
+      it('gives Moving XO exactly the three verified exemplars', () => {
+        const context = service.resolve({ mechanicKey: 'moving-xo', ...SPOT });
+        for (const id of TARGETED) expect(context.exemplars).toContain(id);
+        expect(context.exemplars).not.toContain(REJECTED_03);
+        // 03 is REJECTED, not an approved-but-untargeted entry: nothing to report.
+        expect(context.exemplarDiagnostics).toEqual([]);
+      });
+
+      it.each(UNRELATED)('injects none of them into %s', (mechanicKey) => {
+        const context = service.resolve({ mechanicKey, ...SPOT });
+        expect(context.exemplars).toBe('');
+        expect(context.exemplarDiagnostics).toEqual([
+          `EXEMPLAR_MECHANIC_EXCLUDED: ${TARGETED.join(',')}`,
+        ]);
+      });
+
+      it.each(UNRELATED)(
+        'keeps them out of the %s generation prompt',
+        (mechanicKey) => {
+          const context = service.resolve({ mechanicKey, ...SPOT });
+          const prompt = composeGenerationPrompt(
+            context,
+            2,
+            mechanicKey === 'closest' ? 'closest' : 'multiple_choice',
+          );
+          for (const id of [...TARGETED, REJECTED_03]) {
+            expect(prompt).not.toContain(id);
+          }
+        },
+      );
+
+      it.each(['moving-xo', ...UNRELATED])(
+        'keeps the rejected numbers-estimation-05 out of %s, but screened',
+        (mechanicKey) => {
+          const context = service.resolve({ mechanicKey, ...NUMBERS });
+          expect(context.exemplars).toBe('');
+          expect(context.exemplarDiagnostics.join('\n')).not.toContain(
+            REJECTED_05,
+          );
+          expect(context.historicalExemplars).toContain(REJECTED_05);
+        },
+      );
+
+      it('agrees with the Python resolver for Moving XO', () => {
+        const fromPython = python([
+          '--mechanic',
+          'moving-xo',
+          '--world',
+          'puzzles',
+          '--scope',
+          'spot-the-error',
+        ]);
+        expect(fromPython.ok).toBe(true);
+        const context = service.resolve({ mechanicKey: 'moving-xo', ...SPOT });
+        const pythonExemplars = fromPython.stdout
+          .split('## 6. HUMAN PRODUCT EXEMPLARS\n', 2)[1]
+          .trim();
+        expect(pythonExemplars).toBe(context.exemplars);
+        const pythonMetadata = JSON.parse(
+          fromPython.stdout
+            .split('=== METADATA ===\n', 2)[1]
+            .split('=== CONTEXT ===')[0],
+        ) as { _authoringContext: { exemplarDiagnostics: string[] } };
+        expect(pythonMetadata._authoringContext.exemplarDiagnostics).toEqual(
+          context.exemplarDiagnostics,
+        );
+      });
+
+      it('carries the retired-subject and no-regenerate guards with every injected exemplar', () => {
+        const { exemplars } = service.resolve({
+          mechanicKey: 'moving-xo',
+          ...SPOT,
+        });
+        const blocks = exemplars.split('<!-- /AKWAAN_EXEMPLAR_META -->');
+        for (const id of TARGETED) {
+          const block = blocks.find((candidate) => candidate.includes(id))!;
+          expect(block).toContain('RETIRED — do not reuse this subject');
+          expect(block).toContain('"reusePolicy":"DO_NOT_REGENERATE"');
+        }
+      });
+
+      it('still screens every exemplar, targeted or not, for every mechanic', () => {
+        for (const mechanicKey of ['moving-xo', ...UNRELATED]) {
+          const { historicalExemplars } = service.resolve({
+            mechanicKey,
+            ...SPOT,
+          });
+          for (const id of [...TARGETED, REJECTED_03]) {
+            expect(historicalExemplars).toContain(id);
+          }
+        }
+      });
+
+      it('flags a candidate that reuses a retired subject it can detect', () => {
+        const screen = new DeterministicScreenService({
+          get: () => undefined,
+        } as unknown as ConfigService);
+        const { historicalExemplars } = service.resolve({
+          mechanicKey: 'moving-xo',
+          ...SPOT,
+        });
+        const codesFor = (ar: string) => {
+          screen.beginBatch(historicalExemplars);
+          return screen
+            .screen({
+              prompt: { ar },
+              answerPayload: {
+                mode: 'multiple_choice',
+                options: [
+                  { id: 'a', label: { ar: 'أول' } },
+                  { id: 'b', label: { ar: 'ثانٍ' } },
+                ],
+                correctOptionId: 'a',
+              },
+            } as never)
+            .findings.map((finding) => finding.code);
+        };
+        // 02 (undotted words) and 04 (alphabetical ordering).
+        expect(codesFor('مال · سهل · راحل · نهر')).toContain(
+          'CANDIDATE_RESEMBLES_EXEMPLAR',
+        );
+        expect(
+          codesFor(
+            'رُتِّبت هذه الحروف حسب موضعها في الأبجدية، إلا حرفًا واحدًا. أيّه؟',
+          ),
+        ).toContain('CANDIDATE_RESEMBLES_EXEMPLAR');
       });
     });
 
@@ -332,7 +502,11 @@ describeIf(
             scopeKey: 'numbers-estimation',
           }).contextHash,
         ).toBe(
-          'e4897c1f1f358a8894aac0eae6d885d46b2f9202cd70347ed36942c4f712db76',
+          // Refreshed 2026-11-06 (Phase 1C): only numbers-estimation/
+          // EXEMPLARS.md (item 05 rejected) and QUESTION-CRAFT.md (quality
+          // principle) changed. The previous value, e4897c1f…, reproduces
+          // exactly from the prior files, so the algorithm is unchanged.
+          '0ca63754aad3b31b96079ab41fffe97fe072c31c62a1c390a516be3c857dfd38',
         );
       });
 

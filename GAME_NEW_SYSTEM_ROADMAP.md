@@ -6817,4 +6817,55 @@ approved authoring architecture: Production forward Puzzles content remains
 **0 real items**, and Moving XO remains local/dev only. ⬜ Not committed,
 ⬜ not deployed.
 
+### 32.6 Mechanic-safe exemplars and owner exemplar decisions — ✅ IMPLEMENTED & VERIFIED LOCALLY · 🚧 IN REVIEW, NOT MERGED (2026-11-06)
+
+**Engine-side (Phase 1A).** An APPROVED exemplar now enters a generation prompt only for
+the mechanics it names in a new `mechanics` metadata field (canonical manifest keys). An
+APPROVED exemplar with no `mechanics` is never eligible — untargeted is never "all
+mechanics" — and is reported (`EXEMPLAR_UNTARGETED_EXCLUDED`). Unknown or alias targets
+fail closed; empty or malformed lists are rejected. Optional `approvedBy` / `approvedAt` /
+`sourceRef` fields record provenance; they are author-written and **do not verify** a
+Product approval. Duplicate screening still sees every exemplar. Implemented identically in
+`exemplar-metadata.ts` and the Python twin `ai/scripts/exemplar_metadata.py`, with the
+resolver, the validator and parity tests.
+
+**Owner decisions on the five legacy APPROVED exemplars (Phase 1B/1C).** These supersede the
+2026-10-21 states recorded in §32.3; the earlier approvals stay in the history above.
+
+| Exemplar | 2026-10-21 | 2026-11-06 |
+|---|---|---|
+| `spot-the-error-01-numeric-intruder` | APPROVED | APPROVED · targeted `moving-xo` |
+| `spot-the-error-02-dotless-intruder` | APPROVED (routing note) | APPROVED · targeted `moving-xo` |
+| `spot-the-error-04-order-violation` | APPROVED | APPROVED · targeted `moving-xo` |
+| `spot-the-error-03-invalid-transformation-step` | APPROVED | ⛔ **REJECTED** by the Product Owner |
+| `numbers-estimation-05-missing-number-pattern` | APPROVED | ⛔ **REJECTED** by the Product Owner |
+
+- The three targeted items were each checked against their V1 family before targeting.
+  Targeting is not a new Gold approval.
+- **Rejected for gameplay quality and mechanic fit:** item 03 reads as a school exercise and
+  its numeric sequence does not show `invalid-transformation-step` (a morphological
+  transformation); item 05 is straightforward pattern calculation, its Closest slider
+  framing is not meaningful Closest play, and as written it is not a valid Moving XO
+  exemplar. Both bodies are preserved unchanged as historical records, stay in duplicate
+  screening, and never enter generation guidance.
+- **Quality principle recorded** in `QUESTION-CRAFT.md` («VALID IS NOT THE SAME AS
+  ENGAGING»): logical validity is insufficient without an engaging multiplayer experience.
+  It is not a ban on numeric puzzles.
+- **Authoring context is not generation support.** The three targeted exemplars reach
+  Moving XO authoring context; the Content Engine currently generates only RYO and Closest.
+
+**Follow-ups (not resolved here):**
+- ⬜ The duplicate screen ignores tokens of two characters or fewer, so reuse of item 01's
+  numeric set is not machine-detectable (02 and 04 are).
+- ⬜ The three targeted bodies still carry RYO-era wording (`estimatedConfidence`, "What RYO
+  adds") that must be reviewed before real Moving XO generation.
+- ⬜ The four WITHHELD `numbers-estimation` exemplars and `PILOT-01-WRD-06` remain open (§32.5).
+- ⬜ Gold exemplar approval and verifiable provenance require a Product Owner process; the
+  metadata fields only record it.
+
+Local verification: backend unit suite, TypeScript↔Python parity, the Python authoring
+suites and the exemplar validator pass. Committed on the feature branch
+`feat/exemplar-mechanic-targeting` and opened as a pull request for review. ⬜ Not merged,
+⬜ not deployed.
+
 ---

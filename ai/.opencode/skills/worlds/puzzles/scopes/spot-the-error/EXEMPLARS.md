@@ -13,8 +13,22 @@ Reconciled against the approved 12 families. All four cite families V1 contains:
 | --- | --- | --- | --- |
 | 1 | An intruder in a numeric set | `intruder-element` | ✅ **APPROVED** |
 | 2 | An intruder by the shape of the writing | `intruder-element` | ⚠️ **APPROVED WITH ROUTING NOTE** |
-| 3 | One wrong step in a sequence | `invalid-transformation-step` | ✅ **APPROVED** |
+| 3 | One wrong step in a sequence | `invalid-transformation-step` | ⛔ **REJECTED** (Product Owner, 2026-11-06; supersedes ✅ APPROVED) |
 | 4 | A breach of an ordering | `order-violation` | ✅ **APPROVED** |
+
+**Owner decisions — 2026-11-06 (supersede the 2026-10-21 states above where they differ).**
+- Items 1, 2 and 4 stay **APPROVED** and are now explicitly targeted to **Moving XO**
+  (`mechanics: ["moving-xo"]` in their metadata), after each was checked against its
+  V1 family. They reach only Moving XO authoring context. This is targeting, not a new
+  Gold approval, and their bodies still carry RYO-era wording (`estimatedConfidence`,
+  and "What RYO adds" below) that must be reviewed before real Moving XO generation.
+- Item 3 is **REJECTED** by the Product Owner. The numeric doubling sequence reads as a
+  conventional school exercise, gives little team play, and does not show its claimed
+  family: `invalid-transformation-step` is a morphological transformation (folding,
+  slicing, colour blending, geometric deformation), not a number sequence. Its body is
+  kept below unchanged as a historical record and stays in duplicate screening; it is
+  never generation guidance.
+- The rejection concerns this example, not numeric reasoning in general.
 
 **The routing note on 2.** The V1 Revised swap of 2026-10-21 created
 `wordplay-letters/dotless-disambiguation` (قراءة الكلام بدون نقاط), so Arabic
@@ -74,7 +88,7 @@ both collapse the bet.
 Each heading names the **property** the item demonstrates. That property is what
 you reuse. The puzzle, its answer and its options are spent.
 
-<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-01-numeric-intruder","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE"} -->
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-01-numeric-intruder","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE","mechanics":["moving-xo"]} -->
 ### 1. An intruder in a numeric set
 
 **RETIRED — do not reuse this subject.** Reusable property: *a shared arithmetic
@@ -94,7 +108,7 @@ property that is invisible until you look for it.*
   authoring — a set where two readings are possible is invalid.
 <!-- /AKWAAN_EXEMPLAR_META -->
 
-<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-02-dotless-intruder","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE","routingNote":"Use here only when the solve is to infer a rule and locate one breach; read-only dotless disambiguation belongs to wordplay-letters."} -->
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-02-dotless-intruder","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE","routingNote":"Use here only when the solve is to infer a rule and locate one breach; read-only dotless disambiguation belongs to wordplay-letters.","mechanics":["moving-xo"]} -->
 ### 2. An intruder by the shape of the writing — `intruder-element` ⚠️ see routing note
 
 **RETIRED — do not reuse this subject.** Reusable property: *a rule about the
@@ -115,7 +129,7 @@ script itself, visible on the screen, requiring no knowledge whatsoever.*
   helps, and no vocabulary advantage exists.
 <!-- /AKWAAN_EXEMPLAR_META -->
 
-<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-03-invalid-transformation-step","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE"} -->
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-03-invalid-transformation-step","status":"REJECTED","reusePolicy":"DO_NOT_REGENERATE"} -->
 ### 3. One wrong step in a sequence
 
 **RETIRED — do not reuse this subject.** Reusable property: *a generative rule
@@ -135,7 +149,7 @@ where exactly one term can be corrected to restore it.*
   authoring, because a sequence with two valid repairs has two correct answers.
 <!-- /AKWAAN_EXEMPLAR_META -->
 
-<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-04-order-violation","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE"} -->
+<!-- AKWAAN_EXEMPLAR_META {"version":1,"id":"spot-the-error-04-order-violation","status":"APPROVED","reusePolicy":"DO_NOT_REGENERATE","mechanics":["moving-xo"]} -->
 ### 4. A breach of an ordering
 
 **RETIRED — do not reuse this subject.** Reusable property: *an ordering every

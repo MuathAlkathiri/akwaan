@@ -100,7 +100,13 @@ def main():
         with open(exemplars_profile, "r", encoding="utf-8") as f:
             ctx_exemplars_historical = f.read()
         try:
-            exemplar_document = resolve_exemplar_document(ctx_exemplars_historical)
+            # Only exemplars that explicitly target this canonical mechanic are
+            # eligible; targets are checked against the manifest's mechanics.
+            exemplar_document = resolve_exemplar_document(
+                ctx_exemplars_historical,
+                mechanic_key=mechanic_key,
+                known_mechanics=registry["mechanics"].keys(),
+            )
         except ExemplarMetadataError as exc:
             print(f"AUTHORING_BLOCKED — EXEMPLAR_METADATA_INVALID ({exc})")
             sys.exit(1)

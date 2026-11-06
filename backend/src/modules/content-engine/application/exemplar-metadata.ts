@@ -4,7 +4,11 @@
  * Only explicit metadata markers are authoritative. Markdown headings, prose,
  * emoji and tables cannot grant an exemplar generation eligibility. The raw
  * source remains available to historical screening while generation receives
- * only APPROVED blocks.
+ * only APPROVED blocks that explicitly target the mechanic being generated.
+ *
+ * `APPROVED` is the engine's eligibility marker. It is not the Reference
+ * Library's Gold standard, and the provenance fields record an approval —
+ * they do not verify one. Final Gold approval is the Product Owner's.
  */
 
 export const EXEMPLAR_METADATA_VERSION = 1;
@@ -24,6 +28,36 @@ export interface ExemplarMetadata {
   status: ExemplarStatus;
   reusePolicy: 'DO_NOT_REGENERATE';
   routingNote?: string;
+  /**
+   * Canonical manifest mechanic keys this exemplar may teach. Absent on
+   * legacy entries, which are then never eligible for generation: an
+   * untargeted exemplar is never treated as "all mechanics".
+   */
+  mechanics?: string[];
+  /**
+   * Recorded approval provenance. These are author-written fields: they say
+   * who is *recorded* as approving and when, not that an approval workflow
+   * verified it. Only meaningful on APPROVED entries.
+   */
+  approvedBy?: string;
+  /** ISO calendar date, YYYY-MM-DD. */
+  approvedAt?: string;
+  /** Where the exemplar came from, e.g. a reference-library row id. */
+  sourceRef?: string;
+}
+
+/** Why an APPROVED entry did not reach a generation prompt. */
+export const EXEMPLAR_UNTARGETED_EXCLUDED = 'EXEMPLAR_UNTARGETED_EXCLUDED';
+export const EXEMPLAR_MECHANIC_EXCLUDED = 'EXEMPLAR_MECHANIC_EXCLUDED';
+
+export interface ExemplarSelection {
+  /** The canonical manifest key of the mechanic being generated. */
+  mechanicKey: string;
+  /**
+   * Canonical manifest mechanic keys. When given, a target outside this set
+   * fails validation, so a typo or an alias cannot silently match nothing.
+   */
+  knownMechanics?: readonly string[];
 }
 
 export interface ParsedExemplarMetadata {
@@ -42,7 +76,33 @@ export interface ExemplarDocument {
 }
 
 const ID_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
+/** Manifest mechanic keys are lowercase words joined by `-` or `_`. */
+const MECHANIC_RE = /^[a-z0-9]+(?:[-_][a-z0-9]+)*$/;
+const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const MAX_APPROVED_BY = 120;
+const MAX_SOURCE_REF = 200;
 const COMMENT_RE = /<!--([\s\S]*?)-->/g;
+
+const isCalendarDate = (value: string): boolean => {
+  const match = DATE_RE.exec(value);
+  if (!match) return false;
+  const [year, month, day] = match.slice(1).map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+};
+
+/** A single-line, trimmed, bounded string — or the reason it is not one. */
+const singleLineProblem = (value: unknown, max: number): string | null => {
+  if (typeof value !== 'string' || !value.trim()) return 'a non-empty string';
+  if (value !== value.trim()) return 'without surrounding whitespace';
+  if (/[\r\n]/.test(value)) return 'a single line';
+  if (value.length > max) return `at most ${max} characters`;
+  return null;
+};
 
 export class ExemplarMetadataError extends Error {}
 
@@ -76,6 +136,10 @@ const parseMetadata = (raw: string, line: number): ExemplarMetadata => {
     'status',
     'reusePolicy',
     'routingNote',
+    'mechanics',
+    'approvedBy',
+    'approvedAt',
+    'sourceRef',
   ]);
   const unknown = Object.keys(record).filter((key) => !allowed.has(key));
   if (unknown.length) {
@@ -114,6 +178,64 @@ const parseMetadata = (raw: string, line: number): ExemplarMetadata => {
       `line ${line}: routingNote must be a non-empty string when present`,
     );
   }
+  let mechanics: string[] | undefined;
+  if (record.mechanics !== undefined) {
+    if (!Array.isArray(record.mechanics) || record.mechanics.length === 0) {
+      // An empty list must never be read as "every mechanic".
+      throw new ExemplarMetadataError(
+        `line ${line}: mechanics must be a non-empty list of canonical mechanic keys`,
+      );
+    }
+    for (const mechanic of record.mechanics) {
+      if (typeof mechanic !== 'string' || !MECHANIC_RE.test(mechanic)) {
+        throw new ExemplarMetadataError(
+          `line ${line}: malformed mechanic key ${JSON.stringify(mechanic)}`,
+        );
+      }
+    }
+    if (new Set(record.mechanics).size !== record.mechanics.length) {
+      throw new ExemplarMetadataError(
+        `line ${line}: mechanics must not repeat a key`,
+      );
+    }
+    mechanics = [...(record.mechanics as string[])];
+  }
+  const hasApprover = record.approvedBy !== undefined;
+  const hasDate = record.approvedAt !== undefined;
+  if ((hasApprover || hasDate) && record.status !== 'APPROVED') {
+    throw new ExemplarMetadataError(
+      `line ${line}: approvedBy/approvedAt are only valid on APPROVED entries`,
+    );
+  }
+  if (hasApprover !== hasDate) {
+    throw new ExemplarMetadataError(
+      `line ${line}: approvedBy and approvedAt must be recorded together`,
+    );
+  }
+  if (hasApprover) {
+    const problem = singleLineProblem(record.approvedBy, MAX_APPROVED_BY);
+    if (problem) {
+      throw new ExemplarMetadataError(
+        `line ${line}: approvedBy must be ${problem}`,
+      );
+    }
+    if (
+      typeof record.approvedAt !== 'string' ||
+      !isCalendarDate(record.approvedAt)
+    ) {
+      throw new ExemplarMetadataError(
+        `line ${line}: approvedAt must be a calendar date YYYY-MM-DD`,
+      );
+    }
+  }
+  if (record.sourceRef !== undefined) {
+    const problem = singleLineProblem(record.sourceRef, MAX_SOURCE_REF);
+    if (problem) {
+      throw new ExemplarMetadataError(
+        `line ${line}: sourceRef must be ${problem}`,
+      );
+    }
+  }
   return {
     version: 1,
     id: record.id,
@@ -122,6 +244,16 @@ const parseMetadata = (raw: string, line: number): ExemplarMetadata => {
     ...(record.routingNote === undefined
       ? {}
       : { routingNote: record.routingNote as string }),
+    ...(mechanics ? { mechanics } : {}),
+    ...(hasApprover
+      ? {
+          approvedBy: record.approvedBy as string,
+          approvedAt: record.approvedAt as string,
+        }
+      : {}),
+    ...(record.sourceRef === undefined
+      ? {}
+      : { sourceRef: record.sourceRef as string }),
   };
 };
 
@@ -200,13 +332,62 @@ const parseDocument = (
 export const parseExemplarMetadata = (text: string): ParsedExemplarMetadata[] =>
   parseDocument(text).entries;
 
-export const resolveExemplarDocument = (text: string): ExemplarDocument => {
+/**
+ * The generation-safe view for one mechanic.
+ *
+ * An entry reaches `approvedText` only when it is APPROVED, has content and
+ * explicitly lists `selection.mechanicKey` in `mechanics`. Legacy APPROVED
+ * entries without `mechanics` are excluded and reported — never treated as
+ * eligible for every mechanic. `historicalText` is always the untouched source,
+ * so duplicate screening still sees every entry, eligible or not.
+ */
+export const resolveExemplarDocument = (
+  text: string,
+  selection: ExemplarSelection,
+): ExemplarDocument => {
   const { entries, contentRanges } = parseDocument(text);
-  const approvedText = entries
-    .filter((entry) => entry.metadata.status === 'APPROVED' && entry.content)
+  if (selection.knownMechanics) {
+    const known = new Set(selection.knownMechanics);
+    for (const entry of entries) {
+      for (const mechanic of entry.metadata.mechanics ?? []) {
+        if (!known.has(mechanic)) {
+          throw new ExemplarMetadataError(
+            `line ${entry.startLine}: unknown mechanic ${mechanic} (use a canonical manifest key)`,
+          );
+        }
+      }
+    }
+  }
+  const approved = entries.filter(
+    (entry) => entry.metadata.status === 'APPROVED' && entry.content,
+  );
+  const untargeted = approved.filter((entry) => !entry.metadata.mechanics);
+  const otherMechanic = approved.filter(
+    (entry) =>
+      entry.metadata.mechanics &&
+      !entry.metadata.mechanics.includes(selection.mechanicKey),
+  );
+  const approvedText = approved
+    .filter((entry) =>
+      entry.metadata.mechanics?.includes(selection.mechanicKey),
+    )
     .map((entry) => entry.sourceBlock)
     .join('\n\n');
   const diagnostics: string[] = [];
+  if (untargeted.length) {
+    diagnostics.push(
+      `${EXEMPLAR_UNTARGETED_EXCLUDED}: ${untargeted
+        .map((entry) => entry.metadata.id)
+        .join(',')}`,
+    );
+  }
+  if (otherMechanic.length) {
+    diagnostics.push(
+      `${EXEMPLAR_MECHANIC_EXCLUDED}: ${otherMechanic
+        .map((entry) => entry.metadata.id)
+        .join(',')}`,
+    );
+  }
   let offset = 0;
   const unclassifiedLines: number[] = [];
   for (const [index, line] of text.split(/(?<=\n)/).entries()) {

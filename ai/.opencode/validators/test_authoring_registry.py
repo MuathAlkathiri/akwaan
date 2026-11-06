@@ -72,7 +72,9 @@ class CanonicalAuthoringRegistryTests(unittest.TestCase):
             SKILLS / "worlds" / "puzzles" / "scopes" / "numbers-estimation" / "EXEMPLARS.md"
         ).read_text(encoding="utf-8")
         self.assertEqual(numbers.count("⬜ **WITHHELD**"), 4)
-        self.assertIn("`missing-number-pattern` | ✅ **APPROVED**", numbers)
+        # Product Owner decision 2026-11-06 supersedes the 2026-10-21 approval.
+        self.assertIn("`missing-number-pattern` | ⛔ **REJECTED**", numbers)
+        self.assertNotIn("`missing-number-pattern` | ✅ **APPROVED**", numbers)
         self.assertNotIn("`quantity-intuition` | ✅ **APPROVED**", numbers)
         self.assertNotIn("`numeric-pattern` | ✅ **APPROVED**", numbers)
 

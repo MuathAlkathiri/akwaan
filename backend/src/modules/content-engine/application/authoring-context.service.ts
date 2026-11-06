@@ -418,7 +418,12 @@ export class AuthoringContextService {
     let exemplarDiagnostics: string[] = [];
     if (exemplarsPresent) {
       try {
-        const document = resolveExemplarDocument(exemplarsText);
+        // Only exemplars that explicitly target this canonical mechanic reach
+        // the prompt; targets are checked against the manifest's mechanics.
+        const document = resolveExemplarDocument(exemplarsText, {
+          mechanicKey,
+          knownMechanics: Object.keys(manifest.mechanics),
+        });
         approvedExemplars = document.approvedText;
         exemplarDiagnostics = document.diagnostics;
       } catch (error) {
