@@ -31,6 +31,8 @@ import { CandidateCompatibilityService } from './application/candidate-compatibi
 import { ContentEngineOrchestratorService } from './application/content-engine-orchestrator.service';
 import { ContentEngineReviewService } from './application/content-engine-review.service';
 import { HistoricalCoverageService } from './application/historical-coverage.service';
+import { LibraryImportService } from './application/library-import.service';
+import { LibrarySourcingService } from './application/library-sourcing.service';
 import { GenerationPlannerService } from './application/generation-planner.service';
 import { EngineBudgetService } from './application/engine-budget.service';
 import { GenerationJobService } from './application/generation-job.service';
@@ -72,6 +74,14 @@ import {
   EngineDraftPublicationDocument,
   EngineDraftPublicationSchema,
 } from './schemas/engine-draft-publication.schema';
+import {
+  EngineLibraryHookDocument,
+  EngineLibraryHookSchema,
+} from './schemas/engine-library-hook.schema';
+import {
+  EngineLibraryRowDocument,
+  EngineLibraryRowSchema,
+} from './schemas/engine-library-row.schema';
 
 /**
  * Akwaan Content Engine — Phase 1 implementation (roadmap §30).
@@ -105,6 +115,8 @@ import {
         name: EngineDraftPublicationDocument.name,
         schema: EngineDraftPublicationSchema,
       },
+      { name: EngineLibraryRowDocument.name, schema: EngineLibraryRowSchema },
+      { name: EngineLibraryHookDocument.name, schema: EngineLibraryHookSchema },
     ]),
   ],
   controllers: [ContentEngineReviewController, ContentEngineJobsController],
@@ -178,6 +190,8 @@ import {
     ContentEngineOrchestratorService,
     ContentEngineReviewService,
     HistoricalCoverageService,
+    LibraryImportService,
+    LibrarySourcingService,
     GenerationPlannerService,
   ],
   exports: [

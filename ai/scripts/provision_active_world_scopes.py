@@ -2,7 +2,12 @@
 """
 Canonical provisioning tool for Active World Scope Expansion.
 
-This script safely provisions the 6 approved missing Scopes:
+This script safely provisions the approved missing Scopes:
+  - World: 'celebrities' (المشاهير): the 10 approved Scopes (roadmap §28.6).
+    The five legacy Scopes are left untouched.
+  - World: 'football' (عالم كرة القدم):
+      - 'uefa-super-cup' (كأس السوبر الأوروبي)
+      - 'saudi-national-team' (المنتخب السعودي)
   - World: 'video-games' (عالم الالعاب الالكترونية):
       - 'minecraft' (ماينكرافت)
       - 'god-of-war' (قود اوف وار)
@@ -53,10 +58,105 @@ PLAN_PATH_DEFAULT = "/tmp/akwaan-active-world-scopes-plan.json"
 CANONICAL_WORLD_ALIASES: dict[str, tuple[str, ...]] = {
     "video-games": ("video-games", "world-1785784447249", "عالم الالعاب الالكترونية", "عالم الألعاب الإلكترونية", "فيديو قيمز"),
     "puzzles": ("puzzles", "world-1786388973542", "عالم الالغاز", "عالم الألغاز"),
+    "football": ("football", "test", "عالم كرة القدم", "كرة قدم"),
+    "celebrities": ("celebrities", "المشاهير", "عالم المشاهير"),
 }
 
 # The approved active-world scopes
 APPROVED_SCOPES_SPEC: dict[str, list[dict[str, Any]]] = {
+    # Celebrities / المشاهير — the 10-Scope taxonomy approved 2026-10-02 (roadmap
+    # §28.6). This only adds them. The five legacy runtime Scopes stay in place:
+    # deciding their future needs a look at their content and explicit approval.
+    "celebrities": [
+        {
+            "name": "نجوم التمثيل العرب",
+            "slug": "arab-acting-stars",
+            "description": "نجوم التمثيل من العالم العربي وأبرز أعمالهم",
+            "status": "active",
+            "excludedChallengeTypeIds": [],
+        },
+        {
+            "name": "نجوم التمثيل الأجانب",
+            "slug": "non-arab-acting-stars",
+            "description": "نجوم التمثيل من خارج العالم العربي وأبرز أعمالهم",
+            "status": "active",
+            "excludedChallengeTypeIds": [],
+        },
+        {
+            "name": "نجوم الغناء العرب",
+            "slug": "arab-music-stars",
+            "description": "نجوم الغناء من العالم العربي وأبرز أغانيهم",
+            "status": "active",
+            "excludedChallengeTypeIds": [],
+        },
+        {
+            "name": "نجوم الغناء الأجانب",
+            "slug": "non-arab-music-stars",
+            "description": "نجوم الغناء من خارج العالم العربي وأبرز أغانيهم",
+            "status": "active",
+            "excludedChallengeTypeIds": [],
+        },
+        {
+            "name": "نجوم الرياضة العرب",
+            "slug": "arab-sports-stars",
+            "description": "نجوم الرياضة من العالم العربي ومحطاتهم الشهيرة",
+            "status": "active",
+            "excludedChallengeTypeIds": [],
+        },
+        {
+            "name": "نجوم الرياضة الأجانب",
+            "slug": "non-arab-sports-stars",
+            "description": "نجوم الرياضة من خارج العالم العربي ومحطاتهم الشهيرة",
+            "status": "active",
+            "excludedChallengeTypeIds": [],
+        },
+        {
+            "name": "صناع المحتوى العرب",
+            "slug": "arab-content-creators",
+            "description": "صناع المحتوى من العالم العربي وأبرز أعمالهم",
+            "status": "active",
+            "excludedChallengeTypeIds": [],
+        },
+        {
+            "name": "صناع المحتوى الأجانب",
+            "slug": "non-arab-content-creators",
+            "description": "صناع المحتوى من خارج العالم العربي وأبرز أعمالهم",
+            "status": "active",
+            "excludedChallengeTypeIds": [],
+        },
+        {
+            "name": "نجوم التلفزيون والإعلام العرب",
+            "slug": "arab-media-stars",
+            "description": "نجوم التلفزيون والإعلام من العالم العربي وأبرز برامجهم",
+            "status": "active",
+            "excludedChallengeTypeIds": [],
+        },
+        {
+            "name": "نجوم التلفزيون والإعلام الأجانب",
+            "slug": "non-arab-media-stars",
+            "description": "نجوم التلفزيون والإعلام من خارج العالم العربي وأبرز برامجهم",
+            "status": "active",
+            "excludedChallengeTypeIds": [],
+        },
+    ],
+    # Football / عالم كرة القدم — approved 2026-11-01. Both Scopes need this
+    # record before a DRAFT can exist; the file alone only permits generation.
+    "football": [
+        {
+            "name": "كأس السوبر الأوروبي",
+            "slug": "uefa-super-cup",
+            "description": "مواجهة بطلي أوروبا السنوية عبر تاريخ البطولة",
+            "status": "active",
+            "excludedChallengeTypeIds": [],
+        },
+        {
+            "name": "المنتخب السعودي",
+            "slug": "saudi-national-team",
+            "description": "المنتخب السعودي الأول وتاريخه في البطولات",
+            "status": "active",
+            "excludedChallengeTypeIds": [],
+        },
+    ],
     "video-games": [
         {
             "name": "ماينكرافت",

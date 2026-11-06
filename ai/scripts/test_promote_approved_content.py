@@ -1543,6 +1543,34 @@ def celeb_plan(target, milestone_key=CELEB_BOMB):
     return promoter.build_plan(manifest, None, None, target, index, check_media=True)
 
 
+class TestContentEngineProvenanceSurvivesPromotion(unittest.TestCase):
+    """Mode, library ids and the re-check date stay on a promoted item."""
+
+    def test_provenance_is_carried(self):
+        metadata = promoter.promoted_metadata("m:1", {
+            "notes": "n", "tags": ["t"], "generationMode": "library_anchored",
+            "libraryIds": ["LIB-009", "LIB-057"], "revalidateAfter": "2027-05-31",
+        })
+        self.assertEqual(metadata["generationMode"], "library_anchored")
+        self.assertEqual(metadata["libraryIds"], ["LIB-009", "LIB-057"])
+        self.assertEqual(metadata["revalidateAfter"], "2027-05-31")
+
+    def test_exploratory_items_keep_an_empty_id_list(self):
+        metadata = promoter.promoted_metadata(
+            "m:1", {"generationMode": "exploratory", "libraryIds": []})
+        self.assertEqual(metadata["libraryIds"], [])
+
+    def test_items_without_provenance_promote_exactly_as_before(self):
+        self.assertEqual(
+            promoter.promoted_metadata("m:1", {"notes": "n", "tags": None}),
+            {"source": "m:1", "notes": "n", "tags": None},
+        )
+
+    def test_the_marker_is_never_taken_from_the_item(self):
+        self.assertEqual(
+            promoter.promoted_metadata("m:1", {"source": "other"})["source"], "m:1")
+
+
 class TestRightsAreNotAPromotionGate(unittest.TestCase):
     PROD = "https://akwaan-api.onrender.com"
     LOCAL = "http://localhost:3002"

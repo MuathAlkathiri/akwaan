@@ -30,10 +30,19 @@ import {
 } from '../domain/content-identity.types';
 import { hasTrustedCandidateApproval } from '../domain/candidate-approval-provenance';
 import { evaluateFamilyCompliance } from '../domain/family-compliance.policy';
+import {
+  findLibraryCopy,
+  highestLibrarySimilarity,
+  LibrarySimilarity,
+  resolveLibraryCopyThreshold,
+} from '../domain/library-copy-detector';
+import type { LibrarySeed } from '../domain/library-sourcing';
 
 export interface ScreenResult {
   passed: boolean;
   findings: ScreenFinding[];
+  /** Set when the job pinned library rows. */
+  librarySimilarity?: LibrarySimilarity | null;
 }
 
 export type HistoricalScopeLoadStatus =
@@ -80,6 +89,8 @@ export interface DeterministicScreenSession {
     rawPrompt: string;
   }>;
   exemplarPhrases: string[][];
+  /** The rows this job pinned. Empty for everything but anchored jobs. */
+  librarySeeds?: readonly LibrarySeed[];
 }
 
 export const INCOMPLETE_HISTORICAL_FINDING_CODES = [
@@ -342,10 +353,12 @@ export class DeterministicScreenService {
     mechanicProfile?: string;
     historicalRecords?: HistoricalContentRecord[];
     historicalScopeStatus?: HistoricalScopeLoadResult;
+    librarySeeds?: readonly LibrarySeed[];
   }): DeterministicScreenSession {
     return {
       worldKey: options?.worldKey,
       scopeKey: options?.scopeKey,
+      librarySeeds: options?.librarySeeds ?? [],
       historicalScopeStatus: options?.historicalScopeStatus,
       historicalRecords: options?.historicalRecords
         ? [...options.historicalRecords]
@@ -742,6 +755,34 @@ export class DeterministicScreenService {
   }
 
   screen(
+    draft: Record<string, unknown>,
+    authoring?: Record<string, unknown> | null,
+    screenOptions?: ScreenOptions,
+  ): ScreenResult {
+    const result = this.screenContent(draft, authoring, screenOptions);
+    const seeds = screenOptions?.session?.librarySeeds ?? [];
+    if (!seeds.length) return result;
+    const librarySimilarity = highestLibrarySimilarity(draft, seeds);
+    const copy = findLibraryCopy(
+      draft,
+      seeds,
+      resolveLibraryCopyThreshold(this.config),
+    );
+    if (!copy) return { ...result, librarySimilarity };
+    return {
+      passed: false,
+      librarySimilarity,
+      findings: [
+        ...result.findings,
+        blocking(
+          'LIBRARY_ROW_COPY',
+          `this restates ${copy.libraryId} (similarity ${copy.similarity.toFixed(2)}); ask something new about the fact`,
+        ),
+      ],
+    };
+  }
+
+  private screenContent(
     draft: Record<string, unknown>,
     authoring?: Record<string, unknown> | null,
     screenOptions?: ScreenOptions,

@@ -665,6 +665,38 @@ export function ContentEngineReviewWorkspace() {
                     </div>
                   </div>
 
+                  {row.sourcing && (
+                    <div
+                      data-testid={`candidate-sourcing-${row.candidateId}`}
+                      className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-700"
+                    >
+                      <span>
+                        {row.sourcing.mode === "library_anchored"
+                          ? `من المكتبة: ${row.sourcing.libraryIds.join("، ")}`
+                          : "استكشافي"}
+                      </span>
+                      {row.sourcing.mode === "library_anchored" &&
+                        row.librarySimilarity && (
+                          <span
+                            data-testid={`candidate-library-similarity-${row.candidateId}`}
+                            className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-700"
+                          >
+                            أعلى تشابه: {row.librarySimilarity.similarity.toFixed(2)} (
+                            {row.librarySimilarity.libraryId})
+                          </span>
+                        )}
+                      {row.sourcing.sourceWarnings?.map((warning) => (
+                        <span
+                          key={warning.libraryId}
+                          data-testid={`candidate-source-warning-${warning.libraryId}`}
+                          className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.2 text-[10px] font-bold text-amber-800"
+                        >
+                          مصدر ضعيف: {warning.libraryId}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   {row.authoring?.assignedSlot && (
                     <div
                       data-testid={`candidate-creative-slot-row-${row.candidateId}`}

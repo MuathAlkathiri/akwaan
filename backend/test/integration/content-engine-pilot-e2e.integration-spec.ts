@@ -441,6 +441,8 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
 
   describe('distinct job identity, exact-job isolation, cancellation, and legacy provenance', () => {
     it('creates distinct jobs for different guidance/difficulty and executes only the targeted job', async () => {
+      // The fake always answers with three candidates, so these must ask for
+      // three: a count mismatch fails the job, and this test needs it to finish.
       const reqA = {
         ...PILOT,
         // The suite's fake provider always returns PILOT.targetCount candidates,
@@ -567,10 +569,13 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
           .expect(201)
       ).body.data;
 
-      expect(preflight.judgeEligible).toBe(false);
-      expect(preflight.conditionalJudgeEstimatedMicros).toBe(0);
+      // No retriever is bound here, so claims stay UNRESOLVED and get judged.
+      expect(preflight.judgeEligible).toBe(true);
+      expect(preflight.conditionalJudgeEstimatedMicros).toBe(
+        preflight.maxJudgeEstimatedMicros,
+      );
       expect(preflight.estimatedMicros).toBe(
-        preflight.generationEstimatedMicros,
+        preflight.generationEstimatedMicros + preflight.maxJudgeEstimatedMicros,
       );
 
       const submitted = (
@@ -596,7 +601,7 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
         expect(fake.calls).toHaveLength(1);
         const call = fake.calls[0];
         expect(call.model).toBe('fake-model');
-        expect(call.promptVersion).toBe('mc-v2');
+        expect(call.promptVersion).toBe('mc-v3');
         expect(call.temperature).toBe(0.8);
         expect(call.maxOutputTokens).toBe(2 * 800);
         expect(call.prompt).toContain(
@@ -613,7 +618,6 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
         expect(ledgerEntry!.reservedMicros).toBe(
           preflight.generationEstimatedMicros,
         );
-        expect(ledgerEntry!.reservedMicros).toBe(preflight.estimatedMicros);
       } finally {
         if (prevTemp === undefined) {
           delete process.env.ENGINE_GENERATION_TEMPERATURE;

@@ -27,7 +27,6 @@ import {
   BudgetExceededError,
   CONTENT_ENGINE_ENABLED,
   ENGINE_AI_PROVIDER,
-  ENGINE_EVIDENCE_RETRIEVAL_ENABLED,
   ENGINE_LIVE_PROVIDER_ENABLED,
   microsToSar,
   PricingUnavailableError,
@@ -90,6 +89,11 @@ import {
   QUALITY_JUDGE_MAX_OUTPUT_TOKENS,
   estimateQualityJudgePromptTokens,
 } from './quality-judge.service';
+import {
+  LibrarySourcingPlan,
+  LibrarySourcingService,
+} from './library-sourcing.service';
+import type { SourcingMode } from '../domain/library-sourcing';
 
 export interface EngineAdminActor {
   actorId: string;
@@ -156,25 +160,18 @@ export class EngineJobAdminService {
     private readonly aiProvider?: AiProvider | null,
     @Optional()
     @Inject(FACT_EVIDENCE_RETRIEVER)
-    private readonly factRetriever?: FactEvidenceRetriever | null,
+    _factRetriever?: FactEvidenceRetriever | null,
     @Optional()
     private readonly historicalCoverage?: HistoricalCoverageService,
     @Optional()
     private readonly planner?: GenerationPlannerService,
+    @Optional()
+    private readonly sourcing?: LibrarySourcingService,
   ) {}
 
   private truthy(key: string): boolean {
     return ['true', '1', 'yes', 'on'].includes(
       this.config.get<string>(key)?.trim().toLowerCase() ?? '',
-    );
-  }
-
-  private isJudgeEligible(): boolean {
-    if (this.factRetriever) return true;
-    return (
-      this.truthy(CONTENT_ENGINE_ENABLED) &&
-      this.truthy(ENGINE_EVIDENCE_RETRIEVAL_ENABLED) &&
-      this.truthy('WIGOLO_ENABLED')
     );
   }
 
@@ -210,6 +207,7 @@ export class EngineJobAdminService {
         difficulty: generationSpec.difficulty,
         ryoDifficultyTargets: generationSpec.ryoDifficultyTargets,
         batchGuidance: generationSpec.batchGuidance,
+        sourcing: generationSpec.sourcing,
       },
       () => resolveRyoMixedDifficultyTargets(this.config),
     );
@@ -242,11 +240,12 @@ export class EngineJobAdminService {
       },
     });
 
-    const judgeEligible = this.isJudgeEligible();
-    const judgeCallsExpected = judgeEligible ? generationSpec.targetCount : 0;
-    const conditionalJudgeEstimatedMicros = judgeEligible
-      ? maxJudgeEstimatedMicros
-      : 0;
+    // Retrieval off or failing leaves claims UNRESOLVED, and the orchestrator
+    // judges those, so every candidate can reach the judge whatever the
+    // retrieval config says. Estimating less would understate the bill.
+    const judgeEligible = true;
+    const judgeCallsExpected = generationSpec.targetCount;
+    const conditionalJudgeEstimatedMicros = maxJudgeEstimatedMicros;
     const estimatedMicros =
       generationEstimatedMicros + conditionalJudgeEstimatedMicros;
 
@@ -262,6 +261,69 @@ export class EngineJobAdminService {
       judgePromptTokensPerCall,
       judgeMaxOutputTokensPerCall,
     };
+  }
+
+  /**
+   * A sourced request can be two jobs, and each job is its own provider call
+   * with its own full prompt. Costing the batch as one call would understate it
+   * by a whole prompt.
+   */
+  private estimatePlanCost(
+    context: Parameters<EngineJobAdminService['estimateBatchCost']>[0],
+    specifications: readonly GenerationSpecification[],
+  ): ReturnType<EngineJobAdminService['estimateBatchCost']> {
+    const [first, ...rest] = specifications.map((spec) =>
+      this.estimateBatchCost(context, spec),
+    );
+    return rest.reduce(
+      (total, cost) => ({
+        ...total,
+        estimatedMicros: total.estimatedMicros + cost.estimatedMicros,
+        generationEstimatedMicros:
+          total.generationEstimatedMicros + cost.generationEstimatedMicros,
+        conditionalJudgeEstimatedMicros:
+          total.conditionalJudgeEstimatedMicros +
+          cost.conditionalJudgeEstimatedMicros,
+        maxJudgeEstimatedMicros:
+          total.maxJudgeEstimatedMicros + cost.maxJudgeEstimatedMicros,
+        generationPromptTokens:
+          total.generationPromptTokens + cost.generationPromptTokens,
+        generationMaxOutputTokens:
+          total.generationMaxOutputTokens + cost.generationMaxOutputTokens,
+        judgeCallsExpected: total.judgeCallsExpected + cost.judgeCallsExpected,
+      }),
+      first,
+    );
+  }
+
+  /**
+   * The plan execution would build, or why it cannot be built. Execution has no
+   * fallback, so preflight and submission must not have one either: a plan that
+   * only exists here would report a job as ready and then lose it to
+   * PLANNER_FAILURE when it runs.
+   */
+  private async resolvePlan(
+    spec: GenerationSpecification,
+  ): Promise<{ plan?: GenerationPlan; failure?: string }> {
+    const planner =
+      this.planner ??
+      new GenerationPlannerService(this.contexts, this.historicalCoverage);
+    try {
+      return {
+        plan: await planner.planWithResolvedContext({
+          worldKey: spec.worldKey,
+          scopeKey: spec.scopeKey,
+          mechanicKey: spec.mechanicKey,
+          count: spec.targetCount,
+          difficulty: spec.difficulty,
+          batchGuidance: spec.batchGuidance,
+        }),
+      };
+    } catch (error) {
+      return {
+        failure: error instanceof Error ? error.message : String(error),
+      };
+    }
   }
 
   maxBatchSize(): number {
@@ -381,7 +443,7 @@ export class EngineJobAdminService {
             maxOutputTokens: QUALITY_JUDGE_MAX_OUTPUT_TOKENS,
           },
         });
-        estimatedMicros = genProbe + (this.isJudgeEligible() ? judgeProbe : 0);
+        estimatedMicros = genProbe + judgeProbe;
         pricingConfigured = true;
       } catch (error) {
         if (error instanceof PricingUnavailableError) {
@@ -961,6 +1023,9 @@ export class EngineJobAdminService {
     blockedCode?: string;
     blockedReason?: string;
     ruleConflicts?: RuleConflict[];
+    sourcingPlan?: Omit<LibrarySourcingPlan, 'specifications'> & {
+      jobCount: number;
+    };
   }> {
     const budget = await this.budget.snapshot();
     const engineEnabled = this.truthy(CONTENT_ENGINE_ENABLED);
@@ -1140,9 +1205,26 @@ export class EngineJobAdminService {
       targetCount: generationSpec.targetCount,
       outputTokensPerCandidate: generationSpec.outputTokensPerCandidate,
     });
+    const sourcingPlan = await this.sourcing?.plan(generationSpec);
+    const jobSpecifications = sourcingPlan?.specifications ?? [generationSpec];
+    const sourcingSummary = sourcingPlan
+      ? {
+          sourcingPlan: {
+            anchoredCount: sourcingPlan.anchoredCount,
+            exploratoryCount: sourcingPlan.exploratoryCount,
+            overflowCount: sourcingPlan.overflowCount,
+            fallbackReason: sourcingPlan.fallbackReason,
+            libraryIds: sourcingPlan.libraryIds,
+            jobCount: jobSpecifications.length,
+          },
+        }
+      : {};
 
     try {
-      const costPlan = this.estimateBatchCost(resolvedContext!, generationSpec);
+      const costPlan = this.estimatePlanCost(
+        resolvedContext!,
+        jobSpecifications,
+      );
       const {
         estimatedMicros,
         generationEstimatedMicros,
@@ -1171,48 +1253,37 @@ export class EngineJobAdminService {
         engineEnabled,
         liveProviderEnabled,
         providerReady: readiness.providerReady,
+        ...(sourcingPlan
+          ? { sourcedSpecifications: sourcingPlan.specifications }
+          : {}),
       });
 
-      const planner =
-        this.planner ??
-        new GenerationPlannerService(this.contexts, this.historicalCoverage);
-      let generationPlan: GenerationPlan;
-      try {
-        generationPlan = await planner.planWithResolvedContext({
-          worldKey: generationSpec.worldKey,
-          scopeKey: generationSpec.scopeKey,
-          mechanicKey: generationSpec.mechanicKey,
-          count: generationSpec.targetCount,
-          difficulty: generationSpec.difficulty,
-          batchGuidance: generationSpec.batchGuidance,
-        });
-      } catch {
-        generationPlan = planner.plan({
-          worldKey: generationSpec.worldKey,
-          scopeKey: generationSpec.scopeKey,
-          mechanicKey: generationSpec.mechanicKey,
-          count: generationSpec.targetCount,
-          difficulty: generationSpec.difficulty,
-          batchGuidance: generationSpec.batchGuidance,
-        });
-      }
+      const { plan: generationPlan, failure: plannerFailure } =
+        await this.resolvePlan(generationSpec);
 
       const submissionReady =
-        readiness.submissionReady && withinBatchCap && withinMonthlyBudget;
+        readiness.submissionReady &&
+        !plannerFailure &&
+        withinBatchCap &&
+        withinMonthlyBudget;
       const blockedCode = !readiness.submissionReady
         ? (readiness.blockedCode ?? undefined)
-        : !withinBatchCap
-          ? 'BATCH_CAP_EXCEEDED'
-          : !withinMonthlyBudget
-            ? 'MONTHLY_BUDGET_EXCEEDED'
-            : undefined;
+        : plannerFailure
+          ? 'PLANNER_FAILURE'
+          : !withinBatchCap
+            ? 'BATCH_CAP_EXCEEDED'
+            : !withinMonthlyBudget
+              ? 'MONTHLY_BUDGET_EXCEEDED'
+              : undefined;
       const blockedReason = !readiness.submissionReady
         ? (readiness.blockedReason ?? undefined)
-        : !withinBatchCap
-          ? `BATCH_CAP_EXCEEDED: estimated total job cost ${totalEstimatedMicros} micros exceeds batch cap ${batchCapMicros} micros`
-          : !withinMonthlyBudget
-            ? `MONTHLY_BUDGET_EXCEEDED: estimated total job cost ${totalEstimatedMicros} micros exceeds available monthly budget ${budget.availableMicros} micros`
-            : undefined;
+        : plannerFailure
+          ? `PLANNER_FAILURE: ${plannerFailure}`
+          : !withinBatchCap
+            ? `BATCH_CAP_EXCEEDED: estimated total job cost ${totalEstimatedMicros} micros exceeds batch cap ${batchCapMicros} micros`
+            : !withinMonthlyBudget
+              ? `MONTHLY_BUDGET_EXCEEDED: estimated total job cost ${totalEstimatedMicros} micros exceeds available monthly budget ${budget.availableMicros} micros`
+              : undefined;
 
       return {
         resolvable: true,
@@ -1242,6 +1313,7 @@ export class EngineJobAdminService {
         withinMonthlyBudget,
         budget,
         generatorSupported: true,
+        ...sourcingSummary,
         ...(blockedCode ? { blockedCode, blockedReason } : {}),
       };
     } catch (error) {
@@ -1256,6 +1328,9 @@ export class EngineJobAdminService {
           engineEnabled,
           liveProviderEnabled,
           providerReady: readiness.providerReady,
+          ...(sourcingPlan
+            ? { sourcedSpecifications: sourcingPlan.specifications }
+            : {}),
         });
         return {
           resolvable: true,
@@ -1274,6 +1349,7 @@ export class EngineJobAdminService {
           boardSlotKeys: runtimeCheck.boardSlotKeys,
           budget,
           generatorSupported: true,
+          ...sourcingSummary,
           blockedCode: 'PRICING_NOT_CONFIGURED',
           blockedReason: error.message,
         };
@@ -1301,6 +1377,13 @@ export class EngineJobAdminService {
     generationSpec?: GenerationSpecification;
     createdBy?: string | null;
     createdByEmail?: string | null;
+    /** Every job of the request; the top-level ids describe the first. */
+    jobs?: Array<{
+      jobId: string;
+      created: boolean;
+      mode: SourcingMode;
+      targetCount: number;
+    }>;
   }> {
     try {
       validateTargetCount(input.targetCount, this.maxBatchSize());
@@ -1398,6 +1481,20 @@ export class EngineJobAdminService {
       });
     }
 
+    const { failure: plannerFailure } = await this.resolvePlan(generationSpec);
+    if (plannerFailure) {
+      throw new BadRequestException({
+        code: 'PLANNER_FAILURE',
+        message: `PLANNER_FAILURE: ${plannerFailure}`,
+      });
+    }
+
+    const sourcingPlan = await this.sourcing?.plan(generationSpec);
+    const jobSpecifications = sourcingPlan?.specifications ?? [generationSpec];
+    const sourcedDigestInput = sourcingPlan
+      ? { sourcedSpecifications: sourcingPlan.specifications }
+      : {};
+
     // Enforce provider, model, pricing, and live flags when budget/config is wired.
     const hasExplicitEngineConfig =
       this.config.get<string>(CONTENT_ENGINE_ENABLED) !== undefined ||
@@ -1421,7 +1518,10 @@ export class EngineJobAdminService {
         });
       }
 
-      const costPlan = this.estimateBatchCost(resolvedContext, generationSpec);
+      const costPlan = this.estimatePlanCost(
+        resolvedContext,
+        jobSpecifications,
+      );
       const { estimatedMicros } = costPlan;
       const totalEstimatedMicros =
         costPlan.generationEstimatedMicros + costPlan.maxJudgeEstimatedMicros;
@@ -1457,6 +1557,7 @@ export class EngineJobAdminService {
         engineEnabled: readiness.engineEnabled,
         liveProviderEnabled: readiness.liveProviderEnabled,
         providerReady: readiness.providerReady,
+        ...sourcedDigestInput,
       });
 
       const suppliedDigest = input.planDigest?.trim();
@@ -1484,6 +1585,7 @@ export class EngineJobAdminService {
         engineEnabled,
         liveProviderEnabled,
         providerReady: true,
+        ...sourcedDigestInput,
       });
       const suppliedDigest = input.planDigest?.trim();
       if (!suppliedDigest) {
@@ -1502,31 +1604,39 @@ export class EngineJobAdminService {
       }
     }
 
-    const result = await this.jobs.submit({
-      mechanicKey: input.mechanicKey,
-      worldKey: input.worldKey,
-      scopeKey: input.scopeKey,
-      targetCount: input.targetCount,
-      // The context hash is part of the request identity: a Skill edit makes
-      // this genuinely different work, while a repeated click does not.
-      contextRevision: contextHash,
-      generationSpec,
-      ...(currentPlanDigest ? { planDigest: currentPlanDigest } : {}),
-      ...(actor
-        ? {
-            createdBy: actor.actorId,
-            createdByEmail: actor.actorEmail,
-          }
-        : {}),
-    });
-    this.logger.log({
-      event: 'engine_job_submitted',
-      jobId: result.jobId,
-      created: result.created,
-      mechanicKey: input.mechanicKey,
-      scopeKey: input.scopeKey,
-      actorId: actor?.actorId ?? null,
-    });
+    // Each job's specification carries its mode, so the two requestHashes differ
+    // and a repeated click, or a crash between the two, resolves to the same jobs.
+    const submissions = [];
+    for (const specification of jobSpecifications) {
+      const submission = await this.jobs.submit({
+        mechanicKey: input.mechanicKey,
+        worldKey: input.worldKey,
+        scopeKey: input.scopeKey,
+        targetCount: specification.targetCount,
+        // The context hash is part of the request identity: a Skill edit makes
+        // this genuinely different work, while a repeated click does not.
+        contextRevision: contextHash,
+        generationSpec: specification,
+        ...(currentPlanDigest ? { planDigest: currentPlanDigest } : {}),
+        ...(actor
+          ? {
+              createdBy: actor.actorId,
+              createdByEmail: actor.actorEmail,
+            }
+          : {}),
+      });
+      this.logger.log({
+        event: 'engine_job_submitted',
+        jobId: submission.jobId,
+        created: submission.created,
+        mechanicKey: input.mechanicKey,
+        scopeKey: input.scopeKey,
+        sourcingMode: specification.sourcing?.mode ?? null,
+        actorId: actor?.actorId ?? null,
+      });
+      submissions.push({ specification, submission });
+    }
+    const result = submissions[0].submission;
     return {
       jobId: result.jobId,
       created: result.created,
@@ -1539,6 +1649,16 @@ export class EngineJobAdminService {
         ? {
             createdBy: actor.actorId,
             createdByEmail: actor.actorEmail,
+          }
+        : {}),
+      ...(sourcingPlan
+        ? {
+            jobs: submissions.map(({ specification, submission }) => ({
+              jobId: submission.jobId,
+              created: submission.created,
+              mode: specification.sourcing!.mode,
+              targetCount: specification.targetCount,
+            })),
           }
         : {}),
     };

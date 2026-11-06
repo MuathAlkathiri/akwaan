@@ -425,7 +425,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       expect(state.availableMicros).toBe(sarToMicros(99));
     });
 
-    it('never admits more than the cap under concurrent reservations', async () => {
+    it('never admits more than the monthly cap under concurrent reservations', async () => {
       // 100 SAR cap, 150 parallel reservations of 1 SAR each.
       // One job per reservation: the per-job batch cap (25 SAR) has its own
       // unit coverage, and sharing one job would test it instead of the
@@ -455,6 +455,31 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       expect(state.spentMicros + state.reservedMicros).toBeLessThanOrEqual(
         state.capMicros,
       );
+    }, 60_000);
+
+    it('never admits more than the per-job cap under concurrent reservations', async () => {
+      // 25 SAR job cap, 40 parallel reservations of 1 SAR each on one job.
+      const attempts = await Promise.allSettled(
+        Array.from({ length: 40 }, (_, i) =>
+          budget.reserve({
+            reservationId: `job-race-${i}`,
+            jobId: 'one-job',
+            stage: 'generation',
+            provider: 'fake',
+            model: 'fake-model',
+            expected: ONE_SAR_CALL,
+          }),
+        ),
+      );
+
+      expect(attempts.filter((r) => r.status === 'fulfilled')).toHaveLength(25);
+      expect(
+        attempts.filter(
+          (r) =>
+            r.status === 'rejected' && r.reason instanceof BudgetExceededError,
+        ),
+      ).toHaveLength(15);
+      expect((await budget.snapshot()).reservedMicros).toBe(sarToMicros(25));
     }, 60_000);
 
     it('rejects a single call larger than the per-batch cap', async () => {
@@ -714,7 +739,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
         .collection('engine_candidates')
         .findOne({ jobId: held.jobId, ordinal: 0 });
       expect(stored!.contextHash).toBe(resolved.contextHash);
-      expect(stored!.promptVersion).toBe('mc-v2');
+      expect(stored!.promptVersion).toBe('mc-v3');
       expect(stored!.status).toBe('generated');
 
       // The call was reserved and settled — never unaccounted.
@@ -1127,7 +1152,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
     it('generates a canonical closest payload and passes screening', async () => {
       const { row, contentItems } = await runClosest(CLOSEST_BATCH);
       expect(row).toBeTruthy();
-      expect(row!.promptVersion).toBe('closest-v2');
+      expect(row!.promptVersion).toBe('closest-v3');
 
       const draft = row!.draft as {
         answerPayload: {
@@ -1229,7 +1254,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       });
       await localOrchestrator.runNext('mc-worker');
       const row = await conn.collection('engine_candidates').findOne({});
-      expect(row!.promptVersion).toBe('mc-v2');
+      expect(row!.promptVersion).toBe('mc-v3');
       expect(
         (row!.draft as { answerPayload: { mode: string } }).answerPayload.mode,
       ).toBe('multiple_choice');

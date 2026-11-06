@@ -7,7 +7,9 @@ import {
 import { PricingUnavailableError } from '../domain/content-engine.constants';
 import {
   GENERATION_SPEC_VERSION,
+  GenerationSpecification,
   computeGenerationRequestHash,
+  specificationForSourcing,
 } from '../domain/generation-specification';
 import {
   AuthoringContextService,
@@ -59,11 +61,24 @@ const makeConfig = (overrides: Record<string, string | undefined> = {}) =>
     }),
   }) as unknown as ConfigService;
 
+/** What authoring context really answers for a Scope with no family block. */
+const noFamilies = jest.fn(() => ({
+  version: 1,
+  worldKey: 'w',
+  scopeKey: 's',
+  families: [],
+  digest: 'no-families',
+  structuredSources: [],
+}));
+
 const build = (
   mechanicKey: string,
   configOverrides: Record<string, string | undefined> = {},
 ) => {
-  const contexts = { resolve: jest.fn(() => context(mechanicKey)) };
+  const contexts = {
+    resolve: jest.fn(() => context(mechanicKey)),
+    resolveCanonicalFamiliesForScope: noFamilies,
+  };
   const config = makeConfig(configOverrides);
   const budget = {
     snapshot: jest.fn(async () => budgetSnapshot),
@@ -185,6 +200,7 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
       };
       const contexts = {
         resolve: jest.fn(() => context(mechanicKey)),
+        resolveCanonicalFamiliesForScope: noFamilies,
       };
       const budget = {
         snapshot: jest.fn(async () => budgetSnapshot),
@@ -224,6 +240,7 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
       };
       const contexts = {
         resolve: jest.fn(() => context(mechanicKey)),
+        resolveCanonicalFamiliesForScope: noFamilies,
       };
       const config = {
         get: jest.fn(() => undefined),
@@ -520,6 +537,7 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
       };
       const contexts = {
         resolve: jest.fn(() => context('read-your-opponent')),
+        resolveCanonicalFamiliesForScope: noFamilies,
       };
       const config = makeConfig();
       const budget = {
@@ -672,6 +690,7 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
       const jobs = { submit: jest.fn() };
       const contexts = {
         resolve: jest.fn(() => context('read-your-opponent')),
+        resolveCanonicalFamiliesForScope: noFamilies,
       };
 
       // 1. Engine disabled
@@ -853,7 +872,7 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
   });
 
   describe('Cost planning parity with execution (prompt composition, token limits, conditional judge allowance)', () => {
-    it('computes preflight cost from the actual composed prompt and outputTokensPerCandidate, and omits judge cost when fact retriever is disabled while still validating qualityModel pricing', async () => {
+    it('computes preflight cost from the actual composed prompt and outputTokensPerCandidate, and includes judge cost even when the fact retriever is disabled', async () => {
       const estimateCalls: Array<{
         provider: string;
         model: string;
@@ -888,6 +907,7 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
           knowledge: 'SCOPE KNOWLEDGE TEXT',
           exemplars: 'EXEMPLAR TEXT',
         })),
+        resolveCanonicalFamiliesForScope: noFamilies,
       };
       const config = makeConfig({
         ENGINE_OUTPUT_TOKENS_PER_CANDIDATE: '950',
@@ -908,13 +928,17 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
         targetCount: 4,
       });
 
-      expect(preflightWithoutGuidance.judgeEligible).toBe(false);
-      expect(preflightWithoutGuidance.conditionalJudgeEstimatedMicros).toBe(0);
-      expect(preflightWithoutGuidance.maxJudgeEstimatedMicros).toBeGreaterThan(
-        0,
+      // Retrieval is off, so claims stay UNRESOLVED and the judge still runs.
+      expect(preflightWithoutGuidance.judgeEligible).toBe(true);
+      expect(preflightWithoutGuidance.conditionalJudgeEstimatedMicros).toBe(
+        preflightWithoutGuidance.maxJudgeEstimatedMicros,
       );
       expect(preflightWithoutGuidance.estimatedMicros).toBe(
-        preflightWithoutGuidance.generationEstimatedMicros,
+        preflightWithoutGuidance.generationEstimatedMicros! +
+          preflightWithoutGuidance.maxJudgeEstimatedMicros!,
+      );
+      expect(preflightWithoutGuidance.maxJudgeEstimatedMicros).toBeGreaterThan(
+        0,
       );
 
       // Verify exact token ceiling: 4 candidates * 950 tokens = 3800 maxOutputTokens for generation
@@ -945,7 +969,7 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
         preflightWithoutGuidance.planDigest,
       );
 
-      // When FACT_EVIDENCE_RETRIEVER is bound, conditionalJudgeEstimatedMicros is included (1 call per candidate)
+      // The retriever changes nothing: every candidate can reach the judge (1 call per candidate)
       const serviceWithRetriever = new EngineJobAdminService(
         {} as never,
         {} as never,
@@ -1148,6 +1172,7 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
 
       const contexts = {
         resolve: jest.fn(() => context('read-your-opponent')),
+        resolveCanonicalFamiliesForScope: noFamilies,
       };
 
       const service = new EngineJobAdminService(
@@ -1326,6 +1351,172 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
       expect(resultRecord.password).toBeUndefined();
       expect(resultRecord.systemPrompt).toBeUndefined();
       expect(resultRecord.authorizationHeader).toBeUndefined();
+    });
+  });
+
+  describe('planner failures reach the operator (C2)', () => {
+    const failing = () => {
+      const built = build('read-your-opponent');
+      built.contexts.resolveCanonicalFamiliesForScope = jest.fn(() => {
+        throw new Error('FAMILY_CATALOG_MALFORMED: broken block');
+      }) as never;
+      return built;
+    };
+
+    it('blocks preflight instead of previewing a plan execution cannot build', async () => {
+      const { service } = failing();
+      const result = await service.preflight(request('read-your-opponent'));
+      expect(result.submissionReady).toBe(false);
+      expect(result.blockedCode).toBe('PLANNER_FAILURE');
+      expect(result.blockedReason).toContain('FAMILY_CATALOG_MALFORMED');
+      expect(result.generationPlan).toBeUndefined();
+    });
+
+    it('refuses submission of the same request', async () => {
+      const { service } = failing();
+      await expect(
+        service.submit({ ...request('read-your-opponent') }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'PLANNER_FAILURE' }),
+      });
+    });
+
+    it('still plans a Scope that declares no families (C1)', async () => {
+      const { service } = build('read-your-opponent');
+      const result = await service.preflight(request('read-your-opponent'));
+      expect(result.blockedCode).not.toBe('PLANNER_FAILURE');
+      expect(result.generationPlan?.slots).toBeUndefined();
+    });
+  });
+
+  describe('library-sourced requests', () => {
+    const sourced = (specVersionSuffix = 'A') => {
+      const budget = {
+        snapshot: jest.fn(async () => budgetSnapshot),
+        estimate: jest.fn(() => 1_000),
+        batchCapMicros: jest.fn(() => 100_000),
+      };
+      const contexts = {
+        resolve: jest.fn(() => context('read-your-opponent')),
+        resolveCanonicalFamiliesForScope: noFamilies,
+      };
+      const submit = jest.fn(async (input: { targetCount: number }) => ({
+        jobId: `job-${input.targetCount}`,
+        created: true,
+        generationSpec: null,
+      }));
+      const seed = {
+        libraryId: `LIB-${specVersionSuffix}`,
+        role: 'FACT_SEED' as const,
+        questionText: 'سؤال؟',
+        verifiedAnswer: 'جواب',
+        canonicalAnswer: 'جواب',
+        canonicalNumber: null,
+        sourceUrl: 'https://example.com',
+        verifiedOn: '2026-11-01',
+        revalidateAfter: null,
+        sourceWarning: null,
+      };
+      const sourcing = {
+        plan: jest.fn(async (spec: GenerationSpecification) => {
+          const common = {
+            version: 1 as const,
+            batchKey: 'batch',
+            anchoredPercent: 70,
+            batchTargetCount: spec.targetCount,
+            fallbackReason: null,
+          };
+          return {
+            specifications: [
+              specificationForSourcing(
+                spec,
+                {
+                  ...common,
+                  mode: 'library_anchored',
+                  slots: [{ slotIndex: 0, libraryIds: [seed.libraryId] }],
+                  seeds: [seed],
+                  hooks: [],
+                },
+                1,
+              ),
+              specificationForSourcing(
+                spec,
+                {
+                  ...common,
+                  mode: 'exploratory',
+                  slots: [],
+                  seeds: [],
+                  hooks: [],
+                },
+                spec.targetCount - 1,
+              ),
+            ],
+            anchoredCount: 1,
+            exploratoryCount: spec.targetCount - 1,
+            overflowCount: 0,
+            fallbackReason: null,
+            libraryIds: [seed.libraryId],
+          };
+        }),
+      };
+      const service = new EngineJobAdminService(
+        {} as never,
+        { submit } as never,
+        budget as never,
+        contexts as never,
+        {} as never,
+        makeConfig(),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        sourcing as never,
+      );
+      return { service, budget, submit };
+    };
+
+    it('costs both provider calls of a split request', async () => {
+      const { service } = sourced();
+      const result = await service.preflight(request('read-your-opponent'));
+      expect(result.sourcingPlan).toMatchObject({ jobCount: 2 });
+      expect(result.generationEstimatedMicros).toBe(2_000);
+    });
+
+    it('submits one job per mode and returns both', async () => {
+      const { service, submit } = sourced();
+      const { planDigest } = await service.preflight(
+        request('read-your-opponent'),
+      );
+      const result = await service.submit({
+        ...request('read-your-opponent'),
+        planDigest,
+      });
+      expect(submit).toHaveBeenCalledTimes(2);
+      expect(result.jobs?.map((job) => job.mode)).toEqual([
+        'library_anchored',
+        'exploratory',
+      ]);
+      expect(result.jobs?.reduce((sum, job) => sum + job.targetCount, 0)).toBe(
+        request('read-your-opponent').targetCount,
+      );
+    });
+
+    it('treats a library change after preflight as plan drift', async () => {
+      const { planDigest } = await sourced('A').service.preflight(
+        request('read-your-opponent'),
+      );
+      await expect(
+        sourced('B').service.submit({
+          ...request('read-your-opponent'),
+          planDigest,
+        }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'PREFLIGHT_PLAN_DRIFT' }),
+      });
     });
   });
 });

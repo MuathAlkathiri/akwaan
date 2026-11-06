@@ -124,7 +124,8 @@ export class GenerationPlannerService {
    * slot allocation.
    *
    * Distinguishes:
-   * 1. Catalog genuinely absent -> preserves V1 behavior with diagnostic.
+   * 1. Catalog genuinely absent, or the Scope declares no families -> preserves
+   *    V1 behavior with diagnostic.
    * 2. Catalog present but malformed -> fails closed with typed error.
    * 3. Catalog present but zero compatible families -> fails closed with typed error.
    * 4. Incomplete historical coverage -> fails closed with typed error.
@@ -224,7 +225,18 @@ export class GenerationPlannerService {
     let slotAllocationResult:
       ReturnType<typeof allocateCreativeSlots> | undefined;
 
-    if (input.catalog !== undefined && input.catalog !== null) {
+    // `resolveCanonicalFamilies` answers a Scope with no family block with an
+    // empty catalog, not null. That is most Scopes, and they plan as V1. A
+    // malformed `families` value still reaches the allocator and fails closed.
+    const declaresNoFamilies =
+      Array.isArray(input.catalog?.families) &&
+      input.catalog.families.length === 0;
+
+    if (
+      input.catalog !== undefined &&
+      input.catalog !== null &&
+      !declaresNoFamilies
+    ) {
       slotAllocationResult = allocateCreativeSlots({
         worldKey,
         scopeKey,

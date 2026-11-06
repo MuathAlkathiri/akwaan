@@ -15,6 +15,10 @@ import {
   estimateGenerationPromptTokens,
 } from './candidate-generator.service';
 import { ResolvedAuthoringContext } from './authoring-context.service';
+import {
+  buildGenerationSpecification,
+  specificationForSourcing,
+} from '../domain/generation-specification';
 
 /**
  * Prompt construction and Closest parsing.
@@ -431,8 +435,8 @@ describe('originality guidance reaches every mechanic', () => {
 describe('buildPrompt', () => {
   it('versions both changed prompt contracts without changing payload schemas', () => {
     expect(PROMPT_VERSIONS).toEqual({
-      multiple_choice: 'mc-v2',
-      closest: 'closest-v2',
+      multiple_choice: 'mc-v3',
+      closest: 'closest-v3',
     });
     expect(RYO_CANDIDATE_SCHEMA).toBeDefined();
     expect(CLOSEST_CANDIDATE_SCHEMA).toBeDefined();
@@ -860,7 +864,7 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
         relativelyDifficult: 100,
       },
       batchGuidance: 'Pinned guidance: focus on historical milestones.',
-      promptVersion: 'mc-v2',
+      promptVersion: 'mc-v3',
       provider: 'pinned-provider',
       generationModel: 'pinned-gen-model',
       qualityModel: 'pinned-quality-model',
@@ -895,7 +899,7 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
     expect(generateText).toHaveBeenCalledWith(
       expect.objectContaining({
         model: 'pinned-gen-model',
-        promptVersion: 'mc-v2',
+        promptVersion: 'mc-v3',
         omitTemperature: false,
         temperature: 0.45,
         reasoningEffort: 'low',
@@ -921,13 +925,139 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
       expect.objectContaining({
         $set: expect.objectContaining({
           contextHash: pinnedContextHash,
-          promptVersion: 'mc-v2',
+          promptVersion: 'mc-v3',
           provider: 'pinned-provider',
           model: 'pinned-gen-model',
         }),
       }),
       { upsert: true },
     );
+  });
+
+  describe('library-anchored jobs', () => {
+    const anchoredSpec = () =>
+      buildGenerationSpecification({
+        context: {
+          worldKey: 'football',
+          scopeKey: 'saudi-league',
+          mechanicKey: 'read-your-opponent',
+          contextHash: 'a'.repeat(64),
+          effectiveRules: { digest: 'b'.repeat(64) } as never,
+        },
+        targetCount: 2,
+        difficulty: 'mixed',
+      });
+    const sourced = () =>
+      specificationForSourcing(
+        anchoredSpec(),
+        {
+          version: 1,
+          mode: 'library_anchored',
+          batchKey: 'batch',
+          anchoredPercent: 70,
+          batchTargetCount: 3,
+          fallbackReason: null,
+          slots: [
+            { slotIndex: 0, libraryIds: ['LIB-1'] },
+            { slotIndex: 1, libraryIds: ['LIB-2'] },
+          ],
+          seeds: ['LIB-1', 'LIB-2'].map((libraryId) => ({
+            libraryId,
+            role: 'FACT_SEED' as const,
+            questionText: `سؤال ${libraryId}؟`,
+            verifiedAnswer: `جواب ${libraryId}`,
+            canonicalAnswer: `جواب ${libraryId}`,
+            canonicalNumber: null,
+            sourceUrl: 'https://example.com',
+            verifiedOn: '2026-11-01',
+            revalidateAfter: null,
+            sourceWarning: null,
+          })),
+          hooks: [],
+        },
+        2,
+      );
+    const withResponse = (text: string) => {
+      const updateOne = jest.fn(() => ({ exec: async () => undefined }));
+      const generateText = jest.fn(async () => ({
+        text,
+        usage: { promptTokens: 10, completionTokens: 10 },
+      }));
+      const gen = new CandidateGeneratorService(
+        { updateOne } as never,
+        { holdsLease: async () => true } as never,
+        {
+          reserve: jest.fn(async () => ({ reservedMicros: 1 })),
+          settle: jest.fn(async () => undefined),
+        } as never,
+        { get: () => undefined } as unknown as ConfigService,
+        { generateText } as never,
+      );
+      return { gen, updateOne, generateText };
+    };
+    const run = (gen: CandidateGeneratorService) =>
+      gen.generate({
+        jobId: 'job-anchored',
+        leaseEpoch: 1,
+        attempt: 1,
+        context: context({ mechanicKey: 'read-your-opponent' }),
+        count: 2,
+        generationSpec: sourced(),
+      });
+    const item = (over: Record<string, unknown>) => ({
+      concept: 'People reach for oxygen before nitrogen.',
+      prompt: 'ما الغاز الأكثر في الغلاف الجوي؟',
+      options: [
+        { id: 'a', label: 'النيتروجين' },
+        { id: 'b', label: 'الأكسجين' },
+      ],
+      correctOptionId: 'a',
+      distractorRationale: [
+        { optionId: 'b', why: 'The breathing association.' },
+      ],
+      estimatedConfidence: { band: 'even', why: 'A common misconception.' },
+      factualClaims: ['Nitrogen is about 78% of the atmosphere.'],
+      ...over,
+    });
+
+    it('binds provenance to the slot the model named, not its position', async () => {
+      const { gen, updateOne, generateText } = withResponse(
+        JSON.stringify({
+          candidates: [
+            item({ slotIndex: 1, prompt: 'سؤال ثان؟' }),
+            item({ slotIndex: 0, prompt: 'سؤال أول؟' }),
+          ],
+        }),
+      );
+      await run(gen);
+
+      const request = (
+        generateText.mock.calls[0] as unknown as [
+          { prompt: string; responseSchema: Record<string, any> },
+        ]
+      )[0];
+      expect(request.prompt).toContain('## LIBRARY-ANCHORED SLOTS');
+      expect(
+        request.responseSchema.properties.candidates.items.required,
+      ).toContain('slotIndex');
+
+      const written = updateOne.mock.calls.map(
+        (call) => (call as unknown as [unknown, { $set: any }])[1].$set,
+      );
+      expect(written[0].sourcing.libraryIds).toEqual(['LIB-1']);
+      expect(JSON.stringify(written[0].draft)).toContain('سؤال أول؟');
+      expect(written[1].sourcing.libraryIds).toEqual(['LIB-2']);
+      expect(JSON.stringify(written[1].draft)).toContain('سؤال ثان؟');
+    });
+
+    it('fails closed when the model omits slot identity', async () => {
+      const { gen } = withResponse(
+        JSON.stringify({ candidates: [item({}), item({})] }),
+      );
+      await expect(run(gen)).rejects.toMatchObject({
+        code: 'SLOT_IDENTITY_MISSING',
+      });
+    });
   });
 
   describe('billing ambiguity settlement on provider failure', () => {

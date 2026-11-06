@@ -1,3 +1,7 @@
+import {
+  buildGenerationSpecification,
+  specificationForSourcing,
+} from '../domain/generation-specification';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { ContentEngineReviewService } from './content-engine-review.service';
 
@@ -484,6 +488,166 @@ describe('ContentEngineReviewService enforcement characterization', () => {
     );
     expect(publications.findOne).toHaveBeenCalledWith({
       candidateId: 'candidate-1',
+    });
+  });
+
+  describe('structured-seed evidence in review', () => {
+    const quality = {
+      correctness: 4,
+      mechanicFit: 4,
+      clarity: 4,
+      multiplayerFit: 4,
+      originality: 4,
+      explanation: 'Reviewed.',
+    };
+    const assessment = {
+      expectedRevision: 0,
+      factualState: 'SUPPORTED',
+      factualExplanation: 'Reviewed against the library row.',
+      evidence: [],
+      quality,
+    };
+    const unresolved = (seedBinding: Record<string, unknown>) =>
+      candidate({
+        factualClaims: ['Claim 1'],
+        sourcing: { mode: 'library_anchored', libraryIds: ['LIB-1'] },
+        factVerification: { state: 'UNRESOLVED', seedBinding },
+      });
+
+    it('accepts SUPPORTED without a pasted URL on a covered candidate', async () => {
+      const { service, candidates } = build({
+        current: unresolved({ covered: true, libraryId: 'LIB-1' }),
+      });
+      await service.assess('candidate-1', assessment as never, actor);
+      expect(candidates.findOneAndUpdate).toHaveBeenCalled();
+    });
+
+    it('still demands evidence on an uncovered candidate', async () => {
+      const { service } = build({
+        current: unresolved({ covered: false, reason: 'ANSWER_CHANGED' }),
+      });
+      await expect(
+        service.assess('candidate-1', assessment as never, actor),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'SUPPORTED_ASSESSMENT_REQUIRES_EVIDENCE',
+        }),
+      });
+    });
+
+    it('does not let emptied claims escape that demand', async () => {
+      const { service } = build({
+        current: candidate({
+          factualClaims: [],
+          sourcing: { mode: 'library_anchored', libraryIds: ['LIB-1'] },
+          factVerification: {
+            state: 'UNRESOLVED',
+            seedBinding: { covered: false, reason: 'ANSWER_CHANGED' },
+          },
+        }),
+      });
+      await expect(
+        service.assess('candidate-1', assessment as never, actor),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'SUPPORTED_ASSESSMENT_REQUIRES_EVIDENCE',
+        }),
+      });
+    });
+
+    it('re-binds on edit, so changing the answer loses coverage', async () => {
+      const base = buildGenerationSpecification({
+        context: {
+          worldKey: 'world',
+          scopeKey: 'scope',
+          mechanicKey: 'read-your-opponent',
+          contextHash: 'a'.repeat(64),
+          effectiveRules: { digest: 'b'.repeat(64) } as never,
+        },
+        targetCount: 1,
+        difficulty: 'mixed',
+      });
+      const generationSpec = specificationForSourcing(
+        base,
+        {
+          version: 1,
+          mode: 'library_anchored',
+          batchKey: 'batch',
+          anchoredPercent: 70,
+          batchTargetCount: 1,
+          fallbackReason: null,
+          slots: [{ slotIndex: 0, libraryIds: ['LIB-1'] }],
+          seeds: [
+            {
+              libraryId: 'LIB-1',
+              role: 'FACT_SEED',
+              questionText: 'سؤال؟',
+              verifiedAnswer: 'جواب محقق',
+              canonicalAnswer: 'جواب محقق',
+              canonicalNumber: null,
+              sourceUrl: 'https://example.test/row',
+              verifiedOn: '2026-11-01',
+              revalidateAfter: null,
+              sourceWarning: null,
+            },
+          ],
+          hooks: [],
+        },
+        1,
+      );
+      const current = unresolved({ covered: true, libraryId: 'LIB-1' });
+      const createSession = jest.fn(() => ({}));
+      const { service, candidates, screen } = build({
+        current,
+        canonicalReferences: true,
+        jobOverride: {
+          _id: 'job-1',
+          mechanicKey: 'read-your-opponent',
+          worldKey: 'world',
+          scopeKey: 'scope',
+          status: 'awaiting_review',
+          specVersion: generationSpec.specVersion,
+          generationSpec,
+        },
+      });
+
+      (screen as unknown as { createSession: unknown }).createSession =
+        createSession;
+
+      await service.edit(
+        'candidate-1',
+        {
+          expectedRevision: 0,
+          draft: current.draft,
+          factualClaims: ['claim'],
+          explanation: 'edited',
+        } as never,
+        actor,
+      );
+
+      const set = (
+        candidates.findOneAndUpdate.mock.calls[0] as unknown as [
+          unknown,
+          { $set: { factVerification: Record<string, any> } },
+        ]
+      )[1].$set;
+      expect(set.factVerification.seedBinding).toMatchObject({
+        covered: false,
+        reason: 'ANSWER_CHANGED',
+      });
+      expect(set.factVerification.automaticAdvance).toBe(false);
+
+      // The copy check must see the pinned rows on the edit path, and on the
+      // re-screen path, or a reviewer's save would quietly skip it.
+      await service.rescreenCandidate('candidate-1', 1, actor);
+      expect(createSession).toHaveBeenCalledTimes(2);
+      for (const [options] of createSession.mock.calls as unknown as Array<
+        [{ librarySeeds: Array<{ libraryId: string }> }]
+      >) {
+        expect(options.librarySeeds.map((seed) => seed.libraryId)).toEqual([
+          'LIB-1',
+        ]);
+      }
     });
   });
 

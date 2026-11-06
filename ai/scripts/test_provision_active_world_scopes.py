@@ -5,7 +5,19 @@ from unittest.mock import MagicMock
 import provision_active_world_scopes as provisioner
 
 
-# 9 = 3 Video Games Scopes + the 6 forward Puzzles Scopes (roadmap §23.11).
+FOOTBALL_EXISTING = [
+    {"id": "s_usc", "slug": "uefa-super-cup", "name": "كأس السوبر الأوروبي", "status": "active"},
+    {"id": "s_snt", "slug": "saudi-national-team", "name": "المنتخب السعودي", "status": "active"},
+]
+
+CELEBRITIES_EXISTING = [
+    {"id": f"s_{spec['slug']}", "slug": spec["slug"], "name": spec["name"], "status": "active"}
+    for spec in provisioner.APPROVED_SCOPES_SPEC["celebrities"]
+]
+
+
+# 21 = 3 Video Games Scopes + the 6 forward Puzzles Scopes (roadmap §23.11)
+# + the 2 Football Scopes + the 10 Celebrities Scopes (roadmap §28.6).
 class TestProvisionActiveWorldScopes(unittest.TestCase):
     def setUp(self):
         self.mock_client = MagicMock(spec=provisioner.TargetClient)
@@ -17,19 +29,23 @@ class TestProvisionActiveWorldScopes(unittest.TestCase):
         self.mock_client.list_worlds.return_value = [
             {"id": "w_vg", "name": "عالم الالعاب الالكترونية", "slug": "world-1785784447249"},
             {"id": "w_puz", "name": "عالم الالغاز", "slug": "world-1786388973542"},
+            {"id": "w_fb", "name": "عالم كرة القدم", "slug": "test"},
+            {"id": "w_cel", "name": "المشاهير", "slug": "celebrities"},
         ]
         self.mock_client.list_scopes.side_effect = lambda wid: []
 
         plan = provisioner.build_plan(self.mock_client)
         self.assertTrue(plan.is_safe)
         self.assertEqual(len(plan.blockers), 0)
-        self.assertEqual(len(plan.scope_actions), 9)
+        self.assertEqual(len(plan.scope_actions), 21)
         self.assertTrue(all(s.action == "CREATE" for s in plan.scope_actions))
 
     def test_plan_when_scopes_exist(self):
         self.mock_client.list_worlds.return_value = [
             {"id": "w_vg", "name": "عالم الالعاب الالكترونية", "slug": "world-1785784447249"},
             {"id": "w_puz", "name": "عالم الالغاز", "slug": "world-1786388973542"},
+            {"id": "w_fb", "name": "عالم كرة القدم", "slug": "test"},
+            {"id": "w_cel", "name": "المشاهير", "slug": "celebrities"},
         ]
         vg_existing = [
             {"id": "s_mc", "slug": "minecraft", "name": "ماينكرافت", "status": "active"},
@@ -52,18 +68,24 @@ class TestProvisionActiveWorldScopes(unittest.TestCase):
                 return vg_existing
             if wid == "w_puz":
                 return puz_existing
+            if wid == "w_fb":
+                return FOOTBALL_EXISTING
+            if wid == "w_cel":
+                return CELEBRITIES_EXISTING
             return []
 
         self.mock_client.list_scopes.side_effect = get_scopes
 
         plan = provisioner.build_plan(self.mock_client)
         self.assertTrue(plan.is_safe)
-        self.assertEqual(len(plan.scope_actions), 9)
+        self.assertEqual(len(plan.scope_actions), 21)
         self.assertTrue(all(s.action == "EXISTS_IDENTICAL" for s in plan.scope_actions))
 
     def test_missing_parent_world_creates_blocker(self):
         self.mock_client.list_worlds.return_value = [
             {"id": "w_vg", "name": "عالم الالعاب الالكترونية", "slug": "world-1785784447249"},
+            {"id": "w_fb", "name": "عالم كرة القدم", "slug": "test"},
+            {"id": "w_cel", "name": "المشاهير", "slug": "celebrities"},
         ]
         self.mock_client.list_scopes.return_value = []
 
@@ -76,20 +98,24 @@ class TestProvisionActiveWorldScopes(unittest.TestCase):
         self.mock_client.list_worlds.return_value = [
             {"id": "w_vg", "name": "عالم الالعاب الالكترونية", "slug": "world-1785784447249"},
             {"id": "w_puz", "name": "عالم الالغاز", "slug": "world-1786388973542"},
+            {"id": "w_fb", "name": "عالم كرة القدم", "slug": "test"},
+            {"id": "w_cel", "name": "المشاهير", "slug": "celebrities"},
         ]
         self.mock_client.list_scopes.return_value = []
         self.mock_client.create_scope.side_effect = lambda wid, payload: {"id": f"id_{payload['slug']}", "status": payload["status"]}
 
         plan = provisioner.build_plan(self.mock_client)
         res = provisioner.execute_plan(self.mock_client, plan)
-        self.assertEqual(len(res["scopes_created"]), 9)
+        self.assertEqual(len(res["scopes_created"]), 21)
         self.assertEqual(len(res["scopes_reused"]), 0)
-        self.assertEqual(self.mock_client.create_scope.call_count, 9)
+        self.assertEqual(self.mock_client.create_scope.call_count, 21)
 
     def test_execute_idempotent_creates_zero(self):
         self.mock_client.list_worlds.return_value = [
             {"id": "w_vg", "name": "عالم الالعاب الالكترونية", "slug": "world-1785784447249"},
             {"id": "w_puz", "name": "عالم الالغاز", "slug": "world-1786388973542"},
+            {"id": "w_fb", "name": "عالم كرة القدم", "slug": "test"},
+            {"id": "w_cel", "name": "المشاهير", "slug": "celebrities"},
         ]
         vg_existing = [
             {"id": "s_mc", "slug": "minecraft", "name": "ماينكرافت", "status": "active"},
@@ -108,6 +134,10 @@ class TestProvisionActiveWorldScopes(unittest.TestCase):
         ]
 
         def get_scopes(wid):
+            if wid == "w_fb":
+                return FOOTBALL_EXISTING
+            if wid == "w_cel":
+                return CELEBRITIES_EXISTING
             return vg_existing if wid == "w_vg" else puz_existing
 
         self.mock_client.list_scopes.side_effect = get_scopes
@@ -115,7 +145,7 @@ class TestProvisionActiveWorldScopes(unittest.TestCase):
         plan = provisioner.build_plan(self.mock_client)
         res = provisioner.execute_plan(self.mock_client, plan)
         self.assertEqual(len(res["scopes_created"]), 0)
-        self.assertEqual(len(res["scopes_reused"]), 9)
+        self.assertEqual(len(res["scopes_reused"]), 21)
         self.assertEqual(self.mock_client.create_scope.call_count, 0)
 
 
@@ -147,6 +177,8 @@ class TestWorldTargeting(unittest.TestCase):
         self.mock_client.list_worlds.return_value = [
             {"id": "w_vg", "name": "عالم الالعاب الالكترونية", "slug": "world-1785784447249"},
             {"id": "w_puz", "name": "عالم الالغاز", "slug": "world-1786388973542"},
+            {"id": "w_fb", "name": "عالم كرة القدم", "slug": "test"},
+            {"id": "w_cel", "name": "المشاهير", "slug": "celebrities"},
         ]
         self.mock_client.list_scopes.side_effect = lambda wid: []
 
@@ -173,15 +205,15 @@ class TestWorldTargeting(unittest.TestCase):
 
     def test_unrestricted_run_is_unchanged(self):
         plan = provisioner.build_plan(self.mock_client)
-        self.assertEqual(len(plan.scope_actions), 9)
-        self.assertEqual({s.world_slug for s in plan.scope_actions}, {"video-games", "puzzles"})
+        self.assertEqual(len(plan.scope_actions), 21)
+        self.assertEqual({s.world_slug for s in plan.scope_actions}, {"celebrities", "football", "video-games", "puzzles"})
         self.assertIsNone(plan.only)
 
     def test_empty_selection_means_full_sweep(self):
         # An omitted flag arrives as None/() and must not silently select nothing.
         for empty in (None, (), []):
             plan = provisioner.build_plan(self.mock_client, only=empty)
-            self.assertEqual(len(plan.scope_actions), 9)
+            self.assertEqual(len(plan.scope_actions), 21)
             self.assertIsNone(plan.only)
 
     def test_unknown_world_is_refused_before_any_network_call(self):
@@ -199,6 +231,26 @@ class TestWorldTargeting(unittest.TestCase):
         # And an unrestricted plan still hashes on its scope actions alone, so
         # hashes captured before targeting existed remain valid.
         self.assertEqual(full.plan_hash(), provisioner.build_plan(self.mock_client).plan_hash())
+
+    def test_football_only_plans_exactly_the_two_new_scopes(self):
+        plan = provisioner.build_plan(self.mock_client, only=("football",))
+        self.assertEqual(
+            [s.slug for s in plan.scope_actions],
+            ["uefa-super-cup", "saudi-national-team"],
+        )
+        self.assertEqual({s.world_slug for s in plan.scope_actions}, {"football"})
+
+    def test_celebrities_only_adds_the_ten_and_leaves_legacy_scopes_alone(self):
+        legacy = ["content-creators", "media-stars", "acting-stars", "sports-stars", "music-stars"]
+        self.mock_client.list_scopes.side_effect = lambda wid: [
+            {"id": f"l_{slug}", "slug": slug, "name": slug, "status": "active"} for slug in legacy
+        ]
+        plan = provisioner.build_plan(self.mock_client, only=("celebrities",))
+        self.assertTrue(plan.is_safe)
+        self.assertEqual(len(plan.scope_actions), 10)
+        self.assertTrue(all(s.action == "CREATE" for s in plan.scope_actions))
+        for slug in legacy:
+            self.assertNotIn(slug, [s.slug for s in plan.scope_actions])
 
     def test_video_games_only_is_symmetric(self):
         plan = provisioner.build_plan(self.mock_client, only=["video-games"])
@@ -229,6 +281,8 @@ class TestPlanHashBindsTheTarget(unittest.TestCase):
         client.is_remote = environment != "local"
         client.list_worlds.return_value = [
             {"id": "w_puz", "name": "عالم الالغاز", "slug": "world-1786388973542"},
+            {"id": "w_fb", "name": "عالم كرة القدم", "slug": "test"},
+            {"id": "w_cel", "name": "المشاهير", "slug": "celebrities"},
         ]
         client.list_scopes.side_effect = lambda wid: []
         return client

@@ -262,6 +262,49 @@ describe('GenerationPlannerService', () => {
       };
     };
 
+    it('plans a Scope with an empty catalog as V1, as most Scopes are (C1)', async () => {
+      const emptyCatalog = {
+        version: 1,
+        worldKey: 'football',
+        scopeKey: 'world-cup',
+        families: [],
+        digest: 'empty',
+        structuredSources: [],
+      };
+      const plan = await new GenerationPlannerService(
+        {
+          resolveCanonicalFamiliesForScope: () => emptyCatalog,
+        } as never,
+        undefined,
+      ).planWithResolvedContext({
+        worldKey: 'football',
+        scopeKey: 'world-cup',
+        mechanicKey: 'closest',
+        count: 6,
+      });
+      expect(plan.slots).toBeUndefined();
+      expect(plan.digest).toBeDefined();
+    });
+
+    it('still fails closed on a catalog whose families are malformed', () => {
+      expect(() =>
+        new GenerationPlannerService().plan({
+          worldKey: 'football',
+          scopeKey: 'world-cup',
+          mechanicKey: 'closest',
+          count: 6,
+          catalog: {
+            version: 1,
+            worldKey: 'football',
+            scopeKey: 'world-cup',
+            families: 'not-a-list',
+            digest: 'bad',
+            structuredSources: [],
+          } as never,
+        }),
+      ).toThrow('non-empty array');
+    });
+
     it('1. resolves real canonical catalog for valid Scope (puzzles/wordplay-letters)', async () => {
       // Mock authoringContext and historicalCoverage services
       const mockAuthoringContext = {

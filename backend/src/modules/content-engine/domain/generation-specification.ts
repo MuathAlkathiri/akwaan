@@ -1,8 +1,14 @@
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 import type { ResolvedAuthoringContext } from '../application/authoring-context.service';
+import {
+  GenerationSourcing,
+  isGenerationSourcingComplete,
+} from './library-sourcing';
 
 export const GENERATION_SPEC_VERSION = 'generation-spec-v1' as const;
+/** v1 plus the pinned library or hook input of one job. */
+export const GENERATION_SPEC_VERSION_SOURCED = 'generation-spec-v2' as const;
 
 export const DEFAULT_BATCH_SIZE = 10;
 export const MAX_SUPPORTED_BATCH_SIZE = 50;
@@ -27,8 +33,8 @@ export const generatorAnswerModeFor = (
   ];
 
 export const PROMPT_VERSIONS: Record<GeneratorAnswerMode, string> = {
-  multiple_choice: 'mc-v2',
-  closest: 'closest-v2',
+  multiple_choice: 'mc-v3',
+  closest: 'closest-v3',
 };
 
 export const RYO_REQUESTED_DIFFICULTIES = [
@@ -75,7 +81,8 @@ const REASONING_EFFORTS: readonly ReasoningEffort[] = [
  * time so job identity, cost estimation, and execution cannot silently drift.
  */
 export interface GenerationSpecification {
-  readonly specVersion: typeof GENERATION_SPEC_VERSION;
+  readonly specVersion:
+    typeof GENERATION_SPEC_VERSION | typeof GENERATION_SPEC_VERSION_SOURCED;
   readonly worldKey: string;
   readonly scopeKey: string;
   readonly mechanicKey: string;
@@ -95,6 +102,8 @@ export interface GenerationSpecification {
   readonly reasoningEffort: ReasoningEffort | null;
   readonly outputTokensPerCandidate: number;
   readonly maxOutputTokens: number;
+  /** Present exactly on v2. Absent keeps every v1 hash as it was. */
+  readonly sourcing?: GenerationSourcing;
 }
 
 export class GenerationSpecValidationError extends Error {
@@ -308,7 +317,9 @@ export const freezeGenerationSpecification = (
       })
     : null;
   return Object.freeze({
-    specVersion: GENERATION_SPEC_VERSION,
+    specVersion: spec.sourcing
+      ? GENERATION_SPEC_VERSION_SOURCED
+      : GENERATION_SPEC_VERSION,
     worldKey: spec.worldKey,
     scopeKey: spec.scopeKey,
     mechanicKey: spec.mechanicKey,
@@ -328,8 +339,22 @@ export const freezeGenerationSpecification = (
     reasoningEffort: spec.reasoningEffort,
     outputTokensPerCandidate: spec.outputTokensPerCandidate,
     maxOutputTokens: spec.maxOutputTokens,
+    ...(spec.sourcing ? { sourcing: Object.freeze({ ...spec.sourcing }) } : {}),
   });
 };
+
+/** One job of a sourced request: the same contract at that job's size. */
+export const specificationForSourcing = (
+  spec: GenerationSpecification,
+  sourcing: GenerationSourcing,
+  targetCount: number,
+): GenerationSpecification =>
+  freezeGenerationSpecification({
+    ...spec,
+    targetCount,
+    maxOutputTokens: targetCount * spec.outputTokensPerCandidate,
+    sourcing,
+  });
 
 export const buildGenerationSpecification = (input: {
   config?: ConfigService;
@@ -413,7 +438,16 @@ export const isGenerationSpecificationComplete = (
 ): value is GenerationSpecification => {
   if (!value || typeof value !== 'object') return false;
   const spec = value as Partial<GenerationSpecification>;
-  if (spec.specVersion !== GENERATION_SPEC_VERSION) return false;
+  if (spec.specVersion === GENERATION_SPEC_VERSION_SOURCED) {
+    if (!isGenerationSourcingComplete(spec.sourcing, spec.targetCount ?? 0)) {
+      return false;
+    }
+  } else if (
+    spec.specVersion !== GENERATION_SPEC_VERSION ||
+    spec.sourcing !== undefined
+  ) {
+    return false;
+  }
   if (typeof spec.worldKey !== 'string' || !spec.worldKey.trim()) return false;
   if (typeof spec.scopeKey !== 'string' || !spec.scopeKey.trim()) return false;
   if (typeof spec.mechanicKey !== 'string' || !spec.mechanicKey.trim()) {
@@ -543,6 +577,7 @@ const canonicalSpecPayload = (spec: GenerationSpecification) => ({
   reasoningEffort: spec.reasoningEffort,
   outputTokensPerCandidate: spec.outputTokensPerCandidate,
   maxOutputTokens: spec.maxOutputTokens,
+  ...(spec.sourcing ? { sourcing: spec.sourcing } : {}),
 });
 
 export const computeGenerationRequestHash = (
@@ -559,12 +594,20 @@ export const computePreflightPlanDigest = (input: {
   engineEnabled: boolean;
   liveProviderEnabled: boolean;
   providerReady: boolean;
+  /** The jobs a sourced request resolves to, so a library change is drift. */
+  sourcedSpecifications?: readonly GenerationSpecification[];
 }): string =>
   createHash('sha256')
     .update(
       JSON.stringify({
         planVersion: GENERATION_SPEC_VERSION,
         spec: canonicalSpecPayload(input.spec),
+        ...(input.sourcedSpecifications
+          ? {
+              sourcedSpecifications:
+                input.sourcedSpecifications.map(canonicalSpecPayload),
+            }
+          : {}),
         estimatedMicros: input.estimatedMicros,
         pricingConfigured: input.pricingConfigured,
         engineEnabled: input.engineEnabled,

@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsDateString,
   IsBoolean,
   IsEnum,
   IsInt,
@@ -112,6 +113,10 @@ export class ContentItemMetadataDto {
   @IsOptional() @IsString() @MaxLength(200) source?: string;
   @IsOptional() @IsString() @MaxLength(1000) notes?: string;
   @IsOptional() @IsArray() @IsString({ each: true }) tags?: string[];
+  /** Set by the Content Engine from the candidate, never by a client edit. */
+  @IsOptional() @IsString() @MaxLength(40) generationMode?: string;
+  @IsOptional() @IsArray() @IsString({ each: true }) libraryIds?: string[];
+  @IsOptional() @IsDateString() revalidateAfter?: string;
 }
 
 export class CreateContentItemDto {
