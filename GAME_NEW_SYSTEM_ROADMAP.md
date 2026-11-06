@@ -6952,7 +6952,7 @@ admin credentials were not used, and no generation job was run. The content-QA a
 - **Rule preservation invariant.** No authoring rule may be removed or relocated unless every
   authoring and QA workflow that needs it still receives or enforces it.
 
-### 33.5 Batch 3B-1: mechanic rule ownership — ✅ IMPLEMENTED & VERIFIED LOCALLY
+### 33.5 Batch 3B-1: mechanic rule ownership — ✅ IMPLEMENTED & VERIFIED · ✅ MERGED · ✅ DEPLOYED
 
 - The World-native Bomb contracts (Football, Anime, Video Games, Puzzles), the Top-5 prompt,
   card and hidden-metadata contract (with `TOP5_VISIBLE_CANDIDATE_NAME_ONLY`), and the
@@ -6969,16 +6969,75 @@ admin credentials were not used, and no generation job was run. The content-QA a
 - Video Games Bomb audio: §25.2 (forward Bomb is text/image only) is the current policy and
   supersedes the audio mention in §23.4. The preserved backend/frontend audio capability does
   not authorize authoring audio Bomb items.
-- Status: implemented and verified locally, published on
-  `feat/authoring-mechanic-rule-ownership` for pull-request review. ⬜ Not merged,
-  ⬜ not deployed.
+- **Release (2026-11-06).** ✅ PR #38 merged to `main` as
+  `03d9c763d750359c9057ed62cc6c0ea5cdd52586`. ✅ Vercel production deployment `7607621153`
+  succeeded and ✅ Render `/health` reports the same commit. Verified: the deployed commit and
+  the backend image configuration (it copies `ai/.opencode`); ⬜ the live production-assembled
+  prompt was not independently inspected. No runtime database, content, media, schema or
+  scoring change occurred.
 - **Follow-ups (separate, not implemented):**
   - ⬜ `_authoringContext` enforcement for new AI-authored packs. The resolver produces the
     metadata and `validate_authoring_context.py` can check it, but only tests run it; no
     authoring, QA or promotion step requires it, the pack-level and item-level contracts
     differ, and no existing pack carries it.
-  - ⬜ Rejected-exemplar screening: `record_human_product_decision.py` appends rejected items
-    to `EXEMPLARS.md` without the `AKWAAN_EXEMPLAR_META` marker, so they are not
-    marker-governed and duplicate screening does not extract them.
+  - Rejected-exemplar screening: addressed in §33.6 (in review, not merged).
+
+### 33.6 Rejected-exemplar recording and screening — ✅ IMPLEMENTED & VERIFIED LOCALLY
+
+- **Problem.** `record_human_product_decision.py` wrote rejections as unmarked free-form
+  Markdown (the parser could not read them as entries), appended again on every run, and
+  silently skipped the write when the item named no Scope. The seven historical rejections
+  in the Video Games `call-of-duty`, `fifa`, `gta` and `overwatch` Scopes were already
+  wrapped in REJECTED markers, but keep their question on a `- **Item**:` line, which the
+  engine's duplicate screen never extracted (it reads only `>` and `Domain:` lines).
+- **Recorder.** A REJECTED or INVALID_TEST_SAMPLE decision is now written to the Scope's
+  manifest `exemplarsPath` as a canonical `AKWAAN_EXEMPLAR_META` block (`DO_NOT_REGENERATE`,
+  `sourceRef` = source#item, no mechanic target, no approval fields), with the question as a
+  quoted line. Recording is idempotent; a different status for the same item, a taken id, an
+  unknown Scope or a marker-breaking string is refused and nothing is written. Before
+  writing, it checks that no mechanic's positive exemplar view changes. APPROVED decisions
+  still go to the concept history only.
+- **Screening.** The engine screen also extracts the question from `- **Item**:` lines
+  (dropping a trailing `-> answer` or `(…)` note), so the seven historical rejections now
+  reach `CANDIDATE_RESEMBLES_EXEMPLAR`. Threshold and severity are unchanged. No historical
+  file was edited.
+- **Closure review (Product Owner decisions, 2026-11-06).** A rejection is recorded even
+  without a lesson. A missing `EXEMPLARS.md` is created only by an actual rejection, only at
+  the manifest `exemplarsPath`, and only when that path resolves to the Scope's own canonical
+  location (unknown, mismatched, escaping or redirected destinations are refused). Historical
+  records are not rewritten. Matches stay warnings; the 70% threshold is unchanged.
+- **Seven historical rejections (verified per record).** All parse as REJECTED and are
+  excluded from every mechanic's positive view. Exact reuse and a close Arabic variation are
+  detected for six. `fifa-reference-sheet-media` stores an English description rather than
+  the player-facing question, so it cannot catch an Arabic question about its subject;
+  `fifa-fut-draft-token` keeps only its short question (its answer and image note are
+  dropped), so a differently worded question about the same token can pass.
+- **Partial writes.** `EXEMPLARS.md` is written before the concept history. If the history
+  write fails, the rejection stays recorded and re-running the same command adds the history
+  record once; if the block is missing but the history record exists, re-running restores
+  the block without a second history record.
+- **Warning delivery.** `CANDIDATE_RESEMBLES_EXEMPLAR` is stored on the candidate, returned by
+  the review API and listed in the review workspace as a non-blocking finding. It is
+  visible to the reviewer but never blocks or rejects a candidate; approval still gates only
+  on blocking findings.
+- **Review re-screen gap — confirmed and fixed (Product Owner approval, 2026-11-06).** The two
+  review re-screens (after a human edit, and the explicit rescreen) started their screening
+  session without the Scope's exemplar corpus, so they replaced the stored findings with a
+  set that could never contain this warning, for any exemplar. Both now load the same
+  corpus the first screening uses — the complete `EXEMPLARS.md` (every status) and the
+  mechanic profile — through `AuthoringContextService`, from the candidate's job mechanic,
+  World and Scope. Findings are recomputed, never copied: the warning stays while a
+  candidate still resembles an exemplar, disappears after a real rewrite, and appears when
+  an edit newly resembles one. A Scope with no `EXEMPLARS.md` re-screens normally; a corpus
+  that cannot be resolved fails the re-screen with a 503 (as the jobs controller does) and
+  writes nothing. Re-screens use the current canonical corpus, not the one at generation.
+- **Validation.** Real review-service tests (temporary authoring root, real screen and
+  resolver): 20 pass with the fix; 13 of them fail against the previous review service. The
+  content-engine integration suite (81 tests, booted module, scratch test database) passes.
+- **Remaining limits.** Words of two characters or fewer are ignored; a recorded question
+  needs at least four longer words to be screened at all; the screen is engine-only (no
+  Python twin).
+- Status: implemented and verified locally, committed on `fix/rejected-exemplar-screening`
+  and published for pull-request review. ⬜ Not merged, ⬜ not deployed.
 
 ---

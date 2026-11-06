@@ -170,12 +170,30 @@ const exemplarPhrases = (exemplars?: string): string[][] => {
   if (!exemplars) return [];
   return exemplars
     .split('\n')
-    .filter(
-      (line) =>
-        line.trimStart().startsWith('>') || /^-\s*Domain:/i.test(line.trim()),
-    )
-    .map((line) => words(line))
+    .map((line) => {
+      if (line.trimStart().startsWith('>') || /^-\s*Domain:/i.test(line.trim()))
+        return words(line);
+      const item = recordedItemQuestion(line);
+      return item === undefined ? [] : words(item);
+    })
     .filter((phrase) => phrase.length >= 4);
+};
+
+/**
+ * The question of a recorded Human Product rejection, written by the older
+ * `record_human_product_decision.py` as `- **Item**: <question>`. Every
+ * historical REJECTED block keeps its question there, so it is extracted the
+ * same way a quoted line is. A trailing `-> answer` or `(…)` note is dropped:
+ * those words belong to the answer, not the question, and would dilute the
+ * overlap.
+ */
+const recordedItemQuestion = (line: string): string | undefined => {
+  const match = /^\s*-\s*\*\*Item\*\*:\s*(.*)$/.exec(line);
+  if (!match) return undefined;
+  return match[1]
+    .split(/\s+->\s+/)[0]
+    .replace(/\s*\([^()]*\)\s*$/, '')
+    .trim();
 };
 
 /**

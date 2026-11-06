@@ -3,6 +3,8 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { plainToInstance } from 'class-transformer';
@@ -28,6 +30,10 @@ import {
 import { EngineCostEntryDocument } from '../schemas/engine-cost-entry.schema';
 import { EngineDraftPublicationDocument } from '../schemas/engine-draft-publication.schema';
 import { EngineJobDocument } from '../schemas/engine-job.schema';
+import {
+  AuthoringContextService,
+  AuthoringContextUnavailableError,
+} from './authoring-context.service';
 import {
   CandidateApprovalDto,
   CandidateAssessmentDto,
@@ -157,7 +163,47 @@ export class ContentEngineReviewService {
     private readonly worlds: WorldRepository,
     private readonly scopes: ScopeRepository,
     private readonly challengeTypes: ChallengeTypeRepository,
+    @Optional() private readonly contexts?: AuthoringContextService,
   ) {}
+
+  /**
+   * The Scope's duplicate-screening corpus, exactly as initial screening gets
+   * it (`ContentEngineOrchestratorService`): the complete EXEMPLARS.md — every
+   * status, untargeted entries included — and the mechanic profile's retired
+   * examples, resolved from the job's own canonical mechanic, World and Scope.
+   * Never the APPROVED-only generation view. A corpus that cannot be loaded
+   * fails the re-screen (as the jobs controller does) instead of silently
+   * screening without it.
+   */
+  private screeningCorpus(job: {
+    mechanicKey: string;
+    worldKey: string;
+    scopeKey: string;
+  }): { exemplars?: string; mechanicProfile?: string } {
+    if (!this.contexts) return {};
+    try {
+      const context = this.contexts.resolve(
+        {
+          mechanicKey: job.mechanicKey,
+          worldKey: job.worldKey,
+          scopeKey: job.scopeKey,
+        },
+        { quiet: true },
+      );
+      return {
+        exemplars: context.historicalExemplars,
+        mechanicProfile: context.mechanic,
+      };
+    } catch (error) {
+      if (error instanceof AuthoringContextUnavailableError) {
+        throw new ServiceUnavailableException({
+          code: error.code,
+          message: error.message,
+        });
+      }
+      throw error;
+    }
+  }
 
   async list(query: ReviewCandidateQueryDto) {
     const jobFilter: FilterQuery<EngineJobDocument> = {};
@@ -342,9 +388,11 @@ export class ContentEngineReviewService {
       normalizedClaims,
     );
 
+    const corpus = this.screeningCorpus(references.job);
     const editSession = this.screen.createSession?.({
       worldKey: references.job.worldKey,
       scopeKey: references.job.scopeKey,
+      ...corpus,
     });
     if (typeof this.screen.loadHistoricalScope === 'function') {
       await this.screen.loadHistoricalScope(
@@ -356,8 +404,8 @@ export class ContentEngineReviewService {
       );
     }
     this.screen.beginBatch?.(
-      undefined,
-      undefined,
+      corpus.exemplars,
+      corpus.mechanicProfile,
       editSession ? { session: editSession } : undefined,
     );
     // The model's `stepsFromMin` describes the draft the model wrote. Once a
@@ -969,6 +1017,7 @@ export class ContentEngineReviewService {
     const session = this.screen.createSession?.({
       worldKey: references.job.worldKey,
       scopeKey: references.job.scopeKey,
+      ...this.screeningCorpus(references.job),
     });
 
     if (typeof this.screen.loadHistoricalScope === 'function') {
