@@ -6939,4 +6939,46 @@ admin credentials were not used, and no generation job was run. The content-QA a
   year items await separate content QA.
 - ⬜ The Google Drive roadmap mirror updates only when `main` is checked out and pulled locally.
 
+### 33.4 Owner decisions for prompt optimization (2026-11-06) — 🟡 DESIGN APPROVED — NOT IMPLEMENTED
+
+- **Flexible difficulty distribution.** Difficulty balance is a target, not a fixed quota per
+  generation; question quality comes first, and final batch selection may restore balance by
+  requesting more content. Not implemented: the generation plan still states exact per-batch
+  quotas (Batch 3B-2).
+- **Mechanic-appropriate media floors.** No universal minimum share of audio or images applies
+  to all Worlds; requirements follow the mechanic and the value media adds to gameplay. Not
+  implemented: `QUESTION-CRAFT.md` principle 6 still carries the World-level 10% audio and
+  10% image floors.
+- **Rule preservation invariant.** No authoring rule may be removed or relocated unless every
+  authoring and QA workflow that needs it still receives or enforces it.
+
+### 33.5 Batch 3B-1: mechanic rule ownership — ✅ IMPLEMENTED & VERIFIED LOCALLY
+
+- The World-native Bomb contracts (Football, Anime, Video Games, Puzzles), the Top-5 prompt,
+  card and hidden-metadata contract (with `TOP5_VISIBLE_CANDIDATE_NAME_ONLY`), and the
+  Distributed Information clue-media line moved from `QUESTION-CRAFT.md` into the Bomb, Top-5
+  and Distributed Information Skills. The Python authoring CLI, the content and QA agent
+  workflows (both run the resolver) and the engine resolver all load the mechanic Skill, so
+  every workflow that needs a rule still receives it; other mechanics no longer do.
+- `QUESTION-CRAFT.md` keeps a pointer naming both Skill files: Bomb and Top-5 authoring and QA
+  require their mechanic Skill (the full resolver output includes it), and the global file
+  alone is not enough. This is documented compliance; it cannot prove that an ad-hoc session
+  loaded the Skill.
+- Estimated saving (≈2.15 characters per token): ~430 tokens per non-Bomb prompt, ~175 for
+  Top-5; Bomb contexts grow ~340 tokens.
+- Video Games Bomb audio: §25.2 (forward Bomb is text/image only) is the current policy and
+  supersedes the audio mention in §23.4. The preserved backend/frontend audio capability does
+  not authorize authoring audio Bomb items.
+- Status: implemented and verified locally, published on
+  `feat/authoring-mechanic-rule-ownership` for pull-request review. ⬜ Not merged,
+  ⬜ not deployed.
+- **Follow-ups (separate, not implemented):**
+  - ⬜ `_authoringContext` enforcement for new AI-authored packs. The resolver produces the
+    metadata and `validate_authoring_context.py` can check it, but only tests run it; no
+    authoring, QA or promotion step requires it, the pack-level and item-level contracts
+    differ, and no existing pack carries it.
+  - ⬜ Rejected-exemplar screening: `record_human_product_decision.py` appends rejected items
+    to `EXEMPLARS.md` without the `AKWAAN_EXEMPLAR_META` marker, so they are not
+    marker-governed and duplicate screening does not extract them.
+
 ---

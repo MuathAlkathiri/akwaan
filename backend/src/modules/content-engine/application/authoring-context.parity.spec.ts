@@ -510,7 +510,11 @@ describeIf(
           // The previous values, 0ca63754… (pre-Batch 1), f3942825…
           // (Batch 1) and 6dd18592… (Batch 2), reproduce exactly from the
           // prior files, so the algorithm is unchanged.
-          'c2205015e51e5c38df64665e540369a4ff1a700243ac984d529a7c187f335a86',
+          // Refreshed again for Phase 2B Batch 3B-1: only QUESTION-CRAFT.md
+          // changed (Bomb/Top-5/Distributed Information contracts moved to
+          // their mechanic Skills, then the pointer named the required Skill
+          // files); c2205015… and 9c891eac… reproduce from the prior files.
+          'f989ae76d25e38f5dcf74f7e57f4c750c34a6b62a027f963f1a86f66e0b5c505',
         );
       });
 

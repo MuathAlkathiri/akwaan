@@ -15,5 +15,7 @@ The server resolves participant plus local ID to a private identity and compares
 ## Content Structure
 One ContentItem carries neutral instruction, private reference media, candidate views, server-only identities, and authoring metadata.
 
+Clue media uses visual clue cards, private diagrams, maps, or coordinate fragments where visual clues enhance co-op deduction.
+
 ## Content Safety Rules
 No trivia, answer leakage, cosmetic private views, tiny inaccessible details, or any dependency on players showing phones to each other.

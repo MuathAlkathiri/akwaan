@@ -73,6 +73,15 @@ ranks 1..5 and five traps with no rank.
 The prompt asks whether entries belong within the Top 5. It never asks players
 to rank entries manually.
 
+Player-visible text stays interaction-native:
+
+- **Prompt:** the challenge topic only (e.g. `"أكثر 5 لاعبين تسجيلًا للأهداف في
+  تاريخ البريميرليغ"`), with zero tutorial wording (`"رتب"`, `"تجنب الفخاخ"`).
+- **Visible candidate cards:** entity names only (`"ألان شيرر"`, `"هاري كين"`).
+  Zero stats, numbers, ranks, or notes, and no decorative images.
+- **Hidden metadata:** exact ranks (1–5, or none for a trap), metrics, evidence,
+  and cutoff dates.
+
 ## Allowed Content Patterns
 
 - `keep-or-give`: the canonical active authoring Pattern.
@@ -113,6 +122,8 @@ they do not alter turns, timing, assignment, reveal, or scoring.
 - reviewer records cutoff distance, plausibility, and easy-trap risk for each
   trap;
 - prompt describes membership rather than manual ranking;
+- visible candidate cards show entity names only
+  (`TOP5_VISIBLE_CANDIDATE_NAME_ONLY`);
 - assignment truth, deck order, and unrevealed score never reach clients;
 - ten turns, fifteen-second deadline, host-skip KEEP, server-owned staged
   reveal, scoring, and winner behavior match this contract exactly.
