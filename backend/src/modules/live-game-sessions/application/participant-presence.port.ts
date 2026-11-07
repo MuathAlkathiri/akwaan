@@ -8,6 +8,12 @@ export interface StoredPresenceEntry {
   participantId: string;
   /** Exactly as stored: `<owner>:<socketId>`, or a bare legacy socket id. */
   entry: string;
+  /**
+   * The row's last liveness write, when listed. Heartbeats are the only write
+   * a legacy release makes while its players stay connected, so this is what
+   * reveals that a legacy instance is still alive.
+   */
+  rowLastSeenAt?: Date;
 }
 
 /**

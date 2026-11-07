@@ -801,23 +801,53 @@ describe('لا تحرقها lifecycle integration', () => {
       teammate.participantId,
     );
     expect((await rawState(session.sessionId)).deadlineAt).toBe(deadline);
+    const third = (await correctIds(session.sessionId))[2];
     await command(
       session.sessionId,
       actorFor(session, teamA, teammate.participantId),
       'select-la-tahriqha-ingredient',
-      {
-        ingredientId: (await correctIds(session.sessionId))[2],
-      },
+      { ingredientId: third },
     );
     await command(
       session.sessionId,
       actorFor(session, teamA, teammate.participantId),
       'lock-la-tahriqha-dish',
     );
+
+    // The new captain committed the preserved set plus their own pick, on the
+    // same dish and clock; the other team has not locked, so nothing resolved.
+    const locked = await rawState(session.sessionId);
+    expect(locked.phase).toBe('selecting');
+    expect(locked.deadlineAt).toBe(deadline);
+    expect(locked.currentDishIndex).toBe(0);
     expect(
-      (await dishResults(session.sessionId)).length +
-        Number((await rawState(session.sessionId)).phase === 'selecting'),
-    ).toBeGreaterThan(0);
+      (JSON.parse(String(locked.lockedJson)) as Record<string, boolean>)[teamA],
+    ).toBe(true);
+    expect(
+      (JSON.parse(String(locked.selectionsJson)) as Record<string, string[]>)[
+        teamA
+      ],
+    ).toEqual([...chosen, third]);
+    expect(await dishResults(session.sessionId)).toEqual([]);
+
+    // The other team commits; the dish resolves and credits team A's dish to
+    // the captain who took over, with the full preserved selection.
+    const [, teamB] = session.teamIds;
+    await play(
+      session,
+      teamB,
+      (await correctIds(session.sessionId)).slice(0, 3),
+    );
+    const [result] = await dishResults(session.sessionId);
+    expect(result).toMatchObject({
+      dishIndex: 0,
+      resolutionReason: 'both-locked',
+    });
+    expect(result.teams.find((team) => team.teamId === teamA)).toMatchObject({
+      captainParticipantId: teammate.participantId,
+      selected: [...chosen, third],
+      lockReason: 'manual',
+    });
   }, 120_000);
 
   it('preserves a stranded dish until a teammate returns, then hands it off without changing its deadline', async () => {

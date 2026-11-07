@@ -488,12 +488,11 @@ describe('PresenceOwnershipService', () => {
     function fakeProcess() {
       const listeners: Array<(signal: NodeJS.Signals) => void> = [];
       const proc = {
-        pid: 4242,
-        once: jest.fn((_: 'SIGTERM', l: (s: NodeJS.Signals) => void) => {
+        on: jest.fn((_: 'SIGTERM', l: (s: NodeJS.Signals) => void) => {
           listeners.push(l);
         }),
         removeListener: jest.fn(),
-        kill: jest.fn(),
+        exit: jest.fn(),
       };
       return { proc, fire: () => listeners.forEach((l) => l('SIGTERM')) };
     }
@@ -505,10 +504,10 @@ describe('PresenceOwnershipService', () => {
       const { proc } = fakeProcess();
       const t = setup({}, { signal: proc });
       await t.service.onApplicationBootstrap();
-      expect(proc.once).not.toHaveBeenCalled();
+      expect(proc.on).not.toHaveBeenCalled();
     });
 
-    it('releases own entries and lease, then re-raises SIGTERM', async () => {
+    it('releases own entries and lease, then exits 0 (graceful)', async () => {
       const { proc, fire } = fakeProcess();
       const t = setup({ PRESENCE_SIGTERM_RELEASE: 'true' }, { signal: proc });
       await t.service.onApplicationBootstrap();
@@ -521,10 +520,11 @@ describe('PresenceOwnershipService', () => {
       expect(t.leases.released).toEqual([ME]);
       expect(t.reconciler.forSession).toHaveBeenCalledWith('s1');
       expect(proc.removeListener).toHaveBeenCalled();
-      expect(proc.kill).toHaveBeenCalledWith(4242, 'SIGTERM');
+      expect(proc.exit).toHaveBeenCalledTimes(1);
+      expect(proc.exit).toHaveBeenCalledWith(0);
     });
 
-    it('still terminates when release fails, leaving the entries to the sweep', async () => {
+    it('still exits, non-zero, when release fails, leaving the entries to the sweep', async () => {
       const { proc, fire } = fakeProcess();
       const t = setup({ PRESENCE_SIGTERM_RELEASE: 'true' }, { signal: proc });
       await t.service.onApplicationBootstrap();
@@ -532,12 +532,12 @@ describe('PresenceOwnershipService', () => {
       t.presence.failRemove = true;
       fire();
       await flush();
-      expect(proc.kill).toHaveBeenCalledWith(4242, 'SIGTERM');
+      expect(proc.exit).toHaveBeenCalledWith(143);
       expect(t.presence.has('s1', 'p1', `${ME}:a`)).toBe(true);
       expect(t.leases.released).toEqual([]);
     });
 
-    it('still terminates within the deadline when release hangs', async () => {
+    it('still exits, non-zero, within the deadline when release hangs', async () => {
       jest.useFakeTimers();
       try {
         const { proc, fire } = fakeProcess();
@@ -546,13 +546,94 @@ describe('PresenceOwnershipService', () => {
         t.leases.releaseImpl = () => new Promise(() => undefined);
         fire();
         await flush();
-        expect(proc.kill).not.toHaveBeenCalled();
-        jest.advanceTimersByTime(5_000);
+        expect(proc.exit).not.toHaveBeenCalled();
+        jest.advanceTimersByTime(4_999);
         await flush();
-        expect(proc.kill).toHaveBeenCalledWith(4242, 'SIGTERM');
+        expect(proc.exit).not.toHaveBeenCalled();
+        jest.advanceTimersByTime(1);
+        await flush();
+        expect(proc.exit).toHaveBeenCalledWith(143);
       } finally {
         jest.useRealTimers();
       }
+    });
+
+    it('ignores a repeated SIGTERM during release: one release, one exit', async () => {
+      const { proc, fire } = fakeProcess();
+      const t = setup({ PRESENCE_SIGTERM_RELEASE: 'true' }, { signal: proc });
+      await t.service.onApplicationBootstrap();
+      t.presence.add('s1', 'p1', `${ME}:a`);
+      let finish!: () => void;
+      t.leases.releaseImpl = () => new Promise<void>((r) => (finish = r));
+      fire();
+      fire();
+      await flush();
+      fire();
+      expect(proc.exit).not.toHaveBeenCalled();
+      finish();
+      await flush();
+      expect(t.leases.release).toHaveBeenCalledTimes(1);
+      expect(proc.exit).toHaveBeenCalledTimes(1);
+      expect(proc.exit).toHaveBeenCalledWith(0);
+    });
+
+    it('waits for buffered log output to drain before exiting', async () => {
+      jest.useFakeTimers();
+      try {
+        const { proc, fire } = fakeProcess();
+        const stdout = { writableLength: 4096 };
+        const signal = { ...proc, stdout, stderr: { writableLength: 0 } };
+        const t = setup({ PRESENCE_SIGTERM_RELEASE: 'true' }, { signal });
+        await t.service.onApplicationBootstrap();
+        fire();
+        await flush();
+        jest.advanceTimersByTime(50);
+        await flush();
+        expect(proc.exit).not.toHaveBeenCalled();
+        // A repeated SIGTERM while draining is still absorbed.
+        fire();
+        expect(proc.removeListener).not.toHaveBeenCalled();
+        stdout.writableLength = 0;
+        jest.advanceTimersByTime(5);
+        await flush();
+        expect(proc.exit).toHaveBeenCalledTimes(1);
+        expect(proc.exit).toHaveBeenCalledWith(0);
+        expect(proc.removeListener).toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('bounds the drain: exits after 1s even if output never drains', async () => {
+      jest.useFakeTimers();
+      try {
+        const { proc, fire } = fakeProcess();
+        const signal = { ...proc, stdout: { writableLength: 1 } };
+        const t = setup({ PRESENCE_SIGTERM_RELEASE: 'true' }, { signal });
+        await t.service.onApplicationBootstrap();
+        t.presence.failRemove = true;
+        t.presence.add('s1', 'p1', `${ME}:a`);
+        fire();
+        await flush();
+        for (let i = 0; i < 205 && !proc.exit.mock.calls.length; i += 1) {
+          jest.advanceTimersByTime(5);
+          await flush();
+        }
+        expect(proc.exit).toHaveBeenCalledWith(143);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('removes its listener on module destroy (no handler leaks across app instances)', async () => {
+      const { proc } = fakeProcess();
+      const t = setup({ PRESENCE_SIGTERM_RELEASE: 'true' }, { signal: proc });
+      await t.service.onApplicationBootstrap();
+      t.service.onModuleDestroy();
+      expect(proc.removeListener).toHaveBeenCalledWith(
+        'SIGTERM',
+        expect.any(Function),
+      );
     });
   });
 });

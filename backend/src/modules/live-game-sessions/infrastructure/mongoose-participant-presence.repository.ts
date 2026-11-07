@@ -200,7 +200,13 @@ export class MongooseParticipantPresenceRepository implements ParticipantPresenc
     const rows = await this.model
       .find(
         { 'connections.0': { $exists: true } },
-        { sessionId: 1, participantId: 1, connections: 1, _id: 0 },
+        {
+          sessionId: 1,
+          participantId: 1,
+          connections: 1,
+          lastSeenAt: 1,
+          _id: 0,
+        },
       )
       .lean()
       .exec();
@@ -209,6 +215,7 @@ export class MongooseParticipantPresenceRepository implements ParticipantPresenc
         sessionId: row.sessionId,
         participantId: row.participantId,
         entry,
+        ...(row.lastSeenAt ? { rowLastSeenAt: new Date(row.lastSeenAt) } : {}),
       })),
     );
   }

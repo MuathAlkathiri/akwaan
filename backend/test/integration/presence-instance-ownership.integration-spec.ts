@@ -332,6 +332,59 @@ describe('presence instance ownership (multi-instance integration)', () => {
     expect(await entriesOf(sessionId, solo)).toContain('legacy-again');
   }, 180_000);
 
+  it('legacy purge never strips a live legacy instance whose players are stable but heartbeating (failed or slow deploy)', async () => {
+    // The hazard: the purge is armed for a deploy that never takes traffic
+    // (health check failing) or is slow to, while the legacy release keeps
+    // serving. Mid-game, its players neither join nor leave, so the legacy
+    // entry set is unchanged for minutes — but each player's heartbeat still
+    // advances its row's `lastSeenAt`, which is the legacy release's only
+    // other write. That must count as legacy activity.
+    const commit = `commit-${rnd()}`;
+    const c = await boot({
+      RENDER_GIT_COMMIT: commit,
+      PRESENCE_LEGACY_PURGE: `${commit}:nonce-${rnd()}`,
+    });
+    const { sessionId, players } = await seed(c.sessions);
+    await rows().insertMany(
+      players.map((participantId, i) => ({
+        sessionId,
+        participantId,
+        connections: [`legacy-live-${i}`],
+        lastSeenAt: new Date(),
+      })),
+    );
+    c.ownership.options.legacyPurgeMinUptimeMs = 0;
+    const realNow = c.ownership.now;
+    let offset = 0;
+    c.ownership.now = () => realNow() + offset;
+    const legacyHeartbeat = () =>
+      rows().updateMany(
+        { sessionId },
+        { $set: { lastSeenAt: new Date(Date.now() + offset) } },
+      );
+
+    await c.ownership.tick(); // baseline
+    for (let i = 0; i < 4; i += 1) {
+      offset += 60_000; // the legacy heartbeat cadence
+      await legacyHeartbeat();
+      await c.ownership.tick();
+    }
+    // Four minutes with an unchanged entry set, beyond the 180s freeze window.
+    for (const participantId of players) {
+      expect(await entriesOf(sessionId, participantId)).toHaveLength(1);
+    }
+
+    // The legacy instance is retired: heartbeats stop, and only then does the
+    // freeze window run out.
+    offset += 60_000;
+    await c.ownership.tick(); // last observed heartbeat → new baseline
+    offset += 181_000;
+    await c.ownership.tick();
+    for (const participantId of players) {
+      expect(await entriesOf(sessionId, participantId)).toEqual([]);
+    }
+  }, 120_000);
+
   it('real Socket.IO client: foreign removal → recovery event → new connection restores presence and snapshot', async () => {
     const b = await boot();
     const { sessionId, players } = await seed(b.sessions);

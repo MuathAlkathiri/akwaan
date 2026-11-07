@@ -86,14 +86,42 @@ export interface PresenceTickStats {
 
 /** A minimal process surface, injectable so SIGTERM handling is testable. */
 export interface SignalProcess {
-  pid: number;
-  once(event: 'SIGTERM', listener: (signal: NodeJS.Signals) => void): unknown;
+  on(event: 'SIGTERM', listener: (signal: NodeJS.Signals) => void): unknown;
   removeListener(
     event: 'SIGTERM',
     listener: (signal: NodeJS.Signals) => void,
   ): unknown;
-  kill(pid: number, signal: NodeJS.Signals): unknown;
+  exit(code: number): unknown;
+  /** Output streams drained before exiting (process.stdout / stderr). */
+  stdout?: { writableLength: number };
+  stderr?: { writableLength: number };
 }
+
+/** Longest the shutdown waits for buffered log output before exiting. */
+export const SHUTDOWN_OUTPUT_DRAIN_MS = 1_000;
+
+/**
+ * Resolves once both streams have handed every buffered byte to the OS, or
+ * after `deadlineMs`. Writes to a pipe — a container's stdout — are
+ * asynchronous on POSIX, and `process.exit()` discards whatever is still
+ * queued, which is how a busy instance's final shutdown lines were lost.
+ */
+async function drainOutput(
+  target: Pick<SignalProcess, 'stdout' | 'stderr'>,
+  deadlineMs: number,
+): Promise<void> {
+  const started = Date.now();
+  const pending = () =>
+    (target.stdout?.writableLength ?? 0) + (target.stderr?.writableLength ?? 0);
+  while (pending() > 0 && Date.now() - started < deadlineMs) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}
+
+/** Exit status after a graceful shutdown whose presence release succeeded. */
+export const SHUTDOWN_EXIT_OK = 0;
+/** Exit status when the release failed or timed out (128 + SIGTERM). */
+export const SHUTDOWN_EXIT_INCOMPLETE = 128 + 15;
 
 export const PRESENCE_SIGNAL_PROCESS = Symbol('PRESENCE_SIGNAL_PROCESS');
 
@@ -573,11 +601,14 @@ export class PresenceOwnershipService
    *   - armed only when `PRESENCE_LEGACY_PURGE` names this exact commit;
    *   - its nonce is consumed atomically, so a redeploy of the same commit with
    *     the same setting (e.g. after a rollback) never purges again;
-   *   - it waits for minimum uptime, then requires the legacy entry set to stay
-   *     unchanged for `legacyFreezeMs` — a running legacy instance adds and
-   *     removes bare ids as its players come and go, and any change restarts
-   *     the wait. This is a safeguard on top of the operator's proof, not a
-   *     replacement for it.
+   *   - it waits for minimum uptime, then requires the legacy entry set *and*
+   *     the liveness of rows held only by legacy entries to stay unchanged for
+   *     `legacyFreezeMs` — a running legacy instance adds and removes bare ids
+   *     as players come and go, and advances `lastSeenAt` on every participant
+   *     heartbeat while they stay; either restarts the wait. This is a
+   *     safeguard on top of the operator's proof, not a replacement for it: a
+   *     legacy instance serving only hosts (which send no heartbeat) and no
+   *     joins or leaves is not detectable.
    */
   private async legacyPurgeStep(
     entries: StoredPresenceEntry[],
@@ -593,6 +624,21 @@ export class PresenceOwnershipService
     const keys = new Set(
       unowned.map((e) => `${e.sessionId}|${e.participantId}|${e.entry}`),
     );
+    // A live legacy instance whose players stay connected changes no entries,
+    // but its heartbeats keep advancing those players' rows. Rows held only by
+    // legacy entries therefore contribute their `lastSeenAt`; a row that also
+    // holds an owned entry is excluded, since a protocol-2 heartbeat on it says
+    // nothing about the legacy instance.
+    const ownedRows = new Set(
+      entries
+        .filter((e) => parsePresenceConnection(e.entry).owner !== null)
+        .map((e) => `${e.sessionId}|${e.participantId}`),
+    );
+    for (const e of unowned) {
+      const row = `${e.sessionId}|${e.participantId}`;
+      if (ownedRows.has(row)) continue;
+      keys.add(`seen|${row}|${e.rowLastSeenAt?.getTime() ?? 'none'}`);
+    }
     const same =
       legacy.baseline !== undefined &&
       legacy.baseline.size === keys.size &&
@@ -713,15 +759,29 @@ export class PresenceOwnershipService
   }
 
   /**
-   * Installs a one-shot SIGTERM handler that releases owned presence within a
-   * bounded time and then re-raises SIGTERM with the default action, so the
-   * process still terminates exactly as before — also when release fails or
-   * hangs.
+   * Installs the SIGTERM handler: release owned presence within a bounded time,
+   * then exit explicitly.
+   *
+   * The exit is explicit rather than a re-raised SIGTERM: a process that is
+   * PID 1 in a container ignores a signal's default action, so a re-raise
+   * would leave it running until the platform's SIGKILL. Render documents a
+   * zero status after cleanup as the graceful outcome; a failed or timed-out
+   * release exits 143 so the incomplete cleanup stays visible. Buffered log
+   * output is drained (bounded) before the exit, so the final diagnostics
+   * survive. A repeated SIGTERM while releasing is ignored — the release is
+   * already bounded.
    */
   installSignalHandler(target: SignalProcess): void {
-    const handler = (signal: NodeJS.Signals) => {
+    let shuttingDown = false;
+    const handler = () => {
+      if (shuttingDown) {
+        this.logger.warn({ event: 'presence_shutdown_signal_repeated' });
+        return;
+      }
+      shuttingDown = true;
       void (async () => {
         let timer: ReturnType<typeof setTimeout> | undefined;
+        let code = SHUTDOWN_EXIT_OK;
         try {
           await Promise.race([
             this.releaseOwned(),
@@ -733,17 +793,22 @@ export class PresenceOwnershipService
             }),
           ]);
         } catch (error) {
+          code = SHUTDOWN_EXIT_INCOMPLETE;
           this.logFailure('shutdown_release', error);
         } finally {
           if (timer) clearTimeout(timer);
+          this.logger.log({ event: 'presence_shutdown_exit', exitCode: code });
+          await drainOutput(target, SHUTDOWN_OUTPUT_DRAIN_MS);
+          // Removed only now, so a repeated SIGTERM while draining is still
+          // absorbed by this handler instead of killing the flush.
           target.removeListener('SIGTERM', handler);
           this.signalHandler = undefined;
-          target.kill(target.pid, signal);
+          target.exit(code);
         }
       })();
     };
     this.signalHandler = handler;
-    target.once('SIGTERM', handler);
+    target.on('SIGTERM', handler);
   }
 
   private async step(

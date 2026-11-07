@@ -35,7 +35,7 @@ FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates ffmpeg python3 python3-pip \
+  && apt-get install -y --no-install-recommends ca-certificates ffmpeg python3 python3-pip tini \
   && python3 -m pip install --no-cache-dir --break-system-packages --upgrade yt-dlp \
   && rm -rf /var/lib/apt/lists/*
 
@@ -58,4 +58,10 @@ USER node
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start:prod", "--workspace", "backend"]
+# tini is PID 1, not Node: a PID 1 process ignores any signal it has no
+# handler for, so a SIGTERM during startup (before the presence handler is
+# installed) or with PRESENCE_SIGTERM_RELEASE=false would otherwise wait for
+# Render's SIGKILL. tini forwards signals and reaps orphaned ffmpeg/yt-dlp
+# children. Node is started directly, not through npm, so it receives them.
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["node", "backend/dist/main.js"]
