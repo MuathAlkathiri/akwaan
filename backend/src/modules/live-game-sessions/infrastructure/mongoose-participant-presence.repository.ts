@@ -1,13 +1,23 @@
-import { traceStartupStep } from '../../../common/diagnostics/startup-diagnostics';
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { ParticipantPresence } from '../application/participant-presence.port';
+import {
+  ParticipantPresence,
+  StoredPresenceEntry,
+} from '../application/participant-presence.port';
+import {
+  PRESENCE_INSTANCE,
+  PresenceInstance,
+} from '../application/presence-instance';
 import {
   MAX_PARTICIPANT_CONNECTIONS,
   ParticipantPresenceProjection,
   presenceProjection,
 } from '../domain/participant-presence';
+import {
+  ownedConnectionId,
+  parsePresenceConnection,
+} from '../domain/presence-connection-id';
 import { LiveSessionPresenceDocument } from './live-session-presence.schema';
 
 /**
@@ -16,34 +26,24 @@ import { LiveSessionPresenceDocument } from './live-session-presence.schema';
  * Every write is a single conditional Mongo update on one presence row, so two
  * concurrent socket events cannot lose each other's effect and no session or
  * gameplay save can address these fields at all.
+ *
+ * Entries are owner-scoped (`<instanceId>:<socketId>`). There is no boot-time
+ * reset: a new instance no longer clears connections that belong to another
+ * instance still serving players (the zero-downtime deploy overlap). A dead
+ * owner's entries are removed by `PresenceOwnershipService`, one exact stored
+ * value at a time, once its lease has stopped.
  */
 @Injectable()
-export class MongooseParticipantPresenceRepository
-  implements ParticipantPresence, OnApplicationBootstrap
-{
+export class MongooseParticipantPresenceRepository implements ParticipantPresence {
   constructor(
     @InjectModel(LiveSessionPresenceDocument.name)
     private readonly model: Model<LiveSessionPresenceDocument>,
+    @Inject(PRESENCE_INSTANCE)
+    private readonly instance: PresenceInstance,
   ) {}
 
-  /**
-   * No connection outlives the process that held it, so every recorded one is
-   * a lie the moment this boots. Clearing beats leaving players permanently
-   * "connected" to a socket that no longer exists.
-   *
-   * This is correct only while exactly one backend instance exists, because it
-   * clears every session rather than the ones this process owned. That
-   * constraint is not introduced here and is not the first thing a second
-   * instance would break: socket.io runs on its default in-process adapter with
-   * no Redis, so rooms and broadcasts are already per-process, and the deadline
-   * and countdown schedulers already hold their timers in memory. A second
-   * instance would lose realtime delivery entirely before this mattered.
-   * Instance-scoped presence belongs with that work, not ahead of it.
-   */
-  async onApplicationBootstrap(): Promise<void> {
-    await traceStartupStep('ParticipantPresence.onApplicationBootstrap', () =>
-      this.clearAll(),
-    );
+  private own(socketId: string): string {
+    return ownedConnectionId(this.instance.instanceId, socketId);
   }
 
   async connect(input: {
@@ -52,6 +52,7 @@ export class MongooseParticipantPresenceRepository
     connectionId: string;
     now: Date;
   }): Promise<boolean> {
+    const entry = this.own(input.connectionId);
     // Two conditions in one atomic update. `$addToSet` makes a repeated
     // subscribe from the same socket a no-op rather than an extra device, and
     // the size guard refuses a genuinely new device beyond the limit. Because
@@ -63,7 +64,7 @@ export class MongooseParticipantPresenceRepository
           sessionId: input.sessionId,
           participantId: input.participantId,
           $or: [
-            { connections: input.connectionId },
+            { connections: entry },
             {
               [`connections.${MAX_PARTICIPANT_CONNECTIONS - 1}`]: {
                 $exists: false,
@@ -72,7 +73,7 @@ export class MongooseParticipantPresenceRepository
           ],
         },
         {
-          $addToSet: { connections: input.connectionId },
+          $addToSet: { connections: entry },
           $set: { lastSeenAt: input.now },
           $setOnInsert: {
             sessionId: input.sessionId,
@@ -93,7 +94,7 @@ export class MongooseParticipantPresenceRepository
               sessionId: input.sessionId,
               participantId: input.participantId,
               $or: [
-                { connections: input.connectionId },
+                { connections: entry },
                 {
                   [`connections.${MAX_PARTICIPANT_CONNECTIONS - 1}`]: {
                     $exists: false,
@@ -102,7 +103,7 @@ export class MongooseParticipantPresenceRepository
               ],
             },
             {
-              $addToSet: { connections: input.connectionId },
+              $addToSet: { connections: entry },
               $set: { lastSeenAt: input.now },
             },
           )
@@ -116,20 +117,26 @@ export class MongooseParticipantPresenceRepository
     participantId: string;
     connectionId: string;
     now: Date;
-  }): Promise<void> {
-    // Removes exactly the connection that closed. A late callback from a socket
-    // that already died pulls an id that is either absent or its own, so a
-    // newer connection for the same participant is untouched — the case a
-    // counter could never express.
-    await this.model
+  }): Promise<boolean> {
+    // Removes exactly the connection that closed, owned by this instance. A
+    // late callback from a socket that already died pulls an id that is either
+    // absent or its own, so a newer connection for the same participant is
+    // untouched — the case a counter could never express.
+    const entry = this.own(input.connectionId);
+    const result = await this.model
       .updateOne(
-        { sessionId: input.sessionId, participantId: input.participantId },
         {
-          $pull: { connections: input.connectionId },
+          sessionId: input.sessionId,
+          participantId: input.participantId,
+          connections: entry,
+        },
+        {
+          $pull: { connections: entry },
           $set: { lastSeenAt: input.now },
         },
       )
       .exec();
+    return (result?.modifiedCount ?? 0) > 0;
   }
 
   async touch(
@@ -161,8 +168,67 @@ export class MongooseParticipantPresenceRepository
     );
   }
 
-  async clearAll(): Promise<void> {
-    await this.model.updateMany({}, { $set: { connections: [] } }).exec();
+  async connectionIds(sessionId: string): Promise<Set<string>> {
+    const rows = await this.model
+      .find({ sessionId }, { connections: 1, _id: 0 })
+      .lean()
+      .exec();
+    const ids = new Set<string>();
+    for (const row of rows) {
+      for (const entry of row.connections ?? []) {
+        ids.add(parsePresenceConnection(entry).socketId);
+      }
+    }
+    return ids;
+  }
+
+  async removeExact(input: StoredPresenceEntry): Promise<boolean> {
+    const result = await this.model
+      .updateOne(
+        {
+          sessionId: input.sessionId,
+          participantId: input.participantId,
+          connections: input.entry,
+        },
+        { $pull: { connections: input.entry } },
+      )
+      .exec();
+    return (result?.modifiedCount ?? 0) > 0;
+  }
+
+  async listEntries(): Promise<StoredPresenceEntry[]> {
+    const rows = await this.model
+      .find(
+        { 'connections.0': { $exists: true } },
+        {
+          sessionId: 1,
+          participantId: 1,
+          connections: 1,
+          lastSeenAt: 1,
+          _id: 0,
+        },
+      )
+      .lean()
+      .exec();
+    return rows.flatMap((row) =>
+      (row.connections ?? []).map((entry) => ({
+        sessionId: row.sessionId,
+        participantId: row.participantId,
+        entry,
+        ...(row.lastSeenAt ? { rowLastSeenAt: new Date(row.lastSeenAt) } : {}),
+      })),
+    );
+  }
+
+  async entriesFor(
+    sessionId: string,
+    participantId: string,
+  ): Promise<string[]> {
+    const row = await this.model
+      .findOne({ sessionId, participantId }, { connections: 1, _id: 0 })
+      .lean()
+      .exec();
+    return [...(row?.connections ?? [])];
   }
 }
 

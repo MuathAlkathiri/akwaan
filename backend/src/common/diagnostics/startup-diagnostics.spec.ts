@@ -86,16 +86,16 @@ describe('startup diagnostics', () => {
     startStartupWatchdog(30_000);
     let release!: () => void;
     const hanging = traceStartupStep(
-      'ParticipantPresence.onApplicationBootstrap',
+      'PresenceOwnershipService.onApplicationBootstrap',
       () => new Promise<void>((resolve) => (release = resolve)),
     );
     jest.advanceTimersByTime(60_000);
     expect(lines(warn)).toEqual([
       expect.stringMatching(
-        /^startup still in progress \(t\+\d+ms\): active \[ParticipantPresence\.onApplicationBootstrap \d+ms\]/,
+        /^startup still in progress \(t\+\d+ms\): active \[PresenceOwnershipService\.onApplicationBootstrap \d+ms\]/,
       ),
       expect.stringMatching(
-        /active \[ParticipantPresence\.onApplicationBootstrap /,
+        /active \[PresenceOwnershipService\.onApplicationBootstrap /,
       ),
     ]);
     release();

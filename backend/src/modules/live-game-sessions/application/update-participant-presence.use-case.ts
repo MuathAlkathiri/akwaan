@@ -1,22 +1,13 @@
-import { randomUUID } from 'crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   PARTICIPANT_PRESENCE,
   ParticipantPresence,
 } from './participant-presence.port';
 import { LIVE_SESSION_CLOCK, LiveSessionClock } from './live-session-clock';
-import {
-  LIVE_GAME_SESSION_REPOSITORY,
-  LiveGameSessionRepository,
-} from '../domain/live-game-session.repository';
-import { LiveGameSessionSnapshotMapper } from './live-game-session.snapshot';
-import {
-  LIVE_SESSION_TRANSITION_PUBLISHER,
-  LiveSessionTransitionPublisher,
-} from './live-session-transition.publisher';
-import { BombCountdownScheduler } from './bomb-countdown.scheduler';
 import { ReassignTeamActions } from './reassign-team-actions.use-case';
 import { WithdrawPresentationReadiness } from './withdraw-presentation-readiness.use-case';
+import { PresenceEffectsReconciler } from './presence-effects.reconciler';
+import { PresenceOwnershipService } from './presence-ownership.service';
 
 @Injectable()
 export class UpdateParticipantPresence {
@@ -26,14 +17,10 @@ export class UpdateParticipantPresence {
     @Inject(PARTICIPANT_PRESENCE)
     private readonly presence: ParticipantPresence,
     @Inject(LIVE_SESSION_CLOCK) private readonly clock: LiveSessionClock,
-    @Inject(LIVE_GAME_SESSION_REPOSITORY)
-    private readonly sessions: LiveGameSessionRepository,
-    private readonly snapshots: LiveGameSessionSnapshotMapper,
-    @Inject(LIVE_SESSION_TRANSITION_PUBLISHER)
-    private readonly publisher: LiveSessionTransitionPublisher,
-    private readonly countdown: BombCountdownScheduler,
     private readonly reassignTeamActions: ReassignTeamActions,
     private readonly withdrawReadiness: WithdrawPresentationReadiness,
+    private readonly reconciler: PresenceEffectsReconciler,
+    private readonly ownership: PresenceOwnershipService,
   ) {}
 
   async connected(
@@ -41,12 +28,35 @@ export class UpdateParticipantPresence {
     participantId: string,
     connectionId: string,
   ): Promise<boolean> {
-    const connected = await this.presence.connect({
-      sessionId,
-      participantId,
-      connectionId,
+    // A socket may only be owned by an instance whose lease is registered, so
+    // a dead instance's entries are always attributable and sweepable.
+    this.ownership.assertRegistered();
+    const input = { sessionId, participantId, connectionId };
+    let connected = await this.presence.connect({
+      ...input,
       now: this.clock.now(),
     });
+    if (!connected) {
+      // At the device limit. If a slot is held by an instance that is provably
+      // dead, free it and try once more; a live device is never displaced.
+      const reclaimed = await this.ownership
+        .reclaimDeadSlots(sessionId, participantId)
+        .catch((error: unknown) => {
+          this.logger.error({
+            event: 'presence_slot_reclaim_failed',
+            sessionId,
+            participantId,
+            message: error instanceof Error ? error.message : String(error),
+          });
+          return 0;
+        });
+      if (reclaimed > 0) {
+        connected = await this.presence.connect({
+          ...input,
+          now: this.clock.now(),
+        });
+      }
+    }
     if (connected) {
       this.logger.log({
         event: 'participant_connected',
@@ -54,6 +64,10 @@ export class UpdateParticipantPresence {
         participantId,
         connectionId,
       });
+      // A team action may have been deliberately left with its absent holder
+      // while the whole team was away. The first eligible return makes that
+      // action playable immediately instead of waiting for the periodic scan.
+      await this.reassignTeamActions.forSession(sessionId);
     }
     return connected;
   }
@@ -63,12 +77,11 @@ export class UpdateParticipantPresence {
     participantId: string,
     connectionId: string,
   ): Promise<void> {
-    const now = this.clock.now();
     await this.presence.disconnect({
       sessionId,
       participantId,
       connectionId,
-      now,
+      now: this.clock.now(),
     });
     // If this phone was the one holding a team action, the action moves on. A
     // challenge must not stall on somebody's wifi.
@@ -103,38 +116,9 @@ export class UpdateParticipantPresence {
         message: error instanceof Error ? error.message : String(error),
       });
     }
-    const session = await this.sessions.findById(sessionId);
-    if (session) {
-      const state = session.serialize();
-      const representativesReady = state.teams
-        .filter((team) => team.active)
-        .every((team) =>
-          state.participants.some(
-            (participant) =>
-              participant.role === 'team-player' &&
-              participant.teamId === team.id &&
-              participant.ready &&
-              participant.connected &&
-              !participant.removedAt,
-          ),
-        );
-      if (
-        state.modeKey === 'bomb' &&
-        state.status === 'ready' &&
-        !representativesReady
-      ) {
-        const previousRevision = session.revision;
-        session.cancelCountdown(now);
-        session.completeCommand(randomUUID(), now);
-        await this.sessions.save(session, previousRevision);
-        this.countdown.cancel(sessionId);
-        this.publisher.publish(
-          'live-session:state-changed',
-          this.snapshots.toSnapshot(session, session.controllerActorId, now),
-          { reason: 'bomb-countdown-cancelled' },
-        );
-      }
-    }
+    // Shared with the background reconciler, so a crash between the removal
+    // above and these effects is recovered from state on a later pass.
+    await this.reconciler.cancelUnreadyBombCountdown(sessionId);
     this.logger.log({
       event: 'participant_disconnected',
       sessionId,

@@ -16,6 +16,7 @@ import { UsersService } from '../../users/users.service';
 import { JwtPayload } from '../../auth/auth.types';
 import { GetLiveGameSession } from '../application/get-live-game-session.use-case';
 import { UpdateParticipantPresence } from '../application/update-participant-presence.use-case';
+import { PresenceConnectionRegistry } from '../application/presence-connection.registry';
 import { ParticipantCredentialService } from '../application/participant-credential.service';
 import { LiveSessionActor } from '../application/live-session-actor';
 import { SetParticipantReadiness } from '../application/live-participant.use-cases';
@@ -70,6 +71,7 @@ interface LiveServerEvents {
     message: string;
   }) => void;
   'live-session:snapshot': (snapshot: unknown) => void;
+  'live-session:presence-recovery': (payload: { sessionId: string }) => void;
 }
 type LiveSocket = Socket<
   Record<string, never>,
@@ -126,6 +128,9 @@ function commandAck(result: unknown): unknown {
   } satisfies LiveSessionCommandAck;
 }
 
+/** How long a socket asked to recover may stay before the server drops it. */
+export const PRESENCE_RECOVERY_FALLBACK_MS = 3_000;
+
 @UsePipes(
   new ValidationPipe({
     whitelist: true,
@@ -169,6 +174,7 @@ export class LiveGameSessionsGateway
     private readonly participantReadiness: SetParticipantReadiness,
     private readonly gameplay: GameplayRuntimeSocketFacade,
     private readonly interactions: GameplayInteractionUseCases,
+    private readonly presenceConnections: PresenceConnectionRegistry,
   ) {}
 
   afterInit(namespace: Namespace): void {
@@ -214,6 +220,10 @@ export class LiveGameSessionsGateway
   }
 
   handleDisconnect(client: LiveSocket): void {
+    // Unregister before removing presence, so the ownership tick never sees a
+    // live registration without its entry (or an entry it would call orphaned
+    // while this removal is still in flight).
+    this.presenceConnections.unregisterSocket(client.id);
     for (const [sessionId, participantId] of client.data
       .subscribedParticipants ?? []) {
       void this.presence
@@ -231,6 +241,33 @@ export class LiveGameSessionsGateway
           }),
         );
     }
+  }
+
+  /**
+   * This socket is live but its presence entry was removed elsewhere (a false
+   * lease expiry, or a rolled-back release resetting presence). Re-adding the
+   * entry silently would leave the client's own state (readiness under this
+   * connection, fair-start acks) out of step, so the socket is asked to
+   * reconnect: a new connection re-subscribes, restores its snapshot and
+   * re-acknowledges readiness under a new connection epoch.
+   *
+   * Current clients reconnect on `live-session:presence-recovery`. The fallback
+   * closes the underlying transport rather than issuing a namespace disconnect:
+   * Socket.IO v4 treats the former as a recoverable network loss, so an older
+   * frontend that does not know this event still reconnects normally. Explicit
+   * authentication failures remain final because they never enter this path.
+   */
+  private requestPresenceRecovery(client: LiveSocket, sessionId: string): void {
+    this.logger.warn({
+      event: 'participant_presence_recovery_requested',
+      sessionId,
+      socketId: client.id,
+    });
+    client.emit('live-session:presence-recovery', { sessionId });
+    const fallback = setTimeout(() => {
+      if (client.connected) client.client.conn.close();
+    }, PRESENCE_RECOVERY_FALLBACK_MS);
+    fallback.unref?.();
   }
 
   @SubscribeMessage('live-session:subscribe')
@@ -254,18 +291,34 @@ export class LiveGameSessionsGateway
       }
       await client.join(this.room(body.sessionId));
       client.data.subscribedParticipants.set(body.sessionId, participantId);
+      // Registered before presence is written, so the ownership tick never
+      // treats this socket's fresh entry as an orphan.
+      this.presenceConnections.register({
+        sessionId: body.sessionId,
+        participantId,
+        socketId: client.id,
+        requestRecovery: () =>
+          this.requestPresenceRecovery(client, body.sessionId),
+      });
       // `client.id` is the connection identity presence is keyed by, so a
       // reconnect is a different connection rather than a second count on the
       // same one, and this socket's eventual disconnect removes exactly this
       // entry.
-      const connected = await this.presence.connected(
-        body.sessionId,
-        participantId,
-        client.id,
-      );
+      let connected = false;
+      try {
+        connected = await this.presence.connected(
+          body.sessionId,
+          participantId,
+          client.id,
+        );
+      } finally {
+        if (!connected) {
+          this.presenceConnections.unregister(client.id, body.sessionId);
+          await client.leave(this.room(body.sessionId));
+          client.data.subscribedParticipants.delete(body.sessionId);
+        }
+      }
       if (!connected) {
-        await client.leave(this.room(body.sessionId));
-        client.data.subscribedParticipants.delete(body.sessionId);
         throw Object.assign(new Error('Participant connection limit reached'), {
           code: 'PARTICIPANT_CONNECTION_LIMIT',
         });
@@ -299,6 +352,7 @@ export class LiveGameSessionsGateway
       body.sessionId,
     );
     client.data.subscribedParticipants.delete(body.sessionId);
+    this.presenceConnections.unregister(client.id, body.sessionId);
     if (participantId) {
       await this.presence.disconnected(
         body.sessionId,
