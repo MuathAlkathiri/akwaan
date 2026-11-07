@@ -4,6 +4,9 @@ import { AiProvider } from '../../ai-agent/domain/ai-provider.interface';
 import {
   AmbiguousProviderOutcomeError,
   ENGINE_AI_PROVIDER,
+  outputTokensExhaustion,
+  ProviderOutputTokensExhaustedError,
+  providerEvidenceOf,
 } from '../domain/content-engine.constants';
 import { GenerationSpecification } from '../domain/generation-specification';
 import { ResolvedAuthoringContext } from './authoring-context.service';
@@ -161,12 +164,28 @@ export class QualityJudgeService {
       raw = response.text;
       await this.budget.settle({ reservationId, usage: response.usage });
     } catch (error) {
+      // Same rule as generation: a completed call that exhausted its output
+      // ceiling has a known cost and a deterministic outcome.
+      const exhausted = outputTokensExhaustion(error);
+      if (exhausted) {
+        await this.budget.settle({
+          reservationId,
+          usage: exhausted.usage,
+          diagnostics: { ...exhausted.evidence },
+        });
+        throw new ProviderOutputTokensExhaustedError(
+          'quality',
+          exhausted.evidence,
+        );
+      }
       const providerRejected =
         (error as { definitelyNotBilled?: unknown })?.definitelyNotBilled ===
         true;
+      const evidence = providerEvidenceOf(error);
       await this.budget.settle({
         reservationId,
         ...(providerRejected ? { providerRejected: true } : { timedOut: true }),
+        ...(evidence ? { diagnostics: { ...evidence } } : {}),
       });
       throw new AmbiguousProviderOutcomeError(
         'quality',

@@ -4,6 +4,8 @@ import { Model } from 'mongoose';
 import {
   AmbiguousProviderOutcomeError,
   LeaseLostError,
+  PROVIDER_OUTPUT_TOKENS_EXHAUSTED,
+  ProviderOutputTokensExhaustedError,
 } from '../domain/content-engine.constants';
 import { EngineCandidateDocument } from '../schemas/engine-candidate.schema';
 import {
@@ -482,6 +484,19 @@ export class ContentEngineOrchestratorService {
             });
             continue;
           }
+          // The advisory judge ran out of output tokens: settled at its known
+          // cost, deterministic, so this candidate goes to the human unjudged
+          // rather than halting the whole job as ambiguous.
+          if (error instanceof ProviderOutputTokensExhaustedError) {
+            await this.updateCandidate(job, String(row._id), {
+              qualityEvaluation: {
+                error: PROVIDER_OUTPUT_TOKENS_EXHAUSTED,
+                evidence: error.evidence,
+              },
+              status: 'awaiting_review',
+            });
+            continue;
+          }
           throw error;
         }
       }
@@ -535,6 +550,14 @@ export class ContentEngineOrchestratorService {
         // ambiguous provider outcome. The provider has already billed, so retrying
         // the identical prompt would only burn budget or trigger an ambiguous
         // reconciliation halt on attempt 2. Fail closed deterministically.
+        await this.jobs.fail(job.jobId, job.leaseEpoch, error.message);
+        return;
+      }
+      if (error instanceof ProviderOutputTokensExhaustedError) {
+        // The call completed and was settled at its reported cost; the same
+        // request would exhaust the same ceiling. Fail closed — never retry,
+        // never park as ambiguous — so the fix is a deliberate configuration
+        // decision (reasoning effort / output allowance), not another spend.
         await this.jobs.fail(job.jobId, job.leaseEpoch, error.message);
         return;
       }

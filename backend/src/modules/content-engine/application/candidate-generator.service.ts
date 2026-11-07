@@ -8,6 +8,9 @@ import {
   AmbiguousProviderOutcomeError,
   ENGINE_AI_PROVIDER,
   LeaseLostError,
+  outputTokensExhaustion,
+  ProviderOutputTokensExhaustedError,
+  providerEvidenceOf,
 } from '../domain/content-engine.constants';
 import {
   DEFAULT_GENERATION_TEMPERATURE,
@@ -986,12 +989,33 @@ export class CandidateGeneratorService {
       // The flag is set by the adapter and read structurally rather than by
       // matching on error types, so no infrastructure class leaks in here; an
       // unexplained failure has no flag and stays billable.
+      //
+      // A completed request that ran out of output tokens before producing any
+      // visible content is neither: the provider reported the finish and the
+      // usage, so the cost is a fact. It settles at that usage and fails
+      // deterministically — the identical call would exhaust the identical
+      // ceiling, so retrying could only spend the same money again.
+      const exhausted = outputTokensExhaustion(error);
+      if (exhausted) {
+        await this.budget.settle({
+          reservationId,
+          usage: exhausted.usage,
+          diagnostics: { ...exhausted.evidence },
+        });
+        throw new ProviderOutputTokensExhaustedError(
+          'generation',
+          exhausted.evidence,
+        );
+      }
       const providerRejected =
         (error as { definitelyNotBilled?: unknown })?.definitelyNotBilled ===
         true;
+      const evidence = providerEvidenceOf(error);
       await this.budget.settle({
         reservationId,
         ...(providerRejected ? { providerRejected: true } : { timedOut: true }),
+        // Recorded beside the conservative settlement; never changes the charge.
+        ...(evidence ? { diagnostics: { ...evidence } } : {}),
       });
       throw new AmbiguousProviderOutcomeError(
         'generation',

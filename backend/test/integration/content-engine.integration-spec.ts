@@ -14,9 +14,11 @@ import {
   MAX_JOB_ATTEMPTS,
   ENGINE_AI_PROVIDER,
   MICROS_PER_SAR,
+  PROVIDER_OUTPUT_TOKENS_EXHAUSTED,
   sarToMicros,
 } from '../../src/modules/content-engine/domain/content-engine.constants';
 import { FakeAiProvider } from '../../src/modules/content-engine/testing/fake-ai.provider';
+import { OpenRouterEmptyCompletionError } from '../../src/modules/content-engine/infrastructure/openrouter-ai.provider';
 
 import { AuthoringContextService } from '../../src/modules/content-engine/application/authoring-context.service';
 import { CandidateGeneratorService } from '../../src/modules/content-engine/application/candidate-generator.service';
@@ -56,6 +58,12 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
     'fake/fake-model': {
       inputMicrosPerMillion: MICROS_PER_SAR,
       outputMicrosPerMillion: MICROS_PER_SAR,
+    },
+    // Production rates, for the Pilot 01 settlement regression.
+    'openrouter/anthropic/claude-sonnet-5.5': {
+      inputMicrosPerMillion: 7_500_000,
+      outputMicrosPerMillion: 37_500_000,
+      reasoningMicrosPerMillion: 37_500_000,
     },
   });
 
@@ -526,6 +534,48 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
         model: 'fake-model',
         expected: { promptTokens: 2_000_000, maxOutputTokens: 0 }, // reserve 2 SAR
       });
+
+    it('Pilot 01: settles the exact exhausted call at 220,433 micro-SAR, once', async () => {
+      // Production reserved 242,948 micros for this call (20,393 estimated
+      // prompt tokens + a 2,400-token ceiling at Sonnet 5.5 rates).
+      const before = await budget.snapshot();
+      const reserved = await budget.reserve({
+        reservationId: 'pilot-01-generation',
+        jobId: 'pilot-01',
+        stage: 'generation',
+        provider: 'openrouter',
+        model: 'anthropic/claude-sonnet-5.5',
+        expected: { promptTokens: 20_393, maxOutputTokens: 2_400 },
+      });
+      expect(reserved.reservedMicros).toBe(242_948);
+      const settle = () =>
+        budget.settle({
+          reservationId: 'pilot-01-generation',
+          usage: { promptTokens: 17_391, completionTokens: 2_400 },
+          diagnostics: {
+            finishReason: 'length',
+            nativeFinishReason: 'max_tokens',
+            reasoningTokens: 2_400,
+            providerReportedCostUsd: 0.058782,
+          },
+        });
+      const first = await settle();
+      expect(first!.actualMicros).toBe(220_433);
+      expect(first!.usageSource).toBe('reported');
+      // Idempotent: the same attempt can never be charged twice.
+      expect(await settle()).toBeNull();
+      const after = await budget.snapshot();
+      expect(after.spentMicros - before.spentMicros).toBe(220_433);
+      expect(after.reservedMicros).toBe(before.reservedMicros);
+      const entry = await database
+        .collection('engine_cost_ledger')
+        .findOne({ reservationId: 'pilot-01-generation' });
+      expect(entry!.usageKnown).toBe(true);
+      expect(entry!.providerDiagnostics).toMatchObject({
+        finishReason: 'length',
+        reasoningTokens: 2_400,
+      });
+    });
 
     it('records provider-measured diagnostics beside the settlement', async () => {
       // A reasoning model's spend is only auditable if the reasoning split is
@@ -1029,6 +1079,66 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
           .collection('engine_candidates')
           .countDocuments({ jobId: held.jobId }),
       ).toBe(0);
+    });
+
+    it('Pilot 01: a token-exhausted judgement is settled at reported usage and handed to a human, not parked as ambiguous', async () => {
+      const { held } = await startJob('phase-1c-quality-exhausted');
+      await generator.generate({
+        jobId: held.jobId,
+        leaseEpoch: held.leaseEpoch,
+        attempt: held.attempts,
+        context: context.resolve(PILOT),
+        count: 2,
+      });
+      const original = fakeProvider.generateText.bind(fakeProvider);
+      const spy = jest
+        .spyOn(fakeProvider, 'generateText')
+        .mockImplementation(async (request) => {
+          const isJudge = !(
+            'candidates' in
+            ((request.responseSchema?.properties as object) ?? {})
+          );
+          if (!isJudge) return original(request);
+          throw new OpenRouterEmptyCompletionError({
+            finishReason: 'length',
+            nativeFinishReason: 'max_tokens',
+            promptTokens: 3_000,
+            completionTokens: 900,
+            reasoningTokens: 900,
+          });
+        });
+      try {
+        await orchestrator.run(held);
+      } finally {
+        spy.mockRestore();
+      }
+      const job = await jobs.findById(held.jobId);
+      expect(job!.status).toBe('awaiting_review');
+      expect(job!.pipelineStage).not.toBe('provider_outcome_ambiguous');
+      const rows = await database
+        .collection('engine_candidates')
+        .find({ jobId: held.jobId })
+        .toArray();
+      const judged = rows.filter((row) => row.qualityEvaluation);
+      expect(judged.length).toBeGreaterThan(0);
+      for (const row of judged) {
+        expect(row.qualityEvaluation.error).toBe(
+          PROVIDER_OUTPUT_TOKENS_EXHAUSTED,
+        );
+        expect(row.status).toBe('awaiting_review');
+      }
+      const entries = await database
+        .collection('engine_cost_ledger')
+        .find({ jobId: held.jobId, stage: 'quality' })
+        .toArray();
+      expect(entries.length).toBe(judged.length);
+      for (const entry of entries) {
+        expect(entry.status).toBe('reconciled');
+        expect(entry.usageSource).toBe('reported');
+        expect(entry.usageKnown).toBe(true);
+        // 3,000 + 900 tokens at 1 SAR per million (fake rates).
+        expect(entry.actualMicros).toBe(3_900);
+      }
     });
 
     it('stops for human reconciliation after an ambiguous judge timeout', async () => {
