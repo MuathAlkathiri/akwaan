@@ -18,6 +18,12 @@ import {
 } from '../../src/modules/live-game-sessions/domain/live-game-mode.registry';
 import { PresenceOwnershipService } from '../../src/modules/live-game-sessions/application/presence-ownership.service';
 import { PresenceConnectionRegistry } from '../../src/modules/live-game-sessions/application/presence-connection.registry';
+import { PresenceEffectsReconciler } from '../../src/modules/live-game-sessions/application/presence-effects.reconciler';
+import { MongoosePresenceReconcileTargets } from '../../src/modules/live-game-sessions/infrastructure/mongoose-presence-reconcile-targets';
+import {
+  GAMEPLAY_RUNTIME_REPOSITORY,
+  GameplayRuntimeRepository,
+} from '../../src/modules/live-game-sessions/domain/gameplay-runtime.repository';
 import { UpdateParticipantPresence } from '../../src/modules/live-game-sessions/application/update-participant-presence.use-case';
 import { ParticipantCredentialService } from '../../src/modules/live-game-sessions/application/participant-credential.service';
 import {
@@ -476,6 +482,197 @@ describe('presence instance ownership (multi-instance integration)', () => {
     } finally {
       for (const socket of sockets) socket.disconnect();
     }
+  }, 120_000);
+
+  /** A persisted runtime document, written raw, as history left it. */
+  const rawRuntime = (input: {
+    sessionId: string;
+    status?: string;
+    expired?: boolean;
+    createdAt?: Date;
+    modeKey?: string;
+    revision?: number;
+  }) => {
+    const createdAt = input.createdAt ?? new Date(Date.now() - 3_600_000);
+    const expiresAt = new Date(
+      Date.now() + (input.expired ? -3_600_000 : 3_600_000),
+    );
+    const runtimeId = `rt-${rnd()}`;
+    const modeKey = input.modeKey ?? 'retired-legacy-mode';
+    return {
+      runtimeId,
+      sessionId: input.sessionId,
+      modeKey,
+      modeVersion: 1,
+      status: input.status ?? 'active',
+      revision: input.revision ?? 3,
+      createdAt,
+      expiresAt,
+      state: {
+        id: runtimeId,
+        sessionId: input.sessionId,
+        modeKey,
+        modeVersion: 1,
+        stateSchemaVersion: 1,
+        status: input.status ?? 'active',
+        revision: input.revision ?? 3,
+        runtimeState: {},
+        completedRounds: [],
+        transitions: [],
+        events: [],
+        processedCommandIds: [],
+        createdAt,
+        expiresAt,
+      },
+    };
+  };
+  const runtimesCollection = () => database.collection('gameplay_runtimes');
+
+  it('backstop targets: only the newest runtime of each playable session', async () => {
+    const b = await boot();
+    await runtimesCollection().deleteMany({});
+    const older = new Date(Date.now() - 7_200_000);
+    await runtimesCollection().insertMany([
+      rawRuntime({ sessionId: 'playable' }),
+      rawRuntime({ sessionId: 'expired', expired: true }),
+      rawRuntime({ sessionId: 'finished', status: 'completed' }),
+      // History: an older live runtime under a newer finished one.
+      rawRuntime({ sessionId: 'history', createdAt: older }),
+      rawRuntime({ sessionId: 'history', status: 'cancelled' }),
+      // A newer live runtime replaces an older finished one.
+      rawRuntime({
+        sessionId: 'relaunched',
+        status: 'completed',
+        createdAt: older,
+      }),
+      rawRuntime({ sessionId: 'relaunched', revision: 9 }),
+    ]);
+    const targets = b.app.get(MongoosePresenceReconcileTargets);
+    const playable = await targets.playable(new Date());
+    expect(playable.map((fp) => fp.sessionId).sort()).toEqual([
+      'playable',
+      'relaunched',
+    ]);
+    expect(playable.find((fp) => fp.sessionId === 'relaunched')?.revision).toBe(
+      9,
+    );
+    // The shared deadline-scheduler query is unchanged: it still sees the
+    // expired runtime.
+    const shared = await b.app
+      .get<GameplayRuntimeRepository>(GAMEPLAY_RUNTIME_REPOSITORY)
+      .findSessionIdsWithLiveRuntimes();
+    expect(shared.sort()).toEqual(['expired', 'playable', 'relaunched']);
+    // Fingerprints follow the newest runtime whatever its status.
+    const [history] = await targets.fingerprints(['history']);
+    expect(history.sessionId).toBe('history');
+    await runtimesCollection().deleteMany({});
+  }, 120_000);
+
+  it('workload: ~50 abandoned runtimes and 6 unrestorable ones, before vs after', async () => {
+    const b = await boot();
+    await runtimesCollection().deleteMany({});
+    const abandoned = Array.from({ length: 50 }, (_, i) =>
+      rawRuntime({ sessionId: `abandoned-${i}`, expired: true }),
+    );
+    // Unrestorable and still unexpired: their plugin is not registered, so
+    // every restore fails deterministically, like production's six.
+    const broken = Array.from({ length: 6 }, (_, i) =>
+      rawRuntime({ sessionId: `broken-${i}` }),
+    );
+    await runtimesCollection().insertMany([...abandoned, ...broken]);
+
+    // BEFORE: the previous backstop reconciled every non-terminal runtime on
+    // every pass, through the shared query, with no quarantine.
+    const reconciler = b.app.get(PresenceEffectsReconciler);
+    const legacySelection = await b.app
+      .get<GameplayRuntimeRepository>(GAMEPLAY_RUNTIME_REPOSITORY)
+      .findSessionIdsWithLiveRuntimes();
+    const beforeStarted = Date.now();
+    let cursor = 0;
+    await Promise.all(
+      Array.from({ length: 8 }, async () => {
+        while (cursor < legacySelection.length) {
+          await reconciler.forSession(legacySelection[cursor++]);
+        }
+      }),
+    );
+    const beforePassMs = Date.now() - beforeStarted;
+
+    // AFTER: the presence backstop only sees playable sessions, quarantines
+    // the unrestorable ones once, and then has nothing left to do.
+    const ticks: Array<{
+      ms: number;
+      reconciled: number;
+      quarantined: number;
+    }> = [];
+    for (let pass = 0; pass < 3; pass += 1) {
+      for (let i = 0; i < b.ownership.options.fullReconcileEveryTicks; i += 1) {
+        const stats = await b.ownership.tick();
+        if (stats.sessionsReconciled || i === 2) {
+          ticks.push({
+            ms: stats.durationMs,
+            reconciled: stats.sessionsReconciled,
+            quarantined: stats.quarantineSize,
+          });
+        }
+      }
+    }
+    // eslint-disable-next-line no-console
+    console.log(
+      JSON.stringify({
+        reconcileWorkload: {
+          before: {
+            sessionsPerBackstop: legacySelection.length,
+            passMs: beforePassMs,
+          },
+          after: { backstopTicks: ticks },
+        },
+      }),
+    );
+    expect(legacySelection).toHaveLength(56);
+    expect(ticks[0].reconciled).toBe(6);
+    expect(ticks[0].quarantined).toBe(6);
+    // Every later backstop: nothing reconciled, the six stay quarantined.
+    for (const later of ticks.slice(1)) {
+      expect(later.reconciled).toBe(0);
+      expect(later.quarantined).toBe(6);
+    }
+    expect(Math.max(...ticks.map((t) => t.ms))).toBeLessThan(2_500);
+    await runtimesCollection().deleteMany({});
+  }, 180_000);
+
+  it('two instances reconciling the same unrestorable sessions concurrently stay independent and quiet', async () => {
+    const a = await boot();
+    const b = await boot();
+    await runtimesCollection().deleteMany({});
+    await runtimesCollection().insertMany(
+      Array.from({ length: 4 }, (_, i) => rawRuntime({ sessionId: `c-${i}` })),
+    );
+    const backstopBoth = () =>
+      Promise.all(
+        [a, b].map(async (instance) => {
+          for (
+            let i = 0;
+            i < instance.ownership.options.fullReconcileEveryTicks;
+            i += 1
+          ) {
+            await instance.ownership.tick();
+          }
+        }),
+      );
+    await backstopBoth();
+    expect(a.ownership.lastTick).toMatchObject({
+      quarantineSize: 4,
+      stepFailures: [],
+    });
+    expect(b.ownership.lastTick).toMatchObject({
+      quarantineSize: 4,
+      stepFailures: [],
+    });
+    await backstopBoth();
+    expect(a.ownership.lastTick?.sessionsReconciled).toBe(0);
+    expect(b.ownership.lastTick?.sessionsReconciled).toBe(0);
+    await runtimesCollection().deleteMany({});
   }, 120_000);
 
   it('workload: the 5-second tick, measured', async () => {

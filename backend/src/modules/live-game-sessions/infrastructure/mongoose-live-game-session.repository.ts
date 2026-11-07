@@ -64,9 +64,14 @@ export class MongooseLiveGameSessionRepository implements LiveGameSessionReposit
   }
 
   async findSessionIdsInBombCountdown(): Promise<string[]> {
-    // Bounded by the `status` index; `ready` is a seconds-long state.
+    // Bounded by the `status` index; `ready` is a seconds-long state. An
+    // expired session refuses every command, so a countdown left `ready` past
+    // its session's expiry is not one presence can (or needs to) cancel.
     const rows = await this.model
-      .find({ status: 'ready', modeKey: 'bomb' }, { sessionId: 1, _id: 0 })
+      .find(
+        { status: 'ready', modeKey: 'bomb', expiresAt: { $gt: new Date() } },
+        { sessionId: 1, _id: 0 },
+      )
       .limit(500)
       .lean()
       .exec();

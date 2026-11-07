@@ -21,6 +21,35 @@ import {
 import { BombCountdownScheduler } from './bomb-countdown.scheduler';
 import { ReassignTeamActions } from './reassign-team-actions.use-case';
 import { WithdrawPresentationReadiness } from './withdraw-presentation-readiness.use-case';
+import { LiveSessionDomainError } from '../domain/live-session.errors';
+
+/**
+ * The verdict of one reconciliation pass over a session.
+ *
+ * - `ok`: every effect was reconciled.
+ * - `transient`: something failed that a later pass may succeed at — database
+ *   or network errors, timeouts, lost revision races, or anything not proven
+ *   permanent. Retried with backoff.
+ * - `permanent`: the session's persisted runtime or session cannot be
+ *   restored at all, so no pass can succeed until that document changes.
+ */
+export type ReconcileOutcome =
+  | { status: 'ok' }
+  | { status: 'transient' }
+  | { status: 'permanent'; code: string; message: string };
+
+/**
+ * Codes a restore can never mean "invalid persisted state": they describe a
+ * race or an absence, which time can change. Listed so a refactor that ever
+ * surfaced one through a load is still never mistaken for corruption.
+ */
+const NON_PERMANENT_CODES = new Set([
+  'CONCURRENT_UPDATE',
+  'STALE_REVISION',
+  'STALE_RUNTIME_REVISION',
+  'SESSION_NOT_FOUND',
+  'GAMEPLAY_RUNTIME_NOT_FOUND',
+]);
 
 /**
  * Brings a session's gameplay into line with its current presence.
@@ -58,10 +87,11 @@ export class PresenceEffectsReconciler {
 
   /**
    * Reconciles every presence-derived effect for one session. Each part is
-   * contained, so one failing never skips the others. Returns false if any
-   * failed, so the caller retries the session on its next pass.
+   * contained, so one failing never skips the others. A failure is then
+   * classified (see `classifyFailure`) so the caller can retry what may yet
+   * succeed and stop retrying what provably cannot.
    */
-  async forSession(sessionId: string): Promise<boolean> {
+  async forSession(sessionId: string): Promise<ReconcileOutcome> {
     const results = [
       await this.contain('team_action_reassignment', sessionId, () =>
         this.reassignTeamActions.forSession(sessionId),
@@ -73,7 +103,40 @@ export class PresenceEffectsReconciler {
         this.cancelUnreadyBombCountdown(sessionId),
       ),
     ];
-    return results.every(Boolean);
+    if (results.every(Boolean)) return { status: 'ok' };
+    return this.classifyFailure(sessionId);
+  }
+
+  /**
+   * Decides whether a failed pass can ever succeed, from evidence rather than
+   * from the error it happened to throw.
+   *
+   * A domain error alone proves nothing: revision races and "not found" are
+   * domain errors too. So the session's persisted state is re-read through the
+   * same restore every effect uses. Restoring is a pure function of the stored
+   * document and the plugin code, so a domain error *from the restore itself*
+   * is deterministic: every later pass would fail identically until the
+   * document changes. Anything else — the probe succeeding (the failure lay
+   * elsewhere), or the probe failing on the database — stays transient.
+   */
+  async classifyFailure(sessionId: string): Promise<ReconcileOutcome> {
+    try {
+      await this.runtimes.findBySessionId(sessionId);
+      await this.sessions.findById(sessionId);
+      return { status: 'transient' };
+    } catch (error) {
+      if (
+        error instanceof LiveSessionDomainError &&
+        !NON_PERMANENT_CODES.has(error.code)
+      ) {
+        return {
+          status: 'permanent',
+          code: error.code,
+          message: error.message,
+        };
+      }
+      return { status: 'transient' };
+    }
   }
 
   /** Readiness held by a connection no longer present in presence. */
@@ -120,14 +183,17 @@ export class PresenceEffectsReconciler {
             !participant.removedAt,
         ),
       );
+    const now = this.clock.now();
     if (
       state.modeKey !== 'bomb' ||
       state.status !== 'ready' ||
-      representativesReady
+      representativesReady ||
+      // An expired session refuses every command; there is no countdown left
+      // that anyone could start, and cancelling would only throw.
+      now.getTime() >= new Date(state.expiresAt).getTime()
     ) {
       return false;
     }
-    const now = this.clock.now();
     const previousRevision = session.revision;
     session.cancelCountdown(now);
     session.completeCommand(randomUUID(), now);

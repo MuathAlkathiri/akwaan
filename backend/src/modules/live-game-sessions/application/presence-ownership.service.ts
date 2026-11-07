@@ -14,11 +14,10 @@ import {
 } from './participant-presence.port';
 import { PRESENCE_INSTANCE, PresenceInstance } from './presence-instance';
 import { PresenceConnectionRegistry } from './presence-connection.registry';
-import { PresenceEffectsReconciler } from './presence-effects.reconciler';
 import {
-  GAMEPLAY_RUNTIME_REPOSITORY,
-  GameplayRuntimeRepository,
-} from '../domain/gameplay-runtime.repository';
+  PresenceEffectsReconciler,
+  ReconcileOutcome,
+} from './presence-effects.reconciler';
 import {
   LIVE_GAME_SESSION_REPOSITORY,
   LiveGameSessionRepository,
@@ -28,6 +27,10 @@ import {
   LeaseOperationError,
   MongooseInstanceLeaseRepository,
 } from '../infrastructure/mongoose-instance-lease.repository';
+import {
+  MongoosePresenceReconcileTargets,
+  RuntimeFingerprint,
+} from '../infrastructure/mongoose-presence-reconcile-targets';
 import { traceStartupStep } from '../../../common/diagnostics/startup-diagnostics';
 
 export interface PresenceOwnershipOptions {
@@ -65,6 +68,17 @@ export interface PresenceOwnershipOptions {
   retryCapacity: number;
   retryBaseMs: number;
   retryMaxMs: number;
+  /** How long a provably unrestorable session is left alone before a recheck. */
+  quarantineMs: number;
+  /** Most quarantined sessions remembered; the oldest is forgotten first. */
+  quarantineCapacity: number;
+  /**
+   * Wall time a tick may spend starting reconciliations. Lease refresh, the
+   * dead-owner sweep, own-entry checks and recovery requests run before it, so
+   * capping it keeps a slow backlog from making ticks outlast their interval
+   * (and the next tick, with its critical steps, from being skipped).
+   */
+  reconcileTimeBudgetMs: number;
 }
 
 export interface PresenceTickStats {
@@ -80,6 +94,14 @@ export interface PresenceTickStats {
   reconcileBacklog: number;
   reconcileDeferred: number;
   reconcileDropped: number;
+  /** Sessions newly quarantined this tick (provably unrestorable). */
+  reconcileQuarantined: number;
+  /** Quarantines lifted this tick (expired, or the persisted state changed). */
+  quarantineReleased: number;
+  /** Sessions currently quarantined. */
+  quarantineSize: number;
+  /** Due work left for the next tick because the time budget ran out. */
+  reconcileBudgetExhausted: boolean;
   stepFailures: string[];
   skipped?: boolean;
 }
@@ -175,6 +197,18 @@ export function presenceOwnershipOptions(
     retryCapacity: Math.max(1, number(env('PRESENCE_RETRY_CAPACITY'), 2_000)),
     retryBaseMs: Math.max(1, number(env('PRESENCE_RETRY_BASE_MS'), 1_000)),
     retryMaxMs: Math.max(1, number(env('PRESENCE_RETRY_MAX_MS'), 60_000)),
+    quarantineMs: Math.max(
+      1,
+      number(env('PRESENCE_RECONCILE_QUARANTINE_MS'), 30 * 60_000),
+    ),
+    quarantineCapacity: Math.max(
+      1,
+      number(env('PRESENCE_RECONCILE_QUARANTINE_CAPACITY'), 1_000),
+    ),
+    reconcileTimeBudgetMs: Math.max(
+      1,
+      number(env('PRESENCE_RECONCILE_TIME_BUDGET_MS'), 2_000),
+    ),
   };
 }
 
@@ -216,6 +250,16 @@ export class PresenceOwnershipService
     string,
     { attempts: number; nextAt: number; queuedAt: number }
   >();
+  /**
+   * Sessions whose persisted runtime or session cannot be restored, keyed by
+   * session, with the runtime fingerprint the verdict was reached against.
+   * Insertion-ordered so the oldest is forgotten first at capacity; forgetting
+   * one only means it may be retried (and re-quarantined) later.
+   */
+  private readonly quarantine = new Map<
+    string,
+    { code: string; until: number; fingerprint?: RuntimeFingerprint }
+  >();
   private legacy:
     | {
         commit: string;
@@ -238,10 +282,9 @@ export class PresenceOwnershipService
     private readonly leases: MongooseInstanceLeaseRepository,
     private readonly registry: PresenceConnectionRegistry,
     private readonly reconciler: PresenceEffectsReconciler,
-    @Inject(GAMEPLAY_RUNTIME_REPOSITORY)
-    private readonly runtimes: GameplayRuntimeRepository,
     @Inject(LIVE_GAME_SESSION_REPOSITORY)
     private readonly sessions: LiveGameSessionRepository,
+    private readonly targets: MongoosePresenceReconcileTargets,
     @Optional()
     @Inject(PRESENCE_SIGNAL_PROCESS)
     private readonly signalProcess?: SignalProcess,
@@ -369,6 +412,10 @@ export class PresenceOwnershipService
       reconcileBacklog: 0,
       reconcileDeferred: 0,
       reconcileDropped: 0,
+      reconcileQuarantined: 0,
+      quarantineReleased: 0,
+      quarantineSize: 0,
+      reconcileBudgetExhausted: false,
       stepFailures: [],
     };
     if (this.running || this.stopped) return { ...stats, skipped: true };
@@ -401,54 +448,9 @@ export class PresenceOwnershipService
         );
       }
 
-      await this.step(stats, 'reconcile', async () => {
-        for (const id of dirty) this.enqueueRetry(id, stats);
-        if (this.ticks % this.options.fullReconcileEveryTicks === 0) {
-          // The backstop for effects lost to a crash between a removal and its
-          // effects: every live runtime, and every Bomb countdown (which has
-          // no runtime yet and would otherwise stay stuck in `ready`).
-          const [live, countdowns] = await Promise.all([
-            this.runtimes.findSessionIdsWithLiveRuntimes(),
-            this.sessions.findSessionIdsInBombCountdown(),
-          ]);
-          for (const id of [...live, ...countdowns])
-            this.enqueueRetry(id, stats);
-        }
-        // Budgeted: a mass sweep (one instance dying with many players) is
-        // spread over several ticks rather than making one tick outlast its
-        // interval. Sessions over budget stay owed in `retry`.
-        const now = this.now();
-        const ordered = [...this.retry.entries()].sort(
-          ([, a], [, b]) => a.nextAt - b.nextAt || a.queuedAt - b.queuedAt,
-        );
-        const batch = ordered
-          .filter(([, state]) => state.nextAt <= now)
-          .slice(0, this.options.reconcileBudget);
-        stats.reconcileDeferred = ordered.length - batch.length;
-        await eachBounded(
-          batch,
-          this.options.concurrency,
-          async ([sessionId, retry]) => {
-            const ok = await this.reconciler.forSession(sessionId);
-            stats.sessionsReconciled += 1;
-            if (ok) {
-              this.retry.delete(sessionId);
-              return;
-            }
-            const attempts = retry.attempts + 1;
-            const delay = Math.min(
-              this.options.retryMaxMs,
-              this.options.retryBaseMs * 2 ** Math.min(attempts - 1, 16),
-            );
-            this.retry.set(sessionId, {
-              attempts,
-              nextAt: now + delay,
-              queuedAt: retry.queuedAt,
-            });
-          },
-        );
-        stats.reconcileBacklog = this.retry.size;
-      });
+      await this.step(stats, 'reconcile', () =>
+        this.reconcilePhase(dirty, stats),
+      );
 
       if (this.ticks % 720 === 0) {
         await this.step(stats, 'lease_cleanup', () =>
@@ -467,6 +469,9 @@ export class PresenceOwnershipService
         stats.orphansRemoved ||
         stats.recoveriesRequested ||
         stats.reconcileBacklog ||
+        stats.reconcileQuarantined ||
+        stats.quarantineReleased ||
+        stats.reconcileBudgetExhausted ||
         stats.stepFailures.length ||
         (this.options.tickMs > 0 && stats.durationMs > this.options.tickMs / 2)
       ) {
@@ -474,6 +479,196 @@ export class PresenceOwnershipService
       }
     }
     return stats;
+  }
+
+  /**
+   * Reconciles owed sessions: the ones this tick dirtied, retries that are due,
+   * and — every `fullReconcileEveryTicks` — every playable session, as the
+   * backstop for effects a crashed process never applied.
+   *
+   * Two bounds keep it from crowding out the critical steps that precede it:
+   * a per-tick session budget and a wall-time budget. Work over either stays
+   * owed in `retry` for the next tick. Sessions proven unrestorable are
+   * quarantined instead of retried.
+   */
+  private async reconcilePhase(
+    dirty: Set<string>,
+    stats: PresenceTickStats,
+  ): Promise<void> {
+    const now = this.now();
+    this.expireQuarantine(now, stats);
+
+    // A dirty session that is quarantined is retried only if its persisted
+    // state changed since the verdict (a new challenge, or any committed
+    // revision); otherwise reconciling it again could only fail again.
+    const dirtyQuarantined = [...dirty].filter((id) => this.quarantine.has(id));
+    if (dirtyQuarantined.length) {
+      this.releaseIfChanged(
+        dirtyQuarantined,
+        await this.targets.fingerprints(dirtyQuarantined),
+        stats,
+      );
+    }
+    for (const id of dirty) {
+      if (!this.quarantine.has(id)) this.enqueueRetry(id, stats);
+    }
+
+    if (this.ticks % this.options.fullReconcileEveryTicks === 0) {
+      // The backstop: every *playable* runtime (not terminal, not expired),
+      // and every unexpired Bomb countdown (which has no runtime yet).
+      const [playable, countdowns] = await Promise.all([
+        this.targets.playable(new Date(now)),
+        this.sessions.findSessionIdsInBombCountdown(),
+      ]);
+      this.releaseIfChanged(
+        playable
+          .map((fp) => fp.sessionId)
+          .filter((id) => this.quarantine.has(id)),
+        playable,
+        stats,
+      );
+      for (const id of [...playable.map((fp) => fp.sessionId), ...countdowns]) {
+        if (!this.quarantine.has(id)) this.enqueueRetry(id, stats);
+      }
+    }
+
+    // Read the clock again: everything enqueued above was stamped after `now`,
+    // and must count as due in this same pass.
+    const due = this.now();
+    const ordered = [...this.retry.entries()].sort(
+      ([, a], [, b]) => a.nextAt - b.nextAt || a.queuedAt - b.queuedAt,
+    );
+    const batch = ordered
+      .filter(([, state]) => state.nextAt <= due)
+      .slice(0, this.options.reconcileBudget);
+    stats.reconcileDeferred = ordered.length - batch.length;
+
+    const started = this.now();
+    let next = 0;
+    const lane = async () => {
+      while (next < batch.length) {
+        if (this.now() - started >= this.options.reconcileTimeBudgetMs) {
+          stats.reconcileBudgetExhausted = true;
+          return;
+        }
+        const [sessionId, retry] = batch[next++];
+        const outcome = await this.reconciler.forSession(sessionId);
+        stats.sessionsReconciled += 1;
+        await this.applyOutcome(sessionId, retry, outcome, due, stats);
+      }
+    };
+    await Promise.all(
+      Array.from(
+        { length: Math.min(this.options.concurrency, batch.length) },
+        lane,
+      ),
+    );
+    stats.reconcileBacklog = this.retry.size;
+    stats.quarantineSize = this.quarantine.size;
+  }
+
+  private async applyOutcome(
+    sessionId: string,
+    retry: { attempts: number; queuedAt: number },
+    outcome: ReconcileOutcome,
+    now: number,
+    stats: PresenceTickStats,
+  ): Promise<void> {
+    if (outcome.status === 'ok') {
+      this.retry.delete(sessionId);
+      return;
+    }
+    if (outcome.status === 'permanent') {
+      this.retry.delete(sessionId);
+      await this.quarantineSession(sessionId, outcome, now, stats);
+      return;
+    }
+    const attempts = retry.attempts + 1;
+    const delay = Math.min(
+      this.options.retryMaxMs,
+      this.options.retryBaseMs * 2 ** Math.min(attempts - 1, 16),
+    );
+    this.retry.set(sessionId, {
+      attempts,
+      nextAt: now + delay,
+      queuedAt: retry.queuedAt,
+    });
+  }
+
+  private async quarantineSession(
+    sessionId: string,
+    outcome: Extract<ReconcileOutcome, { status: 'permanent' }>,
+    now: number,
+    stats: PresenceTickStats,
+  ): Promise<void> {
+    let fingerprint: RuntimeFingerprint | undefined;
+    try {
+      [fingerprint] = await this.targets.fingerprints([sessionId]);
+    } catch (error) {
+      // Without a fingerprint the quarantine still holds until it expires;
+      // it simply cannot be lifted early by a state change.
+      this.logFailure('reconcile_fingerprint', error);
+    }
+    if (this.quarantine.size >= this.options.quarantineCapacity) {
+      const oldest = this.quarantine.keys().next().value;
+      if (oldest !== undefined) this.quarantine.delete(oldest);
+    }
+    const until = now + this.options.quarantineMs;
+    this.quarantine.set(sessionId, { code: outcome.code, until, fingerprint });
+    stats.reconcileQuarantined += 1;
+    // Logged once per quarantine, not once per attempt.
+    this.logger.warn({
+      event: 'presence_reconcile_quarantined',
+      sessionId,
+      code: outcome.code,
+      message: outcome.message,
+      runtimeId: fingerprint?.runtimeId,
+      revision: fingerprint?.revision,
+      recheckInMs: this.options.quarantineMs,
+    });
+  }
+
+  /** Lifts quarantines whose time is up; the session is rechecked if owed. */
+  private expireQuarantine(now: number, stats: PresenceTickStats): void {
+    for (const [sessionId, entry] of this.quarantine) {
+      if (entry.until > now) continue;
+      this.quarantine.delete(sessionId);
+      stats.quarantineReleased += 1;
+      this.logger.log({
+        event: 'presence_reconcile_quarantine_released',
+        sessionId,
+        reason: 'expired',
+      });
+    }
+  }
+
+  /**
+   * Lifts the quarantine of each given session whose newest persisted runtime
+   * differs from the one the verdict was reached against — a new runtime, or
+   * a committed revision (a repair, or gameplay that somehow progressed).
+   */
+  private releaseIfChanged(
+    sessionIds: string[],
+    current: RuntimeFingerprint[],
+    stats: PresenceTickStats,
+  ): void {
+    const byId = new Map(current.map((fp) => [fp.sessionId, fp]));
+    for (const sessionId of sessionIds) {
+      const entry = this.quarantine.get(sessionId);
+      if (!entry) continue;
+      const now = byId.get(sessionId);
+      const was = entry.fingerprint;
+      const changed =
+        now?.runtimeId !== was?.runtimeId || now?.revision !== was?.revision;
+      if (!changed) continue;
+      this.quarantine.delete(sessionId);
+      stats.quarantineReleased += 1;
+      this.logger.log({
+        event: 'presence_reconcile_quarantine_released',
+        sessionId,
+        reason: 'state-changed',
+      });
+    }
   }
 
   private enqueueRetry(sessionId: string, stats: PresenceTickStats): void {

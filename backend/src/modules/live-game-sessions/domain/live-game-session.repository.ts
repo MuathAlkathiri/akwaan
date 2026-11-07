@@ -39,9 +39,9 @@ export interface LiveGameSessionRepository {
    */
   findOwnedSessionRefs(controllerActorId: string): Promise<OwnedSessionRef[]>;
   /**
-   * Bomb sessions currently counting down (`ready`). Presence reconciliation's
-   * backstop: such a session has no gameplay runtime yet, and a missed
-   * cancellation would otherwise leave it stuck in `ready`.
+   * Unexpired Bomb sessions currently counting down (`ready`). Presence
+   * reconciliation's backstop: such a session has no gameplay runtime yet, and
+   * a missed cancellation would otherwise leave it stuck in `ready`.
    */
   findSessionIdsInBombCountdown(): Promise<string[]>;
   save(session: LiveGameSession, expectedRevision: number): Promise<void>;

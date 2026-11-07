@@ -37,6 +37,8 @@ import {
 } from '../../src/modules/live-game-sessions/application/live-participant.use-cases';
 import { UpdateParticipantPresence } from '../../src/modules/live-game-sessions/application/update-participant-presence.use-case';
 import { GameplayDeadlineScheduler } from '../../src/modules/live-game-sessions/application/gameplay-deadline.scheduler';
+import { PresenceOwnershipService } from '../../src/modules/live-game-sessions/application/presence-ownership.service';
+import { PresenceEffectsReconciler } from '../../src/modules/live-game-sessions/application/presence-effects.reconciler';
 import { GetGameplayRuntime } from '../../src/modules/live-game-sessions/application/gameplay-runtime.queries';
 import { GameplayRuntimeSocketFacade } from '../../src/modules/live-game-sessions/application/gameplay-runtime.socket-facade';
 import { SubmitGameplayCommand } from '../../src/modules/live-game-sessions/application/submit-gameplay-command.use-case';
@@ -992,6 +994,61 @@ describe('لا تحرقها lifecycle integration', () => {
       MatchStage.BOARD,
     );
   }, 60_000);
+
+  it('quarantines a runtime whose team-action state is gone, instead of retrying it forever', async () => {
+    // Production carried six such runtimes: abandoned, still "active", and
+    // missing `teamActionJson`. Every load fails in the plugin's validation, so
+    // every reconciliation pass failed identically, every minute, for ever.
+    const session = await startSession();
+    await launch(session.sessionId);
+    await present(session.sessionId);
+    const original = String((await rawState(session.sessionId)).teamActionJson);
+    const runtimes = database.collection('gameplay_runtimes');
+    const filter = {
+      runtimeId: String((await rawRuntime(session.sessionId))!.runtimeId),
+    };
+    await runtimes.updateOne(filter, {
+      $unset: { 'state.runtimeState.teamActionJson': '' },
+    });
+
+    const ownership = app.get(PresenceOwnershipService);
+    const reconciler = app.get(PresenceEffectsReconciler);
+    await expect(reconciler.forSession(session.sessionId)).resolves.toEqual({
+      status: 'permanent',
+      code: 'INVALID_TEAM_ACTION_STATE',
+      message: 'Team action assignment state is missing',
+    });
+
+    const spy = jest.spyOn(reconciler, 'forSession');
+    const passesFor = () =>
+      spy.mock.calls.filter(([id]) => id === session.sessionId).length;
+    const backstop = async () => {
+      for (let i = 0; i < ownership.options.fullReconcileEveryTicks; i += 1) {
+        await ownership.tick();
+      }
+    };
+    try {
+      await backstop();
+      expect(passesFor()).toBe(1);
+      expect(ownership.lastTick?.quarantineSize).toBeGreaterThanOrEqual(1);
+      for (let i = 0; i < 3; i += 1) await backstop();
+      expect(passesFor()).toBe(1); // quarantined: never retried meanwhile
+
+      // A repair commits a new revision; the next backstop notices and the
+      // session is reconciled again — successfully.
+      await runtimes.updateOne(filter, {
+        $set: { 'state.runtimeState.teamActionJson': original },
+        $inc: { revision: 1, 'state.revision': 1 },
+      });
+      await backstop();
+      expect(passesFor()).toBe(2);
+      await expect(reconciler.forSession(session.sessionId)).resolves.toEqual({
+        status: 'ok',
+      });
+    } finally {
+      spy.mockRestore();
+    }
+  }, 120_000);
 
   const waitFor = async (
     sessionId: string,

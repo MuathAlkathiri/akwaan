@@ -142,6 +142,7 @@ import { PresenceConnectionRegistry } from './application/presence-connection.re
 import { PresenceEffectsReconciler } from './application/presence-effects.reconciler';
 import { PresenceOwnershipService } from './application/presence-ownership.service';
 import { MongooseInstanceLeaseRepository } from './infrastructure/mongoose-instance-lease.repository';
+import { MongoosePresenceReconcileTargets } from './infrastructure/mongoose-presence-reconcile-targets';
 import {
   BackendInstanceLeaseDocument,
   BackendInstanceLeaseSchema,
@@ -286,6 +287,7 @@ const applicationProviders = [
     MongooseLiveGameSessionRepository,
     MongooseParticipantPresenceRepository,
     MongooseInstanceLeaseRepository,
+    MongoosePresenceReconcileTargets,
     {
       // One identity per process: every presence entry this instance writes
       // carries it, and its lease proves the instance is alive.

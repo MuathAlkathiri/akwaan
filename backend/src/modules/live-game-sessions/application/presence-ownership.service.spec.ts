@@ -9,6 +9,7 @@ import {
   SignalProcess,
 } from './presence-ownership.service';
 import { OwnerLeaseStatus } from '../infrastructure/mongoose-instance-lease.repository';
+import { ReconcileOutcome } from './presence-effects.reconciler';
 
 const ME = 'inst-me';
 
@@ -86,6 +87,33 @@ class FakeLeases {
   });
 }
 
+const OK: ReconcileOutcome = { status: 'ok' };
+const TRANSIENT: ReconcileOutcome = { status: 'transient' };
+const PERMANENT: ReconcileOutcome = {
+  status: 'permanent',
+  code: 'INVALID_TEAM_ACTION_STATE',
+  message: 'Team action assignment state is missing',
+};
+
+/** Persisted runtime fingerprints, and which sessions are still playable. */
+class FakeTargets {
+  readonly fps = new Map<string, { runtimeId: string; revision: number }>();
+  constructor(public playableIds: string[]) {}
+  fp(sessionId: string) {
+    return {
+      sessionId,
+      ...(this.fps.get(sessionId) ?? {
+        runtimeId: `rt-${sessionId}`,
+        revision: 1,
+      }),
+    };
+  }
+  playable = jest.fn<Promise<ReturnType<FakeTargets['fp']>[]>, [Date]>(
+    async () => this.playableIds.map((id) => this.fp(id)),
+  );
+  fingerprints = jest.fn(async (ids: string[]) => ids.map((id) => this.fp(id)));
+}
+
 function setup(
   env: Record<string, string> = {},
   opts: { commit?: string; signal?: SignalProcess } = {},
@@ -94,12 +122,10 @@ function setup(
   const leases = new FakeLeases();
   const registry = new PresenceConnectionRegistry();
   const reconciler = {
-    forSession: jest.fn<Promise<boolean>, [string]>(async () => true),
+    forSession: jest.fn<Promise<ReconcileOutcome>, [string]>(async () => OK),
     cancelUnreadyBombCountdown: jest.fn(),
   };
-  const runtimes = {
-    findSessionIdsWithLiveRuntimes: jest.fn(async () => ['live-1']),
-  };
+  const targets = new FakeTargets(['live-1']);
   const sessions = {
     findSessionIdsInBombCountdown: jest.fn(async () => ['bomb-1']),
   };
@@ -114,8 +140,8 @@ function setup(
     leases as never,
     registry,
     reconciler as never,
-    runtimes as never,
     sessions as never,
+    targets as never,
     opts.signal,
   );
   service.now = () => clock;
@@ -128,7 +154,7 @@ function setup(
     leases,
     registry,
     reconciler,
-    runtimes,
+    targets,
     sessions,
     advance,
     now: () => clock,
@@ -255,7 +281,7 @@ describe('PresenceOwnershipService', () => {
       await t.service.onApplicationBootstrap();
       t.presence.add('s1', 'p1', 'dead:a');
       t.leases.ages.set('dead', 60_000);
-      t.reconciler.forSession.mockResolvedValueOnce(false);
+      t.reconciler.forSession.mockResolvedValueOnce(TRANSIENT);
       await t.service.tick();
       await t.service.tick(); // sweep; reconcile fails
       expect(t.presence.has('s1', 'p1', 'dead:a')).toBe(false);
@@ -274,12 +300,8 @@ describe('PresenceOwnershipService', () => {
         PRESENCE_RETRY_BASE_MS: '1000',
       });
       await t.service.onApplicationBootstrap();
-      t.runtimes.findSessionIdsWithLiveRuntimes.mockResolvedValue([
-        'first',
-        'second',
-        'evicted',
-      ]);
-      t.reconciler.forSession.mockResolvedValue(false);
+      t.targets.playableIds = ['first', 'second', 'evicted'];
+      t.reconciler.forSession.mockResolvedValue(TRANSIENT);
 
       await t.service.tick();
       await t.service.tick();
@@ -308,11 +330,208 @@ describe('PresenceOwnershipService', () => {
       const t = setup();
       await t.service.onApplicationBootstrap();
       for (let i = 0; i < 3; i += 1) await t.service.tick();
-      expect(t.runtimes.findSessionIdsWithLiveRuntimes).toHaveBeenCalledTimes(
-        1,
-      );
+      expect(t.targets.playable).toHaveBeenCalledTimes(1);
       expect(t.reconciler.forSession).toHaveBeenCalledWith('live-1');
       expect(t.reconciler.forSession).toHaveBeenCalledWith('bomb-1');
+    });
+  });
+
+  describe('permanent failures, quarantine and the reconcile budget', () => {
+    const quarantineLogs = () =>
+      (Logger.prototype.warn as jest.Mock).mock.calls.filter(
+        ([entry]) =>
+          (entry as { event?: string })?.event ===
+          'presence_reconcile_quarantined',
+      ).length;
+    /** Runs ticks until the next backstop tick (every third) has run. */
+    const backstop = async (t: ReturnType<typeof setup>) => {
+      for (let i = 0; i < 3; i += 1) await t.service.tick();
+    };
+
+    beforeEach(() => (Logger.prototype.warn as jest.Mock).mockClear());
+    /** No Bomb countdowns, so only the sessions under test are reconciled. */
+    const make = (env: Record<string, string> = {}) => {
+      const t = setup(env);
+      t.sessions.findSessionIdsInBombCountdown.mockResolvedValue([]);
+      return t;
+    };
+
+    it('quarantines a provably unrestorable session once, then stops retrying and logging it', async () => {
+      const t = make();
+      await t.service.onApplicationBootstrap();
+      t.targets.playableIds = ['broken'];
+      t.reconciler.forSession.mockResolvedValue(PERMANENT);
+      await backstop(t);
+      expect(t.reconciler.forSession).toHaveBeenCalledTimes(1);
+      expect(t.service.lastTick).toMatchObject({
+        reconcileQuarantined: 1,
+        quarantineSize: 1,
+        reconcileBacklog: 0,
+      });
+      for (let i = 0; i < 4; i += 1) {
+        t.advance(60_000);
+        await backstop(t);
+      }
+      expect(t.reconciler.forSession).toHaveBeenCalledTimes(1);
+      expect(quarantineLogs()).toBe(1);
+    });
+
+    it('keeps retrying transient failures with backoff and never quarantines them', async () => {
+      const t = make();
+      await t.service.onApplicationBootstrap();
+      t.targets.playableIds = ['flaky'];
+      t.reconciler.forSession.mockResolvedValue(TRANSIENT);
+      for (let i = 0; i < 8; i += 1) {
+        t.advance(60_000);
+        await backstop(t);
+      }
+      expect(t.reconciler.forSession.mock.calls.length).toBeGreaterThanOrEqual(
+        8,
+      );
+      expect(t.service.lastTick?.quarantineSize).toBe(0);
+      expect(quarantineLogs()).toBe(0);
+    });
+
+    it('rechecks a quarantined session once the quarantine expires', async () => {
+      const t = make({ PRESENCE_RECONCILE_QUARANTINE_MS: '600000' });
+      await t.service.onApplicationBootstrap();
+      t.targets.playableIds = ['broken'];
+      t.reconciler.forSession.mockResolvedValueOnce(PERMANENT);
+      await backstop(t);
+      t.advance(599_000);
+      await backstop(t);
+      expect(t.reconciler.forSession).toHaveBeenCalledTimes(1);
+      t.advance(1_000);
+      await backstop(t);
+      expect(t.reconciler.forSession).toHaveBeenCalledTimes(2);
+      expect(t.service.lastTick?.quarantineSize).toBe(0);
+    });
+
+    it('lifts the quarantine early when the persisted runtime changes (backstop)', async () => {
+      const t = make();
+      await t.service.onApplicationBootstrap();
+      t.targets.playableIds = ['broken'];
+      t.reconciler.forSession.mockResolvedValueOnce(PERMANENT);
+      await backstop(t);
+      await backstop(t);
+      expect(t.reconciler.forSession).toHaveBeenCalledTimes(1);
+      // A repair, or a new challenge in that session.
+      t.targets.fps.set('broken', { runtimeId: 'rt-new', revision: 1 });
+      await backstop(t);
+      expect(t.reconciler.forSession).toHaveBeenCalledTimes(2);
+      expect(t.service.lastTick?.quarantineSize).toBe(0);
+    });
+
+    it('a disconnect in a quarantined session is reconciled only if its state changed', async () => {
+      const t = make();
+      await t.service.onApplicationBootstrap();
+      t.targets.playableIds = ['s1'];
+      t.reconciler.forSession.mockResolvedValueOnce(PERMANENT);
+      await backstop(t);
+      t.targets.playableIds = [];
+      t.reconciler.forSession.mockClear();
+
+      // A dead owner's entry in that session is swept: the session is dirty.
+      t.presence.add('s1', 'p1', 'dead:a');
+      t.leases.ages.set('dead', 60_000);
+      await t.service.tick();
+      await t.service.tick();
+      expect(t.presence.has('s1', 'p1', 'dead:a')).toBe(false);
+      expect(t.reconciler.forSession).not.toHaveBeenCalled();
+
+      t.targets.fps.set('s1', { runtimeId: 'rt-s1', revision: 2 });
+      t.presence.add('s1', 'p2', 'dead:b');
+      await t.service.tick();
+      expect(t.reconciler.forSession).toHaveBeenCalledWith('s1');
+    });
+
+    it('bounds the quarantine, forgetting the oldest first', async () => {
+      const t = make({ PRESENCE_RECONCILE_QUARANTINE_CAPACITY: '2' });
+      await t.service.onApplicationBootstrap();
+      t.targets.playableIds = ['a', 'b', 'c'];
+      t.reconciler.forSession.mockResolvedValue(PERMANENT);
+      t.service.options.concurrency = 1;
+      await backstop(t);
+      expect(t.service.lastTick?.quarantineSize).toBe(2);
+      t.reconciler.forSession.mockClear();
+      await backstop(t);
+      // `a` was forgotten, so it is retried (and quarantined again); b, c not.
+      expect(t.reconciler.forSession.mock.calls.map(([id]) => id)).toEqual([
+        'a',
+      ]);
+      expect(t.service.lastTick?.quarantineSize).toBe(2);
+    });
+
+    it('never holds back healthy sessions while others are quarantined', async () => {
+      const t = make();
+      await t.service.onApplicationBootstrap();
+      t.targets.playableIds = ['broken', 'healthy'];
+      t.reconciler.forSession.mockImplementation(async (id) =>
+        id === 'broken' ? PERMANENT : OK,
+      );
+      await backstop(t);
+      t.reconciler.forSession.mockClear();
+      await backstop(t);
+      expect(t.reconciler.forSession.mock.calls.map(([id]) => id)).toEqual([
+        'healthy',
+      ]);
+    });
+
+    it('caps reconcile wall time, so critical steps run every tick', async () => {
+      const t = make();
+      await t.service.onApplicationBootstrap();
+      t.service.options.concurrency = 1;
+      t.targets.playableIds = Array.from({ length: 10 }, (_, i) => `s${i}`);
+      // Each reconciliation takes 1.5s of (fake) wall time.
+      t.reconciler.forSession.mockImplementation(async () => {
+        t.advance(1_500);
+        return OK;
+      });
+      await t.service.tick();
+      await t.service.tick();
+      const slow = await t.service.tick();
+      expect(slow.sessionsReconciled).toBe(2); // 0s, 1.5s; stops at 3s ≥ 2s
+      expect(slow.reconcileBudgetExhausted).toBe(true);
+      expect(slow.reconcileBacklog).toBe(8);
+
+      // The next tick still refreshes the lease and sweeps a dead owner first.
+      t.presence.add('x', 'p', 'dead:a');
+      t.leases.ages.set('dead', 60_000);
+      t.leases.heartbeat.mockClear();
+      await t.service.tick();
+      const sweep = await t.service.tick();
+      expect(t.leases.heartbeat).toHaveBeenCalledTimes(2);
+      expect(sweep.removed).toBe(1);
+      expect(sweep.reconcileBudgetExhausted).toBe(true);
+    });
+
+    it('reconciles sessions enqueued in the same tick even when the clock moves (no self-deferral)', async () => {
+      const t = make();
+      await t.service.onApplicationBootstrap();
+      t.targets.playableIds = ['s1'];
+      // A real clock: every reading is later than the previous one.
+      let clock = 5_000_000;
+      t.service.now = () => (clock += 1);
+      await backstop(t);
+      expect(t.reconciler.forSession).toHaveBeenCalledWith('s1');
+      expect(t.service.lastTick?.reconcileDeferred).toBe(0);
+    });
+
+    it('reconciles in parallel lanes and quarantines each failing session exactly once', async () => {
+      const t = make();
+      await t.service.onApplicationBootstrap();
+      t.targets.playableIds = Array.from({ length: 20 }, (_, i) => `s${i}`);
+      t.reconciler.forSession.mockImplementation(async (id) =>
+        Number(id.slice(1)) % 2 ? PERMANENT : OK,
+      );
+      await backstop(t);
+      expect(t.reconciler.forSession).toHaveBeenCalledTimes(20);
+      expect(t.service.lastTick).toMatchObject({
+        reconcileQuarantined: 10,
+        quarantineSize: 10,
+        reconcileBacklog: 0,
+      });
+      expect(quarantineLogs()).toBe(10);
     });
   });
 
