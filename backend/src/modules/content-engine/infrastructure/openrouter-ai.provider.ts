@@ -5,6 +5,7 @@ import type {
   AiTextGenerationRequest,
   AiTextGenerationResult,
 } from '../../ai-agent/domain/ai-provider.types';
+import type { ProviderCompletionEvidence } from '../domain/content-engine.constants';
 
 /**
  * JSON Schema keywords OpenAI's strict structured-output mode accepts.
@@ -148,6 +149,44 @@ export class OpenRouterUnavailableError extends Error {
     this.definitelyNotBilled = definitelyNotBilled;
   }
 }
+/**
+ * HTTP 200 with no visible content. Carries what the provider reported — finish
+ * reasons, token counts, cost, generation id — so the engine can tell a
+ * deterministic, fully-billed exhaustion of the output ceiling (`length`, with
+ * usage) from a genuinely unexplained empty answer. Metadata only.
+ */
+export class OpenRouterEmptyCompletionError extends OpenRouterUnavailableError {
+  /**
+   * Structural flag read by the engine: the provider finished on `length` and
+   * reported reliable usage, so the billed amount is known exactly.
+   */
+  readonly outputTokensExhausted: boolean;
+  /** Exactly what the success path bills: reasoning is inside completion. */
+  readonly billableUsage?: { promptTokens: number; completionTokens: number };
+
+  constructor(readonly evidence: ProviderCompletionEvidence) {
+    super(
+      `OpenRouter returned no content (finish_reason=${evidence.finishReason ?? 'unknown'}, ` +
+        `native_finish_reason=${evidence.nativeFinishReason ?? 'unknown'})`,
+    );
+    const usageReliable =
+      typeof evidence.promptTokens === 'number' &&
+      Number.isFinite(evidence.promptTokens) &&
+      evidence.promptTokens >= 0 &&
+      typeof evidence.completionTokens === 'number' &&
+      Number.isFinite(evidence.completionTokens) &&
+      evidence.completionTokens > 0;
+    this.outputTokensExhausted =
+      evidence.finishReason === 'length' && usageReliable;
+    if (usageReliable) {
+      this.billableUsage = {
+        promptTokens: evidence.promptTokens!,
+        completionTokens: evidence.completionTokens!,
+      };
+    }
+  }
+}
+
 export class OpenRouterTimeoutError extends Error {
   /** Marks the ambiguous case: the request may still have been billed. */
   readonly billingUnknown = true;
@@ -393,7 +432,12 @@ export class OpenRouterAiProvider implements AiProvider {
     }
 
     const payload = (await response.json()) as {
-      choices?: { message?: { content?: string } }[];
+      id?: string;
+      choices?: {
+        message?: { content?: string | null };
+        finish_reason?: string | null;
+        native_finish_reason?: string | null;
+      }[];
       usage?: {
         prompt_tokens?: number;
         completion_tokens?: number;
@@ -415,7 +459,42 @@ export class OpenRouterAiProvider implements AiProvider {
 
     const text = payload.choices?.[0]?.message?.content;
     if (typeof text !== 'string' || !text.trim()) {
-      throw new OpenRouterUnavailableError('OpenRouter returned no content');
+      // Keep the evidence. Without it, a reasoning model that spent its whole
+      // output ceiling thinking is indistinguishable from a provider fault,
+      // and is billed and halted as if usage were unknown.
+      const choice = payload.choices?.[0];
+      const evidence: ProviderCompletionEvidence = {
+        ...(typeof choice?.finish_reason === 'string'
+          ? { finishReason: choice.finish_reason }
+          : {}),
+        ...(typeof choice?.native_finish_reason === 'string'
+          ? { nativeFinishReason: choice.native_finish_reason }
+          : {}),
+        ...(typeof payload.usage?.prompt_tokens === 'number'
+          ? { promptTokens: payload.usage.prompt_tokens }
+          : {}),
+        ...(typeof payload.usage?.completion_tokens === 'number'
+          ? { completionTokens: payload.usage.completion_tokens }
+          : {}),
+        ...(typeof payload.usage?.completion_tokens_details
+          ?.reasoning_tokens === 'number'
+          ? {
+              reasoningTokens:
+                payload.usage.completion_tokens_details.reasoning_tokens,
+            }
+          : {}),
+        ...(typeof payload.usage?.cost === 'number'
+          ? { providerReportedCostUsd: payload.usage.cost }
+          : {}),
+        ...(typeof payload.id === 'string' ? { generationId: payload.id } : {}),
+      };
+      // Metadata only — never the prompt, the reasoning or any content.
+      this.logger.warn({
+        event: 'engine_provider_empty_completion',
+        model,
+        ...evidence,
+      });
+      throw new OpenRouterEmptyCompletionError(evidence);
     }
 
     return {

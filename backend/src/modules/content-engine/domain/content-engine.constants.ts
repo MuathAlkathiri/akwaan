@@ -187,6 +187,94 @@ export class LeaseLostError extends Error {
   }
 }
 
+/**
+ * What the provider reported about a completion, kept as evidence. Metadata
+ * only: never prompt text, model reasoning, generated content or credentials.
+ */
+export interface ProviderCompletionEvidence {
+  finishReason?: string;
+  nativeFinishReason?: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  /** Already included in `completionTokens`; recorded, never billed twice. */
+  reasoningTokens?: number;
+  /** Provider's own charge in USD credits. Observation only. */
+  providerReportedCostUsd?: number;
+  generationId?: string;
+}
+
+export const PROVIDER_OUTPUT_TOKENS_EXHAUSTED =
+  'PROVIDER_OUTPUT_TOKENS_EXHAUSTED';
+
+/**
+ * The provider ran the request to its output ceiling and returned no visible
+ * content — e.g. a reasoning model that spent every allowed token thinking.
+ *
+ * Not ambiguous: the request completed (HTTP 200), the provider reported its
+ * usage and a `length` finish, so the cost is known and settled exactly. Not
+ * transient either: the identical request would exhaust the identical ceiling,
+ * so it is failed deterministically and never retried automatically.
+ */
+export class ProviderOutputTokensExhaustedError extends Error {
+  readonly code = PROVIDER_OUTPUT_TOKENS_EXHAUSTED;
+
+  constructor(
+    readonly stage: string,
+    readonly evidence: ProviderCompletionEvidence,
+  ) {
+    super(
+      `${PROVIDER_OUTPUT_TOKENS_EXHAUSTED} during ${stage}: ` +
+        `finish_reason=${evidence.finishReason ?? 'unknown'}, ` +
+        `native_finish_reason=${evidence.nativeFinishReason ?? 'unknown'}, ` +
+        `prompt_tokens=${evidence.promptTokens ?? 'unknown'}, ` +
+        `completion_tokens=${evidence.completionTokens ?? 'unknown'}, ` +
+        `reasoning_tokens=${evidence.reasoningTokens ?? 'unknown'}`,
+    );
+  }
+}
+
+/**
+ * Reads the adapter's structural flag for a token-exhausted empty completion,
+ * without importing infrastructure classes. Returns the exact billable usage
+ * and the evidence, or `null` when the error is anything else.
+ */
+export function outputTokensExhaustion(error: unknown): {
+  usage: { promptTokens: number; completionTokens: number };
+  evidence: ProviderCompletionEvidence;
+} | null {
+  const candidate = error as {
+    outputTokensExhausted?: unknown;
+    billableUsage?: { promptTokens?: unknown; completionTokens?: unknown };
+    evidence?: ProviderCompletionEvidence;
+  } | null;
+  if (candidate?.outputTokensExhausted !== true) return null;
+  const promptTokens = candidate.billableUsage?.promptTokens;
+  const completionTokens = candidate.billableUsage?.completionTokens;
+  if (
+    typeof promptTokens !== 'number' ||
+    typeof completionTokens !== 'number' ||
+    !Number.isFinite(promptTokens) ||
+    !Number.isFinite(completionTokens) ||
+    promptTokens < 0 ||
+    completionTokens <= 0
+  ) {
+    return null;
+  }
+  return {
+    usage: { promptTokens, completionTokens },
+    evidence: candidate.evidence ?? {},
+  };
+}
+
+/** Evidence attached to any failure, for diagnostics only. */
+export function providerEvidenceOf(
+  error: unknown,
+): ProviderCompletionEvidence | undefined {
+  const evidence = (error as { evidence?: ProviderCompletionEvidence } | null)
+    ?.evidence;
+  return evidence && typeof evidence === 'object' ? evidence : undefined;
+}
+
 /** A provider call may have been billed, so retrying it automatically is unsafe. */
 export class AmbiguousProviderOutcomeError extends Error {
   constructor(
