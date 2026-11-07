@@ -1,3 +1,5 @@
+// First import: records process start before the application modules load.
+import './common/diagnostics/process-start.marker';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -19,6 +21,13 @@ import {
   type MediaObjectStorage,
   normalizeKey,
 } from './common/uploads/media-object-storage';
+import {
+  completeStartup,
+  markStartupStep,
+  startStartupWatchdog,
+  stopStartupWatchdog,
+  traceStartupStep,
+} from './common/diagnostics/startup-diagnostics';
 
 const DEFAULT_PORT = 3000;
 const MAX_PORT_FALLBACK_ATTEMPTS = 10;
@@ -79,7 +88,13 @@ async function listen(app: INestApplication, port: number): Promise<number> {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  markStartupStep('modules loaded');
+  startStartupWatchdog();
+  // Creates the module graph, connects the database and constructs every
+  // provider. Startup hooks run later, inside app.listen().
+  const app = await traceStartupStep('NestFactory.create', () =>
+    NestFactory.create(AppModule),
+  );
   const configService = app.get(ConfigService);
   const uploadsRoot =
     configService.get<string>('UPLOADS_DIR') ?? join(process.cwd(), 'uploads');
@@ -128,8 +143,12 @@ async function bootstrap() {
     SwaggerModule.setup('api', app, createOpenApiDocument(app));
   }
 
-  const port = await listen(app, getPort());
+  const port = await traceStartupStep(
+    'app.listen (runs onModuleInit and onApplicationBootstrap first)',
+    () => listen(app, getPort()),
+  );
   Logger.log(`Listening on ${HOST}:${port}`, 'Bootstrap');
+  completeStartup();
   Logger.log(
     `CORS allowlist: ${resolveCorsOrigins().join(', ') || '(empty)'}`,
     'Bootstrap',
@@ -140,4 +159,9 @@ async function bootstrap() {
   );
 }
 
-bootstrap();
+// On failure, stop the watchdog and rethrow the same error, so the process
+// fails exactly as before (an unhandled rejection).
+bootstrap().catch((error: unknown) => {
+  stopStartupWatchdog();
+  throw error;
+});

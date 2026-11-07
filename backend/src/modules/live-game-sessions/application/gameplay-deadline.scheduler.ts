@@ -1,3 +1,4 @@
+import { traceStartupStep } from '../../../common/diagnostics/startup-diagnostics';
 import { randomUUID } from 'crypto';
 import {
   Inject,
@@ -590,6 +591,14 @@ export class GameplayDeadlineScheduler
    * construction.
    */
   async onApplicationBootstrap(): Promise<void> {
+    await traceStartupStep(
+      'GameplayDeadlineScheduler.onApplicationBootstrap',
+      () => this.rearmLiveSessionsAfterStartup(),
+    );
+  }
+
+  /** The startup re-arm pass; unchanged, now traced by onApplicationBootstrap. */
+  private async rearmLiveSessionsAfterStartup(): Promise<void> {
     // Booting is the opposite of shutting down, and a process that comes back
     // must converge again — including in a redeploy simulation, where destroy
     // and bootstrap happen against the same instance.

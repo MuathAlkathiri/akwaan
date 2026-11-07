@@ -28,6 +28,7 @@ import {
   LeaseOperationError,
   MongooseInstanceLeaseRepository,
 } from '../infrastructure/mongoose-instance-lease.repository';
+import { traceStartupStep } from '../../../common/diagnostics/startup-diagnostics';
 
 export interface PresenceOwnershipOptions {
   /** Background tick interval; 0 disables background ticks. */
@@ -231,7 +232,10 @@ export class PresenceOwnershipService
 
   async onApplicationBootstrap(): Promise<void> {
     this.startedAt = this.now();
-    await this.register();
+    await traceStartupStep(
+      'PresenceOwnershipService.onApplicationBootstrap',
+      () => this.register(),
+    );
     this.armLegacyPurge();
     if (this.legacy && !this.legacy.done) {
       try {

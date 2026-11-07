@@ -1,3 +1,4 @@
+import { traceStartupStep } from '../../../common/diagnostics/startup-diagnostics';
 import {
   Inject,
   Injectable,
@@ -81,7 +82,10 @@ export class MatchConvergenceSweeper
    */
   async onApplicationBootstrap(): Promise<void> {
     this.stopped = false;
-    await this.sweep('bootstrap');
+    await traceStartupStep(
+      'MatchConvergenceSweeper.onApplicationBootstrap',
+      () => this.sweep('bootstrap'),
+    );
     this.timer = setInterval(() => {
       void this.sweep('interval');
     }, MatchConvergenceSweeper.INTERVAL_MS);
