@@ -1,5 +1,9 @@
 import { Logger } from '@nestjs/common';
 import { PresenceEffectsReconciler } from './presence-effects.reconciler';
+import {
+  LiveSessionConcurrencyError,
+  LiveSessionDomainError,
+} from '../domain/live-session.errors';
 
 function setup(input: {
   readinessIds?: string[];
@@ -53,6 +57,7 @@ function setup(input: {
     withdraw as never,
   );
   return {
+    runtimes,
     reconciler,
     sessions,
     sessionAggregate,
@@ -120,7 +125,9 @@ describe('PresenceEffectsReconciler', () => {
     });
     t.reassign.forSession.mockRejectedValueOnce(new Error('stale revision'));
     t.withdraw.forConnection.mockRejectedValueOnce(new Error('db down'));
-    await expect(t.reconciler.forSession('s1')).resolves.toBe(false);
+    await expect(t.reconciler.forSession('s1')).resolves.toEqual({
+      status: 'transient',
+    });
     expect(t.sessions.save).toHaveBeenCalled();
     // The next pass retries what failed, derived from state again.
     await t.reconciler.forSession('s1');
@@ -136,5 +143,71 @@ describe('PresenceEffectsReconciler', () => {
     await t.reconciler.forSession('s1');
     expect(t.publisher.publish).not.toHaveBeenCalled();
     expect(t.countdown.cancel).not.toHaveBeenCalled();
+  });
+
+  describe('failure classification', () => {
+    const invalid = () =>
+      new LiveSessionDomainError(
+        'INVALID_TEAM_ACTION_STATE',
+        'Team action assignment state is missing',
+      );
+
+    it('is permanent only when the persisted runtime itself cannot be restored', async () => {
+      const t = setup({ session: bombReady(true, true) });
+      t.runtimes.findBySessionId.mockRejectedValue(invalid());
+      t.reassign.forSession.mockRejectedValue(invalid());
+      await expect(t.reconciler.forSession('s1')).resolves.toEqual({
+        status: 'permanent',
+        code: 'INVALID_TEAM_ACTION_STATE',
+        message: 'Team action assignment state is missing',
+      });
+    });
+
+    it('is transient when an effect fails but the state restores (the failure lay elsewhere)', async () => {
+      const t = setup({ session: bombReady(true, true) });
+      t.reassign.forSession.mockRejectedValueOnce(invalid());
+      await expect(t.reconciler.forSession('s1')).resolves.toEqual({
+        status: 'transient',
+      });
+    });
+
+    it('is transient when the probe fails on the database', async () => {
+      const t = setup({ session: bombReady(true, true) });
+      const network = Object.assign(new Error('connection reset'), {
+        name: 'MongoNetworkError',
+      });
+      t.reassign.forSession.mockRejectedValueOnce(network);
+      t.runtimes.findBySessionId.mockRejectedValue(network);
+      await expect(t.reconciler.forSession('s1')).resolves.toEqual({
+        status: 'transient',
+      });
+    });
+
+    it('never treats a revision race as permanent, even if a load surfaced it', async () => {
+      const t = setup({ session: bombReady(true, true) });
+      t.reassign.forSession.mockRejectedValueOnce(
+        new LiveSessionConcurrencyError(),
+      );
+      t.runtimes.findBySessionId.mockRejectedValue(
+        new LiveSessionConcurrencyError(),
+      );
+      await expect(t.reconciler.forSession('s1')).resolves.toEqual({
+        status: 'transient',
+      });
+    });
+
+    it('leaves an expired Bomb countdown alone instead of failing on it', async () => {
+      const t = setup({
+        session: {
+          ...bombReady(true, false),
+          expiresAt: new Date('2026-11-06T00:00:00Z'),
+        },
+      });
+      await expect(t.reconciler.forSession('s1')).resolves.toEqual({
+        status: 'ok',
+      });
+      expect(t.sessions.save).not.toHaveBeenCalled();
+      expect(t.publisher.publish).not.toHaveBeenCalled();
+    });
   });
 });
