@@ -40,6 +40,29 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
+### Where things stand — 2026-11-07 · PRESENCE INSTANCE OWNERSHIP + RECONCILIATION FIX — ✅ MERGED & DEPLOYED
+
+The participant-presence deploy-safety work is merged and running in production. Main is `0e9a445`; Render serves
+`0e9a445` (`/health` commit verified). **No operator-initiated production data mutations** (normal application lease
+operations are expected). The legacy presence purge (`PRESENCE_LEGACY_PURGE`) was never armed or run.
+
+| Workstream | PR · commits → merge | Engineering Ready | Git merged | Production deployed | Runtime activated | Player verified |
+|---|---|---|---|---|---|---|
+| Startup diagnostics | #40 · `c8da306` → `85a3ef5` | ✅ | ✅ | ✅ Render `dep-dbn845ugekts739bc970` (shipped in `9b36835`); startup milestones observed in production logs | ✅ | n/a |
+| Presence instance ownership + graceful shutdown (`tini`) | #41 · `042c43c`, `7c07c61`, `0e3b3f0` → `9b36835` | ✅ | ✅ | ✅ Render `dep-dbn845ugekts739bc970`; Vercel `9b36835` (frontend recovery protocol) | ✅ lease registration observed; SIGTERM release observed on instance shutdown (exit 0) | ⬜ **production multi-device gameplay not verified** |
+| Presence reconciliation quarantine + backstop bounds | #42 · `5c06ec8` → `0e9a445` | ✅ | ✅ | ✅ Render `dep-dbnhnq67bikc73cj7nrg`; `/health` = `0e9a445` | ✅ | n/a |
+
+- **Before #42 (production logs, old code):** every third ownership tick reconciled 44–50 sessions, including
+  expired abandoned runtimes, taking 5.7–6.9 s against a 5 s interval, and repeatedly failed six runtimes that
+  cannot be restored.
+- **After #42 (production monitoring window, ~12 min after deploy):** no slow reconciliation ticks (≥ 2.5 s) and no
+  recurring reconciliation failures were observed. Quiet ticks are not logged individually, so this rests on the
+  absence of slow/failed tick logs, not on observing each tick.
+- **Quarantine:** no quarantine events were observed in production. The six historically invalid runtimes are now
+  past `expiresAt`, so the playable-runtime backstop excludes them; they remain stored (§19 #28).
+- **Still open:** the earlier `faf6436` Render deploy failure is unexplained (§19 #29); later deploys started
+  normally.
+
 ### Where things stand — 2026-11-06 · OPEN WORK CLOSURE — ✅ MERGED & DEPLOYED · Odd-Piece V2 ⬜ NOT ACTIVATED
 
 All open engineering work from the stale primary checkout was finished, verified and released through PRs #23–#27.
@@ -3358,6 +3381,8 @@ Not implemented. Not scheduled.
 | 25 | **Six authored Scopes are not in any runtime** | Product / content rollout | Video Games (`minecraft`, `god-of-war`, `resident-evil`) and Puzzles (`patterns-sequences`, `lateral-thinking`, `visual-puzzles`) have committed taxonomy assets and authored content, but **no runtime Scope and no promoted content**. Each World is gated on its 45 Bomb media items first. Must not be described as implemented, active, Admin-visible, runtime-ready or DB-promoted. *(Was nine; Football's three were promoted on 2026-08-21.)* §C.1. |
 | 26 | **Bomb media outstanding for two Worlds** | Content / media | 45 items each for Video Games and Puzzles — **90** media items — each needing production, subject-by-subject pairing (§5.6), attachment and manual product review before its World can be promoted. Video Games is the immediate next content phase (§20). *(Was 135 across three Worlds; Football's 45 are complete.)* |
 | 27 | **The whole content expansion is local/dev only** | Release gap | **261** promoted items across **six** runtime Scopes (Anime 135, Football 126) and **90** media binaries exist on one developer machine. The push (`4fdab19`, `25141bd`, `fcf70ee`) carried **taxonomy, knowledge bases and tooling only** — not content documents, not `ai/output` packs (gitignored), not the media binaries under `uploads/question-assets/images/` (deliberately untracked). Reproducing the runtime state elsewhere means re-running the promotions. |
+| 28 | **Historical gameplay runtimes that cannot be restored** | Data debt | At least six abandoned, non-terminal production runtimes lack `teamActionJson`, so plugin validation rejects every load (`INVALID_TEAM_ACTION_STATE`). Observed 2026-11-07. They are now past `expiresAt` and excluded from presence reconciliation (#42), and an unexpired one would be quarantined, not retried endlessly. They remain stored: repairing, closing or deleting them needs a separate, supervised decision. |
+| 29 | **`faf6436` Render deployment failure remains unexplained** | Operational | On 2026-11-06 the `faf6436` auto-deploy was cancelled after 35m 37s and the manual deploy failed after 18m 42s ("Timed out"); the root cause was never established. Later deploys of `9b36835` and `0e9a445` built in ~1 min and completed startup in ~30 s. Startup diagnostics (#40) are now in production to localise the stage if it recurs. Non-blocking. |
 
 ---
 
