@@ -808,16 +808,13 @@ export function ContentEngineReviewWorkspace() {
                       >
                         {reviewLabel.label}
                       </span>
-                      {dedup.category !== "clean" && (
+                      {dedup.listBadge && (
                         <span
                           data-testid={`candidate-dedup-badge-${row.candidateId}`}
-                          className={`rounded-full border px-2 py-0.5 text-[11px] ${dedup.badgeClass}`}
+                          data-dedup-category={dedup.category}
+                          className={`rounded-full border px-2 py-0.5 text-[11px] ${dedup.listBadge.className}`}
                         >
-                          {dedup.category === "proven_duplicate"
-                            ? "تكرار مثبت"
-                            : dedup.category === "incomplete_verification"
-                              ? "فحص ناقص"
-                              : "شبهة تقاطع"}
+                          {dedup.listBadge.labelAr}
                         </span>
                       )}
                     </div>

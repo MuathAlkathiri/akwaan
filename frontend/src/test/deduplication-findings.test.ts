@@ -285,3 +285,110 @@ describe("Deduplication Findings Helper & Parser", () => {
     expect(summary.isApprovalBlocked).toBe(false);
   });
 });
+
+describe("Deduplication list badge and mixed findings", () => {
+  const FP = `ovl1:${"a".repeat(64)}`;
+  const inconclusive = {
+    code: "SUBJECTIVE_COMPARISON_INCONCLUSIVE",
+    severity: "deferred",
+    message: "Some subjective comparisons could not be conclusively evaluated; no actionable overlap was established.",
+  };
+  const factualPending = {
+    code: "FACTUAL_VERIFICATION_PENDING",
+    severity: "deferred",
+    message: "claims are verified in Phase 1c",
+  };
+  const overlap = {
+    code: "POTENTIAL_OVERLAP_HISTORICAL_CONTENT",
+    severity: "warning",
+    message: "Potential overlap with CANONICAL_READY item item-a: Same target answer",
+    fingerprint: FP,
+    evidence: {
+      candidateContentHash: "c".repeat(64),
+      reasonCode: "UNCERTAIN_FACTUAL_RELATIONSHIP",
+      reference: { kind: "CANONICAL_READY", id: "item-a", contentHash: "r".repeat(64) },
+    },
+  };
+
+  it("labels an inconclusive-only candidate neutrally, never as a potential overlap", () => {
+    const summary = summarizeDeduplication([inconclusive, factualPending]);
+    expect(summary.category).toBe("inconclusive");
+    expect(summary.listBadge?.labelAr).toBe("مقارنة غير حاسمة");
+    expect(summary.listBadge?.labelAr).not.toBe("شبهة تقاطع");
+    expect(summary.listBadge?.className).toContain("slate");
+    expect(summary.listBadge?.className).not.toContain("amber");
+    expect(summary.requiresAcknowledgment).toBe(false);
+    expect(summary.isApprovalBlocked).toBe(false);
+  });
+
+  it("treats the batch-level inconclusive code the same way", () => {
+    const summary = summarizeDeduplication([
+      { code: "SUBJECTIVE_BATCH_COMPARISON_INCONCLUSIVE", severity: "deferred", message: "batch" },
+    ]);
+    expect(summary.category).toBe("inconclusive");
+    expect(summary.listBadge?.labelAr).toBe("مقارنة غير حاسمة");
+  });
+
+  it("labels an acknowledgeable overlap as a potential overlap", () => {
+    const summary = summarizeDeduplication([overlap]);
+    expect(summary.listBadge?.labelAr).toBe("شبهة تقاطع");
+    expect(summary.requiresAcknowledgment).toBe(true);
+  });
+
+  it("labels an unverifiable overlap as a potential overlap", () => {
+    const { fingerprint: _omit, ...unverifiable } = overlap;
+    const summary = summarizeDeduplication([unverifiable]);
+    expect(summary.hasUnverifiableOverlap).toBe(true);
+    expect(summary.listBadge?.labelAr).toBe("شبهة تقاطع");
+  });
+
+  it("labels proven duplicates and incomplete verification by their blocking category", () => {
+    expect(
+      summarizeDeduplication([
+        { code: "DUPLICATE_IN_BATCH", severity: "blocking", message: "another candidate asks the same thing" },
+        inconclusive,
+      ]).listBadge?.labelAr,
+    ).toBe("تكرار مثبت");
+    expect(
+      summarizeDeduplication([
+        { code: "HISTORICAL_INVENTORY_PARTIAL", severity: "blocking", message: "partial" },
+        inconclusive,
+      ]).listBadge?.labelAr,
+    ).toBe("فحص ناقص");
+  });
+
+  it("labels a cross-Scope advisory as informational, not as a potential overlap", () => {
+    const summary = summarizeDeduplication([
+      { code: "CROSS_SCOPE_ADVISORY", severity: "warning", message: "Cross-Scope match with x (other): similar" },
+    ]);
+    expect(summary.requiresAcknowledgment).toBe(false);
+    expect(summary.listBadge?.labelAr).toBe("تنبيه نطاق آخر");
+  });
+
+  it("shows no badge when there is no deduplication concern", () => {
+    expect(summarizeDeduplication([factualPending]).listBadge).toBeNull();
+    expect(summarizeDeduplication([]).listBadge).toBeNull();
+    expect(summarizeDeduplication(null).listBadge).toBeNull();
+  });
+
+  it("keeps inconclusive findings visible alongside an actionable overlap", () => {
+    const summary = summarizeDeduplication([overlap, inconclusive, factualPending]);
+    expect(summary.category).toBe("potential_overlap");
+    expect(summary.requiresAcknowledgment).toBe(true);
+    expect(summary.hasInconclusiveComparison).toBe(true);
+    expect(summary.inconclusiveFindings.map((f) => f.code)).toEqual([
+      "SUBJECTIVE_COMPARISON_INCONCLUSIVE",
+    ]);
+    expect(summary.listBadge?.labelAr).toBe("شبهة تقاطع");
+  });
+
+  it("never turns an inconclusive finding into an acknowledgment requirement", () => {
+    const { required, unverifiable } = overlapRequirementsFromFindings([
+      overlap,
+      inconclusive,
+      { code: "SUBJECTIVE_BATCH_COMPARISON_INCONCLUSIVE", severity: "deferred", message: "batch" },
+    ]);
+    expect(required.map((r) => r.fingerprint)).toEqual([FP]);
+    expect(unverifiable).toEqual([]);
+  });
+});

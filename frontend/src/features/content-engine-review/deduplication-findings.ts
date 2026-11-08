@@ -23,6 +23,27 @@ export const POTENTIAL_OVERLAP_CODES = [
   "CROSS_SCOPE_ADVISORY",
 ] as const;
 
+/**
+ * Non-blocking notes that some subjective comparisons could not be settled
+ * either way. They are informational only: never acknowledgeable, never an
+ * approval blocker, and they may coexist with any other category.
+ */
+export const INCONCLUSIVE_COMPARISON_CODES = [
+  "SUBJECTIVE_COMPARISON_INCONCLUSIVE",
+  "SUBJECTIVE_BATCH_COMPARISON_INCONCLUSIVE",
+] as const;
+
+/** Headline text when inconclusive comparisons are the only concern. */
+export const INCONCLUSIVE_DESCRIPTION_AR =
+  "لم يُرصد تقاطع يستلزم الإقرار، لكن بعض المقارنات مع الأسئلة الذاتية لم تكن حاسمة. راجع المحتوى بعناية؛ هذا لا يثبت اختلافه.";
+
+/**
+ * Note text beside a more severe category. It must not claim there is nothing
+ * to acknowledge: on a mixed candidate the overlaps above still require it.
+ */
+export const INCONCLUSIVE_NOTE_AR =
+  "إضافةً إلى ما سبق، بعض المقارنات مع الأسئلة الذاتية لم تكن حاسمة. هذه المقارنات لا تتطلب إقراراً ولا تمنع الاعتماد، ولا تثبت اختلاف المحتوى.";
+
 export type DeduplicationCategory =
   | "proven_duplicate"
   | "potential_overlap"
@@ -188,6 +209,14 @@ export interface DeduplicationSummary {
   hasPotentialOverlap: boolean;
   matches: ParsedDeduplicationMatch[];
   incompleteFindings: FindingItem[];
+  /**
+   * Inconclusive subjective comparisons, reported whatever the headline
+   * category is, so a mixed candidate never hides them.
+   */
+  inconclusiveFindings: FindingItem[];
+  hasInconclusiveComparison: boolean;
+  /** Compact candidate-list badge; null when there is nothing to flag. */
+  listBadge: { labelAr: string; className: string } | null;
 }
 
 export function hasIncompleteHistoricalVerification(
@@ -350,10 +379,48 @@ export function parseDeduplicationMatch(finding: FindingItem): ParsedDeduplicati
   };
 }
 
+const NEUTRAL_BADGE_CLASS =
+  "border-slate-300 bg-slate-100 text-slate-700 font-medium";
+
+/**
+ * The candidate-list badge for a summary. Derived from the same classification
+ * as the detail panel so the list can never claim more (or less) than it.
+ */
+function listBadgeFor(
+  summary: Omit<DeduplicationSummary, "listBadge">,
+): DeduplicationSummary["listBadge"] {
+  switch (summary.category) {
+    case "proven_duplicate":
+      return { labelAr: "تكرار مثبت", className: summary.badgeClass };
+    case "incomplete_verification":
+      return { labelAr: "فحص ناقص", className: summary.badgeClass };
+    case "potential_overlap":
+      return summary.requiresAcknowledgment || summary.hasUnverifiableOverlap
+        ? { labelAr: "شبهة تقاطع", className: summary.badgeClass }
+        : // Only informational cross-Scope advisories remain.
+          { labelAr: "تنبيه نطاق آخر", className: summary.badgeClass };
+    case "inconclusive":
+      return { labelAr: "مقارنة غير حاسمة", className: summary.badgeClass };
+    case "clean":
+    default:
+      return null;
+  }
+}
+
 export function summarizeDeduplication(
   findings?: FindingItem[] | null,
 ): DeduplicationSummary {
+  const summary = classifyDeduplication(findings);
+  return { ...summary, listBadge: listBadgeFor(summary) };
+}
+
+function classifyDeduplication(
+  findings?: FindingItem[] | null,
+): Omit<DeduplicationSummary, "listBadge"> {
   const safeFindings = Array.isArray(findings) ? findings : [];
+  const inconclusiveFindings = safeFindings.filter((f) =>
+    (INCONCLUSIVE_COMPARISON_CODES as readonly string[]).includes(f.code),
+  );
 
   const incompleteFindings = safeFindings.filter((f) =>
     (INCOMPLETE_HISTORICAL_CODES as readonly string[]).includes(f.code),
@@ -375,7 +442,12 @@ export function summarizeDeduplication(
   const acknowledgment = overlapRequirementsFromFindings(safeFindings);
   const requiresAcknowledgment = acknowledgment.required.length > 0;
   const hasUnverifiableOverlap = acknowledgment.unverifiable.length > 0;
-  const flags = { requiresAcknowledgment, hasUnverifiableOverlap };
+  const flags = {
+    requiresAcknowledgment,
+    hasUnverifiableOverlap,
+    inconclusiveFindings,
+    hasInconclusiveComparison: inconclusiveFindings.length > 0,
+  };
 
   if (hasProven) {
     return {
@@ -463,15 +535,14 @@ export function summarizeDeduplication(
     };
   }
 
-  if (safeFindings.some((finding) =>
-    finding.code === "SUBJECTIVE_COMPARISON_INCONCLUSIVE" ||
-    finding.code === "SUBJECTIVE_BATCH_COMPARISON_INCONCLUSIVE")) {
+  if (inconclusiveFindings.length > 0) {
     return {
       ...flags,
       category: "inconclusive",
       statusLabelAr: "بعض المقارنات غير حاسمة",
-      statusDescriptionAr: "لم يُرصد تقاطع يستلزم الإقرار، لكن بعض المقارنات مع الأسئلة الذاتية لم تكن حاسمة. راجع المحتوى بعناية؛ هذا لا يثبت اختلافه.",
-      badgeClass: "border-amber-300 bg-amber-100 text-amber-900 font-medium",
+      statusDescriptionAr: INCONCLUSIVE_DESCRIPTION_AR,
+      // Neutral, not amber: nothing here is a warning the reviewer must act on.
+      badgeClass: NEUTRAL_BADGE_CLASS,
       isApprovalBlocked: false,
       isIncomplete: false,
       hasProvenDuplicate: false,
