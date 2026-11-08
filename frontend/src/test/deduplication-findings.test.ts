@@ -11,6 +11,12 @@ import {
 } from "@/features/content-engine-review/deduplication-findings";
 
 describe("Deduplication Findings Helper & Parser", () => {
+  it("distinguishes inconclusive subjective comparison from a clean result", () => {
+    const summary = summarizeDeduplication([{ code: "SUBJECTIVE_COMPARISON_INCONCLUSIVE", severity: "deferred", message: "inconclusive" }]);
+    expect(summary.category).toBe("inconclusive");
+    expect(summary.isApprovalBlocked).toBe(false);
+    expect(summary.statusDescriptionAr).toContain("لم تكن حاسمة");
+  });
   it("detects proven duplicates correctly", () => {
     expect(
       hasProvenDuplicate([

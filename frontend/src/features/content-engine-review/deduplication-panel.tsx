@@ -58,6 +58,7 @@ export function DeduplicationPanel({
       case "incomplete_verification":
         return <AlertTriangle className="size-5 shrink-0 text-orange-600" />;
       case "potential_overlap":
+      case "inconclusive":
         return <AlertTriangle className="size-5 shrink-0 text-amber-600" />;
       case "clean":
       default:
@@ -72,6 +73,7 @@ export function DeduplicationPanel({
       case "incomplete_verification":
         return "border-orange-300 bg-orange-50/50";
       case "potential_overlap":
+      case "inconclusive":
         return "border-amber-300 bg-amber-50/50";
       case "clean":
       default:

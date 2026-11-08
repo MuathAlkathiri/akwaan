@@ -1074,6 +1074,10 @@ export class ContentEngineReviewService {
               {
                 $set: {
                   reviewStatus: 'approved',
+                  findings: this.refreshHistoricalReviewFindings(
+                    fresh.findings ?? [],
+                    screened.findings,
+                  ),
                   reviewDecision: {
                     ...decision,
                     overlapAcknowledgments,
@@ -1795,7 +1799,13 @@ export class ContentEngineReviewService {
               publishedContentItemId: null,
             },
             {
-              $set: { publishedContentItemId: contentItemId },
+              $set: {
+                publishedContentItemId: contentItemId,
+                findings: this.refreshHistoricalReviewFindings(
+                  locked.findings ?? [],
+                  screened.findings,
+                ),
+              },
               $inc: { reviewRevision: 1 },
               $push: {
                 reviewEvents: this.event(
@@ -2990,6 +3000,25 @@ export class ContentEngineReviewService {
       }
     }
     return base;
+  }
+
+  /** Refresh historical review findings while preserving unrelated and batch evidence. */
+  private refreshHistoricalReviewFindings(
+    existing: ScreenFinding[],
+    fresh: ScreenFinding[],
+  ) {
+    const codes = new Set([
+      'SUBJECTIVE_COMPARISON_INCONCLUSIVE',
+      'POTENTIAL_OVERLAP_HISTORICAL_CONTENT',
+      'POTENTIAL_OVERLAP_HISTORICAL_DRAFT',
+      'POTENTIAL_OVERLAP_APPROVED_CANDIDATE',
+    ]);
+    return [
+      ...existing.filter((finding) => !codes.has(finding.code)),
+      ...fresh
+        .filter((finding) => codes.has(finding.code))
+        .map((finding) => this.plainFinding(finding)),
+    ];
   }
 
   /** Classifies freshly derived findings for the R4-A overlap gate. */

@@ -1,13 +1,14 @@
 import { ChallengeAnswerMode } from '../../world-content/domain/world-content.constants';
 
 /**
- * Three-state identity comparison result approved by product owner:
+ * Identity comparison outcomes:
  * - DISTINCT: Sufficient evidence of materially different gameplay tasks.
  * - DUPLICATE: Sufficient evidence that the same gameplay task is repeated.
  * - POTENTIAL_OVERLAP: Meaningful similarity exists, but deterministic evidence cannot safely resolve it.
+ * - INCONCLUSIVE: Insufficient evidence of either overlap or distinction.
  */
 export type ContentIdentityComparisonResult =
-  'DISTINCT' | 'DUPLICATE' | 'POTENTIAL_OVERLAP';
+  'DISTINCT' | 'DUPLICATE' | 'POTENTIAL_OVERLAP' | 'INCONCLUSIVE';
 
 export type SemanticTargetType =
   | 'discrete_option'
@@ -82,6 +83,8 @@ export interface MechanicPayloadIdentity {
   answerMode: ChallengeAnswerMode | string;
   /** Deterministic signature of the mechanic-specific payload structure. */
   structureKey: string;
+  /** Whether required subjective gameplay structure is valid and complete. */
+  voteStructureVerified?: boolean;
   /** Order-independent normalized options (for multiple-choice). */
   options?: string[];
   /** Ordered clues where sequence directly dictates difficulty progression. */

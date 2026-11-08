@@ -35,6 +35,56 @@ describe('DeterministicScreenService', () => {
     service.beginBatch();
   });
 
+  it('does not require overlap acknowledgment for an unrelated historical vote', () => {
+    const result = service.screen(
+      draft({
+        prompt: {
+          ar: 'أي نادي خسر صدارة بفارق 12 نقطة في الدوري الإنجليزي موسم 1995؟',
+        },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: 'a', label: { ar: 'نيوكاسل' } },
+            { id: 'b', label: { ar: 'أرسنال' } },
+          ],
+          correctOptionId: 'a',
+        },
+      }),
+      undefined,
+      {
+        scopeKey: 'premier-league',
+        worldKey: 'football',
+        historicalRecords: [
+          {
+            id: 'legacy-vote',
+            sourceType: 'CANONICAL_READY',
+            scopeKey: 'premier-league',
+            worldKey: 'football',
+            draft: {
+              prompt: {
+                ar: 'من فينا يستطيع مشاهدة ثلاث مباريات متتالية دون أن يفوته هدف؟',
+              },
+              answerPayload: { mode: 'vote' },
+            },
+          },
+        ],
+      },
+    );
+    expect(
+      result.findings.some((finding) =>
+        finding.code.startsWith('POTENTIAL_OVERLAP_'),
+      ),
+    ).toBe(false);
+    expect(result.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'SUBJECTIVE_COMPARISON_INCONCLUSIVE',
+          severity: 'deferred',
+        }),
+      ]),
+    );
+  });
+
   it('returns a blocking identity conflict while allowing unexpected errors to propagate', () => {
     expect(
       service.screen(draft({ metadata: { subject: 'one' } }), {
@@ -1818,7 +1868,7 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
       ).toBe(true);
     });
 
-    it('returns POTENTIAL_OVERLAP warning for unsupported subjective consensus mechanics', () => {
+    it('records an inconclusive notice for subjective prompts without proven similarity', () => {
       service.registerHistoricalRecords([
         {
           id: 'hist-vote-1',
@@ -1851,11 +1901,19 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
       };
 
       const res = service.screen(candidate, null, { scopeKey: 'polls' });
-      const overlap = res.findings.find(
-        (f) => f.code === 'POTENTIAL_OVERLAP_HISTORICAL_CONTENT',
+      expect(res.findings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'SUBJECTIVE_COMPARISON_INCONCLUSIVE',
+            severity: 'deferred',
+          }),
+        ]),
       );
-      expect(overlap).toBeDefined();
-      expect(overlap?.severity).toBe('warning');
+      expect(
+        res.findings.some(
+          (finding) => finding.code === 'POTENTIAL_OVERLAP_HISTORICAL_CONTENT',
+        ),
+      ).toBe(false);
     });
   });
 

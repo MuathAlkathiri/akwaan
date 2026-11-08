@@ -234,6 +234,88 @@ describe('historical alias inventory with MongoDB', () => {
     ).toBe(false);
   });
 
+  it('keeps unrelated retired subjective content in inventory without an actionable overlap', async () => {
+    await db.collection('content_items').deleteMany({ scopeId });
+    await db
+      .collection('engine_candidates')
+      .deleteOne({ candidateId: 'approved-historical' });
+    await db.collection('content_items').insertOne({
+      _id: new Types.ObjectId(),
+      scopeId,
+      status: 'ready',
+      prompt: {
+        ar: 'من فينا يستطيع مشاهدة ثلاث مباريات متتالية دون أن يفوته هدف؟',
+      },
+      answerPayload: { mode: 'vote', consensusRule: 'majority' },
+    });
+    const session = screen.createSession({
+      worldKey: 'football',
+      scopeKey: 'premier-league',
+    });
+    expect(
+      await screen.loadHistoricalScope(
+        { worldKey: 'football', scopeKey: 'premier-league' },
+        session,
+      ),
+    ).toMatchObject({ status: 'COMPLETE', canonicalCount: 1 });
+    const result = screen.screen(
+      draft('أي نادي خسر صدارة بفارق 12 نقطة في الدوري الإنجليزي موسم 1995؟'),
+      null,
+      { session, worldKey: 'football', scopeKey: 'premier-league' },
+    );
+    expect(
+      result.findings.some((finding) =>
+        finding.code.startsWith('POTENTIAL_OVERLAP_'),
+      ),
+    ).toBe(false);
+    expect(result.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'SUBJECTIVE_COMPARISON_INCONCLUSIVE',
+          severity: 'deferred',
+        }),
+      ]),
+    );
+  });
+
+  it('blocks an identical historical subjective prompt', async () => {
+    await db.collection('content_items').deleteMany({ scopeId });
+    await db
+      .collection('engine_candidates')
+      .deleteOne({ candidateId: 'approved-historical' });
+    const vote = {
+      prompt: { ar: 'من فينا يستطيع مشاهدة مباريات الدوري كل أسبوع؟' },
+      answerPayload: { mode: 'vote', consensusRule: 'majority' },
+    };
+    await db.collection('content_items').insertOne({
+      _id: new Types.ObjectId(),
+      scopeId,
+      status: 'ready',
+      ...vote,
+    });
+    const session = screen.createSession({
+      worldKey: 'football',
+      scopeKey: 'premier-league',
+    });
+    await screen.loadHistoricalScope(
+      { worldKey: 'football', scopeKey: 'premier-league' },
+      session,
+    );
+    const result = screen.screen(vote, null, {
+      session,
+      worldKey: 'football',
+      scopeKey: 'premier-league',
+    });
+    expect(result.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'DUPLICATE_HISTORICAL_CONTENT',
+          severity: 'blocking',
+        }),
+      ]),
+    );
+  });
+
   it('reads uncommitted inventory through the caller transaction session', async () => {
     const mongoSession = await db.startSession();
     try {

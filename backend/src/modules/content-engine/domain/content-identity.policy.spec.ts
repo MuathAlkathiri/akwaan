@@ -6,6 +6,117 @@ import {
 import { RawContentItemInput } from './content-identity.types';
 
 describe('ContentIdentityPolicy (Slice 2B Hardening)', () => {
+  it('treats unrelated factual and subjective prompts as inconclusive, not overlapping', () => {
+    const factual: RawContentItemInput = {
+      prompt:
+        'Which club lost a 12-point title lead in the 1995-96 Premier League season?',
+      answerPayload: {
+        mode: ChallengeAnswerMode.MULTIPLE_CHOICE,
+        options: [{ id: 'a', label: 'Newcastle United' }],
+        correctOptionId: 'a',
+      },
+    };
+    const subjective: RawContentItemInput = {
+      prompt:
+        'Who among us can watch three consecutive Premier League matches without missing a goal?',
+      answerPayload: {
+        mode: ChallengeAnswerMode.VOTE,
+        consensusRule: 'majority',
+      },
+    };
+    const compare = (a: RawContentItemInput, b: RawContentItemInput) =>
+      compareContentIdentities(
+        extractContentIdentity(a),
+        extractContentIdentity(b),
+      );
+    expect(compare(factual, subjective).result).toBe('INCONCLUSIVE');
+    expect(compare(subjective, factual).result).toBe('INCONCLUSIVE');
+  });
+
+  it('detects identical specific vote questions while retaining uncertain cases', () => {
+    const vote: RawContentItemInput = {
+      prompt: 'من بيننا يشاهد مباريات الدوري كل أسبوع؟',
+      answerPayload: {
+        mode: ChallengeAnswerMode.VOTE,
+        consensusRule: 'majority',
+      },
+    };
+    expect(
+      compareContentIdentities(
+        extractContentIdentity(vote),
+        extractContentIdentity(vote),
+      ).result,
+    ).toBe('DUPLICATE');
+    const differentOptions: RawContentItemInput = {
+      ...vote,
+      answerPayload: {
+        mode: ChallengeAnswerMode.VOTE,
+        consensusRule: 'majority',
+        options: [{ id: 'a', label: 'خيار مختلف' }],
+      },
+    };
+    expect(
+      compareContentIdentities(
+        extractContentIdentity(vote),
+        extractContentIdentity(differentOptions),
+      ).result,
+    ).toBe('POTENTIAL_OVERLAP');
+    const missing = {
+      ...vote,
+      answerPayload: { mode: ChallengeAnswerMode.VOTE },
+    };
+    for (const [left, right] of [
+      [missing, missing],
+      [vote, missing],
+      [
+        vote,
+        {
+          ...vote,
+          answerPayload: {
+            mode: ChallengeAnswerMode.VOTE,
+            consensusRule: 'exact',
+          },
+        },
+      ],
+    ]) {
+      expect(
+        compareContentIdentities(
+          extractContentIdentity(left),
+          extractContentIdentity(right),
+        ).result,
+      ).toBe('POTENTIAL_OVERLAP');
+    }
+    expect(
+      compareContentIdentities(
+        extractContentIdentity({ ...vote, metadata: { entityId: 'a' } }),
+        extractContentIdentity({ ...vote, metadata: { entityId: 'b' } }),
+      ).result,
+    ).toBe('POTENTIAL_OVERLAP');
+    const paraphrase: RawContentItemInput = {
+      prompt: 'أي واحد منا لا يفوّت مباريات فريقه المفضل؟',
+      answerPayload: { mode: ChallengeAnswerMode.VOTE },
+    };
+    expect(
+      compareContentIdentities(
+        extractContentIdentity(vote),
+        extractContentIdentity(paraphrase),
+      ).result,
+    ).toBe('INCONCLUSIVE');
+    const unrelated: RawContentItemInput = {
+      prompt: 'من بيننا يفضل تحضير الفطور للأصدقاء؟',
+      answerPayload: { mode: ChallengeAnswerMode.VOTE },
+      metadata: { entityId: 'shared-topic' },
+    };
+    expect(
+      compareContentIdentities(
+        extractContentIdentity({
+          ...vote,
+          metadata: { entityId: 'shared-topic' },
+        }),
+        extractContentIdentity(unrelated),
+      ).result,
+    ).toBe('INCONCLUSIVE');
+  });
   // 1. Identical fact, identical answer, different distractors → DUPLICATE
   it('1. classifies identical fact and answer with differing distractors as DUPLICATE', () => {
     // Section 3: "Changing distractors does not create a new core gameplay task."
@@ -608,7 +719,7 @@ describe('ContentIdentityPolicy (Slice 2B Hardening)', () => {
       extractContentIdentity(voteItem),
       extractContentIdentity(voteItem),
     );
-    expect(compVote.result).toBe('POTENTIAL_OVERLAP');
+    expect(compVote.result).toBe('INCONCLUSIVE');
     expect(compVote.reasonCode).toBe('UNSUPPORTED_MECHANIC_COMPARISON');
   });
 
