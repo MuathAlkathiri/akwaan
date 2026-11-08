@@ -4,6 +4,8 @@ import request from 'supertest';
 import { AiProvider } from '../../src/modules/ai-agent/domain/ai-provider.interface';
 import { ENGINE_AI_PROVIDER } from '../../src/modules/content-engine/domain/content-engine.constants';
 import { FakeAiProvider } from '../../src/modules/content-engine/testing/fake-ai.provider';
+import { HistoricalCoverageService } from '../../src/modules/content-engine/application/historical-coverage.service';
+import { DeterministicScreenService } from '../../src/modules/content-engine/application/deterministic-screen.service';
 import {
   fixtureCredentials,
   seedIntegrationFixtures,
@@ -33,6 +35,8 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
   let adminToken: string;
   let userToken: string;
   let fake: FakeAiProvider;
+  const pilotWorldId = new Types.ObjectId();
+  const pilotScopeId = new Types.ObjectId();
 
   const PILOT = {
     mechanicKey: 'read-your-opponent',
@@ -89,6 +93,20 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
     database = await connectTestDatabase();
     await resetTestDatabase(database);
     await seedIntegrationFixtures(database);
+    await database.collection('worlds').insertOne({
+      _id: pilotWorldId,
+      slug: 'video-games',
+      name: 'Video Games',
+      status: 'active',
+    });
+    await database.collection('scopes').insertOne({
+      _id: pilotScopeId,
+      worldId: pilotWorldId,
+      slug: 'overwatch',
+      name: 'Overwatch',
+      status: 'active',
+      excludedChallengeTypeIds: [],
+    });
     app = await createIntegrationTestApp({
       env: {
         CONTENT_ENGINE_ENABLED: 'true',
@@ -147,6 +165,258 @@ describe('Content Engine pilot — fake end-to-end over Admin HTTP', () => {
   });
 
   describe('options and preflight', () => {
+    it('blocks direct submission without a provider call when screening inventory exceeds 500', async () => {
+      const healthy = (
+        await asAdmin(api().post('/admin/content-engine/jobs/preflight'))
+          .send(PILOT)
+          .expect(201)
+      ).body.data;
+      expect(healthy.submissionReady).toBe(true);
+      const countBefore = await database
+        .collection('engine_jobs')
+        .countDocuments();
+      const callsBefore = fake.calls.length;
+      await database.collection('content_items').insertMany(
+        Array.from({ length: 501 }, (_, i) => ({
+          scopeId: pilotScopeId,
+          worldId: pilotWorldId,
+          status: 'ready',
+          prompt: { ar: `تجربة ${i}` },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [],
+            correctOptionId: 'a',
+          },
+        })),
+      );
+      try {
+        await expect(
+          app.get(HistoricalCoverageService).getCoverage({
+            worldKey: PILOT.worldKey,
+            scopeKey: PILOT.scopeKey,
+          }),
+        ).resolves.toBeDefined();
+        const preflight = (
+          await asAdmin(api().post('/admin/content-engine/jobs/preflight'))
+            .send(PILOT)
+            .expect(201)
+        ).body.data;
+        expect(preflight).toMatchObject({
+          submissionReady: false,
+          blockedCode: 'HISTORICAL_INVENTORY_INCOMPLETE',
+        });
+        const response = await asAdmin(api().post('/admin/content-engine/jobs'))
+          .send({ ...PILOT, planDigest: healthy.planDigest })
+          .expect(400);
+        expect(JSON.stringify(response.body)).toContain(
+          'HISTORICAL_INVENTORY_INCOMPLETE',
+        );
+        expect(await database.collection('engine_jobs').countDocuments()).toBe(
+          countBefore,
+        );
+        expect(fake.calls.length).toBe(callsBefore);
+      } finally {
+        await database
+          .collection('content_items')
+          .deleteMany({ scopeId: pilotScopeId });
+      }
+    });
+
+    it.each(['orphan', 'unknown'])(
+      'blocks preflight and submission for %s historical approval',
+      async (kind) => {
+        const historicJob = new Types.ObjectId();
+        if (kind === 'unknown')
+          await database.collection('engine_jobs').insertOne({
+            _id: historicJob,
+            worldKey: 'retired-world',
+            scopeKey: 'retired-scope',
+            mechanicKey: 'read-your-opponent',
+          });
+        await database.collection('engine_candidates').insertOne({
+          candidateId: `preflight-${kind}`,
+          jobId: String(historicJob),
+          reviewStatus: 'approved',
+          publishedContentItemId: null,
+          reviewDecision: {
+            decision: 'approved',
+            reviewerId: 'r',
+            reviewerEmail: 'r@example.test',
+            revision: 1,
+          },
+          reviewEvents: [
+            {
+              action: 'approved',
+              actorId: 'r',
+              actorEmail: 'r@example.test',
+              revision: 1,
+            },
+          ],
+        });
+        const count = await database.collection('engine_jobs').countDocuments();
+        const calls = fake.calls.length;
+        try {
+          const response = (
+            await asAdmin(api().post('/admin/content-engine/jobs/preflight'))
+              .send(PILOT)
+              .expect(201)
+          ).body.data;
+          expect(response).toMatchObject({
+            submissionReady: false,
+            blockedCode: 'HISTORICAL_INVENTORY_INCOMPLETE',
+          });
+          await asAdmin(api().post('/admin/content-engine/jobs'))
+            .send({ ...PILOT, planDigest: 'a'.repeat(64) })
+            .expect(400);
+          expect(
+            await database.collection('engine_jobs').countDocuments(),
+          ).toBe(count);
+          expect(fake.calls).toHaveLength(calls);
+        } finally {
+          await database
+            .collection('engine_candidates')
+            .deleteOne({ candidateId: `preflight-${kind}` });
+          if (kind === 'unknown')
+            await database
+              .collection('engine_jobs')
+              .deleteOne({ _id: historicJob });
+        }
+      },
+    );
+
+    it('blocks ambiguous catalog targets without submitting or calling the provider', async () => {
+      const conflictingScope = new Types.ObjectId();
+      await database.collection('scopes').insertOne({
+        _id: conflictingScope,
+        worldId: pilotWorldId,
+        slug: 'conflicting-overwatch',
+        name: 'overwatch',
+        status: 'active',
+      });
+      const jobsBefore = await database
+        .collection('engine_jobs')
+        .countDocuments();
+      const calls = fake.calls.length;
+      try {
+        const result = (
+          await asAdmin(api().post('/admin/content-engine/jobs/preflight'))
+            .send(PILOT)
+            .expect(201)
+        ).body.data;
+        expect(result).toMatchObject({
+          submissionReady: false,
+          blockedCode: 'HISTORICAL_INVENTORY_INCOMPLETE',
+        });
+        await asAdmin(api().post('/admin/content-engine/jobs'))
+          .send({ ...PILOT, planDigest: 'a'.repeat(64) })
+          .expect(400);
+        expect(await database.collection('engine_jobs').countDocuments()).toBe(
+          jobsBefore,
+        );
+        expect(fake.calls).toHaveLength(calls);
+      } finally {
+        await database
+          .collection('scopes')
+          .deleteOne({ _id: conflictingScope });
+      }
+    });
+
+    it('fails closed on an inventory query error before persistence or provider calls', async () => {
+      const screen = app.get(DeterministicScreenService);
+      const spy = jest
+        .spyOn(screen, 'loadHistoricalScope')
+        .mockRejectedValue(new Error('simulated database failure'));
+      const jobsBefore = await database
+        .collection('engine_jobs')
+        .countDocuments();
+      const calls = fake.calls.length;
+      try {
+        const result = (
+          await asAdmin(api().post('/admin/content-engine/jobs/preflight'))
+            .send(PILOT)
+            .expect(201)
+        ).body.data;
+        expect(result).toMatchObject({
+          submissionReady: false,
+          blockedCode: 'HISTORICAL_INVENTORY_INCOMPLETE',
+        });
+        await asAdmin(api().post('/admin/content-engine/jobs'))
+          .send({ ...PILOT, planDigest: 'a'.repeat(64) })
+          .expect(400);
+        expect(await database.collection('engine_jobs').countDocuments()).toBe(
+          jobsBefore,
+        );
+        expect(fake.calls).toHaveLength(calls);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('rechecks inventory before a queued job reaches the provider', async () => {
+      const requestBody = {
+        ...PILOT,
+        batchGuidance: 'queued inventory drift test',
+      };
+      const preflight = (
+        await asAdmin(api().post('/admin/content-engine/jobs/preflight'))
+          .send(requestBody)
+          .expect(201)
+      ).body.data;
+      const submitted = (
+        await asAdmin(api().post('/admin/content-engine/jobs'))
+          .send({ ...requestBody, planDigest: preflight.planDigest })
+          .expect(201)
+      ).body.data;
+      const calls = fake.calls.length;
+      await database.collection('engine_jobs').updateOne(
+        { _id: new Types.ObjectId(submitted.jobId) },
+        {
+          $set: {
+            'stageCheckpoints.generated': { marker: 'prior-checkpoint' },
+          },
+        },
+      );
+      await database.collection('content_items').insertMany(
+        Array.from({ length: 501 }, (_, i) => ({
+          scopeId: pilotScopeId,
+          worldId: pilotWorldId,
+          status: 'draft',
+          prompt: { ar: `تجربة ${i}` },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [],
+            correctOptionId: 'a',
+          },
+        })),
+      );
+      try {
+        await asAdmin(api().post('/admin/content-engine/jobs/run'))
+          .send({ jobId: submitted.jobId })
+          .expect(201);
+        expect(fake.calls).toHaveLength(calls);
+        const job = await database
+          .collection('engine_jobs')
+          .findOne({ _id: new Types.ObjectId(submitted.jobId) });
+        expect(job?.status).toBe('awaiting_review');
+        expect(job?.stageCheckpoints?.generated).toEqual({
+          marker: 'prior-checkpoint',
+        });
+        await asAdmin(api().post('/admin/content-engine/jobs/run'))
+          .send({ jobId: submitted.jobId })
+          .expect(409);
+        expect(fake.calls).toHaveLength(calls);
+        expect(JSON.stringify(job)).toContain(
+          'HISTORICAL_INVENTORY_INCOMPLETE',
+        );
+      } finally {
+        await database
+          .collection('content_items')
+          .deleteMany({ scopeId: pilotScopeId });
+        await database
+          .collection('engine_jobs')
+          .deleteOne({ _id: new Types.ObjectId(submitted.jobId) });
+      }
+    });
     it('returns server-derived authoring options with RYO difficulty support and Closest deferral', async () => {
       const body = (
         await asAdmin(api().get('/admin/content-engine/options')).expect(200)

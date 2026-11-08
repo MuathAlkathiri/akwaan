@@ -166,6 +166,48 @@ export class ContentEngineOrchestratorService {
       }
 
       if (
+        !rows.length &&
+        (await this.budget.hasLedgerEntry(job.jobId, 'generation'))
+      ) {
+        await this.jobs.awaitReview({
+          jobId: job.jobId,
+          leaseEpoch: job.leaseEpoch,
+          reason: 'GENERATION_OUTCOME_REQUIRES_RECONCILIATION',
+          stage: 'provider_outcome_ambiguous',
+        });
+        return;
+      }
+
+      // Inventory may have changed after the job was submitted. Recheck before
+      // a queued or retried job can make its first paid generation call.
+      {
+        let complete = false;
+        try {
+          const session = this.screen.createSession({
+            worldKey: job.worldKey,
+            scopeKey: job.scopeKey,
+          });
+          complete =
+            (
+              await this.screen.loadHistoricalScope(
+                { worldKey: job.worldKey, scopeKey: job.scopeKey },
+                session,
+              )
+            ).status === 'COMPLETE';
+        } catch {
+          complete = false;
+        }
+        if (!complete) {
+          await this.jobs.awaitReview({
+            jobId: job.jobId,
+            leaseEpoch: job.leaseEpoch,
+            reason: 'HISTORICAL_INVENTORY_INCOMPLETE',
+          });
+          return;
+        }
+      }
+
+      if (
         provenance.spec &&
         !rows.length &&
         /^[a-f0-9]{64}$/.test(provenance.spec.contextHash)
@@ -298,15 +340,6 @@ export class ContentEngineOrchestratorService {
       });
 
       if (!rows.length) {
-        if (await this.budget.hasLedgerEntry(job.jobId, 'generation')) {
-          await this.jobs.awaitReview({
-            jobId: job.jobId,
-            leaseEpoch: job.leaseEpoch,
-            reason: 'GENERATION_OUTCOME_REQUIRES_RECONCILIATION',
-            stage: 'provider_outcome_ambiguous',
-          });
-          return;
-        }
         await this.generator.generate({
           jobId: job.jobId,
           leaseEpoch: job.leaseEpoch,

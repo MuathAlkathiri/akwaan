@@ -50,3 +50,56 @@ export function reviewDecisionRevision(
     { revision?: number } | null | undefined;
   return typeof decision?.revision === 'number' ? decision.revision : null;
 }
+
+/** R4-C: audit event recording an automated, verified approval carry-forward. */
+export const APPROVAL_CARRIED_FORWARD_EVENT = 'approval_carried_forward';
+
+/**
+ * R4-C: whether the trusted human approval still covers review revision
+ * `revision`. It does at the decision's own revision. It also does at any later
+ * revision reached only through a contiguous chain of carry-forward events, one
+ * per revision. Each event must name the transition (from r-1 to r) and the
+ * exact original human decision (revision and reviewer). Any other event in
+ * that range, a gap, or a mismatch fails closed. The human decision is never
+ * rewritten, so a carry-forward can never pose as a new human approval.
+ */
+export function isApprovalValidAtRevision(
+  candidate: Partial<EngineCandidateDocument>,
+  revision: unknown,
+): boolean {
+  if (!hasTrustedCandidateApproval(candidate)) return false;
+  const decision = candidate.reviewDecision as {
+    revision: number;
+    reviewerId: string;
+    reviewerEmail: string;
+  };
+  if (typeof revision !== 'number' || !Number.isInteger(revision)) return false;
+  if (revision < decision.revision) return false;
+  if (revision === decision.revision) return true;
+  const events = candidate.reviewEvents ?? [];
+  for (let r = decision.revision + 1; r <= revision; r += 1) {
+    const atRevision = events.filter((event) => event.revision === r);
+    if (atRevision.length !== 1) return false;
+    const [event] = atRevision;
+    const details = (event.details ?? {}) as {
+      fromRevision?: unknown;
+      toRevision?: unknown;
+      originalApproval?: {
+        revision?: unknown;
+        reviewerId?: unknown;
+        reviewerEmail?: unknown;
+      };
+    };
+    if (
+      event.action !== APPROVAL_CARRIED_FORWARD_EVENT ||
+      details.fromRevision !== r - 1 ||
+      details.toRevision !== r ||
+      details.originalApproval?.revision !== decision.revision ||
+      details.originalApproval?.reviewerId !== decision.reviewerId ||
+      details.originalApproval?.reviewerEmail !== decision.reviewerEmail
+    ) {
+      return false;
+    }
+  }
+  return true;
+}

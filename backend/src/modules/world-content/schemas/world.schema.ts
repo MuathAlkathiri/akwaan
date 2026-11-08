@@ -49,3 +49,4 @@ export class World extends Document {
 }
 
 export const WorldSchema = SchemaFactory.createForClass(World);
+WorldSchema.index({ name: 1 });

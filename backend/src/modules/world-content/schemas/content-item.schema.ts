@@ -79,6 +79,9 @@ const ContentMetadataSchema = new MongooseSchema(
     source: { type: String, trim: true },
     notes: { type: String, trim: true },
     tags: { type: [String], default: undefined },
+    familyKey: { type: String, trim: true },
+    subject: { type: String, trim: true },
+    entityId: { type: String, trim: true },
   },
   { _id: false },
 );
@@ -137,11 +140,19 @@ export class ContentItem extends Document {
   status: ContentItemStatus;
 
   @Prop({ type: ContentMetadataSchema, default: undefined })
-  metadata?: { source?: string; notes?: string; tags?: string[] };
+  metadata?: {
+    source?: string;
+    notes?: string;
+    tags?: string[];
+    familyKey?: string;
+    subject?: string;
+    entityId?: string;
+  };
 }
 
 export const ContentItemSchema = SchemaFactory.createForClass(ContentItem);
 ContentItemSchema.index({ worldId: 1, scopeId: 1, status: 1 });
+ContentItemSchema.index({ scopeId: 1, status: 1, createdAt: 1, _id: 1 });
 
 /**
  * "Which items use this asset?" — the media-rights impact lookup.

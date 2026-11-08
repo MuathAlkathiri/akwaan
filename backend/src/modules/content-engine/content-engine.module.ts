@@ -72,6 +72,10 @@ import {
   EngineDraftPublicationDocument,
   EngineDraftPublicationSchema,
 } from './schemas/engine-draft-publication.schema';
+import {
+  EngineInventoryFence,
+  EngineInventoryFenceSchema,
+} from './schemas/engine-inventory-fence.schema';
 
 /**
  * Akwaan Content Engine — Phase 1 implementation (roadmap §30).
@@ -101,6 +105,7 @@ import {
       { name: EngineBudgetDocument.name, schema: EngineBudgetSchema },
       { name: EngineCostEntryDocument.name, schema: EngineCostEntrySchema },
       { name: EngineCandidateDocument.name, schema: EngineCandidateSchema },
+      { name: EngineInventoryFence.name, schema: EngineInventoryFenceSchema },
       {
         name: EngineDraftPublicationDocument.name,
         schema: EngineDraftPublicationSchema,

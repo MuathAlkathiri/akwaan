@@ -41,6 +41,123 @@ export interface FindingItem {
   code: string;
   severity: "blocking" | "warning" | "deferred" | string;
   message: string;
+  /** R4-A: present only on server-verifiable POTENTIAL_OVERLAP_* findings. */
+  fingerprint?: string;
+  evidence?: {
+    candidateContentHash?: string;
+    reasonCode?: string | null;
+    reference?: { kind?: string; id?: string; contentHash?: string };
+  };
+}
+
+/**
+ * R4-A acknowledgment contract. Only POTENTIAL_OVERLAP_* findings require a
+ * reviewer acknowledgment; CROSS_SCOPE_ADVISORY is informational. The browser
+ * never computes a fingerprint: it only echoes one the server produced.
+ */
+export const OVERLAP_FINGERPRINT_PATTERN = /^ovl1:[0-9a-f]{64}$/;
+
+export const isAcknowledgeableOverlapCode = (code: string) =>
+  code.startsWith("POTENTIAL_OVERLAP_");
+
+export interface OverlapRequirement {
+  fingerprint: string;
+  code: string;
+  reasonCode: string | null;
+  referenceKind: string;
+  referenceId: string;
+  referenceContentHash?: string;
+  candidateContentHash?: string;
+  sourceLabelAr: string;
+  /** Arabic explanation when the finding message carried one. */
+  reasonAr?: string;
+}
+
+const REFERENCE_KIND_LABELS_AR: Record<string, string> = {
+  CANONICAL_READY: "سؤال جاهز منشور (READY ContentItem)",
+  CANONICAL_DRAFT: "مسودة قانونية (DRAFT ContentItem)",
+  APPROVED_CANDIDATE: "مرشح معتمد لم يُنشر بعد (Approved Candidate)",
+  BATCH_CANDIDATE: "مرشح آخر في الدفعة نفسها (Batch Candidate)",
+};
+
+export const referenceKindLabelAr = (kind: string) =>
+  REFERENCE_KIND_LABELS_AR[kind] ?? kind;
+
+/**
+ * Splits overlap findings into those the reviewer can acknowledge (they carry a
+ * well-formed server fingerprint and a stable reference) and those that cannot
+ * be verified and therefore block approval outright.
+ */
+export function overlapRequirementsFromFindings(
+  findings?: FindingItem[] | null,
+): { required: OverlapRequirement[]; unverifiable: FindingItem[] } {
+  const required = new Map<string, OverlapRequirement>();
+  const unverifiable: FindingItem[] = [];
+  for (const finding of Array.isArray(findings) ? findings : []) {
+    if (!isAcknowledgeableOverlapCode(finding.code)) continue;
+    const reference = finding.evidence?.reference;
+    if (
+      !finding.fingerprint ||
+      !OVERLAP_FINGERPRINT_PATTERN.test(finding.fingerprint) ||
+      !reference?.id ||
+      !reference.kind
+    ) {
+      unverifiable.push(finding);
+      continue;
+    }
+    const parsed = parseDeduplicationMatch(finding);
+    required.set(finding.fingerprint, {
+      fingerprint: finding.fingerprint,
+      code: finding.code,
+      reasonCode: finding.evidence?.reasonCode ?? null,
+      referenceKind: reference.kind,
+      referenceId: reference.id,
+      referenceContentHash: reference.contentHash,
+      candidateContentHash: finding.evidence?.candidateContentHash,
+      sourceLabelAr: referenceKindLabelAr(reference.kind),
+      reasonAr: parsed.reasonAr,
+    });
+  }
+  return { required: [...required.values()], unverifiable };
+}
+
+/** Requirements exactly as a 409 approval conflict reported them. */
+export function overlapRequirementsFromServer(
+  overlaps: unknown,
+): OverlapRequirement[] {
+  if (!Array.isArray(overlaps)) return [];
+  const required = new Map<string, OverlapRequirement>();
+  for (const raw of overlaps) {
+    const overlap = raw as {
+      fingerprint?: unknown;
+      code?: unknown;
+      reasonCode?: unknown;
+      reference?: { kind?: unknown; id?: unknown; contentHash?: unknown };
+    };
+    if (
+      typeof overlap?.fingerprint !== "string" ||
+      !OVERLAP_FINGERPRINT_PATTERN.test(overlap.fingerprint) ||
+      typeof overlap.code !== "string" ||
+      typeof overlap.reference?.id !== "string" ||
+      typeof overlap.reference?.kind !== "string"
+    ) {
+      continue;
+    }
+    required.set(overlap.fingerprint, {
+      fingerprint: overlap.fingerprint,
+      code: overlap.code,
+      reasonCode:
+        typeof overlap.reasonCode === "string" ? overlap.reasonCode : null,
+      referenceKind: overlap.reference.kind,
+      referenceId: overlap.reference.id,
+      referenceContentHash:
+        typeof overlap.reference.contentHash === "string"
+          ? overlap.reference.contentHash
+          : undefined,
+      sourceLabelAr: referenceKindLabelAr(overlap.reference.kind),
+    });
+  }
+  return [...required.values()];
 }
 
 export interface ParsedDeduplicationMatch {
@@ -57,6 +174,10 @@ export interface ParsedDeduplicationMatch {
 
 export interface DeduplicationSummary {
   category: DeduplicationCategory;
+  /** POTENTIAL_OVERLAP_* evidence the reviewer must explicitly acknowledge. */
+  requiresAcknowledgment: boolean;
+  /** Overlap evidence with no stable reference: never acknowledgeable. */
+  hasUnverifiableOverlap: boolean;
   statusLabelAr: string;
   statusDescriptionAr: string;
   badgeClass: string;
@@ -210,6 +331,9 @@ export function parseDeduplicationMatch(finding: FindingItem): ParsedDeduplicati
     }
   }
 
+  if (finding.evidence?.reference?.id) {
+    referenceId = finding.evidence.reference.id;
+  }
   const reasonAr = translateReasonToAr(rawReason);
 
   return {
@@ -247,9 +371,14 @@ export function summarizeDeduplication(
   const hasProven = duplicateFindings.length > 0;
   const isIncomplete = incompleteFindings.length > 0;
   const hasOverlap = overlapFindings.length > 0;
+  const acknowledgment = overlapRequirementsFromFindings(safeFindings);
+  const requiresAcknowledgment = acknowledgment.required.length > 0;
+  const hasUnverifiableOverlap = acknowledgment.unverifiable.length > 0;
+  const flags = { requiresAcknowledgment, hasUnverifiableOverlap };
 
   if (hasProven) {
     return {
+      ...flags,
       category: "proven_duplicate",
       statusLabelAr: "تكرار مثبت — الاعتماد محظور",
       statusDescriptionAr:
@@ -266,6 +395,7 @@ export function summarizeDeduplication(
 
   if (isIncomplete) {
     return {
+      ...flags,
       category: "incomplete_verification",
       statusLabelAr: "تحقق تاريخي غير مكتمل — الاعتماد محظور",
       statusDescriptionAr:
@@ -280,12 +410,30 @@ export function summarizeDeduplication(
     };
   }
 
-  if (hasOverlap) {
+  if (hasUnverifiableOverlap) {
     return {
+      ...flags,
       category: "potential_overlap",
-      statusLabelAr: "شبهة تقاطع أو تشابه — يتطلب مراجعة بشرية",
+      statusLabelAr: "شبهة تقاطع غير قابلة للتحقق — الاعتماد محظور",
       statusDescriptionAr:
-        "يوجد تشابه جزئي أو تقاطع معرفي مع محتوى سابق. الاعتماد غير محظور آلياً لكنه يتطلب عناية المراجع للتأكد من تنوع تجربة اللعب.",
+        "توجد شبهة تقاطع محفوظة لا تحدد العنصر المرجعي الذي قورنت به، فلا يمكن الإقرار بها. أعد فحص التكرار: يعيد الخادم المقارنة بأدلة حديثة، وإن تعذر ذلك يبقى الاعتماد محظوراً.",
+      badgeClass: "border-rose-300 bg-rose-100 text-rose-900 font-semibold",
+      isApprovalBlocked: true,
+      isIncomplete: false,
+      hasProvenDuplicate: false,
+      hasPotentialOverlap: true,
+      matches,
+      incompleteFindings,
+    };
+  }
+
+  if (requiresAcknowledgment) {
+    return {
+      ...flags,
+      category: "potential_overlap",
+      statusLabelAr: "شبهة تقاطع — تتطلب إقراراً صريحاً من المراجع",
+      statusDescriptionAr:
+        "يوجد تشابه جزئي أو تقاطع معرفي مع محتوى سابق. لا يُعتمد المرشح إلا بعد أن يقرّ المراجع صراحةً بكل تحذير على حدة؛ عرض التحذير وحده لا يُعد إقراراً.",
       badgeClass: "border-amber-300 bg-amber-100 text-amber-900 font-semibold",
       isApprovalBlocked: false,
       isIncomplete: false,
@@ -296,7 +444,26 @@ export function summarizeDeduplication(
     };
   }
 
+  if (hasOverlap) {
+    // Only informational cross-Scope advisories remain.
+    return {
+      ...flags,
+      category: "potential_overlap",
+      statusLabelAr: "تنبيه تقاطع مع نطاق آخر — للاطلاع",
+      statusDescriptionAr:
+        "رُصد تشابه مع محتوى في نطاق آخر. هذا تنبيه للاطلاع فقط ولا يمنع الاعتماد ولا يتطلب إقراراً.",
+      badgeClass: "border-sky-300 bg-sky-100 text-sky-900 font-medium",
+      isApprovalBlocked: false,
+      isIncomplete: false,
+      hasProvenDuplicate: false,
+      hasPotentialOverlap: true,
+      matches,
+      incompleteFindings,
+    };
+  }
+
   return {
+    ...flags,
     category: "clean",
     statusLabelAr: "لم يتم رصد تكرار ضمن النطاق المفحوص",
     statusDescriptionAr:

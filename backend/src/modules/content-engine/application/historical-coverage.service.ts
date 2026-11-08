@@ -10,6 +10,11 @@ import { EngineCandidateDocument } from '../schemas/engine-candidate.schema';
 import { EngineDraftPublicationDocument } from '../schemas/engine-draft-publication.schema';
 import { EngineJobDocument } from '../schemas/engine-job.schema';
 import { AuthoringContextService } from './authoring-context.service';
+import { classifyHistoricalApprovals } from './historical-approved-inventory';
+import {
+  assertHistoricalJobAliasesUnambiguous,
+  resolveHistoricalTarget,
+} from './authoring-target-resolver';
 import { CanonicalFamilyCatalog } from '../domain/canonical-family.types';
 import {
   CAPACITY_THRESHOLD,
@@ -21,6 +26,7 @@ import {
 } from '../domain/historical-coverage.types';
 import {
   hasTrustedCandidateApproval,
+  isApprovalValidAtRevision,
   reviewDecisionRevision,
 } from '../domain/candidate-approval-provenance';
 
@@ -77,25 +83,40 @@ export class HistoricalCoverageService {
 
     // 2. Resolve World and Scope in MongoDB. Scope slugs are only unique
     // within a World, so the requested World must be part of the lookup.
-    const worldDoc = await this.worlds
-      .findOne({ slug: worldKey })
-      .lean()
-      .exec();
-    const scopeDoc = await this.scopes
-      .findOne(
-        worldDoc ? { worldId: worldDoc._id, slug: scopeKey } : { _id: null },
-      )
-      .lean()
-      .exec();
-    if (!worldDoc) {
-      warnings.push(`World "${worldKey}" not found in database catalog.`);
+    const target = await resolveHistoricalTarget(
+      this.worlds,
+      this.scopes,
+      worldKey,
+      scopeKey,
+    );
+    if (!target) {
+      throw new Error(
+        `Historical inventory target "${worldKey}/${scopeKey}" is missing or ambiguous in database catalog`,
+      );
     }
-    if (!scopeDoc) {
-      warnings.push(`Scope "${scopeKey}" not found in database catalog.`);
-    }
+    const scopeDoc = target.scope;
+    const matchedApprovedIds = await classifyHistoricalApprovals(
+      {
+        candidates: this.candidates,
+        jobs: this.jobs,
+        publications: this.publications,
+        contentItems: this.contentItems,
+        worlds: this.worlds,
+        scopes: this.scopes,
+      },
+      scopeDoc._id,
+    );
 
     // 3. Resolve ChallengeTypes map for mechanic slug resolution
-    const challengeTypeDocs = await this.challengeTypes.find().lean().exec();
+    const challengeTypeDocs = await this.challengeTypes
+      .find()
+      .limit(1001)
+      .lean()
+      .exec();
+    if (challengeTypeDocs.length > 1000)
+      throw new Error(
+        'Historical coverage challenge types exceed safety limit',
+      );
     const challengeTypeIdToSlug = new Map<string, string>();
     for (const ct of challengeTypeDocs) {
       challengeTypeIdToSlug.set(ct._id.toString(), ct.slug);
@@ -103,11 +124,27 @@ export class HistoricalCoverageService {
 
     // 4. Fetch canonical ContentItems for this Scope
     const items = scopeDoc
-      ? await this.contentItems.find({ scopeId: scopeDoc._id }).lean().exec()
+      ? await this.contentItems
+          .find({ scopeId: scopeDoc._id })
+          .limit(1001)
+          .lean()
+          .exec()
       : [];
+    if (items.length > 1000)
+      throw new Error('Historical coverage items exceed safety limit');
 
     // 5. Fetch Engine Candidates associated with jobs in this Scope
-    const jobDocs = await this.jobs.find({ worldKey, scopeKey }).lean().exec();
+    const jobDocs = await this.jobs
+      .find({
+        worldKey: { $in: target.worldKeys },
+        scopeKey: { $in: target.scopeKeys },
+      })
+      .limit(1001)
+      .lean()
+      .exec();
+    if (jobDocs.length > 1000)
+      throw new Error('Historical coverage jobs exceed safety limit');
+    assertHistoricalJobAliasesUnambiguous(jobDocs);
     const jobIds = jobDocs.map((j) => j._id.toString());
     const jobMechanicMap = new Map<string, string>();
     for (const job of jobDocs) {
@@ -117,10 +154,50 @@ export class HistoricalCoverageService {
     const candidateDocs =
       jobIds.length > 0
         ? await this.candidates
-            .find({ jobId: { $in: jobIds } })
+            .find({ jobId: { $in: jobIds }, publishedContentItemId: null })
+            .limit(1001)
             .lean()
             .exec()
         : [];
+    if (candidateDocs.length > 1000)
+      throw new Error('Historical coverage candidates exceed safety limit');
+    const knownCandidateIds = new Set(candidateDocs.map((c) => c.candidateId));
+    const missingApprovedIds = matchedApprovedIds.filter(
+      (id) => !knownCandidateIds.has(id),
+    );
+    if (missingApprovedIds.length) {
+      const additional = await this.candidates
+        .find({ candidateId: { $in: missingApprovedIds } })
+        .limit(1001)
+        .lean()
+        .exec();
+      if (
+        additional.length !== missingApprovedIds.length ||
+        candidateDocs.length + additional.length > 1000
+      )
+        throw new Error('Historical coverage approved candidates incomplete');
+      candidateDocs.push(...additional);
+      const missingJobIds = [
+        ...new Set(
+          additional
+            .map((c) => c.jobId)
+            .filter((id) => !jobMechanicMap.has(id)),
+        ),
+      ];
+      const extraJobs = await this.jobs
+        .find({
+          _id: { $in: missingJobIds.map((id) => new Types.ObjectId(id)) },
+        })
+        .limit(1001)
+        .lean()
+        .exec();
+      if (extraJobs.length !== missingJobIds.length)
+        throw new Error(
+          'Historical coverage approved candidate jobs incomplete',
+        );
+      for (const job of extraJobs)
+        jobMechanicMap.set(String(job._id), job.mechanicKey);
+    }
 
     const candidatesById = new Map(
       candidateDocs.map((candidate) => [candidate.candidateId, candidate]),
@@ -137,8 +214,25 @@ export class HistoricalCoverageService {
     if (allItemIds.length > 0) {
       const pubDocs = await this.publications
         .find({ contentItemId: { $in: allItemIds } })
+        .limit(1001)
         .lean()
         .exec();
+      if (pubDocs.length > 1000)
+        throw new Error('Historical coverage publications exceed safety limit');
+      const referencedIds = [...new Set(pubDocs.map((pub) => pub.candidateId))];
+      const referencedCandidates = referencedIds.length
+        ? await this.candidates
+            .find({ candidateId: { $in: referencedIds } })
+            .limit(1001)
+            .lean()
+            .exec()
+        : [];
+      if (referencedCandidates.length > 1000)
+        throw new Error(
+          'Historical coverage publication candidates exceed safety limit',
+        );
+      for (const candidate of referencedCandidates)
+        candidatesById.set(candidate.candidateId, candidate);
       for (const pub of pubDocs) {
         const candidate = candidatesById.get(pub.candidateId);
         const isConsistent = Boolean(
@@ -147,7 +241,9 @@ export class HistoricalCoverageService {
           candidate.publishedContentItemId === pub.contentItemId &&
           candidate.reviewStatus === 'approved' &&
           this.hasTrustedCandidateApproval(candidate) &&
-          this.reviewDecisionRevision(candidate) === pub.reviewRevision,
+          // R4-C: a DRAFT may be published at a revision the human approval
+          // reached through a verified carry-forward chain.
+          isApprovalValidAtRevision(candidate, pub.reviewRevision),
         );
         if (isConsistent) {
           approvedPublicationItemIds.add(pub.contentItemId);

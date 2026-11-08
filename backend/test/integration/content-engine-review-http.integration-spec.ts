@@ -1,5 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { Connection, Types } from 'mongoose';
+import { ContentEngineReviewService } from '../../src/modules/content-engine/application/content-engine-review.service';
 import request from 'supertest';
 import {
   fixtureCredentials,
@@ -90,5 +91,102 @@ describe('Content Engine review HTTP authorization', () => {
         reviewStatus: 'pending',
       }),
     ]);
+  });
+
+  it('returns revision details for stale approval and 404 for missing candidates', async () => {
+    const stale = await request(app.getHttpServer())
+      .post('/admin/content-engine/candidates/http-review-candidate/approve')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ expectedRevision: 8, explanation: 'review' })
+      .expect(409);
+    expect(stale.body).toMatchObject({
+      expectedRevision: 8,
+      currentRevision: 0,
+    });
+    await request(app.getHttpServer())
+      .post('/admin/content-engine/candidates/missing-candidate/approve')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ expectedRevision: 0, explanation: 'review' })
+      .expect(404);
+  });
+
+  it('rejects malformed overlap acknowledgments before any review logic runs', async () => {
+    for (const overlapAcknowledgments of [
+      [{ fingerprint: 'not-a-fingerprint' }],
+      [{ fingerprint: `ovl1:${'A'.repeat(64)}` }],
+      ['ovl1:' + '0'.repeat(64)],
+    ]) {
+      await request(app.getHttpServer())
+        .post('/admin/content-engine/candidates/http-review-candidate/approve')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          expectedRevision: 0,
+          explanation: 'review',
+          overlapAcknowledgments,
+        })
+        .expect(400);
+    }
+    const row = await database
+      .collection('engine_candidates')
+      .findOne({ candidateId: 'http-review-candidate' });
+    expect(row?.reviewStatus).toBe('pending');
+    expect(row?.reviewRevision).toBe(0);
+  });
+
+  it('returns a structured conflict for inconsistent identity without changing the candidate', async () => {
+    await database.collection('engine_candidates').updateOne(
+      { candidateId: 'http-review-candidate' },
+      {
+        $set: {
+          'draft.metadata.subject': 'one',
+          authoring: { subject: 'two' },
+        },
+      },
+    );
+    try {
+      const response = await request(app.getHttpServer())
+        .post('/admin/content-engine/candidates/http-review-candidate/rescreen')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ expectedRevision: 0 })
+        .expect(409);
+      expect(response.body).toMatchObject({
+        code: 'CANDIDATE_IDENTITY_CONFLICT',
+        details: { field: 'subject' },
+      });
+      const row = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'http-review-candidate' });
+      expect(row?.reviewRevision).toBe(0);
+      expect(row?.reviewEvents).toHaveLength(0);
+    } finally {
+      await database
+        .collection('engine_candidates')
+        .updateOne(
+          { candidateId: 'http-review-candidate' },
+          { $unset: { 'draft.metadata': '', authoring: '' } },
+        );
+    }
+  });
+
+  it('keeps unexpected review errors as server errors without exposing details', async () => {
+    const review = app.get(ContentEngineReviewService);
+    const spy = jest
+      .spyOn(review as any, 'assertIdentityMetadata')
+      .mockImplementation(() => {
+        throw new Error('private infrastructure details');
+      });
+    try {
+      const response = await request(app.getHttpServer())
+        .post('/admin/content-engine/candidates/http-review-candidate/rescreen')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ expectedRevision: 0 })
+        .expect(500);
+      expect(response.body.message).toBe('Internal server error');
+      expect(JSON.stringify(response.body)).not.toContain(
+        'private infrastructure details',
+      );
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

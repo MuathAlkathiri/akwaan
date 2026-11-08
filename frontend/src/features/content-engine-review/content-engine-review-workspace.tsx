@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BatchSubmissionPanel } from "./batch-submission-panel";
 import { JobsHistoryPanel } from "./jobs-history-panel";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,7 +29,10 @@ import { CreativeSlotInspector } from "./creative-slot-inspector";
 import {
   hasIncompleteHistoricalVerification,
   hasProvenDuplicate,
+  overlapRequirementsFromFindings,
+  overlapRequirementsFromServer,
   summarizeDeduplication,
+  type OverlapRequirement,
 } from "./deduplication-findings";
 import type {
   FactualOverrideCode,
@@ -157,9 +160,11 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   edited: "تعديل المرشح",
   assessment_invalidated: "إبطال التقييم السابق",
   assessed: "تقييم بشري",
-  approved: "اعتماد المرشح",
+  approved: "اعتماد بشري للمرشح (Human approval)",
   rejected: "رفض المرشح",
   draft_created: "إنشاء مسودة قانونية (DRAFT)",
+  approval_carried_forward:
+    "حفظ الاعتماد آلياً بعد إعادة تحقق دون تغيير (Approval carried forward)",
 };
 
 /** The option's own label where it still exists, else its bare id. */
@@ -178,7 +183,13 @@ const optionLabel = (
 
 const extractConflictDetails = (
   err: unknown,
-): { message: string; isConflict: boolean; currentRevision?: number } => {
+): {
+  message: string;
+  isConflict: boolean;
+  currentRevision?: number;
+  code?: string;
+  details?: Record<string, unknown>;
+} => {
   const response = (
     err as {
       response?: {
@@ -186,6 +197,8 @@ const extractConflictDetails = (
         data?: {
           message?: string | string[];
           currentRevision?: number;
+          code?: string;
+          details?: Record<string, unknown>;
         };
       };
       message?: string;
@@ -207,7 +220,54 @@ const extractConflictDetails = (
     message,
     isConflict,
     currentRevision: response?.data?.currentRevision,
+    code: typeof response?.data?.code === "string" ? response.data.code : undefined,
+    details:
+      response?.data?.details && typeof response.data.details === "object"
+        ? response.data.details
+        : undefined,
   };
+};
+
+/**
+ * Review-gate conflicts that are not revision races. They must never be shown
+ * as "another reviewer changed this" and never retried automatically.
+ */
+const REVIEW_GATE_MESSAGES: Record<string, { approve: string; draft: string }> = {
+  OVERLAP_ACKNOWLEDGMENT_REQUIRED: {
+    approve:
+      "تغيّرت أدلة التقاطع على الخادم أو لم يُقَرّ بها كلها. حُدّثت القائمة بالأدلة الحالية؛ راجع كل تقاطع وأقرّ به من جديد قبل الاعتماد.",
+    draft:
+      "تغيّرت أدلة التقاطع منذ الاعتماد، فلا يمكن إنشاء المسودة. أعد فحص التكرار ليعود المرشح إلى المراجعة البشرية، ثم قيّمه واعتمده من جديد.",
+  },
+  OVERLAP_ACKNOWLEDGMENT_STALE: {
+    approve:
+      "إقرار سابق لم يعد مطابقاً للأدلة الحالية على الخادم. حُدّثت القائمة؛ راجع الأدلة الحالية وأقرّ بها من جديد.",
+    draft:
+      "إقرار الاعتماد لم يعد مطابقاً للأدلة الحالية؛ أعد فحص التكرار ثم أعد المراجعة.",
+  },
+  OVERLAP_EVIDENCE_UNVERIFIABLE: {
+    approve:
+      "شبهة تقاطع محفوظة لا تحدد العنصر المرجعي، فلا يمكن الإقرار بها. أعد فحص التكرار لإعادة بناء الأدلة؛ إن تعذر ذلك يبقى الاعتماد محظوراً.",
+    draft:
+      "شبهة تقاطع غير قابلة للتحقق تمنع إنشاء المسودة. أعد فحص التكرار لإعادة بناء الأدلة.",
+  },
+  HISTORICAL_DUPLICATE_OR_OVERLAP: {
+    approve: "تكرار مثبت مع محتوى قائم — لا يمكن الاعتماد. عدّل السؤال بالمحرر.",
+    draft: "تكرار مثبت مع محتوى قائم — لا يمكن إنشاء المسودة.",
+  },
+  DUPLICATE_IN_BATCH: {
+    approve: "مرشح آخر في الدفعة يكرر هذا المرشح — لا يمكن الاعتماد.",
+    draft: "مرشح آخر في الدفعة يكرر هذا المرشح — لا يمكن إنشاء المسودة.",
+  },
+  HISTORICAL_VERIFICATION_INCOMPLETE: {
+    approve: "سجل النطاق التاريخي غير مكتمل — لا يمكن الاعتماد حتى تنجح إعادة الفحص.",
+    draft: "سجل النطاق التاريخي غير مكتمل — لا يمكن إنشاء المسودة.",
+  },
+  UNTRUSTED_CANDIDATE_APPROVAL: {
+    approve: "بيانات الاعتماد غير موثوقة.",
+    draft:
+      "اعتماد غير موثوق (Untrusted approval) — لا يمكن إنشاء المسودة؛ يلزم اعتماد بشري جديد.",
+  },
 };
 
 export function ContentEngineReviewWorkspace() {
@@ -244,6 +304,17 @@ export function ContentEngineReviewWorkspace() {
     message: string;
     currentRevision?: number;
   } | null>(null);
+  /** Fingerprints the reviewer explicitly acknowledged. Never pre-selected. */
+  const [acknowledgedOverlaps, setAcknowledgedOverlaps] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
+  /** Current evidence as a 409 approval conflict reported it, per candidate revision. */
+  const [serverOverlapEvidence, setServerOverlapEvidence] = useState<{
+    candidateId: string;
+    revision: number;
+    requirements: OverlapRequirement[];
+  } | null>(null);
+  const lastActionKind = useRef<"approve" | "draft" | "other">("other");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -327,6 +398,9 @@ export function ContentEngineReviewWorkspace() {
   // Hydrate assessment and edit fields when the selected candidate or revision changes
   useEffect(() => {
     if (!candidate) return;
+    // A new candidate or revision is new evidence: acknowledgments start empty.
+    setAcknowledgedOverlaps(new Set());
+    setServerOverlapEvidence(null);
     setActionError(null);
     setRevisionConflict(null);
     setEditClaimsText((candidate.factualClaims ?? []).join("\n"));
@@ -371,6 +445,40 @@ export function ContentEngineReviewWorkspace() {
     },
     onError: (err) => {
       const parsed = extractConflictDetails(err);
+      const kind = lastActionKind.current;
+      const gate = parsed.code ? REVIEW_GATE_MESSAGES[parsed.code] : undefined;
+      if (gate && kind !== "other") {
+        const message = kind === "draft" ? gate.draft : gate.approve;
+        if (
+          kind === "approve" &&
+          candidate &&
+          (parsed.code === "OVERLAP_ACKNOWLEDGMENT_REQUIRED" ||
+            parsed.code === "OVERLAP_ACKNOWLEDGMENT_STALE")
+        ) {
+          // Adopt the server's current evidence and drop any acknowledgment
+          // that no longer matches it. Nothing is retried automatically.
+          const requirements = overlapRequirementsFromServer(
+            parsed.details?.overlaps,
+          );
+          const current = new Set(requirements.map((r) => r.fingerprint));
+          setServerOverlapEvidence({
+            candidateId: candidate.candidateId,
+            revision: candidate.reviewRevision,
+            requirements,
+          });
+          setAcknowledgedOverlaps(
+            (previous) => new Set([...previous].filter((fp) => current.has(fp))),
+          );
+        }
+        setRevisionConflict(null);
+        setActionError(message);
+        void client.invalidateQueries({ queryKey: ["content-engine-review"] });
+        void client.invalidateQueries({
+          queryKey: ["content-engine-review-detail", selectedId],
+        });
+        showToast({ type: "error", message });
+        return;
+      }
       setActionError(parsed.message);
       if (parsed.isConflict) {
         setRevisionConflict({
@@ -430,10 +538,60 @@ export function ContentEngineReviewWorkspace() {
     [candidate],
   );
 
-  const eligibility = useMemo(
-    () => (candidate ? deriveCandidateEligibility(candidate) : null),
-    [candidate],
-  );
+  const overlapState = useMemo(() => {
+    if (!candidate) return { required: [] as OverlapRequirement[], unverifiable: 0, refreshed: false };
+    const fromFindings = overlapRequirementsFromFindings(candidate.findings);
+    const server =
+      serverOverlapEvidence &&
+      serverOverlapEvidence.candidateId === candidate.candidateId &&
+      serverOverlapEvidence.revision === candidate.reviewRevision
+        ? serverOverlapEvidence.requirements
+        : null;
+    return {
+      required: server ?? fromFindings.required,
+      unverifiable: fromFindings.unverifiable.length,
+      refreshed: Boolean(server),
+    };
+  }, [candidate, serverOverlapEvidence]);
+  const unacknowledgedOverlaps = overlapState.required.filter(
+    (r) => !acknowledgedOverlaps.has(r.fingerprint),
+  ).length;
+  const toggleOverlapAcknowledgment = (fingerprint: string, value: boolean) =>
+    setAcknowledgedOverlaps((previous) => {
+      const next = new Set(previous);
+      if (value) next.add(fingerprint);
+      else next.delete(fingerprint);
+      return next;
+    });
+
+  const eligibility = useMemo(() => {
+    if (!candidate) return null;
+    const base = deriveCandidateEligibility(candidate);
+    const overlapBlockers: string[] = [];
+    if (candidate.reviewStatus !== "approved" && !candidate.publishedContentItemId) {
+      if (overlapState.unverifiable > 0) {
+        overlapBlockers.push(
+          "توجد شبهة تقاطع غير قابلة للتحقق (بلا عنصر مرجعي)؛ أعد فحص التكرار — لا يمكن الإقرار بها.",
+        );
+      }
+      if (unacknowledgedOverlaps > 0) {
+        overlapBlockers.push(
+          `يلزم الإقرار الصريح بكل شبهة تقاطع قبل الاعتماد (${unacknowledgedOverlaps} من ${overlapState.required.length} دون إقرار).`,
+        );
+      }
+    }
+    return {
+      ...base,
+      canApprove: base.canApprove && overlapBlockers.length === 0,
+      approvalBlockers: [...base.approvalBlockers, ...overlapBlockers],
+    };
+  }, [candidate, overlapState, unacknowledgedOverlaps]);
+  const latestRevocation = useMemo(() => {
+    const last = candidate?.reviewEvents?.at(-1);
+    return candidate?.reviewStatus === "pending" && last?.details?.approvalRevoked
+      ? (last.details.approvalRevoked as { reasons?: string[] })
+      : null;
+  }, [candidate]);
 
   const openEditDialog = () => {
     if (!candidate) return;
@@ -902,6 +1060,13 @@ export function ContentEngineReviewWorkspace() {
               candidate={candidate}
               onRescreen={handleRescreen}
               isRescreening={rescreenMutation.isPending}
+              overlapRequirements={
+                candidate.reviewStatus === "approved" ? [] : overlapState.required
+              }
+              acknowledgedFingerprints={acknowledgedOverlaps}
+              onToggleAcknowledgment={toggleOverlapAcknowledgment}
+              acknowledgmentDisabled={action.isPending}
+              overlapEvidenceRefreshed={overlapState.refreshed}
             />
 
             {candidate.publishedContentItemId && (
@@ -1328,6 +1493,43 @@ export function ContentEngineReviewWorkspace() {
             title="القرار"
             description="الاعتماد والرفض وإنشاء مسودة ContentItem DRAFT خطوات مستقلة ومحمية برقم المراجعة"
           >
+            {candidate.reviewStatus === "approved" &&
+              candidate.reviewEvents?.at(-1)?.action ===
+                "approval_carried_forward" && (
+                <div
+                  role="status"
+                  data-testid="approval-carried-forward-banner"
+                  className="rounded-xl border border-sky-300 bg-sky-50 p-3 text-xs text-sky-950"
+                >
+                  <p className="font-semibold">
+                    الاعتماد البشري محفوظ بعد إعادة التحقق (Approval preserved)
+                  </p>
+                  <p className="mt-0.5 leading-relaxed">
+                    أعادت إعادة فحص التكرار التحقق من أن المحتوى والهدف وأدلة التقاطع لم تتغير، فبقي
+                    الاعتماد الأصلي سارياً عند رقم المراجعة الحالي. تُعاد مطابقة الأدلة مرة أخرى عند إنشاء المسودة.
+                  </p>
+                </div>
+              )}
+
+            {latestRevocation && (
+              <div
+                role="status"
+                data-testid="approval-revoked-banner"
+                className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-950"
+              >
+                <p className="font-semibold">
+                  سُحب الاعتماد السابق (Approval revoked) بعد إعادة فحص التكرار
+                </p>
+                <p className="mt-0.5 leading-relaxed">
+                  ظهرت أدلة جديدة أو متغيّرة لم يشملها الاعتماد السابق
+                  {latestRevocation.reasons?.length
+                    ? ` (${latestRevocation.reasons.join("، ")})`
+                    : ""}
+                  ؛ يلزم تقييم ومراجعة بشرية جديدة.
+                </p>
+              </div>
+            )}
+
             {/* Approval Eligibility & Blockers Panel */}
             {eligibility && (
               <div
@@ -1456,14 +1658,24 @@ export function ContentEngineReviewWorkspace() {
                   Boolean(candidate.publishedContentItemId) ||
                   !decisionExplanation.trim() ||
                   Boolean(eligibility && !eligibility.canApprove) ||
+                  overlapState.unverifiable > 0 ||
+                  unacknowledgedOverlaps > 0 ||
                   (candidate.humanAssessment?.factualState !== "SUPPORTED" &&
                     (!factualOverrideCode || !overrideExplanation.trim()))
                 }
-                onClick={() =>
+                onClick={() => {
+                  lastActionKind.current = "approve";
+                  // Exactly the server-provided fingerprints, all acknowledged.
+                  const overlapAcknowledgments = overlapState.required
+                    .filter((r) => acknowledgedOverlaps.has(r.fingerprint))
+                    .map((r) => ({ fingerprint: r.fingerprint }));
                   action.mutate(() =>
                     api.approveCandidate(candidate.candidateId, {
                       expectedRevision: candidate.reviewRevision,
                       explanation: decisionExplanation.trim(),
+                      ...(overlapAcknowledgments.length
+                        ? { overlapAcknowledgments }
+                        : {}),
                       ...(candidate.humanAssessment?.factualState ===
                       "SUPPORTED"
                         ? {}
@@ -1473,8 +1685,8 @@ export function ContentEngineReviewWorkspace() {
                               overrideExplanation.trim(),
                           }),
                     }),
-                  )
-                }
+                  );
+                }}
               >
                 <Check className="me-2 size-4" /> اعتماد
               </Button>
@@ -1507,15 +1719,16 @@ export function ContentEngineReviewWorkspace() {
                   Boolean(candidate.publishedContentItemId) ||
                   !decisionExplanation.trim()
                 }
-                onClick={() =>
+                onClick={() => {
+                  lastActionKind.current = "other";
                   action.mutate(() =>
                     api.rejectCandidate(candidate.candidateId, {
                       expectedRevision: candidate.reviewRevision,
                       reasonCode: rejectionReason,
                       explanation: decisionExplanation.trim(),
                     }),
-                  )
-                }
+                  );
+                }}
               >
                 <X className="me-2 size-4" /> رفض
               </Button>
@@ -1528,18 +1741,34 @@ export function ContentEngineReviewWorkspace() {
                   Boolean(candidate.publishedContentItemId) ||
                   Boolean(eligibility && !eligibility.canCreateDraft)
                 }
-                onClick={() =>
+                onClick={() => {
+                  lastActionKind.current = "draft";
                   action.mutate(() =>
                     api.createCanonicalDraft(
                       candidate.candidateId,
                       candidate.reviewRevision,
                     ),
-                  )
-                }
+                  );
+                }}
               >
                 <FilePlus2 className="me-2 size-4" /> إنشاء مسودة Canonical (DRAFT)
               </Button>
             </div>
+            {candidate.reviewStatus === "approved" &&
+              (eligibility?.draftBlockers?.length ?? 0) > 0 && (
+                <div
+                  role="status"
+                  data-testid="draft-blockers-panel"
+                  className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950"
+                >
+                  <p className="font-semibold">موانع إنشاء المسودة القانونية:</p>
+                  <ul className="mt-1 list-disc space-y-0.5 pe-5">
+                    {eligibility!.draftBlockers!.map((blocker, idx) => (
+                      <li key={idx}>{blocker}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
           </SectionCard>
 
           <SectionCard title="سجل التدقيق">
@@ -1571,6 +1800,35 @@ export function ContentEngineReviewWorkspace() {
                       {event.explanation}
                     </p>
                   )}
+                  {event.action === "approval_carried_forward" && (
+                    <p
+                      data-testid={`audit-approval-carried-forward-${index}`}
+                      className="mt-1 text-sky-900"
+                    >
+                      {(() => {
+                        const original = event.details?.originalApproval as
+                          | { revision?: number; reviewerEmail?: string }
+                          | undefined;
+                        return `إجراء آلي وليس اعتماداً بشرياً جديداً (Automated, not a new human approval). أُعيد فحص المحتوى والهدف وسجل النطاق وأدلة التقاطع فلم يتغير شيء، فبقي الاعتماد البشري الأصلي (rev ${original?.revision ?? "?"}${original?.reviewerEmail ? ` · ${original.reviewerEmail}` : ""}) سارياً.`;
+                      })()}
+                    </p>
+                  )}
+                  {Boolean(event.details?.approvalRevoked) && (
+                    <p
+                      data-testid={`audit-approval-revoked-${index}`}
+                      className="mt-1 font-semibold text-rose-800"
+                    >
+                      سُحب الاعتماد في هذه المراجعة (Approval revoked)
+                    </p>
+                  )}
+                  {Array.isArray(event.details?.overlapAcknowledgments) &&
+                    (event.details.overlapAcknowledgments as unknown[]).length > 0 && (
+                      <p className="mt-1 text-emerald-800">
+                        أقرّ المراجع بـ{" "}
+                        {(event.details.overlapAcknowledgments as unknown[]).length}{" "}
+                        شبهة تقاطع (Overlap acknowledged)
+                      </p>
+                    )}
                 </div>
               ))}
             </div>

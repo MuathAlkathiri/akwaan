@@ -1,10 +1,15 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { ContentEngineReviewService } from './content-engine-review.service';
 
-const chain = <T>(value: T) => ({
-  lean: () => ({ exec: async () => value }),
-  exec: async () => value,
-});
+const chain = <T>(value: T) => {
+  const query = {
+    lean: () => query,
+    session: () => query,
+    limit: () => query,
+    exec: async () => value,
+  };
+  return query;
+};
 
 const actor = { id: 'reviewer-1', email: 'reviewer@example.test' } as never;
 
@@ -53,6 +58,7 @@ const build = (
     canonicalReferences?: boolean;
     jobOverride?: Record<string, unknown> | null;
     compatibilityBlockers?: Array<{ code: string; message: string }>;
+    inventoryStatus?: string;
   } = {},
 ) => {
   const current = options.current ?? candidate();
@@ -87,6 +93,10 @@ const build = (
   const screen = {
     beginBatch: jest.fn(),
     screen: jest.fn(() => options.screen ?? { passed: true, findings: [] }),
+    createSession: jest.fn(() => ({})),
+    loadHistoricalScope: jest.fn(async () => ({
+      status: options.inventoryStatus ?? 'COMPLETE',
+    })),
   };
   const blockers = options.compatibilityBlockers ?? [];
   const compatibility = {
@@ -138,12 +148,32 @@ const build = (
         : null,
     ),
   };
+  const mongoSession = {
+    withTransaction: async (fn: () => Promise<void>) => fn(),
+    endSession: async () => undefined,
+  };
+  const fence = { updateOne: jest.fn(() => chain({ matchedCount: 1 })) };
+  const worldModel = {
+    find: jest.fn(() =>
+      chain([{ _id: 'world-id', slug: 'world', name: 'World' }]),
+    ),
+  };
+  const scopeModel = {
+    find: jest.fn(() =>
+      chain([{ _id: 'scope-id', slug: 'scope', name: 'Scope' }]),
+    ),
+  };
+  const connection = {
+    startSession: async () => mongoSession,
+    model: (name: string) =>
+      name === 'World' ? worldModel : name === 'Scope' ? scopeModel : fence,
+  };
   const service = new ContentEngineReviewService(
     candidates as never,
     jobs as never,
     {} as never,
     publications as never,
-    {} as never,
+    connection as never,
     screen as never,
     compatibility as never,
     contentItems as never,
@@ -155,6 +185,63 @@ const build = (
 };
 
 describe('ContentEngineReviewService enforcement characterization', () => {
+  it('fails closed on a saved in-batch overlap with no stable reference', async () => {
+    const { service, candidates } = build({
+      current: candidate({
+        findings: [
+          {
+            code: 'POTENTIAL_OVERLAP_IN_BATCH',
+            severity: 'warning',
+            message: 'potential overlap',
+          },
+        ],
+      }),
+    });
+    await expect(
+      service.approve(
+        'candidate-1',
+        { expectedRevision: 1, explanation: 'reviewed' } as never,
+        actor,
+      ),
+    ).rejects.toMatchObject({
+      response: { code: 'OVERLAP_EVIDENCE_UNVERIFIABLE' },
+    });
+    expect(candidates.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+  it('fails approval when fresh inventory is incomplete', async () => {
+    const { service, candidates } = build({ inventoryStatus: 'PARTIAL' });
+    await expect(
+      service.approve(
+        'candidate-1',
+        { expectedRevision: 1, explanation: 'reviewed' } as never,
+        actor,
+      ),
+    ).rejects.toThrow('Historical inventory is incomplete');
+    expect(candidates.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('fails approval when fresh screening detects a duplicate', async () => {
+    const { service, candidates } = build({
+      screen: {
+        passed: false,
+        findings: [
+          {
+            code: 'DUPLICATE_HISTORICAL_CONTENT',
+            severity: 'blocking',
+            message: 'duplicate',
+          },
+        ],
+      },
+    });
+    await expect(
+      service.approve(
+        'candidate-1',
+        { expectedRevision: 1, explanation: 'reviewed' } as never,
+        actor,
+      ),
+    ).rejects.toThrow('Historical duplicate screening changed');
+    expect(candidates.findOneAndUpdate).not.toHaveBeenCalled();
+  });
   it('rejects an approval when the reviewer revision is stale', async () => {
     const { service, candidates } = build({
       current: candidate({
@@ -171,15 +258,7 @@ describe('ContentEngineReviewService enforcement characterization', () => {
         actor,
       ),
     ).rejects.toBeInstanceOf(ConflictException);
-    expect(candidates.findOneAndUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        candidateId: 'candidate-1',
-        reviewRevision: 1,
-        publishedContentItemId: null,
-      }),
-      expect.any(Object),
-      expect.any(Object),
-    );
+    expect(candidates.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
   it('invalidates factual and quality assessments when a material edit is saved and preserves historical snapshot', async () => {
@@ -259,7 +338,7 @@ describe('ContentEngineReviewService enforcement characterization', () => {
         expectedRevision: 1,
         draft: {
           ...(current.draft as Record<string, unknown>),
-          metadata: { notes: 'admin editorial note', tags: ['tag1'] },
+          metadata: { notes: 'admin editorial note' },
         },
         factualClaims: ['claim 1'],
         explanation: 'Added editorial metadata note only',
@@ -719,7 +798,11 @@ describe('ContentEngineReviewService enforcement characterization', () => {
             }),
           }),
         }),
-        { returnDocument: 'after', runValidators: true },
+        expect.objectContaining({
+          returnDocument: 'after',
+          runValidators: true,
+          session: expect.any(Object),
+        }),
       );
     });
   });

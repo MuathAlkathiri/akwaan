@@ -15,10 +15,15 @@ function mockQueryChain(result: any) {
   return query;
 }
 
-const chain = <T>(value: T) => ({
-  lean: () => ({ exec: async () => value }),
-  exec: async () => value,
-});
+const chain = <T>(value: T) => {
+  const query = {
+    lean: () => query,
+    session: () => query,
+    limit: () => query,
+    exec: async () => value,
+  };
+  return query;
+};
 
 const actor = { id: 'reviewer-1', email: 'reviewer@example.test' } as never;
 
@@ -451,14 +456,14 @@ describe('Slice 2C Final Hardening — Concurrency Isolation & Publication Safet
     };
     const mockJobs = { find: jest.fn().mockReturnValue(mockQueryChain([])) };
     const mockWorlds = {
-      findOne: jest
+      find: jest
         .fn()
-        .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'world-1' })),
+        .mockReturnValue(mockQueryChain([{ _id: 'w-1', slug: 'world-1' }])),
     };
     const mockScopes = {
-      findOne: jest
+      find: jest
         .fn()
-        .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 'capitals' })),
+        .mockReturnValue(mockQueryChain([{ _id: 's-1', slug: 'capitals' }])),
     };
 
     const screenWithDb = new DeterministicScreenService(
@@ -621,14 +626,14 @@ describe('Slice 2C Final Hardening — Concurrency Isolation & Publication Safet
     };
     const mockJobs = { find: jest.fn().mockReturnValue(mockQueryChain([])) };
     const mockWorlds = {
-      findOne: jest
+      find: jest
         .fn()
-        .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'world-1' })),
+        .mockReturnValue(mockQueryChain([{ _id: 'w-1', slug: 'world-1' }])),
     };
     const mockScopes = {
-      findOne: jest
+      find: jest
         .fn()
-        .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 'capitals' })),
+        .mockReturnValue(mockQueryChain([{ _id: 's-1', slug: 'capitals' }])),
     };
 
     const screenWithDb = new DeterministicScreenService(
@@ -757,6 +762,27 @@ describe('Slice 2C Final Hardening — Concurrency Isolation & Publication Safet
   // =========================================================================
   it('12. approval events and revision increments remain strictly consistent', async () => {
     const candidate = sampleCandidate();
+    jest.spyOn(screenService, 'loadHistoricalScope').mockResolvedValue({
+      status: 'COMPLETE',
+      recordCount: 0,
+      canonicalCount: 0,
+      candidateCount: 0,
+      isTruncated: false,
+    });
+    const mongoSession = {
+      withTransaction: async (fn: () => Promise<void>) => fn(),
+      endSession: async () => undefined,
+    };
+    const fence = { updateOne: () => chain({ matchedCount: 1 }) };
+    const connection = {
+      startSession: async () => mongoSession,
+      model: (name: string) =>
+        name === 'World'
+          ? { find: () => chain([{ _id: 'w-1', slug: 'w', name: 'World' }]) }
+          : name === 'Scope'
+            ? { find: () => chain([{ _id: 's-1', slug: 's', name: 'Scope' }]) }
+            : fence,
+    };
     const updateSpy = jest.fn((_, update) =>
       chain({
         ...candidate,
@@ -783,7 +809,7 @@ describe('Slice 2C Final Hardening — Concurrency Isolation & Publication Safet
       } as any,
       {} as any,
       { findOne: jest.fn(() => chain(null)) } as any,
-      { startSession: jest.fn() } as any,
+      connection as any,
       screenService,
       { evaluate: jest.fn(() => ({ preDraft: { blockers: [] } })) } as any,
       { create: jest.fn() } as any,
@@ -830,7 +856,11 @@ describe('Slice 2C Final Hardening — Concurrency Isolation & Publication Safet
           }),
         }),
       }),
-      { returnDocument: 'after', runValidators: true },
+      expect.objectContaining({
+        returnDocument: 'after',
+        runValidators: true,
+        session: mongoSession,
+      }),
     );
   });
 

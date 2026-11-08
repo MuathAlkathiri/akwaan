@@ -2,6 +2,11 @@ import { ContentEngineOrchestratorService } from './content-engine-orchestrator.
 import { CandidateParseError } from './candidate-generator.service';
 import { EffectiveRuleSet, RuleConflict } from '../domain/effective-rules';
 
+const completeInventory = {
+  createSession: () => undefined,
+  loadHistoricalScope: async () => ({ status: 'COMPLETE' }),
+};
+
 /**
  * The guard that protects spend.
  *
@@ -83,7 +88,7 @@ const build = (conflicts: RuleConflict[]) => {
     } as never,
     { resolve: () => context(conflicts) } as never,
     { generate } as never,
-    { beginBatch: jest.fn(), screen: jest.fn() } as never,
+    { ...completeInventory, beginBatch: jest.fn(), screen: jest.fn() } as never,
     { verify: jest.fn() } as never,
     { evaluate: jest.fn() } as never,
     { judge: jest.fn() } as never,
@@ -92,6 +97,45 @@ const build = (conflicts: RuleConflict[]) => {
 };
 
 describe('rule-conflict guard before any paid call', () => {
+  it('preserves ambiguous provider reconciliation when inventory is unavailable', async () => {
+    const { service, generate, awaitReview, checkpoint } = build([]);
+    (service as any).budget = { hasLedgerEntry: async () => true };
+    (service as any).screen = {
+      createSession: () => ({}),
+      loadHistoricalScope: async () => ({ status: 'UNAVAILABLE' }),
+    };
+    await service.run(job as never);
+    expect(generate).not.toHaveBeenCalled();
+    expect(checkpoint).not.toHaveBeenCalled();
+    expect(awaitReview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reason: 'GENERATION_OUTCOME_REQUIRES_RECONCILIATION',
+        stage: 'provider_outcome_ambiguous',
+      }),
+    );
+  });
+  it('stops a resumed job with existing candidates before provider or judge when inventory is incomplete', async () => {
+    const { service, generate, awaitReview } = build([]);
+    const judge = jest.fn();
+    (service as any).candidates = {
+      find: () => ({
+        sort: () => ({
+          lean: () => ({ exec: async () => [{ status: 'screened_pass' }] }),
+        }),
+      }),
+    };
+    (service as any).screen = {
+      createSession: () => ({}),
+      loadHistoricalScope: async () => ({ status: 'PARTIAL' }),
+    };
+    (service as any).quality = { judge };
+    await service.run(job as never);
+    expect(generate).not.toHaveBeenCalled();
+    expect(judge).not.toHaveBeenCalled();
+    expect(awaitReview).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: 'HISTORICAL_INVENTORY_INCOMPLETE' }),
+    );
+  });
   it('never reaches generation when the configuration conflicts', async () => {
     const { service, generate } = build([conflict()]);
     await service.run(job as never);
@@ -169,7 +213,11 @@ describe('generator capability guard when preflight is bypassed', () => {
         resolve: () => context([]),
       } as never,
       { generate } as never,
-      { beginBatch: jest.fn(), screen: jest.fn() } as never,
+      {
+        ...completeInventory,
+        beginBatch: jest.fn(),
+        screen: jest.fn(),
+      } as never,
       { verify: jest.fn() } as never,
       { evaluate: jest.fn() } as never,
       { judge: jest.fn() } as never,
@@ -238,7 +286,7 @@ describe('exemplar corpus wiring', () => {
       } as never,
       { resolve: () => context } as never,
       { generate: jest.fn() } as never,
-      { beginBatch, screen } as never,
+      { ...completeInventory, beginBatch, screen } as never,
       { verify: jest.fn() } as never,
       { evaluate: jest.fn(() => ({ preDraft: { blockers: [] } })) } as never,
       { judge: jest.fn() } as never,
@@ -433,6 +481,7 @@ describe('legacy job provenance guard and exact-job execution', () => {
       { resolve: () => context([]) } as never,
       { generate } as never,
       {
+        ...completeInventory,
         beginBatch: jest.fn(),
         screen: jest.fn(() => ({ passed: true, findings: [] })),
       } as never,
@@ -515,6 +564,7 @@ describe('legacy job provenance guard and exact-job execution', () => {
         }),
       } as never,
       {
+        ...completeInventory,
         beginBatch: jest.fn(),
         screen: jest.fn(() => ({ passed: true, findings: [] })),
       } as never,
@@ -590,6 +640,7 @@ describe('legacy job provenance guard and exact-job execution', () => {
         }),
       } as never,
       {
+        ...completeInventory,
         beginBatch: jest.fn(),
         screen: jest.fn(() => ({ passed: true, findings: [] })),
       } as never,

@@ -9,6 +9,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -99,6 +100,17 @@ export class CandidateAssessmentDto {
   @ValidateNested() @Type(() => QualityRubricDto) quality!: QualityRubricDto;
 }
 
+/**
+ * R4-A: one reviewer acknowledgment of a POTENTIAL_OVERLAP finding. The
+ * fingerprint is only ever accepted when it exactly matches evidence the server
+ * recomputes inside the approval transaction.
+ */
+export class OverlapAcknowledgmentDto {
+  @IsString()
+  @Matches(/^ovl1:[0-9a-f]{64}$/)
+  fingerprint!: string;
+}
+
 export class CandidateApprovalDto {
   @IsInt() @Min(0) expectedRevision!: number;
   @Transform(trimString)
@@ -119,6 +131,12 @@ export class CandidateApprovalDto {
   @IsString()
   @MaxLength(2000)
   factualOverrideExplanation?: string;
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => OverlapAcknowledgmentDto)
+  overlapAcknowledgments?: OverlapAcknowledgmentDto[];
 }
 
 export class CandidateRejectionDto {

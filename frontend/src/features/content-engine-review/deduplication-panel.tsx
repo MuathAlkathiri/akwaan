@@ -11,10 +11,12 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { ReviewCandidate } from "./types";
 import {
   summarizeDeduplication,
   type DeduplicationSummary,
+  type OverlapRequirement,
   type ParsedDeduplicationMatch,
 } from "./deduplication-findings";
 
@@ -22,12 +24,27 @@ interface DeduplicationPanelProps {
   candidate: ReviewCandidate;
   onRescreen: () => Promise<void>;
   isRescreening: boolean;
+  /** Overlap evidence the reviewer must acknowledge before approval. */
+  overlapRequirements?: OverlapRequirement[];
+  acknowledgedFingerprints?: ReadonlySet<string>;
+  onToggleAcknowledgment?: (fingerprint: string, acknowledged: boolean) => void;
+  acknowledgmentDisabled?: boolean;
+  /** True when the requirements came from a server conflict, not saved findings. */
+  overlapEvidenceRefreshed?: boolean;
 }
+
+const shortHash = (value?: string) =>
+  value ? `${value.replace(/^ovl1:/, "").slice(0, 12)}…` : "—";
 
 export function DeduplicationPanel({
   candidate,
   onRescreen,
   isRescreening,
+  overlapRequirements = [],
+  acknowledgedFingerprints,
+  onToggleAcknowledgment,
+  acknowledgmentDisabled = false,
+  overlapEvidenceRefreshed = false,
 }: DeduplicationPanelProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const summary: DeduplicationSummary = summarizeDeduplication(candidate.findings);
@@ -130,6 +147,17 @@ export function DeduplicationPanel({
         </div>
       </div>
 
+      {overlapRequirements.length > 0 && !candidate.publishedContentItemId && (
+        <OverlapAcknowledgmentList
+          candidateId={candidate.candidateId}
+          requirements={overlapRequirements}
+          acknowledged={acknowledgedFingerprints ?? new Set()}
+          onToggle={onToggleAcknowledgment}
+          disabled={acknowledgmentDisabled || !onToggleAcknowledgment}
+          refreshed={overlapEvidenceRefreshed}
+        />
+      )}
+
       {/* Progressive Disclosure of Evidence / Incomplete diagnostics */}
       {detailsOpen && (
         <div
@@ -209,5 +237,119 @@ export function DeduplicationPanel({
         </div>
       )}
     </div>
+  );
+}
+
+function OverlapAcknowledgmentList({
+  candidateId,
+  requirements,
+  acknowledged,
+  onToggle,
+  disabled,
+  refreshed,
+}: {
+  candidateId: string;
+  requirements: OverlapRequirement[];
+  acknowledged: ReadonlySet<string>;
+  onToggle?: (fingerprint: string, acknowledged: boolean) => void;
+  disabled: boolean;
+  refreshed: boolean;
+}) {
+  const done = requirements.filter((r) => acknowledged.has(r.fingerprint)).length;
+  return (
+    <section
+      data-testid="overlap-acknowledgment-list"
+      aria-labelledby="overlap-acknowledgment-heading"
+      className="mt-3 space-y-2.5 border-t border-amber-200/80 pt-3"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-1.5">
+        <h4
+          id="overlap-acknowledgment-heading"
+          className="text-xs font-bold text-amber-950"
+        >
+          إقرار المراجع بشبهات التقاطع (Overlap acknowledgment)
+        </h4>
+        <span
+          data-testid="overlap-acknowledgment-progress"
+          className="text-[11px] font-medium text-amber-900"
+        >
+          {done} / {requirements.length} مُقَرّ
+        </span>
+      </div>
+      <p className="text-[11px] leading-relaxed text-amber-900">
+        راجع كل تقاطع أدناه وأقرّ به منفرداً. لا يُفعَّل الاعتماد إلا بعد الإقرار بجميع التحذيرات الحالية،
+        وأي دليل جديد أو متغيّر يتطلب إقراراً جديداً.
+      </p>
+      {refreshed && (
+        <p
+          role="status"
+          data-testid="overlap-evidence-refreshed"
+          className="rounded-md border border-amber-300 bg-amber-100 px-2.5 py-1.5 text-[11px] font-medium text-amber-950"
+        >
+          تغيّرت أدلة التقاطع على الخادم منذ آخر عرض. القائمة أدناه هي الأدلة الحالية كما أعادها الخادم؛
+          أُلغي الإقرار بكل ما لم يعد مطابقاً.
+        </p>
+      )}
+      <ul className="space-y-2">
+        {requirements.map((requirement) => {
+          const checked = acknowledged.has(requirement.fingerprint);
+          const inputId = `overlap-ack-${requirement.fingerprint.slice(5, 21)}`;
+          return (
+            <li
+              key={requirement.fingerprint}
+              data-testid={`overlap-requirement-${requirement.referenceId}`}
+              className={`rounded-lg border p-3 shadow-xs ${
+                checked ? "border-emerald-300 bg-emerald-50/70" : "border-amber-300 bg-white/95"
+              }`}
+            >
+              <dl className="grid gap-x-3 gap-y-1 text-[11px] sm:grid-cols-[auto_1fr]">
+                <dt className="font-semibold text-slate-700">المرشح الحالي</dt>
+                <dd className="break-all font-mono">{candidateId}</dd>
+                <dt className="font-semibold text-slate-700">العنصر المرجعي</dt>
+                <dd className="min-w-0">
+                  <span className="me-1.5">{requirement.sourceLabelAr}</span>
+                  <span className="break-all font-mono text-muted-foreground">
+                    {requirement.referenceId}
+                  </span>
+                </dd>
+                <dt className="font-semibold text-slate-700">سبب التقاطع</dt>
+                <dd className="min-w-0">
+                  {requirement.reasonAr ? (
+                    <span className="me-1.5">{requirement.reasonAr}</span>
+                  ) : null}
+                  <span className="font-mono text-muted-foreground">
+                    {requirement.reasonCode ?? requirement.code}
+                  </span>
+                </dd>
+                <dt className="font-semibold text-slate-700">أدلة المقارنة</dt>
+                <dd className="font-mono text-[10px] text-muted-foreground">
+                  نسخة المرجع {shortHash(requirement.referenceContentHash)} · بصمة{" "}
+                  {shortHash(requirement.fingerprint)}
+                </dd>
+              </dl>
+              <div className="mt-2 flex items-start gap-2 border-t border-border/50 pt-2">
+                <Checkbox
+                  id={inputId}
+                  data-testid={`overlap-ack-checkbox-${requirement.referenceId}`}
+                  checked={checked}
+                  disabled={disabled}
+                  onCheckedChange={(value) =>
+                    onToggle?.(requirement.fingerprint, value === true)
+                  }
+                  className="mt-0.5"
+                />
+                <label
+                  htmlFor={inputId}
+                  className="cursor-pointer text-xs font-medium leading-relaxed text-foreground"
+                >
+                  أقرّ بأنني راجعت هذا التقاطع وأن المرشح يقدّم تحدياً مختلفاً بما يكفي
+                  (I acknowledge this overlap)
+                </label>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

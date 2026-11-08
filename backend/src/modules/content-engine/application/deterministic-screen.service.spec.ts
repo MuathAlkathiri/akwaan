@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join, resolve } from 'path';
 import { DeterministicScreenService } from './deterministic-screen.service';
+import * as historicalApprovals from './historical-approved-inventory';
 
 const config = { get: () => undefined } as unknown as ConfigService;
 
@@ -32,6 +33,23 @@ describe('DeterministicScreenService', () => {
   beforeEach(() => {
     service = new DeterministicScreenService(config);
     service.beginBatch();
+  });
+
+  it('returns a blocking identity conflict while allowing unexpected errors to propagate', () => {
+    expect(
+      service.screen(draft({ metadata: { subject: 'one' } }), {
+        subject: 'two',
+      }),
+    ).toMatchObject({
+      passed: false,
+      findings: [{ code: 'CANDIDATE_IDENTITY_CONFLICT', severity: 'blocking' }],
+    });
+    const broken = {
+      get metadata(): never {
+        throw new Error('unexpected failure');
+      },
+    };
+    expect(() => service.screen(broken)).toThrow('unexpected failure');
   });
 
   it('passes a well-formed candidate', () => {
@@ -1436,6 +1454,7 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
     query.limit = jest.fn().mockReturnValue(query);
     query.lean = jest.fn().mockReturnValue(query);
     query.select = jest.fn().mockReturnValue(query);
+    query.session = jest.fn().mockReturnValue(query);
     query.exec = jest.fn().mockResolvedValue(result);
     return query;
   }
@@ -1446,6 +1465,7 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
     query.limit = jest.fn().mockReturnValue(query);
     query.lean = jest.fn().mockReturnValue(query);
     query.select = jest.fn().mockReturnValue(query);
+    query.session = jest.fn().mockReturnValue(query);
     query.exec = jest.fn().mockRejectedValue(error);
     return query;
   }
@@ -1453,6 +1473,73 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
   beforeEach(() => {
     service = new DeterministicScreenService(config);
     service.beginBatch();
+  });
+
+  it('uses the supplied MongoDB session for every historical inventory query', async () => {
+    const worldQuery = mockQueryChain([{ _id: 'world', slug: 'w1' }]);
+    const scopeQuery = mockQueryChain([{ _id: 'scope', slug: 's1' }]);
+    const itemQuery = mockQueryChain([
+      {
+        _id: 'item',
+        status: 'ready',
+        prompt: { ar: 'سؤال' },
+        answerPayload: {},
+      },
+    ]);
+    const publicationQuery = mockQueryChain([]);
+    const jobQuery = mockQueryChain([
+      { _id: 'job', worldKey: 'w1', scopeKey: 's1' },
+    ]);
+    const candidateQuery = mockQueryChain([]);
+    const serviceWithModels = new DeterministicScreenService(
+      config,
+      { find: () => itemQuery } as any,
+      { find: () => candidateQuery } as any,
+      { find: () => publicationQuery } as any,
+      { find: () => jobQuery } as any,
+      { find: () => worldQuery } as any,
+      { find: () => scopeQuery } as any,
+    );
+    const mongoSession = {} as import('mongoose').ClientSession;
+    const result = await serviceWithModels.loadHistoricalScope({
+      worldKey: 'w1',
+      scopeKey: 's1',
+      mongoSession,
+    });
+    expect(result.status).toBe('COMPLETE');
+    for (const query of [
+      worldQuery,
+      scopeQuery,
+      itemQuery,
+      publicationQuery,
+      candidateQuery,
+    ]) {
+      expect(query.session).toHaveBeenCalledWith(mongoSession);
+    }
+    expect(worldQuery.session).toHaveBeenCalledTimes(2);
+    expect(scopeQuery.session).toHaveBeenCalledTimes(2);
+  });
+
+  it('propagates retryable transaction errors instead of marking inventory unavailable', async () => {
+    const error = Object.assign(new Error('transient'), {
+      hasErrorLabel: (label: string) => label === 'TransientTransactionError',
+    });
+    const serviceWithModels = new DeterministicScreenService(
+      config,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { find: () => mockRejectChain(error) } as any,
+      {} as any,
+    );
+    await expect(
+      serviceWithModels.loadHistoricalScope({
+        worldKey: 'w1',
+        scopeKey: 's1',
+        mongoSession: {} as import('mongoose').ClientSession,
+      }),
+    ).rejects.toBe(error);
   });
 
   describe('Core Same-Batch Deduplication & Mechanics', () => {
@@ -1786,14 +1873,14 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         find: jest.fn().mockReturnValue(mockQueryChain([])),
       };
       const mockWorlds = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 'w-1', slug: 'w1' }])),
       };
       const mockScopes = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 's-1', slug: 's1' }])),
       };
 
       const customService = new DeterministicScreenService(
@@ -1841,14 +1928,14 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         find: jest.fn().mockReturnValue(mockQueryChain([])),
       };
       const mockWorlds = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 'w-1', slug: 'w1' }])),
       };
       const mockScopes = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 's-1', slug: 's1' }])),
       };
 
       const customService = new DeterministicScreenService(
@@ -1912,10 +1999,10 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         find: jest.fn().mockReturnValue(mockQueryChain([])),
       };
       const mockWorlds = {
-        findOne: jest.fn().mockReturnValue(mockQueryChain(null)),
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
       }; // World not found
       const mockScopes = {
-        findOne: jest.fn().mockReturnValue(mockQueryChain(null)),
+        find: jest.fn().mockReturnValue(mockQueryChain([])),
       };
 
       const customService = new DeterministicScreenService(
@@ -1970,14 +2057,14 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         find: jest.fn().mockReturnValue(mockQueryChain([])),
       };
       const mockWorlds = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 'w-1', slug: 'w1' }])),
       };
       const mockScopes = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 's-1', slug: 's1' }])),
       };
 
       const customService = new DeterministicScreenService(
@@ -2017,14 +2104,14 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         find: jest.fn().mockReturnValue(mockQueryChain([])),
       };
       const mockWorlds = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 'w-1', slug: 'w1' }])),
       };
       const mockScopes = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 's-1', slug: 's1' }])),
       };
 
       const customService = new DeterministicScreenService(
@@ -2047,7 +2134,6 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         _id: 1,
       });
       expect(candidatesQuery.sort).toHaveBeenCalledWith({
-        createdAt: 1,
         _id: 1,
       });
     });
@@ -2142,14 +2228,14 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         find: jest.fn().mockReturnValue(mockQueryChain([])),
       };
       const mockWorlds = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 'w-1', slug: 'w1' }])),
       };
       const mockScopes = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 's-1', slug: 's1' }])),
       };
 
       const customService = new DeterministicScreenService(
@@ -2232,14 +2318,14 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         find: jest.fn().mockReturnValue(mockQueryChain([])),
       };
       const mockWorlds = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 'w-1', slug: 'w1' }])),
       };
       const mockScopes = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 's-1', slug: 's1' }])),
       };
 
       const customService = new DeterministicScreenService(
@@ -2268,6 +2354,9 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
 
     // 10. Approved candidate with valid human approval provenance is admitted to historical screening inventory
     it('10. approved candidate with valid human approval provenance is admitted to historical inventory', async () => {
+      const classify = jest
+        .spyOn(historicalApprovals, 'classifyHistoricalApprovals')
+        .mockResolvedValue(['cand-approved-valid']);
       const candidateDoc = {
         candidateId: 'cand-approved-valid',
         publishedContentItemId: null,
@@ -2313,14 +2402,16 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         find: jest.fn().mockReturnValue(mockQueryChain([])),
       };
       const mockWorlds = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 'w-1', slug: 'test' }])),
       };
       const mockScopes = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+          .mockReturnValue(
+            mockQueryChain([{ _id: 's-1', slug: 'scope-1785790447091' }]),
+          ),
       };
 
       const customService = new DeterministicScreenService(
@@ -2334,11 +2425,13 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
       );
 
       const loadRes = await customService.loadHistoricalScope({
-        worldKey: 'w1',
-        scopeKey: 's1',
+        worldKey: 'football',
+        scopeKey: 'premier-league',
       });
       expect(loadRes.status).toBe('COMPLETE');
       expect(loadRes.candidateCount).toBe(1);
+      expect(classify).toHaveBeenCalled();
+      classify.mockRestore();
 
       const duplicateCand = {
         prompt: { ar: 'ما عاصمة عمان؟' },
@@ -2352,7 +2445,9 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         },
       };
 
-      const res = customService.screen(duplicateCand, null, { scopeKey: 's1' });
+      const res = customService.screen(duplicateCand, null, {
+        scopeKey: 'premier-league',
+      });
       expect(res.passed).toBe(false);
       const finding = res.findings.find(
         (f) => f.code === 'DUPLICATE_APPROVED_CANDIDATE',
@@ -2395,14 +2490,14 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         find: jest.fn().mockReturnValue(mockQueryChain([])),
       };
       const mockWorlds = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 'w-1', slug: 'w1' }])),
       };
       const mockScopes = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 's-1', slug: 's1' }])),
       };
 
       const customService = new DeterministicScreenService(
@@ -2473,14 +2568,14 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         find: jest.fn().mockReturnValue(mockQueryChain([])),
       };
       const mockWorlds = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 'w-1', slug: 'w1' }])),
       };
       const mockScopes = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 's-1', slug: 's1' }])),
       };
 
       const customService = new DeterministicScreenService(
@@ -2546,14 +2641,14 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         find: jest.fn().mockReturnValue(mockQueryChain([])),
       };
       const mockWorlds = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 'w-1', slug: 'w1' }])),
       };
       const mockScopes = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 's-1', slug: 's1' }])),
       };
 
       const customService = new DeterministicScreenService(
@@ -2570,10 +2665,10 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         worldKey: 'w1',
         scopeKey: 's1',
       });
-      expect(loadRes.status).toBe('COMPLETE');
-      expect(loadRes.canonicalCount).toBe(1);
+      expect(loadRes.status).toBe('UNAVAILABLE');
+      expect(loadRes.canonicalCount).toBe(0);
       expect(loadRes.candidateCount).toBe(0);
-      expect(loadRes.recordCount).toBe(1);
+      expect(loadRes.recordCount).toBe(0);
     });
 
     // 14. Orphaned publication candidate is excluded from historical screening inventory
@@ -2628,14 +2723,14 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         find: jest.fn().mockReturnValue(mockQueryChain([publicationDoc])),
       };
       const mockWorlds = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 'w-1', slug: 'w1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 'w-1', slug: 'w1' }])),
       };
       const mockScopes = {
-        findOne: jest
+        find: jest
           .fn()
-          .mockReturnValue(mockQueryChain({ _id: 's-1', slug: 's1' })),
+          .mockReturnValue(mockQueryChain([{ _id: 's-1', slug: 's1' }])),
       };
 
       const customService = new DeterministicScreenService(
@@ -2652,9 +2747,10 @@ describe('DeterministicScreenService — Content Engine V2 Slice 2C Deduplicatio
         worldKey: 'w1',
         scopeKey: 's1',
       });
-      expect(loadRes.canonicalCount).toBe(1);
+      expect(loadRes.status).toBe('UNAVAILABLE');
+      expect(loadRes.canonicalCount).toBe(0);
       expect(loadRes.candidateCount).toBe(0);
-      expect(loadRes.recordCount).toBe(1);
+      expect(loadRes.recordCount).toBe(0);
     });
 
     // 15. Cross-Scope content can trigger cross-Scope duplicate advisories when configured, without silently widening the primary boundary

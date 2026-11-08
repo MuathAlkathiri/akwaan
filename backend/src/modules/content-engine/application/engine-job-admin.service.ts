@@ -85,6 +85,7 @@ import {
 import { ContentEngineOrchestratorService } from './content-engine-orchestrator.service';
 import { EngineBudgetService } from './engine-budget.service';
 import { GenerationJobService } from './generation-job.service';
+import { DeterministicScreenService } from './deterministic-screen.service';
 import {
   QUALITY_JUDGE_MAX_OUTPUT_TOKENS,
   estimateQualityJudgePromptTokens,
@@ -160,7 +161,29 @@ export class EngineJobAdminService {
     private readonly historicalCoverage?: HistoricalCoverageService,
     @Optional()
     private readonly planner?: GenerationPlannerService,
+    @Optional()
+    private readonly historicalScreen?: DeterministicScreenService,
   ) {}
+
+  private async historicalInventoryComplete(
+    worldKey: string,
+    scopeKey: string,
+  ): Promise<boolean> {
+    if (!this.historicalScreen) return false;
+    try {
+      const session = this.historicalScreen.createSession({
+        worldKey,
+        scopeKey,
+      });
+      const result = await this.historicalScreen.loadHistoricalScope(
+        { worldKey, scopeKey },
+        session,
+      );
+      return result.status === 'COMPLETE';
+    } catch {
+      return false;
+    }
+  }
 
   private truthy(key: string): boolean {
     return ['true', '1', 'yes', 'on'].includes(
@@ -1087,6 +1110,30 @@ export class EngineJobAdminService {
       };
     }
 
+    if (
+      !(await this.historicalInventoryComplete(
+        resolvedWorldKey!,
+        resolvedScopeKey!,
+      ))
+    ) {
+      const message =
+        'Historical inventory could not be verified completely; resolve inventory issues before generation.';
+      return {
+        resolvable: true,
+        submissionReady: false,
+        contextHash,
+        ruleSetDigest,
+        pricingConfigured: false,
+        liveProviderEnabled,
+        engineEnabled,
+        budget,
+        generatorSupported: true,
+        diagnostic: { code: 'HISTORICAL_INVENTORY_INCOMPLETE', message },
+        blockedCode: 'HISTORICAL_INVENTORY_INCOMPLETE',
+        blockedReason: message,
+      };
+    }
+
     let generationSpec: GenerationSpecification;
     try {
       generationSpec = buildGenerationSpecification({
@@ -1388,6 +1435,19 @@ export class EngineJobAdminService {
       throw new BadRequestException({
         code: runtimeCheck.blockedCode,
         message: runtimeCheck.blockedReason,
+      });
+    }
+
+    if (
+      !(await this.historicalInventoryComplete(
+        resolvedWorldKey,
+        resolvedScopeKey,
+      ))
+    ) {
+      throw new BadRequestException({
+        code: 'HISTORICAL_INVENTORY_INCOMPLETE',
+        message:
+          'Historical inventory could not be verified completely; resolve inventory issues before generation.',
       });
     }
 
