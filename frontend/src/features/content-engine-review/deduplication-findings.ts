@@ -27,6 +27,7 @@ export type DeduplicationCategory =
   | "proven_duplicate"
   | "potential_overlap"
   | "incomplete_verification"
+  | "inconclusive"
   | "clean";
 
 export type MatchSourceType =
@@ -459,6 +460,24 @@ export function summarizeDeduplication(
       hasPotentialOverlap: true,
       matches,
       incompleteFindings,
+    };
+  }
+
+  if (safeFindings.some((finding) =>
+    finding.code === "SUBJECTIVE_COMPARISON_INCONCLUSIVE" ||
+    finding.code === "SUBJECTIVE_BATCH_COMPARISON_INCONCLUSIVE")) {
+    return {
+      ...flags,
+      category: "inconclusive",
+      statusLabelAr: "بعض المقارنات غير حاسمة",
+      statusDescriptionAr: "لم يُرصد تقاطع يستلزم الإقرار، لكن بعض المقارنات مع الأسئلة الذاتية لم تكن حاسمة. راجع المحتوى بعناية؛ هذا لا يثبت اختلافه.",
+      badgeClass: "border-amber-300 bg-amber-100 text-amber-900 font-medium",
+      isApprovalBlocked: false,
+      isIncomplete: false,
+      hasProvenDuplicate: false,
+      hasPotentialOverlap: false,
+      matches: [],
+      incompleteFindings: [],
     };
   }
 

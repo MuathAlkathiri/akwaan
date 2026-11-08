@@ -1675,6 +1675,128 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
         actor,
       );
 
+    it('persists a fresh non-blocking historical notice atomically with approval', async () => {
+      const { worldId, scopeId } = await seedReviewCandidate(
+        'approval-inconclusive',
+      );
+      await assessSupported('approval-inconclusive');
+      await database.collection('content_items').insertOne({
+        worldId,
+        scopeId,
+        status: 'ready',
+        prompt: { ar: 'من فينا يفضل تناول الفطور مع الأصدقاء كل صباح؟' },
+        answerPayload: { mode: 'vote', consensusRule: 'majority' },
+      });
+      const approved = await approve('approval-inconclusive');
+      expect(approved.reviewStatus).toBe('approved');
+      const detail = await review.detail('approval-inconclusive');
+      expect(detail.findings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'SUBJECTIVE_COMPARISON_INCONCLUSIVE',
+            severity: 'deferred',
+          }),
+        ]),
+      );
+    });
+
+    it('persists a newly discovered notice atomically with DRAFT creation', async () => {
+      const { worldId, scopeId } =
+        await seedReviewCandidate('draft-inconclusive');
+      await assessSupported('draft-inconclusive');
+      await approve('draft-inconclusive');
+      await database.collection('content_items').insertOne({
+        worldId,
+        scopeId,
+        status: 'ready',
+        prompt: { ar: 'من فينا يفضل تناول الفطور مع الأصدقاء كل صباح؟' },
+        answerPayload: { mode: 'vote', consensusRule: 'majority' },
+      });
+      const result = await review.createDraft('draft-inconclusive', 2, actor);
+      expect(result.alreadyCreated).toBe(false);
+      const detail = await review.detail('draft-inconclusive');
+      expect(detail.findings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'SUBJECTIVE_COMPARISON_INCONCLUSIVE',
+            severity: 'deferred',
+          }),
+        ]),
+      );
+      expect(
+        (await review.createDraft('draft-inconclusive', 2, actor))
+          .alreadyCreated,
+      ).toBe(true);
+    });
+
+    it('does not overwrite newer findings when approval races a candidate update', async () => {
+      const { worldId, scopeId } = await seedReviewCandidate(
+        'approval-notice-cas',
+      );
+      await assessSupported('approval-notice-cas');
+      await database.collection('content_items').insertOne({
+        worldId,
+        scopeId,
+        status: 'ready',
+        prompt: { ar: 'من فينا يفضل تناول الفطور مع الأصدقاء كل صباح؟' },
+        answerPayload: { mode: 'vote', consensusRule: 'majority' },
+      });
+      const original = screen.loadHistoricalScope.bind(screen);
+      let entered!: () => void;
+      let release!: () => void;
+      const reached = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const spy = jest
+        .spyOn(screen, 'loadHistoricalScope')
+        .mockImplementationOnce(async (...args) => {
+          const result = await original(...args);
+          entered();
+          await held;
+          return result;
+        });
+      const approval = approve('approval-notice-cas').then(
+        () => null,
+        (error) => error,
+      );
+      try {
+        await reached;
+        const update = await database.collection('engine_candidates').updateOne(
+          { candidateId: 'approval-notice-cas', reviewRevision: 1 },
+          {
+            $set: {
+              findings: [
+                {
+                  code: 'NEWER_FINDING',
+                  severity: 'warning',
+                  message: 'newer',
+                },
+              ],
+            },
+            $inc: { reviewRevision: 1 },
+          },
+        );
+        expect(update.modifiedCount).toBe(1);
+        release();
+        expect(await approval).toBeTruthy();
+        const current = await database
+          .collection('engine_candidates')
+          .findOne({ candidateId: 'approval-notice-cas' });
+        expect(current?.reviewRevision).toBe(2);
+        expect(current?.reviewStatus).toBe('pending');
+        expect(current?.findings).toEqual([
+          expect.objectContaining({ code: 'NEWER_FINDING' }),
+        ]);
+      } finally {
+        release();
+        spy.mockRestore();
+        await approval;
+      }
+    });
+
     it('blocks both already-approved duplicate drafts without weakening screening', async () => {
       const { scopeId } = await seedReviewCandidate('draft-approved-race-a');
       await assessSupported('draft-approved-race-a');
@@ -2568,6 +2690,14 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
         const missing = await rejection(approve('r4a-keep'));
         const fingerprint = missing.response.details.overlaps[0].fingerprint;
         await approveWith('r4a-keep', 1, [fingerprint]);
+        expect((await row('r4a-keep'))?.findings).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              code: 'POTENTIAL_OVERLAP_HISTORICAL_CONTENT',
+              fingerprint,
+            }),
+          ]),
+        );
         await review.rescreenCandidate('r4a-keep', 2, actor);
         const current = await row('r4a-keep');
         expect(current?.reviewStatus).toBe('approved');
@@ -2582,8 +2712,26 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
         expect(current?.reviewEvents.at(-1).action).toBe(
           'approval_carried_forward',
         );
+        await database.collection('content_items').insertOne({
+          worldId,
+          scopeId,
+          status: 'ready',
+          prompt: { ar: 'من فينا يفضل تناول الفطور مع الأصدقاء كل صباح؟' },
+          answerPayload: { mode: 'vote', consensusRule: 'majority' },
+        });
         const created = await review.createDraft('r4a-keep', 3, actor);
         expect(created.alreadyCreated).toBe(false);
+        const published = await row('r4a-keep');
+        expect(published?.reviewDecision.overlapAcknowledgments).toEqual([
+          expect.objectContaining({ fingerprint }),
+        ]);
+        expect(published?.findings).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              code: 'SUBJECTIVE_COMPARISON_INCONCLUSIVE',
+            }),
+          ]),
+        );
       });
 
       it('rolls back approval, acknowledgment and fence together when the write fails', async () => {

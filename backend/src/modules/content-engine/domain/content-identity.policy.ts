@@ -1,5 +1,8 @@
 import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
-import { ChallengeAnswerMode } from '../../world-content/domain/world-content.constants';
+import {
+  ChallengeAnswerMode,
+  VoteConsensusRule,
+} from '../../world-content/domain/world-content.constants';
 import {
   CognitiveTask,
   CognitiveTaskType,
@@ -545,6 +548,31 @@ export function extractMechanicPayloadIdentity(
     }
   }
 
+  if (mode === ChallengeAnswerMode.VOTE) {
+    const rawOptions = answer?.options;
+    const options = (answer?.options ?? [])
+      .map((option) => normalizeAnswer(extractText(option.label)))
+      .filter(Boolean)
+      .sort();
+    return {
+      answerMode: mode,
+      structureKey: `vote:${answer?.consensusRule ?? ''}:${options.join('~')}`,
+      voteStructureVerified:
+        Object.values<string>(VoteConsensusRule).includes(
+          answer?.consensusRule ?? '',
+        ) &&
+        (!rawOptions ||
+          (rawOptions.length >= 2 &&
+            options.length === rawOptions.length &&
+            new Set(options).size === options.length &&
+            rawOptions.every((option) => Boolean(option.id?.trim())) &&
+            new Set(rawOptions.map((option) => option.id?.trim())).size ===
+              rawOptions.length)),
+      options,
+      mediaSubjectKeys: mediaSubjectKeys.length ? mediaSubjectKeys : undefined,
+    };
+  }
+
   if (mode === ChallengeAnswerMode.MULTIPLE_CHOICE) {
     const options = (answer?.options ?? [])
       .map((o) => normalizeAnswer(extractText(o.label)))
@@ -705,21 +733,64 @@ export function compareContentIdentities(
     a.scopeKey && b.scopeKey && a.scopeKey !== b.scopeKey,
   );
 
-  // 1. Unsupported Mechanic Check (checked first, as subjective modes like VOTE naturally lack objective targets)
+  // Subjective prompts have no objective answer key. Compare their prompt
+  // evidence without declaring unknown relationships distinct.
   if (
     a.cognitiveTask.taskType === 'subjective_consensus' ||
     b.cognitiveTask.taskType === 'subjective_consensus' ||
     a.mechanicPayload.answerMode === ChallengeAnswerMode.VOTE ||
     b.mechanicPayload.answerMode === ChallengeAnswerMode.VOTE
   ) {
+    const promptA = a.cognitiveTask.normalizedStemPrompt;
+    const promptB = b.cognitiveTask.normalizedStemPrompt;
+    const usable = (prompt: string, identity: ContentIdentity) =>
+      prompt.length >= 12 &&
+      prompt.split(/\s+/).length >= 3 &&
+      !identity.cognitiveTask.isGenericStem;
+    const comparable = usable(promptA, a) && usable(promptB, b);
+    const bothVote =
+      a.mechanicPayload.answerMode === ChallengeAnswerMode.VOTE &&
+      b.mechanicPayload.answerMode === ChallengeAnswerMode.VOTE;
+    const hasMedia = Boolean(
+      a.mechanicPayload.mediaSubjectKeys?.length ||
+      b.mechanicPayload.mediaSubjectKeys?.length,
+    );
+    const samePrompt = comparable && promptA === promptB;
+    const conflictingIdentity = (['subject', 'entityId'] as const).some(
+      (key) => {
+        const left = a.metadata?.[key];
+        const right = b.metadata?.[key];
+        return Boolean(
+          left && right && normalizeAnswer(left) !== normalizeAnswer(right),
+        );
+      },
+    );
+    const duplicate =
+      samePrompt &&
+      bothVote &&
+      a.mechanicPayload.voteStructureVerified === true &&
+      b.mechanicPayload.voteStructureVerified === true &&
+      !hasMedia &&
+      !conflictingIdentity &&
+      a.mechanicPayload.structureKey === b.mechanicPayload.structureKey;
+    const overlap = samePrompt;
     return {
-      result: 'POTENTIAL_OVERLAP',
-      reasonCode: 'UNSUPPORTED_MECHANIC_COMPARISON',
-      explanation:
-        'Subjective consensus (VOTE) mechanics lack objective deterministic answer identity; requires product policy decision.',
+      result: duplicate
+        ? 'DUPLICATE'
+        : overlap
+          ? 'POTENTIAL_OVERLAP'
+          : 'INCONCLUSIVE',
+      reasonCode: duplicate
+        ? 'IDENTICAL_GAMEPLAY_TASK'
+        : 'UNSUPPORTED_MECHANIC_COMPARISON',
+      explanation: duplicate
+        ? 'Identical specific subjective prompts ask the same question.'
+        : overlap
+          ? 'Identical prompts require review because the gameplay identities differ or cannot be confirmed.'
+          : 'Subjective comparison is inconclusive; no meaningful prompt overlap was established.',
       dimensions: {
         semanticTarget: 'UNKNOWN',
-        cognitiveTask: 'MATCH',
+        cognitiveTask: bothVote ? 'MATCH' : 'MISMATCH',
         mechanicPayload: 'UNKNOWN',
       },
       isCrossScope,

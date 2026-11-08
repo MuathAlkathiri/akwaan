@@ -1474,6 +1474,7 @@ export class DeterministicScreenService {
       ...(options?.historicalRecords ?? []),
     ];
     const seenHistIds = new Set<string>();
+    let subjectiveComparisonInconclusive = false;
 
     for (const record of allHistorical) {
       if (seenHistIds.has(record.id)) continue;
@@ -1498,6 +1499,11 @@ export class DeterministicScreenService {
         candidateIdentity,
         recordIdentity,
       );
+
+      if (comparison.result === 'INCONCLUSIVE') {
+        subjectiveComparisonInconclusive = true;
+        continue;
+      }
 
       if (comparison.isCrossScope) {
         if (
@@ -1560,6 +1566,14 @@ export class DeterministicScreenService {
       }
     }
 
+    if (subjectiveComparisonInconclusive) {
+      findings.push(
+        deferred(
+          'SUBJECTIVE_COMPARISON_INCONCLUSIVE',
+          'Some subjective comparisons could not be conclusively evaluated; no actionable overlap was established.',
+        ),
+      );
+    }
     return findings;
   }
 
@@ -1599,6 +1613,7 @@ export class DeterministicScreenService {
     findings.push(...this.screenHistoricalOnly(draft, authoring, options));
 
     // 2. Screen against In-Batch Candidates
+    let batchComparisonInconclusive = false;
     for (const prev of session.seenBatchCandidates) {
       if (options?.candidateId && prev.candidateId === options.candidateId) {
         continue;
@@ -1608,6 +1623,11 @@ export class DeterministicScreenService {
         candidateIdentity,
         prev.identity,
       );
+
+      if (comparison.result === 'INCONCLUSIVE') {
+        batchComparisonInconclusive = true;
+        continue;
+      }
 
       if (comparison.isCrossScope) {
         if (
@@ -1667,6 +1687,15 @@ export class DeterministicScreenService {
         );
         break;
       }
+    }
+
+    if (batchComparisonInconclusive) {
+      findings.push(
+        deferred(
+          'SUBJECTIVE_BATCH_COMPARISON_INCONCLUSIVE',
+          'Some subjective comparisons within the batch were inconclusive; no actionable overlap was established.',
+        ),
+      );
     }
 
     // Record candidate in batch tracking
