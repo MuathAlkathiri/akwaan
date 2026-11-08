@@ -200,3 +200,77 @@ export const CANDIDATE_REVIEW_STATUS_LABELS: Record<
     badgeClass: "border-rose-200 bg-rose-50 text-rose-800 font-medium",
   },
 };
+
+export interface CandidateStatusPresentation {
+  /** One reviewer-facing label for the candidate's combined state. */
+  label: string;
+  badgeClass: string;
+  /** True while a human decision is still outstanding for this candidate. */
+  needsDecision: boolean;
+}
+
+/**
+ * The candidate's single status, merging the screening pipeline status and the
+ * human review status. Precedence follows what the reviewer can still do: a
+ * created draft, then a human decision, then a terminal pipeline outcome, then
+ * the pipeline stage of a candidate still waiting for review.
+ */
+export function candidateStatusPresentation(candidate: {
+  status: string;
+  reviewStatus: string;
+  publishedContentItemId?: string | null;
+}): CandidateStatusPresentation {
+  if (candidate.publishedContentItemId) {
+    return {
+      label: "أُنشئت المسودة",
+      badgeClass: CANDIDATE_REVIEW_STATUS_LABELS.approved.badgeClass,
+      needsDecision: false,
+    };
+  }
+  if (candidate.reviewStatus === "approved") {
+    return {
+      label: "معتمد",
+      badgeClass: CANDIDATE_REVIEW_STATUS_LABELS.approved.badgeClass,
+      needsDecision: false,
+    };
+  }
+  if (candidate.reviewStatus === "rejected") {
+    return {
+      label: "مرفوض",
+      badgeClass: CANDIDATE_REVIEW_STATUS_LABELS.rejected.badgeClass,
+      needsDecision: false,
+    };
+  }
+  switch (candidate.status) {
+    case "screened_reject":
+      return {
+        label: "مرفوض آلياً",
+        badgeClass: CANDIDATE_PIPELINE_STATUS_LABELS.screened_reject.badgeClass,
+        needsDecision: false,
+      };
+    case "generation_failed":
+      return {
+        label: "فشل التوليد",
+        badgeClass: CANDIDATE_PIPELINE_STATUS_LABELS.generation_failed.badgeClass,
+        needsDecision: false,
+      };
+    case "fact_blocked":
+      return {
+        label: "تعثّر التحقق من الحقائق",
+        badgeClass: CANDIDATE_PIPELINE_STATUS_LABELS.fact_blocked.badgeClass,
+        needsDecision: true,
+      };
+    case "generated":
+      return {
+        label: "قيد الفحص",
+        badgeClass: CANDIDATE_PIPELINE_STATUS_LABELS.generated.badgeClass,
+        needsDecision: true,
+      };
+    default:
+      return {
+        label: "بانتظار المراجعة",
+        badgeClass: CANDIDATE_REVIEW_STATUS_LABELS.pending.badgeClass,
+        needsDecision: true,
+      };
+  }
+}
