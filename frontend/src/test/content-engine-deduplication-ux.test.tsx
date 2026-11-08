@@ -183,7 +183,7 @@ describe("Content Engine Review Studio — Deduplication UX (Slice 2D)", () => {
     expect(evidenceContainer.textContent).toContain("تفاصيل السؤال والخيارات الكاملة للعنصر المرجعي غير محملة");
   });
 
-  it("2. displays potential overlap with warning badge and allows approval when assessed", async () => {
+  it("2. displays potential overlap with warning badge and requires explicit acknowledgment before approval", async () => {
     const overlapCandidate = mockCandidate({
       status: "awaiting_review",
       findings: [
@@ -192,6 +192,12 @@ describe("Content Engine Review Studio — Deduplication UX (Slice 2D)", () => {
           severity: "warning",
           message:
             "Potential overlap with CANONICAL_READY item item-alex: Identical answer for the same subject and property relationship",
+          fingerprint: `ovl1:${"a".repeat(64)}`,
+          evidence: {
+            candidateContentHash: "c".repeat(64),
+            reasonCode: "SAME_TARGET",
+            reference: { kind: "CANONICAL_READY", id: "item-alex", contentHash: "r".repeat(64) },
+          },
         },
       ],
     });
@@ -209,15 +215,15 @@ describe("Content Engine Review Studio — Deduplication UX (Slice 2D)", () => {
     fireEvent.click(await screen.findByTestId("candidate-row-cid-1"));
 
     const badge = await screen.findByTestId("deduplication-status-badge");
-    expect(badge.textContent).toContain("شبهة تقاطع أو تشابه — يتطلب مراجعة بشرية");
+    expect(badge.textContent).toContain("شبهة تقاطع — تتطلب إقراراً صريحاً من المراجع");
 
-    // Potential overlap does NOT block approval when assessment is complete
-    const explanationInput = screen.getByPlaceholderText(
-      /تفسير القرار/i,
-    );
+    const explanationInput = screen.getByPlaceholderText(/تفسير القرار/i);
     fireEvent.change(explanationInput, { target: { value: "Checked: verified different nuance" } });
 
+    // Seeing the warning is not acknowledgment.
     const approveBtn = screen.getByTestId("button-approve-candidate");
+    expect(approveBtn).toBeDisabled();
+    fireEvent.click(screen.getByTestId("overlap-ack-checkbox-item-alex"));
     expect(approveBtn).toBeEnabled();
   });
 

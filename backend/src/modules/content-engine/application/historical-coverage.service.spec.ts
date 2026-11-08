@@ -5,10 +5,12 @@ import { ConfigService } from '@nestjs/config';
 import { ContentItemStatus } from '../../world-content/domain/world-content.constants';
 import { HistoricalCoverageService } from './historical-coverage.service';
 import { AuthoringContextService } from './authoring-context.service';
+import * as historicalApprovals from './historical-approved-inventory';
 
 const ROOT = resolve(__dirname, '../../../../..');
 
 const mockQuery = <T>(result: T) => ({
+  limit: jest.fn().mockReturnThis(),
   lean: jest.fn().mockReturnValue({
     exec: jest.fn().mockResolvedValue(result),
   }),
@@ -16,6 +18,7 @@ const mockQuery = <T>(result: T) => ({
 });
 
 const rejectingQuery = (error: Error) => ({
+  limit: jest.fn().mockReturnThis(),
   lean: jest.fn().mockReturnValue({
     exec: jest.fn().mockRejectedValue(error),
   }),
@@ -57,17 +60,20 @@ describe('HistoricalCoverageService (Slice 2A Final Closure)', () => {
   ];
 
   beforeEach(() => {
+    jest
+      .spyOn(historicalApprovals, 'classifyHistoricalApprovals')
+      .mockResolvedValue([]);
     authoringContext = new AuthoringContextService({
       get: (key: string) =>
         key === 'ENGINE_AUTHORING_ROOT' ? ROOT : undefined,
     } as unknown as ConfigService);
 
     scopesModel = {
-      findOne: jest.fn().mockReturnValue(mockQuery(standardScope)),
+      find: jest.fn().mockReturnValue(mockQuery([standardScope])),
     };
 
     worldsModel = {
-      findOne: jest.fn().mockReturnValue(mockQuery(standardWorld)),
+      find: jest.fn().mockReturnValue(mockQuery([standardWorld])),
     };
 
     challengeTypesModel = {
@@ -101,6 +107,8 @@ describe('HistoricalCoverageService (Slice 2A Final Closure)', () => {
       authoringContext,
     );
   });
+
+  afterEach(() => jest.restoreAllMocks());
 
   const request = {
     worldKey: 'puzzles',
@@ -496,17 +504,17 @@ describe('HistoricalCoverageService (Slice 2A Final Closure)', () => {
 
   it('12a. bounds Scope lookup by World ownership', async () => {
     await service.getCoverage(request);
-    expect(scopesModel.findOne).toHaveBeenCalledWith({
+    expect(scopesModel.find).toHaveBeenCalledWith({
       worldId: standardWorld._id,
-      slug: 'wordplay-letters',
+      $or: expect.any(Array),
     });
   });
 
   it('12b. returns an empty inventory for a missing Scope without crossing boundaries', async () => {
-    scopesModel.findOne.mockReturnValue(mockQuery(null));
-    const report = await service.getCoverage(request);
-    expect(report.scopeId).toBeUndefined();
-    expect(report.totals.operationalApproved).toBe(0);
+    scopesModel.find.mockReturnValue(mockQuery([]));
+    await expect(service.getCoverage(request)).rejects.toThrow(
+      'missing or ambiguous',
+    );
     expect(contentItemsModel.find).not.toHaveBeenCalled();
   });
 
@@ -523,6 +531,22 @@ describe('HistoricalCoverageService (Slice 2A Final Closure)', () => {
     expect(report.totals.uniquePlayable).toBe(0);
     expect(report.totals.uniquePending).toBe(0);
     expect(report.diagnostics.warnings).toEqual([]);
+  });
+
+  it('fails closed when historical job count exceeds the safety bound', async () => {
+    jobsModel.find.mockReturnValue(
+      mockQuery(
+        Array.from({ length: 1001 }, (_, i) => ({
+          _id: String(i),
+          worldKey: 'puzzles',
+          scopeKey: 'wordplay-letters',
+        })),
+      ),
+    );
+    await expect(service.getCoverage(request)).rejects.toThrow(
+      'jobs exceed safety limit',
+    );
+    expect(candidatesModel.find).not.toHaveBeenCalled();
   });
 
   it('14. handles legacy records with omitted metadata as unclassified without error', async () => {

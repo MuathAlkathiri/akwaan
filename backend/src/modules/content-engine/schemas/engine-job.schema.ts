@@ -137,3 +137,4 @@ EngineJobSchema.index({ requestHash: 1 }, { unique: true });
 
 /** Drives both "what may I claim" and the expired-lease recovery sweep. */
 EngineJobSchema.index({ status: 1, leaseExpiresAt: 1 });
+EngineJobSchema.index({ worldKey: 1, scopeKey: 1 });

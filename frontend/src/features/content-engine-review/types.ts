@@ -21,6 +21,38 @@ export interface ReviewEligibility {
   canApprove: boolean;
   canCreateDraft: boolean;
   approvalBlockers: string[];
+  /** Server-reported reasons a DRAFT cannot be created (stale/untrusted approval). */
+  draftBlockers?: string[];
+}
+
+/** R4-A server evidence bound into an `ovl1:` overlap fingerprint. */
+export type OverlapReferenceKind =
+  | "CANONICAL_READY"
+  | "CANONICAL_DRAFT"
+  | "APPROVED_CANDIDATE"
+  | "BATCH_CANDIDATE";
+
+export interface OverlapEvidence {
+  candidateContentHash: string;
+  reasonCode: string | null;
+  reference: { kind: OverlapReferenceKind | string; id: string; contentHash: string };
+}
+
+export interface ScreenFinding {
+  code: string;
+  severity: "blocking" | "warning" | "deferred";
+  message: string;
+  /** Present only on server-verifiable POTENTIAL_OVERLAP_* findings. */
+  fingerprint?: string;
+  evidence?: OverlapEvidence;
+}
+
+/** One overlap as described by a 409 approval conflict (`details.overlaps`). */
+export interface ServerOverlapRequirement {
+  fingerprint: string;
+  code: string;
+  reasonCode: string | null;
+  reference: { kind: OverlapReferenceKind | string; id: string; contentHash: string };
 }
 
 export interface InvalidatedAssessmentSnapshot {
@@ -97,11 +129,7 @@ export interface ReviewCandidate {
     familyCompliance?: FamilyComplianceStatus;
   } | null;
   factualClaims: string[];
-  findings: Array<{
-    code: string;
-    severity: "blocking" | "warning" | "deferred";
-    message: string;
-  }>;
+  findings: ScreenFinding[];
   factVerification: Record<string, unknown> | null;
   qualityEvaluation: Record<string, unknown> | null;
   compatibilityEvaluation: Record<string, unknown> | null;

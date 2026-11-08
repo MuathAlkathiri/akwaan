@@ -43,3 +43,4 @@ export class Scope extends Document {
 
 export const ScopeSchema = SchemaFactory.createForClass(Scope);
 ScopeSchema.index({ worldId: 1, slug: 1 }, { unique: true });
+ScopeSchema.index({ worldId: 1, name: 1 });

@@ -112,6 +112,9 @@ export class ContentItemMetadataDto {
   @IsOptional() @IsString() @MaxLength(200) source?: string;
   @IsOptional() @IsString() @MaxLength(1000) notes?: string;
   @IsOptional() @IsArray() @IsString({ each: true }) tags?: string[];
+  @IsOptional() @IsString() @MaxLength(200) familyKey?: string;
+  @IsOptional() @IsString() @MaxLength(200) subject?: string;
+  @IsOptional() @IsString() @MaxLength(200) entityId?: string;
 }
 
 export class CreateContentItemDto {

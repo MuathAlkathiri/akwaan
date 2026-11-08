@@ -9,7 +9,7 @@ import {
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { Connection, FilterQuery, Model } from 'mongoose';
+import { ClientSession, Connection, FilterQuery, Model } from 'mongoose';
 import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
 import { AuthenticatedUser } from '../../auth/auth.types';
 import { ContentItemService } from '../../world-content/application/content-item.service';
@@ -23,9 +23,13 @@ import { ChallengeTypeRepository } from '../../world-content/persistence/challen
 import { ScopeRepository } from '../../world-content/persistence/scope.repository';
 import { WorldRepository } from '../../world-content/persistence/world.repository';
 import { isGenerationSpecificationComplete } from '../domain/generation-specification';
+import { World } from '../../world-content/schemas/world.schema';
+import { Scope } from '../../world-content/schemas/scope.schema';
+import { EngineInventoryFence } from '../schemas/engine-inventory-fence.schema';
 import {
   CandidateReviewEvent,
   EngineCandidateDocument,
+  ScreenFinding,
 } from '../schemas/engine-candidate.schema';
 import { EngineCostEntryDocument } from '../schemas/engine-cost-entry.schema';
 import { EngineDraftPublicationDocument } from '../schemas/engine-draft-publication.schema';
@@ -45,13 +49,34 @@ import {
   resolveCanonicalWorld,
   resolveCanonicalScope,
   resolveCanonicalChallengeType,
+  resolveHistoricalTarget,
 } from './authoring-target-resolver';
 import { CandidateCompatibilityService } from './candidate-compatibility.service';
 import {
   DeterministicScreenService,
   hasIncompleteHistoricalVerification,
+  withOverlapEvidence,
 } from './deterministic-screen.service';
+import {
+  compareBatchCandidates,
+  contentVersionHash,
+  describeOverlapEvidence,
+  isOverlapCode,
+  OverlapEvidence,
+  PROVEN_HISTORICAL_DUPLICATE_PATTERN,
+} from '../domain/overlap-acknowledgment';
 import { evaluateFamilyCompliance } from '../domain/family-compliance.policy';
+import {
+  APPROVAL_CARRIED_FORWARD_EVENT,
+  hasTrustedCandidateApproval,
+  isApprovalValidAtRevision,
+} from '../domain/candidate-approval-provenance';
+import {
+  candidateIdentityMetadata,
+  CandidateIdentityConflictError,
+} from '../domain/candidate-identity-metadata';
+
+class ApprovalCasMiss extends Error {}
 
 const REVIEWABLE_PIPELINE_STATUSES = [
   'awaiting_review',
@@ -369,6 +394,7 @@ export class ContentEngineReviewService {
     const references = await this.references(current.jobId, current);
     this.assertTargetNotRetargeted(dto.draft, references);
     const sanitizedDraft = this.stripTargetFields(dto.draft);
+    this.assertIdentityMetadata(sanitizedDraft, current.authoring);
     const normalizedClaims = (
       Array.isArray(dto.factualClaims) ? dto.factualClaims : []
     )
@@ -431,6 +457,18 @@ export class ContentEngineReviewService {
       worldKey: references.job.worldKey,
       session: editSession,
     });
+    this.mergeFindings(
+      screened.findings,
+      await this.revalidateBatchFindings(
+        current,
+        sanitizedDraft,
+        retainedAuthoring,
+        references.job,
+      ),
+    );
+    screened.passed = !screened.findings.some(
+      (finding) => finding.severity === 'blocking',
+    );
     const assignedFamilyKey = (
       retainedAuthoring as { assignedSlot?: { familyKey?: string } } | undefined
     )?.assignedSlot?.familyKey;
@@ -823,6 +861,9 @@ export class ContentEngineReviewService {
     actor: AuthenticatedUser,
   ) {
     const current = await this.requireCandidate(candidateId);
+    if (current.reviewRevision !== dto.expectedRevision)
+      await this.throwCas(candidateId, dto.expectedRevision);
+    this.assertIdentityMetadata(current.draft ?? {}, current.authoring);
     const explanation = dto.explanation?.trim() ?? '';
     if (!explanation) {
       throw new BadRequestException({
@@ -833,6 +874,23 @@ export class ContentEngineReviewService {
     this.assertApprovable(current, dto);
     const liveCompatibility =
       await this.assertCanonicalCompatibilityForApproval(current);
+    const references = await this.references(current.jobId, current);
+    const corpus = this.screeningCorpus(references.job);
+    const scopeId = references.scope._id;
+    const fences = this.connection.model<EngineInventoryFence>(
+      EngineInventoryFence.name,
+    );
+    try {
+      await fences
+        .updateOne(
+          { _id: scopeId },
+          { $setOnInsert: { revision: 0 } },
+          { upsert: true },
+        )
+        .exec();
+    } catch (error) {
+      if ((error as { code?: number }).code !== 11000) throw error;
+    }
 
     const assessment = current.humanAssessment as {
       factualState?: string;
@@ -847,6 +905,9 @@ export class ContentEngineReviewService {
     };
     const overrideCode = dto.factualOverrideCode ?? null;
     const overrideExplanation = dto.factualOverrideExplanation?.trim() ?? null;
+    const submittedAcknowledgments: ReadonlySet<string> = new Set(
+      (dto.overlapAcknowledgments ?? []).map((ack) => ack.fingerprint),
+    );
     const nextRevision = dto.expectedRevision + 1;
     const autoFactState =
       (current.factVerification as { state?: string } | null)?.state ?? null;
@@ -902,52 +963,193 @@ export class ContentEngineReviewService {
           }
         : null;
 
-    const updated = await this.candidates
-      .findOneAndUpdate(
-        {
-          candidateId,
-          reviewRevision: dto.expectedRevision,
-          publishedContentItemId: null,
-        },
-        {
-          $set: {
-            reviewStatus: 'approved',
-            reviewDecision: decision,
-            ...(liveCompatibility
-              ? { compatibilityEvaluation: liveCompatibility }
-              : {}),
-            ...(resolvedAuthoring ? { authoring: resolvedAuthoring } : {}),
-          },
-          $inc: { reviewRevision: 1 },
-          $push: {
-            reviewEvents: this.event('approved', actor, nextRevision, {
-              explanation,
-              details: {
-                factualOverrideCode: overrideCode,
-                factualOverrideExplanation: overrideExplanation,
-                exceptionalOverride: Boolean(overrideCode),
-                factualStateAtApproval: assessment.factualState ?? 'SUPPORTED',
-                automatedContradictionOverridden: contradictionOverridden,
-                originalFactVerificationState: autoFactState,
-                evidenceCount: Array.isArray(assessment.evidence)
-                  ? assessment.evidence.length
-                  : 0,
-                claimEvidenceAssociations: (assessment.evidence ?? []).map(
-                  (e) => ({
-                    claimIndex: e.claimIndex,
-                    claimText: e.claimText,
-                    url: e.url,
-                  }),
-                ),
+    const mongoSession = await this.connection.startSession();
+    try {
+      await mongoSession.withTransaction(
+        async () => {
+          const fresh = await this.candidates
+            .findOne({ candidateId })
+            .session(mongoSession)
+            .lean()
+            .exec();
+          if (!fresh)
+            throw new NotFoundException('Content Engine candidate not found');
+          if (fresh.reviewRevision !== dto.expectedRevision) {
+            throw new ConflictException({
+              message: 'Candidate changed; reload before reviewing',
+              expectedRevision: dto.expectedRevision,
+              currentRevision: fresh.reviewRevision,
+            });
+          }
+          if (fresh.jobId !== current.jobId) {
+            throw new ConflictException(
+              'Candidate changed; reload before reviewing',
+            );
+          }
+          this.assertIdentityMetadata(fresh.draft ?? {}, fresh.authoring);
+          this.assertApprovable(fresh, dto);
+          const job = await this.jobs
+            .findById(fresh.jobId)
+            .session(mongoSession)
+            .lean()
+            .exec();
+          if (
+            !job ||
+            job.worldKey !== references.job.worldKey ||
+            job.scopeKey !== references.job.scopeKey ||
+            job.mechanicKey !== references.job.mechanicKey
+          ) {
+            throw new ConflictException(
+              'Candidate target changed; reload before reviewing',
+            );
+          }
+          const target = await resolveHistoricalTarget(
+            this.connection.model<World>(World.name),
+            this.connection.model<Scope>(Scope.name),
+            job.worldKey,
+            job.scopeKey,
+            mongoSession,
+          );
+          if (!target || String(target.scope._id) !== String(scopeId))
+            throw new ConflictException(
+              'Historical target missing, ambiguous, or changed',
+            );
+          const fenced = await fences
+            .updateOne(
+              { _id: scopeId },
+              { $inc: { revision: 1 } },
+              { session: mongoSession },
+            )
+            .exec();
+          if (fenced.matchedCount !== 1)
+            throw new ConflictException('Inventory fence missing');
+          const screeningSession = this.screen.createSession({
+            worldKey: job.worldKey,
+            scopeKey: job.scopeKey,
+            ...corpus,
+          });
+          const inventory = await this.screen.loadHistoricalScope(
+            { worldKey: job.worldKey, scopeKey: job.scopeKey, mongoSession },
+            screeningSession,
+          );
+          if (inventory.status !== 'COMPLETE')
+            throw new ConflictException({
+              code: 'HISTORICAL_VERIFICATION_INCOMPLETE',
+              message: 'Historical inventory is incomplete',
+            });
+          const freshDraft = this.stripTargetFields(fresh.draft ?? {});
+          const screened = this.screen.screen(freshDraft, fresh.authoring, {
+            candidateId,
+            worldKey: job.worldKey,
+            scopeKey: job.scopeKey,
+            session: screeningSession,
+          });
+          // R4-A: fresh evidence, derived inside this snapshot, decides what the
+          // reviewer must have acknowledged; the submission is only compared.
+          const gate = this.overlapGate(
+            this.mergeFindings(
+              [...screened.findings],
+              await this.revalidateBatchFindings(
+                fresh,
+                freshDraft,
+                fresh.authoring,
+                job,
+                mongoSession,
+              ),
+            ),
+          );
+          this.assertOverlapGate(gate, submittedAcknowledgments, 'approval');
+          const overlapAcknowledgments = gate.required.map((evidence) => ({
+            ...evidence,
+            reference: { ...evidence.reference },
+            acknowledgedRevision: dto.expectedRevision,
+          }));
+          const updated = await this.candidates
+            .findOneAndUpdate(
+              {
+                candidateId,
+                reviewRevision: dto.expectedRevision,
+                publishedContentItemId: null,
               },
-            }),
-          },
+              {
+                $set: {
+                  reviewStatus: 'approved',
+                  reviewDecision: {
+                    ...decision,
+                    overlapAcknowledgments,
+                    // R4-C: what this human approval verified, so a later
+                    // automated re-screen can prove nothing changed.
+                    approvedEvidence: {
+                      contentHash: contentVersionHash(
+                        freshDraft,
+                        this.assertIdentityMetadata(
+                          freshDraft,
+                          fresh.authoring,
+                        ),
+                      ),
+                      target: {
+                        worldKey: job.worldKey,
+                        scopeKey: job.scopeKey,
+                        mechanicKey: job.mechanicKey,
+                        scopeId: String(scopeId),
+                      },
+                    },
+                  },
+                  ...(liveCompatibility
+                    ? { compatibilityEvaluation: liveCompatibility }
+                    : {}),
+                  ...(resolvedAuthoring
+                    ? { authoring: resolvedAuthoring }
+                    : {}),
+                },
+                $inc: { reviewRevision: 1 },
+                $push: {
+                  reviewEvents: this.event('approved', actor, nextRevision, {
+                    explanation,
+                    details: {
+                      factualOverrideCode: overrideCode,
+                      factualOverrideExplanation: overrideExplanation,
+                      exceptionalOverride: Boolean(overrideCode),
+                      factualStateAtApproval:
+                        assessment.factualState ?? 'SUPPORTED',
+                      automatedContradictionOverridden: contradictionOverridden,
+                      originalFactVerificationState: autoFactState,
+                      overlapAcknowledgments: overlapAcknowledgments.map(
+                        (ack) => ack.fingerprint,
+                      ),
+                      evidenceCount: Array.isArray(assessment.evidence)
+                        ? assessment.evidence.length
+                        : 0,
+                      claimEvidenceAssociations: (
+                        assessment.evidence ?? []
+                      ).map((e) => ({
+                        claimIndex: e.claimIndex,
+                        claimText: e.claimText,
+                        url: e.url,
+                      })),
+                    },
+                  }),
+                },
+              },
+              {
+                returnDocument: 'after',
+                runValidators: true,
+                session: mongoSession,
+              },
+            )
+            .lean()
+            .exec();
+          if (!updated) throw new ApprovalCasMiss();
         },
-        { returnDocument: 'after', runValidators: true },
-      )
-      .lean()
-      .exec();
-    if (!updated) await this.throwCas(candidateId, dto.expectedRevision);
+        { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } },
+      );
+    } catch (error) {
+      if (error instanceof ApprovalCasMiss)
+        await this.throwCas(candidateId, dto.expectedRevision);
+      throw error;
+    } finally {
+      await mongoSession.endSession();
+    }
     return this.detail(candidateId);
   }
 
@@ -1006,9 +1208,13 @@ export class ContentEngineReviewService {
     actor: AuthenticatedUser,
   ) {
     const current = await this.requireCandidate(candidateId);
+    this.assertIdentityMetadata(current.draft ?? {}, current.authoring);
     this.assertNotPublished(current);
     if (current.reviewRevision !== expectedRevision) {
       await this.throwCas(candidateId, expectedRevision);
+    }
+    if (current.reviewStatus === 'approved') {
+      return this.rescreenApproved(current, expectedRevision, actor);
     }
 
     const references = await this.references(current.jobId, current);
@@ -1039,6 +1245,24 @@ export class ContentEngineReviewService {
         worldKey: references.job.worldKey,
         session,
       },
+    );
+    const legacyRecovery = await this.reconstructLegacyBatchOverlaps(
+      current,
+      sanitizedDraft,
+      current.authoring,
+      references.job,
+    );
+    this.mergeFindings(
+      screened.findings,
+      await this.revalidateBatchFindings(
+        { jobId: current.jobId, findings: legacyRecovery.findings },
+        sanitizedDraft,
+        current.authoring,
+        references.job,
+      ),
+    );
+    screened.passed = !screened.findings.some(
+      (finding) => finding.severity === 'blocking',
     );
 
     const nextRevision = expectedRevision + 1;
@@ -1083,6 +1307,9 @@ export class ContentEngineReviewService {
                 reScreen: true,
                 screenPassed: screened.passed,
                 findingCodes: screened.findings.map((f) => f.code),
+                ...(legacyRecovery.report.legacy
+                  ? { legacyBatchOverlapRecovery: legacyRecovery.report }
+                  : {}),
               },
             }),
           },
@@ -1093,6 +1320,307 @@ export class ContentEngineReviewService {
       .exec();
 
     if (!updated) await this.throwCas(candidateId, expectedRevision);
+    return this.detail(candidateId);
+  }
+
+  /**
+   * R4-C: re-screen of a trusted, approved, unpublished candidate.
+   *
+   * It runs inside the same snapshot transaction and per-Scope fence as approval
+   * and DRAFT creation, so its view of inventory can't interleave with a
+   * concurrent approval or DRAFT in that Scope. Exactly one outcome commits,
+   * atomically with the new findings and the revision bump:
+   *  - APPROVAL CARRIED FORWARD: when the original human approval is verifiable
+   *    at this revision and nothing it verified has changed (content, target,
+   *    complete inventory, and the exact acknowledged overlap evidence), with no
+   *    blocker. The human decision is kept untouched; an
+   *    `approval_carried_forward` event records the transition.
+   *  - APPROVAL REVOKED: anything else; back to human review, with reasons.
+   */
+  private async rescreenApproved(
+    current: EngineCandidateDocument,
+    expectedRevision: number,
+    actor: AuthenticatedUser,
+  ) {
+    const candidateId = current.candidateId;
+    const references = await this.references(current.jobId, current);
+    const corpus = this.screeningCorpus(references.job);
+    const scopeId = references.scope._id;
+    const fences = this.connection.model<EngineInventoryFence>(
+      EngineInventoryFence.name,
+    );
+    try {
+      await fences
+        .updateOne(
+          { _id: scopeId },
+          { $setOnInsert: { revision: 0 } },
+          { upsert: true },
+        )
+        .exec();
+    } catch (error) {
+      if ((error as { code?: number }).code !== 11000) throw error;
+    }
+
+    const mongoSession = await this.connection.startSession();
+    try {
+      await mongoSession.withTransaction(
+        async () => {
+          const fresh = await this.candidates
+            .findOne({ candidateId })
+            .session(mongoSession)
+            .lean()
+            .exec();
+          if (!fresh)
+            throw new NotFoundException('Content Engine candidate not found');
+          if (
+            fresh.reviewRevision !== expectedRevision ||
+            fresh.reviewStatus !== 'approved' ||
+            fresh.publishedContentItemId ||
+            fresh.jobId !== current.jobId
+          ) {
+            throw new ApprovalCasMiss();
+          }
+          const job = await this.jobs
+            .findById(fresh.jobId)
+            .session(mongoSession)
+            .lean()
+            .exec();
+          if (
+            !job ||
+            job.worldKey !== references.job.worldKey ||
+            job.scopeKey !== references.job.scopeKey ||
+            job.mechanicKey !== references.job.mechanicKey
+          ) {
+            throw new ConflictException(
+              'Candidate target changed; reload before reviewing',
+            );
+          }
+          const target = await resolveHistoricalTarget(
+            this.connection.model<World>(World.name),
+            this.connection.model<Scope>(Scope.name),
+            job.worldKey,
+            job.scopeKey,
+            mongoSession,
+          );
+          if (!target || String(target.scope._id) !== String(scopeId))
+            throw new ConflictException(
+              'Historical target missing, ambiguous, or changed',
+            );
+          const fenced = await fences
+            .updateOne(
+              { _id: scopeId },
+              { $inc: { revision: 1 } },
+              { session: mongoSession },
+            )
+            .exec();
+          if (fenced.matchedCount !== 1)
+            throw new ConflictException('Inventory fence missing');
+
+          const screeningSession = this.screen.createSession({
+            worldKey: job.worldKey,
+            scopeKey: job.scopeKey,
+            ...corpus,
+          });
+          const inventory = await this.screen.loadHistoricalScope(
+            { worldKey: job.worldKey, scopeKey: job.scopeKey, mongoSession },
+            screeningSession,
+          );
+          const draft = this.stripTargetFields(fresh.draft ?? {});
+          const identityMetadata = this.assertIdentityMetadata(
+            draft,
+            fresh.authoring,
+          );
+          const screened = this.screen.screen(draft, fresh.authoring, {
+            candidateId,
+            worldKey: job.worldKey,
+            scopeKey: job.scopeKey,
+            session: screeningSession,
+          });
+          const legacyRecovery = await this.reconstructLegacyBatchOverlaps(
+            fresh,
+            draft,
+            fresh.authoring,
+            job,
+            mongoSession,
+          );
+          this.mergeFindings(
+            screened.findings,
+            await this.revalidateBatchFindings(
+              { jobId: fresh.jobId, findings: legacyRecovery.findings },
+              draft,
+              fresh.authoring,
+              job,
+              mongoSession,
+            ),
+          );
+          const passed = !screened.findings.some(
+            (finding) => finding.severity === 'blocking',
+          );
+
+          // Evaluate every carry-forward condition; any failure revokes.
+          const gate = this.overlapGate(screened.findings);
+          const acknowledged = this.acknowledgedFingerprints(fresh);
+          const required = gate.required.map((e) => e.fingerprint).sort();
+          const unacknowledged = required.filter((fp) => !acknowledged.has(fp));
+          const withdrawn = [...acknowledged]
+            .filter((fp) => !required.includes(fp))
+            .sort();
+          const decision = fresh.reviewDecision as {
+            revision?: number;
+            reviewerId?: string;
+            reviewerEmail?: string;
+            decidedAt?: Date;
+            approvedEvidence?: {
+              contentHash?: unknown;
+              target?: Record<string, unknown>;
+            };
+          } | null;
+          const contentHash = contentVersionHash(draft, identityMetadata);
+          const verifiedTarget = {
+            worldKey: job.worldKey,
+            scopeKey: job.scopeKey,
+            mechanicKey: job.mechanicKey,
+            scopeId: String(scopeId),
+          };
+          const approvedEvidence = decision?.approvedEvidence;
+          const reasons: string[] = [];
+          if (!isApprovalValidAtRevision(fresh, expectedRevision)) {
+            reasons.push('APPROVAL_PROVENANCE_UNVERIFIABLE');
+          } else if (
+            typeof approvedEvidence?.contentHash !== 'string' ||
+            !approvedEvidence.target
+          ) {
+            reasons.push('APPROVAL_EVIDENCE_UNRECORDED');
+          } else {
+            if (approvedEvidence.contentHash !== contentHash)
+              reasons.push('CONTENT_CHANGED');
+            if (
+              Object.entries(verifiedTarget).some(
+                ([key, value]) => approvedEvidence.target?.[key] !== value,
+              )
+            )
+              reasons.push('TARGET_CHANGED');
+          }
+          if (
+            inventory.status !== 'COMPLETE' ||
+            hasIncompleteHistoricalVerification(screened.findings)
+          )
+            reasons.push('HISTORICAL_INVENTORY_INCOMPLETE');
+          if (!passed) reasons.push('BLOCKING_FINDINGS');
+          if (gate.historicalDuplicates.length || gate.batchDuplicates.length)
+            reasons.push('PROVEN_DUPLICATE');
+          if (gate.unverifiable.length)
+            reasons.push('OVERLAP_EVIDENCE_UNVERIFIABLE');
+          if (unacknowledged.length)
+            reasons.push('OVERLAP_EVIDENCE_UNACKNOWLEDGED');
+          if (withdrawn.length) reasons.push('OVERLAP_EVIDENCE_CHANGED');
+          if (
+            screened.findings.some(
+              (f) => f.code === 'FAMILY_COMPLIANCE_MISMATCH',
+            )
+          )
+            reasons.push('FAMILY_COMPLIANCE_MISMATCH');
+          const carryForward = reasons.length === 0;
+
+          const nextRevision = expectedRevision + 1;
+          const assignedFamilyKey = (
+            fresh.authoring as
+              { assignedSlot?: { familyKey?: string } } | undefined
+          )?.assignedSlot?.familyKey;
+          const freshCompliance = assignedFamilyKey
+            ? evaluateFamilyCompliance({
+                assignedFamilyKey,
+                draft,
+                authoring: fresh.authoring,
+              })
+            : null;
+          const updatedAuthoring = fresh.authoring
+            ? { ...fresh.authoring, familyCompliance: freshCompliance }
+            : null;
+          const screenDetails = {
+            reScreen: true,
+            screenPassed: passed,
+            findingCodes: screened.findings.map((f) => f.code),
+            ...(legacyRecovery.report.legacy
+              ? { legacyBatchOverlapRecovery: legacyRecovery.report }
+              : {}),
+          };
+          const event = carryForward
+            ? this.event(APPROVAL_CARRIED_FORWARD_EVENT, actor, nextRevision, {
+                explanation:
+                  'Approval carried forward: automated re-screen verified unchanged content and evidence',
+                details: {
+                  ...screenDetails,
+                  fromRevision: expectedRevision,
+                  toRevision: nextRevision,
+                  originalApproval: {
+                    revision: decision!.revision,
+                    reviewerId: decision!.reviewerId,
+                    reviewerEmail: decision!.reviewerEmail,
+                    decidedAt: decision!.decidedAt ?? null,
+                  },
+                  verifiedEvidence: {
+                    contentHash,
+                    target: verifiedTarget,
+                    inventoryStatus: inventory.status,
+                    inventoryRecordCount: inventory.recordCount ?? null,
+                    overlapFingerprints: required,
+                  },
+                },
+              })
+            : this.event('edited', actor, nextRevision, {
+                explanation:
+                  'Automated historical re-screen against catalog inventory',
+                details: {
+                  ...screenDetails,
+                  approvalRevoked: {
+                    reasons,
+                    unacknowledgedFingerprints: unacknowledged,
+                    withdrawnFingerprints: withdrawn,
+                    previousDecisionRevision: decision?.revision ?? null,
+                  },
+                },
+              });
+
+          const updated = await this.candidates
+            .findOneAndUpdate(
+              {
+                candidateId,
+                reviewRevision: expectedRevision,
+                reviewStatus: 'approved',
+                publishedContentItemId: null,
+              },
+              {
+                $set: {
+                  findings: screened.findings,
+                  status: passed ? fresh.status : 'screened_reject',
+                  authoring: updatedAuthoring,
+                  ...(carryForward
+                    ? {}
+                    : { reviewStatus: 'pending', reviewDecision: null }),
+                },
+                $inc: { reviewRevision: 1 },
+                $push: { reviewEvents: event },
+              },
+              {
+                returnDocument: 'after',
+                runValidators: true,
+                session: mongoSession,
+              },
+            )
+            .lean()
+            .exec();
+          if (!updated) throw new ApprovalCasMiss();
+        },
+        { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } },
+      );
+    } catch (error) {
+      if (error instanceof ApprovalCasMiss)
+        await this.throwCas(candidateId, expectedRevision);
+      throw error;
+    } finally {
+      await mongoSession.endSession();
+    }
     return this.detail(candidateId);
   }
 
@@ -1123,72 +1651,174 @@ export class ContentEngineReviewService {
     }
     this.assertDraftCreationSafety(current);
     const canonicalDto = await this.canonicalDto(current);
+    const references = await this.references(current.jobId, current);
+    const corpus = this.screeningCorpus(references.job);
+    const scopeId = references.scope._id;
+    const fences = this.connection.model<EngineInventoryFence>(
+      EngineInventoryFence.name,
+    );
+    try {
+      await fences
+        .updateOne(
+          { _id: scopeId },
+          { $setOnInsert: { revision: 0 } },
+          { upsert: true },
+        )
+        .exec();
+    } catch (error) {
+      if ((error as { code?: number }).code !== 11000) throw error;
+    }
 
     const session = await this.connection.startSession();
     try {
       let result!: { contentItemId: string };
-      await session.withTransaction(async () => {
-        const locked = await this.candidates
-          .findOne({
+      await session.withTransaction(
+        async () => {
+          const locked = await this.candidates
+            .findOne({
+              candidateId,
+              reviewRevision: expectedRevision,
+              reviewStatus: 'approved',
+              publishedContentItemId: null,
+            })
+            .session(session)
+            .exec();
+          if (!locked)
+            throw new ConflictException(
+              'Candidate changed before draft creation',
+            );
+
+          this.assertDraftCreationSafety(locked);
+          const job = await this.jobs
+            .findById(locked.jobId)
+            .session(session)
+            .lean()
+            .exec();
+          if (
+            !job ||
+            locked.jobId !== current.jobId ||
+            job.worldKey !== references.job.worldKey ||
+            job.scopeKey !== references.job.scopeKey ||
+            job.mechanicKey !== references.job.mechanicKey
+          ) {
+            throw new ConflictException(
+              'Candidate target changed; reload before creating a draft',
+            );
+          }
+          const target = await resolveHistoricalTarget(
+            this.connection.model<World>(World.name),
+            this.connection.model<Scope>(Scope.name),
+            job.worldKey,
+            job.scopeKey,
+            session,
+          );
+          if (
+            !target ||
+            String(target.scope._id) !== String(scopeId) ||
+            String(scopeId) !== canonicalDto.scopeId
+          ) {
+            throw new ConflictException(
+              'Historical target missing, ambiguous, or changed',
+            );
+          }
+          const fenced = await fences
+            .updateOne({ _id: scopeId }, { $inc: { revision: 1 } }, { session })
+            .exec();
+          if (fenced.matchedCount !== 1)
+            throw new ConflictException('Inventory fence missing');
+          const screeningSession = this.screen.createSession({
+            worldKey: job.worldKey,
+            scopeKey: job.scopeKey,
+            ...corpus,
+          });
+          const inventory = await this.screen.loadHistoricalScope(
+            {
+              worldKey: job.worldKey,
+              scopeKey: job.scopeKey,
+              mongoSession: session,
+            },
+            screeningSession,
+          );
+          if (inventory.status !== 'COMPLETE')
+            throw new ConflictException({
+              code: 'HISTORICAL_VERIFICATION_INCOMPLETE',
+              message: 'Historical inventory is incomplete',
+            });
+          const lockedDraft = this.stripTargetFields(locked.draft ?? {});
+          const screened = this.screen.screen(lockedDraft, locked.authoring, {
             candidateId,
-            reviewRevision: expectedRevision,
-            reviewStatus: 'approved',
-            publishedContentItemId: null,
-          })
-          .session(session)
-          .exec();
-        if (!locked)
-          throw new ConflictException(
-            'Candidate changed before draft creation',
+            worldKey: job.worldKey,
+            scopeKey: job.scopeKey,
+            session: screeningSession,
+          });
+          // R4-A: the approval's persisted acknowledgments must still cover the
+          // evidence derived now; anything new or changed needs re-review.
+          this.assertOverlapGate(
+            this.overlapGate(
+              this.mergeFindings(
+                [...screened.findings],
+                await this.revalidateBatchFindings(
+                  locked,
+                  lockedDraft,
+                  locked.authoring,
+                  job,
+                  session,
+                ),
+              ),
+            ),
+            this.acknowledgedFingerprints(locked),
+            'draft',
           );
 
-        const contentItem = await this.contentItems.create(canonicalDto, {
-          session,
-        });
-        const contentItemId = contentItem.id;
-        await this.publications.create(
-          [
-            {
-              candidateId,
-              jobId: locked.jobId,
-              reviewRevision: expectedRevision,
-              contentItemId,
-              createdBy: actor.id,
-              createdByEmail: actor.email,
-            },
-          ],
-          { session },
-        );
-        const changed = await this.candidates.updateOne(
-          {
-            _id: locked._id,
-            reviewRevision: expectedRevision,
-            reviewStatus: 'approved',
-            publishedContentItemId: null,
-          },
-          {
-            $set: { publishedContentItemId: contentItemId },
-            $inc: { reviewRevision: 1 },
-            $push: {
-              reviewEvents: this.event(
-                'draft_created',
-                actor,
-                expectedRevision + 1,
-                {
-                  details: { contentItemId, status: ContentItemStatus.DRAFT },
-                },
-              ),
-            },
-          },
-          { session, runValidators: true },
-        );
-        if (changed.modifiedCount !== 1) {
-          throw new ConflictException(
-            'Candidate changed before draft creation',
+          const contentItem = await this.contentItems.create(canonicalDto, {
+            session,
+          });
+          const contentItemId = contentItem.id;
+          await this.publications.create(
+            [
+              {
+                candidateId,
+                jobId: locked.jobId,
+                reviewRevision: expectedRevision,
+                contentItemId,
+                createdBy: actor.id,
+                createdByEmail: actor.email,
+              },
+            ],
+            { session },
           );
-        }
-        result = { contentItemId };
-      });
+          const changed = await this.candidates.updateOne(
+            {
+              _id: locked._id,
+              reviewRevision: expectedRevision,
+              reviewStatus: 'approved',
+              publishedContentItemId: null,
+            },
+            {
+              $set: { publishedContentItemId: contentItemId },
+              $inc: { reviewRevision: 1 },
+              $push: {
+                reviewEvents: this.event(
+                  'draft_created',
+                  actor,
+                  expectedRevision + 1,
+                  {
+                    details: { contentItemId, status: ContentItemStatus.DRAFT },
+                  },
+                ),
+              },
+            },
+            { session, runValidators: true },
+          );
+          if (changed.modifiedCount !== 1) {
+            throw new ConflictException(
+              'Candidate changed before draft creation',
+            );
+          }
+          result = { contentItemId };
+        },
+        { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } },
+      );
       return {
         ...result,
         status: ContentItemStatus.DRAFT,
@@ -1212,8 +1842,15 @@ export class ContentEngineReviewService {
     const refs = await this.references(candidate.jobId, candidate);
     this.assertTargetNotRetargeted(candidate.draft, refs);
     const sanitizedDraft = this.stripTargetFields(candidate.draft);
+    const identityMetadata = this.assertIdentityMetadata(
+      sanitizedDraft,
+      candidate.authoring,
+    );
     const raw = {
       ...sanitizedDraft,
+      ...(Object.keys(identityMetadata).length
+        ? { metadata: identityMetadata }
+        : {}),
       scopeId: String(refs.scope._id),
       compatibleChallengeTypeIds: [String(refs.challengeType._id)],
       status: ContentItemStatus.DRAFT,
@@ -1695,6 +2332,23 @@ export class ContentEngineReviewService {
     const changedMaterialFields: string[] = [];
     const changedNonMaterialFields: string[] = [];
 
+    const previousMetadata = (priorDraft.metadata ?? {}) as Record<
+      string,
+      unknown
+    >;
+    const updatedMetadata = (nextDraft.metadata ?? {}) as Record<
+      string,
+      unknown
+    >;
+    for (const key of ['familyKey', 'tags', 'source', 'subject', 'entityId']) {
+      if (
+        canonicalJson(previousMetadata[key]) !==
+        canonicalJson(updatedMetadata[key])
+      ) {
+        changedMaterialFields.push(`draft.metadata.${key}`);
+      }
+    }
+
     for (const key of MATERIAL_DRAFT_KEYS) {
       if (
         canonicalJson(priorDraft[key] ?? null) !==
@@ -1939,6 +2593,13 @@ export class ContentEngineReviewService {
   }
 
   private assertDraftCreationSafety(candidate: EngineCandidateDocument) {
+    if (!hasTrustedCandidateApproval(candidate)) {
+      throw new ConflictException({
+        code: 'UNTRUSTED_CANDIDATE_APPROVAL',
+        message:
+          'Canonical draft creation requires trusted candidate approval provenance',
+      });
+    }
     if (!REVIEWABLE_PIPELINE_STATUSES.includes(candidate.status as never)) {
       throw new ConflictException(
         'Candidate has blocking deterministic findings and cannot create a draft',
@@ -1993,12 +2654,33 @@ export class ContentEngineReviewService {
     }
     if (
       decision.decision !== 'approved' ||
-      (typeof decision.revision === 'number' &&
-        decision.revision !== candidate.reviewRevision)
+      !isApprovalValidAtRevision(candidate, candidate.reviewRevision)
     ) {
       throw new ConflictException(
         'Candidate approval decision is stale for the current revision',
       );
+    }
+    // R4-C defence in depth: where the approval recorded its verified content,
+    // the content being published must still be exactly that content.
+    const approvedContentHash = (
+      candidate.reviewDecision as {
+        approvedEvidence?: { contentHash?: unknown };
+      } | null
+    )?.approvedEvidence?.contentHash;
+    if (typeof approvedContentHash === 'string' && candidate.draft) {
+      const draft = this.stripTargetFields(candidate.draft);
+      if (
+        contentVersionHash(
+          draft,
+          this.assertIdentityMetadata(draft, candidate.authoring),
+        ) !== approvedContentHash
+      ) {
+        throw new ConflictException({
+          code: 'APPROVED_CONTENT_CHANGED',
+          message:
+            'Candidate content no longer matches the content the human approval verified',
+        });
+      }
     }
 
     if (!assessment) {
@@ -2071,6 +2753,374 @@ export class ContentEngineReviewService {
       throw new ConflictException(
         'Candidate already created a canonical draft',
       );
+    }
+  }
+
+  /**
+   * R4-A: re-derives saved in-batch evidence against each referenced sibling's
+   * current content. Historical evidence is always re-derived by a fresh screen;
+   * only batch findings need this, because a historical-only screen cannot see
+   * siblings. Saved in-batch duplicates stay as they are (still blocking).
+   */
+  private async revalidateBatchFindings(
+    candidate: Pick<EngineCandidateDocument, 'jobId' | 'findings'>,
+    draft: Record<string, unknown>,
+    authoring: Record<string, unknown> | null | undefined,
+    target: { worldKey: string; scopeKey: string },
+    mongoSession?: ClientSession,
+  ): Promise<ScreenFinding[]> {
+    const findings: ScreenFinding[] = [];
+    for (const prior of candidate.findings ?? []) {
+      if (
+        prior.code === 'DUPLICATE_IN_BATCH' ||
+        prior.code === 'CONFLICTING_ANSWER_KEY_IN_BATCH'
+      ) {
+        findings.push(this.plainFinding(prior));
+        continue;
+      }
+      if (prior.code !== 'POTENTIAL_OVERLAP_IN_BATCH') continue;
+      const reference = prior.evidence?.reference;
+      if (
+        !prior.fingerprint ||
+        reference?.kind !== 'BATCH_CANDIDATE' ||
+        !reference.id
+      ) {
+        // Legacy or unidentifiable evidence: kept, and never acknowledgeable.
+        findings.push(this.plainFinding(prior));
+        continue;
+      }
+      const query = this.candidates.findOne({
+        candidateId: reference.id,
+        jobId: candidate.jobId,
+      });
+      if (mongoSession) query.session(mongoSession);
+      const sibling = await query.lean().exec();
+      if (!sibling) {
+        findings.push(this.plainFinding(prior, { unverifiable: true }));
+        continue;
+      }
+      // A rejected sibling never enters inventory unless it is re-reviewed, and
+      // then it is screened against this candidate. An approved or published one
+      // is inventory, re-derived by the fresh historical screen instead.
+      if (
+        sibling.reviewStatus !== 'pending' ||
+        sibling.publishedContentItemId ||
+        !sibling.draft
+      ) {
+        continue;
+      }
+      let recomputed: ReturnType<typeof compareBatchCandidates>;
+      try {
+        recomputed = compareBatchCandidates({
+          candidateDraft: draft,
+          candidateAuthoring: authoring,
+          referenceId: sibling.candidateId,
+          referenceDraft: this.stripTargetFields(sibling.draft),
+          referenceAuthoring: sibling.authoring,
+          scopeKey: target.scopeKey,
+          worldKey: target.worldKey,
+        });
+      } catch (error) {
+        if (!(error instanceof CandidateIdentityConflictError)) throw error;
+        findings.push(this.plainFinding(prior, { unverifiable: true }));
+        continue;
+      }
+      const { comparison, evidence } = recomputed;
+      if (comparison.result === 'DUPLICATE') {
+        findings.push({
+          code:
+            comparison.reasonCode === 'SAME_PUZZLE_CONFLICTING_ANSWER'
+              ? 'CONFLICTING_ANSWER_KEY_IN_BATCH'
+              : 'DUPLICATE_IN_BATCH',
+          severity: 'blocking',
+          message:
+            comparison.reasonCode === 'SAME_PUZZLE_CONFLICTING_ANSWER'
+              ? 'another candidate offers this same puzzle with a different correct answer'
+              : 'another candidate asks the same thing',
+        });
+      } else if (comparison.result === 'POTENTIAL_OVERLAP') {
+        findings.push(
+          withOverlapEvidence(
+            {
+              code: 'POTENTIAL_OVERLAP_IN_BATCH',
+              severity: 'warning',
+              message: `another candidate in this batch potentially overlaps: ${comparison.explanation}`,
+            },
+            evidence,
+          ),
+        );
+      }
+    }
+    return findings;
+  }
+
+  /**
+   * R4-B legacy recovery (explicit re-screen only). An in-batch overlap saved
+   * before R4-A names no sibling, but its original comparison set is known: the
+   * same job's earlier-ordinal siblings, screened in ordinal order under the same
+   * rules. Comparing against every earlier pending sibling is a superset of that
+   * set, so it can only find more overlaps, never fewer. Each overlap found
+   * becomes a fresh, referenced finding; if none overlaps, the legacy claim no
+   * longer holds for any existing candidate. A sibling that cannot be compared
+   * keeps the legacy finding in place (fail closed). No fingerprint is invented.
+   */
+  private async reconstructLegacyBatchOverlaps(
+    candidate: Pick<
+      EngineCandidateDocument,
+      'candidateId' | 'jobId' | 'ordinal' | 'findings'
+    >,
+    draft: Record<string, unknown>,
+    authoring: Record<string, unknown> | null | undefined,
+    target: { worldKey: string; scopeKey: string },
+    mongoSession?: ClientSession,
+  ): Promise<{
+    findings: ScreenFinding[];
+    report: { legacy: number; rebuilt: number; resolved: number; kept: number };
+  }> {
+    const all = [...(candidate.findings ?? [])];
+    const legacy = all.filter(
+      (f) =>
+        f.code === 'POTENTIAL_OVERLAP_IN_BATCH' &&
+        (!f.fingerprint || f.evidence?.reference?.kind !== 'BATCH_CANDIDATE'),
+    );
+    const report = { legacy: legacy.length, rebuilt: 0, resolved: 0, kept: 0 };
+    if (!legacy.length) return { findings: all, report };
+
+    const siblingQuery = this.candidates
+      .find({
+        jobId: candidate.jobId,
+        candidateId: { $ne: candidate.candidateId },
+        ...(typeof candidate.ordinal === 'number'
+          ? { ordinal: { $lt: candidate.ordinal } }
+          : {}),
+        reviewStatus: 'pending',
+        publishedContentItemId: null,
+      })
+      .sort({ ordinal: 1 });
+    if (mongoSession) siblingQuery.session(mongoSession);
+    const siblings = await siblingQuery.lean().exec();
+
+    const rebuilt: ScreenFinding[] = [];
+    for (const sibling of siblings) {
+      if (!sibling.draft) continue;
+      let recomputed: ReturnType<typeof compareBatchCandidates>;
+      try {
+        recomputed = compareBatchCandidates({
+          candidateDraft: draft,
+          candidateAuthoring: authoring,
+          referenceId: sibling.candidateId,
+          referenceDraft: this.stripTargetFields(sibling.draft),
+          referenceAuthoring: sibling.authoring,
+          scopeKey: target.scopeKey,
+          worldKey: target.worldKey,
+        });
+      } catch (error) {
+        if (!(error instanceof CandidateIdentityConflictError)) throw error;
+        report.kept = legacy.length;
+        return { findings: all, report };
+      }
+      const { comparison, evidence } = recomputed;
+      if (comparison.result === 'POTENTIAL_OVERLAP') {
+        rebuilt.push(
+          withOverlapEvidence(
+            {
+              code: 'POTENTIAL_OVERLAP_IN_BATCH',
+              severity: 'warning',
+              message: `another candidate in this batch potentially overlaps: ${comparison.explanation}`,
+            },
+            evidence,
+          ),
+        );
+      } else if (comparison.result === 'DUPLICATE') {
+        const conflicting =
+          comparison.reasonCode === 'SAME_PUZZLE_CONFLICTING_ANSWER';
+        rebuilt.push({
+          code: conflicting
+            ? 'CONFLICTING_ANSWER_KEY_IN_BATCH'
+            : 'DUPLICATE_IN_BATCH',
+          severity: 'blocking',
+          message: conflicting
+            ? 'another candidate offers this same puzzle with a different correct answer'
+            : 'another candidate asks the same thing',
+        });
+      }
+    }
+
+    report.rebuilt = rebuilt.length;
+    report.resolved = rebuilt.length ? 0 : legacy.length;
+    return {
+      findings: [...all.filter((f) => !legacy.includes(f)), ...rebuilt],
+      report,
+    };
+  }
+
+  private plainFinding(
+    finding: ScreenFinding,
+    options?: { unverifiable?: boolean },
+  ): ScreenFinding {
+    const plain: ScreenFinding = {
+      code: finding.code,
+      severity: finding.severity,
+      message: finding.message,
+    };
+    // An unverifiable reference keeps no fingerprint, so it can never be
+    // satisfied by an acknowledgment.
+    if (!options?.unverifiable && finding.fingerprint && finding.evidence) {
+      plain.fingerprint = finding.fingerprint;
+      plain.evidence = {
+        candidateContentHash: finding.evidence.candidateContentHash,
+        reasonCode: finding.evidence.reasonCode ?? null,
+        reference: { ...finding.evidence.reference },
+      };
+    }
+    return plain;
+  }
+
+  private mergeFindings(base: ScreenFinding[], extra: ScreenFinding[]) {
+    for (const finding of extra) {
+      if (
+        !base.some(
+          (existing) =>
+            existing.code === finding.code &&
+            existing.message === finding.message &&
+            existing.fingerprint === finding.fingerprint,
+        )
+      ) {
+        base.push(finding);
+      }
+    }
+    return base;
+  }
+
+  /** Classifies freshly derived findings for the R4-A overlap gate. */
+  private overlapGate(findings: ScreenFinding[]) {
+    const historicalDuplicates: ScreenFinding[] = [];
+    const batchDuplicates: ScreenFinding[] = [];
+    const unverifiable: ScreenFinding[] = [];
+    const required = new Map<string, OverlapEvidence>();
+    for (const finding of findings) {
+      if (PROVEN_HISTORICAL_DUPLICATE_PATTERN.test(finding.code)) {
+        historicalDuplicates.push(finding);
+      } else if (
+        finding.code === 'DUPLICATE_IN_BATCH' ||
+        finding.code === 'CONFLICTING_ANSWER_KEY_IN_BATCH'
+      ) {
+        batchDuplicates.push(finding);
+      } else if (isOverlapCode(finding.code)) {
+        const reference = finding.evidence?.reference;
+        if (!finding.fingerprint || !finding.evidence || !reference?.id) {
+          unverifiable.push(finding);
+          continue;
+        }
+        required.set(finding.fingerprint, {
+          code: finding.code,
+          fingerprint: finding.fingerprint,
+          candidateContentHash: finding.evidence.candidateContentHash,
+          reasonCode: finding.evidence.reasonCode ?? null,
+          reference: {
+            kind: reference.kind as OverlapEvidence['reference']['kind'],
+            id: reference.id,
+            contentHash: reference.contentHash,
+          },
+        });
+      }
+    }
+    return {
+      historicalDuplicates,
+      batchDuplicates,
+      unverifiable,
+      required: [...required.values()],
+    };
+  }
+
+  /**
+   * Proven duplicates always block; overlap evidence must be acknowledged
+   * exactly. During approval every submitted fingerprint must also match fresh
+   * evidence, so a stale acknowledgment is refused rather than ignored.
+   */
+  private assertOverlapGate(
+    gate: ReturnType<ContentEngineReviewService['overlapGate']>,
+    acknowledged: ReadonlySet<string>,
+    mode: 'approval' | 'draft',
+  ) {
+    if (gate.historicalDuplicates.length) {
+      throw new ConflictException({
+        code: 'HISTORICAL_DUPLICATE_OR_OVERLAP',
+        message: 'Historical duplicate screening changed; review is required',
+      });
+    }
+    if (gate.batchDuplicates.length) {
+      throw new ConflictException({
+        code: 'DUPLICATE_IN_BATCH',
+        message:
+          'Another candidate in this batch now duplicates this candidate; review is required',
+      });
+    }
+    if (gate.unverifiable.length) {
+      throw new ConflictException({
+        code: 'OVERLAP_EVIDENCE_UNVERIFIABLE',
+        message:
+          'Potential overlap evidence cannot be verified against a stable reference; it cannot be acknowledged',
+        details: { findingCodes: gate.unverifiable.map((f) => f.code) },
+      });
+    }
+    const requiredFingerprints = new Set(
+      gate.required.map((evidence) => evidence.fingerprint),
+    );
+    const missing = gate.required
+      .filter((evidence) => !acknowledged.has(evidence.fingerprint))
+      .map((evidence) => evidence.fingerprint);
+    const stale =
+      mode === 'approval'
+        ? [...acknowledged].filter((fp) => !requiredFingerprints.has(fp))
+        : [];
+    if (!missing.length && !stale.length) return;
+    throw new ConflictException({
+      code: missing.length
+        ? 'OVERLAP_ACKNOWLEDGMENT_REQUIRED'
+        : 'OVERLAP_ACKNOWLEDGMENT_STALE',
+      message:
+        mode === 'draft'
+          ? 'Potential overlap evidence changed since approval; the candidate must be re-reviewed'
+          : missing.length
+            ? 'Potential overlap requires explicit acknowledgment of the current evidence'
+            : 'Submitted overlap acknowledgment no longer matches current evidence',
+      details: {
+        overlaps: gate.required.map(describeOverlapEvidence),
+        missing,
+        stale,
+      },
+    });
+  }
+
+  private acknowledgedFingerprints(candidate: {
+    reviewDecision?: unknown;
+  }): Set<string> {
+    const acknowledgments = (
+      candidate.reviewDecision as {
+        overlapAcknowledgments?: Array<{ fingerprint?: unknown }>;
+      } | null
+    )?.overlapAcknowledgments;
+    return new Set(
+      (Array.isArray(acknowledgments) ? acknowledgments : [])
+        .map((ack) => ack?.fingerprint)
+        .filter((fp): fp is string => typeof fp === 'string'),
+    );
+  }
+
+  private assertIdentityMetadata(
+    draft: Record<string, unknown>,
+    authoring?: Record<string, unknown> | null,
+  ) {
+    try {
+      return candidateIdentityMetadata(draft, authoring);
+    } catch (error) {
+      if (!(error instanceof CandidateIdentityConflictError)) throw error;
+      throw new ConflictException({
+        code: 'CANDIDATE_IDENTITY_CONFLICT',
+        message: error.message,
+        details: { field: error.field },
+      });
     }
   }
 
@@ -2277,6 +3327,36 @@ export class ContentEngineReviewService {
       !published &&
       reviewStatus !== 'approved' &&
       approvalBlockers.length === 0;
+    // Mirrors assertDraftCreationSafety's provenance and revision rules so the
+    // reported eligibility never promises a DRAFT the server will refuse. This
+    // adds no rule: it only reports the existing ones. Overlap evidence is not
+    // reported here, because it is re-derived freshly inside the transaction.
+    const draftBlockers: string[] = [];
+    if (reviewStatus === 'approved' && !published) {
+      const decisionRevision = (
+        candidate.reviewDecision as { revision?: unknown } | null
+      )?.revision;
+      if (
+        !hasTrustedCandidateApproval(
+          candidate as unknown as Partial<EngineCandidateDocument>,
+        )
+      ) {
+        draftBlockers.push(
+          'لا يمكن إنشاء المسودة: بيانات اعتماد المراجع غير موثوقة أو غير مكتملة (Untrusted approval)؛ يلزم اعتماد بشري جديد.',
+        );
+      } else if (
+        typeof decisionRevision === 'number' &&
+        !isApprovalValidAtRevision(
+          candidate as unknown as Partial<EngineCandidateDocument>,
+          reviewRevision,
+        )
+      ) {
+        draftBlockers.push(
+          'لا يمكن إنشاء المسودة: تغيّر رقم المراجعة بعد الاعتماد (مثلاً بإعادة فحص التكرار)، فأصبح قرار الاعتماد قديماً (Stale approval)؛ يلزم تقييم واعتماد جديدان للنسخة الحالية.',
+        );
+      }
+    }
+
     const canCreateDraft =
       !published &&
       reviewStatus === 'approved' &&
@@ -2286,7 +3366,8 @@ export class ContentEngineReviewService {
       !candidate.findings?.some(
         (f) => f.code === 'FAMILY_COMPLIANCE_MISMATCH',
       ) &&
-      compatibilityBlockers.length === 0;
+      compatibilityBlockers.length === 0 &&
+      draftBlockers.length === 0;
 
     return {
       assessmentCurrent,
@@ -2297,6 +3378,7 @@ export class ContentEngineReviewService {
       canApprove,
       canCreateDraft,
       approvalBlockers,
+      draftBlockers,
     };
   }
 

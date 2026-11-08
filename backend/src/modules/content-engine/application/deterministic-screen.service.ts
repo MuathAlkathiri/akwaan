@@ -1,7 +1,7 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { ClientSession, Model } from 'mongoose';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import {
@@ -28,8 +28,21 @@ import {
   ContentIdentity,
   RawContentItemInput,
 } from '../domain/content-identity.types';
-import { hasTrustedCandidateApproval } from '../domain/candidate-approval-provenance';
+import { classifyHistoricalApprovals } from './historical-approved-inventory';
 import { evaluateFamilyCompliance } from '../domain/family-compliance.policy';
+import {
+  candidateIdentityMetadata,
+  CandidateIdentityConflictError,
+} from '../domain/candidate-identity-metadata';
+import {
+  resolveHistoricalTarget,
+  useMongoSession,
+} from './authoring-target-resolver';
+import {
+  buildOverlapEvidence,
+  contentVersionHash,
+  OverlapEvidence,
+} from '../domain/overlap-acknowledgment';
 
 export interface ScreenResult {
   passed: boolean;
@@ -57,6 +70,8 @@ export interface HistoricalContentRecord {
   worldKey?: string;
   draft: Record<string, unknown>;
   identity?: ContentIdentity;
+  /** R4-A: content version of the record, bound into overlap fingerprints. */
+  contentHash?: string;
 }
 
 export interface ScreenOptions {
@@ -76,6 +91,7 @@ export interface DeterministicScreenSession {
   seenBatchCandidates: Array<{
     identity: ContentIdentity;
     candidateId?: string;
+    contentHash?: string;
     correctLabel: string;
     rawPrompt: string;
   }>;
@@ -230,6 +246,20 @@ const warning = (code: string, message: string): ScreenFinding => ({
   severity: 'warning',
   message,
 });
+/** Attaches R4-A acknowledgment evidence to an overlap finding. */
+export const withOverlapEvidence = (
+  finding: ScreenFinding,
+  evidence: OverlapEvidence,
+): ScreenFinding => ({
+  ...finding,
+  fingerprint: evidence.fingerprint,
+  evidence: {
+    candidateContentHash: evidence.candidateContentHash,
+    reasonCode: evidence.reasonCode,
+    reference: { ...evidence.reference },
+  },
+});
+
 const deferred = (code: string, message: string): ScreenFinding => ({
   code,
   severity: 'deferred',
@@ -304,6 +334,7 @@ export class DeterministicScreenService {
   get seenBatchCandidates(): Array<{
     identity: ContentIdentity;
     candidateId?: string;
+    contentHash?: string;
     correctLabel: string;
     rawPrompt: string;
   }> {
@@ -314,6 +345,7 @@ export class DeterministicScreenService {
     value: Array<{
       identity: ContentIdentity;
       candidateId?: string;
+      contentHash?: string;
       correctLabel: string;
       rawPrompt: string;
     }>,
@@ -430,7 +462,7 @@ export class DeterministicScreenService {
           mechanicPayload: record.draft.mechanicPayload as any,
           media: record.draft.media as any,
           revealMedia: record.draft.revealMedia as any,
-          metadata: (record.draft.metadata ?? {}) as any,
+          metadata: candidateIdentityMetadata(record.draft) as any,
         });
       }
       targetSession.historicalRecords.push(record);
@@ -471,11 +503,12 @@ export class DeterministicScreenService {
       worldKey?: string;
       scopeKey?: string;
       limit?: number;
+      mongoSession?: ClientSession;
     },
     session?: DeterministicScreenSession,
   ): Promise<HistoricalScopeLoadResult> {
     const targetSession = session ?? this.defaultSession;
-    const { worldKey, scopeKey, limit = 500 } = params;
+    const { worldKey, scopeKey, limit = 500, mongoSession } = params;
 
     // Reset state before loading to prevent leakage across jobs
     this.clearHistoricalRecords(targetSession);
@@ -501,6 +534,7 @@ export class DeterministicScreenService {
       !this.contentItems ||
       !this.candidates ||
       !this.publications ||
+      !this.jobs ||
       !this.worlds ||
       !this.scopes
     ) {
@@ -520,11 +554,14 @@ export class DeterministicScreenService {
     }
 
     try {
-      const worldDoc = await this.worlds
-        .findOne({ slug: worldKey })
-        .lean()
-        .exec();
-      if (!worldDoc) {
+      const target = await resolveHistoricalTarget(
+        this.worlds,
+        this.scopes,
+        worldKey,
+        scopeKey,
+        mongoSession,
+      );
+      if (!target) {
         const result: HistoricalScopeLoadResult = {
           status: 'NOT_CONFIGURED',
           recordCount: 0,
@@ -533,40 +570,25 @@ export class DeterministicScreenService {
           isTruncated: false,
           scopeKey,
           worldKey,
-          error: `World "${worldKey}" not found in database catalog`,
+          error: `World or Scope "${worldKey}/${scopeKey}" missing or ambiguous in database catalog`,
         };
         targetSession.historicalScopeStatus = result;
         return result;
       }
 
-      const scopeDoc = await this.scopes
-        .findOne({ worldId: worldDoc._id, slug: scopeKey })
-        .lean()
-        .exec();
-      if (!scopeDoc) {
-        const result: HistoricalScopeLoadResult = {
-          status: 'NOT_CONFIGURED',
-          recordCount: 0,
-          canonicalCount: 0,
-          candidateCount: 0,
-          isTruncated: false,
-          scopeKey,
-          worldKey,
-          error: `Scope "${scopeKey}" not found in database catalog for World "${worldKey}"`,
-        };
-        targetSession.historicalScopeStatus = result;
-        return result;
-      }
+      const scopeDoc = target.scope;
 
       const boundedLimit = Math.min(Math.max(limit, 1), 1000);
       const queryLimit = boundedLimit + 1; // Limit-plus-one to detect truncation explicitly
 
       // 1. Fetch canonical ContentItems in this Scope (READY and DRAFT) with deterministic sort
-      const itemsRaw = await this.contentItems
-        .find({
+      const itemsRaw = await useMongoSession(
+        this.contentItems.find({
           scopeId: scopeDoc._id,
           status: { $in: [ContentItemStatus.READY, ContentItemStatus.DRAFT] },
-        })
+        }),
+        mongoSession,
+      )
         .sort({ createdAt: 1, _id: 1 })
         .limit(queryLimit)
         .lean()
@@ -581,8 +603,10 @@ export class DeterministicScreenService {
       // 2. Query publications for these canonical items to avoid double comparison
       const publishedCandidateIds = new Set<string>();
       if (itemIds.length > 0) {
-        const pubDocs = await this.publications
-          .find({ contentItemId: { $in: itemIds } })
+        const pubDocs = await useMongoSession(
+          this.publications.find({ contentItemId: { $in: itemIds } }),
+          mongoSession,
+        )
           .lean()
           .exec();
         for (const pub of pubDocs) {
@@ -601,7 +625,9 @@ export class DeterministicScreenService {
           mechanicPayload: item.mechanicPayload,
           media: item.media,
           revealMedia: item.revealMedia,
-          metadata: item.metadata,
+          metadata: candidateIdentityMetadata({
+            metadata: item.metadata,
+          }) as any,
         };
         const identity = extractContentIdentity({
           scopeKey,
@@ -611,7 +637,9 @@ export class DeterministicScreenService {
           mechanicPayload: item.mechanicPayload,
           media: item.media,
           revealMedia: item.revealMedia,
-          metadata: item.metadata,
+          metadata: candidateIdentityMetadata({
+            metadata: item.metadata,
+          }) as any,
         });
 
         records.push({
@@ -624,6 +652,10 @@ export class DeterministicScreenService {
           worldKey,
           draft,
           identity,
+          contentHash: contentVersionHash(
+            draft,
+            candidateIdentityMetadata({ metadata: item.metadata }),
+          ),
         });
       }
 
@@ -632,23 +664,39 @@ export class DeterministicScreenService {
       let candidateCount = 0;
 
       if (this.jobs) {
-        const jobDocs = await this.jobs
-          .find({ worldKey, scopeKey })
-          .select('_id')
-          .lean()
-          .exec();
-        const jobIds = jobDocs.map((j) => (j as any)._id.toString());
+        const approvedIds = await classifyHistoricalApprovals(
+          {
+            candidates: this.candidates,
+            jobs: this.jobs,
+            publications: this.publications,
+            contentItems: this.contentItems,
+            worlds: this.worlds,
+            scopes: this.scopes,
+          },
+          scopeDoc._id,
+          mongoSession,
+        );
 
-        if (jobIds.length > 0) {
-          const candidatesRaw = await this.candidates
-            .find({
-              jobId: { $in: jobIds },
+        if (approvedIds.length > 0) {
+          const candidatesRaw = await useMongoSession(
+            this.candidates.find({
+              candidateId: { $in: approvedIds },
               reviewStatus: 'approved',
-            })
+            }),
+            mongoSession,
+          )
             .sort({ createdAt: 1, _id: 1 })
             .limit(queryLimit)
             .lean()
             .exec();
+
+          if (
+            candidatesRaw.length !== Math.min(approvedIds.length, queryLimit)
+          ) {
+            throw new Error(
+              'Historical approved candidate inventory changed during verification',
+            );
+          }
 
           isCandidateTruncated = candidatesRaw.length > boundedLimit;
           const candidateDocs = isCandidateTruncated
@@ -664,13 +712,11 @@ export class DeterministicScreenService {
               continue;
             }
 
-            // B. Restore Slice 2A approval trust guarantees:
-            // Do NOT trust reviewStatus === 'approved' without corroborating reviewDecision & reviewEvents
-            if (!hasTrustedCandidateApproval(cand)) {
-              continue;
-            }
-
             const candDraft = (cand.draft ?? {}) as Record<string, unknown>;
+            const candMetadata = candidateIdentityMetadata(
+              candDraft,
+              cand.authoring,
+            );
             const identity = extractContentIdentity({
               scopeKey,
               worldKey,
@@ -679,7 +725,7 @@ export class DeterministicScreenService {
               mechanicPayload: candDraft.mechanicPayload as any,
               media: candDraft.media as any,
               revealMedia: candDraft.revealMedia as any,
-              metadata: (cand.authoring ?? {}) as any,
+              metadata: candMetadata as any,
             });
 
             records.push({
@@ -689,6 +735,7 @@ export class DeterministicScreenService {
               worldKey,
               draft: candDraft,
               identity,
+              contentHash: contentVersionHash(candDraft, candMetadata),
             });
             candidateCount += 1;
           }
@@ -715,6 +762,21 @@ export class DeterministicScreenService {
       targetSession.historicalScopeStatus = result;
       return result;
     } catch (err) {
+      // Preserve MongoDB transaction labels so withTransaction can safely
+      // retry a transient read failure instead of treating it as a final one.
+      if (
+        mongoSession &&
+        typeof (err as { hasErrorLabel?: unknown })?.hasErrorLabel ===
+          'function' &&
+        ((err as { hasErrorLabel(label: string): boolean }).hasErrorLabel(
+          'TransientTransactionError',
+        ) ||
+          (err as { hasErrorLabel(label: string): boolean }).hasErrorLabel(
+            'UnknownTransactionCommitResult',
+          ))
+      ) {
+        throw err;
+      }
       const result: HistoricalScopeLoadResult = {
         status: 'UNAVAILABLE',
         recordCount: 0,
@@ -765,6 +827,16 @@ export class DeterministicScreenService {
     screenOptions?: ScreenOptions,
   ): ScreenResult {
     const findings: ScreenFinding[] = [];
+
+    try {
+      candidateIdentityMetadata(draft, authoring);
+    } catch (error) {
+      if (!(error instanceof CandidateIdentityConflictError)) throw error;
+      return {
+        passed: false,
+        findings: [blocking('CANDIDATE_IDENTITY_CONFLICT', error.message)],
+      };
+    }
 
     const prompt = ((draft.prompt as { ar?: string })?.ar ?? '').trim();
     const payload = draft.answerPayload as
@@ -1388,14 +1460,14 @@ export class DeterministicScreenService {
       mechanicPayload: draft.mechanicPayload as any,
       media: draft.media as any,
       revealMedia: draft.revealMedia as any,
-      metadata: {
-        ...(authoring ?? {}),
-        familyKey:
-          (draft.metadata as any)?.familyKey ?? (authoring as any)?.familyKey,
-      },
+      metadata: candidateIdentityMetadata(draft, authoring) as any,
     };
 
     const candidateIdentity = extractContentIdentity(candidateInput);
+    const candidateContentHash = contentVersionHash(
+      draft,
+      candidateInput.metadata as Record<string, unknown>,
+    );
 
     const allHistorical = [
       ...session.historicalRecords,
@@ -1419,7 +1491,7 @@ export class DeterministicScreenService {
           mechanicPayload: record.draft.mechanicPayload as any,
           media: record.draft.media as any,
           revealMedia: record.draft.revealMedia as any,
-          metadata: (record.draft.metadata ?? {}) as any,
+          metadata: candidateIdentityMetadata(record.draft) as any,
         });
 
       const comparison = compareContentIdentities(
@@ -1463,9 +1535,26 @@ export class DeterministicScreenService {
               ? 'POTENTIAL_OVERLAP_HISTORICAL_DRAFT'
               : 'POTENTIAL_OVERLAP_APPROVED_CANDIDATE';
         findings.push(
-          warning(
-            code,
-            `Potential overlap with ${record.sourceType} item ${record.id}: ${comparison.explanation}`,
+          withOverlapEvidence(
+            warning(
+              code,
+              `Potential overlap with ${record.sourceType} item ${record.id}: ${comparison.explanation}`,
+            ),
+            buildOverlapEvidence({
+              code,
+              candidateContentHash,
+              reasonCode: comparison.reasonCode ?? null,
+              reference: {
+                kind: record.sourceType,
+                id: record.id,
+                contentHash:
+                  record.contentHash ??
+                  contentVersionHash(
+                    record.draft,
+                    candidateIdentityMetadata(record.draft),
+                  ),
+              },
+            }),
           ),
         );
       }
@@ -1497,14 +1586,14 @@ export class DeterministicScreenService {
       mechanicPayload: draft.mechanicPayload as any,
       media: draft.media as any,
       revealMedia: draft.revealMedia as any,
-      metadata: {
-        ...(authoring ?? {}),
-        familyKey:
-          (draft.metadata as any)?.familyKey ?? (authoring as any)?.familyKey,
-      },
+      metadata: candidateIdentityMetadata(draft, authoring) as any,
     };
 
     const candidateIdentity = extractContentIdentity(candidateInput);
+    const candidateContentHash = contentVersionHash(
+      draft,
+      candidateInput.metadata as Record<string, unknown>,
+    );
 
     // 1. Screen against Historical Records
     findings.push(...this.screenHistoricalOnly(draft, authoring, options));
@@ -1553,11 +1642,28 @@ export class DeterministicScreenService {
         }
         break;
       } else if (comparison.result === 'POTENTIAL_OVERLAP') {
+        const overlap = warning(
+          'POTENTIAL_OVERLAP_IN_BATCH',
+          `another candidate in this batch potentially overlaps: ${comparison.explanation}`,
+        );
+        // Without a stable sibling identity the overlap cannot be revalidated
+        // later, so it carries no acknowledgeable evidence and stays blocking.
         findings.push(
-          warning(
-            'POTENTIAL_OVERLAP_IN_BATCH',
-            `another candidate in this batch potentially overlaps: ${comparison.explanation}`,
-          ),
+          prev.candidateId && prev.contentHash
+            ? withOverlapEvidence(
+                overlap,
+                buildOverlapEvidence({
+                  code: 'POTENTIAL_OVERLAP_IN_BATCH',
+                  candidateContentHash,
+                  reasonCode: comparison.reasonCode ?? null,
+                  reference: {
+                    kind: 'BATCH_CANDIDATE',
+                    id: prev.candidateId,
+                    contentHash: prev.contentHash,
+                  },
+                }),
+              )
+            : overlap,
         );
         break;
       }
@@ -1573,6 +1679,7 @@ export class DeterministicScreenService {
 
     session.seenBatchCandidates.push({
       candidateId: options?.candidateId,
+      contentHash: candidateContentHash,
       identity: candidateIdentity,
       correctLabel,
       rawPrompt: promptText,

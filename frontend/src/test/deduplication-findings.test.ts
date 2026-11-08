@@ -3,6 +3,8 @@ import {
   hasIncompleteHistoricalVerification,
   hasPotentialOverlap,
   hasProvenDuplicate,
+  overlapRequirementsFromFindings,
+  overlapRequirementsFromServer,
   parseDeduplicationMatch,
   summarizeDeduplication,
   translateReasonToAr,
@@ -201,20 +203,70 @@ describe("Deduplication Findings Helper & Parser", () => {
     expect(summary.incompleteFindings).toHaveLength(1);
   });
 
-  it("summarizes potential overlap state without blocking approval", () => {
+  it("summarizes a fingerprinted potential overlap as requiring explicit acknowledgment", () => {
     const summary = summarizeDeduplication([
       {
         code: "POTENTIAL_OVERLAP_HISTORICAL_CONTENT",
         severity: "warning",
         message: "Potential overlap with CANONICAL_READY item item-99: Identical answer for the same subject and property relationship",
+        fingerprint: `ovl1:${"a".repeat(64)}`,
+        evidence: {
+          candidateContentHash: "c".repeat(64),
+          reasonCode: "SAME_TARGET",
+          reference: { kind: "CANONICAL_READY", id: "item-99", contentHash: "r".repeat(64) },
+        },
       },
     ]);
 
     expect(summary.category).toBe("potential_overlap");
-    expect(summary.statusLabelAr).toBe("شبهة تقاطع أو تشابه — يتطلب مراجعة بشرية");
+    expect(summary.statusLabelAr).toBe("شبهة تقاطع — تتطلب إقراراً صريحاً من المراجع");
     expect(summary.isApprovalBlocked).toBe(false);
+    expect(summary.requiresAcknowledgment).toBe(true);
     expect(summary.hasPotentialOverlap).toBe(true);
     expect(summary.matches).toHaveLength(1);
+    expect(summary.matches[0].referenceId).toBe("item-99");
+  });
+
+  it("summarizes an overlap without a stable reference as unverifiable and blocked", () => {
+    const summary = summarizeDeduplication([
+      {
+        code: "POTENTIAL_OVERLAP_IN_BATCH",
+        severity: "warning",
+        message: "another candidate in this batch potentially overlaps",
+      },
+    ]);
+    expect(summary.statusLabelAr).toBe("شبهة تقاطع غير قابلة للتحقق — الاعتماد محظور");
+    expect(summary.isApprovalBlocked).toBe(true);
+    expect(summary.hasUnverifiableOverlap).toBe(true);
+    expect(summary.requiresAcknowledgment).toBe(false);
+  });
+
+  it("treats a cross-Scope advisory as informational, not an acknowledgment requirement", () => {
+    const summary = summarizeDeduplication([
+      { code: "CROSS_SCOPE_ADVISORY", severity: "warning", message: "match in external scope" },
+    ]);
+    expect(summary.requiresAcknowledgment).toBe(false);
+    expect(summary.isApprovalBlocked).toBe(false);
+    expect(summary.statusLabelAr).toBe("تنبيه تقاطع مع نطاق آخر — للاطلاع");
+  });
+
+  it("only accepts well-formed server fingerprints with a stable reference", () => {
+    const fp = `ovl1:${"b".repeat(64)}`;
+    const ref = { kind: "BATCH_CANDIDATE", id: "sib-1", contentHash: "x" };
+    const { required, unverifiable } = overlapRequirementsFromFindings([
+      { code: "POTENTIAL_OVERLAP_IN_BATCH", severity: "warning", message: "m", fingerprint: fp, evidence: { reference: ref } },
+      { code: "POTENTIAL_OVERLAP_IN_BATCH", severity: "warning", message: "m", fingerprint: "ovl1:short", evidence: { reference: ref } },
+      { code: "POTENTIAL_OVERLAP_HISTORICAL_DRAFT", severity: "warning", message: "m", fingerprint: fp.replace("b", "c") },
+    ]);
+    expect(required.map((r) => r.fingerprint)).toEqual([fp]);
+    expect(required[0]).toMatchObject({ referenceKind: "BATCH_CANDIDATE", referenceId: "sib-1" });
+    expect(unverifiable).toHaveLength(2);
+    expect(
+      overlapRequirementsFromServer([
+        { fingerprint: fp, code: "POTENTIAL_OVERLAP_IN_BATCH", reasonCode: null, reference: ref },
+        { fingerprint: "bogus", code: "X", reference: ref },
+      ]).map((r) => r.fingerprint),
+    ).toEqual([fp]);
   });
 
   it("summarizes clean state without claiming absolute global uniqueness", () => {

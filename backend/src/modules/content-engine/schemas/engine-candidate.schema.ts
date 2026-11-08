@@ -27,7 +27,8 @@ export class CandidateReviewEvent {
     | 'assessed'
     | 'approved'
     | 'rejected'
-    | 'draft_created';
+    | 'draft_created'
+    | 'approval_carried_forward';
 
   @Prop({ type: String, required: true }) actorId!: string;
   @Prop({ type: String, required: true }) actorEmail!: string;
@@ -58,6 +59,18 @@ export class ScreenFinding {
 
   @Prop({ type: String, required: true })
   message!: string;
+
+  /** R4-A: server-computed overlap fingerprint; only on POTENTIAL_OVERLAP_*. */
+  @Prop({ type: String, default: undefined })
+  fingerprint?: string;
+
+  /** R4-A: the compared evidence the fingerprint binds (reference and versions). */
+  @Prop({ type: Object, default: undefined })
+  evidence?: {
+    candidateContentHash: string;
+    reasonCode: string | null;
+    reference: { kind: string; id: string; contentHash: string };
+  };
 }
 export const ScreenFindingSchema = SchemaFactory.createForClass(ScreenFinding);
 
@@ -185,3 +198,9 @@ EngineCandidateSchema.index({ candidateId: 1 }, { unique: true });
 EngineCandidateSchema.index({ jobId: 1, ordinal: 1 }, { unique: true });
 EngineCandidateSchema.index({ jobId: 1, status: 1 });
 EngineCandidateSchema.index({ reviewStatus: 1, updatedAt: -1 });
+/** Candidate-first completeness scan: bounded approved set in deterministic order. */
+EngineCandidateSchema.index({
+  reviewStatus: 1,
+  publishedContentItemId: 1,
+  _id: 1,
+});

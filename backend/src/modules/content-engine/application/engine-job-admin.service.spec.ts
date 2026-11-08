@@ -15,6 +15,17 @@ import {
 } from './authoring-context.service';
 import { EngineJobAdminService } from './engine-job-admin.service';
 
+// Other admin contract tests isolate authoring and budget behavior from MongoDB.
+beforeEach(() => {
+  jest
+    .spyOn(
+      EngineJobAdminService.prototype as any,
+      'historicalInventoryComplete',
+    )
+    .mockResolvedValue(true);
+});
+afterEach(() => jest.restoreAllMocks());
+
 const budgetSnapshot = {
   periodKey: '2026-10',
   capMicros: 1_000_000,
@@ -82,6 +93,55 @@ const build = (
 };
 
 describe('Content Engine generator capability preflight & Generation Contract Foundation', () => {
+  it.each(['PARTIAL', 'UNAVAILABLE', 'NOT_CONFIGURED'])(
+    'blocks preflight and direct submission for %s inventory',
+    async (status) => {
+      jest.restoreAllMocks();
+      const { service } = build('read-your-opponent');
+      const submit = jest.fn();
+      const screen = {
+        createSession: jest.fn(() => ({})),
+        loadHistoricalScope: jest.fn().mockResolvedValue({ status }),
+      };
+      (service as any).historicalScreen = screen;
+      (service as any).jobs = { submit };
+      const result = await service.preflight(request('read-your-opponent'));
+      expect(result).toMatchObject({
+        submissionReady: false,
+        blockedCode: 'HISTORICAL_INVENTORY_INCOMPLETE',
+      });
+      await expect(
+        service.submit(request('read-your-opponent')),
+      ).rejects.toMatchObject({
+        response: { code: 'HISTORICAL_INVENTORY_INCOMPLETE' },
+      });
+      expect(submit).not.toHaveBeenCalled();
+      expect(screen.loadHistoricalScope).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('fails closed when inventory lookup throws or is not wired', async () => {
+    jest.restoreAllMocks();
+    const { service } = build('read-your-opponent');
+    expect(
+      await service.preflight(request('read-your-opponent')),
+    ).toMatchObject({
+      submissionReady: false,
+      blockedCode: 'HISTORICAL_INVENTORY_INCOMPLETE',
+    });
+    (service as any).historicalScreen = {
+      createSession: () => ({}),
+      loadHistoricalScope: jest
+        .fn()
+        .mockRejectedValue(new Error('database unavailable')),
+    };
+    expect(
+      await service.preflight(request('read-your-opponent')),
+    ).toMatchObject({
+      submissionReady: false,
+      blockedCode: 'HISTORICAL_INVENTORY_INCOMPLETE',
+    });
+  });
   it.each(['read-your-opponent', 'closest'])(
     'marks %s as generator-supported with a deterministic planDigest and generationSpec',
     async (mechanicKey) => {

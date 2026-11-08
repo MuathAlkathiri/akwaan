@@ -1,7 +1,10 @@
 import { ConfigModule } from '@nestjs/config';
 import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
-import { Connection, Types } from 'mongoose';
+import { Connection, Types, mongo } from 'mongoose';
+import { instanceToPlain, plainToInstance } from 'class-transformer';
+import { CreateContentItemDto } from '../../src/modules/world-content/dto/content-item.dto';
+import { extractContentIdentity } from '../../src/modules/content-engine/domain/content-identity.policy';
 import { ContentEngineModule } from '../../src/modules/content-engine/content-engine.module';
 import { EngineBudgetService } from '../../src/modules/content-engine/application/engine-budget.service';
 import {
@@ -248,6 +251,23 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       ].map((name) => database.collection(name).deleteMany({})),
     );
   });
+
+  const seedInventoryTarget = async (
+    connection: Connection,
+    worldKey: string,
+    scopeKey: string,
+  ) => {
+    const worldId = new Types.ObjectId();
+    await connection.collection('worlds').insertOne({
+      _id: worldId,
+      slug: worldKey,
+      name: worldKey,
+      status: 'active',
+    });
+    await connection
+      .collection('scopes')
+      .insertOne({ worldId, slug: scopeKey, name: scopeKey, status: 'active' });
+  };
 
   describe('feature flag', () => {
     it('is the first thing checked, and defaults to disabled', async () => {
@@ -962,6 +982,9 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
   });
 
   describe('Phase 1c durable orchestration', () => {
+    beforeEach(async () =>
+      seedInventoryTarget(database, 'video-games', 'overwatch'),
+    );
     it('runs every stage and stops in an explicit human-review state', async () => {
       const { jobId } = await jobs.submit(
         request({ contextRevision: 'phase-1c-complete', targetCount: 2 }),
@@ -1216,6 +1239,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       const localOrchestrator = moduleRef.get(ContentEngineOrchestratorService);
       const conn = moduleRef.get<Connection>(getConnectionToken());
       await conn.syncIndexes();
+      await seedInventoryTarget(conn, 'puzzles', 'numbers-estimation');
       for (const name of [
         'engine_jobs',
         'engine_candidates',
@@ -1354,6 +1378,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       const localOrchestrator = moduleRef.get(ContentEngineOrchestratorService);
       const conn = moduleRef.get<Connection>(getConnectionToken());
       await conn.syncIndexes();
+      await seedInventoryTarget(conn, 'video-games', 'overwatch');
       await localJobs.submit({
         mechanicKey: 'read-your-opponent',
         worldKey: 'video-games',
@@ -1420,6 +1445,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       const localOrchestrator = moduleRef.get(ContentEngineOrchestratorService);
       const conn = moduleRef.get<Connection>(getConnectionToken());
       await conn.syncIndexes();
+      await seedInventoryTarget(conn, 'video-games', 'overwatch');
       for (const name of [
         'engine_jobs',
         'engine_candidates',
@@ -1649,6 +1675,2051 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
         actor,
       );
 
+    it('blocks both already-approved duplicate drafts without weakening screening', async () => {
+      const { scopeId } = await seedReviewCandidate('draft-approved-race-a');
+      await assessSupported('draft-approved-race-a');
+      await approve('draft-approved-race-a');
+      const original = await database.collection('engine_candidates').findOne({
+        candidateId: 'draft-approved-race-a',
+      });
+      const { _id, ...copy } = original!;
+      expect(_id).toBeDefined();
+      await database.collection('engine_candidates').insertOne({
+        ...copy,
+        candidateId: 'draft-approved-race-b',
+        ordinal: 1,
+      });
+      const fenceModel = database.model('EngineInventoryFence');
+      const realUpdate = fenceModel.updateOne.bind(fenceModel);
+      let arrivals = 0;
+      let release!: () => void;
+      const barrier = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const spy = jest.spyOn(fenceModel, 'updateOne').mockImplementation(((
+        ...args: any[]
+      ) => {
+        const query = (realUpdate as any)(...args);
+        if (args[2]?.session) {
+          const execute = query.exec.bind(query);
+          query.exec = async () => {
+            if (++arrivals <= 2) {
+              if (arrivals === 2) release();
+              await barrier;
+            }
+            return execute();
+          };
+        }
+        return query;
+      }) as any);
+      const timer = setTimeout(release, 5000);
+      try {
+        const outcomes = await Promise.allSettled([
+          review.createDraft('draft-approved-race-a', 2, actor),
+          review.createDraft('draft-approved-race-b', 2, actor),
+        ]);
+        expect(arrivals).toBeGreaterThanOrEqual(2);
+        expect(outcomes.every((result) => result.status === 'rejected')).toBe(
+          true,
+        );
+        for (const outcome of outcomes) {
+          expect(String((outcome as PromiseRejectedResult).reason)).toContain(
+            'Historical duplicate screening changed',
+          );
+        }
+        expect(
+          await database.collection('content_items').countDocuments(),
+        ).toBe(0);
+        expect(
+          await database
+            .collection('engine_draft_publications')
+            .countDocuments(),
+        ).toBe(0);
+        const candidates = await database
+          .collection('engine_candidates')
+          .find({
+            candidateId: {
+              $in: ['draft-approved-race-a', 'draft-approved-race-b'],
+            },
+          })
+          .toArray();
+        expect(candidates).toHaveLength(2);
+        for (const candidate of candidates) {
+          expect(candidate.reviewStatus).toBe('approved');
+          expect(candidate.publishedContentItemId).toBeNull();
+          expect(candidate.reviewRevision).toBe(2);
+          expect(
+            candidate.reviewEvents.filter(
+              (event: { action: string }) => event.action === 'draft_created',
+            ),
+          ).toHaveLength(0);
+        }
+        expect(
+          (
+            await database
+              .collection('engine_inventory_fences')
+              .findOne({ _id: scopeId })
+          )?.revision,
+        ).toBe(1);
+      } finally {
+        clearTimeout(timer);
+        release();
+        spy.mockRestore();
+      }
+      await review.reject(
+        'draft-approved-race-b',
+        {
+          expectedRevision: 2,
+          reasonCode: 'LOW_QUALITY',
+          explanation: 'Reviewer resolved the duplicate conflict.',
+        },
+        actor,
+      );
+      const rescreened = await review.rescreenCandidate(
+        'draft-approved-race-a',
+        2,
+        actor,
+      );
+      expect(
+        rescreened.findings.some((finding: { code: string }) =>
+          finding.code.startsWith('DUPLICATE_'),
+        ),
+      ).toBe(false);
+      await assessSupported('draft-approved-race-a', 3);
+      await approve('draft-approved-race-a', 4);
+      const published = await review.createDraft(
+        'draft-approved-race-a',
+        5,
+        actor,
+      );
+      expect(published.status).toBe('draft');
+      expect(await database.collection('content_items').countDocuments()).toBe(
+        1,
+      );
+      expect(
+        await database.collection('engine_draft_publications').countDocuments(),
+      ).toBe(1);
+    });
+
+    it('fences approval racing with publication across the inventory transition', async () => {
+      await seedReviewCandidate('draft-approval-race-a');
+      const original = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'draft-approval-race-a' });
+      const { _id, ...copy } = original!;
+      expect(_id).toBeDefined();
+      await database.collection('engine_candidates').insertOne({
+        ...copy,
+        candidateId: 'draft-approval-race-b',
+        ordinal: 1,
+      });
+      await assessSupported('draft-approval-race-a');
+      await assessSupported('draft-approval-race-b');
+      await approve('draft-approval-race-a');
+      const fence = database.model('EngineInventoryFence');
+      const update = fence.updateOne.bind(fence);
+      let arrivals = 0;
+      let release!: () => void;
+      const barrier = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const spy = jest.spyOn(fence, 'updateOne').mockImplementation(((
+        ...args: any[]
+      ) => {
+        const query = (update as any)(...args);
+        if (args[2]?.session) {
+          const execute = query.exec.bind(query);
+          query.exec = async () => {
+            if (++arrivals <= 2) {
+              if (arrivals === 2) release();
+              await barrier;
+            }
+            return execute();
+          };
+        }
+        return query;
+      }) as any);
+      const timer = setTimeout(release, 5000);
+      try {
+        const [draft, approval] = await Promise.allSettled([
+          review.createDraft('draft-approval-race-a', 2, actor),
+          approve('draft-approval-race-b'),
+        ]);
+        expect(arrivals).toBeGreaterThanOrEqual(2);
+        expect(draft.status).toBe('fulfilled');
+        expect(approval.status).toBe('rejected');
+        expect(String((approval as PromiseRejectedResult).reason)).toContain(
+          'Historical duplicate screening changed',
+        );
+        expect(
+          await database.collection('content_items').countDocuments(),
+        ).toBe(1);
+        expect(
+          await database
+            .collection('engine_draft_publications')
+            .countDocuments(),
+        ).toBe(1);
+        const b = await database
+          .collection('engine_candidates')
+          .findOne({ candidateId: 'draft-approval-race-b' });
+        expect(b?.reviewStatus).toBe('pending');
+        expect(
+          b?.reviewEvents.filter(
+            (event: { action: string }) => event.action === 'approved',
+          ),
+        ).toHaveLength(0);
+      } finally {
+        clearTimeout(timer);
+        release();
+        spy.mockRestore();
+      }
+    });
+
+    it('rejects duplicate approval when it acquires the fence before draft creation', async () => {
+      const { scopeId } = await seedReviewCandidate('draft-reverse-a');
+      const original = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'draft-reverse-a' });
+      const { _id, ...copy } = original!;
+      expect(_id).toBeDefined();
+      await database
+        .collection('engine_candidates')
+        .insertOne({ ...copy, candidateId: 'draft-reverse-b', ordinal: 1 });
+      await assessSupported('draft-reverse-a');
+      await assessSupported('draft-reverse-b');
+      await approve('draft-reverse-a');
+      let entered!: () => void;
+      let attempted!: () => void;
+      let release!: () => void;
+      const reached = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const draftAttempted = new Promise<void>((resolve) => {
+        attempted = resolve;
+      });
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const load = screen.loadHistoricalScope.bind(screen);
+      let firstLoad = true;
+      const loadSpy = jest
+        .spyOn(screen, 'loadHistoricalScope')
+        .mockImplementation(async (params, screening) => {
+          if (params.mongoSession && firstLoad) {
+            firstLoad = false;
+            entered();
+            await held;
+          }
+          return load(params, screening);
+        });
+      const fences = database.model('EngineInventoryFence');
+      const update = fences.updateOne.bind(fences);
+      let draftStarted = false;
+      const fenceSpy = jest.spyOn(fences, 'updateOne').mockImplementation(((
+        ...args: any[]
+      ) => {
+        const query = (update as any)(...args);
+        if (args[2]?.session && draftStarted) {
+          const execute = query.exec.bind(query);
+          query.exec = async () => {
+            attempted();
+            return execute();
+          };
+        }
+        return query;
+      }) as any);
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error('reverse fence ordering timed out')),
+          5000,
+        );
+      });
+      const approval = approve('draft-reverse-b');
+      const observedApproval = approval.catch((error) => error);
+      let draft: ReturnType<typeof review.createDraft> | undefined;
+      try {
+        await Promise.race([reached, timeout]);
+        draftStarted = true;
+        draft = review.createDraft('draft-reverse-a', 2, actor);
+        await Promise.race([draftAttempted, timeout]);
+        release();
+        expect(String(await observedApproval)).toContain(
+          'Historical duplicate screening changed',
+        );
+        expect((await draft).status).toBe('draft');
+        const a = await database
+          .collection('engine_candidates')
+          .findOne({ candidateId: 'draft-reverse-a' });
+        const b = await database
+          .collection('engine_candidates')
+          .findOne({ candidateId: 'draft-reverse-b' });
+        expect(a?.reviewRevision).toBe(3);
+        expect(a?.publishedContentItemId).toBeTruthy();
+        expect(
+          a?.reviewEvents.filter(
+            (e: { action: string }) => e.action === 'draft_created',
+          ),
+        ).toHaveLength(1);
+        expect(b?.reviewStatus).toBe('pending');
+        expect(b?.reviewRevision).toBe(1);
+        expect(b?.publishedContentItemId).toBeNull();
+        expect(
+          b?.reviewEvents.filter(
+            (e: { action: string }) => e.action === 'approved',
+          ),
+        ).toHaveLength(0);
+        expect(
+          await database.collection('content_items').countDocuments(),
+        ).toBe(1);
+        expect(
+          await database
+            .collection('engine_draft_publications')
+            .countDocuments(),
+        ).toBe(1);
+        expect(
+          (
+            await database
+              .collection('engine_inventory_fences')
+              .findOne({ _id: scopeId })
+          )?.revision,
+        ).toBe(2);
+      } finally {
+        release();
+        if (timer) clearTimeout(timer);
+        loadSpy.mockRestore();
+        fenceSpy.mockRestore();
+        await observedApproval;
+        if (draft) await draft.catch(() => undefined);
+      }
+    });
+
+    it('allows independent Scope drafts while one Scope transaction is held', async () => {
+      const { worldId, jobId } = await seedReviewCandidate('draft-scope-a');
+      await database.collection('scopes').insertOne({
+        _id: new Types.ObjectId(),
+        worldId,
+        name: 'FIFA',
+        slug: 'fifa',
+        status: 'draft',
+        excludedChallengeTypeIds: [],
+      });
+      const job = await database
+        .collection('engine_jobs')
+        .findOne({ _id: new Types.ObjectId(jobId) });
+      const otherJobId = new Types.ObjectId();
+      await database.collection('engine_jobs').insertOne({
+        ...job!,
+        _id: otherJobId,
+        requestHash: 'draft-other-scope',
+        scopeKey: 'fifa',
+      });
+      const original = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'draft-scope-a' });
+      const { _id, ...copy } = original!;
+      expect(_id).toBeDefined();
+      await database.collection('engine_candidates').insertOne({
+        ...copy,
+        candidateId: 'draft-scope-b',
+        jobId: String(otherJobId),
+      });
+      await assessSupported('draft-scope-a');
+      await assessSupported('draft-scope-b');
+      await approve('draft-scope-a');
+      await approve('draft-scope-b');
+      let entered!: () => void;
+      let release!: () => void;
+      const reached = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const load = screen.loadHistoricalScope.bind(screen);
+      const spy = jest
+        .spyOn(screen, 'loadHistoricalScope')
+        .mockImplementation(async (params, session) => {
+          if (params.mongoSession && params.scopeKey === 'overwatch') {
+            entered();
+            await held;
+          }
+          return load(params, session);
+        });
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error('other Scope draft did not progress')),
+          5000,
+        );
+      });
+      const first = review.createDraft('draft-scope-a', 2, actor);
+      try {
+        await Promise.race([reached, timeout]);
+        const second = await Promise.race([
+          review.createDraft('draft-scope-b', 2, actor),
+          timeout,
+        ]);
+        expect(second.status).toBe('draft');
+      } finally {
+        release();
+        if (timer) clearTimeout(timer);
+        spy.mockRestore();
+      }
+      expect((await first).status).toBe('draft');
+      expect(await database.collection('content_items').countDocuments()).toBe(
+        2,
+      );
+      expect(
+        await database.collection('engine_draft_publications').countDocuments(),
+      ).toBe(2);
+    });
+
+    it('returns the current revision when approval becomes stale before its transaction', async () => {
+      await seedReviewCandidate('approval-cas-race');
+      await assessSupported('approval-cas-race');
+      const fences = database.model('EngineInventoryFence');
+      const update = fences.updateOne.bind(fences);
+      let reached!: () => void;
+      let release!: () => void;
+      const entered = new Promise<void>((resolve) => {
+        reached = resolve;
+      });
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const spy = jest.spyOn(fences, 'updateOne').mockImplementation(((
+        ...args: any[]
+      ) => {
+        const query = (update as any)(...args);
+        if (args[2]?.upsert) {
+          const execute = query.exec.bind(query);
+          query.exec = async () => {
+            reached();
+            await held;
+            return execute();
+          };
+        }
+        return query;
+      }) as any);
+      const approval = approve('approval-cas-race');
+      const observed = approval.catch((error) => error);
+      try {
+        await entered;
+        await database
+          .collection('engine_candidates')
+          .updateOne(
+            { candidateId: 'approval-cas-race' },
+            { $inc: { reviewRevision: 1 } },
+          );
+        release();
+        expect(await observed).toMatchObject({
+          response: { expectedRevision: 1, currentRevision: 2 },
+        });
+        const row = await database
+          .collection('engine_candidates')
+          .findOne({ candidateId: 'approval-cas-race' });
+        expect(row?.reviewStatus).toBe('pending');
+        expect(
+          row?.reviewEvents.filter(
+            (event: { action: string }) => event.action === 'approved',
+          ),
+        ).toHaveLength(0);
+      } finally {
+        release();
+        spy.mockRestore();
+        await observed;
+      }
+    });
+
+    it('blocks a saved in-batch overlap with no stable reference without changing approval state', async () => {
+      await seedReviewCandidate('unacknowledged-batch-overlap');
+      await assessSupported('unacknowledged-batch-overlap');
+      await database.collection('engine_candidates').updateOne(
+        { candidateId: 'unacknowledged-batch-overlap' },
+        {
+          $set: {
+            findings: [
+              {
+                code: 'POTENTIAL_OVERLAP_IN_BATCH',
+                severity: 'warning',
+                message: 'possible overlap',
+              },
+            ],
+          },
+        },
+      );
+      await expect(
+        approve('unacknowledged-batch-overlap'),
+      ).rejects.toMatchObject({
+        response: { code: 'OVERLAP_EVIDENCE_UNVERIFIABLE' },
+      });
+      const row = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'unacknowledged-batch-overlap' });
+      expect(row?.reviewStatus).toBe('pending');
+      expect(row?.reviewRevision).toBe(1);
+      expect(
+        row?.reviewEvents.filter(
+          (event: { action: string }) => event.action === 'approved',
+        ),
+      ).toHaveLength(0);
+      // R4-B: this candidate has no earlier sibling in its batch, so a fresh
+      // re-screen proves the legacy claim no longer holds and records why.
+      const rescreened = await review.rescreenCandidate(
+        'unacknowledged-batch-overlap',
+        1,
+        actor,
+      );
+      expect(
+        rescreened.findings.some(
+          (f: { code: string }) => f.code === 'POTENTIAL_OVERLAP_IN_BATCH',
+        ),
+      ).toBe(false);
+      expect(
+        rescreened.reviewEvents.at(-1)?.details?.legacyBatchOverlapRecovery,
+      ).toEqual({ legacy: 1, rebuilt: 0, resolved: 1, kept: 0 });
+      await assessSupported('unacknowledged-batch-overlap', 2);
+      const approved = await approve('unacknowledged-batch-overlap', 3);
+      expect(approved.reviewStatus).toBe('approved');
+    });
+
+    it('blocks DRAFT creation for an approved candidate with an unacknowledged overlap', async () => {
+      await seedReviewCandidate('approved-with-unacknowledged-overlap');
+      await assessSupported('approved-with-unacknowledged-overlap');
+      await approve('approved-with-unacknowledged-overlap');
+      await database.collection('engine_candidates').updateOne(
+        { candidateId: 'approved-with-unacknowledged-overlap' },
+        {
+          $set: {
+            findings: [
+              {
+                code: 'POTENTIAL_OVERLAP_IN_BATCH',
+                severity: 'warning',
+                message: 'possible overlap',
+              },
+            ],
+          },
+        },
+      );
+      await expect(
+        review.createDraft('approved-with-unacknowledged-overlap', 2, actor),
+      ).rejects.toMatchObject({
+        response: { code: 'OVERLAP_EVIDENCE_UNVERIFIABLE' },
+      });
+      expect(await database.collection('content_items').countDocuments()).toBe(
+        0,
+      );
+      expect(
+        await database.collection('engine_draft_publications').countDocuments(),
+      ).toBe(0);
+    });
+
+    describe('R4-A overlap acknowledgment contract', () => {
+      const telephone = {
+        prompt: { ar: 'من مخترع الهاتف؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: '1', label: { ar: 'ألكسندر غراهام بيل' } },
+            { id: '2', label: { ar: 'توماس إديسون' } },
+          ],
+          correctOptionId: '1',
+        },
+      };
+      const telephoneVariant = {
+        prompt: { ar: 'من مخترع التليفون؟' },
+        answerPayload: {
+          mode: 'multiple_choice',
+          options: [
+            { id: 'a', label: { ar: 'ألكسندر غراهام بيل' } },
+            { id: 'b', label: { ar: 'نيكولا تيسلا' } },
+          ],
+          correctOptionId: 'a',
+        },
+        metadata: { source: 'content-engine' },
+      };
+
+      const seedOverlapCandidate = async (candidateId: string) => {
+        const seeded = await seedReviewCandidate(candidateId);
+        await database
+          .collection('engine_candidates')
+          .updateOne({ candidateId }, { $set: { draft: telephoneVariant } });
+        return seeded;
+      };
+      const insertReady = (
+        worldId: Types.ObjectId,
+        scopeId: Types.ObjectId,
+        draft: Record<string, unknown> = telephone,
+      ) =>
+        database
+          .collection('content_items')
+          .insertOne({ worldId, scopeId, status: 'ready', ...draft });
+      const approveWith = (
+        candidateId: string,
+        expectedRevision: number,
+        fingerprints: string[],
+      ) =>
+        review.approve(
+          candidateId,
+          {
+            expectedRevision,
+            explanation: 'Overlap reviewed; the angle is distinct.',
+            overlapAcknowledgments: fingerprints.map((fingerprint) => ({
+              fingerprint,
+            })),
+          },
+          actor,
+        );
+      const rejection = (promise: Promise<unknown>) =>
+        promise.then(
+          () => {
+            throw new Error('expected a rejection');
+          },
+          (error: { response?: any }) => error,
+        );
+      const row = (candidateId: string) =>
+        database.collection('engine_candidates').findOne({ candidateId });
+      const approvedEvents = (doc: any) =>
+        (doc?.reviewEvents ?? []).filter(
+          (event: { action: string }) => event.action === 'approved',
+        );
+
+      it('requires acknowledgment of the exact current evidence, then persists it atomically with approval', async () => {
+        const { worldId, scopeId } = await seedOverlapCandidate('r4a-valid');
+        const item = await insertReady(worldId, scopeId);
+        await assessSupported('r4a-valid');
+
+        const missing = await rejection(approve('r4a-valid'));
+        expect(missing.response.code).toBe('OVERLAP_ACKNOWLEDGMENT_REQUIRED');
+        const [overlap] = missing.response.details.overlaps;
+        expect(missing.response.details.overlaps).toHaveLength(1);
+        expect(overlap).toMatchObject({
+          code: 'POTENTIAL_OVERLAP_HISTORICAL_CONTENT',
+          reference: { kind: 'CANONICAL_READY', id: String(item.insertedId) },
+        });
+        expect(overlap.fingerprint).toMatch(/^ovl1:[0-9a-f]{64}$/);
+        let current = await row('r4a-valid');
+        expect(current?.reviewStatus).toBe('pending');
+        expect(current?.reviewRevision).toBe(1);
+        expect(approvedEvents(current)).toHaveLength(0);
+        expect(
+          (
+            await database
+              .collection('engine_inventory_fences')
+              .findOne({ _id: scopeId })
+          )?.revision,
+        ).toBe(0);
+
+        // A well-formed but invented fingerprint is never accepted.
+        const forged = `ovl1:${'0'.repeat(64)}`;
+        const forgedOnly = await rejection(
+          approveWith('r4a-valid', 1, [forged]),
+        );
+        expect(forgedOnly.response.code).toBe(
+          'OVERLAP_ACKNOWLEDGMENT_REQUIRED',
+        );
+        expect(forgedOnly.response.details.stale).toEqual([forged]);
+        const extra = await rejection(
+          approveWith('r4a-valid', 1, [overlap.fingerprint, forged]),
+        );
+        expect(extra.response.code).toBe('OVERLAP_ACKNOWLEDGMENT_STALE');
+        expect((await row('r4a-valid'))?.reviewStatus).toBe('pending');
+
+        const approved = await approveWith('r4a-valid', 1, [
+          overlap.fingerprint,
+        ]);
+        expect(approved.reviewStatus).toBe('approved');
+        current = await row('r4a-valid');
+        expect(current?.reviewDecision.overlapAcknowledgments).toEqual([
+          expect.objectContaining({
+            fingerprint: overlap.fingerprint,
+            code: 'POTENTIAL_OVERLAP_HISTORICAL_CONTENT',
+            acknowledgedRevision: 1,
+            reference: expect.objectContaining({
+              kind: 'CANONICAL_READY',
+              id: String(item.insertedId),
+            }),
+          }),
+        ]);
+        expect(approvedEvents(current)).toHaveLength(1);
+        expect(
+          approvedEvents(current)[0].details.overlapAcknowledgments,
+        ).toEqual([overlap.fingerprint]);
+
+        // DRAFT creation revalidates the persisted acknowledgment and passes.
+        const draft = await review.createDraft('r4a-valid', 2, actor);
+        expect(draft.alreadyCreated).toBe(false);
+        expect(
+          await database.collection('content_items').countDocuments(),
+        ).toBe(2);
+      });
+
+      it('refuses an acknowledgment submitted against a stale revision', async () => {
+        const { worldId, scopeId } = await seedOverlapCandidate('r4a-stale');
+        await insertReady(worldId, scopeId);
+        await assessSupported('r4a-stale');
+        const missing = await rejection(approve('r4a-stale'));
+        const fingerprint = missing.response.details.overlaps[0].fingerprint;
+        const stale = await rejection(
+          approveWith('r4a-stale', 0, [fingerprint]),
+        );
+        expect(stale.response).toMatchObject({
+          expectedRevision: 0,
+          currentRevision: 1,
+        });
+        const current = await row('r4a-stale');
+        expect(current?.reviewStatus).toBe('pending');
+        expect(current?.reviewDecision).toBeNull();
+      });
+
+      it('treats changed reference evidence as unacknowledged', async () => {
+        const { worldId, scopeId } = await seedOverlapCandidate('r4a-changed');
+        const item = await insertReady(worldId, scopeId);
+        await assessSupported('r4a-changed');
+        const first = await rejection(approve('r4a-changed'));
+        const original = first.response.details.overlaps[0].fingerprint;
+        await database.collection('content_items').updateOne(
+          { _id: item.insertedId },
+          {
+            $set: {
+              'answerPayload.options.1.label.ar': 'غوليلمو ماركوني',
+            },
+          },
+        );
+        const changed = await rejection(
+          approveWith('r4a-changed', 1, [original]),
+        );
+        expect(changed.response.code).toMatch(
+          /^OVERLAP_ACKNOWLEDGMENT_(REQUIRED|STALE)$/,
+        );
+        expect(changed.response.details.stale).toEqual([original]);
+        expect(
+          changed.response.details.overlaps.map(
+            (o: { fingerprint: string }) => o.fingerprint,
+          ),
+        ).not.toContain(original);
+        expect((await row('r4a-changed'))?.reviewStatus).toBe('pending');
+      });
+
+      it('keeps proven duplicates blocked regardless of acknowledgments', async () => {
+        const { worldId, scopeId } = await seedOverlapCandidate('r4a-dup');
+        await insertReady(worldId, scopeId, telephoneVariant);
+        await assessSupported('r4a-dup');
+        await expect(
+          approveWith('r4a-dup', 1, [`ovl1:${'1'.repeat(64)}`]),
+        ).rejects.toThrow('Historical duplicate screening changed');
+        expect((await row('r4a-dup'))?.reviewStatus).toBe('pending');
+      });
+
+      it('identifies the referenced batch candidate and revalidates it at DRAFT creation', async () => {
+        const { jobId } = await seedOverlapCandidate('r4a-batch');
+        const target = await row('r4a-batch');
+        const { _id, ...copy } = target!;
+        expect(_id).toBeDefined();
+        await database.collection('engine_candidates').insertOne({
+          ...copy,
+          candidateId: 'r4a-batch-sibling',
+          ordinal: 1,
+          draft: { ...telephone, metadata: { source: 'content-engine' } },
+        });
+        const batch = screen.createSession({
+          worldKey: 'video-games',
+          scopeKey: 'overwatch',
+        });
+        screen.screen(
+          { ...telephone, metadata: { source: 'content-engine' } },
+          null,
+          {
+            candidateId: 'r4a-batch-sibling',
+            worldKey: 'video-games',
+            scopeKey: 'overwatch',
+            session: batch,
+          },
+        );
+        const screened = screen.screen(telephoneVariant, null, {
+          candidateId: 'r4a-batch',
+          worldKey: 'video-games',
+          scopeKey: 'overwatch',
+          session: batch,
+        });
+        const stored = screened.findings.filter(
+          (f) => f.code === 'POTENTIAL_OVERLAP_IN_BATCH',
+        );
+        expect(stored).toHaveLength(1);
+        expect(stored[0].evidence?.reference).toMatchObject({
+          kind: 'BATCH_CANDIDATE',
+          id: 'r4a-batch-sibling',
+        });
+        await database
+          .collection('engine_candidates')
+          .updateOne(
+            { candidateId: 'r4a-batch' },
+            { $set: { findings: stored } },
+          );
+        await assessSupported('r4a-batch');
+
+        const missing = await rejection(approve('r4a-batch'));
+        expect(missing.response.code).toBe('OVERLAP_ACKNOWLEDGMENT_REQUIRED');
+        expect(missing.response.details.overlaps).toEqual([
+          expect.objectContaining({
+            fingerprint: stored[0].fingerprint,
+            reference: expect.objectContaining({
+              kind: 'BATCH_CANDIDATE',
+              id: 'r4a-batch-sibling',
+            }),
+          }),
+        ]);
+        await approveWith('r4a-batch', 1, [stored[0].fingerprint!]);
+        expect((await row('r4a-batch'))?.reviewStatus).toBe('approved');
+        expect(jobId).toBeDefined();
+
+        // The sibling changes after approval: the acknowledged evidence is gone.
+        await database.collection('engine_candidates').updateOne(
+          { candidateId: 'r4a-batch-sibling' },
+          {
+            $set: {
+              'draft.answerPayload.options.1.label.ar': 'غوليلمو ماركوني',
+            },
+          },
+        );
+        await expect(
+          review.createDraft('r4a-batch', 2, actor),
+        ).rejects.toMatchObject({
+          response: { code: 'OVERLAP_ACKNOWLEDGMENT_REQUIRED' },
+        });
+        expect(
+          await database
+            .collection('engine_draft_publications')
+            .countDocuments(),
+        ).toBe(0);
+        expect(
+          await database.collection('content_items').countDocuments(),
+        ).toBe(0);
+
+        // A rejected sibling can no longer enter inventory without screening
+        // against this candidate, so its batch evidence no longer applies.
+        await database
+          .collection('engine_candidates')
+          .updateOne(
+            { candidateId: 'r4a-batch-sibling' },
+            { $set: { reviewStatus: 'rejected' } },
+          );
+        const created = await review.createDraft('r4a-batch', 2, actor);
+        expect(created.alreadyCreated).toBe(false);
+      });
+
+      it('blocks DRAFT creation on a new overlap and returns the candidate to review on re-screen', async () => {
+        const { worldId, scopeId } = await seedOverlapCandidate('r4a-new');
+        await assessSupported('r4a-new');
+        await approve('r4a-new');
+        expect(
+          (await row('r4a-new'))?.reviewDecision.overlapAcknowledgments,
+        ).toEqual([]);
+        await insertReady(worldId, scopeId);
+
+        const blocked = await rejection(
+          review.createDraft('r4a-new', 2, actor),
+        );
+        expect(blocked.response.code).toBe('OVERLAP_ACKNOWLEDGMENT_REQUIRED');
+        const fingerprint = blocked.response.details.overlaps[0].fingerprint;
+        expect(
+          await database.collection('content_items').countDocuments(),
+        ).toBe(1);
+        expect(
+          await database
+            .collection('engine_draft_publications')
+            .countDocuments(),
+        ).toBe(0);
+        let current = await row('r4a-new');
+        expect(current?.reviewStatus).toBe('approved');
+        expect(current?.reviewRevision).toBe(2);
+
+        // Re-screen surfaces the evidence and revokes the stale approval.
+        await review.rescreenCandidate('r4a-new', 2, actor);
+        current = await row('r4a-new');
+        expect(current?.reviewStatus).toBe('pending');
+        expect(current?.reviewDecision).toBeNull();
+        expect(current?.findings).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              code: 'POTENTIAL_OVERLAP_HISTORICAL_CONTENT',
+              fingerprint,
+            }),
+          ]),
+        );
+        const revocation = current?.reviewEvents.at(-1);
+        expect(revocation.details.approvalRevoked).toMatchObject({
+          reasons: ['OVERLAP_EVIDENCE_UNACKNOWLEDGED'],
+          unacknowledgedFingerprints: [fingerprint],
+          previousDecisionRevision: 2,
+        });
+
+        await assessSupported('r4a-new', 3);
+        await approveWith('r4a-new', 4, [fingerprint]);
+        const created = await review.createDraft('r4a-new', 5, actor);
+        expect(created.alreadyCreated).toBe(false);
+      });
+
+      it('keeps an approval whose acknowledged evidence is unchanged on re-screen', async () => {
+        const { worldId, scopeId } = await seedOverlapCandidate('r4a-keep');
+        await insertReady(worldId, scopeId);
+        await assessSupported('r4a-keep');
+        const missing = await rejection(approve('r4a-keep'));
+        const fingerprint = missing.response.details.overlaps[0].fingerprint;
+        await approveWith('r4a-keep', 1, [fingerprint]);
+        await review.rescreenCandidate('r4a-keep', 2, actor);
+        const current = await row('r4a-keep');
+        expect(current?.reviewStatus).toBe('approved');
+        expect(
+          current?.reviewEvents.at(-1).details.approvalRevoked,
+        ).toBeUndefined();
+        expect(current?.reviewDecision.overlapAcknowledgments).toEqual([
+          expect.objectContaining({ fingerprint }),
+        ]);
+        // R4-C (owner-approved Option B): the unchanged re-screen carried the
+        // approval forward, so the DRAFT is accepted at the new revision.
+        expect(current?.reviewEvents.at(-1).action).toBe(
+          'approval_carried_forward',
+        );
+        const created = await review.createDraft('r4a-keep', 3, actor);
+        expect(created.alreadyCreated).toBe(false);
+      });
+
+      it('rolls back approval, acknowledgment and fence together when the write fails', async () => {
+        const { worldId, scopeId } = await seedOverlapCandidate('r4a-rollback');
+        await insertReady(worldId, scopeId);
+        await assessSupported('r4a-rollback');
+        const missing = await rejection(approve('r4a-rollback'));
+        const fingerprint = missing.response.details.overlaps[0].fingerprint;
+        const model = database.model('EngineCandidateDocument');
+        const spy = jest
+          .spyOn(model, 'findOneAndUpdate')
+          .mockImplementationOnce((() => ({
+            lean: () => ({
+              exec: async () => {
+                throw new Error('simulated approval write failure');
+              },
+            }),
+          })) as any);
+        try {
+          await expect(
+            approveWith('r4a-rollback', 1, [fingerprint]),
+          ).rejects.toThrow('simulated approval write failure');
+        } finally {
+          spy.mockRestore();
+        }
+        const current = await row('r4a-rollback');
+        expect(current?.reviewStatus).toBe('pending');
+        expect(current?.reviewDecision).toBeNull();
+        expect(current?.reviewRevision).toBe(1);
+        expect(approvedEvents(current)).toHaveLength(0);
+        expect(
+          (
+            await database
+              .collection('engine_inventory_fences')
+              .findOne({ _id: scopeId })
+          )?.revision,
+        ).toBe(0);
+      });
+
+      it('retries a transient failure and persists one approval with its acknowledgment', async () => {
+        const { worldId, scopeId } = await seedOverlapCandidate('r4a-retry');
+        await insertReady(worldId, scopeId);
+        await assessSupported('r4a-retry');
+        const missing = await rejection(approve('r4a-retry'));
+        const fingerprint = missing.response.details.overlaps[0].fingerprint;
+        const transient = new mongo.MongoServerError({
+          message: 'simulated transient approval write',
+        });
+        transient.addErrorLabel('TransientTransactionError');
+        const model = database.model('EngineCandidateDocument');
+        const spy = jest
+          .spyOn(model, 'findOneAndUpdate')
+          .mockImplementationOnce((() => ({
+            lean: () => ({
+              exec: async () => {
+                throw transient;
+              },
+            }),
+          })) as any);
+        try {
+          const approved = await approveWith('r4a-retry', 1, [fingerprint]);
+          expect(approved.reviewStatus).toBe('approved');
+          expect(spy).toHaveBeenCalledTimes(2);
+        } finally {
+          spy.mockRestore();
+        }
+        const current = await row('r4a-retry');
+        expect(approvedEvents(current)).toHaveLength(1);
+        expect(current?.reviewDecision.overlapAcknowledgments).toHaveLength(1);
+        expect(
+          (
+            await database
+              .collection('engine_inventory_fences')
+              .findOne({ _id: scopeId })
+          )?.revision,
+        ).toBe(1);
+      });
+
+      describe('R4-B workflow and legacy recovery', () => {
+        const persistScreening = async (
+          candidateId: string,
+          draft: Record<string, unknown>,
+        ) => {
+          // The orchestrator's screening stage: fresh inventory, real screen,
+          // findings persisted as generated.
+          const session = screen.createSession({
+            worldKey: 'video-games',
+            scopeKey: 'overwatch',
+          });
+          const inventory = await screen.loadHistoricalScope(
+            { worldKey: 'video-games', scopeKey: 'overwatch' },
+            session,
+          );
+          expect(inventory.status).toBe('COMPLETE');
+          const result = screen.screen(draft, null, {
+            candidateId,
+            worldKey: 'video-games',
+            scopeKey: 'overwatch',
+            session,
+          });
+          await database
+            .collection('engine_candidates')
+            .updateOne(
+              { candidateId },
+              { $set: { findings: result.findings } },
+            );
+          return result.findings;
+        };
+
+        it('runs screen → review → acknowledge → approve → rescreen → DRAFT end to end', async () => {
+          const { worldId, scopeId } = await seedOverlapCandidate('r4b-flow');
+          await insertReady(worldId, scopeId);
+          const findings = await persistScreening('r4b-flow', telephoneVariant);
+          const stored = findings.find(
+            (f) => f.code === 'POTENTIAL_OVERLAP_HISTORICAL_CONTENT',
+          );
+          expect(stored?.fingerprint).toMatch(/^ovl1:[0-9a-f]{64}$/);
+
+          // Review: the detail view exposes the stored evidence.
+          await assessSupported('r4b-flow');
+          const detail = await review.detail('r4b-flow');
+          expect(detail.findings).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                fingerprint: stored!.fingerprint,
+                evidence: expect.objectContaining({
+                  reference: expect.objectContaining({
+                    kind: 'CANONICAL_READY',
+                  }),
+                }),
+              }),
+            ]),
+          );
+
+          // Approval without the acknowledgment is refused; with the stored
+          // (screen-time) fingerprint it is accepted: both paths agree.
+          await expect(approve('r4b-flow')).rejects.toMatchObject({
+            response: { code: 'OVERLAP_ACKNOWLEDGMENT_REQUIRED' },
+          });
+          await approveWith('r4b-flow', 1, [stored!.fingerprint!]);
+          let current = await review.detail('r4b-flow');
+          expect(current.reviewStatus).toBe('approved');
+          expect(current.reviewEligibility.canCreateDraft).toBe(true);
+          expect(current.reviewEligibility.draftBlockers).toEqual([]);
+
+          // Unchanged re-screen: R4-C carries the approval forward, so it
+          // stays approved and DRAFT-eligible at the new revision.
+          await review.rescreenCandidate('r4b-flow', 2, actor);
+          current = await review.detail('r4b-flow');
+          expect(current.reviewStatus).toBe('approved');
+          expect(current.reviewRevision).toBe(3);
+          expect(current.reviewEligibility.canCreateDraft).toBe(true);
+          expect(current.reviewEligibility.draftBlockers).toEqual([]);
+
+          // The DRAFT is created once at the carried-forward revision.
+          const created = await review.createDraft('r4b-flow', 3, actor);
+          expect(created.alreadyCreated).toBe(false);
+          const again = await review.createDraft('r4b-flow', 3, actor);
+          expect(again).toMatchObject({
+            alreadyCreated: true,
+            contentItemId: created.contentItemId,
+          });
+          expect(
+            await database
+              .collection('engine_draft_publications')
+              .countDocuments({ candidateId: 'r4b-flow' }),
+          ).toBe(1);
+        });
+
+        it('blocks the DRAFT step when the referenced item changes after approval', async () => {
+          const { worldId, scopeId } =
+            await seedOverlapCandidate('r4b-blocked');
+          const item = await insertReady(worldId, scopeId);
+          const findings = await persistScreening(
+            'r4b-blocked',
+            telephoneVariant,
+          );
+          const fingerprint = findings.find((f) => f.fingerprint)!.fingerprint!;
+          await assessSupported('r4b-blocked');
+          await approveWith('r4b-blocked', 1, [fingerprint]);
+          await database.collection('content_items').updateOne(
+            { _id: item.insertedId },
+            {
+              $set: { 'answerPayload.options.1.label.ar': 'غوليلمو ماركوني' },
+            },
+          );
+          const blocked = await rejection(
+            review.createDraft('r4b-blocked', 2, actor),
+          );
+          expect(blocked.response.code).toBe('OVERLAP_ACKNOWLEDGMENT_REQUIRED');
+          expect(
+            await database
+              .collection('engine_draft_publications')
+              .countDocuments(),
+          ).toBe(0);
+          const fence = await database
+            .collection('engine_inventory_fences')
+            .findOne({ _id: scopeId });
+          // Approval committed its fence increment; the refused DRAFT rolled back.
+          expect(fence?.revision).toBe(1);
+        });
+
+        const seedLegacy = async (siblingDraft: Record<string, unknown>) => {
+          await seedOverlapCandidate('r4b-legacy');
+          const target = await row('r4b-legacy');
+          const { _id, ...copy } = target!;
+          expect(_id).toBeDefined();
+          await database.collection('engine_candidates').updateOne(
+            { candidateId: 'r4b-legacy' },
+            {
+              $set: {
+                ordinal: 1,
+                findings: [
+                  {
+                    code: 'POTENTIAL_OVERLAP_IN_BATCH',
+                    severity: 'warning',
+                    message:
+                      'another candidate in this batch potentially overlaps',
+                  },
+                ],
+              },
+            },
+          );
+          await database.collection('engine_candidates').insertOne({
+            ...copy,
+            candidateId: 'r4b-legacy-sibling',
+            ordinal: 0,
+            draft: siblingDraft,
+            findings: [],
+          });
+        };
+
+        it('reconstructs a legacy in-batch overlap into referenced, acknowledgeable evidence on re-screen', async () => {
+          await seedLegacy({
+            ...telephone,
+            metadata: { source: 'content-engine' },
+          });
+          await assessSupported('r4b-legacy');
+          await expect(approve('r4b-legacy')).rejects.toMatchObject({
+            response: { code: 'OVERLAP_EVIDENCE_UNVERIFIABLE' },
+          });
+          await review.rescreenCandidate('r4b-legacy', 1, actor);
+          const current = await row('r4b-legacy');
+          const rebuilt = current?.findings.filter(
+            (f: { code: string }) => f.code === 'POTENTIAL_OVERLAP_IN_BATCH',
+          );
+          expect(rebuilt).toHaveLength(1);
+          expect(rebuilt[0].fingerprint).toMatch(/^ovl1:[0-9a-f]{64}$/);
+          expect(rebuilt[0].evidence.reference).toMatchObject({
+            kind: 'BATCH_CANDIDATE',
+            id: 'r4b-legacy-sibling',
+          });
+          expect(
+            current?.reviewEvents.at(-1).details.legacyBatchOverlapRecovery,
+          ).toEqual({ legacy: 1, rebuilt: 1, resolved: 0, kept: 0 });
+          await assessSupported('r4b-legacy', 2);
+          await expect(approve('r4b-legacy', 3)).rejects.toMatchObject({
+            response: { code: 'OVERLAP_ACKNOWLEDGMENT_REQUIRED' },
+          });
+          await approveWith('r4b-legacy', 3, [rebuilt[0].fingerprint]);
+          expect((await row('r4b-legacy'))?.reviewStatus).toBe('approved');
+        });
+
+        it('keeps a legacy in-batch overlap fail-closed when a sibling cannot be compared', async () => {
+          await seedLegacy({
+            ...telephone,
+            metadata: { source: 'content-engine', familyKey: 'a' },
+          });
+          await database
+            .collection('engine_candidates')
+            .updateOne(
+              { candidateId: 'r4b-legacy-sibling' },
+              { $set: { authoring: { familyKey: 'b' } } },
+            );
+          await review.rescreenCandidate('r4b-legacy', 0, actor);
+          const current = await row('r4b-legacy');
+          const legacy = current?.findings.filter(
+            (f: { code: string }) => f.code === 'POTENTIAL_OVERLAP_IN_BATCH',
+          );
+          expect(legacy).toHaveLength(1);
+          expect(legacy[0].fingerprint).toBeUndefined();
+          expect(
+            current?.reviewEvents.at(-1).details.legacyBatchOverlapRecovery,
+          ).toEqual({ legacy: 1, rebuilt: 0, resolved: 0, kept: 1 });
+          await assessSupported('r4b-legacy', 1);
+          await expect(approve('r4b-legacy', 2)).rejects.toMatchObject({
+            response: { code: 'OVERLAP_EVIDENCE_UNVERIFIABLE' },
+          });
+        });
+      });
+
+      describe('R4-C approval carry-forward on unchanged re-screen', () => {
+        const approvedCandidate = async (
+          candidateId: string,
+          options: { overlap?: boolean } = {},
+        ) => {
+          const seeded = await seedOverlapCandidate(candidateId);
+          const item = options.overlap
+            ? await insertReady(seeded.worldId, seeded.scopeId)
+            : null;
+          await assessSupported(candidateId);
+          let fingerprints: string[] = [];
+          if (options.overlap) {
+            const missing = await rejection(approve(candidateId));
+            fingerprints = missing.response.details.overlaps.map(
+              (o: { fingerprint: string }) => o.fingerprint,
+            );
+          }
+          await approveWith(candidateId, 1, fingerprints);
+          return { ...seeded, item, fingerprints };
+        };
+        const events = async (candidateId: string) =>
+          ((await row(candidateId))?.reviewEvents ?? []) as Array<{
+            action: string;
+            revision: number;
+            actorEmail: string;
+            details: any;
+          }>;
+        const fenceRevision = async (scopeId: Types.ObjectId) =>
+          (
+            await database
+              .collection('engine_inventory_fences')
+              .findOne({ _id: scopeId })
+          )?.revision;
+        const expectRevoked = async (candidateId: string, reason: string) => {
+          const current = await row(candidateId);
+          expect(current?.reviewStatus).toBe('pending');
+          expect(current?.reviewDecision).toBeNull();
+          const last = current?.reviewEvents.at(-1);
+          expect(last.action).toBe('edited');
+          expect(last.details.approvalRevoked.reasons).toContain(reason);
+          expect(
+            current?.reviewEvents.some(
+              (e: { action: string }) =>
+                e.action === 'approval_carried_forward',
+            ),
+          ).toBe(false);
+          await expect(
+            review.createDraft(candidateId, current!.reviewRevision, actor),
+          ).rejects.toThrow();
+          return current;
+        };
+
+        it('1-3. carries an unchanged approval forward, keeps it DRAFT-eligible, and references the original human approval', async () => {
+          const { scopeId, fingerprints } = await approvedCandidate(
+            'r4c-keep',
+            {
+              overlap: true,
+            },
+          );
+          expect(fingerprints).toHaveLength(1);
+          const before = await row('r4c-keep');
+          expect(before?.reviewDecision.approvedEvidence.contentHash).toMatch(
+            /^[0-9a-f]{64}$/,
+          );
+
+          await review.rescreenCandidate('r4c-keep', 2, actor);
+          const after = await row('r4c-keep');
+          expect(after?.reviewStatus).toBe('approved');
+          expect(after?.reviewRevision).toBe(3);
+          // The human decision is untouched: no new or rewritten human approval.
+          expect(after?.reviewDecision).toEqual(before?.reviewDecision);
+          const all = await events('r4c-keep');
+          expect(all.filter((e) => e.action === 'approved')).toHaveLength(1);
+          const carried = all.at(-1)!;
+          expect(carried).toMatchObject({
+            action: 'approval_carried_forward',
+            revision: 3,
+            actorEmail: 'reviewer@example.test',
+          });
+          expect(carried.details).toMatchObject({
+            fromRevision: 2,
+            toRevision: 3,
+            originalApproval: {
+              revision: 2,
+              reviewerId: 'admin-reviewer',
+              reviewerEmail: 'reviewer@example.test',
+            },
+            verifiedEvidence: {
+              contentHash: before?.reviewDecision.approvedEvidence.contentHash,
+              target: before?.reviewDecision.approvedEvidence.target,
+              inventoryStatus: 'COMPLETE',
+              overlapFingerprints: fingerprints,
+            },
+          });
+          expect(carried.details.approvalRevoked).toBeUndefined();
+          expect(await fenceRevision(scopeId)).toBe(2);
+
+          const detail = await review.detail('r4c-keep');
+          expect(detail.reviewEligibility.canCreateDraft).toBe(true);
+          const created = await review.createDraft('r4c-keep', 3, actor);
+          expect(created.alreadyCreated).toBe(false);
+          const publication = await database
+            .collection('engine_draft_publications')
+            .findOne({ candidateId: 'r4c-keep' });
+          expect(publication?.reviewRevision).toBe(3);
+          // The published, carried-forward candidate keeps the inventory healthy.
+          const inventory = await screen.loadHistoricalScope(
+            { worldKey: 'video-games', scopeKey: 'overwatch' },
+            screen.createSession({
+              worldKey: 'video-games',
+              scopeKey: 'overwatch',
+            }),
+          );
+          expect(inventory.status).toBe('COMPLETE');
+        });
+
+        it('4. keeps provenance auditable across repeated unchanged re-screens', async () => {
+          await approvedCandidate('r4c-repeat');
+          for (const revision of [2, 3, 4]) {
+            await review.rescreenCandidate('r4c-repeat', revision, actor);
+          }
+          const all = await events('r4c-repeat');
+          const carried = all.filter(
+            (e) => e.action === 'approval_carried_forward',
+          );
+          expect(
+            carried.map((e) => [e.details.fromRevision, e.revision]),
+          ).toEqual([
+            [2, 3],
+            [3, 4],
+            [4, 5],
+          ]);
+          expect(
+            carried.every((e) => e.details.originalApproval.revision === 2),
+          ).toBe(true);
+          const current = await row('r4c-repeat');
+          expect(current?.reviewRevision).toBe(5);
+          expect(current?.reviewDecision.revision).toBe(2);
+          expect(
+            (await review.createDraft('r4c-repeat', 5, actor)).alreadyCreated,
+          ).toBe(false);
+        });
+
+        it('5. does not carry an approval forward when the content changed', async () => {
+          await approvedCandidate('r4c-content');
+          await database
+            .collection('engine_candidates')
+            .updateOne(
+              { candidateId: 'r4c-content' },
+              { $set: { 'draft.prompt.ar': 'من الذي اخترع الهاتف أولاً؟' } },
+            );
+          await review.rescreenCandidate('r4c-content', 2, actor);
+          await expectRevoked('r4c-content', 'CONTENT_CHANGED');
+        });
+
+        it('6. does not carry an approval forward when identity metadata changed', async () => {
+          await approvedCandidate('r4c-metadata');
+          await database
+            .collection('engine_candidates')
+            .updateOne(
+              { candidateId: 'r4c-metadata' },
+              { $set: { 'draft.metadata.entityId': 'inventor-bell' } },
+            );
+          await review.rescreenCandidate('r4c-metadata', 2, actor);
+          await expectRevoked('r4c-metadata', 'CONTENT_CHANGED');
+        });
+
+        it('7. does not carry an approval forward when a new overlap appears', async () => {
+          const { worldId, scopeId } =
+            await approvedCandidate('r4c-new-overlap');
+          await insertReady(worldId, scopeId);
+          await review.rescreenCandidate('r4c-new-overlap', 2, actor);
+          const current = await expectRevoked(
+            'r4c-new-overlap',
+            'OVERLAP_EVIDENCE_UNACKNOWLEDGED',
+          );
+          expect(
+            current?.findings.some(
+              (f: { code: string; fingerprint?: string }) =>
+                f.code === 'POTENTIAL_OVERLAP_HISTORICAL_CONTENT' &&
+                Boolean(f.fingerprint),
+            ),
+          ).toBe(true);
+        });
+
+        it('8. does not carry an approval forward when an acknowledged overlap fingerprint changed', async () => {
+          const { item, fingerprints } = await approvedCandidate(
+            'r4c-changed-overlap',
+            { overlap: true },
+          );
+          await database.collection('content_items').updateOne(
+            { _id: item!.insertedId },
+            {
+              $set: { 'answerPayload.options.1.label.ar': 'غوليلمو ماركوني' },
+            },
+          );
+          await review.rescreenCandidate('r4c-changed-overlap', 2, actor);
+          const current = await expectRevoked(
+            'r4c-changed-overlap',
+            'OVERLAP_EVIDENCE_CHANGED',
+          );
+          expect(
+            current?.reviewEvents.at(-1).details.approvalRevoked
+              .withdrawnFingerprints,
+          ).toEqual(fingerprints);
+        });
+
+        it('9. does not carry an approval forward over a proven duplicate', async () => {
+          const { worldId, scopeId } = await approvedCandidate('r4c-duplicate');
+          await insertReady(worldId, scopeId, telephoneVariant);
+          await review.rescreenCandidate('r4c-duplicate', 2, actor);
+          const current = await expectRevoked(
+            'r4c-duplicate',
+            'PROVEN_DUPLICATE',
+          );
+          expect(current?.status).toBe('screened_reject');
+        });
+
+        it('10. does not carry an approval forward when historical inventory is incomplete', async () => {
+          await approvedCandidate('r4c-incomplete');
+          const spy = jest
+            .spyOn(screen, 'loadHistoricalScope')
+            .mockImplementationOnce(async (_input, session) => {
+              const result = {
+                status: 'UNAVAILABLE' as const,
+                recordCount: 0,
+                isTruncated: false,
+                error: 'simulated inventory outage',
+              };
+              if (session) {
+                session.historicalScopeStatus = result;
+                session.historicalRecords = [];
+              }
+              return result;
+            });
+          try {
+            await review.rescreenCandidate('r4c-incomplete', 2, actor);
+          } finally {
+            spy.mockRestore();
+          }
+          const current = await expectRevoked(
+            'r4c-incomplete',
+            'HISTORICAL_INVENTORY_INCOMPLETE',
+          );
+          // The actionable evidence is preserved on the candidate.
+          expect(
+            current?.findings.some(
+              (f: { code: string }) =>
+                f.code === 'HISTORICAL_INVENTORY_UNAVAILABLE',
+            ),
+          ).toBe(true);
+        });
+
+        it('11. fails closed on missing or untrusted approval provenance', async () => {
+          // (a) the human approval event is missing
+          await approvedCandidate('r4c-untrusted');
+          await database
+            .collection('engine_candidates')
+            .updateOne(
+              { candidateId: 'r4c-untrusted' },
+              { $pull: { reviewEvents: { action: 'approved' } } as never },
+            );
+          await review.rescreenCandidate('r4c-untrusted', 2, actor);
+          await expectRevoked(
+            'r4c-untrusted',
+            'APPROVAL_PROVENANCE_UNVERIFIABLE',
+          );
+        });
+
+        it('11b. fails closed on an approval that recorded no verified evidence', async () => {
+          await approvedCandidate('r4c-legacy-approval');
+          await database
+            .collection('engine_candidates')
+            .updateOne(
+              { candidateId: 'r4c-legacy-approval' },
+              { $unset: { 'reviewDecision.approvedEvidence': '' } },
+            );
+          await review.rescreenCandidate('r4c-legacy-approval', 2, actor);
+          await expectRevoked(
+            'r4c-legacy-approval',
+            'APPROVAL_EVIDENCE_UNRECORDED',
+          );
+        });
+
+        it('11c. refuses a DRAFT on a forged or broken carry-forward chain', async () => {
+          await approvedCandidate('r4c-forged');
+          await database.collection('engine_candidates').updateOne(
+            { candidateId: 'r4c-forged' },
+            {
+              $inc: { reviewRevision: 1 },
+              $push: {
+                reviewEvents: {
+                  action: 'approval_carried_forward',
+                  actorId: 'someone',
+                  actorEmail: 'someone@example.test',
+                  occurredAt: new Date(),
+                  revision: 3,
+                  reasonCode: null,
+                  explanation: 'forged',
+                  details: {
+                    fromRevision: 2,
+                    toRevision: 3,
+                    originalApproval: {
+                      revision: 2,
+                      reviewerId: 'someone-else',
+                      reviewerEmail: 'reviewer@example.test',
+                    },
+                  },
+                },
+              } as never,
+            },
+          );
+          await expect(
+            review.createDraft('r4c-forged', 3, actor),
+          ).rejects.toThrow(
+            'Candidate approval decision is stale for the current revision',
+          );
+          expect(
+            (await review.detail('r4c-forged')).reviewEligibility
+              .canCreateDraft,
+          ).toBe(false);
+          expect(
+            await database
+              .collection('engine_draft_publications')
+              .countDocuments(),
+          ).toBe(0);
+        });
+
+        const holdBothFenceWrites = () => {
+          const fenceModel = database.model('EngineInventoryFence');
+          const realUpdate = fenceModel.updateOne.bind(fenceModel);
+          let arrivals = 0;
+          let release!: () => void;
+          const barrier = new Promise<void>((resolve) => {
+            release = resolve;
+          });
+          const spy = jest.spyOn(fenceModel, 'updateOne').mockImplementation(((
+            ...args: any[]
+          ) => {
+            const query = (realUpdate as any)(...args);
+            if (args[2]?.session) {
+              const execute = query.exec.bind(query);
+              query.exec = async () => {
+                if (++arrivals <= 2) {
+                  if (arrivals === 2) release();
+                  await barrier;
+                }
+                return execute();
+              };
+            }
+            return query;
+          }) as any);
+          const timer = setTimeout(() => release(), 5000);
+          return {
+            arrivals: () => arrivals,
+            restore: () => {
+              clearTimeout(timer);
+              release();
+              spy.mockRestore();
+            },
+          };
+        };
+
+        it('12. serializes a concurrent re-screen and DRAFT creation at the Scope fence', async () => {
+          await approvedCandidate('r4c-race-draft');
+          const hold = holdBothFenceWrites();
+          let outcomes: PromiseSettledResult<unknown>[];
+          try {
+            outcomes = await Promise.allSettled([
+              review.rescreenCandidate('r4c-race-draft', 2, actor),
+              review.createDraft('r4c-race-draft', 2, actor),
+            ]);
+            expect(hold.arrivals()).toBeGreaterThanOrEqual(3);
+          } finally {
+            hold.restore();
+          }
+          expect(outcomes.filter((o) => o.status === 'fulfilled')).toHaveLength(
+            1,
+          );
+          const current = await row('r4c-race-draft');
+          const all = current?.reviewEvents as Array<{
+            action: string;
+            revision: number;
+          }>;
+          const publications = await database
+            .collection('engine_draft_publications')
+            .find({ candidateId: 'r4c-race-draft' })
+            .toArray();
+          const carried = all.filter(
+            (e) => e.action === 'approval_carried_forward',
+          );
+          const drafted = all.filter((e) => e.action === 'draft_created');
+          // Exactly one side committed; never both, never a half-state.
+          expect(carried.length + drafted.length).toBe(1);
+          expect(publications).toHaveLength(drafted.length);
+          expect(current?.reviewRevision).toBe(3);
+          expect(new Set(all.map((e) => e.revision)).size).toBe(all.length);
+          if (drafted.length) {
+            expect(outcomes[0].status).toBe('rejected');
+            expect(current?.publishedContentItemId).toBe(
+              publications[0].contentItemId,
+            );
+          } else {
+            expect(outcomes[1].status).toBe('rejected');
+            expect(current?.publishedContentItemId).toBeNull();
+            expect(current?.reviewStatus).toBe('approved');
+          }
+        });
+
+        it('13. refuses a re-screen that races a concurrent candidate modification', async () => {
+          const { scopeId } = await approvedCandidate('r4c-race-edit');
+          const fenceModel = database.model('EngineInventoryFence');
+          const realUpdate = fenceModel.updateOne.bind(fenceModel);
+          let reached!: () => void;
+          const entered = new Promise<void>((resolve) => {
+            reached = resolve;
+          });
+          let release!: () => void;
+          const held = new Promise<void>((resolve) => {
+            release = resolve;
+          });
+          const spy = jest.spyOn(fenceModel, 'updateOne').mockImplementation(((
+            ...args: any[]
+          ) => {
+            const query = (realUpdate as any)(...args);
+            if (args[2]?.session) {
+              const execute = query.exec.bind(query);
+              query.exec = async () => {
+                reached();
+                await held;
+                return execute();
+              };
+            }
+            return query;
+          }) as any);
+          const rescreen = review
+            .rescreenCandidate('r4c-race-edit', 2, actor)
+            .then(
+              () => null,
+              (error) => error,
+            );
+          try {
+            await entered;
+            // A human re-assessment commits while the re-screen is in flight.
+            await assessSupported('r4c-race-edit', 2);
+            release();
+            const error = await rescreen;
+            expect(error?.response).toMatchObject({
+              expectedRevision: 2,
+              currentRevision: 3,
+            });
+          } finally {
+            release();
+            spy.mockRestore();
+            await rescreen;
+          }
+          const current = await row('r4c-race-edit');
+          expect(current?.reviewRevision).toBe(3);
+          expect(current?.reviewStatus).toBe('pending');
+          expect(current?.reviewEvents.at(-1).action).toBe('assessed');
+          expect(
+            current?.reviewEvents.some(
+              (e: { action: string }) =>
+                e.action === 'approval_carried_forward',
+            ),
+          ).toBe(false);
+          // The aborted re-screen's fence increment rolled back.
+          expect(await fenceRevision(scopeId)).toBe(1);
+        });
+
+        it('14. leaves no partial carry-forward when the write fails', async () => {
+          const { scopeId } = await approvedCandidate('r4c-rollback');
+          const model = database.model('EngineCandidateDocument');
+          const spy = jest
+            .spyOn(model, 'findOneAndUpdate')
+            .mockImplementationOnce((() => ({
+              lean: () => ({
+                exec: async () => {
+                  throw new Error('simulated carry-forward write failure');
+                },
+              }),
+            })) as any);
+          try {
+            await expect(
+              review.rescreenCandidate('r4c-rollback', 2, actor),
+            ).rejects.toThrow('simulated carry-forward write failure');
+          } finally {
+            spy.mockRestore();
+          }
+          const current = await row('r4c-rollback');
+          expect(current?.reviewRevision).toBe(2);
+          expect(current?.reviewStatus).toBe('approved');
+          expect(current?.reviewEvents.at(-1).action).toBe('approved');
+          expect(await fenceRevision(scopeId)).toBe(1);
+        });
+
+        it('15. retries a transient failure without duplicating the carry-forward event', async () => {
+          const { scopeId } = await approvedCandidate('r4c-retry');
+          const transient = new mongo.MongoServerError({
+            message: 'simulated transient carry-forward write',
+          });
+          transient.addErrorLabel('TransientTransactionError');
+          const model = database.model('EngineCandidateDocument');
+          const spy = jest
+            .spyOn(model, 'findOneAndUpdate')
+            .mockImplementationOnce((() => ({
+              lean: () => ({
+                exec: async () => {
+                  throw transient;
+                },
+              }),
+            })) as any);
+          try {
+            await review.rescreenCandidate('r4c-retry', 2, actor);
+            expect(spy).toHaveBeenCalledTimes(2);
+          } finally {
+            spy.mockRestore();
+          }
+          const all = await events('r4c-retry');
+          expect(
+            all.filter((e) => e.action === 'approval_carried_forward'),
+          ).toHaveLength(1);
+          expect((await row('r4c-retry'))?.reviewRevision).toBe(3);
+          expect(await fenceRevision(scopeId)).toBe(2);
+        });
+      });
+    });
+
+    it('serializes concurrent duplicate approvals at the Scope fence', async () => {
+      const { scopeId } = await seedReviewCandidate('fence-race-a');
+      const original = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'fence-race-a' });
+      const { _id, ...copy } = original!;
+      expect(_id).toBeDefined();
+      await database
+        .collection('engine_candidates')
+        .insertOne({ ...copy, candidateId: 'fence-race-b', ordinal: 1 });
+      for (const id of ['fence-race-a', 'fence-race-b']) {
+        const screening = screen.createSession({
+          worldKey: 'video-games',
+          scopeKey: 'overwatch',
+        });
+        const inventory = await screen.loadHistoricalScope(
+          { worldKey: 'video-games', scopeKey: 'overwatch' },
+          screening,
+        );
+        expect(inventory.status).toBe('COMPLETE');
+        const result = screen.screen(copy.draft, null, {
+          candidateId: id,
+          worldKey: 'video-games',
+          scopeKey: 'overwatch',
+          session: screening,
+        });
+        expect(
+          result.findings.some(
+            (finding) =>
+              finding.code.startsWith('DUPLICATE_HISTORICAL') ||
+              finding.code === 'DUPLICATE_APPROVED_CANDIDATE',
+          ),
+        ).toBe(false);
+        await assessSupported(id);
+      }
+      const fenceModel = database.model('EngineInventoryFence');
+      const realUpdate = fenceModel.updateOne.bind(fenceModel);
+      let arrivals = 0;
+      let initializationArrivals = 0;
+      let releaseInitialization!: () => void;
+      const initializationBarrier = new Promise<void>((resolve) => {
+        releaseInitialization = resolve;
+      });
+      let release!: () => void;
+      const barrier = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const spy = jest.spyOn(fenceModel, 'updateOne').mockImplementation(((
+        ...args: any[]
+      ) => {
+        const query = (realUpdate as any)(...args);
+        if (args[2]?.upsert) {
+          const execute = query.exec.bind(query);
+          query.exec = async () => {
+            if (++initializationArrivals === 2) releaseInitialization();
+            await initializationBarrier;
+            return execute();
+          };
+        } else if (args[2]?.session) {
+          const execute = query.exec.bind(query);
+          query.exec = async () => {
+            if (++arrivals <= 2) {
+              if (arrivals === 2) release();
+              await barrier;
+            }
+            return execute();
+          };
+        }
+        return query;
+      }) as any);
+      const timer = setTimeout(() => {
+        releaseInitialization();
+        release();
+      }, 5000);
+      try {
+        const outcomes = await Promise.allSettled([
+          approve('fence-race-a'),
+          approve('fence-race-b'),
+        ]);
+        expect(initializationArrivals).toBe(2);
+        expect(arrivals).toBeGreaterThanOrEqual(3);
+        expect(outcomes.filter((o) => o.status === 'fulfilled')).toHaveLength(
+          1,
+        );
+        const rejected = outcomes.find(
+          (o) => o.status === 'rejected',
+        ) as PromiseRejectedResult;
+        expect(String(rejected.reason)).toContain(
+          'Historical duplicate screening changed',
+        );
+        const rows = await database
+          .collection('engine_candidates')
+          .find({ candidateId: { $in: ['fence-race-a', 'fence-race-b'] } })
+          .toArray();
+        expect(
+          rows.filter((row) => row.reviewStatus === 'approved'),
+        ).toHaveLength(1);
+        expect(
+          rows.filter((row) => row.reviewStatus === 'pending'),
+        ).toHaveLength(1);
+        expect(
+          rows.flatMap((row) =>
+            row.reviewEvents.filter(
+              (event: { action: string }) => event.action === 'approved',
+            ),
+          ),
+        ).toHaveLength(1);
+        expect(
+          rows.filter((row) => row.reviewStatus === 'pending')[0]
+            .reviewRevision,
+        ).toBe(1);
+        const fence = await database
+          .collection('engine_inventory_fences')
+          .findOne({ _id: scopeId });
+        expect(fence?.revision).toBe(1);
+      } finally {
+        clearTimeout(timer);
+        releaseInitialization();
+        release();
+        spy.mockRestore();
+      }
+    });
+
+    it('allows a different Scope to approve while another Scope holds its fence', async () => {
+      const { worldId, jobId } = await seedReviewCandidate('fence-other-a');
+      await database.collection('scopes').insertOne({
+        _id: new Types.ObjectId(),
+        worldId,
+        name: 'FIFA',
+        slug: 'fifa',
+        status: 'draft',
+        excludedChallengeTypeIds: [],
+      });
+      const job = await database
+        .collection('engine_jobs')
+        .findOne({ _id: new Types.ObjectId(jobId) });
+      const otherJobId = new Types.ObjectId();
+      await database.collection('engine_jobs').insertOne({
+        ...job!,
+        _id: otherJobId,
+        requestHash: 'other-scope-job',
+        scopeKey: 'fifa',
+      });
+      const candidate = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'fence-other-a' });
+      const { _id, ...copy } = candidate!;
+      expect(_id).toBeDefined();
+      await database.collection('engine_candidates').insertOne({
+        ...copy,
+        candidateId: 'fence-other-b',
+        jobId: String(otherJobId),
+      });
+      await assessSupported('fence-other-a');
+      await assessSupported('fence-other-b');
+      let entered!: () => void;
+      let release!: () => void;
+      const reached = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const originalLoad = screen.loadHistoricalScope.bind(screen);
+      const spy = jest
+        .spyOn(screen, 'loadHistoricalScope')
+        .mockImplementation(async (params, session) => {
+          if (params.mongoSession && params.scopeKey === 'overwatch') {
+            entered();
+            await held;
+          }
+          return originalLoad(params, session);
+        });
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error('other Scope did not progress')),
+          5000,
+        );
+      });
+      const first = approve('fence-other-a');
+      try {
+        await Promise.race([reached, timeout]);
+        const other = await Promise.race([approve('fence-other-b'), timeout]);
+        expect(other.reviewStatus).toBe('approved');
+      } finally {
+        release();
+        if (timer) clearTimeout(timer);
+        spy.mockRestore();
+      }
+      expect((await first).reviewStatus).toBe('approved');
+    });
+
+    it('rejects an approval if fresh inventory contains an approved duplicate', async () => {
+      const { scopeId } = await seedReviewCandidate('fresh-check-target');
+      await assessSupported('fresh-check-target');
+      const current = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'fresh-check-target' });
+      const { _id, ...duplicate } = current!;
+      expect(_id).toBeDefined();
+      await database.collection('engine_candidates').insertOne({
+        ...duplicate,
+        candidateId: 'fresh-check-approved',
+        ordinal: 1,
+        reviewStatus: 'approved',
+        reviewRevision: 2,
+        reviewDecision: {
+          decision: 'approved',
+          reviewerId: 'admin',
+          reviewerEmail: 'admin@example.test',
+          revision: 2,
+        },
+        reviewEvents: [
+          {
+            action: 'approved',
+            actorId: 'admin',
+            actorEmail: 'admin@example.test',
+            revision: 2,
+          },
+        ],
+      });
+      await expect(approve('fresh-check-target')).rejects.toThrow(
+        'Historical duplicate screening changed',
+      );
+      const after = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'fresh-check-target' });
+      expect(after?.reviewStatus).toBe('pending');
+      expect(after?.reviewRevision).toBe(1);
+      expect(
+        after?.reviewEvents.filter(
+          (event: { action: string }) => event.action === 'approved',
+        ),
+      ).toHaveLength(0);
+      const fence = await database
+        .collection('engine_inventory_fences')
+        .findOne({ _id: scopeId });
+      expect(fence?.revision).toBe(0);
+    });
+
+    it('retries a transient transaction failure without duplicating approval events', async () => {
+      await seedReviewCandidate('retry-check-target');
+      await assessSupported('retry-check-target');
+      const transient = new mongo.MongoServerError({
+        message: 'simulated transient inventory read',
+      });
+      transient.addErrorLabel('TransientTransactionError');
+      const spy = jest
+        .spyOn(screen, 'loadHistoricalScope')
+        .mockImplementationOnce(async () => {
+          throw transient;
+        });
+      try {
+        const approved = await approve('retry-check-target');
+        expect(approved.reviewStatus).toBe('approved');
+        expect(
+          approved.reviewEvents.filter(
+            (event: { action: string }) => event.action === 'approved',
+          ),
+        ).toHaveLength(1);
+        expect(spy).toHaveBeenCalledTimes(2);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('aborts approval when the historical target is ambiguous', async () => {
+      await seedReviewCandidate('ambiguous-check-target');
+      await assessSupported('ambiguous-check-target');
+      await database.collection('worlds').insertOne({
+        name: 'عالم الالعاب الالكترونية',
+        slug: 'another-world',
+        status: 'draft',
+      });
+      await expect(approve('ambiguous-check-target')).rejects.toThrow(
+        'ambiguous',
+      );
+      const after = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'ambiguous-check-target' });
+      expect(after?.reviewStatus).toBe('pending');
+      expect(after?.reviewRevision).toBe(1);
+    });
+
+    it('rolls back the fence and approval when inventory is unavailable', async () => {
+      const { scopeId } = await seedReviewCandidate(
+        'inventory-unavailable-target',
+      );
+      await assessSupported('inventory-unavailable-target');
+      const spy = jest
+        .spyOn(screen, 'loadHistoricalScope')
+        .mockResolvedValueOnce({
+          status: 'UNAVAILABLE',
+          recordCount: 0,
+          canonicalCount: 0,
+          candidateCount: 0,
+          isTruncated: false,
+        });
+      try {
+        await expect(approve('inventory-unavailable-target')).rejects.toThrow(
+          'Historical inventory is incomplete',
+        );
+      } finally {
+        spy.mockRestore();
+      }
+      const after = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'inventory-unavailable-target' });
+      const fence = await database
+        .collection('engine_inventory_fences')
+        .findOne({ _id: scopeId });
+      expect(after?.reviewStatus).toBe('pending');
+      expect(after?.reviewRevision).toBe(1);
+      expect(fence?.revision).toBe(0);
+    });
+
     it('records assessment, approval, reviewer identity and audit events', async () => {
       await seedReviewCandidate('review-approved');
       await assessSupported('review-approved');
@@ -1662,6 +3733,144 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       expect(
         approved.reviewEvents.map((event: { action: string }) => event.action),
       ).toEqual(['assessed', 'approved']);
+    });
+
+    it('rejects draft publication when a new duplicate appears after approval', async () => {
+      const { worldId, scopeId } = await seedReviewCandidate(
+        'draft-fresh-duplicate',
+      );
+      await assessSupported('draft-fresh-duplicate');
+      await approve('draft-fresh-duplicate');
+      const candidate = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'draft-fresh-duplicate' });
+      await database
+        .collection('content_items')
+        .insertOne({ worldId, scopeId, status: 'ready', ...candidate!.draft });
+      await expect(
+        review.createDraft('draft-fresh-duplicate', 2, actor),
+      ).rejects.toThrow('Historical duplicate screening changed');
+      const after = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'draft-fresh-duplicate' });
+      expect(after?.publishedContentItemId).toBeNull();
+      expect(after?.reviewRevision).toBe(2);
+      expect(
+        await database
+          .collection('engine_draft_publications')
+          .countDocuments({ candidateId: 'draft-fresh-duplicate' }),
+      ).toBe(0);
+      expect(
+        await database.collection('content_items').countDocuments({ scopeId }),
+      ).toBe(1);
+      const fence = await database
+        .collection('engine_inventory_fences')
+        .findOne({ _id: scopeId });
+      expect(fence?.revision).toBe(1);
+    });
+
+    it('aborts draft publication when historical inventory is incomplete', async () => {
+      const { scopeId } = await seedReviewCandidate(
+        'draft-inventory-unavailable',
+      );
+      await assessSupported('draft-inventory-unavailable');
+      await approve('draft-inventory-unavailable');
+      const spy = jest
+        .spyOn(screen, 'loadHistoricalScope')
+        .mockResolvedValueOnce({
+          status: 'UNAVAILABLE',
+          recordCount: 0,
+          canonicalCount: 0,
+          candidateCount: 0,
+          isTruncated: false,
+        });
+      try {
+        await expect(
+          review.createDraft('draft-inventory-unavailable', 2, actor),
+        ).rejects.toThrow('Historical inventory is incomplete');
+      } finally {
+        spy.mockRestore();
+      }
+      expect(
+        await database
+          .collection('engine_draft_publications')
+          .countDocuments({ candidateId: 'draft-inventory-unavailable' }),
+      ).toBe(0);
+      expect(
+        await database.collection('content_items').countDocuments({ scopeId }),
+      ).toBe(0);
+      expect(
+        (
+          await database
+            .collection('engine_inventory_fences')
+            .findOne({ _id: scopeId })
+        )?.revision,
+      ).toBe(1);
+    });
+
+    it('refuses draft publication for approval without trusted provenance', async () => {
+      await seedReviewCandidate('draft-untrusted');
+      await assessSupported('draft-untrusted');
+      await approve('draft-untrusted');
+      await database
+        .collection('engine_candidates')
+        .updateOne(
+          { candidateId: 'draft-untrusted' },
+          { $set: { reviewEvents: [] } },
+        );
+      await expect(
+        review.createDraft('draft-untrusted', 2, actor),
+      ).rejects.toThrow('trusted candidate approval provenance');
+      expect(
+        await database
+          .collection('engine_draft_publications')
+          .countDocuments({ candidateId: 'draft-untrusted' }),
+      ).toBe(0);
+    });
+
+    it('retries transient draft inventory failures without duplicating publication', async () => {
+      const { scopeId } = await seedReviewCandidate('draft-retry-fence');
+      await assessSupported('draft-retry-fence');
+      await approve('draft-retry-fence');
+      const transient = new mongo.MongoServerError({
+        message: 'simulated transient draft inventory read',
+      });
+      transient.addErrorLabel('TransientTransactionError');
+      const spy = jest
+        .spyOn(screen, 'loadHistoricalScope')
+        .mockImplementationOnce(async () => {
+          throw transient;
+        });
+      try {
+        const result = await review.createDraft('draft-retry-fence', 2, actor);
+        expect(result.status).toBe('draft');
+        expect(spy).toHaveBeenCalledTimes(2);
+      } finally {
+        spy.mockRestore();
+      }
+      expect(
+        await database
+          .collection('engine_draft_publications')
+          .countDocuments({ candidateId: 'draft-retry-fence' }),
+      ).toBe(1);
+      expect(
+        await database.collection('content_items').countDocuments({ scopeId }),
+      ).toBe(1);
+      const after = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'draft-retry-fence' });
+      expect(
+        after?.reviewEvents.filter(
+          (event: { action: string }) => event.action === 'draft_created',
+        ),
+      ).toHaveLength(1);
+      expect(
+        (
+          await database
+            .collection('engine_inventory_fences')
+            .findOne({ _id: scopeId })
+        )?.revision,
+      ).toBe(2);
     });
 
     it('persists review decisions and audit fields in MongoDB', async () => {
@@ -1942,10 +4151,43 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       await seedReviewCandidate('review-publish-once');
       await assessSupported('review-publish-once');
       await approve('review-publish-once');
-      const [first, concurrent] = await Promise.all([
-        review.createDraft('review-publish-once', 2, actor),
-        review.createDraft('review-publish-once', 2, actor),
-      ]);
+      const fence = database.model('EngineInventoryFence');
+      const update = fence.updateOne.bind(fence);
+      let arrivals = 0;
+      let release!: () => void;
+      const barrier = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const spy = jest.spyOn(fence, 'updateOne').mockImplementation(((
+        ...args: any[]
+      ) => {
+        const query = (update as any)(...args);
+        if (args[2]?.session) {
+          const execute = query.exec.bind(query);
+          query.exec = async () => {
+            if (++arrivals <= 2) {
+              if (arrivals === 2) release();
+              await barrier;
+            }
+            return execute();
+          };
+        }
+        return query;
+      }) as any);
+      const timer = setTimeout(release, 5000);
+      let first: Awaited<ReturnType<typeof review.createDraft>>;
+      let concurrent: Awaited<ReturnType<typeof review.createDraft>>;
+      try {
+        [first, concurrent] = await Promise.all([
+          review.createDraft('review-publish-once', 2, actor),
+          review.createDraft('review-publish-once', 2, actor),
+        ]);
+        expect(arrivals).toBeGreaterThanOrEqual(2);
+      } finally {
+        clearTimeout(timer);
+        release();
+        spy.mockRestore();
+      }
       expect(concurrent.contentItemId).toBe(first.contentItemId);
       const retried = await review.createDraft('review-publish-once', 2, actor);
       expect(retried.contentItemId).toBe(first.contentItemId);
@@ -1960,6 +4202,14 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
           candidateId: 'review-publish-once',
         }),
       ).toBe(1);
+      const candidate = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'review-publish-once' });
+      expect(
+        candidate?.reviewEvents.filter(
+          (event: { action: string }) => event.action === 'draft_created',
+        ),
+      ).toHaveLength(1);
     });
 
     it('rejects a second publication linkage for the same ContentItem', async () => {
@@ -2004,7 +4254,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
     });
 
     it('rolls back a failed draft transaction and recovers on retry', async () => {
-      await seedReviewCandidate('review-crash');
+      const { scopeId } = await seedReviewCandidate('review-crash');
       await assessSupported('review-crash');
       await approve('review-crash');
       const originalCreate = contentItems.create.bind(contentItems);
@@ -2022,6 +4272,24 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       expect(await database.collection('content_items').countDocuments()).toBe(
         0,
       );
+      const unchanged = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'review-crash' });
+      expect(unchanged?.reviewStatus).toBe('approved');
+      expect(unchanged?.reviewRevision).toBe(2);
+      expect(unchanged?.publishedContentItemId).toBeNull();
+      expect(
+        unchanged?.reviewEvents.filter(
+          (event: { action: string }) => event.action === 'draft_created',
+        ),
+      ).toHaveLength(0);
+      expect(
+        (
+          await database
+            .collection('engine_inventory_fences')
+            .findOne({ _id: scopeId })
+        )?.revision,
+      ).toBe(1);
       create.mockRestore();
       await expect(
         review.createDraft('review-crash', 2, actor),
@@ -2031,30 +4299,341 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
       });
     });
 
-    it('refuses canonical creation when compatibility is invalid', async () => {
-      await seedReviewCandidate('review-invalid');
-      await database.collection('engine_candidates').updateOne(
-        { candidateId: 'review-invalid' },
-        {
-          $set: {
-            reviewStatus: 'approved',
-            reviewRevision: 2,
-            draft: {
-              prompt: { ar: 'سؤال غير متوافق' },
-              answerPayload: { mode: 'match', acceptedAnswers: ['إجابة'] },
-            },
-          },
-        },
-      );
+    it('refuses canonical creation when approved content was mutated after approval', async () => {
+      await seedReviewCandidate('review-mutated');
+      await assessSupported('review-mutated');
+      await approve('review-mutated');
+      // Rewrite the approved draft directly, keeping approval state intact so
+      // only the R4-C approved-content binding can refuse it.
+      await database
+        .collection('engine_candidates')
+        .updateOne(
+          { candidateId: 'review-mutated' },
+          { $set: { 'draft.prompt': { ar: 'سؤال مختلف بعد الاعتماد؟' } } },
+        );
       await expect(
-        review.createDraft('review-invalid', 2, actor),
-      ).rejects.toThrow(/incompatible|pattern|Candidate/);
+        review.createDraft('review-mutated', 2, actor),
+      ).rejects.toMatchObject({
+        status: 409,
+        response: { code: 'APPROVED_CONTENT_CHANGED' },
+      });
       expect(await database.collection('content_items').countDocuments()).toBe(
         0,
+      );
+      expect(
+        await database.collection('engine_draft_publications').countDocuments(),
+      ).toBe(0);
+    });
+
+    it('refuses canonical creation when compatibility becomes invalid after approval', async () => {
+      const { scopeId, challengeTypeId } =
+        await seedReviewCandidate('review-invalid');
+      await assessSupported('review-invalid');
+      await approve('review-invalid');
+      const approved = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'review-invalid' });
+      // The Scope now excludes the job's ChallengeType. Neither the draft, the
+      // identity metadata, nor the target keys/scopeId change, so the approval
+      // and its approvedEvidence stay valid and the canonical compatibility
+      // validator is the guard that must refuse.
+      await database
+        .collection('scopes')
+        .updateOne(
+          { _id: scopeId },
+          { $set: { excludedChallengeTypeIds: [challengeTypeId] } },
+        );
+      const error = await review.createDraft('review-invalid', 2, actor).then(
+        () => null,
+        (caught: unknown) => caught,
+      );
+      expect(error).toMatchObject({
+        status: 400,
+        response: {
+          message: 'Candidate is incompatible with canonical World Content',
+          blockers: expect.arrayContaining([
+            expect.objectContaining({
+              code: 'CHALLENGE_TYPE_EXCLUDED_BY_SCOPE',
+            }),
+          ]),
+        },
+      });
+      const unchanged = await database
+        .collection('engine_candidates')
+        .findOne({ candidateId: 'review-invalid' });
+      expect(unchanged?.reviewStatus).toBe('approved');
+      expect(unchanged?.reviewRevision).toBe(2);
+      expect(unchanged?.reviewDecision).toEqual(approved?.reviewDecision);
+      expect(unchanged?.publishedContentItemId).toBeNull();
+      expect(await database.collection('content_items').countDocuments()).toBe(
+        0,
+      );
+      expect(
+        await database.collection('engine_draft_publications').countDocuments(),
+      ).toBe(0);
+      // Control: the exclusion was the only blocker. Lifting it lets the same,
+      // untouched approval create the DRAFT, so the approval evidence was valid.
+      await database
+        .collection('scopes')
+        .updateOne(
+          { _id: scopeId },
+          { $set: { excludedChallengeTypeIds: [] } },
+        );
+      await expect(
+        review.createDraft('review-invalid', 2, actor),
+      ).resolves.toMatchObject({ status: 'draft' });
+      expect(await database.collection('content_items').countDocuments()).toBe(
+        1,
       );
     });
 
     describe('Phase C — candidate review hardening', () => {
+      it('preserves candidate identity in DTO, persisted draft and historical screening', async () => {
+        await seedReviewCandidate('identity-roundtrip');
+        const metadata = {
+          source: 'fixture',
+          familyKey: 'identity-family',
+          subject: 'mercy',
+          entityId: 'hero-mercy',
+          tags: ['healer'],
+          notes: 'editor note',
+        };
+        await database
+          .collection('engine_candidates')
+          .updateOne(
+            { candidateId: 'identity-roundtrip' },
+            { $set: { 'draft.metadata': metadata } },
+          );
+        const before = await database
+          .collection('engine_candidates')
+          .findOne({ candidateId: 'identity-roundtrip' });
+        const candidateIdentity = extractContentIdentity({
+          worldKey: 'video-games',
+          scopeKey: 'overwatch',
+          ...before!.draft,
+        });
+        await assessSupported('identity-roundtrip');
+        await approve('identity-roundtrip');
+        const approved = await database
+          .collection('engine_candidates')
+          .findOne({ candidateId: 'identity-roundtrip' });
+        expect(
+          extractContentIdentity({
+            worldKey: 'video-games',
+            scopeKey: 'overwatch',
+            ...approved!.draft,
+          }),
+        ).toEqual(candidateIdentity);
+        const approvedInventory = screen.createSession({
+          worldKey: 'video-games',
+          scopeKey: 'overwatch',
+        });
+        expect(
+          (
+            await screen.loadHistoricalScope(
+              { worldKey: 'video-games', scopeKey: 'overwatch' },
+              approvedInventory,
+            )
+          ).status,
+        ).toBe('COMPLETE');
+        expect(
+          approvedInventory.historicalRecords.find(
+            (r) => r.id === 'identity-roundtrip',
+          )?.identity,
+        ).toEqual(candidateIdentity);
+        const result = await review.createDraft('identity-roundtrip', 2, actor);
+        const stored = await database
+          .collection('content_items')
+          .findOne({ _id: new Types.ObjectId(result.contentItemId) });
+        expect(stored?.metadata).toMatchObject(metadata);
+        const dto = plainToInstance(CreateContentItemDto, stored);
+        expect((instanceToPlain(dto) as any).metadata).toMatchObject(metadata);
+        expect(
+          extractContentIdentity({
+            worldKey: 'video-games',
+            scopeKey: 'overwatch',
+            ...stored,
+          }),
+        ).toEqual(candidateIdentity);
+        const historical = screen.createSession({
+          worldKey: 'video-games',
+          scopeKey: 'overwatch',
+        });
+        expect(
+          (
+            await screen.loadHistoricalScope(
+              { worldKey: 'video-games', scopeKey: 'overwatch' },
+              historical,
+            )
+          ).status,
+        ).toBe('COMPLETE');
+        const record = historical.historicalRecords.find(
+          (r) => r.id === result.contentItemId,
+        );
+        expect(record?.identity).toEqual(candidateIdentity);
+        expect(
+          screen
+            .screen(before!.draft, null, {
+              worldKey: 'video-games',
+              scopeKey: 'overwatch',
+              session: historical,
+            })
+            .findings.some((f) => f.code === 'DUPLICATE_HISTORICAL_DRAFT'),
+        ).toBe(true);
+      });
+
+      it('preserves legacy authoring identity in the canonical draft', async () => {
+        await seedReviewCandidate('identity-authoring-fallback');
+        const authoring = {
+          familyKey: 'legacy-family',
+          subject: 'mercy',
+          entityId: 'hero-mercy',
+          tags: ['healer'],
+          source: 'legacy-source',
+        };
+        await database
+          .collection('engine_candidates')
+          .updateOne(
+            { candidateId: 'identity-authoring-fallback' },
+            { $set: { authoring, 'draft.metadata': { notes: 'legacy note' } } },
+          );
+        await assessSupported('identity-authoring-fallback');
+        await approve('identity-authoring-fallback');
+        const result = await review.createDraft(
+          'identity-authoring-fallback',
+          2,
+          actor,
+        );
+        const stored = await database
+          .collection('content_items')
+          .findOne({ _id: new Types.ObjectId(result.contentItemId) });
+        expect(stored?.metadata).toMatchObject({
+          ...authoring,
+          notes: 'legacy note',
+        });
+        const historical = screen.createSession({
+          worldKey: 'video-games',
+          scopeKey: 'overwatch',
+        });
+        expect(
+          (
+            await screen.loadHistoricalScope(
+              { worldKey: 'video-games', scopeKey: 'overwatch' },
+              historical,
+            )
+          ).status,
+        ).toBe('COMPLETE');
+        const candidate = await database
+          .collection('engine_candidates')
+          .findOne({ candidateId: 'identity-authoring-fallback' });
+        expect(
+          screen
+            .screen(candidate!.draft, authoring, {
+              worldKey: 'video-games',
+              scopeKey: 'overwatch',
+              session: historical,
+            })
+            .findings.some((f) => f.code === 'DUPLICATE_HISTORICAL_DRAFT'),
+        ).toBe(true);
+      });
+
+      it('normalizes padded identity consistently from approval through persisted historical screening', async () => {
+        await seedReviewCandidate('identity-padded');
+        await database.collection('engine_candidates').updateOne(
+          { candidateId: 'identity-padded' },
+          {
+            $set: {
+              'draft.metadata': {
+                familyKey: ' family ',
+                subject: ' hero ',
+                entityId: ' id ',
+                source: ' source ',
+              },
+              authoring: {
+                familyKey: 'family',
+                subject: 'hero',
+                entityId: 'id',
+                source: 'source',
+              },
+            },
+          },
+        );
+        await assessSupported('identity-padded');
+        await approve('identity-padded');
+        const before = screen.createSession({
+          worldKey: 'video-games',
+          scopeKey: 'overwatch',
+        });
+        expect(
+          (
+            await screen.loadHistoricalScope(
+              { worldKey: 'video-games', scopeKey: 'overwatch' },
+              before,
+            )
+          ).status,
+        ).toBe('COMPLETE');
+        const identity = before.historicalRecords.find(
+          (r) => r.id === 'identity-padded',
+        )?.identity;
+        expect(identity?.metadata).toMatchObject({
+          familyKey: 'family',
+          subject: 'hero',
+          entityId: 'id',
+          source: 'source',
+        });
+        const published = await review.createDraft('identity-padded', 2, actor);
+        const after = screen.createSession({
+          worldKey: 'video-games',
+          scopeKey: 'overwatch',
+        });
+        expect(
+          (
+            await screen.loadHistoricalScope(
+              { worldKey: 'video-games', scopeKey: 'overwatch' },
+              after,
+            )
+          ).status,
+        ).toBe('COMPLETE');
+        expect(
+          after.historicalRecords.find((r) => r.id === published.contentItemId)
+            ?.identity,
+        ).toEqual(identity);
+      });
+
+      it.each(['familyKey', 'subject', 'entityId', 'tags', 'source'])(
+        'invalidates assessment after changing identity metadata %s',
+        async (key) => {
+          await seedReviewCandidate(`identity-edit-${key}`);
+          await assessSupported(`identity-edit-${key}`);
+          const candidate = await database
+            .collection('engine_candidates')
+            .findOne({ candidateId: `identity-edit-${key}` });
+          const edited = await review.edit(
+            `identity-edit-${key}`,
+            {
+              expectedRevision: 1,
+              explanation: 'Changed identity metadata.',
+              factualClaims: ['Mercy can heal allies'],
+              draft: {
+                ...candidate!.draft,
+                metadata: {
+                  ...candidate!.draft.metadata,
+                  [key]: key === 'tags' ? ['new-tag'] : 'new-value',
+                },
+              },
+            },
+            actor,
+          );
+          expect(edited.humanAssessment).toBeNull();
+          expect(edited.reviewEligibility.canApprove).toBe(false);
+          expect(
+            edited.reviewEvents.some(
+              (event: { action: string }) =>
+                event.action === 'assessment_invalidated',
+            ),
+          ).toBe(true);
+        },
+      );
       it('prevents retargeting World, Scope, Mechanic, or non-DRAFT status during candidate edit', async () => {
         const seeded = await seedReviewCandidate('phase-c-target-immutable');
         await expect(
@@ -2129,7 +4708,6 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
               metadata: {
                 source: 'content-engine',
                 notes: 'Checked by senior editor',
-                tags: ['verified-note'],
               },
             },
           },
@@ -2615,7 +5193,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
             'safety-post-approval-edit',
             {
               expectedRevision: 2,
-              explanation: 'Updated metadata tags post-approval.',
+              explanation: 'Updated editorial notes post-approval.',
               factualClaims: ['Mercy can heal allies'],
               draft: {
                 prompt: { ar: 'أي بطل يملك قدرة الشفاء الجماعي؟' },
@@ -2629,7 +5207,7 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
                 },
                 metadata: {
                   source: 'content-engine',
-                  tags: ['post-approval-tag'],
+                  notes: 'Post-approval editorial note',
                 },
               },
             },

@@ -453,7 +453,12 @@ describe('Pilot 01 — output-token exhaustion (reasoning-only empty completion)
             });
           }),
         } as never,
-        { beginBatch: jest.fn(), screen: jest.fn() } as never,
+        {
+          createSession: () => undefined,
+          loadHistoricalScope: async () => ({ status: 'COMPLETE' }),
+          beginBatch: jest.fn(),
+          screen: jest.fn(),
+        } as never,
         { verify: jest.fn() } as never,
         { evaluate: jest.fn() } as never,
         { evaluate: jest.fn() } as never,
