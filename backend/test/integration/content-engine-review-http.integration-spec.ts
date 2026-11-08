@@ -93,6 +93,26 @@ describe('Content Engine review HTTP authorization', () => {
     ]);
   });
 
+  it('restricts reference content and catalog detail to administrators', async () => {
+    const id = new Types.ObjectId().toString();
+    for (const path of [
+      `/admin/content-items/${id}`,
+      `/admin/scopes/${id}`,
+      `/admin/challenge-types/${id}`,
+      '/admin/content-engine/candidates/http-review-candidate',
+    ]) {
+      await request(app.getHttpServer()).get(path).expect(401);
+      await request(app.getHttpServer())
+        .get(path)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(403);
+      await request(app.getHttpServer())
+        .get(path)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(path.includes('candidates/') ? 200 : 404);
+    }
+  });
+
   it('returns revision details for stale approval and 404 for missing candidates', async () => {
     const stale = await request(app.getHttpServer())
       .post('/admin/content-engine/candidates/http-review-candidate/approve')

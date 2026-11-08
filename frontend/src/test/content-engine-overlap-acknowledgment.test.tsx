@@ -133,6 +133,7 @@ const payloadOf = (
 describe("Content Engine Review — overlap acknowledgment (R4-B)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(api, "getOverlapContentItem").mockRejectedValue(new Error("reference unavailable"));
     window.sessionStorage?.clear();
     vi.spyOn(api, "getSpending").mockResolvedValue({
       jobId: "job-100",
@@ -491,9 +492,9 @@ describe("Content Engine Review — overlap acknowledgment (R4-B)", () => {
     // The label is associated with the checkbox, so the whole label is a tap target.
     const box = within(list).getByRole("checkbox");
     expect(list.querySelector(`label[for="${box.id}"]`)).not.toBeNull();
-    // Single column by default, two columns from `sm`; identifiers wrap instead of overflowing.
-    const grid = list.querySelector("dl");
-    expect(grid?.className).toContain("sm:grid-cols-[auto_1fr]");
+    // Single column by default, two columns at desktop widths.
+    const grid = within(list).getByTestId("overlap-comparison");
+    expect(grid.className).toContain("md:grid-cols-2");
     expect(grid?.className).not.toMatch(/(^|\s)grid-cols-/);
     expect(list.querySelectorAll(".break-all").length).toBeGreaterThan(0);
     expect(list.innerHTML).not.toMatch(/w-\[\d{3,}px\]/);
