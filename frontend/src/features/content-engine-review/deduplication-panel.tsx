@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  Info,
   RefreshCw,
   ShieldAlert,
   ShieldCheck,
@@ -14,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { ReviewCandidate } from "./types";
 import { OverlapComparison } from "./overlap-comparison";
 import {
+  INCONCLUSIVE_NOTE_AR,
   summarizeDeduplication,
   type DeduplicationSummary,
   type OverlapRequirement,
@@ -58,8 +60,9 @@ export function DeduplicationPanel({
       case "incomplete_verification":
         return <AlertTriangle className="size-5 shrink-0 text-orange-600" />;
       case "potential_overlap":
-      case "inconclusive":
         return <AlertTriangle className="size-5 shrink-0 text-amber-600" />;
+      case "inconclusive":
+        return <Info className="size-5 shrink-0 text-slate-500" />;
       case "clean":
       default:
         return <ShieldCheck className="size-5 shrink-0 text-emerald-600" />;
@@ -73,8 +76,9 @@ export function DeduplicationPanel({
       case "incomplete_verification":
         return "border-orange-300 bg-orange-50/50";
       case "potential_overlap":
-      case "inconclusive":
         return "border-amber-300 bg-amber-50/50";
+      case "inconclusive":
+        return "border-slate-300 bg-slate-50/60";
       case "clean":
       default:
         return "border-emerald-200 bg-emerald-50/40";
@@ -169,6 +173,36 @@ export function DeduplicationPanel({
           refreshed={overlapEvidenceRefreshed}
         />
       )}
+
+      {/*
+        Mixed findings: the headline above reflects the most severe category,
+        so inconclusive comparisons get their own informational note. It never
+        carries a checkbox and never feeds the acknowledgment gate.
+      */}
+      {summary.hasInconclusiveComparison &&
+        summary.category !== "inconclusive" && (
+          <section
+            data-testid="deduplication-inconclusive-note"
+            aria-labelledby="deduplication-inconclusive-heading"
+            className="mt-3 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5"
+          >
+            <Info
+              aria-hidden="true"
+              className="mt-0.5 size-4 shrink-0 text-slate-500"
+            />
+            <div className="space-y-0.5">
+              <h4
+                id="deduplication-inconclusive-heading"
+                className="text-xs font-semibold text-slate-800"
+              >
+                مقارنات غير حاسمة — للاطلاع فقط، لا تتطلب إقراراً
+              </h4>
+              <p className="text-[11px] leading-relaxed text-slate-700">
+                {INCONCLUSIVE_NOTE_AR}
+              </p>
+            </div>
+          </section>
+        )}
 
       {/* Progressive Disclosure of Evidence / Incomplete diagnostics */}
       {detailsOpen && (
