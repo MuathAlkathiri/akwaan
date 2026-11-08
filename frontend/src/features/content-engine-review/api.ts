@@ -1,5 +1,10 @@
 import apiClient from "@/lib/api/client";
 import type { QualityRubric, ReviewCandidate, SpendingSummary } from "./types";
+import type {
+  ChallengeType,
+  ContentItem,
+  Scope,
+} from "@/features/world-management/types";
 
 const unwrap = async <T>(request: Promise<{ data: { data: T } }>) =>
   (await request).data.data;
@@ -12,6 +17,18 @@ export const listCandidates = (params: Record<string, string | undefined>) =>
 export const getCandidate = (candidateId: string) =>
   unwrap<ReviewCandidate>(
     apiClient.get(`/admin/content-engine/candidates/${candidateId}`),
+  );
+
+/** Existing admin-only endpoints; these never use player-facing content APIs. */
+export const getOverlapContentItem = (id: string) =>
+  unwrap<ContentItem>(
+    apiClient.get(`/admin/content-items/${encodeURIComponent(id)}`),
+  );
+export const getOverlapScope = (id: string) =>
+  unwrap<Scope>(apiClient.get(`/admin/scopes/${encodeURIComponent(id)}`));
+export const getOverlapMechanic = (id: string) =>
+  unwrap<ChallengeType>(
+    apiClient.get(`/admin/challenge-types/${encodeURIComponent(id)}`),
   );
 
 export const getSpending = (jobId: string) =>
@@ -76,10 +93,9 @@ export const rescreenCandidate = (
   expectedRevision: number,
 ) =>
   unwrap<ReviewCandidate>(
-    apiClient.post(
-      `/admin/content-engine/candidates/${candidateId}/rescreen`,
-      { expectedRevision },
-    ),
+    apiClient.post(`/admin/content-engine/candidates/${candidateId}/rescreen`, {
+      expectedRevision,
+    }),
   );
 
 export const createCanonicalDraft = (
@@ -95,10 +111,7 @@ export const createCanonicalDraft = (
 
 /** A batch request: the authorable combination plus how many candidates. */
 export type RyoRequestedDifficulty =
-  | "mixed"
-  | "easy"
-  | "medium"
-  | "relatively_difficult";
+  "mixed" | "easy" | "medium" | "relatively_difficult";
 
 export interface EngineJobRequest {
   mechanicKey: string;

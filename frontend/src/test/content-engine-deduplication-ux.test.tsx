@@ -91,6 +91,7 @@ const mockCandidate = (
 describe("Content Engine Review Studio — Deduplication UX (Slice 2D)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(api, "getOverlapContentItem").mockRejectedValue(new Error("reference unavailable"));
     window.sessionStorage?.clear();
     vi.spyOn(api, "getSpending").mockResolvedValue({
       jobId: "job-100",
@@ -180,7 +181,7 @@ describe("Content Engine Review Studio — Deduplication UX (Slice 2D)", () => {
     expect(evidenceContainer.textContent).toContain("item-cairo");
     expect(evidenceContainer.textContent).toContain("محتوى جاهز معتمد (READY)");
     expect(evidenceContainer.textContent).toContain("تطابق تام في المهمة المعرفية والإجابة الصحيحة");
-    expect(evidenceContainer.textContent).toContain("تفاصيل السؤال والخيارات الكاملة للعنصر المرجعي غير محملة");
+    expect(evidenceContainer.textContent).toContain("رصد النظام تطابقاً مؤكداً");
   });
 
   it("2. displays potential overlap with warning badge and requires explicit acknowledgment before approval", async () => {
