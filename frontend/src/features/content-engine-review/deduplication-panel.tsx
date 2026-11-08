@@ -333,7 +333,7 @@ function OverlapAcknowledgmentList({
                   data-testid={`overlap-ack-checkbox-${requirement.referenceId}`}
                   checked={checked}
                   disabled={disabled}
-                  onCheckedChange={(value) =>
+                  onCheckedChange={(value: boolean | "indeterminate") =>
                     onToggle?.(requirement.fingerprint, value === true)
                   }
                   className="mt-0.5"
