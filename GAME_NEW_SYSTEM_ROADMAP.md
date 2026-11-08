@@ -40,6 +40,35 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
+### Where things stand — 2026-11-08 (later) · CONTENT ENGINE DEDUPLICATION ACCURACY & REVIEW UI (PRs #46–#48) — ✅ IMPLEMENTED & VERIFIED IN PRODUCTION · candidate approval ⬜ PENDING
+
+Main is `02aebc1`. Render serves `6d39937` (`/health` verified). PR #48 is frontend-only, and Render was not
+redeployed for it (Render Auto-Deploy is Off). The only production data mutation was the operator-authorized
+five-candidate deterministic rescreen pilot (§30.23.7). No generation, approval, rejection, overlap acknowledgment,
+DRAFT, publication or R2 change occurred.
+
+| Workstream | PR · merge | Git merged | Production deployed | Production verified |
+|---|---|---|---|---|
+| Overlap comparison UI | #46 · `ecb090e` | ✅ | ✅ Vercel (frontend; the PR also adds a backend integration test only) | ✅ comparison cards render and load reference content in the production Admin (2026-11-08) |
+| Deduplication accuracy | #47 · `bcb139e` → `6d39937` | ✅ | ✅ Render `dep-dbodbdou01pc73euhtd0` (manual; live 2026-11-08 23:06 +03; previous `92aee39`) · ✅ Vercel production | ✅ `/health` = `6d39937`; no Content Engine errors in logs; five-candidate rescreen pilot |
+| Review UI corrections | #48 · `1a5fdab` → `02aebc1` | ✅ | ✅ Vercel production deployment `7641666052` · Render unchanged | ✅ authenticated read-only production Admin check (desktop + 390 px) · ⬜ preview not verified while authenticated |
+
+- ✅ **Five-candidate rescreen pilot COMPLETED.** The unrelated legacy VOTE warnings are gone. No proven duplicates;
+  three shared-answer overlaps remain actionable (§30.23.7).
+- ⬜ **Human approval/publication of those candidates: PENDING.** All five remain awaiting human review; no DRAFT exists.
+- ⚠️ Gameplay startup errors seen during the #47 deploy **predate it** and are tracked separately (§19 #34). New
+  debt: §19 #30–#35.
+
+### Where things stand — 2026-11-08 · CONTENT ENGINE G1 — ✅ MERGED & DEPLOYED · first production transaction ⬜ NOT YET EXERCISED
+
+Content Engine historical inventory and approval safety is implemented, merged, deployed and verified by health
+and read-only smoke checks: [PR #45](https://github.com/MuathAlkathiri/akwaan/pull/45), merge commit
+`92aee396afbe4bb375a7cbcbe7d9e9523a2583fd`, Render deploy `dep-dboavm5g1s2s73emefh0`, Vercel production
+deployment `7639200678`, production database `lammah-quiz`; all five new MongoDB indexes are READY. See §30.23
+for scope and remaining verification. **The first real G1 approval/DRAFT transaction on production M0, and
+production generation and judging through this newly deployed pipeline, remain unexercised.** No paid generation,
+production content mutation, or Pilot 02 change occurred as part of this release verification.
+
 ### Where things stand — 2026-11-07 · PRESENCE INSTANCE OWNERSHIP + RECONCILIATION FIX — ✅ MERGED & DEPLOYED
 
 The participant-presence deploy-safety work is merged and running in production. Main is `0e9a445`; Render serves
@@ -3383,6 +3412,36 @@ Not implemented. Not scheduled.
 | 27 | **The whole content expansion is local/dev only** | Release gap | **261** promoted items across **six** runtime Scopes (Anime 135, Football 126) and **90** media binaries exist on one developer machine. The push (`4fdab19`, `25141bd`, `fcf70ee`) carried **taxonomy, knowledge bases and tooling only** — not content documents, not `ai/output` packs (gitignored), not the media binaries under `uploads/question-assets/images/` (deliberately untracked). Reproducing the runtime state elsewhere means re-running the promotions. |
 | 28 | **Historical gameplay runtimes that cannot be restored** | Data debt | At least six abandoned, non-terminal production runtimes lack `teamActionJson`, so plugin validation rejects every load (`INVALID_TEAM_ACTION_STATE`). Observed 2026-11-07. They are now past `expiresAt` and excluded from presence reconciliation (#42), and an unexpired one would be quarantined, not retried endlessly. They remain stored: repairing, closing or deleting them needs a separate, supervised decision. |
 | 29 | **`faf6436` Render deployment failure remains unexplained** | Operational | On 2026-11-06 the `faf6436` auto-deploy was cancelled after 35m 37s and the manual deploy failed after 18m 42s ("Timed out"); the root cause was never established. Later deploys of `9b36835` and `0e9a445` built in ~1 min and completed startup in ~30 s. Startup diagnostics (#40) are now in production to localise the stage if it recurs. Non-blocking. |
+| 30 | **Shared-answer overlap false positives** | Content Engine policy | Different facts can share one answer. Observed 2026-11-08: a READY «من أنا؟» club-identification item (Old Trafford / Red Devils / Ferguson clues), «which club ended Arsenal's 49-match unbeaten run» and «first Premier League champion (1992-93)» all answer Manchester United but test different facts. The current policy still raises actionable `POTENTIAL_OVERLAP` (`UNCERTAIN_FACTUAL_RELATIONSHIP`) for a shared answer with differing descriptions. That is safe, since reviewers can acknowledge it, but noisy. Future: distinguish shared answer identity from shared factual-question identity. Policy unchanged for now (§30.23.7). |
+| 31 | **In-batch screening is directional (documented contract)** | Content Engine / documentation | Screening compares each candidate only with batch siblings screened before it (`seenBatchCandidates`), so a pair can first appear only on the later candidate (observed: Arsenal → 1992-93). An existing integration test asserts this (“no earlier sibling in its batch”). Approval revalidation also screens against approved, unpublished candidates, same job included, so whichever of the pair is approved second meets the overlap. Intended behaviour, not a defect; recorded so reviewers are not surprised. |
+| 32 | **Content Engine Admin responsive debt** | UI | At 390 px the candidate-list badge row (`flex flex-wrap … shrink-0` in `content-engine-review-workspace.tsx`) cannot shrink, so it never wraps and `<main>` clips the deduplication badge. This has been the case since `65c4352`, before PR #48. On desktop, about 12 px of horizontal overflow comes from the Admin header's logout button and decorative background ellipses. Unrelated to the deduplication release. |
+| 33 | **READY item reports `readiness: not_ready`** | Data / content integrity | Observed 2026-11-08 (read-only): the production READY «من أنا؟» item referenced in #30 has `status: ready` but `readiness.readiness: not_ready` with blocker `RAKKIBHA_STRUCTURE_REQUIRED`. Root cause not investigated; whether other items are affected is unknown. |
+| 34 | **Startup deadline recovery re-drives abandoned runtimes** | Gameplay lifecycle | Every boot rearms deadlines for all non-terminal runtimes (logged “44 of 50” on every boot for ≥7 days to 2026-11-08). Since the boot at 2026-11-07 ~15:35 UTC, each boot also exhausts exactly **10** deadlines (“Team … has no connected player to act for it”, 6 attempts, then “will not be retried”), each logged with `gameplay_transaction_aborted`. The burst lasts ~13 s, with no further errors afterwards. It predates PR #47; the onset deploy (`7cef238`) changed no gameplay code. The rearm query (`findSessionIdsWithLiveRuntimes`) does not exclude expired runtimes, unlike presence reconciliation. Whether the sessions are test matches is **not confirmed**. Related: #2, #28. |
+| 35 | **Permanent mechanic deletion** | 🟡 Design approved — implementation deferred | The approved requirements and the open implementation dependencies are recorded in §19.1. Not implemented. Separate from the narrower challenge-type deletion lifecycle already in main (`bb94504`). |
+
+### 19.1 Permanent mechanic deletion — 🟡 DESIGN APPROVED — IMPLEMENTATION DEFERRED
+
+Product decisions approved in earlier discussions; recorded here 2026-11-09. **Not implemented, and not ready to
+implement**: final cascade rules are not decided.
+
+**Existing behaviour in main (narrower, unchanged):** the challenge-type deletion lifecycle from `bb94504`
+(2026-08-12). It hard-deletes a mechanic only when no persisted Match references it, and archives it otherwise.
+It is not the design below.
+
+**Approved requirements:**
+- **Flexible deletion dialog:** shows the available operations and the affected record counts.
+- **World-only removal:** detaches the mechanic from the selected World and does **not** delete its questions.
+- **Historical Match cleanup:** represented explicitly in the deletion workflow.
+- **Permanent mechanic deletion:** deletes questions used **only** by that mechanic.
+- **Shared questions:** preserved and detached from the deleted mechanic.
+- **Confirmation:** no typed mechanic-name confirmation, but clear confirmation and impact information are still
+  required.
+
+**Unresolved implementation dependencies (block implementation):**
+- Preventing races with new Match creation during deletion.
+- Safely handling shared historical sessions.
+- Establishing media asset ownership before any asset is deleted.
+- Guaranteeing that removing a World association never deletes questions unintentionally.
 
 ---
 
@@ -6356,6 +6415,9 @@ model superiority from this small experiment.
 
 ### 30.21 Admin Content Generation Studio — ✅ PHASES A–C IMPLEMENTED & VERIFIED LOCALLY · ⬜ PHASE D NOT STARTED (2026-10-25)
 
+**Historical status as of 2026-10-25.** Phase D pilots have since occurred; the G1 release and its still-unexercised
+production paths are recorded in §30.23. The Phase D and operational bullets below preserve the earlier snapshot.
+
 The architecture audit approved a production-oriented Admin workflow that reuses the existing Content Engine
 job, authoring-context, screening, factual-verification, quality-judge, compatibility, human-review and
 canonical `ContentItem` lifecycle. The intended operator flow is World → Scope → compatible mechanic →
@@ -6474,8 +6536,16 @@ without the existing authoritative human and lifecycle gates.
 - ⬜ **NOT IMPLEMENTED.** All design decisions above are approved for architecture planning.
 - ⬜ No database schema migration, no media intent generation in Content Engine, no UI media review surface, and no frontend fallback renderer exists.
 - ⬜ Existing implementation statuses, historical records, and unresolved issues are preserved in full. Output remains canonical `ContentItem` in `DRAFT` status.
+- 🟡 **Media-aware content identity — DESIGN APPROVED, NOT IMPLEMENTED.** Identity for media-native questions
+  must consider the complete mechanic-native gameplay stimulus: identical generic prompts with distinct required
+  images or audio may represent distinct content. An unresolved media intent is not proof of distinctness; required
+  gameplay-media readiness remains mandatory. This is future §30.22 work, separate from G1.
 
 ### 30.23 Content Engine V2: Content Identity, Deduplication & Hybrid Creative Planner (Slices 2 & 3A–3D) — 🟢 MERGED INTO REMOTE GIT MAIN (PR #9) (2026-10-31)
+
+**Current G1 release status — 2026-11-08: ✅ IMPLEMENTED, MERGED & DEPLOYED; verification boundaries below.**
+The PR #9 deployment and pilot statements later in this section are historical snapshots; they do not supersede
+the PR #45 milestone in §30.23.6.
 
 **Product objective & architectural evolution.** Content Engine V2 elevates batch content generation from unstructured, prompt-only generation into a rigorous, identity-aware, and strategy-driven pipeline. V2 delivers two foundational pillars:
 1. **Slice 2 (Content Identity & Deduplication Engine):** Prevents duplicate and overlapping questions across in-batch candidates and historical approved catalog items before reaching human review, with review-time approval safety and concurrency controls.
@@ -6561,7 +6631,128 @@ Executed against the exact isolated git tree (`e916ea2ec2bc8a18283e60298e00a2584
 - ⬜ **Media Enrichment Pipeline Unimplemented (§30.22):** Track B media intent generation and Track A display fallback artwork are design-approved but not implemented. Candidates currently produce text-only drafts.
 - ⬜ **World Canonical Alias Migration:** Production database stores Arabic world/scope slugs (e.g. «سيارات أمريكية») that must be audited and aliased before strict canonical resolution can be enforced without risk.
 - ⬜ **Phase D Live Controlled Pilot Not Started (§30.21):** Production validation under real operator conditions with budget caps and live human review has not occurred.
+  *Historical snapshot (2026-10-31), superseded:* Phase D pilots have since occurred (§30.21 note). The
+  five-candidate production rescreen pilot is ✅ COMPLETED (§30.23.7). Human approval/publication of its candidates
+  is ⬜ PENDING.
 - ⬜ **Production Catalog Status:** Forward Puzzles catalog remains 0 real items in production DB.
+
+#### 6. G1 historical inventory and approval safety — ✅ MERGED & DEPLOYED (PR #45)
+
+- **S1–S3:** canonical World/Scope identity and historical inventory resolution, with per-Scope transactional
+  approval and canonical DRAFT revalidation. Incomplete or ambiguous inventory fails closed; proven duplicates
+  remain blocked and human review remains authoritative within these Content Engine paths.
+- **R1–R3:** approved-unpublished inventory classification, preflight and worker completeness guards, identity
+  normalization, and structured conflict and revision error handling.
+- **R4-A/B:** revision-safe, evidence-bound overlap acknowledgments and corresponding Review Studio controls;
+  new or changed overlap evidence requires renewed review. **R4-C:** approval carry-forward with auditable
+  provenance. **B1:** regression-test correction.
+- **Verification and release:** independent code review, automated tests, production preflight, deployment and
+  read-only smoke verification passed. [PR #45](https://github.com/MuathAlkathiri/akwaan/pull/45) merged as
+  `92aee396afbe4bb375a7cbcbe7d9e9523a2583fd`; Render `dep-dboavm5g1s2s73emefh0`, Vercel `7639200678`,
+  database `lammah-quiz`; all five new indexes READY. No paid generation, production content mutation or Pilot 02
+  change occurred during release verification.
+- ⬜ **NOT YET PRODUCTION-EXERCISED:** the first real approval/DRAFT transaction on the production M0 cluster,
+  and production generation and judging through the newly deployed pipeline.
+- ⚠️ **FOLLOW-UP:** G2 global uniqueness across manual ContentItem writes; review findings L1–L3; three historical
+  pending candidates requiring rescreen; and intermittent unrelated test failures. G2 is not implemented by G1.
+- 🟡 **DESIGN APPROVED — NOT IMPLEMENTED:** media-aware content identity remains separate future work (§30.22).
+
+#### 7. Deduplication accuracy, review UI and production rescreen pilot — ✅ IMPLEMENTED & VERIFIED IN PRODUCTION (PRs #46–#48, 2026-11-08)
+
+**Releases.** Git merge, deployment and production verification are listed separately for each PR.
+
+- **PR #46: overlap comparison UI.** Each acknowledgeable overlap shows the candidate and the referenced item side
+  by side: question, answer, mechanic and Scope. Each overlap is acknowledged individually through the existing
+  R4-A/B fingerprints.
+  - *Merged:* `ecb090e`. Frontend change, plus one backend HTTP integration test.
+  - *Deployed:* Vercel production.
+  - *Verified:* comparison cards render and load reference content in the production Admin.
+- **PR #47: deduplication accuracy.**
+  - Subjective (VOTE) comparisons now weigh prompt evidence:
+    - identical specific prompts with a verified, identical VOTE structure and no media → `DUPLICATE`;
+    - identical prompts otherwise → `POTENTIAL_OVERLAP`;
+    - otherwise the new `INCONCLUSIVE` identity result.
+  - An unsupported-mechanic comparison alone is no longer positive overlap evidence.
+  - `INCONCLUSIVE` becomes a non-blocking deferred finding (`SUBJECTIVE_COMPARISON_INCONCLUSIVE` /
+    `SUBJECTIVE_BATCH_COMPARISON_INCONCLUSIVE`).
+  - VOTE structure must be complete to count as identical: a valid consensus rule, at least two options, and unique
+    labels and ids.
+  - Approval and DRAFT creation now persist the refreshed historical findings.
+  - Proven-duplicate blocking and overlap acknowledgment are unchanged.
+  - *Merged:* `bcb139e` → `6d39937`.
+  - *Deployed:* Render `dep-dbodbdou01pc73euhtd0` and Vercel production.
+  - *Verified:* `/health` = `6d39937`; no Content Engine errors in logs; the pilot below.
+- **PR #48: review UI corrections.**
+  - The candidate-list badge now comes from the shared classifier:
+    - proven duplicate → «تكرار مثبت»;
+    - incomplete history → «فحص ناقص»;
+    - acknowledgeable or unverifiable overlap → «شبهة تقاطع»;
+    - cross-Scope advisory only → «تنبيه نطاق آخر»;
+    - inconclusive only → neutral «مقارنة غير حاسمة»;
+    - clean → no badge.
+  - Inconclusive-only candidates use a neutral panel.
+  - Mixed candidates keep the overlap acknowledgment list and add a separate informational note with no checkbox,
+    whose wording does not contradict the overlaps above it.
+  - *Merged:* `1a5fdab` → `02aebc1`.
+  - *Deployed:* Vercel production `7641666052`; Render unchanged.
+  - *Verified:* authenticated read-only production Admin check at desktop width and 390 px.
+  - ⬜ *Not verified:* the Vercel preview was checked only unauthenticated (bundle contents; login is by email OTP).
+
+**Approved deduplication policy (product-approved).**
+
+| Finding | Effect |
+|---|---|
+| Proven duplicate | Blocks approval |
+| Evidence-backed potential overlap | Requires explicit reviewer acknowledgment |
+| Inconclusive comparison without positive overlap evidence | Informational; non-blocking; never acknowledged |
+| Historical verification incomplete or failed | Blocks approval |
+| Shared VOTE mode, keywords or entity alone | Not sufficient overlap evidence |
+| Shared answer alone | Does not prove factual duplication |
+
+- ⚠️ **Policy vs. implementation gap:**
+  - **Approved principle:** two questions with the same answer can test different facts, so a shared answer does
+    not prove duplication.
+  - **Current implementation:** it still raises an actionable `POTENTIAL_OVERLAP` (`UNCERTAIN_FACTUAL_RELATIONSHIP`,
+    requiring acknowledgment) when questions share an answer but describe it differently. This is stricter than the
+    principle: safe, but it produces false positives.
+  - **Future improvement (not implemented):** tell identical factual questions apart from different facts that share
+    an answer. Tracked as §19 #30.
+  - Neither the policy nor the code is changed by this entry.
+- **Accepted limitation:** deterministic comparison is not semantic duplicate detection. Low-similarity paraphrases,
+  subjective or cross-mechanic, can go undetected.
+
+**Production rescreen pilot — ✅ COMPLETED (operator-authorized).**
+
+- **Job:** `6af0b9ba76040ea7635f6382` (football / premier-league / read-your-opponent; 5 candidates).
+- **Method:** each candidate was rescreened once through the Admin rescreen action/endpoint (revision-checked):
+  Newcastle at 20:28 UTC, the other four at 20:35–20:36 UTC on 2026-11-08.
+
+| Candidate | Revision | Actionable overlaps (before → after) | Inconclusive (after) | Status (after) |
+|---|---|---:|---:|---|
+| Newcastle 1995-96 | 1 → 2 | 3 → 0 | 1 | Awaiting review / pending |
+| Assists record | 0 → 1 | 3 → 0 | 1 | Awaiting review / pending |
+| Leicester coach | 0 → 1 | 3 → 0 | 1 | Awaiting review / pending |
+| Arsenal 49-match run | 0 → 1 | 5 → 2 | 1 | Awaiting review / pending |
+| 1992-93 champion | 0 → 1 | 4 → 1 | 1 | Awaiting review / pending |
+
+- **The VOTE warnings are gone.** All 12 `UNSUPPORTED_MECHANIC_COMPARISON` warnings against unrelated legacy
+  «من منا» VOTE items were removed. Each candidate now carries one non-blocking inconclusive finding instead.
+- **What stays actionable:** the three remaining overlaps share the answer Manchester United. Two are against the
+  same READY «من أنا؟» item, and one is in-batch, Arsenal → 1992-93. Read-only review found that the three questions
+  test different facts, so these are shared-answer false positives (§19 #30, #31).
+- **No proven duplicates.** No candidate was approved, rejected or published, and no DRAFT was created.
+- **No cost or side effects:** the job's spend was unchanged (SAR 0.231138, no provider calls), and the 13 other
+  candidates were byte-unchanged after every step.
+- ⬜ **Human approval/publication of these five candidates is PENDING.**
+- ⚠️ **Still open, not covered by this pilot:** the §6 follow-up “three historical pending candidates requiring
+  rescreen” remains **incomplete**. The pilot rescreened only the five candidates of job `6af0b9ba…6382`. Three
+  other Premier League candidates still showed «فحص ناقص» on 2026-11-08; whether they are those three was not
+  verified.
+
+**Status.**
+- ⬜ **Broad Content Engine UI redesign:** NOT IMPLEMENTED.
+- **G2 global uniqueness and media-aware identity (§30.22):** status unchanged, as recorded in subsection 6.
+- **Gameplay startup errors seen during the PR #47 deploy:** pre-existing and unrelated (§19 #34).
 
 ---
 
