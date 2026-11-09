@@ -7,6 +7,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Check,
+  ChevronLeft,
+  ChevronRight,
   FilePlus2,
   Lock,
   Pencil,
@@ -40,10 +42,12 @@ import type {
   QualityRubric,
   ReviewCandidate,
 } from "./types";
+import { candidateStatusPresentation } from "./job-status-helpers";
 import {
-  CANDIDATE_PIPELINE_STATUS_LABELS,
-  CANDIDATE_REVIEW_STATUS_LABELS,
-} from "./job-status-helpers";
+  CANDIDATE_URL_PARAM,
+  adjacentCandidates,
+  isShortcutBlockedTarget,
+} from "./review-navigation";
 
 export type StudioSurface = "generate" | "jobs" | "review";
 
@@ -122,12 +126,108 @@ const readInitialStudioState = (): PersistedStudioState => {
     if (qWorld) fallback.filters.worldKey = qWorld;
     const qScope = params.get("scopeKey");
     if (qScope) fallback.filters.scopeKey = qScope;
+    // A candidate link is a review link even when it names no surface.
+    if (params.get(CANDIDATE_URL_PARAM) && !qSurface) {
+      fallback.surface = "review";
+    }
   } catch {
     // Ignore URL param errors
   }
 
   return fallback;
 };
+
+/** The candidate a direct link, refresh or history entry points at. */
+const readCandidateFromUrl = (): string | undefined => {
+  if (typeof window === "undefined") return undefined;
+  try {
+    return (
+      new URLSearchParams(window.location.search).get(CANDIDATE_URL_PARAM) ??
+      undefined
+    );
+  } catch {
+    return undefined;
+  }
+};
+
+const LARGE_LAYOUT_QUERY = "(min-width: 1024px)";
+
+const DECISION_REQUIREMENTS_ID = "candidate-decision-requirements";
+
+/**
+ * One line telling the reviewer what the decision bar is waiting for. It reads
+ * the same eligibility the buttons use; it never enables or disables anything.
+ */
+function DecisionBarSummary({
+  candidate,
+  approvalBlockers,
+  hasExplanation,
+  needsFactualOverride,
+}: {
+  candidate: ReviewCandidate;
+  approvalBlockers: string[];
+  hasExplanation: boolean;
+  needsFactualOverride: boolean;
+}) {
+  let settled: string | null = null;
+  if (candidate.publishedContentItemId) {
+    settled = "أُنشئت المسودة لهذا المرشح؛ لا قرار متبقٍ.";
+  } else if (candidate.reviewStatus === "rejected") {
+    settled = "رُفض هذا المرشح.";
+  } else if (candidate.reviewStatus === "approved") {
+    settled = "اعتُمد هذا المرشح؛ أنشئ المسودة عند استيفاء شروطها.";
+  }
+
+  const requirements = settled
+    ? []
+    : [
+        ...approvalBlockers,
+        ...(needsFactualOverride
+          ? ["اختر رمز تجاوز الحالة الواقعية واكتب تفسيره."]
+          : []),
+        ...(hasExplanation ? [] : ["اكتب تفسير القرار (مطلوب للاعتماد أو الرفض)."]),
+      ];
+
+  const showRequirements = () => {
+    const panel = document.getElementById(DECISION_REQUIREMENTS_ID);
+    panel?.focus({ preventScroll: true });
+    panel?.scrollIntoView?.({ block: "start" });
+  };
+
+  return (
+    <div
+      data-testid="decision-bar-summary"
+      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs"
+    >
+      {settled ? (
+        <span className="font-medium text-foreground">{settled}</span>
+      ) : requirements.length === 0 ? (
+        <span className="font-semibold text-foreground">جاهز للاعتماد.</span>
+      ) : (
+        <>
+          {/* One line while sticky; the full list is one click away. */}
+          <span
+            className="min-w-0 flex-1 text-foreground lg:truncate"
+            title={requirements.join("\n")}
+          >
+            <span className="font-semibold">
+              قبل الاعتماد ({requirements.length}):
+            </span>{" "}
+            {requirements[0]}
+          </span>
+          <button
+            type="button"
+            data-testid="button-show-decision-requirements"
+            onClick={showRequirements}
+            className="shrink-0 rounded font-semibold text-primary underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            عرض كل المتطلبات
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
 
 const qualityDefaults: QualityRubric = {
   correctness: 3,
@@ -280,7 +380,17 @@ export function ContentEngineReviewWorkspace() {
     initial.activeJobId,
   );
   const [filters, setFilters] = useState(initial.filters);
-  const [selectedId, setSelectedId] = useState<string>();
+  const [selectedId, setSelectedId] = useState<string | undefined>(
+    readCandidateFromUrl,
+  );
+  /** The selection as of the latest render, for async callbacks. */
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
+  /** Set by a reviewer-initiated selection; consumed once the heading renders. */
+  const focusDetailOnSelect = useRef(false);
+  const detailHeadingRef = useRef<HTMLHeadingElement>(null);
+  const decisionBarRef = useRef<HTMLDivElement>(null);
+  const lastQueueIndex = useRef(-1);
   const [editOpen, setEditOpen] = useState(false);
   const [editExplanation, setEditExplanation] = useState("");
   const [editClaimsText, setEditClaimsText] = useState("");
@@ -316,6 +426,21 @@ export function ContentEngineReviewWorkspace() {
   } | null>(null);
   const lastActionKind = useRef<"approve" | "draft" | "other">("other");
 
+  // Decision input belongs to one candidate. Reset it in the same render that
+  // changes the selection, so the next candidate never shows (or submits) the
+  // previous one's note, reason, acknowledgments, errors or open editor.
+  const [decisionStateFor, setDecisionStateFor] = useState(selectedId);
+  if (decisionStateFor !== selectedId) {
+    setDecisionStateFor(selectedId);
+    setDecisionExplanation("");
+    setRejectionReason("LOW_QUALITY");
+    setAcknowledgedOverlaps(new Set());
+    setServerOverlapEvidence(null);
+    setActionError(null);
+    setRevisionConflict(null);
+    setEditOpen(false);
+  }
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stateToPersist: PersistedStudioState = {
@@ -340,6 +465,11 @@ export function ContentEngineReviewWorkspace() {
       else params.delete("worldKey");
       if (filters.scopeKey) params.set("scopeKey", filters.scopeKey);
       else params.delete("scopeKey");
+      if (activeSurface === "review" && selectedId) {
+        params.set(CANDIDATE_URL_PARAM, selectedId);
+      } else {
+        params.delete(CANDIDATE_URL_PARAM);
+      }
       const nextQuery = params.toString();
       const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`;
       const currentUrl = `${window.location.pathname}${window.location.search}`;
@@ -349,7 +479,71 @@ export function ContentEngineReviewWorkspace() {
     } catch {
       // Ignore history replace errors
     }
-  }, [activeSurface, activeJobId, filters]);
+  }, [activeSurface, activeJobId, filters, selectedId]);
+
+  /**
+   * A reviewer's selection: one history entry per candidate, so Back and
+   * Forward walk the candidates that were actually opened.
+   */
+  const selectCandidate = useCallback(
+    (candidateId: string) => {
+      focusDetailOnSelect.current = true;
+      setSelectedId(candidateId);
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get(CANDIDATE_URL_PARAM) === candidateId) {
+          // Already open: nothing changes, so focus it directly.
+          focusDetailOnSelect.current = false;
+          detailHeadingRef.current?.focus({ preventScroll: true });
+          detailHeadingRef.current?.scrollIntoView?.({ block: "start" });
+          return;
+        }
+        params.set("surface", "review");
+        params.set(CANDIDATE_URL_PARAM, candidateId);
+        window.history?.pushState?.(
+          null,
+          "",
+          `${window.location.pathname}?${params.toString()}`,
+        );
+      } catch {
+        // Ignore history push errors; selection still works.
+      }
+    },
+    [],
+  );
+
+  // Back/Forward restore the candidate (and surface) the entry was made for.
+  useEffect(() => {
+    const onPopState = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const surface = params.get("surface");
+        if (surface === "generate" || surface === "jobs" || surface === "review") {
+          setActiveSurface(surface);
+        }
+        setSelectedId(params.get(CANDIDATE_URL_PARAM) ?? undefined);
+      } catch {
+        // Ignore malformed history entries.
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // Move focus to the opened candidate, and bring its heading into view below
+  // the sticky site header. Only for reviewer-initiated selections, never for a
+  // page load, so arriving from a link does not steal focus.
+  useEffect(() => {
+    if (!focusDetailOnSelect.current || !selectedId) return;
+    const frame = window.requestAnimationFrame(() => {
+      const heading = detailHeadingRef.current;
+      if (!heading) return;
+      focusDetailOnSelect.current = false;
+      heading.focus({ preventScroll: true });
+      heading.scrollIntoView?.({ block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedId]);
 
   const handleCandidateHandoff = useCallback(
     (selection: {
@@ -395,6 +589,95 @@ export function ContentEngineReviewWorkspace() {
 
   const candidate = detail.data;
 
+  const queueRows = useMemo(() => list.data ?? [], [list.data]);
+  const queueIds = useMemo(
+    () => queueRows.map((row) => row.candidateId),
+    [queueRows],
+  );
+  const adjacent = adjacentCandidates(
+    queueIds,
+    selectedId,
+    lastQueueIndex.current,
+  );
+  useEffect(() => {
+    if (adjacent.index >= 0) lastQueueIndex.current = adjacent.index;
+  }, [adjacent.index]);
+  const selectedRow =
+    adjacent.index >= 0 ? queueRows[adjacent.index] : undefined;
+  const reviewProgress = useMemo(() => {
+    const decided = queueRows.filter(
+      (row) => !candidateStatusPresentation(row).needsDecision,
+    ).length;
+    return { decided, total: queueRows.length };
+  }, [queueRows]);
+
+  // J / K walk the queue. Keystrokes typed into, or operating, a control
+  // belong to that control, and an open dialog owns the keyboard.
+  useEffect(() => {
+    if (activeSurface !== "review" || editOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.isComposing ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey
+      ) {
+        return;
+      }
+      // `code`, not `key`: the same physical keys on an Arabic layout.
+      const target =
+        event.code === "KeyJ"
+          ? adjacent.nextId
+          : event.code === "KeyK"
+            ? adjacent.previousId
+            : undefined;
+      if (!target || isShortcutBlockedTarget(event.target)) return;
+      event.preventDefault();
+      selectCandidate(target);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    activeSurface,
+    editOpen,
+    adjacent.nextId,
+    adjacent.previousId,
+    selectCandidate,
+  ]);
+
+  // Keep focused and scrolled-to content clear of the sticky site header and,
+  // on large screens, the sticky decision bar.
+  const hasDecisionBar = activeSurface === "review" && Boolean(candidate);
+  useEffect(() => {
+    if (activeSurface !== "review") return;
+    const root = document.documentElement;
+    const previousTop = root.style.scrollPaddingTop;
+    const previousBottom = root.style.scrollPaddingBottom;
+    root.style.scrollPaddingTop = "5.5rem";
+    const media = window.matchMedia?.(LARGE_LAYOUT_QUERY);
+    const bar = decisionBarRef.current;
+    const apply = () => {
+      root.style.scrollPaddingBottom =
+        bar && media?.matches ? `${bar.offsetHeight + 24}px` : previousBottom;
+    };
+    apply();
+    const observer =
+      bar && typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(apply)
+        : undefined;
+    if (bar) observer?.observe(bar);
+    media?.addEventListener?.("change", apply);
+    return () => {
+      observer?.disconnect();
+      media?.removeEventListener?.("change", apply);
+      root.style.scrollPaddingTop = previousTop;
+      root.style.scrollPaddingBottom = previousBottom;
+    };
+  }, [activeSurface, hasDecisionBar]);
+
   // Hydrate assessment and edit fields when the selected candidate or revision changes
   useEffect(() => {
     if (!candidate) return;
@@ -426,32 +709,51 @@ export function ContentEngineReviewWorkspace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidate?.candidateId, candidate?.reviewRevision]);
 
-  const refresh = async () => {
-    setRevisionConflict(null);
-    setActionError(null);
+  /**
+   * The candidate an action was started on. A reviewer can move to another
+   * candidate before the server answers; the answer still belongs to this one.
+   */
+  type ActionTarget = { candidateId: string; revision: number } | undefined;
+  const actionTargetFor = (): ActionTarget =>
+    candidate
+      ? { candidateId: candidate.candidateId, revision: candidate.reviewRevision }
+      : undefined;
+  /** True while the action's candidate is still the one on screen. */
+  const isOnScreen = (target: ActionTarget) =>
+    Boolean(target && selectedIdRef.current === target.candidateId);
+  /** Prefix for a toast about a candidate the reviewer has already left. */
+  const elsewhere = (target: ActionTarget) =>
+    isOnScreen(target) ? "" : "المرشح السابق: ";
+
+  const refresh = async (target: ActionTarget = actionTargetFor()) => {
+    if (isOnScreen(target)) {
+      setRevisionConflict(null);
+      setActionError(null);
+    }
     await client.invalidateQueries({ queryKey: ["content-engine-review"] });
     await client.invalidateQueries({
-      queryKey: ["content-engine-review-detail", selectedId],
+      queryKey: ["content-engine-review-detail", target?.candidateId ?? selectedIdRef.current],
     });
   };
 
   const action = useMutation({
     mutationFn: async (run: () => Promise<unknown>) => run(),
-    onSuccess: async () => {
-      setActionError(null);
-      setRevisionConflict(null);
-      await refresh();
-      showToast({ message: "تم حفظ قرار المراجعة." });
+    onMutate: actionTargetFor,
+    onSuccess: async (_data, _run, target) => {
+      await refresh(target);
+      showToast({ message: `${elsewhere(target)}تم حفظ قرار المراجعة.` });
     },
-    onError: (err) => {
+    onError: (err, _run, target) => {
       const parsed = extractConflictDetails(err);
       const kind = lastActionKind.current;
+      const onScreen = isOnScreen(target);
       const gate = parsed.code ? REVIEW_GATE_MESSAGES[parsed.code] : undefined;
       if (gate && kind !== "other") {
         const message = kind === "draft" ? gate.draft : gate.approve;
         if (
+          onScreen &&
+          target &&
           kind === "approve" &&
-          candidate &&
           (parsed.code === "OVERLAP_ACKNOWLEDGMENT_REQUIRED" ||
             parsed.code === "OVERLAP_ACKNOWLEDGMENT_STALE")
         ) {
@@ -462,33 +764,39 @@ export function ContentEngineReviewWorkspace() {
           );
           const current = new Set(requirements.map((r) => r.fingerprint));
           setServerOverlapEvidence({
-            candidateId: candidate.candidateId,
-            revision: candidate.reviewRevision,
+            candidateId: target.candidateId,
+            revision: target.revision,
             requirements,
           });
           setAcknowledgedOverlaps(
             (previous) => new Set([...previous].filter((fp) => current.has(fp))),
           );
         }
-        setRevisionConflict(null);
-        setActionError(message);
+        if (onScreen) {
+          setRevisionConflict(null);
+          setActionError(message);
+        }
         void client.invalidateQueries({ queryKey: ["content-engine-review"] });
         void client.invalidateQueries({
-          queryKey: ["content-engine-review-detail", selectedId],
+          queryKey: ["content-engine-review-detail", target?.candidateId],
         });
-        showToast({ type: "error", message });
+        showToast({ type: "error", message: `${elsewhere(target)}${message}` });
         return;
       }
-      setActionError(parsed.message);
-      if (parsed.isConflict) {
-        setRevisionConflict({
-          message: parsed.message,
-          currentRevision: parsed.currentRevision,
-        });
+      if (onScreen) {
+        setActionError(parsed.message);
+        if (parsed.isConflict) {
+          setRevisionConflict({
+            message: parsed.message,
+            currentRevision: parsed.currentRevision,
+          });
+        }
       }
       showToast({
         type: "error",
-        message: parsed.message || "تعذر حفظ القرار. قد يكون المرشح تغيّر لدى مراجع آخر.",
+        message: `${elsewhere(target)}${
+          parsed.message || "تعذر حفظ القرار. قد يكون المرشح تغيّر لدى مراجع آخر."
+        }`,
       });
     },
   });
@@ -501,26 +809,30 @@ export function ContentEngineReviewWorkspace() {
         candidate.reviewRevision,
       );
     },
-    onSuccess: async () => {
-      setActionError(null);
-      setRevisionConflict(null);
-      await refresh();
-      showToast({ message: "اكتملت إعادة فحص التكرار وتحديث النتائج بنجاح." });
+    onMutate: actionTargetFor,
+    onSuccess: async (_data, _variables, target) => {
+      await refresh(target);
+      showToast({
+        message: `${elsewhere(target)}اكتملت إعادة فحص التكرار وتحديث النتائج بنجاح.`,
+      });
     },
-    onError: (err) => {
+    onError: (err, _variables, target) => {
       const parsed = extractConflictDetails(err);
-      setActionError(parsed.message);
-      if (parsed.isConflict) {
-        setRevisionConflict({
-          message: parsed.message,
-          currentRevision: parsed.currentRevision,
-        });
+      if (isOnScreen(target)) {
+        setActionError(parsed.message);
+        if (parsed.isConflict) {
+          setRevisionConflict({
+            message: parsed.message,
+            currentRevision: parsed.currentRevision,
+          });
+        }
       }
       showToast({
         type: "error",
-        message:
+        message: `${elsewhere(target)}${
           parsed.message ||
-          "تعذر إعادة فحص التكرار. قد يكون المرشح قد تغيّر لدى مراجع آخر.",
+          "تعذر إعادة فحص التكرار. قد يكون المرشح قد تغيّر لدى مراجع آخر."
+        }`,
       });
     },
   });
@@ -602,7 +914,9 @@ export function ContentEngineReviewWorkspace() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[1440px] space-y-6 overflow-x-hidden px-4 py-8 sm:px-6 lg:px-10">
+    <main className="mx-auto w-full max-w-[1440px] space-y-6 overflow-x-clip px-4 py-8 sm:px-6 lg:px-10">
+      {/* `clip`, not `hidden`: hidden makes <main> a scroll container, which
+          silently disables the sticky queue and decision bar. */}
       <PageHeader
         title="استوديو توليد المحتوى (Content Generation Studio)"
         description="توليد الدفعات من الخيارات القانونية، الفحص المسبق للتكلفة، التشغيل المحدد بالدفعة، والمراجعة البشرية قبل إنشاء مسودات ContentItem."
@@ -697,11 +1011,65 @@ export function ContentEngineReviewWorkspace() {
       )}
 
       {activeSurface === "review" && (
+        <div
+          data-testid="review-workspace-layout"
+          className="grid items-start gap-6 lg:grid-cols-[minmax(19rem,24rem)_minmax(0,1fr)]"
+        >
+        {/* Queue first in the DOM: in RTL it sits at the start (right). */}
+        <aside
+          aria-label="قائمة المرشحين"
+          data-testid="candidate-queue"
+          className="min-w-0 lg:sticky lg:top-[5.5rem] lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto lg:overscroll-contain lg:rounded-xl"
+        >
         <SectionCard
           title="المرشحون"
           description="تصفية حسب الدفعة والعالم والنطاق والحالة"
         >
-          <div className="grid gap-3 md:grid-cols-4">
+          <div
+            data-testid="review-progress"
+            className="space-y-1.5 rounded-lg bg-muted/40 p-3"
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs">
+              <span className="font-semibold text-foreground">
+                تم البتّ في{" "}
+                <span className="akwaan-numeral">{reviewProgress.decided}</span>{" "}
+                من <span className="akwaan-numeral">{reviewProgress.total}</span>
+              </span>
+              <span className="text-muted-foreground">
+                <span className="akwaan-numeral">
+                  {reviewProgress.total - reviewProgress.decided}
+                </span>{" "}
+                بانتظار القرار
+              </span>
+            </div>
+            <div
+              role="progressbar"
+              aria-label="تقدّم المراجعة في القائمة الحالية"
+              aria-valuemin={0}
+              aria-valuemax={reviewProgress.total}
+              aria-valuenow={reviewProgress.decided}
+              className="h-1.5 overflow-hidden rounded-full bg-muted"
+            >
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-200"
+                style={{
+                  width: `${
+                    reviewProgress.total
+                      ? (reviewProgress.decided / reviewProgress.total) * 100
+                      : 0
+                  }%`,
+                }}
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              للتنقل:{" "}
+              <kbd className="rounded border bg-background px-1 font-sans">J</kbd>{" "}
+              التالي ·{" "}
+              <kbd className="rounded border bg-background px-1 font-sans">K</kbd>{" "}
+              السابق
+            </p>
+          </div>
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
             {(["jobId", "worldKey", "scopeKey"] as const).map((key) => (
               <Input
                 key={key}
@@ -724,7 +1092,7 @@ export function ContentEngineReviewWorkspace() {
             ))}
             <select
               aria-label="status"
-              className="h-10 rounded-md border bg-background px-3 text-sm"
+              className="h-10 w-full min-w-0 rounded-md border bg-background px-3 text-sm"
               value={filters.status}
               onChange={(event) =>
                 setFilters((current) => ({
@@ -746,19 +1114,10 @@ export function ContentEngineReviewWorkspace() {
               <option value="fact_blocked">تدقيق الحقائق متعثر (Fact Blocked)</option>
             </select>
           </div>
-          <div className="grid gap-2 lg:grid-cols-2">
-            {(list.data ?? []).map((row) => {
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
+            {queueRows.map((row) => {
               const isScreenedReject = row.status === "screened_reject";
-              const pipelineLabel =
-                CANDIDATE_PIPELINE_STATUS_LABELS[row.status] ?? {
-                  label: row.status,
-                  badgeClass: "border-slate-200 bg-slate-100 text-slate-700",
-                };
-              const reviewLabel =
-                CANDIDATE_REVIEW_STATUS_LABELS[row.reviewStatus] ?? {
-                  label: row.reviewStatus,
-                  badgeClass: "border-slate-200 bg-slate-100 text-slate-700",
-                };
+              const rowStatus = candidateStatusPresentation(row);
               const blockingFinding = row.findings?.find(
                 (f) => f.severity === "blocking",
               );
@@ -769,8 +1128,9 @@ export function ContentEngineReviewWorkspace() {
                   key={row.candidateId}
                   type="button"
                   data-testid={`candidate-row-${row.candidateId}`}
-                  onClick={() => setSelectedId(row.candidateId)}
-                  className={`rounded-xl border p-4 text-right transition-colors ${
+                  aria-current={selectedId === row.candidateId ? "true" : undefined}
+                  onClick={() => selectCandidate(row.candidateId)}
+                  className={`min-w-0 rounded-xl border p-4 text-right transition-colors ${
                     isScreenedReject
                       ? selectedId === row.candidateId
                         ? "border-rose-500 bg-rose-100/50 ring-1 ring-rose-400"
@@ -790,23 +1150,12 @@ export function ContentEngineReviewWorkspace() {
                     >
                       {row.draft?.prompt?.ar ?? "مرشح بلا سؤال"}
                     </span>
-                    <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
-                      {row.publishedContentItemId && (
-                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
-                          مسودة منشأة
-                        </span>
-                      )}
+                    <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
                       <span
-                        data-testid={`candidate-pipeline-badge-${row.candidateId}`}
-                        className={`rounded-full border px-2 py-0.5 text-[11px] ${pipelineLabel.badgeClass}`}
+                        data-testid={`candidate-status-badge-${row.candidateId}`}
+                        className={`rounded-full border px-2 py-0.5 text-[11px] ${rowStatus.badgeClass}`}
                       >
-                        {pipelineLabel.label}
-                      </span>
-                      <span
-                        data-testid={`candidate-review-badge-${row.candidateId}`}
-                        className={`rounded-full border px-2 py-0.5 text-[11px] ${reviewLabel.badgeClass}`}
-                      >
-                        {reviewLabel.label}
+                        {rowStatus.label}
                       </span>
                       {dedup.listBadge && (
                         <span
@@ -919,9 +1268,141 @@ export function ContentEngineReviewWorkspace() {
             )}
           </div>
         </SectionCard>
-      )}
+        </aside>
 
-      {activeSurface === "review" && candidate && (
+        <section
+          aria-labelledby={selectedId ? "candidate-detail-heading" : undefined}
+          aria-label={selectedId ? undefined : "تفاصيل المرشح"}
+          data-testid="candidate-detail-column"
+          className="min-w-0 space-y-6"
+        >
+          {!selectedId && (
+            <div
+              data-testid="candidate-detail-empty"
+              className="hidden rounded-xl border border-dashed bg-card/60 p-8 text-center text-sm text-muted-foreground lg:block"
+            >
+              اختر مرشحاً من القائمة لعرض تفاصيله، أو اضغط{" "}
+              <kbd className="rounded border bg-background px-1 font-sans">J</kbd>{" "}
+              لفتح أول مرشح.
+            </div>
+          )}
+
+          {selectedId && (
+            <div
+              data-testid="candidate-detail-header"
+              className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm xl:flex-row xl:items-start xl:justify-between"
+            >
+              <div className="min-w-0 space-y-2">
+                <h2
+                  id="candidate-detail-heading"
+                  ref={detailHeadingRef}
+                  tabIndex={-1}
+                  className="scroll-mt-24 rounded-md text-lg font-bold leading-snug text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  {(candidate?.candidateId === selectedId
+                    ? candidate?.draft?.prompt?.ar
+                    : selectedRow?.draft?.prompt?.ar) ?? "مرشح بلا سؤال"}
+                </h2>
+                {(() => {
+                  const source =
+                    candidate?.candidateId === selectedId ? candidate : selectedRow;
+                  if (!source) return null;
+                  const status = candidateStatusPresentation(source);
+                  return (
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span
+                        data-testid="candidate-detail-status"
+                        className={`rounded-full border px-2.5 py-0.5 text-xs ${status.badgeClass}`}
+                      >
+                        {status.label}
+                      </span>
+                      <span>
+                        {source.job?.worldKey} / {source.job?.scopeKey} ·{" "}
+                        {source.job?.mechanicKey}
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+              <nav
+                aria-label="التنقل بين المرشحين"
+                className="flex w-full shrink-0 items-center justify-between gap-2 xl:w-auto xl:justify-start xl:self-start"
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-previous-candidate"
+                  aria-keyshortcuts="K"
+                  disabled={!adjacent.previousId}
+                  onClick={() =>
+                    adjacent.previousId && selectCandidate(adjacent.previousId)
+                  }
+                >
+                  <ChevronRight aria-hidden="true" />
+                  السابق
+                </Button>
+                <span
+                  data-testid="candidate-position"
+                  className="text-center text-xs text-muted-foreground sm:min-w-[5.5rem]"
+                >
+                  {adjacent.index >= 0 ? (
+                    <>
+                      المرشح{" "}
+                      <span className="akwaan-numeral">{adjacent.index + 1}</span>{" "}
+                      من <span className="akwaan-numeral">{queueIds.length}</span>
+                    </>
+                  ) : (
+                    "خارج القائمة الحالية"
+                  )}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-next-candidate"
+                  aria-keyshortcuts="J"
+                  disabled={!adjacent.nextId}
+                  onClick={() =>
+                    adjacent.nextId && selectCandidate(adjacent.nextId)
+                  }
+                >
+                  التالي
+                  <ChevronLeft aria-hidden="true" />
+                </Button>
+              </nav>
+            </div>
+          )}
+
+          {selectedId && !candidate && detail.isLoading && (
+            <p
+              role="status"
+              data-testid="candidate-detail-loading"
+              className="rounded-xl border bg-card p-6 text-sm text-muted-foreground"
+            >
+              جارٍ تحميل المرشح…
+            </p>
+          )}
+
+          {selectedId && !candidate && detail.isError && (
+            <div
+              role="alert"
+              data-testid="candidate-detail-error"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
+            >
+              <span>تعذّر تحميل هذا المرشح.</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void detail.refetch()}
+              >
+                إعادة المحاولة
+              </Button>
+            </div>
+          )}
+
+      {candidate && (
         <>
           {revisionConflict && (
             <div
@@ -955,13 +1436,7 @@ export function ContentEngineReviewWorkspace() {
 
           <SectionCard
             title="تفاصيل المرشح"
-            description={`المراجعة ${candidate.reviewRevision} · مسار الفحص: ${
-              CANDIDATE_PIPELINE_STATUS_LABELS[candidate.status]?.label ??
-              candidate.status
-            } · القرار البشري: ${
-              CANDIDATE_REVIEW_STATUS_LABELS[candidate.reviewStatus]?.label ??
-              candidate.reviewStatus
-            }`}
+            description={`المراجعة ${candidate.reviewRevision}`}
             actions={
               editable && !candidate.publishedContentItemId ? (
                 <Button
@@ -1009,17 +1484,17 @@ export function ContentEngineReviewWorkspace() {
             {/* Target Identity & Canonical Resolution Context */}
             <div
               data-testid="candidate-target-context"
-              className="grid gap-2 rounded-xl border bg-muted/30 p-3 text-xs sm:grid-cols-2 lg:grid-cols-4"
+              className="grid gap-2 rounded-xl border bg-muted/30 p-3 text-xs sm:grid-cols-2"
             >
               <div>
                 <span className="text-muted-foreground">معرّف المرشح: </span>
-                <span className="font-mono font-semibold">
+                <span className="break-all font-mono font-semibold">
                   {candidate.candidateId}
                 </span>
               </div>
               <div>
                 <span className="text-muted-foreground">معرّف الدفعة: </span>
-                <span className="font-mono">{candidate.jobId}</span>
+                <span className="break-all font-mono">{candidate.jobId}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Lock className="size-3.5 text-amber-500" />
@@ -1530,8 +2005,10 @@ export function ContentEngineReviewWorkspace() {
             {/* Approval Eligibility & Blockers Panel */}
             {eligibility && (
               <div
+                id={DECISION_REQUIREMENTS_ID}
+                tabIndex={-1}
                 data-testid="approval-eligibility-panel"
-                className={`rounded-xl border p-3 text-xs ${
+                className={`scroll-mt-24 rounded-xl border p-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                   eligibility.approvalBlockers.length > 0
                     ? "border-amber-300 bg-amber-50 text-amber-900"
                     : "border-emerald-300 bg-emerald-50 text-emerald-900"
@@ -1646,111 +2123,6 @@ export function ContentEngineReviewWorkspace() {
               </div>
             )}
 
-            <div className="flex flex-wrap gap-2">
-              <Button
-                data-testid="button-approve-candidate"
-                disabled={
-                  action.isPending ||
-                  candidate.reviewStatus === "rejected" ||
-                  Boolean(candidate.publishedContentItemId) ||
-                  !decisionExplanation.trim() ||
-                  Boolean(eligibility && !eligibility.canApprove) ||
-                  overlapState.unverifiable > 0 ||
-                  unacknowledgedOverlaps > 0 ||
-                  (candidate.humanAssessment?.factualState !== "SUPPORTED" &&
-                    (!factualOverrideCode || !overrideExplanation.trim()))
-                }
-                onClick={() => {
-                  lastActionKind.current = "approve";
-                  // Exactly the server-provided fingerprints, all acknowledged.
-                  const overlapAcknowledgments = overlapState.required
-                    .filter((r) => acknowledgedOverlaps.has(r.fingerprint))
-                    .map((r) => ({ fingerprint: r.fingerprint }));
-                  action.mutate(() =>
-                    api.approveCandidate(candidate.candidateId, {
-                      expectedRevision: candidate.reviewRevision,
-                      explanation: decisionExplanation.trim(),
-                      ...(overlapAcknowledgments.length
-                        ? { overlapAcknowledgments }
-                        : {}),
-                      ...(candidate.humanAssessment?.factualState ===
-                      "SUPPORTED"
-                        ? {}
-                        : {
-                            factualOverrideCode: factualOverrideCode || undefined,
-                            factualOverrideExplanation:
-                              overrideExplanation.trim(),
-                          }),
-                    }),
-                  );
-                }}
-              >
-                <Check className="me-2 size-4" /> اعتماد
-              </Button>
-              <select
-                aria-label="rejection reason"
-                className="h-10 rounded-md border bg-background px-3 text-sm"
-                value={rejectionReason}
-                onChange={(event) => setRejectionReason(event.target.value)}
-              >
-                {[
-                  "FACTUAL_ERROR",
-                  "UNSUPPORTED_CLAIM",
-                  "MECHANIC_MISMATCH",
-                  "SCOPE_MISMATCH",
-                  "DUPLICATE",
-                  "LOW_QUALITY",
-                  "UNSAFE_OR_INAPPROPRIATE",
-                  "OTHER",
-                ].map((reason) => (
-                  <option key={reason} value={reason}>
-                    {reason}
-                  </option>
-                ))}
-              </select>
-              <Button
-                variant="destructive"
-                data-testid="button-reject-candidate"
-                disabled={
-                  action.isPending ||
-                  Boolean(candidate.publishedContentItemId) ||
-                  !decisionExplanation.trim()
-                }
-                onClick={() => {
-                  lastActionKind.current = "other";
-                  action.mutate(() =>
-                    api.rejectCandidate(candidate.candidateId, {
-                      expectedRevision: candidate.reviewRevision,
-                      reasonCode: rejectionReason,
-                      explanation: decisionExplanation.trim(),
-                    }),
-                  );
-                }}
-              >
-                <X className="me-2 size-4" /> رفض
-              </Button>
-              <Button
-                variant="outline"
-                data-testid="button-create-canonical-draft"
-                disabled={
-                  action.isPending ||
-                  candidate.reviewStatus !== "approved" ||
-                  Boolean(candidate.publishedContentItemId) ||
-                  Boolean(eligibility && !eligibility.canCreateDraft)
-                }
-                onClick={() => {
-                  lastActionKind.current = "draft";
-                  action.mutate(() =>
-                    api.createCanonicalDraft(
-                      candidate.candidateId,
-                      candidate.reviewRevision,
-                    ),
-                  );
-                }}
-              >
-                <FilePlus2 className="me-2 size-4" /> إنشاء مسودة Canonical (DRAFT)
-              </Button>
-            </div>
             {candidate.reviewStatus === "approved" &&
               (eligibility?.draftBlockers?.length ?? 0) > 0 && (
                 <div
@@ -1767,6 +2139,136 @@ export function ContentEngineReviewWorkspace() {
                 </div>
               )}
           </SectionCard>
+
+          {/*
+            Sticky on large screens so the decision stays reachable while the
+            reviewer reads. It is in normal flow, so it never permanently hides
+            content, and scroll-padding keeps focused fields clear of it. The
+            controls, their conditions and their payloads are unchanged.
+          */}
+          <div
+            ref={decisionBarRef}
+            role="region"
+            aria-label="إجراءات القرار"
+            data-testid="decision-bar"
+            className="z-10 space-y-2 rounded-xl border bg-card p-3 shadow-sm lg:sticky lg:bottom-4 lg:shadow-[0_-10px_24px_-14px_hsl(var(--foreground)/0.35)]"
+          >
+            <DecisionBarSummary
+              candidate={candidate}
+              approvalBlockers={eligibility?.approvalBlockers ?? []}
+              hasExplanation={Boolean(decisionExplanation.trim())}
+              needsFactualOverride={
+                Boolean(candidate.humanAssessment) &&
+                candidate.humanAssessment?.factualState !== "SUPPORTED" &&
+                (!factualOverrideCode || !overrideExplanation.trim())
+              }
+            />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  data-testid="button-approve-candidate"
+                  disabled={
+                    action.isPending ||
+                    candidate.reviewStatus === "rejected" ||
+                    Boolean(candidate.publishedContentItemId) ||
+                    !decisionExplanation.trim() ||
+                    Boolean(eligibility && !eligibility.canApprove) ||
+                    overlapState.unverifiable > 0 ||
+                    unacknowledgedOverlaps > 0 ||
+                    (candidate.humanAssessment?.factualState !== "SUPPORTED" &&
+                      (!factualOverrideCode || !overrideExplanation.trim()))
+                  }
+                  onClick={() => {
+                    lastActionKind.current = "approve";
+                    // Exactly the server-provided fingerprints, all acknowledged.
+                    const overlapAcknowledgments = overlapState.required
+                      .filter((r) => acknowledgedOverlaps.has(r.fingerprint))
+                      .map((r) => ({ fingerprint: r.fingerprint }));
+                    action.mutate(() =>
+                      api.approveCandidate(candidate.candidateId, {
+                        expectedRevision: candidate.reviewRevision,
+                        explanation: decisionExplanation.trim(),
+                        ...(overlapAcknowledgments.length
+                          ? { overlapAcknowledgments }
+                          : {}),
+                        ...(candidate.humanAssessment?.factualState ===
+                        "SUPPORTED"
+                          ? {}
+                          : {
+                              factualOverrideCode: factualOverrideCode || undefined,
+                              factualOverrideExplanation:
+                                overrideExplanation.trim(),
+                            }),
+                      }),
+                    );
+                  }}
+                >
+                  <Check className="me-2 size-4" /> اعتماد
+                </Button>
+                <select
+                  aria-label="rejection reason"
+                  className="h-10 rounded-md border bg-background px-3 text-sm"
+                  value={rejectionReason}
+                  onChange={(event) => setRejectionReason(event.target.value)}
+                >
+                  {[
+                    "FACTUAL_ERROR",
+                    "UNSUPPORTED_CLAIM",
+                    "MECHANIC_MISMATCH",
+                    "SCOPE_MISMATCH",
+                    "DUPLICATE",
+                    "LOW_QUALITY",
+                    "UNSAFE_OR_INAPPROPRIATE",
+                    "OTHER",
+                  ].map((reason) => (
+                    <option key={reason} value={reason}>
+                      {reason}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  variant="destructive"
+                  data-testid="button-reject-candidate"
+                  disabled={
+                    action.isPending ||
+                    Boolean(candidate.publishedContentItemId) ||
+                    !decisionExplanation.trim()
+                  }
+                  onClick={() => {
+                    lastActionKind.current = "other";
+                    action.mutate(() =>
+                      api.rejectCandidate(candidate.candidateId, {
+                        expectedRevision: candidate.reviewRevision,
+                        reasonCode: rejectionReason,
+                        explanation: decisionExplanation.trim(),
+                      }),
+                    );
+                  }}
+                >
+                  <X className="me-2 size-4" /> رفض
+                </Button>
+                <Button
+                  variant="outline"
+                  data-testid="button-create-canonical-draft"
+                  disabled={
+                    action.isPending ||
+                    candidate.reviewStatus !== "approved" ||
+                    Boolean(candidate.publishedContentItemId) ||
+                    Boolean(eligibility && !eligibility.canCreateDraft)
+                  }
+                  onClick={() => {
+                    lastActionKind.current = "draft";
+                    action.mutate(() =>
+                      api.createCanonicalDraft(
+                        candidate.candidateId,
+                        candidate.reviewRevision,
+                      ),
+                    );
+                  }}
+                >
+                  <FilePlus2 className="me-2 size-4" /> إنشاء مسودة Canonical (DRAFT)
+                </Button>
+              </div>
+          </div>
 
           <SectionCard title="سجل التدقيق">
             {!candidate.reviewEvents.length && (
@@ -1930,6 +2432,9 @@ export function ContentEngineReviewWorkspace() {
             )}
           </EntityFormDialog>
         </>
+      )}
+        </section>
+        </div>
       )}
     </main>
   );

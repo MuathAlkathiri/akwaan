@@ -109,7 +109,7 @@ describe("Content Engine Review Studio — Candidate Status Presentation", () =>
     vi.restoreAllMocks();
   });
 
-  it("renders distinct pipeline and review status badges for reviewable and rejected candidates", async () => {
+  it("renders one consolidated status per candidate for reviewable and rejected candidates", async () => {
     const reviewableCand = mockCandidate({
       id: "cand-pass",
       candidateId: "cid-pass",
@@ -154,22 +154,17 @@ describe("Content Engine Review Studio — Candidate Status Presentation", () =>
     await screen.findByTestId("candidate-row-cid-pass");
     await screen.findByTestId("candidate-row-cid-reject");
 
-    // Reviewable candidate shows Awaiting Review pipeline badge and Pending review badge
-    const passPipelineBadge = screen.getByTestId(
-      "candidate-pipeline-badge-cid-pass",
+    // The pipeline and review statuses are merged into one status per row.
+    expect(screen.queryByTestId("candidate-pipeline-badge-cid-pass")).toBeNull();
+    expect(screen.queryByTestId("candidate-review-badge-cid-pass")).toBeNull();
+    expect(screen.getByTestId("candidate-status-badge-cid-pass")).toHaveTextContent(
+      "بانتظار المراجعة",
     );
-    expect(passPipelineBadge).toHaveTextContent("جاهز للمراجعة");
 
-    const passReviewBadge = screen.getByTestId(
-      "candidate-review-badge-cid-pass",
-    );
-    expect(passReviewBadge).toHaveTextContent("بانتظار القرار البشري");
-
-    // Rejected candidate shows Screened Reject pipeline badge
-    const rejectPipelineBadge = screen.getByTestId(
-      "candidate-pipeline-badge-cid-reject",
-    );
-    expect(rejectPipelineBadge).toHaveTextContent("مرفوض آلياً");
+    // A screened reject is still identified as such.
+    expect(
+      screen.getByTestId("candidate-status-badge-cid-reject"),
+    ).toHaveTextContent("مرفوض آلياً");
 
     // Rejected candidate displays the blocking reason in the list item
     const blockingReason = screen.getByTestId(
