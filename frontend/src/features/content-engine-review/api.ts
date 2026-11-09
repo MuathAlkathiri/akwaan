@@ -145,7 +145,7 @@ export interface EngineGenerationSpecification {
   provider: string;
   generationModel: string;
   qualityModel: string | null;
-  temperature: number;
+  temperature: number | null;
   outputTokensPerCandidate: number;
   maxOutputTokens: number;
   contextHash: string;

@@ -355,6 +355,8 @@ const mockPreflightResponse = (
   ruleSetDigest: "r".repeat(64),
   estimatedMicros: 320_000,
   estimatedSar: 0.32,
+  totalEstimatedSar: 0.32,
+  totalEstimatedMicros: 320_000,
   generationEstimatedMicros: 200_000,
   conditionalJudgeEstimatedMicros: 120_000,
   maxJudgeEstimatedMicros: 120_000,
@@ -507,12 +509,8 @@ describe("Admin Content Generation Studio — Phase B UI", () => {
     fireEvent.change(scopeSelect, { target: { value: "soulsborne" } });
     expect(mechanicSelect.value).toBe("closest");
 
-    fireEvent.change(mechanicSelect, {
-      target: { value: "read-your-opponent" },
-    });
-    expect(
-      screen.getByTestId("selection-blocked-diagnostic"),
-    ).toHaveTextContent("CHALLENGE_TYPE_EXCLUDED_BY_SCOPE");
+    expect(Array.from(mechanicSelect.options).map((o) => o.value)).not.toContain("read-your-opponent");
+    expect(screen.getByTestId("disabled-mechanics-diagnostics")).toHaveTextContent("CHALLENGE_TYPE_EXCLUDED_BY_SCOPE");
 
     // Switching World to `puzzles` resets Scope to `wordplay-letters` and Mechanic to `read-your-opponent`
     fireEvent.change(worldSelect, { target: { value: "puzzles" } });
@@ -542,20 +540,18 @@ describe("Admin Content Generation Studio — Phase B UI", () => {
     const countInput = screen.getByTestId(
       "input-target-count",
     ) as HTMLInputElement;
-    const preflightBtn = screen.getByTestId(
-      "button-preflight",
-    ) as HTMLButtonElement;
+    const submitBtn = screen.getByTestId("button-submit-job") as HTMLButtonElement;
 
     // Entering 15 (exceeding maxTargetCount=10) keeps "15" in input (no silent truncation), shows error, and disables preflight
     fireEvent.change(countInput, { target: { value: "15" } });
     expect(countInput.value).toBe("15");
     expect(screen.getByTestId("target-count-error")).toHaveTextContent("15");
-    expect(preflightBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabled();
 
     // Restore valid count
     fireEvent.change(countInput, { target: { value: "4" } });
     expect(screen.queryByTestId("target-count-error")).toBeNull();
-    expect(preflightBtn).not.toBeDisabled();
+    expect(submitBtn).toBeDisabled();
 
     // Batch guidance subordinate explanation is displayed
     expect(
@@ -573,7 +569,7 @@ describe("Admin Content Generation Studio — Phase B UI", () => {
     expect(screen.getByTestId("batch-guidance-error")).toHaveTextContent(
       "1005 / 1000",
     );
-    expect(preflightBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabled();
 
     // Valid guidance with CRLF and surrounding whitespace is normalized on preflight request
     fireEvent.change(guidanceInput, {
@@ -581,7 +577,6 @@ describe("Admin Content Generation Studio — Phase B UI", () => {
     });
     expect(screen.queryByTestId("batch-guidance-error")).toBeNull();
 
-    fireEvent.click(preflightBtn);
     await waitFor(() => {
       expect(preflightSpy).toHaveBeenCalledWith({
         worldKey: "video-games",
@@ -617,14 +612,8 @@ describe("Admin Content Generation Studio — Phase B UI", () => {
       </WithQueryClient>,
     );
 
-    const preflightBtn = await screen.findByTestId("button-preflight");
-    const submitBtn = screen.getByTestId("button-submit-job");
-
-    // Submit is disabled before preflight
-    await waitFor(() => expect(preflightBtn).not.toBeDisabled());
+    const submitBtn = await screen.findByTestId("button-submit-job");
     expect(submitBtn).toBeDisabled();
-
-    fireEvent.click(preflightBtn);
 
     // Preflight panel renders separate generation cost, conditional judge cost, total ceiling, and budget constraints
     await screen.findByTestId("preflight-results");
@@ -647,11 +636,11 @@ describe("Admin Content Generation Studio — Phase B UI", () => {
     expect(submitBtn).toBeDisabled();
 
     // Re-run preflight, then trigger 409 PREFLIGHT_PLAN_DRIFT on submit
-    fireEvent.click(preflightBtn);
     await screen.findByTestId("preflight-results");
     expect(submitBtn).not.toBeDisabled();
 
     fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole("button", { name: "تأكيد التوليد" }));
     await screen.findByTestId("plan-drift-alert");
     expect(submitSpy).toHaveBeenCalledTimes(1);
     // Old preflight is invalidated so stale planDigest cannot be resubmitted
@@ -675,7 +664,7 @@ describe("Admin Content Generation Studio — Phase B UI", () => {
       }),
     );
 
-    fireEvent.click(preflightBtn);
+    fireEvent.change(screen.getByTestId("select-difficulty"), { target: { value: "medium" } });
     await screen.findByTestId("preflight-blocking-diagnostic");
     expect(
       screen.getByTestId("preflight-blocking-diagnostic"),
@@ -726,21 +715,14 @@ describe("Admin Content Generation Studio — Phase B UI", () => {
       </WithQueryClient>,
     );
 
-    const preflightBtn = await screen.findByTestId("button-preflight");
-    await waitFor(() => expect(preflightBtn).not.toBeDisabled());
-    fireEvent.click(preflightBtn);
-
     const submitBtn = await screen.findByTestId("button-submit-job");
     await waitFor(() => expect(submitBtn).not.toBeDisabled());
     fireEvent.click(submitBtn);
-
-    const runBtn = await screen.findByTestId("button-run-exact-job");
+    const confirm = screen.getByRole("button", { name: "تأكيد التوليد" });
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+    await waitFor(() => expect(runSpy).toHaveBeenCalledTimes(1));
     expect(submitSpy).toHaveBeenCalledTimes(1);
-
-    // Rapid double-click on Run only triggers one runJob call for the exact jobId
-    fireEvent.click(runBtn);
-    fireEvent.click(runBtn);
-    expect(runSpy).toHaveBeenCalledTimes(1);
     expect(runSpy).toHaveBeenCalledWith("671000000000000000000099");
 
     // Complete runJob and transition to terminal awaiting_review
@@ -765,9 +747,491 @@ describe("Admin Content Generation Studio — Phase B UI", () => {
       );
     });
 
-    // Run button is now disabled because job is in awaiting_review
-    expect(screen.getByTestId("button-run-exact-job")).toBeDisabled();
+    // The completed job is not run again automatically.
+    expect(runSpy).toHaveBeenCalledTimes(1);
     expect(statusSpy).toHaveBeenCalledWith("671000000000000000000099");
+  });
+
+  it("debounces preflight and ignores out-of-order responses", async () => {
+    vi.spyOn(api, "getAuthoringOptions").mockResolvedValue(mockAuthoringOptions());
+    const pending: Array<(value: api.EnginePreflight) => void> = [];
+    const preflight = vi.spyOn(api, "preflightJob").mockImplementation(() => new Promise((resolve) => pending.push(resolve)));
+    render(<WithQueryClient><BatchSubmissionPanel /></WithQueryClient>);
+    await screen.findByTestId("input-target-count");
+    await waitFor(() => expect(preflight).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByTestId("input-target-count"), { target: { value: "3" } });
+    fireEvent.change(screen.getByTestId("input-target-count"), { target: { value: "4" } });
+    await waitFor(() => expect(preflight).toHaveBeenCalledTimes(2));
+    await act(async () => pending[1](mockPreflightResponse({ totalEstimatedSar: 0.4, planDigest: "new-plan" })));
+    expect(screen.getByTestId("button-submit-job")).toHaveTextContent("4 أسئلة");
+    expect(screen.getByTestId("button-submit-job")).toHaveTextContent("0.4000");
+    await act(async () => pending[0](mockPreflightResponse({ totalEstimatedSar: 0.9, planDigest: "old-plan" })));
+    expect(screen.getByTestId("button-submit-job")).toHaveTextContent("0.4000");
+  });
+
+  it("requires a server cost and allows cancelling confirmation without a paid request", async () => {
+    vi.spyOn(api, "getAuthoringOptions").mockResolvedValue(mockAuthoringOptions());
+    const preflight = vi.spyOn(api, "preflightJob").mockResolvedValueOnce(mockPreflightResponse({ totalEstimatedSar: undefined }));
+    const submit = vi.spyOn(api, "submitJob");
+    render(<WithQueryClient><BatchSubmissionPanel /></WithQueryClient>);
+    await screen.findByText("تعذر تحديد الحد الأقصى للتكلفة من الخادم.");
+    expect(screen.getByTestId("button-submit-job")).toBeDisabled();
+    preflight.mockResolvedValue(mockPreflightResponse());
+    fireEvent.change(screen.getByTestId("input-target-count"), { target: { value: "4" } });
+    await waitFor(() => expect(screen.getByTestId("button-submit-job")).toBeEnabled());
+    fireEvent.click(screen.getByTestId("button-submit-job"));
+    fireEvent.click(screen.getByRole("button", { name: "إلغاء" }));
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it("does not retry an ambiguous execution and reports unknown status", async () => {
+    vi.spyOn(api, "getAuthoringOptions").mockResolvedValue(mockAuthoringOptions());
+    vi.spyOn(api, "preflightJob").mockResolvedValue(mockPreflightResponse());
+    vi.spyOn(api, "submitJob").mockResolvedValue({ jobId: "job-exact", created: true, contextHash: "c" });
+    const run = vi.spyOn(api, "runJob").mockRejectedValue(new Error("network timeout"));
+    vi.spyOn(api, "getJobStatus").mockRejectedValue(new Error("offline"));
+    render(<WithQueryClient><BatchSubmissionPanel /></WithQueryClient>);
+    const button = await screen.findByTestId("button-submit-job");
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button); fireEvent.click(screen.getByRole("button", { name: "تأكيد التوليد" }));
+    await screen.findByText(/تعذر التأكد من نتيجة التشغيل/);
+    expect(run).toHaveBeenCalledTimes(1); expect(run).toHaveBeenCalledWith("job-exact");
+  });
+
+  it("distinguishes failed history loading from an empty list and retries", async () => {
+    const list = vi.spyOn(api, "listJobs").mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ items: [], nextCursor: null });
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId={null} onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    await screen.findByTestId("jobs-load-error");
+    expect(screen.queryByTestId("jobs-empty-state")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "إعادة المحاولة" }));
+    await screen.findByTestId("jobs-empty-state"); expect(list).toHaveBeenCalledTimes(2);
+  });
+
+  it("loads cursor pages without duplicating jobs, preserves the selected detail, and retries a failed page", async () => {
+    const first = mockJobStatus({ jobId: "first" });
+    const second = mockJobStatus({ jobId: "second", scopeKey: "second-scope" });
+    let resolveFirst!: (value: api.EngineJobListResponse) => void;
+    const list = vi.spyOn(api, "listJobs")
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
+      .mockRejectedValueOnce(new Error("page unavailable"))
+      .mockResolvedValueOnce({ items: [first, second], nextCursor: "cursor-2" })
+      .mockResolvedValueOnce({ items: [], nextCursor: null });
+    vi.spyOn(api, "getJobStatus").mockResolvedValue(first);
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId="first" onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    expect(screen.getByText("جاري تحميل سجل الدفعات...")).toBeInTheDocument();
+    await act(async () => resolveFirst({ items: [first], nextCursor: "cursor-1" }));
+    await screen.findByTestId("job-row-first");
+    fireEvent.click(screen.getByTestId("button-load-more-jobs"));
+    await screen.findByTestId("jobs-feedback-banner");
+    expect(screen.getByTestId("job-row-first")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("button-load-more-jobs"));
+    await screen.findByTestId("job-row-second");
+    expect(screen.getAllByTestId("job-row-first")).toHaveLength(1);
+    expect(list).toHaveBeenNthCalledWith(2, { limit: 20, cursor: "cursor-1", status: undefined });
+    expect(list).toHaveBeenNthCalledWith(3, { limit: 20, cursor: "cursor-1", status: undefined });
+    expect(screen.getByTestId("job-detail-inspector")).toHaveTextContent("overwatch");
+    fireEvent.click(screen.getByTestId("button-load-more-jobs"));
+    await waitFor(() => expect(screen.queryByTestId("button-load-more-jobs")).not.toBeInTheDocument());
+    expect(list).toHaveBeenNthCalledWith(4, { limit: 20, cursor: "cursor-2", status: undefined });
+    expect(screen.getByTestId("job-row-first")).toBeInTheDocument();
+    expect(screen.getByTestId("job-row-second")).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("input-search-jobs"), { target: { value: "second-scope" } });
+    expect(screen.queryByTestId("job-row-first")).not.toBeInTheDocument();
+    expect(screen.getByTestId("job-row-second")).toBeInTheDocument();
+  });
+
+  it("cancels only the chosen eligible job once and reflects the authoritative completed state", async () => {
+    const queued = mockJobStatus({ jobId: "queued" });
+    const done = mockJobStatus({ jobId: "done", status: "completed" });
+    let finish!: (value: boolean) => void;
+    const cancel = vi.spyOn(api, "cancelJob").mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    const run = vi.spyOn(api, "runJob");
+    vi.spyOn(api, "listJobs").mockResolvedValue({ items: [queued, done], nextCursor: null });
+    vi.spyOn(api, "getJobStatus").mockResolvedValueOnce(queued).mockResolvedValue({ ...queued, status: "completed" });
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId="queued" onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    const button = await screen.findByTestId("job-cancel-btn-queued");
+    expect(screen.queryByTestId("job-cancel-btn-done")).not.toBeInTheDocument();
+    fireEvent.click(button); fireEvent.click(button);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(cancel).toHaveBeenCalledWith("queued");
+    expect(button).toBeDisabled();
+    await act(async () => finish(true));
+    await waitFor(() => expect(screen.getByTestId("inspector-job-status")).toHaveTextContent("مكتملة"));
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("retains loaded pages after a first-page refresh", async () => {
+    const first = mockJobStatus({ jobId: "first" });
+    const second = mockJobStatus({ jobId: "second" });
+    let refreshed = false;
+    const list = vi.spyOn(api, "listJobs").mockImplementation(async (params) => {
+      if (params?.cursor) return { items: [second], nextCursor: null };
+      const item = refreshed ? { ...first, attempts: 1 } : first;
+      refreshed = true;
+      return { items: [item], nextCursor: "next" };
+    });
+    vi.spyOn(api, "getJobStatus").mockResolvedValue(first);
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId="first" onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    await screen.findByTestId("job-row-first");
+    fireEvent.click(screen.getByTestId("button-load-more-jobs"));
+    await screen.findByTestId("job-row-second");
+    fireEvent.click(screen.getByTestId("button-refresh-jobs"));
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(4));
+    expect(screen.getByTestId("job-row-second")).toBeInTheDocument();
+  });
+
+  it("does not claim cancellation was recorded when the server returns false", async () => {
+    const job = mockJobStatus({ jobId: "racing" });
+    vi.spyOn(api, "listJobs").mockResolvedValue({ items: [job], nextCursor: null });
+    vi.spyOn(api, "getJobStatus").mockResolvedValueOnce(job).mockResolvedValue({ ...job, status: "completed" });
+    vi.spyOn(api, "cancelJob").mockResolvedValue(false);
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId="racing" onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    fireEvent.click(await screen.findByTestId("job-cancel-btn-racing"));
+    const feedback = await screen.findByTestId("jobs-feedback-banner");
+    expect(feedback).not.toHaveTextContent("تم تسجيل طلب إلغاء");
+    expect(feedback).toHaveTextContent("لم يعد متاحاً");
+  });
+
+  it("rebuilds shifted cursor boundaries and resets pages on filter changes", async () => {
+    const a = mockJobStatus({ jobId: "a" });
+    const b = mockJobStatus({ jobId: "b" });
+    const c = mockJobStatus({ jobId: "c" });
+    let refreshed = false;
+    const list = vi.spyOn(api, "listJobs").mockImplementation(async (params) => {
+      if (params?.status) return { items: [c], nextCursor: null };
+      if (params?.cursor === "old") return { items: [b], nextCursor: null };
+      if (params?.cursor === "new") return { items: [a], nextCursor: "older" };
+      if (params?.cursor === "older") return { items: [b], nextCursor: null };
+      return refreshed ? { items: [c], nextCursor: "new" } : { items: [a], nextCursor: "old" };
+    });
+    vi.spyOn(api, "getJobStatus").mockResolvedValue(a);
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId="a" onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    await screen.findByTestId("job-row-a");
+    fireEvent.click(screen.getByTestId("button-load-more-jobs"));
+    await screen.findByTestId("job-row-b");
+    refreshed = true;
+    fireEvent.click(screen.getByTestId("button-refresh-jobs"));
+    await screen.findByTestId("job-row-c");
+    await waitFor(() => expect(list).toHaveBeenCalledWith({ limit: 20, cursor: "new", status: undefined }));
+    expect(await screen.findByTestId("job-row-a")).toBeInTheDocument();
+    await waitFor(() => expect(list).toHaveBeenCalledWith({ limit: 20, cursor: "older", status: undefined }));
+    expect(screen.getByTestId("job-row-b")).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("jobs-filter-status"), { target: { value: "completed" } });
+    await waitFor(() => expect(list).toHaveBeenCalledWith({ limit: 20, status: "completed" }));
+    await waitFor(() => expect(screen.queryByTestId("job-row-b")).not.toBeInTheDocument());
+  });
+
+  it("retains the previously loaded window if refreshing a shifted page fails", async () => {
+    const a = mockJobStatus({ jobId: "a" });
+    const b = mockJobStatus({ jobId: "b" });
+    const c = mockJobStatus({ jobId: "c" });
+    let refreshed = false;
+    vi.spyOn(api, "listJobs").mockImplementation(async (params) => {
+      if (params?.cursor === "old") return { items: [b], nextCursor: null };
+      if (params?.cursor === "new") throw new Error("refresh page failed");
+      return refreshed ? { items: [c], nextCursor: "new" } : { items: [a], nextCursor: "old" };
+    });
+    vi.spyOn(api, "getJobStatus").mockResolvedValue(a);
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId="a" onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    await screen.findByTestId("job-row-a");
+    fireEvent.click(screen.getByTestId("button-load-more-jobs"));
+    await screen.findByTestId("job-row-b");
+    refreshed = true;
+    fireEvent.click(screen.getByTestId("button-refresh-jobs"));
+    await screen.findByTestId("jobs-feedback-banner");
+    expect(screen.getByTestId("job-row-a")).toBeInTheDocument();
+    expect(screen.getByTestId("job-row-b")).toBeInTheDocument();
+    expect(screen.getByTestId("job-row-c")).toBeInTheDocument();
+  });
+
+  it("reports cancellation failures and permits a safe retry", async () => {
+    const job = mockJobStatus({ jobId: "cancel-error" });
+    vi.spyOn(api, "listJobs").mockResolvedValue({ items: [job], nextCursor: null });
+    vi.spyOn(api, "getJobStatus").mockResolvedValue(job);
+    const cancel = vi.spyOn(api, "cancelJob").mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(true);
+    const run = vi.spyOn(api, "runJob");
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId={job.jobId} onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    const button = await screen.findByTestId("job-cancel-btn-cancel-error");
+    fireEvent.click(button);
+    expect(await screen.findByTestId("jobs-feedback-banner")).toHaveTextContent("offline");
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+    await waitFor(() => expect(cancel).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByTestId("jobs-feedback-banner")).toHaveTextContent("تم تسجيل طلب إلغاء"));
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("refreshes loaded cursor pages when an active job is polled", async () => {
+    const active = mockJobStatus({ jobId: "active", status: "leased" });
+    const older = mockJobStatus({ jobId: "older" });
+    let olderReads = 0;
+    const list = vi.spyOn(api, "listJobs").mockImplementation(async (params) => {
+      if (params?.cursor) {
+        olderReads += 1;
+        return { items: [{ ...older, attempts: olderReads }], nextCursor: null };
+      }
+      return { items: [active], nextCursor: "next" };
+    });
+    vi.spyOn(api, "getJobStatus").mockResolvedValue(active);
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId="active" onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    await screen.findByTestId("job-row-active");
+    fireEvent.click(screen.getByTestId("button-load-more-jobs"));
+    await screen.findByTestId("job-row-older");
+    await waitFor(() => expect(olderReads).toBeGreaterThanOrEqual(2), { timeout: 5000 });
+    expect(list.mock.calls.filter(([params]) => !params?.cursor).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByTestId("job-row-older")).toHaveTextContent("محاولات: 2");
+  });
+
+  it("finishes a four-second page rebuild while the first page polls every 2.5 seconds", async () => {
+    const active = mockJobStatus({ jobId: "active-slow-page", status: "leased" });
+    const older = mockJobStatus({ jobId: "older-slow-page", status: "completed" });
+    let pageReads = 0;
+    vi.spyOn(api, "listJobs").mockImplementation(async (params) => {
+      if (!params?.cursor) return { items: [active], nextCursor: "first-cursor" };
+      pageReads += 1;
+      if (pageReads > 1) await new Promise((resolve) => setTimeout(resolve, 4000));
+      return { items: [older], nextCursor: "next-cursor" };
+    });
+    vi.spyOn(api, "getJobStatus").mockResolvedValue(active);
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId={active.jobId} onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    await screen.findByTestId("job-row-active-slow-page");
+    fireEvent.click(screen.getByTestId("button-load-more-jobs"));
+    await screen.findByTestId("job-row-older-slow-page");
+    await waitFor(() => expect(pageReads).toBe(2), { timeout: 5000 });
+    await waitFor(() => expect(screen.getByTestId("button-load-more-jobs")).toBeEnabled(), { timeout: 5500 });
+    expect(screen.getByTestId("job-row-older-slow-page")).toBeInTheDocument();
+    expect(pageReads).toBe(2);
+  }, 12000);
+
+  it("ignores a pending rebuild when the status filter changes", async () => {
+    const active = mockJobStatus({ jobId: "before-filter", status: "leased" });
+    const old = mockJobStatus({ jobId: "old-page", status: "completed" });
+    const filtered = mockJobStatus({ jobId: "filtered", status: "completed" });
+    let resolveRebuild!: (value: api.EngineJobListResponse) => void;
+    let pageReads = 0;
+    vi.spyOn(api, "listJobs").mockImplementation(async (params) => {
+      if (params?.status) return { items: [filtered], nextCursor: null };
+      if (!params?.cursor) return { items: [active], nextCursor: "cursor" };
+      pageReads += 1;
+      return pageReads === 1 ? { items: [old], nextCursor: null } : new Promise((resolve) => { resolveRebuild = resolve; });
+    });
+    vi.spyOn(api, "getJobStatus").mockResolvedValue(active);
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId={active.jobId} onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    await screen.findByTestId("job-row-before-filter");
+    fireEvent.click(screen.getByTestId("button-load-more-jobs"));
+    await screen.findByTestId("job-row-old-page");
+    fireEvent.click(screen.getByTestId("button-refresh-jobs"));
+    await waitFor(() => expect(resolveRebuild).toBeTypeOf("function"));
+    fireEvent.change(screen.getByTestId("jobs-filter-status"), { target: { value: "completed" } });
+    await screen.findByTestId("job-row-filtered");
+    await act(async () => resolveRebuild({ items: [old], nextCursor: null }));
+    expect(screen.queryByTestId("job-row-old-page")).not.toBeInTheDocument();
+  });
+
+  it("reconciles a changed first-page cursor after an older rebuild settles", async () => {
+    const a = mockJobStatus({ jobId: "a" });
+    const b = mockJobStatus({ jobId: "b" });
+    const c = mockJobStatus({ jobId: "c" });
+    const stale = mockJobStatus({ jobId: "stale" });
+    let firstReads = 0;
+    let oldPageReads = 0;
+    let resolveOld!: (value: api.EngineJobListResponse) => void;
+    const list = vi.spyOn(api, "listJobs").mockImplementation(async (params) => {
+      if (params?.cursor === "old") {
+        oldPageReads += 1;
+        return oldPageReads === 1 ? { items: [b], nextCursor: null } : new Promise((resolve) => { resolveOld = resolve; });
+      }
+      if (params?.cursor === "new") return { items: [a, b], nextCursor: null };
+      firstReads += 1;
+      return firstReads < 3 ? { items: [a], nextCursor: "old" } : { items: [c], nextCursor: "new" };
+    });
+    vi.spyOn(api, "getJobStatus").mockResolvedValue(a);
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId="a" onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    await screen.findByTestId("job-row-a");
+    fireEvent.click(screen.getByTestId("button-load-more-jobs"));
+    await screen.findByTestId("job-row-b");
+    fireEvent.click(screen.getByTestId("button-refresh-jobs"));
+    await waitFor(() => expect(resolveOld).toBeTypeOf("function"));
+    fireEvent.click(screen.getByTestId("button-refresh-jobs"));
+    await screen.findByTestId("job-row-c");
+    await act(async () => resolveOld({ items: [stale], nextCursor: null }));
+    await waitFor(() => expect(list).toHaveBeenCalledWith({ limit: 20, cursor: "new", status: undefined }));
+    await screen.findByTestId("job-row-b");
+    expect(screen.queryByTestId("job-row-stale")).not.toBeInTheDocument();
+  });
+
+  it.each([0.8, null, undefined])("renders temperature truthfully: %s", async (temperature) => {
+    const job = mockJobStatus({ generationSpec: { ...mockPreflightResponse().generationSpec!, temperature: temperature as number | null } });
+    vi.spyOn(api, "listJobs").mockResolvedValue({ items: [job], nextCursor: null });
+    vi.spyOn(api, "getJobStatus").mockResolvedValue(job);
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId={job.jobId} onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    const spec = await screen.findByTestId("inspector-generation-spec");
+    expect(spec).toHaveTextContent(temperature == null ? "لم تُحدد قيمة Temperature" : "temp=0.8");
+  });
+
+  it("reports a missing job separately from an empty history", async () => {
+    vi.spyOn(api, "listJobs").mockResolvedValue({ items: [], nextCursor: null });
+    vi.spyOn(api, "getJobStatus").mockRejectedValue({ response: { status: 404, data: { message: "not found" } } });
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId="missing" onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    expect(await screen.findByTestId("job-detail-load-error")).toHaveTextContent("لم يُعثر على الدفعة");
+  });
+
+  it("reconciles a completed list status and blocks actions until the latest detail arrives", async () => {
+    const running = mockJobStatus({ jobId: "race", status: "leased" });
+    const completed = { ...running, status: "completed" as const };
+    let finish!: (value: api.EngineJobStatus) => void;
+    let listCalls = 0;
+    vi.spyOn(api, "listJobs").mockImplementation(async () => ({ items: [++listCalls === 1 ? running : completed], nextCursor: null }));
+    const detail = vi.spyOn(api, "getJobStatus").mockResolvedValue(running);
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId="race" onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    await screen.findByTestId("job-detail-inspector");
+    await waitFor(() => expect(screen.getByTestId("inspector-job-status")).toHaveTextContent("قيد التشغيل"));
+    detail.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    fireEvent.click(screen.getByTestId("button-refresh-jobs"));
+    await waitFor(() => expect(screen.getByTestId("job-status-race")).toHaveTextContent("مكتملة"));
+    expect(screen.queryByTestId("inspector-cancel-job-btn")).not.toBeInTheDocument();
+    await waitFor(() => expect(finish).toBeTypeOf("function"));
+    await act(async () => finish(completed));
+    await waitFor(() => expect(screen.getByTestId("inspector-job-status")).toHaveTextContent("مكتملة"));
+    expect(screen.queryByTestId("inspector-run-job-btn")).not.toBeInTheDocument();
+  });
+
+  it("provides separate semantic selection and action controls", async () => {
+    const first = mockJobStatus({ jobId: "one" });
+    const second = mockJobStatus({ jobId: "two" });
+    vi.spyOn(api, "listJobs").mockResolvedValue({ items: [first, second], nextCursor: null });
+    vi.spyOn(api, "getJobStatus").mockResolvedValue(first);
+    const select = vi.fn();
+    const run = vi.spyOn(api, "runJob");
+    const cancel = vi.spyOn(api, "cancelJob");
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId="one" onSelectJobId={select} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    const button = await screen.findByTestId("job-select-two");
+    expect(button.tagName).toBe("BUTTON");
+    expect(button).toHaveAccessibleName(/two/);
+    expect(button).toHaveAttribute("aria-pressed", "false");
+    button.focus(); expect(button).toHaveFocus(); fireEvent.click(button);
+    expect(select).toHaveBeenCalledWith("two");
+    expect(run).not.toHaveBeenCalled(); expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it("does not apply a late detail response to a newly selected job", async () => {
+    const first = mockJobStatus({ jobId: "slow", scopeKey: "slow-scope" });
+    const second = mockJobStatus({ jobId: "current", scopeKey: "current-scope" });
+    let resolveSlow!: (value: api.EngineJobStatus) => void;
+    vi.spyOn(api, "listJobs").mockResolvedValue({ items: [first, second], nextCursor: null });
+    vi.spyOn(api, "getJobStatus").mockImplementation((id) => id === "slow" ? new Promise((resolve) => { resolveSlow = resolve; }) : Promise.resolve(second));
+    const client = makeQueryClient();
+    const view = render(<QueryClientProvider client={client}><JobsHistoryPanel selectedJobId="slow" onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></QueryClientProvider>);
+    await waitFor(() => expect(resolveSlow).toBeTypeOf("function"));
+    view.rerender(<QueryClientProvider client={client}><JobsHistoryPanel selectedJobId="current" onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></QueryClientProvider>);
+    await waitFor(() => expect(screen.getByTestId("job-detail-inspector")).toHaveTextContent("current-scope"));
+    await act(async () => resolveSlow(first));
+    expect(screen.getByTestId("job-detail-inspector")).toHaveTextContent("current-scope");
+  });
+
+  it("ignores an older in-flight detail after list refresh starts reconciliation", async () => {
+    const running = mockJobStatus({ jobId: "slow-refresh", status: "leased" });
+    const completed = { ...running, status: "completed" as const };
+    let resolveOld!: (value: api.EngineJobStatus) => void;
+    let reads = 0;
+    vi.spyOn(api, "listJobs").mockImplementation(async () => ({ items: [++reads === 1 ? running : completed], nextCursor: null }));
+    const detail = vi.spyOn(api, "getJobStatus").mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve; })).mockResolvedValue(completed);
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId={running.jobId} onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    await waitFor(() => expect(resolveOld).toBeTypeOf("function"));
+    fireEvent.click(screen.getByTestId("button-refresh-jobs"));
+    await waitFor(() => expect(screen.getByTestId("inspector-job-status")).toHaveTextContent("مكتملة"));
+    await act(async () => resolveOld(running));
+    await waitFor(() => expect(screen.getByTestId("inspector-job-status")).toHaveTextContent("مكتملة"));
+    await waitFor(() => expect(detail).toHaveBeenCalledTimes(2));
+    expect(screen.queryByTestId("inspector-cancel-job-btn")).not.toBeInTheDocument();
+  });
+
+  it("does not restart a slow initial detail request on unchanged list refreshes", async () => {
+    const running = mockJobStatus({ jobId: "slow-poll", status: "leased" });
+    let resolveDetail!: (value: api.EngineJobStatus) => void;
+    const detail = vi.spyOn(api, "getJobStatus").mockImplementation(() => new Promise((resolve) => { resolveDetail = resolve; }));
+    let reads = 0;
+    const list = vi.spyOn(api, "listJobs").mockImplementation(async () => ({ items: [{ ...running, attempts: ++reads }], nextCursor: null }));
+    render(<WithQueryClient><JobsHistoryPanel selectedJobId={running.jobId} onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></WithQueryClient>);
+    await waitFor(() => expect(resolveDetail).toBeTypeOf("function"));
+    expect(screen.queryByTestId("inspector-cancel-job-btn")).not.toBeInTheDocument();
+    for (let i = 2; i <= 4; i++) {
+      fireEvent.click(screen.getByTestId("button-refresh-jobs"));
+      await waitFor(() => expect(list).toHaveBeenCalledTimes(i));
+    }
+    expect(detail).toHaveBeenCalledTimes(1);
+    await act(async () => resolveDetail(running));
+    await waitFor(() => expect(screen.getByTestId("inspector-cancel-job-btn")).toBeInTheDocument());
+    expect(detail).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps actions available during a matching background detail refresh", async () => {
+    const running = mockJobStatus({ jobId: "background", status: "leased" });
+    let finish!: (value: api.EngineJobStatus) => void;
+    const detail = vi.spyOn(api, "getJobStatus").mockResolvedValueOnce(running).mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    vi.spyOn(api, "listJobs").mockResolvedValue({ items: [running], nextCursor: null });
+    const client = makeQueryClient();
+    render(<QueryClientProvider client={client}><JobsHistoryPanel selectedJobId={running.jobId} onSelectJobId={vi.fn()} onHandoffToReview={vi.fn()} /></QueryClientProvider>);
+    await screen.findByTestId("inspector-cancel-job-btn");
+    act(() => { void client.invalidateQueries({ queryKey: ["content-engine-job-detail", running.jobId] }); });
+    await waitFor(() => expect(detail).toHaveBeenCalledTimes(2));
+    expect(screen.getByTestId("inspector-cancel-job-btn")).toBeEnabled();
+    await act(async () => finish(running));
+  });
+
+  it("does not report Generate cancellation success when the server declines it", async () => {
+    const job = mockJobStatus({ jobId: "cancel-generate" });
+    vi.spyOn(api, "getAuthoringOptions").mockResolvedValue(mockAuthoringOptions());
+    vi.spyOn(api, "preflightJob").mockResolvedValue(mockPreflightResponse());
+    vi.spyOn(api, "getJobStatus").mockResolvedValue(job);
+    const cancel = vi.spyOn(api, "cancelJob").mockResolvedValue(false);
+    const run = vi.spyOn(api, "runJob");
+    render(<WithQueryClient><BatchSubmissionPanel initialJobId={job.jobId} /></WithQueryClient>);
+    const button = await screen.findByTestId("button-cancel-job");
+    fireEvent.click(button); fireEvent.click(button);
+    await screen.findByText(/تعذر تسجيل طلب الإلغاء/);
+    expect(cancel).toHaveBeenCalledTimes(1); expect(cancel).toHaveBeenCalledWith(job.jobId);
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("keeps a newly unavailable mechanic selected and blocks generation", async () => {
+    const options = mockAuthoringOptions();
+    vi.spyOn(api, "getAuthoringOptions").mockResolvedValue(options);
+    vi.spyOn(api, "preflightJob").mockResolvedValue(mockPreflightResponse());
+    const client = makeQueryClient();
+    render(<QueryClientProvider client={client}><BatchSubmissionPanel /></QueryClientProvider>);
+    const mechanic = await screen.findByTestId("select-mechanic") as HTMLSelectElement;
+    await waitFor(() => expect(mechanic.value).toBe("read-your-opponent"));
+    await waitFor(() => expect(screen.getByTestId("button-submit-job")).toBeEnabled());
+    const updated = structuredClone(options);
+    updated.worlds[0].scopes[0].mechanics[0].eligible = false;
+    updated.worlds[0].scopes[0].mechanics[0].blockedReason = "الآلية غير متاحة";
+    act(() => client.setQueryData(["content-engine-options"], updated));
+    expect(mechanic.value).toBe("read-your-opponent");
+    expect(await screen.findByTestId("selection-blocked-diagnostic")).toHaveTextContent("الآلية غير متاحة");
+    expect(screen.getByTestId("button-submit-job")).toBeDisabled();
+  });
+
+  it("does not execute an existing already-running job", async () => {
+    vi.spyOn(api, "getAuthoringOptions").mockResolvedValue(mockAuthoringOptions());
+    vi.spyOn(api, "preflightJob").mockResolvedValue(mockPreflightResponse());
+    vi.spyOn(api, "submitJob").mockResolvedValue({ jobId: "existing", created: false, contextHash: "c" });
+    vi.spyOn(api, "getJobStatus").mockResolvedValue(mockJobStatus({ jobId: "existing", status: "leased" }));
+    const run = vi.spyOn(api, "runJob");
+    render(<WithQueryClient><BatchSubmissionPanel /></WithQueryClient>);
+    const button = await screen.findByTestId("button-submit-job");
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button); fireEvent.click(screen.getByRole("button", { name: "تأكيد التوليد" }));
+    await screen.findByText(/تم العثور على دفعة مطابقة موجودة/);
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("blocks a server-declared over-budget preflight", async () => {
+    vi.spyOn(api, "getAuthoringOptions").mockResolvedValue(mockAuthoringOptions());
+    vi.spyOn(api, "preflightJob").mockResolvedValue(mockPreflightResponse({ submissionReady: false, withinMonthlyBudget: false, blockedReason: "الميزانية غير كافية" }));
+    render(<WithQueryClient><BatchSubmissionPanel /></WithQueryClient>);
+    await screen.findByTestId("preflight-blocking-diagnostic");
+    expect(screen.getByTestId("button-submit-job")).toBeDisabled();
   });
 
   it("11 & 12: recovers active job and filters across workspace refresh/tab switches, handles timeout recovery by re-reading job status, and hands off candidates to review", async () => {

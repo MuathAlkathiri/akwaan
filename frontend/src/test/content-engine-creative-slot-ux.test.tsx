@@ -563,12 +563,6 @@ describe("Content Engine Slice 3D: Review Studio Creative Slot & Visibility UX",
         </WithQueryClient>,
       );
 
-      // Click preflight button
-      await waitFor(() => {
-        expect(screen.getByTestId("button-preflight")).not.toBeDisabled();
-      });
-      fireEvent.click(screen.getByTestId("button-preflight"));
-
       // Verify preview section and badge
       await waitFor(() => {
         expect(
@@ -614,11 +608,6 @@ describe("Content Engine Slice 3D: Review Studio Creative Slot & Visibility UX",
           <BatchSubmissionPanel />
         </WithQueryClient>,
       );
-
-      await waitFor(() => {
-        expect(screen.getByTestId("button-preflight")).not.toBeDisabled();
-      });
-      fireEvent.click(screen.getByTestId("button-preflight"));
 
       await waitFor(() => {
         expect(

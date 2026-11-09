@@ -18,6 +18,9 @@ export const isJobRunnable = (job: EngineJobStatus | null | undefined): boolean 
   return true;
 };
 
+export const cancellationFeedback = (recorded: boolean, jobId: string, status: string): string =>
+  `${recorded ? "تم تسجيل طلب إلغاء" : "تعذر تسجيل طلب الإلغاء أو لم يعد متاحاً للدفعة"} (${jobId}) — الحالة الحالية: ${JOB_STATUS_LABELS[status]?.label ?? status}.`;
+
 export const JOB_STATUS_LABELS: Record<
   string,
   { label: string; description: string; badgeClass: string }
