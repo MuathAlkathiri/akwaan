@@ -1,10 +1,10 @@
 import { ReactNode } from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import * as api from "@/features/content-engine-review/api";
 import { ContentEngineReviewWorkspace } from "@/features/content-engine-review/content-engine-review-workspace";
-import type { ReviewCandidate, ScreenFinding } from "@/features/content-engine-review/types";
+import type { FactualState, ReviewCandidate, ScreenFinding } from "@/features/content-engine-review/types";
 
 /**
  * R4-B: reviewer overlap acknowledgment. The browser only ever echoes
@@ -106,9 +106,39 @@ const conflict = (code: string, details: Record<string, unknown> = {}, extra = {
   response: { status: 409, data: { code, message: "conflict", details, ...extra } },
 });
 
+/**
+ * The candidate as the server holds it. Approval is assessment-first: the
+ * workspace saves the assessment, the save bumps the revision, and approval
+ * must then carry that new revision. Reads always return the current copy.
+ */
+let server: ReviewCandidate;
+let assessSpy: MockInstance<
+  Parameters<typeof api.assessCandidate>,
+  ReturnType<typeof api.assessCandidate>
+>;
+
 async function openCandidate(candidate: ReviewCandidate) {
-  vi.spyOn(api, "listCandidates").mockResolvedValue([candidate]);
-  vi.spyOn(api, "getCandidate").mockResolvedValue(candidate);
+  server = candidate;
+  vi.spyOn(api, "listCandidates").mockImplementation(async () => [server]);
+  vi.spyOn(api, "getCandidate").mockImplementation(async () => server);
+  assessSpy = vi.spyOn(api, "assessCandidate").mockImplementation(async (_id, data) => {
+    const revision = server.reviewRevision + 1;
+    server = {
+      ...server,
+      reviewRevision: revision,
+      humanAssessment: {
+        reviewerEmail: "reviewer@example.test",
+        assessedAt: new Date().toISOString(),
+        ...server.humanAssessment,
+        factualState: data.factualState as FactualState,
+        factualExplanation: data.factualExplanation,
+        evidence: data.evidence,
+        quality: data.quality,
+        assessedRevision: revision,
+      },
+    };
+    return server;
+  });
   render(
     <WithQueryClient>
       <ContentEngineReviewWorkspace />
@@ -178,10 +208,48 @@ describe("Content Engine Review — overlap acknowledgment (R4-B)", () => {
     expect(approveButton()).toBeEnabled();
     fireEvent.click(approveButton());
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    // The assessment is saved first, at the revision on screen...
+    expect(assessSpy).toHaveBeenCalledTimes(1);
+    expect(assessSpy.mock.calls[0][1]).toMatchObject({ expectedRevision: 1 });
+    expect(assessSpy.mock.invocationCallOrder[0]).toBeLessThan(spy.mock.invocationCallOrder[0]);
+    // ...and approval carries the revision that save produced.
     expect(payloadOf(spy)).toEqual({
-      expectedRevision: 1,
+      expectedRevision: 2,
       explanation: "راجعت التقاطع؛ زاوية اللعب مختلفة",
     });
+  });
+
+  it("clears acknowledgments when the revision changes for any reason other than the reviewer's own save", async () => {
+    await openCandidate(mockCandidate({ findings: [overlap(FP_A, "item-a")] }));
+    vi.spyOn(api, "rescreenCandidate").mockImplementation(async () => {
+      server = { ...server, reviewRevision: server.reviewRevision + 1 };
+      return server;
+    });
+    ack("item-a");
+    expect(
+      within(screen.getByTestId("overlap-requirement-item-a")).getByRole("checkbox"),
+    ).toHaveAttribute("aria-checked", "true");
+
+    fireEvent.click(screen.getByTestId("button-rescreen-candidate"));
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId("overlap-requirement-item-a")).getByRole("checkbox"),
+      ).toHaveAttribute("aria-checked", "false"),
+    );
+    expect(approveButton()).toBeDisabled();
+  });
+
+  it("does not approve when saving the assessment fails", async () => {
+    await openCandidate(mockCandidate({ findings: [overlap(FP_A, "item-a")] }));
+    const spy = vi.spyOn(api, "approveCandidate").mockResolvedValue(mockCandidate());
+    assessSpy.mockRejectedValueOnce(
+      conflict("CANDIDATE_REVISION_CONFLICT", {}, { message: "Candidate changed; reload before reviewing", currentRevision: 2 }),
+    );
+    ack("item-a");
+    fireEvent.click(approveButton());
+    await screen.findByTestId("revision-conflict-banner");
+    expect(assessSpy).toHaveBeenCalledTimes(1);
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it("2. renders each overlap with the affected candidate, reference, reason and evidence, unchecked", async () => {
@@ -224,11 +292,14 @@ describe("Content Engine Review — overlap acknowledgment (R4-B)", () => {
 
     fireEvent.click(approveButton());
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    // Saving the assessment does not change the evidence: the same server
+    // fingerprints are submitted, at the revision the save produced.
     expect(payloadOf(spy).overlapAcknowledgments).toEqual([
       { fingerprint: FP_A },
       { fingerprint: FP_B },
     ]);
-    expect(payloadOf(spy).expectedRevision).toBe(1);
+    expect(payloadOf(spy).expectedRevision).toBe(2);
+    expect(assessSpy).toHaveBeenCalledTimes(1);
   });
 
   it("6. keeps a proven duplicate blocked even when the overlap is acknowledged", async () => {
@@ -288,14 +359,16 @@ describe("Content Engine Review — overlap acknowledgment (R4-B)", () => {
       .mockRejectedValue(
         conflict("CANDIDATE_REVISION_CONFLICT", {}, {
           message: "Candidate changed; reload before reviewing",
-          currentRevision: 2,
+          // Someone else moved the candidate past the revision our save produced.
+          currentRevision: 3,
         }),
       );
     ack("item-a");
     fireEvent.click(approveButton());
     const banner = await screen.findByTestId("revision-conflict-banner");
-    expect(banner.textContent).toContain("المراجعة الحالية على الخادم: 2");
+    expect(banner.textContent).toContain("المراجعة الحالية على الخادم: 3");
     expect(spy).toHaveBeenCalledTimes(1);
+    expect(assessSpy).toHaveBeenCalledTimes(1);
   });
 
   it("9/12. adopts new server evidence, keeps still-valid acknowledgments, requires the new one, then re-approves", async () => {
@@ -336,6 +409,9 @@ describe("Content Engine Review — overlap acknowledgment (R4-B)", () => {
       { fingerprint: FP_A },
       { fingerprint: FP_NEW },
     ]);
+    // The retry reuses the assessment already saved; it is not saved twice.
+    expect(assessSpy).toHaveBeenCalledTimes(1);
+    expect(payloadOf(spy, 1).expectedRevision).toBe(2);
   });
 
   it("10. clears an acknowledgment whose reference fingerprint changed", async () => {
