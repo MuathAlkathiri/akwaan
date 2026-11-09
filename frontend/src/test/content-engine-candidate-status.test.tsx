@@ -204,11 +204,22 @@ describe("Content Engine Review Studio — Candidate Status Presentation", () =>
     const row = await screen.findByTestId("candidate-row-cid-reject-2");
     fireEvent.click(row);
 
-    // Banner is rendered with blocking details
+    // The banner states the screened-reject outcome and its reason in reviewer
+    // language. Since PR #51 the raw finding code is not part of the primary UI.
     const banner = await screen.findByTestId("screened-reject-banner");
     expect(banner).toHaveTextContent("مرفوض في الفحص الحتمي الآلي");
-    expect(banner).toHaveTextContent("ANSWER_LEAKAGE");
     expect(banner).toHaveTextContent("the correct answer appears in the prompt text");
+    expect(banner).not.toHaveTextContent("ANSWER_LEAKAGE");
+
+    // The code stays available, with its reason, under the technical details.
+    const technical = screen
+      .getByText("تفاصيل الفحص التقنية")
+      .closest("details") as HTMLDetailsElement;
+    expect(technical).not.toBeNull();
+    expect(technical.open).toBe(false);
+    expect(technical).toHaveTextContent(
+      "ANSWER_LEAKAGE — the correct answer appears in the prompt text",
+    );
   });
 
   it("supports filtering by status in the review filters select", async () => {

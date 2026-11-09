@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BatchSubmissionPanel } from "./batch-submission-panel";
 import { JobsHistoryPanel } from "./jobs-history-panel";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Check,
@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { showToast } from "@/components/ui/toast";
@@ -165,19 +166,67 @@ const LARGE_LAYOUT_QUERY = "(min-width: 1024px)";
 const DECISION_REQUIREMENTS_ID = "candidate-decision-requirements";
 
 /**
+ * In-memory record of approvals whose outcome is unknown, kept in the shared
+ * QueryClient alongside sessionStorage. It survives the workspace remounting
+ * within this app session; it does not survive a full page reload, where only
+ * sessionStorage (when writable) and the server's revision checks remain.
+ * Its own root key keeps it out of the review list's prefix invalidations.
+ */
+const UNKNOWN_APPROVALS_QUERY_KEY = ["content-engine-unknown-approvals"] as const;
+
+function rememberUnknownApprovals(
+  client: QueryClient,
+  ids: ReadonlySet<string>,
+) {
+  // Never garbage-collected: forgetting an unknown outcome is the unsafe failure.
+  client.setQueryDefaults(UNKNOWN_APPROVALS_QUERY_KEY, { gcTime: Infinity });
+  client.setQueryData(UNKNOWN_APPROVALS_QUERY_KEY, [...ids]);
+}
+
+/**
  * One line telling the reviewer what the decision bar is waiting for. It reads
  * the same eligibility the buttons use; it never enables or disables anything.
  */
+/**
+ * How an approval blocker relates to the combined "save assessment and
+ * approve" action. Server blockers arrive as text only, so they are matched by
+ * their stable wording (server and client variants share these phrases).
+ *
+ * - `saved-by-action`: asks for an assessment to be saved for the current
+ *   revision. The combined action does exactly that, so it is not a
+ *   requirement; what the reviewer must still fill in is listed separately.
+ * - `saved-assessment-content`: derived from the content of the assessment
+ *   already saved. If the reviewer's inputs differ from it, the combined
+ *   action replaces it and the server re-checks; if they are unchanged,
+ *   saving again cannot help, so it remains a genuine blocker.
+ * - `blocker`: anything else; the combined action cannot resolve it.
+ */
+export function classifyApprovalBlocker(
+  message: string,
+): "saved-by-action" | "saved-assessment-content" | "blocker" {
+  if (
+    message.includes("يجب حفظ التقييم البشري") ||
+    message.includes("تم إبطال التقييم السابق") ||
+    message.includes("لا يطابق رقم المراجعة الحالية؛ يلزم إعادة التقييم")
+  ) {
+    return "saved-by-action";
+  }
+  if (
+    message.includes("الحالة المتناقضة (CONTRADICTED) تتطلب") ||
+    message.includes("التحقق الآلي وجد تناقضًا")
+  ) {
+    return "saved-assessment-content";
+  }
+  return "blocker";
+}
+
 function DecisionBarSummary({
   candidate,
-  approvalBlockers,
-  hasExplanation,
-  needsFactualOverride,
+  requirements: pendingRequirements,
 }: {
   candidate: ReviewCandidate;
-  approvalBlockers: string[];
-  hasExplanation: boolean;
-  needsFactualOverride: boolean;
+  /** Exactly what keeps Approve disabled; computed once, shared with the button. */
+  requirements: string[];
 }) {
   let settled: string | null = null;
   if (candidate.publishedContentItemId) {
@@ -188,15 +237,7 @@ function DecisionBarSummary({
     settled = "اعتُمد هذا المرشح؛ أنشئ المسودة عند استيفاء شروطها.";
   }
 
-  const requirements = settled
-    ? []
-    : [
-        ...approvalBlockers,
-        ...(needsFactualOverride
-          ? ["اختر رمز تجاوز الحالة الواقعية واكتب تفسيره."]
-          : []),
-        ...(hasExplanation ? [] : ["اكتب تفسير القرار (مطلوب للاعتماد أو الرفض)."]),
-      ];
+  const requirements = settled ? [] : pendingRequirements;
 
   const showRequirements = () => {
     const panel = document.getElementById(DECISION_REQUIREMENTS_ID);
@@ -240,11 +281,11 @@ function DecisionBarSummary({
 }
 
 const qualityDefaults: QualityRubric = {
-  correctness: 3,
-  mechanicFit: 3,
-  clarity: 3,
-  multiplayerFit: 3,
-  originality: 3,
+  correctness: 0,
+  mechanicFit: 0,
+  clarity: 0,
+  multiplayerFit: 0,
+  originality: 0,
   explanation: "",
 };
 
@@ -414,7 +455,8 @@ export function ContentEngineReviewWorkspace() {
   const [quality, setQuality] = useState(qualityDefaults);
 
   const [decisionExplanation, setDecisionExplanation] = useState("");
-  const [rejectionReason, setRejectionReason] = useState("LOW_QUALITY");
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
   const [factualOverrideCode, setFactualOverrideCode] = useState<
     FactualOverrideCode | ""
   >("");
@@ -435,6 +477,39 @@ export function ContentEngineReviewWorkspace() {
     requirements: OverlapRequirement[];
   } | null>(null);
   const lastActionKind = useRef<"approve" | "draft" | "other">("other");
+  const decisionInFlight = useRef(false);
+  const [storageBootstrap] = useState(() => {
+    // The in-memory copy outlives this workspace (the QueryClient sits above
+    // it), so an unknown outcome whose sessionStorage write failed is still
+    // remembered after a remount, even if storage has since recovered.
+    const remembered = client.getQueryData<string[]>(UNKNOWN_APPROVALS_QUERY_KEY) ?? [];
+    if (typeof window === "undefined") return { available: true, ids: remembered };
+    try {
+      const raw = window.sessionStorage.getItem("akwaan.contentEngine.unknownApprovals") ?? "[]";
+      const stored = JSON.parse(raw);
+      if (!Array.isArray(stored) || stored.some((id) => typeof id !== "string")) throw new Error("Invalid verification state");
+      window.sessionStorage.setItem("akwaan.contentEngine.unknownApprovals", raw);
+      return { available: true, ids: [...new Set([...(stored as string[]), ...remembered])] };
+    } catch { return { available: false, ids: remembered }; }
+  });
+  const [storageAvailable, setStorageAvailable] = useState(storageBootstrap.available);
+  const [verifiedWithoutStorage, setVerifiedWithoutStorage] = useState<ReadonlySet<string>>(() => new Set());
+  const [unknownApprovals, setUnknownApprovals] = useState<ReadonlySet<string>>(() => new Set(storageBootstrap.ids));
+  const unknownApprovalsRef = useRef(unknownApprovals);
+  const isReviewLocked = (id: string) => unknownApprovalsRef.current.has(id) || (!storageAvailable && !verifiedWithoutStorage.has(id));
+  useEffect(() => {
+    rememberUnknownApprovals(client, unknownApprovals);
+    try { window.sessionStorage.setItem("akwaan.contentEngine.unknownApprovals", JSON.stringify([...unknownApprovals])); }
+    catch { setStorageAvailable(false); }
+  }, [client, unknownApprovals]);
+  const [verifyingCandidates, setVerifyingCandidates] = useState<ReadonlySet<string>>(() => new Set());
+  const verificationInFlight = useRef(new Set<string>());
+  const savedRetry = useRef<{ candidateId: string; revision: number; payload: string } | null>(null);
+  const hydratedCandidateId = useRef<string | null>(null);
+  const assessmentBaseRevision = useRef<number | null>(null);
+  const ownAssessmentRevision = useRef<{ candidateId: string; revision: number } | null>(null);
+  const [assessmentStale, setAssessmentStale] = useState(false);
+  const [assessmentReload, setAssessmentReload] = useState(0);
 
   // Decision input belongs to one candidate. Reset it in the same render that
   // changes the selection, so the next candidate never shows (or submits) the
@@ -443,7 +518,9 @@ export function ContentEngineReviewWorkspace() {
   if (decisionStateFor !== selectedId) {
     setDecisionStateFor(selectedId);
     setDecisionExplanation("");
-    setRejectionReason("LOW_QUALITY");
+    setRejectionReason("");
+    setRejectConfirmOpen(false);
+    setAssessmentStale(false);
     setAcknowledgedOverlaps(new Set());
     setServerOverlapEvidence(null);
     setActionError(null);
@@ -691,22 +768,34 @@ export function ContentEngineReviewWorkspace() {
   // Hydrate assessment and edit fields when the selected candidate or revision changes
   useEffect(() => {
     if (!candidate) return;
+    const isNewCandidate = hydratedCandidateId.current !== candidate.candidateId;
+    const ownSave = ownAssessmentRevision.current?.candidateId === candidate.candidateId && ownAssessmentRevision.current.revision === candidate.reviewRevision;
     // A new candidate or revision is new evidence: acknowledgments start empty.
-    setAcknowledgedOverlaps(new Set());
-    setServerOverlapEvidence(null);
-    setActionError(null);
-    setRevisionConflict(null);
+    // The one exception is the revision this reviewer's own assessment save
+    // produced: it changes no findings, so their acknowledgments still match
+    // the evidence. The server re-validates every fingerprint at approval, and
+    // a refreshed-evidence conflict prunes any that no longer match.
+    if (isNewCandidate || !ownSave) setAcknowledgedOverlaps(new Set());
+    setServerOverlapEvidence((previous) => previous?.candidateId === candidate.candidateId && previous.revision === candidate.reviewRevision ? previous : null);
     setEditClaimsText((candidate.factualClaims ?? []).join("\n"));
     setEditExplanation("");
     setEditModalError(null);
-    if (candidate.humanAssessment) {
+    const explicitlyReloaded = assessmentBaseRevision.current === null;
+    const shouldHydrate = isNewCandidate || explicitlyReloaded;
+    if (!shouldHydrate && assessmentBaseRevision.current !== candidate.reviewRevision && !ownSave) {
+      setAssessmentStale(true);
+    }
+    if (shouldHydrate || ownSave) assessmentBaseRevision.current = candidate.reviewRevision;
+    if (shouldHydrate) setAssessmentStale(false);
+    hydratedCandidateId.current = candidate.candidateId;
+    if (shouldHydrate && candidate.humanAssessment) {
       setFactualState(candidate.humanAssessment.factualState);
       setFactualExplanation(candidate.humanAssessment.factualExplanation ?? "");
       setEvidenceUrl(candidate.humanAssessment.evidence?.[0]?.url ?? "");
       setEvidenceTitle(candidate.humanAssessment.evidence?.[0]?.title ?? "");
       setEvidenceNote(candidate.humanAssessment.evidence?.[0]?.note ?? "");
       setQuality(candidate.humanAssessment.quality ?? qualityDefaults);
-    } else {
+    } else if (shouldHydrate) {
       setFactualState("UNRESOLVED");
       setFactualExplanation("");
       setEvidenceUrl("");
@@ -714,10 +803,12 @@ export function ContentEngineReviewWorkspace() {
       setEvidenceNote("");
       setQuality(qualityDefaults);
     }
-    setFactualOverrideCode("");
-    setOverrideExplanation("");
+    if (shouldHydrate) {
+      setFactualOverrideCode("");
+      setOverrideExplanation("");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [candidate?.candidateId, candidate?.reviewRevision]);
+  }, [candidate?.candidateId, candidate?.reviewRevision, assessmentReload]);
 
   /**
    * The candidate an action was started on. A reviewer can move to another
@@ -755,11 +846,20 @@ export function ContentEngineReviewWorkspace() {
     },
     onError: (err, _run, target) => {
       const parsed = extractConflictDetails(err);
+      if (err && typeof err === "object" && "approvalOutcomeUnknown" in err) {
+        if (isOnScreen(target)) setActionError(null);
+        return;
+      }
+      if (err && typeof err === "object" && "assessmentWasSaved" in err) {
+        parsed.message = `حُفظ التقييم، لكن لم يكتمل الاعتماد. ${parsed.message}`;
+      }
       const kind = lastActionKind.current;
       const onScreen = isOnScreen(target);
       const gate = parsed.code ? REVIEW_GATE_MESSAGES[parsed.code] : undefined;
       if (gate && kind !== "other") {
-        const message = kind === "draft" ? gate.draft : gate.approve;
+        const gateMessage = kind === "draft" ? gate.draft : gate.approve;
+        const message = err && typeof err === "object" && "assessmentWasSaved" in err
+          ? `حُفظ التقييم، لكن لم يكتمل الاعتماد. ${gateMessage}` : gateMessage;
         if (
           onScreen &&
           target &&
@@ -775,7 +875,8 @@ export function ContentEngineReviewWorkspace() {
           const current = new Set(requirements.map((r) => r.fingerprint));
           setServerOverlapEvidence({
             candidateId: target.candidateId,
-            revision: target.revision,
+            revision: err && typeof err === "object" && "savedRevision" in err && typeof err.savedRevision === "number"
+              ? err.savedRevision : target.revision,
             requirements,
           });
           setAcknowledgedOverlaps(
@@ -801,6 +902,10 @@ export function ContentEngineReviewWorkspace() {
             currentRevision: parsed.currentRevision,
           });
         }
+      }
+      if (parsed.isConflict && target) {
+        void client.invalidateQueries({ queryKey: ["content-engine-review-detail", target.candidateId] });
+        void client.invalidateQueries({ queryKey: ["content-engine-review"] });
       }
       showToast({
         type: "error",
@@ -848,6 +953,7 @@ export function ContentEngineReviewWorkspace() {
   });
 
   const handleRescreen = async () => {
+    if (!candidate || isReviewLocked(candidate.candidateId)) return;
     try {
       await rescreenMutation.mutateAsync();
     } catch {
@@ -908,6 +1014,87 @@ export function ContentEngineReviewWorkspace() {
       approvalBlockers: [...base.approvalBlockers, ...overlapBlockers],
     };
   }, [candidate, overlapState, unacknowledgedOverlaps]);
+
+  /**
+   * Everything still standing between the reviewer and the combined
+   * "save assessment and approve" action. One list drives the decision bar,
+   * the requirements panel and the Approve button, so they cannot disagree.
+   */
+  const approvalRequirements: string[] = (() => {
+    if (
+      !candidate ||
+      candidate.publishedContentItemId ||
+      candidate.reviewStatus !== "pending"
+    ) {
+      return [];
+    }
+    const requirements: string[] = [];
+    // State that must be resolved before any decision.
+    if (isReviewLocked(candidate.candidateId)) {
+      requirements.push("تحقق من نتيجة الاعتماد السابقة قبل اتخاذ قرار جديد.");
+    }
+    if (revisionConflict) {
+      requirements.push("حمّل أحدث نسخة من المرشح لحل تعارض المراجعة.");
+    }
+    const ownSaveNow =
+      ownAssessmentRevision.current?.candidateId === candidate.candidateId &&
+      ownAssessmentRevision.current.revision === candidate.reviewRevision;
+    if (
+      assessmentStale ||
+      (assessmentBaseRevision.current !== candidate.reviewRevision && !ownSaveNow)
+    ) {
+      requirements.push("تغيّرت نسخة المرشح؛ حمّل أحدث تقييم وراجعه قبل الاعتماد.");
+    }
+    // Server and screening blockers, minus what the combined action resolves.
+    const saved = candidate.humanAssessment;
+    const savedEvidence = saved?.evidence?.[0];
+    const inputsDifferFromSaved =
+      !saved ||
+      saved.factualState !== factualState ||
+      (savedEvidence?.url ?? "") !== evidenceUrl.trim() ||
+      (savedEvidence?.title ?? "") !== evidenceTitle.trim() ||
+      (savedEvidence?.note ?? "") !== evidenceNote.trim();
+    for (const blocker of eligibility?.approvalBlockers ?? []) {
+      const kind = classifyApprovalBlocker(blocker);
+      if (kind === "saved-by-action") continue;
+      if (kind === "saved-assessment-content" && inputsDifferFromSaved) continue;
+      requirements.push(blocker);
+    }
+    // What the reviewer must still fill in for the assessment to be saved.
+    if (!factualExplanation.trim()) {
+      requirements.push("اكتب تفسير التحقق الواقعي.");
+    }
+    if (
+      [quality.correctness, quality.mechanicFit, quality.clarity, quality.multiplayerFit, quality.originality].some(
+        (score) => !Number.isInteger(score) || score < 1 || score > 5,
+      )
+    ) {
+      requirements.push("أدخل درجات الجودة الخمس (من 1 إلى 5).");
+    }
+    if (!quality.explanation.trim()) {
+      requirements.push("اكتب شرح معيار الجودة.");
+    }
+    if (factualState !== "SUPPORTED" && (!factualOverrideCode || !overrideExplanation.trim())) {
+      requirements.push("اختر رمز تجاوز الحالة الواقعية واكتب تفسيره.");
+    }
+    if (!decisionExplanation.trim()) {
+      requirements.push("اكتب تفسير القرار (مطلوب للاعتماد أو الرفض).");
+    }
+    // A hard screening block must never sit next to "ready".
+    const hardBlocked =
+      Boolean(candidate.targetResolutionError) ||
+      Boolean(candidate.findings?.some((finding) => finding.severity === "blocking")) ||
+      hasProvenDuplicate(candidate.findings) ||
+      hasIncompleteHistoricalVerification(candidate.findings) ||
+      Boolean(candidate.findings?.some((finding) => finding.code === "FAMILY_COMPLIANCE_MISMATCH")) ||
+      overlapState.unverifiable > 0 ||
+      unacknowledgedOverlaps > 0;
+    if (hardBlocked && requirements.length === 0) {
+      requirements.push("توجد مانعة اعتماد من نتائج الفحص؛ راجع تفاصيل المرشح.");
+    }
+    return requirements;
+  })();
+
   const latestRevocation = useMemo(() => {
     const last = candidate?.reviewEvents?.at(-1);
     return candidate?.reviewStatus === "pending" && last?.details?.approvalRevoked
@@ -916,7 +1103,7 @@ export function ContentEngineReviewWorkspace() {
   }, [candidate]);
 
   const openEditDialog = () => {
-    if (!candidate) return;
+    if (!candidate || isReviewLocked(candidate.candidateId)) return;
     setEditClaimsText((candidate.factualClaims ?? []).join("\n"));
     setEditExplanation("");
     setEditModalError(null);
@@ -1271,7 +1458,9 @@ export function ContentEngineReviewWorkspace() {
                 </button>
               );
             })}
-            {!list.isLoading && !list.data?.length && (
+            {list.isLoading && <p role="status">جارٍ تحميل المرشحين…</p>}
+            {list.isError && <div role="alert" className="space-y-2 text-sm text-destructive"><p>تعذر تحميل المرشحين. تحقق من الاتصال وأعد المحاولة.</p><Button type="button" variant="outline" onClick={() => void list.refetch()}>إعادة المحاولة</Button></div>}
+            {!list.isLoading && !list.isError && !list.data?.length && (
               <p className="text-sm text-muted-foreground">
                 لا توجد مرشحات مطابقة.
               </p>
@@ -1414,6 +1603,35 @@ export function ContentEngineReviewWorkspace() {
 
       {candidate && (
         <>
+          {isReviewLocked(candidate.candidateId) && (
+            <div role="alert" data-testid="approval-outcome-unknown" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+              <p>{unknownApprovals.has(candidate.candidateId) ? "حُفظ التقييم، لكن تعذر التأكد من نتيجة الاعتماد. قد يكون الاعتماد اكتمل؛ تحقق من حالة المرشح قبل اتخاذ قرار آخر." : "تعذر حفظ حالة التحقق محلياً. يجب التحقق من أحدث حالة للمرشح قبل اتخاذ أي قرار."}</p>
+              <Button type="button" variant="outline" className="mt-2 h-auto min-h-10 max-w-full whitespace-normal" disabled={verifyingCandidates.has(candidate.candidateId)} onClick={async () => {
+                const id = candidate.candidateId;
+                if (verificationInFlight.current.has(id)) return;
+                verificationInFlight.current.add(id); setVerifyingCandidates(new Set(verificationInFlight.current));
+                try {
+                  const fresh = await api.getCandidate(id);
+                  if (fresh.candidateId !== id) throw new Error("Unexpected candidate");
+                  client.setQueryData(["content-engine-review-detail", id], fresh);
+                  void client.invalidateQueries({ queryKey: ["content-engine-review"] });
+                  setVerifiedWithoutStorage((previous) => new Set(previous).add(id));
+                  unknownApprovalsRef.current = new Set([...unknownApprovalsRef.current].filter((item) => item !== id));
+                  setUnknownApprovals(unknownApprovalsRef.current);
+                  if (selectedIdRef.current === id) { setAcknowledgedOverlaps(new Set()); setServerOverlapEvidence(null); setActionError(null); }
+                  showToast({ message: `${selectedIdRef.current === id ? "" : "المرشح السابق: "}${fresh.reviewStatus === "approved" ? "تم التحقق: المرشح معتمد." : "تم التحقق من الحالة الحالية. راجع النتائج قبل اتخاذ قرار."}` });
+                } catch {
+                  showToast({ type: "error", message: `${selectedIdRef.current === id ? "" : "المرشح السابق: "}تعذر التحقق من حالة الاعتماد. حاول التحقق مجدداً.` });
+                } finally { verificationInFlight.current.delete(id); setVerifyingCandidates(new Set(verificationInFlight.current)); }
+              }}>{verifyingCandidates.has(candidate.candidateId) ? "جارٍ التحقق…" : "التحقق من حالة الاعتماد"}</Button>
+            </div>
+          )}
+          {assessmentStale && (
+            <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" data-testid="assessment-stale-conflict">
+              <p>تغيّرت نسخة المرشح. لم تُحذف تعديلاتك، لكن يجب مراجعة النسخة الجديدة قبل الاعتماد.</p>
+              <Button type="button" variant="outline" className="mt-2 h-auto min-h-10 max-w-full whitespace-normal break-words" onClick={() => { assessmentBaseRevision.current = null; ownAssessmentRevision.current = null; setRevisionConflict(null); setActionError(null); setAssessmentReload((v) => v + 1); requestAnimationFrame(() => detailHeadingRef.current?.focus()); }}>تحميل أحدث تقييم والتخلي عن التعديلات غير المحفوظة</Button>
+            </div>
+          )}
           {revisionConflict && (
             <div
               role="alert"
@@ -1434,7 +1652,7 @@ export function ContentEngineReviewWorkspace() {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-rose-300 bg-white text-rose-900 hover:bg-rose-100"
+                className="h-auto min-h-10 max-w-full whitespace-normal break-words border-rose-300 bg-white text-rose-900 hover:bg-rose-100"
                 data-testid="button-reload-conflicted-candidate"
                 onClick={() => void refresh()}
               >
@@ -1452,6 +1670,7 @@ export function ContentEngineReviewWorkspace() {
                 <Button
                   variant="outline"
                   data-testid="button-open-candidate-editor"
+                  disabled={isReviewLocked(candidate.candidateId)}
                   onClick={openEditDialog}
                 >
                   <Pencil className="me-2 size-4" /> تعديل بالمحرر المعتمد
@@ -1533,13 +1752,13 @@ export function ContentEngineReviewWorkspace() {
             <DeduplicationPanel
               candidate={candidate}
               onRescreen={handleRescreen}
-              isRescreening={rescreenMutation.isPending}
+              isRescreening={rescreenMutation.isPending || isReviewLocked(candidate.candidateId)}
               overlapRequirements={
                 candidate.reviewStatus === "approved" ? [] : overlapState.required
               }
               acknowledgedFingerprints={acknowledgedOverlaps}
               onToggleAcknowledgment={toggleOverlapAcknowledgment}
-              acknowledgmentDisabled={action.isPending}
+              acknowledgmentDisabled={action.isPending || isReviewLocked(candidate.candidateId)}
               overlapEvidenceRefreshed={overlapState.refreshed}
             />
 
@@ -1895,11 +2114,11 @@ export function ContentEngineReviewWorkspace() {
                     type="number"
                     min={1}
                     max={5}
-                    value={quality[key]}
+                    value={quality[key] || ""}
                     onChange={(event) =>
                       setQuality((current) => ({
                         ...current,
-                        [key]: Number(event.target.value),
+                        [key]: event.target.value === "" ? 0 : Number(event.target.value),
                       }))
                     }
                   />
@@ -1916,49 +2135,6 @@ export function ContentEngineReviewWorkspace() {
                 }))
               }
             />
-            <Button
-              data-testid="button-save-assessment"
-              disabled={
-                action.isPending ||
-                Boolean(candidate.publishedContentItemId) ||
-                !factualExplanation.trim() ||
-                !quality.explanation.trim()
-              }
-              onClick={() =>
-                action.mutate(() =>
-                  api.assessCandidate(candidate.candidateId, {
-                    expectedRevision: candidate.reviewRevision,
-                    factualState,
-                    factualExplanation: factualExplanation.trim(),
-                    evidence: evidenceUrl.trim()
-                      ? [
-                          {
-                            url: evidenceUrl.trim(),
-                            ...(candidate.factualClaims?.length > 0
-                              ? {
-                                  claimIndex: 0,
-                                  claimText: candidate.factualClaims[0],
-                                }
-                              : {}),
-                            ...(evidenceTitle.trim()
-                              ? { title: evidenceTitle.trim() }
-                              : {}),
-                            ...(evidenceNote.trim()
-                              ? { note: evidenceNote.trim() }
-                              : {}),
-                          },
-                        ]
-                      : [],
-                    quality: {
-                      ...quality,
-                      explanation: quality.explanation.trim(),
-                    },
-                  }),
-                )
-              }
-            >
-              حفظ التقييم
-            </Button>
           </SectionCard>
 
           <SectionCard
@@ -2003,24 +2179,31 @@ export function ContentEngineReviewWorkspace() {
             )}
 
             {/* Approval Eligibility & Blockers Panel */}
-            {eligibility && (
+            {eligibility && (() => {
+              // Undecided: the same list that keeps Approve disabled.
+              // Decided: the server's report, as before.
+              const panelItems =
+                candidate.reviewStatus === "pending" && !candidate.publishedContentItemId
+                  ? approvalRequirements
+                  : eligibility.approvalBlockers;
+              return (
               <div
                 id={DECISION_REQUIREMENTS_ID}
                 tabIndex={-1}
                 data-testid="approval-eligibility-panel"
                 className={`scroll-mt-24 rounded-xl border p-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  eligibility.approvalBlockers.length > 0
+                  panelItems.length > 0
                     ? "border-amber-300 bg-amber-50 text-amber-900"
                     : "border-emerald-300 bg-emerald-50 text-emerald-900"
                 }`}
               >
-                {eligibility.approvalBlockers.length > 0 ? (
+                {panelItems.length > 0 ? (
                   <div className="space-y-1">
                     <p className="font-semibold text-amber-950">
                       متطلبات/موانع الاعتماد قبل اتخاذ القرار:
                     </p>
                     <ul className="list-disc space-y-0.5 pe-5">
-                      {eligibility.approvalBlockers.map((blocker, idx) => (
+                      {panelItems.map((blocker, idx) => (
                         <li key={idx}>{blocker}</li>
                       ))}
                     </ul>
@@ -2031,7 +2214,8 @@ export function ContentEngineReviewWorkspace() {
                   </p>
                 )}
               </div>
-            )}
+              );
+            })()}
 
             {actionError && !revisionConflict && (
               <div
@@ -2049,14 +2233,13 @@ export function ContentEngineReviewWorkspace() {
               onChange={(event) => setDecisionExplanation(event.target.value)}
             />
 
-            {candidate.humanAssessment &&
-              candidate.humanAssessment.factualState !== "SUPPORTED" && (
+            {factualState !== "SUPPORTED" && (
                 <div
                   data-testid="factual-override-section"
                   className="space-y-2 rounded-xl border border-amber-300 bg-amber-50/60 p-3 text-slate-900"
                 >
                   <p className="text-xs font-semibold text-amber-900">
-                    قرار تجاوز استثنائي للحالة الواقعية ({candidate.humanAssessment.factualState}) — لا يتم افتراض القبول بالدليل تلقائياً
+                    قرار تجاوز استثنائي للحالة الواقعية ({factualState}) — لا يتم افتراض القبول بالدليل تلقائياً
                   </p>
                   <select
                     aria-label="factual override code"
@@ -2073,14 +2256,14 @@ export function ContentEngineReviewWorkspace() {
                       -- اختر رمز الحل الصريح للتعارض أو عدم كفاية الدليل --
                     </option>
                     {(
-                      eligibility?.allowedFactualOverrideCodes ?? [
+                      (eligibility?.allowedFactualOverrideCodes?.length ? eligibility.allowedFactualOverrideCodes : [
                         "ACCEPTED_WITH_EVIDENCE",
                         "CLAIM_NOT_ANSWER_CRITICAL",
                         "CLAIM_CORRECTED",
-                      ]
+                      ])
                     ).map((code) => (
                       <option key={code} value={code}>
-                        {FACTUAL_OVERRIDE_LABELS[code]}
+                        {FACTUAL_OVERRIDE_LABELS[code as FactualOverrideCode]}
                       </option>
                     ))}
                   </select>
@@ -2155,42 +2338,80 @@ export function ContentEngineReviewWorkspace() {
           >
             <DecisionBarSummary
               candidate={candidate}
-              approvalBlockers={eligibility?.approvalBlockers ?? []}
-              hasExplanation={Boolean(decisionExplanation.trim())}
-              needsFactualOverride={
-                Boolean(candidate.humanAssessment) &&
-                candidate.humanAssessment?.factualState !== "SUPPORTED" &&
-                (!factualOverrideCode || !overrideExplanation.trim())
-              }
+              requirements={approvalRequirements}
             />
               <div className="flex flex-wrap items-center gap-2">
                 <Button
                   data-testid="button-approve-candidate"
+                  className="h-auto min-h-10 max-w-full whitespace-normal"
                   disabled={
-                    action.isPending ||
+                    action.isPending || approvalRequirements.length > 0 ||
+                    isReviewLocked(candidate.candidateId) ||
+                    Boolean(revisionConflict) || assessmentStale ||
+                    (assessmentBaseRevision.current !== candidate.reviewRevision && !(ownAssessmentRevision.current?.candidateId === candidate.candidateId && ownAssessmentRevision.current.revision === candidate.reviewRevision)) ||
                     candidate.reviewStatus === "rejected" ||
                     Boolean(candidate.publishedContentItemId) ||
                     !decisionExplanation.trim() ||
-                    Boolean(eligibility && !eligibility.canApprove) ||
+                    candidate.reviewStatus === "approved" ||
+                    Boolean(candidate.targetResolutionError) ||
+                    candidate.findings?.some((finding) => finding.severity === "blocking") ||
+                    hasProvenDuplicate(candidate.findings) ||
+                    hasIncompleteHistoricalVerification(candidate.findings) ||
+                    candidate.findings?.some((finding) => finding.code === "FAMILY_COMPLIANCE_MISMATCH") ||
+                    !factualExplanation.trim() || !quality.explanation.trim() ||
+                    [quality.correctness, quality.mechanicFit, quality.clarity, quality.multiplayerFit, quality.originality].some((score) => !Number.isInteger(score) || score < 1 || score > 5) ||
                     overlapState.unverifiable > 0 ||
                     unacknowledgedOverlaps > 0 ||
-                    (candidate.humanAssessment?.factualState !== "SUPPORTED" &&
+                    (factualState !== "SUPPORTED" &&
                       (!factualOverrideCode || !overrideExplanation.trim()))
                   }
                   onClick={() => {
+                    if (isReviewLocked(candidate.candidateId)) return;
                     lastActionKind.current = "approve";
                     // Exactly the server-provided fingerprints, all acknowledged.
                     const overlapAcknowledgments = overlapState.required
                       .filter((r) => acknowledgedOverlaps.has(r.fingerprint))
                       .map((r) => ({ fingerprint: r.fingerprint }));
-                    action.mutate(() =>
-                      api.approveCandidate(candidate.candidateId, {
-                        expectedRevision: candidate.reviewRevision,
+                    if (decisionInFlight.current) return;
+                    decisionInFlight.current = true;
+                    action.mutate(async () => {
+                      const assessmentPayload = {
+                    factualState,
+                    factualExplanation: factualExplanation.trim(),
+                    evidence: [
+                      ...(evidenceUrl.trim() ? [{
+                        ...(candidate.humanAssessment?.evidence?.[0]?.claimIndex !== undefined ? { claimIndex: candidate.humanAssessment.evidence[0].claimIndex } : {}),
+                        ...(candidate.humanAssessment?.evidence?.[0]?.claimText ? { claimText: candidate.humanAssessment.evidence[0].claimText } : {}),
+                        url: evidenceUrl.trim(),
+                        ...(evidenceTitle.trim() ? { title: evidenceTitle.trim() } : {}),
+                        ...(evidenceNote.trim() ? { note: evidenceNote.trim() } : {}),
+                      }] : []),
+                      ...(candidate.humanAssessment?.evidence?.slice(1) ?? []).map(({ url, title, note, claimIndex, claimText }) => ({ url, ...(title !== undefined ? { title } : {}), ...(note !== undefined ? { note } : {}), ...(claimIndex !== undefined ? { claimIndex } : {}), ...(claimText !== undefined ? { claimText } : {}) })),
+                    ],
+                    quality: {
+                      ...quality,
+                      explanation: quality.explanation.trim(),
+                    },
+                  };
+                      const payloadKey = JSON.stringify(assessmentPayload);
+                      let saved: ReviewCandidate;
+                      try {
+                        const retry = savedRetry.current;
+                        if (retry?.candidateId === candidate.candidateId && retry.payload === payloadKey && (retry.revision === candidate.reviewRevision || candidate.humanAssessment?.assessedRevision === candidate.reviewRevision)) {
+                          saved = candidate;
+                        } else {
+                          saved = await api.assessCandidate(candidate.candidateId, { expectedRevision: candidate.reviewRevision, ...assessmentPayload });
+                          savedRetry.current = { candidateId: candidate.candidateId, revision: saved.reviewRevision, payload: payloadKey };
+                          ownAssessmentRevision.current = { candidateId: candidate.candidateId, revision: saved.reviewRevision };
+                        }
+                      } catch (error) { decisionInFlight.current = false; throw error; }
+                      try { const approved = await api.approveCandidate(candidate.candidateId, {
+                        expectedRevision: saved.reviewRevision,
                         explanation: decisionExplanation.trim(),
                         ...(overlapAcknowledgments.length
                           ? { overlapAcknowledgments }
                           : {}),
-                        ...(candidate.humanAssessment?.factualState ===
+                        ...(factualState ===
                         "SUPPORTED"
                           ? {}
                           : {
@@ -2198,18 +2419,36 @@ export function ContentEngineReviewWorkspace() {
                               factualOverrideExplanation:
                                 overrideExplanation.trim(),
                             }),
-                      }),
-                    );
+                      }); savedRetry.current = null; ownAssessmentRevision.current = { candidateId: candidate.candidateId, revision: approved.reviewRevision }; return approved; } catch (error) {
+                        const status = (error as { response?: { status?: number } })?.response?.status;
+                        const ambiguous = typeof status !== "number" || status === 408 || status === 429 || status >= 500;
+                        if (ambiguous) {
+                          unknownApprovalsRef.current = new Set(unknownApprovalsRef.current).add(candidate.candidateId);
+                          // Recorded in memory now, before any render or storage write can fail.
+                          rememberUnknownApprovals(client, unknownApprovalsRef.current);
+                          setUnknownApprovals(unknownApprovalsRef.current);
+                          setVerifiedWithoutStorage((previous) => { const next = new Set(previous); next.delete(candidate.candidateId); return next; });
+                          const unknown = new Error("Approval outcome unknown");
+                          Object.assign(unknown, { approvalOutcomeUnknown: true });
+                          throw unknown;
+                        }
+                        client.setQueryData(["content-engine-review-detail", candidate.candidateId], saved);
+                        await client.invalidateQueries({ queryKey: ["content-engine-review-detail", candidate.candidateId] });
+                        if (error && typeof error === "object") Object.assign(error, { assessmentWasSaved: true, savedRevision: saved.reviewRevision });
+                        throw error;
+                      } finally { decisionInFlight.current = false; }
+                    });
                   }}
                 >
-                  <Check className="me-2 size-4" /> اعتماد
+                  <Check className="me-2 size-4" /> {action.isPending ? "جارٍ الحفظ والاعتماد…" : "حفظ التقييم واعتماد السؤال"}
                 </Button>
                 <select
                   aria-label="rejection reason"
-                  className="h-10 rounded-md border bg-background px-3 text-sm"
+                  className="h-10 max-w-full rounded-md border bg-background px-3 text-sm"
                   value={rejectionReason}
                   onChange={(event) => setRejectionReason(event.target.value)}
                 >
+                  <option value="">اختر سبب الرفض</option>
                   {[
                     "FACTUAL_ERROR",
                     "UNSUPPORTED_CLAIM",
@@ -2229,33 +2468,26 @@ export function ContentEngineReviewWorkspace() {
                   variant="destructive"
                   data-testid="button-reject-candidate"
                   disabled={
-                    action.isPending ||
+                    action.isPending || isReviewLocked(candidate.candidateId) ||
                     Boolean(candidate.publishedContentItemId) ||
-                    !decisionExplanation.trim()
+                    !decisionExplanation.trim() || !rejectionReason
                   }
-                  onClick={() => {
-                    lastActionKind.current = "other";
-                    action.mutate(() =>
-                      api.rejectCandidate(candidate.candidateId, {
-                        expectedRevision: candidate.reviewRevision,
-                        reasonCode: rejectionReason,
-                        explanation: decisionExplanation.trim(),
-                      }),
-                    );
-                  }}
+                  onClick={() => { if (!isReviewLocked(candidate.candidateId)) setRejectConfirmOpen(true); }}
                 >
                   <X className="me-2 size-4" /> رفض
                 </Button>
                 <Button
                   variant="outline"
                   data-testid="button-create-canonical-draft"
+                  className="h-auto min-h-10 max-w-full whitespace-normal"
                   disabled={
-                    action.isPending ||
+                    action.isPending || isReviewLocked(candidate.candidateId) ||
                     candidate.reviewStatus !== "approved" ||
                     Boolean(candidate.publishedContentItemId) ||
                     Boolean(eligibility && !eligibility.canCreateDraft)
                   }
                   onClick={() => {
+                    if (isReviewLocked(candidate.candidateId)) return;
                     lastActionKind.current = "draft";
                     action.mutate(() =>
                       api.createCanonicalDraft(
@@ -2269,6 +2501,17 @@ export function ContentEngineReviewWorkspace() {
                 </Button>
               </div>
           </div>
+
+          <AlertDialog open={rejectConfirmOpen} onOpenChange={setRejectConfirmOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader><AlertDialogTitle>تأكيد رفض المرشح</AlertDialogTitle>
+                <AlertDialogDescription>السؤال: {candidate.draft?.prompt?.ar} — السبب: {rejectionReason}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter><AlertDialogCancel>إلغاء</AlertDialogCancel>
+                <AlertDialogAction onClick={() => { if (decisionInFlight.current || isReviewLocked(candidate.candidateId)) return; decisionInFlight.current = true; lastActionKind.current = "other"; action.mutate(async () => { try { return await api.rejectCandidate(candidate.candidateId, { expectedRevision: candidate.reviewRevision, reasonCode: rejectionReason, explanation: decisionExplanation.trim() }); } finally { decisionInFlight.current = false; } }); }}>تأكيد الرفض</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <SectionCard title="سجل التدقيق">
             {!candidate.reviewEvents.length && (
@@ -2405,6 +2648,7 @@ export function ContentEngineReviewWorkspace() {
                   }}
                   submitLabel="حفظ المرشح وإعادة التحقق"
                   onSubmitOverride={async (draft) => {
+                    if (isReviewLocked(candidate.candidateId)) throw new Error("يجب التحقق من حالة المرشح أولاً.");
                     const trimmedReason = editExplanation.trim();
                     if (!trimmedReason) {
                       setEditModalError(

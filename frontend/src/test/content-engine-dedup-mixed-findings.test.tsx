@@ -1,10 +1,10 @@
 import { ReactNode } from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import * as api from "@/features/content-engine-review/api";
 import { ContentEngineReviewWorkspace } from "@/features/content-engine-review/content-engine-review-workspace";
-import type { ReviewCandidate, ScreenFinding } from "@/features/content-engine-review/types";
+import type { FactualState, ReviewCandidate, ScreenFinding } from "@/features/content-engine-review/types";
 
 /**
  * Candidate-list badge and mixed actionable + inconclusive findings.
@@ -116,11 +116,41 @@ const mockCandidate = (overrides: Partial<ReviewCandidate> = {}): ReviewCandidat
   ...overrides,
 });
 
+/**
+ * Candidates as the server holds them. Approval is assessment-first: saving
+ * the assessment bumps the revision, and approval must carry the new one.
+ */
+let assessSpy: MockInstance<
+  Parameters<typeof api.assessCandidate>,
+  ReturnType<typeof api.assessCandidate>
+>;
+
 function renderWorkspace(candidates: ReviewCandidate[]) {
-  vi.spyOn(api, "listCandidates").mockResolvedValue(candidates);
+  const server = new Map(candidates.map((c) => [c.candidateId, c]));
+  vi.spyOn(api, "listCandidates").mockImplementation(async () => [...server.values()]);
   vi.spyOn(api, "getCandidate").mockImplementation(async (id: string) =>
-    candidates.find((c) => c.candidateId === id) ?? candidates[0],
+    server.get(id) ?? candidates[0],
   );
+  assessSpy = vi.spyOn(api, "assessCandidate").mockImplementation(async (id, data) => {
+    const current = server.get(id)!;
+    const revision = current.reviewRevision + 1;
+    const saved: ReviewCandidate = {
+      ...current,
+      reviewRevision: revision,
+      humanAssessment: {
+        reviewerEmail: "reviewer@example.test",
+        assessedAt: new Date().toISOString(),
+        ...current.humanAssessment,
+        factualState: data.factualState as FactualState,
+        factualExplanation: data.factualExplanation,
+        evidence: data.evidence,
+        quality: data.quality,
+        assessedRevision: revision,
+      },
+    };
+    server.set(id, saved);
+    return saved;
+  });
   render(
     <WithQueryClient>
       <ContentEngineReviewWorkspace />
@@ -227,6 +257,10 @@ describe("Content Engine Review — dedup list badge and mixed findings", () => 
     fireEvent.click(approveButton());
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
     expect(payloadOf(spy).overlapAcknowledgments).toBeUndefined();
+    // Assessment first, then approval at the revision that save produced.
+    expect(assessSpy).toHaveBeenCalledTimes(1);
+    expect(assessSpy.mock.invocationCallOrder[0]).toBeLessThan(spy.mock.invocationCallOrder[0]);
+    expect(payloadOf(spy).expectedRevision).toBe(2);
   });
 
   it("keeps both categories visible on a mixed candidate and gates only the actionable overlaps", async () => {
@@ -273,6 +307,8 @@ describe("Content Engine Review — dedup list badge and mixed findings", () => 
       { fingerprint: FP_A },
       { fingerprint: FP_B },
     ]);
+    expect(assessSpy).toHaveBeenCalledTimes(1);
+    expect(payloadOf(spy).expectedRevision).toBe(2);
   });
 
   it("keeps the inconclusive note visible beside a proven duplicate", async () => {
