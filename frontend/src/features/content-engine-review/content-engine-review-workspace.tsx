@@ -29,6 +29,10 @@ import * as api from "./api";
 import { DeduplicationPanel } from "./deduplication-panel";
 import { CreativeSlotInspector } from "./creative-slot-inspector";
 import {
+  INCOMPLETE_HISTORICAL_CODES,
+  INCONCLUSIVE_COMPARISON_CODES,
+  POTENTIAL_OVERLAP_CODES,
+  PROVEN_DUPLICATE_CODES,
   hasIncompleteHistoricalVerification,
   hasProvenDuplicate,
   overlapRequirementsFromFindings,
@@ -52,6 +56,12 @@ import {
 export type StudioSurface = "generate" | "jobs" | "review";
 
 export const STUDIO_STORAGE_KEY = "akwaan.contentEngineStudio.state.v1";
+const DEDUPLICATION_FINDING_CODES = new Set<string>([
+  ...INCOMPLETE_HISTORICAL_CODES,
+  ...INCONCLUSIVE_COMPARISON_CODES,
+  ...POTENTIAL_OVERLAP_CODES,
+  ...PROVEN_DUPLICATE_CODES,
+]);
 
 interface PersistedStudioState {
   surface: StudioSurface;
@@ -1471,9 +1481,6 @@ export function ContentEngineReviewWorkspace() {
                         key={idx}
                         className="rounded-lg border border-rose-200 bg-white/90 p-2.5 text-rose-950"
                       >
-                        <span className="font-mono font-bold text-rose-700 me-2">
-                          [{finding.code}]
-                        </span>
                         <span>{finding.message}</span>
                       </div>
                     ))}
@@ -1486,16 +1493,11 @@ export function ContentEngineReviewWorkspace() {
               data-testid="candidate-target-context"
               className="grid gap-2 rounded-xl border bg-muted/30 p-3 text-xs sm:grid-cols-2"
             >
-              <div>
-                <span className="text-muted-foreground">معرّف المرشح: </span>
-                <span className="break-all font-mono font-semibold">
-                  {candidate.candidateId}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">معرّف الدفعة: </span>
-                <span className="break-all font-mono">{candidate.jobId}</span>
-              </div>
+              <details className="sm:col-span-2">
+                <summary className="cursor-pointer text-muted-foreground">التفاصيل التقنية</summary>
+                <div className="mt-2 break-all font-mono">معرّف المرشح: {candidate.candidateId}</div>
+                <div className="break-all font-mono">معرّف الدفعة: {candidate.jobId}</div>
+              </details>
               <div className="flex items-center gap-1">
                 <Lock className="size-3.5 text-amber-500" />
                 <span className="text-muted-foreground">الهدف المثبت: </span>
@@ -1645,12 +1647,6 @@ export function ContentEngineReviewWorkspace() {
               className="space-y-3 rounded-xl border p-4"
             >
               <div>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  نص السؤال (العربية)
-                </p>
-                <p className="mt-1 text-lg font-bold">
-                  {candidate.draft?.prompt?.ar}
-                </p>
                 {candidate.draft?.prompt?.en && (
                   <p className="mt-0.5 text-xs text-muted-foreground" dir="ltr">
                     {candidate.draft.prompt.en}
@@ -1797,7 +1793,11 @@ export function ContentEngineReviewWorkspace() {
                 </pre>
               </div>
             )}
-            <div className="space-y-2">
+            {candidate.findings.filter((finding) => !DEDUPLICATION_FINDING_CODES.has(finding.code)).map((finding, index) => (
+              <p key={`${finding.code}-${index}`} className="rounded-lg border p-3 text-sm">{finding.message}</p>
+            ))}
+            <details className="space-y-2 rounded-lg border p-3 text-sm">
+              <summary className="cursor-pointer font-medium">تفاصيل الفحص التقنية</summary>
               {candidate.findings.map((finding) => (
                 <div
                   key={finding.code}
@@ -1806,12 +1806,12 @@ export function ContentEngineReviewWorkspace() {
                   {finding.severity === "blocking" && (
                     <AlertTriangle className="size-4 shrink-0 text-destructive" />
                   )}
-                  <span>
+                  <span className="min-w-0 [overflow-wrap:anywhere]">
                     <strong>{finding.code}</strong> — {finding.message}
                   </span>
                 </div>
               ))}
-            </div>
+            </details>
             <EvaluationBlock
               label="التحقق الآلي"
               value={candidate.factVerification}

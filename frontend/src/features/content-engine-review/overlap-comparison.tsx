@@ -9,6 +9,7 @@ import type { ReviewCandidate } from "./types";
 type ComparisonContent = {
   prompt?: { ar?: string; en?: string };
   answerPayload?: ContentAnswerPayload;
+  mechanicPayload?: Record<string, unknown>;
   mechanic?: string;
   scope?: string;
   status?: string;
@@ -34,6 +35,7 @@ function candidateContent(candidate: ReviewCandidate): ComparisonContent {
   return {
     prompt: candidate.draft?.prompt,
     answerPayload: candidate.draft?.answerPayload,
+    mechanicPayload: candidate.draft?.mechanicPayload,
     mechanic:
       candidate.canonicalTarget?.challengeTypeName ??
       candidate.job?.mechanicKey,
@@ -66,6 +68,7 @@ async function loadReference(
   return {
     prompt: item.prompt,
     answerPayload: item.answerPayload,
+    mechanicPayload: item.mechanicPayload,
     scope: scope.status === "fulfilled" ? scope.value.name : undefined,
     mechanic:
       mechanics
@@ -94,6 +97,19 @@ function ContentColumn({
   title: string;
   content: ComparisonContent;
 }) {
+  const rawClues = content.mechanicPayload?.clues;
+  const clues = Array.isArray(rawClues)
+    ? rawClues.flatMap((clue) => {
+        if (!clue || typeof clue !== "object") return [];
+        const value = (clue as { text?: unknown }).text;
+        const text = typeof value === "string"
+          ? value
+          : value && typeof value === "object"
+            ? (value as { ar?: string; en?: string }).ar ?? (value as { en?: string }).en
+            : undefined;
+        return text ? [text] : [];
+      })
+    : [];
   return (
     <section
       className="min-w-0 space-y-2 rounded-md bg-slate-50 p-3"
@@ -124,6 +140,14 @@ function ContentColumn({
               </ul>
             </dd>
           </div>
+        ) : null}
+        {clues.length > 0 ? (
+          <div>
+            <dt className="font-semibold">التلميحات</dt>
+            <dd><ol className="list-inside list-decimal">{clues.map((clue, index) => <li key={index}>{clue}</li>)}</ol></dd>
+          </div>
+        ) : (content.answerPayload?.mode === "one_clue" || content.answerPayload?.mode === "laqatha") ? (
+          <div><dt className="font-semibold">التلميحات</dt><dd>التلميحات غير متاحة في هذا العرض.</dd></div>
         ) : null}
         <div>
           <dt className="font-semibold">آلية اللعب</dt>
@@ -176,6 +200,12 @@ export function OverlapComparison({
       <p className="mb-3 text-xs leading-relaxed text-amber-950">
         {proven
           ? "رصد النظام تطابقاً مؤكداً؛ هذا التكرار يمنع الاعتماد."
+          : requirement.reasonCode === "UNCERTAIN_FACTUAL_RELATIONSHIP"
+            ? "تشترك الإجابة المستهدفة، لكن الفحص لم يثبت أن السؤالين يتناولان الحقيقة نفسها. قارن السؤالين والتلميحات قبل الإقرار."
+          : requirement.reasonCode === "PARTIAL_CLUE_OVERLAP"
+            ? "تشترك بعض التلميحات والإجابة المستهدفة؛ راجع ما إذا كان التحديان يطلبان المهمة نفسها."
+          : requirement.reasonCode === "SAME_TARGET_DIFFERENT_CLUES"
+            ? "الإجابة المستهدفة مشتركة والتلميحات مختلفة؛ لا يثبت ذلك أن السؤالين متطابقان."
           : requirement.reasonCode === "UNSUPPORTED_MECHANIC_COMPARISON"
             ? "المقارنة الآلية غير حاسمة لهذه الآلية؛ لم يثبت وجود تكرار. قارن المحتوى يدوياً."
             : requirement.reasonAr &&
