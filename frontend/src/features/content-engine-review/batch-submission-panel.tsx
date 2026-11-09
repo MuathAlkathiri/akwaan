@@ -2,15 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   AlertTriangle,
   CheckCircle2,
   Layers,
-  Play,
   RefreshCw,
-  Send,
-  Sparkles,
-  XCircle,
 } from "lucide-react";
 import {
   cancelJob,
@@ -30,6 +27,7 @@ import {
   submitJob,
 } from "./api";
 import {
+  cancellationFeedback,
   DIFFICULTY_LABELS,
   extractApiError,
   formatSarFromMicros,
@@ -75,7 +73,7 @@ const pickDefaultMechanic = (
   scope: EngineScopeOption | undefined,
 ): EngineScopeMechanicOption | undefined => {
   if (!scope || scope.mechanics.length === 0) return undefined;
-  return scope.mechanics.find((m) => m.eligible) ?? scope.mechanics[0];
+  return scope.mechanics.find((m) => m.eligible);
 };
 
 /**
@@ -109,6 +107,11 @@ export function BatchSubmissionPanel({
   const [batchGuidance, setBatchGuidance] = useState("");
 
   const [preflight, setPreflight] = useState<EnginePreflight | null>(null);
+  const [preflightKey, setPreflightKey] = useState<string | null>(null);
+  const [preflightPending, setPreflightPending] = useState(false);
+  const [preflightAttempt, setPreflightAttempt] = useState(0);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const preflightSequence = useRef(0);
   const [planDriftMessage, setPlanDriftMessage] = useState<string | null>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(initialJobId);
   const [job, setJob] = useState<EngineJobStatus | null>(null);
@@ -288,20 +291,18 @@ export function BatchSubmissionPanel({
         reason: selectedScope.blockedReason,
       };
     }
-    if (
-      selectedMechanic &&
-      !selectedMechanic.eligible &&
-      selectedMechanic.blockedReason
-    ) {
+    if (mechanicKey && (!selectedMechanic || !selectedMechanic.eligible)) {
       return {
-        code: selectedMechanic.blockedCode ?? "MECHANIC_BLOCKED",
-        reason: selectedMechanic.blockedReason,
+        code: selectedMechanic?.blockedCode ?? "MECHANIC_BLOCKED",
+        reason: selectedMechanic?.blockedReason ?? "الآلية المحددة لم تعد متاحة لهذا النطاق. اختر آلية أخرى.",
       };
     }
     return null;
-  }, [selectedWorld, selectedScope, selectedMechanic]);
+  }, [selectedWorld, selectedScope, selectedMechanic, mechanicKey]);
 
   const invalidatePreflight = useCallback(() => {
+    preflightSequence.current += 1;
+    setPreflightKey(null);
     setPreflight(null);
     setError(null);
     setErrorCode(null);
@@ -391,150 +392,73 @@ export function BatchSubmissionPanel({
     return payload;
   };
 
-  const canRunPreflight =
-    Boolean(worldKey && scopeKey && mechanicKey) &&
-    !targetCountValidationError &&
-    !guidanceValidationError &&
-    busy === null;
+  const requestKey = JSON.stringify(buildRequestPayload());
+  const selectionValid = Boolean(selectedWorld?.eligible && selectedScope?.eligible && selectedMechanic?.eligible);
+  const canRunPreflight = Boolean(worldKey && scopeKey && mechanicKey && selectionValid) && !targetCountValidationError && !guidanceValidationError;
+  const maximumCost = preflight?.totalEstimatedSar;
+  const validCost = typeof maximumCost === "number" && Number.isFinite(maximumCost) && maximumCost >= 0;
+  const canSubmitJob = canRunPreflight && busy === null && !preflightPending && preflightKey === requestKey && validCost && Boolean(preflight?.resolvable && preflight.submissionReady !== false && preflight.pricingConfigured && preflight.withinBatchCap !== false && preflight.withinMonthlyBudget !== false && preflight.planDigest);
 
-  const canSubmitJob =
-    canRunPreflight &&
-    !selectionBlockedDiagnostic &&
-    Boolean(
-      preflight &&
-        preflight.resolvable &&
-        preflight.submissionReady !== false &&
-        preflight.planDigest,
-    );
-
-  const handlePreflight = async () => {
-    if (!canRunPreflight || inFlightLockRef.current) return;
-    inFlightLockRef.current = true;
-    setBusy("preflight");
-    setError(null);
-    setErrorCode(null);
-    setPlanDriftMessage(null);
-    setInfoMessage(null);
-    try {
-      const result = await preflightJob(buildRequestPayload());
-      setPreflight(result);
-    } catch (err) {
-      setPreflight(null);
-      const extracted = extractApiError(err, "فشل الفحص المسبق");
-      setError(extracted.message);
-      setErrorCode(extracted.code ?? null);
-    } finally {
-      inFlightLockRef.current = false;
-      setBusy(null);
-    }
-  };
+  useEffect(() => {
+    const sequence = ++preflightSequence.current;
+    setPreflight(null); setPreflightKey(null);
+    if (!canRunPreflight) { setPreflightPending(false); return; }
+    setPreflightPending(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const result = await preflightJob(JSON.parse(requestKey) as EngineJobRequest);
+        if (sequence !== preflightSequence.current) return;
+        setPreflight(result); setPreflightKey(requestKey); setError(null); setErrorCode(null);
+      } catch (err) {
+        if (sequence !== preflightSequence.current) return;
+        const extracted = extractApiError(err, "فشل الفحص المسبق");
+        setError(extracted.message); setErrorCode(extracted.code ?? null);
+      } finally { if (sequence === preflightSequence.current) setPreflightPending(false); }
+    }, 350);
+    return () => { window.clearTimeout(timer); if (preflightSequence.current === sequence) preflightSequence.current += 1; };
+  }, [requestKey, canRunPreflight, preflightAttempt]);
 
   const handleSubmitJob = async () => {
-    if (
-      !canSubmitJob ||
-      !preflight?.planDigest ||
-      inFlightLockRef.current
-    ) {
-      return;
-    }
+    if (!canSubmitJob || !preflight?.planDigest || inFlightLockRef.current) return;
     inFlightLockRef.current = true;
-    setBusy("submit");
-    setError(null);
-    setErrorCode(null);
-    setPlanDriftMessage(null);
-    setInfoMessage(null);
+    const digest = preflight.planDigest;
+    const request = JSON.parse(requestKey) as EngineJobRequest;
+    setBusy("submit"); setError(null); setErrorCode(null); setPlanDriftMessage(null); setInfoMessage(null);
+    let targetId: string | null = null;
     try {
-      const submitted = await submitJob({
-        ...buildRequestPayload(),
-        planDigest: preflight.planDigest,
-      });
-      handleActiveJobChange(submitted.jobId);
-      onJobSubmitted?.(submitted.jobId);
-      const fetched = await getJobStatus(submitted.jobId);
-      setJob(fetched);
-      onJobUpdated?.(fetched);
+      const submitted = await submitJob({ ...request, planDigest: digest });
+      targetId = submitted.jobId;
+      handleActiveJobChange(targetId); onJobSubmitted?.(targetId);
       void queryClient.invalidateQueries({ queryKey: ["content-engine-jobs"] });
-      if (submitted.created) {
-        setInfoMessage(
-          `تم تسجيل الدفعة بنجاح بنسخة مواصفات v${submitted.specVersion ?? 1} (${submitted.jobId}).`,
-        );
-      } else {
-        setInfoMessage(
-          `تم استرجاع الدفعة الحالية المتطابقة تماماً مع هذه المواصفة (${submitted.jobId}).`,
-        );
-      }
-    } catch (err) {
-      const extracted = extractApiError(err, "تعذر تسجيل الدفعة");
-      if (
-        extracted.status === 409 ||
-        extracted.code === "PREFLIGHT_PLAN_DRIFT" ||
-        extracted.message.includes("PREFLIGHT_PLAN_DRIFT")
-      ) {
-        setPreflight(null);
-        setPlanDriftMessage(
-          `تغيرت خطة الفحص المسبق أو إعدادات الخادم (PREFLIGHT_PLAN_DRIFT): ${extracted.message}. تم إبطال الفحص القديم؛ يرجى تشغيل الفحص المسبق من جديد قبل الإنشاء.`,
-        );
-      } else {
-        setError(extracted.message);
-        setErrorCode(extracted.code ?? null);
-      }
-    } finally {
-      inFlightLockRef.current = false;
-      setBusy(null);
-    }
-  };
-
-  const handleRunExactJob = async (explicitJobId?: string) => {
-    const targetId = explicitJobId ?? job?.jobId ?? activeJobId;
-    if (!targetId || inFlightLockRef.current || busy !== null) return;
-    inFlightLockRef.current = true;
-    setBusy("run");
-    setError(null);
-    setErrorCode(null);
-    setInfoMessage(null);
-    try {
-      const runOutcome = await runJob(targetId);
-      const refreshed = await getJobStatus(targetId);
-      setJob(refreshed);
-      onJobUpdated?.(refreshed);
-      void queryClient.invalidateQueries({ queryKey: ["content-engine-jobs"] });
-      void queryClient.invalidateQueries({
-        queryKey: ["content-engine-candidates"],
-      });
-      if (runOutcome.alreadyRunning) {
-        setInfoMessage(
-          `الدفعة (${targetId}) قيد التشغيل بالفعل ولا يمكن بدء تشغيل موازٍ.`,
-        );
-      } else if (refreshed.status === "awaiting_review") {
-        setInfoMessage(
-          `اكتمل تشغيل الدفعة (${targetId}) وجاهزة لمراجعة المرشحين.`,
-        );
-      }
-    } catch (err) {
-      const extracted = extractApiError(err, "فشل تشغيل الدفعة");
-      try {
-        const fallbackStatus = await getJobStatus(targetId);
-        setJob(fallbackStatus);
-        onJobUpdated?.(fallbackStatus);
-        void queryClient.invalidateQueries({
-          queryKey: ["content-engine-jobs"],
-        });
-        if (extracted.isTimeoutOrNetwork) {
-          setError(
-            `استغرق تشغيل الدفعة وقتاً أطول من المتوقع، لكن تم التحقق من حالتها بالخادم دون إعادة تشغيل مدفوع تلقائي: ${extracted.message}`,
-          );
-        } else {
-          setError(extracted.message);
-          setErrorCode(extracted.code ?? null);
+      if (!submitted.created) {
+        const existing = await getJobStatus(targetId);
+        setJob(existing); onJobUpdated?.(existing);
+        if (!isJobRunnable(existing)) {
+          setInfoMessage("تم العثور على دفعة مطابقة موجودة؛ راجع حالتها في سجل الدفعات.");
+          return;
         }
-      } catch {
-        setError(extracted.message);
-        setErrorCode(extracted.code ?? null);
       }
-    } finally {
-      inFlightLockRef.current = false;
-      setBusy(null);
-    }
+      setBusy("run");
+      const runOutcome = await runJob(targetId);
+      try {
+        const refreshed = await getJobStatus(targetId);
+        setJob(refreshed); onJobUpdated?.(refreshed);
+        setInfoMessage(runOutcome.alreadyRunning ? "الدفعة قيد التشغيل بالفعل؛ تابع حالتها في سجل الدفعات." : "تم إرسال الدفعة للتنفيذ؛ تابع حالتها في سجل الدفعات.");
+      } catch { setInfoMessage("أُرسل التشغيل، لكن تعذر التحقق من الحالة. راجع سجل الدفعات قبل أي إجراء آخر."); }
+      void queryClient.invalidateQueries({ queryKey: ["content-engine-candidates"] });
+    } catch (err) {
+      const extracted = extractApiError(err, "تعذر تنفيذ الطلب");
+      if (!targetId && (extracted.status === 409 || extracted.code === "PREFLIGHT_PLAN_DRIFT")) {
+        setPreflight(null); setPreflightKey(null);
+        setPlanDriftMessage("تغيّرت الخطة؛ جارٍ التحقق مجدداً من التكلفة قبل التوليد.");
+        setPreflightAttempt((value) => value + 1);
+      } else if (targetId && (extracted.isTimeoutOrNetwork || !extracted.status || extracted.status >= 500)) {
+        try { const current = await getJobStatus(targetId); setJob(current); onJobUpdated?.(current); } catch { /* outcome remains unknown */ }
+        setError("تعذر التأكد من نتيجة التشغيل. راجع حالة الدفعة قبل المحاولة؛ لم يُعد التشغيل تلقائياً.");
+      } else if (!targetId && (extracted.isTimeoutOrNetwork || !extracted.status || extracted.status >= 500)) {
+        setError("تعذر التأكد من تسجيل الدفعة. راجع سجل الدفعات قبل المحاولة مجدداً.");
+      } else { setError(extracted.message); setErrorCode(extracted.code ?? null); }
+    } finally { inFlightLockRef.current = false; setBusy(null); }
   };
 
   const handleCancelJob = async () => {
@@ -545,12 +469,12 @@ export function BatchSubmissionPanel({
     setError(null);
     setErrorCode(null);
     try {
-      await cancelJob(idToCancel);
+      const recorded = await cancelJob(idToCancel);
       const refreshed = await getJobStatus(idToCancel);
       setJob(refreshed);
       onJobUpdated?.(refreshed);
       void queryClient.invalidateQueries({ queryKey: ["content-engine-jobs"] });
-      setInfoMessage(`تم إرسال طلب إلغاء الدفعة (${idToCancel}).`);
+      setInfoMessage(cancellationFeedback(recorded, idToCancel, refreshed.status));
     } catch (err) {
       const extracted = extractApiError(err, "تعذر إلغاء الدفعة");
       setError(extracted.message);
@@ -881,7 +805,7 @@ export function BatchSubmissionPanel({
               {availableMechanics.length === 0 && (
                 <option value="">لا توجد ميكانيكيات متاحة</option>
               )}
-              {availableMechanics.map((mechanic) => {
+              {availableMechanics.filter((mechanic) => mechanic.eligible || mechanic.mechanicKey === mechanicKey).map((mechanic) => {
                 const catalogItem = mechanicCatalogByKey.get(mechanic.mechanicKey);
                 const displayName = catalogItem?.name
                   ? `${catalogItem.name} (${mechanic.mechanicKey})`
@@ -901,6 +825,7 @@ export function BatchSubmissionPanel({
                   <option
                     key={mechanic.mechanicKey}
                     value={mechanic.mechanicKey}
+                    disabled={!mechanic.eligible}
                   >
                     {suffix ? `${displayName} — ${suffix}` : displayName}
                   </option>
@@ -1248,11 +1173,7 @@ export function BatchSubmissionPanel({
                 كم التكلفة المتوقعة؟
               </span>
               <div className="text-base font-bold text-amber-700 font-mono">
-                {typeof (preflight.totalEstimatedSar ?? preflight.estimatedSar) === "number"
-                  ? `~ ${(preflight.totalEstimatedSar ?? preflight.estimatedSar)!.toFixed(4)} ر.س`
-                  : typeof (preflight.totalEstimatedMicros ?? preflight.estimatedMicros) === "number"
-                    ? `~ ${((preflight.totalEstimatedMicros ?? preflight.estimatedMicros)! / 1_000_000).toFixed(4)} ر.س`
-                    : "غير متاح"}
+                {validCost ? `${maximumCost.toFixed(4)} ر.س` : "غير متاح"}
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
                 سقف تقديري أقصى (غير ملزم كحد أدنى)
@@ -1463,9 +1384,9 @@ export function BatchSubmissionPanel({
                         className="font-mono text-amber-700 font-bold"
                         data-testid="cost-total-ceiling"
                       >
-                        {typeof (preflight.totalEstimatedSar ?? preflight.estimatedSar) === "number"
-                          ? `${(preflight.totalEstimatedSar ?? preflight.estimatedSar)!.toFixed(4)} ر.س (${(preflight.totalEstimatedMicros ?? preflight.estimatedMicros ?? 0).toLocaleString("en-US")} ميكرو)`
-                          : formatSarFromMicros(preflight.totalEstimatedMicros ?? preflight.estimatedMicros)}
+                        {validCost
+                          ? `${maximumCost.toFixed(4)} ر.س${typeof preflight.totalEstimatedMicros === "number" ? ` (${preflight.totalEstimatedMicros.toLocaleString("en-US")} ميكرو)` : ""}`
+                          : "غير متاح"}
                       </dd>
                     </div>
                     <div className="flex justify-between gap-2">
@@ -1648,83 +1569,25 @@ export function BatchSubmissionPanel({
         </div>
       )}
 
-      {/* Action Trigger Buttons: Preflight, Submit, Exact-Job Run */}
-      <div className="flex flex-wrap items-center gap-3 pt-2">
-        <button
-          type="button"
-          data-testid="button-preflight"
-          onClick={handlePreflight}
-          disabled={!canRunPreflight}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-xs font-semibold text-slate-800 shadow-sm hover:border-slate-400 hover:bg-slate-50 transition disabled:opacity-40"
-        >
-          {busy === "preflight" ? (
-            <>
-              <div className="size-3.5 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
-              <span>جاري الفحص المسبق...</span>
-            </>
-          ) : (
-            <>
-              <Sparkles className="size-4 text-amber-500" />
-              <span>1. فحص القابلية والتكلفة (Preflight)</span>
-            </>
-          )}
+      <div className="flex flex-wrap items-center gap-3 pt-2" aria-live="polite">
+        {preflightPending && <span>جارٍ التحقق من التكلفة…</span>}
+        {!preflightPending && preflight && !validCost && <span role="alert">تعذر تحديد الحد الأقصى للتكلفة من الخادم.</span>}
+        {!preflightPending && !preflight && error && <button type="button" onClick={() => setPreflightAttempt((value) => value + 1)} className="rounded-xl border px-4 py-2 text-sm">إعادة التحقق</button>}
+        <button type="button" data-testid="button-submit-job" disabled={!canSubmitJob} onClick={() => setConfirmOpen(true)} className="rounded-xl bg-amber-500 px-6 py-3 text-sm font-semibold text-white disabled:opacity-40">
+          {busy ? "جارٍ تنفيذ الطلب…" : `توليد ${parsedTargetCount || 0} أسئلة${validCost ? ` — حتى ${maximumCost.toFixed(4)} ر.س` : ""}`}
         </button>
-
-        <button
-          type="button"
-          data-testid="button-submit-job"
-          onClick={handleSubmitJob}
-          disabled={!canSubmitJob}
-          className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-6 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-amber-600 transition disabled:opacity-40"
-        >
-          {busy === "submit" ? (
-            <>
-              <div className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              <span>جاري تسجيل الدفعة...</span>
-            </>
-          ) : (
-            <>
-              <Send className="size-4" />
-              <span>2. اعتماد الخطة وتسجيل الدفعة</span>
-            </>
-          )}
-        </button>
-
-        {job && (
-          <button
-            type="button"
-            data-testid="button-run-exact-job"
-            onClick={() => handleRunExactJob(job.jobId)}
-            disabled={busy !== null || !isJobRunnable(job)}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition disabled:opacity-40"
-          >
-            {busy === "run" || job.status === "leased" ? (
-              <>
-                <div className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                <span>جاري تشغيل الدفعة ({job.jobId})...</span>
-              </>
-            ) : (
-              <>
-                <Play className="size-4" />
-                <span>3. تشغيل هذه الدفعة الآن ({job.jobId})</span>
-              </>
-            )}
-          </button>
-        )}
-
         {job && !isTerminalJobStatus(job.status) && !job.cancellationRequested && (
-          <button
-            type="button"
-            data-testid="button-cancel-job"
-            onClick={handleCancelJob}
-            disabled={busy !== null}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition disabled:opacity-40"
-          >
-            <XCircle className="size-4" />
-            <span>{busy === "cancel" ? "جاري الإلغاء..." : "إلغاء الدفعة"}</span>
-          </button>
+          <button type="button" data-testid="button-cancel-job" onClick={handleCancelJob} disabled={busy !== null} className="rounded-xl border px-4 py-2 text-sm">إلغاء الدفعة</button>
         )}
       </div>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>تأكيد توليد الأسئلة</AlertDialogTitle>
+            <AlertDialogDescription>العالم: {selectedWorld?.name ?? worldKey} · النطاق: {selectedScope?.name ?? scopeKey} · الآلية: {selectedMechanicCatalog?.name ?? mechanicKey} · العدد: {parsedTargetCount} · الحد الأقصى: {validCost ? maximumCost.toFixed(4) : "—"} ر.س</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>إلغاء</AlertDialogCancel><AlertDialogAction disabled={!canSubmitJob} onClick={() => void handleSubmitJob()}>تأكيد التوليد</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Active Job Status & Handoff Card */}
       {job && (

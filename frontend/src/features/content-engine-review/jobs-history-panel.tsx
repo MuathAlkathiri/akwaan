@@ -17,6 +17,7 @@ import {
   runJob,
 } from "./api";
 import {
+  cancellationFeedback,
   DIFFICULTY_LABELS,
   extractApiError,
   isJobRunnable,
@@ -51,6 +52,15 @@ export function JobsHistoryPanel({
   const [extraPages, setExtraPages] = useState<EngineJobStatus[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const pageCountRef = useRef(0);
+  const pageGenerationRef = useRef(0);
+  const filterRef = useRef(statusFilter);
+  const previousFirstPageRef = useRef<EngineJobStatus[]>([]);
+  const extraPagesRef = useRef(extraPages);
+  extraPagesRef.current = extraPages;
+  const rebuildInFlightRef = useRef<number | null>(null);
+  const latestBoundaryRef = useRef<string | null>(null);
+  const [rebuildAttempt, setRebuildAttempt] = useState(0);
 
   const [busyJobId, setBusyJobId] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<"run" | "cancel" | null>(null);
@@ -78,11 +88,69 @@ export function JobsHistoryPanel({
     },
   });
 
-  // Reset appended cursor pages whenever the status filter or first page reloads
   useEffect(() => {
-    setExtraPages([]);
-    setNextCursor(jobsQuery.data?.nextCursor ?? null);
-  }, [jobsQuery.data, statusFilter]);
+    if (filterRef.current !== statusFilter) {
+      pageGenerationRef.current += 1;
+      rebuildInFlightRef.current = null;
+      latestBoundaryRef.current = null;
+      filterRef.current = statusFilter;
+      pageCountRef.current = 0;
+      previousFirstPageRef.current = [];
+      setExtraPages([]);
+      setNextCursor(null);
+      setLoadingMore(false);
+    }
+    if (!jobsQuery.data) return;
+    const boundary = JSON.stringify([statusFilter, jobsQuery.data.nextCursor, jobsQuery.data.items.map((item) => item.jobId)]);
+    latestBoundaryRef.current = boundary;
+    if (rebuildInFlightRef.current !== null) return;
+    if (pageCountRef.current === 0) {
+      previousFirstPageRef.current = jobsQuery.data.items;
+      setLoadingMore(false);
+      setNextCursor(jobsQuery.data.nextCursor ?? null);
+      return;
+    }
+    const generation = ++pageGenerationRef.current;
+    rebuildInFlightRef.current = generation;
+    // Rebuild the loaded window from the new first-page cursor: insertions can
+    // shift page boundaries, so reusing old cursor pages can omit jobs.
+    const previousFirstPage = previousFirstPageRef.current;
+    const oldestLoadedId = extraPagesRef.current.at(-1)?.jobId ?? previousFirstPage.at(-1)?.jobId;
+    previousFirstPageRef.current = jobsQuery.data.items;
+    setExtraPages((previous) => [...previousFirstPage, ...previous]);
+    setLoadingMore(true);
+    const rebuild = async () => {
+      let cursor = jobsQuery.data?.nextCursor ?? null;
+      const items: EngineJobStatus[] = [];
+      let loaded = 0;
+      try {
+        const maxPages = pageCountRef.current + 5;
+        while (cursor && (loaded < pageCountRef.current || (oldestLoadedId && ![...jobsQuery.data!.items, ...items].some((item) => item.jobId === oldestLoadedId)))) {
+          if (loaded >= maxPages) throw new Error("تعذر تحديث جميع الدفعات المحملة؛ حاول التحديث مجدداً.");
+          const page = await listJobs({ limit: 20, cursor, status: statusFilter || undefined });
+          if (generation !== pageGenerationRef.current) return;
+          items.push(...page.items);
+          cursor = page.nextCursor ?? null;
+          loaded += 1;
+        }
+        if (generation !== pageGenerationRef.current || boundary !== latestBoundaryRef.current) return;
+        setExtraPages(items);
+        setNextCursor(cursor);
+        pageCountRef.current = loaded;
+      } catch (err) {
+        if (generation !== pageGenerationRef.current) return;
+        const extracted = extractApiError(err, "تعذر تحديث الدفعات المحملة");
+        setFeedback({ type: "error", code: extracted.code, message: extracted.message });
+      } finally {
+        if (generation === pageGenerationRef.current) {
+          rebuildInFlightRef.current = null;
+          setLoadingMore(false);
+          if (boundary !== latestBoundaryRef.current) setRebuildAttempt((value) => value + 1);
+        }
+      }
+    };
+    void rebuild();
+  }, [jobsQuery.data, jobsQuery.dataUpdatedAt, statusFilter, rebuildAttempt]);
 
   const allJobs = useMemo(() => {
     const firstPageItems = jobsQuery.data?.items ?? [];
@@ -95,7 +163,7 @@ export function JobsHistoryPanel({
         merged.push(item);
       }
     }
-    return merged;
+    return merged.sort((a, b) => b.jobId.localeCompare(a.jobId));
   }, [jobsQuery.data?.items, extraPages]);
 
   const filteredJobs = useMemo(() => {
@@ -129,10 +197,35 @@ export function JobsHistoryPanel({
     enabled: Boolean(selectedJobId),
   });
 
-  const inspectedJob = selectedJobDetailQuery.data ?? selectedJobFromList;
+  const detailConflict = Boolean(selectedJobFromList && selectedJobDetailQuery.data && (
+    selectedJobFromList.status !== selectedJobDetailQuery.data.status ||
+    selectedJobFromList.cancellationRequested !== selectedJobDetailQuery.data.cancellationRequested
+  ));
+  const conflictRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!detailConflict || !selectedJobFromList || !selectedJobDetailQuery.data) {
+      conflictRef.current = null;
+      return;
+    }
+    if (selectedJobDetailQuery.isFetching) return;
+    const signature = `${selectedJobId}:${selectedJobFromList.status}:${selectedJobFromList.cancellationRequested}:${selectedJobDetailQuery.data.status}:${selectedJobDetailQuery.data.cancellationRequested}`;
+    if (conflictRef.current === signature) return;
+    conflictRef.current = signature;
+    const detailIsTerminal = isTerminalJobStatus(selectedJobDetailQuery.data.status);
+    const listIsTerminal = isTerminalJobStatus(selectedJobFromList.status);
+    const key = detailIsTerminal && !listIsTerminal
+      ? ["content-engine-jobs"]
+      : ["content-engine-job-detail", selectedJobId];
+    void queryClient.invalidateQueries({ queryKey: key }, { cancelRefetch: false });
+  }, [detailConflict, selectedJobId, selectedJobFromList, selectedJobDetailQuery.data, selectedJobDetailQuery.isFetching, queryClient]);
+  const reconcilingDetail = selectedJobDetailQuery.isError || !selectedJobDetailQuery.data || detailConflict;
+  const inspectedJob = detailConflict && !isTerminalJobStatus(selectedJobDetailQuery.data?.status)
+    ? selectedJobFromList
+    : (selectedJobDetailQuery.data ?? selectedJobFromList);
 
   const handleLoadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
+    const generation = pageGenerationRef.current;
     setLoadingMore(true);
     try {
       const page = await listJobs({
@@ -140,9 +233,12 @@ export function JobsHistoryPanel({
         cursor: nextCursor,
         status: statusFilter || undefined,
       });
+      if (generation !== pageGenerationRef.current) return;
       setExtraPages((prev) => [...prev, ...page.items]);
       setNextCursor(page.nextCursor ?? null);
+      pageCountRef.current += 1;
     } catch (err) {
+      if (generation !== pageGenerationRef.current) return;
       const extracted = extractApiError(err, "فشل تحميل الدفعات الإضافية");
       setFeedback({
         type: "error",
@@ -150,7 +246,7 @@ export function JobsHistoryPanel({
         message: extracted.message,
       });
     } finally {
-      setLoadingMore(false);
+      if (generation === pageGenerationRef.current) setLoadingMore(false);
     }
   }, [nextCursor, loadingMore, statusFilter]);
 
@@ -233,7 +329,7 @@ export function JobsHistoryPanel({
       setFeedback(null);
 
       try {
-        await cancelJob(jobId);
+        const recorded = await cancelJob(jobId);
         const latest = await getJobStatus(jobId);
         queryClient.setQueryData(["content-engine-job-detail", jobId], latest);
         void queryClient.invalidateQueries({
@@ -241,9 +337,7 @@ export function JobsHistoryPanel({
         });
         setFeedback({
           type: "info",
-          message: `تم تسجيل طلب إلغاء الدفعة (${jobId}) — الحالة الحالية: ${
-            JOB_STATUS_LABELS[latest.status]?.label ?? latest.status
-          }.`,
+          message: cancellationFeedback(recorded, jobId, latest.status),
         });
       } catch (err) {
         const extracted = extractApiError(err, "تعذر إلغاء الدفعة");
@@ -294,13 +388,13 @@ export function JobsHistoryPanel({
             </span>
           </div>
 
-          <label className="flex items-center gap-2 text-slate-600 font-medium">
+          <label className="flex max-w-full min-w-0 flex-wrap items-center gap-2 text-slate-600 font-medium">
             <span>تصفية الحالة:</span>
             <select
               data-testid="jobs-filter-status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-9 rounded-xl border border-input bg-white px-3 text-xs text-slate-900 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+              className="h-9 max-w-full min-w-0 rounded-xl border border-input bg-white px-3 text-xs text-slate-900 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
             >
               <option value="">جميع الحالات</option>
               <option value="queued">في الانتظار (queued)</option>
@@ -359,7 +453,13 @@ export function JobsHistoryPanel({
             </div>
           )}
 
-          {!jobsQuery.isLoading && allJobs.length === 0 && (
+          {jobsQuery.isError && (
+            <div role="alert" data-testid="jobs-load-error" className="rounded-xl border border-destructive/40 p-4 text-sm">
+              <p>تعذر تحميل سجل الدفعات.</p>
+              <button type="button" onClick={() => void jobsQuery.refetch()} className="mt-2 rounded-lg border px-3 py-2">إعادة المحاولة</button>
+            </div>
+          )}
+          {!jobsQuery.isLoading && !jobsQuery.isError && allJobs.length === 0 && (
             <div
               className="rounded-xl border border-dashed border-border/90 bg-slate-50/40 p-8 text-center text-xs text-slate-500"
               data-testid="jobs-empty-state"
@@ -396,16 +496,15 @@ export function JobsHistoryPanel({
               <div
                 key={item.jobId}
                 data-testid={`job-row-${item.jobId}`}
-                onClick={() => onSelectJobId(item.jobId)}
-                className={`cursor-pointer rounded-2xl border p-4 text-xs transition shadow-sm ${
+                className={`rounded-2xl border p-4 text-xs transition shadow-sm ${
                   isSelected
                     ? "border-amber-500 bg-amber-50/30 ring-1 ring-amber-500/20"
                     : "border-border/80 bg-white hover:border-amber-300 hover:bg-amber-50/20"
                 }`}
               >
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2.5">
-                  <span className="font-mono font-bold text-amber-800 text-sm">
-                    {item.jobId}
+                <button type="button" data-testid={`job-select-${item.jobId}`} aria-pressed={isSelected} aria-label={`عرض تفاصيل الدفعة ${itemScope} ${itemMechanic} ${item.jobId}`} onClick={() => onSelectJobId(item.jobId)} className="flex w-full flex-wrap items-center justify-between gap-2 rounded border-b border-border/40 pb-2.5 text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600">
+                  <span className="font-bold text-amber-800 text-sm">
+                    {itemScope} · {itemMechanic}
                   </span>
                   <span
                     className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${statusMeta.badgeClass}`}
@@ -415,11 +514,11 @@ export function JobsHistoryPanel({
                       ? "قيد التشغيل (Running)"
                       : statusMeta.label}
                   </span>
-                </div>
+                </button>
 
                 <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-slate-800 font-medium">
                   <span className="font-mono text-slate-900">
-                    {itemWorld} / {itemScope} / {itemMechanic}
+                    {itemWorld} / {itemScope}
                   </span>
                   <span className="text-slate-600 text-[11px]">
                     العدد: <strong className="text-slate-900">{itemCount}</strong> · المرشحون:{" "}
@@ -445,7 +544,7 @@ export function JobsHistoryPanel({
                   className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-2.5"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {isJobRunnable(item) && (
+                  {!(isSelected && reconcilingDetail) && isJobRunnable(item) && (
                     <button
                       type="button"
                       data-testid={`job-run-btn-${item.jobId}`}
@@ -462,7 +561,7 @@ export function JobsHistoryPanel({
                     </button>
                   )}
 
-                  {!isTerminalJobStatus(item.status) &&
+                  {!(isSelected && reconcilingDetail) && !isTerminalJobStatus(item.status) &&
                     !item.cancellationRequested && (
                       <button
                         type="button"
@@ -512,7 +611,14 @@ export function JobsHistoryPanel({
 
         {/* Right: Job Detail Inspector */}
         <div className="min-w-0 lg:col-span-6">
-          {!inspectedJob ? (
+          {selectedJobId && selectedJobDetailQuery.isLoading && <p role="status">جارٍ تحميل تفاصيل الدفعة…</p>}
+          {selectedJobId && selectedJobDetailQuery.isError && (
+            <div role="alert" data-testid="job-detail-load-error" className="mb-3 rounded-xl border border-destructive/40 p-4 text-sm">
+              <p>{extractApiError(selectedJobDetailQuery.error, "تعذر تحميل تفاصيل الدفعة").status === 404 ? "لم يُعثر على الدفعة." : "تعذر تحميل تفاصيل الدفعة."}</p>
+              <button type="button" onClick={() => void selectedJobDetailQuery.refetch()} className="mt-2 rounded-lg border px-3 py-2">إعادة المحاولة</button>
+            </div>
+          )}
+          {!inspectedJob ? (selectedJobDetailQuery.isLoading || selectedJobDetailQuery.isError ? null : (
             <div className="rounded-2xl border border-border/80 bg-slate-50/50 p-8 text-center text-xs text-slate-500">
               <Layers className="size-8 mx-auto mb-2 text-slate-400 stroke-1" />
               <p className="font-semibold text-slate-700">لم يتم اختيار دفعة</p>
@@ -520,7 +626,7 @@ export function JobsHistoryPanel({
                 اختر دفعة من القائمة لعرض تفاصيل مواصفتها وتكلفتها وحالتها التنفيذية.
               </p>
             </div>
-          ) : (
+          )) : (
             <div
               className="rounded-2xl border border-border/80 bg-slate-50/60 p-5 sm:p-6 text-xs text-slate-800 shadow-sm space-y-4"
               data-testid="job-detail-inspector"
@@ -528,10 +634,7 @@ export function JobsHistoryPanel({
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    تفاصيل الدفعة:{" "}
-                    <span className="font-mono text-amber-800 font-bold">
-                      {inspectedJob.jobId}
-                    </span>
+                    {inspectedJob.scopeKey ?? inspectedJob.generationSpec?.scopeKey ?? "الدفعة"} · {inspectedJob.mechanicKey ?? inspectedJob.generationSpec?.mechanicKey ?? "التوليد"}
                   </h3>
                   <p className="mt-0.5 text-[11px] text-slate-500">
                     {JOB_STATUS_LABELS[inspectedJob.status]?.description ?? ""}
@@ -606,14 +709,11 @@ export function JobsHistoryPanel({
 
               {/* Pinned Generation Specification */}
               {inspectedJob.generationSpec ? (
-                <div
+                <details
                   className="rounded-xl border border-border/80 bg-white p-4 shadow-sm text-[11px] space-y-2"
                   data-testid="inspector-generation-spec"
                 >
-                  <h4 className="font-bold text-slate-900 border-b border-border/60 pb-2">
-                    مواصفة التوليد المثبتة (Pinned Generation Specification v
-                    {inspectedJob.generationSpec.specVersion})
-                  </h4>
+                  <summary className="cursor-pointer font-bold text-slate-900">تفاصيل مواصفة التوليد المثبتة · {inspectedJob.jobId}</summary>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 pt-1">
                     <div>
                       <span className="text-slate-500">المزود والنموذج: </span>
@@ -645,7 +745,7 @@ export function JobsHistoryPanel({
                         الحرارة وسقف التوكنات:{" "}
                       </span>
                       <span className="font-mono font-medium text-slate-900">
-                        temp={inspectedJob.generationSpec.temperature} · maxTokens=
+                        {inspectedJob.generationSpec.temperature == null ? "لم تُحدد قيمة Temperature" : `temp=${inspectedJob.generationSpec.temperature}`} · maxTokens=
                         {inspectedJob.generationSpec.maxOutputTokens}
                       </span>
                     </div>
@@ -658,7 +758,7 @@ export function JobsHistoryPanel({
                       </p>
                     </div>
                   )}
-                </div>
+                </details>
               ) : (
                 <div
                   className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-[11px] text-rose-900"
@@ -711,16 +811,17 @@ export function JobsHistoryPanel({
 
               {/* Inspector Actions */}
               <div className="flex flex-wrap items-center gap-3 pt-2">
-                {isJobRunnable(inspectedJob) && (
+                {reconcilingDetail && <p role="status">جارٍ التحقق من حالة الدفعة قبل إتاحة الإجراءات.</p>}
+                {!reconcilingDetail && isJobRunnable(inspectedJob) && (
                   <button
                     type="button"
                     data-testid="inspector-run-job-btn"
                     onClick={() => void handleRunJob(inspectedJob.jobId)}
                     disabled={busyJobId !== null}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition disabled:opacity-40"
+                    className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition disabled:opacity-40"
                   >
                     <Play className="size-3.5" />
-                    <span>
+                    <span className="min-w-0 break-all">
                       {busyJobId === inspectedJob.jobId && busyAction === "run"
                         ? "جاري تشغيل الدفعة..."
                         : `تشغيل هذه الدفعة الآن (${inspectedJob.jobId})`}
@@ -728,7 +829,7 @@ export function JobsHistoryPanel({
                   </button>
                 )}
 
-                {!isTerminalJobStatus(inspectedJob.status) &&
+                {!reconcilingDetail && !isTerminalJobStatus(inspectedJob.status) &&
                   !inspectedJob.cancellationRequested && (
                     <button
                       type="button"
