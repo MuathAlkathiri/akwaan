@@ -132,4 +132,28 @@ describe("human-readable overlap comparison", () => {
     expect(within(reference).getAllByText("الإجابة السابقة")[0]).toBeVisible();
     expect(within(reference).getByText("جاهز")).toBeVisible();
   });
+
+  it("shows available reference clues and explains a shared answer without claiming a duplicate", async () => {
+    vi.spyOn(api, "getOverlapContentItem").mockResolvedValue({
+      scopeId: "scope", compatibleChallengeTypeIds: ["mechanic"], status: "ready",
+      prompt: { ar: "من أنا؟" },
+      answerPayload: { mode: "one_clue", acceptedAnswers: ["مانشستر يونايتد"] },
+      mechanicPayload: { clues: [{ order: 1, text: { ar: "ملعبي أولد ترافورد" } }, { order: 2, text: { ar: "لقبي الشياطين الحمر" } }] },
+    } as never);
+    render(<DeduplicationPanel candidate={candidate} onRescreen={async () => {}} isRescreening={false} overlapRequirements={[{ ...requirement("clues"), reasonCode: "UNCERTAIN_FACTUAL_RELATIONSHIP" }]} onToggleAcknowledgment={vi.fn()} />);
+    expect(await screen.findByText("ملعبي أولد ترافورد")).toBeVisible();
+    expect(screen.getByText("لقبي الشياطين الحمر")).toBeVisible();
+    expect(screen.getByText(/لم يثبت أن السؤالين يتناولان الحقيقة نفسها/)).toBeVisible();
+  });
+
+  it("reports unavailable clues without hiding an available reference", async () => {
+    vi.spyOn(api, "getOverlapContentItem").mockResolvedValue({
+      scopeId: "scope", compatibleChallengeTypeIds: [], status: "ready",
+      prompt: { ar: "مرجع بلا تلميحات محفوظة" },
+      answerPayload: { mode: "one_clue", acceptedAnswers: ["إجابة"] },
+    } as never);
+    render(<DeduplicationPanel candidate={candidate} onRescreen={async () => {}} isRescreening={false} overlapRequirements={[requirement("missing-clues")]} onToggleAcknowledgment={vi.fn()} />);
+    expect(await screen.findByText("مرجع بلا تلميحات محفوظة")).toBeVisible();
+    expect(screen.getByText("التلميحات غير متاحة في هذا العرض.")).toBeVisible();
+  });
 });

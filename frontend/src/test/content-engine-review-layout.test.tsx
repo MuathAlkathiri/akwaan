@@ -183,6 +183,8 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
     await waitFor(() => expect(document.activeElement).toBe(heading()));
     expect(heading()).toHaveTextContent("السؤال الثاني");
     await screen.findByTestId("decision-bar");
+    expect(screen.getByTestId("candidate-detail-header")).toHaveTextContent("السؤال الثاني");
+    expect(screen.getByTestId("candidate-answer-presentation")).not.toHaveTextContent("السؤال الثاني");
   });
 
   it("restores the selection from a direct link without stealing focus", async () => {
