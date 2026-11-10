@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import gsap from "gsap";
 
 /**
@@ -48,7 +57,40 @@ export interface ExplainerTimelineOptions {
   stopped?: boolean;
 }
 
-export interface ExplainerTimeline {
+interface ExplainerTimelineSelection {
+  selectedIndex: number;
+  onSelect?: (index: number) => void;
+  autoPlay?: boolean;
+  onControlsReady?: (controls: ExplainerTimelineControls | null) => void;
+}
+
+const ExplainerTimelineSelectionContext =
+  createContext<ExplainerTimelineSelection | null>(null);
+
+/**
+ * Connects a presentation-level step rail to the existing mechanic timeline.
+ * It selects scenes and can pause the loop for an inline, manually driven
+ * tutorial; it never changes the scenario or gameplay state.
+ */
+export function ExplainerTimelineSelectionProvider({
+  selectedIndex,
+  onSelect,
+  autoPlay = true,
+  onControlsReady,
+  children,
+}: ExplainerTimelineSelection & { children: React.ReactNode }) {
+  const value = useMemo(
+    () => ({ selectedIndex, onSelect, autoPlay, onControlsReady }),
+    [autoPlay, onControlsReady, onSelect, selectedIndex],
+  );
+  return createElement(
+    ExplainerTimelineSelectionContext.Provider,
+    { value },
+    children,
+  );
+}
+
+export interface ExplainerTimelineControls {
   /** The step currently on screen. */
   index: number;
   /** Normalized progress through the current step, driven by GSAP time. */
@@ -72,6 +114,8 @@ export interface ExplainerTimeline {
   /** True when the hook is in manual mode because motion is reduced. */
   reducedMotion: boolean;
 }
+
+export interface ExplainerTimeline extends ExplainerTimelineControls {}
 
 export function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false);
@@ -100,9 +144,12 @@ export function useExplainerTimeline(
     stopped = false,
   } = options;
   const reducedMotion = usePrefersReducedMotion();
+  const selection = useContext(ExplainerTimelineSelectionContext);
+  const selectionRef = useRef(selection);
   const [index, setIndex] = useState(0);
   const [stepProgress, setStepProgress] = useState(0);
   const [userPaused, setUserPaused] = useState(false);
+  const [manualPlaying, setManualPlaying] = useState(false);
   // Starts visible, unconditionally. This value is rendered (the controls show a
   // suspended hint), so it must not be derived from anything that differs
   // between the server and the client — probing for `IntersectionObserver` here
@@ -121,9 +168,27 @@ export function useExplainerTimeline(
   // Stable across renders so the timeline is never rebuilt just because a
   // caller passed a fresh array literal.
   const holds = useMemo(() => steps.map((step) => step.holdSeconds), [steps]);
+  const starts = useMemo(
+    () =>
+      holds.reduce<number[]>((positions, _hold, step) => {
+        positions.push(
+          (positions[step - 1] ?? 0) + (step === 0 ? 0 : holds[step - 1]),
+        );
+        return positions;
+      }, []),
+    [holds],
+  );
 
   const suspended = !onScreen || tabHidden;
-  const shouldPlay = !reducedMotion && !stopped && !userPaused && !suspended;
+  const shouldPlay =
+    !reducedMotion &&
+    !stopped &&
+    !suspended &&
+    (selection?.autoPlay === false ? manualPlaying : !userPaused);
+
+  useEffect(() => {
+    selectionRef.current = selection;
+  }, [selection]);
 
   /** Build the one timeline. It loops; it is never recreated to replay. */
   useEffect(() => {
@@ -132,12 +197,6 @@ export function useExplainerTimeline(
     if (!element) return;
 
     const context = gsap.context(() => {
-      const starts = holds.reduce<number[]>((positions, _hold, step) => {
-        positions.push(
-          (positions[step - 1] ?? 0) + (step === 0 ? 0 : holds[step - 1]),
-        );
-        return positions;
-      }, []);
       const timeline = gsap.timeline({
         // One timeline for every loop. `repeat: -1` is what keeps a replay from
         // allocating a new one each cycle, and the trailing hold below is what
@@ -155,6 +214,7 @@ export function useExplainerTimeline(
           }
           const duration = holds[step] || 1;
           setIndex(step);
+          selectionRef.current?.onSelect?.(step);
           setStepProgress(
             Math.min(1, Math.max(0, (time - starts[step]) / duration)),
           );
@@ -183,7 +243,7 @@ export function useExplainerTimeline(
     // and `scope` is a ref, so this does not re-run when the surrounding screen
     // re-renders. A readiness or presence update must never restart playback
     // from the first beat under the host's eyes.
-  }, [holds, last, reducedMotion, stopped, scope]);
+  }, [holds, last, reducedMotion, scope, starts, stopped]);
 
   /** Apply the precedence policy. The single place playback starts or stops. */
   useEffect(() => {
@@ -192,6 +252,20 @@ export function useExplainerTimeline(
     if (shouldPlay) timeline.play();
     else timeline.pause();
   }, [shouldPlay]);
+
+  useEffect(() => {
+    if (selection === null || starts.length === 0) return;
+    const clamped = Math.min(Math.max(selection.selectedIndex, 0), last);
+    if (clamped === index) return;
+    setIndex(clamped);
+    setStepProgress(0);
+    if (selection.autoPlay === false) setManualPlaying(false);
+    const timeline = timelineRef.current;
+    if (timeline) {
+      timeline.pause();
+      timeline.time(starts[clamped] ?? 0);
+    }
+  }, [index, last, selection, starts]);
 
   /** Visibility: only play what someone can actually see. */
   useEffect(() => {
@@ -250,13 +324,18 @@ export function useExplainerTimeline(
   const replay = useCallback(() => {
     setIndex(0);
     setStepProgress(0);
-    setUserPaused(false);
+    if (selection?.autoPlay === false) setManualPlaying(false);
+    else setUserPaused(false);
     timelineRef.current?.restart(true);
-  }, []);
+    selection?.onSelect?.(0);
+  }, [selection]);
 
   const skip = useCallback(() => {
     setIndex(last);
     setStepProgress(1);
+    selection?.onSelect?.(last);
+    if (selection?.autoPlay === false) setManualPlaying(false);
+    else setUserPaused(true);
     const timeline = timelineRef.current;
     if (!timeline) return;
     // Park on the final beat rather than rolling straight into the next loop:
@@ -266,31 +345,67 @@ export function useExplainerTimeline(
     const total = timeline.duration();
     timeline.pause();
     timeline.time(Math.max(0, total - EXPLAINER_LOOP_HOLD_SECONDS));
-    setUserPaused(true);
-  }, [last]);
+  }, [last, selection]);
 
   const goTo = useCallback(
     (next: number) => {
       const clamped = Math.min(Math.max(next, 0), last);
       setIndex(clamped);
       setStepProgress(clamped === last ? 1 : 0);
+      if (selection?.autoPlay === false) setManualPlaying(false);
+      const timeline = timelineRef.current;
+      if (timeline) {
+        timeline.pause();
+        timeline.time(starts[clamped] ?? 0);
+      }
+      selection?.onSelect?.(clamped);
     },
-    [last],
+    [last, selection, starts],
   );
 
-  const toggle = useCallback(() => setUserPaused((paused) => !paused), []);
+  const toggle = useCallback(() => {
+    if (selection?.autoPlay === false) {
+      setManualPlaying((playing) => !playing);
+      return;
+    }
+    setUserPaused((paused) => !paused);
+  }, [selection]);
 
-  return {
-    index,
-    stepProgress,
-    playing: shouldPlay && timelineReady,
-    finished: index >= last,
-    userPaused,
-    suspended,
-    replay,
-    skip,
-    goTo,
-    toggle,
-    reducedMotion,
-  };
+  const controls = useMemo<ExplainerTimelineControls>(
+    () => ({
+      index,
+      stepProgress,
+      playing: shouldPlay && timelineReady,
+      finished: index >= last,
+      userPaused,
+      suspended,
+      replay,
+      skip,
+      goTo,
+      toggle,
+      reducedMotion,
+    }),
+    [
+      goTo,
+      index,
+      last,
+      reducedMotion,
+      replay,
+      shouldPlay,
+      skip,
+      stepProgress,
+      suspended,
+      timelineReady,
+      toggle,
+      userPaused,
+    ],
+  );
+
+  useEffect(() => {
+    if (!selection?.onControlsReady) return;
+    selection.onControlsReady(controls);
+    return () => selection.onControlsReady?.(null);
+  }, [controls, selection]);
+
+  return controls;
 }
