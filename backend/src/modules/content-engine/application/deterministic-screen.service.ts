@@ -31,6 +31,12 @@ import {
 import { hasTrustedCandidateApproval } from '../domain/candidate-approval-provenance';
 import { evaluateFamilyCompliance } from '../domain/family-compliance.policy';
 import {
+  LeakageSignal,
+  numericLeakageSignals,
+  optionLeakageSignals,
+  withoutAttachedArticle,
+} from '../domain/answer-leakage.policy';
+import {
   findLibraryCopy,
   highestLibrarySimilarity,
   LibrarySimilarity,
@@ -228,6 +234,13 @@ const deferred = (code: string, message: string): ScreenFinding => ({
   severity: 'deferred',
   message,
 });
+
+const leakageFindings = (signals: LeakageSignal[]): ScreenFinding[] =>
+  signals.map((signal) =>
+    signal.certainty === 'certain'
+      ? blocking(signal.code, signal.message)
+      : warning(signal.code, signal.message),
+  );
 
 /**
  * The cheap gate, run before a single judging token is spent.
@@ -906,6 +919,19 @@ export class DeterministicScreenService {
         ),
       );
     }
+    if (correctLabel) {
+      findings.push(
+        ...leakageFindings(
+          optionLeakageSignals(
+            prompt,
+            correctLabel,
+            options
+              .filter((option) => option.id !== payload.correctOptionId)
+              .map((option) => option.label?.ar ?? ''),
+          ),
+        ),
+      );
+    }
 
     // --- anagram letter multiset verification ----------------------------
     const anagramFinding = this.checkAnagramLetterConsistency(
@@ -1201,22 +1227,17 @@ export class DeterministicScreenService {
       );
     }
 
-    // --- leakage: the number itself must not sit in the question ----------
+    // --- leakage: the number must not be readable or computable from the question
     if (finite(target)) {
-      const western = String(target);
-      const arabicIndic = western.replace(
-        /[0-9]/g,
-        (digit) => '٠١٢٣٤٥٦٧٨٩'[Number(digit)],
+      findings.push(
+        ...leakageFindings(
+          numericLeakageSignals(prompt, target, {
+            reasoning:
+              (authoring as { answerBasis?: string } | null | undefined)
+                ?.answerBasis === 'reasoning',
+          }),
+        ),
       );
-      const boundary = new RegExp(`(^|[^0-9])${western}([^0-9]|$)`);
-      if (boundary.test(prompt) || prompt.includes(arabicIndic)) {
-        findings.push(
-          blocking(
-            'ANSWER_LEAKAGE',
-            `the target ${target} appears in the prompt text`,
-          ),
-        );
-      }
     }
 
     if (prompt && prompt.trim().length < 12) {
@@ -1842,8 +1863,7 @@ export class DeterministicScreenService {
 
     if (answerTokens.length === 0) return false;
 
-    const stripAl = (token: string): string =>
-      token.startsWith('ال') && token.length > 3 ? token.slice(2) : token;
+    const stripAl = withoutAttachedArticle;
 
     // Single word answer
     if (answerTokens.length === 1) {
