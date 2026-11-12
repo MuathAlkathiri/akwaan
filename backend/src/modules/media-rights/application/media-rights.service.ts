@@ -71,7 +71,10 @@ export class MediaRightsService {
    * known about the asset — and it keeps the absent case on the same code path
    * as the blocked one.
    */
-  async statusFor(assetUrl: string, now = new Date()): Promise<MediaRightsStatus> {
+  async statusFor(
+    assetUrl: string,
+    now = new Date(),
+  ): Promise<MediaRightsStatus> {
     const record = await this.repository.findByAssetUrl(assetUrl);
     return this.project(assetUrl, record, now);
   }
@@ -113,7 +116,10 @@ export class MediaRightsService {
     if (derived !== undefined) {
       attribution.required = derived;
       attribution.requirementBasis = 'derived-from-licence';
-    } else if (attribution.required !== undefined && attribution.required !== null) {
+    } else if (
+      attribution.required !== undefined &&
+      attribution.required !== null
+    ) {
       attribution.requirementBasis = 'evidence';
     }
     next.attribution = attribution;

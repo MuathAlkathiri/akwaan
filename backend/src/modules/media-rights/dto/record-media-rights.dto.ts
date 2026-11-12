@@ -51,7 +51,10 @@ class AssetRightsDto {
   @IsDateString()
   expiresAt?: string;
 
-  @ApiPropertyOptional({ description: 'A pointer to evidence held elsewhere — never a document body.' })
+  @ApiPropertyOptional({
+    description:
+      'A pointer to evidence held elsewhere — never a document body.',
+  })
   @IsOptional()
   @IsString()
   evidenceRef?: string;

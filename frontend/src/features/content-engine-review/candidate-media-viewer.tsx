@@ -58,7 +58,7 @@ export function MediaPreview({ url }: { url: string }) {
 
       <Dialog
         open={open}
-        onOpenChange={(next) => {
+        onOpenChange={(next: boolean) => {
           setOpen(next);
           if (!next) setActualSize(false);
         }}

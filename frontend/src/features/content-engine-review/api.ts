@@ -132,13 +132,22 @@ export interface EngineSubmitJobRequest extends EngineJobRequest {
   planDigest: string;
 }
 
+/**
+ * The generator answer mode exactly as the server sends it
+ * (`MECHANIC_ANSWER_MODES`). Display-only here; it is never compared.
+ */
+export type EngineGeneratorAnswerMode =
+  | "multiple_choice"
+  | "closest"
+  | "match";
+
 export interface EngineGenerationSpecification {
   specVersion: number;
   batchIntentId?: string;
   worldKey: string;
   scopeKey: string;
   mechanicKey: string;
-  answerMode: "MC" | "NUMERIC";
+  answerMode: EngineGeneratorAnswerMode;
   targetCount: number;
   difficulty: RyoRequestedDifficulty | null;
   ryoDifficultyTargets: {
@@ -165,7 +174,7 @@ export interface EngineScopeMechanicOption {
   boundWorldKey: string | null;
   manifestStatus: string;
   generatorSupported: boolean;
-  answerMode: "MC" | "NUMERIC" | null;
+  answerMode: EngineGeneratorAnswerMode | null;
   authorable: boolean;
   runtimeCompatible: boolean;
   runtimeTargetResolved: boolean;
@@ -216,7 +225,7 @@ export interface EngineMechanicCatalogOption {
   boundWorldKey: string | null;
   manifestStatus: string;
   generatorSupported: boolean;
-  answerMode: "MC" | "NUMERIC" | null;
+  answerMode: EngineGeneratorAnswerMode | null;
   runtimeChallengeTypeId: string | null;
   runtimeStatus: string | null;
   runtimeTargetResolved: boolean;
