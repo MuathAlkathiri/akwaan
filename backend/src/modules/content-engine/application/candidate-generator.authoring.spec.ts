@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import {
   CLOSEST_CANDIDATE_SCHEMA,
+  COMBO_CANDIDATE_SCHEMA,
   DEFAULT_RYO_DIFFICULTY_TARGETS,
   ORIGINALITY_GUIDANCE,
   PROMPT_VERSIONS,
@@ -429,13 +430,17 @@ describe('originality guidance reaches every mechanic', () => {
 });
 
 describe('buildPrompt', () => {
-  it('versions both changed prompt contracts without changing payload schemas', () => {
+  it('versions every prompt contract without changing payload schemas', () => {
+    // Exact, not a superset: a new mechanic has to arrive with its own prompt
+    // version, and an existing one cannot change contract without bumping.
     expect(PROMPT_VERSIONS).toEqual({
       multiple_choice: 'mc-v2',
       closest: 'closest-v2',
+      match: 'combo-v1',
     });
     expect(RYO_CANDIDATE_SCHEMA).toBeDefined();
     expect(CLOSEST_CANDIDATE_SCHEMA).toBeDefined();
+    expect(COMBO_CANDIDATE_SCHEMA).toBeDefined();
   });
 
   it('carries every canonical section verbatim', () => {

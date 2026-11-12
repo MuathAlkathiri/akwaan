@@ -26,10 +26,20 @@ describe('media requirements registry', () => {
   });
 
   it('leaves generator prompt versions untouched (queued jobs keep their provenance)', () => {
-    expect(PROMPT_VERSIONS).toEqual({
-      multiple_choice: 'mc-v2',
-      closest: 'closest-v2',
-    });
+    // A queued job carries the prompt version it was hashed with, so changing
+    // either of these two silently invalidates its provenance. Authoring a new
+    // mechanic adds a key; it must never rewrite one of these.
+    expect(PROMPT_VERSIONS.multiple_choice).toBe('mc-v2');
+    expect(PROMPT_VERSIONS.closest).toBe('closest-v2');
+  });
+
+  it('gives every authorable mechanic a prompt version', () => {
+    // An answer mode with no version would build a specification whose
+    // promptVersion is undefined, which validation then refuses — the job
+    // would die at creation rather than at a reviewable boundary.
+    for (const mode of Object.values(MECHANIC_ANSWER_MODES)) {
+      expect(PROMPT_VERSIONS[mode]).toBeTruthy();
+    }
   });
 
   it('applies scope-restricted entries only to their scopes', () => {

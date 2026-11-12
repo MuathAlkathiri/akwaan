@@ -10,9 +10,23 @@ export const MAX_BATCH_GUIDANCE_LENGTH = 1000;
 export const OUTPUT_TOKENS_PER_CANDIDATE = 800;
 export const DEFAULT_GENERATION_TEMPERATURE = 0.8;
 
+/**
+ * Which item answer mode a mechanic's content is authored in.
+ *
+ * This is the one map. Job creation, the Admin capability surface, the
+ * specification builder, the orchestrator's provenance guard and the generator
+ * all read it from here: a mechanic only the generator knew about would be a
+ * generator nothing could call.
+ *
+ * Mirrors `ANSWER_MODE_COMPATIBLE_ITEM_MODES` for the mechanics the engine can
+ * author today. A mechanic absent from this map cannot be generated — the
+ * engine refuses rather than guessing a shape the policy would reject.
+ */
 export const MECHANIC_ANSWER_MODES = {
   'read-your-opponent': 'multiple_choice',
   closest: 'closest',
+  // الكومبو: one typed answer graded by text match, on a four-stage ladder.
+  combo: 'match',
 } as const;
 
 export type GeneratorMechanicKey = keyof typeof MECHANIC_ANSWER_MODES;
@@ -26,9 +40,14 @@ export const generatorAnswerModeFor = (
     mechanicKey
   ];
 
+/**
+ * Prompt/schema revision, per answer mode. Bump when either changes — every
+ * request hash and pinned plan is computed from it.
+ */
 export const PROMPT_VERSIONS: Record<GeneratorAnswerMode, string> = {
   multiple_choice: 'mc-v2',
   closest: 'closest-v2',
+  match: 'combo-v1',
 };
 
 export const RYO_REQUESTED_DIFFICULTIES = [
