@@ -6499,7 +6499,7 @@ without the existing authoritative human and lifecycle gates.
 - ⬜ **No automatic READY promotion or publication exists in the Studio workflow.** Output is strictly canonical `ContentItem` in `DRAFT` status; publication to active gameplay requires the existing canonical READY pipeline.
 - ✅ **Existing canonical review policy remains authoritative:** human approval is last and authoritative, and must be renewed after any post-approval candidate edit.
 
-### 30.22 Content Engine Media Architecture & Fallback System — 🚧 IN PROGRESS · Track B Phases 1–2, 3A, 3B-1, 3B-3 ✅ VERIFIED LOCALLY · UNCOMMITTED, NOT DEPLOYED (2026-11-12)
+### 30.22 Content Engine Media Architecture & Fallback System — 🚧 IN PROGRESS · Track B Phases 1–2, 3A, 3B-1, 3B-3, 3C-1 ✅ VERIFIED LOCALLY · UNCOMMITTED, NOT DEPLOYED (2026-11-12)
 
 **Operator product decisions and approved design corrections recorded. Architectural and documentation alignment only — no implementation changes, no runtime mutations, no R2 writes, no paid AI/media calls.**
 
@@ -6581,9 +6581,12 @@ without the existing authoritative human and lifecycle gates.
 `fix/content-engine-core-integrity`. Nothing is committed, merged, or deployed; production behaviour is unchanged,
 and no production DB, R2 object, live download, Wigolo call, or paid provider call was made.
 
-- ⬜ **Overall Media Engine: NOT COMPLETE.** No automatic enrichment runs and no media intents are generated; a
-  candidate `mediaPlan` is written only by the Phase 3A Admin media actions, now reachable from the Phase 3B-1
-  Review Studio panel. The engine still cannot generate a media-governed candidate.
+- ⬜ **Overall Media Engine: NOT COMPLETE.** No automatic enrichment runs and no asset is ever retrieved,
+  generated or edited by the pipeline. Since Phase 3C-1 the pipeline writes a candidate `mediaPlan` for a
+  governed target — the registry's slots, each recorded with why it is unfilled — and the Phase 3A Admin media
+  actions, reachable from the Phase 3B-1 Review Studio panel, remain the only way an asset actually arrives. The
+  engine still cannot generate a media-governed candidate, so no production candidate reaches the stage with
+  slots to plan.
 - ⬜ **Track A (World 16:9 fallback, `World.questionFallback`, precedence resolver): NOT STARTED.** Kept separate from Track B.
 - ✅ **Track B Phase 1 — Media contracts & approval safety: IMPLEMENTED & VERIFIED LOCALLY.**
   - Canonical registry `content-engine/domain/media-requirements.ts` (`media-contract-v1`): `ekshifni`,
@@ -6738,8 +6741,40 @@ and no production DB, R2 object, live download, Wigolo call, or paid provider ca
   - **Limitations:** headless Chromium (the Chrome extension was not connected), Next dev server rather than a
     production build, local S3 stand-in rather than real R2, controlled fixture (the generator still cannot produce a
     media-governed candidate).
-- ⬜ **Track B Phase 3C+ (orchestrator media stage, media intents, `AssetService`/Wigolo discovery, AI generation):
-  NOT STARTED.**
+- ✅ **Track B Phase 3C-1 — Orchestrator media planning stage: IMPLEMENTED & VERIFIED LOCALLY (2026-11-12,
+  uncommitted).**
+  - New durable checkpoint `media_enriched` in `ENGINE_PIPELINE_STAGES`, between `judged` and the human handoff,
+    which is the approved lifecycle position (decision 2, step 6): after the free deterministic checks and the
+    paid quality judgement, on surviving candidates only, before review. Additive — jobs checkpointed before it
+    existed simply never carry it.
+  - `content-engine/domain/candidate-media-planning.ts` (pure): resolves the registry slots for the candidate's
+    own target and records each unfilled one with a reason — `MEDIA_ENRICHMENT_DISABLED`,
+    `MEDIA_RETRIEVAL_NOT_CONFIGURED`, `MEDIA_GENERATION_NOT_CONFIGURED`, `MEDIA_ACQUISITION_UNSUPPORTED`. A
+    required gameplay slot stays `planned` (the question is not whole without it); a decorative slot is `skipped`
+    (the World Question Fallback covers it). It contacts no provider, costs nothing and reserves no budget.
+  - **A candidate outside the media contract is never given a plan.** `evaluateCandidateMedia` reads any plan
+    entry as proof that a candidate is media-governed, so an empty courtesy plan would gate a text question's
+    approval on media nobody requires. Every engine-generatable mechanic today
+    (`read-your-opponent`, `closest`, `combo`) is therefore left byte-identical.
+  - **The pipeline never overwrites a human.** A slot holding an asset, a media decision or a rights
+    acknowledgment is left exactly as it is, so a resumed or retried job cannot erase an Admin's upload. The write
+    is idempotent (a second pass writes nothing) and touches `mediaPlan` alone — never `reviewRevision`,
+    `mediaReviewRevision`, assessments or review decisions.
+  - Flags resolved fail-closed through `resolveEngineMediaFlags`; the orchestrator's `ConfigService` is
+    `@Optional()`, so a wiring mistake plans nothing rather than authorizing a call.
+  - Effect on the reviewer: the readiness gate's `MEDIA_REQUIRED_SLOT_MISSING` ("no plan entry") becomes
+    `MEDIA_REQUIRED_SLOT_UNRESOLVED` naming the status and the reason, which the existing Review Studio panel
+    already renders. No frontend change.
+  - **Verification:** backend unit 278 suites / 3,748 tests passing, `tsc` clean, 0 ESLint errors.
+    `candidate-media-planning.spec.ts` (15) covers the two invariants, the reason taxonomy, scope-restricted
+    contracts and idempotence; `content-engine-media-stage.spec.ts` (9) drives the orchestrator and pins the
+    checkpoint order `context_resolved → generated → screened → verified → compatibility_checked → judged →
+    media_enriched → awaiting_review`, survivors-only selection, fail-closed flags and the write's field set.
+  - **Not covered:** no Mongo-backed integration run for the stage, no browser validation, and no asset is
+    acquired — a governed candidate still needs an Admin upload.
+- ⬜ **Track B Phase 3C-2+ (media intents in generation, `AssetService`/Wigolo discovery, AI generation, localized
+  editing): NOT STARTED.** Media intents in the generation schema would change the prompt contract and therefore
+  every request hash and pinned plan, so the prompt-version bump is a deliberate decision to be taken on its own.
 - ⬜ Existing implementation statuses, historical records, and unresolved issues are preserved in full. Output remains canonical `ContentItem` in `DRAFT` status.
 - 🟡 **Media-aware content identity — DESIGN APPROVED, NOT IMPLEMENTED.** Identity for media-native questions
   must consider the complete mechanic-native gameplay stimulus: identical generic prompts with distinct required

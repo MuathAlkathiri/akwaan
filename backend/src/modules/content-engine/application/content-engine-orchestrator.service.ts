@@ -1,4 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
@@ -12,6 +13,9 @@ import {
   RuleConflictError,
   assertNoRuleConflicts,
 } from '../domain/effective-rules';
+import { planCandidateMedia } from '../domain/candidate-media-planning';
+import { resolveEngineMediaFlags } from '../domain/engine-media-flags';
+import type { CandidateMediaSlot } from '../domain/candidate-media-plan';
 import {
   GenerationSpecValidationError,
   GenerationSpecification,
@@ -65,6 +69,8 @@ export class ContentEngineOrchestratorService {
     private readonly quality: QualityJudgeService,
     @Optional()
     private readonly planner?: GenerationPlannerService,
+    @Optional()
+    private readonly config?: ConfigService,
   ) {}
 
   async runNext(owner: string): Promise<{ jobId: string } | null> {
@@ -595,6 +601,7 @@ export class ContentEngineOrchestratorService {
         leaseEpoch: job.leaseEpoch,
         stage: 'judged',
       });
+      await this.planMedia(job);
       // Every surviving candidate still requires authoritative human approval.
       await this.jobs.awaitReview({
         jobId: job.jobId,
@@ -694,6 +701,48 @@ export class ContentEngineOrchestratorService {
       !compatibility?.preDraft?.blockers?.length &&
       !row.qualityEvaluation
     );
+  }
+
+  /**
+   * Media planning for the candidates that survived (§30.22 decision 2, step 6).
+   *
+   * Only survivors: media is the expensive part of authoring, and a candidate
+   * the free checks already rejected must never cost anything. The flags are
+   * resolved fail-closed, so a missing ConfigService plans nothing rather than
+   * authorizing a call.
+   *
+   * Nothing here contacts a provider yet. What it produces is the record a
+   * reviewer needs: which slots this target requires, and why each unfilled one
+   * is unfilled — which turns the readiness gate's "no plan entry" into a
+   * sentence that names the next action.
+   */
+  private async planMedia(job: LeasedJob): Promise<void> {
+    const flags = resolveEngineMediaFlags(this.config);
+    for (const row of await this.rows(job.jobId)) {
+      if (row.status !== 'awaiting_review') continue;
+      const outcome = planCandidateMedia({
+        mechanicKey: job.mechanicKey,
+        scopeKey: job.scopeKey,
+        // Stored as Mixed, so Mongoose hands back an index signature. The
+        // planner reads it defensively and rewrites only what the registry
+        // declares, which is what makes this cast safe rather than hopeful.
+        mediaPlan: (row.mediaPlan ?? null) as unknown as
+          readonly CandidateMediaSlot[] | null,
+        flags,
+      });
+      // Ungoverned candidates are left byte-identical: a plan entry is itself
+      // what makes a candidate media-governed, so writing one would gate a text
+      // question's approval on media nobody requires.
+      if (!outcome.mediaPlan) continue;
+      await this.updateCandidate(job, String(row._id), {
+        mediaPlan: outcome.mediaPlan,
+      });
+    }
+    await this.jobs.checkpoint({
+      jobId: job.jobId,
+      leaseEpoch: job.leaseEpoch,
+      stage: 'media_enriched',
+    });
   }
 
   private async updateCandidate(

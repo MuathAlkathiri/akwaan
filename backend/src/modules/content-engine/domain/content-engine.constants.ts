@@ -129,6 +129,10 @@ export const ENGINE_PIPELINE_STAGES = [
   'verified',
   'compatibility_checked',
   'judged',
+  // Media planning (§30.22 decision 2, step 6): after the free checks and the
+  // quality judgement, before the human. Additive — jobs checkpointed before
+  // it existed simply never carry it.
+  'media_enriched',
   'awaiting_review',
   'provider_outcome_ambiguous',
 ] as const;
