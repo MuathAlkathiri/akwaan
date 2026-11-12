@@ -9,6 +9,7 @@ import { ScopeService } from './application/scope.service';
 import { WorldChallengeConfigurationService } from './application/world-challenge-configuration.service';
 import { WorldSlotMechanicRemovalService } from './application/world-slot-mechanic-removal.service';
 import { WorldContentAssetMutator } from './application/world-content-asset.mutator';
+import { WorldPresentationService } from './application/world-presentation.service';
 import { WorldContentClassificationService } from './application/world-content-classification.service';
 import { WorldContentReferenceRegistry } from './application/world-content-reference.registry';
 import { WorldReadinessService } from './application/world-readiness.service';
@@ -125,6 +126,7 @@ import { ScopedMechanicTutorialRepository } from './persistence/scoped-mechanic-
     WorldContentClassificationService,
     WorldContentReferenceRegistry,
     WorldContentAssetMutator,
+    WorldPresentationService,
     LocalImageStorageService,
   ],
   exports: [
@@ -132,6 +134,8 @@ import { ScopedMechanicTutorialRepository } from './persistence/scoped-mechanic-
     // The only surfaces other modules may consume.
     WorldContentClassificationService,
     WorldReadinessService,
+    // The Match reads a World's question backdrop when it launches a challenge.
+    WorldPresentationService,
     WorldContentReferenceRegistry,
     MatchWorldSelectionPolicy,
     ContentItemCompatibilityPolicy,

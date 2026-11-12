@@ -193,6 +193,12 @@ export class MatchSnapshotComposer
               runtimeId: match.currentChallenge.runtimeId,
               startedAt: match.currentChallenge.startedAt.toISOString(),
               doubledTeamIds: [...match.currentChallenge.doubledTeamIds],
+              ...(match.currentChallenge.questionBackdropUrl
+                ? {
+                    questionBackdropUrl:
+                      match.currentChallenge.questionBackdropUrl,
+                  }
+                : {}),
             },
           }
         : {}),
