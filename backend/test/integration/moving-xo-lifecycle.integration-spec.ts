@@ -120,6 +120,23 @@ describe('moving xo lifecycle integration', () => {
     await database.collection('content_exposures').deleteMany({});
   });
 
+  /**
+   * Every scenario plays as the same account and none ends its game, so a
+   * session's real deadline timer would otherwise outlive its test: 10–15 s
+   * later it expires a question or placement, deals the next puzzle, and
+   * writes an exposure for this account into whichever test is running then.
+   * That only shows when the suite runs slowly, which is what made it flaky.
+   * Scenarios drive expiry through the expire commands, never a real timer,
+   * so finished sessions are forgotten here, exactly as the scheduler's own
+   * `forget` intends; the scheduler keeps running for the next test.
+   */
+  afterEach(() => {
+    const scheduler = app.get(GameplayDeadlineScheduler);
+    for (const sessionId of scheduler.retainedSessionIds()) {
+      scheduler.forget(sessionId);
+    }
+  });
+
   afterAll(async () => {
     app?.get(GameplayDeadlineScheduler).onModuleDestroy();
     await app?.close();

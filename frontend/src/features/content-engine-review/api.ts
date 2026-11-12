@@ -484,3 +484,49 @@ export const cancelJob = (jobId: string) =>
   unwrap<boolean>(
     apiClient.post(`/admin/content-engine/jobs/${jobId}/cancel`, {}),
   );
+
+/**
+ * §30.22 media-review actions (Phase 3A). Each is CAS'd on
+ * `mediaReviewRevision`; a 409 means the candidate's media changed and the
+ * reviewer must reload and decide again. The server never accepts a URL: an
+ * asset is only ever an uploaded file it verifies and stores itself.
+ */
+const mediaPath = (candidateId: string, slotKey: string, action: string) =>
+  `/admin/content-engine/candidates/${encodeURIComponent(candidateId)}/media/${encodeURIComponent(slotKey)}/${action}`;
+
+export const attachCandidateMedia = (
+  candidateId: string,
+  slotKey: string,
+  expectedMediaReviewRevision: number,
+  file: File,
+) => {
+  const form = new FormData();
+  form.append("expectedMediaReviewRevision", String(expectedMediaReviewRevision));
+  form.append("asset", file);
+  return unwrap<ReviewCandidate>(
+    apiClient.post(mediaPath(candidateId, slotKey, "asset"), form),
+  );
+};
+
+export const reviewCandidateMedia = (
+  candidateId: string,
+  slotKey: string,
+  data: {
+    expectedMediaReviewRevision: number;
+    status: "approved" | "rejected";
+    reasonCode?: string;
+    explanation?: string;
+  },
+) =>
+  unwrap<ReviewCandidate>(
+    apiClient.post(mediaPath(candidateId, slotKey, "review"), data),
+  );
+
+export const acknowledgeCandidateMediaRights = (
+  candidateId: string,
+  slotKey: string,
+  data: { expectedMediaReviewRevision: number; note: string },
+) =>
+  unwrap<ReviewCandidate>(
+    apiClient.post(mediaPath(candidateId, slotKey, "rights-acknowledgement"), data),
+  );

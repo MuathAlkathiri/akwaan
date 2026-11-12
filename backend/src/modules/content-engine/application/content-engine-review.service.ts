@@ -75,6 +75,17 @@ import {
   candidateIdentityMetadata,
   CandidateIdentityConflictError,
 } from '../domain/candidate-identity-metadata';
+import {
+  CandidateMediaEvent,
+  CandidateMediaReadiness,
+  CandidateMediaSlot,
+  evaluateCandidateMedia,
+  LiveMediaRights,
+  invalidateMediaReviews,
+  withLiveRights,
+} from '../domain/candidate-media-plan';
+import { resolveMediaRequirements } from '../domain/media-requirements';
+import { MediaRightsService } from '../../media-rights/application/media-rights.service';
 
 class ApprovalCasMiss extends Error {}
 
@@ -126,6 +137,10 @@ type PresentableCandidate = object & {
   reviewDecision?: Record<string, unknown> | null;
   reviewEvents?: CandidateReviewEvent[];
   publishedContentItemId?: string | null;
+  draft?: Record<string, unknown> | null;
+  mediaPlan?: Record<string, unknown>[] | null;
+  mediaReviewRevision?: number | null;
+  mediaEvents?: Record<string, unknown>[] | null;
 };
 
 type PresentableJob = object & {
@@ -151,6 +166,45 @@ const canonicalJson = (value: unknown): string => {
   return `{${keys
     .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
     .join(',')}}`;
+};
+
+/** What a reviewer has to do about one media blocker, in the review language. */
+const mediaBlockerLine = (finding: {
+  code: string;
+  slotKey: string;
+  rightsStatus?: string;
+}): string => {
+  const action: Record<string, string> = {
+    MEDIA_REQUIRED_SLOT_MISSING: 'ارفع صورة لهذه الخانة من قسم الوسائط.',
+    MEDIA_REQUIRED_SLOT_UNRESOLVED:
+      'لا توجد وسائط صالحة؛ ارفع صورة أو استبدلها من قسم الوسائط.',
+    MEDIA_REVIEW_REQUIRED: 'اعتمد الوسائط أو ارفضها من قسم الوسائط.',
+    MEDIA_REVIEW_REJECTED: 'الوسائط مرفوضة؛ استبدلها من قسم الوسائط.',
+    MEDIA_REVIEW_STALE: 'قرار الوسائط يخص أصلًا آخر؛ راجع الوسائط الحالية.',
+    MEDIA_DRAFT_MISMATCH:
+      'الوسائط المعتمدة لا تطابق المسودة؛ أعد رفعها من قسم الوسائط.',
+    MEDIA_RIGHTS_BLOCKED:
+      'الحقوق محظورة: استبدل الوسائط أو صحّح سجل الحقوق بالأدلة.',
+    MEDIA_RIGHTS_ACKNOWLEDGMENT_REQUIRED: `حالة الحقوق ${finding.rightsStatus ?? 'غير مُخلاة'}: أقرّ بالتحذير من قسم الوسائط (الإقرار لا يغيّر حالة الترخيص).`,
+  };
+  return `الوسائط (${finding.slotKey} · ${finding.code}): ${
+    action[finding.code] ?? 'الوسائط المطلوبة غير جاهزة.'
+  }`;
+};
+
+/** The value at a dot path inside a draft, or undefined. */
+const draftValueAt = (
+  draft: Record<string, unknown> | null | undefined,
+  path: string,
+): unknown => {
+  let cursor: unknown = draft;
+  for (const segment of path.split('.')) {
+    if (!cursor || typeof cursor !== 'object' || Array.isArray(cursor)) {
+      return undefined;
+    }
+    cursor = (cursor as Record<string, unknown>)[segment];
+  }
+  return cursor;
 };
 
 const compatibleDraftAnswerModesForChallengeAnswerMode = (
@@ -189,6 +243,7 @@ export class ContentEngineReviewService {
     private readonly scopes: ScopeRepository,
     private readonly challengeTypes: ChallengeTypeRepository,
     @Optional() private readonly contexts?: AuthoringContextService,
+    @Optional() private readonly mediaRights?: MediaRightsService,
   ) {}
 
   /**
@@ -255,7 +310,8 @@ export class ContentEngineReviewService {
       .limit(200)
       .lean()
       .exec();
-    return rows.map((candidate) =>
+    const live = await this.withLiveMediaRights(rows);
+    return live.map((candidate) =>
       this.present(candidate, byId.get(candidate.jobId)),
     );
   }
@@ -297,8 +353,9 @@ export class ContentEngineReviewService {
           ? error.message
           : 'Failed to resolve canonical target';
     }
+    const [withRights] = await this.withLiveMediaRights([candidate]);
     const hydratedCandidate: PresentableCandidate = {
-      ...candidate,
+      ...withRights,
       compatibilityEvaluation: liveCompatibility,
     };
     return {
@@ -405,6 +462,11 @@ export class ContentEngineReviewService {
       sanitizedDraft,
       (current.draft as Record<string, unknown> | null) ?? null,
       references,
+    );
+    const mediaEdit = this.governedMediaEdit(
+      current,
+      sanitizedDraft,
+      references.job,
     );
 
     const editDiff = this.classifyEditChange(
@@ -557,6 +619,7 @@ export class ContentEngineReviewService {
             candidateId,
             reviewRevision: dto.expectedRevision,
             publishedContentItemId: null,
+            ...mediaEdit.filter,
           },
           {
             $set: {
@@ -652,15 +715,48 @@ export class ContentEngineReviewService {
       );
     }
 
+    // A material change can alter what the question needs its image to show,
+    // so media decisions made against the old question are withdrawn.
+    const mediaInvalidation = mediaEdit.governed
+      ? invalidateMediaReviews({
+          mediaPlan: (current.mediaPlan ??
+            []) as unknown as CandidateMediaSlot[],
+          mediaReviewRevision: current.mediaReviewRevision ?? 0,
+        })
+      : null;
+    const mediaInvalidationEvent: CandidateMediaEvent | null = mediaInvalidation
+      ? {
+          action: 'media_reviews_invalidated',
+          slotKeys: mediaInvalidation.invalidated.map((entry) => entry.slotKey),
+          actorId: actor.id,
+          actorEmail: actor.email,
+          occurredAt: new Date(),
+          mediaReviewRevision: mediaInvalidation.mediaReviewRevision,
+          reviewRevision: nextRevision,
+          details: {
+            reason: 'MATERIAL_QUESTION_EDIT',
+            changedFields: editDiff.changedFields,
+            invalidatedReviews: mediaInvalidation.invalidated,
+          },
+        }
+      : null;
+
     const updated = await this.candidates
       .findOneAndUpdate(
         {
           candidateId,
           reviewRevision: dto.expectedRevision,
           publishedContentItemId: null,
+          ...mediaEdit.filter,
         },
         {
           $set: {
+            ...(mediaInvalidation
+              ? {
+                  mediaPlan: mediaInvalidation.mediaPlan,
+                  mediaReviewRevision: mediaInvalidation.mediaReviewRevision,
+                }
+              : {}),
             draft: sanitizedDraft,
             authoring: updatedAuthoring,
             factualClaims: normalizedClaims,
@@ -680,6 +776,9 @@ export class ContentEngineReviewService {
               eventsToPush.length === 1
                 ? eventsToPush[0]
                 : { $each: eventsToPush },
+            ...(mediaInvalidationEvent
+              ? { mediaEvents: mediaInvalidationEvent }
+              : {}),
           },
         },
         { returnDocument: 'after', runValidators: true },
@@ -905,6 +1004,7 @@ export class ContentEngineReviewService {
     const liveCompatibility =
       await this.assertCanonicalCompatibilityForApproval(current);
     const references = await this.references(current.jobId, current);
+    const approvalMedia = await this.assertMediaReady(current, references.job);
     const corpus = this.screeningCorpus(references.job);
     const scopeId = references.scope._id;
     const fences = this.connection.model<EngineInventoryFence>(
@@ -1144,6 +1244,7 @@ export class ContentEngineReviewService {
                 candidateId,
                 reviewRevision: dto.expectedRevision,
                 publishedContentItemId: null,
+                ...this.mediaCasFilter(approvalMedia),
               },
               {
                 $set: {
@@ -1781,6 +1882,7 @@ export class ContentEngineReviewService {
     this.assertDraftCreationSafety(current);
     const canonicalDto = await this.canonicalDto(current);
     const references = await this.references(current.jobId, current);
+    const draftMedia = await this.assertMediaReady(current, references.job);
     const corpus = this.screeningCorpus(references.job);
     const scopeId = references.scope._id;
     const fences = this.connection.model<EngineInventoryFence>(
@@ -1922,6 +2024,7 @@ export class ContentEngineReviewService {
               reviewRevision: expectedRevision,
               reviewStatus: 'approved',
               publishedContentItemId: null,
+              ...this.mediaCasFilter(draftMedia),
             },
             {
               $set: {
@@ -2891,6 +2994,149 @@ export class ContentEngineReviewService {
     }
   }
 
+  /**
+   * §30.22 fail-closed media gate. Required slots come from the registry for
+   * the job's own target, so a candidate cannot opt out by omitting its plan.
+   * Candidates outside the media contract are ungoverned and pass unchanged.
+   */
+  private mediaReadiness(
+    candidate: Pick<
+      PresentableCandidate,
+      'draft' | 'mediaPlan' | 'mediaReviewRevision'
+    >,
+    job: { mechanicKey?: string | null; scopeKey?: string | null } | null,
+  ): CandidateMediaReadiness {
+    return evaluateCandidateMedia({
+      mechanicKey: job?.mechanicKey,
+      scopeKey: job?.scopeKey,
+      draft: candidate.draft ?? null,
+      mediaPlan: (candidate.mediaPlan ?? []) as unknown as CandidateMediaSlot[],
+      mediaReviewRevision: candidate.mediaReviewRevision ?? 0,
+    });
+  }
+
+  private async assertMediaReady(
+    candidate: EngineCandidateDocument,
+    job: { mechanicKey: string; scopeKey: string },
+  ): Promise<CandidateMediaReadiness> {
+    const [live] = await this.withLiveMediaRights([candidate]);
+    const readiness = this.mediaReadiness(live, job);
+    if (!readiness.ready) {
+      throw new ConflictException({
+        code: 'MEDIA_NOT_READY',
+        message:
+          'Required gameplay media is missing, unresolved, unreviewed or rejected',
+        blockers: readiness.blockers,
+      });
+    }
+    return readiness;
+  }
+
+  /**
+   * Text-edit rules for a media-governed candidate. Registry media fields are
+   * written only by the media actions, which store verified bytes; a text edit
+   * that changes one is refused, which is what keeps a client-supplied URL out
+   * of a governed slot. The edit is also CAS'd on the media revision, so a
+   * concurrent media action and a text edit cannot overwrite each other's
+   * draft. Ungoverned (legacy) candidates are untouched.
+   */
+  private governedMediaEdit(
+    current: EngineCandidateDocument,
+    editedDraft: Record<string, unknown>,
+    job: { mechanicKey: string; scopeKey: string },
+  ): { governed: boolean; filter: Record<string, unknown> } {
+    const requirements = resolveMediaRequirements(job);
+    if (!requirements.length) return { governed: false, filter: {} };
+    const currentDraft = (current.draft ?? {}) as Record<string, unknown>;
+    const changed = requirements
+      .filter(
+        (requirement) =>
+          canonicalJson(draftValueAt(currentDraft, requirement.targetPath)) !==
+          canonicalJson(draftValueAt(editedDraft, requirement.targetPath)),
+      )
+      .map((requirement) => requirement.slotKey);
+    if (changed.length) {
+      throw new BadRequestException({
+        code: 'MEDIA_FIELD_REQUIRES_MEDIA_ACTION',
+        message:
+          'Gameplay media is changed only through the candidate media actions, never through a text edit',
+        slotKeys: changed,
+      });
+    }
+    const revision = current.mediaReviewRevision ?? 0;
+    return {
+      governed: true,
+      filter: {
+        mediaReviewRevision: revision === 0 ? { $in: [0, null] } : revision,
+      },
+    };
+  }
+
+  /**
+   * Overlays each candidate's media rights with the current `media-rights`
+   * record, in one batched read. The record is authoritative and can change
+   * after an asset was attached — a later BLOCKED must stop approval — so the
+   * stored snapshot is never what a gate decides on. Candidates without media,
+   * and deployments without the rights module, are returned unchanged.
+   */
+  private async withLiveMediaRights<
+    T extends { mediaPlan?: Record<string, unknown>[] | null },
+  >(candidates: T[]): Promise<T[]> {
+    if (!this.mediaRights) return candidates;
+    const urls = new Set<string>();
+    for (const candidate of candidates) {
+      for (const slot of (candidate.mediaPlan ??
+        []) as unknown as CandidateMediaSlot[]) {
+        const url = slot?.asset?.url?.trim();
+        if (url) urls.add(url);
+      }
+    }
+    if (!urls.size) return candidates;
+    const now = new Date();
+    const statuses = await this.mediaRights.statusForMany([...urls], now);
+    // Only an existing record is authoritative. With no record the service
+    // answers UNKNOWN, which must not overwrite a stored BLOCKED observation.
+    const byUrl = new Map<string, LiveMediaRights>(
+      statuses
+        .filter((status) => status.recordExists)
+        .map((status) => [
+          status.assetUrl,
+          {
+            status: status.assetRights,
+            licence: status.licence,
+            rightsHolder: status.rightsHolder,
+          },
+        ]),
+    );
+    return candidates.map((candidate) =>
+      candidate.mediaPlan?.length
+        ? {
+            ...candidate,
+            mediaPlan: withLiveRights(
+              candidate.mediaPlan as unknown as CandidateMediaSlot[],
+              byUrl,
+              now,
+            ) as unknown as Record<string, unknown>[],
+          }
+        : candidate,
+    );
+  }
+
+  /**
+   * Media decisions are versioned separately from text, so the text CAS alone
+   * would not notice a media decision landing between the gate and the write.
+   * Only governed candidates get the extra condition; legacy filters are
+   * unchanged. A missing field and 0 are the same revision.
+   */
+  private mediaCasFilter(
+    readiness: CandidateMediaReadiness,
+  ): Record<string, unknown> {
+    if (!readiness.governed) return {};
+    return readiness.mediaReviewRevision === 0
+      ? { mediaReviewRevision: { $in: [0, null] } }
+      : { mediaReviewRevision: readiness.mediaReviewRevision };
+  }
+
   private assertNotPublished(candidate: EngineCandidateDocument) {
     if (candidate.publishedContentItemId) {
       throw new ConflictException(
@@ -3369,6 +3615,7 @@ export class ContentEngineReviewService {
   private computeReviewEligibility(
     candidate: PresentableCandidate,
     targetResolutionError: string | null = null,
+    job: PresentableJob | null = null,
   ) {
     const reviewRevision = candidate.reviewRevision ?? 0;
     const reviewStatus = candidate.reviewStatus ?? 'pending';
@@ -3509,6 +3756,13 @@ export class ContentEngineReviewService {
       );
     }
 
+    const mediaReadiness = this.mediaReadiness(candidate, job);
+    // One actionable line per media blocker. Before approval they block
+    // approval; after it (rights can change), they block draft creation.
+    const mediaBlockerLines = mediaReadiness.blockers.map(mediaBlockerLine);
+    if (reviewStatus !== 'approved')
+      approvalBlockers.push(...mediaBlockerLines);
+
     const canApprove =
       !published &&
       reviewStatus !== 'approved' &&
@@ -3543,6 +3797,10 @@ export class ContentEngineReviewService {
       }
     }
 
+    if (reviewStatus === 'approved' && !published) {
+      draftBlockers.push(...mediaBlockerLines);
+    }
+
     const canCreateDraft =
       !published &&
       reviewStatus === 'approved' &&
@@ -3553,6 +3811,7 @@ export class ContentEngineReviewService {
         (f) => f.code === 'FAMILY_COMPLIANCE_MISMATCH',
       ) &&
       compatibilityBlockers.length === 0 &&
+      mediaReadiness.ready &&
       draftBlockers.length === 0;
 
     return {
@@ -3565,6 +3824,7 @@ export class ContentEngineReviewService {
       canCreateDraft,
       approvalBlockers,
       draftBlockers,
+      mediaReadiness,
     };
   }
 
@@ -3580,9 +3840,13 @@ export class ContentEngineReviewService {
       reviewRevision: candidate.reviewRevision ?? 0,
       reviewStatus: candidate.reviewStatus ?? 'pending',
       lastInvalidatedAssessments: candidate.lastInvalidatedAssessments ?? null,
+      mediaPlan: candidate.mediaPlan ?? [],
+      mediaReviewRevision: candidate.mediaReviewRevision ?? 0,
+      mediaEvents: candidate.mediaEvents ?? [],
       reviewEligibility: this.computeReviewEligibility(
         candidate,
         targetResolutionError,
+        job ?? null,
       ),
       job: job
         ? {

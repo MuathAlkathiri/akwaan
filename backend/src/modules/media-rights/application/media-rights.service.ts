@@ -17,6 +17,12 @@ export interface MediaRightsStatus extends ClearanceView {
   storageKey: string;
   recordExists: boolean;
   replacementRequired: boolean;
+  /**
+   * The asset-rights layer's licence name and rights holder, as recorded.
+   * Display attribution, not evidence (which stays behind `evidenceRef`).
+   */
+  licence: string | null;
+  rightsHolder: string | null;
   attribution: {
     required: boolean | null;
     text: string | null;
@@ -45,6 +51,8 @@ export class MediaRightsService {
       storageKey: MediaRightsService.storageKeyOf(assetUrl),
       recordExists: Boolean(record),
       replacementRequired: record?.replacementRequired ?? false,
+      licence: record?.assetRights?.licence ?? null,
+      rightsHolder: record?.assetRights?.rightsHolder ?? null,
       attribution: {
         required: record?.attribution?.required ?? null,
         text: record?.attribution?.text ?? null,

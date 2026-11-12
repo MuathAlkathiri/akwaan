@@ -46,6 +46,25 @@ export const ENGINE_EVIDENCE_RETRIEVAL_ENABLED =
 export const CONTENT_ENGINE_ENABLED = 'CONTENT_ENGINE_ENABLED';
 
 /**
+ * Candidate media enrichment (roadmap §30.22 Track B). Off by default, and
+ * nothing in Phase 1 reads it to spend: it exists so a later stage has one
+ * switch that is already known to default closed.
+ */
+export const ENGINE_MEDIA_ENRICHMENT_ENABLED =
+  'ENGINE_MEDIA_ENRICHMENT_ENABLED';
+
+/** AI image generation, separate from enrichment because it is paid. Off by default. */
+export const ENGINE_IMAGE_GENERATION_ENABLED =
+  'ENGINE_IMAGE_GENERATION_ENABLED';
+
+/**
+ * Optional Wigolo image discovery. Off by default. Discovery is never proof of
+ * rights, and Wigolo is not free to run (a local browser engine and subprocess).
+ */
+export const ENGINE_MEDIA_DISCOVERY_WIGOLO_ENABLED =
+  'ENGINE_MEDIA_DISCOVERY_WIGOLO_ENABLED';
+
+/**
  * Money is integer **micros of SAR** everywhere — 1 SAR = 1_000_000 micros.
  *
  * Floats are not allowed near a spending cap. `0.1 + 0.2 !== 0.3` is a rounding

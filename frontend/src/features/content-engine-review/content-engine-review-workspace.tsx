@@ -29,6 +29,7 @@ import type { ContentItem } from "@/features/world-management/types";
 import * as api from "./api";
 import { DeduplicationPanel } from "./deduplication-panel";
 import { CreativeSlotInspector } from "./creative-slot-inspector";
+import { CandidateMediaPanel } from "./candidate-media-panel";
 import {
   INCOMPLETE_HISTORICAL_CODES,
   INCONCLUSIVE_COMPARISON_CODES,
@@ -1816,6 +1817,9 @@ export function ContentEngineReviewWorkspace() {
 
             {/* Creative Slot & Canonical Family Compliance Inspector */}
             <CreativeSlotInspector candidate={candidate} />
+
+            {/* §30.22 media review; renders nothing outside the media contract */}
+            <CandidateMediaPanel candidate={candidate} />
 
             {/* Deduplication & Content Identity Panel */}
             <DeduplicationPanel

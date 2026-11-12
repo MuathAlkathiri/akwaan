@@ -212,6 +212,28 @@ describe('media rights — projection keeps evidence private', () => {
     expect(serialized).not.toContain('Management Co');
   });
 
+  it('projects the asset licence and rights holder as recorded, and null when not recorded', async () => {
+    const recorded = await new MediaRightsService(
+      fakeRepository(
+        record({
+          assetRights: {
+            status: 'CLEARED',
+            licence: 'CC BY-SA 4.0',
+            rightsHolder: 'Example Photo Agency',
+          },
+        }),
+      ) as never,
+    ).statusFor(URL, NOW);
+    expect(recorded).toMatchObject({
+      licence: 'CC BY-SA 4.0',
+      rightsHolder: 'Example Photo Agency',
+    });
+    const missing = await new MediaRightsService(
+      fakeRepository(null) as never,
+    ).statusFor(URL, NOW);
+    expect(missing).toMatchObject({ licence: null, rightsHolder: null });
+  });
+
   it('derives storageKey from the url rather than storing a second identity', async () => {
     const service = new MediaRightsService(fakeRepository(record()) as never);
     const status = await service.statusFor(URL, NOW);
