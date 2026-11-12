@@ -137,6 +137,11 @@ export class CandidateApprovalDto {
   @ValidateNested({ each: true })
   @Type(() => OverlapAcknowledgmentDto)
   overlapAcknowledgments?: OverlapAcknowledgmentDto[];
+  @IsOptional()
+  @Transform(trimString)
+  @IsString()
+  @MaxLength(120)
+  reassignedFamilyKey?: string;
 }
 
 export class CandidateRejectionDto {

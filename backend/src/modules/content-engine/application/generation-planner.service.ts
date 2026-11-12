@@ -47,6 +47,12 @@ export interface GenerationPlan {
   catalogDigest?: string;
   coverageDigest?: string;
   slots?: GenerationSlot[];
+  /**
+   * The seed the creative slots were allocated from. Present only when slots
+   * were allocated (a V1 plan has nothing seeded). Digest-covered, so a stored
+   * plan cannot be re-attributed to another batch's seed.
+   */
+  seed?: string;
   diversityMetrics?: {
     exploitationCount: number;
     explorationCount: number;
@@ -78,6 +84,7 @@ export function computeGenerationPlanDigest(
     catalogDigest?: string;
     coverageDigest?: string;
     slots?: GenerationSlot[];
+    seed?: string;
   },
 ): string {
   const canonicalSummary: Record<string, unknown> = {
@@ -102,6 +109,11 @@ export function computeGenerationPlanDigest(
   }
   if (plan.slots && plan.slots.length > 0) {
     canonicalSummary.slots = plan.slots;
+  }
+  // Conditional, like the provenance digests above: plans pinned before the
+  // seed was recorded keep verifying against their original digest.
+  if (plan.seed) {
+    canonicalSummary.seed = plan.seed;
   }
 
   return createHash('sha256')
@@ -252,6 +264,9 @@ export class GenerationPlannerService {
       });
     }
 
+    const planSeed =
+      slotAllocationResult && input.seed ? input.seed : undefined;
+
     const digest = computeGenerationPlanDigest({
       worldKey,
       scopeKey,
@@ -267,6 +282,7 @@ export class GenerationPlannerService {
       catalogDigest: slotAllocationResult?.catalogDigest,
       coverageDigest: slotAllocationResult?.coverageDigest,
       slots: slotAllocationResult?.slots,
+      ...(planSeed ? { seed: planSeed } : {}),
     });
 
     return {
@@ -287,6 +303,7 @@ export class GenerationPlannerService {
             catalogDigest: slotAllocationResult.catalogDigest,
             coverageDigest: slotAllocationResult.coverageDigest,
             slots: slotAllocationResult.slots,
+            ...(planSeed ? { seed: planSeed } : {}),
             diversityMetrics: {
               exploitationCount: slotAllocationResult.exploitationCount,
               explorationCount: slotAllocationResult.explorationCount,
@@ -373,12 +390,11 @@ export class GenerationPlannerService {
     count: number,
     difficulty: string,
   ): Record<string, number> {
-    if (
-      difficulty === 'easy' ||
-      difficulty === 'medium' ||
-      difficulty === 'hard'
-    ) {
+    if (difficulty === 'easy' || difficulty === 'medium') {
       return { [difficulty]: count };
+    }
+    if (difficulty === 'hard' || difficulty === 'relatively_difficult') {
+      return { hard: count };
     }
 
     // Mixed distribution: ~60% medium, ~20% easy, ~20% hard

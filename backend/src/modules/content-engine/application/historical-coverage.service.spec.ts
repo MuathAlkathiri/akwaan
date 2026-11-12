@@ -875,4 +875,133 @@ describe('HistoricalCoverageService (Slice 2A Final Closure)', () => {
     expect(report.totals.approvalUnknown).toBe(1);
     expect(report.totals.uniquePending).toBe(1); // the 1 unapproved draft
   });
+
+  describe('C-1: V2 creative slot familyKey persistence and coverage classification', () => {
+    it('classifies V2 slot-assigned candidates and published ContentItems by effective familyKey without migrations', async () => {
+      const jobId = new Types.ObjectId('660000000000000000000301').toString();
+      const job = {
+        _id: new Types.ObjectId(jobId),
+        worldKey: 'puzzles',
+        scopeKey: 'wordplay-letters',
+        mechanicKey: 'read-your-opponent',
+      };
+
+      // 1. Approved V2 candidate awaiting publication with authoring.assignedSlot.familyKey only
+      const v2ApprovedCand = {
+        ...trustedApproval('cand-v2-slot', jobId, null),
+        draft: { metadata: { notes: 'concept | solve' } },
+        authoring: {
+          concept: 'concept',
+          assignedSlot: {
+            slotIndex: 0,
+            familyKey: 'anagram-rearrange',
+            familyNameAr: 'ترتيب الحروف المبعثرة',
+          },
+          familyCompliance: {
+            assignedFamilyKey: 'anagram-rearrange',
+            isCompliant: true,
+            verificationMethod: 'rule_evaluated',
+          },
+        },
+      };
+
+      // 2. Approved V2 candidate with an approved family reassignment (assigned anagram-rearrange -> reassigned plural-form)
+      const v2ReassignedCand = {
+        ...trustedApproval('cand-v2-reassigned', jobId, null),
+        draft: { metadata: { notes: 'concept | solve' } },
+        authoring: {
+          concept: 'concept',
+          assignedSlot: {
+            slotIndex: 1,
+            familyKey: 'anagram-rearrange',
+          },
+          familyCompliance: {
+            assignedFamilyKey: 'anagram-rearrange',
+            reassignedFamilyKey: 'plural-form',
+            effectiveFamilyKey: 'plural-form',
+            isCompliant: true,
+            verificationMethod: 'manual_review',
+            resolvedByReviewerId: 'reviewer-1',
+          },
+        },
+      };
+
+      // 3. Pending V2 candidate with an unresolved familyCompliance mismatch (must NOT count under assignedSlot.familyKey)
+      const v2MismatchedPendingCand = {
+        candidateId: 'cand-v2-mismatch',
+        jobId,
+        reviewStatus: 'pending',
+        status: 'awaiting_review',
+        publishedContentItemId: null,
+        draft: { metadata: { notes: 'mismatch' } },
+        authoring: {
+          assignedSlot: {
+            slotIndex: 2,
+            familyKey: 'anagram-rearrange',
+          },
+          familyCompliance: {
+            assignedFamilyKey: 'anagram-rearrange',
+            detectedFamilyKey: 'plural-form',
+            isCompliant: false,
+            verificationMethod: 'rule_evaluated',
+            mismatchReason: 'Mismatch',
+          },
+        },
+      };
+
+      // 4. Pre-fix published ContentItem lacking metadata.familyKey on the item document, linked via verified publication to a V2 slot-assigned candidate
+      const legacyPublishedItemId = new Types.ObjectId(
+        '660000000000000000000302',
+      ).toString();
+      const legacyPublishedItem = {
+        _id: new Types.ObjectId(legacyPublishedItemId),
+        scopeId: puzzleScopeId,
+        status: ContentItemStatus.READY,
+        compatibleChallengeTypeIds: [ctRyoId],
+        metadata: { notes: 'published before C-1 fix' },
+      };
+      const legacyPublishedCand = {
+        ...trustedApproval('cand-v2-published', jobId, legacyPublishedItemId),
+        draft: { metadata: { notes: 'published before C-1 fix' } },
+        authoring: {
+          assignedSlot: {
+            slotIndex: 3,
+            familyKey: 'anagram-rearrange',
+          },
+          familyCompliance: {
+            assignedFamilyKey: 'anagram-rearrange',
+            isCompliant: true,
+            verificationMethod: 'rule_evaluated',
+          },
+        },
+      };
+
+      contentItemsModel.find.mockReturnValue(mockQuery([legacyPublishedItem]));
+      publicationsModel.find.mockReturnValue(
+        mockQuery([
+          publication('cand-v2-published', jobId, legacyPublishedItemId),
+        ]),
+      );
+      jobsModel.find.mockReturnValue(mockQuery([job]));
+      candidatesModel.find.mockReturnValue(
+        mockQuery([
+          v2ApprovedCand,
+          v2ReassignedCand,
+          v2MismatchedPendingCand,
+          legacyPublishedCand,
+        ]),
+      );
+
+      const report = await service.getCoverage(request);
+
+      expect(report.families['anagram-rearrange'].humanApprovedCount).toBe(2);
+      expect(report.families['plural-form'].humanApprovedCount).toBe(1);
+      expect(report.unclassified.humanApprovedCount).toBe(0);
+      // Pending mismatched candidate is not falsely attributed to anagram-rearrange
+      expect(
+        report.families['anagram-rearrange'].pendingCount.pendingReview,
+      ).toBe(0);
+      expect(report.unclassified.pendingCount.pendingReview).toBe(1);
+    });
+  });
 });

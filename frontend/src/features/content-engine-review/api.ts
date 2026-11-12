@@ -120,6 +120,12 @@ export interface EngineJobRequest {
   targetCount: number;
   difficulty?: RyoRequestedDifficulty | string;
   batchGuidance?: string;
+  /**
+   * One intentional New Batch action. Sent unchanged to Preflight and Submit,
+   * and reused for a retry, so the server treats it as the same batch; a new
+   * value makes an otherwise identical request an independent batch.
+   */
+  batchIntentId?: string;
 }
 
 export interface EngineSubmitJobRequest extends EngineJobRequest {
@@ -128,6 +134,7 @@ export interface EngineSubmitJobRequest extends EngineJobRequest {
 
 export interface EngineGenerationSpecification {
   specVersion: number;
+  batchIntentId?: string;
   worldKey: string;
   scopeKey: string;
   mechanicKey: string;
@@ -398,6 +405,8 @@ export interface EngineJobListQuery {
   worldKey?: string;
   scopeKey?: string;
   mechanicKey?: string;
+  /** Exact New Batch intent: the job recorded for it, if any. */
+  batchIntentId?: string;
 }
 
 /**
@@ -410,6 +419,19 @@ export const normalizeBatchGuidanceInput = (
   if (typeof raw !== "string") return undefined;
   const normalized = raw.replace(/\r\n/g, "\n").trim();
   return normalized.length > 0 ? normalized : undefined;
+};
+
+/**
+ * Mints a batch intent id (accepted by the backend as 8-64 characters of
+ * letters, digits, "-" or "_"). `randomUUID` needs a secure context; the
+ * fallback keeps the same entropy without it.
+ */
+export const createBatchIntentId = (): string => {
+  const cryptoApi = globalThis.crypto;
+  if (typeof cryptoApi?.randomUUID === "function") return cryptoApi.randomUUID();
+  const bytes = new Uint8Array(16);
+  cryptoApi.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 };
 
 /** Read-only server-derived authoring options. */

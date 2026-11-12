@@ -1001,6 +1001,52 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
         }),
       );
     });
+
+    it('releases reservation (providerRejected: true) when OpenRouterAiProvider fails locally before dispatch', async () => {
+      const { OpenRouterAiProvider } =
+        await import('../infrastructure/openrouter-ai.provider');
+      const fetchImpl = jest.fn() as unknown as typeof fetch;
+      const reserve = jest.fn(async () => ({ reservedMicros: 1000 }));
+      const settle = jest.fn(async () => ({ actualMicros: 0 }));
+      const providerConfig = {
+        get: (key: string) =>
+          ({
+            OPENROUTER_API_KEY: '',
+            ENGINE_GENERATION_MODEL: 'openai/gpt-5',
+            ENGINE_PROVIDER_NAME: 'openrouter',
+          })[key],
+      };
+      const provider = new OpenRouterAiProvider(
+        providerConfig as never,
+        fetchImpl,
+      );
+
+      const gen = new CandidateGeneratorService(
+        { updateOne: jest.fn() } as never,
+        { holdsLease: async () => true } as never,
+        { reserve, settle } as never,
+        providerConfig as never,
+        provider,
+      );
+
+      await expect(
+        gen.generate({
+          jobId: 'job-pre-dispatch-fail',
+          leaseEpoch: 1,
+          attempt: 1,
+          context: context({ mechanicKey: 'closest' }),
+          count: 1,
+        }),
+      ).rejects.toThrow('Ambiguous provider outcome during generation');
+
+      expect(fetchImpl).not.toHaveBeenCalled();
+      expect(settle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reservationId: 'job-pre-dispatch-fail:generation:1',
+          providerRejected: true,
+        }),
+      );
+    });
   });
 
   describe('estimateGenerationPromptTokens', () => {

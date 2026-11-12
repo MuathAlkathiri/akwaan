@@ -451,7 +451,53 @@ export class ContentEngineReviewService {
           ),
         )
       : null;
-    const screened = this.screen.screen(sanitizedDraft, retainedAuthoring, {
+    const assignedFamilyKey = (
+      retainedAuthoring as { assignedSlot?: { familyKey?: string } } | undefined
+    )?.assignedSlot?.familyKey;
+    const priorCompliance = (
+      retainedAuthoring as
+        | {
+            familyCompliance?: {
+              reassignedFamilyKey?: string;
+              effectiveFamilyKey?: string;
+            };
+          }
+        | undefined
+    )?.familyCompliance;
+    const reassignedFamilyKey = (
+      priorCompliance?.reassignedFamilyKey ??
+      priorCompliance?.effectiveFamilyKey ??
+      ''
+    ).trim();
+    const evaluatedCompliance = assignedFamilyKey
+      ? evaluateFamilyCompliance({
+          assignedFamilyKey: reassignedFamilyKey || assignedFamilyKey,
+          draft: sanitizedDraft,
+          authoring: retainedAuthoring,
+        })
+      : null;
+    const freshCompliance = evaluatedCompliance
+      ? {
+          ...evaluatedCompliance,
+          assignedFamilyKey: assignedFamilyKey!,
+          ...(reassignedFamilyKey
+            ? {
+                reassignedFamilyKey,
+                effectiveFamilyKey: reassignedFamilyKey,
+              }
+            : {}),
+        }
+      : null;
+    const updatedAuthoring = retainedAuthoring
+      ? {
+          ...retainedAuthoring,
+          familyCompliance: freshCompliance,
+        }
+      : null;
+    const screeningAuthoring = freshCompliance
+      ? updatedAuthoring
+      : retainedAuthoring;
+    const screened = this.screen.screen(sanitizedDraft, screeningAuthoring, {
       candidateId,
       scopeKey: references.job.scopeKey,
       worldKey: references.job.worldKey,
@@ -462,29 +508,13 @@ export class ContentEngineReviewService {
       await this.revalidateBatchFindings(
         current,
         sanitizedDraft,
-        retainedAuthoring,
+        screeningAuthoring,
         references.job,
       ),
     );
     screened.passed = !screened.findings.some(
       (finding) => finding.severity === 'blocking',
     );
-    const assignedFamilyKey = (
-      retainedAuthoring as { assignedSlot?: { familyKey?: string } } | undefined
-    )?.assignedSlot?.familyKey;
-    const freshCompliance = assignedFamilyKey
-      ? evaluateFamilyCompliance({
-          assignedFamilyKey,
-          draft: sanitizedDraft,
-          authoring: retainedAuthoring,
-        })
-      : null;
-    const updatedAuthoring = retainedAuthoring
-      ? {
-          ...retainedAuthoring,
-          familyCompliance: freshCompliance,
-        }
-      : null;
     const compatibility = this.compatibility.evaluate({
       mechanicKey: references.job.mechanicKey,
       draft: sanitizedDraft,
@@ -922,12 +952,43 @@ export class ContentEngineReviewService {
     const assignedFamilyKey = (
       current.authoring as { assignedSlot?: { familyKey?: string } } | undefined
     )?.assignedSlot?.familyKey;
+    const priorReassignedFamilyKey = (
+      (
+        current.authoring as
+          | {
+              familyCompliance?: {
+                reassignedFamilyKey?: string;
+                effectiveFamilyKey?: string;
+              };
+            }
+          | undefined
+      )?.familyCompliance?.reassignedFamilyKey ??
+      (
+        current.authoring as
+          | {
+              familyCompliance?: {
+                reassignedFamilyKey?: string;
+                effectiveFamilyKey?: string;
+              };
+            }
+          | undefined
+      )?.familyCompliance?.effectiveFamilyKey ??
+      ''
+    ).trim();
+    const reassignedFamilyKey =
+      dto.reassignedFamilyKey?.trim() || priorReassignedFamilyKey || undefined;
 
     const familyComplianceResolution =
-      hasUnverifiedFamily && assignedFamilyKey
+      (hasUnverifiedFamily || Boolean(reassignedFamilyKey)) && assignedFamilyKey
         ? {
             resolvedByReviewer: true,
             assignedFamilyKey,
+            ...(reassignedFamilyKey
+              ? {
+                  reassignedFamilyKey,
+                  effectiveFamilyKey: reassignedFamilyKey,
+                }
+              : {}),
             reviewerExplanation: explanation,
             resolvedAt: new Date(),
           }
@@ -955,7 +1016,20 @@ export class ContentEngineReviewService {
         ? {
             ...current.authoring,
             familyCompliance: {
+              ...(current.authoring.familyCompliance &&
+              typeof current.authoring.familyCompliance === 'object'
+                ? (current.authoring.familyCompliance as Record<
+                    string,
+                    unknown
+                  >)
+                : {}),
               assignedFamilyKey,
+              ...(reassignedFamilyKey
+                ? {
+                    reassignedFamilyKey,
+                    effectiveFamilyKey: reassignedFamilyKey,
+                  }
+                : {}),
               isCompliant: true,
               verificationMethod: 'manual_review',
               resolvedByReviewerId: actor.id,
@@ -1088,7 +1162,8 @@ export class ContentEngineReviewService {
                         freshDraft,
                         this.assertIdentityMetadata(
                           freshDraft,
-                          fresh.authoring,
+                          resolvedAuthoring ?? fresh.authoring,
+                          decision,
                         ),
                       ),
                       target: {
@@ -1430,11 +1505,68 @@ export class ContentEngineReviewService {
             screeningSession,
           );
           const draft = this.stripTargetFields(fresh.draft ?? {});
+          const assignedFamilyKey = (
+            fresh.authoring as
+              { assignedSlot?: { familyKey?: string } } | undefined
+          )?.assignedSlot?.familyKey;
+          const priorCompliance = (
+            fresh.authoring as
+              | {
+                  familyCompliance?: {
+                    reassignedFamilyKey?: string;
+                    effectiveFamilyKey?: string;
+                    isCompliant?: boolean;
+                    verificationMethod?: string;
+                    resolvedByReviewerId?: string;
+                  };
+                }
+              | undefined
+          )?.familyCompliance;
+          const reassignedFamilyKey = (
+            priorCompliance?.reassignedFamilyKey ??
+            priorCompliance?.effectiveFamilyKey ??
+            ''
+          ).trim();
+          const evaluatedCompliance = assignedFamilyKey
+            ? evaluateFamilyCompliance({
+                assignedFamilyKey: reassignedFamilyKey || assignedFamilyKey,
+                draft,
+                authoring: fresh.authoring,
+              })
+            : null;
+          const freshCompliance = evaluatedCompliance
+            ? {
+                ...evaluatedCompliance,
+                assignedFamilyKey: assignedFamilyKey!,
+                ...(reassignedFamilyKey
+                  ? {
+                      reassignedFamilyKey,
+                      effectiveFamilyKey: reassignedFamilyKey,
+                    }
+                  : {}),
+                ...(priorCompliance?.verificationMethod === 'manual_review' &&
+                priorCompliance?.resolvedByReviewerId &&
+                priorCompliance?.isCompliant === true &&
+                (evaluatedCompliance.verificationMethod === 'manual_review' ||
+                  Boolean(reassignedFamilyKey))
+                  ? {
+                      isCompliant: true,
+                      verificationMethod: 'manual_review' as const,
+                      resolvedByReviewerId:
+                        priorCompliance.resolvedByReviewerId,
+                    }
+                  : {}),
+              }
+            : null;
+          const updatedAuthoring = fresh.authoring
+            ? { ...fresh.authoring, familyCompliance: freshCompliance }
+            : null;
           const identityMetadata = this.assertIdentityMetadata(
             draft,
-            fresh.authoring,
+            updatedAuthoring,
+            fresh.reviewDecision,
           );
-          const screened = this.screen.screen(draft, fresh.authoring, {
+          const screened = this.screen.screen(draft, updatedAuthoring, {
             candidateId,
             worldKey: job.worldKey,
             scopeKey: job.scopeKey,
@@ -1443,7 +1575,7 @@ export class ContentEngineReviewService {
           const legacyRecovery = await this.reconstructLegacyBatchOverlaps(
             fresh,
             draft,
-            fresh.authoring,
+            updatedAuthoring,
             job,
             mongoSession,
           );
@@ -1452,7 +1584,7 @@ export class ContentEngineReviewService {
             await this.revalidateBatchFindings(
               { jobId: fresh.jobId, findings: legacyRecovery.findings },
               draft,
-              fresh.authoring,
+              updatedAuthoring,
               job,
               mongoSession,
             ),
@@ -1496,7 +1628,14 @@ export class ContentEngineReviewService {
           ) {
             reasons.push('APPROVAL_EVIDENCE_UNRECORDED');
           } else {
-            if (approvedEvidence.contentHash !== contentHash)
+            if (
+              !this.matchesApprovedContentHash(
+                draft,
+                identityMetadata,
+                updatedAuthoring,
+                approvedEvidence.contentHash,
+              )
+            )
               reasons.push('CONTENT_CHANGED');
             if (
               Object.entries(verifiedTarget).some(
@@ -1527,20 +1666,6 @@ export class ContentEngineReviewService {
           const carryForward = reasons.length === 0;
 
           const nextRevision = expectedRevision + 1;
-          const assignedFamilyKey = (
-            fresh.authoring as
-              { assignedSlot?: { familyKey?: string } } | undefined
-          )?.assignedSlot?.familyKey;
-          const freshCompliance = assignedFamilyKey
-            ? evaluateFamilyCompliance({
-                assignedFamilyKey,
-                draft,
-                authoring: fresh.authoring,
-              })
-            : null;
-          const updatedAuthoring = fresh.authoring
-            ? { ...fresh.authoring, familyCompliance: freshCompliance }
-            : null;
           const screenDetails = {
             reScreen: true,
             screenPassed: passed,
@@ -1855,6 +1980,7 @@ export class ContentEngineReviewService {
     const identityMetadata = this.assertIdentityMetadata(
       sanitizedDraft,
       candidate.authoring,
+      candidate.reviewDecision,
     );
     const raw = {
       ...sanitizedDraft,
@@ -2679,11 +2805,18 @@ export class ContentEngineReviewService {
     )?.approvedEvidence?.contentHash;
     if (typeof approvedContentHash === 'string' && candidate.draft) {
       const draft = this.stripTargetFields(candidate.draft);
+      const identityMetadata = this.assertIdentityMetadata(
+        draft,
+        candidate.authoring,
+        candidate.reviewDecision,
+      );
       if (
-        contentVersionHash(
+        !this.matchesApprovedContentHash(
           draft,
-          this.assertIdentityMetadata(draft, candidate.authoring),
-        ) !== approvedContentHash
+          identityMetadata,
+          candidate.authoring,
+          approvedContentHash,
+        )
       ) {
         throw new ConflictException({
           code: 'APPROVED_CONTENT_CHANGED',
@@ -3140,9 +3273,10 @@ export class ContentEngineReviewService {
   private assertIdentityMetadata(
     draft: Record<string, unknown>,
     authoring?: Record<string, unknown> | null,
+    reviewDecision?: Record<string, unknown> | null,
   ) {
     try {
-      return candidateIdentityMetadata(draft, authoring);
+      return candidateIdentityMetadata(draft, authoring, reviewDecision);
     } catch (error) {
       if (!(error instanceof CandidateIdentityConflictError)) throw error;
       throw new ConflictException({
@@ -3151,6 +3285,29 @@ export class ContentEngineReviewService {
         details: { field: error.field },
       });
     }
+  }
+
+  private matchesApprovedContentHash(
+    draft: Record<string, unknown>,
+    identityMetadata: Record<string, unknown>,
+    authoring: Record<string, unknown> | null | undefined,
+    approvedContentHash: string,
+  ): boolean {
+    if (contentVersionHash(draft, identityMetadata) === approvedContentHash) {
+      return true;
+    }
+    const draftMeta = (
+      draft.metadata && typeof draft.metadata === 'object' ? draft.metadata : {}
+    ) as Record<string, unknown>;
+    const hasExplicitFamilyKey =
+      typeof draftMeta.familyKey === 'string' ||
+      typeof authoring?.familyKey === 'string';
+    if (!hasExplicitFamilyKey && identityMetadata.familyKey !== undefined) {
+      const legacyMetadata = { ...identityMetadata };
+      delete legacyMetadata.familyKey;
+      return contentVersionHash(draft, legacyMetadata) === approvedContentHash;
+    }
+    return false;
   }
 
   private async requireCandidate(candidateId: string) {

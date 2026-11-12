@@ -95,7 +95,21 @@ export interface GenerationSpecification {
   readonly reasoningEffort: ReasoningEffort | null;
   readonly outputTokensPerCandidate: number;
   readonly maxOutputTokens: number;
+  /**
+   * Identity of one intentional "New Batch" action. Two batches with an
+   * otherwise identical specification are independent work only when their
+   * intents differ; a retry of the same intent is the same job. Absent on
+   * specifications created before batch intents (and on API callers that do
+   * not send one) — those keep their historical request identity.
+   */
+  readonly batchIntentId?: string;
 }
+
+/** Client-minted batch intent: a UUID or any comparable opaque token. */
+export const BATCH_INTENT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$/;
+
+export const isValidBatchIntentId = (value: unknown): value is string =>
+  typeof value === 'string' && BATCH_INTENT_ID_PATTERN.test(value);
 
 export class GenerationSpecValidationError extends Error {
   constructor(
@@ -328,7 +342,24 @@ export const freezeGenerationSpecification = (
     reasoningEffort: spec.reasoningEffort,
     outputTokensPerCandidate: spec.outputTokensPerCandidate,
     maxOutputTokens: spec.maxOutputTokens,
+    ...(spec.batchIntentId ? { batchIntentId: spec.batchIntentId } : {}),
   });
+};
+
+/**
+ * Absent/null means "no intent" (legacy identity). Anything else must be a
+ * well-formed token; a malformed intent is refused rather than dropped, since
+ * dropping it would silently merge the batch into another one.
+ */
+export const normalizeBatchIntentId = (raw: unknown): string | null => {
+  if (raw === undefined || raw === null) return null;
+  if (!isValidBatchIntentId(raw)) {
+    throw new GenerationSpecValidationError(
+      'BATCH_INTENT_INVALID',
+      'batchIntentId must be 8-64 characters of letters, digits, "-" or "_"',
+    );
+  }
+  return raw;
 };
 
 export const buildGenerationSpecification = (input: {
@@ -340,6 +371,7 @@ export const buildGenerationSpecification = (input: {
   targetCount: unknown;
   difficulty?: unknown;
   batchGuidance?: unknown;
+  batchIntentId?: unknown;
   providerOverride?: string;
   generationModelOverride?: string;
   qualityModelOverride?: string | null;
@@ -359,6 +391,7 @@ export const buildGenerationSpecification = (input: {
     input.difficulty,
   );
   const batchGuidance = normalizeBatchGuidance(input.batchGuidance);
+  const batchIntentId = normalizeBatchIntentId(input.batchIntentId);
   const ryoDifficultyTargets = resolveEffectiveRyoDifficultyTargets(
     difficulty,
     input.config,
@@ -405,6 +438,7 @@ export const buildGenerationSpecification = (input: {
     reasoningEffort,
     outputTokensPerCandidate,
     maxOutputTokens: targetCount * outputTokensPerCandidate,
+    ...(batchIntentId ? { batchIntentId } : {}),
   });
 };
 
@@ -513,6 +547,13 @@ export const isGenerationSpecificationComplete = (
   ) {
     return false;
   }
+  if (
+    spec.batchIntentId !== undefined &&
+    spec.batchIntentId !== null &&
+    !isValidBatchIntentId(spec.batchIntentId)
+  ) {
+    return false;
+  }
   return true;
 };
 
@@ -543,6 +584,9 @@ const canonicalSpecPayload = (spec: GenerationSpecification) => ({
   reasoningEffort: spec.reasoningEffort,
   outputTokensPerCandidate: spec.outputTokensPerCandidate,
   maxOutputTokens: spec.maxOutputTokens,
+  // Conditional so every specification without an intent — every job created
+  // before batch intents — keeps its exact requestHash, seed and planDigest.
+  ...(spec.batchIntentId ? { batchIntentId: spec.batchIntentId } : {}),
 });
 
 export const computeGenerationRequestHash = (
@@ -552,6 +596,19 @@ export const computeGenerationRequestHash = (
     .update(JSON.stringify(canonicalSpecPayload(spec)), 'utf8')
     .digest('hex');
 
+/**
+ * The creative-slot seed for one batch (C-9 seed parity).
+ *
+ * Derived from the same canonical payload as the job's `requestHash`, so it is
+ * exactly as unique as job identity: two independent jobs never share a seed,
+ * while Preflight, Submit and Runtime — which all hold the same specification —
+ * derive the same one without any of them having to know the `jobId` first.
+ * A repeated submission dedupes into the same job and therefore the same seed.
+ */
+export const computeGenerationPlanSeed = (
+  spec: GenerationSpecification,
+): string => `plan-seed:v1:${computeGenerationRequestHash(spec)}`;
+
 export const computePreflightPlanDigest = (input: {
   spec: GenerationSpecification;
   estimatedMicros: number | null;
@@ -559,6 +616,13 @@ export const computePreflightPlanDigest = (input: {
   engineEnabled: boolean;
   liveProviderEnabled: boolean;
   providerReady: boolean;
+  /**
+   * Digest of the GenerationPlan the estimate was priced from. Binds the
+   * approved creative slots to the preflight digest, so a plan that moved
+   * between Preflight and Submit is drift even when its price did not.
+   * Omitted (not null) keeps the historical digest for plan-less paths.
+   */
+  generationPlanDigest?: string;
 }): string =>
   createHash('sha256')
     .update(
@@ -570,6 +634,9 @@ export const computePreflightPlanDigest = (input: {
         engineEnabled: input.engineEnabled,
         liveProviderEnabled: input.liveProviderEnabled,
         providerReady: input.providerReady,
+        ...(input.generationPlanDigest
+          ? { generationPlanDigest: input.generationPlanDigest }
+          : {}),
       }),
       'utf8',
     )

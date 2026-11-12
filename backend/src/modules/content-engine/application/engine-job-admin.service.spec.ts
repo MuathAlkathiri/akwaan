@@ -13,6 +13,11 @@ import {
   AuthoringContextService,
   AuthoringContextUnavailableError,
 } from './authoring-context.service';
+import {
+  CandidateGeneratorService,
+  composeGenerationPrompt,
+  estimateGenerationPromptTokens,
+} from './candidate-generator.service';
 import { EngineJobAdminService } from './engine-job-admin.service';
 
 // Other admin contract tests isolate authoring and budget behavior from MongoDB.
@@ -1038,6 +1043,222 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
         preflightWithRetriever.generationEstimatedMicros! +
           preflightWithRetriever.conditionalJudgeEstimatedMicros!,
       );
+    });
+
+    it('includes Section 7 creative slot directives in preflight and submit cost estimation to match runtime CandidateGeneratorService reservation (C-9)', async () => {
+      const resolvedCtx = {
+        ...context('read-your-opponent'),
+        global: 'GLOBAL RULES TEXT',
+        mechanic: 'RYO MECHANIC SKILL TEXT',
+        world: 'WORLD PROFILE TEXT',
+        scope: 'SCOPE PROFILE TEXT',
+        knowledge: 'SCOPE KNOWLEDGE TEXT',
+        exemplars: 'EXEMPLAR TEXT',
+      };
+      const canonicalCatalog = {
+        version: 1 as const,
+        worldKey: 'puzzles',
+        scopeKey: 'wordplay-letters',
+        digest: 'f'.repeat(64),
+        structuredSources: ['profiles/puzzles/wordplay.md'],
+        families: [
+          {
+            familyKey: 'anagram-rearrange',
+            name: 'إعادة ترتيب الحروف',
+            description: 'تكوين كلمة من حروف مبعثرة',
+            playerSolve: 'إعادة ترتيب الحروف المحددة للوصول إلى الكلمة الصحيحة',
+            scopeKey: 'wordplay-letters',
+            worldKey: 'puzzles',
+            modality: 'letter-permutation',
+            source: 'profiles/puzzles/wordplay.md',
+            mechanicFit: { 'read-your-opponent': 'EXCELLENT' as const },
+          },
+        ],
+      };
+
+      const contexts = {
+        resolve: jest.fn(() => resolvedCtx),
+        resolveCanonicalFamiliesForScope: jest.fn(() => canonicalCatalog),
+      };
+      const historicalCoverage = {
+        getCoverage: jest.fn(async () => ({
+          worldKey: 'puzzles',
+          scopeKey: 'wordplay-letters',
+          totals: {
+            operationalApproved: 0,
+            humanApproved: 0,
+            approvalUnknown: 0,
+            uniquePlayable: 0,
+            uniquePending: 0,
+            uniqueUnclassified: 0,
+            uniqueApproved: 0,
+          },
+          families: {},
+          warnings: [],
+        })),
+      };
+
+      const config = makeConfig({
+        ENGINE_OUTPUT_TOKENS_PER_CANDIDATE: '800',
+        ENGINE_QUALITY_MODEL: 'quality-judge-v1',
+      });
+
+      // Price = 1 micro per expected token (promptTokens + maxOutputTokens)
+      const estimateFn = (call: {
+        callsExpected: number;
+        expected: { promptTokens: number; maxOutputTokens: number };
+      }) =>
+        call.callsExpected *
+        (call.expected.promptTokens + call.expected.maxOutputTokens);
+
+      let batchCap = 100_000_000;
+      const budget = {
+        snapshot: jest.fn(async () => budgetSnapshot),
+        estimate: jest.fn(estimateFn),
+        batchCapMicros: jest.fn(() => batchCap),
+        reserve: jest.fn(
+          async (input: {
+            expected: { promptTokens: number; maxOutputTokens: number };
+          }) => ({
+            reservedMicros:
+              input.expected.promptTokens + input.expected.maxOutputTokens,
+          }),
+        ),
+        settle: jest.fn(async () => undefined),
+      };
+      const jobs = {
+        submit: jest.fn(async () => ({ jobId: 'job-c9', created: true })),
+        holdsLease: jest.fn(async () => true),
+      };
+
+      const adminService = new EngineJobAdminService(
+        {} as never,
+        jobs as never,
+        budget as never,
+        contexts as never,
+        {} as never,
+        config,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        historicalCoverage as never,
+      );
+
+      const preflight = await adminService.preflight({
+        ...request('read-your-opponent'),
+        targetCount: 3,
+      });
+
+      expect(preflight.generationPlan?.slots).toHaveLength(3);
+
+      // Compute what a slot-less V1 prompt would have estimated vs the slot-inclusive prompt
+      const slotlessPrompt = composeGenerationPrompt(
+        resolvedCtx as never,
+        3,
+        'multiple_choice',
+        {
+          difficulty: preflight.generationSpec!.difficulty,
+          ryoDifficultyTargets: preflight.generationSpec!.ryoDifficultyTargets,
+          batchGuidance: preflight.generationSpec!.batchGuidance,
+        },
+      );
+      const slotlessGenerationMicros =
+        estimateGenerationPromptTokens(slotlessPrompt) +
+        preflight.generationSpec!.maxOutputTokens;
+
+      expect(preflight.generationEstimatedMicros).toBeGreaterThan(
+        slotlessGenerationMicros,
+      );
+
+      // Verify runtime CandidateGeneratorService.generate reserves the exact same promptTokens & micros
+      const generator = new CandidateGeneratorService(
+        {
+          updateOne: jest.fn(() => ({
+            exec: async () => ({}),
+          })),
+        } as never,
+        jobs as never,
+        budget as never,
+        config,
+        {
+          generateText: jest.fn(async () => ({
+            text: JSON.stringify({
+              candidates: [1, 2, 3].map((idx) => ({
+                slotIndex: idx - 1,
+                familyKey: 'anagram-rearrange',
+                difficulty: 'medium',
+                prompt: `سؤال تجريبي رقم ${idx} مع نص كافٍ للتحقق؟`,
+                options: [
+                  { id: 'a', label: 'خيار أ' },
+                  { id: 'b', label: 'خيار ب' },
+                  { id: 'c', label: 'خيار ج' },
+                  { id: 'd', label: 'خيار د' },
+                ],
+                correctOptionId: 'a',
+                explanation:
+                  'تفسير واضح يشرح سبب صحة الإجابة الأولى بشكل مباشر.',
+                bluffHook:
+                  'فخ نفسي مقنع يجعل الخيارات الأخرى تبدو جذابة للمنافس.',
+                factualClaims: ['ادعاء تجريبي'],
+              })),
+            }),
+            model: 'fake-model',
+            usage: { promptTokens: 500, completionTokens: 400 },
+          })),
+        } as never,
+      );
+
+      await generator.generate({
+        jobId: 'job-c9',
+        leaseEpoch: 1,
+        attempt: 1,
+        context: resolvedCtx as never,
+        count: 3,
+        generationPlan: preflight.generationPlan,
+        generationSpec: preflight.generationSpec,
+      });
+
+      expect(budget.reserve).toHaveBeenCalledTimes(1);
+      const reserveInput = budget.reserve.mock.calls[0][0];
+      const runtimeReservedMicros =
+        reserveInput.expected.promptTokens +
+        reserveInput.expected.maxOutputTokens;
+      expect(runtimeReservedMicros).toBe(preflight.generationEstimatedMicros);
+
+      // Submit with the preflight planDigest succeeds because submit() resolves the same generationPlan
+      const submitted = await adminService.submit({
+        ...request('read-your-opponent'),
+        targetCount: 3,
+        planDigest: preflight.planDigest,
+      });
+      expect(submitted.planDigest).toBe(preflight.planDigest);
+
+      // If batchCap sits between the slot-less estimate and the real slot-inclusive estimate,
+      // both preflight and submit must block with BATCH_CAP_EXCEEDED
+      batchCap =
+        slotlessGenerationMicros + preflight.maxJudgeEstimatedMicros! + 10;
+      expect(batchCap).toBeLessThan(preflight.totalEstimatedMicros!);
+
+      const cappedPreflight = await adminService.preflight({
+        ...request('read-your-opponent'),
+        targetCount: 3,
+      });
+      expect(cappedPreflight.withinBatchCap).toBe(false);
+      expect(cappedPreflight.submissionReady).toBe(false);
+      expect(cappedPreflight.blockedCode).toBe('BATCH_CAP_EXCEEDED');
+
+      await expect(
+        adminService.submit({
+          ...request('read-your-opponent'),
+          targetCount: 3,
+          planDigest: cappedPreflight.planDigest,
+        }),
+      ).rejects.toMatchObject({
+        response: { code: 'BATCH_CAP_EXCEEDED' },
+      });
     });
   });
 

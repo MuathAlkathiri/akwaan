@@ -16,6 +16,7 @@ import {
   GenerationSpecValidationError,
   GenerationSpecification,
   PROMPT_VERSIONS,
+  computeGenerationPlanSeed,
   generatorAnswerModeFor,
   isGenerationSpecificationComplete,
 } from '../domain/generation-specification';
@@ -31,7 +32,11 @@ import {
 } from './deterministic-screen.service';
 import { EngineBudgetService } from './engine-budget.service';
 import { FactVerificationService } from './fact-verification.service';
-import { GenerationJobService, LeasedJob } from './generation-job.service';
+import {
+  APPROVED_PLAN_CHECKPOINT_STAGE,
+  GenerationJobService,
+  LeasedJob,
+} from './generation-job.service';
 import {
   QualityJudgeParseError,
   QualityJudgeService,
@@ -83,6 +88,50 @@ export class ContentEngineOrchestratorService {
     if (!leased) return null;
     await this.run(leased);
     return { jobId: leased.jobId };
+  }
+
+  /**
+   * Fail-closed guards for a plan read back from a checkpoint — pinned at
+   * `context_resolved` by an earlier attempt, or approved at Submit. Returns
+   * the `awaitReview` reason, or null when the plan may be executed as-is.
+   */
+  private storedPlanDefect(
+    plan: GenerationPlan,
+    label: 'PINNED_PLAN' | 'APPROVED_PLAN',
+    job: LeasedJob,
+    expectedCount: number,
+    expectedSeed: string,
+  ): string | null {
+    const noun = label === 'PINNED_PLAN' ? 'pinned' : 'approved';
+    const isMalformed =
+      !plan ||
+      typeof plan !== 'object' ||
+      !plan.digest ||
+      typeof plan.digest !== 'string' ||
+      !plan.worldKey ||
+      !plan.scopeKey ||
+      !plan.mechanicKey ||
+      typeof plan.count !== 'number';
+    if (isMalformed) {
+      return `${label}_MALFORMED: existing ${noun} plan is missing required fields or valid digest`;
+    }
+    if (
+      plan.worldKey !== job.worldKey ||
+      plan.scopeKey !== job.scopeKey ||
+      plan.mechanicKey !== job.mechanicKey ||
+      plan.count !== expectedCount
+    ) {
+      return `${label}_TARGET_MISMATCH: ${noun} plan target parameters do not match leased job`;
+    }
+    if (plan.digest !== computeGenerationPlanDigest(plan)) {
+      return `${label}_DIGEST_MISMATCH: ${noun} generation plan digest does not match its contents`;
+    }
+    // Plans pinned before C-9 carry no seed and were allocated from jobId;
+    // they are honoured unchanged. A recorded seed must be this batch's.
+    if (plan.seed !== undefined && plan.seed !== expectedSeed) {
+      return `${label}_SEED_MISMATCH: ${noun} plan was allocated from a different batch seed`;
+    }
+    return null;
   }
 
   private async resolveProvenanceSpecification(job: LeasedJob): Promise<{
@@ -239,68 +288,60 @@ export class ContentEngineOrchestratorService {
         typeof this.jobs.findById === 'function'
           ? await this.jobs.findById(job.jobId)
           : null;
-      const existingPinnedPlan = (existingJob?.stageCheckpoints
-        ?.context_resolved?.pinnedPlan ??
-        (job as { stageCheckpoints?: Record<string, Record<string, unknown>> })
-          .stageCheckpoints?.context_resolved?.pinnedPlan) as
+      type Checkpoints = Record<string, Record<string, unknown> | undefined>;
+      const persisted = existingJob?.stageCheckpoints as
+        Checkpoints | undefined;
+      const leased = (job as { stageCheckpoints?: Checkpoints })
+        .stageCheckpoints;
+      const existingPinnedPlan = (persisted?.context_resolved?.pinnedPlan ??
+        leased?.context_resolved?.pinnedPlan) as GenerationPlan | undefined;
+      const approvedPlan = (persisted?.[APPROVED_PLAN_CHECKPOINT_STAGE]
+        ?.approvedPlan ??
+        leased?.[APPROVED_PLAN_CHECKPOINT_STAGE]?.approvedPlan) as
         GenerationPlan | undefined;
 
+      const expectedCount = provenance.spec?.targetCount ?? job.targetCount;
+      // C-9: the same spec-derived seed Preflight priced and Submit approved.
+      // Legacy jobs without a specification keep their historical jobId seed.
+      const expectedSeed = provenance.spec
+        ? computeGenerationPlanSeed(provenance.spec)
+        : job.jobId;
+
       let pinnedPlan = existingPinnedPlan;
-      if (pinnedPlan) {
-        const expectedCount = provenance.spec?.targetCount ?? job.targetCount;
-        const isMalformed =
-          !pinnedPlan.digest ||
-          typeof pinnedPlan.digest !== 'string' ||
-          !pinnedPlan.worldKey ||
-          !pinnedPlan.scopeKey ||
-          !pinnedPlan.mechanicKey ||
-          typeof pinnedPlan.count !== 'number';
-
-        if (isMalformed) {
+      // Precedence: an already-pinned plan (retry/resume) is authoritative;
+      // otherwise the plan approved at Submit; only legacy or plan-less jobs
+      // are planned here. Either stored plan passes the same guards.
+      const storedPlan = existingPinnedPlan
+        ? { plan: existingPinnedPlan, label: 'PINNED_PLAN' as const }
+        : approvedPlan
+          ? { plan: approvedPlan, label: 'APPROVED_PLAN' as const }
+          : null;
+      if (storedPlan) {
+        const defect = this.storedPlanDefect(
+          storedPlan.plan,
+          storedPlan.label,
+          job,
+          expectedCount,
+          expectedSeed,
+        );
+        if (defect) {
           await this.jobs.awaitReview({
             jobId: job.jobId,
             leaseEpoch: job.leaseEpoch,
-            reason:
-              'PINNED_PLAN_MALFORMED: existing pinned plan is missing required fields or valid digest',
+            reason: defect,
           });
           return;
         }
-
-        const isTargetMismatch =
-          pinnedPlan.worldKey !== job.worldKey ||
-          pinnedPlan.scopeKey !== job.scopeKey ||
-          pinnedPlan.mechanicKey !== job.mechanicKey ||
-          pinnedPlan.count !== expectedCount;
-
-        if (isTargetMismatch) {
-          await this.jobs.awaitReview({
-            jobId: job.jobId,
-            leaseEpoch: job.leaseEpoch,
-            reason:
-              'PINNED_PLAN_TARGET_MISMATCH: pinned plan target parameters do not match leased job',
-          });
-          return;
-        }
-
-        const expectedDigest = computeGenerationPlanDigest(pinnedPlan);
-        if (pinnedPlan.digest !== expectedDigest) {
-          await this.jobs.awaitReview({
-            jobId: job.jobId,
-            leaseEpoch: job.leaseEpoch,
-            reason:
-              'PINNED_PLAN_DIGEST_MISMATCH: pinned generation plan digest does not match its contents',
-          });
-          return;
-        }
+        pinnedPlan = storedPlan.plan;
       } else if (this.planner) {
         pinnedPlan = await this.planner.planWithResolvedContext({
           worldKey: job.worldKey,
           scopeKey: job.scopeKey,
           mechanicKey: job.mechanicKey,
-          count: provenance.spec?.targetCount ?? job.targetCount,
+          count: expectedCount,
           difficulty: provenance.spec?.difficulty,
           batchGuidance: provenance.spec?.batchGuidance,
-          seed: job.jobId,
+          seed: expectedSeed,
         });
       }
 
@@ -398,13 +439,6 @@ export class ContentEngineOrchestratorService {
             hasIncompleteHistoricalVerification(row.findings));
         if (!needsScreening) continue;
 
-        const result = this.screen.screen(row.draft ?? {}, row.authoring, {
-          candidateId: row.candidateId ?? String(row._id),
-          scopeKey: job.scopeKey,
-          worldKey: job.worldKey,
-          session: screenSession,
-        });
-
         const assignedFamilyKey = (
           row.authoring as { assignedSlot?: { familyKey?: string } } | undefined
         )?.assignedSlot?.familyKey;
@@ -415,16 +449,30 @@ export class ContentEngineOrchestratorService {
               authoring: row.authoring,
             })
           : null;
+        const authoringWithCompliance = compliance
+          ? {
+              ...(row.authoring ?? {}),
+              familyCompliance: compliance,
+            }
+          : row.authoring;
+
+        const result = this.screen.screen(
+          row.draft ?? {},
+          authoringWithCompliance,
+          {
+            candidateId: row.candidateId ?? String(row._id),
+            scopeKey: job.scopeKey,
+            worldKey: job.worldKey,
+            session: screenSession,
+          },
+        );
 
         await this.updateCandidate(job, String(row._id), {
           status: result.passed ? 'screened_pass' : 'screened_reject',
           findings: result.findings,
           ...(compliance
             ? {
-                authoring: {
-                  ...(row.authoring ?? {}),
-                  familyCompliance: compliance,
-                },
+                authoring: authoringWithCompliance,
               }
             : {}),
         });

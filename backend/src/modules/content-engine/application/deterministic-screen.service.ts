@@ -1055,8 +1055,36 @@ export class DeterministicScreenService {
       return findings;
     }
 
+    const priorCompliance = (
+      authoring as
+        | {
+            familyCompliance?: {
+              reassignedFamilyKey?: string;
+              effectiveFamilyKey?: string;
+              isCompliant?: boolean;
+              verificationMethod?: string;
+              resolvedByReviewerId?: string;
+            };
+          }
+        | undefined
+    )?.familyCompliance;
+    const reassignedTarget = (
+      priorCompliance?.reassignedFamilyKey ??
+      priorCompliance?.effectiveFamilyKey ??
+      ''
+    ).trim();
+
+    if (
+      priorCompliance?.isCompliant === true &&
+      priorCompliance?.verificationMethod === 'manual_review' &&
+      priorCompliance?.resolvedByReviewerId &&
+      reassignedTarget
+    ) {
+      return findings;
+    }
+
     const compliance = evaluateFamilyCompliance({
-      assignedFamilyKey: assignedSlot.familyKey,
+      assignedFamilyKey: reassignedTarget || assignedSlot.familyKey,
       draft,
       authoring,
     });
