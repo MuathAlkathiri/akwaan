@@ -1,13 +1,13 @@
 /**
- * The team colour palette, and the rules that keep it legible.
+ * The team colours, and the rules that keep them legible.
  *
  * Two responsibilities live here and nowhere else:
  *
- *  1. **Which colours a team may be.** Each team picks from its own pool — one
- *     cool, one warm. The split is not decoration: it guarantees hue separation
- *     between the two teams by construction, so no pair of picks can ever be
- *     confusable, and it keeps both teams distinguishable under the common forms
- *     of colour vision deficiency.
+ *  1. **What the two teams are.** There is no picker and no pool: a Match is
+ *     always الأزرق against الأحمر. The team's colour *is* its name, so nothing
+ *     has to be remembered — you see the blue column and you shout "الأزرق".
+ *     Blue against red is also the safest pair under colour vision deficiency,
+ *     where red/green is the pair that fails.
  *
  *  2. **Which colours a team may never be.** Success, error and brand gold are
  *     *reserved*. A green team makes a reveal unreadable — at the moment an answer
@@ -59,14 +59,10 @@ export const THEME_BACKGROUNDS = {
   dark: { hue: 236, saturation: 42, lightness: 7 },
 } as const satisfies Record<string, Hsl>;
 
-export type TeamPoolKey = "cool" | "warm";
-
 export interface TeamColor {
-  /** Stable identifier — this is what a host's pick is stored as. */
+  /** Stable identifier — this is what a session stores. */
   id: string;
-  /** The pool this colour belongs to, and therefore which team may pick it. */
-  pool: TeamPoolKey;
-  /** Arabic label for the picker. */
+  /** Arabic label, which is also the team's name. */
   label: string;
   /** The chosen hue: solid fills, bars, dots, borders. */
   base: Hsl;
@@ -77,100 +73,63 @@ export interface TeamColor {
 }
 
 /**
- * The pools.
+ * The two teams, in position order.
  *
  * `onLight` / `onDark` are not guesses: each is the nearest lightness to the base
  * that clears 4.5:1 against its background, computed once and pinned by test. The
- * base itself is left as chosen so a team's fills stay the colour the host picked.
+ * base itself is left as chosen so a team's fills stay vivid.
  *
- * **Coral / orange is absent on purpose.** Every orange sits within ~25° of brand
- * gold, so an orange team bar and the gold timer read as the same colour across a
- * room. The warm pool therefore lives in the magenta-to-rose arc, which clears
- * gold by 50°+ and clears the deep error crimson by lightness.
+ * **Why the red sits this light.** The wrong-answer reveal is a deep crimson at
+ * 38% lightness, and a team colour must clear it on hue *or* lightness. The only
+ * hue window between brand gold and that crimson is the narrow one around 356°,
+ * which clears gold by 44° — so lightness is the axis that has to do the work,
+ * and the red is held above it by 19 points.
  */
 export const TEAM_COLORS: readonly TeamColor[] = [
   {
-    id: "indigo",
-    pool: "cool",
-    label: "نيلي",
-    base: { hue: 232, saturation: 53, lightness: 50 },
-    onLight: { hue: 232, saturation: 53, lightness: 50 },
-    onDark: { hue: 232, saturation: 53, lightness: 72 },
+    id: "blue",
+    label: "الأزرق",
+    base: { hue: 224, saturation: 100, lightness: 56 },
+    onLight: { hue: 224, saturation: 100, lightness: 56 },
+    onDark: { hue: 224, saturation: 100, lightness: 62 },
   },
   {
-    id: "azure",
-    pool: "cool",
-    label: "أزرق سماوي",
-    base: { hue: 205, saturation: 70, lightness: 48 },
-    onLight: { hue: 205, saturation: 70, lightness: 40 },
-    onDark: { hue: 205, saturation: 70, lightness: 60 },
-  },
-  {
-    id: "violet",
-    pool: "cool",
-    label: "بنفسجي",
-    base: { hue: 254, saturation: 84, lightness: 64 },
-    onLight: { hue: 254, saturation: 84, lightness: 58 },
-    onDark: { hue: 254, saturation: 84, lightness: 74 },
-  },
-  {
-    id: "magenta",
-    pool: "warm",
-    label: "أرجواني",
-    base: { hue: 324, saturation: 58, lightness: 50 },
-    onLight: { hue: 324, saturation: 58, lightness: 48 },
-    onDark: { hue: 324, saturation: 58, lightness: 68 },
-  },
-  {
-    id: "pink",
-    pool: "warm",
-    label: "زهري",
-    base: { hue: 332, saturation: 84, lightness: 64 },
-    onLight: { hue: 332, saturation: 84, lightness: 45 },
-    onDark: { hue: 332, saturation: 84, lightness: 70 },
-  },
-  {
-    id: "rose",
-    pool: "warm",
-    label: "وردي داكن",
-    base: { hue: 347, saturation: 72, lightness: 59 },
-    onLight: { hue: 347, saturation: 72, lightness: 48 },
-    onDark: { hue: 347, saturation: 72, lightness: 68 },
+    id: "red",
+    label: "الأحمر",
+    base: { hue: 356, saturation: 85, lightness: 57 },
+    onLight: { hue: 356, saturation: 85, lightness: 47 },
+    onDark: { hue: 356, saturation: 85, lightness: 57 },
   },
 ];
 
-/**
- * Which pool a team draws from, by its position in the Match's own team list.
- *
- * Team order is server-ordered and stable for the life of a Match, so a refresh
- * cannot swap the pools either.
- */
-export const TEAM_POOL_ORDER: readonly TeamPoolKey[] = ["cool", "warm"];
-
-/** The colours the team at this position may choose between. */
-export function teamColorPool(teamIndex: number): readonly TeamColor[] {
-  const pool = TEAM_POOL_ORDER[teamIndex % TEAM_POOL_ORDER.length];
-  return TEAM_COLORS.filter((color) => color.pool === pool);
+/** The team at this position. Position is server-ordered and stable per Match. */
+export function teamColorAt(teamIndex: number): TeamColor {
+  return TEAM_COLORS[teamIndex % TEAM_COLORS.length];
 }
 
-/** The colour a team gets when the host has not picked one. */
+/** The colour a team gets. There is nothing to pick, so this is its position's. */
 export function defaultTeamColorId(teamIndex: number): string {
-  return teamColorPool(teamIndex)[0].id;
+  return teamColorAt(teamIndex).id;
 }
 
+/** The two team names, in position order, as a Match is created with them. */
+export const TEAM_NAMES: readonly [string, string] = [
+  TEAM_COLORS[0].label,
+  TEAM_COLORS[1].label,
+];
+
 /**
- * The colour a stored pick resolves to.
+ * The colour a stored id resolves to.
  *
- * A pick from the wrong pool — a stale draft, a hand-edited store — falls back to
- * the position's default rather than being honoured: honouring it could put both
- * teams in the same hue arc, which is the one thing the pools exist to prevent.
+ * A session created before the colours were fixed carries an id from the old
+ * pools. It resolves to this position's colour rather than to nothing: an old
+ * Match renders in the current two colours instead of falling back to grey.
  */
 export function resolveTeamColor(
   teamIndex: number,
-  colorId: string | undefined,
+  _colorId?: string | undefined,
 ): TeamColor {
-  const pool = teamColorPool(teamIndex);
-  return pool.find((color) => color.id === colorId) ?? pool[0];
+  return teamColorAt(teamIndex);
 }
 
 export function teamColorById(colorId: string): TeamColor | undefined {
@@ -193,7 +152,7 @@ export function teamColorVariables(
   teams: ReadonlyArray<{ colorId?: string }>,
 ): Record<string, string> {
   const variables: Record<string, string> = {};
-  TEAM_POOL_ORDER.forEach((_pool, index) => {
+  TEAM_COLORS.forEach((_team, index) => {
     const color = resolveTeamColor(index, teams[index]?.colorId);
     const slot = index + 1;
     variables[`--team-${slot}-base`] = triplet(color.base);
@@ -301,7 +260,29 @@ export function teamColorViolations(color: TeamColor): string[] {
   return problems;
 }
 
-/** Whether a pair of picks keeps the two teams tellable apart. */
+/**
+ * Text contrast on a team's own fill.
+ *
+ * Neither team's fill carries small text: the red sits light enough to clear the
+ * error crimson, which leaves white at 4.0:1 and navy at 4.1:1 on it — both fine
+ * for large bold type and neither fine for a 15px label. So a fill carries large
+ * text only, and small labels sit on white in the team's `onLight` colour. This
+ * is the rule, checked rather than remembered.
+ */
+export const MINIMUM_FILL_TEXT_CONTRAST = 3;
+
+export function teamFillTextViolations(
+  color: TeamColor,
+  text: Hsl,
+  label: string,
+): string[] {
+  const contrast = contrastRatio(color.base, text);
+  return contrast < MINIMUM_FILL_TEXT_CONTRAST
+    ? [`${label} on ${color.id} is ${contrast.toFixed(2)}:1, under the large-text minimum`]
+    : [];
+}
+
+/** Whether the two teams stay tellable apart. */
 export function teamPairViolations(first: TeamColor, second: TeamColor): string[] {
   const distance = hueDistance(first.base.hue, second.base.hue);
   return distance < MINIMUM_INTER_TEAM_HUE_DISTANCE

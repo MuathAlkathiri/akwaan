@@ -216,20 +216,21 @@
        active theme, so a component asks for "this team's text" once and gets the
        right one in both rooms.
 
-       The defaults are the first colour of each pool (cool for slot 1, warm for
-       slot 2). Every value here is pinned against `src/lib/team-palette.ts` by
+       Slot 1 is الأزرق and slot 2 is الأحمر. There is no picker: a team's
+       colour is its name, so nothing has to be remembered. Every value here is
+       pinned against `src/lib/team-palette.ts` by
        `src/test/team-palette.test.ts`.                                          */
-    --team-1-base: 232 53% 50%;
-    --team-1-on-light: 232 53% 50%;
-    --team-1-on-dark: 232 53% 72%;
+    --team-1-base: 224 100% 56%;
+    --team-1-on-light: 224 100% 56%;
+    --team-1-on-dark: 224 100% 62%;
     --team-1-tint: hsl(var(--team-1-base) / 0.12);
     --team-1-text: var(--team-1-on-light);
     --team-1-fill: var(--team-1-on-light);
     --team-1-fill-foreground: 40 45% 99%;
 
-    --team-2-base: 324 58% 50%;
-    --team-2-on-light: 324 58% 48%;
-    --team-2-on-dark: 324 58% 68%;
+    --team-2-base: 356 85% 57%;
+    --team-2-on-light: 356 85% 47%;
+    --team-2-on-dark: 356 85% 57%;
     --team-2-tint: hsl(var(--team-2-base) / 0.12);
     --team-2-text: var(--team-2-on-light);
     --team-2-fill: var(--team-2-on-light);

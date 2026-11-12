@@ -184,12 +184,13 @@ async function configureOccurrence(
   user: ReturnType<typeof userEvent.setup>,
   worldName: string,
   scopeNames: string[],
+  { confirm = true }: { confirm?: boolean } = {},
 ) {
   await user.click(screen.getByRole("button", { name: worldName }));
   for (const name of scopeNames) {
     await user.click(screen.getByRole("button", { name }));
   }
-  await user.click(screen.getByRole("button", { name: "متابعة" }));
+  if (confirm) await user.click(screen.getByRole("button", { name: "متابعة" }));
 }
 
 const ANIME_FIRST_FOUR = [
@@ -211,11 +212,18 @@ const FOOTBALL_FOUR = [
   "نطاق كرة 3",
 ];
 
-/** Anime, Football, Anime again from a different pool — then to the teams step. */
+/**
+ * Anime, Football, Anime again from a different pool — every choice made, and
+ * the last one left unconfirmed.
+ *
+ * Confirming the third occurrence is what creates the Match now, so a helper
+ * that confirmed it would make every test create one. The tests that want a
+ * Match press جهّز الغرفة themselves.
+ */
 async function configureWholeMatch(user: ReturnType<typeof userEvent.setup>) {
   await configureOccurrence(user, "انمي", ANIME_FIRST_FOUR);
   await configureOccurrence(user, "كرة القدم", FOOTBALL_FOUR);
-  await configureOccurrence(user, "انمي", ANIME_SECOND_FOUR);
+  await configureOccurrence(user, "انمي", ANIME_SECOND_FOUR, { confirm: false });
 }
 
 describe("pre-match setup wizard", () => {
@@ -312,50 +320,42 @@ describe("pre-match setup wizard", () => {
     expect(screen.getByRole("button", { name: "نطاق كرة 0" })).toBeTruthy();
   });
 
-  it("enters Team Setup directly after the third confirmed occurrence", async () => {
+  it("offers the room on the last occurrence instead of a team step", async () => {
     const user = userEvent.setup();
     render(<MatchSetupWizard />);
 
     await configureWholeMatch(user);
 
-    expect(screen.getByTestId("match-setup-wizard").dataset.step).toBe("teams");
-    expect(screen.getByRole("heading", { name: "جهزوا الفريقين" })).toBeTruthy();
-    expect(screen.getByText("آخر خطوة")).toBeTruthy();
+    // No step follows the third occurrence: the host sets up no teams at all,
+    // because a Match is always الأزرق against الأحمر.
+    expect(screen.getByTestId("match-setup-wizard").dataset.step).toBe("scopes");
+    expect(screen.queryByRole("heading", { name: "جهزوا الفريقين" })).toBeNull();
+    expect(screen.queryByText("آخر خطوة")).toBeNull();
+    expect(screen.getByRole("button", { name: "جهّز الغرفة" })).toBeTruthy();
     expect(
-      screen.getByText("سمّوا فريقكم، اختاروا ألوانكم، وبعدها تبدأ المنافسة."),
+      screen.getByText("كل شي جاهز — نفتح الغرفة ونستنى اللاعبين."),
     ).toBeTruthy();
-    const selectedWorlds = screen.getByTestId("selected-worlds-summary");
-    expect(selectedWorlds.children).toHaveLength(3);
-    expect(selectedWorlds.children[0].textContent).toContain("01");
-    expect(selectedWorlds.children[0].textContent).toContain("انمي");
-    expect(selectedWorlds.children[1].textContent).toContain("02");
-    expect(selectedWorlds.children[1].textContent).toContain("كرة القدم");
-    expect(selectedWorlds.children[2].textContent).toContain("03");
-    expect(selectedWorlds.children[2].textContent).toContain("انمي");
-    expect(screen.queryByTestId("setup-progress")).toBeNull();
-    expect(screen.queryByText("راجع مباراتك")).toBeNull();
-    // Entering Teams creates nothing.
+    // Reaching the end creates nothing.
     expect(screen.queryByText(/رمز الانضمام|QR/)).toBeNull();
     expect(serverCalls()).toBe(0);
   });
 
-  it("returns from Team Setup to Homepage without clearing the stored draft", async () => {
+  it("keeps the stored draft while the last occurrence is still unconfirmed", async () => {
     const user = userEvent.setup();
     render(<MatchSetupWizard />);
     await configureWholeMatch(user);
     await waitFor(() =>
       expect(window.sessionStorage.getItem(MATCH_SETUP_DRAFT_STORAGE_KEY)).not.toBeNull(),
     );
-    const before = window.sessionStorage.getItem(MATCH_SETUP_DRAFT_STORAGE_KEY);
-
-    await user.click(screen.getByRole("button", { name: "تعديل العوالم" }));
-
-    expect(mocks.push).toHaveBeenCalledWith("/");
-    expect(window.sessionStorage.getItem(MATCH_SETUP_DRAFT_STORAGE_KEY)).toBe(before);
+    const stored = JSON.parse(
+      window.sessionStorage.getItem(MATCH_SETUP_DRAFT_STORAGE_KEY)!,
+    );
+    expect(stored.draft).not.toHaveProperty("teamNames");
+    expect(stored.draft).not.toHaveProperty("teamColorIds");
     expect(serverCalls()).toBe(0);
   });
 
-  it("creates nothing until ابدأ المباراة, then creates exactly one Match", async () => {
+  it("creates nothing until جهّز الغرفة, then creates exactly one Match", async () => {
     const user = userEvent.setup();
     render(<MatchSetupWizard />);
 
@@ -363,15 +363,16 @@ describe("pre-match setup wizard", () => {
     // Setup is finished and the server has still not been touched.
     expect(serverCalls()).toBe(0);
 
-    await user.click(screen.getByRole("button", { name: "ابدأ المباراة" }));
+    await user.click(screen.getByRole("button", { name: "جهّز الغرفة" }));
 
     await waitFor(() => expect(mocks.createMatch).toHaveBeenCalledTimes(1));
     expect(mocks.createSession).toHaveBeenCalledTimes(1);
     expect(mocks.createSession).toHaveBeenCalledWith({
-      // The defaults are placeholder *names* now. A team called "صقور الرياض" left a
-      // reveal ambiguous: green had to mean "correct" and "team one" at once.
-      teamNames: ["الفريق الأول", "الفريق الثاني"],
-      teamColorIds: ["indigo", "magenta"],
+      // Not defaults a host is expected to overwrite: these are the teams. A
+      // Match is الأزرق against الأحمر, and the colour is the name, so there is
+      // nothing to remember and nothing to set up.
+      teamNames: ["الأزرق", "الأحمر"],
+      teamColorIds: ["blue", "red"],
     });
     // The session leaves the lobby over HTTP, with no phones involved.
     expect(mocks.markReady).toHaveBeenCalledWith("session-1", 0);
@@ -432,7 +433,7 @@ describe("pre-match setup wizard", () => {
     render(<MatchSetupWizard />);
 
     await configureWholeMatch(user);
-    const start = screen.getByRole("button", { name: "ابدأ المباراة" });
+    const start = screen.getByRole("button", { name: "جهّز الغرفة" });
     await user.click(start);
     await user.click(start);
     await user.click(start);
@@ -465,7 +466,7 @@ describe("pre-match setup wizard", () => {
       render(<MatchSetupWizard />);
 
       await configureWholeMatch(user);
-      await user.click(screen.getByRole("button", { name: "ابدأ المباراة" }));
+      await user.click(screen.getByRole("button", { name: "جهّز الغرفة" }));
 
       await waitFor(() =>
         expect(screen.getByTestId("match-setup-wizard").dataset.step).toBe(
@@ -494,15 +495,15 @@ describe("pre-match setup wizard", () => {
       render(<MatchSetupWizard />);
 
       await configureWholeMatch(user);
-      await user.click(screen.getByRole("button", { name: "ابدأ المباراة" }));
+      await user.click(screen.getByRole("button", { name: "جهّز الغرفة" }));
 
       await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
       expect(screen.getByRole("alert").textContent).toContain("انقطع الاتصال");
       expect(mocks.createMatch).not.toHaveBeenCalled();
       expect(mocks.cancelSession).not.toHaveBeenCalled();
       expect(mocks.push).not.toHaveBeenCalled();
-      // Still on the teams step, with the whole configuration retained.
-      expect(screen.getByTestId("match-setup-wizard").dataset.step).toBe("teams");
+      // Still on the last occurrence, with the whole configuration retained.
+      expect(screen.getByTestId("match-setup-wizard").dataset.step).toBe("scopes");
       expect(
         window.sessionStorage.getItem(MATCH_SETUP_DRAFT_STORAGE_KEY),
       ).not.toBeNull();
@@ -513,7 +514,7 @@ describe("pre-match setup wizard", () => {
         snapshot: { sessionId: "session-2", revision: 0, status: "waiting" },
       });
       mocks.createMatch.mockResolvedValue(boardSnapshot("session-2"));
-      await user.click(screen.getByRole("button", { name: "ابدأ المباراة" }));
+      await user.click(screen.getByRole("button", { name: "جهّز الغرفة" }));
       await waitFor(() =>
         expect(mocks.push).toHaveBeenCalledWith("/matches/session-2"),
       );
@@ -530,10 +531,10 @@ describe("pre-match setup wizard", () => {
       render(<MatchSetupWizard />);
 
       await configureWholeMatch(user);
-      await user.click(screen.getByRole("button", { name: "ابدأ المباراة" }));
+      await user.click(screen.getByRole("button", { name: "جهّز الغرفة" }));
 
       await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
-      expect(screen.getByTestId("match-setup-wizard").dataset.step).toBe("teams");
+      expect(screen.getByTestId("match-setup-wizard").dataset.step).toBe("scopes");
       expect(screen.getByRole("alert").textContent).toContain("مباراة قائمة");
     });
   });
