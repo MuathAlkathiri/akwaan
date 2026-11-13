@@ -170,6 +170,38 @@ describe("the worlds page reads availability from the catalog", () => {
     expect(card).toHaveTextContent("قريبًا");
   });
 
+  it("keeps every piece of artwork inside its own circle", () => {
+    // The regression this exists for: `WorldCover`'s root is `absolute
+    // inset-0`, and the upcoming card's circle was relying on a grayscale
+    // filter to be its containing block. Removing the filter let the artwork
+    // climb to the nearest positioned ancestor and cover the entire Worlds
+    // section, taking every click with it — invisible without real artwork,
+    // which is why no seeded render caught it.
+    //
+    // Written against every cover on the page rather than this one card, so a
+    // future call site cannot reintroduce it quietly.
+    setCatalog([
+      world("music", "الأغاني", 6, "available", {
+        url: "/uploads/music.webp",
+        altText: "الأغاني",
+      }),
+      world("series", "المسلسلات", 6, "upcoming", {
+        url: "/uploads/series.webp",
+        altText: "المسلسلات",
+      }),
+    ]);
+    render(<WorldsHome />);
+    const covers = document.querySelectorAll("[data-has-artwork]");
+    expect(covers.length).toBeGreaterThan(0);
+    for (const cover of covers) {
+      const parent = cover.parentElement;
+      expect(parent).toBeTruthy();
+      // Absolute, relative or fixed — anything that makes the parent a
+      // containing block for `position: absolute`.
+      expect(parent!.className).toMatch(/\b(relative|absolute|fixed)\b/);
+    }
+  });
+
   it("treats a World with no availability field as playable", () => {
     // An older backend only ever returned playable Worlds and sent no
     // availability at all; a deploy skew must not blank the page.

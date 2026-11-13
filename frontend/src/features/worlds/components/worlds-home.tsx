@@ -574,8 +574,13 @@ function ComingSoonCard({ world }: { world: PlayableWorld }) {
     >
       {/* No grayscale and no dimming: a World on the way is still worth looking
           at, and draining the art was what made this row look unfinished. The
-          «قريبًا» badge is what says it cannot be picked yet. */}
-      <span className="grid aspect-square w-full max-w-[9.5rem] place-items-center overflow-hidden rounded-full">
+          «قريبًا» badge is what says it cannot be picked yet.
+          `relative` is load-bearing. WorldCover's root is `absolute inset-0`,
+          and the grayscale filter that used to sit here was quietly acting as
+          its containing block; dropping the filter without replacing it let the
+          artwork climb to the nearest positioned ancestor and cover the whole
+          Worlds section, swallowing every click on it. */}
+      <span className="relative grid aspect-square w-full max-w-[9.5rem] place-items-center overflow-hidden rounded-full">
         {art ? (
           <WorldCover world={world} sizes="(min-width:640px) 152px, 40vw" />
         ) : (
