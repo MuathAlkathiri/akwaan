@@ -18,6 +18,7 @@ import {
   LiveSessionForbiddenError,
   LiveSessionNotFoundError,
 } from '../domain/live-session.errors';
+import { PlayerAvatarKey } from '../domain/player-avatars';
 import { LIVE_SESSION_CLOCK, LiveSessionClock } from './live-session-clock';
 import {
   LIVE_SESSION_TRANSITION_PUBLISHER,
@@ -259,6 +260,10 @@ export class ResolveJoinCode {
       );
     }
     const policy = access.serialize();
+    const players = state.participants.filter(
+      (participant) =>
+        participant.role === 'team-player' && !participant.removedAt,
+    );
     return {
       available: true,
       mode: { key: state.modeKey, version: state.modeVersion },
@@ -279,8 +284,19 @@ export class ResolveJoinCode {
                 id: team.id,
                 name: team.name,
                 colorId: team.colorId,
+                // How many are already there, so the phone can mark the smaller
+                // side. A nudge is what keeps the teams even without anyone
+                // being told where to go.
+                playerCount: players.filter(
+                  (participant) => participant.teamId === team.id,
+                ).length,
               }))
           : [],
+      // Which characters are gone. A player picking a taken one is refused, so
+      // the phone greys them out rather than letting someone choose and fail.
+      takenAvatarKeys: players
+        .map((participant) => participant.avatarKey)
+        .filter((key): key is PlayerAvatarKey => key !== undefined),
       expiresAt: policy.expiresAt.toISOString(),
       displayName: { required: true, maximumLength: 40 },
     };

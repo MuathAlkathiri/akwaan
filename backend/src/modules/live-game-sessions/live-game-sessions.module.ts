@@ -49,6 +49,7 @@ import {
   ReconnectLiveParticipant,
   RemoveLiveParticipant,
   RevokeParticipantCredential,
+  ChooseOwnTeam,
   SetParticipantReadiness,
 } from './application/live-participant.use-cases';
 import { ParticipantCredentialService } from './application/participant-credential.service';
@@ -179,6 +180,7 @@ const applicationProviders = [
   ResolveJoinCode,
   JoinLiveSession,
   ReconnectLiveParticipant,
+  ChooseOwnTeam,
   SetParticipantReadiness,
   AssignParticipantTeam,
   RemoveLiveParticipant,

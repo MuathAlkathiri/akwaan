@@ -173,6 +173,12 @@ export class AssignParticipantTeamDto extends LiveSessionMutationDto {
   teamId!: string;
 }
 
+/** A player choosing their own side, as opposed to the host assigning it. */
+export class ChooseOwnTeamDto extends LiveSessionMutationDto {
+  @IsUUID()
+  teamId!: string;
+}
+
 export class ParticipantReadinessDto extends LiveSessionMutationDto {
   @ValidateIf((value: ParticipantReadinessDto) => value.ready !== undefined)
   @IsBoolean()
