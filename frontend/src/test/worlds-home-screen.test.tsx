@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { PlayableScope, PlayableWorld } from "@/features/worlds/types";
 
 /**
  * The public World surfaces.
  *
- * Browsing only. Setting a Match up happens in the wizard, before a session
- * exists, so neither of these screens may offer a way to choose a content pool, to
- * open a board, or to reach a Match — they read the public catalogue and point at
- * the wizard.
+ * The home page builds the whole plan: three Worlds and the four Scopes of each,
+ * and then creates the Match and opens its room. It used to hand a finished plan
+ * to a second page to be confirmed again, which is a review step with nothing
+ * left to review.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -16,6 +16,14 @@ const mocks = vi.hoisted(() => ({
   scopes: [] as PlayableScope[],
   isAuthenticated: true,
   push: vi.fn(),
+  createConfiguredMatch: vi.fn(),
+}));
+
+vi.mock("@/features/match-setup/api/create-configured-match", async (load) => ({
+  ...(await load<
+    typeof import("@/features/match-setup/api/create-configured-match")
+  >()),
+  createConfiguredMatch: mocks.createConfiguredMatch,
 }));
 
 vi.mock("@/features/worlds/hooks/use-player-catalog", () => ({
@@ -90,6 +98,13 @@ const scope = (index: number, worldId = football.id): PlayableScope => ({
 
 beforeEach(() => {
   window.sessionStorage.clear();
+  mocks.push.mockClear();
+  mocks.createConfiguredMatch.mockReset();
+  mocks.createConfiguredMatch.mockResolvedValue({
+    sessionId: "session-9",
+    reconnectToken: "token",
+    snapshot: { sessionId: "session-9", status: "waiting" },
+  });
   mocks.isAuthenticated = true;
   mocks.worlds = {
     data: [
@@ -128,11 +143,9 @@ describe("home is a dashboard of Worlds", () => {
     expect(
       screen.getByRole("button", { name: "كرة القدم" }),
     ).toBeInTheDocument();
-    // The ordered selection surface and its way into setup.
+    // The ordered selection surface and the action that finishes the plan.
     expect(screen.getByTestId("world-selection-sidebar")).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /متابعة إعداد المباراة/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("worlds-home-start")).toBeInTheDocument();
     // A World's signature label still renders (anime → الكومبو).
     expect(screen.getAllByText("الكومبو").length).toBeGreaterThan(0);
   });
@@ -260,16 +273,16 @@ describe("home is a dashboard of Worlds", () => {
     ).not.toBeDisabled();
   });
 
-  it("communicates every ordered selection step and enables Continue only at 3/3", () => {
+  it("communicates every ordered selection step and enables the start only at 3/3", () => {
     render(<WorldsHome />);
-    const continueLink = screen.getByRole("link", {
-      name: /متابعة إعداد المباراة/,
-    });
+    // This page builds the whole plan, so its one action creates the Match and
+    // opens its room — there is no second page to continue to.
+    const start = screen.getByTestId("worlds-home-start");
 
     expect(
       within(screen.getByTestId("world-selection-sidebar")).getByText("0/3"),
     ).toBeInTheDocument();
-    expect(continueLink).toHaveAttribute("aria-disabled", "true");
+    expect(start).toBeDisabled();
 
     for (const [index, worldName] of [
       "كرة القدم",
@@ -294,9 +307,26 @@ describe("home is a dashboard of Worlds", () => {
       ).toBeInTheDocument();
     }
 
-    expect(
-      screen.getByRole("link", { name: /متابعة إعداد المباراة/ }),
-    ).toHaveAttribute("aria-disabled", "false");
+    expect(screen.getByTestId("worlds-home-start")).not.toBeDisabled();
+  });
+
+  it("creates the Match from here and opens its room", async () => {
+    render(<WorldsHome />);
+    for (const worldName of ["كرة القدم", "أنمي", "ألعاب الفيديو"]) {
+      fireEvent.click(screen.getByRole("button", { name: worldName }));
+      chooseFourScopes();
+      fireEvent.click(
+        screen.getAllByRole("button", { name: /تأكيد النطاقات/ })[0],
+      );
+    }
+
+    fireEvent.click(screen.getByTestId("worlds-home-start"));
+
+    await waitFor(() =>
+      expect(mocks.push).toHaveBeenCalledWith("/matches/session-9"),
+    );
+    // The plan was already complete here, so nothing is handed to a second page.
+    expect(mocks.push).not.toHaveBeenCalledWith("/matches/new");
   });
 
   it("keeps every coming-soon World muted and outside the interactive controls", () => {

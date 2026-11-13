@@ -1,21 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import Link from "next/link";
 import { ArrowLeft, Check, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MATCH_SETUP_ROUTE } from "@/features/match-setup/routes";
 import {
   OCCURRENCE_COUNT,
   SCOPES_PER_OCCURRENCE,
-  createDraft,
-  matchSetupReducer,
+  type MatchSetupDraft,
 } from "@/features/match-setup/state/match-setup-draft";
-import {
-  readStoredDraft,
-  writeStoredDraft,
-} from "@/features/match-setup/state/match-setup-storage";
+import { useMatchSetup } from "@/features/match-setup/state/use-match-setup";
 import { cn } from "@/lib/utils";
 import { JourneyShell, SectionHeading } from "./journey-shell";
 import { JourneyError } from "./journey-error";
@@ -56,12 +50,13 @@ export function WorldsHome() {
   // roadmap below kept calling it «قريبًا» on the same screen.
   const worlds = query.isSuccess ? playableWorlds(query.data) : [];
   const upcoming = query.isSuccess ? upcomingWorlds(query.data) : [];
-  const [draft, dispatch] = useReducer(
-    matchSetupReducer,
-    undefined,
-    createDraft,
-  );
-  const [restored, setRestored] = useState(false);
+  // The same setup controller the wizard route uses: one reducer, one storage
+  // module, one function that talks to the server. This page builds the whole
+  // plan — three Worlds and their twelve Scopes — so it finishes the job here
+  // too. Sending a complete plan to a second page to be confirmed again was a
+  // review step with nothing left to review.
+  const setup = useMatchSetup();
+  const { draft, act: dispatch } = setup;
   const [focusedWorld, setFocusedWorld] = useState<{
     world: PlayableWorld;
     occurrenceIndex: number;
@@ -69,14 +64,6 @@ export function WorldsHome() {
   const [pendingScopeIds, setPendingScopeIds] = useState<string[]>([]);
   const returnFocusWorldId = useRef<string | undefined>(undefined);
 
-  useEffect(() => {
-    const stored = readStoredDraft();
-    if (stored) dispatch({ type: "restore", draft: stored });
-    setRestored(true);
-  }, []);
-  useEffect(() => {
-    if (restored) writeStoredDraft(draft);
-  }, [draft, restored]);
   useEffect(() => {
     if (focusedWorld || !returnFocusWorldId.current) return;
     const worldId = returnFocusWorldId.current;
@@ -176,6 +163,8 @@ export function WorldsHome() {
           >
             <WorldSelectionSidebar
               draft={draft}
+              submitting={setup.submitting}
+              onStart={setup.start}
               worlds={worlds}
               selectedCount={selectedCount}
               onEdit={openWorld}
@@ -621,11 +610,16 @@ function WorldSelectionSidebar({
   worlds,
   selectedCount,
   onEdit,
+  onStart,
+  submitting,
 }: {
-  draft: ReturnType<typeof createDraft>;
+  draft: MatchSetupDraft;
   worlds: PlayableWorld[];
   selectedCount: number;
   onEdit: (world: PlayableWorld, occurrenceIndex?: number) => void;
+  /** Creates the Match and opens its room. */
+  onStart: () => void;
+  submitting: boolean;
 }) {
   const ready = selectedCount === OCCURRENCE_COUNT;
   return (
@@ -688,17 +682,26 @@ function WorldSelectionSidebar({
       </ol>
 
       <Button
-        asChild
+        type="button"
         size="sm"
+        data-testid="worlds-home-start"
+        disabled={!ready || submitting}
+        onClick={onStart}
         className={cn(
-          "akwaan-primary-action mt-3 h-10 w-full rounded-xl border border-[hsl(var(--brand-gold)/.28)] bg-[hsl(var(--brand-navy))] px-3 text-xs font-black text-white shadow-[0_10px_24px_-16px_hsl(var(--brand-navy))] hover:border-[hsl(var(--brand-gold)/.65)] lg:mt-6 lg:h-11",
-          !ready && "pointer-events-none opacity-40",
+          "akwaan-primary-action mt-3 h-10 w-full rounded-xl border border-[hsl(var(--brand-gold)/.28)] bg-[hsl(var(--brand-navy))] px-3 text-xs font-black text-white shadow-[0_10px_24px_-16px_hsl(var(--brand-navy))] hover:border-[hsl(var(--brand-gold)/.65)] disabled:pointer-events-none disabled:opacity-40 lg:mt-6 lg:h-11",
         )}
       >
-        <Link href={MATCH_SETUP_ROUTE} aria-disabled={!ready}>
-          متابعة إعداد المباراة
-        </Link>
+        {submitting ? "نجهّز الغرفة…" : "ابدأ المباراة"}
       </Button>
+      {draft.issue && (
+        <p
+          role="alert"
+          data-testid="worlds-home-start-error"
+          className="mt-2 text-[0.7rem] font-bold leading-5 text-[hsl(var(--destructive))]"
+        >
+          {draft.issue.message}
+        </p>
+      )}
     </aside>
   );
 }
