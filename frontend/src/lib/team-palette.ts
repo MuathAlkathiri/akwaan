@@ -80,25 +80,32 @@ export interface TeamColor {
  * base itself is left as chosen so a team's fills stay vivid.
  *
  * **Why the red sits this light.** The wrong-answer reveal is a deep crimson at
- * 38% lightness, and a team colour must clear it on hue *or* lightness. The only
- * hue window between brand gold and that crimson is the narrow one around 356°,
- * which clears gold by 44° — so lightness is the axis that has to do the work,
- * and the red is held above it by 19 points.
+ * 38% lightness, and a team colour must clear it on hue *or* lightness. The warm
+ * end is pinched between brand gold at 40° and that crimson at 351°: 358° is as
+ * warm as a team red can go and still keep gold's 40° reserve. That leaves only
+ * 7° from the crimson, so lightness does the work — the red is held 20 points
+ * above it.
+ *
+ * Neither team's fill carries small text, and the red is why: at the lightness
+ * the crimson forces, cream reaches 3.96:1 on it. That is the large-text
+ * minimum, not the small-text one, and softening the red from 85% to 72%
+ * saturation did not move it (3.95 before, 3.96 after) — so the rule below
+ * stands rather than being relaxed.
  */
 export const TEAM_COLORS: readonly TeamColor[] = [
   {
     id: "blue",
     label: "الأزرق",
-    base: { hue: 224, saturation: 100, lightness: 56 },
-    onLight: { hue: 224, saturation: 100, lightness: 56 },
-    onDark: { hue: 224, saturation: 100, lightness: 62 },
+    base: { hue: 226, saturation: 72, lightness: 50 },
+    onLight: { hue: 226, saturation: 72, lightness: 44 },
+    onDark: { hue: 226, saturation: 72, lightness: 66 },
   },
   {
     id: "red",
     label: "الأحمر",
-    base: { hue: 356, saturation: 85, lightness: 57 },
-    onLight: { hue: 356, saturation: 85, lightness: 47 },
-    onDark: { hue: 356, saturation: 85, lightness: 57 },
+    base: { hue: 358, saturation: 72, lightness: 58 },
+    onLight: { hue: 358, saturation: 72, lightness: 42 },
+    onDark: { hue: 358, saturation: 72, lightness: 60 },
   },
 ];
 

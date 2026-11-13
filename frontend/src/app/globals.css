@@ -220,17 +220,17 @@
        colour is its name, so nothing has to be remembered. Every value here is
        pinned against `src/lib/team-palette.ts` by
        `src/test/team-palette.test.ts`.                                          */
-    --team-1-base: 224 100% 56%;
-    --team-1-on-light: 224 100% 56%;
-    --team-1-on-dark: 224 100% 62%;
+    --team-1-base: 226 72% 50%;
+    --team-1-on-light: 226 72% 44%;
+    --team-1-on-dark: 226 72% 66%;
     --team-1-tint: hsl(var(--team-1-base) / 0.12);
     --team-1-text: var(--team-1-on-light);
     --team-1-fill: var(--team-1-on-light);
     --team-1-fill-foreground: 40 45% 99%;
 
-    --team-2-base: 356 85% 57%;
-    --team-2-on-light: 356 85% 47%;
-    --team-2-on-dark: 356 85% 57%;
+    --team-2-base: 358 72% 58%;
+    --team-2-on-light: 358 72% 42%;
+    --team-2-on-dark: 358 72% 60%;
     --team-2-tint: hsl(var(--team-2-base) / 0.12);
     --team-2-text: var(--team-2-on-light);
     --team-2-fill: var(--team-2-on-light);
