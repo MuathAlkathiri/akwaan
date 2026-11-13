@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeftRight, Shuffle, UserMinus } from "lucide-react";
+import { ArrowLeftRight, Check, Play, Shuffle, UserMinus } from "lucide-react";
 import { ConfirmationDialog } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { ScannableQr } from "@/components/akwaan/scannable-qr";
@@ -40,14 +40,14 @@ import { PlayerCharacterIcon } from "./player-characters";
  * outlives a long match.
  */
 /**
- * How many empty places a side draws while it waits.
+ * How many places a side shows while it waits.
  *
- * Not a cap — more people are welcome and the grid simply grows. It is there
- * so an empty side reads as a side with room in it rather than as a blank
- * rectangle, and so the first arrival lands somewhere that was already shaped
- * to receive them.
+ * Not a cap — more people are welcome and the list simply grows past it. It is
+ * there so an empty side reads as a side with room in it rather than as a
+ * blank rectangle, and so the first arrival lands somewhere already shaped to
+ * receive them.
  */
-const OPEN_PLACES_SHOWN = 3;
+const PLACES_PER_SIDE = 4;
 
 const JOIN_ACCESS_DEFAULTS = {
   assignmentPolicy: "explicit" as const,
@@ -189,145 +189,162 @@ export function WaitingRoom() {
     sideOf(second.id).length > 0;
 
   return (
-    <section dir="rtl" data-testid="waiting-room" className="space-y-6">
-      {/* The code is what every phone in the room is looking for, so it is the
-          largest thing on the screen and it is in the middle — not a badge in
-          a corner beside two panels that dwarf it. This is read off a
-          television from the other side of a majlis. */}
-      <header className="flex flex-col items-center gap-5 text-center">
-        <div>
-          <h1 className="text-4xl font-black md:text-5xl">يلا نجمع الفريقين</h1>
-          <p className="text-muted-foreground mt-2 text-lg font-bold">
-            {players.length === 0
-              ? "صوّروا الكود بجوالاتكم وانضموا"
-              : `معنا ${players.length} ${players.length === 1 ? "لاعب" : "لاعبين"} — واللي باقي يصوّر الكود`}
-          </p>
-        </div>
-        {joinUrl && (
-          <div className="flex items-center gap-6 rounded-[var(--radius)] border-[3px] border-[hsl(var(--brand-navy))] bg-card px-6 py-5 shadow-[0_6px_0_hsl(var(--brand-navy))]">
-            <ScannableQr value={joinUrl} size={148} />
-            <div className="text-start">
-              <p className="text-muted-foreground text-sm font-bold">
-                أو اكتبوا الكود
-              </p>
-              <p
-                data-testid="waiting-room-code"
-                className="font-mono text-5xl font-black tracking-[0.2em] md:text-6xl"
-              >
-                {access.data!.joinCode}
-              </p>
-            </div>
-          </div>
-        )}
-      </header>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {teams.map((team) => {
+    <section dir="rtl" data-testid="waiting-room" className="space-y-5">
+      {/* Three columns, the way the room itself is arranged: a side, the way
+          in, the other side. The code sits between the two teams because it
+          belongs to neither, and because that is where every phone in the
+          room looks. */}
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_380px_1fr]">
+        {teams.map((team, teamIndex) => {
           const side = sideOf(team.id);
-          return (
-            <div
+          const openPlaces = Math.max(PLACES_PER_SIDE - side.length, 0);
+          const panel = (
+            <section
               key={team.id}
               data-testid={`waiting-room-side-${team.id}`}
-              // The «ملصق» treatment, same as every other team surface: a
-              // thick navy outline and a hard shadow. The tint inside it is
-              // what says whose side this is.
-              className={`flex min-h-[10rem] flex-col rounded-[var(--radius)] border-[3px] border-[hsl(var(--brand-navy))] p-4 shadow-[0_6px_0_hsl(var(--brand-navy))] ${team.identity.surface}`}
+              className={`bg-card flex flex-col overflow-hidden rounded-[20px] border shadow-[0_8px_24px_-16px_hsl(var(--brand-navy)/.35)] ${teamIndex === 0 ? "lg:order-3" : "lg:order-1"}`}
             >
-              <div className="mb-3 flex items-baseline justify-between gap-2">
-                <h2 className={`text-2xl font-black ${team.identity.text}`}>
-                  {team.name}
-                </h2>
-                <span className="text-muted-foreground text-sm font-bold">
+              {/* The side's colour is a band across the top rather than a wash
+                  behind the names: the people are what the panel is for, and a
+                  tinted field makes every one of them harder to read. */}
+              <div
+                className={`h-3.5 border-b-[3px] border-[hsl(var(--brand-navy))] ${team.identity.dot}`}
+              />
+              <div className="flex items-center gap-3 px-5 pt-5 pb-4">
+                <h2 className="flex-1 text-3xl font-black">{team.name}</h2>
+                <span
+                  className={`rounded-full border-2 border-[hsl(var(--brand-navy))] px-3 py-1 text-sm font-black ${team.identity.solid}`}
+                >
                   {side.length === 0
                     ? "ما فيه أحد"
                     : `${side.length} ${side.length === 1 ? "لاعب" : "لاعبين"}`}
                 </span>
               </div>
-              {/* A side is its people, so it reads as faces rather than as
-                  rows in an admin list: the character is the thing somebody
-                  across the room recognises as theirs. Empty places are drawn
-                  rather than left blank — a side waiting for people should
-                  look like it is waiting, not like it failed to load, and the
-                  panel grows with the room instead of reserving a screenful
-                  of nothing. */}
-              <ul className="grid grid-cols-2 content-start gap-2 lg:grid-cols-3">
-                  {side.map((person) => (
-                    <li
-                      key={person.id}
-                      data-testid="waiting-room-player"
-                      className="bg-background/70 flex flex-col items-center gap-1 rounded-[var(--radius)] p-3"
+              <ul className="flex flex-col gap-2.5 px-5 pb-5">
+                {side.map((person) => (
+                  <li
+                    key={person.id}
+                    data-testid="waiting-room-player"
+                    className="bg-background flex min-h-16 items-center gap-3 rounded-[14px] border px-3"
+                  >
+                    <span
+                      className={`grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-[hsl(var(--brand-navy))] ${team.identity.surface}`}
                     >
                       <PlayerCharacterIcon
                         characterKey={person.avatarKey}
-                        size={64}
+                        size={34}
                       />
-                      <span className="w-full truncate text-center font-bold">
-                        {person.displayName}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-xl font-bold">
+                      {person.displayName}
+                    </span>
+                    {person.connected ? (
+                      <span className="text-success hidden items-center gap-1.5 text-sm font-bold sm:inline-flex">
+                        <span className="bg-success size-2 rounded-full" />
+                        متصل
                       </span>
-                      {!person.connected && (
-                        <span className="bg-muted text-muted-foreground mt-1 rounded-full px-2 py-1 text-xs leading-none font-bold">
-                          خرج
-                        </span>
-                      )}
-                      <div className="flex items-center gap-1">
+                    ) : (
+                      <span className="bg-muted text-muted-foreground rounded-full px-2 py-1 text-xs font-bold">
+                        خرج
+                      </span>
+                    )}
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      disabled={busy}
+                      aria-label={`انقل ${person.displayName} للفريق الثاني`}
+                      onClick={() =>
+                        move.mutate({
+                          participantId: person.id,
+                          teamId: otherSide(team.id),
+                        })
+                      }
+                    >
+                      <ArrowLeftRight className="size-4" aria-hidden />
+                    </Button>
+                    <ConfirmationDialog
+                      trigger={
                         <Button
                           type="button"
                           size="icon"
                           variant="ghost"
-                          disabled={busy}
-                          aria-label={`انقل ${person.displayName} للفريق الثاني`}
-                          onClick={() =>
-                            move.mutate({
-                              participantId: person.id,
-                              teamId: otherSide(team.id),
-                            })
-                          }
+                          aria-label={`اطرد ${person.displayName}`}
                         >
-                          <ArrowLeftRight className="size-4" aria-hidden />
+                          <UserMinus className="size-4" aria-hidden />
                         </Button>
-                        <ConfirmationDialog
-                          trigger={
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              aria-label={`اطرد ${person.displayName}`}
-                            >
-                              <UserMinus className="size-4" aria-hidden />
-                            </Button>
-                          }
-                          title={`تطرد ${person.displayName}؟`}
-                          description="جواله يطلع من الجلسة على طول، ويقدر يرجع يصوّر الكود من جديد."
-                          confirmLabel="اطرده"
-                          destructive
-                          onConfirm={() => remove.mutate(person.id)}
-                        />
-                      </div>
-                    </li>
-                  ))}
-                  {Array.from({
-                    length: Math.max(OPEN_PLACES_SHOWN - side.length, 0),
-                  }).map((_, index) => (
-                    <li
-                      key={`open-${index}`}
-                      aria-hidden
-                      data-testid="waiting-room-open-place"
-                      className="flex flex-col items-center justify-center gap-2 rounded-[var(--radius)] border-2 border-dashed border-[hsl(var(--brand-navy)/.16)] p-3"
-                    >
-                      <span className="size-16 rounded-full border-2 border-dashed border-[hsl(var(--brand-navy)/.16)]" />
-                      <span className="h-2 w-12 rounded-full bg-[hsl(var(--brand-navy)/.08)]" />
-                    </li>
-                  ))}
-                </ul>
-            </div>
+                      }
+                      title={`تطرد ${person.displayName}؟`}
+                      description="جواله يطلع من الجلسة على طول، ويقدر يرجع يصوّر الكود من جديد."
+                      confirmLabel="اطرده"
+                      destructive
+                      onConfirm={() => remove.mutate(person.id)}
+                    />
+                  </li>
+                ))}
+                {/* An empty place is drawn, not left blank: a side waiting for
+                    people should look like it is waiting. */}
+                {Array.from({ length: openPlaces }).map((_, index) => (
+                  <li
+                    key={`open-${index}`}
+                    aria-hidden
+                    data-testid="waiting-room-open-place"
+                    className="text-muted-foreground flex min-h-16 items-center justify-center rounded-[14px] border-[1.5px] border-dashed"
+                  >
+                    مكان فاضي
+                  </li>
+                ))}
+              </ul>
+            </section>
           );
+          return panel;
         })}
+
+        {joinUrl && (
+          <section className="bg-card flex flex-col items-center gap-4 rounded-[20px] border p-6 text-center shadow-[0_8px_24px_-16px_hsl(var(--brand-navy)/.35)] lg:order-2">
+            <h1 className="text-2xl leading-relaxed font-black md:text-3xl">
+              امسحوا الرمز واختاروا فريقكم
+            </h1>
+            <div className="rounded-[20px] border bg-white p-4">
+              <ScannableQr value={joinUrl} size={210} />
+            </div>
+            <div className="flex w-full items-center gap-3">
+              <span className="bg-border h-px flex-1" />
+              <span className="text-muted-foreground text-sm">
+                أو اكتبوا الكود
+              </span>
+              <span className="bg-border h-px flex-1" />
+            </div>
+            {/* One tile per character: a code read off a television and typed
+                into a phone is copied letter by letter, and a single run of
+                text is where the eye loses its place. */}
+            <div
+              dir="ltr"
+              role="img"
+              aria-label={`كود الانضمام ${access.data!.joinCode}`}
+              data-testid="waiting-room-code"
+              className="flex gap-1.5"
+            >
+              {access.data!.joinCode.split("").map((character, index) => (
+                <span
+                  key={`${character}-${index}`}
+                  className="bg-background flex h-[3.25rem] w-11 items-center justify-center rounded-xl border border-b-[3px] text-2xl font-black"
+                >
+                  {character}
+                </span>
+              ))}
+            </div>
+            <span className="text-muted-foreground text-sm">
+              مسحة وحدة تكفي لكل المباراة
+            </span>
+          </section>
+        )}
       </div>
 
       {unplaced.length > 0 && (
         <div
           data-testid="waiting-room-unplaced"
-          className="rounded-[var(--radius)] border p-4"
+          className="rounded-[20px] border p-4"
         >
           <p className="mb-3 font-bold">لسا ما اختاروا فريق</p>
           <ul className="flex flex-wrap gap-2">
@@ -372,34 +389,42 @@ export function WaitingRoom() {
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
+      <footer className="flex flex-wrap items-center justify-between gap-4">
+        <button
           type="button"
-          size="lg"
-          className="font-black"
-          data-testid="waiting-room-start"
-          disabled={busy || !startAction}
-          onClick={() => startAction && command(startAction, {})}
-        >
-          {/* One button, two readings: the second is the host's permission to
-              leave somebody behind, which only means anything while somebody is
-              still missing. Two buttons firing the same command would just ask
-              the room to pick a mood. */}
-          {everyoneIsHere ? "يلا نبدأ" : "نبدأ واللي يتأخر يلحقنا"}
-        </Button>
-        <Button
-          type="button"
-          size="lg"
-          variant="outline"
-          className="font-black"
           data-testid="waiting-room-split"
           disabled={busy || players.length < 2}
           onClick={() => void splitThem()}
+          className="inline-flex min-h-[3.25rem] items-center justify-center gap-2.5 rounded-[14px] border-[3px] border-[hsl(var(--brand-navy))] bg-white px-6 text-lg font-black text-[hsl(var(--brand-navy))] shadow-[0_5px_0_hsl(var(--brand-navy))] disabled:pointer-events-none disabled:opacity-40"
         >
-          <Shuffle className="size-4" aria-hidden />
-          قسّمهم لي
-        </Button>
-      </div>
+          <Shuffle className="size-5" aria-hidden />
+          قسّمنا عشوائي
+        </button>
+        <div className="flex flex-wrap items-center gap-4">
+          {everyoneIsHere && (
+            <span className="text-success inline-flex items-center gap-2 text-base font-bold">
+              <Check className="size-4" aria-hidden />
+              {players.length} {players.length === 1 ? "لاعب" : "لاعبين"}، وكل
+              فريق جاهز
+            </span>
+          )}
+          {/* The primary action of the whole screen, so it carries the gold:
+              the one hard shadow on this page that is not navy. */}
+          <button
+            type="button"
+            data-testid="waiting-room-start"
+            disabled={busy || !startAction}
+            onClick={() => startAction && command(startAction, {})}
+            className="inline-flex min-h-16 items-center justify-center gap-2.5 rounded-[14px] border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-navy))] px-9 text-xl font-black text-white shadow-[0_5px_0_hsl(var(--brand-gold))] disabled:pointer-events-none disabled:opacity-40"
+          >
+            <Play className="size-5" aria-hidden />
+            {/* One button, two readings: the second is the host's permission to
+                leave somebody behind, which only means anything while somebody
+                is still missing. */}
+            {everyoneIsHere ? "يلا نبدأ" : "نبدأ واللي يتأخر يلحقنا"}
+          </button>
+        </div>
+      </footer>
     </section>
   );
 }
