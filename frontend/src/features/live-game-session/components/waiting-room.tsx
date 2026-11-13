@@ -217,7 +217,10 @@ export function WaitingRoom() {
             <div
               key={team.id}
               data-testid={`waiting-room-side-${team.id}`}
-              className={`flex min-h-[18rem] flex-col rounded-[var(--radius)] border-2 p-4 ${team.identity.border} ${team.identity.surface}`}
+              // The «ملصق» treatment, same as every other team surface: a
+              // thick navy outline and a hard shadow. The tint inside it is
+              // what says whose side this is.
+              className={`flex min-h-[18rem] flex-col rounded-[var(--radius)] border-[3px] border-[hsl(var(--brand-navy))] p-4 shadow-[0_6px_0_hsl(var(--brand-navy))] ${team.identity.surface}`}
             >
               <div className="mb-3 flex items-baseline justify-between gap-2">
                 <h2 className={`text-2xl font-black ${team.identity.text}`}>

@@ -31,7 +31,15 @@ export interface TeamIdentity {
   border: string;
   /** Text on a tinted or plain surface, resolved for the active theme. */
   text: string;
-  /** Solid fill plus its contrasting text, for the strongest emphasis. */
+  /**
+   * Solid fill plus its contrasting text, for the strongest emphasis.
+   *
+   * Carries the «ملصق» treatment with it: a thick navy outline and a hard,
+   * unblurred shadow, so a team's strong surfaces read as one sticker pressed
+   * onto the page rather than as a flat colour patch. It lives on the token
+   * rather than at the call sites, which is the only way thirty-odd surfaces
+   * stay identical.
+   */
   solid: string;
   /** A small dot, for legends and inline markers. */
   dot: string;
@@ -39,13 +47,22 @@ export interface TeamIdentity {
   ring: string;
 }
 
+/**
+ * The «ملصق» treatment: a thick navy outline and a hard shadow with no blur.
+ *
+ * Both teams share it — the outline is the brand navy, never the team's own
+ * hue, so the colour inside the outline is what says whose it is.
+ */
+export const TEAM_STICKER =
+  "border-[3px] border-[hsl(var(--brand-navy))] shadow-[0_6px_0_hsl(var(--brand-navy))]";
+
 const IDENTITIES: Record<TeamSlot, TeamIdentity> = {
   "1": {
     slot: "1",
     surface: "bg-team-1-tint",
     border: "border-team-1-base",
     text: "text-team-1-text",
-    solid: "bg-team-1-fill text-team-1-fill-foreground",
+    solid: `bg-team-1-fill text-team-1-fill-foreground ${TEAM_STICKER}`,
     dot: "bg-team-1-base",
     ring: "ring-team-1-base",
   },
@@ -54,7 +71,7 @@ const IDENTITIES: Record<TeamSlot, TeamIdentity> = {
     surface: "bg-team-2-tint",
     border: "border-team-2-base",
     text: "text-team-2-text",
-    solid: "bg-team-2-fill text-team-2-fill-foreground",
+    solid: `bg-team-2-fill text-team-2-fill-foreground ${TEAM_STICKER}`,
     dot: "bg-team-2-base",
     ring: "ring-team-2-base",
   },

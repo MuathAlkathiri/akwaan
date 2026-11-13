@@ -1,7 +1,11 @@
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { describe, expect, it } from "vitest";
-import { teamIdentity, TEAM_SLOT_ORDER } from "@/lib/team-identity";
+import {
+  teamIdentity,
+  TEAM_SLOT_ORDER,
+  TEAM_STICKER,
+} from "@/lib/team-identity";
 
 /**
  * The design tokens exist, and Tailwind can actually see them.
@@ -29,14 +33,17 @@ describe("Tailwind can see every file that writes utility classes", () => {
     for (const slot of TEAM_SLOT_ORDER) {
       const identity = teamIdentity(slot);
       // Each class maps to a token the config actually defines. `solid` carries
-      // two classes, so it is split before checking.
+      // several classes, so it is split before checking — and the «ملصق»
+      // treatment it ends with is shared by both teams and belongs to the
+      // brand, not to a team token, so it is checked separately below.
+      const sticker = TEAM_STICKER.split(" ");
       const classes = [
         identity.surface,
         identity.border,
         identity.text,
         identity.dot,
         identity.ring,
-        ...identity.solid.split(" "),
+        ...identity.solid.split(" ").filter((name) => !sticker.includes(name)),
       ];
       for (const className of classes) {
         const token = className.replace(/^(bg|text|border|ring)-/, "");
@@ -47,7 +54,22 @@ describe("Tailwind can see every file that writes utility classes", () => {
           new RegExp(`"?${key}"?:\\s*"(hsl\\()?var\\(--team-${slot}-${key}\\)`),
         );
       }
+      // The treatment travels with the token, so a team surface cannot lose
+      // its outline and shadow by being rendered somewhere new.
+      for (const name of TEAM_STICKER.split(" ")) {
+        expect(identity.solid).toContain(name);
+      }
     }
+  });
+
+  it("draws the «ملصق» outline and shadow from the brand navy, not a team hue", () => {
+    // Both teams share the outline: the colour inside it is what says whose
+    // surface this is. A team-coloured outline would say it twice and read as
+    // two different treatments side by side.
+    expect(TEAM_STICKER).toContain("border-[3px]");
+    expect(TEAM_STICKER).toContain("border-[hsl(var(--brand-navy))]");
+    // Hard, unblurred: a sticker pressed onto the page, not a soft lift.
+    expect(TEAM_STICKER).toContain("shadow-[0_6px_0_hsl(var(--brand-navy))]");
   });
 });
 
