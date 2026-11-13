@@ -8,6 +8,7 @@
  * snapshot — a snapshot is something the server told us, and this is not.
  */
 
+import { defaultTeamColorId, resolveTeamColor } from "@/lib/team-palette";
 
 /** Roadmap 3: three World occurrences per Match. */
 export const OCCURRENCE_COUNT = 3;
@@ -16,7 +17,7 @@ export const SCOPES_PER_OCCURRENCE = 4;
 /** Three occurrences × four positions. */
 export const BOARD_POSITION_COUNT = 12;
 
-export type MatchSetupStep = "world" | "scopes";
+export type MatchSetupStep = "world" | "scopes" | "teams";
 
 export interface DraftOccurrence {
   occurrenceIndex: number;
@@ -29,6 +30,17 @@ export interface MatchSetupDraft {
   occurrences: DraftOccurrence[];
   activeOccurrenceIndex: number;
   activeStep: MatchSetupStep;
+  /**
+   * What each team is *called*. A team is identified by its name on every surface;
+   * its colour is a separate attribute below, never its label.
+   */
+  teamNames: [string, string];
+  /**
+   * Which colour each team wears, as an id from that team's own pool
+   * (`src/lib/team-palette.ts`). Position 0 draws from the cool pool and position 1
+   * from the warm pool, so the two picks cannot collide however the host chooses.
+   */
+  teamColorIds: [string, string];
   /** Set when the backend rejected a specific occurrence. */
   issue?: { occurrenceIndex?: number; message: string; code?: string };
 }
@@ -52,6 +64,12 @@ export function createDraft(): MatchSetupDraft {
     })),
     activeOccurrenceIndex: 0,
     activeStep: "world",
+    // Teams are named, not coloured. The old defaults were "الأخضر" and "الوردي" —
+    // the two colours themselves — which made a reveal ambiguous: a green element
+    // at reveal time has to mean "correct", and it cannot also mean "team one".
+    // These are placeholders a host is expected to overwrite.
+    teamNames: ["الفريق الأول", "الفريق الثاني"],
+    teamColorIds: [defaultTeamColorId(0), defaultTeamColorId(1)],
   };
 }
 
@@ -62,6 +80,8 @@ export type MatchSetupAction =
   | { type: "edit-world"; occurrenceIndex: number }
   | { type: "confirm-scopes" }
   | { type: "back" }
+  | { type: "set-team-name"; index: 0 | 1; name: string }
+  | { type: "set-team-color"; index: 0 | 1; colorId: string }
   | { type: "report-issue"; occurrenceIndex?: number; message: string; code?: string }
   | { type: "clear-issue" }
   | { type: "restore"; draft: MatchSetupDraft }
@@ -221,9 +241,10 @@ export function matchSetupReducer(
           occurrence.occurrenceIndex > draft.activeOccurrenceIndex &&
           !isOccurrenceComplete(occurrence),
       );
-      // The remaining occurrences come first. Confirming the last one creates
-      // the Match and opens the room; there is no step after this one.
+      // The remaining occurrences come first. Teams is reachable only once all
+      // three are configured, using the same full-draft guard as Match creation.
       const pending = next ?? firstIncompleteOccurrence(draft);
+      const completed = !pending && isDraftComplete(draft);
       return {
         ...draft,
         issue: undefined,
@@ -232,11 +253,16 @@ export function matchSetupReducer(
               activeOccurrenceIndex: pending.occurrenceIndex,
               activeStep: "world" as const,
             }
-          : {}),
+          : completed
+            ? { activeStep: "teams" as const }
+            : {}),
       };
     }
 
     case "back": {
+      // Team Setup leaves this route through the wizard's Homepage navigation;
+      // it never rewinds into a second World/Scope editor here.
+      if (draft.activeStep === "teams") return draft;
       if (draft.activeStep === "scopes") {
         return { ...draft, issue: undefined, activeStep: "world" };
       }
@@ -248,6 +274,23 @@ export function matchSetupReducer(
         activeOccurrenceIndex: draft.activeOccurrenceIndex - 1,
         activeStep: "scopes",
       };
+    }
+
+    case "set-team-name": {
+      const teamNames: [string, string] = [...draft.teamNames];
+      teamNames[action.index] = action.name;
+      return { ...draft, teamNames };
+    }
+
+    case "set-team-color": {
+      // Resolved rather than stored raw: a pick from the other team's pool would
+      // put both teams in one hue arc, which is the one thing the pools prevent.
+      const teamColorIds: [string, string] = [...draft.teamColorIds];
+      teamColorIds[action.index] = resolveTeamColor(
+        action.index,
+        action.colorId,
+      ).id;
+      return { ...draft, teamColorIds };
     }
 
     case "report-issue":

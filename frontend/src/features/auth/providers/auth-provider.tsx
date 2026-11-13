@@ -136,15 +136,3 @@ export function useAuth() {
   if (!context) throw new Error("useAuth must be used inside AuthProvider");
   return context;
 }
-
-/**
- * The session where there may not be one, for a surface that merely *improves*
- * when somebody is signed in.
- *
- * `useAuth` throws without a provider, which is right for anything that cannot
- * work signed-out. An optional enhancement is the opposite case: it should
- * quietly render nothing rather than take the whole page down with it.
- */
-export function useOptionalAuth(): AuthContextValue | undefined {
-  return useContext(AuthContext);
-}

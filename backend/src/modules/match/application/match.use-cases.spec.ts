@@ -172,12 +172,6 @@ describe('MatchUseCases transitions', () => {
       {
         score: () => options.scoreResult ?? [],
       } as unknown as ScoringService,
-      // World artwork has its own suites; a World with no backdrop is the
-      // state these transition assertions already assume.
-      {
-        questionBackdropFor: () =>
-          Promise.resolve({ asset: null, defects: [] }),
-      } as unknown as import('../../world-content/application/world-presentation.service').WorldPresentationService,
     );
     return { useCases, published, current: load };
   };

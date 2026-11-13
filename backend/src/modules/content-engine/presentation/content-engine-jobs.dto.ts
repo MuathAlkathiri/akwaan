@@ -5,7 +5,6 @@ import {
   IsInt,
   IsOptional,
   IsString,
-  Matches,
   Max,
   MaxLength,
   Min,
@@ -16,7 +15,6 @@ import {
   EngineJobStatus,
 } from '../domain/content-engine.constants';
 import {
-  BATCH_INTENT_ID_PATTERN,
   MAX_BATCH_GUIDANCE_LENGTH,
   RYO_REQUESTED_DIFFICULTIES,
 } from '../domain/generation-specification';
@@ -63,16 +61,6 @@ export class EnginePreflightRequestDto {
   @IsOptional()
   @IsString()
   batchGuidance?: string;
-
-  @ApiPropertyOptional({
-    example: '3f1c9a7e-2b4d-4c8e-9f10-5a6b7c8d9e0f',
-    description:
-      'Identity of one intentional New Batch action (client-minted, e.g. a UUID). Send the same value to Preflight and Submit; reuse it to retry idempotently, mint a new one for an independent batch. Omitted keeps the legacy identity, where identical specifications resolve to one job.',
-  })
-  @IsOptional()
-  @IsString()
-  @Matches(BATCH_INTENT_ID_PATTERN)
-  batchIntentId?: string;
 }
 
 export class EngineJobRequestDto extends EnginePreflightRequestDto {
@@ -143,13 +131,4 @@ export class EngineJobListQueryDto {
   @IsString()
   @MaxLength(120)
   mechanicKey?: string;
-
-  @ApiPropertyOptional({
-    description:
-      'Exact New Batch intent: returns the job recorded for it, if any. Used to reconcile a Submit whose outcome was not seen.',
-  })
-  @IsOptional()
-  @IsString()
-  @Matches(BATCH_INTENT_ID_PATTERN)
-  batchIntentId?: string;
 }

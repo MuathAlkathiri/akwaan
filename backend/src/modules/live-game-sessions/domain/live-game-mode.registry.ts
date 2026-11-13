@@ -10,16 +10,6 @@ export interface LiveGameModeRules {
   onlyOneClockRuns: boolean;
   timePersistsBetweenTurns: boolean;
   expirationMs: number;
-  /**
-   * How long a room nobody has joined stays open.
-   *
-   * Shorter than `expirationMs`, which is the cap on a session being *played*.
-   * A room nobody came to is abandoned long before a day is up, and it holds a
-   * live join code the whole time. Six hours rather than two: a host who sets
-   * the room up early in the evening for a gathering that starts late has not
-   * abandoned anything.
-   */
-  unjoinedExpirationMs: number;
   defaultJoinPolicy: 'explicit' | 'balanced' | 'host-assigned';
   readyPlayersRequiredPerTeam: number;
 }
@@ -36,7 +26,6 @@ export const CORE_TIMED_TURNS_MODE: LiveGameModeRules = {
   onlyOneClockRuns: true,
   timePersistsBetweenTurns: true,
   expirationMs: 24 * 60 * 60 * 1000,
-  unjoinedExpirationMs: 6 * 60 * 60 * 1000,
   defaultJoinPolicy: 'explicit',
   readyPlayersRequiredPerTeam: 1,
 };

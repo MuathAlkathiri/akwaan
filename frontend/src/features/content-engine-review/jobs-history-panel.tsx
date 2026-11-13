@@ -577,17 +577,15 @@ export function JobsHistoryPanel({
                   <button
                     type="button"
                     data-testid={`job-handoff-btn-${item.jobId}`}
-                    disabled={candCount === 0}
-                    onClick={() => {
-                      if (candCount === 0) return;
+                    onClick={() =>
                       onHandoffToReview({
                         jobId: item.jobId,
                         worldKey: itemWorld === "—" ? "" : itemWorld,
                         scopeKey: itemScope === "—" ? "" : itemScope,
                         mechanicKey: itemMechanic === "—" ? "" : itemMechanic,
-                      });
-                    }}
-                    className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-amber-600 transition disabled:cursor-not-allowed disabled:opacity-40"
+                      })
+                    }
+                    className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-amber-600 transition"
                   >
                     <span>مراجعة المرشحين ({candCount})</span>
                   </button>
@@ -848,10 +846,7 @@ export function JobsHistoryPanel({
                 <button
                   type="button"
                   data-testid="inspector-handoff-review-btn"
-                  disabled={totalCandidatesCount(inspectedJob.candidates) === 0}
-                  onClick={() => {
-                    if (totalCandidatesCount(inspectedJob.candidates) === 0)
-                      return;
+                  onClick={() =>
                     onHandoffToReview({
                       jobId: inspectedJob.jobId,
                       worldKey:
@@ -866,9 +861,9 @@ export function JobsHistoryPanel({
                         inspectedJob.mechanicKey ??
                         inspectedJob.generationSpec?.mechanicKey ??
                         "",
-                    });
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-600 transition disabled:cursor-not-allowed disabled:opacity-40"
+                    })
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-600 transition"
                 >
                   <span>
                     فتح مرشحي هذه الدفعة في مساحة المراجعة (

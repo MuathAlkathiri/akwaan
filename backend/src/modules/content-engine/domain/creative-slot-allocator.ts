@@ -206,12 +206,7 @@ function buildSlotDifficulties(
   difficultyQuotas: Record<string, number>,
 ): Array<'easy' | 'medium' | 'hard'> {
   const tiers: Array<'easy' | 'medium' | 'hard'> = ['medium', 'easy', 'hard'];
-  const remaining: Record<string, number> = {
-    ...difficultyQuotas,
-    hard:
-      (difficultyQuotas.hard ?? 0) +
-      (difficultyQuotas.relatively_difficult ?? 0),
-  };
+  const remaining: Record<string, number> = { ...difficultyQuotas };
   const result: Array<'easy' | 'medium' | 'hard'> = [];
 
   for (let i = 0; i < count; i++) {

@@ -1,9 +1,8 @@
 import { ConfigService } from '@nestjs/config';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { existsSync, readFileSync, readdirSync } from 'fs';
+import { join, resolve } from 'path';
 import { DeterministicScreenService } from './deterministic-screen.service';
 import * as historicalApprovals from './historical-approved-inventory';
-import pilot from './__fixtures__/phase-2m-exemplar-pilot.json';
 
 const config = { get: () => undefined } as unknown as ConfigService;
 
@@ -566,27 +565,45 @@ describe('DeterministicScreenService', () => {
 
   describe('exemplar imitation on the RYO path — Phase 2m regression', () => {
     /**
-     * Driven from the candidates the models actually produced, not from text
-     * typed back in. The three Flash-Lite candidates were verbatim copies of
-     * the Science Scope's worked examples and every one screened clean,
-     * because `exemplarImitation` was only ever called from the Closest path.
+     * Driven from the preserved Phase 2m pilot artifacts, not from text typed
+     * back in. The three Flash-Lite candidates were verbatim copies of the
+     * Science Scope's worked examples and every one screened clean, because
+     * `exemplarImitation` was only ever called from the Closest path.
      *
-     * The inputs used to be read out of `ai/workbench/artifacts`, which git
-     * excludes — so this regression only ever ran on the one machine that had
-     * the pilot files, and silently skipped itself everywhere else, CI
-     * included. The six candidates are committed beside this spec instead:
-     * each is the `draft` and `authoring` it is screened on, copied verbatim
-     * from the batchR artifacts and nothing more.
+     * Reading the real artifacts keeps this a regression against what the
+     * model actually produced. Skipped where the workbench is absent, so a
+     * checkout without it still builds.
      */
-    const EXEMPLARS = resolve(
-      __dirname,
-      '../../../../../ai/.opencode/skills/worlds/general-knowledge/scopes/science/EXEMPLARS.md',
+    const ROOT = resolve(__dirname, '../../../../..');
+    const ARTIFACTS = join(ROOT, 'ai/workbench/artifacts');
+    const EXEMPLARS = join(
+      ROOT,
+      'ai/.opencode/skills/worlds/general-knowledge/scopes/science/EXEMPLARS.md',
     );
 
-    const exemplarText = () => readFileSync(EXEMPLARS, 'utf8');
+    const pilot = (needle: string) => {
+      if (!existsSync(ARTIFACTS) || !existsSync(EXEMPLARS)) return undefined;
+      const file = readdirSync(ARTIFACTS)
+        .filter((name) => name.includes('batchR') && name.includes(needle))
+        .sort()
+        .pop();
+      if (!file) return undefined;
+      return JSON.parse(readFileSync(join(ARTIFACTS, file), 'utf8')) as {
+        candidates: {
+          ordinal: number;
+          draft: Record<string, unknown>;
+          authoring?: Record<string, unknown>;
+        }[];
+      };
+    };
 
-    const flash = pilot.flashLite;
-    const gpt5 = pilot.gpt5;
+    const exemplarText = () =>
+      existsSync(EXEMPLARS) ? readFileSync(EXEMPLARS, 'utf8') : '';
+
+    /** Candidates only — screening happens inside each test, where `service` exists. */
+    const flash = pilot('flash-lite')?.candidates;
+    const gpt5 = pilot('gpt-5')?.candidates;
+    const maybe = flash && gpt5 ? it : it.skip;
 
     const codesFor = (candidate: {
       draft: Record<string, unknown>;
@@ -598,25 +615,25 @@ describe('DeterministicScreenService', () => {
         .findings.map((finding) => finding.code);
     };
 
-    it.each([0, 1, 2])(
+    maybe.each([0, 1, 2])(
       'flags Flash-Lite FL-%i, which copied a worked example verbatim',
       (ordinal) => {
-        expect(codesFor(flash[ordinal])).toContain(
+        expect(codesFor(flash![ordinal])).toContain(
           'CANDIDATE_RESEMBLES_EXEMPLAR',
         );
       },
     );
 
-    it.each([0, 1, 2])(
+    maybe.each([0, 1, 2])(
       'leaves GPT-5 candidate %i alone — it wrote its own question',
       (ordinal) => {
-        expect(codesFor(gpt5[ordinal])).not.toContain(
+        expect(codesFor(gpt5![ordinal])).not.toContain(
           'CANDIDATE_RESEMBLES_EXEMPLAR',
         );
       },
     );
 
-    it('flags every copy and no original', () => {
+    maybe('flags every copy and no original', () => {
       const flagged = (
         candidates: {
           draft: Record<string, unknown>;
@@ -626,8 +643,8 @@ describe('DeterministicScreenService', () => {
         candidates.filter((candidate) =>
           codesFor(candidate).includes('CANDIDATE_RESEMBLES_EXEMPLAR'),
         ).length;
-      expect(flagged(flash)).toBe(3);
-      expect(flagged(gpt5)).toBe(0);
+      expect(flagged(flash!)).toBe(3);
+      expect(flagged(gpt5!)).toBe(0);
     });
   });
 

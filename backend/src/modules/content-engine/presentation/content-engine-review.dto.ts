@@ -137,11 +137,6 @@ export class CandidateApprovalDto {
   @ValidateNested({ each: true })
   @Type(() => OverlapAcknowledgmentDto)
   overlapAcknowledgments?: OverlapAcknowledgmentDto[];
-  @IsOptional()
-  @Transform(trimString)
-  @IsString()
-  @MaxLength(120)
-  reassignedFamilyKey?: string;
 }
 
 export class CandidateRejectionDto {
@@ -166,57 +161,4 @@ export class CandidateRejectionDto {
 
 export class CreateCandidateDraftDto {
   @IsInt() @Min(0) expectedRevision!: number;
-}
-
-/**
- * §30.22 media-review actions. The slot key is a route parameter validated
- * against the media-requirements registry; every action is CAS'd on
- * `mediaReviewRevision`, never on the text `reviewRevision`, so a media
- * decision cannot invalidate a factual or quality assessment.
- */
-export class CandidateMediaReviewDto {
-  @IsInt() @Min(0) expectedMediaReviewRevision!: number;
-  @IsIn(['approved', 'rejected'])
-  status!: 'approved' | 'rejected';
-  @IsOptional()
-  @IsIn([
-    'WRONG_SUBJECT',
-    'ANSWER_LEAKAGE',
-    'LOW_QUALITY',
-    'WRONG_FRAMING',
-    'UNSAFE_OR_INAPPROPRIATE',
-    'OTHER',
-  ])
-  reasonCode?: string;
-  @IsOptional()
-  @Transform(trimString)
-  @IsString()
-  @MaxLength(2000)
-  explanation?: string;
-}
-
-/**
- * Accepts an asset whose rights are not CLEARED. It records who accepted what;
- * it never changes the rights record, which stays the job of `media-rights`.
- */
-export class CandidateMediaRightsAcknowledgementDto {
-  @IsInt() @Min(0) expectedMediaReviewRevision!: number;
-  @Transform(trimString)
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(2000)
-  note!: string;
-}
-
-/**
- * Multipart fields sent with an uploaded replacement asset. Multipart values
- * arrive as strings, so the revision is coerced before validation. No URL,
- * filename or alt text is accepted: the stored asset's identity comes only
- * from its verified bytes.
- */
-export class CandidateMediaAttachDto {
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  expectedMediaReviewRevision!: number;
 }

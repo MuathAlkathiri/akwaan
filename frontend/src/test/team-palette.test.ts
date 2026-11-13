@@ -5,17 +5,14 @@ import {
   contrastRatio,
   defaultTeamColorId,
   hueDistance,
-  MINIMUM_FILL_TEXT_CONTRAST,
   MINIMUM_INTER_TEAM_HUE_DISTANCE,
   MINIMUM_RESERVED_HUE_DISTANCE,
   MINIMUM_TEXT_CONTRAST,
   RESERVED_COLORS,
   resolveTeamColor,
   TEAM_COLORS,
-  TEAM_NAMES,
-  teamColorAt,
+  teamColorPool,
   teamColorViolations,
-  teamFillTextViolations,
   teamPairViolations,
 } from "@/lib/team-palette";
 
@@ -26,20 +23,24 @@ import {
  * readable across a room, or a team colour starts meaning "correct". These are the
  * assertions that make such an edit fail loudly instead.
  */
-describe("the two team colours", () => {
-  it("is exactly two, and a team's colour is its name", () => {
-    expect(TEAM_COLORS).toHaveLength(2);
-    expect(TEAM_NAMES).toEqual(["الأزرق", "الأحمر"]);
-    expect(TEAM_COLORS.map((color) => color.label)).toEqual([...TEAM_NAMES]);
-    expect(TEAM_COLORS.map((color) => color.id)).toEqual(["blue", "red"]);
+describe("team colour pools", () => {
+  it("gives each team its own pool, so no pair of picks can collide", () => {
+    expect(teamColorPool(0).every((color) => color.pool === "cool")).toBe(true);
+    expect(teamColorPool(1).every((color) => color.pool === "warm")).toBe(true);
+    expect(teamColorPool(0).length).toBeGreaterThanOrEqual(3);
+    expect(teamColorPool(1).length).toBeGreaterThanOrEqual(3);
   });
 
-  it("keeps both clear of the reserved meanings and legible in both themes", () => {
-    expect(TEAM_COLORS.flatMap(teamColorViolations)).toEqual([]);
+  it("keeps every selectable colour clear of the reserved meanings and legible in both themes", () => {
+    const problems = TEAM_COLORS.flatMap(teamColorViolations);
+    expect(problems).toEqual([]);
   });
 
-  it("keeps the two teams at least 60° apart", () => {
-    expect(teamPairViolations(TEAM_COLORS[0], TEAM_COLORS[1])).toEqual([]);
+  it("keeps any legal pair of picks at least 60° apart", () => {
+    const problems = teamColorPool(0).flatMap((first) =>
+      teamColorPool(1).flatMap((second) => teamPairViolations(first, second)),
+    );
+    expect(problems).toEqual([]);
   });
 
   it("excludes the yellow and olive families, which fail on cream and collide with gold", () => {
@@ -52,32 +53,12 @@ describe("the two team colours", () => {
     }
   });
 
-  it("resolves an old session's stored colour to its position's colour", () => {
-    // Sessions created while the host still picked carry ids from the old pools.
-    // They render in the current two colours rather than falling back to grey.
-    expect(resolveTeamColor(0, "indigo").id).toBe("blue");
-    expect(resolveTeamColor(1, "magenta").id).toBe("red");
-    expect(resolveTeamColor(0, undefined).id).toBe(defaultTeamColorId(0));
-    expect(teamColorAt(1).id).toBe("red");
-  });
-
-  it("carries large text only on a fill, which is why small labels sit on white", () => {
-    // The red has to stay light to clear the error crimson, which leaves both
-    // white and navy around 4:1 on it — large-text contrast, not small-text.
-    const white = { hue: 0, saturation: 0, lightness: 100 };
-    const navy = { hue: 239, saturation: 40, lightness: 17 };
-    for (const color of TEAM_COLORS) {
-      expect(teamFillTextViolations(color, white, "white")).toEqual([]);
-    }
-    expect(MINIMUM_FILL_TEXT_CONTRAST).toBe(3);
-    // Stated as a fact, so a future edit that makes small white text legible on
-    // both fills has to come here and say so.
-    expect(contrastRatio(TEAM_COLORS[1].base, white)).toBeLessThan(
-      MINIMUM_TEXT_CONTRAST,
-    );
-    expect(contrastRatio(TEAM_COLORS[1].base, navy)).toBeLessThan(
-      MINIMUM_TEXT_CONTRAST,
-    );
+  it("refuses a pick from the other team's pool rather than honouring it", () => {
+    // A stale draft naming the other team's colour would put both teams in one
+    // hue arc, which is the single thing the pools exist to prevent.
+    expect(resolveTeamColor(0, "magenta").id).toBe(defaultTeamColorId(0));
+    expect(resolveTeamColor(1, "indigo").id).toBe(defaultTeamColorId(1));
+    expect(resolveTeamColor(0, "azure").id).toBe("azure");
   });
 });
 
@@ -152,7 +133,7 @@ describe("the token layer matches the palette module", () => {
     }
   });
 
-  it("uses the two fixed team colours", () => {
+  it("uses the default pool colours for the two teams", () => {
     const first = resolveTeamColor(0, undefined);
     const second = resolveTeamColor(1, undefined);
     expect(declaration("--team-1-base", "root")).toEqual(first.base);

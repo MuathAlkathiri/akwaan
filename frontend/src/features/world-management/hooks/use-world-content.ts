@@ -197,18 +197,6 @@ export function useCreateWorldChallengeConfiguration(worldId: string) {
   });
 }
 
-/** Upload or remove a World's question backdrop artwork. */
-export function useWorldQuestionFallback() {
-  const invalidate = useInvalidateWorldContent();
-  return useMutation({
-    mutationFn: ({ id, file }: { id: string; file: File | null }) =>
-      file
-        ? api.setWorldQuestionFallback(id, file)
-        : api.clearWorldQuestionFallback(id),
-    onSuccess: invalidate,
-  });
-}
-
 export function useUpdateWorldChallengeConfiguration() {
   const invalidate = useInvalidateWorldContent();
   return useMutation({

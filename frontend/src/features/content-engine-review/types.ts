@@ -23,111 +23,6 @@ export interface ReviewEligibility {
   approvalBlockers: string[];
   /** Server-reported reasons a DRAFT cannot be created (stale/untrusted approval). */
   draftBlockers?: string[];
-  /** §30.22 media readiness. Absent on servers before Phase 1. */
-  mediaReadiness?: CandidateMediaReadiness;
-}
-
-/** Rights as the server reads them; EXPIRED is derived, never stored. */
-export type MediaRightsStatus =
-  | "UNKNOWN"
-  | "PENDING"
-  | "CLEARED"
-  | "BLOCKED"
-  | "EXPIRED";
-
-export interface CandidateMediaSlot {
-  slotKey: string;
-  purpose: "gameplay" | "decorative";
-  required: boolean;
-  status: "planned" | "resolved" | "failed" | "skipped";
-  asset?: {
-    url: string;
-    mimetype?: string;
-    width?: number;
-    height?: number;
-    sha256?: string;
-  } | null;
-  provenance?: {
-    acquisition: "retrieve" | "generate" | "edit" | "upload";
-    provider: string;
-    sourceUrl?: string;
-    finalUrl?: string;
-    redirects?: string[];
-    licenceNote?: string;
-    model?: string;
-    retrievedAt?: string;
-    byteSize?: number;
-    actorId?: string;
-  } | null;
-  rights?: {
-    status: MediaRightsStatus;
-    source: "media-rights" | "provider" | "unrecorded";
-    licence?: string | null;
-    rightsHolder?: string | null;
-    observedAt?: string;
-  } | null;
-  rightsAcknowledgement?: {
-    assetUrl: string;
-    rightsStatus: MediaRightsStatus;
-    actorEmail: string;
-    at: string;
-    note: string;
-  } | null;
-  review?: {
-    status: "pending" | "approved" | "rejected";
-    assetUrl: string;
-    mediaReviewRevision: number;
-    actorEmail: string;
-    at: string;
-    reasonCode?: string | null;
-    explanation?: string | null;
-  } | null;
-  failureReason?: string | null;
-}
-
-export interface CandidateMediaFinding {
-  code: string;
-  slotKey: string;
-  severity: "blocking" | "warning";
-  message: string;
-  rightsStatus?: MediaRightsStatus;
-  acknowledged?: boolean;
-}
-
-/** What the registry declares for one slot of the candidate's target. */
-export interface CandidateMediaSlotDescriptor {
-  slotKey: string;
-  purpose: "gameplay" | "decorative";
-  required: boolean;
-  mediaType: "image" | "audio";
-  uploadSupported: boolean;
-  uploadUnsupportedReason: string | null;
-}
-
-export interface CandidateMediaReadiness {
-  governed: boolean;
-  slots?: CandidateMediaSlotDescriptor[];
-  contractVersion: string | null;
-  requirementsDigest: string | null;
-  mediaReviewRevision: number;
-  requiredSlotKeys: string[];
-  ready: boolean;
-  blockers: CandidateMediaFinding[];
-  warnings: CandidateMediaFinding[];
-}
-
-export interface CandidateMediaEvent {
-  action:
-    | "media_attached"
-    | "media_reviewed"
-    | "media_rights_acknowledged"
-    | "media_reviews_invalidated";
-  slotKeys: string[];
-  actorEmail: string;
-  occurredAt: string;
-  mediaReviewRevision: number;
-  reviewRevision: number;
-  details: Record<string, unknown>;
 }
 
 /** R4-A server evidence bound into an `ovl1:` overlap fingerprint. */
@@ -278,10 +173,6 @@ export interface ReviewCandidate {
     details?: Record<string, unknown> | null;
   }>;
   publishedContentItemId: string | null;
-  /** §30.22 media state; empty/0 for candidates outside the media contract. */
-  mediaPlan?: CandidateMediaSlot[];
-  mediaReviewRevision?: number;
-  mediaEvents?: CandidateMediaEvent[];
   canonicalTarget?: {
     worldId: string;
     worldKey?: string;

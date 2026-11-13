@@ -21,10 +21,6 @@ const statuses: Record<string, HttpStatus> = {
   SESSION_FULL: HttpStatus.CONFLICT,
   TEAM_FULL: HttpStatus.CONFLICT,
   DISPLAY_NAME_TAKEN: HttpStatus.CONFLICT,
-  // A character taken while the phone was still choosing: the client refetches
-  // and picks again, which it can only do if this is distinguishable from a
-  // malformed request.
-  AVATAR_TAKEN: HttpStatus.CONFLICT,
   JOIN_RATE_EXCEEDED: HttpStatus.TOO_MANY_REQUESTS,
 };
 

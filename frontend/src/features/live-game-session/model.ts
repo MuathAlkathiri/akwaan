@@ -59,8 +59,6 @@ export interface LiveSessionSnapshot {
     lastSeenAt: string;
     presence: "connected" | "temporarily-disconnected" | "stale" | "removed";
     device?: { label?: string; platform?: string };
-    /** The cosmic character they picked on their phone. */
-    avatarKey?: string;
   }>;
   readiness: {
     canMarkSessionReady: boolean;
@@ -250,15 +248,7 @@ export interface LiveSessionJoinMetadata {
   mode: { key: string; version: number };
   status: LiveSessionStatus;
   assignmentPolicy: LiveSessionJoinPolicy;
-  teams: Array<{
-    id: string;
-    name: string;
-    colorId?: string;
-    /** How many players are on it already, so the phone can nudge the smaller side. */
-    playerCount?: number;
-  }>;
-  /** Characters already worn in this room; choosing one of these is refused. */
-  takenAvatarKeys?: string[];
+  teams: Array<{ id: string; name: string; colorId?: string }>;
   expiresAt: string;
 }
 

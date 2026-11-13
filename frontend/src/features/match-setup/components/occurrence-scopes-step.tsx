@@ -2,7 +2,6 @@
 
 import { Check, Layers, Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PendingButtonContent } from "@/components/ui/pending-button-content";
 import { cn } from "@/lib/utils";
 import { ScopeCardMedia } from "@/features/worlds/components/scope-card-media";
 import { JourneySection } from "@/features/worlds/components/journey-shell";
@@ -36,9 +35,6 @@ export function OccurrenceScopesStep({
   onChangeWorld,
   onClear,
   onConfirm,
-  isFinalOccurrence = false,
-  submitting = false,
-  rolledBack = false,
 }: {
   occurrenceIndex: number;
   worldId: string;
@@ -49,10 +45,6 @@ export function OccurrenceScopesStep({
   onChangeWorld: () => void;
   onClear: () => void;
   onConfirm: () => void;
-  /** True when confirming this one creates the Match and opens the room. */
-  isFinalOccurrence?: boolean;
-  submitting?: boolean;
-  rolledBack?: boolean;
 }) {
   const world = usePlayableWorld(worldId);
   const query = usePlayableScopes(worldId);
@@ -146,28 +138,18 @@ export function OccurrenceScopesStep({
 
         <StepFooter onBack={onBack}>
           <p className="text-sm leading-6 text-muted-foreground">
-            {!complete
-              ? `اختر ${SCOPES_PER_OCCURRENCE - selectedScopeIds.length} نطاقات إضافية.`
-              : isFinalOccurrence
-                ? rolledBack
-                  ? "ما ضبطت معنا. جرّب مرة ثانية."
-                  : "كل شي جاهز — نفتح الغرفة ونستنى اللاعبين."
-                : "هذي المحطة جاهزة."}
+            {complete
+              ? "هذه المحطة جاهزة."
+              : `اختر ${SCOPES_PER_OCCURRENCE - selectedScopeIds.length} نطاقات إضافية.`}
           </p>
           <Button
             type="button"
             size="lg"
-            disabled={!complete || submitting}
+            disabled={!complete}
             onClick={onConfirm}
             className="akwaan-primary-action min-w-40 rounded-[var(--radius)] font-black"
           >
-            {isFinalOccurrence ? (
-              <PendingButtonContent pending={submitting} pendingLabel="نجهز الغرفة...">
-                جهّز الغرفة
-              </PendingButtonContent>
-            ) : (
-              "متابعة"
-            )}
+            متابعة
           </Button>
         </StepFooter>
       </div>

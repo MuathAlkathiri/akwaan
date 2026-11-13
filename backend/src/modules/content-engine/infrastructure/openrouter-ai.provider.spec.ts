@@ -9,7 +9,6 @@ import {
   OpenRouterAiProvider,
   OpenRouterTimeoutError,
   OpenRouterUnavailableError,
-  UnclassifiedSchemaKeywordError,
 } from './openrouter-ai.provider';
 
 /**
@@ -790,68 +789,5 @@ describe('provider billing ambiguity and error classification', () => {
 
     expect(thrown).toBeInstanceOf(OpenRouterTimeoutError);
     expect((thrown as OpenRouterTimeoutError).billingUnknown).toBe(true);
-  });
-
-  it('classifies pre-dispatch UnclassifiedSchemaKeywordError as definitelyNotBilled: true without wrapping in OpenRouterTimeoutError or calling fetch', async () => {
-    const fetchImpl = jest.fn() as unknown as typeof fetch;
-    const provider = new OpenRouterAiProvider(config(), fetchImpl);
-
-    let thrown: unknown;
-    try {
-      await provider.generateText({
-        ...request,
-        responseSchema: {
-          type: 'object',
-          additionalProperties: false,
-          required: ['a'],
-          properties: { a: { type: 'string', someFutureKeyword: true } },
-        },
-      });
-    } catch (err) {
-      thrown = err;
-    }
-
-    expect(fetchImpl).not.toHaveBeenCalled();
-    expect(thrown).toBeInstanceOf(UnclassifiedSchemaKeywordError);
-    expect(thrown).not.toBeInstanceOf(OpenRouterTimeoutError);
-    expect((thrown as UnclassifiedSchemaKeywordError).definitelyNotBilled).toBe(
-      true,
-    );
-  });
-
-  it('classifies pre-dispatch missing OPENROUTER_API_KEY and ENGINE_GENERATION_MODEL as definitelyNotBilled: true without calling fetch', async () => {
-    const fetchImpl = jest.fn() as unknown as typeof fetch;
-
-    const noKeyProvider = new OpenRouterAiProvider(
-      config({ OPENROUTER_API_KEY: '' }),
-      fetchImpl,
-    );
-    let noKeyError: unknown;
-    try {
-      await noKeyProvider.generateText(request);
-    } catch (err) {
-      noKeyError = err;
-    }
-    expect(fetchImpl).not.toHaveBeenCalled();
-    expect(noKeyError).toBeInstanceOf(OpenRouterUnavailableError);
-    expect((noKeyError as OpenRouterUnavailableError).definitelyNotBilled).toBe(
-      true,
-    );
-
-    const noModelProvider = new OpenRouterAiProvider(
-      config({ ENGINE_GENERATION_MODEL: '' }),
-      fetchImpl,
-    );
-    let noModelError: unknown;
-    try {
-      await noModelProvider.generateText(request);
-    } catch (err) {
-      noModelError = err;
-    }
-    expect(fetchImpl).not.toHaveBeenCalled();
-    expect(noModelError).toBeInstanceOf(OpenRouterUnavailableError);
-    expect(
-      (noModelError as OpenRouterUnavailableError).definitelyNotBilled,
-    ).toBe(true);
   });
 });

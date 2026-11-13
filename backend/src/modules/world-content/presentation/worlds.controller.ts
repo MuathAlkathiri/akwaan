@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -88,31 +87,6 @@ export class WorldsController {
   ) {
     const dto = parseMultipartJsonBody(body, 'world', UpdateWorldDto);
     return envelope(this.worlds.update(worldId, dto, asset));
-  }
-
-  /**
-   * The World's question fallback artwork (roadmap §30.22 Track A). Declared
-   * before the World's own PATCH/DELETE pair so the literal segment wins, and
-   * kept separate from them because this write carries its own image.
-   */
-  @Post(':worldId/question-fallback')
-  @UseInterceptors(worldContentAssetInterceptor)
-  @ApiConsumes('multipart/form-data')
-  setQuestionFallback(
-    @Param('worldId') worldId: string,
-    @UploadedFile() asset?: UploadedWorldContentAsset,
-  ) {
-    if (!asset) {
-      throw new BadRequestException(
-        'Upload a 16:9 image as "asset" to set the question fallback',
-      );
-    }
-    return envelope(this.worlds.setQuestionFallback(worldId, asset));
-  }
-
-  @Delete(':worldId/question-fallback')
-  clearQuestionFallback(@Param('worldId') worldId: string) {
-    return envelope(this.worlds.clearQuestionFallback(worldId));
   }
 
   @Delete(':worldId')

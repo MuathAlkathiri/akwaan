@@ -247,12 +247,6 @@ export interface LiveSessionMatchSnapshot {
     runtimeId: string;
     startedAt: string;
     doubledTeamIds?: string[];
-    /**
-     * The World's decorative question backdrop, as the server captured it at
-     * launch. Absent when the World has no artwork. Never the question's own
-     * media: it is wallpaper, and nothing reads it as the stimulus.
-     */
-    questionBackdropUrl?: string;
   };
   doubles?: Array<{
     teamId: string;

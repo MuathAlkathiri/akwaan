@@ -34,10 +34,7 @@ export class AdminMediaRightsController {
     operationId: 'adminMediaRightsStatus',
     summary: 'Two-layer clearance status for one managed asset',
   })
-  @ApiQuery({
-    name: 'assetUrl',
-    example: '/uploads/questions/bomb-items/x.jpg',
-  })
+  @ApiQuery({ name: 'assetUrl', example: '/uploads/questions/bomb-items/x.jpg' })
   async status(@Query('assetUrl') assetUrl: string) {
     return { data: await this.rights.statusFor(assetUrl) };
   }
@@ -47,10 +44,7 @@ export class AdminMediaRightsController {
     operationId: 'adminMediaRightsAffectedContentItems',
     summary: 'ContentItems that would be affected by changing this asset',
   })
-  @ApiQuery({
-    name: 'assetUrl',
-    example: '/uploads/questions/bomb-items/x.jpg',
-  })
+  @ApiQuery({ name: 'assetUrl', example: '/uploads/questions/bomb-items/x.jpg' })
   async affected(@Query('assetUrl') assetUrl: string) {
     return { data: await this.rights.affectedContentItems(assetUrl) };
   }

@@ -6,11 +6,9 @@ import {
   Patch,
   Post,
   Query,
-  UploadedFile,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   AuthenticatedUser,
   CurrentUser,
@@ -21,17 +19,9 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 import { UserRole } from '../../users/schemas/user.schema';
 import { ContentEngineReviewService } from '../application/content-engine-review.service';
 import {
-  CandidateMediaReviewService,
-  UploadedCandidateMediaFile,
-} from '../application/candidate-media-review.service';
-import { worldContentAssetInterceptor } from '../../world-content/presentation/world-content.http';
-import {
   CandidateApprovalDto,
   CandidateAssessmentDto,
   CandidateEditDto,
-  CandidateMediaAttachDto,
-  CandidateMediaReviewDto,
-  CandidateMediaRightsAcknowledgementDto,
   CandidateRejectionDto,
   CreateCandidateDraftDto,
   ReviewCandidateQueryDto,
@@ -45,10 +35,7 @@ const envelope = <T>(data: T) => ({ data });
 @Roles(UserRole.ADMIN)
 @Controller('admin/content-engine')
 export class ContentEngineReviewController {
-  constructor(
-    private readonly review: ContentEngineReviewService,
-    private readonly media: CandidateMediaReviewService,
-  ) {}
+  constructor(private readonly review: ContentEngineReviewService) {}
 
   @Get('candidates')
   async list(@Query() query: ReviewCandidateQueryDto) {
@@ -124,50 +111,6 @@ export class ContentEngineReviewController {
   ) {
     return envelope(
       await this.review.createDraft(candidateId, dto.expectedRevision, user),
-    );
-  }
-
-  /**
-   * Attach or replace a slot's asset. The upload goes through the same 5 MB,
-   * jpeg/png/webp interceptor as every World Content asset, and the bytes are
-   * then verified and stored by the canonical ingestion service.
-   */
-  @Post('candidates/:candidateId/media/:slotKey/asset')
-  @UseInterceptors(worldContentAssetInterceptor)
-  @ApiConsumes('multipart/form-data')
-  async attachMedia(
-    @Param('candidateId') candidateId: string,
-    @Param('slotKey') slotKey: string,
-    @Body() dto: CandidateMediaAttachDto,
-    @UploadedFile() asset: UploadedCandidateMediaFile | undefined,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return envelope(
-      await this.media.attachUpload(candidateId, slotKey, dto, asset, user),
-    );
-  }
-
-  @Post('candidates/:candidateId/media/:slotKey/review')
-  async reviewMedia(
-    @Param('candidateId') candidateId: string,
-    @Param('slotKey') slotKey: string,
-    @Body() dto: CandidateMediaReviewDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return envelope(
-      await this.media.recordReview(candidateId, slotKey, dto, user),
-    );
-  }
-
-  @Post('candidates/:candidateId/media/:slotKey/rights-acknowledgement')
-  async acknowledgeMediaRights(
-    @Param('candidateId') candidateId: string,
-    @Param('slotKey') slotKey: string,
-    @Body() dto: CandidateMediaRightsAcknowledgementDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return envelope(
-      await this.media.acknowledgeRights(candidateId, slotKey, dto, user),
     );
   }
 }

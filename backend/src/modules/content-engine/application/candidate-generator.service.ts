@@ -16,8 +16,6 @@ import {
   DEFAULT_GENERATION_TEMPERATURE,
   GenerationSpecification,
   MAX_BATCH_GUIDANCE_LENGTH,
-  MECHANIC_ANSWER_MODES,
-  PROMPT_VERSIONS,
   RYO_REQUESTED_DIFFICULTIES,
   RyoRequestedDifficulty,
   buildGenerationSpecification,
@@ -30,7 +28,6 @@ import {
   resolveReasoningEffort,
   resolveRequestedDifficulty,
   resolveRyoMixedDifficultyTargets,
-  generatorAnswerModeFor,
   validateTargetCount,
 } from '../domain/generation-specification';
 import { EngineCandidateDocument } from '../schemas/engine-candidate.schema';
@@ -52,16 +49,11 @@ import { GenerationJobService } from './generation-job.service';
  */
 export const OUTPUT_TOKENS_PER_CANDIDATE = 800;
 
-/** الكومبو grading contract: at most ten accepted spellings of one answer. */
-export const COMBO_MAX_ACCEPTED_ANSWERS = 10;
-
-/**
- * Re-exported, never redeclared: the mechanic map, its prompt versions and the
- * capability lookup live in the domain module, which is what job creation and
- * the orchestrator read. A copy here would let the generator claim a mechanic
- * the rest of the pipeline refuses.
- */
-export { MECHANIC_ANSWER_MODES, PROMPT_VERSIONS, generatorAnswerModeFor };
+/** Prompt/schema revision, per mechanic. Bump when either changes. */
+export const PROMPT_VERSIONS: Record<string, string> = {
+  multiple_choice: 'mc-v2',
+  closest: 'closest-v2',
+};
 
 /** Back-compat for callers and stored candidates written before per-mechanic versions. */
 export const PROMPT_VERSION = PROMPT_VERSIONS['multiple_choice'];
@@ -120,6 +112,24 @@ interface RyoDifficultyTargets {
   medium: number;
   relativelyDifficult: number;
 }
+
+export const MECHANIC_ANSWER_MODES: Record<
+  string,
+  'multiple_choice' | 'closest'
+> = {
+  'read-your-opponent': 'multiple_choice',
+  closest: 'closest',
+};
+
+/**
+ * The single capability lookup shared by preflight and execution. Keeping the
+ * lookup beside the generator's answer-mode map prevents the Admin seam from
+ * drifting into a second list of mechanics the engine claims to support.
+ */
+export const generatorAnswerModeFor = (
+  mechanicKey: string,
+): 'multiple_choice' | 'closest' | undefined =>
+  MECHANIC_ANSWER_MODES[mechanicKey];
 
 /**
  * What the model must return. Passed to the provider as `responseSchema`, so a
@@ -331,82 +341,6 @@ export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
     },
   },
 };
-
-export const COMBO_CANDIDATE_SCHEMA: Record<string, unknown> = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['candidates'],
-  properties: {
-    candidates: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        // Authoring order, and the stage is settled second on purpose: the
-        // ladder is the mechanic. Choosing the stage before the wording exists
-        // is what stops a stage-1 question from being relabelled stage 4
-        // because it happened to come out hard.
-        required: [
-          'concept',
-          'comboStage',
-          'stageJustification',
-          'prompt',
-          'acceptedAnswers',
-          'factualClaims',
-        ],
-        properties: {
-          concept: {
-            type: 'string',
-            description:
-              'The idea in one line, before any wording exists: what the player has to know, and why it belongs to this Scope.',
-          },
-          comboStage: {
-            type: 'integer',
-            enum: [1, 2, 3, 4],
-            description:
-              'Which rung of the ladder this item is. 1 is recognisable to a casual follower of this Scope; 4 is for someone who follows it closely.',
-          },
-          stageJustification: {
-            type: 'string',
-            description:
-              'Why this item sits at that rung rather than the one below or above it. Depth of knowledge only — never trick wording or an obscure spelling.',
-          },
-          prompt: {
-            type: 'string',
-            description:
-              'Arabic question text. It must not contain the answer, any accepted spelling of it, or a word that gives it away.',
-          },
-          acceptedAnswers: {
-            type: 'array',
-            minItems: 1,
-            maxItems: 10,
-            items: { type: 'string' },
-            description:
-              'The typed answer, graded by text match. The canonical short name first, then only genuinely DIFFERENT forms a correct player would type: a well-known nickname or short form, the full name beside the common one, a widely used Latin transliteration. Do NOT list spelling variants that differ only in أ/إ/آ, ة/ه, ى/ي, diacritics, punctuation, letter case, or a leading ال — grading already folds those, so they add nothing. Never a different entity, a broader category, or a near-miss that should be wrong.',
-          },
-          factualClaims: {
-            type: 'array',
-            items: { type: 'string' },
-            description:
-              'The answer-critical claim(s) that make the accepted answer the correct one.',
-          },
-        },
-      },
-    },
-  },
-};
-
-export const COMBO_TASK_GUIDANCE = [
-  '## COMBO TASK',
-  'الكومبو is a ladder inside one Scope: four stages, each strictly harder than the one below it. The stage is the difficulty, never the topic.',
-  'Difficulty comes from how deep the knowledge runs. It never comes from trick wording, ambiguity, an obscure spelling, or a detail nobody records.',
-  'A stage-1 question a casual follower cannot answer is mis-staged, and so is a stage-4 question they answer instantly.',
-  'The answer is typed and graded by text match, so it must be ONE short canonical name or phrase — not a sentence, not a list, not a spelled-out number.',
-  'If two correct players would plausibly type genuinely different words, the question has no stable written answer and belongs to another mechanic. Replace it.',
-  'Grading folds أ/إ/آ, ة/ه, ى/ي, diacritics, punctuation, case and a leading ال, so never spend an accepted answer on those. List only forms that differ as words.',
-  'Digits are NOT folded: ٧ and 7 grade as different answers, so an answer that is a number belongs to another mechanic.',
-  'Spread the batch across the four stages rather than clustering on one rung.',
-].join('\n');
 
 /**
  * Extends a candidate generation schema with an explicit `slotIndex` property
@@ -662,18 +596,14 @@ export function composeGenerationPrompt(
       >
     >,
   count: number,
-  answerMode: 'multiple_choice' | 'closest' | 'match' = 'multiple_choice',
+  answerMode: 'multiple_choice' | 'closest' = 'multiple_choice',
   options?: BuildPromptOptions,
   fallbackTargetsResolver?: () => RyoDifficultyTargets,
 ): string {
   const resolvedDifficulty =
     answerMode === 'closest'
       ? resolveRequestedDifficulty('closest', options?.difficulty)
-      : answerMode === 'match'
-        ? // الكومبو carries its difficulty in the stage ladder, so it takes no
-          // separate difficulty selection.
-          resolveRequestedDifficulty('combo', options?.difficulty)
-        : resolveRequestedDifficulty('read-your-opponent', options?.difficulty);
+      : resolveRequestedDifficulty('read-your-opponent', options?.difficulty);
   const normalizedGuidance = normalizeBatchGuidance(options?.batchGuidance);
 
   const planner = new GenerationPlannerService();
@@ -709,16 +639,14 @@ export function composeGenerationPrompt(
     formattedPlan,
     answerMode === 'closest'
       ? CLOSEST_TASK_GUIDANCE
-      : answerMode === 'match'
-        ? COMBO_TASK_GUIDANCE
-        : [
-            RYO_TASK_GUIDANCE,
-            buildRyoDifficultyGuidance(
-              resolvedDifficulty ?? 'mixed',
-              options?.ryoDifficultyTargets,
-              fallbackTargetsResolver,
-            ),
-          ].join('\n\n'),
+      : [
+          RYO_TASK_GUIDANCE,
+          buildRyoDifficultyGuidance(
+            resolvedDifficulty ?? 'mixed',
+            options?.ryoDifficultyTargets,
+            fallbackTargetsResolver,
+          ),
+        ].join('\n\n'),
     ...(normalizedGuidance
       ? [
           [
@@ -773,8 +701,6 @@ export interface CandidateAuthoring {
   distractorRationale?: { optionId: string; why: string }[];
   /** RYO: an authoring hypothesis about table difficulty, never a measurement. */
   estimatedConfidence?: { band: string; why: string };
-  /** الكومبو: why the item sits on the stage it claims. */
-  stageJustification?: string;
   /** Which Closest direction this item takes. Absent on pre-2g candidates. */
   answerBasis?: 'reasoning' | 'knowledge-anchored';
   playerReasoningStrategy?: string;
@@ -895,7 +821,7 @@ export class CandidateGeneratorService {
   buildPrompt(
     context: ResolvedAuthoringContext,
     count: number,
-    answerMode: 'multiple_choice' | 'closest' | 'match' = 'multiple_choice',
+    answerMode: 'multiple_choice' | 'closest' = 'multiple_choice',
     options?: BuildPromptOptions,
   ): string {
     return composeGenerationPrompt(context, count, answerMode, options, () =>
@@ -1017,9 +943,7 @@ export class CandidateGeneratorService {
     const baseSchema =
       answerMode === 'closest'
         ? CLOSEST_CANDIDATE_SCHEMA
-        : answerMode === 'match'
-          ? COMBO_CANDIDATE_SCHEMA
-          : RYO_CANDIDATE_SCHEMA;
+        : RYO_CANDIDATE_SCHEMA;
     const responseSchema = hasCreativeSlots
       ? schemaWithCreativeSlots(baseSchema)
       : baseSchema;
@@ -1191,91 +1115,6 @@ export class CandidateGeneratorService {
    * numbers here because a NaN would otherwise travel all the way to a Mongo
    * document before anything noticed.
    */
-  /**
-   * الكومبو: a staged, text-matched answer.
-   *
-   * The stage and the accepted answers are both refused rather than repaired.
-   * A stage outside 1-4 cannot be guessed back into range, and an empty or
-   * over-long answer list is a broken grading contract, not a formatting slip:
-   * either one would reach a player's phone as a question that can never be
-   * answered correctly.
-   */
-  private parseCombo(item: unknown): ParsedCandidate {
-    const value = item as {
-      concept?: unknown;
-      comboStage?: unknown;
-      stageJustification?: unknown;
-      prompt?: unknown;
-      acceptedAnswers?: unknown;
-      factualClaims?: unknown;
-    };
-
-    const factualClaims = Array.isArray(value.factualClaims)
-      ? value.factualClaims.filter(
-          (claim): claim is string =>
-            typeof claim === 'string' && Boolean(claim.trim()),
-        )
-      : [];
-    if (!factualClaims.length) {
-      throw new CandidateParseError(
-        'CANDIDATE_FACTUAL_CLAIMS_REQUIRED',
-        'every candidate must state its answer-critical claim',
-      );
-    }
-
-    const stage = value.comboStage;
-    if (
-      typeof stage !== 'number' ||
-      !Number.isInteger(stage) ||
-      stage < 1 ||
-      stage > 4
-    ) {
-      throw new CandidateParseError(
-        'COMBO_STAGE_INVALID',
-        'comboStage must be an integer from 1 to 4',
-      );
-    }
-
-    // Case and surrounding space are not a different answer; the duplicate
-    // check uses a folded key but the authored spelling is what is kept.
-    const seen = new Set<string>();
-    const acceptedAnswers: string[] = [];
-    for (const raw of Array.isArray(value.acceptedAnswers)
-      ? value.acceptedAnswers
-      : []) {
-      const answer = text(raw);
-      if (!answer) continue;
-      const key = answer.toLocaleLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      acceptedAnswers.push(answer);
-    }
-    if (
-      !acceptedAnswers.length ||
-      acceptedAnswers.length > COMBO_MAX_ACCEPTED_ANSWERS
-    ) {
-      throw new CandidateParseError(
-        'COMBO_ACCEPTED_ANSWERS_INVALID',
-        `acceptedAnswers must hold 1 to ${COMBO_MAX_ACCEPTED_ANSWERS} distinct non-empty answers`,
-      );
-    }
-
-    return {
-      factualClaims,
-      draft: {
-        prompt: { ar: typeof value.prompt === 'string' ? value.prompt : '' },
-        answerPayload: { mode: 'match', acceptedAnswers },
-        mechanicPayload: { comboStage: stage },
-      },
-      authoring: {
-        ...(text(value.concept) ? { concept: text(value.concept) } : {}),
-        ...(text(value.stageJustification)
-          ? { stageJustification: text(value.stageJustification) }
-          : {}),
-      },
-    };
-  }
-
   private parseClosest(item: unknown): ParsedCandidate {
     const value = item as {
       concept?: unknown;
@@ -1379,7 +1218,7 @@ export class CandidateGeneratorService {
   public parse(
     raw: string,
     count: number,
-    answerMode: 'multiple_choice' | 'closest' | 'match' = 'multiple_choice',
+    answerMode: 'multiple_choice' | 'closest' = 'multiple_choice',
     options?: { requireSlotIdentity?: boolean },
   ): ParsedCandidate[] {
     let payload: unknown;
@@ -1525,9 +1364,6 @@ export class CandidateGeneratorService {
 
     if (answerMode === 'closest') {
       return orderedCandidates.map((item) => this.parseClosest(item));
-    }
-    if (answerMode === 'match') {
-      return orderedCandidates.map((item) => this.parseCombo(item));
     }
     return orderedCandidates.map((item) => {
       const value = item as {

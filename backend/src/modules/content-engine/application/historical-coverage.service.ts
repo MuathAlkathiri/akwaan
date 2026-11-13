@@ -29,7 +29,6 @@ import {
   isApprovalValidAtRevision,
   reviewDecisionRevision,
 } from '../domain/candidate-approval-provenance';
-import { resolveEffectiveCandidateFamilyKey } from '../domain/candidate-identity-metadata';
 
 @Injectable()
 export class HistoricalCoverageService {
@@ -210,10 +209,6 @@ export class HistoricalCoverageService {
     // The unique indexes prevent duplicates; they do not prove provenance.
     const allItemIds = items.map((item) => item._id.toString());
     const approvedPublicationItemIds = new Set<string>();
-    const publishedCandidateByItemId = new Map<
-      string,
-      EngineCandidateDocument
-    >();
     let inconsistentPublicationCount = 0;
 
     if (allItemIds.length > 0) {
@@ -250,9 +245,8 @@ export class HistoricalCoverageService {
           // reached through a verified carry-forward chain.
           isApprovalValidAtRevision(candidate, pub.reviewRevision),
         );
-        if (isConsistent && candidate) {
+        if (isConsistent) {
           approvedPublicationItemIds.add(pub.contentItemId);
-          publishedCandidateByItemId.set(pub.contentItemId, candidate);
         } else {
           inconsistentPublicationCount += 1;
         }
@@ -319,25 +313,11 @@ export class HistoricalCoverageService {
       const isPlayable = isReady && mechanicSlugs.length > 0;
 
       // Determine classification
-      let classifiedKey = this.extractFamilyKeyFromContentItem(
+      const classifiedKey = this.extractFamilyKeyFromContentItem(
         item,
         canonicalFamilyKeys,
         warnings,
       );
-      const itemMetaFamilyKey = (
-        item.metadata as { familyKey?: string } | undefined
-      )?.familyKey;
-      if (
-        !classifiedKey &&
-        !itemMetaFamilyKey &&
-        publishedCandidateByItemId.has(itemId)
-      ) {
-        classifiedKey = this.extractFamilyKeyFromCandidate(
-          publishedCandidateByItemId.get(itemId)!,
-          canonicalFamilyKeys,
-          warnings,
-        );
-      }
       const targetFamily = classifiedKey
         ? families[classifiedKey]
         : unclassified;
@@ -713,56 +693,39 @@ export class HistoricalCoverageService {
   }
 
   private extractFamilyKeyFromCandidate(
-    cand: {
-      candidateId: string;
-      authoring?: unknown;
-      draft?: unknown;
-      reviewDecision?: unknown;
-    },
+    cand: { candidateId: string; authoring?: unknown; draft?: unknown },
     canonicalFamilyKeys: Set<string>,
     warnings: string[],
   ): string | null {
-    const draftObj = (
-      cand.draft && typeof cand.draft === 'object' ? cand.draft : {}
-    ) as Record<string, unknown>;
-    const authoringObj = (
-      cand.authoring && typeof cand.authoring === 'object'
-        ? cand.authoring
-        : null
-    ) as Record<string, unknown> | null;
-    const decisionObj = (
-      cand.reviewDecision && typeof cand.reviewDecision === 'object'
-        ? cand.reviewDecision
-        : null
-    ) as Record<string, unknown> | null;
-
-    let effectiveFamilyKey: string | undefined;
-    try {
-      effectiveFamilyKey = resolveEffectiveCandidateFamilyKey(
-        draftObj,
-        authoringObj,
-        decisionObj,
-      );
-    } catch {
-      warnings.push(
-        `Candidate "${cand.candidateId}" has conflicting familyKey identity metadata. Counted as unclassified.`,
-      );
-      return null;
-    }
-
-    if (effectiveFamilyKey) {
-      if (canonicalFamilyKeys.has(effectiveFamilyKey)) {
-        return effectiveFamilyKey;
+    // 1. Candidate authoring familyKey
+    const authoring = cand.authoring as { familyKey?: string } | undefined;
+    if (authoring?.familyKey) {
+      const trimmed = authoring.familyKey.trim();
+      if (canonicalFamilyKeys.has(trimmed)) {
+        return trimmed;
       }
       warnings.push(
-        `Candidate "${cand.candidateId}" has unknown familyKey "${effectiveFamilyKey}". Counted as unclassified.`,
+        `Candidate "${cand.candidateId}" has unknown familyKey "${trimmed}". Counted as unclassified.`,
       );
       return null;
     }
 
+    // 2. Draft metadata familyKey or tags
     const draftMeta = (
-      draftObj as { metadata?: { tags?: string[] } } | undefined
+      cand.draft as
+        { metadata?: { familyKey?: string; tags?: string[] } } | undefined
     )?.metadata;
+    if (draftMeta?.familyKey) {
+      const trimmed = draftMeta.familyKey.trim();
+      if (canonicalFamilyKeys.has(trimmed)) {
+        return trimmed;
+      }
+      warnings.push(
+        `Candidate "${cand.candidateId}" draft has unknown familyKey "${trimmed}". Counted as unclassified.`,
+      );
+      return null;
+    }
+
     if (Array.isArray(draftMeta?.tags)) {
       for (const tag of draftMeta.tags) {
         const clean = tag.replace(/^family:/i, '').trim();

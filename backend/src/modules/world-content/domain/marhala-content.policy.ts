@@ -122,3 +122,4 @@ export function normalizeMarhalaMedia(media: unknown): MarhalaRuntimeMedia {
 
   return { type: 'none' };
 }
+

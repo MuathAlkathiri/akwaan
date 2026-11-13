@@ -27,17 +27,6 @@ export class World extends Document {
 
   @Prop({ type: ContentAssetDefinition, _id: false }) banner?: ContentAssetRef;
 
-  /**
-   * The World's one question fallback artwork (roadmap §30.22 Track A).
-   *
-   * Decorative only: a calm 16:9 backdrop for a question that carries no
-   * gameplay media of its own. It is referenced here and nowhere else — never
-   * copied into a ContentItem — and it never stands in for required gameplay
-   * media, which `resolveQuestionPresentation` enforces.
-   */
-  @Prop({ type: ContentAssetDefinition, _id: false, default: null })
-  questionFallback?: ContentAssetRef | null;
-
   /** World presentation profiles (roadmap 5). */
   @Prop({ type: String, trim: true, default: null })
   soundPack?: string | null;

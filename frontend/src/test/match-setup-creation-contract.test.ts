@@ -99,9 +99,13 @@ const configuredDraft = () => {
   let draft = configure(createDraft(), 0, ANIME, ANIME_POOL);
   draft = configure(draft, 1, FOOTBALL, FOOTBALL_POOL);
   draft = configure(draft, 2, ANIME, ANIME_POOL_2);
-  // There is nothing to set about the teams: a Match is always الأزرق against
-  // الأحمر, and the host never passes through a team step at all.
-  return draft;
+  return apply(
+    draft,
+    // Names, not colours: a team called "صقور الرياض" makes a reveal ambiguous.
+    { type: "set-team-name", index: 0, name: "صقور الرياض" },
+    { type: "set-team-name", index: 1, name: "نجوم جدة" },
+    { type: "set-team-color", index: 1, colorId: "rose" },
+  );
 };
 
 /** The board-stage snapshot the production endpoint answers with. */
@@ -193,14 +197,13 @@ describe("configured Match creation contract", () => {
     expect(created.reconnectToken).toBe("reconnect-token");
   });
 
-  it("sends the two fixed teams and no participants", () => {
+  it("sends the two team names, their colours, and no participants", () => {
     return createConfiguredMatch(configuredDraft(), dependencies).then(() => {
-      // A Match is always الأزرق against الأحمر. The host chooses nothing here,
-      // and the identity still travels with the session so every client resolves
-      // the same two hues rather than deciding locally.
+      // The colours go with the names so every client resolves the same two hues
+      // from the session rather than deciding locally.
       expect(recorded[0].body).toEqual({
-        teamNames: ["الأزرق", "الأحمر"],
-        teamColorIds: ["blue", "red"],
+        teamNames: ["صقور الرياض", "نجوم جدة"],
+        teamColorIds: ["indigo", "rose"],
         modeKey: "core-timed-turns",
         modeVersion: 1,
       });

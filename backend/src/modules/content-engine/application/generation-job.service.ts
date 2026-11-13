@@ -21,10 +21,8 @@ import {
   freezeGenerationSpecification,
   generatorAnswerModeFor,
   isGenerationSpecificationComplete,
-  isValidBatchIntentId,
 } from '../domain/generation-specification';
 import { EngineJobDocument } from '../schemas/engine-job.schema';
-import type { GenerationPlan } from './generation-planner.service';
 
 export interface SubmitJobInput {
   mechanicKey: string;
@@ -35,36 +33,9 @@ export interface SubmitJobInput {
   contextRevision: string;
   generationSpec?: GenerationSpecification | null;
   planDigest?: string | null;
-  /**
-   * The exact GenerationPlan Submit priced and the Admin approved (C-9). Not
-   * part of request identity: `requestHashOf` ignores it, so idempotency is
-   * unchanged and a deduplicated resubmission keeps the first approved plan.
-   */
-  approvedPlan?: GenerationPlan | null;
   createdBy?: string | null;
   createdByEmail?: string | null;
 }
-
-/**
- * Where Submit records the approved plan: the `pending` checkpoint, i.e. the
- * stage every job is inserted at. Runtime pins it at `context_resolved`.
- */
-export const APPROVED_PLAN_CHECKPOINT_STAGE = 'pending' as const;
-
-const initialStageCheckpoints = (
-  approvedPlan: GenerationPlan | null | undefined,
-  now: Date,
-): Record<string, Record<string, unknown>> =>
-  approvedPlan
-    ? {
-        [APPROVED_PLAN_CHECKPOINT_STAGE]: {
-          completedAt: now.toISOString(),
-          approvedPlan,
-          generationPlanDigest: approvedPlan.digest,
-          planSeed: approvedPlan.seed ?? null,
-        },
-      }
-    : {};
 
 export interface LeasedJob {
   jobId: string;
@@ -180,10 +151,7 @@ export class GenerationJobService {
             reservedMicros: 0,
             spentMicros: 0,
             pipelineStage: 'pending' as EnginePipelineStage,
-            stageCheckpoints: initialStageCheckpoints(
-              input.approvedPlan,
-              new Date(),
-            ),
+            stageCheckpoints: {},
             awaitingReviewReason: null,
           },
         },
@@ -265,7 +233,6 @@ export class GenerationJobService {
     worldKey?: string;
     scopeKey?: string;
     mechanicKey?: string;
-    batchIntentId?: string;
   }): Promise<{
     items: Array<EngineJobDocument & { _id?: unknown }>;
     nextCursor: string | null;
@@ -316,20 +283,6 @@ export class GenerationJobService {
       input.mechanicKey.trim().length > 0
     ) {
       filter.mechanicKey = input.mechanicKey.trim();
-    }
-    // Exact lookup of the job (if any) recorded for one New Batch intent, so
-    // a Submit whose response was lost can be reconciled before another
-    // paid batch is allowed. Legacy jobs have no intent and never match.
-    if (input?.batchIntentId !== undefined) {
-      const intent = input.batchIntentId.trim();
-      if (!isValidBatchIntentId(intent)) {
-        throw new BadRequestException({
-          code: 'BATCH_INTENT_INVALID',
-          message:
-            'BATCH_INTENT_INVALID: batchIntentId must be 8-64 characters of letters, digits, "-" or "_"',
-        });
-      }
-      filter['generationSpec.batchIntentId'] = intent;
     }
 
     const rows = await this.jobs

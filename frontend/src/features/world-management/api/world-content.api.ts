@@ -49,24 +49,6 @@ export const deleteWorld = async (worldId: string) => {
   await apiClient.delete(`/admin/worlds/${worldId}`);
 };
 
-/**
- * The World's 16:9 question backdrop (roadmap §30.22 Track A). It has its own
- * endpoints because the World write already carries one image for the banner,
- * and because only an uploaded file — never a URL — may become the asset.
- */
-export const setWorldQuestionFallback = (worldId: string, file: File) => {
-  const formData = new FormData();
-  formData.append("asset", file);
-  return unwrap<World>(
-    apiClient.post(`/admin/worlds/${worldId}/question-fallback`, formData),
-  );
-};
-
-export const clearWorldQuestionFallback = (worldId: string) =>
-  unwrap<World>(
-    apiClient.delete(`/admin/worlds/${worldId}/question-fallback`),
-  );
-
 /* Scopes */
 
 export const fetchScopes = (worldId: string) =>

@@ -50,13 +50,11 @@ import {
   RyoDifficultyTargets,
   RyoRequestedDifficulty,
   buildGenerationSpecification,
-  computeGenerationPlanSeed,
   computePreflightPlanDigest,
   freezeGenerationSpecification,
   generatorAnswerModeFor,
   isGenerationSpecificationComplete,
   normalizeBatchGuidance,
-  normalizeBatchIntentId,
   resolveMaxBatchSize,
   resolveOutputTokensPerCandidate,
   resolveRequestedDifficulty,
@@ -91,7 +89,6 @@ import { DeterministicScreenService } from './deterministic-screen.service';
 import {
   QUALITY_JUDGE_MAX_OUTPUT_TOKENS,
   estimateQualityJudgePromptTokens,
-  qualityJudgeDraftAllowanceTokens,
 } from './quality-judge.service';
 
 export interface EngineAdminActor {
@@ -106,12 +103,6 @@ export interface PreflightRequest {
   targetCount: number;
   difficulty?: RyoRequestedDifficulty | string | null;
   batchGuidance?: string | null;
-  /**
-   * One intentional "New Batch" action, minted by the client and sent with
-   * both Preflight and Submit. Part of the specification, so it shapes the
-   * request identity, the creative-slot seed and the plan digest.
-   */
-  batchIntentId?: string | null;
 }
 
 export interface SubmitJobRequest extends PreflightRequest {
@@ -200,42 +191,6 @@ export class EngineJobAdminService {
     );
   }
 
-  /**
-   * The plan Preflight prices and Submit approves. Seeded from the
-   * specification (C-9), so Runtime — which holds the same specification —
-   * would allocate the identical slots; Submit additionally persists the plan.
-   *
-   * `resolved` is false when the canonical catalog/coverage could not be
-   * resolved and the estimate fell back to a V1 plan. Such a plan is good
-   * enough to price, but it is never persisted as the approved plan: Runtime
-   * must keep failing closed on the same resolution error rather than inherit
-   * a silently degraded plan.
-   */
-  private async resolveGenerationPlan(
-    generationSpec: GenerationSpecification,
-  ): Promise<{ plan: GenerationPlan; resolved: boolean }> {
-    const planner =
-      this.planner ??
-      new GenerationPlannerService(this.contexts, this.historicalCoverage);
-    const input = {
-      worldKey: generationSpec.worldKey,
-      scopeKey: generationSpec.scopeKey,
-      mechanicKey: generationSpec.mechanicKey,
-      count: generationSpec.targetCount,
-      difficulty: generationSpec.difficulty,
-      batchGuidance: generationSpec.batchGuidance,
-      seed: computeGenerationPlanSeed(generationSpec),
-    };
-    try {
-      return {
-        plan: await planner.planWithResolvedContext(input),
-        resolved: true,
-      };
-    } catch {
-      return { plan: planner.plan(input), resolved: false };
-    }
-  }
-
   private estimateBatchCost(
     context: Pick<
       ResolvedAuthoringContext,
@@ -248,7 +203,6 @@ export class EngineJobAdminService {
         >
       >,
     generationSpec: GenerationSpecification,
-    generationPlan?: GenerationPlan,
   ): {
     estimatedMicros: number;
     generationEstimatedMicros: number;
@@ -269,7 +223,6 @@ export class EngineJobAdminService {
         difficulty: generationSpec.difficulty,
         ryoDifficultyTargets: generationSpec.ryoDifficultyTargets,
         batchGuidance: generationSpec.batchGuidance,
-        generationPlan,
       },
       () => resolveRyoMixedDifficultyTargets(this.config),
     );
@@ -290,8 +243,6 @@ export class EngineJobAdminService {
       generationSpec.qualityModel ?? generationSpec.generationModel;
     const judgePromptTokensPerCall = estimateQualityJudgePromptTokens(
       context.mechanic ?? '',
-      undefined,
-      qualityJudgeDraftAllowanceTokens(generationSpec.outputTokensPerCandidate),
     );
     const judgeMaxOutputTokensPerCall = QUALITY_JUDGE_MAX_OUTPUT_TOKENS;
     const maxJudgeEstimatedMicros = this.budget.estimate({
@@ -1108,7 +1059,6 @@ export class EngineJobAdminService {
       validateTargetCount(input.targetCount, this.maxBatchSize());
       resolveRequestedDifficulty(resolvedMechanicKey!, input.difficulty);
       normalizeBatchGuidance(input.batchGuidance);
-      normalizeBatchIntentId(input.batchIntentId);
     } catch (error) {
       if (error instanceof GenerationSpecValidationError) {
         return {
@@ -1205,7 +1155,6 @@ export class EngineJobAdminService {
         targetCount: input.targetCount,
         difficulty: input.difficulty,
         batchGuidance: input.batchGuidance,
-        batchIntentId: input.batchIntentId,
       });
     } catch (error) {
       if (error instanceof GenerationSpecValidationError) {
@@ -1233,13 +1182,7 @@ export class EngineJobAdminService {
     });
 
     try {
-      const { plan: generationPlan } =
-        await this.resolveGenerationPlan(generationSpec);
-      const costPlan = this.estimateBatchCost(
-        resolvedContext!,
-        generationSpec,
-        generationPlan,
-      );
+      const costPlan = this.estimateBatchCost(resolvedContext!, generationSpec);
       const {
         estimatedMicros,
         generationEstimatedMicros,
@@ -1268,8 +1211,31 @@ export class EngineJobAdminService {
         engineEnabled,
         liveProviderEnabled,
         providerReady: readiness.providerReady,
-        generationPlanDigest: generationPlan.digest,
       });
+
+      const planner =
+        this.planner ??
+        new GenerationPlannerService(this.contexts, this.historicalCoverage);
+      let generationPlan: GenerationPlan;
+      try {
+        generationPlan = await planner.planWithResolvedContext({
+          worldKey: generationSpec.worldKey,
+          scopeKey: generationSpec.scopeKey,
+          mechanicKey: generationSpec.mechanicKey,
+          count: generationSpec.targetCount,
+          difficulty: generationSpec.difficulty,
+          batchGuidance: generationSpec.batchGuidance,
+        });
+      } catch {
+        generationPlan = planner.plan({
+          worldKey: generationSpec.worldKey,
+          scopeKey: generationSpec.scopeKey,
+          mechanicKey: generationSpec.mechanicKey,
+          count: generationSpec.targetCount,
+          difficulty: generationSpec.difficulty,
+          batchGuidance: generationSpec.batchGuidance,
+        });
+      }
 
       const submissionReady =
         readiness.submissionReady && withinBatchCap && withinMonthlyBudget;
@@ -1448,7 +1414,6 @@ export class EngineJobAdminService {
         targetCount: input.targetCount,
         difficulty: input.difficulty,
         batchGuidance: input.batchGuidance,
-        batchIntentId: input.batchIntentId,
       });
     } catch (error) {
       if (error instanceof GenerationSpecValidationError) {
@@ -1495,7 +1460,6 @@ export class EngineJobAdminService {
       this.aiProvider !== undefined;
 
     let currentPlanDigest: string | undefined;
-    let approvedPlan: GenerationPlan | undefined;
     if (hasExplicitEngineConfig) {
       const readiness = this.resolveEngineReadiness({
         targetCount: generationSpec.targetCount,
@@ -1510,13 +1474,7 @@ export class EngineJobAdminService {
         });
       }
 
-      const { plan: generationPlan, resolved: planResolved } =
-        await this.resolveGenerationPlan(generationSpec);
-      const costPlan = this.estimateBatchCost(
-        resolvedContext,
-        generationSpec,
-        generationPlan,
-      );
+      const costPlan = this.estimateBatchCost(resolvedContext, generationSpec);
       const { estimatedMicros } = costPlan;
       const totalEstimatedMicros =
         costPlan.generationEstimatedMicros + costPlan.maxJudgeEstimatedMicros;
@@ -1552,7 +1510,6 @@ export class EngineJobAdminService {
         engineEnabled: readiness.engineEnabled,
         liveProviderEnabled: readiness.liveProviderEnabled,
         providerReady: readiness.providerReady,
-        generationPlanDigest: generationPlan.digest,
       });
 
       const suppliedDigest = input.planDigest?.trim();
@@ -1570,10 +1527,6 @@ export class EngineJobAdminService {
             'PREFLIGHT_PLAN_DRIFT: generation plan has changed since preflight; run preflight again before submitting',
         });
       }
-      // The digest matched, so this is exactly the plan the Admin approved
-      // and was priced. Persisting it is what lets Runtime execute it rather
-      // than re-plan against coverage that may have moved since.
-      if (planResolved) approvedPlan = generationPlan;
     } else if (input.planDigest !== undefined) {
       const engineEnabled = this.truthy(CONTENT_ENGINE_ENABLED);
       const liveProviderEnabled = this.truthy(ENGINE_LIVE_PROVIDER_ENABLED);
@@ -1612,7 +1565,6 @@ export class EngineJobAdminService {
       contextRevision: contextHash,
       generationSpec,
       ...(currentPlanDigest ? { planDigest: currentPlanDigest } : {}),
-      ...(approvedPlan ? { approvedPlan } : {}),
       ...(actor
         ? {
             createdBy: actor.actorId,
@@ -1856,7 +1808,6 @@ export class EngineJobAdminService {
     worldKey?: string;
     scopeKey?: string;
     mechanicKey?: string;
-    batchIntentId?: string;
   }): Promise<{
     items: Record<string, unknown>[];
     nextCursor: string | null;

@@ -98,9 +98,7 @@ describe('Bomb authored content', () => {
 
     it('accepts an item with explicit type none', () => {
       const items = list(10);
-      items[2] = item(3, {
-        media: { type: ContentMediaType.NONE, assets: [] },
-      });
+      items[2] = item(3, { media: { type: ContentMediaType.NONE, assets: [] } });
       const built = buildBombRuntimeItems(items);
       expect(built[2].media).toEqual({ type: 'none' });
       expect(built[2].imageUrl).toBe('');

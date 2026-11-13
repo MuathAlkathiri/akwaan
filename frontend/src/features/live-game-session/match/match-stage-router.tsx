@@ -33,7 +33,6 @@ import { FirstNoteGameplayPanel } from "../components/first-note-gameplay-panel"
 import { MOVING_XO_MODE_KEY } from "./moving-xo.presentation";
 import { MovingXoScreen } from "../components/moving-xo-screen";
 import { MovingXoPhonePanel } from "../components/moving-xo-phone-panel";
-import { WaitingRoom } from "../components/waiting-room";
 import { useLiveSession } from "../hooks/live-session-context";
 import {
   useRecurringQuestionTransition,
@@ -101,18 +100,7 @@ export function MatchStageRouter({
     : undefined;
 
   let content: React.ReactNode;
-  // Before the session starts, nobody is playing: the screens show the room
-  // filling up rather than a board with nothing on it. A phone keeps the waiting
-  // screen it already lands on after joining.
-  if (snapshot.status === "waiting" || snapshot.status === "ready") {
-    content = isPhone ? (
-      <ParticipantWaiting
-        {...(phoneTeamName ? { teamName: phoneTeamName } : {})}
-      />
-    ) : (
-      <WaitingRoom />
-    );
-  } else if (!isMatchStageKey(stage)) {
+  if (!isMatchStageKey(stage)) {
     content = <UnsupportedStage stage={stage} onResync={resync} />;
   } else if (stage === "board") {
     // The board is the host's screen. A phone between challenges waits instead,

@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, SchemaTypes } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
 export const CANDIDATE_STATUSES = [
   'generated',
@@ -178,30 +178,6 @@ export class EngineCandidateDocument {
 
   @Prop({ type: [CandidateReviewEventSchema], default: [] })
   reviewEvents!: CandidateReviewEvent[];
-
-  /**
-   * §30.22 candidate media evidence (`CandidateMediaSlot[]`). Absent on every
-   * candidate written before the media contract; absence is read as an empty
-   * plan, and whether media is *required* is decided by the media-requirements
-   * registry, never by this field.
-   */
-  @Prop({ type: [SchemaTypes.Mixed], default: undefined })
-  mediaPlan?: Record<string, unknown>[];
-
-  /**
-   * CAS token for media-only decisions (review, rights acknowledgment).
-   * Independent of `reviewRevision`, so media decisions never invalidate text
-   * assessments. Absent means 0.
-   */
-  @Prop({ type: Number, default: undefined })
-  mediaReviewRevision?: number;
-
-  /**
-   * Media-only history (`CandidateMediaEvent[]`), kept apart from
-   * `reviewEvents` so text-review provenance and its consumers never see it.
-   */
-  @Prop({ type: [SchemaTypes.Mixed], default: undefined })
-  mediaEvents?: Record<string, unknown>[];
 
   /** Convenience pointer only. Uniqueness is enforced by engine_draft_publications. */
   @Prop({ type: String, default: null })

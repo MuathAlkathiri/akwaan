@@ -1,6 +1,8 @@
+import { resolveTeamColor } from "@/lib/team-palette";
 import {
   OCCURRENCE_COUNT,
   SCOPES_PER_OCCURRENCE,
+  createDraft,
   isDraftComplete,
   type MatchSetupDraft,
   type MatchSetupStep,
@@ -26,7 +28,7 @@ interface StoredDraft {
   draft: MatchSetupDraft;
 }
 
-const STEPS: readonly MatchSetupStep[] = ["world", "scopes"];
+const STEPS: readonly MatchSetupStep[] = ["world", "scopes", "teams"];
 type LegacyMatchSetupStep = MatchSetupStep | "review";
 
 function isCurrentStep(value: unknown): value is MatchSetupStep {
@@ -73,26 +75,42 @@ function parseDraft(value: unknown): MatchSetupDraft | undefined {
       selectedScopeIds: [...new Set(scopeIds)].slice(0, SCOPES_PER_OCCURRENCE),
     };
   });
-  // A draft stored while the host still named and coloured the teams carries
-  // those fields; they are dropped rather than migrated, because a Match is now
-  // always الأزرق against الأحمر and there is nothing left to restore.
+  const teamNames = Array.isArray(draft.teamNames)
+    ? draft.teamNames.filter(
+        (name): name is string => typeof name === "string",
+      )
+    : [];
+  const colorIds = Array.isArray(draft.teamColorIds)
+    ? draft.teamColorIds.filter(
+        (colorId): colorId is string => typeof colorId === "string",
+      )
+    : [];
+  const fallback = createDraft();
   const normalized: MatchSetupDraft = {
     occurrences,
     activeOccurrenceIndex: draft.activeOccurrenceIndex,
     activeStep: storedStep === "review" ? "world" : storedStep,
+    teamNames:
+      teamNames.length === 2
+        ? [teamNames[0], teamNames[1]]
+        : fallback.teamNames,
+    // Resolved against each team's own pool, so a stored id from an older palette
+    // becomes that position's default instead of a colour it may no longer own.
+    teamColorIds:
+      colorIds.length === 2
+        ? [
+            resolveTeamColor(0, colorIds[0]).id,
+            resolveTeamColor(1, colorIds[1]).id,
+          ]
+        : fallback.teamColorIds,
   };
   if (storedStep !== "review") return normalized;
 
-  // Version 1 ended complete setup on a now-removed Review screen, and version 2
-  // on a now-removed Teams screen. A complete legacy draft resumes on the last
-  // occurrence's Scopes, where confirming creates the Match; an incomplete one
-  // resumes at the first occurrence that still needs a World or Scopes.
+  // Version 1 ended complete setup on a now-removed Review screen. Complete
+  // drafts advance to Teams; malformed/incomplete legacy drafts resume at the
+  // first occurrence that still needs a World or Scopes.
   if (isDraftComplete(normalized)) {
-    return {
-      ...normalized,
-      activeOccurrenceIndex: OCCURRENCE_COUNT - 1,
-      activeStep: "scopes",
-    };
+    return { ...normalized, activeStep: "teams" };
   }
   const pending = normalized.occurrences.find(
     (occurrence) =>

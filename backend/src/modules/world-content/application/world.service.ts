@@ -26,7 +26,6 @@ export interface WorldSummary extends WorldView {
   description?: string;
   icon?: ContentAssetRef;
   banner?: ContentAssetRef;
-  questionFallback?: ContentAssetRef | null;
   sortOrder: number;
   scopeCount: number;
   challengeConfigurationCount: number;
@@ -144,57 +143,6 @@ export class WorldService {
     return this.summarize(updated, await this.readiness.evaluateWorld(id));
   }
 
-  /**
-   * Sets this World's question fallback artwork (roadmap §30.22 Track A).
-   *
-   * A separate endpoint rather than a field on the World patch: the World write
-   * already carries one uploaded file for the banner, and the fallback is a
-   * second image with its own lifecycle. It is never client-supplied by URL —
-   * only an uploaded, validated image becomes an asset — and replacing one
-   * discards the file it replaced, exactly as the banner does.
-   *
-   * 16:9 is a composition requirement for whoever authors the artwork, not a
-   * crop applied here: the image is stored as uploaded, and the screen fits it
-   * (`cover-16x9`) only as a backdrop.
-   */
-  async setQuestionFallback(
-    id: string,
-    file: UploadedImageFile,
-  ): Promise<WorldSummary> {
-    const existing = await this.require(id);
-    const updated = await this.assets.withAsset({
-      kind: 'worlds',
-      field: 'questionFallback',
-      data: {},
-      file,
-      previous: existing.questionFallback ?? undefined,
-      run: async (payload) => {
-        const value = await this.worlds.updateById(
-          id,
-          payload as Partial<World>,
-        );
-        if (!value) throw new NotFoundException('World not found');
-        return value;
-      },
-    });
-    return this.summarize(updated, await this.readiness.evaluateWorld(id));
-  }
-
-  /**
-   * Removes the artwork. Questions in this World then present without a
-   * backdrop and report the advisory `WORLD_FALLBACK_MISSING`; nothing becomes
-   * unplayable, because the fallback was never load-bearing.
-   */
-  async clearQuestionFallback(id: string): Promise<WorldSummary> {
-    const existing = await this.require(id);
-    const updated = await this.worlds.updateById(id, {
-      questionFallback: null,
-    } as Partial<World>);
-    if (!updated) throw new NotFoundException('World not found');
-    await this.assets.discard(existing.questionFallback ?? undefined);
-    return this.summarize(updated, await this.readiness.evaluateWorld(id));
-  }
-
   async remove(id: string): Promise<{ id: string }> {
     const existing = await this.require(id);
     const [scopeCount, configurationCount, contentItemCount] =
@@ -212,7 +160,6 @@ export class WorldService {
     await this.references.assertUnreferenced('world', id);
     await this.worlds.deleteById(id);
     await this.assets.discard(existing.banner);
-    await this.assets.discard(existing.questionFallback ?? undefined);
     return { id };
   }
 
@@ -309,7 +256,6 @@ export class WorldService {
       description: world.description,
       icon: world.icon,
       banner: world.banner,
-      questionFallback: world.questionFallback ?? null,
       sortOrder: world.sortOrder ?? 0,
       scopeCount,
       challengeConfigurationCount,

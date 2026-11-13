@@ -30,24 +30,9 @@ export function composeQualityJudgePrompt(
   ].join('\n\n');
 }
 
-/**
- * Preflight's per-candidate allowance for the serialized draft (C-9 judge
- * parity). Runtime reserves for the actual draft, whose every field comes from
- * the model's generation output, which is capped at `outputTokensPerCandidate`
- * per candidate. That cap bounds the draft content; the fixed allowance
- * covers the draft's own JSON structure (keys, `{ar}` wrappers, metadata
- * note). A flat 200 alone under-reserved any draft over ~600 characters.
- */
-export function qualityJudgeDraftAllowanceTokens(
-  outputTokensPerCandidate: number,
-): number {
-  return outputTokensPerCandidate + QUALITY_JUDGE_DRAFT_TOKEN_ALLOWANCE;
-}
-
 export function estimateQualityJudgePromptTokens(
   mechanicText: string,
   serializedDraft?: string,
-  draftAllowanceTokens: number = QUALITY_JUDGE_DRAFT_TOKEN_ALLOWANCE,
 ): number {
   if (serializedDraft !== undefined) {
     return Math.ceil(
@@ -55,7 +40,7 @@ export function estimateQualityJudgePromptTokens(
     );
   }
   const basePrompt = composeQualityJudgePrompt(mechanicText, '');
-  return Math.ceil(basePrompt.length / 3) + draftAllowanceTokens;
+  return Math.ceil(basePrompt.length / 3) + QUALITY_JUDGE_DRAFT_TOKEN_ALLOWANCE;
 }
 
 export const QUALITY_DIMENSIONS = [

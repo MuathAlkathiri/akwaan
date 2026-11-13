@@ -20,21 +20,12 @@ import {
   type EngineWorldOption,
   getAuthoringOptions,
   getJobStatus,
-  listJobs,
   normalizeBatchGuidanceInput,
   preflightJob,
   type RyoRequestedDifficulty,
   runJob,
   submitJob,
 } from "./api";
-import {
-  type BatchFormRequest,
-  type BatchIntentRecord,
-  batchFormKey,
-  freshBatchIntent,
-  readBatchIntent,
-  writeBatchIntent,
-} from "./batch-intent-storage";
 import {
   cancellationFeedback,
   DIFFICULTY_LABELS,
@@ -114,34 +105,6 @@ export function BatchSubmissionPanel({
     "mixed",
   );
   const [batchGuidance, setBatchGuidance] = useState("");
-  // One New Batch action. Shared by Preflight and Submit (it is part of the
-  // request key) and kept across retries and same-tab reloads, so a
-  // resubmission of the same batch is idempotent. Replaced only once the
-  // server has recorded a job for it, or by an explicit New Batch.
-  const [batchIntent, setBatchIntent] = useState<BatchIntentRecord>(
-    () => readBatchIntent() ?? freshBatchIntent(),
-  );
-  const batchIntentId = batchIntent.intentId;
-  // A reload after an unconfirmed Submit restores that request into the form.
-  const restorePendingRef = useRef(batchIntent.pendingRequest);
-  // True while New Batch asks the server about an unconfirmed intent.
-  const [reconcilingIntent, setReconcilingIntent] = useState(false);
-  // Written before state, so a reload that follows immediately still sees it.
-  const commitBatchIntent = useCallback((next: BatchIntentRecord) => {
-    writeBatchIntent(next);
-    setBatchIntent(next);
-  }, []);
-  useEffect(() => {
-    writeBatchIntent(batchIntent);
-  }, [batchIntent]);
-  const applyFormRequest = useCallback((request: BatchFormRequest) => {
-    setWorldKey(request.worldKey);
-    setScopeKey(request.scopeKey);
-    setMechanicKey(request.mechanicKey);
-    setTargetCountInput(String(request.targetCount));
-    setDifficulty((request.difficulty ?? "") as RyoRequestedDifficulty | "");
-    setBatchGuidance(request.batchGuidance ?? "");
-  }, []);
 
   const [preflight, setPreflight] = useState<EnginePreflight | null>(null);
   const [preflightKey, setPreflightKey] = useState<string | null>(null);
@@ -168,18 +131,6 @@ export function BatchSubmissionPanel({
     if (!options || initializedFromOptionsRef.current) return;
     initializedFromOptionsRef.current = true;
 
-    const pending = restorePendingRef.current;
-    const pendingStillOffered = pending
-      ? options.worlds
-          .find((w) => w.worldKey === pending.worldKey)
-          ?.scopes.find((s) => s.scopeKey === pending.scopeKey)
-          ?.mechanics.some((m) => m.mechanicKey === pending.mechanicKey)
-      : false;
-    if (pending && pendingStillOffered) {
-      applyFormRequest(pending);
-      return;
-    }
-
     const firstEligibleWorld =
       options.worlds.find((w) => w.eligible) ?? options.worlds[0];
     const initialWorldKey = firstEligibleWorld?.worldKey ?? "";
@@ -196,7 +147,7 @@ export function BatchSubmissionPanel({
         ? (defaultMechanic.defaultDifficulty ?? "mixed")
         : "",
     );
-  }, [options, applyFormRequest]);
+  }, [options]);
 
   // Keep activeJobId and parent state in sync
   useEffect(() => {
@@ -424,9 +375,9 @@ export function BatchSubmissionPanel({
     invalidatePreflight();
   };
 
-  const buildFormRequest = (): BatchFormRequest => {
+  const buildRequestPayload = (): EngineJobRequest => {
     const normalizedGuidance = normalizeBatchGuidanceInput(batchGuidance);
-    const payload: BatchFormRequest = {
+    const payload: EngineJobRequest = {
       worldKey,
       scopeKey,
       mechanicKey,
@@ -441,16 +392,12 @@ export function BatchSubmissionPanel({
     return payload;
   };
 
-  const formRequest = buildFormRequest();
-  const requestKey = JSON.stringify({ ...formRequest, batchIntentId } satisfies EngineJobRequest);
-  // An intent whose Submit outcome is unconfirmed belongs to that request only.
-  // A different form must not reuse it, and must not silently mint a new one.
-  const intentBoundElsewhere = batchIntent.pendingRequest !== null && batchFormKey(batchIntent.pendingRequest) !== batchFormKey(formRequest);
+  const requestKey = JSON.stringify(buildRequestPayload());
   const selectionValid = Boolean(selectedWorld?.eligible && selectedScope?.eligible && selectedMechanic?.eligible);
-  const canRunPreflight = Boolean(worldKey && scopeKey && mechanicKey && selectionValid) && !targetCountValidationError && !guidanceValidationError && !intentBoundElsewhere;
+  const canRunPreflight = Boolean(worldKey && scopeKey && mechanicKey && selectionValid) && !targetCountValidationError && !guidanceValidationError;
   const maximumCost = preflight?.totalEstimatedSar;
   const validCost = typeof maximumCost === "number" && Number.isFinite(maximumCost) && maximumCost >= 0;
-  const canSubmitJob = canRunPreflight && busy === null && !reconcilingIntent && !preflightPending && preflightKey === requestKey && validCost && Boolean(preflight?.resolvable && preflight.submissionReady !== false && preflight.pricingConfigured && preflight.withinBatchCap !== false && preflight.withinMonthlyBudget !== false && preflight.planDigest);
+  const canSubmitJob = canRunPreflight && busy === null && !preflightPending && preflightKey === requestKey && validCost && Boolean(preflight?.resolvable && preflight.submissionReady !== false && preflight.pricingConfigured && preflight.withinBatchCap !== false && preflight.withinMonthlyBudget !== false && preflight.planDigest);
 
   useEffect(() => {
     const sequence = ++preflightSequence.current;
@@ -476,18 +423,11 @@ export function BatchSubmissionPanel({
     inFlightLockRef.current = true;
     const digest = preflight.planDigest;
     const request = JSON.parse(requestKey) as EngineJobRequest;
-    const { batchIntentId: sentIntentId = batchIntentId, ...sentForm } = request;
-    // Bound to this exact request before it leaves: if the outcome is never
-    // seen (timeout, reload, crash), a retry in this tab is the same batch.
-    commitBatchIntent({ intentId: sentIntentId, pendingRequest: sentForm });
     setBusy("submit"); setError(null); setErrorCode(null); setPlanDriftMessage(null); setInfoMessage(null);
     let targetId: string | null = null;
     try {
       const submitted = await submitJob({ ...request, planDigest: digest });
       targetId = submitted.jobId;
-      // The server recorded a job for this intent (new or deduplicated): the
-      // intent is spent, and the next Generate is a new, independent batch.
-      commitBatchIntent(freshBatchIntent());
       handleActiveJobChange(targetId); onJobSubmitted?.(targetId);
       void queryClient.invalidateQueries({ queryKey: ["content-engine-jobs"] });
       if (!submitted.created) {
@@ -508,10 +448,6 @@ export function BatchSubmissionPanel({
       void queryClient.invalidateQueries({ queryKey: ["content-engine-candidates"] });
     } catch (err) {
       const extracted = extractApiError(err, "تعذر تنفيذ الطلب");
-      const unknownOutcome = extracted.isTimeoutOrNetwork || !extracted.status || extracted.status >= 500;
-      // A definite refusal created no job: keep the (unspent) intent but free
-      // it from the request. An unknown outcome keeps it bound — never minted.
-      if (!targetId && !unknownOutcome) commitBatchIntent({ intentId: sentIntentId, pendingRequest: null });
       if (!targetId && (extracted.status === 409 || extracted.code === "PREFLIGHT_PLAN_DRIFT")) {
         setPreflight(null); setPreflightKey(null);
         setPlanDriftMessage("تغيّرت الخطة؛ جارٍ التحقق مجدداً من التكلفة قبل التوليد.");
@@ -523,56 +459,6 @@ export function BatchSubmissionPanel({
         setError("تعذر التأكد من تسجيل الدفعة. راجع سجل الدفعات قبل المحاولة مجدداً.");
       } else { setError(extracted.message); setErrorCode(extracted.code ?? null); }
     } finally { inFlightLockRef.current = false; setBusy(null); }
-  };
-
-  /**
-   * Explicit New Batch. With an unconfirmed Submit outstanding, the server is
-   * asked first whether that intent already produced a job: if it did, that
-   * job is shown instead of starting another paid batch; if the answer cannot
-   * be obtained, the intent stays bound and nothing new can start.
-   */
-  const handleNewBatch = async () => {
-    if (busy !== null || inFlightLockRef.current) return;
-    const unresolvedIntentId = batchIntent.pendingRequest ? batchIntent.intentId : null;
-    if (!unresolvedIntentId) {
-      commitBatchIntent(freshBatchIntent());
-      setPlanDriftMessage(null);
-      invalidatePreflight();
-      return;
-    }
-    inFlightLockRef.current = true;
-    setReconcilingIntent(true);
-    setError(null); setErrorCode(null); setInfoMessage(null);
-    try {
-      const page = await listJobs({ batchIntentId: unresolvedIntentId, limit: 1 });
-      // Only an exact intent match counts. Anything else (e.g. a server that
-      // ignored the filter) is not an answer, so the intent stays bound.
-      if (page.items.some((item) => item.generationSpec?.batchIntentId !== unresolvedIntentId)) {
-        throw new Error("BATCH_INTENT_LOOKUP_UNRELIABLE");
-      }
-      const recorded = page.items[0];
-      commitBatchIntent(freshBatchIntent());
-      setPlanDriftMessage(null);
-      invalidatePreflight();
-      if (recorded) {
-        handleActiveJobChange(recorded.jobId); onJobSubmitted?.(recorded.jobId);
-        setJob(recorded); onJobUpdated?.(recorded);
-        void queryClient.invalidateQueries({ queryKey: ["content-engine-jobs"] });
-        setInfoMessage("الإرسال السابق سُجّل على الخادم؛ هذه دفعته. لم تُنشأ دفعة جديدة ولم تُشغَّل تلقائياً.");
-      }
-    } catch {
-      setError("تعذر التحقق من نتيجة الإرسال السابق. بقيت هوية الدفعة محفوظة، ولن تبدأ دفعة جديدة قبل التحقق؛ حاول مجدداً.");
-    } finally {
-      inFlightLockRef.current = false;
-      setReconcilingIntent(false);
-    }
-  };
-
-  const handleRestorePendingBatch = () => {
-    if (!batchIntent.pendingRequest || busy !== null) return;
-    applyFormRequest(batchIntent.pendingRequest);
-    setPlanDriftMessage(null);
-    invalidatePreflight();
   };
 
   const handleCancelJob = async () => {
@@ -1181,45 +1067,6 @@ export function BatchSubmissionPanel({
         </details>
       )}
 
-      {/* Unconfirmed Submit: the batch intent is held for that request */}
-      {batchIntent.pendingRequest && busy === null && (
-        <div
-          className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 shadow-sm"
-          data-testid="pending-batch-intent-notice"
-          data-mismatch={intentBoundElsewhere ? "true" : "false"}
-        >
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
-            <span className="font-medium">
-              {intentBoundElsewhere
-                ? "لم تُؤكَّد نتيجة إرسال دفعة سابقة، والنموذج الحالي لا يطابقها. استعد طلبها لإعادة المحاولة دون تكرار، أو ابدأ دفعة جديدة بعد مراجعة سجل الدفعات."
-                : "لم تُؤكَّد نتيجة إرسال هذه الدفعة. إعادة المحاولة تستخدم هوية الدفعة نفسها، فلن تُنشأ دفعة مكررة إن كانت قد سُجّلت."}
-            </span>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {intentBoundElsewhere && (
-              <button
-                type="button"
-                data-testid="button-restore-pending-batch"
-                onClick={handleRestorePendingBatch}
-                className="rounded-lg border border-amber-400 bg-white px-3 py-1.5 font-semibold text-amber-900 hover:bg-amber-100 transition"
-              >
-                استعادة الطلب السابق
-              </button>
-            )}
-            <button
-              type="button"
-              data-testid="button-new-batch"
-              onClick={() => void handleNewBatch()}
-              disabled={reconcilingIntent}
-              className="rounded-lg border border-amber-400 bg-white px-3 py-1.5 font-semibold text-amber-900 hover:bg-amber-100 transition disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {reconcilingIntent ? "جارٍ التحقق من الإرسال السابق…" : "دفعة جديدة"}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Plan Drift Alert */}
       {planDriftMessage && (
         <div
@@ -1778,9 +1625,7 @@ export function BatchSubmissionPanel({
               <button
                 type="button"
                 data-testid="button-handoff-candidates"
-                disabled={candidateTotal === 0}
                 onClick={() => {
-                  if (candidateTotal === 0) return;
                   onJobSubmitted?.(job.jobId);
                   onBatchReady?.({
                     jobId: job.jobId,
@@ -1798,7 +1643,7 @@ export function BatchSubmissionPanel({
                       mechanicKey,
                   });
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 font-semibold text-white shadow-sm hover:bg-amber-600 transition disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 font-semibold text-white shadow-sm hover:bg-amber-600 transition"
               >
                 <span>فتح المرشحين في مساحة المراجعة ({candidateTotal})</span>
               </button>

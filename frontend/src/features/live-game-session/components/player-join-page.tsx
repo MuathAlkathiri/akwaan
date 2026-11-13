@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Users } from "lucide-react";
@@ -33,20 +33,6 @@ import type { ParticipantCredential } from "../model";
 import { participantCredentialStorage } from "../storage/participant-credential-storage";
 import { LiveSessionProvider } from "./live-session-provider";
 import { PlayerLobby } from "./player-lobby";
-import {
-  PLAYER_CHARACTER_KEYS,
-  PLAYER_CHARACTERS,
-  PlayerCharacterIcon,
-} from "./player-characters";
-
-/** The server's code for a character someone else took while we were choosing. */
-function errorCode(error: unknown): string | undefined {
-  const response = (error as { response?: { data?: { code?: unknown } } })
-    ?.response;
-  return typeof response?.data?.code === "string"
-    ? response.data.code
-    : undefined;
-}
 
 /**
  * A human display name, Unicode-aware, matching the server's own rule.
@@ -65,15 +51,12 @@ const formSchema = z.object({
     .max(40)
     .regex(DISPLAY_NAME_PATTERN, "استخدم الحروف والأرقام فقط"),
   requestedTeamId: z.string().optional(),
-  avatarKey: z.string().optional(),
 });
 
 type JoinForm = z.infer<typeof formSchema>;
 
 export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
   const [participant, setParticipant] = useState<ParticipantCredential>();
-  /** Set when a character we were holding was taken by somebody else first. */
-  const [characterTakenFromUs, setCharacterTakenFromUs] = useState(false);
   const restoredCodeRef = useRef<string>();
   const metadata = useQuery({
     queryKey: ["live-game-session-join", joinCode],
@@ -102,7 +85,6 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
         metadata.data.assignmentPolicy === "explicit";
       return joinLiveSession(joinCode, {
         requestedTeamId: values.requestedTeamId,
-        avatarKey: values.avatarKey,
         displayName: teamOnlyJoin
           ? (selectedTeam?.name ?? "لاعب")
           : values.displayName,
@@ -118,43 +100,7 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
       participantCredentialStorage.set(joinCode, value);
       setParticipant(value);
     },
-    onError: (error) => {
-      // Two people scanning in the same second is the normal case in a living
-      // room, not an edge case: whoever lands second is told, shown the room as
-      // it now stands, and given a free character to tap.
-      if (errorCode(error) === "AVATAR_TAKEN") {
-        form.setValue("avatarKey", undefined);
-        void metadata.refetch();
-      }
-    },
   });
-
-  // Memoised because the pre-pick effect below depends on them: a fresh array
-  // each render would re-run it on every render.
-  const taken = useMemo(
-    () => metadata.data?.takenAvatarKeys ?? [],
-    [metadata.data?.takenAvatarKeys],
-  );
-  const freeCharacters = useMemo(
-    () => PLAYER_CHARACTER_KEYS.filter((key) => !taken.includes(key)),
-    [taken],
-  );
-  const chosenCharacter = form.watch("avatarKey");
-
-  // One is picked for the player the moment the room answers, so the common
-  // path is a name and a colour. Pre-picking also means the player sees who
-  // they will be before they commit, which is the point of having characters.
-  //
-  // It waits for the room, and it moves off a character that is gone. Picking
-  // before the room answered left the phone holding a taken character and
-  // failing the join on a choice the player never made — the worst version of
-  // this, because there is nothing for them to have done differently.
-  useEffect(() => {
-    if (!metadata.data || freeCharacters.length === 0) return;
-    if (chosenCharacter && !taken.includes(chosenCharacter)) return;
-    if (chosenCharacter) setCharacterTakenFromUs(true);
-    form.setValue("avatarKey", freeCharacters[0]);
-  }, [chosenCharacter, freeCharacters, form, metadata.data, taken]);
 
   useEffect(() => {
     if (restoredCodeRef.current === joinCode) return;
@@ -188,10 +134,10 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
     return (
       <div dir="rtl" className="mx-auto mt-10 max-w-md px-4">
         <Alert variant="destructive" role="alert">
-          <AlertTitle className="font-black">الكود ما ضبط</AlertTitle>
+          <AlertTitle className="font-black">رمز غير صالح</AlertTitle>
           <AlertDescription>
-            الكود غلط أو منتهي أو ما عاد يستقبل لاعبين. اطلب من المضيف كودًا
-            جديدًا.
+            هذا الرمز غير صحيح أو منتهي أو لم يعد يستقبل لاعبين. اطلب من المضيف
+            رمزًا جديدًا.
           </AlertDescription>
         </Alert>
       </div>
@@ -200,17 +146,6 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
 
   const requiresTeam = metadata.data.assignmentPolicy === "explicit";
   const teamOnlyJoin = metadata.data.mode.key === "bomb" && requiresTeam;
-  // A tie marks nothing: with the sides even there is no nudge to give, and
-  // highlighting one would be an arbitrary push.
-  const counted = metadata.data.teams.filter(
-    (team) => team.playerCount !== undefined,
-  );
-  const fewest = Math.min(...counted.map((team) => team.playerCount ?? 0));
-  const smallestTeamId =
-    counted.length === metadata.data.teams.length &&
-    counted.filter((team) => team.playerCount === fewest).length === 1
-      ? counted.find((team) => team.playerCount === fewest)?.id
-      : undefined;
 
   return (
     <div dir="rtl" className="mx-auto min-h-dvh max-w-md px-4 py-8">
@@ -227,7 +162,7 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
         </div>
         <Badge variant="secondary" className="gap-1.5 font-bold">
           <Users className="size-3" aria-hidden />
-          كود الدخول
+          رمز الانضمام
           <span className="akwaan-numeral font-black tracking-[0.15em]">
             {joinCode}
           </span>
@@ -236,9 +171,9 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
 
       <Card className="surface-card border-0 shadow-none">
         <CardHeader className="pb-3 text-center">
-          <CardTitle className="text-2xl font-black">مين أنت؟</CardTitle>
+          <CardTitle className="text-2xl font-black">انضم إلى اللعبة</CardTitle>
           <p className="text-sm text-muted-foreground">
-            اكتب اسمك واختر فريقك، وجوالك يتحدّث لحاله مع كل تحدي.
+            اكتب اسمك واختر فريقك، وسيتحدّث جوالك تلقائيًا مع كل تحدٍ.
           </p>
         </CardHeader>
         <CardContent>
@@ -248,13 +183,13 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
               onSubmit={form.handleSubmit((values) => {
                 if (requiresTeam && !values.requestedTeamId) {
                   form.setError("requestedTeamId", {
-                    message: "اختر فريقك",
+                    message: "اختار فريقك",
                   });
                   return;
                 }
                 if (!teamOnlyJoin && !values.displayName.trim()) {
                   form.setError("displayName", {
-                    message: "اكتب اسمك مثل ما تحب يشوفونه",
+                    message: "اكتب اسمك مثل ما تحب يظهر",
                   });
                   return;
                 }
@@ -284,92 +219,18 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
                 />
               )}
 
-              {!teamOnlyJoin && (
-                <FormField
-                  control={form.control}
-                  name="avatarKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-black">
-                        شخصيتك
-                        <span className="ms-1 font-normal text-muted-foreground">
-                          — اخترنا لك وحدة، بدّلها إذا ما عجبتك
-                        </span>
-                      </FormLabel>
-                      <FormControl>
-                        {/* All twelve at once rather than a carousel: a player
-                            should see what is left at a glance, and scrolling
-                            hides exactly the choice they came to make. Taken
-                            ones stay visible and disabled — part of the fun is
-                            seeing that someone is already the rocket, and
-                            removing tiles would shift the grid under a thumb
-                            mid-tap. */}
-                        <div
-                          role="radiogroup"
-                          aria-label="شخصيتك"
-                          className="grid grid-cols-4 gap-2"
-                        >
-                          {PLAYER_CHARACTER_KEYS.map((key) => {
-                            const isTaken = taken.includes(key);
-                            const selected = field.value === key;
-                            return (
-                              <button
-                                key={key}
-                                type="button"
-                                role="radio"
-                                aria-checked={selected}
-                                aria-label={PLAYER_CHARACTERS[key].label}
-                                disabled={isTaken}
-                                data-character-option={key}
-                                data-taken={isTaken ? "true" : "false"}
-                                onClick={() => field.onChange(key)}
-                                className={cn(
-                                  "grid min-h-16 place-items-center rounded-[var(--radius)] border-2 p-1.5 transition-colors duration-base ease-akwaan",
-                                  selected
-                                    ? "border-foreground bg-muted"
-                                    : "border-border bg-card",
-                                  isTaken && "cursor-not-allowed opacity-35",
-                                )}
-                              >
-                                <PlayerCharacterIcon
-                                  characterKey={key}
-                                  size={38}
-                                />
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </FormControl>
-                      {(characterTakenFromUs ||
-                        errorCode(join.error) === "AVATAR_TAKEN") && (
-                        <p
-                          role="alert"
-                          className="text-sm font-bold text-destructive"
-                        >
-                          أحد سبقك عليها، فاخترنا لك غيرها.
-                        </p>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
               {requiresTeam && (
                 <FormField
                   control={form.control}
                   name="requestedTeamId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-black">وش فريقك؟</FormLabel>
+                      <FormLabel className="font-black">فريقك</FormLabel>
                       <FormControl>
                         {/* Two big targets rather than a dropdown: on a phone,
                             picking a team is the whole interaction. */}
                         <RadioGroup
-                          /* "" and not undefined: Radix reads undefined as an
-                             uncontrolled group and warns the moment a team is
-                             picked. */
-                          value={field.value ?? ""}
+                          value={field.value}
                           onValueChange={field.onChange}
                           className="grid grid-cols-2 gap-3"
                         >
@@ -378,13 +239,6 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
                               TEAM_SLOT_ORDER[index % TEAM_SLOT_ORDER.length],
                             );
                             const selected = field.value === team.id;
-                            const count = team.playerCount;
-                            // Marked, never forced. People tap the suggestion,
-                            // so the teams even out on their own — and anyone
-                            // who wants to be with their friends still can.
-                            const isSmaller =
-                              smallestTeamId === team.id &&
-                              metadata.data!.teams.length > 1;
                             return (
                               // A plain label wrapping the radio, not FormLabel:
                               // shadcn's FormLabel points `htmlFor` at the form
@@ -398,11 +252,7 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
                                   "flex min-h-16 cursor-pointer items-center gap-2 rounded-[var(--radius)] border-2 px-3 py-3 text-sm font-black transition-colors duration-base ease-akwaan",
                                   identity.surface,
                                   selected
-                                    ? cn(
-                                        identity.border,
-                                        "ring-2",
-                                        identity.ring,
-                                      )
+                                    ? cn(identity.border, "ring-2", identity.ring)
                                     : "border-transparent",
                                   identity.text,
                                 )}
@@ -417,26 +267,9 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
                                     selected && identity.border,
                                   )}
                                 />
-                                <span className="min-w-0 flex-1 leading-tight">
-                                  <span className="block break-words">
-                                    {team.name}
-                                  </span>
-                                  {count !== undefined && (
-                                    <span className="mt-0.5 block text-xs font-bold opacity-80">
-                                      {count === 0
-                                        ? "ما فيه أحد"
-                                        : `${count} لاعبين`}
-                                    </span>
-                                  )}
+                                <span className="min-w-0 flex-1 break-words leading-tight">
+                                  {team.name}
                                 </span>
-                                {isSmaller && (
-                                  <span
-                                    data-smaller-team="true"
-                                    className="shrink-0 rounded-full border-2 border-foreground bg-[hsl(var(--brand-gold))] px-2 py-0.5 text-[11px] font-black text-foreground"
-                                  >
-                                    ناقصهم
-                                  </span>
-                                )}
                               </label>
                             );
                           })}
@@ -450,18 +283,14 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
 
               {metadata.data.assignmentPolicy === "host-assigned" && (
                 <p className="text-sm text-muted-foreground">
-                  المضيف يحدد فريقك بعد ما تدخل.
+                  سيحدد المضيف فريقك بعد الانضمام.
                 </p>
               )}
 
-              {/* The character clash has its own line beside the grid, where
-                  the fix is. Showing "the game may be full" as well would send
-                  the player looking for the host over something they can solve
-                  with one tap. */}
-              {join.error && errorCode(join.error) !== "AVATAR_TAKEN" && (
+              {join.error && (
                 <Alert variant="destructive" role="alert">
                   <AlertDescription className="font-bold">
-                    ما قدرنا ندخلك. يمكن اللعبة امتلأت أو ما عادت متاحة.
+                    تعذّر الانضمام. قد تكون اللعبة ممتلئة أو لم تعد متاحة.
                   </AlertDescription>
                 </Alert>
               )}
@@ -473,7 +302,7 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
                 disabled={join.isPending}
               >
                 <CheckCircle2 className="size-5" aria-hidden />
-                {join.isPending ? "ندخلك…" : "يلا ندخل"}
+                {join.isPending ? "جارٍ الانضمام…" : "انضم"}
               </Button>
             </form>
           </Form>

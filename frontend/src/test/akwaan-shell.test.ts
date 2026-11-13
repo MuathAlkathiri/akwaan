@@ -121,7 +121,7 @@ describe("the cosmic background covers the player-facing Akwaan surfaces", () =>
     ]);
   });
 
-  it("uses a fixed white environment with the approved planets", () => {
+  it("uses a fixed white environment with approved planets and vector orbits", () => {
     const source = readFileSync(
       resolve(SRC, "components/akwaan/akwaan-background.tsx"),
       "utf8",
@@ -130,9 +130,15 @@ describe("the cosmic background covers the player-facing Akwaan surfaces", () =>
     expect(source).toContain("bg-white");
     expect(source).toContain("/brand/cosmic");
     expect(source).toContain("radial-gradient");
+    expect(source.match(/data-orbit=/g)).toHaveLength(3);
+    expect(source).toContain('data-orbit="upper-left"');
+    expect(source).toContain('data-orbit="lower-right"');
+    expect(source).toContain('data-orbit="mid-right"');
+    expect(source.match(/<Image/g)).toHaveLength(3);
     expect(source).toContain("luxurious_ringed_planet_illustration.webp");
     expect(source).toContain("elegant_golden_ringed_blue_planet.webp");
     expect(source).toContain("glossy_planet_with_golden_orbit.webp");
+    expect(source.match(/<svg/g)).toHaveLength(3);
     expect(source).not.toContain("akwaan-cosmic-bg.webp");
   });
 

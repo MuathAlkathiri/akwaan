@@ -5,11 +5,6 @@ import {
   StaleLiveSessionRevisionError,
 } from './live-session.errors';
 import { ParticipantPresenceProjection } from './participant-presence';
-import {
-  PlayerAvatarKey,
-  firstFreeAvatar,
-  isPlayerAvatarKey,
-} from './player-avatars';
 import { TeamClock, TeamClockState } from './team-clock';
 
 export type LiveSessionStatus =
@@ -45,13 +40,6 @@ export interface LiveSessionParticipantState {
   actorId?: string;
   displayName: string;
   normalizedDisplayName: string;
-  /**
-   * Which character this player is, from `player-avatars.ts`.
-   *
-   * Optional because a controller has none and because sessions created before
-   * characters existed still restore; a player enrolled today always has one.
-   */
-  avatarKey?: PlayerAvatarKey;
   role: 'controller' | 'team-player' | 'observer';
   teamId?: string;
   reconnectTokenHash?: string;
@@ -350,51 +338,17 @@ export class LiveGameSession {
     return modeKey === 'bomb' ? ['waiting'] : ['waiting', 'ready', 'active'];
   }
 
-  /**
-   * Whether this session would accept a new participant right now.
-   *
-   * It consults expiry as well as status, which it did not before: nothing
-   * touches an abandoned session, so its stored status stays whatever it was
-   * when somebody last did. A room that timed out overnight went on telling
-   * phones to come in, and the enrolment refused them only after they had
-   * picked a character and typed a name.
-   */
-  acceptsNewParticipants(now: Date): boolean {
-    if (
-      !LiveGameSession.joinableStatuses(this.state.modeKey).includes(
-        this.state.status,
-      )
-    )
-      return false;
-    return now.getTime() < this.effectiveExpiry().getTime();
-  }
-
-  /**
-   * When this session stops being joinable.
-   *
-   * A room nobody has joined gets the shorter of the two budgets: holding a
-   * live join code for a day on behalf of a gathering that never happened
-   * serves nobody. One player is enough to make it a room in use, and the
-   * ordinary cap takes over.
-   */
-  private effectiveExpiry(): Date {
-    const joined = this.state.participants.some(
-      (participant) =>
-        participant.role === 'team-player' && !participant.removedAt,
+  /** Whether this session would accept a new participant right now. */
+  acceptsNewParticipants(): boolean {
+    return LiveGameSession.joinableStatuses(this.state.modeKey).includes(
+      this.state.status,
     );
-    if (joined) return this.state.expiresAt;
-    const unjoined = new Date(
-      this.state.createdAt.getTime() + this.rules.unjoinedExpirationMs,
-    );
-    return unjoined < this.state.expiresAt ? unjoined : this.state.expiresAt;
   }
 
   enrollParticipant(input: {
     id?: string;
     displayName: string;
     teamId?: string;
-    /** The character the player asked for; the first free one when absent. */
-    avatarKey?: string;
     role: 'team-player' | 'observer';
     joinRequestId: string;
     device?: { label?: string; platform?: string };
@@ -424,12 +378,10 @@ export class LiveGameSession {
       );
     }
     if (input.teamId) this.requireTeam(input.teamId);
-    const avatarKey = this.resolveAvatar(input.avatarKey);
     const participant: LiveSessionParticipantState = {
       id: input.id ?? randomUUID(),
       displayName: input.displayName.trim(),
       normalizedDisplayName,
-      ...(avatarKey ? { avatarKey } : {}),
       role: input.role,
       teamId: input.teamId,
       ready: false,
@@ -444,34 +396,6 @@ export class LiveGameSession {
     this.state.participants.push(participant);
     this.state.lastTransitionAt = input.now;
     return participant;
-  }
-
-  /**
-   * The character this player will wear.
-   *
-   * A requested one must be free: the shape is the only thing telling two
-   * players on one team apart, so handing out a duplicate would quietly undo
-   * the point of having characters at all. With none requested the first free
-   * one is assigned, so a player who just wants to play never picks.
-   */
-  private resolveAvatar(requested?: string): PlayerAvatarKey | undefined {
-    const taken = this.state.participants
-      .filter((participant) => !participant.removedAt)
-      .map((participant) => participant.avatarKey);
-    if (requested === undefined) return firstFreeAvatar(taken);
-    if (!isPlayerAvatarKey(requested)) {
-      throw new LiveSessionDomainError(
-        'UNKNOWN_AVATAR',
-        'That character does not exist',
-      );
-    }
-    if (taken.includes(requested)) {
-      throw new LiveSessionDomainError(
-        'AVATAR_TAKEN',
-        'Another player is already that character',
-      );
-    }
-    return requested;
   }
 
   participantById(participantId: string): LiveSessionParticipantState {
@@ -554,32 +478,6 @@ export class LiveGameSession {
 
   start(now: Date): void {
     this.assertStatus(['ready'], now);
-    this.state.startedAt = now;
-    this.state.countdownEndsAt = undefined;
-    this.transitionTo('active', now);
-  }
-
-  /**
-   * Starts the session the way the waiting room starts it.
-   *
-   * `markReady` wants a ready player on every side, and the waiting room has no
-   * way to produce one: nobody presses «جاهز» any more, and a side is allowed to
-   * sit empty because the QR stays up on the challenge screen for whoever is
-   * late. Gating on readiness meant the host could only cancel as soon as the
-   * first player arrived.
-   *
-   * So this asks nothing about readiness and keeps the one guard that is still
-   * real: a match needs two sides. A side with nobody on it blocks the
-   * challenge's own start button, which is where that block belongs.
-   */
-  begin(now: Date): void {
-    this.assertStatus(['waiting', 'ready'], now);
-    if (this.state.teams.filter((team) => team.active).length < 2) {
-      throw new LiveSessionDomainError(
-        'SESSION_NOT_READY',
-        'At least two active teams are required',
-      );
-    }
     this.state.startedAt = now;
     this.state.countdownEndsAt = undefined;
     this.transitionTo('active', now);

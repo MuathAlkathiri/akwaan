@@ -40,14 +40,6 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
-### Where things stand — 2026-11-10 · CONTENT ENGINE REVIEW UX PHASES 1–3 — ✅ IMPLEMENTED & DEPLOYED
-
-PRs #50–#52 are merged and deployed to Vercel; main at this milestone is `eccba7f`. The Phase 3 public
-bundle and unauthenticated page load were checked; authenticated candidate review smoke for Phases 1–3 remains
-**PENDING**, so this is not comprehensive production verification. Render health later returned HTTP 200,
-database connected, backend commit `6d39937`; Render deployment history was not independently checked and the
-cause of the earlier health timeouts remains unconfirmed. Scope, validation and accepted debt: §30.23.8.
-
 ### Where things stand — 2026-11-08 (later) · CONTENT ENGINE DEDUPLICATION ACCURACY & REVIEW UI (PRs #46–#48) — ✅ IMPLEMENTED & VERIFIED IN PRODUCTION · candidate approval ⬜ PENDING
 
 Main is `02aebc1`. Render serves `6d39937` (`/health` verified). PR #48 is frontend-only, and Render was not
@@ -3744,30 +3736,6 @@ recovery controls, My Games read model, Preflight presentation, and feedback lay
 | Preflight / QR / readiness | Challenge-first briefing, canonical `playerInstructions`, readiness roster, context chips, `readyToLaunch` gate, Preflight-only turn-band suppression | Match-scoped QR (scan-once, collapsible/reopenable, no re-scan between Challenges); §10.2 stays the QR source of truth |
 | Interaction Feedback | Branded loader, skeletons, pending buttons, one global Sonner toast | Errors + invisible-utility successes only; score/turn/Double/reconnect **silent**; no artificial gameplay delay; loaders never own the lifecycle |
 
-### 22.1.1 Preflight tutorial redesign — local verification closeout (2026-11-11)
-
-This November 2026 validation is separate from the historical August 2026 Release Candidate and its QA totals below.
-
-✅ **IMPLEMENTED & VERIFIED LOCALLY:** A real local multiplayer browser run verified the Preflight lobby with its
-tutorial collapsed, matching QR and copy link, four-player team joining, server-driven readiness and Start eligibility,
-host and participant refresh during Preflight, and tutorial play, stage navigation, restart and close. It completed
-all three RYO questions with authorized phone controls and server scoring, then advanced to playable Top 5. All four
-participant, session and team identities persisted without rejoining; the assigned Top 5 phone submitted an accepted
-decision while other phones had no decision controls. A separate active-RYO refresh exercised server-authoritative
-reassignment and completed the challenge.
-
-**Verification boundary:** This is local browser E2E, not Production verification. Existing backend integration tests
-cover the initial readiness barrier and deadline; adjacent unit tests cover reconnect behavior for recurring readiness.
-They do not collectively prove the exact initial RYO pre-activation reconnect scenario. Final owner visual approval of
-the current build remains pending.
-
-⚠️ **INDEPENDENT TECHNICAL QA FOLLOW-UP:** Add a deterministic real-socket backend integration regression for
-disconnect/reconnect before initial RYO activation, including connection-bound readiness, current ownership,
-activation, privacy and the full authoritative deadline.
-
-**Observations:** One earlier Start rejection and one empty QR decode were isolated and unconfirmed; neither recurred
-in the closeout runs. Their causes remain unknown and they are not established product defects.
-
 ### 22.2 QA evidence (Release Gate Cleanup, 2026-08-27)
 
 - **Frontend:** 915 / 915 (all green) · `tsc` ✅ · `lint` ✅ · `next build` ✅. `normalize-digits.ts` is **included** RC Auth support (§22.3); its `copy-standards` conflict was resolved by code-point representation, not an exemption.
@@ -6499,7 +6467,7 @@ without the existing authoritative human and lifecycle gates.
 - ⬜ **No automatic READY promotion or publication exists in the Studio workflow.** Output is strictly canonical `ContentItem` in `DRAFT` status; publication to active gameplay requires the existing canonical READY pipeline.
 - ✅ **Existing canonical review policy remains authoritative:** human approval is last and authoritative, and must be renewed after any post-approval candidate edit.
 
-### 30.22 Content Engine Media Architecture & Fallback System — 🚧 IN PROGRESS · Track B Phases 1–2, 3A, 3B-1, 3B-3, 3C-1 ✅ VERIFIED LOCALLY · UNCOMMITTED, NOT DEPLOYED (2026-11-12)
+### 30.22 Content Engine Media Architecture & Fallback System — 🟡 DESIGN APPROVED — NOT IMPLEMENTED (2026-10-26)
 
 **Operator product decisions and approved design corrections recorded. Architectural and documentation alignment only — no implementation changes, no runtime mutations, no R2 writes, no paid AI/media calls.**
 
@@ -6548,17 +6516,6 @@ without the existing authoritative human and lifecycle gates.
    - **Fail-Closed on Gameplay Media**: If required gameplay media fails enrichment, the candidate is flagged as blocked (`media_blocked`) and cannot be approved without manual asset provision.
    - **Zero Duplication**: Fallback assets are referenced centrally on the `World` entity; they are **never duplicated** into individual `ContentItem` records.
 
-6. **Candidate Media Rights Policy (approved 2026-11-11)**
-   - `CLEARED`: normal media approval.
-   - `UNKNOWN` / `PENDING` / `EXPIRED` on an asset the canonical draft carries: **blocks text approval and DRAFT
-     creation until an Admin explicitly acknowledges that exact asset at that exact status** (clarified and enforced
-     2026-11-11). Acknowledged, it remains a visible warning. On an asset the draft does not carry it is a warning only.
-   - `BLOCKED`: **hard approval blocker** until the asset is replaced or its rights status is corrected with evidence (through the `media-rights` record).
-   - An acknowledgment is bound to one asset URL and one observed rights status, and **never changes licence status** — it is not clearance.
-   - Rights decisions and human media-review decisions are separate records.
-   - Image discovery (including optional Wigolo search) is never evidence of rights; every retrieved asset starts `UNKNOWN`.
-   - Celebrity likeness policy remains **deferred**.
-
 #### 2. Two Independent Implementation Tracks
 
 - **Track A — Gameplay Visual Presentation**:
@@ -6576,205 +6533,8 @@ without the existing authoritative human and lifecycle gates.
   - Canonical World slug alias resolver (`CANONICAL_WORLD_ALIASES`) preventing runtime `World does not exist` approval blocks, with formal DB audit before any slug migration.
 
 #### 3. Current Implementation Status
-
-**Reality boundary (2026-11-11):** everything below exists only as **uncommitted changes** on the local branch
-`fix/content-engine-core-integrity`. Nothing is committed, merged, or deployed; production behaviour is unchanged,
-and no production DB, R2 object, live download, Wigolo call, or paid provider call was made.
-
-- ⬜ **Overall Media Engine: NOT COMPLETE.** No automatic enrichment runs and no asset is ever retrieved,
-  generated or edited by the pipeline. Since Phase 3C-1 the pipeline writes a candidate `mediaPlan` for a
-  governed target — the registry's slots, each recorded with why it is unfilled — and the Phase 3A Admin media
-  actions, reachable from the Phase 3B-1 Review Studio panel, remain the only way an asset actually arrives. The
-  engine still cannot generate a media-governed candidate, so no production candidate reaches the stage with
-  slots to plan.
-- ⬜ **Track A (World 16:9 fallback, `World.questionFallback`, precedence resolver): NOT STARTED.** Kept separate from Track B.
-- ✅ **Track B Phase 1 — Media contracts & approval safety: IMPLEMENTED & VERIFIED LOCALLY.**
-  - Canonical registry `content-engine/domain/media-requirements.ts` (`media-contract-v1`): `ekshifni`,
-    `first-note`, `odd-piece` V2 (original + derived modified image), `moving-xo` on the three visual Puzzles
-    Scopes. Native aspect ratio only. Variable-length media (Bomb, القطها, ركّبها, Odd Piece V1, Marhala) is
-    deliberately absent pending an indexed slot contract.
-  - Candidate `mediaPlan` + `mediaReviewRevision` (optional, additive). Required slots come from the registry,
-    never from the candidate's plan; a missing required slot blocks.
-  - Fail-closed `MEDIA_NOT_READY` gate in `approve` and `createDraft`; media-revision CAS on both writes for
-    governed candidates only. Decorative media never blocks. Rights per decision 6.
-  - Media decisions never touch `reviewRevision` or text assessments.
-  - Flags `ENGINE_MEDIA_ENRICHMENT_ENABLED`, `ENGINE_IMAGE_GENERATION_ENABLED`,
-    `ENGINE_MEDIA_DISCOVERY_WIGOLO_ENABLED`: all default **OFF**, children require their parents.
-  - Compatibility: no engine-generatable mechanic is governed (pinned by test), so no existing candidate, queued
-    job, pinned plan, request hash, prompt version (`mc-v2`, `closest-v2`) or price changed. Existing
-    `PUZZLE_SCOPE_REQUIRES_MEDIA` applies only to `moving-xo` at READY and is not reachable by the engine today.
-- ✅ **Track B Phase 2 — Secure storage & downloads: IMPLEMENTED & VERIFIED LOCALLY** (unit + Mongo-backed
-  integration with mocked R2 and HTTP transport; see verification below).
-  - `ImageDownloadService.fetchImage`: https only, no credentials, default ports,
-    private/loopback/link-local/metadata/reserved/IPv6-translation destinations refused; DNS checked **at connect
-    time** (rebinding-safe); every redirect re-validated (max 3); byte cap enforced while streaming; no
-    compression; whole-operation timeout.
-  - Legacy `ImageDownloadService.download()` (Wikimedia, Jikan) now uses the same guarded transport, so provider
-    results cannot reach private or metadata addresses, redirects are re-validated (max 5), the 10 MB cap applies
-    while streaming, and non-image or truncated bytes are refused. Its contract is preserved: http still allowed,
-    same error messages, header-derived extension, `question-assets/images/<name>-<uuid><ext>`, `{ localPath, url }`,
-    local-only write. Behaviour change: non-default ports and private destinations are now refused.
-  - `infrastructure/media/image-bytes.inspector.ts`: JPEG/PNG/WebP by signature, header dimensions with
-    decompression-bomb bounds, structural completeness (truncation refused). No pixel decode or CRC check.
-  - `LocalImageStorageService.saveContentAddressed`: `engine-<sha256>.<ext>` (registered prefixes only), atomic
-    local write, R2 put must succeed before success is returned, retries idempotent; existing `save` naming
-    unchanged. `delete()` skips only `engine-<64 hex>.<jpg|png|webp>` files; every other file, including
-    sha-named files from other tooling, stays deletable. No current local upload matches the guard.
-  - `EngineImageIngestionService`: 5 MB Engine limit, final location `world-content/content-items/engine-<sha256>`,
-    provenance (requested/final URL, redirects, content type, time, size), rights start `UNKNOWN`, durable R2
-    required unless `ENGINE_MEDIA_REQUIRE_OBJECT_STORAGE=false`. Remote retrieval refused while enrichment is off.
-    Registered in `ContentEngineModule`; **not called by any pipeline stage**.
-  - **Verification (2026-11-11, local):** backend unit suite 271 suites / 3,621 tests passing; content-engine
-    Mongo integration suites 8 / 231 passing via `docker-compose.test.yml` `backend-integration` (ephemeral
-    `mongo:7` on tmpfs, `_test` database guard), including `content-engine-media-ingestion.integration-spec.ts`
-    (success, R2 failure + idempotent retry, duplicate content, flags off, Mongo round-trip into the unchanged
-    Phase 1 gate and rights policy, legacy candidates ungoverned, delete-guard scope).
-  - **Not verified:** real network fetches, a real R2 bucket, production deployment.
-  - ✅ **Resolved (test isolation, not gameplay):** the intermittent `moving-xo-lifecycle.integration-spec.ts`
-    failures came from deadline timers of earlier tests' unfinished sessions (10 s placement / 15 s question)
-    firing during later tests and writing exposures for the shared test account; they surfaced only when the
-    suite ran slowly (~61 s vs ~22 s). Reproduced deterministically with a controlled slowdown; fixed in the spec
-    with an `afterEach` that `forget`s finished sessions via the scheduler's public API. No gameplay code changed.
-    Full integration run: 44 passed, 1 skipped, 597 tests passing.
-- ✅ **Track B Phase 3A — Backend media review: IMPLEMENTED & VERIFIED LOCALLY.**
-  - Admin-only endpoints on the existing review controller (`JwtAuthGuard` + `RolesGuard`, `ADMIN`):
-    `POST /admin/content-engine/candidates/:id/media/:slotKey/{asset|review|rights-acknowledgement}`, served by
-    `CandidateMediaReviewService`.
-  - Slot keys must be declared by the media-requirements registry for the candidate's own job target; legacy
-    (ungoverned) candidates refuse every media action.
-  - Attach/replace accepts only an uploaded file (5 MB, jpeg/png/webp interceptor) verified and stored by
-    `EngineImageIngestionService`; no client URL, filename or alt text is stored. The draft field is written in the
-    canonical `ContentAssetDto` shape. Replacing an asset drops its media approval and rights acknowledgment.
-  - Every action is CAS'd on `mediaReviewRevision` (attach also on `reviewRevision`), writes only media fields, and
-    logs to a separate `mediaEvents` history; `reviewRevision`, `humanAssessment`, `reviewDecision` and
-    `reviewEvents` are never touched.
-  - Media is locked once the candidate is approved, rejected or published (approval requires ready media and the
-    approved-content hash includes it); a text edit, which already voids approval, reopens it.
-  - Text edits on governed candidates cannot change registry media fields (`MEDIA_FIELD_REQUIRES_MEDIA_ACTION`),
-    are CAS'd on the media revision, and a material edit withdraws media approvals (rights acknowledgments kept).
-  - Rights are read live from `media-rights` wherever a gate decides: an existing record is authoritative (a later
-    BLOCKED stops approval and draft creation); with no record, the stored observation stands.
-  - Verified: backend unit suite 272 / 3,660 passing; full Mongo integration run 45 passed, 1 skipped, 612 tests,
-    including `content-engine-media-review.integration-spec.ts` (HTTP auth, attach/review/acknowledge/replace,
-    concurrent decisions, text/media isolation, legacy refusal, live BLOCKED, and approve → BLOCKED refuses
-    create-draft → CLEARED creates a canonical DRAFT carrying the engine media URL).
-  - Not covered: audio slots (upload is image-only), Odd Piece V2 sibling fields (width/height/orientation), alt
-    text, media-review UI.
-- ✅ **Track B Phase 3B-1 — Review Studio media UI: IMPLEMENTED & VERIFIED LOCALLY (browser-validated, 3B-2).**
-  - `frontend/src/features/content-engine-review/candidate-media-panel.tsx`, rendered in the existing candidate
-    detail view; uses the handwritten Content Engine client (the generated OpenAPI contract is unchanged — the
-    Content Engine is outside it by design). Renders nothing for candidates outside the media contract.
-  - Shows registry slots (required gameplay vs decorative), preview, provenance (acquisition, provider, source,
-    retrieval time, dimensions), rights status, media review state and the server's media blockers/warnings;
-    approval readiness is taken only from server `reviewEligibility`.
-  - Upload/replace (labelled as withdrawing the prior approval and acknowledgment), approve, reject (reason +
-    explanation), rights acknowledgment (note required; states it does not clear the licence). BLOCKED is a hard
-    blocker with no approve/acknowledge control. Locked when approved, rejected or published.
-  - Unsupported slots are explained instead of offering failing controls; the backend now reports per-slot
-    `mediaReadiness.slots` (purpose, media type, `uploadSupported`) and refuses `first-note` (audio) and Odd Piece V2
-    uploads with `MEDIA_SLOT_UPLOAD_UNSUPPORTED`.
-  - 409 handling: the media-revision conflict reloads the candidate; slot cards are keyed by `mediaReviewRevision`
-    so a stale half-made decision is discarded, and a panel-level notice asks for a new decision.
-  - **3B-2 integrated validation (2026-11-11):** real Review Studio pages (Next dev server) driven in headless
-    Chromium (Playwright with a locally installed build) against the real backend, an isolated local `mongod`
-    replica set (`*_test` database, scratch data dir) and a local S3-compatible stand-in for R2 exercising the real
-    `R2MediaObjectStorage`; controlled fixture: one `ekshifni` candidate in `celebrities/arab-media-stars` (World
-    Content created through the Admin API) plus one legacy RYO candidate. Ten steps passed on two clean runs:
-    legacy candidate has no panel; missing required slot + server blocker; upload (verified bytes, mirrored PUT with
-    matching SHA-256, preview loads 240×160); rejection; replacement withdraws the rejection and rewrites the draft
-    media; two-tab stale decision receives a real 409 and recovers; UNKNOWN acknowledgment leaves the licence
-    UNKNOWN; BLOCKED record blocks media actions and text approval; CLEARED → text approval in the decision bar →
-    canonical DRAFT carrying the engine media URL. A rerun without clearing the earlier DRAFT was correctly refused
-    as a proven historical duplicate.
-  - **Defect found and fixed:** the conflict notice was lost when the reload remounted the slot card; it now lives at
-    panel level (regression tests added). Frontend suite 173 files / 2,010 tests passing; content-engine backend
-    suites 45 / 984 passing.
-  - **Limitations:** headless Chromium, not the operator's Chrome; Next dev server, not a production build; a local
-    S3 stand-in, not real R2; a controlled fixture, since the generator cannot produce a media-governed candidate.
-  - Requirement-4 gaps found here (high-resolution view, licence notes, rights holder, `mediaEvents` history) were
-    closed in Phase 3B-3 below; automated correctness/leakage findings and the World-fallback distinction remain.
-    The sticky decision bar can overlap the lower media controls until scrolled.
-  - Rights acknowledgment is now mandatory (see the acknowledgment gate below); the earlier open decision is closed.
-- ✅ **Media rights acknowledgment gate: IMPLEMENTED & VERIFIED LOCALLY (2026-11-11, uncommitted).**
-  - `evaluateCandidateMedia`: for each registry slot whose resolved asset is the one at the slot's draft path,
-    UNKNOWN/PENDING/EXPIRED without an acknowledgment bound to that asset URL and that status is a blocker
-    (`MEDIA_RIGHTS_ACKNOWLEDGMENT_REQUIRED`); with one it is an acknowledged warning (`MEDIA_RIGHTS_NOT_CLEARED`).
-    CLEARED needs nothing; BLOCKED stays a hard blocker that cannot be acknowledged. Assets the draft does not carry,
-    and missing or failed decorative media, never block. Candidates outside the media contract are unaffected.
-  - Enforced at the existing gates (approve, create-draft) through the same live-rights read: a status change after
-    acknowledgment (e.g. UNKNOWN → EXPIRED) voids it.
-  - After text approval, a **rights-only** acknowledgment is permitted on the approved, unpublished candidate, so a
-    rights change cannot trap it. It writes only media fields, is CAS'd on `mediaReviewRevision`, and lands only while
-    the candidate is still approved at the same text revision; upload, replacement and media review stay locked;
-    `reviewRevision`, assessment, approval decision, approval provenance and the approved draft are untouched;
-    draft creation re-checks everything. BLOCKED after approval still requires voiding the approval (edit) to replace.
-  - `reviewEligibility`: one actionable line per media blocker (slot, code, action) — in `approvalBlockers` before
-    approval and in `draftBlockers` after it. The Review Studio panel shows the blocker, the acknowledgment control
-    (also on approved, unpublished candidates, as the only control), and a warning-only state for undrafted assets.
-  - Verified: backend unit 272 suites / 3,677 tests; frontend 173 files / 2,012 tests; full Mongo integration run 45
-    passed, 1 skipped, 616 tests, including approval refused until acknowledgment, post-approval EXPIRED blocking
-    create-draft with an actionable draft blocker, rights-only acknowledgment with text state unchanged and
-    review/upload still locked, two concurrent acknowledgments (exactly one wins), DRAFT creation, refusal after
-    publication, and legacy candidates unaffected. Not re-run in the browser since the 3B-2 validation.
-- ✅ **Track B Phase 3B-3 — Media review UI completion: IMPLEMENTED & VERIFIED LOCALLY (2026-11-12, uncommitted).**
-  - `candidate-media-viewer.tsx` (used by the existing panel; no workspace redesign): full-size viewer from the
-    thumbnail, with "fit" (whole image within 95vw × 75vh, native ratio, never cropped) and "1:1" (intrinsic pixels in
-    a scrollable frame) and the measured natural dimensions; neutral alt text throughout.
-  - Provenance and rights rows show only what the server sent: final URL, redirects, byte size, SHA-256, model, the
-    source's licence note, the recorded licence, rights holder, rights source and the acknowledgment; absent licence
-    note, licence or holder read "not recorded" and nothing is inferred. `mediaEvents` history, newest first, with
-    only the facts each event carries.
-  - Backend (additive): the `media-rights` read projection now includes the asset layer's `licence` and
-    `rightsHolder` (evidence, notes and commercial terms stay private, unchanged); the live-rights overlay carries
-    them only when a record exists.
-  - Gameplay and decorative slots keep distinct badges and now distinct card styling (`data-purpose`).
-  - **Verification:** frontend 173 files / 2,018 tests; backend unit 272 / 3,679; media Mongo integration suites
-    2 / 26 (Docker test stack). Browser: real Review Studio pages (Next dev server) in headless Chromium against the
-    real backend, an isolated local `mongod` replica set (`*_test`) and a local S3 stand-in for R2 — 13 steps passed:
-    legacy unaffected; missing slot; 1600×900 upload mirrored with matching SHA-256; viewer fit 1333×750 (16:9
-    preserved) and 1:1 1600×900 scrollable; "not recorded" for absent metadata; text approval disabled in the UI and
-    refused by the server (409) until the rights acknowledgment; acknowledgment leaves the licence UNKNOWN; a new
-    PENDING record (with licence and holder shown) voids it and requires a new one; text approval; rights expiring
-    after approval block DRAFT creation with an actionable draft blocker; rights-only acknowledgment on the approved
-    candidate with text state unchanged; canonical DRAFT carrying the engine media; history of five events.
-    One defect fixed during verification: the viewer dialog sized to its content (fit view 688 px wide).
-  - **Limitations:** headless Chromium (the Chrome extension was not connected), Next dev server rather than a
-    production build, local S3 stand-in rather than real R2, controlled fixture (the generator still cannot produce a
-    media-governed candidate).
-- ✅ **Track B Phase 3C-1 — Orchestrator media planning stage: IMPLEMENTED & VERIFIED LOCALLY (2026-11-12,
-  uncommitted).**
-  - New durable checkpoint `media_enriched` in `ENGINE_PIPELINE_STAGES`, between `judged` and the human handoff,
-    which is the approved lifecycle position (decision 2, step 6): after the free deterministic checks and the
-    paid quality judgement, on surviving candidates only, before review. Additive — jobs checkpointed before it
-    existed simply never carry it.
-  - `content-engine/domain/candidate-media-planning.ts` (pure): resolves the registry slots for the candidate's
-    own target and records each unfilled one with a reason — `MEDIA_ENRICHMENT_DISABLED`,
-    `MEDIA_RETRIEVAL_NOT_CONFIGURED`, `MEDIA_GENERATION_NOT_CONFIGURED`, `MEDIA_ACQUISITION_UNSUPPORTED`. A
-    required gameplay slot stays `planned` (the question is not whole without it); a decorative slot is `skipped`
-    (the World Question Fallback covers it). It contacts no provider, costs nothing and reserves no budget.
-  - **A candidate outside the media contract is never given a plan.** `evaluateCandidateMedia` reads any plan
-    entry as proof that a candidate is media-governed, so an empty courtesy plan would gate a text question's
-    approval on media nobody requires. Every engine-generatable mechanic today
-    (`read-your-opponent`, `closest`, `combo`) is therefore left byte-identical.
-  - **The pipeline never overwrites a human.** A slot holding an asset, a media decision or a rights
-    acknowledgment is left exactly as it is, so a resumed or retried job cannot erase an Admin's upload. The write
-    is idempotent (a second pass writes nothing) and touches `mediaPlan` alone — never `reviewRevision`,
-    `mediaReviewRevision`, assessments or review decisions.
-  - Flags resolved fail-closed through `resolveEngineMediaFlags`; the orchestrator's `ConfigService` is
-    `@Optional()`, so a wiring mistake plans nothing rather than authorizing a call.
-  - Effect on the reviewer: the readiness gate's `MEDIA_REQUIRED_SLOT_MISSING` ("no plan entry") becomes
-    `MEDIA_REQUIRED_SLOT_UNRESOLVED` naming the status and the reason, which the existing Review Studio panel
-    already renders. No frontend change.
-  - **Verification:** backend unit 278 suites / 3,748 tests passing, `tsc` clean, 0 ESLint errors.
-    `candidate-media-planning.spec.ts` (15) covers the two invariants, the reason taxonomy, scope-restricted
-    contracts and idempotence; `content-engine-media-stage.spec.ts` (9) drives the orchestrator and pins the
-    checkpoint order `context_resolved → generated → screened → verified → compatibility_checked → judged →
-    media_enriched → awaiting_review`, survivors-only selection, fail-closed flags and the write's field set.
-  - **Not covered:** no Mongo-backed integration run for the stage, no browser validation, and no asset is
-    acquired — a governed candidate still needs an Admin upload.
-- ⬜ **Track B Phase 3C-2+ (media intents in generation, `AssetService`/Wigolo discovery, AI generation, localized
-  editing): NOT STARTED.** Media intents in the generation schema would change the prompt contract and therefore
-  every request hash and pinned plan, so the prompt-version bump is a deliberate decision to be taken on its own.
+- ⬜ **NOT IMPLEMENTED.** All design decisions above are approved for architecture planning.
+- ⬜ No database schema migration, no media intent generation in Content Engine, no UI media review surface, and no frontend fallback renderer exists.
 - ⬜ Existing implementation statuses, historical records, and unresolved issues are preserved in full. Output remains canonical `ContentItem` in `DRAFT` status.
 - 🟡 **Media-aware content identity — DESIGN APPROVED, NOT IMPLEMENTED.** Identity for media-native questions
   must consider the complete mechanic-native gameplay stimulus: identical generic prompts with distinct required
@@ -6993,36 +6753,6 @@ Executed against the exact isolated git tree (`e916ea2ec2bc8a18283e60298e00a2584
 - ⬜ **Broad Content Engine UI redesign:** NOT IMPLEMENTED.
 - **G2 global uniqueness and media-aware identity (§30.22):** status unchanged, as recorded in subsection 6.
 - **Gameplay startup errors seen during the PR #47 deploy:** pre-existing and unrelated (§19 #34).
-
-#### 8. Content Engine Review UX Phases 1–3 — ✅ IMPLEMENTED & DEPLOYED (PRs #50–#52)
-
-- **Phase 1 — Review layout:** [PR #50](https://github.com/MuathAlkathiri/akwaan/pull/50), merge `8036d73`.
-  Side-by-side desktop review, sticky decision bar, candidate URL synchronization, Previous/Next and J/K
-  navigation, progress, unified status and candidate-scoped state isolation. Authenticated production review
-  verification remains incomplete.
-- **Phase 2 — Review clarity:** [PR #51](https://github.com/MuathAlkathiri/akwaan/pull/51), merge `c2fd2e5`.
-  Primary question presentation, Arabic overlap explanations, historical reference clues, expandable technical
-  details and mobile wrapping of technical codes. Authenticated production review verification remains incomplete.
-- **Phase 3 — Review hardening:** [PR #52](https://github.com/MuathAlkathiri/akwaan/pull/52), merge
-  `eccba7f647864193a50e88222a8d4e386800034f`. Five quality scores start unselected; the combined action saves an
-  assessment before approval; rejection requires an explicit reason and confirmation. Revision-aware forms
-  preserve evidence and claim associations, use evidence-bound acknowledgments, and handle partial failures,
-  retries and unknown approval outcomes. Storage-unavailable remounts require fresh verification; loading and
-  error states were improved.
-
-**Validation and production boundary.** The full frontend suite passed **1,927 tests**; typecheck, focused lint
-and production build passed. Vercel production deployment `4uZ7Su3SaXD1MBxUattpgwm5i2kB` completed and public
-assets contained Phase 3 changes. Backend `/health` subsequently returned HTTP 200, database connected and commit
-`6d39937`. Authenticated candidate smoke was **not performed**; Render deployment history was not independently
-verified, and the earlier backend health timeouts have no confirmed cause. No production candidate review action
-was performed as part of this release verification.
-
-**Accepted limitations / follow-up.** If storage persistence fails, an unknown approval marker may be lost on a full
-page reload; server-side revision and transactional protections remain. Requirement classification partly depends on
-server message wording. New evidence may lack a claim association and be rejected by backend validation. The
-concurrent re-screen/DRAFT integration test has a timing-sensitive arrival assertion; non-empty acknowledgment
-concurrency remains unverified. The unrelated `ryo-explainer` test has shown intermittent failures. Authenticated
-production smoke remains outstanding. Existing responsive Admin-header debt remains tracked in §19 #32.
 
 ---
 

@@ -17,12 +17,6 @@ export interface MediaRightsStatus extends ClearanceView {
   storageKey: string;
   recordExists: boolean;
   replacementRequired: boolean;
-  /**
-   * The asset-rights layer's licence name and rights holder, as recorded.
-   * Display attribution, not evidence (which stays behind `evidenceRef`).
-   */
-  licence: string | null;
-  rightsHolder: string | null;
   attribution: {
     required: boolean | null;
     text: string | null;
@@ -51,8 +45,6 @@ export class MediaRightsService {
       storageKey: MediaRightsService.storageKeyOf(assetUrl),
       recordExists: Boolean(record),
       replacementRequired: record?.replacementRequired ?? false,
-      licence: record?.assetRights?.licence ?? null,
-      rightsHolder: record?.assetRights?.rightsHolder ?? null,
       attribution: {
         required: record?.attribution?.required ?? null,
         text: record?.attribution?.text ?? null,
@@ -71,10 +63,7 @@ export class MediaRightsService {
    * known about the asset — and it keeps the absent case on the same code path
    * as the blocked one.
    */
-  async statusFor(
-    assetUrl: string,
-    now = new Date(),
-  ): Promise<MediaRightsStatus> {
+  async statusFor(assetUrl: string, now = new Date()): Promise<MediaRightsStatus> {
     const record = await this.repository.findByAssetUrl(assetUrl);
     return this.project(assetUrl, record, now);
   }
@@ -116,10 +105,7 @@ export class MediaRightsService {
     if (derived !== undefined) {
       attribution.required = derived;
       attribution.requirementBasis = 'derived-from-licence';
-    } else if (
-      attribution.required !== undefined &&
-      attribution.required !== null
-    ) {
+    } else if (attribution.required !== undefined && attribution.required !== null) {
       attribution.requirementBasis = 'evidence';
     }
     next.attribution = attribution;

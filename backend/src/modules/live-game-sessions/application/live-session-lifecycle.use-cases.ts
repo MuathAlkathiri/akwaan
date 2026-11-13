@@ -43,36 +43,6 @@ export class StartLiveGameSession {
   }
 }
 
-/**
- * The waiting room's start.
- *
- * Same side effect as `StartLiveGameSession` — a parent game still needs to know
- * its question went live — but it goes straight from waiting to active without
- * the readiness gate.
- */
-@Injectable()
-export class BeginLiveGameSession {
-  constructor(
-    private readonly commands: LiveSessionCommandExecutor,
-    @Inject(PARENT_GAME_ACCESS)
-    private readonly parentGames: ParentGameAccess,
-  ) {}
-  async execute(command: LiveSessionCommand) {
-    const snapshot = await this.commands.execute(
-      'live-session:state-changed',
-      command,
-      (s, n) => s.begin(n),
-    );
-    if (snapshot.parentGameId && snapshot.parentGameQuestionId) {
-      await this.parentGames.markQuestionStarted(
-        snapshot.parentGameId,
-        snapshot.parentGameQuestionId,
-      );
-    }
-    return snapshot;
-  }
-}
-
 @Injectable()
 export class PauseLiveGameSession {
   constructor(private readonly commands: LiveSessionCommandExecutor) {}

@@ -29,7 +29,6 @@ import type { ContentItem } from "@/features/world-management/types";
 import * as api from "./api";
 import { DeduplicationPanel } from "./deduplication-panel";
 import { CreativeSlotInspector } from "./creative-slot-inspector";
-import { CandidateMediaPanel } from "./candidate-media-panel";
 import {
   INCOMPLETE_HISTORICAL_CODES,
   INCONCLUSIVE_COMPARISON_CODES,
@@ -633,22 +632,6 @@ export function ContentEngineReviewWorkspace() {
     return () => window.cancelAnimationFrame(frame);
   }, [selectedId]);
 
-  const clearSelectionAndUrlParam = useCallback(() => {
-    selectedIdRef.current = undefined;
-    setSelectedId(undefined);
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.has(CANDIDATE_URL_PARAM)) {
-        params.delete(CANDIDATE_URL_PARAM);
-        const nextQuery = params.toString();
-        const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`;
-        window.history?.replaceState?.(null, "", nextUrl);
-      }
-    } catch {
-      // Ignore history replace errors
-    }
-  }, []);
-
   const handleCandidateHandoff = useCallback(
     (selection: {
       jobId: string;
@@ -656,7 +639,6 @@ export function ContentEngineReviewWorkspace() {
       scopeKey: string;
       mechanicKey?: string;
     }) => {
-      clearSelectionAndUrlParam();
       setActiveJobId(selection.jobId);
       setFilters((current) => ({
         ...current,
@@ -666,12 +648,8 @@ export function ContentEngineReviewWorkspace() {
       }));
       setActiveSurface("review");
     },
-    [clearSelectionAndUrlParam],
+    [],
   );
-
-  const activeFilterJobId = filters.jobId.trim();
-  const activeFilterJobIdRef = useRef(activeFilterJobId);
-  activeFilterJobIdRef.current = activeFilterJobId;
 
   const list = useQuery({
     queryKey: ["content-engine-review", filters],
@@ -690,27 +668,13 @@ export function ContentEngineReviewWorkspace() {
     queryFn: () => api.getCandidate(selectedId!),
     enabled: Boolean(selectedId),
   });
-  const rawCandidate =
-    detail.data && detail.data.candidateId === selectedId
-      ? detail.data
-      : undefined;
-  const isCandidateJobMismatch = Boolean(
-    rawCandidate &&
-      activeFilterJobId &&
-      rawCandidate.jobId !== activeFilterJobId,
-  );
-  const candidate = isCandidateJobMismatch ? undefined : rawCandidate;
-
-  useEffect(() => {
-    if (!isCandidateJobMismatch) return;
-    clearSelectionAndUrlParam();
-  }, [isCandidateJobMismatch, clearSelectionAndUrlParam]);
-
   const spending = useQuery({
-    queryKey: ["content-engine-spending", candidate?.jobId],
-    queryFn: () => api.getSpending(candidate!.jobId),
-    enabled: Boolean(candidate?.jobId),
+    queryKey: ["content-engine-spending", detail.data?.jobId],
+    queryFn: () => api.getSpending(detail.data!.jobId),
+    enabled: Boolean(detail.data?.jobId),
   });
+
+  const candidate = detail.data;
 
   const queueRows = useMemo(() => list.data ?? [], [list.data]);
   const queueIds = useMemo(
@@ -850,25 +814,14 @@ export function ContentEngineReviewWorkspace() {
    * The candidate an action was started on. A reviewer can move to another
    * candidate before the server answers; the answer still belongs to this one.
    */
-  type ActionTarget =
-    | { candidateId: string; revision: number; jobId: string }
-    | undefined;
+  type ActionTarget = { candidateId: string; revision: number } | undefined;
   const actionTargetFor = (): ActionTarget =>
     candidate
-      ? {
-          candidateId: candidate.candidateId,
-          revision: candidate.reviewRevision,
-          jobId: candidate.jobId,
-        }
+      ? { candidateId: candidate.candidateId, revision: candidate.reviewRevision }
       : undefined;
   /** True while the action's candidate is still the one on screen. */
   const isOnScreen = (target: ActionTarget) =>
-    Boolean(
-      target &&
-        selectedIdRef.current === target.candidateId &&
-        (!activeFilterJobIdRef.current ||
-          target.jobId === activeFilterJobIdRef.current),
-    );
+    Boolean(target && selectedIdRef.current === target.candidateId);
   /** Prefix for a toast about a candidate the reviewer has already left. */
   const elsewhere = (target: ActionTarget) =>
     isOnScreen(target) ? "" : "المرشح السابق: ";
@@ -1235,9 +1188,6 @@ export function ContentEngineReviewWorkspace() {
           initialJobId={activeJobId}
           onActiveJobIdChange={setActiveJobId}
           onJobSubmitted={(jobId) => {
-            if (jobId !== filters.jobId.trim()) {
-              clearSelectionAndUrlParam();
-            }
             setActiveJobId(jobId);
             setFilters((current) => ({ ...current, jobId }));
           }}
@@ -1329,27 +1279,12 @@ export function ContentEngineReviewWorkspace() {
                   }[key]
                 }
                 value={filters[key]}
-                onChange={(event) => {
-                  const nextValue = event.target.value;
-                  if (
-                    key === "jobId" &&
-                    nextValue.trim() !== filters.jobId.trim()
-                  ) {
-                    setActiveJobId(nextValue.trim() || null);
-                    if (
-                      selectedId &&
-                      (!rawCandidate ||
-                        (nextValue.trim() &&
-                          rawCandidate.jobId !== nextValue.trim()))
-                    ) {
-                      clearSelectionAndUrlParam();
-                    }
-                  }
+                onChange={(event) =>
                   setFilters((current) => ({
                     ...current,
-                    [key]: nextValue,
-                  }));
-                }}
+                    [key]: event.target.value,
+                  }))
+                }
               />
             ))}
             <select
@@ -1551,12 +1486,7 @@ export function ContentEngineReviewWorkspace() {
             </div>
           )}
 
-          {selectedId &&
-            !isCandidateJobMismatch &&
-            (!activeFilterJobId ||
-              Boolean(candidate) ||
-              Boolean(selectedRow) ||
-              detail.isError) && (
+          {selectedId && (
             <div
               data-testid="candidate-detail-header"
               className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm xl:flex-row xl:items-start xl:justify-between"
@@ -1817,9 +1747,6 @@ export function ContentEngineReviewWorkspace() {
 
             {/* Creative Slot & Canonical Family Compliance Inspector */}
             <CreativeSlotInspector candidate={candidate} />
-
-            {/* §30.22 media review; renders nothing outside the media contract */}
-            <CandidateMediaPanel candidate={candidate} />
 
             {/* Deduplication & Content Identity Panel */}
             <DeduplicationPanel

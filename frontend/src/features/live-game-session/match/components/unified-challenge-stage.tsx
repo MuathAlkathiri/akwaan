@@ -7,7 +7,6 @@ import { abortActiveChallenge } from "@/features/match-setup";
 import { occurrenceLabel } from "@/features/match-setup";
 import { useLiveSession } from "../../hooks/live-session-context";
 import { MatchGameplayRenderer } from "../match-stage-router";
-import { QuestionBackdrop } from "./question-backdrop";
 import { slotLabels, teamName } from "../presentation";
 import { localizeMatchError } from "../errors/match-errors";
 import type { MatchActor, MatchTeamStanding } from "../types";
@@ -70,22 +69,13 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
   // television, so the phone simply skips this header. Nothing else differs: the
   // same stage component, the same gameplay renderer, no second code path.
   const phone = actor === "participant";
-  // The artwork is composed for a living-room screen, and a phone already holds
-  // its own private controls in a shell of its own; wallpapering a handset would
-  // spend bandwidth and attention on something nobody is looking at.
-  const backdropUrl = phone ? undefined : current?.questionBackdropUrl;
 
   return (
     <div
-      className={
-        phone
-          ? "flex min-h-0 flex-1 flex-col"
-          : `stage-center space-y-4${backdropUrl ? " relative isolate" : ""}`
-      }
+      className={phone ? "flex min-h-0 flex-1 flex-col" : "stage-center space-y-4"}
       data-testid="unified-challenge"
       data-challenge-surface={phone ? "phone" : "screen"}
     >
-      {backdropUrl && <QuestionBackdrop url={backdropUrl} />}
       {!phone && (
       <header className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius)] border border-border bg-card p-4">
         <div className="min-w-0">

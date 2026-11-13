@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   useCreateWorld,
   useUpdateWorld,
-  useWorldQuestionFallback,
 } from "../../hooks/use-world-content";
 import { useAutoSlug } from "../../hooks/use-auto-slug";
 import { useEntityFormSubmit } from "../../hooks/use-entity-form-submit";
@@ -29,7 +28,6 @@ interface WorldFormProps {
 
 export function WorldForm({ world, onSuccess }: WorldFormProps) {
   const [assetFile, setAssetFile] = useState<File | null>(null);
-  const [fallbackFile, setFallbackFile] = useState<File | null>(null);
   const [name, setName] = useState(world?.name ?? "");
   const [description, setDescription] = useState(world?.description ?? "");
   const [status, setStatus] = useState<WorldContentStatus>(
@@ -39,9 +37,6 @@ export function WorldForm({ world, onSuccess }: WorldFormProps) {
   const [timerProfile, setTimerProfile] = useState(world?.timerProfile ?? "");
   const [toneProfile, setToneProfile] = useState(world?.toneProfile ?? "");
   const slugField = useAutoSlug(world?.slug, "world");
-  // The backdrop has its own endpoint, so it saves on its own rather than
-  // riding the World write — which already carries the banner image.
-  const fallback = useWorldQuestionFallback();
 
   const formSubmit = useEntityFormSubmit<World>({
     entityId: world?.id,
@@ -97,47 +92,6 @@ export function WorldForm({ world, onSuccess }: WorldFormProps) {
         disabled={formSubmit.isPending}
         shape="wide"
       />
-
-      {world && (
-        <section className="space-y-2 rounded-[var(--radius)] border border-border p-3">
-          <UploadField
-            label="خلفية السؤال (16:9)"
-            existingUrl={world.questionFallback?.url}
-            value={fallbackFile}
-            onChange={setFallbackFile}
-            disabled={fallback.isPending}
-            shape="wide"
-          />
-          <p className="text-xs text-muted-foreground">
-            خلفية زخرفية هادئة تظهر وراء السؤال في هذا العالم. لا تُستخدم بديلاً
-            عن صورة أو صوت يحتاجه التحدي نفسه، ويظل العالم قابلاً للعب بدونها.
-          </p>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!fallbackFile || fallback.isPending}
-              onClick={async () => {
-                if (!fallbackFile) return;
-                await fallback.mutateAsync({ id: world.id, file: fallbackFile });
-                setFallbackFile(null);
-              }}
-            >
-              {fallback.isPending ? "جاري الحفظ..." : "حفظ الخلفية"}
-            </Button>
-            {world.questionFallback?.url && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={fallback.isPending}
-                onClick={() => fallback.mutateAsync({ id: world.id, file: null })}
-              >
-                إزالة الخلفية
-              </Button>
-            )}
-          </div>
-        </section>
-      )}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div>

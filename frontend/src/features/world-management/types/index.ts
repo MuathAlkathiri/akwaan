@@ -120,8 +120,6 @@ export interface World {
   description?: string;
   icon?: ContentAsset;
   banner?: ContentAsset;
-  /** 16:9 artwork shown behind a question that carries no gameplay media. */
-  questionFallback?: ContentAsset | null;
   soundPack?: string | null;
   timerProfile?: string | null;
   toneProfile?: string | null;

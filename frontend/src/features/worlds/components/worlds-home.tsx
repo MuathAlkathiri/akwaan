@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
-import { ArrowLeft, Check, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MATCH_SETUP_ROUTE } from "@/features/match-setup/routes";
 import {
@@ -20,7 +20,6 @@ import { cn } from "@/lib/utils";
 import { JourneyShell, SectionHeading } from "./journey-shell";
 import { JourneyError } from "./journey-error";
 import { WorldCover } from "./world-cover";
-import { ResumeMatchCard } from "./resume-match-card";
 import { ScopeCardMedia } from "./scope-card-media";
 import {
   usePlayableScopes,
@@ -163,7 +162,6 @@ export function WorldsHome() {
     <JourneyShell className="max-w-[1440px]">
       <div className="relative space-y-16 pb-6">
         <AkwaanHero />
-        <ResumeMatchCard />
 
         <section
           id="worlds"
@@ -199,10 +197,7 @@ export function WorldsHome() {
               ) : worlds.length ? (
                 <>
                   {/* Active Worlds as circular portals — all of them, still exactly-3 to select. */}
-                  {/* A wrap that centres, not a fixed four-column grid. Five Worlds in four
-                      columns left the fifth alone at the row's start with three columns of
-                      white beside it, and the same happened again below. */}
-                  <ul className="flex list-none flex-wrap justify-center gap-x-5 gap-y-8 [&>li]:basis-[clamp(9.5rem,17.5%,13.5rem)]">
+                  <ul className="grid list-none grid-cols-2 justify-items-center gap-x-6 gap-y-10 sm:grid-cols-4">
                     {worlds.map((world) => {
                       const occurrence = draft.occurrences.find(
                         (item) => item.worldId === world.id,
@@ -250,7 +245,7 @@ export function WorldsHome() {
                         عوالم جديدة في الطريق
                       </h3>
                       <ul
-                        className="flex list-none flex-wrap justify-center gap-x-5 gap-y-8 [&>li]:basis-[clamp(9.5rem,17.5%,13.5rem)]"
+                        className="grid list-none grid-cols-2 justify-items-center gap-x-6 gap-y-8 sm:grid-cols-4"
                         data-testid="upcoming-worlds"
                       >
                         {upcoming.map((world) => (
@@ -293,99 +288,27 @@ function AkwaanHero() {
         <h1 className="akwaan-hero-copy-in mt-3 text-3xl font-black leading-[1.25] text-[hsl(var(--brand-navy))] [animation-delay:50ms] sm:text-4xl lg:text-[2.9rem]">
           3 عوالم مختلفة، منافسة واحدة
         </h1>
-        {/* One line between the headline and the button, not three. What the
-            second paragraph explained — teams, the kinds of challenge — the
-            page itself shows a moment later, and a visitor reads none of it
-            before they have decided to start. */}
         <p className="akwaan-hero-copy-in mt-4 max-w-xl text-base font-bold leading-7 text-[hsl(var(--brand-navy))] [animation-delay:100ms] sm:text-lg sm:leading-8">
           مو مجرد أسئلة. كل عالم له{" "}
           <span className="text-[hsl(var(--brand-gold))]">تحديه الخاص</span>{" "}
           وطريقة لعب تميّزه.
         </p>
+        <p className="akwaan-hero-copy-in mt-2 max-w-xl text-sm leading-7 text-[hsl(var(--brand-navy)/.62)] [animation-delay:150ms] sm:text-base">
+          اختاروا 3 عوالم، كوّنوا فريقين، وتنافسوا في تحديات تجمع المعرفة،
+          القرار، التعاون وقراءة الخصم.
+        </p>
 
         <Button
           asChild
           size="lg"
-          className="akwaan-primary-action akwaan-hero-cta-in mt-6 rounded-full border border-[hsl(var(--brand-gold)/.32)] bg-[hsl(var(--brand-navy))] px-10 py-6 text-base font-black text-white shadow-[0_16px_34px_-18px_hsl(var(--brand-navy)/.8)] [animation-delay:200ms] hover:border-[hsl(var(--brand-gold)/.72)] hover:bg-[hsl(var(--brand-navy)/.96)] hover:shadow-[0_18px_38px_-16px_hsl(var(--brand-gold)/.42)] focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          className="akwaan-primary-action akwaan-hero-cta-in mt-7 rounded-full border border-[hsl(var(--brand-gold)/.32)] bg-[hsl(var(--brand-navy))] px-10 py-6 text-base font-black text-white shadow-[0_16px_34px_-18px_hsl(var(--brand-navy)/.8)] [animation-delay:200ms] hover:border-[hsl(var(--brand-gold)/.72)] hover:bg-[hsl(var(--brand-navy)/.96)] hover:shadow-[0_18px_38px_-16px_hsl(var(--brand-gold)/.42)] focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         >
           <a href="#worlds">
             ابدأ مباراة
           </a>
         </Button>
       </div>
-      {/* Tucked into the hero's lower left rather than set beside the wordmark.
-          Level with it the two read as columns of equal weight and the hero
-          splits down the middle; down here the wordmark, the line and the
-          button keep the page's centre line and the drawing fills the empty
-          corner they leave. Out of the flow entirely, so it moves nothing.
-          Narrow screens have no such corner, so it follows underneath. */}
-      <HowItPlays className="mx-auto mt-6 w-[min(78vw,290px)] lg:absolute lg:-bottom-2 lg:left-[6%] lg:mt-0 lg:w-[300px] xl:left-[10%]" />
     </section>
-  );
-}
-
-/**
- * What the room looks like, drawn rather than written.
- *
- * The page never said the game runs on one screen with everyone on their own
- * phone, and «كيف تلعب» is a click a first visitor has no reason to take. No
- * caption: if the drawing needs a sentence under it, the drawing has failed.
- *
- * Square-edged on purpose. The Worlds own the circles on this page, and a
- * second ring of them would blur what can be clicked.
- */
-function HowItPlays({ className = "" }: { className?: string }) {
-  const Phone = ({
-    x,
-    y,
-    tone,
-    tilt,
-  }: {
-    x: number;
-    y: number;
-    tone: string;
-    tilt: number;
-  }) => (
-    // Tilted, because an upright rectangle beside a television reads as a
-    // second screen rather than as a phone somebody is holding.
-    <g transform={`translate(${x} ${y}) rotate(${tilt} 15 26)`}>
-      <rect
-        x="0"
-        y="0"
-        width="30"
-        height="52"
-        rx="7"
-        fill="white"
-        stroke="hsl(var(--brand-navy))"
-        strokeWidth="3"
-      />
-      <rect x="6" y="9" width="18" height="9" rx="3" fill={tone} />
-      <rect x="6" y="23" width="18" height="4.5" rx="2.25" fill="hsl(var(--brand-navy)/.2)" />
-      <rect x="6" y="32" width="12" height="4.5" rx="2.25" fill="hsl(var(--brand-navy)/.2)" />
-    </g>
-  );
-  return (
-    <svg
-      viewBox="0 0 380 160"
-      className={className}
-      role="img"
-      aria-label="شاشة واحدة يشاهدها الجميع، وكل لاعب يلعب من جواله"
-    >
-      {/* The shared screen, mid-challenge: a question and two team scores. */}
-      <rect x="112" y="6" width="156" height="94" rx="11" fill="hsl(var(--brand-navy))" />
-      <rect x="136" y="24" width="108" height="9" rx="4.5" fill="hsl(40 57% 63% / .5)" />
-      <rect x="152" y="40" width="76" height="7" rx="3.5" fill="hsl(43 38% 95% / .28)" />
-      <rect x="134" y="64" width="50" height="18" rx="9" fill="hsl(226 72% 50%)" />
-      <rect x="196" y="64" width="50" height="18" rx="9" fill="hsl(358 72% 58%)" />
-      {/* The stand, so it reads as a television in a room. */}
-      <rect x="180" y="100" width="20" height="12" fill="hsl(var(--brand-navy)/.55)" />
-      <rect x="154" y="112" width="72" height="7" rx="3.5" fill="hsl(var(--brand-navy)/.55)" />
-      {/* Two phones a side, each in its team's colour. */}
-      <Phone x={48} y={54} tilt={-14} tone="hsl(226 72% 50%)" />
-      <Phone x={80} y={88} tilt={-7} tone="hsl(226 72% 50%)" />
-      <Phone x={270} y={88} tilt={7} tone="hsl(358 72% 58%)" />
-      <Phone x={302} y={54} tilt={14} tone="hsl(358 72% 58%)" />
-    </svg>
   );
 }
 
@@ -445,15 +368,19 @@ function WorldSelectCard({
             <span className="akwaan-numeral">{order}</span>
           </span>
         )}
-        {/* The satellite dot is gone. Selection never needed it — a gold border, an
-            inner ring and the order badge all say it — and five grey specks
-            scattered over the row read as dust rather than as life. */}
-        </button>
+        {/* Tiny orbiting satellite for a bit of life. */}
+        <span
+          aria-hidden
+          className={cn(
+            "absolute left-4 top-6 size-2 rounded-full transition-colors",
+            selected
+              ? "bg-[hsl(var(--brand-gold))]"
+              : "bg-[hsl(var(--brand-navy)/.32)] group-hover:bg-[hsl(var(--brand-gold)/.72)]",
+          )}
+        />
+      </button>
 
-      {/* A fixed height, so the gold mechanic label sits on the same baseline for
-          every World. A two-line name pushed its own label down and the row read
-          as though it had been dropped. */}
-      <div className="flex min-h-[4.8rem] flex-col items-center justify-between gap-1 text-center">
+      <div className="flex flex-col items-center gap-1 text-center">
         <span className="text-xl font-black text-[hsl(var(--brand-navy))]">
           {world.name}
         </span>
@@ -511,77 +438,23 @@ function WorldCardScopes({
  * dashed placeholder when it does not, which is the ordinary state of a World
  * announced before its art exists.
  */
-/**
- * A World with no artwork yet.
- *
- * Drawn rather than fetched, so a World is never a dotted outline waiting for a
- * designer: the row reads as a row of planets whether or not every one of them
- * has been painted. Brand colours only, and no text — the name sits beneath it
- * like every other card's.
- */
-function FallbackPlanet({ seed }: { seed: string }) {
-  // Each unpainted World gets its own hue, derived from its slug so it is the
-  // same on every visit. Five identical planets in a row read as one repeated
-  // placeholder; five different ones read as five Worlds.
-  let hash = 0;
-  for (const char of seed) hash = (hash * 31 + char.charCodeAt(0)) % 360;
-  const hue = 212 + (hash % 5) * 26;
-  const id = `akwaan-fallback-${seed.replace(/[^a-z0-9]/gi, "") || "world"}`;
-  return (
-    <svg viewBox="0 0 160 160" className="size-full" aria-hidden role="presentation">
-      <defs>
-        <radialGradient id={id} cx="38%" cy="32%" r="78%">
-          <stop offset="0%" stopColor={`hsl(${hue} 90% 86%)`} />
-          <stop offset="52%" stopColor={`hsl(${hue} 58% 62%)`} />
-          <stop offset="100%" stopColor="hsl(239 40% 24%)" />
-        </radialGradient>
-      </defs>
-      <circle cx="80" cy="80" r="52" fill={`url(#${id})`} />
-      {/* Two continents and a crater, so it reads as a world and not as a ball. */}
-      <path
-        d="M52 66c10-9 22-6 30 1s18 6 24-2c3 13-6 25-19 28-14 3-29-4-35-13-3-5-3-10 0-14Z"
-        fill="hsl(43 38% 95% / .22)"
-      />
-      <path
-        d="M96 104c7-2 14 1 18 7-7 7-17 10-26 8 1-6 4-12 8-15Z"
-        fill="hsl(43 38% 95% / .16)"
-      />
-      <circle cx="62" cy="96" r="7" fill="hsl(239 40% 17% / .22)" />
-      {/* The ring the brand's own logo carries. */}
-      <ellipse
-        cx="80"
-        cy="80"
-        rx="72"
-        ry="24"
-        fill="none"
-        stroke="hsl(40 57% 63%)"
-        strokeWidth="2.5"
-        opacity=".75"
-        transform="rotate(-21 80 80)"
-      />
-      <circle cx="18" cy="63" r="3" fill="hsl(40 57% 63%)" />
-    </svg>
-  );
-}
-
 function ComingSoonCard({ world }: { world: PlayableWorld }) {
   const art = world.banner ?? world.icon;
   return (
     <div
       aria-disabled
       data-testid={`upcoming-world-${world.slug}`}
-      className="mx-auto flex w-full max-w-[13rem] flex-col items-center gap-3 text-center"
+      className="mx-auto flex w-full max-w-[13rem] flex-col items-center gap-3 text-center opacity-60"
     >
-      {/* No grayscale and no dimming: a World on the way is still worth looking
-          at, and draining the art was what made this row look unfinished. The
-          «قريبًا» badge is what says it cannot be picked yet. */}
-      <span className="grid aspect-square w-full max-w-[9.5rem] place-items-center overflow-hidden rounded-full">
-        {art ? (
+      {art ? (
+        <span className="grid aspect-square w-full max-w-[9.5rem] place-items-center overflow-hidden rounded-full grayscale">
           <WorldCover world={world} sizes="(min-width:640px) 152px, 40vw" />
-        ) : (
-          <FallbackPlanet seed={world.slug} />
-        )}
-      </span>
+        </span>
+      ) : (
+        <span className="grid aspect-square w-full max-w-[9.5rem] place-items-center rounded-full border-2 border-dashed border-[hsl(var(--brand-navy)/.18)] bg-[hsl(var(--brand-navy)/.04)] text-[hsl(var(--brand-navy)/.35)]">
+          <Sparkles className="size-6" aria-hidden />
+        </span>
+      )}
       <span className="text-base font-black text-muted-foreground">
         {world.name}
       </span>
@@ -614,10 +487,7 @@ function WorldSelectionSidebar({
   const ready = selectedCount === OCCURRENCE_COUNT;
   return (
     <aside
-      /* A card rather than a translucent sheet: a background planet passed
-         straight through it and the 0/3 counter sat on top of the planet, so
-         the one panel that tracks your choices read as debris. */
-      className="sticky top-[5.25rem] z-10 rounded-2xl border border-[hsl(var(--brand-navy)/.1)] bg-white px-3.5 py-4 shadow-[0_10px_30px_-22px_hsl(var(--brand-navy)/.45)] lg:top-28"
+      className="sticky top-[5.25rem] z-10 -mx-1 bg-white/95 px-2 py-3 shadow-[0_12px_28px_-24px_hsl(var(--brand-navy)/.35)] lg:top-28 lg:mx-0 lg:border-r lg:border-[hsl(var(--brand-navy)/.1)] lg:bg-transparent lg:px-0 lg:py-1 lg:pr-6 lg:shadow-none"
       data-testid="world-selection-sidebar"
       dir="rtl"
       aria-label="العوالم المختارة"
