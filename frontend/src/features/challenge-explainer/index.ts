@@ -3,6 +3,7 @@ export { ExplainerControls } from "./components/explainer-controls";
 export { ExplainerDisclosure } from "./components/explainer-disclosure";
 export { RyoExplainerDialog } from "./components/explainer-dialog";
 export { MechanicTutorialDialog } from "./components/explainer-dialog";
+export { InlineMechanicTutorial } from "./components/inline-mechanic-tutorial";
 export { ClosestExplainer } from "./components/closest-explainer";
 export { BombExplainer } from "./components/bomb-explainer";
 export { OneClueExplainer } from "./components/one-clue-explainer";

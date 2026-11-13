@@ -22,7 +22,10 @@ export function SharedScreenFrame({
   stand?: boolean;
 }) {
   return (
-    <div className={cn("flex w-full flex-col items-center", className)}>
+    <div
+      data-tutorial-surface="shared"
+      className={cn("flex w-full flex-col items-center", className)}
+    >
       <div className="w-full rounded-[1.6rem] border border-[hsl(var(--brand-navy)/.14)] bg-[hsl(var(--brand-navy))] p-2 shadow-[0_28px_60px_-32px_hsl(var(--brand-navy)/.75)] sm:rounded-[1.9rem] sm:p-2.5">
         <div className="overflow-hidden rounded-[1.15rem] bg-white sm:rounded-[1.4rem]">
           {children}
@@ -62,6 +65,7 @@ export function PhoneFrame({
 }) {
   return (
     <div
+      data-tutorial-surface="phone"
       style={style}
       className={cn(
         "shrink-0 rounded-[1.1rem] border border-[hsl(var(--brand-navy)/.14)] bg-[hsl(var(--brand-navy))] p-[3px] shadow-[0_16px_34px_-18px_hsl(var(--brand-navy)/.7)]",

@@ -668,7 +668,7 @@ describe("challenge preflight", () => {
   });
 
   describe("GSAP-only explanation", () => {
-    it("offers the published GSAP demo without legacy instruction text", async () => {
+    it("renders the published GSAP demo inline without a modal entry point", async () => {
       publishedTutorial = {
         mechanicKey: "read-your-opponent",
         revision: 1,
@@ -686,15 +686,50 @@ describe("challenge preflight", () => {
 
       const explainer = screen.getByTestId("preflight-explainer");
       expect(explainer).toHaveAttribute("data-animated", "true");
-      expect(screen.getByTestId("preflight-how-to-play")).toBeEnabled();
+      expect(
+        screen.getByTestId("preflight-inline-tutorial"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("tablist", { name: "خطوات الشرح التوضيحي" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("preflight-inline-tutorial-caption"),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("preflight-how-to-play")).toBeNull();
       expect(screen.queryByTestId("preflight-player-instructions")).toBeNull();
       expect(screen.queryByTestId("preflight-highlight")).toBeNull();
-
+      expect(screen.getByTestId("ryo-explainer")).toBeInTheDocument();
+      expect(screen.getByTestId("preflight-inline-tutorial-play")).toHaveAttribute(
+        "data-playing",
+        "false",
+      );
+      const playToggle = screen.getByTestId("preflight-inline-tutorial-play");
+      await userEvent.setup().click(playToggle);
+      expect(playToggle).toHaveAttribute("data-playing", "true");
       await userEvent
         .setup()
-        .click(screen.getByTestId("preflight-how-to-play"));
-      expect(await screen.findByTestId("explainer-dialog")).toBeInTheDocument();
-      expect(screen.getByTestId("ryo-explainer")).toBeInTheDocument();
+        .click(screen.getByTestId("preflight-inline-tutorial-skip"));
+      expect(playToggle).toHaveAttribute("data-playing", "false");
+      expect(screen.getByRole("tab", { name: /النتيجة/ })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      await userEvent
+        .setup()
+        .click(screen.getByRole("tab", { name: /السؤال/ }));
+
+      const next = screen.getByTestId("preflight-inline-tutorial-next");
+      await userEvent.setup().click(next);
+      expect(screen.getByRole("tab", { name: /الإجابة/ })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      await userEvent.setup().click(screen.getByRole("tab", { name: /الكشف/ }));
+      expect(screen.getByRole("tab", { name: /الكشف/ })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(screen.getByTestId("explainer-reveal")).toBeInTheDocument();
     });
 
     it("shows an explicit unavailable state when no tutorial is published", () => {
@@ -709,12 +744,79 @@ describe("challenge preflight", () => {
         }),
       );
 
-      expect(screen.getByTestId("preflight-how-to-play")).toBeDisabled();
-      expect(screen.getByTestId("preflight-explainer").textContent).toContain(
-        "لا يوجد شرح منشور لهذا التحدي بعد",
-      );
+      expect(
+        screen.getByTestId("preflight-inline-tutorial-fallback"),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("preflight-how-to-play")).toBeNull();
+      expect(
+        screen.getByTestId("preflight-inline-tutorial").textContent,
+      ).toContain("لا يوجد شرح منشور لهذا التحدي بعد");
       expect(screen.queryByTestId("preflight-player-instructions")).toBeNull();
       expect(screen.queryByTestId("preflight-highlight")).toBeNull();
+    });
+
+    it("keeps one synchronized renderer while switching the compact mobile view", async () => {
+      publishedTutorial = {
+        mechanicKey: "read-your-opponent",
+        revision: 1,
+        scenario: SAMPLE_TUTORIAL_SCENARIO,
+      };
+      renderRouter(
+        match({
+          stage: "preflight",
+          preflight: preflight({
+            challengeKey: "read-your-opponent",
+            challengeName: "اقرأ خصمك",
+          }),
+        }),
+      );
+
+      const tutorial = screen.getByTestId("preflight-inline-tutorial");
+      expect(tutorial).toHaveAttribute("data-tutorial-view", "screen");
+      expect(screen.getByTestId("ryo-explainer")).toHaveAttribute(
+        "data-variant",
+        "full",
+      );
+      const timelineInitCount = screen
+        .getByTestId("ryo-explainer")
+        .getAttribute("data-explainer-timeline-init-count");
+
+      await userEvent
+        .setup()
+        .click(screen.getByRole("tab", { name: "جوالات اللاعبين" }));
+
+      expect(tutorial).toHaveAttribute("data-tutorial-view", "phones");
+      expect(screen.getByTestId("ryo-explainer")).toHaveAttribute(
+        "data-variant",
+        "compact",
+      );
+      expect(screen.getAllByTestId("ryo-explainer")).toHaveLength(1);
+      expect(screen.getByTestId("ryo-explainer")).toHaveAttribute(
+        "data-explainer-timeline-init-count",
+        timelineInitCount,
+      );
+    });
+
+    it("places the joining panel before the tutorial in the preflight document order", () => {
+      publishedTutorial = {
+        mechanicKey: "read-your-opponent",
+        revision: 1,
+        scenario: SAMPLE_TUTORIAL_SCENARIO,
+      };
+      renderRouter(
+        match({
+          stage: "preflight",
+          preflight: preflight({
+            challengeKey: "read-your-opponent",
+            challengeName: "اقرأ خصمك",
+          }),
+        }),
+      );
+
+      const joiningRegion = screen.getByTestId("preflight-joining-region");
+      const tutorialRegion = screen.getByTestId("preflight-explainer");
+      expect(joiningRegion).toHaveClass("order-1", "lg:order-2");
+      expect(tutorialRegion).toHaveClass("order-2", "lg:order-1");
     });
   });
 

@@ -11,7 +11,7 @@ import { WorldMedia } from "@/components/akwaan/world-media";
 import { teamIdentity, TEAM_SLOT_ORDER } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
 import {
-  MechanicTutorialDialog,
+  InlineMechanicTutorial,
   SUPPORTED_TUTORIAL_MECHANIC_KEYS,
 } from "@/features/challenge-explainer";
 
@@ -70,14 +70,23 @@ export function ChallengePreflight({
       {/* The explanation at ~70%, joining at the rest. items-start so a short
           brief never stretches to the sidebar's height. */}
       <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,2.6fr)_minmax(16rem,1fr)]">
-        <ChallengeExplanation preflight={preflight} launching={launching} />
-        {preflight.requiresPhones ? (
-          <PairingPanel preflight={preflight} sessionId={sessionId} />
-        ) : (
-          <aside className="surface-card p-5 text-sm leading-6 text-muted-foreground">
-            يُلعب هذا التحدي من الشاشة المشتركة. لا حاجة لجوالات.
-          </aside>
-        )}
+        <ChallengeExplanation
+          preflight={preflight}
+          launching={launching}
+          className="order-2 min-w-0 lg:order-1"
+        />
+        <div
+          data-testid="preflight-joining-region"
+          className="order-1 min-w-0 lg:order-2"
+        >
+          {preflight.requiresPhones ? (
+            <PairingPanel preflight={preflight} sessionId={sessionId} />
+          ) : (
+            <aside className="surface-card p-5 text-sm leading-6 text-muted-foreground">
+              يُلعب هذا التحدي من الشاشة المشتركة. لا حاجة لجوالات.
+            </aside>
+          )}
+        </div>
       </div>
 
       <StartChallengeSection
@@ -180,8 +189,8 @@ function ChallengeIdentityBanner({
  *
  * The GSAP demonstration is the only mechanic explanation. It is a
  * presentation-only simulation: it holds no session, sends no command, and
- * cannot touch readiness, Fair-Start or Match state. When no tutorial is
- * published, the dialog itself exposes an explicit unavailable state.
+ * cannot touch readiness, Fair-Start or Match state. It is embedded here so the
+ * host can understand the challenge without opening a second surface.
  *
  * `launching` only dims the region — a purely visual handoff while the
  * authoritative stage change does the real work. It never gates the launch.
@@ -189,9 +198,11 @@ function ChallengeIdentityBanner({
 function ChallengeExplanation({
   preflight,
   launching,
+  className,
 }: {
   preflight: UnifiedPreflight;
   launching: boolean;
+  className?: string;
 }) {
   const animated = TUTORIAL_RENDERER_MECHANICS.has(preflight.challengeKey);
   return (
@@ -199,31 +210,17 @@ function ChallengeExplanation({
       data-testid="preflight-explainer"
       data-animated={animated ? "true" : "false"}
       data-launching={launching ? "true" : "false"}
-      className={cn(
-        "surface-card space-y-2.5 p-3 transition-all duration-base ease-akwaan sm:p-4",
-        // The exit half of the handoff: the explanation steps back as the real
-        // challenge is being started. Visual only, and never blocking.
-        launching && "pointer-events-none translate-y-1 opacity-40",
-      )}
+      className={className ?? "min-w-0"}
     >
-      <header className="flex items-start justify-between gap-3">
-        <span className="min-w-0 space-y-0.5">
-          <h2 className="text-base font-black text-foreground">شرح التحدي</h2>
-          <p className="text-xs leading-5 text-muted-foreground">
-            اقروا الخطوات قبل ما تبدأون.
-          </p>
-        </span>
-        {/* The demonstration is an answer to a question the host may not have.
-            It is offered here and opened on demand, so the default screen stays
-            about starting the challenge. */}
-        {animated && (
-          <MechanicTutorialDialog
-            mechanicKey={preflight.challengeKey}
-            worldId={preflight.worldId}
-            launching={launching}
-          />
-        )}
-      </header>
+      <InlineMechanicTutorial
+        mechanicKey={preflight.challengeKey}
+        worldId={preflight.worldId}
+        challengeName={preflight.challengeName}
+        {...(preflight.description
+          ? { description: preflight.description }
+          : {})}
+        launching={launching}
+      />
     </section>
   );
 }
