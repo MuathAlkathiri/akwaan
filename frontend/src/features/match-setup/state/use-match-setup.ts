@@ -10,11 +10,7 @@ import {
   createConfiguredMatch,
   MatchSetupFailure,
 } from "../api/create-configured-match";
-import {
-  createUnifiedMatch,
-  markLiveSessionReady,
-  startLiveSession,
-} from "../api/unified-match.api";
+import { createUnifiedMatch } from "../api/unified-match.api";
 import {
   createDraft,
   isDraftComplete,
@@ -33,8 +29,6 @@ export const matchBoardRoute = (sessionId: string) => `/matches/${sessionId}`;
 
 const DEFAULT_DEPENDENCIES = {
   createSession: createLiveSession,
-  markReady: markLiveSessionReady,
-  startSession: startLiveSession,
   createMatch: createUnifiedMatch,
   cancelSession: cancelLiveSession,
 };

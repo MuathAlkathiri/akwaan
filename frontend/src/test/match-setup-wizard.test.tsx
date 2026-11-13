@@ -147,8 +147,8 @@ import { MATCH_SETUP_DRAFT_STORAGE_KEY } from "@/features/match-setup";
 
 const boardSnapshot = (sessionId: string) => ({
   sessionId,
-  revision: 4,
-  status: "active",
+  revision: 0,
+  status: "waiting",
   match: {
     id: "match-1",
     revision: 0,
@@ -374,9 +374,10 @@ describe("pre-match setup wizard", () => {
       teamNames: ["الأزرق", "الأحمر"],
       teamColorIds: ["blue", "red"],
     });
-    // The session leaves the lobby over HTTP, with no phones involved.
-    expect(mocks.markReady).toHaveBeenCalledWith("session-1", 0);
-    expect(mocks.startSession).toHaveBeenCalledWith("session-1", 1);
+    // The session stays in the lobby: the host begins it from the waiting room
+    // once players are in. Readying or starting it here skipped the room.
+    expect(mocks.markReady).not.toHaveBeenCalled();
+    expect(mocks.startSession).not.toHaveBeenCalled();
     expect(mocks.createMatch).toHaveBeenCalledWith("session-1", {
       occurrences: [
         {
@@ -411,7 +412,8 @@ describe("pre-match setup wizard", () => {
         },
       ],
     });
-    // Straight to the board route, with the draft cleared and the credential kept.
+    // On to the Match route, which opens on the waiting room while the session
+    // is waiting, with the draft cleared and the credential kept.
     await waitFor(() =>
       expect(mocks.push).toHaveBeenCalledWith("/matches/session-1"),
     );
@@ -477,7 +479,9 @@ describe("pre-match setup wizard", () => {
       // The rejected occurrence is the one on screen, and its Scopes are intact.
       expect(screen.getByTestId("scope-count").textContent).toBe("4/4");
       // The orphan session was cleaned up and no Match was claimed.
-      expect(mocks.cancelSession).toHaveBeenCalledWith("session-1", 2);
+      // Nothing moved the session after it was created, so the rollback cancels
+      // against the revision it was created at.
+      expect(mocks.cancelSession).toHaveBeenCalledWith("session-1", 0);
       expect(mocks.push).not.toHaveBeenCalled();
       // The draft is still recoverable.
       expect(

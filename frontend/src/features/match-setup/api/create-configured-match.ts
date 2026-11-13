@@ -1,11 +1,7 @@
 import { createLiveSession } from "@/features/live-game-session/api/live-session-api";
 import { TEAM_COLORS, TEAM_NAMES } from "@/lib/team-palette";
 import type { LiveSessionSnapshot } from "@/features/live-game-session/model";
-import {
-  createUnifiedMatch,
-  markLiveSessionReady,
-  startLiveSession,
-} from "./unified-match.api";
+import { createUnifiedMatch } from "./unified-match.api";
 import type { MatchSetupError } from "../errors/match-setup-errors";
 import { toMatchSetupError } from "../errors/match-setup-errors";
 import {
@@ -16,9 +12,14 @@ import {
 /**
  * Turning a finished draft into a real Match.
  *
- * Four server calls, in one direction, only after the host confirms: create the
- * session with its two teams, leave the lobby, start it, then create the whole
- * Match in a single request. Nothing before that line touches the server.
+ * Two server calls, in one direction, only after the host confirms: create the
+ * session with its two teams, then create the whole Match in a single request.
+ * Nothing before that line touches the server.
+ *
+ * The session is deliberately left `waiting`. The host lands in the waiting room,
+ * players join there, and the host begins the session from the room once there
+ * are people in it. Starting the session here is what used to skip the waiting
+ * room entirely and drop the host straight onto the board with nobody playing.
  *
  * If the session is created and the Match then fails, the session is cancelled so
  * no orphan is left behind and the host is not told setup completed. The draft is
@@ -44,8 +45,6 @@ export class MatchSetupFailure extends Error {
 
 export interface CreateConfiguredMatchDependencies {
   createSession: typeof createLiveSession;
-  markReady: typeof markLiveSessionReady;
-  startSession: typeof startLiveSession;
   createMatch: typeof createUnifiedMatch;
   cancelSession: (sessionId: string, expectedRevision: number) => Promise<unknown>;
 }
@@ -74,13 +73,10 @@ export async function createConfiguredMatch(
   }
 
   const sessionId = created.snapshot.sessionId;
-  let revision = created.snapshot.revision;
+  // Creating a Match does not touch the session, so this is still the revision
+  // a rollback has to cancel against.
+  const revision = created.snapshot.revision;
   try {
-    // Two teams and no phones is a legitimate starting room: players join later,
-    // during challenge preflight, and the board does not wait for them.
-    revision = (await dependencies.markReady(sessionId, revision)).revision;
-    const started = await dependencies.startSession(sessionId, revision);
-    revision = started.revision;
     const snapshot = await dependencies.createMatch(sessionId, request);
     return {
       sessionId,
