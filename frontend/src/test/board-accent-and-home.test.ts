@@ -5,43 +5,39 @@ import { describe, expect, it } from "vitest";
 /**
  * Where the active-team accent is allowed to land — and where it isn't.
  *
- * The board carries one thin team-coloured accent, and it belongs to the three
- * World hero images: it answers "whose turn is it to choose from these Worlds".
- * The individual challenge cards were deliberately left neutral — a card is a
- * position, not a team's property, so it must not wear a team's colour. And the
- * Match logo is a real way home: a link to `/` with a spoken label, so a host can
- * always leave without corrupting the live Match through some back-door route.
+ * The board says whose turn it is once, in a heading above the three orbits,
+ * in that team's own colour. A challenge circle is a position, not a team's
+ * property, so it may only take a team's colour once that team has *won* it —
+ * never because they happen to be choosing right now. And the Match logo is a
+ * real way home: a link to `/` with a spoken label, so a host can always leave
+ * without corrupting the live Match through some back-door route.
  */
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
-/** A team-identity border accent, in the forms Tailwind writes it. */
-const TEAM_BORDER_ACCENT = /\bborder(?:-b)?-team-[12](?:-[a-z-]+)?\b/;
-
-describe("the active-team accent lives on the World heroes only", () => {
+describe("the active-team accent lives on the turn heading only", () => {
   const board = read(
     "src/features/live-game-session/match/components/unified-board.tsx",
   );
 
-  it("draws a thin team-coloured underline on the World hero, keyed to the selecting team", () => {
-    // The hero wrapper carries both a fixed 3px bottom border and the team token,
-    // chosen from the *selecting* team's identity slot — not hand-written.
-    expect(board).toMatch(/border-b-\[3px\]/);
-    expect(board).toContain("border-b-team-2-base");
-    expect(board).toContain("border-b-team-1-base");
-    expect(board).toMatch(/activeIdentity\?\.slot === "2"/);
+  it("colours the turn heading from the selecting team's own identity", () => {
+    // The dot is the identity token, chosen from the selecting team's slot —
+    // never a hand-written colour.
+    expect(board).toContain("selecting-team-board");
+    expect(board).toMatch(/activeIdentity\?\.dot/);
+    expect(board).toMatch(/teamIdentityOf\(\s*unified\.selectingTeamId/);
   });
 
-  it("keeps the challenge cards neutral — no active-team accent on a position", () => {
+  it("gives a challenge circle a team colour only once that team has won it", () => {
     const tile = read(
-      "src/features/live-game-session/match/components/unified-board-tile.tsx",
+      "src/features/live-game-session/match/components/unified-board-orbit-tile.tsx",
     );
-    // The card's own shell classes never take a team border. The one place a team
-    // colour is allowed is the completed-score pill, which reports who won points —
-    // identity, not the card. So we assert the structural shell string is neutral.
-    const shellStart = tile.indexOf("const shared = cn(");
-    expect(shellStart).toBeGreaterThanOrEqual(0);
-    const shellBlock = tile.slice(shellStart, tile.indexOf("const data = {"));
-    expect(shellBlock).not.toMatch(TEAM_BORDER_ACCENT);
+    const circleStart = tile.indexOf("const circle = cn(");
+    expect(circleStart).toBeGreaterThanOrEqual(0);
+    const circleBlock = tile.slice(circleStart, tile.indexOf("const state ="));
+    // The only identity the circle may wear is the winner's.
+    expect(circleBlock).toContain("owner.solid");
+    expect(circleBlock).not.toContain("activeIdentity");
+    expect(circleBlock).not.toContain("selectingTeamId");
   });
 });
 

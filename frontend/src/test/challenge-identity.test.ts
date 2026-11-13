@@ -43,7 +43,7 @@ describe("challenge icons", () => {
   it("is the only icon resolver in the codebase", () => {
     // Keep the board presentation on the canonical resolver.
     for (const path of [
-      "src/features/live-game-session/match/components/unified-board-tile.tsx",
+      "src/features/live-game-session/match/components/unified-board-orbit-tile.tsx",
     ]) {
       const source = readFileSync(resolve(process.cwd(), path), "utf8");
       expect(source, path).not.toMatch(/function challengeIcon/);
