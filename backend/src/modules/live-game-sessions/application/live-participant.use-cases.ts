@@ -58,6 +58,8 @@ export class JoinLiveSession {
     requestedTeamId?: string;
     joinRequestId: string;
     device?: { label?: string; platform?: string };
+    /** The character the player chose, or none to be given the first free one. */
+    avatarKey?: string;
   }): Promise<JoinedLiveParticipant> {
     const access = await this.accesses.findByCode(
       normalizeJoinCode(input.joinCode),
@@ -111,6 +113,7 @@ export class JoinLiveSession {
     const participant = session.enrollParticipant({
       id: randomUUID(),
       displayName: input.displayName,
+      avatarKey: input.avatarKey,
       teamId,
       role: 'team-player',
       joinRequestId: input.joinRequestId,

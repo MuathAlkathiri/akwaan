@@ -42,6 +42,8 @@ export interface LiveGameSessionSnapshot {
   participants: Array<{
     id: string;
     displayName: string;
+    /** Which character this player is; absent for a controller. */
+    avatarKey?: string;
     role: string;
     teamId?: string;
     ready: boolean;
@@ -141,6 +143,7 @@ export class LiveGameSessionSnapshotMapper {
       participants: state.participants.map((participant) => ({
         id: participant.id,
         displayName: participant.displayName,
+        avatarKey: participant.avatarKey,
         role: participant.role,
         teamId: participant.teamId,
         ready: participant.ready,

@@ -14,6 +14,7 @@ import {
   Matches,
   ValidateIf,
 } from 'class-validator';
+import { PLAYER_AVATAR_KEYS } from '../domain/player-avatars';
 
 export class CreateLiveGameSessionDto {
   @IsOptional()
@@ -150,6 +151,14 @@ export class JoinLiveSessionDto {
   @IsOptional()
   @IsUUID()
   requestedTeamId?: string;
+
+  /**
+   * The character the player picked. Omitted when they did not choose, and the
+   * session hands out the first free one rather than refusing the join.
+   */
+  @IsOptional()
+  @IsIn([...PLAYER_AVATAR_KEYS])
+  avatarKey?: string;
 
   @IsUUID()
   joinRequestId!: string;

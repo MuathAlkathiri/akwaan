@@ -5,6 +5,11 @@ import {
   StaleLiveSessionRevisionError,
 } from './live-session.errors';
 import { ParticipantPresenceProjection } from './participant-presence';
+import {
+  PlayerAvatarKey,
+  firstFreeAvatar,
+  isPlayerAvatarKey,
+} from './player-avatars';
 import { TeamClock, TeamClockState } from './team-clock';
 
 export type LiveSessionStatus =
@@ -40,6 +45,13 @@ export interface LiveSessionParticipantState {
   actorId?: string;
   displayName: string;
   normalizedDisplayName: string;
+  /**
+   * Which character this player is, from `player-avatars.ts`.
+   *
+   * Optional because a controller has none and because sessions created before
+   * characters existed still restore; a player enrolled today always has one.
+   */
+  avatarKey?: PlayerAvatarKey;
   role: 'controller' | 'team-player' | 'observer';
   teamId?: string;
   reconnectTokenHash?: string;
@@ -349,6 +361,8 @@ export class LiveGameSession {
     id?: string;
     displayName: string;
     teamId?: string;
+    /** The character the player asked for; the first free one when absent. */
+    avatarKey?: string;
     role: 'team-player' | 'observer';
     joinRequestId: string;
     device?: { label?: string; platform?: string };
@@ -378,10 +392,12 @@ export class LiveGameSession {
       );
     }
     if (input.teamId) this.requireTeam(input.teamId);
+    const avatarKey = this.resolveAvatar(input.avatarKey);
     const participant: LiveSessionParticipantState = {
       id: input.id ?? randomUUID(),
       displayName: input.displayName.trim(),
       normalizedDisplayName,
+      ...(avatarKey ? { avatarKey } : {}),
       role: input.role,
       teamId: input.teamId,
       ready: false,
@@ -396,6 +412,34 @@ export class LiveGameSession {
     this.state.participants.push(participant);
     this.state.lastTransitionAt = input.now;
     return participant;
+  }
+
+  /**
+   * The character this player will wear.
+   *
+   * A requested one must be free: the shape is the only thing telling two
+   * players on one team apart, so handing out a duplicate would quietly undo
+   * the point of having characters at all. With none requested the first free
+   * one is assigned, so a player who just wants to play never picks.
+   */
+  private resolveAvatar(requested?: string): PlayerAvatarKey | undefined {
+    const taken = this.state.participants
+      .filter((participant) => !participant.removedAt)
+      .map((participant) => participant.avatarKey);
+    if (requested === undefined) return firstFreeAvatar(taken);
+    if (!isPlayerAvatarKey(requested)) {
+      throw new LiveSessionDomainError(
+        'UNKNOWN_AVATAR',
+        'That character does not exist',
+      );
+    }
+    if (taken.includes(requested)) {
+      throw new LiveSessionDomainError(
+        'AVATAR_TAKEN',
+        'Another player is already that character',
+      );
+    }
+    return requested;
   }
 
   participantById(participantId: string): LiveSessionParticipantState {
