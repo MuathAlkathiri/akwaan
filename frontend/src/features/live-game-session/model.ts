@@ -59,6 +59,8 @@ export interface LiveSessionSnapshot {
     lastSeenAt: string;
     presence: "connected" | "temporarily-disconnected" | "stale" | "removed";
     device?: { label?: string; platform?: string };
+    /** The cosmic character they picked on their phone. */
+    avatarKey?: string;
   }>;
   readiness: {
     canMarkSessionReady: boolean;
