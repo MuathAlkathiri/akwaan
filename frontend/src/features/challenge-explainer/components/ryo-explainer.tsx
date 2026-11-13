@@ -28,7 +28,11 @@ import {
   type RyoTutorialScenario,
 } from "../tutorial-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
+import {
+  ExplainerCaption,
+  ExplainerControls,
+  showsExplainerControls,
+} from "./explainer-controls";
 
 /**
  * A miniature, faithful run of one "اقرأ خصمك" item.
@@ -64,7 +68,8 @@ const SPOTLIGHT: Record<RyoDemoStepId, "answering" | "deciding"> = {
 const teams = [...TUTORIAL_TEAMS];
 const answeringIdentity = teamIdentityOf(TUTORIAL_ROLES.answeringTeamId, teams);
 const opposingIdentity = teamIdentityOf(TUTORIAL_ROLES.opposingTeamId, teams);
-const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? "الفريق";
+const teamName = (id: string) =>
+  teams.find((t) => t.id === id)?.name ?? "الفريق";
 
 /**
  * Everything the surfaces need, read off the published scenario.
@@ -114,12 +119,16 @@ export function RyoExplainer({
   scenario,
   compact = false,
   mode = "player",
+  showPhonePrompt = true,
+  phonePerspective,
 }: {
   /** The published tutorial this mechanic teaches with. */
   scenario: RyoTutorialScenario;
   compact?: boolean;
   /** Defaults to the player-facing presentation. */
   mode?: ExplainerMode;
+  showPhonePrompt?: boolean;
+  phonePerspective?: "answering" | "opposing";
 }) {
   const scope = useRef<HTMLDivElement | null>(null);
   const spotlightRef = useRef<HTMLDivElement | null>(null);
@@ -128,23 +137,33 @@ export function RyoExplainer({
   const timeline = useExplainerTimeline(RYO_DEMO_STEPS, scope);
   const at = timeline.index;
   const step = RYO_DEMO_STEPS[at];
-  const spotlight = SPOTLIGHT[step.id];
+  const spotlight = phonePerspective
+    ? phonePerspective === "answering"
+      ? "answering"
+      : "deciding"
+    : SPOTLIGHT[step.id];
 
   // The compact swap, animated rather than cut. Scoped to its own element and
   // reverted on every change, so a rapid skip/replay cannot stack tweens.
   useEffect(() => {
-    if (!compact) return;
+    if (!compact || timeline.reducedMotion) return;
     const element = spotlightRef.current;
     if (!element) return;
     const context = gsap.context(() => {
       gsap.fromTo(
         element,
         { opacity: 0, y: 6 },
-        { opacity: 1, y: 0, duration: 0.28, ease: "power2.out", overwrite: "auto" },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.28,
+          ease: "power2.out",
+          overwrite: "auto",
+        },
       );
     }, element);
     return () => context.revert();
-  }, [compact, spotlight]);
+  }, [compact, spotlight, timeline.reducedMotion]);
 
   const answerLocked = at >= STEP_INDEX["answer-locked"];
   const decisionLocked = at >= STEP_INDEX["decision-locked"];
@@ -154,7 +173,9 @@ export function RyoExplainer({
   // window does — it is not a progress bar for the demo.
   const remainingMs = revealed
     ? 0
-    : Math.round(TUTORIAL_WINDOW_MS * (decisionLocked ? 0.3 : answerLocked ? 0.6 : 1));
+    : Math.round(
+        TUTORIAL_WINDOW_MS * (decisionLocked ? 0.3 : answerLocked ? 0.6 : 1),
+      );
 
   return (
     <div
@@ -179,6 +200,7 @@ export function RyoExplainer({
       )}
 
       <div
+        data-testid="explainer-devices"
         className={
           compact
             ? "grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
@@ -186,132 +208,163 @@ export function RyoExplainer({
         }
       >
         {/* The room's shared screen. Public state only. */}
-        <SharedScreenFrame stand={!compact}>
-          <ChallengeFrame
-            // No "السؤال 1 من 3": this demonstrates one representative item,
-            // so a counter would describe a sequence that does not exist. The
-            // challenge name moves up into the title rather than a new badge
-            // taking the counter's place.
-            title="اقرأ خصمك"
-            progressValue={0}
-            compact={compact}
-            className={compact ? "w-full" : "mx-auto w-full max-w-3xl"}
-          >
-            <div className={compact ? "space-y-2.5" : "space-y-5"}>
-              <div
-                className={cn(
-                  "grid gap-2 sm:grid-cols-2",
-                  compact ? "text-[0.7rem]" : "text-sm",
-                )}
-                data-testid="explainer-lock-indicators"
-              >
-                <LockIndicator
-                  teamName={teamName(TUTORIAL_ROLES.answeringTeamId)}
-                  role="يجيب"
-                  identity={answeringIdentity}
-                  locked={answerLocked}
-                  testId="explainer-lock-answering"
-                />
-                <LockIndicator
-                  teamName={teamName(TUTORIAL_ROLES.opposingTeamId)}
-                  role="يقرأ الخصم"
-                  identity={opposingIdentity}
-                  locked={decisionLocked}
-                  testId="explainer-lock-opposing"
-                />
-              </div>
-
-              <section
-                className={cn(
-                  "mx-auto flex max-w-2xl flex-col items-center text-center",
-                  compact ? "gap-2.5" : "gap-5",
-                )}
-              >
-                <h2
-                  className={cn(
-                    "font-black leading-snug text-foreground",
-                    compact
-                      ? "text-base sm:text-lg"
-                      : "text-[1.75rem] sm:text-[2.25rem]",
-                  )}
-                >
-                  <BidiText>{scenario.prompt}</BidiText>
-                </h2>
-                {!revealed && (
-                  <ChallengeCountdown
-                    remainingMs={remainingMs}
-                    variant={compact ? "chip" : "prominent"}
-                  />
-                )}
-                {!revealed && (
-                  <p
-                    className={cn(
-                      "rounded-[var(--radius)] bg-muted font-bold text-muted-foreground",
-                      compact ? "px-3 py-1.5 text-xs" : "p-4",
-                    )}
-                    data-testid="explainer-shared-waiting"
-                  >
-                    {decisionLocked
-                      ? "ثبّتوا الاثنين — الكشف الحين."
-                      : answerLocked
-                        ? "وصلت الإجابة. ننتظر قرار الخصم…"
-                        : "ننتظر اختيارات الفريقين…"}
-                  </p>
-                )}
-              </section>
-
-              {revealed && (
+        <div data-testid="explainer-device-shared" className="min-w-0">
+          <SharedScreenFrame stand={!compact}>
+            <ChallengeFrame
+              // No "السؤال 1 من 3": this demonstrates one representative item,
+              // so a counter would describe a sequence that does not exist. The
+              // challenge name moves up into the title rather than a new badge
+              // taking the counter's place.
+              title="اقرأ خصمك"
+              progressValue={0}
+              compact={compact}
+              className={compact ? "w-full" : "mx-auto w-full max-w-3xl"}
+            >
+              <div className={compact ? "space-y-2.5" : "space-y-5"}>
                 <div
-                  data-testid="explainer-reveal"
-                  data-outcome={correct ? "correct" : "wrong"}
                   className={cn(
-                    "akwaan-rise rounded-[var(--radius)] text-center text-sem-reveal-foreground",
-                    compact ? "p-3" : "p-5",
-                    correct ? "bg-sem-success" : "bg-sem-error",
+                    "grid gap-2 sm:grid-cols-2",
+                    compact ? "text-[0.7rem]" : "text-sm",
                   )}
-                  role="status"
+                  data-testid="explainer-lock-indicators"
                 >
-                  <p className={compact ? "text-base font-black" : "text-2xl font-black"}>
-                    {correct ? "إجابة صحيحة" : "إجابة غير صحيحة"}
-                  </p>
-                  <p
+                  <LockIndicator
+                    teamName={teamName(TUTORIAL_ROLES.answeringTeamId)}
+                    role="يجيب"
+                    identity={answeringIdentity}
+                    locked={answerLocked}
+                    testId="explainer-lock-answering"
+                  />
+                  <LockIndicator
+                    teamName={teamName(TUTORIAL_ROLES.opposingTeamId)}
+                    role="يقرأ الخصم"
+                    identity={opposingIdentity}
+                    locked={decisionLocked}
+                    testId="explainer-lock-opposing"
+                  />
+                </div>
+
+                <section
+                  className={cn(
+                    "mx-auto flex max-w-2xl flex-col items-center text-center",
+                    compact ? "gap-2.5" : "gap-5",
+                  )}
+                >
+                  <h2
                     className={cn(
-                      "font-bold",
-                      compact ? "text-[0.7rem]" : "text-sm",
+                      "font-black leading-snug text-foreground",
+                      compact
+                        ? "text-base sm:text-lg"
+                        : "text-[1.75rem] sm:text-[2.25rem]",
                     )}
                   >
-                    قرار الخصم: {ryoDecisionRevealLabel(toPresentationDecision(scenario.opposingDecision))}
-                  </p>
+                    <BidiText>{scenario.prompt}</BidiText>
+                  </h2>
+                  {!revealed && (
+                    <ChallengeCountdown
+                      remainingMs={remainingMs}
+                      variant={compact ? "chip" : "prominent"}
+                    />
+                  )}
+                  {!revealed && (
+                    <p
+                      className={cn(
+                        "rounded-[var(--radius)] bg-muted font-bold text-muted-foreground",
+                        compact ? "px-3 py-1.5 text-xs" : "p-4",
+                      )}
+                      data-testid="explainer-shared-waiting"
+                    >
+                      {decisionLocked
+                        ? "ثبّتوا الاثنين — الكشف الحين."
+                        : answerLocked
+                          ? "وصلت الإجابة. ننتظر قرار الخصم…"
+                          : "ننتظر اختيارات الفريقين…"}
+                    </p>
+                  )}
+                </section>
+
+                {revealed && (
                   <div
+                    data-testid="explainer-reveal"
+                    data-outcome={correct ? "correct" : "wrong"}
                     className={cn(
-                      "grid gap-2 text-start sm:grid-cols-2",
-                      compact ? "mt-2" : "mt-3",
+                      "akwaan-rise rounded-[var(--radius)] text-center text-sem-reveal-foreground",
+                      compact ? "p-3" : "p-5",
+                      correct ? "bg-sem-success" : "bg-sem-error",
                     )}
+                    role="status"
                   >
-                    <div className="min-w-0">
-                      <p className={compact ? "text-[0.6rem] font-bold" : "text-xs font-bold"}>
-                        الإجابة المُرسلة
-                      </p>
-                      <p className={cn("break-words font-black", compact ? "text-sm" : "text-lg")}>
-                        {answerLabel}
-                      </p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className={compact ? "text-[0.6rem] font-bold" : "text-xs font-bold"}>
-                        الإجابة الصحيحة
-                      </p>
-                      <p className={cn("break-words font-black", compact ? "text-sm" : "text-lg")}>
-                        {correctLabel}
-                      </p>
+                    <p
+                      className={
+                        compact ? "text-base font-black" : "text-2xl font-black"
+                      }
+                    >
+                      {correct ? "إجابة صحيحة" : "إجابة غير صحيحة"}
+                    </p>
+                    <p
+                      className={cn(
+                        "font-bold",
+                        compact ? "text-[0.7rem]" : "text-sm",
+                      )}
+                    >
+                      قرار الخصم:{" "}
+                      {ryoDecisionRevealLabel(
+                        toPresentationDecision(scenario.opposingDecision),
+                      )}
+                    </p>
+                    <div
+                      className={cn(
+                        "grid gap-2 text-start sm:grid-cols-2",
+                        compact ? "mt-2" : "mt-3",
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <p
+                          className={
+                            compact
+                              ? "text-[0.6rem] font-bold"
+                              : "text-xs font-bold"
+                          }
+                        >
+                          الإجابة المُرسلة
+                        </p>
+                        <p
+                          className={cn(
+                            "break-words font-black",
+                            compact ? "text-sm" : "text-lg",
+                          )}
+                        >
+                          {answerLabel}
+                        </p>
+                      </div>
+                      <div className="min-w-0">
+                        <p
+                          className={
+                            compact
+                              ? "text-[0.6rem] font-bold"
+                              : "text-xs font-bold"
+                          }
+                        >
+                          الإجابة الصحيحة
+                        </p>
+                        <p
+                          className={cn(
+                            "break-words font-black",
+                            compact ? "text-sm" : "text-lg",
+                          )}
+                        >
+                          {correctLabel}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {scored && <PayoffRow compact={compact} payoff={view.payoff} />}
-            </div>
-          </ChallengeFrame>
-        </SharedScreenFrame>
+                {scored && <PayoffRow compact={compact} payoff={view.payoff} />}
+              </div>
+            </ChallengeFrame>
+          </SharedScreenFrame>
+        </div>
 
         {/* The private surfaces.
             Full size shows both phones side by side, because the split *is* the
@@ -325,11 +378,14 @@ export function RyoExplainer({
             ref={spotlightRef}
             data-testid="explainer-spotlight"
             data-surface={spotlight}
-            className="mx-auto w-fit sm:mx-0"
+            className={
+              phonePerspective ? "mx-auto w-full" : "mx-auto w-fit sm:mx-0"
+            }
           >
             {spotlight === "answering" ? (
               <PhoneColumn
                 compact
+                large={Boolean(phonePerspective)}
                 label={`${teamName(TUTORIAL_ROLES.answeringTeamId)} · يجيب`}
                 identity={answeringIdentity}
               >
@@ -348,6 +404,7 @@ export function RyoExplainer({
             ) : (
               <PhoneColumn
                 compact
+                large={Boolean(phonePerspective)}
                 label={`${teamName(TUTORIAL_ROLES.opposingTeamId)} · يقرأ الخصم`}
                 identity={opposingIdentity}
               >
@@ -361,23 +418,34 @@ export function RyoExplainer({
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 self-start sm:gap-4">
+          <div
+            data-testid="explainer-device-phones"
+            className="grid grid-cols-2 gap-3 self-start sm:gap-4"
+          >
             <PhoneColumn
+              role="answering"
               label={`${teamName(TUTORIAL_ROLES.answeringTeamId)} · يجيب`}
               identity={answeringIdentity}
             >
-              <AnsweringPhone scenario={scenario} view={view} locked={answerLocked} revealed={revealed} />
+              <AnsweringPhone
+                scenario={scenario}
+                view={view}
+                locked={answerLocked}
+                revealed={revealed}
+                showPrompt={showPhonePrompt}
+              />
             </PhoneColumn>
             <PhoneColumn
+              role="opposing"
               label={`${teamName(TUTORIAL_ROLES.opposingTeamId)} · يقرأ الخصم`}
               identity={opposingIdentity}
             >
               <DecidingPhone
-                  scenario={scenario}
-                  view={view}
-                  locked={decisionLocked}
-                  revealed={revealed}
-                />
+                scenario={scenario}
+                view={view}
+                locked={decisionLocked}
+                revealed={revealed}
+              />
             </PhoneColumn>
           </div>
         )}
@@ -413,7 +481,9 @@ function PayoffRow({
               "flex items-center justify-between gap-2 rounded-[var(--radius)] border-2 font-black",
               compact ? "p-2 text-xs" : "p-3",
               identity.border,
-              delta !== 0 ? identity.solid : cn(identity.surface, identity.text),
+              delta !== 0
+                ? identity.solid
+                : cn(identity.surface, identity.text),
             )}
           >
             <span className="truncate">{team.name}</span>
@@ -445,13 +515,19 @@ function PayoffRow({
  */
 const PHONE_SHELL_WIDTH = "w-[158px] sm:w-[166px]";
 
-function CompactPhone({ children }: { children: React.ReactNode }) {
+function CompactPhone({
+  children,
+  large = false,
+}: {
+  children: React.ReactNode;
+  large?: boolean;
+}) {
   return (
     <div
       data-testid="explainer-phone-shell"
       className={cn(
         "shrink-0 rounded-[1.5rem] border border-[hsl(var(--brand-navy)/.14)] bg-[hsl(var(--brand-navy))] p-[4px] shadow-[0_16px_34px_-18px_hsl(var(--brand-navy)/.7)]",
-        PHONE_SHELL_WIDTH,
+        large ? "w-full" : PHONE_SHELL_WIDTH,
       )}
     >
       {/* The aspect ratio lives on the screen, so the glass is 9:19.5 and the
@@ -475,20 +551,39 @@ function PhoneColumn({
   label,
   identity,
   compact = false,
+  role,
+  large = false,
   children,
 }: {
   label: string;
   identity: TeamIdentity;
   compact?: boolean;
+  role?: "answering" | "opposing";
+  large?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className={compact ? "w-fit space-y-1.5" : "space-y-2"}>
+    <div
+      data-phone-role={role}
+      data-tutorial-surface="phone"
+      className={
+        compact
+          ? large
+            ? "mx-auto w-full max-w-[260px] space-y-1.5"
+            : "w-fit space-y-1.5"
+          : "min-w-0 space-y-2"
+      }
+    >
       <p
         className={cn(
           "rounded-[var(--radius)] border-2 text-center font-black",
           compact
-            ? cn("px-2 py-1 text-[0.65rem]", PHONE_SHELL_WIDTH)
+            ? cn(
+                "px-2 py-1",
+                large
+                  ? "w-full text-sm"
+                  : cn("text-[0.65rem]", PHONE_SHELL_WIDTH),
+              )
             : "px-3 py-1.5 text-xs",
           identity.border,
           identity.surface,
@@ -499,8 +594,8 @@ function PhoneColumn({
         {label}
       </p>
       {compact ? (
-        <div className="mx-auto w-fit">
-          <CompactPhone>{children}</CompactPhone>
+        <div className={large ? "mx-auto w-full" : "mx-auto w-fit"}>
+          <CompactPhone large={large}>{children}</CompactPhone>
         </div>
       ) : (
         <PhoneFrame className="mx-auto w-full max-w-[190px] sm:max-w-[210px]">
@@ -535,7 +630,9 @@ function AnsweringPhone({
             { label: "الصحيحة", value: correctLabel },
             {
               label: "قرار الخصم",
-              value: ryoDecisionRevealLabel(toPresentationDecision(scenario.opposingDecision)),
+              value: ryoDecisionRevealLabel(
+                toPresentationDecision(scenario.opposingDecision),
+              ),
             },
           ]}
         />
@@ -563,14 +660,16 @@ function AnsweringPhone({
           <BidiText>{scenario.prompt}</BidiText>
         </p>
       )}
-      <div className="grid flex-1 content-center gap-2">
+      <div className="grid min-h-0 flex-1 content-center gap-1">
         {scenario.options.map((option) => (
           <AnswerOption
             key={option.id}
-            selected={option.id === scenario.answeringSelectionOptionId && locked}
+            selected={
+              option.id === scenario.answeringSelectionOptionId && locked
+            }
             disabled
             onClick={() => undefined}
-            className="min-h-0 py-2.5 text-[0.8rem] leading-snug disabled:opacity-100"
+            className="min-h-0 py-1.5 text-[0.8rem] leading-snug disabled:opacity-100"
           >
             <BidiText>{option.label}</BidiText>
           </AnswerOption>
@@ -600,7 +699,9 @@ function DecidingPhone({
           rows={[
             {
               label: "قرارك",
-              value: ryoDecisionRevealLabel(toPresentationDecision(scenario.opposingDecision)),
+              value: ryoDecisionRevealLabel(
+                toPresentationDecision(scenario.opposingDecision),
+              ),
             },
             { label: "إجابتهم", value: answerLabel },
             { label: "الصحيحة", value: correctLabel },
@@ -616,7 +717,9 @@ function DecidingPhone({
           headline="ثبّت قرارك"
           row={{
             label: "قرارك",
-            value: ryoDecisionRevealLabel(toPresentationDecision(scenario.opposingDecision)),
+            value: ryoDecisionRevealLabel(
+              toPresentationDecision(scenario.opposingDecision),
+            ),
           }}
           hint="الكشف بعد لحظة…"
         />
@@ -632,12 +735,10 @@ function DecidingPhone({
         اقرأوا الفريق الثاني واختاروا
       </p>
       <div className="grid gap-2">
-        {(
-          [
-            { decision: "trust" as const, Icon: HelpCircle },
-            { decision: "steal" as const, Icon: Swords },
-          ]
-        ).map(({ decision, Icon }) => (
+        {[
+          { decision: "trust" as const, Icon: HelpCircle },
+          { decision: "steal" as const, Icon: Swords },
+        ].map(({ decision, Icon }) => (
           <Button
             key={decision}
             size="lg"

@@ -1,3 +1,4 @@
+import { preflightJoinCode } from "./helpers/preflight-join";
 import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "fs";
 import { resolve } from "path";
@@ -133,9 +134,7 @@ test.describe("@visual Akwaan identity", () => {
     });
     await shoot(page, "preflight-empty", "laptop");
 
-    const joinCode = (
-      await page.getByTestId("preflight-join-code").innerText()
-    ).trim();
+    const joinCode = await preflightJoinCode(page);
 
     // ── Phone join, in Arabic, with a diacritic name ─────────────────────────
     const phoneContext = await browser.newContext({

@@ -596,11 +596,11 @@ export const CLOSEST_GAMEPLAY_PLUGIN: GameplayModePlugin = {
    */
   presentedContentItemIds({ runtimeState }) {
     if (typeof runtimeState.itemsJson !== 'string') return [];
-    let items: Array<{ contentItemId?: unknown }> = [];
+    let items: Array<{ id?: unknown; contentItemId?: unknown }> = [];
     try {
       const parsed: unknown = JSON.parse(runtimeState.itemsJson);
       if (!Array.isArray(parsed)) return [];
-      items = parsed as Array<{ contentItemId?: unknown }>;
+      items = parsed as Array<{ id?: unknown; contentItemId?: unknown }>;
     } catch {
       return [];
     }
@@ -608,7 +608,7 @@ export const CLOSEST_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     if (!Number.isInteger(index) || index < 0) return [];
     return items
       .slice(0, Math.min(index + 1, items.length))
-      .map((item) => String(item?.contentItemId ?? ''))
+      .map((item) => String(item?.id ?? item?.contentItemId ?? ''))
       .filter(Boolean);
   },
   projectRuntimeState: (state) => publicState(state),

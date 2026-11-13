@@ -23,6 +23,65 @@ beforeEach(() => {
 });
 
 describe("published tutorial cache scope", () => {
+  it("requests World-specific content and does not reuse another World's cache", async () => {
+    get.mockImplementation(
+      async (url) =>
+        ({
+          data: {
+            data: {
+              scenario: { kind: "ryo", prompt: String(url) },
+            },
+          },
+        }) as never,
+    );
+
+    const { result, rerender } = renderHook(
+      ({ worldId }: { worldId?: string }) =>
+        usePublishedTutorial("read-your-opponent", worldId),
+      {
+        initialProps: { worldId: "world-football" },
+        wrapper,
+      },
+    );
+    await waitFor(() =>
+      expect(result.current.data?.scenario.prompt).toContain(
+        "/worlds/world-football/mechanics/read-your-opponent/tutorial",
+      ),
+    );
+
+    rerender({ worldId: "world-anime" });
+    await waitFor(() =>
+      expect(result.current.data?.scenario.prompt).toContain(
+        "/worlds/world-anime/mechanics/read-your-opponent/tutorial",
+      ),
+    );
+    expect(get).toHaveBeenNthCalledWith(
+      1,
+      "/worlds/world-football/mechanics/read-your-opponent/tutorial",
+    );
+    expect(get).toHaveBeenNthCalledWith(
+      2,
+      "/worlds/world-anime/mechanics/read-your-opponent/tutorial",
+    );
+  });
+
+  it("uses the generic endpoint only when no World context is supplied", async () => {
+    get.mockResolvedValueOnce({
+      data: {
+        data: { scenario: { kind: "ryo", prompt: "عام" } },
+      },
+    } as never);
+
+    const { result } = renderHook(
+      () => usePublishedTutorial("read-your-opponent"),
+      { wrapper },
+    );
+    await waitFor(() =>
+      expect(result.current.data?.scenario.prompt).toBe("عام"),
+    );
+    expect(get).toHaveBeenCalledWith("/mechanics/read-your-opponent/tutorial");
+  });
+
   it("invalidates only the matching World query", async () => {
     get
       .mockResolvedValueOnce({

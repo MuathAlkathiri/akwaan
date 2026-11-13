@@ -110,6 +110,52 @@ describe("RYO explainer — correct phase presentation", () => {
     });
   });
 
+  it("keeps four long Arabic options readable across both phone presentations", async () => {
+    const scenario = {
+      ...SAMPLE_TUTORIAL_SCENARIO,
+      options: [
+        { id: "a", label: "لندن" },
+        { id: "b", label: "مانشستر يونايتد" },
+        { id: "c", label: "ليفربول" },
+        { id: "d", label: "أربعة قلوب" },
+      ],
+    };
+
+    for (const compact of [false, true]) {
+      cleanup();
+      render(
+        <RyoExplainer scenario={scenario} compact={compact} mode="preview" />,
+      );
+      const answers = screen.getByTestId("explainer-phone-answer-controls");
+      const buttons = within(answers).getAllByRole("button");
+
+      expect(buttons).toHaveLength(4);
+      expect(buttons[3]).toHaveTextContent("أربعة قلوب");
+      expect(buttons[3]).toHaveClass("py-1.5");
+      buttons.forEach((button) => expect(button).toBeDisabled());
+    }
+
+    cleanup();
+    reducedMotion = true;
+    const user = userEvent.setup();
+    render(<RyoExplainer scenario={scenario} mode="preview" />);
+    const answers = screen.getByTestId("explainer-phone-answer-controls");
+    expect(within(answers).getAllByRole("button")[0]).toHaveAttribute(
+      "data-selected",
+      "false",
+    );
+    await user.click(screen.getByTestId("explainer-next"));
+    expect(
+      screen.getByTestId("explainer-phone-answering-waiting"),
+    ).toHaveTextContent("لندن");
+    expect(
+      screen.getByTestId("explainer-phone-decision-controls"),
+    ).toBeInTheDocument();
+    within(screen.getByTestId("explainer-phone-decision-controls"))
+      .getAllByRole("button")
+      .forEach((button) => expect(button).toBeDisabled());
+  });
+
   it("never reveals either private choice before the reveal beat", () => {
     render(<RyoExplainer scenario={SAMPLE_TUTORIAL_SCENARIO} mode="preview" />);
     // The shared screen shows lock state only — not what was chosen.

@@ -1,3 +1,4 @@
+import { preflightJoinCode } from "./helpers/preflight-join";
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
@@ -40,7 +41,7 @@ test("Board and Preflight visual states", async ({ page, browser }) => {
   await shot(page, "preflight-empty");
   await shot(page, "preflight-1440");
 
-  const code = (await page.getByTestId("preflight-join-code").innerText()).trim();
+  const code = await preflightJoinCode(page);
   const contexts: BrowserContext[] = [];
   contexts.push(await joinPhone(browser, code, "Green Visual", 0));
   await expect(page.locator('[data-testid^="preflight-team-"]').filter({ hasText: "Green Visual" })).toBeVisible({ timeout: 30_000 });

@@ -1,3 +1,4 @@
+import { preflightJoinCode } from "./helpers/preflight-join";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { appendFileSync, mkdirSync } from "node:fs";
@@ -71,7 +72,7 @@ test.describe.serial("@closest-pilot Pilot Batch 01 in a real Match", () => {
     await completeSetup(page);
     const sessionId = sessionIdOf(page);
     await openClosest(page);
-    const joinCode = (await page.getByTestId("preflight-join-code").innerText()).trim();
+    const joinCode = await preflightJoinCode(page);
     for (const [index, viewport] of [SMALL, BIG].entries()) {
       const context = await browser.newContext({ viewport });
       contexts.push(context);

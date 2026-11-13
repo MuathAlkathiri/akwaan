@@ -1,3 +1,4 @@
+import { preflightJoinCode } from "./helpers/preflight-join";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
@@ -69,9 +70,7 @@ test.describe.serial("@la-tahriqha real Chromium product review", () => {
     const sessionId = sessionIdOf(page);
     await openLaTahriqha(page);
     await shot(page, "00-preflight");
-    const joinCode = (
-      await page.getByTestId("preflight-join-code").innerText()
-    ).trim();
+    const joinCode = await preflightJoinCode(page);
     for (const [index, team] of TEAM.entries()) {
       const context = await browser.newContext({
         viewport: team === 0 ? SMALL : PHONE,

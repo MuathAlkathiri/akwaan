@@ -1,3 +1,4 @@
+import { preflightJoinCode } from "./helpers/preflight-join";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
@@ -67,9 +68,7 @@ test.describe.serial("@closest migrated content reaches a real Match", () => {
     await completeSetup(page);
     const sessionId = sessionIdOf(page);
     await openClosest(page);
-    const joinCode = (
-      await page.getByTestId("preflight-join-code").innerText()
-    ).trim();
+    const joinCode = await preflightJoinCode(page);
     for (const [index, team] of TEAM.entries()) {
       const context = await browser.newContext({ viewport: PHONE });
       contexts.push(context);

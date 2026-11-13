@@ -200,17 +200,92 @@ describe('presented content, per mechanic', () => {
     });
   });
 
-  describe.each([
-    ['مين اقرب', CLOSEST_GAMEPLAY_PLUGIN],
-    ['بدليل واحد', ONE_CLUE_GAMEPLAY_PLUGIN],
-  ])('%s', (_label, plugin) => {
+  describe('مين اقرب', () => {
+    const ITEMS = [
+      { id: 'c1', prompt: { ar: 'س1' }, media: null, correctValue: 10 },
+      { id: 'c2', prompt: { ar: 'س2' }, media: null, correctValue: 20 },
+      { id: 'c3', prompt: { ar: 'س3' }, media: null, correctValue: 30 },
+    ];
+    const validRuntimeState = (currentItemIndex: number): GameplayModeState =>
+      CLOSEST_GAMEPLAY_PLUGIN.validateRuntimeState({
+        challengeId: 'ch-1',
+        worldId: 'w-1',
+        slotKey: 'slot-1',
+        itemsJson: JSON.stringify(ITEMS),
+        teamIdsJson: JSON.stringify(['team-a', 'team-b']),
+        currentItemIndex,
+        phase: 'collecting',
+        answersJson: '{}',
+        resultsJson: '[]',
+        teamActionJson: JSON.stringify({
+          rotations: [
+            { teamId: 'team-a', order: ['u1'], cursor: 0 },
+            { teamId: 'team-b', order: ['u2'], cursor: 0 },
+          ],
+          assignments: [],
+          nextSequence: 1,
+        }),
+      });
+
+    const presented = (currentItemIndex: number | null) =>
+      CLOSEST_GAMEPLAY_PLUGIN.presentedContentItemIds!({
+        runtimeState:
+          currentItemIndex !== null &&
+          currentItemIndex >= 0 &&
+          currentItemIndex < ITEMS.length
+            ? validRuntimeState(currentItemIndex)
+            : {
+                itemsJson: JSON.stringify(ITEMS),
+                ...(currentItemIndex === null ? {} : { currentItemIndex }),
+              },
+        roundState: {},
+        orderedContentItemIds: ITEMS.map((i) => i.id),
+      });
+
+    it('burns the active item only', () => {
+      expect(presented(0)).toEqual(['c1']);
+    });
+
+    it('leaves the items a challenge abandoned early never reached', () => {
+      const shown = presented(1);
+      expect(shown).toEqual(['c1', 'c2']);
+      expect(shown).not.toContain('c3');
+    });
+
+    it('accumulates all three items when completed', () => {
+      expect(presented(2)).toEqual(['c1', 'c2', 'c3']);
+    });
+
+    it('preserves compatibility with legacy contentItemId-shaped items if present', () => {
+      expect(
+        CLOSEST_GAMEPLAY_PLUGIN.presentedContentItemIds!({
+          runtimeState: {
+            itemsJson: JSON.stringify([
+              { contentItemId: 'legacy-1' },
+              { contentItemId: 'legacy-2' },
+            ]),
+            currentItemIndex: 0,
+          },
+          roundState: {},
+          orderedContentItemIds: ['legacy-1', 'legacy-2'],
+        }),
+      ).toEqual(['legacy-1']);
+    });
+
+    it('burns nothing when the index is absent or nonsense', () => {
+      expect(presented(null)).toEqual([]);
+      expect(presented(-1)).toEqual([]);
+    });
+  });
+
+  describe('بدليل واحد', () => {
     const ITEMS = [
       { contentItemId: 'c1' },
       { contentItemId: 'c2' },
       { contentItemId: 'c3' },
     ];
     const presented = (currentItemIndex: number | null) =>
-      plugin.presentedContentItemIds!({
+      ONE_CLUE_GAMEPLAY_PLUGIN.presentedContentItemIds!({
         runtimeState: {
           itemsJson: JSON.stringify(ITEMS),
           ...(currentItemIndex === null ? {} : { currentItemIndex }),

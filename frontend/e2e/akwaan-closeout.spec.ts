@@ -1,3 +1,4 @@
+import { preflightJoinCode } from "./helpers/preflight-join";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { mkdirSync } from "fs";
 import { resolve } from "path";
@@ -105,9 +106,7 @@ test.describe("@closeout every user-facing Akwaan surface", () => {
     });
     await shoot(page, "preflight-empty");
 
-    const joinCode = (
-      await page.getByTestId("preflight-join-code").innerText()
-    ).trim();
+    const joinCode = await preflightJoinCode(page);
 
     for (const [index, team] of TEAM_OF_PHONE.entries()) {
       const context = await browser.newContext({
@@ -213,8 +212,8 @@ test.describe("@closeout every user-facing Akwaan surface", () => {
       await expect(
         page.getByText(`السؤال ${item} من 3`).first(),
       ).toBeVisible({ timeout: 30_000 });
-      const answerer = await holderOf(phones, "ryo-answer-controls");
-      const decider = await holderOf(phones, "ryo-decision-controls");
+      const answerer = await holderOf(phones, "ryo-phone-answer-controls");
+      const decider = await holderOf(phones, "ryo-phone-decision-controls");
       if (item === 1) {
         await shoot(page, "ryo-gameplay");
         await shoot(phones[answerer], "phone-ryo-answerer");
@@ -226,7 +225,8 @@ test.describe("@closeout every user-facing Akwaan surface", () => {
       }
       await submitRyoAnswer(phones[answerer]);
       await phones[decider]
-        .getByRole("button", { name: "أثق بإجابته" })
+        .getByTestId("ryo-phone-decision-controls")
+        .locator('button[data-decision="trust"]')
         .click({ timeout: 30_000 });
     }
 
@@ -296,7 +296,7 @@ async function holderOf(phones: Page[], testId: string): Promise<number> {
 }
 
 async function submitRyoAnswer(phone: Page): Promise<void> {
-  const controls = phone.getByTestId("ryo-answer-controls");
+  const controls = phone.getByTestId("ryo-phone-answer-controls");
   const estimate = controls.locator("input");
   if (await estimate.count()) {
     await estimate.fill("42");

@@ -1,3 +1,4 @@
+import { preflightJoinCode } from "./helpers/preflight-join";
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
@@ -41,7 +42,7 @@ test("typography and Gravity Stars visual journey", async ({ page, browser }) =>
   await expect(page.getByTestId("challenge-preflight")).toBeVisible();
   await shot(page, "05-preflight-1440");
 
-  const code = (await page.getByTestId("preflight-join-code").innerText()).trim();
+  const code = await preflightJoinCode(page);
   const contexts: BrowserContext[] = [];
   const phones: Page[] = [];
   for (const [index, team] of [0, 0, 1, 1].entries()) {

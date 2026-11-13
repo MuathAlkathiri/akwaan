@@ -480,15 +480,16 @@ export class MechanicTutorialService {
             scenario: generic,
           }
         : null;
-    } catch {
-      try {
-        const generic = await this.getPublished(mechanicKey);
-        return generic
-          ? { ...generic, source: 'generic' as const, worldId: null }
-          : null;
-      } catch {
-        return null;
-      }
+    } catch (error) {
+      // A missing/unassociated World is an expected compatibility case: use
+      // the mechanic's generic publication. Do not turn a database/read
+      // failure into a successful generic response, because that can hide an
+      // existing World-specific publication and teach the wrong example.
+      if (!(error instanceof NotFoundException)) throw error;
+      const generic = await this.getPublished(mechanicKey);
+      return generic
+        ? { ...generic, source: 'generic' as const, worldId: null }
+        : null;
     }
   }
 

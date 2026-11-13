@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronDown, Copy, Smartphone, Users } from "lucide-react";
+import { BookOpen, Check, ChevronDown, Copy, Users } from "lucide-react";
 import { toast } from "sonner";
 import { ScannableQr } from "@/components/akwaan/scannable-qr";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -11,7 +11,7 @@ import { WorldMedia } from "@/components/akwaan/world-media";
 import { teamIdentity, TEAM_SLOT_ORDER } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
 import {
-  MechanicTutorialDialog,
+  InlineMechanicTutorial,
   SUPPORTED_TUTORIAL_MECHANIC_KEYS,
 } from "@/features/challenge-explainer";
 
@@ -59,33 +59,28 @@ export function ChallengePreflight({
 }) {
   return (
     <div className="space-y-3" data-testid="challenge-preflight" dir="rtl">
-      {/* One identity banner across the top — what World, what challenge, who
-          starts — then the two working regions beneath it. */}
-      <ChallengeIdentityBanner
-        preflight={preflight}
-        {...(selectingTeamName ? { selectingTeamName } : {})}
-        {...(worldImageUrl ? { worldImageUrl } : {})}
-      />
-
-      {/* The explanation at ~70%, joining at the rest. items-start so a short
-          brief never stretches to the sidebar's height. */}
       <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,2.6fr)_minmax(16rem,1fr)]">
-        <ChallengeExplanation preflight={preflight} launching={launching} />
-        {preflight.requiresPhones ? (
-          <PairingPanel preflight={preflight} sessionId={sessionId} />
-        ) : (
-          <aside className="surface-card p-5 text-sm leading-6 text-muted-foreground">
-            يُلعب هذا التحدي من الشاشة المشتركة. لا حاجة لجوالات.
-          </aside>
-        )}
+        <ChallengeExplanation
+          key={`${preflight.worldId}:${preflight.challengeKey}:${preflight.positionKey}`}
+          preflight={preflight}
+          launching={launching}
+          worldImageUrl={worldImageUrl}
+          selectingTeamName={selectingTeamName}
+          className="order-2 min-w-0 lg:order-1"
+        />
+        <div
+          data-testid="preflight-joining-region"
+          className="order-1 min-w-0 lg:order-2"
+        >
+          <PairingPanel
+            preflight={preflight}
+            sessionId={sessionId}
+            launching={launching}
+            cancelling={cancelling}
+            onLaunch={onLaunch}
+          />
+        </div>
       </div>
-
-      <StartChallengeSection
-        preflight={preflight}
-        launching={launching}
-        cancelling={cancelling}
-        onLaunch={onLaunch}
-      />
 
       {error && (
         <Alert variant="destructive" role="alert">
@@ -111,77 +106,12 @@ export function ChallengePreflight({
 }
 
 /**
- * What is about to be played — World, challenge, and the two facts a host needs.
- *
- * Pulled above the working columns so the identity reads once, across the full
- * width, instead of competing with the explanation for the same card. Every
- * field is canonical Match projection data; nothing about a specific mechanic is
- * hardcoded here.
- */
-function ChallengeIdentityBanner({
-  preflight,
-  selectingTeamName,
-  worldImageUrl,
-}: {
-  preflight: UnifiedPreflight;
-  selectingTeamName?: string;
-  worldImageUrl?: string;
-}) {
-  const summary = preflight.description;
-  return (
-    <section
-      data-testid="preflight-identity"
-      className="surface-card overflow-hidden"
-    >
-      <div className="grid gap-0 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]">
-        <WorldMedia
-          name={preflight.worldName ?? "عالم"}
-          eyebrow={occurrenceLabel(preflight.occurrenceIndex)}
-          variant="strip"
-          {...(worldImageUrl ? { imageUrl: worldImageUrl } : {})}
-          className="h-20 rounded-none aspect-auto sm:h-full sm:min-h-[6rem]"
-        />
-        <div className="flex flex-col gap-1.5 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4">
-          <header className="min-w-0 space-y-1">
-            <h1 className="text-xl font-black leading-tight text-foreground sm:text-2xl">
-              {preflight.challengeName}
-            </h1>
-            {summary && (
-              <p className="line-clamp-2 text-xs leading-5 text-muted-foreground sm:text-sm">
-                {summary}
-              </p>
-            )}
-          </header>
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {preflight.requiresPhones && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-bold text-secondary-foreground">
-                <Smartphone className="size-3" aria-hidden />
-                يحتاج جوالات
-              </span>
-            )}
-            {selectingTeamName && (
-              <span
-                data-testid="preflight-turn-chip"
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-xs font-bold text-muted-foreground"
-              >
-                <Users className="size-3" aria-hidden />
-                {selectingTeamName} يبدأ
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/**
  * "شرح التحدي" — the left region.
  *
  * The GSAP demonstration is the only mechanic explanation. It is a
  * presentation-only simulation: it holds no session, sends no command, and
- * cannot touch readiness, Fair-Start or Match state. When no tutorial is
- * published, the dialog itself exposes an explicit unavailable state.
+ * cannot touch readiness, Fair-Start or Match state. It is embedded here so the
+ * host can understand the challenge without opening a second surface.
  *
  * `launching` only dims the region — a purely visual handoff while the
  * authoritative stage change does the real work. It never gates the launch.
@@ -189,41 +119,103 @@ function ChallengeIdentityBanner({
 function ChallengeExplanation({
   preflight,
   launching,
+  className,
+  worldImageUrl,
+  selectingTeamName,
 }: {
   preflight: UnifiedPreflight;
   launching: boolean;
+  className?: string;
+  worldImageUrl?: string;
+  selectingTeamName?: string;
 }) {
   const animated = TUTORIAL_RENDERER_MECHANICS.has(preflight.challengeKey);
+  const [open, setOpen] = useState(false);
   return (
     <section
       data-testid="preflight-explainer"
       data-animated={animated ? "true" : "false"}
       data-launching={launching ? "true" : "false"}
-      className={cn(
-        "surface-card space-y-2.5 p-3 transition-all duration-base ease-akwaan sm:p-4",
-        // The exit half of the handoff: the explanation steps back as the real
-        // challenge is being started. Visual only, and never blocking.
-        launching && "pointer-events-none translate-y-1 opacity-40",
-      )}
+      className={cn("surface-card min-w-0 p-4 sm:p-6", className)}
     >
-      <header className="flex items-start justify-between gap-3">
-        <span className="min-w-0 space-y-0.5">
-          <h2 className="text-base font-black text-foreground">شرح التحدي</h2>
-          <p className="text-xs leading-5 text-muted-foreground">
-            اقروا الخطوات قبل ما تبدأون.
-          </p>
-        </span>
-        {/* The demonstration is an answer to a question the host may not have.
-            It is offered here and opened on demand, so the default screen stays
-            about starting the challenge. */}
-        {animated && (
-          <MechanicTutorialDialog
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          aria-expanded={open}
+          aria-controls={open ? "preflight-tutorial-content" : undefined}
+          onClick={() => setOpen((value) => !value)}
+          className="gap-2 font-black"
+        >
+          <BookOpen className="size-4" aria-hidden />
+          {open ? "إغلاق الشرح" : "شرح قبل البداية"}
+          <ChevronDown
+            className={cn("size-4 transition-transform", open && "rotate-180")}
+            aria-hidden
+          />
+        </Button>
+        {open ? (
+          <h2 className="text-lg font-black text-foreground">
+            {preflight.challengeName}
+          </h2>
+        ) : (
+          <span className="rounded-full bg-muted px-3 py-1.5 text-xs font-bold text-muted-foreground">
+            {occurrenceLabel(preflight.occurrenceIndex)}
+          </span>
+        )}
+      </div>
+      {open ? (
+        <div id="preflight-tutorial-content" className="mt-4">
+          <InlineMechanicTutorial
+            embedded
             mechanicKey={preflight.challengeKey}
             worldId={preflight.worldId}
+            challengeName={preflight.challengeName}
+            {...(preflight.description
+              ? { description: preflight.description }
+              : {})}
             launching={launching}
           />
-        )}
-      </header>
+        </div>
+      ) : (
+        <div
+          data-testid="preflight-identity"
+          className="flex min-h-[min(32rem,65vh)] flex-col items-center justify-center gap-4 py-6 text-center sm:py-8"
+        >
+          <WorldMedia
+            name={preflight.worldName ?? "عالم"}
+            variant="hero"
+            {...(worldImageUrl ? { imageUrl: worldImageUrl } : {})}
+            className="w-full max-w-xl max-h-[min(16rem,28vh)] min-h-28 [&_h3]:sr-only"
+          />
+          <span className="rounded-full bg-secondary px-4 py-1.5 text-sm font-black text-secondary-foreground">
+            {preflight.worldName ?? "عالم"}
+          </span>
+          <h1 className="text-3xl font-black leading-tight text-foreground sm:text-5xl">
+            {preflight.challengeName}
+          </h1>
+          {preflight.description && (
+            <p className="max-w-xl text-sm font-bold leading-7 text-muted-foreground sm:text-base">
+              {preflight.description}
+            </p>
+          )}
+          {selectingTeamName && (
+            <span
+              data-testid="preflight-turn-chip"
+              className="text-xs font-bold text-muted-foreground"
+            >
+              {selectingTeamName} يبدأ
+            </span>
+          )}
+          {!preflight.readyToLaunch && (
+            <p className="rounded-full bg-muted px-5 py-2 text-sm font-bold text-foreground">
+              {preflight.requiresPhones
+                ? "بانتظار اكتمال اللاعبين"
+                : "بانتظار الجاهزية"}
+            </p>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -247,7 +239,7 @@ function StartChallengeSection({
   onLaunch: () => void;
 }) {
   return (
-    <section data-testid="preflight-start-section" className="surface-card p-3">
+    <section data-testid="preflight-start-section" className="pt-2">
       {!preflight.readyToLaunch && (
         <p className="mb-2 text-center text-sm font-bold text-muted-foreground">
           {blockingSummary(preflight)}
@@ -287,9 +279,15 @@ function StartChallengeSection({
 function PairingPanel({
   preflight,
   sessionId,
+  launching,
+  cancelling,
+  onLaunch,
 }: {
   preflight: UnifiedPreflight;
   sessionId: string;
+  launching: boolean;
+  cancelling: boolean;
+  onLaunch: () => void;
 }) {
   const storageKey = `akwaan:preflight-join-complete:${sessionId}`;
   const [expanded, setExpanded] = useState(() => {
@@ -323,7 +321,7 @@ function PairingPanel({
       toast.success("تم نسخ الرابط");
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      // A clipboard-denied browser still shows the code and the URL.
+      toast.error("تعذّر نسخ الرابط، امسحوا رمز الانضمام.");
     }
   };
 
@@ -333,71 +331,65 @@ function PairingPanel({
           The readiness roster is no longer its own card — it is the answer to
           the question this card asks — but it is the same authoritative
           `preflight.teams` data and the same roster component as before. */}
-      <section className="surface-card overflow-hidden">
-        <button
-          type="button"
-          data-testid="preflight-join-toggle"
-          aria-expanded={expanded}
-          onClick={() => setExpanded((value) => !value)}
-          className="flex w-full items-center justify-between gap-3 p-3 text-start transition-colors hover:bg-muted/40"
-        >
-          <span
-            data-testid={!expanded ? "preflight-players-paired" : undefined}
-            className="flex items-center gap-2 text-sm font-black text-foreground"
+      {preflight.requiresPhones ? (
+        <section className="surface-card overflow-hidden">
+          <button
+            type="button"
+            data-testid="preflight-join-toggle"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((value) => !value)}
+            className="flex w-full items-center justify-between gap-3 p-3 text-start transition-colors hover:bg-muted/40"
           >
-            <Smartphone className="size-4 text-primary" aria-hidden />
-            {preflight.allTeamsReady
-              ? "اللاعبين متصلين وجاهزين"
-              : "انضمام اللاعبين"}
-          </span>
-          <ChevronDown
-            className={cn(
-              "size-4 text-muted-foreground transition-transform",
-              expanded && "rotate-180",
-            )}
-            aria-hidden
-          />
-        </button>
-        {expanded && (
-          <div className="space-y-2 border-t border-border/70 p-3">
-            <p className="text-xs font-bold leading-5 text-muted-foreground">
-              امسحوا الرمز للانضمام إلى المباراة. لا تحتاجون لإعادة المسح بين
-              التحديات.
-            </p>
-            {showQr && joinUrl && (
-              <div className="preflight-secondary-surface flex items-center gap-3 rounded-[var(--radius)] p-2.5">
-                <span className="flex shrink-0 flex-col items-center gap-1">
-                  <ScannableQr value={joinUrl} size={88} />
-                  <span className="text-[0.6rem] font-bold text-muted-foreground">
-                    اضغط على الكود عشان تكبّره
-                  </span>
-                </span>
-                <span className="min-w-0 flex-1 space-y-1">
-                  <span className="block text-[0.65rem] font-black text-muted-foreground">
-                    قولوا للاعبين: ادخلوا الكود
-                  </span>
-                  <span
-                    data-testid="preflight-join-code"
-                    className="akwaan-numeral block text-3xl font-black tracking-[0.22em] text-foreground"
-                  >
-                    {join!.joinCode}
-                  </span>
+            <span
+              data-testid={!expanded ? "preflight-players-paired" : undefined}
+              className="flex items-center gap-2 text-sm font-black text-foreground"
+            >
+              <Users className="size-4 text-primary" aria-hidden />
+              {preflight.allTeamsReady
+                ? "اللاعبين متصلين وجاهزين"
+                : "انضمام اللاعبين"}
+            </span>
+            <ChevronDown
+              className={cn(
+                "size-4 text-muted-foreground transition-transform",
+                expanded && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </button>
+          {expanded && (
+            <div className="space-y-2 border-t border-border/70 p-3">
+              <p className="text-xs font-bold leading-5 text-muted-foreground">
+                امسحوا الرمز للانضمام إلى المباراة. لا تحتاجون لإعادة المسح بين
+                التحديات.
+              </p>
+              {showQr && joinUrl && (
+                <div className="flex flex-col items-center gap-3">
+                  <ScannableQr
+                    value={joinUrl}
+                    size={176}
+                    className="max-w-full p-4"
+                  />
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     onClick={() => void copy()}
-                    className="h-8 px-2 text-xs font-black"
+                    className="w-full gap-2 font-black"
                   >
-                    <Copy className="size-3.5" aria-hidden />
-                    {copied ? "تم النسخ" : "نسخ الرابط"}
+                    <Copy className="size-4" aria-hidden />
+                    {copied ? "تم النسخ" : "نسخ رابط الانضمام"}
                   </Button>
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      ) : (
+        <aside className="surface-card p-4 text-sm leading-6 text-muted-foreground">
+          يُلعب هذا التحدي من الشاشة المشتركة. لا حاجة لجوالات.
+        </aside>
+      )}
+      <section className="surface-card overflow-hidden">
         <div
           data-testid="preflight-readiness"
           className="space-y-2 border-t border-border/70 p-3"
@@ -413,6 +405,12 @@ function PairingPanel({
               </li>
             ))}
           </ul>
+          <StartChallengeSection
+            preflight={preflight}
+            launching={launching}
+            cancelling={cancelling}
+            onLaunch={onLaunch}
+          />
         </div>
       </section>
     </aside>

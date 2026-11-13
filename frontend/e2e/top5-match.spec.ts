@@ -1,3 +1,4 @@
+import { preflightJoinCode } from "./helpers/preflight-join";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 /**
@@ -68,9 +69,7 @@ test.describe("@top5 the unified Match in a browser", () => {
 
     // ── 2. Two participants per team ─────────────────────────────────────────
     await top5Tiles.first().getByRole("button").first().click();
-    const joinCode = (
-      await page.getByTestId("preflight-join-code").innerText()
-    ).trim();
+    const joinCode = await preflightJoinCode(page);
     expect(joinCode).not.toBe("");
     for (const [index, team] of TEAM_OF_PHONE.entries()) {
       const context = await browser.newContext();
@@ -323,9 +322,7 @@ test.describe("@top5 the unified Match in a browser", () => {
     await expect(ryoTiles.first()).toBeVisible({ timeout: 30_000 });
     await ryoTiles.first().getByRole("button").first().click();
 
-    const joinCode = (
-      await page.getByTestId("preflight-join-code").innerText()
-    ).trim();
+    const joinCode = await preflightJoinCode(page);
     for (const [index, team] of TEAM_OF_PHONE.entries()) {
       const context = await browser.newContext();
       contexts.push(context);
@@ -354,12 +351,12 @@ test.describe("@top5 the unified Match in a browser", () => {
       // opposite teams — not one per *team*.
       const answerer = await waitForExactlyOne(
         phones,
-        "ryo-answer-controls",
+        "ryo-phone-answer-controls",
         `item ${item}: one authoritative answerer`,
       );
       const decider = await waitForExactlyOne(
         phones,
-        "ryo-decision-controls",
+        "ryo-phone-decision-controls",
         `item ${item}: one authoritative decision-maker`,
       );
       expect(TEAM_OF_PHONE[answerer]).not.toBe(TEAM_OF_PHONE[decider]);
@@ -369,19 +366,20 @@ test.describe("@top5 the unified Match in a browser", () => {
       // Their teammates are told who acts and offered nothing.
       for (const [index, phone] of phones.entries()) {
         if (index === answerer || index === decider) continue;
-        await expect(phone.getByTestId("ryo-waiting")).toBeVisible();
-        await expect(phone.getByTestId("ryo-answer-controls")).toHaveCount(0);
-        await expect(phone.getByTestId("ryo-decision-controls")).toHaveCount(0);
+        await expect(phone.getByTestId("ryo-phone-waiting")).toBeVisible();
+        await expect(phone.getByTestId("ryo-phone-answer-controls")).toHaveCount(0);
+        await expect(phone.getByTestId("ryo-phone-decision-controls")).toHaveCount(0);
       }
 
       // Blind and simultaneous: the answer alone resolves nothing, and the
       // decision-maker's controls are still there after it lands.
       await submitRyoAnswer(phones[answerer]);
       await expect(
-        phones[decider].getByTestId("ryo-decision-controls"),
+        phones[decider].getByTestId("ryo-phone-decision-controls"),
       ).toBeVisible();
       await phones[decider]
-        .getByRole("button", { name: "أثق بإجابته" })
+        .getByTestId("ryo-phone-decision-controls")
+        .locator('button[data-decision="trust"]')
         .click({ timeout: 30_000 });
     }
 
@@ -513,7 +511,7 @@ async function waitForPairedPhones(page: Page): Promise<void> {
  * is typed, so clicking blindly would wait forever.
  */
 async function submitRyoAnswer(phone: Page): Promise<void> {
-  const controls = phone.getByTestId("ryo-answer-controls");
+  const controls = phone.getByTestId("ryo-phone-answer-controls");
   const estimate = controls.locator("input");
   if (await estimate.count()) {
     await estimate.fill("42");

@@ -55,10 +55,14 @@ export function MechanicTutorialRenderer({
   scenario,
   compact = false,
   mode = "player",
+  showRyoPhonePrompt,
+  ryoPhonePerspective,
 }: {
   scenario: TutorialScenario;
   compact?: boolean;
   mode?: ExplainerMode;
+  showRyoPhonePrompt?: boolean;
+  ryoPhonePerspective?: "answering" | "opposing";
 }) {
   return tutorialScenarioKind(scenario) === "closest" ? (
     <ClosestExplainer
@@ -131,6 +135,8 @@ export function MechanicTutorialRenderer({
       scenario={scenario as RyoTutorialScenario}
       compact={compact}
       mode={mode}
+      showPhonePrompt={showRyoPhonePrompt}
+      phonePerspective={ryoPhonePerspective}
     />
   );
 }
