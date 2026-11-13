@@ -253,9 +253,9 @@ export function WorldsHome() {
                         className="flex list-none flex-wrap justify-center gap-x-5 gap-y-8 [&>li]:basis-[clamp(9.5rem,17.5%,13.5rem)]"
                         data-testid="upcoming-worlds"
                       >
-                        {upcoming.map((world) => (
+                        {upcoming.map((world, index) => (
                           <li key={world.id} className="w-full">
-                            <ComingSoonCard world={world} />
+                            <ComingSoonCard world={world} index={index} />
                           </li>
                         ))}
                       </ul>
@@ -519,13 +519,13 @@ function WorldCardScopes({
  * has been painted. Brand colours only, and no text — the name sits beneath it
  * like every other card's.
  */
-function FallbackPlanet({ seed }: { seed: string }) {
-  // Each unpainted World gets its own hue, derived from its slug so it is the
-  // same on every visit. Five identical planets in a row read as one repeated
-  // placeholder; five different ones read as five Worlds.
-  let hash = 0;
-  for (const char of seed) hash = (hash * 31 + char.charCodeAt(0)) % 360;
-  const hue = 212 + (hash % 5) * 26;
+function FallbackPlanet({ seed, index }: { seed: string; index: number }) {
+  // The hue steps with the card's place in the row, so no two planets beside
+  // each other can land on the same colour. Deriving it from the slug looked
+  // tidier and collided: `general` and `movies` hashed into the same bucket
+  // and came out the same pink. Position is worth more than permanence here —
+  // a placeholder stops existing the moment its World has artwork.
+  const hue = 212 + (index % 6) * 26;
   const id = `akwaan-fallback-${seed.replace(/[^a-z0-9]/gi, "") || "world"}`;
   return (
     <svg viewBox="0 0 160 160" className="size-full" aria-hidden role="presentation">
@@ -564,7 +564,13 @@ function FallbackPlanet({ seed }: { seed: string }) {
   );
 }
 
-function ComingSoonCard({ world }: { world: PlayableWorld }) {
+function ComingSoonCard({
+  world,
+  index,
+}: {
+  world: PlayableWorld;
+  index: number;
+}) {
   const art = world.banner ?? world.icon;
   return (
     <div
@@ -584,7 +590,7 @@ function ComingSoonCard({ world }: { world: PlayableWorld }) {
         {art ? (
           <WorldCover world={world} sizes="(min-width:640px) 152px, 40vw" />
         ) : (
-          <FallbackPlanet seed={world.slug} />
+          <FallbackPlanet seed={world.slug} index={index} />
         )}
       </span>
       <span className="text-base font-black text-muted-foreground">
