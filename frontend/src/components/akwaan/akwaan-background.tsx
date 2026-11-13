@@ -159,8 +159,12 @@ export function AkwaanBackground() {
               style={{
                 width: station.size,
                 height: station.size,
-                left: point.x - station.size / 2,
-                top: point.y - station.size / 2,
+                // Written out at a fixed precision rather than handed over as a
+                // raw float: the server and the browser serialise 203.0999…
+                // differently and React calls the difference a hydration
+                // mismatch on every load of a page that shows this background.
+                left: `${(point.x - station.size / 2).toFixed(2)}px`,
+                top: `${(point.y - station.size / 2).toFixed(2)}px`,
                 opacity: station.opacity,
               }}
             />
