@@ -34,7 +34,8 @@ async function run() {
     const attempts = Number(process.env.PROBE_ATTEMPTS ?? '3');
     const delayMs = Number(process.env.PROBE_DELAY_MS ?? '3000');
     for (const { label, request } of requests) {
-      let result: Awaited<ReturnType<typeof assetService.process>> | null = null;
+      let result: Awaited<ReturnType<typeof assetService.process>> | null =
+        null;
       for (let attempt = 1; attempt <= attempts; attempt += 1) {
         try {
           result = await assetService.process(request);
@@ -45,7 +46,9 @@ async function run() {
         }
       }
       if (!result) {
-        process.stdout.write(`${JSON.stringify({ label, status: 'UNKNOWN' })}\n`);
+        process.stdout.write(
+          `${JSON.stringify({ label, status: 'UNKNOWN' })}\n`,
+        );
         continue;
       }
       if (result.assetStatus === 'READY') {
@@ -73,7 +76,9 @@ async function run() {
           })}\n`,
         );
       } else {
-        process.stdout.write(`${JSON.stringify({ label, status: 'NOT_REQUIRED' })}\n`);
+        process.stdout.write(
+          `${JSON.stringify({ label, status: 'NOT_REQUIRED' })}\n`,
+        );
       }
     }
   } finally {

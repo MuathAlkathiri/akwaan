@@ -10,6 +10,7 @@ import {
   type RyoConfidenceBand,
 } from './candidate-generator.service';
 import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
+import { COMBO_MAX_ACCEPTED_ANSWERS } from './candidate-generator.service';
 import {
   ScreenFinding,
   EngineCandidateDocument,
@@ -844,6 +845,7 @@ export class DeterministicScreenService {
           mode?: string;
           options?: { id?: string; label?: { ar?: string } }[];
           correctOptionId?: string;
+          acceptedAnswers?: unknown;
         }
       | undefined;
 
@@ -861,6 +863,17 @@ export class DeterministicScreenService {
     if (payload.mode === 'closest') {
       findings.push(
         ...this.screenClosest(draft, prompt, authoring, screenOptions),
+      );
+      findings.push(...this.screenFamilyCompliance(draft, authoring));
+      findings.push(...this.deferredNotes());
+      return {
+        passed: !findings.some((finding) => finding.severity === 'blocking'),
+        findings,
+      };
+    }
+    if (payload.mode === 'match') {
+      findings.push(
+        ...this.screenCombo(draft, prompt, payload.acceptedAnswers),
       );
       findings.push(...this.screenFamilyCompliance(draft, authoring));
       findings.push(...this.deferredNotes());
@@ -1055,8 +1068,36 @@ export class DeterministicScreenService {
       return findings;
     }
 
+    const priorCompliance = (
+      authoring as
+        | {
+            familyCompliance?: {
+              reassignedFamilyKey?: string;
+              effectiveFamilyKey?: string;
+              isCompliant?: boolean;
+              verificationMethod?: string;
+              resolvedByReviewerId?: string;
+            };
+          }
+        | undefined
+    )?.familyCompliance;
+    const reassignedTarget = (
+      priorCompliance?.reassignedFamilyKey ??
+      priorCompliance?.effectiveFamilyKey ??
+      ''
+    ).trim();
+
+    if (
+      priorCompliance?.isCompliant === true &&
+      priorCompliance?.verificationMethod === 'manual_review' &&
+      priorCompliance?.resolvedByReviewerId &&
+      reassignedTarget
+    ) {
+      return findings;
+    }
+
     const compliance = evaluateFamilyCompliance({
-      assignedFamilyKey: assignedSlot.familyKey,
+      assignedFamilyKey: reassignedTarget || assignedSlot.familyKey,
       draft,
       authoring,
     });
@@ -1101,6 +1142,112 @@ export class DeterministicScreenService {
    * the question's domain rather than drawn around the answer — is a judgement
    * no rule can make, and stays with the reviewer and the rubric.
    */
+  /**
+   * الكومبو: a typed answer on a stage.
+   *
+   * Grading is `normalizeAnswer` on both sides, so this screens what that
+   * normalizer cannot save the item from: an answer the prompt already gives
+   * away, two accepted answers the grader cannot tell apart, a stage off the
+   * ladder, and digits — which the normalizer deliberately leaves alone, so
+   * ٧ and 7 lose the turn for a player who answered correctly.
+   */
+  private screenCombo(
+    draft: Record<string, unknown>,
+    prompt: string,
+    rawAnswers: unknown,
+  ): ScreenFinding[] {
+    const findings: ScreenFinding[] = [];
+
+    const answers = (Array.isArray(rawAnswers) ? rawAnswers : [])
+      .map((answer) => (typeof answer === 'string' ? answer.trim() : ''))
+      .filter(Boolean);
+    if (!answers.length) {
+      findings.push(
+        blocking(
+          'ACCEPTED_ANSWERS_REQUIRED',
+          'a match item needs at least one accepted answer',
+        ),
+      );
+    }
+    if (answers.length > COMBO_MAX_ACCEPTED_ANSWERS) {
+      findings.push(
+        blocking(
+          'ACCEPTED_ANSWERS_TOO_MANY',
+          `at most ${COMBO_MAX_ACCEPTED_ANSWERS} accepted answers`,
+        ),
+      );
+    }
+
+    const seen = new Set<string>();
+    for (const answer of answers) {
+      const key = normalizeAnswer(answer);
+      if (!key) {
+        findings.push(
+          blocking(
+            'ACCEPTED_ANSWER_EMPTY_AFTER_NORMALIZATION',
+            `"${answer}" normalizes to nothing and can never be matched`,
+          ),
+        );
+        continue;
+      }
+      if (seen.has(key)) {
+        findings.push(
+          warning(
+            'ACCEPTED_ANSWER_DUPLICATE',
+            `"${answer}" is the same answer as one already accepted once normalized`,
+          ),
+        );
+      }
+      seen.add(key);
+      if (/\p{Nd}/u.test(answer)) {
+        findings.push(
+          warning(
+            'ACCEPTED_ANSWER_CONTAINS_DIGITS',
+            `"${answer}" contains digits, which grading does not normalize across Arabic and Latin numerals`,
+          ),
+        );
+      }
+      if (this.detectAnswerLeakage(prompt, answer)) {
+        findings.push(
+          blocking(
+            'ANSWER_LEAKAGE',
+            'an accepted answer appears in the prompt text',
+          ),
+        );
+      }
+    }
+
+    const stage = (
+      draft.mechanicPayload as { comboStage?: unknown } | undefined
+    )?.comboStage;
+    if (
+      typeof stage !== 'number' ||
+      !Number.isInteger(stage) ||
+      stage < 1 ||
+      stage > 4
+    ) {
+      findings.push(
+        blocking(
+          'COMBO_STAGE_REQUIRED',
+          'mechanicPayload.comboStage must be an integer from 1 to 4',
+        ),
+      );
+    }
+
+    if (prompt !== prompt.replace(/\s{2,}/g, ' ')) {
+      findings.push(
+        warning('PROMPT_WHITESPACE', 'collapse repeated whitespace'),
+      );
+    }
+    if (!/[؀-ۿ]/.test(prompt)) {
+      findings.push(
+        warning('PROMPT_NOT_ARABIC', 'prompt contains no Arabic script'),
+      );
+    }
+
+    return findings;
+  }
+
   private screenClosest(
     draft: Record<string, unknown>,
     prompt: string,

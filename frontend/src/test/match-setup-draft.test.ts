@@ -192,16 +192,19 @@ describe("match setup draft", () => {
     expect(edited.occurrences[0].selectedScopeIds).toEqual(ANIME_POOL);
   });
 
-  it("walks to the next unconfigured occurrence, then directly to teams", () => {
+  it("walks to the next unconfigured occurrence and stops on the last one", () => {
     let draft = configure(createDraft(), 0, ANIME, ANIME_POOL);
     expect(draft).toMatchObject({ activeOccurrenceIndex: 1, activeStep: "world" });
     draft = configure(draft, 1, FOOTBALL, FOOTBALL_POOL);
     expect(draft).toMatchObject({ activeOccurrenceIndex: 2, activeStep: "world" });
     draft = configure(draft, 2, ANIME, ANIME_POOL_2);
-    expect(draft.activeStep).toBe("teams");
+    // There is no step after the third occurrence: confirming it is what creates
+    // the Match, so the draft stays where the host is looking.
+    expect(draft).toMatchObject({ activeOccurrenceIndex: 2, activeStep: "scopes" });
+    expect(isDraftComplete(draft)).toBe(true);
   });
 
-  it("does not enter teams when the active occurrence is incomplete", () => {
+  it("does not advance when the active occurrence is incomplete", () => {
     const draft = apply(
       createDraft(),
       { type: "choose-world", occurrenceIndex: 0, worldId: ANIME },
@@ -217,9 +220,7 @@ describe("match setup draft", () => {
 
   it("steps back through the wizard without losing valid state", () => {
     const complete = fullDraft();
-    expect(complete.activeStep).toBe("teams");
-    // Team Back is route navigation owned by the wizard, not a reducer rewind.
-    expect(apply(complete, { type: "back" })).toEqual(complete);
+    expect(complete.activeStep).toBe("scopes");
 
     let draft = configure(createDraft(), 0, ANIME, ANIME_POOL);
     draft = apply(draft, { type: "back" });
@@ -302,16 +303,31 @@ describe("match setup draft recovery", () => {
     });
   });
 
-  it("migrates a complete version-1 review draft directly to teams", () => {
+  it("migrates a complete legacy draft onto the last occurrence's Scopes", () => {
+    // Version 1 ended on a Review screen and version 2 on a Teams screen; both
+    // are gone. A complete legacy draft resumes where one confirm creates the
+    // Match, carrying no team fields with it.
     const draft = fullDraft();
     window.sessionStorage.setItem(
       MATCH_SETUP_DRAFT_STORAGE_KEY,
-      JSON.stringify({ version: 1, draft: { ...draft, activeStep: "review" } }),
+      JSON.stringify({
+        version: 1,
+        draft: {
+          ...draft,
+          activeStep: "review",
+          teamNames: ["صقور الرياض", "نجوم جدة"],
+          teamColorIds: ["indigo", "rose"],
+        },
+      }),
     );
-    expect(readStoredDraft()).toMatchObject({
+    const restored = readStoredDraft();
+    expect(restored).toMatchObject({
       occurrences: draft.occurrences,
-      activeStep: "teams",
+      activeOccurrenceIndex: 2,
+      activeStep: "scopes",
     });
+    expect(restored).not.toHaveProperty("teamNames");
+    expect(restored).not.toHaveProperty("teamColorIds");
   });
 
   it("recovers an incomplete version-1 review draft at its first safe step", () => {

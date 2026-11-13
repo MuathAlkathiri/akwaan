@@ -11,6 +11,7 @@ import {
 import { Request } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
+  ChooseOwnTeam,
   JoinLiveSession,
   ReconnectLiveParticipant,
   SetParticipantReadiness,
@@ -19,6 +20,7 @@ import { ResolveJoinCode } from '../application/live-session-join-access.use-cas
 import { LiveSessionForbiddenError } from '../domain/live-session.errors';
 import { PublicJoinRateLimiter } from '../infrastructure/public-join-rate-limiter';
 import {
+  ChooseOwnTeamDto,
   JoinLiveSessionDto,
   LiveSessionMutationDto,
 } from './live-game-session.dto';
@@ -64,6 +66,7 @@ export class LiveGameParticipantsController {
   constructor(
     private readonly reconnectParticipant: ReconnectLiveParticipant,
     private readonly readiness: SetParticipantReadiness,
+    private readonly ownTeam: ChooseOwnTeam,
     private readonly limiter: PublicJoinRateLimiter,
   ) {}
 
@@ -95,6 +98,26 @@ export class LiveGameParticipantsController {
       ready: true,
       ...body,
     });
+  }
+
+  /**
+   * A player moving themselves between the two teams.
+   *
+   * Theirs to decide, not the host's: the room works because people sort
+   * themselves out. The domain allows it only before the match starts, so this
+   * cannot become a way to change sides mid-game.
+   */
+  @Post(':participantId/team')
+  chooseTeam(
+    @Param('participantId') participantId: string,
+    @Body() body: ChooseOwnTeamDto,
+    @CurrentLiveParticipant()
+    participant: {
+      actor: import('../application/live-session-actor').LiveSessionActor;
+    },
+  ) {
+    this.assertSameParticipant(participant.actor, participantId);
+    return this.ownTeam.execute({ actor: participant.actor, ...body });
   }
 
   @Post(':participantId/not-ready')

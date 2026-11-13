@@ -50,6 +50,7 @@ describe('LiveGameSessionsGateway', () => {
   function setup() {
     const getSession = { execute: jest.fn().mockResolvedValue(snapshot) };
     const markReady = { execute: jest.fn().mockResolvedValue(snapshot) };
+    const beginSession = { execute: jest.fn().mockResolvedValue(snapshot) };
     const noOp = { execute: jest.fn().mockResolvedValue(snapshot) };
     const gameplay = {
       submit: jest.fn().mockResolvedValue(gameplaySnapshot),
@@ -62,6 +63,7 @@ describe('LiveGameSessionsGateway', () => {
       getSession as never,
       markReady as never,
       noOp as never,
+      beginSession as never,
       noOp as never,
       noOp as never,
       noOp as never,
@@ -92,7 +94,7 @@ describe('LiveGameSessionsGateway', () => {
       leave: jest.fn(),
       emit: jest.fn(),
     };
-    return { gateway, client, getSession, markReady, gameplay };
+    return { gateway, client, getSession, markReady, beginSession, gameplay };
   }
 
   const command = {
@@ -127,6 +129,21 @@ describe('LiveGameSessionsGateway', () => {
     expect(markReady.execute).toHaveBeenCalledWith(
       expect.objectContaining({ actorId: 'actor-1' }),
     );
+  });
+
+  it("routes the waiting room's start to begin, not to the readiness gate", async () => {
+    // The room's one button must not land on markReady: that refuses as soon as
+    // a side has nobody ready, which is every room before the first challenge.
+    const { gateway, client, beginSession, markReady } = setup();
+    await gateway.begin(client as never, {
+      sessionId: snapshot.sessionId,
+      commandId: '00000000-0000-4000-8000-000000000003',
+      expectedRevision: 1,
+    });
+    expect(beginSession.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ actorId: 'actor-1' }),
+    );
+    expect(markReady.execute).not.toHaveBeenCalled();
   });
 
   it('emits a typed error rather than joining when subscription is rejected', async () => {

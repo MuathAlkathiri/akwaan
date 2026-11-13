@@ -16,7 +16,9 @@ const URL = '/uploads/questions/bomb-items/bomb-item-1-a.jpg';
 /** Layers are fully-typed on the document; a test only ever sets a few fields. */
 type DeepPartial<T> = { [K in keyof T]?: Partial<T[K]> };
 
-function record(over: DeepPartial<MediaRightsDocument> = {}): MediaRightsDocument {
+function record(
+  over: DeepPartial<MediaRightsDocument> = {},
+): MediaRightsDocument {
   return {
     assetUrl: URL,
     assetRights: { status: 'CLEARED' },
@@ -106,9 +108,9 @@ describe('media rights — two-layer derivation', () => {
   it('never expires a layer that was not cleared', () => {
     // A stale date on a PENDING layer means nothing: it never conferred
     // anything that could lapse.
-    expect(
-      effectiveStatus({ status: 'PENDING', expiresAt: PAST }, NOW),
-    ).toBe('PENDING');
+    expect(effectiveStatus({ status: 'PENDING', expiresAt: PAST }, NOW)).toBe(
+      'PENDING',
+    );
   });
 
   it('derives EXPIRED without writing to the database', async () => {
@@ -135,7 +137,9 @@ describe('media rights — attribution is independent of clearance', () => {
 
   it('leaves a custom grant to its evidence', () => {
     expect(attributionRequiredFor('grant', undefined)).toBeUndefined();
-    expect(attributionRequiredFor('commercial-licence', undefined)).toBeUndefined();
+    expect(
+      attributionRequiredFor('commercial-licence', undefined),
+    ).toBeUndefined();
   });
 
   it('marks a derived requirement as derived, overriding a supplied boolean', async () => {
@@ -212,10 +216,34 @@ describe('media rights — projection keeps evidence private', () => {
     expect(serialized).not.toContain('Management Co');
   });
 
+  it('projects the asset licence and rights holder as recorded, and null when not recorded', async () => {
+    const recorded = await new MediaRightsService(
+      fakeRepository(
+        record({
+          assetRights: {
+            status: 'CLEARED',
+            licence: 'CC BY-SA 4.0',
+            rightsHolder: 'Example Photo Agency',
+          },
+        }),
+      ) as never,
+    ).statusFor(URL, NOW);
+    expect(recorded).toMatchObject({
+      licence: 'CC BY-SA 4.0',
+      rightsHolder: 'Example Photo Agency',
+    });
+    const missing = await new MediaRightsService(
+      fakeRepository(null) as never,
+    ).statusFor(URL, NOW);
+    expect(missing).toMatchObject({ licence: null, rightsHolder: null });
+  });
+
   it('derives storageKey from the url rather than storing a second identity', async () => {
     const service = new MediaRightsService(fakeRepository(record()) as never);
     const status = await service.statusFor(URL, NOW);
-    expect(status.storageKey).toBe('uploads/questions/bomb-items/bomb-item-1-a.jpg');
+    expect(status.storageKey).toBe(
+      'uploads/questions/bomb-items/bomb-item-1-a.jpg',
+    );
     expect(`/${status.storageKey}`).toBe(status.assetUrl);
   });
 });

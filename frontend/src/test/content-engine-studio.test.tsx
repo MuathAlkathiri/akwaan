@@ -9,12 +9,14 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "@/features/content-engine-review/api";
+import { BATCH_INTENT_STORAGE_KEY } from "@/features/content-engine-review/batch-intent-storage";
 import { BatchSubmissionPanel } from "@/features/content-engine-review/batch-submission-panel";
 import {
   ContentEngineReviewWorkspace,
   STUDIO_STORAGE_KEY,
 } from "@/features/content-engine-review/content-engine-review-workspace";
 import { JobsHistoryPanel } from "@/features/content-engine-review/jobs-history-panel";
+import type { ReviewCandidate } from "@/features/content-engine-review/types";
 
 const makeQueryClient = () =>
   new QueryClient({
@@ -62,7 +64,7 @@ const mockAuthoringOptions = (): api.EngineAuthoringOptions => ({
       boundWorldKey: null,
       manifestStatus: "AUTHORABLE",
       generatorSupported: true,
-      answerMode: "MC",
+      answerMode: "multiple_choice",
       runtimeChallengeTypeId: "ct-ryo",
       runtimeStatus: "active",
       runtimeTargetResolved: true,
@@ -92,7 +94,7 @@ const mockAuthoringOptions = (): api.EngineAuthoringOptions => ({
       boundWorldKey: null,
       manifestStatus: "AUTHORABLE",
       generatorSupported: true,
-      answerMode: "NUMERIC",
+      answerMode: "closest",
       runtimeChallengeTypeId: "ct-closest",
       runtimeStatus: "active",
       runtimeTargetResolved: true,
@@ -158,7 +160,7 @@ const mockAuthoringOptions = (): api.EngineAuthoringOptions => ({
               boundWorldKey: null,
               manifestStatus: "AUTHORABLE",
               generatorSupported: true,
-              answerMode: "MC",
+              answerMode: "multiple_choice",
               authorable: true,
               runtimeCompatible: true,
               runtimeTargetResolved: true,
@@ -184,7 +186,7 @@ const mockAuthoringOptions = (): api.EngineAuthoringOptions => ({
               boundWorldKey: null,
               manifestStatus: "AUTHORABLE",
               generatorSupported: true,
-              answerMode: "NUMERIC",
+              answerMode: "closest",
               authorable: true,
               runtimeCompatible: true,
               runtimeTargetResolved: true,
@@ -242,7 +244,7 @@ const mockAuthoringOptions = (): api.EngineAuthoringOptions => ({
               boundWorldKey: null,
               manifestStatus: "AUTHORABLE",
               generatorSupported: true,
-              answerMode: "NUMERIC",
+              answerMode: "closest",
               authorable: true,
               runtimeCompatible: true,
               runtimeTargetResolved: true,
@@ -263,7 +265,7 @@ const mockAuthoringOptions = (): api.EngineAuthoringOptions => ({
               boundWorldKey: null,
               manifestStatus: "AUTHORABLE",
               generatorSupported: true,
-              answerMode: "MC",
+              answerMode: "multiple_choice",
               authorable: true,
               runtimeCompatible: false,
               runtimeTargetResolved: true,
@@ -317,7 +319,7 @@ const mockAuthoringOptions = (): api.EngineAuthoringOptions => ({
               boundWorldKey: null,
               manifestStatus: "AUTHORABLE",
               generatorSupported: true,
-              answerMode: "MC",
+              answerMode: "multiple_choice",
               authorable: true,
               runtimeCompatible: true,
               runtimeTargetResolved: true,
@@ -377,7 +379,7 @@ const mockPreflightResponse = (
     worldKey: "video-games",
     scopeKey: "overwatch",
     mechanicKey: "read-your-opponent",
-    answerMode: "MC",
+    answerMode: "multiple_choice",
     targetCount: 5,
     difficulty: "mixed",
     ryoDifficultyTargets: {
@@ -585,6 +587,7 @@ describe("Admin Content Generation Studio — Phase B UI", () => {
         targetCount: 4,
         difficulty: "mixed",
         batchGuidance: "سطر أول\nسطر ثانٍ",
+        batchIntentId: expect.any(String),
       });
     });
   });
@@ -1369,5 +1372,840 @@ describe("Admin Content Generation Studio — Phase B UI", () => {
     expect(screen.getByTestId("jobs-feedback-banner")).toHaveTextContent(
       "دون إعادة تشغيل مدفوع تلقائي",
     );
+  });
+
+  describe("C-7 regression: cross-batch review integrity and zero-candidate handoff guards", () => {
+    it("disables handoff controls for zero-candidate jobs in JobsHistoryPanel and BatchSubmissionPanel", async () => {
+      const emptyJob = mockJobStatus({
+        jobId: "job-empty-001",
+        status: "completed",
+        pipelineStage: "completed",
+        candidates: { awaiting_review: 0, approved: 0, screened_reject: 0 },
+      });
+      const populatedJob = mockJobStatus({
+        jobId: "job-populated-002",
+        status: "awaiting_review",
+        pipelineStage: "awaiting_review",
+        candidates: { awaiting_review: 2 },
+      });
+
+      vi.spyOn(api, "listJobs").mockResolvedValue({
+        items: [emptyJob, populatedJob],
+        nextCursor: null,
+      });
+      vi.spyOn(api, "getJobStatus").mockResolvedValue(emptyJob);
+      vi.spyOn(api, "getAuthoringOptions").mockResolvedValue(
+        mockAuthoringOptions(),
+      );
+      vi.spyOn(api, "preflightJob").mockResolvedValue(mockPreflightResponse());
+
+      const onHandoff = vi.fn();
+      const onBatchReady = vi.fn();
+
+      const { unmount } = render(
+        <WithQueryClient>
+          <JobsHistoryPanel
+            selectedJobId={emptyJob.jobId}
+            onSelectJobId={vi.fn()}
+            onHandoffToReview={onHandoff}
+          />
+        </WithQueryClient>,
+      );
+
+      const emptyRowBtn = await screen.findByTestId(
+        `job-handoff-btn-${emptyJob.jobId}`,
+      );
+      const populatedRowBtn = await screen.findByTestId(
+        `job-handoff-btn-${populatedJob.jobId}`,
+      );
+      const inspectorBtn = await screen.findByTestId(
+        "inspector-handoff-review-btn",
+      );
+
+      expect(emptyRowBtn).toBeDisabled();
+      expect(inspectorBtn).toBeDisabled();
+      expect(populatedRowBtn).toBeEnabled();
+
+      fireEvent.click(emptyRowBtn);
+      fireEvent.click(inspectorBtn);
+      expect(onHandoff).not.toHaveBeenCalled();
+
+      unmount();
+
+      render(
+        <WithQueryClient>
+          <BatchSubmissionPanel
+            initialJobId={emptyJob.jobId}
+            onBatchReady={onBatchReady}
+          />
+        </WithQueryClient>,
+      );
+
+      const batchHandoffBtn = await screen.findByTestId(
+        "button-handoff-candidates",
+      );
+      expect(batchHandoffBtn).toBeDisabled();
+      fireEvent.click(batchHandoffBtn);
+      expect(onBatchReady).not.toHaveBeenCalled();
+    });
+
+    it("clears stale candidate selection and URL parameter when switching from Job A to Job B", async () => {
+      const jobA = mockJobStatus({
+        jobId: "job-A",
+        worldKey: "puzzles",
+        scopeKey: "wordplay-letters",
+        mechanicKey: "read-your-opponent",
+        status: "awaiting_review",
+        pipelineStage: "awaiting_review",
+        candidates: { awaiting_review: 1 },
+      });
+      const jobB = mockJobStatus({
+        jobId: "job-B",
+        worldKey: "video-games",
+        scopeKey: "overwatch",
+        mechanicKey: "read-your-opponent",
+        status: "awaiting_review",
+        pipelineStage: "awaiting_review",
+        candidates: { awaiting_review: 1 },
+      });
+
+      const candA: ReviewCandidate = {
+        id: "id-cand-A",
+        candidateId: "cand-A",
+        jobId: "job-A",
+        status: "awaiting_review",
+        reviewStatus: "pending",
+        reviewRevision: 1,
+        draft: {
+          prompt: { ar: "سؤال الدفعة الأولى أ" },
+          answerPayload: {
+            mode: "multiple_choice",
+            options: [
+              { id: "a", label: { ar: "خيار 1" } },
+              { id: "b", label: { ar: "خيار 2" } },
+            ],
+            correctOptionId: "a",
+          },
+        },
+        authoring: { concept: "مفهوم أ" },
+        factualClaims: [],
+        publishedContentItemId: null,
+        findings: [],
+        factVerification: { state: "SUPPORTED" },
+        qualityEvaluation: null,
+        compatibilityEvaluation: null,
+        humanAssessment: null,
+        reviewDecision: null,
+        reviewEvents: [],
+        canonicalTarget: {
+          worldId: "w-pz",
+          worldKey: "puzzles",
+          scopeId: "s-wl",
+          scopeKey: "wordplay-letters",
+          challengeTypeId: "ct-ryo",
+          mechanicKey: "read-your-opponent",
+        },
+        job: {
+          id: "job-A",
+          mechanicKey: "read-your-opponent",
+          worldKey: "puzzles",
+          scopeKey: "wordplay-letters",
+          status: "awaiting_review",
+          specVersion: "1",
+        },
+      };
+
+      const candB: ReviewCandidate = {
+        ...candA,
+        id: "id-cand-B",
+        candidateId: "cand-B",
+        jobId: "job-B",
+        draft: {
+          ...candA.draft,
+          prompt: { ar: "سؤال الدفعة الثانية ب" },
+        },
+        job: {
+          id: "job-B",
+          mechanicKey: "read-your-opponent",
+          worldKey: "video-games",
+          scopeKey: "overwatch",
+          status: "awaiting_review",
+          specVersion: "1",
+        },
+      };
+
+      vi.spyOn(api, "getAuthoringOptions").mockResolvedValue(
+        mockAuthoringOptions(),
+      );
+      vi.spyOn(api, "listJobs").mockResolvedValue({
+        items: [jobA, jobB],
+        nextCursor: null,
+      });
+      vi.spyOn(api, "getJobStatus").mockImplementation(async (id) =>
+        id === "job-B" ? jobB : jobA,
+      );
+      vi.spyOn(api, "getSpending").mockResolvedValue({
+        jobId: "job-A",
+        spentMicros: 0,
+        spentSar: 0,
+        reservedMicros: 0,
+        reservedSar: 0,
+        stages: [],
+      });
+      vi.spyOn(api, "listCandidates").mockImplementation(async (params) => {
+        if (params?.jobId === "job-A") return [candA];
+        if (params?.jobId === "job-B") return [candB];
+        return [candA, candB];
+      });
+      vi.spyOn(api, "getCandidate").mockImplementation(async (id) =>
+        id === "cand-B" ? candB : candA,
+      );
+
+      render(
+        <WithQueryClient>
+          <ContentEngineReviewWorkspace />
+        </WithQueryClient>,
+      );
+
+      // Handoff Job A from Jobs surface
+      fireEvent.click(await screen.findByTestId("surface-tab-jobs"));
+      fireEvent.click(await screen.findByTestId("job-handoff-btn-job-A"));
+
+      // Select Candidate A in Job A
+      fireEvent.click(await screen.findByTestId("candidate-row-cand-A"));
+      expect(await screen.findByTestId("decision-bar")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { level: 2, name: "سؤال الدفعة الأولى أ" }),
+      ).toBeInTheDocument();
+      expect(new URLSearchParams(window.location.search).get("candidate")).toBe(
+        "cand-A",
+      );
+
+      // Switch to Jobs surface and handoff Job B
+      fireEvent.click(screen.getByTestId("surface-tab-jobs"));
+      fireEvent.click(await screen.findByTestId("job-handoff-btn-job-B"));
+
+      // Verify Candidate B is in the queue, Candidate A is NOT selected or displayed, and ?candidate= is cleared
+      await screen.findByTestId("candidate-row-cand-B");
+      expect(screen.getByTestId("candidate-detail-empty")).toBeInTheDocument();
+      expect(screen.queryByTestId("decision-bar")).toBeNull();
+      expect(
+        screen.queryByRole("heading", {
+          level: 2,
+          name: "سؤال الدفعة الأولى أ",
+        }),
+      ).toBeNull();
+      expect(new URLSearchParams(window.location.search).get("jobId")).toBe(
+        "job-B",
+      );
+      expect(
+        new URLSearchParams(window.location.search).get("candidate"),
+      ).toBeNull();
+    });
+
+    it("never displays or mutates a candidate from Job A on direct URL navigation or late detail response under Job B filter", async () => {
+      let resolveLateCandA!: (value: ReviewCandidate) => void;
+      const candA: ReviewCandidate = {
+        id: "id-cand-A",
+        candidateId: "cand-A",
+        jobId: "job-A",
+        status: "awaiting_review",
+        reviewStatus: "pending",
+        reviewRevision: 1,
+        draft: {
+          prompt: { ar: "سؤال متأخر من دفعة أ" },
+          answerPayload: {
+            mode: "multiple_choice",
+            options: [
+              { id: "a", label: { ar: "1" } },
+              { id: "b", label: { ar: "2" } },
+            ],
+            correctOptionId: "a",
+          },
+        },
+        authoring: { concept: "مفهوم" },
+        factualClaims: [],
+        publishedContentItemId: null,
+        findings: [],
+        factVerification: { state: "SUPPORTED" },
+        qualityEvaluation: null,
+        compatibilityEvaluation: null,
+        humanAssessment: null,
+        reviewDecision: null,
+        reviewEvents: [],
+        job: null,
+      };
+
+      window.history.replaceState(
+        null,
+        "",
+        "/admin/content-engine?surface=review&jobId=job-B&candidate=cand-A",
+      );
+
+      vi.spyOn(api, "getAuthoringOptions").mockResolvedValue(
+        mockAuthoringOptions(),
+      );
+      vi.spyOn(api, "listCandidates").mockResolvedValue([]);
+      vi.spyOn(api, "getSpending").mockResolvedValue({
+        jobId: "job-A",
+        spentMicros: 0,
+        spentSar: 0,
+        reservedMicros: 0,
+        reservedSar: 0,
+        stages: [],
+      });
+      vi.spyOn(api, "getCandidate").mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveLateCandA = resolve;
+          }),
+      );
+      const approveSpy = vi.spyOn(api, "approveCandidate");
+      const rejectSpy = vi.spyOn(api, "rejectCandidate");
+
+      render(
+        <WithQueryClient>
+          <ContentEngineReviewWorkspace />
+        </WithQueryClient>,
+      );
+
+      await waitFor(() => expect(resolveLateCandA).toBeTypeOf("function"));
+      expect(screen.queryByTestId("decision-bar")).toBeNull();
+
+      // Late detail response arrives for cand-A (which belongs to job-A, while active filter is job-B)
+      await act(async () => {
+        resolveLateCandA(candA);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("candidate-detail-empty")).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId("decision-bar")).toBeNull();
+      expect(
+        screen.queryByRole("heading", {
+          level: 2,
+          name: "سؤال متأخر من دفعة أ",
+        }),
+      ).toBeNull();
+      expect(new URLSearchParams(window.location.search).get("jobId")).toBe(
+        "job-B",
+      );
+      expect(
+        new URLSearchParams(window.location.search).get("candidate"),
+      ).toBeNull();
+      expect(approveSpy).not.toHaveBeenCalled();
+      expect(rejectSpy).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("Review Studio — independent batch identity (batchIntentId)", () => {
+  const INTENT_FORMAT = /^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$/;
+
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    window.history.replaceState(null, "", "/admin/content-engine");
+    vi.restoreAllMocks();
+    vi.spyOn(api, "getAuthoringOptions").mockResolvedValue(
+      mockAuthoringOptions(),
+    );
+    vi.spyOn(api, "getJobStatus").mockImplementation(async (jobId) =>
+      mockJobStatus({
+        jobId,
+        status: "awaiting_review",
+        pipelineStage: "awaiting_review",
+      }),
+    );
+    vi.spyOn(api, "runJob").mockImplementation(async (jobId) => ({
+      jobId,
+      alreadyRunning: false,
+    }));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const intentsOf = (spy: { mock: { calls: unknown[][] } }) =>
+    spy.mock.calls.map(
+      (call) => (call[0] as { batchIntentId?: string }).batchIntentId,
+    );
+
+  const generate = async () => {
+    const button = screen.getByTestId("button-submit-job");
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+    fireEvent.click(screen.getByRole("button", { name: "تأكيد التوليد" }));
+  };
+
+  it("sends one intent to Preflight and Submit, then mints a new intent for the next Generate of identical parameters", async () => {
+    const preflight = vi
+      .spyOn(api, "preflightJob")
+      .mockResolvedValue(mockPreflightResponse());
+    const submit = vi
+      .spyOn(api, "submitJob")
+      .mockResolvedValueOnce({
+        jobId: "job-1",
+        created: true,
+        contextHash: "c",
+      })
+      .mockResolvedValueOnce({
+        jobId: "job-2",
+        created: true,
+        contextHash: "c",
+      });
+    render(
+      <WithQueryClient>
+        <BatchSubmissionPanel />
+      </WithQueryClient>,
+    );
+    await screen.findByTestId("button-submit-job");
+
+    await generate();
+    await waitFor(() => expect(submit).toHaveBeenCalledTimes(1));
+    const first = submit.mock.calls[0][0];
+    expect(first.batchIntentId).toMatch(INTENT_FORMAT);
+    // Submit used the intent its Preflight was priced with.
+    expect(intentsOf(preflight)).toContain(first.batchIntentId);
+
+    // Once the job is recorded, the panel re-preflights under a fresh intent.
+    await waitFor(() =>
+      expect(
+        intentsOf(preflight).some(
+          (intent) => intent && intent !== first.batchIntentId,
+        ),
+      ).toBe(true),
+    );
+
+    await generate();
+    await waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
+    const second = submit.mock.calls[1][0];
+    expect(second.batchIntentId).toMatch(INTENT_FORMAT);
+    expect(second.batchIntentId).not.toBe(first.batchIntentId);
+    expect(intentsOf(preflight)).toContain(second.batchIntentId);
+    // Everything but the intent is the same request: an independent batch.
+    const { batchIntentId: _a, ...firstRest } = first;
+    const { batchIntentId: _b, ...secondRest } = second;
+    expect(secondRest).toEqual(firstRest);
+  });
+
+  it("keeps the intent after an unknown Submit outcome, so the retry is the same batch", async () => {
+    vi.spyOn(api, "preflightJob").mockResolvedValue(mockPreflightResponse());
+    const submit = vi
+      .spyOn(api, "submitJob")
+      .mockRejectedValueOnce(new Error("network timeout"))
+      .mockResolvedValueOnce({
+        jobId: "job-1",
+        created: false,
+        contextHash: "c",
+      });
+    render(
+      <WithQueryClient>
+        <BatchSubmissionPanel />
+      </WithQueryClient>,
+    );
+    await screen.findByTestId("button-submit-job");
+
+    await generate();
+    await screen.findByText(/تعذر التأكد من تسجيل الدفعة/);
+    await generate();
+    await waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
+    expect(submit.mock.calls[1][0].batchIntentId).toBe(
+      submit.mock.calls[0][0].batchIntentId,
+    );
+  });
+
+  it("keeps the intent through a 409 PREFLIGHT_PLAN_DRIFT re-preflight", async () => {
+    const preflight = vi
+      .spyOn(api, "preflightJob")
+      .mockResolvedValue(mockPreflightResponse());
+    const submit = vi
+      .spyOn(api, "submitJob")
+      .mockRejectedValueOnce({
+        response: {
+          status: 409,
+          data: { code: "PREFLIGHT_PLAN_DRIFT", message: "drift" },
+        },
+      })
+      .mockResolvedValueOnce({
+        jobId: "job-1",
+        created: true,
+        contextHash: "c",
+      });
+    render(
+      <WithQueryClient>
+        <BatchSubmissionPanel />
+      </WithQueryClient>,
+    );
+    await screen.findByTestId("button-submit-job");
+
+    await generate();
+    await waitFor(() => expect(submit).toHaveBeenCalledTimes(1));
+    const intent = submit.mock.calls[0][0].batchIntentId;
+    await waitFor(() => expect(preflight.mock.calls.length).toBeGreaterThan(1));
+    expect(new Set(intentsOf(preflight))).toEqual(new Set([intent]));
+
+    await generate();
+    await waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
+    expect(submit.mock.calls[1][0].batchIntentId).toBe(intent);
+  });
+
+  it("keeps the same intent while the batch parameters are edited before Generate", async () => {
+    const preflight = vi
+      .spyOn(api, "preflightJob")
+      .mockResolvedValue(mockPreflightResponse());
+    render(
+      <WithQueryClient>
+        <BatchSubmissionPanel />
+      </WithQueryClient>,
+    );
+    await waitFor(() => expect(preflight).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByTestId("input-target-count"), {
+      target: { value: "4" },
+    });
+    await waitFor(() => expect(preflight).toHaveBeenCalledTimes(2));
+    const [before, after] = intentsOf(preflight);
+    expect(before).toMatch(INTENT_FORMAT);
+    expect(after).toBe(before);
+  });
+
+  describe("same-tab reload and retry (sessionStorage)", () => {
+    const stored = () =>
+      JSON.parse(
+        window.sessionStorage.getItem(BATCH_INTENT_STORAGE_KEY) ?? "null",
+      ) as {
+        version: number;
+        intentId: string;
+        pendingRequest: Record<string, unknown> | null;
+      } | null;
+
+    const renderPanel = () =>
+      render(
+        <WithQueryClient>
+          <BatchSubmissionPanel />
+        </WithQueryClient>,
+      );
+
+    const settleDebounce = () =>
+      act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      });
+
+    it("reuses the persisted intent for Preflight after a reload", async () => {
+      const preflight = vi
+        .spyOn(api, "preflightJob")
+        .mockResolvedValue(mockPreflightResponse());
+      const first = renderPanel();
+      await waitFor(() => expect(preflight).toHaveBeenCalledTimes(1));
+      const [intent] = intentsOf(preflight);
+      expect(stored()).toEqual({
+        version: 1,
+        intentId: intent,
+        pendingRequest: null,
+      });
+
+      first.unmount();
+      renderPanel();
+      await waitFor(() => expect(preflight).toHaveBeenCalledTimes(2));
+      expect(intentsOf(preflight)[1]).toBe(intent);
+    });
+
+    it("after an unknown Submit outcome, a reload restores the request and the retry reuses the intent", async () => {
+      const preflight = vi
+        .spyOn(api, "preflightJob")
+        .mockResolvedValue(mockPreflightResponse());
+      const submit = vi
+        .spyOn(api, "submitJob")
+        .mockRejectedValueOnce(new Error("network timeout"))
+        .mockResolvedValueOnce({
+          jobId: "job-1",
+          created: false,
+          contextHash: "c",
+        });
+      const first = renderPanel();
+      await screen.findByTestId("button-submit-job");
+      fireEvent.change(screen.getByTestId("input-target-count"), {
+        target: { value: "4" },
+      });
+      fireEvent.change(screen.getByTestId("textarea-batch-guidance"), {
+        target: { value: "دفعة تجريبية" },
+      });
+
+      await generate();
+      await screen.findByText(/تعذر التأكد من تسجيل الدفعة/);
+      const intent = submit.mock.calls[0][0].batchIntentId;
+      // Never minted after an unknown outcome: still held for that request.
+      expect(stored()).toMatchObject({
+        intentId: intent,
+        pendingRequest: { targetCount: 4, batchGuidance: "دفعة تجريبية" },
+      });
+
+      first.unmount();
+      preflight.mockClear();
+      renderPanel();
+      await waitFor(() =>
+        expect(preflight).toHaveBeenCalledWith(
+          expect.objectContaining({
+            targetCount: 4,
+            batchGuidance: "دفعة تجريبية",
+            batchIntentId: intent,
+          }),
+        ),
+      );
+      expect(screen.getByTestId("input-target-count")).toHaveValue(4);
+      expect(screen.getByTestId("pending-batch-intent-notice")).toHaveAttribute(
+        "data-mismatch",
+        "false",
+      );
+
+      await generate();
+      await waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
+      expect(submit.mock.calls[1][0]).toMatchObject({
+        targetCount: 4,
+        batchGuidance: "دفعة تجريبية",
+        batchIntentId: intent,
+        planDigest: "d".repeat(64),
+      });
+      // Confirmed (the server found the job): only now is a new intent minted.
+      await waitFor(() => expect(stored()?.intentId).not.toBe(intent));
+      expect(stored()?.pendingRequest).toBeNull();
+      expect(screen.queryByTestId("pending-batch-intent-notice")).toBeNull();
+    });
+
+    it("a reload while Submit is still in flight keeps the intent bound for the retry", async () => {
+      vi.spyOn(api, "preflightJob").mockResolvedValue(mockPreflightResponse());
+      const submit = vi
+        .spyOn(api, "submitJob")
+        .mockImplementationOnce(() => new Promise(() => undefined))
+        .mockResolvedValueOnce({
+          jobId: "job-1",
+          created: false,
+          contextHash: "c",
+        });
+      const first = renderPanel();
+      await screen.findByTestId("button-submit-job");
+      await generate();
+      await waitFor(() => expect(submit).toHaveBeenCalledTimes(1));
+      const intent = submit.mock.calls[0][0].batchIntentId;
+      expect(stored()).toMatchObject({
+        intentId: intent,
+        pendingRequest: { targetCount: 5 },
+      });
+
+      first.unmount();
+      renderPanel();
+      await generate();
+      await waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
+      expect(submit.mock.calls[1][0].batchIntentId).toBe(intent);
+    });
+
+    it("never reuses a pending intent for a different form: blocks until Restore or an explicit New Batch", async () => {
+      const preflight = vi
+        .spyOn(api, "preflightJob")
+        .mockResolvedValue(mockPreflightResponse());
+      const submit = vi
+        .spyOn(api, "submitJob")
+        .mockRejectedValueOnce(new Error("network timeout"));
+      renderPanel();
+      await screen.findByTestId("button-submit-job");
+      await generate();
+      await screen.findByText(/تعذر التأكد من تسجيل الدفعة/);
+      const intent = submit.mock.calls[0][0].batchIntentId;
+
+      preflight.mockClear();
+      fireEvent.change(screen.getByTestId("input-target-count"), {
+        target: { value: "6" },
+      });
+      await settleDebounce();
+      expect(screen.getByTestId("pending-batch-intent-notice")).toHaveAttribute(
+        "data-mismatch",
+        "true",
+      );
+      expect(preflight).not.toHaveBeenCalled();
+      expect(screen.getByTestId("button-submit-job")).toBeDisabled();
+      expect(stored()?.intentId).toBe(intent);
+
+      // Restore puts the unconfirmed request back, with its intent.
+      fireEvent.click(screen.getByTestId("button-restore-pending-batch"));
+      await waitFor(() =>
+        expect(preflight).toHaveBeenCalledWith(
+          expect.objectContaining({ targetCount: 5, batchIntentId: intent }),
+        ),
+      );
+
+      // An explicit New Batch is the only other way to a fresh intent — and
+      // only after the server confirms no job was recorded for the old one.
+      const lookup = vi
+        .spyOn(api, "listJobs")
+        .mockResolvedValue({ items: [], nextCursor: null });
+      fireEvent.change(screen.getByTestId("input-target-count"), {
+        target: { value: "6" },
+      });
+      fireEvent.click(screen.getByTestId("button-new-batch"));
+      await waitFor(() =>
+        expect(preflight).toHaveBeenCalledWith(
+          expect.objectContaining({ targetCount: 6 }),
+        ),
+      );
+      expect(lookup).toHaveBeenCalledWith({ batchIntentId: intent, limit: 1 });
+      const fresh = stored()!;
+      expect(fresh.intentId).toMatch(INTENT_FORMAT);
+      expect(fresh.intentId).not.toBe(intent);
+      expect(fresh.pendingRequest).toBeNull();
+      expect(intentsOf(preflight).at(-1)).toBe(fresh.intentId);
+      expect(screen.queryByTestId("pending-batch-intent-notice")).toBeNull();
+    });
+
+    it("a definite refusal frees the intent from its request without minting a new one", async () => {
+      const preflight = vi
+        .spyOn(api, "preflightJob")
+        .mockResolvedValue(mockPreflightResponse());
+      const submit = vi.spyOn(api, "submitJob").mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: { code: "BATCH_CAP_EXCEEDED", message: "cap exceeded" },
+        },
+      });
+      renderPanel();
+      await screen.findByTestId("button-submit-job");
+      await generate();
+      await screen.findByText("cap exceeded");
+      const intent = submit.mock.calls[0][0].batchIntentId;
+      expect(stored()).toMatchObject({ intentId: intent, pendingRequest: null });
+      expect(screen.queryByTestId("pending-batch-intent-notice")).toBeNull();
+
+      fireEvent.change(screen.getByTestId("input-target-count"), {
+        target: { value: "3" },
+      });
+      await waitFor(() =>
+        expect(preflight).toHaveBeenCalledWith(
+          expect.objectContaining({ targetCount: 3, batchIntentId: intent }),
+        ),
+      );
+    });
+
+    it.each([
+      ["unparsable JSON", "{not json"],
+      ["an unknown version", JSON.stringify({ version: 2, intentId: "3f1c9a7e-2b4d-4c8e", pendingRequest: null })],
+      ["a malformed intent", JSON.stringify({ version: 1, intentId: "bad intent", pendingRequest: null })],
+      ["a malformed pending request", JSON.stringify({ version: 1, intentId: "3f1c9a7e-2b4d-4c8e", pendingRequest: { worldKey: 1 } })],
+    ])("ignores %s in storage and starts a fresh, valid intent", async (_label, raw) => {
+      window.sessionStorage.setItem(BATCH_INTENT_STORAGE_KEY, raw);
+      const preflight = vi
+        .spyOn(api, "preflightJob")
+        .mockResolvedValue(mockPreflightResponse());
+      renderPanel();
+      await waitFor(() => expect(preflight).toHaveBeenCalledTimes(1));
+      const [intent] = intentsOf(preflight);
+      expect(intent).toMatch(INTENT_FORMAT);
+      expect(intent).not.toBe("3f1c9a7e-2b4d-4c8e");
+      expect(stored()).toEqual({ version: 1, intentId: intent, pendingRequest: null });
+      expect(screen.queryByTestId("pending-batch-intent-notice")).toBeNull();
+    });
+
+    describe("New Batch reconciles an unconfirmed Submit first", () => {
+      const failFirstSubmit = () =>
+        vi
+          .spyOn(api, "submitJob")
+          .mockRejectedValueOnce(new Error("network timeout"))
+          .mockResolvedValueOnce({
+            jobId: "job-retried",
+            created: false,
+            contextHash: "c",
+          });
+
+      const reachUnknownOutcome = async () => {
+        vi.spyOn(api, "preflightJob").mockResolvedValue(mockPreflightResponse());
+        const submit = failFirstSubmit();
+        renderPanel();
+        await screen.findByTestId("button-submit-job");
+        await generate();
+        await screen.findByText(/تعذر التأكد من تسجيل الدفعة/);
+        return { submit, intent: submit.mock.calls[0][0].batchIntentId! };
+      };
+
+      const recordedJob = (intent: string) =>
+        mockJobStatus({
+          jobId: "job-recorded",
+          status: "queued",
+          pipelineStage: "pending",
+          generationSpec: {
+            ...mockPreflightResponse().generationSpec!,
+            batchIntentId: intent,
+          },
+        });
+
+      it("shows the job the lost Submit created instead of starting another paid batch", async () => {
+        const { submit, intent } = await reachUnknownOutcome();
+        const lookup = vi
+          .spyOn(api, "listJobs")
+          .mockResolvedValue({ items: [recordedJob(intent)], nextCursor: null });
+
+        fireEvent.click(screen.getByTestId("button-new-batch"));
+        await screen.findByText(/الإرسال السابق سُجّل على الخادم/);
+
+        expect(lookup).toHaveBeenCalledWith({ batchIntentId: intent, limit: 1 });
+        expect(screen.getByTestId("active-job-status-badge")).toBeInTheDocument();
+        // Nothing new was submitted, and the recorded job was not run.
+        expect(submit).toHaveBeenCalledTimes(1);
+        expect(api.runJob).not.toHaveBeenCalled();
+        // The old intent is resolved: the next Generate is a new batch.
+        expect(stored()?.intentId).not.toBe(intent);
+        expect(stored()?.pendingRequest).toBeNull();
+        expect(screen.queryByTestId("pending-batch-intent-notice")).toBeNull();
+      });
+
+      it("keeps the intent bound and blocks a new batch when the outcome cannot be determined; same-intent retry stays available", async () => {
+        const { submit, intent } = await reachUnknownOutcome();
+        const lookup = vi
+          .spyOn(api, "listJobs")
+          .mockRejectedValueOnce(new Error("offline"));
+
+        fireEvent.click(screen.getByTestId("button-new-batch"));
+        await screen.findByText(/تعذر التحقق من نتيجة الإرسال السابق/);
+        expect(stored()).toMatchObject({
+          intentId: intent,
+          pendingRequest: { targetCount: 5 },
+        });
+        expect(screen.getByTestId("pending-batch-intent-notice")).toBeVisible();
+        expect(submit).toHaveBeenCalledTimes(1);
+
+        // Retrying the same batch is still possible and idempotent.
+        await generate();
+        await waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
+        expect(submit.mock.calls[1][0].batchIntentId).toBe(intent);
+        expect(lookup).toHaveBeenCalledTimes(1);
+      });
+
+      it("does not treat a lookup that returns another intent's job as an answer", async () => {
+        const { intent } = await reachUnknownOutcome();
+        vi.spyOn(api, "listJobs").mockResolvedValue({
+          items: [recordedJob("someone-elses-intent-0001")],
+          nextCursor: null,
+        });
+
+        fireEvent.click(screen.getByTestId("button-new-batch"));
+        await screen.findByText(/تعذر التحقق من نتيجة الإرسال السابق/);
+        expect(stored()?.intentId).toBe(intent);
+        expect(stored()?.pendingRequest).not.toBeNull();
+        expect(api.runJob).not.toHaveBeenCalled();
+      });
+
+      it("starts a fresh intent only after the server confirms no job was recorded", async () => {
+        const { submit, intent } = await reachUnknownOutcome();
+        vi.spyOn(api, "listJobs")
+          .mockRejectedValueOnce(new Error("offline"))
+          .mockResolvedValueOnce({ items: [], nextCursor: null });
+
+        fireEvent.click(screen.getByTestId("button-new-batch"));
+        await screen.findByText(/تعذر التحقق من نتيجة الإرسال السابق/);
+        expect(stored()?.intentId).toBe(intent);
+
+        fireEvent.click(screen.getByTestId("button-new-batch"));
+        await waitFor(() => expect(stored()?.intentId).not.toBe(intent));
+        expect(stored()?.pendingRequest).toBeNull();
+        expect(submit).toHaveBeenCalledTimes(1);
+      });
+    });
   });
 });

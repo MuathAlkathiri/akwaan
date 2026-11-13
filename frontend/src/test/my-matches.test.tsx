@@ -161,7 +161,7 @@ describe("My Games page", () => {
     expect(screen.queryByRole("link", { name: /كمّل المباراة/ })).toBeNull();
   });
 
-  it("writes a setup-only replay draft before navigating to Team Setup", () => {
+  it("writes a setup-only replay draft that lands one confirm from the room", () => {
     state.query = {
       data: data({
         completed: [completed],
@@ -175,7 +175,11 @@ describe("My Games page", () => {
 
     expect(state.writeDraft).toHaveBeenCalledOnce();
     const draft = state.writeDraft.mock.calls[0][0];
-    expect(draft.activeStep).toBe("teams");
+    // Everything is already chosen, so the replay resumes on the last
+    // occurrence where a single confirm re-creates the Match.
+    expect(draft.activeStep).toBe("scopes");
+    expect(draft.activeOccurrenceIndex).toBe(2);
+    expect(draft).not.toHaveProperty("teamNames");
     expect(
       draft.occurrences.map((entry: { worldId: string }) => entry.worldId),
     ).toEqual(["world-0", "world-1", "world-2"]);

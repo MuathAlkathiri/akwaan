@@ -739,3 +739,57 @@ describe('unified preflight', () => {
     expect(restored.unifiedBoard()).toEqual(match.unifiedBoard());
   });
 });
+
+/**
+ * The World's decorative question backdrop (roadmap §30.22 Track A).
+ *
+ * It is captured on the binding at launch, for the same reason the mechanic is:
+ * a World whose artwork is replaced mid-match must not change what a challenge
+ * already in progress is showing. And it is strictly optional — a World with no
+ * artwork launches exactly as before.
+ */
+describe('unified challenge question backdrop', () => {
+  const BACKDROP = '/world-content/worlds/world-anime-fallback.jpg';
+
+  const launch = (match: Match, questionBackdropUrl?: string) =>
+    match.launchChallenge({
+      commandId: 'launch-backdrop',
+      now: NOW,
+      occurrenceIndex: 0,
+      slotKey: WorldChallengeSlotKey.SLOT_1,
+      challengeKey: 'read-your-opponent',
+      runtimeId: 'runtime-backdrop',
+      contentItemIds: ['a'],
+      launchability: MatchSlotLaunchability.LAUNCHABLE,
+      ...(questionBackdropUrl ? { questionBackdropUrl } : {}),
+    });
+
+  it('records the artwork the World had when the challenge started', () => {
+    const match = unifiedMatch();
+
+    launch(match, BACKDROP);
+
+    expect(match.currentChallenge?.questionBackdropUrl).toBe(BACKDROP);
+  });
+
+  it('keeps the recorded artwork across a reload', () => {
+    const match = unifiedMatch();
+    launch(match, BACKDROP);
+
+    const state = match.serialize();
+    const restored = Match.restore(state, state.scoreEvents);
+
+    expect(restored.currentChallenge?.questionBackdropUrl).toBe(BACKDROP);
+    expect(restored.serialize()).toEqual(state);
+  });
+
+  it('launches normally for a World that has no artwork', () => {
+    const match = unifiedMatch();
+
+    launch(match);
+
+    expect(match.currentChallenge).toBeDefined();
+    expect(match.currentChallenge?.questionBackdropUrl).toBeUndefined();
+    expect(match.stage).toBe(MatchStage.CHALLENGE);
+  });
+});

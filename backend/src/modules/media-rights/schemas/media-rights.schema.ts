@@ -31,7 +31,12 @@ import {
  */
 @Schema({ _id: false })
 export class AssetRightsLayer {
-  @Prop({ type: String, required: true, enum: CLEARANCE_STATUSES, default: 'UNKNOWN' })
+  @Prop({
+    type: String,
+    required: true,
+    enum: CLEARANCE_STATUSES,
+    default: 'UNKNOWN',
+  })
   status!: ClearanceStatus;
 
   @Prop({ type: String, enum: ASSET_RIGHTS_BASES, default: null })
@@ -61,7 +66,12 @@ export class AssetRightsLayer {
 
 @Schema({ _id: false })
 export class LikenessUseBasisLayer {
-  @Prop({ type: String, required: true, enum: CLEARANCE_STATUSES, default: 'UNKNOWN' })
+  @Prop({
+    type: String,
+    required: true,
+    enum: CLEARANCE_STATUSES,
+    default: 'UNKNOWN',
+  })
   status!: ClearanceStatus;
 
   @Prop({ type: String, enum: LIKENESS_USE_BASES, default: null })
@@ -106,7 +116,11 @@ export class MediaAttribution {
   @Prop({ type: Boolean, default: null })
   required!: boolean | null;
 
-  @Prop({ type: String, enum: ['derived-from-licence', 'evidence'], default: null })
+  @Prop({
+    type: String,
+    enum: ['derived-from-licence', 'evidence'],
+    default: null,
+  })
   requirementBasis!: 'derived-from-licence' | 'evidence' | null;
 
   @Prop({ type: String, trim: true, default: null })

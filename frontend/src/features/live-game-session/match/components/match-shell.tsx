@@ -53,7 +53,11 @@ export function MatchShell({
   // The preflight card carries its own compact "{team} يبدأ" chip, so the Match-wide
   // active-team band would only repeat it there. The band (and the manual-turn
   // control it hosts) stays for every other stage — its logic is untouched.
-  const showTurnBand = match?.stage.key !== "preflight";
+  // Nothing has a turn before the session starts, so the band would be
+  // announcing one that does not exist yet over the waiting room.
+  const started =
+    snapshot?.status !== "waiting" && snapshot?.status !== "ready";
+  const showTurnBand = started && match?.stage.key !== "preflight";
   const boardControlsAvailable =
     actor === "controller" && match?.stage.key === "board";
   const canScore =

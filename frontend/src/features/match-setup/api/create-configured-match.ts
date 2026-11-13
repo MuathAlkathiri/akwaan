@@ -1,4 +1,5 @@
 import { createLiveSession } from "@/features/live-game-session/api/live-session-api";
+import { TEAM_COLORS, TEAM_NAMES } from "@/lib/team-palette";
 import type { LiveSessionSnapshot } from "@/features/live-game-session/model";
 import {
   createUnifiedMatch,
@@ -56,16 +57,16 @@ export async function createConfiguredMatch(
   // Throws on an incomplete draft before any request is made: the wizard's own
   // gating is the first line of defence, the backend is the authority.
   const request = toCreateUnifiedMatchRequest(draft);
-  const teamNames = draft.teamNames.map((name) => name.trim());
 
   let created: Awaited<ReturnType<typeof createLiveSession>>;
   try {
-    // The colours travel with the names: both clients read them off the session
-    // rather than each deciding locally, which is what keeps one team one colour on
-    // the shared screen and in every hand.
+    // A Match is always الأزرق against الأحمر, so the host sets up no teams at
+    // all. The names and colours still travel with the session rather than being
+    // decided on each client, which is what keeps one team one colour on the
+    // shared screen and in every hand.
     created = await dependencies.createSession({
-      teamNames,
-      teamColorIds: [...draft.teamColorIds],
+      teamNames: [...TEAM_NAMES],
+      teamColorIds: TEAM_COLORS.map((color) => color.id),
     });
   } catch (cause) {
     // Nothing exists yet, so there is nothing to undo.

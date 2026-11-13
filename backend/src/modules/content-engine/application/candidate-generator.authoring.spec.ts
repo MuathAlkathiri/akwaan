@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import {
   CLOSEST_CANDIDATE_SCHEMA,
+  COMBO_CANDIDATE_SCHEMA,
   DEFAULT_RYO_DIFFICULTY_TARGETS,
   ORIGINALITY_GUIDANCE,
   PROMPT_VERSIONS,
@@ -429,13 +430,17 @@ describe('originality guidance reaches every mechanic', () => {
 });
 
 describe('buildPrompt', () => {
-  it('versions both changed prompt contracts without changing payload schemas', () => {
+  it('versions every prompt contract without changing payload schemas', () => {
+    // Exact, not a superset: a new mechanic has to arrive with its own prompt
+    // version, and an existing one cannot change contract without bumping.
     expect(PROMPT_VERSIONS).toEqual({
       multiple_choice: 'mc-v2',
       closest: 'closest-v2',
+      match: 'combo-v1',
     });
     expect(RYO_CANDIDATE_SCHEMA).toBeDefined();
     expect(CLOSEST_CANDIDATE_SCHEMA).toBeDefined();
+    expect(COMBO_CANDIDATE_SCHEMA).toBeDefined();
   });
 
   it('carries every canonical section verbatim', () => {
@@ -998,6 +1003,52 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
         expect.objectContaining({
           reservationId: 'job-504:generation:1',
           timedOut: true,
+        }),
+      );
+    });
+
+    it('releases reservation (providerRejected: true) when OpenRouterAiProvider fails locally before dispatch', async () => {
+      const { OpenRouterAiProvider } =
+        await import('../infrastructure/openrouter-ai.provider');
+      const fetchImpl = jest.fn() as unknown as typeof fetch;
+      const reserve = jest.fn(async () => ({ reservedMicros: 1000 }));
+      const settle = jest.fn(async () => ({ actualMicros: 0 }));
+      const providerConfig = {
+        get: (key: string) =>
+          ({
+            OPENROUTER_API_KEY: '',
+            ENGINE_GENERATION_MODEL: 'openai/gpt-5',
+            ENGINE_PROVIDER_NAME: 'openrouter',
+          })[key],
+      };
+      const provider = new OpenRouterAiProvider(
+        providerConfig as never,
+        fetchImpl,
+      );
+
+      const gen = new CandidateGeneratorService(
+        { updateOne: jest.fn() } as never,
+        { holdsLease: async () => true } as never,
+        { reserve, settle } as never,
+        providerConfig as never,
+        provider,
+      );
+
+      await expect(
+        gen.generate({
+          jobId: 'job-pre-dispatch-fail',
+          leaseEpoch: 1,
+          attempt: 1,
+          context: context({ mechanicKey: 'closest' }),
+          count: 1,
+        }),
+      ).rejects.toThrow('Ambiguous provider outcome during generation');
+
+      expect(fetchImpl).not.toHaveBeenCalled();
+      expect(settle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reservationId: 'job-pre-dispatch-fail:generation:1',
+          providerRejected: true,
         }),
       );
     });

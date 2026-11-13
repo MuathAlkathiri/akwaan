@@ -20,14 +20,14 @@ export function createReplayDraft(match: MyMatchSummary): MatchSetupDraft {
   ) {
     throw new Error("This Match setup cannot be replayed");
   }
+  // Replaying lands on the last occurrence's Scopes: everything is already
+  // chosen, so one confirm re-creates the Match and opens the room. The teams
+  // are not carried over because they are no longer something a Match stores a
+  // choice about.
   return {
     ...fallback,
     occurrences,
     activeOccurrenceIndex: 2,
-    activeStep: "teams",
-    teamNames:
-      match.teams.length === 2
-        ? [match.teams[0].name, match.teams[1].name]
-        : fallback.teamNames,
+    activeStep: "scopes",
   };
 }
