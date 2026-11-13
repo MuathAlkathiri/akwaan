@@ -65,6 +65,7 @@ const RYO_RULES: LiveGameModeRules = {
   onlyOneClockRuns: true,
   timePersistsBetweenTurns: true,
   expirationMs: 24 * 60 * 60 * 1000,
+  unjoinedExpirationMs: 6 * 60 * 60 * 1000,
   defaultJoinPolicy: 'host-assigned',
   readyPlayersRequiredPerTeam: 1,
 };

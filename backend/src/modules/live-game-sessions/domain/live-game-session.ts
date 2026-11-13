@@ -350,11 +350,43 @@ export class LiveGameSession {
     return modeKey === 'bomb' ? ['waiting'] : ['waiting', 'ready', 'active'];
   }
 
-  /** Whether this session would accept a new participant right now. */
-  acceptsNewParticipants(): boolean {
-    return LiveGameSession.joinableStatuses(this.state.modeKey).includes(
-      this.state.status,
+  /**
+   * Whether this session would accept a new participant right now.
+   *
+   * It consults expiry as well as status, which it did not before: nothing
+   * touches an abandoned session, so its stored status stays whatever it was
+   * when somebody last did. A room that timed out overnight went on telling
+   * phones to come in, and the enrolment refused them only after they had
+   * picked a character and typed a name.
+   */
+  acceptsNewParticipants(now: Date): boolean {
+    if (
+      !LiveGameSession.joinableStatuses(this.state.modeKey).includes(
+        this.state.status,
+      )
+    )
+      return false;
+    return now.getTime() < this.effectiveExpiry().getTime();
+  }
+
+  /**
+   * When this session stops being joinable.
+   *
+   * A room nobody has joined gets the shorter of the two budgets: holding a
+   * live join code for a day on behalf of a gathering that never happened
+   * serves nobody. One player is enough to make it a room in use, and the
+   * ordinary cap takes over.
+   */
+  private effectiveExpiry(): Date {
+    const joined = this.state.participants.some(
+      (participant) =>
+        participant.role === 'team-player' && !participant.removedAt,
     );
+    if (joined) return this.state.expiresAt;
+    const unjoined = new Date(
+      this.state.createdAt.getTime() + this.rules.unjoinedExpirationMs,
+    );
+    return unjoined < this.state.expiresAt ? unjoined : this.state.expiresAt;
   }
 
   enrollParticipant(input: {

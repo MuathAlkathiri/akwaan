@@ -97,7 +97,7 @@ export class CreateSessionJoinAccess {
     const sessionState = session.serialize();
     // The aggregate owns which statuses accept a participant — an active session is
     // joinable so phones can be invited at a challenge preflight, mid-match.
-    if (!session.acceptsNewParticipants()) {
+    if (!session.acceptsNewParticipants(this.clock.now())) {
       throw new LiveSessionDomainError(
         'SESSION_NOT_JOINABLE',
         'Session is not accepting participants',
@@ -253,7 +253,7 @@ export class ResolveJoinCode {
     const session = await this.sessions.findById(access.sessionId);
     if (!session) throw new LiveSessionNotFoundError(access.sessionId);
     const state = session.serialize();
-    if (!session.acceptsNewParticipants()) {
+    if (!session.acceptsNewParticipants(this.clock.now())) {
       throw new LiveSessionDomainError(
         'SESSION_NOT_JOINABLE',
         'Session is not accepting participants',
