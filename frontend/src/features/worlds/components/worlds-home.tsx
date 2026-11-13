@@ -520,12 +520,17 @@ function WorldCardScopes({
  * like every other card's.
  */
 function FallbackPlanet({ seed, index }: { seed: string; index: number }) {
-  // The hue steps with the card's place in the row, so no two planets beside
-  // each other can land on the same colour. Deriving it from the slug looked
-  // tidier and collided: `general` and `movies` hashed into the same bucket
-  // and came out the same pink. Position is worth more than permanence here —
-  // a placeholder stops existing the moment its World has artwork.
-  const hue = 212 + (index % 6) * 26;
+  // Not 212, 238, 264… in order: stepping evenly through the band put 290 next
+  // to 316, and 26° apart they read as purple beside pink rather than as two
+  // colours. The order below interleaves the band so neighbours sit 52° to 78°
+  // apart while the set stays inside 212–342, clear of brand gold and the
+  // error crimson.
+  //
+  // Position and not a hash of the slug: hashing looked tidier and collided —
+  // `general` and `movies` fell in the same bucket and came out the same pink.
+  // A placeholder stops existing the moment its World has artwork, so being
+  // distinct in the row is worth more than a colour that never changes.
+  const hue = [212, 290, 238, 316, 264, 342][index % 6];
   const id = `akwaan-fallback-${seed.replace(/[^a-z0-9]/gi, "") || "world"}`;
   return (
     <svg viewBox="0 0 160 160" className="size-full" aria-hidden role="presentation">
