@@ -293,8 +293,12 @@ describe("unified board", () => {
   it("marks a phone-required tile without deciding anything itself", () => {
     renderBoard(unifiedMatch());
 
-    // The badge is driven by the server capability, per position.
-    expect(within(tile("0#slot_2")).getByText("يحتاج جوالات")).toBeTruthy();
+    // The badge is driven by the server capability, per position. It is a
+    // badge rather than a line of text: the words under all twelve circles
+    // were the same four syllables twelve times over.
+    expect(
+      within(tile("0#slot_2")).getByLabelText("يحتاج جوالات"),
+    ).toBeTruthy();
     const positions = OCCURRENCE_WORLDS.flatMap((worldId, occurrenceIndex) =>
       SLOTS.map((slotKey, index) =>
         position(occurrenceIndex, worldId, slotKey, index, {

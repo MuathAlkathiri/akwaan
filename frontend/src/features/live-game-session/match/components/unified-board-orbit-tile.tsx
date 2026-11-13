@@ -11,15 +11,15 @@ import type { MatchTeamStanding, UnifiedBoardPosition } from "../types";
  * Where each of a World's four challenges sits on its orbit.
  *
  * Right to left, top row then bottom, so the first slot is where an Arabic
- * reader starts. The percentages are the design board's own geometry, kept as
- * fractions so the orbit scales with the column instead of pinning itself to
- * 420px.
+ * reader starts. The four are placed so their centres land *on* the ring
+ * rather than near it — a ring that misses the things it is drawn for reads
+ * as decoration that slipped. Fractions, so the orbit scales with the column.
  */
 export const ORBIT_CORNERS = [
-  { left: "65.5%", top: "4.8%" },
-  { left: "3.6%", top: "4.8%" },
-  { left: "65.5%", top: "61.9%" },
-  { left: "3.6%", top: "61.9%" },
+  { left: "60.5%", top: "17.6%" },
+  { left: "12.5%", top: "17.6%" },
+  { left: "60.5%", top: "65.6%" },
+  { left: "12.5%", top: "65.6%" },
 ] as const;
 
 /**
@@ -89,7 +89,7 @@ export function OrbitChallenge({
     : undefined;
 
   const circle = cn(
-    "relative grid aspect-square w-[74%] place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))]",
+    "relative grid aspect-square w-[62%] place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))]",
     completed
       ? owner
         ? owner.solid
@@ -117,19 +117,26 @@ export function OrbitChallenge({
     <>
       <span className={circle}>
         {pending || inProgress ? (
-          <Loader2 className="size-9 animate-spin" aria-hidden />
+          <Loader2 className="size-7 animate-spin" aria-hidden />
         ) : (
-          <Icon className="size-9" aria-hidden />
+          <Icon className="size-7" aria-hidden />
         )}
-        {completed && (
-          <span className="absolute -top-1 end-1 grid size-7 place-items-center rounded-full border-[2.5px] border-[hsl(var(--brand-navy))] bg-white text-[hsl(var(--brand-navy))]">
-            <Check className="size-4" aria-label="مكتمل" />
+        {completed ? (
+          <span className="absolute -top-1 end-0 grid size-6 place-items-center rounded-full border-[2.5px] border-[hsl(var(--brand-navy))] bg-white text-[hsl(var(--brand-navy))]">
+            <Check className="size-3.5" aria-label="مكتمل" />
           </span>
-        )}
+        ) : position.requiresPhones ? (
+          // A badge, not a sentence. The words sat under all twelve circles
+          // and turned a board into a wall of the same four syllables; the
+          // preflight says it properly at the moment it matters.
+          <span className="absolute -top-1 end-0 grid size-6 place-items-center rounded-full border-[2.5px] border-[hsl(var(--brand-navy))] bg-white text-[hsl(var(--brand-navy))]">
+            <Smartphone className="size-3" aria-label="يحتاج جوالات" />
+          </span>
+        ) : null}
       </span>
       {/* The name sits on the page's own background so an orbit ring passing
           behind it never cuts through the words. */}
-      <span className="bg-background rounded-lg px-1.5 text-center text-sm font-black break-words">
+      <span className="bg-background rounded-lg px-1.5 text-center text-xs font-black break-words sm:text-sm">
         {position.challengeName}
       </span>
       {/* What the circle's colour cannot say on its own. A finished challenge
@@ -166,11 +173,6 @@ export function OrbitChallenge({
         <span className="text-muted-foreground text-[0.7rem] font-bold">
           {reason?.detail ?? reason?.label}
         </span>
-      ) : position.requiresPhones ? (
-        <span className="text-muted-foreground inline-flex items-center gap-1 text-[0.7rem] font-bold">
-          <Smartphone className="size-3" aria-hidden />
-          يحتاج جوالات
-        </span>
       ) : null}
     </>
   );
@@ -184,7 +186,7 @@ export function OrbitChallenge({
   } as const;
 
   const shell =
-    "absolute flex w-[31%] flex-col items-center gap-1.5 border-0 bg-transparent p-0";
+    "absolute flex w-[27%] flex-col items-center gap-1 border-0 bg-transparent p-0";
 
   if (interactive) {
     return (

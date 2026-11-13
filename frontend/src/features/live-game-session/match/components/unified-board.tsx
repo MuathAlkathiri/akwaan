@@ -9,7 +9,7 @@ import {
   prepareUnifiedChallenge,
 } from "@/features/match-setup";
 import { usePlayableWorlds } from "@/features/worlds/hooks/use-player-catalog";
-import { WorldMedia } from "@/components/akwaan/world-media";
+import { getMediaUrl } from "@/lib/api/media-url";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { ARABIC_NOUNS, arabicCount } from "@/lib/arabic-plural";
 import { useLiveSession } from "../../hooks/live-session-context";
@@ -186,20 +186,36 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
                     around it. A column of four identical rows said nothing
                     about what a World is; this says it without a word. */}
                 <div className="relative mx-auto aspect-square w-full max-w-[26rem]">
+                  {/* One thin ring the four challenges actually sit on, and a
+                      faint halo just outside the planet. A heavy dashed circle
+                      drawn near — but not through — the things it belongs to
+                      reads as decoration that slipped. */}
                   <span
                     aria-hidden
-                    className="absolute inset-[13%] rounded-full border-2 border-dashed border-[hsl(var(--brand-gold)/.75)]"
+                    className="absolute inset-[16%] rounded-full border border-[hsl(var(--brand-gold)/.55)]"
                   />
-                  <span className="absolute top-1/2 left-1/2 size-[42%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border-2 border-[hsl(var(--brand-gold))]">
-                    <WorldMedia
-                      name={occurrence.worldName ?? "عالم"}
-                      {...(artworkByWorldId.get(occurrence.worldId)
-                        ? { imageUrl: artworkByWorldId.get(occurrence.worldId) }
-                        : {})}
-                      priority={occurrence.occurrenceIndex === 0}
-                      variant="strip"
-                      className="!aspect-square size-full rounded-none"
-                    />
+                  <span
+                    aria-hidden
+                    className="absolute inset-[22%] rounded-full border border-[hsl(var(--brand-gold)/.18)]"
+                  />
+                  <span className="absolute top-1/2 left-1/2 size-[52%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border-2 border-[hsl(var(--brand-gold)/.8)] bg-[hsl(var(--brand-gold)/.12)] shadow-[0_10px_30px_-18px_hsl(var(--brand-navy)/.6)]">
+                    {/* The planet is the picture alone: its name is printed
+                        under the orbit, and printing it twice put a caption
+                        across the middle of the artwork. */}
+                    {artworkByWorldId.get(occurrence.worldId) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={getMediaUrl(
+                          artworkByWorldId.get(occurrence.worldId)!,
+                        )}
+                        alt=""
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <span className="grid size-full place-items-center p-3 text-center font-display text-sm font-black text-[hsl(var(--brand-navy)/.65)]">
+                        {occurrence.worldName ?? "عالم"}
+                      </span>
+                    )}
                   </span>
                   {positions.map((position, index) => {
                     const playable =
