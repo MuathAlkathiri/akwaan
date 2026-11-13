@@ -52,6 +52,7 @@ const snapshot = (players: Player[], actions = ["begin"]) =>
         role: "team-player",
         ready: false,
         connected: true,
+        presence: "connected",
         ...player,
       })),
     ],
@@ -130,6 +131,24 @@ describe("the waiting room", () => {
       ),
     );
     expect(api.createJoinAccess).not.toHaveBeenCalled();
+  });
+
+  // A kicked player stays in the snapshot so a recap can still name them. The
+  // room forgot to drop them, so they sat on the host's screen with a kick
+  // button whose only possible answer was PARTICIPANT_REMOVED.
+  it("drops a player the host already kicked", () => {
+    mount([
+      { id: "p1", displayName: "ريم", teamId: "team-blue" },
+      {
+        id: "p2",
+        displayName: "سعد",
+        teamId: "team-blue",
+        presence: "removed",
+      } as never,
+    ]);
+    expect(screen.getByText("ريم")).toBeInTheDocument();
+    expect(screen.queryByText("سعد")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("waiting-room-player")).toHaveLength(1);
   });
 
   it("starts even with one side empty, and says so", async () => {

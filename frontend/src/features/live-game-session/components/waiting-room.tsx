@@ -9,6 +9,7 @@ import { ScannableQr } from "@/components/akwaan/scannable-qr";
 import { teamIdentities } from "@/lib/team-identity";
 import { getApiErrorMessage } from "@/lib/utils";
 import { planSplit } from "../plan-split";
+import { playersInRoom } from "../participants";
 import {
   assignParticipantTeam,
   createJoinAccess,
@@ -130,13 +131,7 @@ export function WaitingRoom() {
     () => teamIdentities((snapshot?.teams ?? []).filter((team) => team.active)),
     [snapshot?.teams],
   );
-  const players = useMemo(
-    () =>
-      (snapshot?.participants ?? []).filter(
-        (person) => person.role !== "controller",
-      ),
-    [snapshot?.participants],
-  );
+  const players = useMemo(() => playersInRoom(snapshot), [snapshot]);
   if (!snapshot || teams.length < 2) return null;
 
   const [first, second] = teams;

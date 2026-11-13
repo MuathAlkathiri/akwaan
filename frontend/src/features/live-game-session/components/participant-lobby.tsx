@@ -3,6 +3,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { UserMinus } from "lucide-react";
 import { ConfirmationDialog } from "@/components/shared";
+import { playersInRoom } from "../participants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,9 +40,7 @@ export function ParticipantLobby() {
       ),
   });
   if (!snapshot) return null;
-  const players = snapshot.participants.filter(
-    (participant) => participant.role !== "controller",
-  );
+  const players = playersInRoom(snapshot);
   return (
     <Card>
       <CardHeader>
