@@ -74,6 +74,8 @@ export async function joinLiveSession(
   input: {
     displayName: string;
     requestedTeamId?: string;
+    /** The character the player picked; omitted to let the server assign one. */
+    avatarKey?: string;
     joinRequestId: string;
     device?: { label?: string; platform?: string };
   },
