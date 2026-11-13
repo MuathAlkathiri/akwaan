@@ -39,6 +39,16 @@ import { PlayerCharacterIcon } from "./player-characters";
  * exactly like one made there: players pick their own side, and the code
  * outlives a long match.
  */
+/**
+ * How many empty places a side draws while it waits.
+ *
+ * Not a cap — more people are welcome and the grid simply grows. It is there
+ * so an empty side reads as a side with room in it rather than as a blank
+ * rectangle, and so the first arrival lands somewhere that was already shaped
+ * to receive them.
+ */
+const OPEN_PLACES_SHOWN = 3;
+
 const JOIN_ACCESS_DEFAULTS = {
   assignmentPolicy: "explicit" as const,
   maximumParticipantCount: 24,
@@ -180,28 +190,29 @@ export function WaitingRoom() {
 
   return (
     <section dir="rtl" data-testid="waiting-room" className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
+      {/* The code is what every phone in the room is looking for, so it is the
+          largest thing on the screen and it is in the middle — not a badge in
+          a corner beside two panels that dwarf it. This is read off a
+          television from the other side of a majlis. */}
+      <header className="flex flex-col items-center gap-5 text-center">
         <div>
-          <h1 className="text-3xl font-black">يلا نجمع الفريقين</h1>
-          <p className="text-muted-foreground mt-1 text-base">
+          <h1 className="text-4xl font-black md:text-5xl">يلا نجمع الفريقين</h1>
+          <p className="text-muted-foreground mt-2 text-lg font-bold">
             {players.length === 0
               ? "صوّروا الكود بجوالاتكم وانضموا"
               : `معنا ${players.length} ${players.length === 1 ? "لاعب" : "لاعبين"} — واللي باقي يصوّر الكود`}
           </p>
         </div>
         {joinUrl && (
-          // This is read from across a room, off a television, by someone
-          // holding a phone: it is the one thing on the screen that has a job
-          // to do, so it is not a corner badge.
-          <div className="border-border bg-card flex items-center gap-5 rounded-[var(--radius)] border-2 p-4">
-            <ScannableQr value={joinUrl} size={132} />
-            <div className="text-end">
+          <div className="flex items-center gap-6 rounded-[var(--radius)] border-[3px] border-[hsl(var(--brand-navy))] bg-card px-6 py-5 shadow-[0_6px_0_hsl(var(--brand-navy))]">
+            <ScannableQr value={joinUrl} size={148} />
+            <div className="text-start">
               <p className="text-muted-foreground text-sm font-bold">
                 أو اكتبوا الكود
               </p>
               <p
                 data-testid="waiting-room-code"
-                className="font-mono text-4xl font-black tracking-[0.18em]"
+                className="font-mono text-5xl font-black tracking-[0.2em] md:text-6xl"
               >
                 {access.data!.joinCode}
               </p>
@@ -220,7 +231,7 @@ export function WaitingRoom() {
               // The «ملصق» treatment, same as every other team surface: a
               // thick navy outline and a hard shadow. The tint inside it is
               // what says whose side this is.
-              className={`flex min-h-[18rem] flex-col rounded-[var(--radius)] border-[3px] border-[hsl(var(--brand-navy))] p-4 shadow-[0_6px_0_hsl(var(--brand-navy))] ${team.identity.surface}`}
+              className={`flex min-h-[10rem] flex-col rounded-[var(--radius)] border-[3px] border-[hsl(var(--brand-navy))] p-4 shadow-[0_6px_0_hsl(var(--brand-navy))] ${team.identity.surface}`}
             >
               <div className="mb-3 flex items-baseline justify-between gap-2">
                 <h2 className={`text-2xl font-black ${team.identity.text}`}>
@@ -232,15 +243,14 @@ export function WaitingRoom() {
                     : `${side.length} ${side.length === 1 ? "لاعب" : "لاعبين"}`}
                 </span>
               </div>
-              {side.length === 0 ? (
-                <p className="text-muted-foreground flex flex-1 items-center justify-center text-center text-sm">
-                  أول واحد يختار هذا الفريق يبان هنا
-                </p>
-              ) : (
-                // A side is its people, so it reads as faces rather than as
-                // rows in an admin list: the character is the thing somebody
-                // across the room recognises as theirs.
-                <ul className="grid flex-1 grid-cols-2 content-start gap-2 lg:grid-cols-3">
+              {/* A side is its people, so it reads as faces rather than as
+                  rows in an admin list: the character is the thing somebody
+                  across the room recognises as theirs. Empty places are drawn
+                  rather than left blank — a side waiting for people should
+                  look like it is waiting, not like it failed to load, and the
+                  panel grows with the room instead of reserving a screenful
+                  of nothing. */}
+              <ul className="grid grid-cols-2 content-start gap-2 lg:grid-cols-3">
                   {side.map((person) => (
                     <li
                       key={person.id}
@@ -295,8 +305,20 @@ export function WaitingRoom() {
                       </div>
                     </li>
                   ))}
+                  {Array.from({
+                    length: Math.max(OPEN_PLACES_SHOWN - side.length, 0),
+                  }).map((_, index) => (
+                    <li
+                      key={`open-${index}`}
+                      aria-hidden
+                      data-testid="waiting-room-open-place"
+                      className="flex flex-col items-center justify-center gap-2 rounded-[var(--radius)] border-2 border-dashed border-[hsl(var(--brand-navy)/.16)] p-3"
+                    >
+                      <span className="size-16 rounded-full border-2 border-dashed border-[hsl(var(--brand-navy)/.16)]" />
+                      <span className="h-2 w-12 rounded-full bg-[hsl(var(--brand-navy)/.08)]" />
+                    </li>
+                  ))}
                 </ul>
-              )}
             </div>
           );
         })}
