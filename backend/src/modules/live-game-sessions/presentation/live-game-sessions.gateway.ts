@@ -27,6 +27,7 @@ import {
   PauseLiveGameSession,
   ResumeLiveGameSession,
   StartLiveGameSession,
+  BeginLiveGameSession,
 } from '../application/live-session-lifecycle.use-cases';
 import {
   EndActiveTurn,
@@ -160,6 +161,7 @@ export class LiveGameSessionsGateway
     private readonly getSession: GetLiveGameSession,
     private readonly markReady: MarkSessionReady,
     private readonly startSession: StartLiveGameSession,
+    private readonly beginSession: BeginLiveGameSession,
     private readonly pauseSession: PauseLiveGameSession,
     private readonly resumeSession: ResumeLiveGameSession,
     private readonly startTurn: StartTeamTurn,
@@ -648,6 +650,16 @@ export class LiveGameSessionsGateway
   ) {
     return this.mutate(client, body, (command) =>
       this.startSession.execute(command),
+    );
+  }
+
+  @SubscribeMessage('live-session:begin')
+  begin(
+    @ConnectedSocket() client: LiveSocket,
+    @MessageBody() body: LiveSessionSocketMutationDto,
+  ) {
+    return this.mutate(client, body, (command) =>
+      this.beginSession.execute(command),
     );
   }
 

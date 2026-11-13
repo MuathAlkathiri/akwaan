@@ -13,6 +13,7 @@ import {
   PauseLiveGameSession,
   ResumeLiveGameSession,
   StartLiveGameSession,
+  BeginLiveGameSession,
 } from './application/live-session-lifecycle.use-cases';
 import {
   EndActiveTurn,
@@ -163,6 +164,7 @@ const applicationProviders = [
   LiveSessionCommandExecutor,
   MarkSessionReady,
   StartLiveGameSession,
+  BeginLiveGameSession,
   PauseLiveGameSession,
   ResumeLiveGameSession,
   StartTeamTurn,

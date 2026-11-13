@@ -35,7 +35,7 @@ type Player = {
   avatarKey?: string;
 };
 
-const snapshot = (players: Player[], actions = ["start"]) =>
+const snapshot = (players: Player[], actions = ["begin"]) =>
   ({
     sessionId: "s1",
     revision: 7,
@@ -107,7 +107,21 @@ describe("the waiting room", () => {
     expect(start).not.toBeDisabled();
     expect(start.textContent).toContain("نبدأ واللي يتأخر يلحقنا");
     await userEvent.click(start);
+    expect(command).toHaveBeenCalledWith("begin", {});
+  });
+
+  it("falls back to start for a session the older flow already made ready", async () => {
+    mount([{ id: "p1", displayName: "ريم", teamId: "team-blue" }], [
+      "start",
+      "cancel",
+    ]);
+    await userEvent.click(screen.getByTestId("waiting-room-start"));
     expect(command).toHaveBeenCalledWith("start", {});
+  });
+
+  it("has nothing to press when the session offers no way to start", () => {
+    mount([{ id: "p1", displayName: "ريم", teamId: "team-blue" }], ["cancel"]);
+    expect(screen.getByTestId("waiting-room-start")).toBeDisabled();
   });
 
   it("reads as a plain go once both sides have somebody", () => {

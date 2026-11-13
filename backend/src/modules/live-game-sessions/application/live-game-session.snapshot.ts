@@ -230,7 +230,13 @@ export class LiveGameSessionSnapshotMapper {
     canMarkSessionReady: boolean,
   ): string[] {
     if (status === 'waiting') {
-      return canMarkSessionReady ? ['ready', 'cancel'] : ['cancel'];
+      // `begin` is the waiting room's own start: it does not ask whether every
+      // side has a ready player, because nobody presses ready any more and a
+      // side is allowed to sit empty. `ready` stays for the flows that still
+      // use it, and only when the session would accept it.
+      return canMarkSessionReady
+        ? ['begin', 'ready', 'cancel']
+        : ['begin', 'cancel'];
     }
     if (status === 'ready') return ['start', 'cancel'];
     if (status === 'active') {

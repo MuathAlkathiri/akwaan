@@ -126,7 +126,10 @@ export function WaitingRoom() {
     }
   };
 
-  const startAction = ["start", "ready"].find((action) =>
+  // `begin` is the room's own start: it does not ask whether every side has a
+  // ready player, because nobody presses ready any more. `start` is the fallback
+  // for a session already carried to `ready` by the older flow.
+  const startAction = ["begin", "start"].find((action) =>
     snapshot.availableActions.includes(action),
   );
   const everyoneIsHere =
@@ -146,19 +149,22 @@ export function WaitingRoom() {
           </p>
         </div>
         {joinUrl && (
-          <div className="flex items-center gap-4">
+          // This is read from across a room, off a television, by someone
+          // holding a phone: it is the one thing on the screen that has a job
+          // to do, so it is not a corner badge.
+          <div className="border-border bg-card flex items-center gap-5 rounded-[var(--radius)] border-2 p-4">
+            <ScannableQr value={joinUrl} size={132} />
             <div className="text-end">
               <p className="text-muted-foreground text-sm font-bold">
-                كود الدخول
+                أو اكتبوا الكود
               </p>
               <p
                 data-testid="waiting-room-code"
-                className="font-mono text-3xl font-black tracking-[0.2em]"
+                className="font-mono text-4xl font-black tracking-[0.18em]"
               >
                 {access.data!.joinCode}
               </p>
             </div>
-            <ScannableQr value={joinUrl} size={104} />
           </div>
         )}
       </header>
@@ -170,7 +176,7 @@ export function WaitingRoom() {
             <div
               key={team.id}
               data-testid={`waiting-room-side-${team.id}`}
-              className={`rounded-[var(--radius)] border-2 p-4 ${team.identity.border} ${team.identity.surface}`}
+              className={`flex min-h-[18rem] flex-col rounded-[var(--radius)] border-2 p-4 ${team.identity.border} ${team.identity.surface}`}
             >
               <div className="mb-3 flex items-baseline justify-between gap-2">
                 <h2 className={`text-2xl font-black ${team.identity.text}`}>
@@ -183,61 +189,66 @@ export function WaitingRoom() {
                 </span>
               </div>
               {side.length === 0 ? (
-                <p className="text-muted-foreground py-6 text-center text-sm">
+                <p className="text-muted-foreground flex flex-1 items-center justify-center text-center text-sm">
                   أول واحد يختار هذا الفريق يبان هنا
                 </p>
               ) : (
-                <ul className="space-y-2">
+                // A side is its people, so it reads as faces rather than as
+                // rows in an admin list: the character is the thing somebody
+                // across the room recognises as theirs.
+                <ul className="grid flex-1 grid-cols-2 content-start gap-2 lg:grid-cols-3">
                   {side.map((person) => (
                     <li
                       key={person.id}
                       data-testid="waiting-room-player"
-                      className="bg-background/70 flex items-center gap-3 rounded-[var(--radius)] p-2"
+                      className="bg-background/70 flex flex-col items-center gap-1 rounded-[var(--radius)] p-3"
                     >
                       <PlayerCharacterIcon
                         characterKey={person.avatarKey}
-                        size={40}
+                        size={64}
                       />
-                      <span className="min-w-0 flex-1 truncate font-bold">
+                      <span className="w-full truncate text-center font-bold">
                         {person.displayName}
                       </span>
                       {!person.connected && (
-                        <span className="text-muted-foreground text-xs font-bold">
+                        <span className="bg-muted text-muted-foreground mt-1 rounded-full px-2 py-1 text-xs leading-none font-bold">
                           خرج
                         </span>
                       )}
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        disabled={busy}
-                        aria-label={`انقل ${person.displayName} للفريق الثاني`}
-                        onClick={() =>
-                          move.mutate({
-                            participantId: person.id,
-                            teamId: otherSide(team.id),
-                          })
-                        }
-                      >
-                        <ArrowLeftRight className="size-4" aria-hidden />
-                      </Button>
-                      <ConfirmationDialog
-                        trigger={
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            aria-label={`اطرد ${person.displayName}`}
-                          >
-                            <UserMinus className="size-4" aria-hidden />
-                          </Button>
-                        }
-                        title={`تطرد ${person.displayName}؟`}
-                        description="جواله يطلع من الجلسة على طول، ويقدر يرجع يصوّر الكود من جديد."
-                        confirmLabel="اطرده"
-                        destructive
-                        onConfirm={() => remove.mutate(person.id)}
-                      />
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          disabled={busy}
+                          aria-label={`انقل ${person.displayName} للفريق الثاني`}
+                          onClick={() =>
+                            move.mutate({
+                              participantId: person.id,
+                              teamId: otherSide(team.id),
+                            })
+                          }
+                        >
+                          <ArrowLeftRight className="size-4" aria-hidden />
+                        </Button>
+                        <ConfirmationDialog
+                          trigger={
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`اطرد ${person.displayName}`}
+                            >
+                              <UserMinus className="size-4" aria-hidden />
+                            </Button>
+                          }
+                          title={`تطرد ${person.displayName}؟`}
+                          description="جواله يطلع من الجلسة على طول، ويقدر يرجع يصوّر الكود من جديد."
+                          confirmLabel="اطرده"
+                          destructive
+                          onConfirm={() => remove.mutate(person.id)}
+                        />
+                      </div>
                     </li>
                   ))}
                 </ul>

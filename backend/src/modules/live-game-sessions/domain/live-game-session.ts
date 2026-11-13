@@ -527,6 +527,32 @@ export class LiveGameSession {
     this.transitionTo('active', now);
   }
 
+  /**
+   * Starts the session the way the waiting room starts it.
+   *
+   * `markReady` wants a ready player on every side, and the waiting room has no
+   * way to produce one: nobody presses «جاهز» any more, and a side is allowed to
+   * sit empty because the QR stays up on the challenge screen for whoever is
+   * late. Gating on readiness meant the host could only cancel as soon as the
+   * first player arrived.
+   *
+   * So this asks nothing about readiness and keeps the one guard that is still
+   * real: a match needs two sides. A side with nobody on it blocks the
+   * challenge's own start button, which is where that block belongs.
+   */
+  begin(now: Date): void {
+    this.assertStatus(['waiting', 'ready'], now);
+    if (this.state.teams.filter((team) => team.active).length < 2) {
+      throw new LiveSessionDomainError(
+        'SESSION_NOT_READY',
+        'At least two active teams are required',
+      );
+    }
+    this.state.startedAt = now;
+    this.state.countdownEndsAt = undefined;
+    this.transitionTo('active', now);
+  }
+
   pause(now: Date): void {
     this.assertStatus(['active'], now);
     this.stopActiveClock(now);
