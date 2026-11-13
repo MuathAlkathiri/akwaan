@@ -253,9 +253,9 @@ export function WorldsHome() {
                         className="flex list-none flex-wrap justify-center gap-x-5 gap-y-8 [&>li]:basis-[clamp(9.5rem,17.5%,13.5rem)]"
                         data-testid="upcoming-worlds"
                       >
-                        {upcoming.map((world) => (
+                        {upcoming.map((world, index) => (
                           <li key={world.id} className="w-full">
-                            <ComingSoonCard world={world} />
+                            <ComingSoonCard world={world} index={index} />
                           </li>
                         ))}
                       </ul>
@@ -519,13 +519,18 @@ function WorldCardScopes({
  * has been painted. Brand colours only, and no text — the name sits beneath it
  * like every other card's.
  */
-function FallbackPlanet({ seed }: { seed: string }) {
-  // Each unpainted World gets its own hue, derived from its slug so it is the
-  // same on every visit. Five identical planets in a row read as one repeated
-  // placeholder; five different ones read as five Worlds.
-  let hash = 0;
-  for (const char of seed) hash = (hash * 31 + char.charCodeAt(0)) % 360;
-  const hue = 212 + (hash % 5) * 26;
+function FallbackPlanet({ seed, index }: { seed: string; index: number }) {
+  // Not 212, 238, 264… in order: stepping evenly through the band put 290 next
+  // to 316, and 26° apart they read as purple beside pink rather than as two
+  // colours. The order below interleaves the band so neighbours sit 52° to 78°
+  // apart while the set stays inside 212–342, clear of brand gold and the
+  // error crimson.
+  //
+  // Position and not a hash of the slug: hashing looked tidier and collided —
+  // `general` and `movies` fell in the same bucket and came out the same pink.
+  // A placeholder stops existing the moment its World has artwork, so being
+  // distinct in the row is worth more than a colour that never changes.
+  const hue = [212, 290, 238, 316, 264, 342][index % 6];
   const id = `akwaan-fallback-${seed.replace(/[^a-z0-9]/gi, "") || "world"}`;
   return (
     <svg viewBox="0 0 160 160" className="size-full" aria-hidden role="presentation">
@@ -564,7 +569,13 @@ function FallbackPlanet({ seed }: { seed: string }) {
   );
 }
 
-function ComingSoonCard({ world }: { world: PlayableWorld }) {
+function ComingSoonCard({
+  world,
+  index,
+}: {
+  world: PlayableWorld;
+  index: number;
+}) {
   const art = world.banner ?? world.icon;
   return (
     <div
@@ -574,12 +585,17 @@ function ComingSoonCard({ world }: { world: PlayableWorld }) {
     >
       {/* No grayscale and no dimming: a World on the way is still worth looking
           at, and draining the art was what made this row look unfinished. The
-          «قريبًا» badge is what says it cannot be picked yet. */}
-      <span className="grid aspect-square w-full max-w-[9.5rem] place-items-center overflow-hidden rounded-full">
+          «قريبًا» badge is what says it cannot be picked yet.
+          `relative` is load-bearing. WorldCover's root is `absolute inset-0`,
+          and the grayscale filter that used to sit here was quietly acting as
+          its containing block; dropping the filter without replacing it let the
+          artwork climb to the nearest positioned ancestor and cover the whole
+          Worlds section, swallowing every click on it. */}
+      <span className="relative grid aspect-square w-full max-w-[9.5rem] place-items-center overflow-hidden rounded-full">
         {art ? (
           <WorldCover world={world} sizes="(min-width:640px) 152px, 40vw" />
         ) : (
-          <FallbackPlanet seed={world.slug} />
+          <FallbackPlanet seed={world.slug} index={index} />
         )}
       </span>
       <span className="text-base font-black text-muted-foreground">
