@@ -7,6 +7,7 @@ import { ConfirmationDialog } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { ScannableQr } from "@/components/akwaan/scannable-qr";
 import { teamIdentities } from "@/lib/team-identity";
+import { getApiErrorMessage } from "@/lib/utils";
 import { planSplit } from "../plan-split";
 import {
   assignParticipantTeam,
@@ -60,7 +61,10 @@ export function WaitingRoom() {
   const { snapshot, connection } = useLiveSession();
   const command = useLiveSessionCommands();
   const [splitting, setSplitting] = useState(false);
-  const [failed, setFailed] = useState(false);
+  // The server's own reason, not a shrug. «ما قدرنا نحدّث الغرفة» told the host
+  // nothing and told whoever they called even less: a refused move and a stale
+  // revision are different problems with different fixes.
+  const [failure, setFailure] = useState<string>();
 
   const queryClient = useQueryClient();
   const access = useQuery({
@@ -86,7 +90,8 @@ export function WaitingRoom() {
         created,
       );
     },
-    onError: () => setFailed(true),
+    onError: (error) =>
+      setFailure(getApiErrorMessage(error, "ما قدرنا نفتح باب الغرفة.")),
   });
   useEffect(() => {
     if (!snapshot?.sessionId || !access.isFetched || issuing.current) return;
@@ -107,7 +112,8 @@ export function WaitingRoom() {
         input.teamId,
         snapshot!.revision,
       ),
-    onError: () => setFailed(true),
+    onError: (error) =>
+      setFailure(getApiErrorMessage(error, "ما قدرنا ننقل اللاعب.")),
   });
   const remove = useMutation({
     mutationFn: (participantId: string) =>
@@ -116,7 +122,8 @@ export function WaitingRoom() {
         participantId,
         snapshot!.revision,
       ),
-    onError: () => setFailed(true),
+    onError: (error) =>
+      setFailure(getApiErrorMessage(error, "ما قدرنا نطرد اللاعب.")),
   });
 
   const teams = useMemo(
@@ -151,7 +158,7 @@ export function WaitingRoom() {
    */
   const splitThem = async () => {
     setSplitting(true);
-    setFailed(false);
+    setFailure(undefined);
     const moves = planSplit({
       firstSide: sideOf(first.id).map((person) => person.id),
       secondSide: sideOf(second.id).map((person) => person.id),
@@ -170,8 +177,8 @@ export function WaitingRoom() {
         );
         revision = updated.revision;
       }
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      setFailure(getApiErrorMessage(error, "ما قدرنا نقسّم الفريقين."));
     } finally {
       setSplitting(false);
     }
@@ -383,9 +390,13 @@ export function WaitingRoom() {
         </div>
       )}
 
-      {failed && (
-        <p role="alert" className="text-destructive text-sm font-bold">
-          ما قدرنا نحدّث الغرفة. جرّب مرة ثانية.
+      {failure && (
+        <p
+          role="alert"
+          data-testid="waiting-room-failure"
+          className="text-destructive text-sm font-bold"
+        >
+          {failure}
         </p>
       )}
 

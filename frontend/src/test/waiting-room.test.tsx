@@ -238,15 +238,35 @@ describe("the waiting room", () => {
     );
   });
 
-  it("says plainly when the room could not be updated", async () => {
-    api.assignParticipantTeam.mockRejectedValue(new Error("nope"));
+  // The host is the one who has to explain this to a room full of people, so
+  // the server's own reason is what they get. A generic shrug sent everybody
+  // guessing — including us.
+  it("shows the server's own reason when an action is refused", async () => {
+    api.assignParticipantTeam.mockRejectedValue(
+      Object.assign(new Error("Request failed"), {
+        isAxiosError: true,
+        response: { data: { message: "الجلسة تغيّرت، حدّث الصفحة" } },
+      }),
+    );
     mount([{ id: "p1", displayName: "ريم", teamId: "team-blue" }]);
     await userEvent.click(
       screen.getByRole("button", { name: "انقل ريم للفريق الثاني" }),
     );
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toContain(
-        "ما قدرنا نحدّث الغرفة",
+      expect(screen.getByTestId("waiting-room-failure").textContent).toContain(
+        "الجلسة تغيّرت، حدّث الصفحة",
+      ),
+    );
+  });
+
+  it("falls back to a plain sentence when the server gives no reason", async () => {
+    api.removeLiveParticipant.mockRejectedValue(new Error("boom"));
+    mount([{ id: "p1", displayName: "ريم", teamId: "team-blue" }]);
+    await userEvent.click(screen.getByRole("button", { name: "اطرد ريم" }));
+    await userEvent.click(screen.getByRole("button", { name: "اطرده" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("waiting-room-failure").textContent).toContain(
+        "boom",
       ),
     );
   });
