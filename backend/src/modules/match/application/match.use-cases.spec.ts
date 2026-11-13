@@ -57,6 +57,7 @@ describe('MatchUseCases transitions', () => {
     options: {
       conflict?: boolean;
       scoreResult?: ReturnType<typeof scoring.restoreEvents>;
+      sessionStatus?: string;
     } = {},
   ) => {
     let stored: MatchState | null = null;
@@ -95,7 +96,7 @@ describe('MatchUseCases transitions', () => {
         Promise.resolve({
           controllerActorId: CONTROLLER,
           serialize: () => ({
-            status: 'active',
+            status: options.sessionStatus ?? 'active',
             teams: [
               { id: 'team-alpha', name: 'ألفا', active: true },
               { id: 'team-beta', name: 'بيتا', active: true },
@@ -417,5 +418,43 @@ describe('MatchUseCases transitions', () => {
       }),
     ).rejects.toMatchObject({ response: { code: 'MATCH_FORBIDDEN' } });
     expect(context.published).toEqual([]);
+  });
+
+  describe('the session a Match is configured in', () => {
+    // Setup creates the room and configures its Match before anyone has
+    // joined; the host then waits in the lobby. Requiring an active session
+    // here is what made the lobby unreachable from setup.
+    it('configures a Match while the room is still waiting for players', async () => {
+      const context = setup({ sessionStatus: 'waiting' });
+
+      const created = await createUnified(context);
+
+      expect(created.serialize().teams).toEqual([
+        { id: 'team-alpha', name: 'ألفا' },
+        { id: 'team-beta', name: 'بيتا' },
+      ]);
+      expect(context.current()).not.toBeNull();
+    });
+
+    it.each(['ready', 'active'])(
+      'configures a Match in a %s session',
+      async (sessionStatus) => {
+        const context = setup({ sessionStatus });
+        await expect(createUnified(context)).resolves.toBeDefined();
+      },
+    );
+
+    it.each(['cancelled', 'finished', 'expired', 'paused'])(
+      'refuses a %s session and stores nothing',
+      async (sessionStatus) => {
+        const context = setup({ sessionStatus });
+
+        await expect(createUnified(context)).rejects.toMatchObject({
+          response: { code: 'SESSION_NOT_ACTIVE' },
+        });
+        expect(context.current()).toBeNull();
+        expect(context.published).toEqual([]);
+      },
+    );
   });
 });

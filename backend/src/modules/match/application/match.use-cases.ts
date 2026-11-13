@@ -58,6 +58,13 @@ import {
 import { ScoringService } from '../../scoring/application/scoring.service';
 import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 
+/** Live-session statuses a Match may be configured in. See `playingTeams`. */
+const MATCH_CONFIGURABLE_SESSION_STATUSES: ReadonlySet<string> = new Set([
+  'waiting',
+  'ready',
+  'active',
+]);
+
 interface MatchCommand {
   sessionId: string;
   actorId: string;
@@ -834,7 +841,19 @@ export class MatchUseCases {
     return configured;
   }
 
-  /** The two teams a Match is played by, taken from the live session itself. */
+  /**
+   * The two teams a Match is played by, taken from the live session itself.
+   *
+   * A Match is configured before its room starts: the host sets it up, then
+   * waits in the lobby while players join. Configuring a Match is not playing
+   * it, so `waiting` and `ready` are accepted alongside `active`. Nothing can be
+   * played from a session that is not active anyway — every challenge launch
+   * creates a gameplay runtime, and runtime creation, start and round creation
+   * each refuse a session that is not `active`.
+   *
+   * A paused session is refused because its game is already under way, and a
+   * finished, cancelled or expired one because its room is over.
+   */
   private playingTeams(session: {
     serialize(): {
       status: string;
@@ -842,10 +861,12 @@ export class MatchUseCases {
     };
   }): MatchTeam[] {
     const state = session.serialize();
-    if (state.status !== 'active') {
+    if (!MATCH_CONFIGURABLE_SESSION_STATUSES.has(state.status)) {
       throw new MatchDomainError(
         'SESSION_NOT_ACTIVE',
-        'Start the live session before creating a match',
+        state.status === 'paused'
+          ? 'A match cannot be set up while the live session is paused'
+          : `A match cannot be set up for a live session that is ${state.status}`,
       );
     }
     return state.teams

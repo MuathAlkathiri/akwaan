@@ -6,10 +6,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * The real API modules and the real orchestration run here; only the HTTP
  * transport is replaced, and it records every request. That makes this the
  * frontend half of the creation contract — the backend half is
- * `test/integration/unified-match-api.integration-spec.ts`, which drives the same
- * four routes with the same body shape against a real Mongo and asserts the
+ * `test/integration/unified-match-api.integration-spec.ts`, which drives the
+ * Match route with the same body shape against a real Mongo and asserts the
  * answer is a `unified_preconfigured` Match at `board` with three occurrences,
  * four Scopes each, and twelve positions.
+ *
+ * Setup is two requests and leaves the session `waiting`: the host lands in the
+ * waiting room and begins the session from there. That the waiting room is
+ * what the host then sees is pinned in `setup-lands-in-waiting-room.test.tsx`.
  */
 
 const ANIME = "world-anime";
@@ -40,11 +44,7 @@ import {
   createLiveSession,
   cancelLiveSession,
 } from "@/features/live-game-session/api/live-session-api";
-import {
-  createUnifiedMatch,
-  markLiveSessionReady,
-  startLiveSession,
-} from "@/features/match-setup";
+import { createUnifiedMatch } from "@/features/match-setup";
 import {
   createDraft,
   matchSetupReducer,
@@ -54,8 +54,6 @@ import {
 
 const dependencies = {
   createSession: createLiveSession,
-  markReady: markLiveSessionReady,
-  startSession: startLiveSession,
   createMatch: createUnifiedMatch,
   cancelSession: cancelLiveSession,
 };
@@ -107,8 +105,8 @@ const configuredDraft = () => {
 /** The board-stage snapshot the production endpoint answers with. */
 const boardSnapshot = {
   sessionId: "session-1",
-  revision: 4,
-  status: "active",
+  revision: 0,
+  status: "waiting",
   match: {
     id: "match-1",
     revision: 0,
@@ -150,22 +148,12 @@ beforeEach(() => {
         },
       });
     }
-    if (url.endsWith("/ready")) {
-      return Promise.resolve({
-        data: { sessionId: "session-1", revision: 1, status: "ready" },
-      });
-    }
-    if (url.endsWith("/start")) {
-      return Promise.resolve({
-        data: { sessionId: "session-1", revision: 2, status: "active" },
-      });
-    }
     if (url.endsWith("/match/unified")) {
       return Promise.resolve({ data: boardSnapshot });
     }
     if (url.endsWith("/cancel")) {
       return Promise.resolve({
-        data: { sessionId: "session-1", revision: 3, status: "cancelled" },
+        data: { sessionId: "session-1", revision: 1, status: "cancelled" },
       });
     }
     return Promise.reject(new Error(`Unexpected request: ${url}`));
@@ -173,13 +161,11 @@ beforeEach(() => {
 });
 
 describe("configured Match creation contract", () => {
-  it("issues exactly four production requests, in order", async () => {
+  it("issues exactly two production requests, in order", async () => {
     const created = await createConfiguredMatch(configuredDraft(), dependencies);
 
     expect(recorded.map((request) => request.url)).toEqual([
       "/live-game-sessions",
-      "/live-game-sessions/session-1/ready",
-      "/live-game-sessions/session-1/start",
       "/live-game-sessions/session-1/match/unified",
     ]);
     // No development alias, and no sequential setup command anywhere.
@@ -239,11 +225,16 @@ describe("configured Match creation contract", () => {
     );
   });
 
-  it("carries the lifecycle revisions it was given", async () => {
+  it("never moves the session out of the lobby", async () => {
     await createConfiguredMatch(configuredDraft(), dependencies);
 
-    expect(recorded[1].body).toMatchObject({ expectedRevision: 0 });
-    expect(recorded[2].body).toMatchObject({ expectedRevision: 1 });
+    // Leaving the lobby is the host's call, made from the waiting room once
+    // players are in it. Setup readying or starting the session is what used
+    // to skip the room and open an empty board.
+    const urls = recorded.map((request) => request.url);
+    expect(urls.some((url) => url.endsWith("/ready"))).toBe(false);
+    expect(urls.some((url) => url.endsWith("/start"))).toBe(false);
+    expect(urls.some((url) => url.endsWith("/begin"))).toBe(false);
   });
 
   it("returns the board-stage snapshot the server answered with", async () => {
@@ -277,12 +268,6 @@ describe("configured Match creation contract", () => {
           },
         });
       }
-      if (url.endsWith("/ready")) {
-        return Promise.resolve({ data: { revision: 1 } });
-      }
-      if (url.endsWith("/start")) {
-        return Promise.resolve({ data: { revision: 2 } });
-      }
       if (url.endsWith("/match/unified")) {
         return Promise.reject({
           isAxiosError: true,
@@ -295,7 +280,7 @@ describe("configured Match creation contract", () => {
           },
         });
       }
-      return Promise.resolve({ data: { revision: 3 } });
+      return Promise.resolve({ data: { revision: 1 } });
     });
 
     await expect(
@@ -308,6 +293,9 @@ describe("configured Match creation contract", () => {
     expect(failure.detail.occurrenceIndex).toBe(2);
     expect(failure.sessionRolledBack).toBe(true);
     expect(recorded.at(-1)!.url).toBe("/live-game-sessions/session-1/cancel");
+    // Nothing moved the session after it was created, so the rollback cancels
+    // against the revision the session was created at.
+    expect(recorded.at(-1)!.body).toMatchObject({ expectedRevision: 0 });
   });
 
   it("never reaches the Match route when the session cannot be created", async () => {
