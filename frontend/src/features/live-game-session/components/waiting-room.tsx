@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftRight, Shuffle, UserMinus } from "lucide-react";
 import { ConfirmationDialog } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { teamIdentities } from "@/lib/team-identity";
 import { planSplit } from "../plan-split";
 import {
   assignParticipantTeam,
+  createJoinAccess,
   getJoinAccess,
   removeLiveParticipant,
 } from "../api/live-session-api";
@@ -31,18 +32,58 @@ import { PlayerCharacterIcon } from "./player-characters";
  * challenge screen, so a latecomer joins mid-game. What a missing team blocks is
  * the challenge's own start button, which is where the block belongs.
  */
+/**
+ * What the room asks for when it issues its own join code.
+ *
+ * Matches the host panel's long-standing defaults so a code made here behaves
+ * exactly like one made there: players pick their own side, and the code
+ * outlives a long match.
+ */
+const JOIN_ACCESS_DEFAULTS = {
+  assignmentPolicy: "explicit" as const,
+  maximumParticipantCount: 24,
+  teamCapacity: 12,
+  expiresInMinutes: 120,
+};
+
 export function WaitingRoom() {
   const { snapshot, connection } = useLiveSession();
   const command = useLiveSessionCommands();
   const [splitting, setSplitting] = useState(false);
   const [failed, setFailed] = useState(false);
 
+  const queryClient = useQueryClient();
   const access = useQuery({
     queryKey: ["live-game-session", snapshot?.sessionId, "join-access"],
     queryFn: () => getJoinAccess(snapshot!.sessionId),
     enabled: Boolean(snapshot?.sessionId),
     retry: false,
   });
+  // A room with no way into it is not a room.
+  //
+  // Join access is a separate record from the session, and nothing in the
+  // unified setup flow issues one, so the server answers this query with
+  // nothing and the QR never appears — which is the whole point of this
+  // screen. Rather than make every caller remember, the room issues its own
+  // code the first time it finds none, once per mount, and only the
+  // controller can: the endpoint refuses anybody else.
+  const issuing = useRef(false);
+  const issue = useMutation({
+    mutationFn: () => createJoinAccess(snapshot!.sessionId, JOIN_ACCESS_DEFAULTS),
+    onSuccess: (created) => {
+      queryClient.setQueryData(
+        ["live-game-session", snapshot!.sessionId, "join-access"],
+        created,
+      );
+    },
+    onError: () => setFailed(true),
+  });
+  useEffect(() => {
+    if (!snapshot?.sessionId || !access.isFetched || issuing.current) return;
+    if (access.data?.enabled) return;
+    issuing.current = true;
+    issue.mutate();
+  }, [access.data?.enabled, access.isFetched, issue, snapshot?.sessionId]);
   const joinUrl =
     typeof window === "undefined" || !access.data?.enabled
       ? undefined

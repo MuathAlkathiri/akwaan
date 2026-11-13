@@ -8,6 +8,7 @@ import type { LiveSessionSnapshot } from "@/features/live-game-session/model";
 
 const api = vi.hoisted(() => ({
   getJoinAccess: vi.fn(),
+  createJoinAccess: vi.fn(),
   assignParticipantTeam: vi.fn(),
   removeLiveParticipant: vi.fn(),
 }));
@@ -88,6 +89,13 @@ describe("the waiting room", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       expiresAt: "2026-01-01T02:00:00.000Z",
     });
+    api.createJoinAccess.mockResolvedValue({
+      joinCode: "NEWCODE",
+      enabled: true,
+      assignmentPolicy: "explicit",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      expiresAt: "2026-01-01T02:00:00.000Z",
+    });
   });
 
   it("shows the code so the room can join", async () => {
@@ -97,6 +105,31 @@ describe("the waiting room", () => {
         "YQ6WBTN",
       ),
     );
+  });
+
+  // The regression that shipped: the unified setup flow issues no join code,
+  // so the server answered with nothing and the one screen whose job is to let
+  // people in had no way in. The room issues its own rather than making every
+  // caller remember.
+  it("issues a code when the session has none, and shows it", async () => {
+    api.getJoinAccess.mockResolvedValue(null);
+    mount([]);
+    await waitFor(() =>
+      expect(screen.getByTestId("waiting-room-code").textContent).toBe(
+        "NEWCODE",
+      ),
+    );
+    expect(api.createJoinAccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("never issues a second code for a session that already has one", async () => {
+    mount([]);
+    await waitFor(() =>
+      expect(screen.getByTestId("waiting-room-code").textContent).toBe(
+        "YQ6WBTN",
+      ),
+    );
+    expect(api.createJoinAccess).not.toHaveBeenCalled();
   });
 
   it("starts even with one side empty, and says so", async () => {
