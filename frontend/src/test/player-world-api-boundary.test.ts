@@ -27,7 +27,6 @@ const PLAYER_JOURNEY_FILES = [
   "src/features/match-setup/components/match-setup-wizard.tsx",
   "src/features/match-setup/components/occurrence-world-step.tsx",
   "src/features/match-setup/components/occurrence-scopes-step.tsx",
-  "src/features/match-setup/components/match-setup-teams.tsx",
   "src/features/match-setup/state/match-setup-draft.ts",
   "src/features/match-setup/state/match-setup-storage.ts",
   "src/features/match-setup/state/use-match-setup.ts",
