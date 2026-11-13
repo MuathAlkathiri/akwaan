@@ -11,7 +11,9 @@ import { ImageDownloadService } from '../modules/ai-agent/infrastructure/assets/
 class M {}
 
 async function run() {
-  const app = await NestFactory.createApplicationContext(M, { logger: ['error', 'warn'] });
+  const app = await NestFactory.createApplicationContext(M, {
+    logger: ['error', 'warn'],
+  });
   const dl = app.get(ImageDownloadService);
   const urls = [
     'https://upload.wikimedia.org/wikipedia/commons/8/83/%28Saint-Lys%29_Fauconneau_de_1589.jpg',

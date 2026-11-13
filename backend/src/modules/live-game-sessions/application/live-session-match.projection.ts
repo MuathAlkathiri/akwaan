@@ -227,6 +227,13 @@ export interface LiveSessionMatchProjection {
     runtimeId: string;
     startedAt: string;
     doubledTeamIds: string[];
+    /**
+     * The World's decorative question backdrop, captured at launch (roadmap
+     * §30.22 Track A). Absent when the World has no artwork, which is a normal
+     * state: the question is then presented without a backdrop. It is never the
+     * question's own media, so a client must not treat it as the stimulus.
+     */
+    questionBackdropUrl?: string;
   };
   doubles: Array<{
     teamId: string;

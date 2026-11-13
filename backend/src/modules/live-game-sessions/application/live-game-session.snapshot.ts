@@ -42,6 +42,8 @@ export interface LiveGameSessionSnapshot {
   participants: Array<{
     id: string;
     displayName: string;
+    /** Which character this player is; absent for a controller. */
+    avatarKey?: string;
     role: string;
     teamId?: string;
     ready: boolean;
@@ -141,6 +143,7 @@ export class LiveGameSessionSnapshotMapper {
       participants: state.participants.map((participant) => ({
         id: participant.id,
         displayName: participant.displayName,
+        avatarKey: participant.avatarKey,
         role: participant.role,
         teamId: participant.teamId,
         ready: participant.ready,
@@ -227,7 +230,13 @@ export class LiveGameSessionSnapshotMapper {
     canMarkSessionReady: boolean,
   ): string[] {
     if (status === 'waiting') {
-      return canMarkSessionReady ? ['ready', 'cancel'] : ['cancel'];
+      // `begin` is the waiting room's own start: it does not ask whether every
+      // side has a ready player, because nobody presses ready any more and a
+      // side is allowed to sit empty. `ready` stays for the flows that still
+      // use it, and only when the session would accept it.
+      return canMarkSessionReady
+        ? ['begin', 'ready', 'cancel']
+        : ['begin', 'cancel'];
     }
     if (status === 'ready') return ['start', 'cancel'];
     if (status === 'active') {

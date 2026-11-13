@@ -13,6 +13,7 @@ import {
   PauseLiveGameSession,
   ResumeLiveGameSession,
   StartLiveGameSession,
+  BeginLiveGameSession,
 } from './application/live-session-lifecycle.use-cases';
 import {
   EndActiveTurn,
@@ -49,6 +50,7 @@ import {
   ReconnectLiveParticipant,
   RemoveLiveParticipant,
   RevokeParticipantCredential,
+  ChooseOwnTeam,
   SetParticipantReadiness,
 } from './application/live-participant.use-cases';
 import { ParticipantCredentialService } from './application/participant-credential.service';
@@ -162,6 +164,7 @@ const applicationProviders = [
   LiveSessionCommandExecutor,
   MarkSessionReady,
   StartLiveGameSession,
+  BeginLiveGameSession,
   PauseLiveGameSession,
   ResumeLiveGameSession,
   StartTeamTurn,
@@ -179,6 +182,7 @@ const applicationProviders = [
   ResolveJoinCode,
   JoinLiveSession,
   ReconnectLiveParticipant,
+  ChooseOwnTeam,
   SetParticipantReadiness,
   AssignParticipantTeam,
   RemoveLiveParticipant,

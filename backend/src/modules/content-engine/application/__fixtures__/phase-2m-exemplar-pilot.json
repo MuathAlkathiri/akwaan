@@ -1,0 +1,381 @@
+{
+  "_comment": "Phase 2m pilot candidates, preserved so the RYO exemplar-imitation regression runs everywhere. Lifted verbatim from the batchR artifacts in ai/workbench/artifacts, which git excludes: only the draft and authoring each candidate is screened on are kept. Flash-Lite's three copied the Science Scope's worked examples; GPT-5's three wrote their own.",
+  "flashLiteModel": "google/gemini-2.5-flash-lite",
+  "gpt5Model": "openai/gpt-5",
+  "flashLite": [
+    {
+      "ordinal": 0,
+      "draft": {
+        "prompt": {
+          "ar": "ما الغاز الذي يشكّل النسبة الأكبر من الغلاف الجوي للأرض؟"
+        },
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "nitrogen",
+              "label": {
+                "ar": "النيتروجين"
+              }
+            },
+            {
+              "id": "oxygen",
+              "label": {
+                "ar": "الأكسجين"
+              }
+            },
+            {
+              "id": "carbon_dioxide",
+              "label": {
+                "ar": "ثاني أكسيد الكربون"
+              }
+            },
+            {
+              "id": "water_vapor",
+              "label": {
+                "ar": "بخار الماء"
+              }
+            }
+          ],
+          "correctOptionId": "nitrogen"
+        },
+        "metadata": {
+          "notes": "Engine factual claims are stored in the candidate evaluation record."
+        }
+      },
+      "authoring": {
+        "concept": "Common misconception about which gas is most abundant in Earth's atmosphere, leading to a split decision.",
+        "distractorRationale": [
+          {
+            "optionId": "oxygen",
+            "why": "The gas people associate with breathing, making it a common first guess."
+          },
+          {
+            "optionId": "carbon_dioxide",
+            "why": "Strong everyday association through climate change discussions."
+          },
+          {
+            "optionId": "water_vapor",
+            "why": "Genuinely present and variable, leading some to consider its significance."
+          }
+        ],
+        "estimatedConfidence": {
+          "band": "even",
+          "why": "The misconception that oxygen is the most abundant is widespread, creating genuine uncertainty for many teams."
+        }
+      }
+    },
+    {
+      "ordinal": 1,
+      "draft": {
+        "prompt": {
+          "ar": "كم يستغرق ضوء الشمس حتى يصل إلى الأرض؟"
+        },
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "eight_seconds",
+              "label": {
+                "ar": "٨ ثوانٍ"
+              }
+            },
+            {
+              "id": "eight_minutes",
+              "label": {
+                "ar": "٨ دقائق"
+              }
+            },
+            {
+              "id": "eight_hours",
+              "label": {
+                "ar": "٨ ساعات"
+              }
+            },
+            {
+              "id": "eight_days",
+              "label": {
+                "ar": "٨ أيام"
+              }
+            }
+          ],
+          "correctOptionId": "eight_minutes"
+        },
+        "metadata": {
+          "notes": "Engine factual claims are stored in the candidate evaluation record."
+        }
+      },
+      "authoring": {
+        "concept": "Reasoning about orders of magnitude for light travel time from the Sun, rather than precise recall.",
+        "distractorRationale": [
+          {
+            "optionId": "eight_seconds",
+            "why": "Light is known to be extremely fast, leading to an underestimation of the vast distance."
+          },
+          {
+            "optionId": "eight_hours",
+            "why": "A significant time frame that might seem plausible for travel across such a distance, though still too short."
+          },
+          {
+            "optionId": "eight_days",
+            "why": "Represents a very long travel time, often used for slower celestial body movements, but incorrect for light."
+          }
+        ],
+        "estimatedConfidence": {
+          "band": "likely",
+          "why": "While many know it's minutes, the exact order of magnitude isn't universally precise, and reasoning alone can lead to slight miscalculations."
+        }
+      }
+    },
+    {
+      "ordinal": 2,
+      "draft": {
+        "prompt": {
+          "ar": "كم عدد العظام في جسم الإنسان البالغ؟"
+        },
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "186",
+              "label": {
+                "ar": "١٨٦"
+              }
+            },
+            {
+              "id": "206",
+              "label": {
+                "ar": "٢٠٦"
+              }
+            },
+            {
+              "id": "226",
+              "label": {
+                "ar": "٢٢٦"
+              }
+            },
+            {
+              "id": "246",
+              "label": {
+                "ar": "٢٤٦"
+              }
+            }
+          ],
+          "correctOptionId": "206"
+        },
+        "metadata": {
+          "notes": "Engine factual claims are stored in the candidate evaluation record."
+        }
+      },
+      "authoring": {
+        "concept": "A familiar but not precisely recalled number related to human anatomy, with plausible close alternatives.",
+        "distractorRationale": [
+          {
+            "optionId": "186",
+            "why": "A lower plausible number that might be recalled by someone who knows bones fuse over time."
+          },
+          {
+            "optionId": "226",
+            "why": "A slightly higher number that is close enough to the correct figure to cause hesitation."
+          },
+          {
+            "optionId": "246",
+            "why": "A higher plausible number that doesn't immediately seem outlandish but is incorrect."
+          }
+        ],
+        "estimatedConfidence": {
+          "band": "likely",
+          "why": "Most people have heard the figure 'around 200' but the exact number and its slight variations are hard to recall under pressure."
+        }
+      }
+    }
+  ],
+  "gpt5": [
+    {
+      "ordinal": 0,
+      "draft": {
+        "prompt": {
+          "ar": "أي معدن يكون سائلاً في درجة حرارة الغرفة؟"
+        },
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "a",
+              "label": {
+                "ar": "الزئبق"
+              }
+            },
+            {
+              "id": "b",
+              "label": {
+                "ar": "الغاليوم"
+              }
+            },
+            {
+              "id": "c",
+              "label": {
+                "ar": "الصوديوم"
+              }
+            },
+            {
+              "id": "d",
+              "label": {
+                "ar": "الألومنيوم"
+              }
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "metadata": {
+          "notes": "Engine factual claims are stored in the candidate evaluation record."
+        }
+      },
+      "authoring": {
+        "concept": "People recall gallium’s hand-melt videos and confuse it with the only truly liquid-at-room-temp metal: mercury.",
+        "distractorRationale": [
+          {
+            "optionId": "b",
+            "why": "مشاهد الذوبان في اليد تجعل كثيرين يظنون أنه سائل دائماً، لكنه ينصهر قرب 30°م وليس في درجة الغرفة المعتادة."
+          },
+          {
+            "optionId": "c",
+            "why": "معدن ليّن وتفاعلي جداً، وقد يتخيله البعض منخفض الانصهار لهذه الليونة."
+          },
+          {
+            "optionId": "d",
+            "why": "شائع وخفيف، فيُخلَط على أنه قد يكون منخفض الانصهار، لكنه صلب جيداً في الظروف العادية."
+          }
+        ],
+        "estimatedConfidence": {
+          "band": "even",
+          "why": "الزئبق معلوم، لكن الغاليوم يُربك بسبب محتوى الإنترنت وتجارب الذوبان."
+        }
+      }
+    },
+    {
+      "ordinal": 1,
+      "draft": {
+        "prompt": {
+          "ar": "أي فيتامين يرتبط بتجلّط الدم؟"
+        },
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "a",
+              "label": {
+                "ar": "فيتامين ك"
+              }
+            },
+            {
+              "id": "b",
+              "label": {
+                "ar": "فيتامين د"
+              }
+            },
+            {
+              "id": "c",
+              "label": {
+                "ar": "فيتامين أ"
+              }
+            },
+            {
+              "id": "d",
+              "label": {
+                "ar": "فيتامين ج"
+              }
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "metadata": {
+          "notes": "Engine factual claims are stored in the candidate evaluation record."
+        }
+      },
+      "authoring": {
+        "concept": "Vitamin K’s role in clotting is less top-of-mind than A/C/D, which people over-associate with vision, immunity, and bones.",
+        "distractorRationale": [
+          {
+            "optionId": "b",
+            "why": "مرتبط بصحة العظام وقد يُظنّ أنه يخص الدم أيضاً بحكم الكالسيوم."
+          },
+          {
+            "optionId": "c",
+            "why": "معروف بدوره في الرؤية، وقد يخلطه البعض بوظائف أخرى متعلقة بالعين والدم."
+          },
+          {
+            "optionId": "d",
+            "why": "مشهور بالمناعة والشفاء، فيربطه لاعبو العموم بالتجلّط بالخطأ."
+          }
+        ],
+        "estimatedConfidence": {
+          "band": "even",
+          "why": "الاسم معروف لكن ليس محفوظاً للجميع، والدوافع لكل من A/C/D معقولة."
+        }
+      }
+    },
+    {
+      "ordinal": 2,
+      "draft": {
+        "prompt": {
+          "ar": "أي جزء من العين يتحكم في كمية الضوء الداخلة؟"
+        },
+        "answerPayload": {
+          "mode": "multiple_choice",
+          "options": [
+            {
+              "id": "a",
+              "label": {
+                "ar": "القزحية"
+              }
+            },
+            {
+              "id": "b",
+              "label": {
+                "ar": "البؤبؤ"
+              }
+            },
+            {
+              "id": "c",
+              "label": {
+                "ar": "العدسة"
+              }
+            },
+            {
+              "id": "d",
+              "label": {
+                "ar": "القرنية"
+              }
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "metadata": {
+          "notes": "Engine factual claims are stored in the candidate evaluation record."
+        }
+      },
+      "authoring": {
+        "concept": "People see the pupil change size and think it “controls” light, but it’s the iris muscle doing the control.",
+        "distractorRationale": [
+          {
+            "optionId": "b",
+            "why": "يتغيّر حجمه مرئياً، فيظنه البعض المتحكّم، مع أنه الفتحة التي تغيّرها القزحية."
+          },
+          {
+            "optionId": "c",
+            "why": "تُركّز الصورة وقد تُخلط وظيفتها بضبط السطوع."
+          },
+          {
+            "optionId": "d",
+            "why": "السطح الشفاف الأمامي؛ قد يفترض بعضهم أنه يرشّح شدة الضوء."
+          }
+        ],
+        "estimatedConfidence": {
+          "band": "likely",
+          "why": "الكثير يعرف أن القزحية تتحكم بالحجم، لكن تشويش البؤبؤ حاضر ويجعل بعض الطاولات تتردد."
+        }
+      }
+    }
+  ]
+}

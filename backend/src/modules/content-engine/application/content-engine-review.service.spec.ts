@@ -980,5 +980,146 @@ describe('ContentEngineReviewService enforcement characterization', () => {
         expect.anything(),
       );
     });
+
+    it('propagates assignedSlot.familyKey and respects approved family reassignment into canonical ContentItem DRAFT metadata without mutating assignedSlot', async () => {
+      const slotAssigned = candidate({
+        reviewStatus: 'approved',
+        draft: {
+          prompt: { ar: 'رتب الحروف: (س - م - ك)' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: 'a', label: { ar: 'سمك' } },
+              { id: 'b', label: { ar: 'لحم' } },
+              { id: 'c', label: { ar: 'خبز' } },
+              { id: 'd', label: { ar: 'تمر' } },
+            ],
+            correctOptionId: 'a',
+          },
+          metadata: { notes: 'concept | solve' },
+        },
+        authoring: {
+          concept: 'concept',
+          assignedSlot: {
+            slotIndex: 0,
+            familyKey: 'anagram-rearrange',
+            familyNameAr: 'ترتيب الحروف المبعثرة',
+          },
+          familyCompliance: {
+            assignedFamilyKey: 'anagram-rearrange',
+            isCompliant: true,
+            verificationMethod: 'rule_evaluated',
+          },
+        },
+      });
+      const { service } = build({ current: slotAssigned });
+      jest
+        .spyOn(
+          service as unknown as {
+            references: () => Promise<unknown>;
+          },
+          'references',
+        )
+        .mockResolvedValue({
+          job: {
+            _id: 'job-1',
+            worldKey: 'puzzles',
+            scopeKey: 'wordplay-letters',
+            mechanicKey: 'read-your-opponent',
+          },
+          scope: { _id: '660000000000000000000010' },
+          challengeType: { _id: '660000000000000000000020' },
+          compatibility: {},
+        });
+      const dto = await (
+        service as unknown as {
+          canonicalDto: (cand: unknown) => Promise<{
+            metadata?: Record<string, unknown>;
+          }>;
+        }
+      ).canonicalDto(slotAssigned);
+      expect(dto.metadata).toEqual({
+        notes: 'concept | solve',
+        familyKey: 'anagram-rearrange',
+      });
+      expect(
+        (
+          slotAssigned as unknown as {
+            authoring: { assignedSlot: { familyKey: string } };
+          }
+        ).authoring.assignedSlot.familyKey,
+      ).toBe('anagram-rearrange');
+
+      // Reassigned family case
+      const reassigned = candidate({
+        reviewStatus: 'approved',
+        draft: {
+          prompt: { ar: 'ما جمع كلمة قلم؟' },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: 'a', label: { ar: 'أقلام' } },
+              { id: 'b', label: { ar: 'قلمون' } },
+              { id: 'c', label: { ar: 'قلمات' } },
+              { id: 'd', label: { ar: 'أقاليم' } },
+            ],
+            correctOptionId: 'a',
+          },
+          metadata: { notes: 'concept | solve' },
+        },
+        authoring: {
+          concept: 'concept',
+          assignedSlot: {
+            slotIndex: 0,
+            familyKey: 'anagram-rearrange',
+          },
+          familyCompliance: {
+            assignedFamilyKey: 'anagram-rearrange',
+            reassignedFamilyKey: 'plural-form',
+            effectiveFamilyKey: 'plural-form',
+            isCompliant: true,
+            verificationMethod: 'manual_review',
+            resolvedByReviewerId: 'reviewer-1',
+          },
+        },
+      });
+      const builtReassigned = build({ current: reassigned });
+      jest
+        .spyOn(
+          builtReassigned.service as unknown as {
+            references: () => Promise<unknown>;
+          },
+          'references',
+        )
+        .mockResolvedValue({
+          job: {
+            _id: 'job-1',
+            worldKey: 'puzzles',
+            scopeKey: 'wordplay-letters',
+            mechanicKey: 'read-your-opponent',
+          },
+          scope: { _id: '660000000000000000000010' },
+          challengeType: { _id: '660000000000000000000020' },
+          compatibility: {},
+        });
+      const reassignedDto = await (
+        builtReassigned.service as unknown as {
+          canonicalDto: (cand: unknown) => Promise<{
+            metadata?: Record<string, unknown>;
+          }>;
+        }
+      ).canonicalDto(reassigned);
+      expect(reassignedDto.metadata).toEqual({
+        notes: 'concept | solve',
+        familyKey: 'plural-form',
+      });
+      expect(
+        (
+          reassigned as unknown as {
+            authoring: { assignedSlot: { familyKey: string } };
+          }
+        ).authoring.assignedSlot.familyKey,
+      ).toBe('anagram-rearrange');
+    });
   });
 });

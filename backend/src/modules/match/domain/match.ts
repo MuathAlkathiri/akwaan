@@ -126,6 +126,16 @@ export interface MatchCurrentChallenge {
   startedAt: Date;
   /** Public only after launch; both teams may have armed independently. */
   doubledTeamIds: string[];
+  /**
+   * The World's question backdrop artwork as it stood when this challenge
+   * started (roadmap §30.22 Track A). Decorative and purely presentational: it
+   * sits behind the question, never substitutes for required gameplay media,
+   * and its absence is a World-authoring finding rather than a launch failure.
+   *
+   * Captured at launch for the same reason the mechanic and the World name are:
+   * what a challenge in progress shows must not change under it mid-play.
+   */
+  questionBackdropUrl?: string;
 }
 
 export interface MatchTeamScore {
@@ -779,6 +789,8 @@ export class Match {
     launchability: MatchSlotLaunchability;
     /** The team claiming board selection for this launch. */
     selectingTeamId?: string;
+    /** The World's question backdrop artwork, when it has one. */
+    questionBackdropUrl?: string;
   }): void {
     if (this.replay(input.commandId)) return;
     // A launch may come straight from the board, or from a preflight that has
@@ -825,6 +837,9 @@ export class Match {
       runtimeId: input.runtimeId,
       contentItemIds: [...input.contentItemIds],
       startedAt: input.now,
+      ...(input.questionBackdropUrl
+        ? { questionBackdropUrl: input.questionBackdropUrl }
+        : {}),
       doubledTeamIds: this.state.teamDoubles
         .filter(
           (token) =>

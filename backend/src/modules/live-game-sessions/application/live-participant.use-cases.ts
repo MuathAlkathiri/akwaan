@@ -58,6 +58,8 @@ export class JoinLiveSession {
     requestedTeamId?: string;
     joinRequestId: string;
     device?: { label?: string; platform?: string };
+    /** The character the player chose, or none to be given the first free one. */
+    avatarKey?: string;
   }): Promise<JoinedLiveParticipant> {
     const access = await this.accesses.findByCode(
       normalizeJoinCode(input.joinCode),
@@ -111,6 +113,7 @@ export class JoinLiveSession {
     const participant = session.enrollParticipant({
       id: randomUUID(),
       displayName: input.displayName,
+      avatarKey: input.avatarKey,
       teamId,
       role: 'team-player',
       joinRequestId: input.joinRequestId,
@@ -312,6 +315,91 @@ export class SetParticipantReadiness {
     if (countdownEndsAt) {
       this.countdown.schedule(session.id, countdownEndsAt);
     }
+    return snapshot;
+  }
+}
+
+/**
+ * A player moving themselves between the two teams.
+ *
+ * Distinct from `AssignParticipantTeam`, which is the host's and refuses anyone
+ * who is not the controller. A player needs this because the whole point of the
+ * room is that people sort themselves out: the suggestion on their phone is a
+ * nudge, not an assignment, and changing your mind should not need the host's
+ * attention.
+ *
+ * The window is the domain's, not this class's: `assignParticipantTeam` allows
+ * only `waiting` and `ready`, so a player cannot switch sides once the match is
+ * running. Capacity is re-checked here because the host's path checks it too and
+ * a player must not be the one way around a full team.
+ */
+@Injectable()
+export class ChooseOwnTeam {
+  constructor(
+    @Inject(LIVE_GAME_SESSION_REPOSITORY)
+    private readonly sessions: LiveGameSessionRepository,
+    @Inject(LIVE_SESSION_CLOCK) private readonly clock: LiveSessionClock,
+    private readonly snapshots: LiveGameSessionSnapshotMapper,
+    @Inject(LIVE_SESSION_TRANSITION_PUBLISHER)
+    private readonly publisher: LiveSessionTransitionPublisher,
+    @Inject(LIVE_SESSION_JOIN_ACCESS_REPOSITORY)
+    private readonly accesses: LiveSessionJoinAccessRepository,
+  ) {}
+
+  async execute(input: {
+    actor: LiveSessionActor;
+    teamId: string;
+    expectedRevision: number;
+    commandId: string;
+  }) {
+    // Pulled into a local so the narrowing survives the closure below: a
+    // property access does not stay narrowed inside a callback.
+    const actor = input.actor;
+    if (actor.kind !== 'participant') {
+      throw new LiveSessionForbiddenError();
+    }
+    const session = await this.sessions.findById(actor.sessionId);
+    if (!session) throw new LiveSessionNotFoundError(actor.sessionId);
+    if (session.isDuplicate(input.commandId)) {
+      return this.snapshots.toSnapshot(
+        session,
+        actor.participantId,
+        this.clock.now(),
+      );
+    }
+    const access = await this.accesses.findCurrentBySessionId(actor.sessionId);
+    const teamCapacity = access?.serialize().teamCapacity;
+    if (
+      teamCapacity !== undefined &&
+      session
+        .serialize()
+        .participants.filter(
+          (participant) =>
+            participant.role === 'team-player' &&
+            !participant.removedAt &&
+            participant.teamId === input.teamId &&
+            participant.id !== actor.participantId,
+        ).length >= teamCapacity
+    ) {
+      throw new LiveSessionDomainError(
+        'TEAM_FULL',
+        'Selected team capacity has been reached',
+      );
+    }
+    session.assertRevision(input.expectedRevision);
+    const previousRevision = session.revision;
+    const now = this.clock.now();
+    session.assignParticipantTeam(actor.participantId, input.teamId, now);
+    session.completeCommand(input.commandId, now);
+    await this.sessions.save(session, previousRevision);
+    const snapshot = this.snapshots.toSnapshot(
+      session,
+      actor.participantId,
+      now,
+    );
+    this.publisher.publish('live-session:participant-team-changed', snapshot, {
+      participantId: actor.participantId,
+    });
     return snapshot;
   }
 }

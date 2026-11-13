@@ -48,6 +48,12 @@ import {
   FactEvidenceRetriever,
 } from './domain/fact-verification.types';
 import { WigoloFactEvidenceRetriever } from './infrastructure/wigolo-fact-evidence.retriever';
+import { EngineImageIngestionService } from './infrastructure/engine-image-ingestion.service';
+import { MediaStorageModule } from '../../common/uploads/media-storage.module';
+import { LocalImageStorageService } from '../../common/uploads/local-image-storage.service';
+import { ImageDownloadService } from '../ai-agent/infrastructure/assets/image-download.service';
+import { CandidateMediaReviewService } from './application/candidate-media-review.service';
+import { MediaRightsModule } from '../media-rights/media-rights.module';
 import { EnginePricingService } from './domain/engine-pricing.service';
 import { EngineJobAdminService } from './application/engine-job-admin.service';
 import { ContentEngineJobsController } from './presentation/content-engine-jobs.controller';
@@ -111,6 +117,11 @@ import {
         schema: EngineDraftPublicationSchema,
       },
     ]),
+    // Explicit, though global in the app: the engine's media ingestion needs
+    // the R2 mirror token even where the module is compiled on its own.
+    MediaStorageModule,
+    // Rights are read live from the authoritative record for media gates.
+    MediaRightsModule,
   ],
   controllers: [ContentEngineReviewController, ContentEngineJobsController],
   providers: [
@@ -184,6 +195,11 @@ import {
     ContentEngineReviewService,
     HistoricalCoverageService,
     GenerationPlannerService,
+    // §30.22 Phase 2: canonical download and storage services, reused.
+    ImageDownloadService,
+    LocalImageStorageService,
+    EngineImageIngestionService,
+    CandidateMediaReviewService,
   ],
   exports: [
     EnginePricingService,

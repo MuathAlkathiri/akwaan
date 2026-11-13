@@ -19,6 +19,7 @@ import {
   CancelLiveGameSession,
   MarkSessionReady,
   StartLiveGameSession,
+  BeginLiveGameSession,
 } from '../application/live-session-lifecycle.use-cases';
 import { CreateLiveGameSession } from '../application/create-live-game-session.use-case';
 import { GetLiveGameSession } from '../application/get-live-game-session.use-case';
@@ -56,6 +57,7 @@ export class LiveGameSessionsController {
     private readonly reconnectParticipant: ReconnectParticipant,
     private readonly markReady: MarkSessionReady,
     private readonly startSession: StartLiveGameSession,
+    private readonly beginSession: BeginLiveGameSession,
     private readonly cancelSession: CancelLiveGameSession,
     private readonly createJoinAccess: CreateSessionJoinAccess,
     private readonly getJoinAccess: GetSessionJoinAccess,
@@ -128,6 +130,20 @@ export class LiveGameSessionsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.startSession.execute({
+      sessionId,
+      actorId: user.id,
+      ...body,
+    });
+  }
+
+  /** The waiting room's start: no readiness gate, an empty side allowed. */
+  @Post(':sessionId/begin')
+  begin(
+    @Param('sessionId') sessionId: string,
+    @Body() body: LiveSessionMutationDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.beginSession.execute({
       sessionId,
       actorId: user.id,
       ...body,

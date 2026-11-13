@@ -71,6 +71,8 @@ const OPENAI_STRICT_UNSUPPORTED = new Set([
 
 /** Raised before any request when a schema keyword has not been classified. */
 export class UnclassifiedSchemaKeywordError extends Error {
+  readonly definitelyNotBilled = true;
+
   constructor(keyword: string, path: string) {
     super(
       `Schema keyword "${keyword}" at ${path} is neither known-supported nor ` +
@@ -312,11 +314,79 @@ export class OpenRouterAiProvider implements AiProvider {
     // Fail closed, before a request exists. A missing key or model is a
     // configuration error, never a reason to pick something else.
     if (!apiKey)
-      throw new OpenRouterUnavailableError('OPENROUTER_API_KEY is not set');
+      throw new OpenRouterUnavailableError(
+        'OPENROUTER_API_KEY is not set',
+        true,
+      );
     if (!model)
       throw new OpenRouterUnavailableError(
         'ENGINE_GENERATION_MODEL is not set',
+        true,
       );
+
+    // Adapt and serialize the request body before arming the timeout or
+    // entering the network try/catch block so a pre-dispatch schema refusal
+    // (UnclassifiedSchemaKeywordError) is never misclassified as an in-flight
+    // network timeout and billed.
+    const adaptedSchema = request.responseSchema
+      ? this.requiresOpenAiStrictSchema(model)
+        ? adaptSchemaForOpenAiStrict(request.responseSchema)
+        : request.responseSchema
+      : undefined;
+    const requestBody = JSON.stringify({
+      model,
+      messages: [
+        ...(request.systemInstruction
+          ? [{ role: 'system', content: request.systemInstruction }]
+          : []),
+        { role: 'user', content: request.prompt },
+      ],
+      // Temperature is omitted for models that do not accept it.
+      //
+      // This is not cosmetic. Below, `require_parameters: true` tells
+      // OpenRouter to route only to endpoints supporting every parameter
+      // in the body. No `openai/gpt-5` endpoint lists `temperature`
+      // (verified 2026-10-16 against /models/openai/gpt-5/endpoints), so
+      // sending it leaves zero eligible endpoints and the request fails
+      // outright rather than degrading. Config-driven so the setting is a
+      // property of the deployed model, not a guess compiled in here.
+      ...(request.temperature !== undefined && !omitTemperature
+        ? { temperature: request.temperature }
+        : {}),
+      // `max_tokens` bounds reasoning *and* visible output together, which
+      // is what keeps a reasoning model's bill inside its reservation.
+      // Note it also narrows routing under `require_parameters`: for
+      // gpt-5 only the OpenAI endpoint lists `max_tokens`, while the Azure
+      // endpoints list `max_completion_tokens`. That is deliberate — the
+      // OpenAI endpoint carries the reference price.
+      ...(request.maxOutputTokens
+        ? { max_tokens: request.maxOutputTokens }
+        : {}),
+      // Reasoning effort, where the model has it. Bounding effort does not
+      // change the financial ceiling — `max_tokens` already does that —
+      // but it is what leaves room for content inside the ceiling instead
+      // of spending the whole allowance thinking and returning nothing.
+      ...(effort ? { reasoning: { effort } } : {}),
+      // Structured output is required, not preferred: a prose reply is a
+      // failed generation, and the schema is what makes that detectable.
+      ...(adaptedSchema
+        ? {
+            // Routing is per-endpoint, not per-model: without this,
+            // OpenRouter may serve the request from an endpoint that
+            // ignores `response_format`, and we pay for prose the strict
+            // parser then rejects. Fail the request instead.
+            provider: { require_parameters: true },
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'akwaan_candidates',
+                strict: true,
+                schema: adaptedSchema,
+              },
+            },
+          }
+        : {}),
+    });
 
     const timeoutMs =
       request.timeoutMs ??
@@ -333,62 +403,7 @@ export class OpenRouterAiProvider implements AiProvider {
           'content-type': 'application/json',
           authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({
-          model,
-          messages: [
-            ...(request.systemInstruction
-              ? [{ role: 'system', content: request.systemInstruction }]
-              : []),
-            { role: 'user', content: request.prompt },
-          ],
-          // Temperature is omitted for models that do not accept it.
-          //
-          // This is not cosmetic. Below, `require_parameters: true` tells
-          // OpenRouter to route only to endpoints supporting every parameter
-          // in the body. No `openai/gpt-5` endpoint lists `temperature`
-          // (verified 2026-10-16 against /models/openai/gpt-5/endpoints), so
-          // sending it leaves zero eligible endpoints and the request fails
-          // outright rather than degrading. Config-driven so the setting is a
-          // property of the deployed model, not a guess compiled in here.
-          ...(request.temperature !== undefined && !omitTemperature
-            ? { temperature: request.temperature }
-            : {}),
-          // `max_tokens` bounds reasoning *and* visible output together, which
-          // is what keeps a reasoning model's bill inside its reservation.
-          // Note it also narrows routing under `require_parameters`: for
-          // gpt-5 only the OpenAI endpoint lists `max_tokens`, while the Azure
-          // endpoints list `max_completion_tokens`. That is deliberate — the
-          // OpenAI endpoint carries the reference price.
-          ...(request.maxOutputTokens
-            ? { max_tokens: request.maxOutputTokens }
-            : {}),
-          // Reasoning effort, where the model has it. Bounding effort does not
-          // change the financial ceiling — `max_tokens` already does that —
-          // but it is what leaves room for content inside the ceiling instead
-          // of spending the whole allowance thinking and returning nothing.
-          ...(effort ? { reasoning: { effort } } : {}),
-          // Structured output is required, not preferred: a prose reply is a
-          // failed generation, and the schema is what makes that detectable.
-          ...(request.responseSchema
-            ? {
-                // Routing is per-endpoint, not per-model: without this,
-                // OpenRouter may serve the request from an endpoint that
-                // ignores `response_format`, and we pay for prose the strict
-                // parser then rejects. Fail the request instead.
-                provider: { require_parameters: true },
-                response_format: {
-                  type: 'json_schema',
-                  json_schema: {
-                    name: 'akwaan_candidates',
-                    strict: true,
-                    schema: this.requiresOpenAiStrictSchema(model)
-                      ? adaptSchemaForOpenAiStrict(request.responseSchema)
-                      : request.responseSchema,
-                  },
-                },
-              }
-            : {}),
-        }),
+        body: requestBody,
         signal: controller.signal,
       });
     } catch (error) {

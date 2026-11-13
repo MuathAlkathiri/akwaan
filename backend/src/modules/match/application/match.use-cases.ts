@@ -5,6 +5,7 @@ import {
   LiveGameSessionRepository,
 } from '../../live-game-sessions/domain/live-game-session.repository';
 import { WorldChallengeSlotKey } from '../../world-content/domain/world-content.constants';
+import { WorldPresentationService } from '../../world-content/application/world-presentation.service';
 import { ConfiguredWorldOccurrence } from '../domain/configured-world-occurrence';
 import { Match, MatchCoinToss, MatchTeam } from '../domain/match';
 import {
@@ -92,6 +93,7 @@ export class MatchUseCases {
     private readonly runtimes: GameplayRuntimeRepository,
     private readonly cancelRuntime: CancelGameplayRuntime,
     private readonly scoring: ScoringService,
+    private readonly worldPresentation: WorldPresentationService,
   ) {}
 
   /**
@@ -659,6 +661,13 @@ export class MatchUseCases {
         : {}),
     };
     await launcher.validateLaunch(context);
+    // The World's decorative backdrop for this challenge (roadmap §30.22 Track
+    // A). Read once here rather than on every snapshot, and after the launch is
+    // known to be valid so a refused launch costs nothing. It can never fail a
+    // launch: a World with no artwork yields null and an advisory finding.
+    const backdrop = await this.worldPresentation.questionBackdropFor(
+      occurrence.worldId,
+    );
     const { runtimeId } = await launcher.launch(context);
     const revision = match.revision;
     match.launchChallenge({
@@ -672,6 +681,9 @@ export class MatchUseCases {
       launchability: MatchSlotLaunchability.LAUNCHABLE,
       ...(command.selectingTeamId
         ? { selectingTeamId: command.selectingTeamId }
+        : {}),
+      ...(backdrop.asset?.url
+        ? { questionBackdropUrl: backdrop.asset.url }
         : {}),
     });
     try {
@@ -697,6 +709,10 @@ export class MatchUseCases {
       // The ids are logged, never published: a client must not learn what is
       // coming, but an operator has to be able to trace what was played.
       contentItemCount: contentItemIds.length,
+      // Named so an operator can see which World still needs artwork.
+      ...(backdrop.defects.length
+        ? { questionBackdrop: backdrop.defects.map((defect) => defect.code) }
+        : {}),
     });
     return match;
   }
