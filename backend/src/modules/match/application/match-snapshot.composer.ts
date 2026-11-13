@@ -45,6 +45,7 @@ import {
   MATCH_REPOSITORY,
   MatchRepository,
 } from '../persistence/match.repository';
+import { MatchChallengeReadinessRequirement } from '../domain/match-challenge-readiness';
 import { ChallengeLauncherRegistry } from './challenge-launcher.registry';
 import { MatchChallengeReadinessService } from './match-challenge-readiness.service';
 import { MatchReconciliationService } from './match-reconciliation.service';
@@ -60,6 +61,25 @@ import { MatchWorldCatalog } from './match-world.catalog';
  * included — no unresolved random World, no mechanic-private payload, and no
  * ScoreEvent internals beyond the totals a scoreboard needs.
  */
+/**
+ * The floor under every challenge: one player on each side.
+ *
+ * Starting the session is deliberately not blocked — the waiting room lets a
+ * host begin with a side empty, because the QR stays up on the challenge screen
+ * for whoever is late. So the block lives here instead, where a challenge would
+ * otherwise be played by a team that cannot answer it.
+ *
+ * It asks for a team-assigned player and not a connected one. A mechanic that
+ * needs no phones has no reason to care whether a screen is awake, and a
+ * mechanic that does care states its own requirement, which wins over this.
+ */
+export const EVERY_TEAM_NEEDS_A_PLAYER: MatchChallengeReadinessRequirement = {
+  minParticipantsPerTeam: 1,
+  requiresBothTeams: true,
+  requiresTeamAssignment: true,
+  requiresConnectedPresence: false,
+};
+
 @Injectable()
 export class MatchSnapshotComposer
   implements SessionSnapshotEnricher, OnModuleInit
@@ -346,7 +366,9 @@ export class MatchSnapshotComposer
     );
     const requirement =
       this.launchers.find({ challengeTypeSlug: pending.challengeTypeSlug })
-        ?.launchRequirements.readiness ?? pending.readiness;
+        ?.launchRequirements.readiness ??
+      pending.readiness ??
+      EVERY_TEAM_NEEDS_A_PLAYER;
     const session = await this.sessions.findById(match.liveSessionId);
     const readiness =
       requirement && session
@@ -401,10 +423,14 @@ export class MatchSnapshotComposer
         : {}),
       teams: readiness?.teams ?? [],
       allTeamsReady: readiness ? readiness.allTeamsReady : true,
-      // A mechanic that needs no phones is ready the moment it is prepared.
-      readyToLaunch: pending.requiresPhones
-        ? Boolean(readiness?.allTeamsReady)
-        : true,
+      // Every challenge needs somebody on each side, phones or not: a mechanic
+      // that wants no phones was launchable the moment it was prepared, so a
+      // Match begun with one side empty ran a challenge that side could never
+      // answer. Readiness is only absent if the session could not be read at
+      // all, and that is a different failure than an empty team.
+      readyToLaunch: readiness
+        ? readiness.allTeamsReady
+        : !pending.requiresPhones,
       blockingReasons: readiness?.blockingReasons ?? [],
       ...(pending.selectingTeamId
         ? { selectingTeamId: pending.selectingTeamId }
