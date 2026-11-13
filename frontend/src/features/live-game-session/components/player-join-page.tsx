@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Users } from "lucide-react";
@@ -129,9 +129,15 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
     },
   });
 
-  const taken = metadata.data?.takenAvatarKeys ?? [];
-  const freeCharacters = PLAYER_CHARACTER_KEYS.filter(
-    (key) => !taken.includes(key),
+  // Memoised because the pre-pick effect below depends on them: a fresh array
+  // each render would re-run it on every render.
+  const taken = useMemo(
+    () => metadata.data?.takenAvatarKeys ?? [],
+    [metadata.data?.takenAvatarKeys],
+  );
+  const freeCharacters = useMemo(
+    () => PLAYER_CHARACTER_KEYS.filter((key) => !taken.includes(key)),
+    [taken],
   );
   const chosenCharacter = form.watch("avatarKey");
 
