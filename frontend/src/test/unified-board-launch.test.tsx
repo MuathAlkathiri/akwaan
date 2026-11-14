@@ -538,7 +538,9 @@ describe("unified board", () => {
       { hidden: true },
     );
     // The draw: no team's colour, and the tally says so out loud.
-    expect(tile("0#slot_1").className).not.toMatch(/bg-team-\d/);
+    const disc = (key: string) => tile(key).firstElementChild as HTMLElement;
+    expect(disc("0#slot_1").className).not.toMatch(/bg-team-\d/);
+    expect(disc("0#slot_2").className).toContain("bg-team-2-fill");
     expect(tile("0#slot_1").getAttribute("aria-label")).toContain("تعادل");
     expect(dashes[0].className).not.toMatch(/bg-team-\d/);
     // The win: the winner's colour in both places, and the same winner.
@@ -568,7 +570,10 @@ describe("unified board", () => {
     expect(blocked.getAttribute("title")).toContain(
       "ما تقدرون تختارون تحدي الحين",
     );
-    expect(blocked.getAttribute("aria-label")).toContain(
+    // The circle only says it is shut; the heading carries the sentence once,
+    // rather than a screen reader hearing it from every available circle.
+    expect(blocked.getAttribute("aria-label")).toContain("مقفل الحين");
+    expect(blocked.getAttribute("aria-label")).not.toContain(
       "ما تقدرون تختارون تحدي الحين",
     );
   });

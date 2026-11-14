@@ -218,7 +218,9 @@ function OrbitNode({
       ? "قيد اللعب"
       : unplayable
         ? (reason?.detail ?? reason?.label ?? "غير متاح")
-        : (blockedReason ?? "جاهز للاختيار");
+        : blockedReason
+          ? "مقفل الحين"
+          : "جاهز للاختيار";
 
   // Whatever is worth hovering: why it cannot be played, or why nothing can be
   // picked right now. The old tile printed this under the icon; here it is the
@@ -239,7 +241,7 @@ function OrbitNode({
           inProgress && "bg-[hsl(var(--brand-gold))]",
           unplayable &&
             "border-[hsl(var(--brand-navy)/.22)] bg-muted shadow-none",
-          interactive && "transition-transform group-hover:-translate-y-0.5",
+          interactive && "transition-transform group-hover:-translate-y-0.5 motion-reduce:transition-none",
         )}
       >
         {pending ? (
@@ -247,7 +249,7 @@ function OrbitNode({
           // icon on gold: the circles are what the host aims at and the room
           // reads, so they hold still, and a spinner here also hid which of the
           // twelve was actually running.
-          <Loader2 className="size-[44%] animate-spin" aria-hidden />
+          <Loader2 className="size-[44%] animate-spin motion-reduce:animate-none" aria-hidden />
         ) : (
           <Icon
             className={cn("size-[44%]", unplayable && "text-disabled-foreground")}
@@ -387,7 +389,7 @@ export function WorldOrbit({
           style={{ animationDelay: `${-seed * 2.3}s` }}
         >
           {artwork ? (
-// Zoomed onto the World's own planet. A World's picture is a
+            // Zoomed onto the World's own planet. A World's picture is a
             // planet drawn in the middle of a light sky, so a plain crop
             // leaves a pale rim inside the circle and the whole thing reads
             // as a square photo in a sticker. 1.35 fills the circle with the
