@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, Layers, RefreshCw, Sparkles } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,16 +9,14 @@ import {
   prepareUnifiedChallenge,
 } from "@/features/match-setup";
 import { usePlayableWorlds } from "@/features/worlds/hooks/use-player-catalog";
-import { getMediaUrl } from "@/lib/api/media-url";
-import { teamIdentityOf } from "@/lib/team-identity";
+import { WorldMedia } from "@/components/akwaan/world-media";
+import { ARABIC_NOUNS, arabicCount } from "@/lib/arabic-plural";
 import { useLiveSession } from "../../hooks/live-session-context";
-import {
-  ORBIT_CORNERS,
-  ORBIT_DUST,
-  OrbitChallenge,
-} from "./unified-board-orbit-tile";
+import { UnifiedBoardTile } from "./unified-board-tile";
 import { localizeMatchError } from "../errors/match-errors";
 import { teamName } from "../presentation";
+import { teamIdentityOf } from "@/lib/team-identity";
+import { cn } from "@/lib/utils";
 import type {
   MatchActor,
   MatchTeamStanding,
@@ -108,12 +106,6 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
     }));
   const isController = actor === "controller";
   const board = unified.board;
-  const activeIdentity = unified.selectingTeamId
-    ? teamIdentityOf(
-        unified.selectingTeamId,
-        standings.map((team) => ({ id: team.teamId })),
-      )
-    : undefined;
   // The server's own answer to "may the host start anything right now".
   const selectionOpen = match.availableActions.includes(
     "match:launch-challenge",
@@ -122,22 +114,18 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
     ? (standings.find((team) => team.teamId === unified.selectingTeamId)
         ?.name ?? teamName(snapshot, unified.selectingTeamId))
     : undefined;
+  const activeIdentity = unified.selectingTeamId
+    ? teamIdentityOf(
+        unified.selectingTeamId,
+        standings.map((team) => ({ id: team.teamId })),
+      )
+    : undefined;
   return (
     <div className="space-y-4" data-testid="unified-board">
-      {/* Whose turn it is, said once and out loud. The board used to whisper
-          it with a thin underline under three pictures, which is a lot of
-          screen for a fact the room has to act on. */}
       {selectingTeamName && (
-        <h1
-          data-testid="selecting-team-board"
-          className="flex items-center justify-center gap-3 text-center font-display text-2xl font-black"
-        >
-          <span
-            aria-hidden
-            className={`size-3 rounded-full ${activeIdentity?.dot ?? "bg-[hsl(var(--brand-navy))]"}`}
-          />
-          دور {selectingTeamName}، اختاروا تحديكم
-        </h1>
+        <span data-testid="selecting-team-board" className="sr-only">
+          {selectingTeamName} — دوركم الآن لاختيار تحدٍ
+        </span>
       )}
       <div className="flex justify-end lg:hidden">
         {/* The shell's own progress bar takes over at `lg`, where this became the
@@ -159,7 +147,7 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
       {board.positions.length === 0 ? (
         <EmptyBoard onResync={() => resync?.()} />
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 xl:gap-8">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
           {unified.occurrences.map((occurrence) => {
             // Sorted by slot, not left in whatever order the array arrived in: the
             // three columns showed their four challenges in different orders with no
@@ -180,69 +168,75 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
                 key={occurrence.occurrenceIndex}
                 aria-label={`${occurrenceLabel(occurrence.occurrenceIndex)} · ${occurrence.worldName ?? ""}`}
                 data-testid={`unified-occurrence-${occurrence.occurrenceIndex}`}
-                className="flex flex-col items-center gap-2"
+                className="flex flex-col gap-3 rounded-[1.5rem] border border-[hsl(var(--brand-gold)/.34)] bg-white/75 p-3.5 shadow-[0_18px_45px_-34px_hsl(var(--brand-navy)/.42)] sm:p-4"
               >
-                {/* The World is a planet and its four challenges are in orbit
-                    around it. A column of four identical rows said nothing
-                    about what a World is; this says it without a word. */}
-                <div className="relative mx-auto aspect-square w-full max-w-[26rem]">
-                  {/* A nebula of gold dust rather than a drawn circle: four
-                      clouds at different sizes and densities, which is what
-                      makes it read as dust instead of a smear. Gold alone —
-                      the World artwork is the colour on this page, and a
-                      second palette around it only fights with it. */}
+                {/* A repeated World gives three columns identical artwork, so the
+                    station number is stated outside the picture where nothing can
+                    make it ambiguous. The numeral is the distinguishing mark; the
+                    artwork is still the personality. */}
+                <div className="flex items-center gap-2 px-0.5 py-0.5">
                   <span
                     aria-hidden
-                    className="absolute top-1/2 left-1/2 size-[92%] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[9px]"
-                    style={{
-                      background: [
-                        "radial-gradient(circle at 26% 30%, hsl(var(--brand-gold)/.55), transparent 42%)",
-                        "radial-gradient(circle at 76% 62%, hsl(var(--brand-gold)/.42), transparent 40%)",
-                        "radial-gradient(circle at 56% 86%, hsl(var(--brand-gold)/.34), transparent 38%)",
-                        "radial-gradient(circle, transparent 47%, hsl(var(--brand-gold)/.16) 56%, transparent 74%)",
-                      ].join(","),
-                    }}
-                  />
-                  {ORBIT_DUST.map((star) => (
-                    <span
-                      key={`${star.left}-${star.top}`}
-                      aria-hidden
-                      className="absolute size-[2px] rounded-full bg-[hsl(var(--brand-gold)/.5)]"
-                      style={{ left: star.left, top: star.top }}
-                    />
-                  ))}
-                  <span
-                    aria-hidden
-                    className="absolute inset-[9%] rounded-full border border-[hsl(var(--brand-navy)/.09)]"
-                  />
-                  <span className="absolute top-1/2 left-1/2 size-[62%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full shadow-[0_14px_36px_-20px_hsl(var(--brand-navy)/.55)]">
-                    {/* The planet is the picture alone: its name is printed
-                        under the orbit, and printing it twice put a caption
-                        across the middle of the artwork. */}
-                    {artworkByWorldId.get(occurrence.worldId) ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={getMediaUrl(
-                          artworkByWorldId.get(occurrence.worldId)!,
-                        )}
-                        alt=""
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      <span className="font-display grid size-full place-items-center bg-[hsl(var(--brand-gold)/.14)] p-3 text-center text-sm font-black text-[hsl(var(--brand-navy)/.65)]">
-                        {occurrence.worldName ?? "عالم"}
-                      </span>
-                    )}
+                    className="akwaan-numeral grid size-8 shrink-0 place-items-center rounded-full bg-[hsl(var(--brand-navy))] text-sm font-black text-white"
+                  >
+                    {occurrence.occurrenceIndex + 1}
                   </span>
-                  {positions.map((position, index) => {
+                  <span className="truncate font-display text-base font-black text-foreground sm:text-lg">
+                    {occurrenceLabel(occurrence.occurrenceIndex)}
+                  </span>
+                  <Sparkles
+                    className="ms-auto size-4 text-[hsl(var(--brand-gold)/.7)]"
+                    aria-hidden
+                  />
+                </div>
+
+                {/* The World is the hero of its own column. */}
+                <div
+                  className={cn(
+                    "overflow-hidden rounded-[1rem] border-b-[3px]",
+                    activeIdentity?.slot === "2"
+                      ? "border-b-team-2-base"
+                      : "border-b-team-1-base",
+                  )}
+                >
+                  <WorldMedia
+                    name={occurrence.worldName ?? "عالم"}
+                    {...(artworkByWorldId.get(occurrence.worldId)
+                      ? { imageUrl: artworkByWorldId.get(occurrence.worldId) }
+                      : {})}
+                    priority={occurrence.occurrenceIndex === 0}
+                    variant="strip"
+                    className="!aspect-[16/6.5] rounded-none"
+                  >
+                    <span className="akwaan-numeral rounded-full border border-white/30 bg-[hsl(var(--brand-navy)/.72)] px-2.5 py-1 text-xs font-black text-white">
+                      {done}/{positions.length}
+                    </span>
+                  </WorldMedia>
+                </div>
+
+                <p className="flex min-h-5 items-start gap-1.5 px-0.5 text-xs font-bold leading-5 text-[hsl(var(--brand-navy)/.68)]">
+                  <Layers className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                  <span className="min-w-0">
+                    {occurrence.selectedScopes.length
+                      ? occurrence.selectedScopes
+                          .map((scope) => scope.name || scope.scopeId)
+                          .join(" · ")
+                      : arabicCount(
+                          occurrence.selectedScopeIds.length,
+                          ARABIC_NOUNS.scope,
+                        )}
+                  </span>
+                </p>
+
+                <div className="grid gap-2">
+                  {positions.map((position) => {
                     const playable =
                       position.status === "available" &&
                       position.launchability === "launchable";
                     return (
-                      <OrbitChallenge
+                      <UnifiedBoardTile
                         key={position.positionKey}
                         position={position}
-                        corner={ORBIT_CORNERS[index % ORBIT_CORNERS.length]}
                         // Any available position, from any occurrence, at any time.
                         canSelect={isController && playable && selectionOpen}
                         {...(isController && playable && !selectionOpen
@@ -256,16 +250,6 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
                     );
                   })}
                 </div>
-
-                <p className="akwaan-numeral text-xs font-black text-[hsl(var(--brand-navy)/.62)]">
-                  {occurrenceLabel(occurrence.occurrenceIndex)} ·{" "}
-                  <span dir="ltr" className="inline-block">
-                    {done} / {positions.length}
-                  </span>
-                </p>
-                <h2 className="font-display text-center text-2xl font-black">
-                  {occurrence.worldName ?? "عالم"}
-                </h2>
               </section>
             );
           })}

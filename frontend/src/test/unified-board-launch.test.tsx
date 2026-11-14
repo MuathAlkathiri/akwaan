@@ -206,21 +206,21 @@ describe("unified board", () => {
     expect(screen.queryByTestId("team-scoreboard")).toBeNull();
   });
 
-  it("keeps a repeated World's two stations apart, and gives each its four", () => {
+  it("shows every occurrence its own four Scopes, repeats included", () => {
     renderBoard(unifiedMatch());
 
     const first = screen.getByTestId("unified-occurrence-0");
     const third = screen.getByTestId("unified-occurrence-2");
-    // The Scopes are no longer printed on the board — they were chosen during
-    // setup and cannot change mid-Match, and twelve of them under three orbits
-    // was a paragraph nobody reads. So the station number is what tells two
-    // orbits of the same World apart, and it has to be on each of them.
+    // The occurrence is headed by its World artwork: the occurrence label is the
+    // eyebrow and the World name is the title, so both read on the same header.
     expect(first.textContent).toContain("العالم الأول");
     expect(first.textContent).toContain("انمي");
     expect(third.textContent).toContain("العالم الثالث");
-    expect(third.textContent).toContain("انمي");
-    expect(first.textContent).not.toContain("العالم الثالث");
-    expect(first.textContent).not.toContain("نطاق");
+    for (let index = 0; index < 4; index += 1) {
+      expect(first.textContent).toContain(`نطاق 0-${index}`);
+      expect(third.textContent).toContain(`نطاق 2-${index}`);
+    }
+    expect(first.textContent).not.toContain("نطاق 2-0");
     expect(within(first).getAllByTestId(/^unified-position-/)).toHaveLength(4);
     expect(within(third).getAllByTestId(/^unified-position-/)).toHaveLength(4);
   });
@@ -293,12 +293,8 @@ describe("unified board", () => {
   it("marks a phone-required tile without deciding anything itself", () => {
     renderBoard(unifiedMatch());
 
-    // The badge is driven by the server capability, per position. It is a
-    // badge rather than a line of text: the words under all twelve circles
-    // were the same four syllables twelve times over.
-    expect(
-      within(tile("0#slot_2")).getByLabelText("يحتاج جوالات"),
-    ).toBeTruthy();
+    // The badge is driven by the server capability, per position.
+    expect(within(tile("0#slot_2")).getByText("يحتاج جوالات")).toBeTruthy();
     const positions = OCCURRENCE_WORLDS.flatMap((worldId, occurrenceIndex) =>
       SLOTS.map((slotKey, index) =>
         position(occurrenceIndex, worldId, slotKey, index, {
