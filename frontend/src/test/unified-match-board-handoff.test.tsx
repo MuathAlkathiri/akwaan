@@ -217,12 +217,13 @@ describe("unified Match board handoff", () => {
 
     const first = screen.getByTestId("unified-occurrence-0");
     const third = screen.getByTestId("unified-occurrence-2");
-    // Same World name at both, and four distinct positions each.
+    // Same World at both, told apart by the station it is, with four distinct
+    // positions each. The Scopes are no longer on the board.
     expect(first.textContent).toContain("انمي");
     expect(third.textContent).toContain("انمي");
-    expect(first.textContent).toContain("نطاق 0-0");
-    expect(third.textContent).toContain("نطاق 2-0");
-    expect(first.textContent).not.toContain("نطاق 2-0");
+    expect(first.textContent).toContain("العالم الأول");
+    expect(third.textContent).toContain("العالم الثالث");
+    expect(first.textContent).not.toContain("العالم الثالث");
     expect(
       within(first).getByTestId("unified-position-0#slot_2"),
     ).not.toBe(within(third).getByTestId("unified-position-2#slot_2"));
@@ -292,10 +293,11 @@ describe("unified Match board handoff", () => {
     expect(screen.getByTestId("board-progress").textContent).toBe("1/12");
     const completed = screen.getByTestId("unified-position-2#slot_2");
     expect(within(completed).getByLabelText("مكتمل")).toBeTruthy();
-    // The completed tile keeps its score as a team-coloured chip, so the name
-    // and the number both stay on the board after the challenge ends.
-    expect(completed.textContent).toContain("أسود الشمال");
-    expect(completed.textContent).toContain("2");
+    // The circle keeps the result after the challenge ends: its colour is the
+    // winner's, and the name and the number are in its accessible name.
+    const result = completed.getAttribute("aria-label") ?? "";
+    expect(result).toContain("أسود الشمال");
+    expect(result).toContain("2");
     // The identically-slotted position of the repeated World is untouched.
     expect(
       within(screen.getByTestId("unified-position-0#slot_2")).queryByLabelText(

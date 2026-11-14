@@ -556,6 +556,26 @@
   animation: akwaan-float 6s ease-in-out infinite;
 }
 
+/* The Match board's galaxies. One turn takes well over a minute: at that speed
+   nobody watching for a second sees motion, and anybody who looks up a minute
+   later finds the sky has moved. The planets drift a couple of pixels on their
+   own cycle so the three never breathe in step. Both are stilled below. */
+.akwaan-galaxy {
+  animation: akwaan-orbit 80s linear infinite;
+}
+@keyframes akwaan-planet-drift {
+  0%,
+  100% {
+    transform: translateY(-2.5px);
+  }
+  50% {
+    transform: translateY(2.5px);
+  }
+}
+.akwaan-planet-drift {
+  animation: akwaan-planet-drift 7s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .akwaan-rise,
   .akwaan-pop,
@@ -569,6 +589,8 @@
   .akwaan-soft-pop,
   .akwaan-orbit,
   .akwaan-orbit-reverse,
+  .akwaan-galaxy,
+  .akwaan-planet-drift,
   .akwaan-float {
     animation: none;
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Layers, RefreshCw, Sparkles } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,10 +9,8 @@ import {
   prepareUnifiedChallenge,
 } from "@/features/match-setup";
 import { usePlayableWorlds } from "@/features/worlds/hooks/use-player-catalog";
-import { WorldMedia } from "@/components/akwaan/world-media";
-import { ARABIC_NOUNS, arabicCount } from "@/lib/arabic-plural";
 import { useLiveSession } from "../../hooks/live-session-context";
-import { UnifiedBoardTile } from "./unified-board-tile";
+import { WorldOrbit } from "./world-orbit";
 import { localizeMatchError } from "../errors/match-errors";
 import { teamName } from "../presentation";
 import { teamIdentityOf } from "@/lib/team-identity";
@@ -122,10 +120,23 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
     : undefined;
   return (
     <div className="space-y-4" data-testid="unified-board">
+      {/* Whose turn it is, said once and out loud, in that side's own
+          colour. The board used to whisper it with a thin underline under
+          three pictures — a lot of screen for a fact the room has to act on. */}
       {selectingTeamName && (
-        <span data-testid="selecting-team-board" className="sr-only">
-          {selectingTeamName} — دوركم الآن لاختيار تحدٍ
-        </span>
+        <h1
+          data-testid="selecting-team-board"
+          className="font-display flex items-center justify-center gap-3 text-center text-2xl font-black"
+        >
+          <span
+            aria-hidden
+            className={cn(
+              "size-3 rounded-full",
+              activeIdentity?.dot ?? "bg-[hsl(var(--brand-navy))]",
+            )}
+          />
+          دور {selectingTeamName}، اختاروا تحديكم
+        </h1>
       )}
       <div className="flex justify-end lg:hidden">
         {/* The shell's own progress bar takes over at `lg`, where this became the
@@ -147,7 +158,7 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
       {board.positions.length === 0 ? (
         <EmptyBoard onResync={() => resync?.()} />
       ) : (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
+        <div className="grid gap-10 md:grid-cols-3 md:gap-6 xl:gap-10">
           {unified.occurrences.map((occurrence) => {
             // Sorted by slot, not left in whatever order the array arrived in: the
             // three columns showed their four challenges in different orders with no
@@ -168,88 +179,85 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
                 key={occurrence.occurrenceIndex}
                 aria-label={`${occurrenceLabel(occurrence.occurrenceIndex)} · ${occurrence.worldName ?? ""}`}
                 data-testid={`unified-occurrence-${occurrence.occurrenceIndex}`}
-                className="flex flex-col gap-3 rounded-[1.5rem] border border-[hsl(var(--brand-gold)/.34)] bg-white/75 p-3.5 shadow-[0_18px_45px_-34px_hsl(var(--brand-navy)/.42)] sm:p-4"
+                className="flex flex-col"
               >
-                {/* A repeated World gives three columns identical artwork, so the
-                    station number is stated outside the picture where nothing can
-                    make it ambiguous. The numeral is the distinguishing mark; the
-                    artwork is still the personality. */}
-                <div className="flex items-center gap-2 px-0.5 py-0.5">
-                  <span
-                    aria-hidden
-                    className="akwaan-numeral grid size-8 shrink-0 place-items-center rounded-full bg-[hsl(var(--brand-navy))] text-sm font-black text-white"
-                  >
-                    {occurrence.occurrenceIndex + 1}
-                  </span>
-                  <span className="truncate font-display text-base font-black text-foreground sm:text-lg">
-                    {occurrenceLabel(occurrence.occurrenceIndex)}
-                  </span>
-                  <Sparkles
-                    className="ms-auto size-4 text-[hsl(var(--brand-gold)/.7)]"
-                    aria-hidden
-                  />
-                </div>
+                {/* The artwork is the World's name on this screen: printing it
+                    underneath as well put a caption under every orbit and made
+                    three systems read as three cards. Which station this is,
+                    and which World, still has to reach anybody who cannot see
+                    the picture — so it is said here and only here. */}
+                <span className="sr-only">
+                  {occurrenceLabel(occurrence.occurrenceIndex)} ·{" "}
+                  {occurrence.worldName ?? "عالم"} · {done} من{" "}
+                  {positions.length}
+                </span>
 
-                {/* The World is the hero of its own column. */}
-                <div
-                  className={cn(
-                    "overflow-hidden rounded-[1rem] border-b-[3px]",
-                    activeIdentity?.slot === "2"
-                      ? "border-b-team-2-base"
-                      : "border-b-team-1-base",
-                  )}
+                <WorldOrbit
+                  seed={occurrence.occurrenceIndex}
+                  worldName={occurrence.worldName ?? "عالم"}
+                  {...(artworkByWorldId.get(occurrence.worldId)
+                    ? { artworkUrl: artworkByWorldId.get(occurrence.worldId) }
+                    : {})}
+                  positions={positions}
+                  // Any available position, from any occurrence, at any time.
+                  canSelect={(position) =>
+                    isController &&
+                    selectionOpen &&
+                    position.status === "available" &&
+                    position.launchability === "launchable"
+                  }
+                  blockedReason={(position) =>
+                    isController &&
+                    !selectionOpen &&
+                    position.status === "available" &&
+                    position.launchability === "launchable"
+                      ? "ما تقدرون تختارون تحدي الحين."
+                      : undefined
+                  }
+                  {...(pending ? { pendingKey: pending } : {})}
+                  standings={standings}
+                  onSelect={(chosen) => void prepare(chosen)}
+                  onResume={() => resync?.()}
+                />
+
+                {/* Four dashes, one per challenge, each taking the colour of
+                    the side that won it. A fraction told the host how many
+                    were done; this also tells them who has been winning. */}
+                <ol
+                  aria-hidden
+                  className="mt-3 flex justify-center gap-1.5"
+                  dir="ltr"
                 >
-                  <WorldMedia
-                    name={occurrence.worldName ?? "عالم"}
-                    {...(artworkByWorldId.get(occurrence.worldId)
-                      ? { imageUrl: artworkByWorldId.get(occurrence.worldId) }
-                      : {})}
-                    priority={occurrence.occurrenceIndex === 0}
-                    variant="strip"
-                    className="!aspect-[16/6.5] rounded-none"
-                  >
-                    <span className="akwaan-numeral rounded-full border border-white/30 bg-[hsl(var(--brand-navy)/.72)] px-2.5 py-1 text-xs font-black text-white">
-                      {done}/{positions.length}
-                    </span>
-                  </WorldMedia>
-                </div>
-
-                <p className="flex min-h-5 items-start gap-1.5 px-0.5 text-xs font-bold leading-5 text-[hsl(var(--brand-navy)/.68)]">
-                  <Layers className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                  <span className="min-w-0">
-                    {occurrence.selectedScopes.length
-                      ? occurrence.selectedScopes
-                          .map((scope) => scope.name || scope.scopeId)
-                          .join(" · ")
-                      : arabicCount(
-                          occurrence.selectedScopeIds.length,
-                          ARABIC_NOUNS.scope,
-                        )}
-                  </span>
-                </p>
-
-                <div className="grid gap-2">
                   {positions.map((position) => {
-                    const playable =
-                      position.status === "available" &&
-                      position.launchability === "launchable";
+                    const winner =
+                      position.status === "completed"
+                        ? (position.scoreSummary ?? []).reduce<
+                            { teamId: string; signedTotal: number } | undefined
+                          >(
+                            (best, score) =>
+                              !best || score.signedTotal > best.signedTotal
+                                ? score
+                                : best,
+                            undefined,
+                          )
+                        : undefined;
+                    const identity = winner
+                      ? teamIdentityOf(
+                          winner.teamId,
+                          standings.map((team) => ({ id: team.teamId })),
+                        )
+                      : undefined;
                     return (
-                      <UnifiedBoardTile
+                      <li
                         key={position.positionKey}
-                        position={position}
-                        // Any available position, from any occurrence, at any time.
-                        canSelect={isController && playable && selectionOpen}
-                        {...(isController && playable && !selectionOpen
-                          ? { blockedReason: "ما تقدرون تختارون تحدي الحين." }
-                          : {})}
-                        pending={pending === position.positionKey}
-                        standings={standings}
-                        onSelect={(chosen) => void prepare(chosen)}
-                        onResume={() => resync?.()}
+                        className={cn(
+                          "h-1.5 w-6 rounded-full",
+                          identity ? identity.dot : "bg-[hsl(var(--brand-navy)/.12)]",
+                        )}
                       />
                     );
                   })}
-                </div>
+                </ol>
               </section>
             );
           })}

@@ -206,21 +206,23 @@ describe("unified board", () => {
     expect(screen.queryByTestId("team-scoreboard")).toBeNull();
   });
 
-  it("shows every occurrence its own four Scopes, repeats included", () => {
+  it("names its station and World for anyone who cannot see the artwork", () => {
     renderBoard(unifiedMatch());
 
     const first = screen.getByTestId("unified-occurrence-0");
     const third = screen.getByTestId("unified-occurrence-2");
-    // The occurrence is headed by its World artwork: the occurrence label is the
-    // eyebrow and the World name is the title, so both read on the same header.
+    // The artwork is the World's name on this screen, so nothing is printed
+    // under the orbit. Which station this is, and which World, still has to
+    // reach a screen reader — and it is what tells two orbits of a repeated
+    // World apart. The Scopes are not on the board at all: they were chosen
+    // during setup, cannot change mid-Match, and twelve of them under three
+    // orbits was a paragraph nobody reads.
     expect(first.textContent).toContain("العالم الأول");
     expect(first.textContent).toContain("انمي");
     expect(third.textContent).toContain("العالم الثالث");
-    for (let index = 0; index < 4; index += 1) {
-      expect(first.textContent).toContain(`نطاق 0-${index}`);
-      expect(third.textContent).toContain(`نطاق 2-${index}`);
-    }
-    expect(first.textContent).not.toContain("نطاق 2-0");
+    expect(third.textContent).toContain("انمي");
+    expect(first.textContent).not.toContain("العالم الثالث");
+    expect(first.textContent).not.toContain("نطاق");
     expect(within(first).getAllByTestId(/^unified-position-/)).toHaveLength(4);
     expect(within(third).getAllByTestId(/^unified-position-/)).toHaveLength(4);
   });
@@ -293,8 +295,12 @@ describe("unified board", () => {
   it("marks a phone-required tile without deciding anything itself", () => {
     renderBoard(unifiedMatch());
 
-    // The badge is driven by the server capability, per position.
-    expect(within(tile("0#slot_2")).getByText("يحتاج جوالات")).toBeTruthy();
+    // The badge is driven by the server capability, per position. It is a
+    // badge rather than a line of text: the words under all twelve circles
+    // were the same four syllables twelve times over.
+    expect(
+      within(tile("0#slot_2")).getByLabelText("يحتاج جوالات"),
+    ).toBeTruthy();
     const positions = OCCURRENCE_WORLDS.flatMap((worldId, occurrenceIndex) =>
       SLOTS.map((slotKey, index) =>
         position(occurrenceIndex, worldId, slotKey, index, {
@@ -309,12 +315,16 @@ describe("unified board", () => {
     renderBoard(unifiedMatch());
 
     const locked = tile("0#slot_1");
-    expect(locked.textContent).toContain("هذا التحدي مو مفعّل في أكوان");
+    // The reason is the circle's accessible name and its tooltip now, not a
+    // line of text under it: a reason printed beneath every dead circle is
+    // what turned this board into a wall of apologies.
+    const reason = locked.getAttribute("aria-label") ?? "";
+    expect(reason).toContain("هذا التحدي مو مفعّل في أكوان");
     // The old detail named our internals at a room full of players.
-    expect(locked.textContent).not.toContain("الخادم");
+    expect(reason).not.toContain("الخادم");
     // None of the "nearly ready" language this phase exists to remove.
     for (const obsolete of ["قيد التجهيز", "قريبًا", "قريباً"]) {
-      expect(locked.textContent).not.toContain(obsolete);
+      expect(reason).not.toContain(obsolete);
     }
     expect(locked.tagName).toBe("ARTICLE");
   });
@@ -347,15 +357,14 @@ describe("unified board", () => {
     );
     renderBoard(unifiedMatch({ positions }));
 
-    const broken = tile("0#slot_4");
-    expect(broken.textContent).toContain("مو داخلة في إعداد المباراة");
-    // And the unimplemented-mechanic tile still reads the other way round: the
-    // server's two reasons stay two different sentences on the board.
-    expect(broken.textContent).not.toContain("غير مفعّل في أكوان");
-    expect(tile("0#slot_1").textContent).toContain(
-      "هذا التحدي مو مفعّل في أكوان",
-    );
-    expect(tile("0#slot_1").textContent).not.toContain("ليست ضمن إعداد");
+    const broken = tile("0#slot_4").getAttribute("aria-label") ?? "";
+    expect(broken).toContain("مو داخلة في إعداد المباراة");
+    // And the unimplemented-mechanic circle still reads the other way round:
+    // the server's two reasons stay two different sentences on the board.
+    expect(broken).not.toContain("غير مفعّل في أكوان");
+    const locked = tile("0#slot_1").getAttribute("aria-label") ?? "";
+    expect(locked).toContain("هذا التحدي مو مفعّل في أكوان");
+    expect(locked).not.toContain("ليست ضمن إعداد");
   });
 
   it("does not render a mechanic as unavailable just because a slug is unfamiliar", () => {
@@ -416,8 +425,11 @@ describe("unified board", () => {
     expect(screen.getAllByTestId(/^unified-position-/)).toHaveLength(12);
     const completed = tile("2#slot_2");
     expect(within(completed).getByLabelText("مكتمل")).toBeTruthy();
-    expect(completed.textContent).toContain("أسود الشمال");
-    expect(completed.textContent).toContain("2");
+    // Who took it and for how much: the circle says it in colour, the dashes
+    // under the orbit say it again, and the accessible name spells it out.
+    const result = completed.getAttribute("aria-label") ?? "";
+    expect(result).toContain("أسود الشمال");
+    expect(result).toContain("2");
     expect(completed.tagName).toBe("ARTICLE");
     // The identically-slotted position of the repeated World is still open.
     expect(tile("0#slot_2").tagName).toBe("BUTTON");
@@ -443,7 +455,7 @@ describe("unified board", () => {
     const running = tile("1#slot_2");
     expect(running.dataset.status).toBe("in_progress");
     expect(running.tagName).toBe("BUTTON");
-    expect(running.textContent).toContain("قيد اللعب");
+    expect(running.getAttribute("aria-label")).toContain("قيد اللعب");
   });
 
   it("gives a shared screen no launch controls", () => {
