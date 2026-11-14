@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Layers, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,10 +11,10 @@ import {
 import { usePlayableWorlds } from "@/features/worlds/hooks/use-player-catalog";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { teamIdentityOf } from "@/lib/team-identity";
-import { ARABIC_NOUNS, arabicCount } from "@/lib/arabic-plural";
 import { useLiveSession } from "../../hooks/live-session-context";
 import {
   ORBIT_CORNERS,
+  ORBIT_DUST,
   OrbitChallenge,
 } from "./unified-board-orbit-tile";
 import { localizeMatchError } from "../errors/match-errors";
@@ -186,19 +186,36 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
                     around it. A column of four identical rows said nothing
                     about what a World is; this says it without a word. */}
                 <div className="relative mx-auto aspect-square w-full max-w-[26rem]">
-                  {/* One thin ring the four challenges actually sit on, and a
-                      faint halo just outside the planet. A heavy dashed circle
-                      drawn near — but not through — the things it belongs to
-                      reads as decoration that slipped. */}
+                  {/* A nebula of gold dust rather than a drawn circle: four
+                      clouds at different sizes and densities, which is what
+                      makes it read as dust instead of a smear. Gold alone —
+                      the World artwork is the colour on this page, and a
+                      second palette around it only fights with it. */}
                   <span
                     aria-hidden
-                    className="absolute inset-[16%] rounded-full border border-[hsl(var(--brand-gold)/.55)]"
+                    className="absolute top-1/2 left-1/2 size-[92%] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[9px]"
+                    style={{
+                      background: [
+                        "radial-gradient(circle at 26% 30%, hsl(var(--brand-gold)/.55), transparent 42%)",
+                        "radial-gradient(circle at 76% 62%, hsl(var(--brand-gold)/.42), transparent 40%)",
+                        "radial-gradient(circle at 56% 86%, hsl(var(--brand-gold)/.34), transparent 38%)",
+                        "radial-gradient(circle, transparent 47%, hsl(var(--brand-gold)/.16) 56%, transparent 74%)",
+                      ].join(","),
+                    }}
                   />
+                  {ORBIT_DUST.map((star) => (
+                    <span
+                      key={`${star.left}-${star.top}`}
+                      aria-hidden
+                      className="absolute size-[2px] rounded-full bg-[hsl(var(--brand-gold)/.5)]"
+                      style={{ left: star.left, top: star.top }}
+                    />
+                  ))}
                   <span
                     aria-hidden
-                    className="absolute inset-[22%] rounded-full border border-[hsl(var(--brand-gold)/.18)]"
+                    className="absolute inset-[9%] rounded-full border border-[hsl(var(--brand-navy)/.09)]"
                   />
-                  <span className="absolute top-1/2 left-1/2 size-[52%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border-2 border-[hsl(var(--brand-gold)/.8)] bg-[hsl(var(--brand-gold)/.12)] shadow-[0_10px_30px_-18px_hsl(var(--brand-navy)/.6)]">
+                  <span className="absolute top-1/2 left-1/2 size-[62%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full shadow-[0_14px_36px_-20px_hsl(var(--brand-navy)/.55)]">
                     {/* The planet is the picture alone: its name is printed
                         under the orbit, and printing it twice put a caption
                         across the middle of the artwork. */}
@@ -212,7 +229,7 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
                         className="size-full object-cover"
                       />
                     ) : (
-                      <span className="grid size-full place-items-center p-3 text-center font-display text-sm font-black text-[hsl(var(--brand-navy)/.65)]">
+                      <span className="font-display grid size-full place-items-center bg-[hsl(var(--brand-gold)/.14)] p-3 text-center text-sm font-black text-[hsl(var(--brand-navy)/.65)]">
                         {occurrence.worldName ?? "عالم"}
                       </span>
                     )}
@@ -249,19 +266,6 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
                 <h2 className="font-display text-center text-2xl font-black">
                   {occurrence.worldName ?? "عالم"}
                 </h2>
-                <p className="flex items-start justify-center gap-1.5 text-center text-xs font-bold leading-5 text-[hsl(var(--brand-navy)/.6)]">
-                  <Layers className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                  <span className="min-w-0">
-                    {occurrence.selectedScopes.length
-                      ? occurrence.selectedScopes
-                          .map((scope) => scope.name || scope.scopeId)
-                          .join(" · ")
-                      : arabicCount(
-                          occurrence.selectedScopeIds.length,
-                          ARABIC_NOUNS.scope,
-                        )}
-                  </span>
-                </p>
               </section>
             );
           })}

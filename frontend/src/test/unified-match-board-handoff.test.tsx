@@ -217,12 +217,13 @@ describe("unified Match board handoff", () => {
 
     const first = screen.getByTestId("unified-occurrence-0");
     const third = screen.getByTestId("unified-occurrence-2");
-    // Same World name at both, and four distinct positions each.
+    // Same World name at both, told apart by the station number, with four
+    // distinct positions each.
     expect(first.textContent).toContain("انمي");
     expect(third.textContent).toContain("انمي");
-    expect(first.textContent).toContain("نطاق 0-0");
-    expect(third.textContent).toContain("نطاق 2-0");
-    expect(first.textContent).not.toContain("نطاق 2-0");
+    expect(first.textContent).toContain("العالم الأول");
+    expect(third.textContent).toContain("العالم الثالث");
+    expect(first.textContent).not.toContain("العالم الثالث");
     expect(
       within(first).getByTestId("unified-position-0#slot_2"),
     ).not.toBe(within(third).getByTestId("unified-position-2#slot_2"));

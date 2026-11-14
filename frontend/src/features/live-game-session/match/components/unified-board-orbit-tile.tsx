@@ -16,10 +16,29 @@ import type { MatchTeamStanding, UnifiedBoardPosition } from "../types";
  * as decoration that slipped. Fractions, so the orbit scales with the column.
  */
 export const ORBIT_CORNERS = [
-  { left: "60.5%", top: "17.6%" },
-  { left: "12.5%", top: "17.6%" },
-  { left: "60.5%", top: "65.6%" },
-  { left: "12.5%", top: "65.6%" },
+  { left: "67%", top: "14%" },
+  { left: "9%", top: "14%" },
+  { left: "67%", top: "72%" },
+  { left: "9%", top: "72%" },
+] as const;
+
+/**
+ * A scatter of dust, fixed rather than random.
+ *
+ * Random points would move on every render and make the whole board twitch;
+ * these are placed clear of the four challenge circles and of the planet.
+ */
+export const ORBIT_DUST = [
+  { left: "16%", top: "24%" },
+  { left: "84%", top: "30%" },
+  { left: "11%", top: "62%" },
+  { left: "89%", top: "58%" },
+  { left: "28%", top: "90%" },
+  { left: "72%", top: "10%" },
+  { left: "6%", top: "44%" },
+  { left: "94%", top: "48%" },
+  { left: "40%", top: "6%" },
+  { left: "60%", top: "94%" },
 ] as const;
 
 /**
@@ -89,7 +108,7 @@ export function OrbitChallenge({
     : undefined;
 
   const circle = cn(
-    "relative grid aspect-square w-[62%] place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))]",
+    "relative grid aspect-square w-[58%] place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))]",
     completed
       ? owner
         ? owner.solid
@@ -186,7 +205,7 @@ export function OrbitChallenge({
   } as const;
 
   const shell =
-    "absolute flex w-[27%] flex-col items-center gap-1 border-0 bg-transparent p-0";
+    "absolute flex w-[24%] flex-col items-center gap-1 border-0 bg-transparent p-0";
 
   if (interactive) {
     return (

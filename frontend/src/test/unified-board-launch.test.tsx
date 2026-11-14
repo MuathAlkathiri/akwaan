@@ -206,21 +206,21 @@ describe("unified board", () => {
     expect(screen.queryByTestId("team-scoreboard")).toBeNull();
   });
 
-  it("shows every occurrence its own four Scopes, repeats included", () => {
+  it("keeps a repeated World's two stations apart, and gives each its four", () => {
     renderBoard(unifiedMatch());
 
     const first = screen.getByTestId("unified-occurrence-0");
     const third = screen.getByTestId("unified-occurrence-2");
-    // The occurrence is headed by its World artwork: the occurrence label is the
-    // eyebrow and the World name is the title, so both read on the same header.
+    // The Scopes are no longer printed on the board — they were chosen during
+    // setup and cannot change mid-Match, and twelve of them under three orbits
+    // was a paragraph nobody reads. So the station number is what tells two
+    // orbits of the same World apart, and it has to be on each of them.
     expect(first.textContent).toContain("العالم الأول");
     expect(first.textContent).toContain("انمي");
     expect(third.textContent).toContain("العالم الثالث");
-    for (let index = 0; index < 4; index += 1) {
-      expect(first.textContent).toContain(`نطاق 0-${index}`);
-      expect(third.textContent).toContain(`نطاق 2-${index}`);
-    }
-    expect(first.textContent).not.toContain("نطاق 2-0");
+    expect(third.textContent).toContain("انمي");
+    expect(first.textContent).not.toContain("العالم الثالث");
+    expect(first.textContent).not.toContain("نطاق");
     expect(within(first).getAllByTestId(/^unified-position-/)).toHaveLength(4);
     expect(within(third).getAllByTestId(/^unified-position-/)).toHaveLength(4);
   });
