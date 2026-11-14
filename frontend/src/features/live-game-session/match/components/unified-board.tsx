@@ -10,7 +10,7 @@ import {
 } from "@/features/match-setup";
 import { usePlayableWorlds } from "@/features/worlds/hooks/use-player-catalog";
 import { useLiveSession } from "../../hooks/live-session-context";
-import { WorldOrbit } from "./world-orbit";
+import { WorldOrbit, winnerOf } from "./world-orbit";
 import { localizeMatchError } from "../errors/match-errors";
 import { teamName } from "../presentation";
 import { teamIdentityOf } from "@/lib/team-identity";
@@ -135,7 +135,9 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
               activeIdentity?.dot ?? "bg-[hsl(var(--brand-navy))]",
             )}
           />
-          دور {selectingTeamName}، اختاروا تحديكم
+          {selectionOpen
+            ? `دور ${selectingTeamName}، اختاروا تحديكم`
+            : `دور ${selectingTeamName} — ما تقدرون تختارون تحدي الحين`}
         </h1>
       )}
       <div className="flex justify-end lg:hidden">
@@ -222,28 +224,23 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
 
                 {/* Four dashes, one per challenge, each taking the colour of
                     the side that won it. A fraction told the host how many
-                    were done; this also tells them who has been winning. */}
+                    were done; this also tells them who has been winning.
+                    No `dir` of its own: the page is right-to-left and so is
+                    the slot order, so the first dash sits under the first
+                    slot's circle instead of mirroring it. */}
                 <ol
                   aria-hidden
+                  data-testid={`world-tally-${occurrence.occurrenceIndex}`}
                   className="mt-3 flex justify-center gap-1.5"
-                  dir="ltr"
                 >
                   {positions.map((position) => {
-                    const winner =
+                    const winnerTeamId =
                       position.status === "completed"
-                        ? (position.scoreSummary ?? []).reduce<
-                            { teamId: string; signedTotal: number } | undefined
-                          >(
-                            (best, score) =>
-                              !best || score.signedTotal > best.signedTotal
-                                ? score
-                                : best,
-                            undefined,
-                          )
+                        ? winnerOf(position)
                         : undefined;
-                    const identity = winner
+                    const identity = winnerTeamId
                       ? teamIdentityOf(
-                          winner.teamId,
+                          winnerTeamId,
                           standings.map((team) => ({ id: team.teamId })),
                         )
                       : undefined;

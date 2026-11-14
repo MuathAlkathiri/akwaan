@@ -497,6 +497,82 @@ describe("unified board", () => {
     expect(tile("0#slot_2").tagName).toBe("BUTTON");
   });
 
+  it("gives a drawn challenge's colour to neither side, circle and dash alike", () => {
+    // Two places answer "who won this position": the circle's fill and the
+    // dash under the orbit. They used to answer differently — the circle gave
+    // a draw to nobody, the dash gave it to whichever team the score array
+    // listed first — so a team's colour appeared on this board for a
+    // challenge it had not won. Both now ask the same function.
+    const drawn = position(0, ANIME, "slot_1", 1, {
+      status: "completed" as const,
+      scoreSummary: [
+        { teamId: "team-a", signedTotal: 2, displayTotal: 2 },
+        { teamId: "team-b", signedTotal: 2, displayTotal: 2 },
+      ],
+    });
+    const won = position(0, ANIME, "slot_2", 1, {
+      status: "completed" as const,
+      scoreSummary: [
+        { teamId: "team-a", signedTotal: 0, displayTotal: 0 },
+        { teamId: "team-b", signedTotal: 3, displayTotal: 3 },
+      ],
+    });
+    const rest = OCCURRENCE_WORLDS.flatMap((worldId, occurrenceIndex) =>
+      SLOTS.map((slotKey, index) =>
+        position(occurrenceIndex, worldId, slotKey, index),
+      ),
+    ).filter(
+      (candidate) =>
+        candidate.positionKey !== drawn.positionKey &&
+        candidate.positionKey !== won.positionKey,
+    );
+    renderBoard(
+      unifiedMatch({
+        positions: [drawn, won, ...rest],
+        completedPositionCount: 2,
+      }),
+    );
+
+    const dashes = within(screen.getByTestId("world-tally-0")).getAllByRole(
+      "listitem",
+      { hidden: true },
+    );
+    // The draw: no team's colour, and the tally says so out loud.
+    expect(tile("0#slot_1").className).not.toMatch(/bg-team-\d/);
+    expect(tile("0#slot_1").getAttribute("aria-label")).toContain("تعادل");
+    expect(dashes[0].className).not.toMatch(/bg-team-\d/);
+    // The win: the winner's colour in both places, and the same winner.
+    expect(within(tile("0#slot_2")).getByLabelText("مكتمل")).toBeTruthy();
+    expect(tile("0#slot_2").getAttribute("aria-label")).toContain(
+      "صقور الرياض",
+    );
+    expect(dashes[1].className).toContain("bg-team-2-base");
+  });
+
+  it("says so in the heading when the server is not taking a choice", () => {
+    // The heading used to invite a choice the server was refusing, and the
+    // reason reached nothing at all: the blocked circles render as articles,
+    // and only the button branch read it.
+    renderBoard(
+      ((match) => ({
+        ...match,
+        availableActions: ["match:cancel"],
+      }))(unifiedMatch()) as never,
+    );
+
+    expect(screen.getByTestId("selecting-team-board").textContent).toContain(
+      "ما تقدرون تختارون تحدي الحين",
+    );
+    const blocked = tile("0#slot_2");
+    expect(blocked.tagName).toBe("ARTICLE");
+    expect(blocked.getAttribute("title")).toContain(
+      "ما تقدرون تختارون تحدي الحين",
+    );
+    expect(blocked.getAttribute("aria-label")).toContain(
+      "ما تقدرون تختارون تحدي الحين",
+    );
+  });
+
   it("routes the last position to the Match complete screen", () => {
     const positions = OCCURRENCE_WORLDS.flatMap((worldId, occurrenceIndex) =>
       SLOTS.map((slotKey, index) =>

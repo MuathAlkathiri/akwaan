@@ -140,8 +140,16 @@ function GalaxyBand({ seed, gradientId }: { seed: number; gradientId: string }) 
   );
 }
 
-/** Which team a finished challenge went to; a draw belongs to neither. */
-function winnerOf(position: UnifiedBoardPosition): string | undefined {
+/**
+ * Which team a finished challenge went to; a draw belongs to neither.
+ *
+ * Exported because the dashes under the orbit answer the same question, and
+ * they used to answer it differently: a `reduce` that keeps the first highest
+ * score hands a drawn challenge to whichever team the array happened to list
+ * first, and a team's colour then appears on this board for something it did
+ * not win.
+ */
+export function winnerOf(position: UnifiedBoardPosition): string | undefined {
   const scores = position.scoreSummary ?? [];
   if (scores.length === 0) return undefined;
   const best = Math.max(...scores.map((score) => score.signedTotal));
@@ -210,13 +218,22 @@ function OrbitNode({
       ? "قيد اللعب"
       : unplayable
         ? (reason?.detail ?? reason?.label ?? "غير متاح")
-        : "جاهز للاختيار";
+        : (blockedReason ?? "جاهز للاختيار");
+
+  // Whatever is worth hovering: why it cannot be played, or why nothing can be
+  // picked right now. The old tile printed this under the icon; here it is the
+  // title and the accessible name, because twelve copies of one board-level
+  // sentence is what made this screen unreadable.
+  const hint = reason?.detail ?? blockedReason;
 
   const body = (
     <>
       <span
         className={cn(
           "relative grid aspect-square w-[45%] place-items-center rounded-full border-[2.5px] border-[hsl(var(--brand-navy))] bg-white shadow-[0_4px_0_hsl(var(--brand-navy))]",
+          // The shell is a transparent box, so the ring goes on the disc: a
+          // keyboard user needs to see which circle they are on.
+          "group-focus-visible:ring-4 group-focus-visible:ring-[hsl(var(--brand-gold))] group-focus-visible:ring-offset-2",
           completed && owner && owner.solid,
           completed && !owner && "bg-[hsl(var(--brand-navy))] text-white",
           inProgress && "bg-[hsl(var(--brand-gold))]",
@@ -225,7 +242,11 @@ function OrbitNode({
           interactive && "transition-transform group-hover:-translate-y-0.5",
         )}
       >
-        {pending || inProgress ? (
+        {pending ? (
+          // Only a tap in flight spins. An in-progress challenge keeps its own
+          // icon on gold: the circles are what the host aims at and the room
+          // reads, so they hold still, and a spinner here also hid which of the
+          // twelve was actually running.
           <Loader2 className="size-[44%] animate-spin" aria-hidden />
         ) : (
           <Icon
@@ -273,10 +294,10 @@ function OrbitNode({
         type="button"
         {...data}
         style={{ left: place.left, top: place.top }}
-        className={cn(shell, "cursor-pointer")}
+        className={cn(shell, "cursor-pointer focus-visible:outline-none")}
         disabled={pending}
         aria-label={`${position.challengeName} — ${state}`}
-        {...(blockedReason ? { title: blockedReason } : {})}
+        {...(hint ? { title: hint } : {})}
         onClick={() => (inProgress ? onResume() : onSelect(position))}
       >
         {body}
@@ -290,7 +311,7 @@ function OrbitNode({
       style={{ left: place.left, top: place.top }}
       className={shell}
       aria-label={`${position.challengeName} — ${state}`}
-      {...(reason?.detail ? { title: reason.detail } : {})}
+      {...(hint ? { title: hint } : {})}
     >
       {body}
     </article>
@@ -352,7 +373,7 @@ export function WorldOrbit({
           here is a picture of a ring, it is a ring the planet sits inside. */}
       <div
         aria-hidden
-        className="absolute top-[49%] left-1/2 z-0 aspect-square w-[89%] -translate-x-1/2 -translate-y-1/2 [clip-path:inset(-20%_-20%_50%_-20%)] [transform:translate(-50%,-50%)_rotate(-14deg)_scaleY(.326)]"
+        className="absolute top-[49%] left-1/2 z-0 aspect-square w-[89%] [clip-path:inset(-20%_-20%_50%_-20%)] [transform:translate(-50%,-50%)_rotate(-14deg)_scaleY(.326)]"
       >
         <GalaxyBand seed={seed} gradientId={`galaxy-back-${seed}`} />
       </div>
@@ -366,17 +387,17 @@ export function WorldOrbit({
           style={{ animationDelay: `${-seed * 2.3}s` }}
         >
           {artwork ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            // Zoomed onto the World's own planet. A World's picture is a
+// Zoomed onto the World's own planet. A World's picture is a
             // planet drawn in the middle of a light sky, so a plain crop
             // leaves a pale rim inside the circle and the whole thing reads
             // as a square photo in a sticker. 1.35 fills the circle with the
             // planet on the art we have without cutting into what is drawn
             // on it.
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={artwork}
               alt=""
-              className="size-full scale-[1.35] object-cover [transform:scale(1.35)_translateY(2%)]"
+              className="size-full object-cover [transform:scale(1.35)_translateY(2%)]"
             />
           ) : (
             <span className="font-display grid size-full place-items-center bg-[hsl(var(--brand-gold)/.14)] p-3 text-center text-sm font-black text-[hsl(var(--brand-navy)/.65)]">
@@ -400,7 +421,7 @@ export function WorldOrbit({
 
       <div
         aria-hidden
-        className="absolute top-[49%] left-1/2 z-[15] aspect-square w-[89%] -translate-x-1/2 -translate-y-1/2 [clip-path:inset(50%_-20%_-20%_-20%)] [transform:translate(-50%,-50%)_rotate(-14deg)_scaleY(.326)]"
+        className="absolute top-[49%] left-1/2 z-[15] aspect-square w-[89%] [clip-path:inset(50%_-20%_-20%_-20%)] [transform:translate(-50%,-50%)_rotate(-14deg)_scaleY(.326)]"
       >
         <GalaxyBand seed={seed} gradientId={`galaxy-front-${seed}`} />
       </div>
