@@ -367,7 +367,17 @@ export function WorldOrbit({
         >
           {artwork ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={artwork} alt="" className="size-full object-cover" />
+            // Zoomed onto the World's own planet. A World's picture is a
+            // planet drawn in the middle of a light sky, so a plain crop
+            // leaves a pale rim inside the circle and the whole thing reads
+            // as a square photo in a sticker. 1.35 fills the circle with the
+            // planet on the art we have without cutting into what is drawn
+            // on it.
+            <img
+              src={artwork}
+              alt=""
+              className="size-full scale-[1.35] object-cover [transform:scale(1.35)_translateY(2%)]"
+            />
           ) : (
             <span className="font-display grid size-full place-items-center bg-[hsl(var(--brand-gold)/.14)] p-3 text-center text-sm font-black text-[hsl(var(--brand-navy)/.65)]">
               {worldName}
