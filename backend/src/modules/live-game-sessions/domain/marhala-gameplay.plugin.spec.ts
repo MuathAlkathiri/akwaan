@@ -12,6 +12,11 @@ import {
   MarhalaDifficulty,
 } from './marhala-board';
 import { GameplayModeState } from './gameplay-mode.plugin';
+import {
+  C4_GUARDED_V1,
+  fingerprintAnswers,
+} from '../../../common/utils/answer-matching.util';
+import { TOLERANT_MATCHING_ENV } from '../../../common/utils/answer-matching-activation';
 
 /**
  * The المرحلة state machine.
@@ -79,11 +84,23 @@ describe('المرحلة gameplay', () => {
         now: NOW,
         eligibleParticipants: ROSTER,
         ...(submitter ? { submitterParticipantId: submitter } : {}),
+        // Questions, availability and depletion only ever come from the
+        // server's own supplier.
+        ...(type === MARHALA_COMMANDS.openQuestion ||
+        type === MARHALA_COMMANDS.refreshAvailability ||
+        type === MARHALA_COMMANDS.exhausted
+          ? { serverOwnedCommand: true }
+          : {}),
       },
       {
         type,
         payload,
-        runtimeState,
+        // An expiry is only ever sent once the clock has run out: give the
+        // question a deadline already behind NOW unless the test set one.
+        runtimeState:
+          type === MARHALA_COMMANDS.expireQuestion && !runtimeState.deadlineAt
+            ? { ...runtimeState, deadlineAt: '2026-08-20T11:59:00.000Z' }
+            : runtimeState,
         roundState: { phase: runtimeState.phase },
       },
     );
@@ -258,6 +275,93 @@ describe('المرحلة gameplay', () => {
       expect(() =>
         send(MARHALA_COMMANDS.chooseDifficulty, open, { difficulty: 'easy' }),
       ).toThrow(/only be chosen before/);
+    });
+  });
+
+  describe('commands only the server may send', () => {
+    const openQuestion = () => {
+      const chosen = send(MARHALA_COMMANDS.chooseDifficulty, runtime(), {
+        difficulty: 'easy',
+      }).runtimeState;
+      return send(MARHALA_COMMANDS.openQuestion, chosen, {
+        questionJson: JSON.stringify(question('easy')),
+      }).runtimeState;
+    };
+    const raw = (type: string, state: GameplayModeState, payload = {}) =>
+      MARHALA_GAMEPLAY_PLUGIN.handleCommand(
+        { sessionId: 's1', runtimeId: 'runtime-1', now: NOW },
+        {
+          type,
+          payload,
+          runtimeState: state,
+          roundState: { phase: state.phase },
+        },
+      );
+
+    it('refuses an expiry before the deadline', () => {
+      const open = {
+        ...openQuestion(),
+        deadlineAt: '2026-08-20T12:00:30.000Z',
+      };
+      expect(() => raw(MARHALA_COMMANDS.expireQuestion, open)).toThrow(
+        'The question cannot expire before its deadline',
+      );
+    });
+
+    it('refuses an expiry when no deadline is running', () => {
+      expect(() =>
+        raw(MARHALA_COMMANDS.expireQuestion, {
+          ...openQuestion(),
+          deadlineAt: null,
+        }),
+      ).toThrow('The question cannot expire before its deadline');
+    });
+
+    it('accepts an expiry once the deadline has passed', () => {
+      const next = raw(MARHALA_COMMANDS.expireQuestion, {
+        ...openQuestion(),
+        deadlineAt: '2026-08-20T12:00:00.000Z',
+      }).runtimeState;
+      expect(turnsOf(next)[0]).toMatchObject({ resolvedBy: 'timeout' });
+    });
+
+    it.each([
+      [MARHALA_COMMANDS.exhausted, {}],
+      [
+        MARHALA_COMMANDS.refreshAvailability,
+        { availableDifficultiesJson: JSON.stringify(['easy']) },
+      ],
+    ])('refuses %s without the server provenance', (type, payload) => {
+      expect(() => raw(type, runtime(), payload)).toThrow(
+        'Only the server can change what المرحلة can still serve',
+      );
+    });
+  });
+
+  describe('who may supply a question', () => {
+    it('refuses a question the server did not draw, whoever sends it', () => {
+      // Authorised for the controller, which the host's user also is — so the
+      // actor cannot tell the server's draw from a host's request. Without the
+      // server's provenance the question, its answers and its guard are refused.
+      const chosen = send(MARHALA_COMMANDS.chooseDifficulty, runtime(), {
+        difficulty: 'easy',
+      }).runtimeState;
+      expect(() =>
+        MARHALA_GAMEPLAY_PLUGIN.handleCommand(
+          {
+            sessionId: 's1',
+            runtimeId: 'runtime-1',
+            now: NOW,
+            eligibleParticipants: ROSTER,
+          },
+          {
+            type: MARHALA_COMMANDS.openQuestion,
+            payload: { questionJson: JSON.stringify(question('easy')) },
+            runtimeState: chosen,
+            roundState: { phase: chosen.phase },
+          },
+        ),
+      ).toThrow('An المرحلة question can only be opened by the server');
     });
   });
 
@@ -794,6 +898,130 @@ describe('المرحلة gameplay', () => {
       expect(projected.questionMediaJson).toBeUndefined();
       expect(projected.questionPrompt).toBeUndefined();
       expect(projected.phase).toBe('difficulty-choice');
+    });
+  });
+
+  describe('typo tolerance (Phase B: built, switched off by default)', () => {
+    // روكستار, and a different publisher one letter away in the same World.
+    const ACCEPTED = ['روكستار'];
+    const guarded = (blocked: string[] = []): MarhalaRuntimeQuestion => ({
+      ...question('easy'),
+      answerGuard: {
+        policyId: C4_GUARDED_V1.id,
+        answersFingerprint: fingerprintAnswers(ACCEPTED),
+        catalogFingerprint: 'catalog',
+        blockedAnswers: blocked,
+      },
+    });
+    const openWith = (q: MarhalaRuntimeQuestion) => {
+      const chosen = send(MARHALA_COMMANDS.chooseDifficulty, runtime(), {
+        difficulty: 'easy',
+      }).runtimeState;
+      return send(MARHALA_COMMANDS.openQuestion, chosen, {
+        questionJson: JSON.stringify(q),
+      }).runtimeState;
+    };
+    const answer = (state: GameplayModeState, typed: string) =>
+      send(MARHALA_COMMANDS.submitAnswer, state, { answer: typed })
+        .runtimeState;
+    const withTolerance = <T>(run: () => T): T => {
+      const previous = process.env[TOLERANT_MATCHING_ENV];
+      process.env[TOLERANT_MATCHING_ENV] = 'marhala';
+      try {
+        return run();
+      } finally {
+        if (previous === undefined) delete process.env[TOLERANT_MATCHING_ENV];
+        else process.env[TOLERANT_MATCHING_ENV] = previous;
+      }
+    };
+
+    it('is exact-only by default, even when the question carries a guard', () => {
+      const next = answer(openWith(guarded()), 'روكستر');
+      expect(turnsOf(next)[0]).toMatchObject({ correct: false });
+      expect(positionsOf(next)[TEAM_A]).toBe(MARHALA_START_POSITION);
+    });
+
+    it('accepts an exact answer exactly as before', () => {
+      const next = answer(openWith(guarded()), 'روكستار');
+      expect(turnsOf(next)[0]).toMatchObject({ correct: true });
+    });
+
+    it('credits a guarded typo once switched on, and moves the team exactly once', () => {
+      withTolerance(() => {
+        const next = answer(openWith(guarded()), 'روكستر');
+        const turns = turnsOf(next);
+        expect(turns).toHaveLength(1);
+        expect(turns[0]).toMatchObject({ correct: true, teamId: TEAM_A });
+        expect(turns[0].movement).toBeGreaterThanOrEqual(1);
+        // Wherever the server's roll and tile put it — recorded once.
+        expect(positionsOf(next)[TEAM_A]).toBe(
+          turns[0].finalLanding ?? turns[0].baseLanding,
+        );
+        expect(positionsOf(next)[TEAM_A]).toBeGreaterThan(
+          MARHALA_START_POSITION,
+        );
+        // The question is spent: a second answer cannot move anyone again.
+        expect(() => answer(next, 'روكستار')).toThrow();
+      });
+    });
+
+    it('refuses a typo the guard says could be another entity', () => {
+      withTolerance(() => {
+        const next = answer(openWith(guarded(['روكستال'])), 'روكستا');
+        expect(turnsOf(next)[0]).toMatchObject({ correct: false });
+        expect(positionsOf(next)[TEAM_A]).toBe(MARHALA_START_POSITION);
+      });
+    });
+
+    it('stays exact without a guard, or with one built for other answers', () => {
+      withTolerance(() => {
+        expect(
+          turnsOf(answer(openWith(question('easy')), 'روكستر'))[0],
+        ).toMatchObject({ correct: false });
+        const forged: MarhalaRuntimeQuestion = {
+          ...guarded(),
+          answerGuard: {
+            ...guarded().answerGuard!,
+            answersFingerprint: fingerprintAnswers(['something else']),
+          },
+        };
+        expect(turnsOf(answer(openWith(forged), 'روكستر'))[0]).toMatchObject({
+          correct: false,
+        });
+      });
+    });
+
+    it('leaves the clock running out exactly as it was', () => {
+      withTolerance(() => {
+        const next = send(
+          MARHALA_COMMANDS.expireQuestion,
+          openWith(guarded()),
+        ).runtimeState;
+        expect(turnsOf(next)[0]).toMatchObject({
+          correct: false,
+          resolvedBy: 'timeout',
+        });
+        expect(positionsOf(next)[TEAM_A]).toBe(MARHALA_START_POSITION);
+      });
+    });
+
+    it('never projects the guard or the answers to anyone', () => {
+      const open = openWith(guarded(['روكستال']));
+      const views = [
+        MARHALA_GAMEPLAY_PLUGIN.projectRuntimeState(open),
+        MARHALA_GAMEPLAY_PLUGIN.projectRuntimeStateForActor!(open, {
+          kind: 'participant',
+          participantId: 'player-a',
+          teamId: TEAM_A,
+        } as never),
+      ];
+      for (const view of views) {
+        const wire = JSON.stringify(view);
+        expect(wire).not.toContain('answerGuard');
+        expect(wire).not.toContain('روكستال');
+        expect(wire).not.toContain('روكستار');
+        expect(wire).not.toContain(guarded().answerGuard!.answersFingerprint);
+      }
     });
   });
 });

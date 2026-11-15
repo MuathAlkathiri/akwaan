@@ -47,7 +47,10 @@ import { BOMB_MODE_KEY } from '../domain/bomb-gameplay.plugin';
 import { COMBO_MODE_KEY } from '../domain/combo-gameplay.plugin';
 import { CLOSEST_MODE_KEY } from '../domain/closest-gameplay.plugin';
 import { ONE_CLUE_MODE_KEY } from '../domain/one-clue-gameplay.plugin';
-import { findEligibleTeamParticipant } from '../domain/team-participant-eligibility';
+import {
+  findEligibleTeamParticipant,
+  isEligibleTeamParticipant,
+} from '../domain/team-participant-eligibility';
 import { applyGameplaySessionEffects } from './gameplay-session-effects';
 import { ODD_PIECE_MODE_KEY } from '../domain/odd-piece-gameplay.plugin';
 import { LAQATHA_MODE_KEY } from '../domain/laqatha-gameplay.plugin';
@@ -105,16 +108,31 @@ export function assertBombClockExpired(
 export function resolveGameplayCommandRepresentative(
   state: LiveGameSessionState,
   modeKey: string,
+  currentParticipantId?: string,
 ): string | undefined {
   if (!state.activeTeamId) return undefined;
-  return findEligibleTeamParticipant(state.participants, {
+  const requirement = {
     teamId: state.activeTeamId,
     requiresConnectedPresence: true,
     // Active Unified Match Bomb admits connected team players even though
     // lobby readiness is no longer mutable. Other legacy fallback paths keep
     // their explicit readiness contract.
     requiresReady: modeKey !== BOMB_MODE_KEY,
-  })?.id;
+  };
+  // A Bomb owner keeps the bomb for as long as they can still hold it. Without
+  // this, every command — a wrong answer included — re-picked "the first
+  // connected player on the team", which handed the turn back to a reconnected
+  // previous owner mid-question. A correct answer moves the turn to the other
+  // team, where the current owner is not eligible, so the hand-over is unchanged.
+  if (modeKey === BOMB_MODE_KEY && currentParticipantId) {
+    const current = state.participants.find(
+      (participant) => participant.id === currentParticipantId,
+    );
+    if (current && isEligibleTeamParticipant(current, requirement)) {
+      return current.id;
+    }
+  }
+  return findEligibleTeamParticipant(state.participants, requirement)?.id;
 }
 
 @Injectable()
@@ -143,6 +161,12 @@ export class SubmitGameplayCommand {
       commandType: string;
       payload: GameplayCommandPayload;
     },
+    /**
+     * Set only by in-process server code (a mechanic's supplier). Kept out of
+     * `command` on purpose: every socket and HTTP entry point spreads its request
+     * body into `command`, so nothing a client sends can ever reach this.
+     */
+    provenance?: { serverOwned: true },
   ) {
     const result = await this.unitOfWork.execute(async (context) => {
       const session = await context.findSession(command.sessionId);
@@ -206,6 +230,18 @@ export class SubmitGameplayCommand {
       if (command.commandType === 'expire-team') {
         this.assertClockExpired(session.serialize(), now);
       }
+      // A Bomb answer that reaches the server after the answering team's clock
+      // ran out is too late, however correct. It is resolved as the expiry it
+      // arrived after — the same verdict the deadline timer reaches — rather
+      // than judged. Checking only after the command, as the drained-clock
+      // guard below does, was too late for a correct answer: by then the turn
+      // had passed and the clock being checked was the other team's.
+      const lateBombAnswer =
+        runtimeState.modeKey === BOMB_MODE_KEY &&
+        command.commandType === 'submit-answer' &&
+        this.activeClockSpent(session.serialize(), now);
+      const handledType = lateBombAnswer ? 'expire-team' : command.commandType;
+      const handledPayload = lateBombAnswer ? {} : payload;
       let handled = plugin.handleCommand(
         {
           sessionId: session.id,
@@ -221,6 +257,9 @@ export class SubmitGameplayCommand {
           // A mechanic with single-participant team authority needs the live
           // roster to hand its next action to somebody who is actually here.
           eligibleParticipants: eligibleParticipantsOf(session.serialize()),
+          ...(provenance?.serverOwned === true
+            ? { serverOwnedCommand: true }
+            : {}),
           runtimeState: runtimeState.runtimeState,
           awaitingPresentationActivation:
             !runtime.serialize().presentationActivatedAt ||
@@ -238,8 +277,8 @@ export class SubmitGameplayCommand {
           now,
         },
         {
-          type: command.commandType,
-          payload,
+          type: handledType,
+          payload: handledPayload,
           runtimeState: runtimeState.runtimeState,
           roundState: round.modeState,
         },
@@ -350,6 +389,7 @@ export class SubmitGameplayCommand {
           resolveGameplayCommandRepresentative(
             session.serialize(),
             runtime.modeKey,
+            round.activeParticipantId,
           ),
       });
       if (

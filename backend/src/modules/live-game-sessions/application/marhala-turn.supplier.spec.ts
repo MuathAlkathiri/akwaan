@@ -62,6 +62,7 @@ describe('MarhalaTurnSupplier', () => {
     state: GameplayRuntimeState = runtime(),
   ) => {
     const sent: Array<{ commandType: string; payload: unknown }> = [];
+    const provenances: Array<{ serverOwned: true } | undefined> = [];
     const sources = new MarhalaQuestionSourceRegistry();
     const asked: string[] = [];
     sources.register({
@@ -92,17 +93,21 @@ describe('MarhalaTurnSupplier', () => {
       } as never,
       {
         get: () => ({
-          execute: (command: { commandType: string; payload: unknown }) => {
+          execute: (
+            command: { commandType: string; payload: unknown },
+            provenance?: { serverOwned: true },
+          ) => {
             sent.push({
               commandType: command.commandType,
               payload: command.payload,
             });
+            provenances.push(provenance);
             return Promise.resolve(undefined);
           },
         }),
       } as never,
     );
-    return { supplier, sent, asked, state };
+    return { supplier, sent, asked, state, provenances };
   };
 
   const converge = (
@@ -128,6 +133,16 @@ describe('MarhalaTurnSupplier', () => {
         payload: { questionJson: JSON.stringify(QUESTION) },
       },
     ]);
+  });
+
+  it('sends every command as the server, never as a request', async () => {
+    // The host's user is the session controller too. Provenance, not the actor,
+    // is what tells the plugin this question came from the server's own draw.
+    const { supplier, state, provenances } = setup({
+      draw: () => Promise.resolve({ kind: 'question', question: QUESTION }),
+    });
+    await converge(supplier, state);
+    expect(provenances).toEqual([{ serverOwned: true }]);
   });
 
   it('leaves the turn owed when the source cannot answer yet', async () => {

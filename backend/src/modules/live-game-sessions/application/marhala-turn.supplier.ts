@@ -270,18 +270,24 @@ export class MarhalaTurnSupplier implements OnModuleInit {
       return 'turn-moved-on';
     }
     const submit = this.moduleRef.get(SubmitGameplayCommand, { strict: false });
-    await submit.execute({
-      sessionId,
-      // The server acts as the session controller: content, expiry and
-      // exhaustion are its conclusions, not a player's action.
-      actor: { kind: 'user' as const, actorId: session.controllerActorId },
-      commandId: randomUUID(),
-      expectedSessionRevision: session.revision,
-      expectedRuntimeRevision: runtime.revision,
-      roundId: round.id,
-      commandType,
-      payload,
-    });
+    await submit.execute(
+      {
+        sessionId,
+        // The server acts as the session controller: content, expiry and
+        // exhaustion are its conclusions, not a player's action.
+        actor: { kind: 'user' as const, actorId: session.controllerActorId },
+        commandId: randomUUID(),
+        expectedSessionRevision: session.revision,
+        expectedRuntimeRevision: runtime.revision,
+        roundId: round.id,
+        commandType,
+        payload,
+      },
+      // The server's own conclusion. Without this a host's socket could send the
+      // same command as the same controller user — and open a question of its
+      // own choosing, answers and collision guard included.
+      { serverOwned: true },
+    );
     return commandType;
   }
 }

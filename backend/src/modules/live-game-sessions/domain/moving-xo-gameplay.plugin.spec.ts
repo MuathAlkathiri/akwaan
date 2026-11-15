@@ -53,6 +53,11 @@ function run(
       runtimeId: 'r',
       activeTeamId: X,
       now: NOW,
+      // The puzzle and depletion only ever come from the server's supplier.
+      ...(type === MOVING_XO_COMMANDS.openQuestion ||
+      type === MOVING_XO_COMMANDS.exhausted
+        ? { serverOwnedCommand: true }
+        : {}),
       ...context,
     } as never,
     {
@@ -862,5 +867,22 @@ describe('Moving XO plugin — server-owned commands', () => {
     expect(surfaces('answering')).toEqual([{ capability: 'shared' }]);
     expect(surfaces('question-pending')).toBeUndefined();
     expect(surfaces('placement')).toBeUndefined();
+  });
+});
+
+describe('Moving XO plugin — commands only the server may send', () => {
+  // Authorised for the session controller, which the host's user also is, so
+  // the plugin refuses them unless the server's own supplier sent them.
+  it.each([
+    [
+      MOVING_XO_COMMANDS.openQuestion,
+      { questionJson: '{}' },
+      { phase: 'question-pending' },
+    ],
+    [MOVING_XO_COMMANDS.exhausted, {}, {}],
+  ])('refuses %s without the server provenance', (type, payload, over) => {
+    expect(() =>
+      run(type, payload, runtime(over), { serverOwnedCommand: false }),
+    ).toThrow('Only the server can deal a puzzle or end the deck');
   });
 });

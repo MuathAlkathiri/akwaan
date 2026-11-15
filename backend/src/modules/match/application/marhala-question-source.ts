@@ -20,6 +20,26 @@ import {
 import { ContentItemRepository } from '../../world-content/persistence/content-item.repository';
 import { WorldChallengeConfigurationRepository } from '../../world-content/persistence/world-challenge-configuration.repository';
 import { MATCH_CLOCK, MatchClock } from './match-clock';
+import { buildAnswerGuard } from '../../../common/utils/answer-collision-guard.util';
+import { C4_GUARDED_V1 } from '../../../common/utils/answer-matching.util';
+import { isTolerantAnswerMatchingEnabled } from '../../../common/utils/answer-matching-activation';
+import { AnswerGuardCatalogReader } from '../persistence/answer-guard-catalog.reader';
+
+/**
+ * The longest a draw waits for its guard. Past it the question opens without
+ * one — exact-only — rather than holding the team at an empty screen. Covers
+ * what the read's own `maxTimeMS` cannot: a connection that never answers.
+ */
+export const ANSWER_GUARD_BUILD_BUDGET_MS = 2_000;
+
+/** Resolves to `undefined` once the budget is spent, never rejects. */
+function withinBudget<T>(work: Promise<T>, ms: number): Promise<T | undefined> {
+  let timer: NodeJS.Timeout | undefined;
+  const expired = new Promise<undefined>((resolve) => {
+    timer = setTimeout(() => resolve(undefined), ms);
+  });
+  return Promise.race([work, expired]).finally(() => clearTimeout(timer));
+}
 import {
   MATCH_REPOSITORY,
   MatchRepository,
@@ -55,6 +75,7 @@ export class MarhalaQuestionSourceProvider
     private readonly items: ContentItemRepository,
     private readonly configurations: WorldChallengeConfigurationRepository,
     @Inject(MATCH_CLOCK) private readonly clock: MatchClock,
+    private readonly guardCatalog: AnswerGuardCatalogReader,
   ) {}
 
   onModuleInit(): void {
@@ -137,10 +158,11 @@ export class MarhalaQuestionSourceProvider
         : { kind: 'exhausted' };
     }
 
-    const question = await this.hydrate(chosen, request.difficulty);
+    const hydrated = await this.hydrate(chosen, request.difficulty);
     // An item that cannot be reduced to a playable question is a data defect;
     // the turn stays visibly pending rather than ending the race over it.
-    if (!question) return { kind: 'unknown' };
+    if (!hydrated) return { kind: 'unknown' };
+    const question = await this.withAnswerGuard(hydrated, context.worldId);
     this.logger.log({
       event: 'marhala_question_drawn',
       matchId: context.matchId,
@@ -214,6 +236,46 @@ export class MarhalaQuestionSourceProvider
       ]);
     }
     return grouped;
+  }
+
+  /**
+   * Attach the question's collision guard, only while typo tolerance is on for
+   * المرحلة. Built now, from the World's live READY catalog, so it reflects the
+   * content as it stands when the question is drawn — new, edited and retired
+   * items included — and is read once per question, never per answer. Any
+   * reason it cannot be built leaves the question without one, which the
+   * matcher treats as exact-only.
+   */
+  private async withAnswerGuard(
+    question: MarhalaRuntimeQuestion,
+    worldId: string,
+  ): Promise<MarhalaRuntimeQuestion> {
+    if (!isTolerantAnswerMatchingEnabled(MARHALA_MODE_KEY)) return question;
+    try {
+      const domain = await withinBudget(
+        this.guardCatalog.readyMatchAnswers(worldId),
+        ANSWER_GUARD_BUILD_BUDGET_MS,
+      );
+      // Over the ceiling, or not back in time: exact-only for this question.
+      if (!domain) return question;
+      const built = buildAnswerGuard({
+        itemId: question.contentItemId,
+        acceptedAnswers: question.acceptedAnswers,
+        domain,
+        config: C4_GUARDED_V1,
+      });
+      if (built.status !== 'ready') return question;
+      return { ...question, answerGuard: built.guard };
+    } catch (error) {
+      // A guard is an allowance, never a requirement: without one the question
+      // is still played, exactly.
+      this.logger.warn({
+        event: 'marhala_answer_guard_unavailable',
+        contentItemId: question.contentItemId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return question;
+    }
   }
 
   /** Reduce a persisted item to what the runtime plays. */

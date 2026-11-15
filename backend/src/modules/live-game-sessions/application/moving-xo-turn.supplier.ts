@@ -197,18 +197,23 @@ export class MovingXoTurnSupplier implements OnModuleInit {
       return 'turn-moved-on';
     }
     const submit = this.moduleRef.get(SubmitGameplayCommand, { strict: false });
-    await submit.execute({
-      sessionId,
-      // The server acts as the session controller: content and depletion are its
-      // conclusions, not a player's action.
-      actor: { kind: 'user' as const, actorId: session.controllerActorId },
-      commandId: randomUUID(),
-      expectedSessionRevision: session.revision,
-      expectedRuntimeRevision: runtime.revision,
-      roundId: round.id,
-      commandType,
-      payload,
-    });
+    await submit.execute(
+      {
+        sessionId,
+        // The server acts as the session controller: content and depletion are
+        // its conclusions, not a player's action.
+        actor: { kind: 'user' as const, actorId: session.controllerActorId },
+        commandId: randomUUID(),
+        expectedSessionRevision: session.revision,
+        expectedRuntimeRevision: runtime.revision,
+        roundId: round.id,
+        commandType,
+        payload,
+      },
+      // Without this a host's socket could send the same command as the same
+      // controller user: deal its own puzzle, or end the deck early.
+      { serverOwned: true },
+    );
     return commandType;
   }
 }

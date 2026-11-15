@@ -25,6 +25,11 @@ import { BombChallengeLauncher } from './application/bomb-challenge.launcher';
 import { ClosestChallengeLauncher } from './application/closest-challenge.launcher';
 import { MarhalaChallengeLauncher } from './application/marhala-challenge.launcher';
 import { MarhalaQuestionSourceProvider } from './application/marhala-question-source';
+import { AnswerGuardCatalogReader } from './persistence/answer-guard-catalog.reader';
+import {
+  ContentItem,
+  ContentItemSchema,
+} from '../world-content/schemas/content-item.schema';
 import { MovingXoChallengeLauncher } from './application/moving-xo-challenge.launcher';
 import { MovingXoQuestionSourceProvider } from './application/moving-xo-question-source';
 import { ComboChallengeLauncher } from './application/combo-challenge.launcher';
@@ -79,6 +84,9 @@ import { FirstNoteChallengeLauncher } from './application/first-note-challenge.l
         name: ContentExposureDocument.name,
         schema: ContentExposureSchema,
       },
+      // Read-only: the answer-guard catalog reader projects a World's READY
+      // match answers. Writes stay with world-content's own repository.
+      { name: ContentItem.name, schema: ContentItemSchema },
     ]),
   ],
   controllers: [
@@ -117,6 +125,7 @@ import { FirstNoteChallengeLauncher } from './application/first-note-challenge.l
     ComboChallengeLauncher,
     MarhalaChallengeLauncher,
     MarhalaQuestionSourceProvider,
+    AnswerGuardCatalogReader,
     MovingXoChallengeLauncher,
     MovingXoQuestionSourceProvider,
     OneClueChallengeLauncher,

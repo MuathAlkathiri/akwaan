@@ -3,6 +3,7 @@ import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
 import { Connection, Types } from 'mongoose';
 import { createIntegrationTestApp } from '../helpers/test-app';
+import { MovingXoQuestionSourceProvider } from '../../src/modules/match/application/moving-xo-question-source';
 import {
   connectTestDatabase,
   isolatedTestDatabaseUri,
@@ -780,6 +781,68 @@ describe('moving xo lifecycle integration', () => {
           { answer: 'أي شيء' },
         ),
       ).rejects.toThrow();
+    });
+  });
+
+  describe('internal commands a host must not be able to send', () => {
+    // The supplier opens puzzles and declares depletion acting as the session
+    // controller — which the host's own user also is.
+    it('refuses a puzzle supplied by the host instead of the server', async () => {
+      const source = app.get(MovingXoQuestionSourceProvider);
+      const draw = jest
+        .spyOn(source, 'draw')
+        .mockResolvedValue({ kind: 'unknown' } as never);
+      try {
+        const session = await running();
+        expect((await stateOf(session.sessionId)).phase).toBe(
+          'question-pending',
+        );
+        const forged: MovingXoQuestion = {
+          contentItemId: 'forged-item',
+          scopeId: 'forged-scope',
+          answerMode: 'match',
+          prompt: { ar: 'سؤال من عند المضيف' },
+          acceptedAnswers: ['أي شيء'],
+        };
+        await expect(
+          command(
+            session.sessionId,
+            controllerActor(),
+            MOVING_XO_COMMANDS.openQuestion,
+            { questionJson: JSON.stringify(forged) },
+          ),
+        ).rejects.toMatchObject({ code: 'MOVING_XO_COMMAND_NOT_SERVER_OWNED' });
+        const state = await stateOf(session.sessionId);
+        expect(state.phase).toBe('question-pending');
+        expect(state.question ?? null).toBeNull();
+      } finally {
+        draw.mockRestore();
+      }
+    });
+
+    it('refuses a host ending the game as exhausted while puzzles remain', async () => {
+      const session = await running();
+      await expect(
+        command(
+          session.sessionId,
+          controllerActor(),
+          MOVING_XO_COMMANDS.exhausted,
+        ),
+      ).rejects.toMatchObject({ code: 'MOVING_XO_COMMAND_NOT_SERVER_OWNED' });
+      expect((await stateOf(session.sessionId)).phase).not.toBe('completed');
+    });
+
+    it('already refuses a host expiring a question before its deadline', async () => {
+      const session = await running();
+      await activate(session.sessionId);
+      await expect(
+        command(
+          session.sessionId,
+          controllerActor(),
+          MOVING_XO_COMMANDS.expireQuestion,
+        ),
+      ).rejects.toBeDefined();
+      expect((await stateOf(session.sessionId)).phase).toBe('answering');
     });
   });
 

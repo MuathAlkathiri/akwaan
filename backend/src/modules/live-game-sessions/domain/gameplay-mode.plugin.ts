@@ -140,6 +140,13 @@ export interface GameplayPluginContext {
   /** Server-owned command time; reducers must never consult the wall clock. */
   now?: Date;
   /**
+   * True only when the server's own application code issued this command
+   * in-process. Server-side suppliers act *as* the session controller, which is
+   * also the host's user, so the actor alone cannot tell a server conclusion
+   * from a host's request. No socket or HTTP request can set this.
+   */
+  serverOwnedCommand?: boolean;
+  /**
    * Which presentation activation is running when `activatePresentation` is
    * invoked. `initial` (the default when omitted) is the one-time launch
    * activation whose truth is `presentationActivatedAt`; `recurring` is a later

@@ -357,6 +357,22 @@ function handle(
     effects: [] as GameplayCommandResult['effects'],
   };
 
+  // The puzzle and the end of the deck are the server's: its supplier opens
+  // the one and declares the other. Both are authorised for the session
+  // controller, which the host's user also is, so the provenance — not the
+  // actor — is what keeps a host from dealing its own puzzle or ending a game it
+  // was losing with no winner.
+  if (
+    (command.type === MOVING_XO_COMMANDS.openQuestion ||
+      command.type === MOVING_XO_COMMANDS.exhausted) &&
+    context.serverOwnedCommand !== true
+  ) {
+    fail(
+      'MOVING_XO_COMMAND_NOT_SERVER_OWNED',
+      'Only the server can deal a puzzle or end the deck',
+    );
+  }
+
   if (command.type === MOVING_XO_COMMANDS.openQuestion) {
     assertRunning(runtime);
     if (runtime.phase !== 'question-pending') {
