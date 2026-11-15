@@ -17,7 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { cn } from "@/lib/utils";
-import { useLiveSession } from "../hooks/live-session-context";
+import {
+  useLiveSession,
+  type GameplayCommandDelivery,
+} from "../hooks/live-session-context";
 import {
   type BombVoiceState,
   useBombVoiceInput,
@@ -208,7 +211,9 @@ function BombItemText({ prompt }: { prompt: string }) {
 const VOICE_MESSAGES: Partial<Record<BombVoiceState, string>> = {
   listening: "أستمع الآن… تكلّم بوضوح",
   processing: "جارٍ التعرّف على الإجابة…",
-  recognized: "تم التعرّف على الإجابة وإرسالها",
+  // Recognition only. Whether the answer reached the server, and what it said,
+  // is the send button's and the answer notice's to tell — never this line's.
+  recognized: "تعرّفت على إجابتك.",
   "no-speech": "ما سمعت إجابة. اضغط المايك وجرّب مرة ثانية.",
   "permission-denied":
     "لم يتم السماح باستخدام الميكروفون. فعّل الإذن أو استخدم الكتابة.",
@@ -216,6 +221,35 @@ const VOICE_MESSAGES: Partial<Record<BombVoiceState, string>> = {
   reconnecting: "جارٍ إعادة الاتصال. سيتاح الميكروفون بعد الاتصال.",
   error: "ما قدرت أشغّل المايك. جرّب مرة ثانية أو اكتب الإجابة.",
 };
+
+/** The voice line, which says "sending" only while a send is actually open. */
+function voiceMessage(state: BombVoiceState, sending: boolean) {
+  if (state === "recognized" && sending) {
+    return "تعرّفت على إجابتك. جارٍ الإرسال…";
+  }
+  return VOICE_MESSAGES[state];
+}
+
+/** Why the answer field is showing a line under it. Each is the server's word. */
+type AnswerNotice = "incorrect" | "rejected" | "not-sent" | "unknown";
+
+const ANSWER_NOTICES: Record<AnswerNotice, string> = {
+  incorrect: "غلط! جرّب إجابة ثانية.",
+  rejected: "ما انقبلت إجابتك. جرّب مرة ثانية.",
+  "not-sent": "ما انرسلت إجابتك. تأكد من الاتصال وأرسلها مرة ثانية.",
+  unknown: "ما وصلنا رد على إجابتك. إذا السؤال ما تغيّر، أرسلها مرة ثانية.",
+};
+
+interface PendingCommand {
+  /** Identity of this send, so an answer to an older one is never read as its. */
+  token: object;
+  kind: "answer" | "skip";
+  text?: string;
+  /** The runtime revision this phone held when it sent. */
+  revision: number;
+  /** The revision the server answered with, once it has. */
+  ackRevision?: number;
+}
 
 export function BombGameplayPanel({
   runtime,
@@ -233,6 +267,11 @@ export function BombGameplayPanel({
   const [sending, setSending] = useState(false);
   const answerInputRef = useRef<HTMLInputElement>(null);
   const sendingRef = useRef(false);
+  // The one command in flight. Its verdict comes from its own acknowledgement,
+  // never from whatever else the session happens to report meanwhile.
+  const pendingRef = useRef<PendingCommand>();
+  const [acknowledged, setAcknowledged] = useState(0);
+  const [notice, setNotice] = useState<AnswerNotice>();
   const round = runtime.activeRound;
   const activeTeamId = runtime.activeTeamId ?? round?.activeTeamId;
   const clock = useTeamClockDisplay(activeTeamId ?? "");
@@ -266,8 +305,126 @@ export function BombGameplayPanel({
   // send again — never a timer here.
   useEffect(() => {
     sendingRef.current = false;
+    pendingRef.current = undefined;
     setSending(false);
+    setNotice(undefined);
   }, [itemIndex, activeTeamId, phase, canSubmit, canSkip, roundId]);
+
+  // An answer handed back for another try belongs to the question it was
+  // typed for. A new question, or the turn coming round again, starts empty.
+  useEffect(() => {
+    setAnswer("");
+  }, [itemIndex, activeTeamId, roundId]);
+
+  const release = useCallback(
+    (outcome?: AnswerNotice) => {
+      const pending = pendingRef.current;
+      pendingRef.current = undefined;
+      sendingRef.current = false;
+      setSending(false);
+      setNotice(outcome);
+      // An answer that was refused, never left, or went unanswered is handed
+      // back rather than lost with the keyboard.
+      if (
+        (outcome === "rejected" ||
+          outcome === "not-sent" ||
+          outcome === "unknown") &&
+        pending?.text
+      ) {
+        setAnswer((current) => current || pending.text!);
+      }
+      // Disabling the field closed the phone keyboard; a player who has to
+      // try again should not have to tap the field to get it back.
+      if (outcome) window.setTimeout(() => answerInputRef.current?.focus(), 0);
+    },
+    [],
+  );
+
+  // The server processed the command and answered at `ackRevision`. A wrong
+  // answer moves nothing the reset effect above watches — the item and the turn
+  // stay, and `bomb-answer-incorrect` is recorded — so the verdict is read here,
+  // once this phone holds the state the server answered with. Only a wrong
+  // answer recorded between this send and that answer is this send's, which is
+  // what keeps an older command's verdict from opening a newer one.
+  const transitions = runtime.transitions;
+  const runtimeRevision = runtime.revision;
+  useEffect(() => {
+    const pending = pendingRef.current;
+    if (pending?.ackRevision === undefined) return;
+    if (runtimeRevision < pending.ackRevision) return;
+    const judgedWrong =
+      pending.kind === "answer" &&
+      (transitions ?? []).some(
+        (transition) =>
+          transition.type === "bomb-answer-incorrect" &&
+          transition.revision > pending.revision &&
+          transition.revision <= pending.ackRevision! &&
+          (!transition.roundId || transition.roundId === roundId),
+      );
+    release(judgedWrong ? "incorrect" : undefined);
+  }, [acknowledged, transitions, runtimeRevision, roundId, release]);
+
+  /** Follows one send to the server's answer, and only that send. */
+  const follow = useCallback(
+    (
+      kind: "answer" | "skip",
+      text?: string,
+    ): GameplayCommandDelivery => {
+      const token = {};
+      const sentRoundId = roundId;
+      const sentItemIndex = itemIndex;
+      const sentTeamId = activeTeamId;
+      const action = kind === "answer" ? "mode:submit-answer" : "mode:skip";
+      pendingRef.current = {
+        token,
+        kind,
+        ...(text ? { text } : {}),
+        revision: runtime.revision,
+      };
+      return {
+        onOutcome: (outcome) => {
+          const pending = pendingRef.current;
+          // An answer to a send this phone has already moved past.
+          if (pending?.token !== token) return;
+          if (outcome.status === "accepted") {
+            if (outcome.runtimeRevision === undefined) {
+              release();
+              return;
+            }
+            pending.ackRevision = outcome.runtimeRevision;
+            setAcknowledged((count) => count + 1);
+          } else if (outcome.status === "rejected") {
+            release("rejected");
+          } else if (outcome.status === "unknown") {
+            release("unknown");
+          } else {
+            // The question moved on before a resend; the snapshot says how.
+            release();
+          }
+        },
+        // A resend goes only to the question it was made for: same round, same
+        // item, same team, still this phone's to act on, and still being
+        // asked. Past the deadline the round is no longer presenting, and the
+        // server refuses a late answer regardless.
+        canResend: (latest) => {
+          const gameplay = latest.gameplay;
+          const active = gameplay?.activeRound;
+          if (!gameplay || !active || latest.status !== "active") return false;
+          const latestItem =
+            gameplay.currentItem?.index ??
+            Number(active.modeState.itemIndex ?? 0);
+          return (
+            active.id === sentRoundId &&
+            String(active.modeState.phase ?? "") === "presenting" &&
+            latestItem === sentItemIndex &&
+            (gameplay.activeTeamId ?? active.activeTeamId) === sentTeamId &&
+            gameplay.availableActions.includes(action)
+          );
+        },
+      };
+    },
+    [activeTeamId, itemIndex, release, roundId, runtime.revision],
+  );
 
   const submitAnswer = useCallback(
     (value: string) => {
@@ -275,26 +432,43 @@ export function BombGameplayPanel({
       if (!trimmed || !answerEnabled || sendingRef.current) return;
       sendingRef.current = true;
       setSending(true);
-      gameplayCommand("gameplay-command", {
-        roundId,
-        commandType: "submit-answer",
-        payload: { answer: trimmed },
-      });
+      setNotice(undefined);
+      try {
+        gameplayCommand(
+          "gameplay-command",
+          {
+            roundId,
+            commandType: "submit-answer",
+            payload: { answer: trimmed },
+          },
+          follow("answer", trimmed),
+        );
+      } catch {
+        // The connection refuses to send while it is down, and says so by
+        // throwing. The answer never left, so it stays in the field.
+        release("not-sent");
+        return;
+      }
       setAnswer("");
     },
-    [answerEnabled, gameplayCommand, roundId],
+    [answerEnabled, follow, gameplayCommand, roundId, release],
   );
 
   const skipItem = useCallback(() => {
     if (!canSkip || connection !== "connected" || sendingRef.current) return;
     sendingRef.current = true;
     setSending(true);
-    gameplayCommand("gameplay-command", {
-      roundId,
-      commandType: "skip",
-      payload: {},
-    });
-  }, [canSkip, connection, gameplayCommand, roundId]);
+    setNotice(undefined);
+    try {
+      gameplayCommand(
+        "gameplay-command",
+        { roundId, commandType: "skip", payload: {} },
+        follow("skip"),
+      );
+    } catch {
+      release("not-sent");
+    }
+  }, [canSkip, connection, follow, gameplayCommand, roundId, release]);
 
   const voice = useBombVoiceInput({
     enabled: answerEnabled,
@@ -437,7 +611,10 @@ export function BombGameplayPanel({
                 <Input
                   ref={answerInputRef}
                   value={answer}
-                  onChange={(event) => setAnswer(event.target.value)}
+                  onChange={(event) => {
+                    setAnswer(event.target.value);
+                    setNotice(undefined);
+                  }}
                   placeholder="اكتب إجابتك"
                   aria-label="إجابة القنبلة"
                   autoComplete="off"
@@ -445,6 +622,15 @@ export function BombGameplayPanel({
                   data-testid="bomb-phone-answer"
                   className="h-16 rounded-[var(--radius)] border-2 text-center text-xl font-black focus-visible:border-brand-gold"
                 />
+                {notice && (
+                  <p
+                    role="status"
+                    data-testid="bomb-phone-answer-notice"
+                    className="text-center text-sm font-black text-destructive"
+                  >
+                    {ANSWER_NOTICES[notice]}
+                  </p>
+                )}
                 {voice.transcript && (
                   <p className="text-sm font-bold text-muted-foreground" dir="rtl">
                     «{voice.transcript}»
@@ -461,7 +647,7 @@ export function BombGameplayPanel({
                         : "text-muted-foreground",
                     )}
                   >
-                    {VOICE_MESSAGES[voice.state]}
+                    {voiceMessage(voice.state, sending)}
                   </p>
                 )}
               </div>
@@ -670,7 +856,7 @@ export function BombGameplayPanel({
                   }
                   role="status"
                 >
-                  {VOICE_MESSAGES[voice.state]}
+                  {voiceMessage(voice.state, sending)}
                 </p>
               )}
             </div>

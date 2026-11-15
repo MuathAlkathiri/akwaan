@@ -19,6 +19,7 @@ import {
 } from "../api/live-session-api";
 import {
   LiveSessionContext,
+  type GameplayCommandDelivery,
   type GameplayCommandOptions,
   type LiveSessionCommandOptions,
 } from "../hooks/live-session-context";
@@ -198,9 +199,18 @@ export function LiveSessionProvider({
   );
 
   const gameplayCommand = useCallback(
-    (action: string, options: GameplayCommandOptions = {}) => {
-      if (!state.snapshot?.gameplay) return;
-      socketRef.current?.command(
+    (
+      action: string,
+      options: GameplayCommandOptions = {},
+      delivery?: GameplayCommandDelivery,
+    ) => {
+      if (!state.snapshot?.gameplay || !socketRef.current) {
+        // A caller following its command must hear that it never left;
+        // everyone else keeps the old silent no-op.
+        if (delivery) throw new Error("Live session connection is not available");
+        return;
+      }
+      socketRef.current.command(
         `live-session:${action}`,
         {
           sessionId,
@@ -217,6 +227,9 @@ export function LiveSessionProvider({
         () => {
           const latest = snapshotRef.current;
           if (!latest?.gameplay) return undefined;
+          if (delivery?.canResend && !delivery.canResend(latest)) {
+            return undefined;
+          }
           return {
             expectedSessionRevision: latest.revision,
             expectedRuntimeRevision: latest.gameplay.revision,
@@ -224,6 +237,7 @@ export function LiveSessionProvider({
               latest.gameplay.activeRound?.interaction?.revision,
           };
         },
+        delivery?.onOutcome,
       );
     },
     [sessionId, state.snapshot],
