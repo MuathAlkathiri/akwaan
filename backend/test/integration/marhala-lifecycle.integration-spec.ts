@@ -4,6 +4,12 @@ import { INestApplication } from '@nestjs/common';
 import { Connection } from 'mongoose';
 import { createIntegrationTestApp } from '../helpers/test-app';
 import {
+  C4_GUARDED_V1,
+  fingerprintAnswers,
+} from '../../src/common/utils/answer-matching.util';
+import { TOLERANT_MATCHING_ENV } from '../../src/common/utils/answer-matching-activation';
+import { MarhalaQuestionSourceProvider } from '../../src/modules/match/application/marhala-question-source';
+import {
   connectTestDatabase,
   isolatedTestDatabaseUri,
   resetTestDatabase,
@@ -473,6 +479,7 @@ describe('marhala lifecycle integration', () => {
     actor: LiveSessionActor,
     commandType: string,
     payload: Record<string, unknown> = {},
+    commandId: string = uuid(),
   ) => {
     const session = (await app
       .get<LiveGameSessionRepository>(LIVE_GAME_SESSION_REPOSITORY)
@@ -482,7 +489,7 @@ describe('marhala lifecycle integration', () => {
       sessionId,
       roundId: runtime.serialize().activeRound!.id,
       actor,
-      commandId: uuid(),
+      commandId,
       commandType,
       payload,
       expectedSessionRevision: session.revision,
@@ -683,11 +690,383 @@ describe('marhala lifecycle integration', () => {
       await expect(exposures({ state: 'exposed' })).resolves.toHaveLength(1);
     });
 
+    it('accepts a spelling the canonical normalizer folds, and moves exactly once', async () => {
+      // Graded through the shared matcher: harakat, a different case and
+      // surrounding punctuation are the same answer. Replaying the very same
+      // command must not move the team a second time.
+      const session = await running();
+      await choose(session, 'easy');
+      await activate(session.sessionId);
+      const question = (await questionOf(session.sessionId))!;
+      const before = Number((await stateOf(session.sessionId)).activeTeamIndex);
+      const teamId = Object.keys(await positionsOf(session.sessionId))[before];
+      const phone = await activePhone(session.sessionId, session.participants);
+      const variant = `«${question.acceptedAnswers[0]
+        .replace('جواب', 'جَوَابٌ')
+        .toUpperCase()}»`;
+      expect(variant).not.toBe(question.acceptedAnswers[0]);
+      const commandId = uuid();
+
+      await command(
+        session.sessionId,
+        phone,
+        MARHALA_COMMANDS.submitAnswer,
+        { answer: variant },
+        commandId,
+      );
+      const afterFirst = await positionsOf(session.sessionId);
+      await command(
+        session.sessionId,
+        phone,
+        MARHALA_COMMANDS.submitAnswer,
+        { answer: variant },
+        commandId,
+      );
+
+      const turns = await turnsOf(session.sessionId);
+      expect(turns).toHaveLength(1);
+      expect(turns[0]).toMatchObject({ correct: true, teamId });
+      expect(afterFirst[teamId]).toBeGreaterThan(MARHALA_START_POSITION);
+      expect(await positionsOf(session.sessionId)).toEqual(afterFirst);
+    });
+
+    it('still refuses a one-letter typo: tolerance is not enabled yet', async () => {
+      const session = await running();
+      await choose(session, 'medium');
+      await activate(session.sessionId);
+      const question = (await questionOf(session.sessionId))!;
+      const typo = question.acceptedAnswers[0].replace('جواب', 'جوب');
+      expect(typo).not.toBe(question.acceptedAnswers[0]);
+
+      await command(
+        session.sessionId,
+        await activePhone(session.sessionId, session.participants),
+        MARHALA_COMMANDS.submitAnswer,
+        { answer: typo },
+      );
+
+      const turns = await turnsOf(session.sessionId);
+      expect(turns).toHaveLength(1);
+      expect(turns[0]).toMatchObject({ correct: false });
+      expect(turns[0].movement).toBeUndefined();
+      expect(Object.values(await positionsOf(session.sessionId))).toEqual([
+        MARHALA_START_POSITION,
+        MARHALA_START_POSITION,
+      ]);
+    });
+
+    it('draws no answer guard while typo tolerance is switched off', async () => {
+      const session = await running();
+      await choose(session, 'easy');
+      await activate(session.sessionId);
+      const question = (await questionOf(session.sessionId))!;
+      expect(question.answerGuard).toBeUndefined();
+    });
+
+    it('draws a current guard from the World catalog once tolerance is switched on', async () => {
+      const previous = process.env[TOLERANT_MATCHING_ENV];
+      process.env[TOLERANT_MATCHING_ENV] = 'marhala';
+      try {
+        const session = await running();
+        await choose(session, 'easy');
+        await activate(session.sessionId);
+        const question = (await questionOf(session.sessionId))!;
+        // Built at draw time, for this policy and these answers.
+        expect(question.answerGuard).toMatchObject({
+          policyId: C4_GUARDED_V1.id,
+          answersFingerprint: fingerprintAnswers(question.acceptedAnswers),
+        });
+        // The other fixture answers differ from this one by a digit or two —
+        // exactly the siblings a guard has to know about.
+        expect(question.answerGuard!.blockedAnswers.length).toBeGreaterThan(0);
+
+        // These answers carry digits, which are never fuzzy: a one-letter
+        // typo is still wrong, and nothing moves.
+        await command(
+          session.sessionId,
+          await activePhone(session.sessionId, session.participants),
+          MARHALA_COMMANDS.submitAnswer,
+          { answer: question.acceptedAnswers[0].replace('جواب', 'جوب') },
+        );
+        expect((await turnsOf(session.sessionId))[0]).toMatchObject({
+          correct: false,
+        });
+        expect(Object.values(await positionsOf(session.sessionId))).toEqual([
+          MARHALA_START_POSITION,
+          MARHALA_START_POSITION,
+        ]);
+      } finally {
+        if (previous === undefined) delete process.env[TOLERANT_MATCHING_ENV];
+        else process.env[TOLERANT_MATCHING_ENV] = previous;
+      }
+    });
+
+    it('refuses a question, answers or guard supplied by the host instead of the server', async () => {
+      // The trust boundary. The server's own source opens questions acting as
+      // the session controller, which is also the host's user. Hold the turn
+      // waiting for its question — the source cannot answer yet — and send what
+      // a host's socket could send: invented answers and an empty guard whose
+      // fingerprint is valid for them.
+      const previous = process.env[TOLERANT_MATCHING_ENV];
+      process.env[TOLERANT_MATCHING_ENV] = 'marhala';
+      const source = app.get(MarhalaQuestionSourceProvider);
+      const draw = jest
+        .spyOn(source, 'draw')
+        .mockResolvedValue({ kind: 'unknown' });
+      try {
+        const session = await running();
+        await choose(session, 'easy');
+        expect((await stateOf(session.sessionId)).phase).toBe(
+          'question-pending',
+        );
+        const forgedAnswers = ['أي شيء'];
+        const forged = {
+          contentItemId: 'forged-item',
+          scopeId: 'forged-scope',
+          difficulty: 'easy',
+          prompt: { ar: 'سؤال من عند المضيف' },
+          acceptedAnswers: forgedAnswers,
+          answerGuard: {
+            policyId: C4_GUARDED_V1.id,
+            answersFingerprint: fingerprintAnswers(forgedAnswers),
+            catalogFingerprint: 'forged',
+            blockedAnswers: [],
+          },
+        };
+
+        await expect(
+          command(
+            session.sessionId,
+            controllerActor(),
+            MARHALA_COMMANDS.openQuestion,
+            { questionJson: JSON.stringify(forged) },
+          ),
+        ).rejects.toMatchObject({ code: 'MARHALA_QUESTION_NOT_SERVER_OWNED' });
+        const state = await stateOf(session.sessionId);
+        expect(state.phase).toBe('question-pending');
+        expect(state.questionJson ?? null).toBeNull();
+      } finally {
+        draw.mockRestore();
+        if (previous === undefined) delete process.env[TOLERANT_MATCHING_ENV];
+        else process.env[TOLERANT_MATCHING_ENV] = previous;
+      }
+    });
+
+    describe('internal commands a host must not be able to send', () => {
+      // These are the server's conclusions. They are authorised for the
+      // session controller — which the host's own user also is — so the
+      // backend has to refuse them on their merits, not the frontend.
+      const deadlinePassed = async (sessionId: string) =>
+        database.collection('gameplay_runtimes').updateOne(
+          { sessionId },
+          {
+            $set: {
+              'state.runtimeState.deadlineAt': new Date(0).toISOString(),
+            },
+          },
+        );
+      const opponentOf = async (session: {
+        sessionId: string;
+        participants: LiveSessionActor[];
+      }) => {
+        const active = await activePhone(
+          session.sessionId,
+          session.participants,
+        );
+        return session.participants.find((actor) => actor !== active)!;
+      };
+
+      it('still lets the server expire the question once its deadline passes', async () => {
+        // The legitimate path, end to end: the real deadline scheduler finds the
+        // spent question and resolves it — nobody sends anything by hand.
+        const session = await running();
+        await choose(session, 'medium');
+        await activate(session.sessionId);
+        await deadlinePassed(session.sessionId);
+        await app.get(GameplayDeadlineScheduler).schedule(session.sessionId);
+        for (let attempt = 0; attempt < 40; attempt += 1) {
+          if ((await turnsOf(session.sessionId)).length) break;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        const turns = await turnsOf(session.sessionId);
+        expect(turns).toHaveLength(1);
+        expect(turns[0]).toMatchObject({
+          correct: false,
+          resolvedBy: 'timeout',
+        });
+        expect(Object.values(await positionsOf(session.sessionId))).toEqual([
+          MARHALA_START_POSITION,
+          MARHALA_START_POSITION,
+        ]);
+      });
+
+      it("refuses a host expiring the other team's question before its deadline", async () => {
+        const session = await running();
+        await choose(session, 'medium');
+        await activate(session.sessionId);
+
+        await expect(
+          command(
+            session.sessionId,
+            controllerActor(),
+            MARHALA_COMMANDS.expireQuestion,
+          ),
+        ).rejects.toMatchObject({ code: 'MARHALA_DEADLINE_NOT_REACHED' });
+        expect(await turnsOf(session.sessionId)).toEqual([]);
+        expect((await stateOf(session.sessionId)).phase).toBe('question');
+      });
+
+      it('refuses expiring a question that has already resolved', async () => {
+        const session = await running();
+        await choose(session, 'easy');
+        await answer(session, true);
+        await expect(
+          command(
+            session.sessionId,
+            controllerActor(),
+            MARHALA_COMMANDS.expireQuestion,
+          ),
+        ).rejects.toMatchObject({ code: 'MARHALA_NO_OPEN_QUESTION' });
+        expect(await turnsOf(session.sessionId)).toHaveLength(1);
+      });
+
+      it('applies a replayed expiry once', async () => {
+        const session = await running();
+        await choose(session, 'medium');
+        await activate(session.sessionId);
+        await deadlinePassed(session.sessionId);
+        const commandId = uuid();
+        await command(
+          session.sessionId,
+          controllerActor(),
+          MARHALA_COMMANDS.expireQuestion,
+          {},
+          commandId,
+        );
+        await command(
+          session.sessionId,
+          controllerActor(),
+          MARHALA_COMMANDS.expireQuestion,
+          {},
+          commandId,
+        );
+        expect(await turnsOf(session.sessionId)).toHaveLength(1);
+      });
+
+      it('refuses a host ending the race as exhausted while content remains', async () => {
+        const session = await running();
+        await expect(
+          command(
+            session.sessionId,
+            controllerActor(),
+            MARHALA_COMMANDS.exhausted,
+          ),
+        ).rejects.toMatchObject({ code: 'MARHALA_COMMAND_NOT_SERVER_OWNED' });
+        const state = await stateOf(session.sessionId);
+        expect(state.phase).toBe('difficulty-choice');
+        expect(state.resultJson ?? null).toBeNull();
+      });
+
+      it('refuses a host rewriting which difficulties are offered', async () => {
+        const session = await running();
+        const before = (await stateOf(session.sessionId))
+          .availableDifficultiesJson;
+        await expect(
+          command(
+            session.sessionId,
+            controllerActor(),
+            MARHALA_COMMANDS.refreshAvailability,
+            { availableDifficultiesJson: JSON.stringify(['easy']) },
+          ),
+        ).rejects.toMatchObject({ code: 'MARHALA_COMMAND_NOT_SERVER_OWNED' });
+        expect(
+          (await stateOf(session.sessionId)).availableDifficultiesJson,
+        ).toBe(before);
+      });
+
+      it('ignores provenance a client writes into the payload', async () => {
+        const session = await running();
+        await expect(
+          command(
+            session.sessionId,
+            controllerActor(),
+            MARHALA_COMMANDS.exhausted,
+            {
+              serverOwned: true,
+              serverOwnedCommand: true,
+            },
+          ),
+        ).rejects.toMatchObject({ code: 'MARHALA_COMMAND_NOT_SERVER_OWNED' });
+      });
+
+      it('refuses all of them from the opposing team', async () => {
+        const session = await running();
+        await choose(session, 'medium');
+        await activate(session.sessionId);
+        const opponent = await opponentOf(session);
+        for (const [type, payload] of [
+          [MARHALA_COMMANDS.expireQuestion, {}],
+          [MARHALA_COMMANDS.exhausted, {}],
+          [
+            MARHALA_COMMANDS.refreshAvailability,
+            { availableDifficultiesJson: '[]' },
+          ],
+          [MARHALA_COMMANDS.openQuestion, { questionJson: '{}' }],
+        ] as const) {
+          await expect(
+            command(session.sessionId, opponent, type, payload),
+          ).rejects.toMatchObject({ code: 'SESSION_FORBIDDEN' });
+        }
+        expect(await turnsOf(session.sessionId)).toEqual([]);
+      });
+
+      it('refuses them over HTTP, with or without a forged provenance field', async () => {
+        const session = await running();
+        const body = async (extra: Record<string, unknown> = {}) => {
+          const live = (await app
+            .get<LiveGameSessionRepository>(LIVE_GAME_SESSION_REPOSITORY)
+            .findById(session.sessionId))!;
+          const runtime = (await runtimes().findBySessionId(
+            session.sessionId,
+          ))!;
+          return {
+            commandId: uuid(),
+            expectedSessionRevision: live.revision,
+            expectedRuntimeRevision: runtime.revision,
+            commandType: MARHALA_COMMANDS.exhausted,
+            payload: {},
+            ...extra,
+          };
+        };
+        const route = `/live-game-sessions/${session.sessionId}/runtime/commands`;
+        // An extra top-level field is rejected by validation outright.
+        await bearer(http().post(route))
+          .send(await body({ serverOwned: true }))
+          .expect(400);
+        // A well-formed request is refused on its merits.
+        const refused = await bearer(http().post(route)).send(await body());
+        expect(refused.status).toBeGreaterThanOrEqual(400);
+        expect(JSON.stringify(refused.body)).toContain(
+          'MARHALA_COMMAND_NOT_SERVER_OWNED',
+        );
+        expect(
+          (await stateOf(session.sessionId)).resultJson ?? null,
+        ).toBeNull();
+      });
+    });
+
     it('spends the question on a timeout too', async () => {
       const session = await running();
       await choose(session, 'medium');
       await activate(session.sessionId);
       const question = (await questionOf(session.sessionId))!;
+      // The clock has run out, as the scheduler would find it.
+      await database.collection('gameplay_runtimes').updateOne(
+        { sessionId: session.sessionId },
+        {
+          $set: { 'state.runtimeState.deadlineAt': new Date(0).toISOString() },
+        },
+      );
 
       await command(
         session.sessionId,

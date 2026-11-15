@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { LiveSessionContext } from "@/features/live-game-session/hooks/live-session-context";
 import { BombGameplayPanel } from "@/features/live-game-session/components/bomb-gameplay-panel";
 import { MobileGameplayShell } from "@/features/live-game-session/match/components/mobile-gameplay-shell";
@@ -20,6 +20,7 @@ import type { GameplayRuntimeSnapshot } from "@/features/live-game-session/model
 const voiceMock = vi.hoisted(() => ({
   onAnswer: undefined as ((value: string) => void) | undefined,
   onSkip: undefined as (() => void) | undefined,
+  state: "idle" as string,
 }));
 
 vi.mock("@/features/live-game-session/hooks/use-bomb-voice-input", () => ({
@@ -39,7 +40,7 @@ vi.mock("@/features/live-game-session/hooks/use-bomb-voice-input", () => ({
     voiceMock.onAnswer = input.onAnswer;
     voiceMock.onSkip = input.onSkip;
     return {
-      state: "idle" as const,
+      state: voiceMock.state as "idle",
       transcript: "",
       start: vi.fn(),
       stop: vi.fn(),
@@ -96,6 +97,7 @@ const runtimeOf = (
 const context = (
   gameplayCommand = vi.fn(),
   clockOver: Record<string, unknown> = {},
+  over: Record<string, unknown> = {},
 ) =>
   ({
     snapshot: {
@@ -118,14 +120,16 @@ const context = (
     connection: "connected",
     gameplayCommand,
     resync: vi.fn(),
+    ...over,
   }) as never;
 
 const phoneTree = (
   runtime: GameplayRuntimeSnapshot,
   cmd: ReturnType<typeof vi.fn>,
   clockOver: Record<string, unknown> = {},
+  over: Record<string, unknown> = {},
 ) => (
-  <LiveSessionContext.Provider value={context(cmd, clockOver)}>
+  <LiveSessionContext.Provider value={context(cmd, clockOver, over)}>
     <MobileGameplayShell participantId="p-1">
       <BombGameplayPanel runtime={runtime} />
     </MobileGameplayShell>
@@ -220,7 +224,7 @@ describe("the acting phone", () => {
       roundId: "round-1",
       commandType: "submit-answer",
       payload: { answer: "طوكيو" },
-    });
+    }, expect.anything());
   });
 
   it("skips with the canonical command and never subtracts time itself", () => {
@@ -230,7 +234,7 @@ describe("the acting phone", () => {
       roundId: "round-1",
       commandType: "skip",
       payload: {},
-    });
+    }, expect.anything());
     // The clock is untouched by the client: only the server takes the 5 seconds.
     expect(screen.getByTestId("bomb-phone-clock")).toHaveTextContent("0:18");
   });
@@ -269,7 +273,7 @@ describe("the acting phone", () => {
       roundId: "round-1",
       commandType: "submit-answer",
       payload: { answer: "طوكيو" },
-    });
+    }, expect.anything());
   });
 
   it("routes a voice skip through the canonical skip command", () => {
@@ -279,7 +283,7 @@ describe("the acting phone", () => {
       roundId: "round-1",
       commandType: "skip",
       payload: {},
-    });
+    }, expect.anything());
   });
 
   it("releases the guard when the server advances the item", () => {
@@ -302,6 +306,279 @@ describe("the acting phone", () => {
     });
     fireEvent.click(screen.getByTestId("bomb-phone-submit"));
     expect(cmd).toHaveBeenCalledTimes(2);
+  });
+});
+
+/**
+ * The reported fault: a player types an answer, it does not go, and the clock
+ * runs their team out. The phone's one-command-per-window lock was released
+ * only when the item, the turn, the phase or the owner moved. A wrong answer
+ * moves none of them — the server answers it with the same item, the same
+ * team and a `bomb-answer-incorrect` transition — so after one wrong answer
+ * the field, the send button, the microphone and skip all stayed disabled
+ * until the clock expired.
+ *
+ * The lock now opens on the answer to *this* command, carried by the
+ * connection: accepted (and judged wrong, or moved on), refused, or no answer
+ * at all after the connection's bounded, same-id resends.
+ */
+describe("the answer lock opens on this command's own outcome", () => {
+  type Delivery = {
+    onOutcome: (outcome: Record<string, unknown>) => void;
+    canResend: (latest: unknown) => boolean;
+  };
+  const deliveryOf = (cmd: ReturnType<typeof vi.fn>, call = -1) =>
+    cmd.mock.calls.at(call)![2] as Delivery;
+
+  /** What the server sends back after judging a submission wrong. */
+  const afterWrongAnswer = (revision = 5) =>
+    runtimeOf({
+      revision,
+      transitions: [
+        { revision, type: "bomb-answer-incorrect", roundId: "round-1" },
+      ],
+    });
+
+  const send = (value: string) => {
+    fireEvent.change(screen.getByTestId("bomb-phone-answer"), {
+      target: { value },
+    });
+    fireEvent.click(screen.getByTestId("bomb-phone-submit"));
+  };
+  const answerField = () => screen.getByTestId("bomb-phone-answer");
+  const notice = () => screen.queryByTestId("bomb-phone-answer-notice");
+
+  it("lets the player answer again after a wrong answer", () => {
+    const cmd = vi.fn();
+    const { rerender } = renderPhone(runtimeOf(), cmd);
+    send("أوساكا");
+    act(() =>
+      deliveryOf(cmd).onOutcome({ status: "accepted", runtimeRevision: 5 }),
+    );
+    rerender(phoneTree(afterWrongAnswer(), cmd));
+
+    expect(answerField()).not.toBeDisabled();
+    expect(screen.getByTestId("bomb-phone-skip")).not.toBeDisabled();
+    expect(notice()).toHaveTextContent("غلط");
+    send("طوكيو");
+    expect(cmd).toHaveBeenCalledTimes(2);
+    expect(cmd).toHaveBeenLastCalledWith(
+      "gameplay-command",
+      {
+        roundId: "round-1",
+        commandType: "submit-answer",
+        payload: { answer: "طوكيو" },
+      },
+      expect.anything(),
+    );
+  });
+
+  it("waits for the state the server answered with before reading its verdict", () => {
+    const cmd = vi.fn();
+    const { rerender } = renderPhone(runtimeOf(), cmd);
+    send("أوساكا");
+    act(() =>
+      deliveryOf(cmd).onOutcome({ status: "accepted", runtimeRevision: 5 }),
+    );
+    // The acknowledgement can overtake the snapshot it describes.
+    expect(answerField()).toBeDisabled();
+    rerender(phoneTree(afterWrongAnswer(), cmd));
+    expect(answerField()).not.toBeDisabled();
+  });
+
+  it("holds the lock while the command has no answer, whatever else the session reports", () => {
+    // An older command's wrong answer can reach the phone after a newer one
+    // left — the phone's state lagged when it sent. That is not a verdict on
+    // the newer one, and opening on it would let a third answer race it.
+    const cmd = vi.fn();
+    const { rerender } = renderPhone(runtimeOf({ revision: 4 }), cmd);
+    send("طوكيو");
+    rerender(phoneTree(afterWrongAnswer(5), cmd));
+    expect(answerField()).toBeDisabled();
+    expect(notice()).toBeNull();
+    send("أوساكا");
+    expect(cmd).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not open on a reconnect alone, while the command's outcome is still coming", () => {
+    // A reconnect is not an answer: the command may have landed and its
+    // acknowledgement may simply be late. The connection resends it under the
+    // same id and reports what became of it.
+    const cmd = vi.fn();
+    const { rerender } = renderPhone(runtimeOf(), cmd);
+    send("طوكيو");
+    rerender(phoneTree(runtimeOf(), cmd, {}, { connectionEpoch: 2 }));
+    expect(answerField()).toBeDisabled();
+  });
+
+  it("ignores an outcome for a send the phone has already moved past", () => {
+    const cmd = vi.fn();
+    renderPhone(runtimeOf(), cmd);
+    send("أوساكا");
+    const first = deliveryOf(cmd);
+    act(() => first.onOutcome({ status: "unknown" }));
+    send("طوكيو");
+    // The first send's late answer cannot open the second one.
+    act(() => first.onOutcome({ status: "rejected", code: "X" }));
+    expect(answerField()).toBeDisabled();
+    expect(cmd).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives the answer back when the server refuses it", () => {
+    const cmd = vi.fn();
+    renderPhone(runtimeOf(), cmd);
+    send("طوكيو");
+    act(() =>
+      deliveryOf(cmd).onOutcome({
+        status: "rejected",
+        code: "BOMB_ROUND_COMPLETE",
+      }),
+    );
+    expect(answerField()).not.toBeDisabled();
+    expect(answerField()).toHaveValue("طوكيو");
+    expect(notice()).toHaveTextContent("ما انقبلت");
+  });
+
+  it("gives the answer back, and says so honestly, when no answer ever came", () => {
+    const cmd = vi.fn();
+    renderPhone(runtimeOf(), cmd);
+    send("طوكيو");
+    act(() => deliveryOf(cmd).onOutcome({ status: "unknown" }));
+    expect(answerField()).not.toBeDisabled();
+    expect(answerField()).toHaveValue("طوكيو");
+    // Not "wrong", not "sent": the phone does not know, and says that.
+    expect(notice()).toHaveTextContent("ما وصلنا رد");
+  });
+
+  it("keeps the answer when it could not leave the phone at all", () => {
+    // The socket refuses to send while it is not connected, and says so by
+    // throwing. That used to escape with the lock already shut.
+    const cmd = vi.fn();
+    cmd.mockImplementation(() => {
+      throw new Error("Live session connection is not available");
+    });
+    renderPhone(runtimeOf(), cmd);
+    send("طوكيو");
+    expect(answerField()).not.toBeDisabled();
+    expect(answerField()).toHaveValue("طوكيو");
+    expect(notice()).toHaveTextContent("ما انرسلت");
+  });
+
+  it("clears a handed-back answer when the question moves on", () => {
+    const cmd = vi.fn();
+    const { rerender } = renderPhone(runtimeOf(), cmd);
+    send("طوكيو");
+    act(() => deliveryOf(cmd).onOutcome({ status: "unknown" }));
+    expect(answerField()).toHaveValue("طوكيو");
+    rerender(
+      phoneTree(
+        runtimeOf({ currentItem: { index: 2, totalItems: 10 } }, ACTOR_ACTIONS, {
+          itemIndex: 2,
+        }),
+        cmd,
+      ),
+    );
+    expect(answerField()).toHaveValue("");
+    expect(notice()).toBeNull();
+  });
+
+  describe("an automatic resend goes only to the question it was made for", () => {
+    const latest = (runtime: GameplayRuntimeSnapshot, status = "active") => ({
+      status,
+      gameplay: runtime,
+    });
+    const sentDelivery = () => {
+      const cmd = vi.fn();
+      renderPhone(runtimeOf(), cmd);
+      send("طوكيو");
+      return deliveryOf(cmd);
+    };
+
+    it("allows it while the same question is still this phone's to answer", () => {
+      expect(sentDelivery().canResend(latest(runtimeOf({ revision: 9 })))).toBe(
+        true,
+      );
+    });
+
+    it("refuses it once the item has changed", () => {
+      expect(
+        sentDelivery().canResend(
+          latest(
+            runtimeOf(
+              { currentItem: { index: 2, totalItems: 10 } },
+              ACTOR_ACTIONS,
+              { itemIndex: 2 },
+            ),
+          ),
+        ),
+      ).toBe(false);
+    });
+
+    it("refuses it once the turn has passed or the phone lost the bomb", () => {
+      const delivery = sentDelivery();
+      expect(
+        delivery.canResend(latest(runtimeOf({ activeTeamId: "team-beta" }))),
+      ).toBe(false);
+      expect(delivery.canResend(latest(runtimeOf({}, [])))).toBe(false);
+    });
+
+    it("refuses it once the clock has ended the question", () => {
+      const delivery = sentDelivery();
+      expect(
+        delivery.canResend(
+          latest(runtimeOf({}, ACTOR_ACTIONS, { phase: "completed" })),
+        ),
+      ).toBe(false);
+      expect(delivery.canResend(latest(runtimeOf(), "finished"))).toBe(false);
+    });
+  });
+});
+
+describe("voice says what it knows, and no more", () => {
+  afterEach(() => {
+    voiceMock.state = "idle";
+  });
+
+  it("never says an answer was sent before the server has answered", () => {
+    voiceMock.state = "recognized";
+    const cmd = vi.fn();
+    const { rerender } = renderPhone(runtimeOf(), cmd);
+    expect(screen.getByTestId("bomb-phone-voice-state")).toHaveTextContent(
+      "تعرّفت على إجابتك",
+    );
+    expect(screen.getByTestId("bomb-phone-voice-state")).not.toHaveTextContent(
+      "إرسال",
+    );
+
+    act(() => voiceMock.onAnswer?.("أوساكا"));
+    // Sending is an attempt, said as one.
+    expect(screen.getByTestId("bomb-phone-voice-state")).toHaveTextContent(
+      "جارٍ الإرسال",
+    );
+
+    act(() =>
+      (cmd.mock.calls.at(-1)![2] as {
+        onOutcome: (o: Record<string, unknown>) => void;
+      }).onOutcome({ status: "accepted", runtimeRevision: 5 }),
+    );
+    rerender(
+      phoneTree(
+        runtimeOf({
+          revision: 5,
+          transitions: [
+            { revision: 5, type: "bomb-answer-incorrect", roundId: "round-1" },
+          ],
+        }),
+        cmd,
+      ),
+    );
+    // The verdict is the server's, in the answer notice, not the voice line.
+    expect(screen.getByTestId("bomb-phone-voice-state")).not.toHaveTextContent(
+      "جارٍ الإرسال",
+    );
+    expect(screen.getByTestId("bomb-phone-answer-notice")).toHaveTextContent(
+      "غلط",
+    );
   });
 });
 

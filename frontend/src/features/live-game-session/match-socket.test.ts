@@ -355,6 +355,160 @@ describe("Match socket synchronization", () => {
     ).toHaveLength(1);
   });
 
+  describe("a tracked command always reaches an outcome", () => {
+    const connected = () => {
+      const client = new LiveSessionSocket();
+      client.connect({
+        sessionId: "session-1",
+        token: "token",
+        onSnapshot: vi.fn(),
+        onConnection: vi.fn(),
+        onError: vi.fn(),
+      });
+      socketHarness.handlers.get("connect")?.();
+      socketHarness.socket.emit.mockClear();
+      return client;
+    };
+    const sends = () =>
+      socketHarness.socket.emit.mock.calls.filter(
+        ([event]) => event === "live-session:gameplay-command",
+      );
+    const ackLast = (value: unknown) => {
+      const [, , ack] = sends().at(-1)!;
+      (ack as (value: unknown) => void)(value);
+    };
+    const track = (
+      client: LiveSessionSocket,
+      retry: () => Record<string, unknown> | undefined = () => ({
+        expectedRuntimeRevision: 8,
+      }),
+    ) => {
+      const onOutcome = vi.fn();
+      client.command(
+        "live-session:gameplay-command",
+        {
+          sessionId: "session-1",
+          commandId: "answer-1",
+          clientTimestamp: "2026-11-15T00:00:00.000Z",
+          expectedRuntimeRevision: 7,
+        },
+        retry,
+        onOutcome,
+      );
+      return onOutcome;
+    };
+    const STALE = {
+      code: "STALE_RUNTIME_REVISION",
+      message: "Expected gameplay runtime revision 7, but current revision is 8",
+    };
+
+    it("reports the server's acceptance with the revision it answered at", () => {
+      const onOutcome = track(connected());
+      ackLast({ ok: true, sessionId: "session-1", revision: 3, runtimeRevision: 8 });
+      expect(onOutcome).toHaveBeenCalledWith({
+        status: "accepted",
+        runtimeRevision: 8,
+      });
+    });
+
+    it("reports a refusal on the merits as final, and sends nothing more", () => {
+      const onOutcome = track(connected());
+      ackLast({ code: "SESSION_FORBIDDEN", message: "not yours" });
+      vi.advanceTimersByTime(20_000);
+      expect(onOutcome).toHaveBeenCalledTimes(1);
+      expect(onOutcome).toHaveBeenCalledWith({
+        status: "rejected",
+        code: "SESSION_FORBIDDEN",
+        message: "not yours",
+      });
+      expect(sends()).toHaveLength(1);
+    });
+
+    it("resends an unanswered command under the same id after reconciling, then gives up as unknown", () => {
+      const onOutcome = track(connected());
+      vi.advanceTimersByTime(20_000);
+
+      // Three sends, bounded, every one the same command: a replay of one that
+      // did land is a duplicate on the server and changes nothing.
+      expect(sends()).toHaveLength(3);
+      expect(
+        sends().every(([, body]) => (body as { commandId: string }).commandId === "answer-1"),
+      ).toBe(true);
+      expect(
+        socketHarness.socket.emit.mock.calls.filter(
+          ([event]) => event === "live-session:request-snapshot",
+        ).length,
+      ).toBeGreaterThanOrEqual(1);
+      expect(onOutcome).toHaveBeenCalledTimes(1);
+      expect(onOutcome).toHaveBeenCalledWith({ status: "unknown" });
+    });
+
+    it("recovers when a resend is answered", () => {
+      const onOutcome = track(connected());
+      vi.advanceTimersByTime(4_000 + 250);
+      expect(sends()).toHaveLength(2);
+      ackLast({ ok: true, sessionId: "session-1", revision: 3, runtimeRevision: 8 });
+      vi.advanceTimersByTime(20_000);
+      expect(onOutcome).toHaveBeenCalledTimes(1);
+      expect(onOutcome).toHaveBeenCalledWith({
+        status: "accepted",
+        runtimeRevision: 8,
+      });
+      expect(sends()).toHaveLength(2);
+    });
+
+    it("survives a stale refusal of its own resend, and stays bounded", () => {
+      const onOutcome = track(connected());
+      ackLast(STALE);
+      vi.advanceTimersByTime(250);
+      ackLast(STALE);
+      vi.advanceTimersByTime(250);
+      expect(sends()).toHaveLength(3);
+      ackLast({ ok: true, sessionId: "session-1", revision: 3, runtimeRevision: 9 });
+      expect(onOutcome).toHaveBeenCalledWith({
+        status: "accepted",
+        runtimeRevision: 9,
+      });
+    });
+
+    it("gives up as unknown after repeated stale refusals rather than waiting forever", () => {
+      const onOutcome = track(connected());
+      ackLast(STALE);
+      vi.advanceTimersByTime(250);
+      ackLast(STALE);
+      vi.advanceTimersByTime(250);
+      ackLast(STALE);
+      vi.advanceTimersByTime(20_000);
+      expect(sends()).toHaveLength(3);
+      expect(onOutcome).toHaveBeenCalledTimes(1);
+      expect(onOutcome).toHaveBeenCalledWith({ status: "unknown" });
+    });
+
+    it("does not resend once the caller says its command no longer applies", () => {
+      const onOutcome = track(connected(), () => undefined);
+      ackLast(STALE);
+      vi.advanceTimersByTime(20_000);
+      expect(sends()).toHaveLength(1);
+      expect(onOutcome).toHaveBeenCalledWith({ status: "superseded" });
+    });
+
+    it("ignores an answer to a send that already timed out", () => {
+      const onOutcome = track(connected());
+      const [, , firstAck] = sends()[0];
+      vi.advanceTimersByTime(4_000 + 250);
+      // The first send's late answer arrives after its resend went out.
+      (firstAck as (value: unknown) => void)(STALE);
+      vi.advanceTimersByTime(250);
+      expect(sends()).toHaveLength(2);
+      ackLast({ ok: true, sessionId: "session-1", revision: 3, runtimeRevision: 8 });
+      expect(onOutcome).toHaveBeenCalledTimes(1);
+      expect(onOutcome).toHaveBeenCalledWith({
+        status: "accepted",
+        runtimeRevision: 8,
+      });
+    });
+  });
+
   it("adopts a snapshot, then requests another authoritative snapshot on reconnect", () => {
     const onSnapshot = vi.fn();
     const client = new LiveSessionSocket();

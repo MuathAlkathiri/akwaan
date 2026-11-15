@@ -218,7 +218,7 @@ describe("Bomb Multimodal Presentation", () => {
       roundId: "round-1",
       commandType: "submit-answer",
       payload: { answer: "إجابة صحيحة" },
-    });
+    }, expect.anything());
   });
 
   it("skips item correctly regardless of modality", () => {
@@ -241,6 +241,6 @@ describe("Bomb Multimodal Presentation", () => {
       roundId: "round-1",
       commandType: "skip",
       payload: {},
-    });
+    }, expect.anything());
   });
 });

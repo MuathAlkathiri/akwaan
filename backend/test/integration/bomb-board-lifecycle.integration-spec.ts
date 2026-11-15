@@ -916,6 +916,19 @@ describe('Bomb board lifecycle integration', () => {
       (await rawRuntime(sessionId))!.state.activeRound.activeParticipantId,
     ).toBe(replacementId);
 
+    // The replacement keeps the bomb through its own wrong answer. Every
+    // command used to re-pick "the first connected player on the team", which
+    // handed the turn straight back to the reconnected owner mid-question —
+    // the replacement's phone went to waiting with the answer they were typing.
+    await command(sessionId, replacement, 'submit-answer', {
+      answer: 'ليست الإجابة',
+    });
+    const afterWrong = (await rawRuntime(sessionId))!.state.activeRound;
+    expect(afterWrong.modeState.itemIndex).toBe(
+      beforeRuntime.activeRound.modeState.itemIndex,
+    );
+    expect(afterWrong.activeParticipantId).toBe(replacementId);
+
     await command(sessionId, replacement, 'skip');
     expect(
       (await rawRuntime(sessionId))!.state.activeRound.modeState.itemIndex,
@@ -1488,6 +1501,82 @@ describe('Bomb board lifecycle integration', () => {
       runtime.state.transitions as Array<{ type: string }>
     ).filter((entry) => entry.type === 'runtime-completed');
     expect(completions.length).toBeLessThanOrEqual(1);
+  }, 240_000);
+
+  it('exactly once: a resent answer under the same command id changes nothing more', async () => {
+    // What the phone's connection does when an acknowledgement never came: it
+    // reconciles and sends the *same* command again, with fresh revisions. If
+    // the first one landed, the replay must be a no-op — no second item, no
+    // second hand-over of the bomb.
+    const { sessionId, participants } = await startSession();
+    await bombRunning(sessionId);
+    const actor = await activeActor(sessionId, participants);
+    const answeringTeamId = (await rawSession(sessionId))!.state.activeTeamId;
+    const send = async (commandId: string) => {
+      const runtime = (await runtimes().findBySessionId(
+        sessionId,
+      ))!.serialize();
+      return app.get(SubmitGameplayCommand).execute({
+        sessionId,
+        actor,
+        commandId,
+        expectedSessionRevision: await sessionRevision(sessionId),
+        expectedRuntimeRevision: runtime.revision,
+        roundId: runtime.activeRound!.id,
+        commandType: 'submit-answer',
+        payload: { answer: answerFor(0) },
+      });
+    };
+    const commandId = uuid();
+
+    await send(commandId);
+    const afterFirst = (await rawRuntime(sessionId))!.state;
+    const sessionAfterFirst = (await rawSession(sessionId))!.state;
+    expect(afterFirst.activeRound.modeState.itemIndex).toBe(1);
+    expect(sessionAfterFirst.activeTeamId).not.toBe(answeringTeamId);
+
+    // The replay is accepted as a duplicate, not judged again.
+    await expect(send(commandId)).resolves.toBeDefined();
+    const afterReplay = (await rawRuntime(sessionId))!.state;
+    expect(afterReplay.activeRound.modeState.itemIndex).toBe(1);
+    expect(afterReplay.revision).toBe(afterFirst.revision);
+    expect((await rawSession(sessionId))!.state.activeTeamId).toBe(
+      sessionAfterFirst.activeTeamId,
+    );
+    expect(
+      (afterReplay.transitions as Array<{ type: string }>).filter(
+        (entry) => entry.type === 'bomb-answer-correct',
+      ),
+    ).toHaveLength(1);
+  }, 240_000);
+
+  it('deadline: a correct answer arriving after the clock ran out does not pass the bomb', async () => {
+    // The clock is spent; the deadline timer simply has not fired yet. The
+    // answer is a correct one, which is the dangerous case: if it were judged,
+    // it would hand the bomb to the other team on time the answering team no
+    // longer had. A delayed or resent answer must lose to the clock.
+    const { sessionId, participants } = await startSession();
+    await bombRunning(sessionId);
+    const actor = await activeActor(sessionId, participants);
+    const answeringTeamId = (await rawSession(sessionId))!.state.activeTeamId;
+    await expireActiveClock(sessionId);
+
+    await command(sessionId, actor, 'submit-answer', {
+      answer: answerFor(0),
+    }).catch(() => undefined);
+    await settle();
+
+    const runtime = (await rawRuntime(sessionId))!;
+    const transitions = (
+      runtime.state.transitions as Array<{ type: string }>
+    ).map((entry) => entry.type);
+    expect(transitions).not.toContain('bomb-answer-correct');
+    expect(transitions).toContain('bomb-clock-expired');
+    // The team whose clock ran out loses, exactly as if the timer had fired.
+    const verdict = JSON.parse(String(runtime.state.runtimeState.resultJson));
+    expect(verdict.endedBy).toBe('clock-expired');
+    expect(verdict.winnerTeamId).not.toBe(answeringTeamId);
+    expect(runtime.state.completedRounds).toHaveLength(1);
   }, 240_000);
 
   it('bootstrap: rebuilds an expired Bomb deadline with no client action', async () => {

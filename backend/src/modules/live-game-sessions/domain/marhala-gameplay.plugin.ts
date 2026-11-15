@@ -1,4 +1,11 @@
-import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
+import {
+  C4_GUARDED_V1,
+  EXACT_ANSWER_MATCH,
+  matchAcceptedAnswer,
+  type AnswerGuard,
+  type AnswerMatchPolicy,
+} from '../../../common/utils/answer-matching.util';
+import { isTolerantAnswerMatchingEnabled } from '../../../common/utils/answer-matching-activation';
 import {
   GameplayCommandPayload,
   GameplayCommandResult,
@@ -64,6 +71,29 @@ export interface MarhalaRuntimeQuestion {
   prompt: unknown;
   media?: MarhalaRuntimeMedia;
   acceptedAnswers: string[];
+  /**
+   * The collision guard built when the question was drawn, only while typo
+   * tolerance is switched on. Private like the answers: never projected.
+   */
+  answerGuard?: AnswerGuard;
+}
+
+/**
+ * How this question is judged. Exact unless the server has switched tolerance
+ * on for المرحلة *and* the question carries a guard — and even then the matcher
+ * itself refuses a guard that is not current for these answers.
+ */
+function answerMatchPolicy(
+  question: MarhalaRuntimeQuestion,
+): AnswerMatchPolicy {
+  if (!isTolerantAnswerMatchingEnabled(MARHALA_MODE_KEY)) {
+    return EXACT_ANSWER_MATCH;
+  }
+  return {
+    kind: 'guarded-tolerant',
+    config: C4_GUARDED_V1,
+    ...(question.answerGuard ? { guard: question.answerGuard } : {}),
+  };
 }
 
 /** What one resolved turn did, kept so the board can narrate it. */
@@ -503,6 +533,16 @@ function handle(
         'No المرحلة question was requested',
       );
     }
+    // Only the server's own draw may open a question. The command is authorised
+    // for the session controller — which the host's user also is — so the
+    // provenance, not the actor, is what keeps a host from supplying a question
+    // with answers, and a collision guard, of its own choosing.
+    if (context.serverOwnedCommand !== true) {
+      reject(
+        'MARHALA_QUESTION_NOT_SERVER_OWNED',
+        'An المرحلة question can only be opened by the server',
+      );
+    }
     const question = command.payload.questionJson;
     if (typeof question !== 'string' || !question) {
       reject('MARHALA_QUESTION_MISSING', 'No المرحلة question was supplied');
@@ -548,11 +588,14 @@ function handle(
       reject('MARHALA_NO_OPEN_QUESTION', 'No المرحلة question is open');
     }
     const answer = String(command.payload.answer ?? '');
-    // The canonical normalizer, the same one Bomb and Combo grade through, so two
-    // spellings of one Arabic answer are one answer everywhere.
-    const correct = question.acceptedAnswers
-      .map(normalizeAnswer)
-      .includes(normalizeAnswer(answer));
+    // The shared matcher, over the canonical normalizer Bomb and Combo grade
+    // through, so two spellings of one Arabic answer are one answer everywhere.
+    // Exact unless tolerance is switched on and the question's guard is current.
+    const correct = matchAcceptedAnswer(
+      answer,
+      question.acceptedAnswers,
+      answerMatchPolicy(question),
+    ).matched;
     const next = correct
       ? resolveCorrect(state, {
           runtimeId: context.runtimeId,
@@ -581,12 +624,39 @@ function handle(
         'The question cannot expire until presentation activation',
       );
     }
+    // The persisted deadline has to have passed. The scheduler only fires once
+    // it has, but the command is authorised for the session controller — the
+    // host's user too — and a host must not be able to end the other team's
+    // question early. The same proof Moving XO's expiries already require.
+    if (
+      typeof state.deadlineAt !== 'string' ||
+      now.getTime() < Date.parse(state.deadlineAt)
+    ) {
+      reject(
+        'MARHALA_DEADLINE_NOT_REACHED',
+        'The question cannot expire before its deadline',
+      );
+    }
     // A timeout costs exactly what a wrong answer costs: the question is spent,
     // nothing moves, the turn passes.
     return settle(
       resolveFailure(state, { resolvedBy: 'timeout', now }),
       'marhala-question-expired',
       { teamId: marhalaActiveTeamId(state) },
+    );
+  }
+
+  // Availability and depletion are what the server's catalog says, not what a
+  // request says: a host could otherwise withdraw the bands the other team
+  // wanted, or end a race it was losing with no winner at all.
+  if (
+    (command.type === MARHALA_COMMANDS.refreshAvailability ||
+      command.type === MARHALA_COMMANDS.exhausted) &&
+    context.serverOwnedCommand !== true
+  ) {
+    reject(
+      'MARHALA_COMMAND_NOT_SERVER_OWNED',
+      'Only the server can change what المرحلة can still serve',
     );
   }
 

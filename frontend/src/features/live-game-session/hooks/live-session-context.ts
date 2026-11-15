@@ -6,6 +6,7 @@ import type {
   LiveSessionError,
   LiveSessionSnapshot,
 } from "../model";
+import type { CommandOutcome } from "../realtime/live-session-socket";
 
 export interface LiveSessionCommandOptions {
   teamId?: string;
@@ -23,6 +24,21 @@ export interface GameplayCommandOptions {
   submissionId?: string;
   accepted?: boolean;
   reasonCode?: string;
+}
+
+/**
+ * How a caller follows one gameplay command through to the server's answer.
+ * Kept apart from `GameplayCommandOptions`, which is the wire payload.
+ */
+export interface GameplayCommandDelivery {
+  /** Told once what became of the command. Arms the acknowledgement timeout. */
+  onOutcome: (outcome: CommandOutcome) => void;
+  /**
+   * Consulted against the newest snapshot before any automatic resend. False
+   * means the command no longer applies — a new question, a passed turn, a
+   * finished round — and it is not sent again.
+   */
+  canResend?: (latest: LiveSessionSnapshot) => boolean;
 }
 
 export interface LiveSessionContextValue {
@@ -44,7 +60,11 @@ export interface LiveSessionContextValue {
    */
   connectionEpoch?: number;
   command: (action: string, options?: LiveSessionCommandOptions) => void;
-  gameplayCommand: (action: string, options?: GameplayCommandOptions) => void;
+  gameplayCommand: (
+    action: string,
+    options?: GameplayCommandOptions,
+    delivery?: GameplayCommandDelivery,
+  ) => void;
   /**
    * Fair-start: acknowledge this surface can present the runtime at exactly these
    * revisions. The caller supplies the revisions from the snapshot it is looking

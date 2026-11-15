@@ -24,6 +24,61 @@ describe('Bomb gameplay round representative resolution', () => {
     ).toBe('player-a');
   });
 
+  it('keeps the current owner through a command, ahead of a teammate listed first', () => {
+    // The reconnected previous owner is listed first and connected again. The
+    // owner who took over while they were away keeps the bomb: a wrong answer
+    // is not a reason to hand it back.
+    expect(
+      resolveGameplayCommandRepresentative(
+        {
+          activeTeamId: 'team-a',
+          participants: [player(), player({ id: 'player-b' })],
+        } as never,
+        'bomb',
+        'player-b',
+      ),
+    ).toBe('player-b');
+  });
+
+  it('falls back to the first eligible player once the owner cannot hold it', () => {
+    const state = (owner: Record<string, unknown>) =>
+      ({
+        activeTeamId: 'team-a',
+        participants: [player(), player({ id: 'player-b', ...owner })],
+      }) as never;
+    // Disconnected, or on the other team because the turn just passed.
+    expect(
+      resolveGameplayCommandRepresentative(
+        state({ connected: false }),
+        'bomb',
+        'player-b',
+      ),
+    ).toBe('player-a');
+    expect(
+      resolveGameplayCommandRepresentative(
+        state({ teamId: 'team-b' }),
+        'bomb',
+        'player-b',
+      ),
+    ).toBe('player-a');
+  });
+
+  it('leaves every other mechanic on the first-eligible rule', () => {
+    expect(
+      resolveGameplayCommandRepresentative(
+        {
+          activeTeamId: 'team-a',
+          participants: [
+            player({ ready: true }),
+            player({ id: 'player-b', ready: true }),
+          ],
+        } as never,
+        'closest',
+        'player-b',
+      ),
+    ).toBe('player-a');
+  });
+
   it('revalidates an explicit Unified representative without requiring ready', () => {
     expect(
       resolveGameplayRoundParticipant([player()], {

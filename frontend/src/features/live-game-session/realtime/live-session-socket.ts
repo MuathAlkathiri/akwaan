@@ -18,6 +18,32 @@ type SnapshotListener = (snapshot: LiveSessionSnapshot) => void;
 
 /** Long enough for the resynced snapshot to arrive, short enough to feel instant. */
 const RETRY_DELAY_MS = 250;
+
+/**
+ * How long a tracked command may go unanswered before its outcome is unknown.
+ *
+ * Transport only. It never touches a gameplay clock: the server alone decides
+ * when a turn runs out, and an answer that reaches it late loses to the clock.
+ */
+const COMMAND_ACK_TIMEOUT_MS = 4_000;
+
+/**
+ * Sends of one command, the first included. Every resend reuses the same
+ * command id, which the server treats as a duplicate once it has processed it —
+ * so a resend can recover a lost command but never apply one twice.
+ */
+const MAX_COMMAND_ATTEMPTS = 3;
+
+/** What became of a tracked command, as far as the server has said. */
+export type CommandOutcome =
+  /** The server processed it. `runtimeRevision` is the state it answered with. */
+  | { status: "accepted"; runtimeRevision?: number }
+  /** The server refused it on its merits. Final. */
+  | { status: "rejected"; code: string; message?: string }
+  /** The caller's state moved on before a resend, so none was sent. */
+  | { status: "superseded" }
+  /** No answer after every allowed send. It may or may not have landed. */
+  | { status: "unknown" };
 const MAX_PRESENTATION_RETRIES = 10;
 
 /**
@@ -375,6 +401,12 @@ export class LiveSessionSocket {
      * waits forever for a submission that was already made.
      */
     retryWithFreshRevisions?: () => Record<string, unknown> | undefined,
+    /**
+     * Told once what became of the command. Supplying it also arms the
+     * acknowledgement timeout, so a command that is never answered resolves as
+     * `unknown` instead of leaving its caller waiting forever.
+     */
+    onOutcome?: (outcome: CommandOutcome) => void,
   ): void {
     if (!this.socket?.connected) {
       throw new Error("Live session connection is not available");
@@ -383,18 +415,84 @@ export class LiveSessionSocket {
       this.socket.emit(event, command);
       return;
     }
-    this.socket.emit(event, command, (ack: unknown) => {
-      if (!isStaleRevisionAck(ack)) return;
-      // Take the newest snapshot the server has, then send the same command id
-      // again: a replay of a submission that did land is refused as a duplicate,
-      // so retrying can only ever fix the lost case.
+    this.sendTracked(event, command, retryWithFreshRevisions, onOutcome, 1);
+  }
+
+  private sendTracked(
+    event: string,
+    payload: Record<string, unknown>,
+    retryWithFreshRevisions: () => Record<string, unknown> | undefined,
+    onOutcome: ((outcome: CommandOutcome) => void) | undefined,
+    attempt: number,
+  ): void {
+    const socket = this.socket;
+    if (!socket?.connected) {
+      onOutcome?.({ status: "unknown" });
+      return;
+    }
+    let settled = false;
+    // The outcome of this send is not known — it went stale, or nothing came
+    // back. Take the newest snapshot the server has, let the caller check its
+    // command still applies to it, and send the *same* command id again: a
+    // replay of a command that did land is a duplicate and changes nothing.
+    const resend = () => {
+      if (attempt >= MAX_COMMAND_ATTEMPTS) {
+        onOutcome?.({ status: "unknown" });
+        return;
+      }
       this.recoverSnapshot?.();
       window.setTimeout(() => {
         const refreshed = retryWithFreshRevisions();
-        if (refreshed && this.socket?.connected) {
-          this.socket.emit(event, { ...command, ...refreshed });
+        if (!refreshed) {
+          onOutcome?.({ status: "superseded" });
+          return;
         }
+        this.sendTracked(
+          event,
+          { ...payload, ...refreshed },
+          retryWithFreshRevisions,
+          onOutcome,
+          attempt + 1,
+        );
       }, RETRY_DELAY_MS);
+    };
+    const timer = onOutcome
+      ? window.setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          resend();
+        }, COMMAND_ACK_TIMEOUT_MS)
+      : undefined;
+    socket.emit(event, payload, (ack: unknown) => {
+      // An answer that arrives after this send already timed out is ignored:
+      // the resend carries the same command id and gets its own answer.
+      if (settled) return;
+      settled = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+      if (isStaleRevisionAck(ack)) {
+        resend();
+        return;
+      }
+      const code =
+        ack && typeof ack === "object"
+          ? (ack as { code?: unknown }).code
+          : undefined;
+      if (typeof code === "string") {
+        onOutcome?.({
+          status: "rejected",
+          code,
+          message: String((ack as { message?: unknown }).message ?? ""),
+        });
+        return;
+      }
+      const runtimeRevision =
+        ack && typeof ack === "object"
+          ? (ack as { runtimeRevision?: unknown }).runtimeRevision
+          : undefined;
+      onOutcome?.({
+        status: "accepted",
+        ...(typeof runtimeRevision === "number" ? { runtimeRevision } : {}),
+      });
     });
   }
 
