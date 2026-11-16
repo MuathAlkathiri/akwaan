@@ -69,8 +69,18 @@ const context = (gameplayCommand = vi.fn()) =>
       serverTimestamp: "2026-01-01T00:00:10.000Z",
       teams: TEAMS,
       participants: [
-        { id: "p-1", displayName: "لاعب ألفا", teamId: "team-alpha", role: "player" },
-        { id: "p-2", displayName: "لاعب بيتا", teamId: "team-beta", role: "player" },
+        {
+          id: "p-1",
+          displayName: "لاعب ألفا",
+          teamId: "team-alpha",
+          role: "player",
+        },
+        {
+          id: "p-2",
+          displayName: "لاعب بيتا",
+          teamId: "team-beta",
+          role: "player",
+        },
       ],
       availableActions: [],
     },
@@ -79,10 +89,7 @@ const context = (gameplayCommand = vi.fn()) =>
     resync: vi.fn(),
   }) as never;
 
-const renderPhone = (
-  runtime = runtimeWith(),
-  gameplayCommand = vi.fn(),
-) => {
+const renderPhone = (runtime = runtimeWith(), gameplayCommand = vi.fn()) => {
   const view = render(
     <LiveSessionContext.Provider value={context(gameplayCommand)}>
       <MobileGameplayShell participantId="p-1">
@@ -129,20 +136,32 @@ describe("الكومبو phone controller", () => {
   it("shows the authoritative Q1-Q3 decision with equal actions and runtime balance", () => {
     renderPhone(
       runtimeWith(
-        stateWith({ phase: "decision", questionNumber: 3, questionIndex: 2, unbankedPoints: 4, deadlineAt: null }),
+        stateWith({
+          phase: "decision",
+          questionNumber: 3,
+          questionIndex: 2,
+          unbankedPoints: 4,
+          deadlineAt: null,
+        }),
       ),
     );
     const area = screen.getByTestId("mobile-action-area");
     expect(screen.getByText("وش تبون تسوون؟")).toBeInTheDocument();
     expect(screen.getByTestId("combo-phone-balance")).toHaveTextContent("4");
-    expect(within(area).getByTestId("combo-phone-cash-out").className).toContain("h-16");
-    expect(within(area).getByTestId("combo-phone-continue").className).toContain("h-16");
+    expect(
+      within(area).getByTestId("combo-phone-cash-out").className,
+    ).toContain("h-16");
+    expect(
+      within(area).getByTestId("combo-phone-continue").className,
+    ).toContain("h-16");
   });
 
   it("keeps bank and continue commands exact and permits only one decision", () => {
     const command = vi.fn();
     renderPhone(
-      runtimeWith(stateWith({ phase: "decision", unbankedPoints: 2, deadlineAt: null })),
+      runtimeWith(
+        stateWith({ phase: "decision", unbankedPoints: 2, deadlineAt: null }),
+      ),
       command,
     );
     fireEvent.click(screen.getByTestId("combo-phone-cash-out"));
@@ -163,7 +182,15 @@ describe("الكومبو phone controller", () => {
           questionIndex: 3,
           questionNumber: 4,
           runResultsJson: JSON.stringify([
-            { teamId: "team-alpha", runIndex: 0, bankedPoints: 4, questionsAnswered: 4, endedBy: "final-question", brokenByTeamId: null, endedAt: "2026-01-01T00:01:00.000Z" },
+            {
+              teamId: "team-alpha",
+              runIndex: 0,
+              bankedPoints: 4,
+              questionsAnswered: 4,
+              endedBy: "final-question",
+              brokenByTeamId: null,
+              endedAt: "2026-01-01T00:01:00.000Z",
+            },
           ]),
           deadlineAt: null,
         }),
@@ -186,13 +213,23 @@ describe("الكومبو phone controller", () => {
             activeTeamId: "team-beta",
             isActiveTeam: false,
             runResultsJson: JSON.stringify([
-              { teamId: "team-alpha", runIndex: 0, bankedPoints: 0, questionsAnswered: 2, endedBy, brokenByTeamId: null, endedAt: "2026-01-01T00:01:00.000Z" },
+              {
+                teamId: "team-alpha",
+                runIndex: 0,
+                bankedPoints: 0,
+                questionsAnswered: 2,
+                endedBy,
+                brokenByTeamId: null,
+                endedAt: "2026-01-01T00:01:00.000Z",
+              },
             ]),
             deadlineAt: null,
           }),
         ),
       );
-      expect(screen.getByTestId("combo-phone-run-result")).toHaveTextContent("انكسر الكومبو");
+      expect(screen.getByTestId("combo-phone-run-result")).toHaveTextContent(
+        "انكسر الكومبو",
+      );
       expect(screen.queryByTestId("combo-answer-input")).toBeNull();
       expect(screen.queryByTestId("combo-phone-decision")).toBeNull();
     },
@@ -201,12 +238,18 @@ describe("الكومبو phone controller", () => {
   it("hides answering during the opponent run and exposes only an authorized force action", () => {
     renderPhone(
       runtimeWith(
-        stateWith({ activeTeamId: "team-beta", isActiveTeam: false, canArmComboBreak: true }),
+        stateWith({
+          activeTeamId: "team-beta",
+          isActiveTeam: false,
+          canArmComboBreak: true,
+        }),
       ),
     );
     expect(screen.getByTestId("combo-phone-opponent-run")).toBeInTheDocument();
     expect(screen.queryByTestId("combo-answer-input")).toBeNull();
-    expect(screen.getByTestId("combo-phone-force")).toHaveTextContent("كمّل غصب");
+    expect(screen.getByTestId("combo-phone-force")).toHaveTextContent(
+      "كمّل غصب",
+    );
   });
 
   it("keeps an unused opponent ability and future answers absent", () => {
@@ -227,7 +270,13 @@ describe("الكومبو phone controller", () => {
   it("keeps the force command exact and prevents duplicate use", () => {
     const command = vi.fn();
     renderPhone(
-      runtimeWith(stateWith({ activeTeamId: "team-beta", isActiveTeam: false, canArmComboBreak: true })),
+      runtimeWith(
+        stateWith({
+          activeTeamId: "team-beta",
+          isActiveTeam: false,
+          canArmComboBreak: true,
+        }),
+      ),
       command,
     );
     const force = screen.getByTestId("combo-phone-force");
@@ -255,7 +304,9 @@ describe("الكومبو phone controller", () => {
     expect(screen.getByTestId("combo-phone-break-reveal")).toHaveTextContent(
       "الخصم أجبركم تكملون",
     );
-    expect(screen.getByTestId("combo-phone-forced-continue")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("combo-phone-forced-continue"),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("combo-phone-cash-out")).toBeNull();
   });
 
@@ -266,7 +317,15 @@ describe("الكومبو phone controller", () => {
     rerender(
       <LiveSessionContext.Provider value={context(command)}>
         <MobileGameplayShell participantId="p-1">
-          <ComboGameplayPanel runtime={runtimeWith(stateWith({ phase: "decision", unbankedPoints: 1, deadlineAt: null }))} />
+          <ComboGameplayPanel
+            runtime={runtimeWith(
+              stateWith({
+                phase: "decision",
+                unbankedPoints: 1,
+                deadlineAt: null,
+              }),
+            )}
+          />
         </MobileGameplayShell>
       </LiveSessionContext.Provider>,
     );
@@ -274,7 +333,15 @@ describe("الكومبو phone controller", () => {
     rerender(
       <LiveSessionContext.Provider value={context(command)}>
         <MobileGameplayShell participantId="p-1">
-          <ComboGameplayPanel runtime={runtimeWith(stateWith({ questionIndex: 1, questionNumber: 2, unbankedPoints: 1 }))} />
+          <ComboGameplayPanel
+            runtime={runtimeWith(
+              stateWith({
+                questionIndex: 1,
+                questionNumber: 2,
+                unbankedPoints: 1,
+              }),
+            )}
+          />
         </MobileGameplayShell>
       </LiveSessionContext.Provider>,
     );
@@ -290,8 +357,97 @@ describe("الكومبو host regression", () => {
       </LiveSessionContext.Provider>,
     );
     expect(screen.getByTestId("combo-streak")).toBeInTheDocument();
-    expect(screen.getByTestId("combo-prompt").className).toContain("text-[2rem]");
+    expect(screen.getByTestId("combo-prompt").className).toContain(
+      "text-[2rem]",
+    );
     expect(screen.getByTestId("challenge-frame").innerHTML).toContain("px-5");
     expect(screen.queryByTestId("combo-phone-controller")).toBeNull();
+  });
+});
+
+/**
+ * الكومبو under the global captain (approved 2026-11-15): the question's
+ * holder answers and decides; a teammate coaches; the opposing team's break
+ * stays open to every one of its phones.
+ */
+describe("the question holder", () => {
+  const holder = {
+    isAssignedActor: true,
+    assignedParticipantId: "p-1",
+    ownAssignmentSequence: 6,
+  };
+  const teammate = { isAssignedActor: false, assignedParticipantId: "p-9" };
+
+  it("answers with its assignment", () => {
+    const { gameplayCommand } = renderPhone(runtimeWith(stateWith(holder)));
+    fireEvent.change(screen.getByTestId("combo-answer-input"), {
+      target: { value: "ناروتو" },
+    });
+    fireEvent.click(screen.getByTestId("combo-answer-submit"));
+    expect(gameplayCommand).toHaveBeenCalledWith("gameplay-command", {
+      roundId: "round-1",
+      commandType: "submit-combo-answer",
+      payload: { answer: "ناروتو", assignmentSequence: 6 },
+    });
+  });
+
+  it("owns the decision that follows, with the same assignment", () => {
+    const { gameplayCommand } = renderPhone(
+      runtimeWith(
+        stateWith({ ...holder, phase: "decision", unbankedPoints: 1 }),
+      ),
+    );
+    fireEvent.click(screen.getByTestId("combo-phone-cash-out"));
+    expect(gameplayCommand).toHaveBeenCalledWith("gameplay-command", {
+      roundId: "round-1",
+      commandType: "cash-out-combo",
+      payload: { assignmentSequence: 6 },
+    });
+  });
+
+  it("gives a teammate the question to help with, but no answer box", () => {
+    renderPhone(runtimeWith(stateWith(teammate)));
+    const card = screen.getByTestId("combo-phone-coaching");
+    expect(card).toHaveTextContent("دوركم — الجوال مع زميلكم");
+    expect(card).toHaveTextContent("من هو الهوكاجي السابع؟");
+    expect(screen.queryByTestId("combo-answer-input")).toBeNull();
+  });
+
+  it("gives a teammate no Cash Out / Continue controls", () => {
+    renderPhone(
+      runtimeWith(
+        stateWith({ ...teammate, phase: "decision", unbankedPoints: 1 }),
+      ),
+    );
+    expect(screen.getByTestId("combo-phone-coaching")).toHaveTextContent(
+      "القرار من جوال",
+    );
+    expect(screen.queryByTestId("combo-phone-cash-out")).toBeNull();
+    expect(screen.queryByTestId("combo-phone-continue")).toBeNull();
+  });
+
+  it("keeps كسر الكومبو for any opponent, with no assignment attached", () => {
+    const { gameplayCommand } = renderPhone(
+      runtimeWith(
+        stateWith({
+          actorTeamId: "team-beta",
+          isActiveTeam: false,
+          isAssignedActor: false,
+          canArmComboBreak: true,
+          assignedParticipantId: "p-1",
+        }),
+      ),
+    );
+    fireEvent.click(screen.getByTestId("combo-phone-force"));
+    expect(gameplayCommand).toHaveBeenCalledWith("gameplay-command", {
+      roundId: "round-1",
+      commandType: "arm-combo-break",
+      payload: {},
+    });
+  });
+
+  it("keeps the whole-team rule for a Run started before assignment", () => {
+    renderPhone(runtimeWith(stateWith()));
+    expect(screen.getByTestId("combo-answer-input")).toBeInTheDocument();
   });
 });

@@ -270,7 +270,7 @@ describe("Moving XO phone placement", () => {
     );
   });
 
-  it("converges after a teammate wins the race without keeping stale pending UI", () => {
+  it("converges when the turn moves on without keeping stale pending UI", () => {
     const command = vi.fn();
     const view = render(
       tree(runtime(placementState(), ["mode:place-moving-xo-mark"]), command),
@@ -385,6 +385,61 @@ describe("Moving XO phone completion", () => {
     );
     expect(screen.getByTestId("moving-xo-phone-terminal")).toHaveTextContent(
       "انتهت الألغاز المتاحة لهذا التحدي، وتنتهي الجولة بدون فائز.",
+    );
+  });
+});
+
+/**
+ * One phone carries each turn (approved global-captain policy, superseding the
+ * open-team first-commit rule): the holder answers and places; a teammate,
+ * though the server offers the team its commands, coaches.
+ */
+describe("the turn holder", () => {
+  const ANSWER = "mode:submit-moving-xo-answer";
+  const PLACE = "mode:place-moving-xo-mark";
+
+  it("sends the holder's assignment with the placement", () => {
+    const { gameplayCommand } = renderPhone(
+      placementState({ isAssignedActor: true, ownAssignmentSequence: 7 }),
+      [PLACE],
+    );
+    fireEvent.click(screen.getByTestId("moving-xo-cell-5"));
+    expect(gameplayCommand).toHaveBeenCalledWith("gameplay-command", {
+      roundId: "round-1",
+      commandType: "place-moving-xo-mark",
+      payload: { cell: 5, assignmentSequence: 7 },
+    });
+  });
+
+  it("gives a teammate the puzzle to help with, but no answer box", () => {
+    renderPhone(
+      answerState({ isAssignedActor: false, assignedParticipantId: "p-9" }),
+      [ANSWER],
+    );
+    const card = screen.getByTestId("moving-xo-phone-coaching");
+    expect(card).toHaveTextContent("دوركم — الجوال مع زميلكم");
+    expect(card).toHaveTextContent("ما اسم البطل؟");
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
+  it("gives a teammate a static board during placement", () => {
+    renderPhone(
+      placementState({ isAssignedActor: false, assignedParticipantId: "p-9" }),
+      [PLACE],
+    );
+    expect(screen.getByTestId("moving-xo-phone-coaching")).toHaveTextContent(
+      "الحركة من جوال زميلكم",
+    );
+    expect(screen.getByTestId("moving-xo-cell-5").tagName).toBe("DIV");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("keeps the whole-team rule when the server says nothing", () => {
+    const { gameplayCommand } = renderPhone(placementState(), [PLACE]);
+    fireEvent.click(screen.getByTestId("moving-xo-cell-5"));
+    expect(gameplayCommand).toHaveBeenCalledWith(
+      "gameplay-command",
+      expect.objectContaining({ payload: { cell: 5 } }),
     );
   });
 });

@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeftRight, Check, Play, Shuffle, UserMinus } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Check,
+  Crown,
+  Play,
+  Shuffle,
+  UserMinus,
+} from "lucide-react";
 import { ConfirmationDialog } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { ScannableQr } from "@/components/akwaan/scannable-qr";
@@ -15,6 +22,7 @@ import {
   createJoinAccess,
   getJoinAccess,
   removeLiveParticipant,
+  setTeamCaptain,
 } from "../api/live-session-api";
 import {
   useLiveSession,
@@ -84,7 +92,8 @@ export function WaitingRoom() {
   // controller can: the endpoint refuses anybody else.
   const issuing = useRef(false);
   const issue = useMutation({
-    mutationFn: () => createJoinAccess(snapshot!.sessionId, JOIN_ACCESS_DEFAULTS),
+    mutationFn: () =>
+      createJoinAccess(snapshot!.sessionId, JOIN_ACCESS_DEFAULTS),
     onSuccess: (created) => {
       queryClient.setQueryData(
         ["live-game-session", snapshot!.sessionId, "join-access"],
@@ -116,6 +125,17 @@ export function WaitingRoom() {
     onError: (error) =>
       setFailure(getApiErrorMessage(error, "ما قدرنا ننقل اللاعب.")),
   });
+  const captain = useMutation({
+    mutationFn: (input: { teamId: string; participantId: string | null }) =>
+      setTeamCaptain(
+        snapshot!.sessionId,
+        input.teamId,
+        input.participantId,
+        snapshot!.revision,
+      ),
+    onError: (error) =>
+      setFailure(getApiErrorMessage(error, "ما قدرنا نغيّر القائد.")),
+  });
   const remove = useMutation({
     mutationFn: (participantId: string) =>
       removeLiveParticipant(
@@ -142,7 +162,20 @@ export function WaitingRoom() {
   );
   const otherSide = (teamId: string) =>
     teamId === first.id ? second.id : first.id;
-  const busy = connection !== "connected" || move.isPending || splitting;
+  const busy =
+    connection !== "connected" ||
+    move.isPending ||
+    captain.isPending ||
+    splitting;
+  /** A captain who has since left the side reads as no captain. */
+  const captainOf = (teamId: string) => {
+    const id = snapshot.teams.find(
+      (team) => team.id === teamId,
+    )?.captainParticipantId;
+    return id && sideOf(teamId).some((person) => person.id === id)
+      ? id
+      : undefined;
+  };
 
   /**
    * Hands out the players so the two sides come out even.
@@ -199,6 +232,7 @@ export function WaitingRoom() {
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_380px_1fr]">
         {teams.map((team, teamIndex) => {
           const side = sideOf(team.id);
+          const captainId = captainOf(team.id);
           const openPlaces = Math.max(PLACES_PER_SIDE - side.length, 0);
           const panel = (
             <section
@@ -237,8 +271,21 @@ export function WaitingRoom() {
                         size={34}
                       />
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-xl font-bold">
-                      {person.displayName}
+                    {/* The captain mark sits under the name, never beside it: a
+                        chip in the row squeezed the captain's own name away. */}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xl font-bold">
+                        {person.displayName}
+                      </span>
+                      {person.id === captainId && (
+                        <span
+                          data-testid="waiting-room-captain-badge"
+                          className="text-muted-foreground mt-0.5 flex items-center gap-1 text-xs font-black"
+                        >
+                          <Crown className="size-3.5" aria-hidden />
+                          القائد
+                        </span>
+                      )}
                     </span>
                     {person.connected ? (
                       <span className="text-success hidden items-center gap-1.5 text-sm font-bold sm:inline-flex">
@@ -297,6 +344,46 @@ export function WaitingRoom() {
                   </li>
                 ))}
               </ul>
+              {/* Optional. With a captain, that phone carries every turn the
+                  side has to take with one hand; without one the turns go round
+                  the whole side. Set here and fixed once the Match starts. */}
+              <div className="mt-auto border-t px-5 py-4">
+                <label
+                  htmlFor={`captain-${team.id}`}
+                  className="mb-1.5 flex items-center gap-1.5 text-sm font-black"
+                >
+                  <Crown className="size-4" aria-hidden />
+                  قائد الفريق
+                </label>
+                <select
+                  id={`captain-${team.id}`}
+                  data-testid={`waiting-room-captain-${team.id}`}
+                  value={captainId ?? ""}
+                  disabled={busy || side.length === 0}
+                  aria-describedby={`captain-hint-${team.id}`}
+                  onChange={(event) => {
+                    setFailure(undefined);
+                    captain.mutate({
+                      teamId: team.id,
+                      participantId: event.target.value || null,
+                    });
+                  }}
+                  className="bg-background focus-visible:ring-ring h-11 w-full rounded-[12px] border px-3 text-base font-bold focus-visible:ring-2 focus-visible:outline-none disabled:opacity-60"
+                >
+                  <option value="">بدون قائد</option>
+                  {side.map((person) => (
+                    <option key={person.id} value={person.id}>
+                      {person.displayName}
+                    </option>
+                  ))}
+                </select>
+                <p
+                  id={`captain-hint-${team.id}`}
+                  className="text-muted-foreground mt-1.5 text-xs font-bold"
+                >
+                  بدون قائد = تناوب تلقائي بين لاعبي الفريق
+                </p>
+              </div>
             </section>
           );
           return panel;

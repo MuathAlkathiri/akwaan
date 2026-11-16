@@ -80,6 +80,14 @@ export function MarhalaScreen({
   const teamName = (id: string) =>
     teams.find((team) => team.id === id)?.name ?? "الفريق";
   const activeIdentity = teamIdentityOf(view.activeTeamId, teams);
+  // Whose phone carries the turn — the lobby captain or the rotation's pick —
+  // so the room knows who to talk to. Inline on the turn line: a second header
+  // line would cost the board its fit on a 720p screen.
+  const holderName = view.assignedParticipantId
+    ? snapshot?.participants.find(
+        (participant) => participant.id === view.assignedParticipantId,
+      )?.displayName
+    : undefined;
   // Between two questions the board, the pawns and the header are exactly what
   // the room should keep looking at; only this panel is between states.
   const waitingForNext = useWaitingForNextQuestion();
@@ -106,6 +114,15 @@ export function MarhalaScreen({
                 <span className={activeIdentity.text}>
                   {teamName(view.activeTeamId)}
                 </span>
+                {holderName && (
+                  <span
+                    data-testid="marhala-turn-holder"
+                    className="text-base font-bold text-muted-foreground"
+                  >
+                    {" "}
+                    · الجوال مع <bdi>{holderName}</bdi>
+                  </span>
+                )}
               </>
             )}
           </p>

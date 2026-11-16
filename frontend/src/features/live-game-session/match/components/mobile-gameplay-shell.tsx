@@ -52,6 +52,17 @@ export function useMobileSurface(): boolean {
   return useContext(MobileSurfaceContext);
 }
 
+/**
+ * Which participant this phone is, for a view that must tell "my choice" from
+ * "someone else's" before the server's own projection can (Bomb's holder setup).
+ * Presentation only: the server still authorises every command.
+ */
+const MobileParticipantContext = createContext<string | undefined>(undefined);
+
+export function useMobileParticipantId(): string | undefined {
+  return useContext(MobileParticipantContext);
+}
+
 export type MobilePhase = "ready" | "action" | "waiting" | "complete";
 
 /**
@@ -108,6 +119,7 @@ export function MobileGameplayShell({
 
   return (
     <MobileSurfaceContext.Provider value={true}>
+      <MobileParticipantContext.Provider value={participantId}>
       <div
         dir="rtl"
         data-testid="mobile-gameplay-shell"
@@ -179,6 +191,7 @@ export function MobileGameplayShell({
           {children}
         </div>
       </div>
+      </MobileParticipantContext.Provider>
     </MobileSurfaceContext.Provider>
   );
 }

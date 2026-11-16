@@ -45,6 +45,11 @@ export function MovingXoScreen({
   );
   const teams = snapshot?.teams ?? [];
   const activeTeam = teams.find((team) => team.id === view.activeTeamId);
+  const holderName = view.assignedParticipantId
+    ? snapshot?.participants.find(
+        (participant) => participant.id === view.assignedParticipantId,
+      )?.displayName
+    : undefined;
   const activeIdentity = teamIdentityOf(view.activeTeamId, teams);
   const activeSymbol = movingXoSymbol(view.activeTeamId, teams);
   const expiringCell = visibleExpiringCell({ ...view, phase });
@@ -121,6 +126,16 @@ export function MovingXoScreen({
                   {phase === "placement"
                     ? `${activeTeam?.name ?? "الفريق"} كسب الحركة`
                     : `الدور على ${activeTeam?.name ?? "الفريق"}`}
+                  {/* Whose phone carries the turn — captain or rotation. */}
+                  {holderName && (
+                    <span
+                      data-testid="moving-xo-turn-holder"
+                      className="text-base font-bold opacity-80"
+                    >
+                      {" "}
+                      · الجوال مع <bdi>{holderName}</bdi>
+                    </span>
+                  )}
                 </p>
               </div>
             )}

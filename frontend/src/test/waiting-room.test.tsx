@@ -146,7 +146,9 @@ describe("the waiting room", () => {
         presence: "removed",
       } as never,
     ]);
-    expect(screen.getByText("ريم")).toBeInTheDocument();
+    // The name also appears in the side's captain picker; the row is what counts.
+    expect(screen.getByTestId("waiting-room-player").textContent).toContain("ريم");
+    // Gone from the row *and* from the captain picker.
     expect(screen.queryByText("سعد")).not.toBeInTheDocument();
     expect(screen.getAllByTestId("waiting-room-player")).toHaveLength(1);
   });
