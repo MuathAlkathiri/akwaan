@@ -40,15 +40,15 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
-### Where things stand — 2026-11-15 · GAMEPLAY INTEGRITY (PR #56) DEPLOYED · TIMER EXPERIENCE + GLOBAL CAPTAIN — LOCAL ONLY
+### Where things stand — 2026-11-16 · GLOBAL CAPTAIN + TIMER EXPERIENCE (PR #57) DEPLOYED · PHYSICAL QA PENDING · (PR #56 deployed 2026-11-15)
 
 Three pieces of work, at three different stages. Keep them apart.
 
 | Work | Design | Implementation | Git | Deployment |
 |---|---|---|---|---|
 | **P0 gameplay integrity — PR #56** (Bomb answer-submission lockouts, server-owned command hardening, guarded answer matching) | ✅ Approved | ✅ Implemented & verified | ✅ Merged — `f919e0d` | ✅ Vercel frontend `f919e0d` verified (bundle markers); ✅ Render backend `/health` reported `f919e0d` on 2026-11-15 (deployed manually by the PO) |
-| **Timer Experience** (stage-size four-state countdown, opt-in room sound, compact phone chip) | ✅ Approved | ✅ Implemented & verified **locally** — frontend presentation only; functional sound fixes 2026-11-16 (below) · ⚠️ device QA outstanding | 🚧 In release PR (`release/global-captain-timer`) | ⬜ Not yet deployed |
-| **Global Lobby Captain & Team Action Assignment** (§16.11) | ✅ Approved for every eligible mechanic (Combo and Bomb finalised 2026-11-16) | ✅ **Implemented & verified locally** (2026-11-16) · ⚠️ physical-device QA outstanding | 🚧 In release PR (`release/global-captain-timer`) | ⬜ Not yet deployed |
+| **Timer Experience** (stage-size four-state countdown, opt-in room sound, compact phone chip) | ✅ Approved | ✅ Implemented & verified **locally** — frontend presentation only; functional sound fixes 2026-11-16 (below) · ⚠️ device QA outstanding | ✅ Merged — PR #57, `98ee362` | ✅ Deployed 2026-11-16 — Render `/health` = `98ee362` · Vercel production `98ee362` · ⚠️ physical-device QA pending |
+| **Global Lobby Captain & Team Action Assignment** (§16.11) | ✅ Approved for every eligible mechanic (Combo and Bomb finalised 2026-11-16) | ✅ **Implemented & verified locally** (2026-11-16) · ⚠️ physical-device QA outstanding | ✅ Merged — PR #57, `98ee362` | ✅ Deployed 2026-11-16 — Render `/health` = `98ee362` · Vercel production `98ee362` · ⚠️ physical-device QA pending |
 
 **PR #56 — outstanding.** Tolerant answer matching (`C4_GUARDED_V1`) ships **disabled**; it is activated only by
 `ANSWER_MATCHING_TOLERANT_MECHANICS`, which must stay unset. ⚠️ The PO has not yet confirmed in the Render
@@ -67,7 +67,22 @@ Synthesized cues remain provisional. Visual design untouched (Challenge Page UI 
 **Global captain — implemented & verified locally (2026-11-16).** Every eligible mechanic follows the approved
 policy (§16.11), Combo and Bomb included; backend, real-Mongo, frontend and visual gates passed. Physical-device QA
 remains. The full integration suite is not green only because of the unrelated `player-catalog` failures (debt
-#37). Committed to the release branch `release/global-captain-timer` for its PR; not yet deployed. No runtime or Production data was changed.
+#37). Merged as PR #57 (`98ee362`) and deployed 2026-11-16 (see the release ledger below). No Production data or content was changed by the release.
+
+**Release ledger — Global Captain + Timer Experience (2026-11-16).**
+
+| Stage | State |
+|---|---|
+| Implemented & verified locally | ✅ Backend 4050 / frontend 2157 tests; full real-Mongo suite on the release-only tree 45 suites, 658 tests, 0 failures |
+| Committed & pushed | ✅ `release/global-captain-timer`: `3bab55f` timer · `aef59ba` captain backend · `070cf84` captain frontend · `c844d20` roadmap — 81 files, concurrent work excluded |
+| Merged | ✅ PR #57 → `main` at `98ee362` |
+| Frontend — Vercel | ✅ Production deployment `98ee362` (GitHub deployment record); live bundle carries the release markers |
+| Backend — Render | ✅ Manual deploy by the PO; `/health` = `{status: ok, database: connected, commit: 98ee362}` |
+| Production API smoke | ✅ New `PATCH …/teams/:teamId/captain` answers 401 unauthenticated (404 before deploy); `/health`, the public `/worlds` catalog and the frontend steady at 200 across repeated probes. Platform logs were not available to the agent |
+| Gameplay smoke (signed-in host, phones) | ⬜ Not performed by the agent — no browser session or credentials; moves to physical-device QA |
+| Physical-device QA | ⬜ **Pending** (§19 debt #38) |
+| Migration / data | None. `ANSWER_MATCHING_TOLERANT_MECHANICS` remains unset |
+| Rollback | Render → `f919e0d`; Vercel → the previous production deployment (`f919e0d`) |
 
 ### Where things stand — 2026-11-10 · CONTENT ENGINE REVIEW UX PHASES 1–3 — ✅ IMPLEMENTED & DEPLOYED
 
@@ -2319,8 +2334,7 @@ read by the Admin catalog and by the manual `provision:production-mechanics` CLI
 ### 16.11 Global lobby captain & team action assignment *(approved 2026-11-15; Combo and Bomb rules finalised 2026-11-16)*
 
 **Status:** ✅ **Design approved for every eligible mechanic** · ✅ **IMPLEMENTED & VERIFIED LOCALLY** (2026-11-16 —
-source, automated and visual gates passed; see *Verification*) · ⚠️ physical-device QA outstanding · 🚧 in the release PR
-(`release/global-captain-timer`) · ⬜ not yet deployed.
+source, automated and visual gates passed; see *Verification*) · ✅ merged (PR #57, `98ee362`) · ✅ **deployed to Production 2026-11-16** · ⚠️ **physical-device QA pending**.
 
 **The approved rule.** A team may have one **lobby captain**, chosen by the host in the waiting room and locked
 when the Match starts. With a captain, the captain takes the team's eligible single-submitter actions while
@@ -3567,7 +3581,7 @@ Not implemented. Not scheduled.
 | 35 | **Permanent mechanic deletion** | 🟡 Design approved — implementation deferred | The approved requirements and the open implementation dependencies are recorded in §19.1. Not implemented. Separate from the narrower challenge-type deletion lifecycle already in main (`bb94504`). |
 | 36 | ~~**Combo captain policy undecided**~~ | Resolved 2026-11-16 | Approved and implemented (§16.11): the question holder answers and owns تثبيت / كمل; كسر الكومبو stays open to any connected opponent. |
 | 37 | **`player-catalog` integration suite fails (9 tests)** | Working-tree debt | World activation returns 400 in `test/integration/player-catalog`. Traced to uncommitted World Readiness work in the working tree, not to committed code or to §16.11. Must be resolved with that work, before it is committed. |
-| 38 | **Global captain + Timer Experience need physical-device QA** | Verification gap | Both pass their automated gates, and the release alone passes the full real-Mongo suite; global captain also passed a rendered screenshot pass (360/390 phones, 720p/1080p screens). Neither has been checked on real phones and a real room screen, including countdown sound on a real TV browser. |
+| 38 | **Global captain + Timer Experience need physical-device QA** | Verification gap | Deployed to Production 2026-11-16 (`98ee362`). Both pass their automated gates, and the release alone passes the full real-Mongo suite; global captain also passed a rendered screenshot pass (360/390 phones, 720p/1080p screens). Neither has been checked on real phones and a real room screen, including countdown sound on a real TV browser. |
 | 39 | **Lobby too wide on phones when the join QR is shown** | UI (pre-existing) | The join-code row (seven `w-11` tiles + gaps + card padding ≈ 392 px) sets the single-column width, so the host lobby overflows by ~50 px at 360 px and ~20 px at 390 px. Unchanged from `HEAD`; found during the captain visual pass. |
 | 40 | **Countdown warning and critical share one icon** | UI (deferred — UI freeze) | Colour, the stage beat and the digits distinguish them, but under reduced motion on the compact chip the two differ by colour alone. Visual change deferred to the Challenge Page redesign. |
 
