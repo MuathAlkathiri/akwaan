@@ -40,10 +40,10 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
-### Where things stand — 2026-11-16 (later) · BOMB SUBMISSION RELIABILITY (F1–F3) — ✅ IMPLEMENTED & VERIFIED LOCALLY · 🚧 IN RELEASE PR (`fix/bomb-submission-reliability`) · ⬜ NOT YET DEPLOYED
+### Where things stand — 2026-11-16 (later) · BOMB SUBMISSION RELIABILITY (F1–F3) — ✅ MERGED (PR #59, `c4181e0`) · ✅ DEPLOYED TO VERCEL PRODUCTION · ⚠️ PHYSICAL-DEVICE QA PENDING
 
 The Bomb end-to-end audit (2026-11-16) found three ways a player could type an answer and still lose the turn.
-All three are fixed **in the frontend only**; Production (`98ee362`) still has them until this release ships.
+All three are fixed **in the frontend only**, merged as PR #59 (`c4181e0`) and live on Vercel Production since 2026-11-16.
 
 | # | Confirmed root cause | Local fix |
 |---|---|---|
@@ -62,6 +62,14 @@ Bomb real-Mongo 32/32; typecheck, lint and production build clean.
 a forced reconnect of a live-but-very-slow connection can hand the bomb to a connected teammate through the
 existing disconnect rule (no turn is lost); Bomb content aliases (exact matching) and the paused-session Send
 button remain separate follow-ups.
+
+| Release step | Result |
+|---|---|
+| Merged | ✅ PR #59 → `main` at `c4181e0` (2026-11-16) |
+| Release-tree validation | ✅ frontend 187 files / 2179 tests, typecheck, lint, build; backend 291 suites / 4050 tests, typecheck, lint, build; full real-Mongo suite run alone: 45 suites, 660 tests, 0 failures (incl. Bomb 32/32) |
+| Frontend — Vercel | ✅ Production deployment `c4181e0` (GitHub deployment record); the live join-route bundle carries the new connection probe (heartbeat ack, 2.5 s) and post-reconnect snapshot wait |
+| Backend — Render | Unchanged by design (frontend-only release): `/health` = `{status: ok, database: connected, commit: 98ee362}` |
+| Physical-device QA | ⚠️ Not performed |
 
 ### Where things stand — 2026-11-16 · GLOBAL CAPTAIN + TIMER EXPERIENCE (PR #57) DEPLOYED · PHYSICAL QA PENDING · (PR #56 deployed 2026-11-15)
 
@@ -3607,7 +3615,7 @@ Not implemented. Not scheduled.
 | 38 | **Global captain + Timer Experience need physical-device QA** | Verification gap | Deployed to Production 2026-11-16 (`98ee362`). Both pass their automated gates, and the release alone passes the full real-Mongo suite; global captain also passed a rendered screenshot pass (360/390 phones, 720p/1080p screens). Neither has been checked on real phones and a real room screen, including countdown sound on a real TV browser. |
 | 39 | **Lobby too wide on phones when the join QR is shown** | UI (pre-existing) | The join-code row (seven `w-11` tiles + gaps + card padding ≈ 392 px) sets the single-column width, so the host lobby overflows by ~50 px at 360 px and ~20 px at 390 px. Unchanged from `HEAD`; found during the captain visual pass. |
 | 40 | **Countdown warning and critical share one icon** | UI (deferred — UI freeze) | Colour, the stage beat and the digits distinguish them, but under reduced motion on the compact chip the two differ by colour alone. Visual change deferred to the Challenge Page redesign. |
-| 41 | **Bomb submission reliability fixes not yet released** | Release gap | F1–F3 (dead connection, device-clock skew, stale-retry reporting) are implemented and verified locally only; Production `98ee362` still has them. Physical-device confirmation also outstanding. |
+| 41 | **Bomb submission reliability needs physical-device QA** | Verification gap | F1–F3 (dead connection, device-clock skew, stale-retry reporting) are deployed to Vercel Production 2026-11-16 (PR #59, `c4181e0`; backend unchanged at `98ee362`). Not yet confirmed on real phones: iPhone sleep/lock, Wi-Fi→LTE handover, Android keyboards. |
 | 42 | **Bomb answer aliases** | Content | Bomb matches answers exactly after normalisation (`bomb-gameplay.plugin.ts`): partial names, transliterations and Arabic-Indic digits are judged wrong. Content/alias review, separate from transport; tolerant matching stays off. |
 
 ### 19.1 Permanent mechanic deletion — 🟡 DESIGN APPROVED — IMPLEMENTATION DEFERRED
