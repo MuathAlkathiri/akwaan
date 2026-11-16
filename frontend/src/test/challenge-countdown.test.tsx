@@ -7,8 +7,12 @@ import { ChallengeCountdown } from "@/features/live-game-session/match/component
  *
  * Brand gold measured ~1.9:1 on the cream room, so the warning digits moved to the
  * `--warning` token on the large numeral and to navy on the small chip, and an
- * alarm icon marks every urgent second. None of this may change *when* urgency
- * escalates, or what the timer says.
+ * alarm icon marks every urgent second. None of this may change what the timer
+ * says.
+ *
+ * The default thresholds are the Timer Experience values — warning from ten
+ * seconds, critical from five — replacing the earlier six and three. A short
+ * window passes its own (RYO keeps six and three; see its decision-screen test).
  */
 const at = (seconds: number, variant: "chip" | "prominent") => {
   const view = render(
@@ -21,13 +25,13 @@ const at = (seconds: number, variant: "chip" | "prominent") => {
 
 describe("ChallengeCountdown urgency presentation", () => {
   for (const variant of ["chip", "prominent"] as const) {
-    it(`keeps the same thresholds and only marks urgent seconds (${variant})`, () => {
+    it(`escalates at ten and five seconds and only marks urgent seconds (${variant})`, () => {
       for (const [seconds, urgency, hasCue] of [
-        [10, "calm", false],
-        [7, "calm", false],
+        [25, "calm", false],
+        [11, "calm", false],
+        [10, "warning", true],
         [6, "warning", true],
-        [4, "warning", true],
-        [3, "critical", true],
+        [5, "critical", true],
         [1, "critical", true],
       ] as const) {
         const { view, timer, cue } = at(seconds, variant);
@@ -55,11 +59,11 @@ describe("ChallengeCountdown urgency presentation", () => {
   });
 
   it("uses the warning token on the large numeral, navy digits on the small chip", () => {
-    const prominent = at(5, "prominent");
+    const prominent = at(8, "prominent");
     expect(prominent.timer.className).toMatch(/\btext-warning\b/);
     prominent.view.unmount();
 
-    const chip = at(5, "chip");
+    const chip = at(8, "chip");
     expect(chip.timer.className).toMatch(/\btext-foreground\b/);
     expect(chip.timer.className).toMatch(/\bborder-warning\b/);
     expect(chip.timer.className).not.toMatch(/\btext-warning\b/);

@@ -5,6 +5,10 @@ import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
+import { countdownThresholdsForWindow } from "../match/components/countdown-urgency";
+
+/** The hotspot answer window is five seconds. */
+const ODD_PIECE_ANSWER_THRESHOLDS = countdownThresholdsForWindow(5);
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
@@ -372,7 +376,12 @@ function OddPieceHotspotGameplayPanel({
       aside={
         remainingMs !== undefined &&
         (view.phase === "open" || view.phase === "answering") ? (
-          <ChallengeCountdown remainingMs={remainingMs} />
+          <ChallengeCountdown
+            remainingMs={remainingMs}
+            {...(view.phase === "answering"
+              ? { thresholds: ODD_PIECE_ANSWER_THRESHOLDS }
+              : {})}
+          />
         ) : null
       }
       className="mx-auto max-w-6xl"
@@ -567,7 +576,12 @@ function OddPieceHotspotPhoneController({
       aside={
         remainingMs !== undefined &&
         (view.phase === "open" || view.phase === "answering") ? (
-          <ChallengeCountdown remainingMs={remainingMs} />
+          <ChallengeCountdown
+            remainingMs={remainingMs}
+            {...(view.phase === "answering"
+              ? { thresholds: ODD_PIECE_ANSWER_THRESHOLDS }
+              : {})}
+          />
         ) : null
       }
       className="flex min-h-0 flex-1 flex-col"

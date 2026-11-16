@@ -118,7 +118,10 @@ export function MarhalaScreen({
             replay.phase !== "answer" &&
             remainingMs !== undefined &&
             view.phase === "question" && (
-              <ChallengeCountdown remainingMs={remainingMs} />
+              <ChallengeCountdown
+                remainingMs={remainingMs}
+                sound={view.media?.type !== "audio"}
+              />
             )}
         </div>
       </header>

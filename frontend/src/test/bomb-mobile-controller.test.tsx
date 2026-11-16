@@ -595,6 +595,13 @@ describe("every other phone waits, and waits empty", () => {
     expect(screen.queryByTestId("bomb-phone-skip")).toBeNull();
   });
 
+  it("never gives a waiting phone the room's clock or its sound switch", () => {
+    render(phoneTree(peer(), vi.fn()));
+    expect(screen.queryByTestId("bomb-stage-clock")).toBeNull();
+    expect(screen.queryByTestId("countdown-sound-toggle")).toBeNull();
+    expect(screen.queryByTestId("challenge-countdown")).toBeNull();
+  });
+
   it("never puts the exact clock in an active-team peer's DOM", () => {
     renderPhone(peer());
     expect(screen.queryByTestId("bomb-phone-clock")).toBeNull();

@@ -12,6 +12,11 @@ import { useLiveSession } from "../hooks/live-session-context";
 import { useWaitingForNextQuestion } from "../hooks/use-recurring-question-transition";
 import { AnswerOption } from "../match/components/answer-option";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
+import { countdownThresholdsForWindow } from "../match/components/countdown-urgency";
+
+/** The question window is fifteen seconds and the placement window ten. */
+const MOVING_XO_QUESTION_THRESHOLDS = countdownThresholdsForWindow(15);
+const MOVING_XO_PLACEMENT_THRESHOLDS = countdownThresholdsForWindow(10);
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import {
@@ -110,7 +115,14 @@ export function MovingXoPhonePanel({
       title={phoneTitle(phase, mayAnswer, mayPlace, activeTeam?.name)}
       aside={
         remainingMs !== undefined ? (
-          <ChallengeCountdown remainingMs={remainingMs} />
+          <ChallengeCountdown
+            remainingMs={remainingMs}
+            thresholds={
+              phase === "placement"
+                ? MOVING_XO_PLACEMENT_THRESHOLDS
+                : MOVING_XO_QUESTION_THRESHOLDS
+            }
+          />
         ) : null
       }
       className="flex min-h-0 flex-1 flex-col"

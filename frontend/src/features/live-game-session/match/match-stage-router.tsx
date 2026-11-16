@@ -47,6 +47,7 @@ import { UnifiedMatchComplete } from "./components/unified-match-complete";
 import { ParticipantWaiting } from "./components/participant-waiting";
 import { UnifiedPreflightStage } from "./components/unified-preflight-stage";
 import type { MatchActor } from "./types";
+import { CountdownSurfaceProvider } from "./components/countdown-presentation";
 import type { GameplayRuntimeSnapshot } from "../model";
 import { isMatchStageKey } from "./types";
 
@@ -499,7 +500,13 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
     actor === "shared-screen" ? { ...stage, availableActions: [] } : stage;
   return (
     <WaitingForNextQuestionProvider waiting={transition.keepStageMounted}>
-      {renderMechanic(runtime, actor)}
+      {/* The room's screens get the large, audible countdown; phones keep the
+          compact one. Presentation only — every deadline stays the server's. */}
+      <CountdownSurfaceProvider
+        surface={actor === "participant" ? "compact" : "stage"}
+      >
+        {renderMechanic(runtime, actor)}
+      </CountdownSurfaceProvider>
     </WaitingForNextQuestionProvider>
   );
 }

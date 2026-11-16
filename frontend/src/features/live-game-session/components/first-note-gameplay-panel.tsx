@@ -102,7 +102,7 @@ export function FirstNoteGameplayPanel({
       compact={phone}
       aside={
         phone && remainingMs !== undefined ? (
-          <ChallengeCountdown remainingMs={remainingMs} />
+          <ChallengeCountdown remainingMs={remainingMs} sound={false} />
         ) : null
       }
       title={

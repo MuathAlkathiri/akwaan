@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import {
+  AlarmClock,
   Bomb,
   Loader2,
   Mic,
@@ -26,6 +27,16 @@ import {
   useBombVoiceInput,
 } from "../hooks/use-bomb-voice-input";
 import { useTeamClockDisplay } from "../hooks/use-team-clock-display";
+import {
+  countdownSeconds,
+  countdownUrgency,
+  DEFAULT_COUNTDOWN_THRESHOLDS,
+} from "../match/components/countdown-urgency";
+import {
+  useCountdownCues,
+  useCountdownSurface,
+} from "../match/components/countdown-presentation";
+import { CountdownSoundToggle } from "../match/components/challenge-countdown";
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import { useMobileSurface } from "../match/components/mobile-gameplay-shell";
@@ -275,9 +286,31 @@ export function BombGameplayPanel({
   const round = runtime.activeRound;
   const activeTeamId = runtime.activeTeamId ?? round?.activeTeamId;
   const clock = useTeamClockDisplay(activeTeamId ?? "");
+  // The same urgency every countdown uses, read from the one TeamClock. Bomb's
+  // clock is continuous and thirty seconds a team, so the default thresholds
+  // apply; it is never turned into a per-question timer here.
+  const clockSeconds = countdownSeconds(clock.remainingMs);
+  const clockUrgency = activeTeamId ? countdownUrgency(clockSeconds) : "calm";
+  const countdownSurface = useCountdownSurface();
   const canSubmit = runtime.availableActions.includes("mode:submit-answer");
   const canSkip = runtime.availableActions.includes("mode:skip");
   const phase = String(round?.modeState.phase ?? "");
+  // The wall's clock may sound; a phone's never does — and never over an
+  // audio item, whose clip is the question.
+  const audioItem =
+    (runtime.currentItem?.media?.type ??
+      (round?.modeState.mediaType as string | undefined)) === "audio";
+  useCountdownCues(
+    clockSeconds,
+    DEFAULT_COUNTDOWN_THRESHOLDS,
+    countdownSurface === "stage" &&
+      !phone &&
+      !audioItem &&
+      Boolean(activeTeamId) &&
+      phase === "presenting",
+    // Each team's clock is its own: a handoff is first sight, not a step.
+    activeTeamId ?? undefined,
+  );
   const resolvingExpiration =
     Boolean(round && activeTeamId) &&
     clock.expired &&
@@ -572,12 +605,18 @@ export function BombGameplayPanel({
             data-testid="bomb-phone-clock"
             aria-label="الوقت المتبقي لفريقكم"
             className={cn(
-              "akwaan-numeral inline-flex items-center rounded-full border px-2.5 py-1 text-sm font-black tabular-nums",
-              clock.expired || clock.remainingMs <= 5000
+              "akwaan-numeral inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-black tabular-nums",
+              clockUrgency === "critical" || clockUrgency === "expired"
                 ? "border-destructive/50 bg-destructive/10 text-destructive"
-                : "border-border bg-muted/60 text-foreground",
+                : clockUrgency === "warning"
+                  ? "border-warning bg-warning-subtle text-foreground"
+                  : "border-border bg-muted/60 text-foreground",
             )}
+            data-urgency={clockUrgency}
           >
+            {clockUrgency !== "calm" && (
+              <AlarmClock className="size-3.5 shrink-0" aria-hidden />
+            )}
             {clock.formatted}
           </output>
         }
@@ -725,13 +764,32 @@ export function BombGameplayPanel({
           Bomb
         </h3>
         <output
-          className="akwaan-numeral inline-flex items-center gap-2 rounded-full border border-destructive/30 bg-destructive/10 px-5 py-2 text-3xl font-black tabular-nums text-destructive"
+          data-testid="bomb-stage-clock"
+          data-urgency={clockUrgency}
+          className={cn(
+            // Same box rules as every room countdown, lower on a 720p screen.
+            "akwaan-numeral akwaan-stage-countdown akwaan-stage-countdown-digits inline-flex items-center gap-2.5 rounded-full border-2 px-6 font-black tabular-nums transition-colors duration-fast ease-akwaan",
+            BOMB_STAGE_TONE[clockUrgency],
+          )}
           aria-label={`${activeTeam?.name ?? "Active team"} remaining Bomb time`}
           aria-live="off"
         >
-          <Bomb className="size-7" aria-hidden />
-          {clock.formatted}
+          <Bomb className="size-8 shrink-0" aria-hidden />
+          {clockUrgency === "warning" || clockUrgency === "critical" ? (
+            <AlarmClock className="size-7 shrink-0" aria-hidden />
+          ) : null}
+          <span
+            className={cn(
+              "inline-block min-w-[3.5ch] text-center",
+              clockUrgency === "critical" && "akwaan-countdown-beat",
+            )}
+          >
+            {clock.formatted}
+          </span>
         </output>
+        {/* The room's only clock in Bomb, so the room's sound switch lives here
+            too — a Match that opens on Bomb would otherwise have none. */}
+        {countdownSurface === "stage" && <CountdownSoundToggle />}
         <p className="text-sm text-muted-foreground">
           Item {Math.min(itemIndex + 1, itemCount)} of {itemCount}
         </p>
@@ -894,3 +952,14 @@ export function BombGameplayPanel({
     </section>
   );
 }
+
+/**
+ * The room's Bomb clock, in the same four states every countdown uses. It was
+ * red from the first second, which left the last five nowhere to go.
+ */
+const BOMB_STAGE_TONE = {
+  calm: "border-destructive/30 bg-destructive/10 text-destructive",
+  warning: "border-warning bg-warning-subtle text-foreground",
+  critical: "border-sem-error bg-sem-error text-white",
+  expired: "border-sem-error/50 bg-muted text-sem-error",
+} as const;
