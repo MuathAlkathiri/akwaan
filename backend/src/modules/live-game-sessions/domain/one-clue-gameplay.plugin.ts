@@ -16,7 +16,7 @@ import { InteractionActorProjection } from './gameplay-interaction.plugin';
 import { LiveSessionDomainError } from './live-session.errors';
 import {
   assertTeamActionAuthorized,
-  assignNextTeamAction,
+  assignNextTeamActionOrHold,
   assignmentFor,
   clearTeamAction,
   parseTeamActionAssignments,
@@ -191,7 +191,7 @@ function openAssignments(
 ) {
   let next = state;
   for (const teamId of teams) {
-    next = assignNextTeamAction(next, {
+    next = assignNextTeamActionOrHold(next, {
       teamId,
       action: oneClueAnswerAction(teamId),
       participants: context.eligibleParticipants ?? [],

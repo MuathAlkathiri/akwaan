@@ -26,12 +26,12 @@ import {
   validateOneClueItem,
 } from '../domain/one-clue-gameplay.plugin';
 import {
-  assignNextTeamAction,
+  assignNextTeamActionOrHold,
   buildTeamRotations,
   createTeamActionAssignmentState,
   serializeTeamActionAssignments,
 } from '../domain/team-action-assignment';
-import { eligibleParticipantsOf } from './start-top5.use-case';
+import { eligibleParticipantsOf, teamCaptainsOf } from './start-top5.use-case';
 import {
   CreateGameplayRuntime,
   GetGameplayRuntime,
@@ -143,10 +143,11 @@ export class StartOneClueGameplay {
         teams,
         participants,
         randomIndex: (exclusiveMax) => randomInt(exclusiveMax),
+        captains: teamCaptainsOf(sessionState),
       }),
     );
     for (const teamId of teams) {
-      assignments = assignNextTeamAction(assignments, {
+      assignments = assignNextTeamActionOrHold(assignments, {
         teamId,
         action: oneClueAnswerAction(teamId),
         participants,

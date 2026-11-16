@@ -17,7 +17,15 @@ import {
   MARHALA_MODE_KEY,
   MARHALA_START_POSITION,
 } from '../domain/marhala-board';
+import { MARHALA_TURN_ACTION } from '../domain/marhala-gameplay.plugin';
+import {
+  assignNextTeamActionOrHold,
+  buildTeamRotations,
+  createTeamActionAssignmentState,
+  serializeTeamActionAssignments,
+} from '../domain/team-action-assignment';
 import { CreateGameplayRuntime } from './gameplay-runtime.queries';
+import { eligibleParticipantsOf, teamCaptainsOf } from './start-top5.use-case';
 import {
   CreateGameplayRound,
   StartGameplayRound,
@@ -105,6 +113,25 @@ export class StartMarhalaGameplay {
       );
     }
 
+    /**
+     * Which teammate's phone carries each turn: the lobby captain while
+     * connected, otherwise the team's whole roster in turn, from the top of the
+     * join order so the room can predict it. Only the first turn is opened here;
+     * the plugin opens each following one as the turn passes.
+     */
+    const participants = eligibleParticipantsOf(sessionState);
+    const turnAssignment = assignNextTeamActionOrHold(
+      createTeamActionAssignmentState(
+        buildTeamRotations({
+          teams,
+          participants,
+          randomIndex: () => 0,
+          captains: teamCaptainsOf(sessionState),
+        }),
+      ),
+      { teamId: teams[0], action: MARHALA_TURN_ACTION, participants },
+    );
+
     const actor = { kind: 'user' as const, actorId: input.actorId };
     await this.createRuntime.execute({
       sessionId: input.sessionId,
@@ -132,6 +159,7 @@ export class StartMarhalaGameplay {
         questionJson: null,
         selectedDifficulty: null,
         deadlineAt: null,
+        teamActionJson: serializeTeamActionAssignments(turnAssignment.state),
       },
     });
 

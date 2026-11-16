@@ -30,6 +30,8 @@ export interface LiveGameSessionSnapshot {
     active: boolean;
     /** The colour the host chose for this team; absent means the client default. */
     colorId?: string;
+    /** The lobby captain, if the host named one; absent means automatic rotation. */
+    captainParticipantId?: string;
     clock: {
       allocatedMs: number;
       consumedMs: number;
@@ -129,6 +131,7 @@ export class LiveGameSessionSnapshotMapper {
           name: team.name,
           active: team.active,
           colorId: team.colorId,
+          captainParticipantId: team.captainParticipantId,
           clock: {
             allocatedMs: team.clock.allocatedMs,
             consumedMs: team.clock.consumedMs,

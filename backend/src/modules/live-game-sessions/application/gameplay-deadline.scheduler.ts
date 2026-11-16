@@ -170,6 +170,14 @@ export function pendingDeadline(
      * gate cannot be derived from the declaration alone.
      */
     multiSurface?: boolean;
+    /**
+     * The mechanic is holding its activation for a setup (Bomb's initial
+     * holders). Nothing to time out: no clock runs, and forcing activation
+     * would be refused anyway.
+     */
+    activationHeld?: boolean;
+    /** When the barrier began, if the mechanic says other than round start. */
+    barrierStartedAt?: string;
   } = {},
 ): PendingDeadline | undefined {
   const multiSurface = options.multiSurface === true;
@@ -218,12 +226,16 @@ export function pendingDeadline(
     !state.presentationActivatedAt &&
     !legacyInteractionRunning &&
     (declaration?.requiresPresentationActivation === true || multiSurface);
+  if (awaitingInitial && options.activationHeld === true) return undefined;
   if (awaitingInitial) {
     // A recorded failure is a *stopped* barrier, not a running one. Re-arming
     // against it would re-fire the same timeout against a clip that is still
     // missing; the host's retry is what restarts the wait.
     if (state.presentationFailure) return undefined;
-    const startedAt = state.activeRound?.startedAt ?? state.startedAt;
+    const startedAt =
+      options.barrierStartedAt ??
+      state.activeRound?.startedAt ??
+      state.startedAt;
     if (startedAt) {
       const deadlineAt = new Date(
         new Date(startedAt).getTime() +
@@ -473,6 +485,8 @@ export class GameplayDeadlineScheduler
         usable,
         pendingDeadline(usable, declaration, session as never, {
           multiSurface: this.isMultiSurface(usable),
+          activationHeld: this.isActivationHeld(usable),
+          barrierStartedAt: this.barrierStartedAt(usable),
         }),
       );
       return;
@@ -484,6 +498,8 @@ export class GameplayDeadlineScheduler
       state && session
         ? pendingDeadline(state, this.declarationFor(state), session as never, {
             multiSurface: this.isMultiSurface(state),
+            activationHeld: this.isActivationHeld(state),
+            barrierStartedAt: this.barrierStartedAt(state),
           })
         : undefined;
     this.converge(sessionId, session && runtime ? state : undefined, pending);
@@ -658,6 +674,31 @@ export class GameplayDeadlineScheduler
    * whole mechanism, and an unregistered or throwing plugin falls back to the
    * same safe answer rather than stranding a session.
    */
+  /** When the mechanic's activation barrier began, safely. */
+  private barrierStartedAt(state: GameplayRuntimeState): string | undefined {
+    try {
+      return this.modes
+        .resolve(state.modeKey, state.modeVersion)
+        .presentationBarrierStartedAt?.(state.runtimeState);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Whether the mechanic is holding its activation for a setup, safely. */
+  private isActivationHeld(state: GameplayRuntimeState): boolean {
+    if (state.presentationActivatedAt) return false;
+    try {
+      return (
+        this.modes
+          .resolve(state.modeKey, state.modeVersion)
+          .presentationActivationHeld?.(state.runtimeState) === true
+      );
+    } catch {
+      return false;
+    }
+  }
+
   /** Whether this mechanic holds a multi-surface barrier, safely. */
   private isMultiSurface(state: GameplayRuntimeState): boolean {
     try {
@@ -696,6 +737,8 @@ export class GameplayDeadlineScheduler
       const pending = state
         ? pendingDeadline(state, this.declarationFor(state), session as never, {
             multiSurface: this.isMultiSurface(state),
+            activationHeld: this.isActivationHeld(state),
+            barrierStartedAt: this.barrierStartedAt(state),
           })
         : undefined;
       const round = state?.activeRound;

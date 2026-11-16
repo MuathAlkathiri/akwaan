@@ -37,6 +37,15 @@ export interface LiveSessionTeamState {
    * a parent game, still restore; the client falls back to its own default.
    */
   colorId?: string;
+  /**
+   * The team's lobby captain, if the host named one.
+   *
+   * Set only in the lobby and therefore locked once the Match starts. When set,
+   * the captain takes every single-submitter team action while connected; when
+   * absent the team's actions rotate over the whole roster. Cleared whenever the
+   * captain leaves the team or the room, so it always names a current member.
+   */
+  captainParticipantId?: string;
   clock: TeamClockState;
 }
 
@@ -521,9 +530,43 @@ export class LiveGameSession {
         'Only team players may be assigned to teams',
       );
     }
+    if (participant.teamId !== teamId) this.clearCaptaincy(participantId);
     participant.teamId = teamId;
     participant.ready = false;
     participant.lastSeenAt = now;
+    this.state.lastTransitionAt = now;
+  }
+
+  /**
+   * Names a team's captain, or clears it with `undefined`.
+   *
+   * A lobby setting: refused once the Match has started, so the captain is
+   * locked for the whole Match. The captain must be a current team player on
+   * that team.
+   */
+  setTeamCaptain(
+    teamId: string,
+    participantId: string | undefined,
+    now: Date,
+  ): void {
+    this.assertStatus(
+      this.state.modeKey === 'bomb' ? ['waiting'] : ['waiting', 'ready'],
+      now,
+    );
+    const team = this.requireTeam(teamId);
+    if (participantId === undefined) {
+      delete team.captainParticipantId;
+      this.state.lastTransitionAt = now;
+      return;
+    }
+    const participant = this.activeParticipant(participantId);
+    if (participant.role !== 'team-player' || participant.teamId !== teamId) {
+      throw new LiveSessionDomainError(
+        'CAPTAIN_NOT_ON_TEAM',
+        'A captain must be a player on that team',
+      );
+    }
+    team.captainParticipantId = participantId;
     this.state.lastTransitionAt = now;
   }
 
@@ -538,6 +581,7 @@ export class LiveGameSession {
     }
     participant.removedAt = now;
     participant.ready = false;
+    this.clearCaptaincy(participantId);
     // No presence write here. Removal is enforced by `removedAt` and the bumped
     // credential — which every reader already honours — and the socket this
     // participant still holds clears its own presence entry when it closes.
@@ -855,6 +899,14 @@ export class LiveGameSession {
 
   private clockFor(teamId: string): TeamClock {
     return TeamClock.restore(this.requireTeam(teamId).clock);
+  }
+
+  private clearCaptaincy(participantId: string): void {
+    for (const team of this.state.teams) {
+      if (team.captainParticipantId === participantId) {
+        delete team.captainParticipantId;
+      }
+    }
   }
 
   private requireTeam(teamId: string): LiveSessionTeamState {

@@ -9,7 +9,7 @@ import { InteractionActorProjection } from './gameplay-interaction.plugin';
 import { LiveSessionDomainError } from './live-session.errors';
 import {
   assertTeamActionAuthorized,
-  assignNextTeamAction,
+  assignNextTeamActionOrHold,
   assignmentFor,
   clearTeamAction,
   parseTeamActionAssignments,
@@ -227,7 +227,7 @@ function openAssignments(
   let next = state;
   const participantIds: Record<string, string> = {};
   for (const teamId of teams) {
-    const opened = assignNextTeamAction(next, {
+    const opened = assignNextTeamActionOrHold(next, {
       teamId,
       action: closestAnswerAction(teamId),
       participants: context.eligibleParticipants ?? [],

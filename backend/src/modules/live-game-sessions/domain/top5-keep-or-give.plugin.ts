@@ -16,7 +16,7 @@ import {
 import { LiveSessionDomainError } from './live-session.errors';
 import {
   assertTeamActionAuthorized,
-  assignNextTeamAction,
+  assignNextTeamActionOrHold,
   assignmentFor,
   clearTeamAction,
   parseTeamActionAssignments,
@@ -349,7 +349,7 @@ function decide(
   if (terminal) {
     assignments = clearTeamAction(assignments, TOP5_DECISION_ACTION);
   } else {
-    const advanced = assignNextTeamAction(assignments, {
+    const advanced = assignNextTeamActionOrHold(assignments, {
       teamId: opponentTeamId,
       action: TOP5_DECISION_ACTION,
       participants: context.eligibleParticipants ?? [],

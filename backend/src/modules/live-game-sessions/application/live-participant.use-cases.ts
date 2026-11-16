@@ -415,7 +415,7 @@ abstract class HostParticipantMutation {
   protected async mutate(input: {
     sessionId: string;
     actorId: string;
-    participantId: string;
+    participantId?: string;
     expectedRevision: number;
     commandId: string;
     event: string;
@@ -495,6 +495,48 @@ export class AssignParticipantTeam extends HostParticipantMutation {
       event: 'live-session:participant-team-changed',
       action: (session, now) =>
         session.assignParticipantTeam(input.participantId, input.teamId, now),
+    });
+  }
+}
+
+/**
+ * The host naming — or clearing — a team's lobby captain.
+ *
+ * Lobby only (the domain refuses once the Match starts), so the captain is
+ * locked for the Match. With no captain the team's actions rotate over its
+ * whole roster. Published as a team change: it is part of how the teams are
+ * set up, and every client already refreshes on that event.
+ */
+@Injectable()
+export class SetTeamCaptain extends HostParticipantMutation {
+  constructor(
+    @Inject(LIVE_GAME_SESSION_REPOSITORY) sessions: LiveGameSessionRepository,
+    @Inject(LIVE_SESSION_CLOCK) clock: LiveSessionClock,
+    snapshots: LiveGameSessionSnapshotMapper,
+    @Inject(LIVE_SESSION_TRANSITION_PUBLISHER)
+    publisher: LiveSessionTransitionPublisher,
+  ) {
+    super(sessions, clock, snapshots, publisher);
+  }
+
+  execute(input: {
+    sessionId: string;
+    actorId: string;
+    teamId: string;
+    participantId: string | null;
+    expectedRevision: number;
+    commandId: string;
+  }) {
+    return this.mutate({
+      ...input,
+      participantId: input.participantId ?? undefined,
+      event: 'live-session:participant-team-changed',
+      action: (session, now) =>
+        session.setTeamCaptain(
+          input.teamId,
+          input.participantId ?? undefined,
+          now,
+        ),
     });
   }
 }

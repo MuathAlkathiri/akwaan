@@ -29,6 +29,7 @@ import {
   LiveSessionMutationDto,
   ReconnectLiveSessionDto,
   AssignParticipantTeamDto,
+  SetTeamCaptainDto,
   CreateJoinAccessDto,
   LiveSessionMutationDto as ParticipantMutationDto,
 } from './live-game-session.dto';
@@ -41,6 +42,7 @@ import {
 } from '../application/live-session-join-access.use-cases';
 import {
   AssignParticipantTeam,
+  SetTeamCaptain,
   RemoveLiveParticipant,
   RevokeParticipantCredential,
 } from '../application/live-participant.use-cases';
@@ -64,6 +66,7 @@ export class LiveGameSessionsController {
     private readonly regenerateJoinAccess: RegenerateSessionJoinAccess,
     private readonly revokeJoinAccess: RevokeSessionJoinAccess,
     private readonly assignParticipant: AssignParticipantTeam,
+    private readonly setCaptain: SetTeamCaptain,
     private readonly removeParticipant: RemoveLiveParticipant,
     private readonly revokeParticipant: RevokeParticipantCredential,
   ) {}
@@ -217,6 +220,23 @@ export class LiveGameSessionsController {
       participantId,
       actorId: user.id,
       ...body,
+    });
+  }
+
+  @Patch(':sessionId/teams/:teamId/captain')
+  setTeamCaptain(
+    @Param('sessionId') sessionId: string,
+    @Param('teamId') teamId: string,
+    @Body() body: SetTeamCaptainDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.setCaptain.execute({
+      sessionId,
+      teamId,
+      actorId: user.id,
+      participantId: body.participantId ?? null,
+      expectedRevision: body.expectedRevision,
+      commandId: body.commandId,
     });
   }
 

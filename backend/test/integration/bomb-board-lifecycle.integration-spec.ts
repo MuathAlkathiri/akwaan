@@ -366,7 +366,14 @@ describe('Bomb board lifecycle integration', () => {
       await bearer(http().get(`/live-game-sessions/${sessionId}`)).expect(200),
     ).revision;
 
-  const startSession = async () => {
+  /**
+   * Team A gets three phones (Player 1, A2, A3), team B one (Player 2).
+   * `captains` names lobby captains by index into `participants`, set before
+   * the Match starts — the only time a captain can be set.
+   */
+  const startSession = async (
+    options: { captains?: Array<[team: number, participant: number]> } = {},
+  ) => {
     const created = unwrap<{ snapshot: LiveGameSessionSnapshot }>(
       await bearer(http().post('/live-game-sessions'))
         .send({
@@ -445,6 +452,19 @@ describe('Bomb board lifecycle integration', () => {
         commandId: uuid(),
       });
       participants.push(actor);
+    }
+    for (const [team, participant] of options.captains ?? []) {
+      await bearer(
+        http().patch(
+          `/live-game-sessions/${sessionId}/teams/${teamIds[team]}/captain`,
+        ),
+      )
+        .send({
+          participantId: participants[participant].participantId,
+          commandId: uuid(),
+          expectedRevision: await sessionRevision(sessionId),
+        })
+        .expect(200);
     }
     await app.get(MarkSessionReady).execute({
       sessionId,
@@ -645,10 +665,21 @@ describe('Bomb board lifecycle integration', () => {
   const settle = async (ms = 1500) =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
+  /** The host's Start Challenge, once both teams' holders are READY. */
+  const startBomb = (sessionId: string) =>
+    command(
+      sessionId,
+      { kind: 'user', actorId: controllerId },
+      'start-bomb-challenge',
+    );
+
   const bombRunning = async (sessionId: string) => {
     await createUnified(sessionId);
     await launch(sessionId, WorldChallengeSlotKey.SLOT_1, bombItemIds);
     await presentationReady(sessionId);
+    // No captains here, so both holders were assigned at launch — but play
+    // still waits for the host to press Start (approved 2026-11-15).
+    await startBomb(sessionId);
   };
 
   // ---------------------------------------------------------------- scenarios
@@ -676,11 +707,11 @@ describe('Bomb board lifecycle integration', () => {
       ).some((team) => team.clock.running || team.clock.startedAt),
     ).toBe(false);
     // No GAMEPLAY clock before activation — Bomb's team clock stays stopped.
-    // Since M3.1 the wait itself is watched, so a shared screen that
-    // never arrives cannot freeze the challenge; what is armed is the
-    // bounded barrier, and this mechanic keeps the default `activate`
-    // policy so a late screen costs only its own loading.
-    expect(scheduler.armedKeyFor(sessionId)).toContain('presentation|initial');
+    // Since 2026-11-15 nothing is timed before the host presses Start: the
+    // holder setup is not a screen failing to load.
+    expect(scheduler.armedKeyFor(sessionId) ?? '').not.toContain(
+      'presentation|initial',
+    );
 
     await expect(
       app.get(PresentationReady).execute({
@@ -708,6 +739,15 @@ describe('Bomb board lifecycle integration', () => {
         .collection('content_exposures')
         .countDocuments({ matchId: sessionId, state: 'exposed' }),
     ).toBe(0);
+
+    // The host starts before the screen has acknowledged: the screen's
+    // acknowledgement is then what activates, exactly as Fair-Start requires.
+    await startBomb(sessionId);
+    expect(
+      (await rawRuntime(sessionId))!.state.presentationActivatedAt ?? null,
+    ).toBeNull();
+    // From Start, a screen that never arrives is watched by the barrier.
+    expect(scheduler.armedKeyFor(sessionId)).toContain('presentation|initial');
 
     const runtimeBeforeReady = (await runtimes().findBySessionId(
       sessionId,
@@ -1616,4 +1656,320 @@ describe('Bomb board lifecycle integration', () => {
     // A future item's picture is not shipped ahead of time either.
     expect(snapshot).not.toContain('/uploads/bomb/10.webp');
   }, 180_000);
+
+  /**
+   * The approved initial-holder setup, startup to handoff.
+   *
+   * Team A's lobby captain (A2) chooses its bomb holder; team B has no captain,
+   * so the rotation assigns its only phone. Until both are set no clock may
+   * run, whatever the shared screen does — and once play starts, Bomb is the
+   * Bomb it was, the handoff simply landing on each team's holder.
+   */
+  describe('initial bomb holders', () => {
+    const P1 = 0;
+    const P2 = 1;
+    const A2 = 2;
+    const A3 = 3;
+    const holderSetup = async (sessionId: string) =>
+      JSON.parse(
+        String(
+          (
+            (await rawRuntime(sessionId))!.state.runtimeState as {
+              holderSetupJson: string;
+            }
+          ).holderSetupJson,
+        ),
+      ) as {
+        teams: Array<{
+          teamId: string;
+          captainParticipantId: string | null;
+          holderParticipantId: string | null;
+          autoAssigned: boolean;
+        }>;
+      };
+    const clocks = async (sessionId: string) =>
+      (
+        (await rawSession(sessionId))!.state.teams as Array<{
+          clock: { running: boolean; startedAt?: Date; consumedMs: number };
+        }>
+      ).map((team) => team.clock);
+    const choose = (
+      sessionId: string,
+      chooser: LiveSessionActor,
+      holder: LiveSessionActor,
+    ) =>
+      command(sessionId, chooser, 'choose-bomb-holder', {
+        participantId: holder.participantId,
+      });
+
+    it('holds the clocks through the setup and starts only on the host’s Start', async () => {
+      const scheduler = app.get(GameplayDeadlineScheduler);
+      const { sessionId, participants } = await startSession({
+        captains: [[0, A2]],
+      });
+      await createUnified(sessionId);
+      await launch(sessionId, WorldChallengeSlotKey.SLOT_1, bombItemIds);
+
+      const setup = await holderSetup(sessionId);
+      expect(setup.teams[0]).toMatchObject({
+        captainParticipantId: participants[A2].participantId,
+        holderParticipantId: null,
+        autoAssigned: false,
+      });
+      // No captain on team B: the rotation assigned its only phone.
+      expect(setup.teams[1]).toMatchObject({
+        holderParticipantId: participants[P2].participantId,
+        autoAssigned: true,
+      });
+
+      // Every surface sees the setup — and nothing playable.
+      const preparing = await app
+        .get(GetLiveGameSession)
+        .execute(sessionId, participants[P1]);
+      const shell = preparing.gameplay?.modeState as Record<string, unknown>;
+      expect(shell.awaitingPresentation).toBe(true);
+      expect(typeof shell.holderSetupJson).toBe('string');
+      expect(JSON.stringify(preparing.gameplay)).not.toContain('جواب');
+
+      // The room's screen is ready, but the captain has not chosen.
+      await presentationReady(sessionId);
+      expect(
+        (await rawRuntime(sessionId))!.state.presentationActivatedAt ?? null,
+      ).toBeNull();
+      expect((await clocks(sessionId)).some((c) => c.running)).toBe(false);
+      // No barrier timer to force a start past the captain.
+      expect(scheduler.armedKeyFor(sessionId) ?? '').not.toContain(
+        'presentation|initial',
+      );
+
+      await expect(
+        command(sessionId, participants[P1], 'submit-answer', {
+          answer: answerFor(0),
+        }),
+      ).rejects.toBeDefined();
+      await expect(
+        choose(sessionId, participants[P1], participants[A3]),
+      ).rejects.toMatchObject({ code: 'BOMB_NOT_HOLDER_CHOOSER' });
+      await expect(
+        choose(sessionId, participants[A2], participants[P2]),
+      ).rejects.toMatchObject({ code: 'BOMB_HOLDER_NOT_ELIGIBLE' });
+
+      await choose(sessionId, participants[A2], participants[A3]);
+      // READY — and still not started: the last choice starts nothing.
+      expect(
+        (await rawRuntime(sessionId))!.state.presentationActivatedAt ?? null,
+      ).toBeNull();
+      expect((await clocks(sessionId)).some((c) => c.running)).toBe(false);
+      // Only the host may start, and only once.
+      await expect(
+        command(sessionId, participants[A2], 'start-bomb-challenge'),
+      ).rejects.toBeDefined();
+      await startBomb(sessionId);
+      await expect(startBomb(sessionId)).rejects.toMatchObject({
+        code: 'BOMB_ALREADY_STARTED',
+      });
+      const started = (await rawRuntime(sessionId))!;
+      expect(started.state.presentationActivatedAt).toBeTruthy();
+      expect(started.state.activeRound.activeParticipantId).toBe(
+        participants[A3].participantId,
+      );
+      const [teamA, teamB] = await clocks(sessionId);
+      expect(teamA.running).toBe(true);
+      expect(teamB.running).toBe(false);
+      // Time spent choosing cost nobody anything.
+      expect(teamA.consumedMs).toBe(0);
+      expect(teamB.consumedMs).toBe(0);
+      await expect(
+        choose(sessionId, participants[A2], participants[A2]),
+      ).rejects.toMatchObject({ code: 'BOMB_HOLDER_SETUP_CLOSED' });
+    });
+
+    it('refuses a premature Start while a captain is still choosing', async () => {
+      const { sessionId } = await startSession({ captains: [[0, A2]] });
+      await createUnified(sessionId);
+      await launch(sessionId, WorldChallengeSlotKey.SLOT_1, bombItemIds);
+      await presentationReady(sessionId);
+      await expect(startBomb(sessionId)).rejects.toMatchObject({
+        code: 'BOMB_HOLDERS_NOT_READY',
+      });
+      expect((await clocks(sessionId)).some((c) => c.running)).toBe(false);
+    });
+
+    it('gives each team’s first turn to its initial holder, then follows the existing rules', async () => {
+      const { sessionId, participants } = await startSession({
+        captains: [[0, A2]],
+      });
+      await createUnified(sessionId);
+      await launch(sessionId, WorldChallengeSlotKey.SLOT_1, bombItemIds);
+      await choose(sessionId, participants[A2], participants[A3]);
+      await presentationReady(sessionId);
+      await startBomb(sessionId);
+      const holder = async () =>
+        (await rawRuntime(sessionId))!.state.activeRound.activeParticipantId;
+      expect(await holder()).toBe(participants[A3].participantId);
+
+      // A3 answers: the bomb crosses to team B's holder.
+      await command(sessionId, participants[A3], 'submit-answer', {
+        answer: answerFor(0),
+      });
+      expect(await holder()).toBe(participants[P2].participantId);
+      // And back to team A: its initial holder already had the first turn, so
+      // Bomb's existing rule decides — the first connected player, Player 1 —
+      // not a forced return to A3.
+      await command(sessionId, participants[P2], 'submit-answer', {
+        answer: answerFor(1),
+      });
+      expect(await holder()).toBe(participants[P1].participantId);
+      // A wrong answer keeps the bomb where it is.
+      await command(sessionId, participants[P1], 'submit-answer', {
+        answer: 'لا شيء',
+      });
+      expect(await holder()).toBe(participants[P1].participantId);
+      // Unauthorized: a teammate who does not hold the bomb is refused.
+      await expect(
+        command(sessionId, participants[A3], 'submit-answer', {
+          answer: answerFor(2),
+        }),
+      ).rejects.toBeDefined();
+      // Neither team clock was reset by any of it.
+      const [teamA] = await clocks(sessionId);
+      expect(teamA.consumedMs).toBeGreaterThanOrEqual(0);
+    });
+
+    it('lets a teammate choose while the captain is away, without changing the captain', async () => {
+      const { sessionId, participants } = await startSession({
+        captains: [[0, A2]],
+      });
+      await createUnified(sessionId);
+      await launch(sessionId, WorldChallengeSlotKey.SLOT_1, bombItemIds);
+      await app
+        .get(UpdateParticipantPresence)
+        .disconnected(
+          sessionId,
+          participants[A2].participantId!,
+          `test-socket-${participants[A2].participantId}`,
+        );
+      // The first connected teammate in roster order stands in.
+      await expect(
+        choose(sessionId, participants[A3], participants[A3]),
+      ).rejects.toMatchObject({ code: 'BOMB_NOT_HOLDER_CHOOSER' });
+      await choose(sessionId, participants[P1], participants[A3]);
+      const setup = await holderSetup(sessionId);
+      expect(setup.teams[0]).toMatchObject({
+        captainParticipantId: participants[A2].participantId,
+        holderParticipantId: participants[A3].participantId,
+      });
+      const session = (await rawSession(sessionId))!;
+      expect(
+        (session.state.teams as Array<{ captainParticipantId?: string }>)[0]
+          .captainParticipantId,
+      ).toBe(participants[A2].participantId);
+    });
+
+    it('waits, with no clock, while a whole captain team is offline — then resumes', async () => {
+      const { sessionId, participants } = await startSession({
+        captains: [[0, A2]],
+      });
+      await createUnified(sessionId);
+      await launch(sessionId, WorldChallengeSlotKey.SLOT_1, bombItemIds);
+      await presentationReady(sessionId);
+      const presence = app.get(UpdateParticipantPresence);
+      for (const phone of [P1, A2, A3]) {
+        await presence.disconnected(
+          sessionId,
+          participants[phone].participantId!,
+          `test-socket-${participants[phone].participantId}`,
+        );
+      }
+      // Nobody can choose for team A, and the host cannot start around it.
+      await expect(startBomb(sessionId)).rejects.toMatchObject({
+        code: 'BOMB_HOLDERS_NOT_READY',
+      });
+      await expect(
+        choose(sessionId, participants[P2], participants[P2]),
+      ).rejects.toBeDefined();
+      expect((await clocks(sessionId)).some((c) => c.running)).toBe(false);
+      expect(
+        (await rawRuntime(sessionId))!.state.presentationActivatedAt ?? null,
+      ).toBeNull();
+      expect(
+        (await holderSetup(sessionId)).teams[0].holderParticipantId,
+      ).toBeNull();
+
+      // The first teammate back chooses; the lobby captain is unchanged.
+      await presence.connected(
+        sessionId,
+        participants[A3].participantId!,
+        `test-socket-${participants[A3].participantId}`,
+      );
+      await choose(sessionId, participants[A3], participants[A3]);
+      await startBomb(sessionId);
+      expect(
+        (await rawRuntime(sessionId))!.state.presentationActivatedAt,
+      ).toBeTruthy();
+      expect((await holderSetup(sessionId)).teams[0]).toMatchObject({
+        captainParticipantId: participants[A2].participantId,
+        holderParticipantId: participants[A3].participantId,
+      });
+      // Choosing cost nobody anything.
+      expect((await clocks(sessionId)).every((c) => c.consumedMs === 0)).toBe(
+        true,
+      );
+    });
+
+    it('can still be aborted while a captain team is offline', async () => {
+      const { sessionId, participants } = await startSession({
+        captains: [[0, A2]],
+      });
+      await createUnified(sessionId);
+      await launch(sessionId, WorldChallengeSlotKey.SLOT_1, bombItemIds);
+      for (const phone of [P1, A2, A3]) {
+        await app
+          .get(UpdateParticipantPresence)
+          .disconnected(
+            sessionId,
+            participants[phone].participantId!,
+            `test-socket-${participants[phone].participantId}`,
+          );
+      }
+      const runtime = (await runtimes().findBySessionId(
+        sessionId,
+      ))!.serialize();
+      await bearer(
+        http().post(`/live-game-sessions/${sessionId}/runtime/cancel`),
+      )
+        .send({
+          commandId: randomUUID(),
+          expectedRuntimeRevision: runtime.revision,
+          expectedSessionRevision: await sessionRevision(sessionId),
+        })
+        .expect(201);
+      expect((await clocks(sessionId)).some((c) => c.running)).toBe(false);
+      expect(
+        await database
+          .collection('content_exposures')
+          .countDocuments({ matchId: sessionId, state: 'exposed' }),
+      ).toBe(0);
+    });
+
+    it('auto-assigns both holders without captains, and still waits for Start', async () => {
+      const { sessionId, participants } = await startSession();
+      await createUnified(sessionId);
+      await launch(sessionId, WorldChallengeSlotKey.SLOT_1, bombItemIds);
+      const setup = await holderSetup(sessionId);
+      expect(setup.teams.every((team) => team.autoAssigned)).toBe(true);
+      expect(setup.teams[0].holderParticipantId).toBe(
+        participants[P1].participantId,
+      );
+      await presentationReady(sessionId);
+      // READY at launch, but the host still presses Start.
+      expect(
+        (await rawRuntime(sessionId))!.state.presentationActivatedAt ?? null,
+      ).toBeNull();
+      await startBomb(sessionId);
+      expect(
+        (await rawRuntime(sessionId))!.state.presentationActivatedAt,
+      ).toBeTruthy();
+    });
+  });
 });

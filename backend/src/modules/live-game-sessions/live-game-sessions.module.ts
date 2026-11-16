@@ -46,6 +46,7 @@ import {
 } from './application/live-session-join-access.use-cases';
 import {
   AssignParticipantTeam,
+  SetTeamCaptain,
   JoinLiveSession,
   ReconnectLiveParticipant,
   RemoveLiveParticipant,
@@ -185,6 +186,7 @@ const applicationProviders = [
   ChooseOwnTeam,
   SetParticipantReadiness,
   AssignParticipantTeam,
+  SetTeamCaptain,
   RemoveLiveParticipant,
   RevokeParticipantCredential,
   ParticipantCredentialService,

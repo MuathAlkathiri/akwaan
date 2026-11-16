@@ -7,7 +7,7 @@ import { GameplayPromptState } from './gameplay-interaction';
 import { InteractionActorProjection } from './gameplay-interaction.plugin';
 import { LiveSessionDomainError } from './live-session.errors';
 import {
-  assignNextTeamAction,
+  assignNextTeamActionOrHold,
   assignmentFor,
   EligibleParticipant,
   parseTeamActionAssignments,
@@ -125,12 +125,12 @@ export function openRyoItemAssignments(input: {
   answererParticipantId: string;
   deciderParticipantId: string;
 } {
-  const answer = assignNextTeamAction(input.state, {
+  const answer = assignNextTeamActionOrHold(input.state, {
     teamId: input.answeringTeamId,
     action: RYO_ANSWER_ACTION,
     participants: input.participants,
   });
-  const decision = assignNextTeamAction(answer.state, {
+  const decision = assignNextTeamActionOrHold(answer.state, {
     teamId: input.opposingTeamId,
     action: RYO_DECISION_ACTION,
     participants: input.participants,

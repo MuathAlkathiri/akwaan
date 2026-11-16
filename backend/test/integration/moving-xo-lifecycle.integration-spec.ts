@@ -59,8 +59,10 @@ import {
   MOVING_XO_GAMEPLAY_PLUGIN,
   MOVING_XO_PLACEMENT_SECONDS,
   MOVING_XO_QUESTION_SECONDS,
+  MOVING_XO_TURN_ACTION,
   MovingXoQuestion,
 } from '../../src/modules/live-game-sessions/domain/moving-xo-gameplay.plugin';
+import { parseTeamActionAssignments } from '../../src/modules/live-game-sessions/domain/team-action-assignment';
 
 /**
  * "Moving XO" on real replica-set Mongo.
@@ -1103,6 +1105,252 @@ describe('moving xo lifecycle integration', () => {
       const rows = await exposures();
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({ contentItemId: shown, state: 'exposed' });
+    });
+  });
+
+  /**
+   * One phone carries each turn (approved global-captain policy).
+   *
+   * Two phones a side on the real stack. Supersedes §23.11's open-team rule:
+   * the holder — lobby captain, or the rotation's pick — answers and places
+   * the move it earned; a teammate is refused; deadlines, legality and
+   * resolution are the mechanic's own.
+   */
+  describe('the turn holder', () => {
+    type Team = { teamId: string; phones: LiveSessionActor[] };
+    type TeamSession = { sessionId: string; teams: Team[] };
+    const presence = () => app.get(UpdateParticipantPresence);
+    const connect = (sessionId: string, phone: LiveSessionActor) =>
+      presence().connected(
+        sessionId,
+        phone.participantId!,
+        `socket-${phone.participantId}`,
+      );
+    const disconnect = (sessionId: string, phone: LiveSessionActor) =>
+      presence().disconnected(
+        sessionId,
+        phone.participantId!,
+        `socket-${phone.participantId}`,
+      );
+
+    const startTeams = async (
+      captains: Array<number | undefined> = [],
+    ): Promise<TeamSession> => {
+      const created = unwrap<{ snapshot: LiveGameSessionSnapshot }>(
+        await bearer(http().post('/live-game-sessions'))
+          .send({
+            modeKey: 'core-timed-turns',
+            modeVersion: 1,
+            teamNames: ['ألفا', 'بيتا'],
+          })
+          .expect(201),
+      ).snapshot;
+      const sessionId = created.sessionId;
+      const access = await app.get(CreateSessionJoinAccess).execute({
+        sessionId,
+        actorId: controllerId,
+        assignmentPolicy: 'explicit',
+      });
+      const teams: Team[] = [];
+      for (const [teamIndex, team] of created.teams.entries()) {
+        const phones: LiveSessionActor[] = [];
+        for (let phone = 0; phone < 2; phone += 1) {
+          const joined = await app.get(JoinLiveSession).execute({
+            joinCode: access.joinCode,
+            displayName: `لاعب ${teamIndex}-${phone}`,
+            requestedTeamId: team.id,
+            joinRequestId: uuid(),
+          });
+          const actor: LiveSessionActor = {
+            kind: 'participant',
+            actorId: joined.participantId,
+            sessionId,
+            participantId: joined.participantId,
+            role: 'team-player',
+            credentialVersion: 1,
+          };
+          await connect(sessionId, actor);
+          await app.get(SetParticipantReadiness).execute({
+            actor,
+            ready: true,
+            expectedRevision: await sessionRevision(sessionId),
+            commandId: uuid(),
+          });
+          phones.push(actor);
+        }
+        teams.push({ teamId: team.id, phones });
+      }
+      for (const [teamIndex, phone] of captains.entries()) {
+        if (phone === undefined) continue;
+        await bearer(
+          http().patch(
+            `/live-game-sessions/${sessionId}/teams/${teams[teamIndex].teamId}/captain`,
+          ),
+        )
+          .send({
+            participantId: teams[teamIndex].phones[phone].participantId,
+            commandId: uuid(),
+            expectedRevision: await sessionRevision(sessionId),
+          })
+          .expect(200);
+      }
+      const ready = await app.get(MarkSessionReady).execute({
+        sessionId,
+        actorId: controllerId,
+        commandId: uuid(),
+        expectedRevision: await sessionRevision(sessionId),
+      });
+      await app.get(StartLiveGameSession).execute({
+        sessionId,
+        actorId: controllerId,
+        commandId: uuid(),
+        expectedRevision: ready.revision,
+      });
+      await bearer(http().post(matchRoute(sessionId, '/unified')))
+        .send({
+          occurrences: [0, 1, 2].map((occurrenceIndex) => ({
+            occurrenceIndex,
+            worldId,
+            selectedScopeIds: scopeIds,
+          })),
+        })
+        .expect(201);
+      await launch(sessionId);
+      return { sessionId, teams };
+    };
+
+    const turn = async (sessionId: string) =>
+      parseTeamActionAssignments(
+        (await stateOf(sessionId)).teamActionJson,
+      ).assignments.find((a) => a.action === MOVING_XO_TURN_ACTION);
+
+    const phoneOf = (session: TeamSession, participantId: string) =>
+      session.teams
+        .flatMap((team) => team.phones)
+        .find((phone) => phone.participantId === participantId)!;
+
+    const answerAs = async (
+      session: TeamSession,
+      phone: LiveSessionActor,
+      correct: boolean,
+      extra: Record<string, unknown> = {},
+    ) => {
+      await activate(session.sessionId);
+      const question = (await questionOf(session.sessionId))!;
+      const payload =
+        question.answerMode === 'multiple_choice'
+          ? { optionId: correct ? 'right' : 'wrong' }
+          : {
+              answer: correct
+                ? await acceptedAnswerOf(question.contentItemId)
+                : 'لا شيء إطلاقًا',
+            };
+      return command(session.sessionId, phone, MOVING_XO_COMMANDS.answer, {
+        ...payload,
+        ...extra,
+      });
+    };
+
+    const placeAs = async (session: TeamSession, phone: LiveSessionActor) => {
+      const runtime = (await runtimes().findBySessionId(session.sessionId))!;
+      const state = runtime.serialize().runtimeState;
+      const projected = MOVING_XO_GAMEPLAY_PLUGIN.projectRuntimeStateForActor!(
+        state,
+        {
+          teamId: String(state.activeTeamId),
+        } as never,
+      ) as unknown as { legalCells: number[] };
+      return command(session.sessionId, phone, MOVING_XO_COMMANDS.place, {
+        cell: projected.legalCells[0],
+      });
+    };
+
+    it('opens each puzzle for the captain, who answers and places', async () => {
+      const session = await startTeams([1, 0]);
+      const [alpha, beta] = session.teams;
+      const first = (await turn(session.sessionId))!;
+      const starting = session.teams.find(
+        (team) => team.teamId === first.teamId,
+      )!;
+      const captain = starting === alpha ? alpha.phones[1] : beta.phones[0];
+      const teammate = starting === alpha ? alpha.phones[0] : beta.phones[1];
+      expect(first.participantId).toBe(captain.participantId);
+
+      await expect(answerAs(session, teammate, true)).rejects.toMatchObject({
+        code: 'TEAM_ACTION_WRONG_PARTICIPANT',
+      });
+      await answerAs(session, captain, true);
+      expect((await stateOf(session.sessionId)).phase).toBe('placement');
+      await expect(placeAs(session, teammate)).rejects.toMatchObject({
+        code: 'TEAM_ACTION_WRONG_PARTICIPANT',
+      });
+      await placeAs(session, captain);
+      const state = await stateOf(session.sessionId);
+      // One authoritative move, counted once; the turn passed.
+      expect(state.successfulMoveCount).toBe(1);
+      expect(
+        (await boardOf(session.sessionId)).cells.filter(
+          (owner) => owner === starting.teamId,
+        ),
+      ).toHaveLength(1);
+      expect(state.activeTeamId).not.toBe(starting.teamId);
+    });
+
+    it('rotates over the whole roster turn by turn without a captain', async () => {
+      const session = await startTeams();
+      const holders: string[] = [];
+      for (let index = 0; index < 4; index += 1) {
+        const holder = (await turn(session.sessionId))!;
+        holders.push(holder.participantId);
+        await answerAs(session, phoneOf(session, holder.participantId), false);
+      }
+      // Each team's two phones, in turn.
+      const byTeam = (team: Team) =>
+        holders.filter((id) =>
+          team.phones.some((phone) => phone.participantId === id),
+        );
+      for (const team of session.teams) {
+        expect(byTeam(team)).toEqual(team.phones.map((p) => p.participantId));
+      }
+    });
+
+    it('hands an open placement to a teammate; reconnect does not steal it', async () => {
+      const session = await startTeams([0, 0]);
+      const holder = (await turn(session.sessionId))!;
+      const team = session.teams.find((t) => t.teamId === holder.teamId)!;
+      const captain = team.phones[0];
+      const teammate = team.phones[1];
+      await answerAs(session, captain, true);
+      const before = await stateOf(session.sessionId);
+      expect(before.phase).toBe('placement');
+
+      await disconnect(session.sessionId, captain);
+      const handed = (await turn(session.sessionId))!;
+      expect(handed.participantId).toBe(teammate.participantId);
+      expect(handed.sequence).toBeGreaterThan(holder.sequence);
+      const after = await stateOf(session.sessionId);
+      // The placement window is the one the correct answer opened.
+      expect(after.deadlineAt).toBe(before.deadlineAt);
+      expect(after.pendingMove).toBe(true);
+
+      await connect(session.sessionId, captain);
+      expect(await turn(session.sessionId)).toEqual(handed);
+      await expect(placeAs(session, captain)).rejects.toMatchObject({
+        code: 'TEAM_ACTION_WRONG_PARTICIPANT',
+      });
+      await placeAs(session, teammate);
+      expect((await stateOf(session.sessionId)).successfulMoveCount).toBe(1);
+    });
+
+    it('refuses a stale assignment sequence', async () => {
+      const session = await startTeams();
+      const holder = (await turn(session.sessionId))!;
+      await expect(
+        answerAs(session, phoneOf(session, holder.participantId), true, {
+          assignmentSequence: holder.sequence - 1,
+        }),
+      ).rejects.toMatchObject({ code: 'TEAM_ACTION_STALE_ASSIGNMENT' });
+      expect((await stateOf(session.sessionId)).phase).toBe('answering');
     });
   });
 });

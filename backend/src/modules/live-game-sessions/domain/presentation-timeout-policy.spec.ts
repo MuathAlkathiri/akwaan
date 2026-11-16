@@ -141,6 +141,17 @@ describe('presentation timeout policy', () => {
         ...overrides,
       }) as unknown as GameplayRuntimeState;
 
+    it('arms no barrier while a mechanic holds activation for a setup', () => {
+      // Bomb's initial holders: no clock runs while a captain chooses, and a
+      // forced activation would be refused, so there is nothing to time out.
+      expect(
+        pendingDeadline(base(), undefined, undefined, {
+          multiSurface: true,
+          activationHeld: true,
+        }),
+      ).toBeUndefined();
+    });
+
     it('arms the bounded INITIAL barrier while a multi-surface mechanic waits', () => {
       // The gap M3 left open: only the recurring checkpoint was watched, so a
       // shared screen that never arrived froze the first item exactly as before.

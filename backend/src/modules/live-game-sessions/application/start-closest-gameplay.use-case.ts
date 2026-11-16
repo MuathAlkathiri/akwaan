@@ -24,12 +24,12 @@ import {
   closestAnswerAction,
 } from '../domain/closest-gameplay.plugin';
 import {
-  assignNextTeamAction,
+  assignNextTeamActionOrHold,
   buildTeamRotations,
   createTeamActionAssignmentState,
   serializeTeamActionAssignments,
 } from '../domain/team-action-assignment';
-import { eligibleParticipantsOf } from './start-top5.use-case';
+import { eligibleParticipantsOf, teamCaptainsOf } from './start-top5.use-case';
 import {
   CreateGameplayRuntime,
   GetGameplayRuntime,
@@ -137,10 +137,11 @@ export class StartClosestGameplay {
         teams,
         participants,
         randomIndex: (exclusiveMax) => randomInt(exclusiveMax),
+        captains: teamCaptainsOf(sessionState),
       }),
     );
     for (const teamId of teams) {
-      assignments = assignNextTeamAction(assignments, {
+      assignments = assignNextTeamActionOrHold(assignments, {
         teamId,
         action: closestAnswerAction(teamId),
         participants,

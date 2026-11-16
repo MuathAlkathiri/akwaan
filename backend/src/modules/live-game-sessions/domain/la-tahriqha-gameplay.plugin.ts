@@ -9,7 +9,7 @@ import { InteractionActorProjection } from './gameplay-interaction.plugin';
 import { LiveSessionDomainError } from './live-session.errors';
 import {
   assertTeamActionAuthorized,
-  assignNextTeamAction,
+  assignNextTeamActionOrHold,
   assignmentFor,
   clearTeamAction,
   parseTeamActionAssignments,
@@ -338,7 +338,7 @@ function openCaptaincies(
   let next = state;
   const captains: Record<string, string> = {};
   for (const teamId of teams) {
-    const opened = assignNextTeamAction(next, {
+    const opened = assignNextTeamActionOrHold(next, {
       teamId,
       action: laTahriqhaDishAction(teamId),
       participants: context.eligibleParticipants ?? [],

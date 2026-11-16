@@ -24,7 +24,7 @@ import {
   TOP5_MODE_KEY,
 } from '../domain/top5-keep-or-give.plugin';
 import {
-  assignNextTeamAction,
+  assignNextTeamActionOrHold,
   buildTeamRotations,
   createTeamActionAssignmentState,
   EligibleParticipant,
@@ -68,6 +68,18 @@ export function eligibleParticipantsOf(
       teamId: participant.teamId,
       connected: participant.connected,
     }));
+}
+
+/**
+ * Each team's lobby captain, as set in the lobby and locked at Match start.
+ * Teams without one rotate their actions over the whole roster.
+ */
+export function teamCaptainsOf(
+  state: LiveGameSessionState,
+): Record<string, string | undefined> {
+  return Object.fromEntries(
+    state.teams.map((team) => [team.id, team.captainParticipantId]),
+  );
 }
 
 @Injectable()
@@ -219,13 +231,15 @@ export class StartTop5 {
     const deck = shuffled(ids);
     const revealOrder = shuffled(ids);
 
-    const participants = eligibleParticipantsOf(launchedSession.serialize());
+    const launchedState = launchedSession.serialize();
+    const participants = eligibleParticipantsOf(launchedState);
     const rotations = buildTeamRotations({
       teams,
       participants,
       randomIndex: (exclusiveMax) => randomInt(exclusiveMax),
+      captains: teamCaptainsOf(launchedState),
     });
-    const opened = assignNextTeamAction(
+    const opened = assignNextTeamActionOrHold(
       createTeamActionAssignmentState(rotations),
       {
         teamId: startingTeamId,

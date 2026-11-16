@@ -7,6 +7,17 @@ import {
   GameplayCommandResult,
 } from './gameplay-mode.plugin';
 import { LiveSessionDomainError } from './live-session.errors';
+import {
+  BOMB_CHOOSE_HOLDER_COMMAND,
+  BOMB_START_COMMAND,
+  chooseBombHolder,
+  connectedBombHolder,
+  firstArrivalHolder,
+  isBombHolderSetupComplete,
+  isBombStarted,
+  parseBombHolderSetup,
+  startBombChallenge,
+} from './bomb-holder-setup';
 
 interface BombRuntimeQuestion {
   id: string;
@@ -124,6 +135,10 @@ function validateRuntime(state: GameplayModeState): GameplayModeState {
     // there would vanish before the Match could read it.
     ...(typeof state.resultJson === 'string'
       ? { resultJson: state.resultJson }
+      : {}),
+    // Each team's bomb holder, chosen before the first picture.
+    ...(typeof state.holderSetupJson === 'string'
+      ? { holderSetupJson: state.holderSetupJson }
       : {}),
   };
 }
@@ -263,6 +278,16 @@ function advance(
   };
 }
 
+/** The team the bomb crosses to, from the setup's two teams. */
+function otherTeam(
+  runtimeState: GameplayModeState,
+  activeTeamId: string | undefined,
+): string | undefined {
+  return parseBombHolderSetup(runtimeState)?.teams.find(
+    (team) => team.teamId !== activeTeamId,
+  )?.teamId;
+}
+
 function emptyPayload(payload: GameplayCommandPayload) {
   if (Object.keys(payload).length) {
     throw new LiveSessionDomainError(
@@ -288,6 +313,18 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     requiresPresentationActivation: true,
   },
   requiredPresentationSurfaces: () => [{ capability: 'shared' }],
+  // Nothing plays, and neither clock runs, until both teams are READY and the
+  // host has pressed Start Challenge.
+  presentationActivationHeld: (state) =>
+    !isBombHolderSetupComplete(state) || !isBombStarted(state),
+  // The Fair-Start wait for the screen is counted from the host's Start, not
+  // from launch: the setup is not a screen failing to load.
+  presentationBarrierStartedAt: (state) =>
+    parseBombHolderSetup(state)?.startedAt,
+  projectPresentationPreparation: (state): GameplayModeState =>
+    typeof state.holderSetupJson === 'string'
+      ? { holderSetupJson: state.holderSetupJson }
+      : {},
   activatePresentation: (state, _now, context) => {
     if (!context.activeTeamId) return state;
     return {
@@ -307,6 +344,37 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   validateRuntimeState: validateRuntime,
   validateRoundState: validateRound,
   command(type) {
+    if (type === BOMB_START_COMMAND) {
+      return {
+        type,
+        // The host's Start Challenge.
+        authorization: 'controller',
+        allowedRoundStatuses: ['active'],
+        validatePayload: emptyPayload,
+      };
+    }
+    if (type === BOMB_CHOOSE_HOLDER_COMMAND) {
+      return {
+        type,
+        // Any connected player reaches the reducer, which admits only the
+        // team's chooser (its captain, or the fallback while they are away).
+        authorization: 'connected-player',
+        allowedRoundStatuses: ['active'],
+        validatePayload(payload) {
+          if (
+            Object.keys(payload).length !== 1 ||
+            typeof payload.participantId !== 'string' ||
+            !payload.participantId
+          ) {
+            throw new LiveSessionDomainError(
+              'INVALID_BOMB_HOLDER_CHOICE',
+              'Choosing a bomb holder names exactly one participant',
+            );
+          }
+          return { participantId: payload.participantId };
+        },
+      };
+    }
     if (type === 'submit-answer') {
       return {
         type,
@@ -346,6 +414,74 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     return undefined;
   },
   handleCommand(_context, command): GameplayCommandResult {
+    if (command.type === BOMB_CHOOSE_HOLDER_COMMAND) {
+      const participants = _context.eligibleParticipants ?? [];
+      const chosen = chooseBombHolder(command.runtimeState, {
+        submitterParticipantId: _context.submitterParticipantId,
+        participantId: command.payload.participantId,
+        participants,
+      });
+      const runtimeState = validateRuntime({
+        ...command.runtimeState,
+        holderSetupJson: JSON.stringify(chosen.setup),
+      });
+      // READY, not started: the last choice enables the host's Start and
+      // nothing else.
+      return {
+        runtimeState,
+        roundState: command.roundState,
+        eventType: 'bomb-holder-chosen',
+        eventPayload: {
+          teamId: chosen.team.teamId,
+          participantId: String(chosen.team.holderParticipantId),
+          ready: isBombHolderSetupComplete(runtimeState),
+        },
+        effects: [],
+      };
+    }
+    if (command.type === BOMB_START_COMMAND) {
+      const runtimeState = validateRuntime({
+        ...command.runtimeState,
+        holderSetupJson: JSON.stringify(
+          startBombChallenge(command.runtimeState, {
+            startingTeamId: _context.activeTeamId,
+            now: _context.now ?? new Date(),
+          }),
+        ),
+      });
+      const opener = connectedBombHolder(
+        runtimeState,
+        _context.activeTeamId,
+        _context.eligibleParticipants ?? [],
+      );
+      return {
+        runtimeState,
+        roundState: command.roundState,
+        eventType: 'bomb-challenge-started',
+        eventPayload: { teamId: String(_context.activeTeamId ?? '') },
+        effects: [],
+        // Activates now if the room's screen has already acknowledged; if not,
+        // its acknowledgement activates through the ordinary Fair-Start path.
+        activatePresentationIfReady: true,
+        ...(opener && _context.activeTeamId
+          ? {
+              assignment: {
+                teamId: _context.activeTeamId,
+                participantId: opener,
+              },
+            }
+          : {}),
+      };
+    }
+    if (
+      !isBombHolderSetupComplete(command.runtimeState) ||
+      !isBombStarted(command.runtimeState)
+    ) {
+      throw new LiveSessionDomainError(
+        'BOMB_NOT_STARTED',
+        'The bomb has not started: both teams must be ready and the host must press Start',
+      );
+    }
     const round = validateRound(command.roundState);
     if (round.phase !== 'presenting') {
       throw new LiveSessionDomainError(
@@ -403,10 +539,22 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     const correct = accepted
       .map(normalizeAnswer)
       .includes(normalizeAnswer(String(command.payload.answer)));
+    // The bomb's first arrival at a team goes to that team's initial holder;
+    // every later handoff follows Bomb's existing ownership rule.
+    const arrival = correct
+      ? firstArrivalHolder(
+          command.runtimeState,
+          otherTeam(command.runtimeState, _context.activeTeamId),
+          _context.eligibleParticipants ?? [],
+        )
+      : undefined;
     return {
       runtimeState: correct
         ? {
             ...next.runtimeState,
+            ...(arrival
+              ? { holderSetupJson: JSON.stringify(arrival.setup) }
+              : {}),
             outcomeHistoryJson: recordOutcome(
               command.runtimeState,
               round,
@@ -419,6 +567,16 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       roundState: correct ? next.roundState : command.roundState,
       eventType: correct ? 'bomb-answer-correct' : 'bomb-answer-incorrect',
       eventPayload: { correct, itemIndex: round.itemIndex },
+      ...(arrival?.participantId && arrival.setup
+        ? {
+            assignment: {
+              teamId: String(
+                otherTeam(command.runtimeState, _context.activeTeamId),
+              ),
+              participantId: arrival.participantId,
+            },
+          }
+        : {}),
       effects: correct
         ? [
             {
