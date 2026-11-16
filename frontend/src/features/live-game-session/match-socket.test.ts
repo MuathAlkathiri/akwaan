@@ -24,6 +24,7 @@ const socketHarness = vi.hoisted(() => {
 vi.mock("socket.io-client", () => ({ io: socketHarness.io }));
 
 import { LiveSessionSocket } from "./realtime/live-session-socket";
+import type { LiveSessionSnapshot } from "./model";
 
 describe("Match socket synchronization", () => {
   beforeEach(() => {
@@ -226,7 +227,7 @@ describe("Match socket synchronization", () => {
     ).toHaveLength(1);
   });
 
-  it("resends a submission the server refused as stale, with fresh revisions", () => {
+  it("resends a submission the server refused as stale, once newer state arrives", async () => {
     const client = new LiveSessionSocket();
     client.connect({
       sessionId: "session-1",
@@ -257,7 +258,20 @@ describe("Match socket synchronization", () => {
       message:
         "Expected gameplay runtime revision 6, but current revision is 7",
     });
-    vi.advanceTimersByTime(500);
+    await vi.advanceTimersByTimeAsync(500);
+    // Nothing is resent against the state the server just called stale…
+    expect(
+      socketHarness.socket.emit.mock.calls.filter(
+        ([event]) => event === "live-session:interaction-submit",
+      ),
+    ).toHaveLength(1);
+    // …only once the newer state is in hand (2026-11-16, Bomb audit F3).
+    socketHarness.handlers.get("live-session:snapshot")?.({
+      sessionId: "session-1",
+      revision: 3,
+      gameplay: { revision: 7 },
+    });
+    await vi.advanceTimersByTimeAsync(10);
 
     const resent = socketHarness.socket.emit.mock.calls.filter(
       ([event]) => event === "live-session:interaction-submit",
@@ -379,7 +393,9 @@ describe("Match socket synchronization", () => {
     };
     const track = (
       client: LiveSessionSocket,
-      retry: () => Record<string, unknown> | undefined = () => ({
+      retry: (
+        latest?: LiveSessionSnapshot,
+      ) => Record<string, unknown> | undefined = () => ({
         expectedRuntimeRevision: 8,
       }),
     ) => {
@@ -424,46 +440,68 @@ describe("Match socket synchronization", () => {
       expect(sends()).toHaveLength(1);
     });
 
-    it("resends an unanswered command under the same id after reconciling, then gives up as unknown", () => {
-      const onOutcome = track(connected());
-      vi.advanceTimersByTime(20_000);
+    // Superseded 2026-11-16 (Bomb audit F1/F3): silence is first checked with
+    // a liveness probe instead of being resent into, and a stale refusal is
+    // retried only against newer state — and is a refusal, never "unknown".
+    const heartbeats = () =>
+      socketHarness.socket.emit.mock.calls.filter(
+        ([event]) => event === "live-session:participant-heartbeat",
+      );
+    const answerProbe = () => {
+      const [, , ack] = heartbeats().at(-1)!;
+      (ack as (value: unknown) => void)({ serverTimestamp: "x" });
+    };
+    const deliver = (runtimeRevision: number) =>
+      socketHarness.handlers.get("live-session:snapshot")?.({
+        sessionId: "session-1",
+        revision: 3,
+        gameplay: { revision: runtimeRevision },
+      });
 
-      // Three sends, bounded, every one the same command: a replay of one that
-      // did land is a duplicate on the server and changes nothing.
-      expect(sends()).toHaveLength(3);
-      expect(
-        sends().every(([, body]) => (body as { commandId: string }).commandId === "answer-1"),
-      ).toBe(true);
-      expect(
-        socketHarness.socket.emit.mock.calls.filter(
-          ([event]) => event === "live-session:request-snapshot",
-        ).length,
-      ).toBeGreaterThanOrEqual(1);
+    it("does not resend into silence: it probes, replaces a dead connection, and gives up as unknown if none comes", async () => {
+      const onOutcome = track(connected());
+      await vi.advanceTimersByTimeAsync(4_000 + 2_500);
+      expect(heartbeats()).toHaveLength(1);
+      expect(socketHarness.socket.disconnect).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(20_000);
+      // One send only — nothing was pushed through the dead connection again.
+      expect(sends()).toHaveLength(1);
       expect(onOutcome).toHaveBeenCalledTimes(1);
       expect(onOutcome).toHaveBeenCalledWith({ status: "unknown" });
     });
 
-    it("recovers when a resend is answered", () => {
+    it("recovers when the connection is alive and the resend is answered", async () => {
       const onOutcome = track(connected());
-      vi.advanceTimersByTime(4_000 + 250);
+      await vi.advanceTimersByTimeAsync(4_000);
+      answerProbe();
+      await vi.advanceTimersByTimeAsync(0);
+      deliver(8);
+      await vi.advanceTimersByTimeAsync(0);
       expect(sends()).toHaveLength(2);
+      expect((sends()[1][1] as { commandId: string }).commandId).toBe("answer-1");
       ackLast({ ok: true, sessionId: "session-1", revision: 3, runtimeRevision: 8 });
-      vi.advanceTimersByTime(20_000);
+      await vi.advanceTimersByTimeAsync(20_000);
       expect(onOutcome).toHaveBeenCalledTimes(1);
       expect(onOutcome).toHaveBeenCalledWith({
         status: "accepted",
         runtimeRevision: 8,
       });
       expect(sends()).toHaveLength(2);
+      expect(socketHarness.socket.disconnect).not.toHaveBeenCalled();
     });
 
-    it("survives a stale refusal of its own resend, and stays bounded", () => {
-      const onOutcome = track(connected());
+    it("survives a stale refusal of its own resend, and stays bounded", async () => {
+      const onOutcome = track(connected(), (latest) => ({
+        expectedRuntimeRevision: latest?.gameplay?.revision,
+      }));
       ackLast(STALE);
-      vi.advanceTimersByTime(250);
+      deliver(8);
+      await vi.advanceTimersByTimeAsync(0);
       ackLast(STALE);
-      vi.advanceTimersByTime(250);
+      deliver(9);
+      await vi.advanceTimersByTimeAsync(0);
       expect(sends()).toHaveLength(3);
+      expect((sends()[2][1] as { expectedRuntimeRevision: number }).expectedRuntimeRevision).toBe(9);
       ackLast({ ok: true, sessionId: "session-1", revision: 3, runtimeRevision: 9 });
       expect(onOutcome).toHaveBeenCalledWith({
         status: "accepted",
@@ -471,34 +509,45 @@ describe("Match socket synchronization", () => {
       });
     });
 
-    it("gives up as unknown after repeated stale refusals rather than waiting forever", () => {
-      const onOutcome = track(connected());
+    it("reports repeated stale refusals as a refusal, never as 'no reply'", async () => {
+      const onOutcome = track(connected(), (latest) => ({
+        expectedRuntimeRevision: latest?.gameplay?.revision,
+      }));
       ackLast(STALE);
-      vi.advanceTimersByTime(250);
+      deliver(8);
+      await vi.advanceTimersByTimeAsync(0);
       ackLast(STALE);
-      vi.advanceTimersByTime(250);
+      deliver(9);
+      await vi.advanceTimersByTimeAsync(0);
       ackLast(STALE);
-      vi.advanceTimersByTime(20_000);
+      await vi.advanceTimersByTimeAsync(20_000);
       expect(sends()).toHaveLength(3);
       expect(onOutcome).toHaveBeenCalledTimes(1);
-      expect(onOutcome).toHaveBeenCalledWith({ status: "unknown" });
+      expect(onOutcome).toHaveBeenCalledWith(
+        expect.objectContaining({ status: "rejected", code: STALE.code }),
+      );
     });
 
-    it("does not resend once the caller says its command no longer applies", () => {
+    it("does not resend once the caller says its command no longer applies", async () => {
       const onOutcome = track(connected(), () => undefined);
       ackLast(STALE);
-      vi.advanceTimersByTime(20_000);
+      deliver(8);
+      await vi.advanceTimersByTimeAsync(20_000);
       expect(sends()).toHaveLength(1);
       expect(onOutcome).toHaveBeenCalledWith({ status: "superseded" });
     });
 
-    it("ignores an answer to a send that already timed out", () => {
+    it("ignores an answer to a send that already timed out", async () => {
       const onOutcome = track(connected());
       const [, , firstAck] = sends()[0];
-      vi.advanceTimersByTime(4_000 + 250);
+      await vi.advanceTimersByTimeAsync(4_000);
+      answerProbe();
+      await vi.advanceTimersByTimeAsync(0);
+      deliver(8);
+      await vi.advanceTimersByTimeAsync(0);
       // The first send's late answer arrives after its resend went out.
       (firstAck as (value: unknown) => void)(STALE);
-      vi.advanceTimersByTime(250);
+      await vi.advanceTimersByTimeAsync(250);
       expect(sends()).toHaveLength(2);
       ackLast({ ok: true, sessionId: "session-1", revision: 3, runtimeRevision: 8 });
       expect(onOutcome).toHaveBeenCalledTimes(1);

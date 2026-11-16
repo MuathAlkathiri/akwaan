@@ -149,21 +149,29 @@ export function LiveSessionProvider({
   }, [adoptSnapshot, participantCredential, sessionId]);
 
   useEffect(() => {
+    // A phone that slept, or changed network, can come back holding a
+    // connection that still reads "connected" but carries nothing — and a
+    // snapshot request on it is simply lost. So each return also checks the
+    // connection, and a dead one is replaced (which refetches state itself).
+    const wake = () => {
+      socketRef.current?.requestSnapshot();
+      socketRef.current?.checkConnection();
+    };
     const restore = () => {
-      if (document.visibilityState === "visible") {
-        socketRef.current?.requestSnapshot();
-      }
+      if (document.visibilityState === "visible") wake();
     };
     document.addEventListener("visibilitychange", restore);
     // iOS Safari also restores a page from its back/forward cache without ever
     // hiding it, and a phone that was frozen mid-match comes back holding
     // whatever it had. `pageshow` is the event that fires for that, and it goes
     // through the same canonical request as everything else.
-    const restored = () => socketRef.current?.requestSnapshot();
-    window.addEventListener("pageshow", restored);
+    window.addEventListener("pageshow", wake);
+    // Wi-Fi to mobile data, or signal back: the old connection rarely survives.
+    window.addEventListener("online", wake);
     return () => {
       document.removeEventListener("visibilitychange", restore);
-      window.removeEventListener("pageshow", restored);
+      window.removeEventListener("pageshow", wake);
+      window.removeEventListener("online", wake);
     };
   }, []);
 
@@ -222,10 +230,11 @@ export function LiveSessionProvider({
           clientTimestamp: new Date().toISOString(),
           ...options,
         },
-        // Read from the ref, not the closure: the whole point of the retry is
-        // that the revisions captured when the player pressed are out of date.
-        () => {
-          const latest = snapshotRef.current;
+        // Decided against the snapshot the socket has just adopted. The ref
+        // only catches up after React renders, so reading it here could rebuild
+        // a retry from the very revisions the server just called stale.
+        (adopted) => {
+          const latest = adopted ?? snapshotRef.current;
           if (!latest?.gameplay) return undefined;
           if (delivery?.canResend && !delivery.canResend(latest)) {
             return undefined;

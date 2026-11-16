@@ -12,11 +12,16 @@ export function deriveRemainingMs(
 ): number {
   if (!clock.running) return Math.max(0, clock.remainingMs);
   const serverAtReceipt = Date.parse(snapshotServerTimestamp);
+  // The server's time is its own stamp plus the time elapsed *on this phone*
+  // since the stamp arrived. Only the difference of two phone readings is
+  // used, so a phone clock that is wrong by any constant amount — a minute, an
+  // hour, a day — cannot move the countdown. (This used to fall back to the
+  // phone's own clock when it disagreed with the server by a minute or more,
+  // which is exactly when that clock is known to be wrong: a fast phone showed
+  // the turn as over and locked its holder out while the server clock ran.)
+  if (!Number.isFinite(serverAtReceipt)) return Math.max(0, clock.remainingMs);
   const estimatedServerNow =
-    Number.isFinite(serverAtReceipt) &&
-    Math.abs(receivedAtMs - serverAtReceipt) < 60_000
-      ? serverAtReceipt + (nowMs - receivedAtMs)
-      : nowMs;
+    serverAtReceipt + Math.max(0, nowMs - receivedAtMs);
   const startedAt = clock.startedAt ? Date.parse(clock.startedAt) : NaN;
   if (!Number.isFinite(startedAt)) return Math.max(0, clock.remainingMs);
   const remainingFromAuthoritativeStart =
