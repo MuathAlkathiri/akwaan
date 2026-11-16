@@ -45,6 +45,10 @@ import {
   GameplayRuntimeRepository,
 } from '../../src/modules/live-game-sessions/domain/gameplay-runtime.repository';
 import { BOMB_MODE_KEY } from '../../src/modules/live-game-sessions/domain/bomb-gameplay.plugin';
+import {
+  LIVE_GAME_SESSION_REPOSITORY,
+  LiveGameSessionRepository,
+} from '../../src/modules/live-game-sessions/domain/live-game-session.repository';
 
 /**
  * "القنبلة" through the whole assembled backend, against real Mongo.
@@ -1665,6 +1669,110 @@ describe('Bomb board lifecycle integration', () => {
    * run, whatever the shared screen does — and once play starts, Bomb is the
    * Bomb it was, the handoff simply landing on each team's holder.
    */
+  /**
+   * Bomb audit F1/F3 (2026-11-16): the server guarantees the client's recovery
+   * leans on. A phone that lost an acknowledgement resends the *same* command
+   * id; a phone refused as stale resends it with fresh revisions. Either way
+   * the answer must land exactly once — one handoff, one recorded outcome.
+   */
+  describe('answer recovery the client relies on', () => {
+    const outcomesOf = async (sessionId: string) =>
+      JSON.parse(
+        String(
+          (
+            (await rawRuntime(sessionId))!.state.runtimeState as {
+              outcomeHistoryJson?: string;
+            }
+          ).outcomeHistoryJson ?? '[]',
+        ),
+      ) as Array<{ outcome: string }>;
+    const submitAs = async (
+      sessionId: string,
+      actor: LiveSessionActor,
+      commandId: string,
+      answer: string,
+      revisions?: { session: number; runtime: number },
+    ) => {
+      const runtime = (await runtimes().findBySessionId(
+        sessionId,
+      ))!.serialize();
+      return app.get(SubmitGameplayCommand).execute({
+        sessionId,
+        actor,
+        commandId,
+        expectedSessionRevision:
+          revisions?.session ?? (await sessionRevision(sessionId)),
+        expectedRuntimeRevision: revisions?.runtime ?? runtime.revision,
+        roundId: runtime.activeRound!.id,
+        commandType: 'submit-answer',
+        payload: { answer },
+      });
+    };
+
+    it('applies a resent answer exactly once when its acknowledgement was lost', async () => {
+      const { sessionId, participants } = await startSession();
+      await bombRunning(sessionId);
+      const holder = await activeActor(sessionId, participants);
+      const before = {
+        session: await sessionRevision(sessionId),
+        runtime: (await rawRuntime(sessionId))!.state.revision as number,
+      };
+      const commandId = uuid();
+      await submitAs(sessionId, holder, commandId, answerFor(0), before);
+      const afterFirst = (await rawSession(sessionId))!.state
+        .activeTeamId as string;
+      // The phone never heard back, so it sends the same command again — with
+      // the revisions it held, or fresh ones; either is a duplicate.
+      await submitAs(sessionId, holder, commandId, answerFor(0), before);
+      await submitAs(sessionId, holder, commandId, answerFor(0));
+      expect((await rawSession(sessionId))!.state.activeTeamId).toBe(
+        afterFirst,
+      );
+      expect(
+        (await outcomesOf(sessionId)).filter((o) => o.outcome === 'correct'),
+      ).toHaveLength(1);
+    });
+
+    it('refuses a stale answer, then applies its fresh resend exactly once', async () => {
+      const { sessionId, participants } = await startSession();
+      await bombRunning(sessionId);
+      const holder = await activeActor(sessionId, participants);
+      const held = {
+        session: await sessionRevision(sessionId),
+        runtime: (await rawRuntime(sessionId))!.state.revision as number,
+      };
+      const teamBefore = (await rawSession(sessionId))!.state
+        .activeTeamId as string;
+      // Another write advances the session — what a teammate reloading their
+      // page does — after the holder's phone took its revisions.
+      const repository = app.get<LiveGameSessionRepository>(
+        LIVE_GAME_SESSION_REPOSITORY,
+      );
+      const session = (await repository.findById(sessionId))!;
+      const previous = session.revision;
+      session.completeCommand(uuid(), new Date());
+      await repository.save(session, previous);
+
+      const commandId = uuid();
+      await expect(
+        submitAs(sessionId, holder, commandId, answerFor(0), held),
+      ).rejects.toMatchObject({ code: 'STALE_REVISION' });
+      // Nothing moved on the refusal.
+      expect((await rawSession(sessionId))!.state.activeTeamId).toBe(
+        teamBefore,
+      );
+      // The resend carries the same command id and the fresh revisions.
+      await submitAs(sessionId, holder, commandId, answerFor(0));
+      await submitAs(sessionId, holder, commandId, answerFor(0));
+      expect((await rawSession(sessionId))!.state.activeTeamId).not.toBe(
+        teamBefore,
+      );
+      expect(
+        (await outcomesOf(sessionId)).filter((o) => o.outcome === 'correct'),
+      ).toHaveLength(1);
+    });
+  });
+
   describe('initial bomb holders', () => {
     const P1 = 0;
     const P2 = 1;

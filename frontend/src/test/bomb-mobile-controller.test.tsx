@@ -753,3 +753,41 @@ describe("the shared screen keeps the room's Bomb", () => {
     expect(document.querySelector("audio")).not.toBeNull();
   });
 });
+
+/**
+ * Bomb audit F2 (2026-11-16): the phone's own clock never decides the turn is
+ * over. A phone a minute or more fast used to read the running clock as spent,
+ * hide the answer box and show «انتهى وقتكم» while the server still had time.
+ */
+describe("a phone whose clock is wrong", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it.each([
+    ["61 s fast", 61_000],
+    ["an hour fast", 3_600_000],
+    ["61 s slow", -61_000],
+  ])("keeps the holder's answer box while the server has time (%s)", (_l, skew) => {
+    const stamped = Date.parse("2026-01-01T00:00:10.000Z");
+    // The phone received the snapshot at its own (wrong) time, and it is now.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(stamped + skew);
+    render(
+      phoneTree(
+        runtimeOf(),
+        vi.fn(),
+        {
+          running: true,
+          startedAt: "2026-01-01T00:00:05.000Z",
+          allocatedMs: 30_000,
+          consumedMs: 0,
+          remainingMs: 25_000,
+        },
+        { snapshotReceivedAtMs: stamped + skew },
+      ),
+    );
+    expect(screen.queryByText("انتهى وقتكم. جارٍ حساب النتيجة…")).toBeNull();
+    expect(screen.getByTestId("bomb-phone-answer")).toBeEnabled();
+  });
+});

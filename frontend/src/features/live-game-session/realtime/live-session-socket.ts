@@ -34,6 +34,40 @@ const COMMAND_ACK_TIMEOUT_MS = 4_000;
  */
 const MAX_COMMAND_ATTEMPTS = 3;
 
+/**
+ * How long the liveness probe may go unanswered before the connection is
+ * treated as dead.
+ *
+ * A phone that slept, or moved between Wi-Fi and mobile data, can hold a
+ * connection that still reads `connected` but carries nothing — Socket.IO only
+ * notices after its own ping timeout, up to ~45 s, longer than a Bomb team's
+ * whole clock. The probe is the existing participant heartbeat, which every
+ * live connection answers at once; silence after an already-unanswered command
+ * is the evidence that this connection, not the server, is the problem.
+ */
+const LIVENESS_PROBE_TIMEOUT_MS = 2_500;
+
+/** How long to wait for a replacement connection before giving the answer back. */
+const RECONNECT_WAIT_MS = 8_000;
+
+/**
+ * How long to wait for authoritative state before a retry is decided.
+ *
+ * A retry is only ever decided against state the server sent *after* the
+ * reason to retry arose — never against what the phone already held.
+ */
+const SNAPSHOT_WAIT_MS = 3_000;
+
+/**
+ * Builds a command's retry from the newest authoritative snapshot, or says the
+ * command no longer applies (`undefined`). The snapshot is the one the socket
+ * itself has just adopted, so the decision never reads a ref that has not
+ * caught up with it yet.
+ */
+export type CommandRetryBuilder = (
+  latest?: LiveSessionSnapshot,
+) => Record<string, unknown> | undefined;
+
 /** What became of a tracked command, as far as the server has said. */
 export type CommandOutcome =
   /** The server processed it. `runtimeRevision` is the state it answered with. */
@@ -84,6 +118,17 @@ export class LiveSessionSocket {
   private socket?: Socket;
   private heartbeat?: number;
   private recoverSnapshot?: () => void;
+  private sessionId?: string;
+  /** The newest snapshot this connection adopted, and how many it has. */
+  private latest?: LiveSessionSnapshot;
+  private snapshotCount = 0;
+  private snapshotWaiters = new Set<() => void>();
+  /** How many times a connection has been (re)established. */
+  private connectionCount = 0;
+  private connectionWaiters = new Set<() => void>();
+  /** Replace a connection that has been shown to carry nothing. */
+  private replaceConnection?: () => void;
+  private checking = false;
   /** Marks the current connection as intentionally closed by this client. */
   private closeCurrent?: () => void;
 
@@ -98,6 +143,7 @@ export class LiveSessionSocket {
     participant?: boolean;
   }): void {
     this.disconnect();
+    this.sessionId = input.sessionId;
     input.onConnection("connecting");
     const socket = io(`${runtimeConfig.apiBaseUrl}/live-game-sessions`, {
       auth: { token: input.token },
@@ -120,6 +166,13 @@ export class LiveSessionSocket {
     let closed = false;
     this.closeCurrent = () => {
       closed = true;
+    };
+    // The same controlled path the server's presence recovery uses: drop this
+    // connection and open a new one, which re-subscribes and refetches state.
+    this.replaceConnection = () => {
+      if (closed || recoveryRequested) return;
+      recoveryRequested = true;
+      socket.disconnect();
     };
     const recoveries: number[] = [];
     /** Revisions of the snapshot currently on screen. */
@@ -176,6 +229,8 @@ export class LiveSessionSocket {
       }
       if (connectedBefore) this.recoverSnapshot?.();
       connectedBefore = true;
+      this.connectionCount += 1;
+      this.connectionWaiters.forEach((notify) => notify());
     });
     socket.io.on("reconnect_attempt", () => input.onConnection("reconnecting"));
     socket.on("disconnect", (reason?: string) => {
@@ -232,7 +287,10 @@ export class LiveSessionSocket {
       // A reply that lost a race must not roll the game backwards.
       if (!isRegression(next, adopted)) {
         adopted = { ...adopted, ...next };
+        this.latest = snapshot;
+        this.snapshotCount += 1;
         input.onSnapshot(snapshot);
+        this.snapshotWaiters.forEach((notify) => notify());
       }
       // Settled after adopting, so an owed re-request carries what we now hold.
       settleResync();
@@ -392,7 +450,7 @@ export class LiveSessionSocket {
       [key: string]: unknown;
     },
     /**
-     * Rebuilds the command against the revisions the client holds *now*.
+     * Rebuilds the command against the newest authoritative snapshot.
      *
      * Two players answering a blind mechanic at the same moment is the normal
      * case, not a race to be avoided: whoever arrives second carries the
@@ -400,7 +458,7 @@ export class LiveSessionSocket {
      * it. Without this the second player's press is simply lost, and the round
      * waits forever for a submission that was already made.
      */
-    retryWithFreshRevisions?: () => Record<string, unknown> | undefined,
+    retryWithFreshRevisions?: CommandRetryBuilder,
     /**
      * Told once what became of the command. Supplying it also arms the
      * acknowledgement timeout, so a command that is never answered resolves as
@@ -418,10 +476,32 @@ export class LiveSessionSocket {
     this.sendTracked(event, command, retryWithFreshRevisions, onOutcome, 1);
   }
 
+  /**
+   * Sends one command and follows it to an outcome.
+   *
+   * Three things can happen to a send, and each is answered differently:
+   *  - **The server answered.** Accepted or refused on its merits, that is the
+   *    outcome. A stale-revision refusal is still an answer: the command is
+   *    rebuilt only against state the server sent *after* refusing it, and if
+   *    that never comes, or keeps going stale, the player is told it was
+   *    refused — never that nothing came back.
+   *  - **Nothing came back.** The connection is probed before anything else is
+   *    sent. If the probe is answered the server was merely slow, and the same
+   *    command goes again on the same connection once fresh state is in hand.
+   *    If it is not, the connection is dead: it is replaced, the new one must
+   *    deliver authoritative state, and only then — if the command still
+   *    applies — is it sent again.
+   *  - Every resend carries the **same command id**, so a command that did land
+   *    before its acknowledgement was lost replays as a duplicate the server
+   *    has already applied: no second answer, no second handoff, no second
+   *    score. And every resend first asks the caller whether the command still
+   *    applies to the newest state — a passed turn, a new question or a spent
+   *    clock ends it as `superseded`.
+   */
   private sendTracked(
     event: string,
     payload: Record<string, unknown>,
-    retryWithFreshRevisions: () => Record<string, unknown> | undefined,
+    retry: CommandRetryBuilder,
     onOutcome: ((outcome: CommandOutcome) => void) | undefined,
     attempt: number,
   ): void {
@@ -431,58 +511,46 @@ export class LiveSessionSocket {
       return;
     }
     let settled = false;
-    // The outcome of this send is not known — it went stale, or nothing came
-    // back. Take the newest snapshot the server has, let the caller check its
-    // command still applies to it, and send the *same* command id again: a
-    // replay of a command that did land is a duplicate and changes nothing.
-    const resend = () => {
-      if (attempt >= MAX_COMMAND_ATTEMPTS) {
-        onOutcome?.({ status: "unknown" });
-        return;
-      }
-      this.recoverSnapshot?.();
-      window.setTimeout(() => {
-        const refreshed = retryWithFreshRevisions();
-        if (!refreshed) {
-          onOutcome?.({ status: "superseded" });
-          return;
-        }
-        this.sendTracked(
-          event,
-          { ...payload, ...refreshed },
-          retryWithFreshRevisions,
-          onOutcome,
-          attempt + 1,
-        );
-      }, RETRY_DELAY_MS);
-    };
     const timer = onOutcome
       ? window.setTimeout(() => {
           if (settled) return;
           settled = true;
-          resend();
+          void this.recoverFromSilence(
+            event,
+            payload,
+            retry,
+            onOutcome,
+            attempt,
+          );
         }, COMMAND_ACK_TIMEOUT_MS)
       : undefined;
     socket.emit(event, payload, (ack: unknown) => {
-      // An answer that arrives after this send already timed out is ignored:
-      // the resend carries the same command id and gets its own answer.
+      // An answer that arrives after this send was given up on is ignored: any
+      // resend carries the same command id and gets its own answer.
       if (settled) return;
       settled = true;
       if (timer !== undefined) window.clearTimeout(timer);
-      if (isStaleRevisionAck(ack)) {
-        resend();
-        return;
-      }
       const code =
         ack && typeof ack === "object"
           ? (ack as { code?: unknown }).code
           : undefined;
+      const message =
+        ack && typeof ack === "object"
+          ? String((ack as { message?: unknown }).message ?? "")
+          : "";
+      if (isStaleRevisionAck(ack)) {
+        void this.retryAgainstNewerState(
+          event,
+          payload,
+          retry,
+          onOutcome,
+          attempt,
+          { code: String(code), message },
+        );
+        return;
+      }
       if (typeof code === "string") {
-        onOutcome?.({
-          status: "rejected",
-          code,
-          message: String((ack as { message?: unknown }).message ?? ""),
-        });
+        onOutcome?.({ status: "rejected", code, message });
         return;
       }
       const runtimeRevision =
@@ -496,6 +564,199 @@ export class LiveSessionSocket {
     });
   }
 
+  /** The server refused a stale command: retry only against newer state. */
+  private async retryAgainstNewerState(
+    event: string,
+    payload: Record<string, unknown>,
+    retry: CommandRetryBuilder,
+    onOutcome: ((outcome: CommandOutcome) => void) | undefined,
+    attempt: number,
+    refusal: { code: string; message: string },
+  ): Promise<void> {
+    const refused = () =>
+      onOutcome?.({
+        status: "rejected",
+        code: refusal.code,
+        message: refusal.message,
+      });
+    if (attempt >= MAX_COMMAND_ATTEMPTS) {
+      refused();
+      return;
+    }
+    // Newer in a dimension the command actually carried; a command that
+    // carried neither waits for any snapshot after the refusal.
+    const sentSession = payload.expectedSessionRevision;
+    const sentRuntime = payload.expectedRuntimeRevision;
+    const snapshotsAtRefusal = this.snapshotCount;
+    const newer = (snapshot: LiveSessionSnapshot) => {
+      const session = typeof sentSession === "number" ? sentSession : undefined;
+      const runtime = typeof sentRuntime === "number" ? sentRuntime : undefined;
+      if (session === undefined && runtime === undefined) {
+        return this.snapshotCount > snapshotsAtRefusal;
+      }
+      return (
+        (session !== undefined && snapshot.revision > session) ||
+        (runtime !== undefined && (snapshot.gameplay?.revision ?? -1) > runtime)
+      );
+    };
+    if (!this.latest || !newer(this.latest)) this.recoverSnapshot?.();
+    const fresh = await this.waitForSnapshot(newer, SNAPSHOT_WAIT_MS);
+    if (!fresh) {
+      refused();
+      return;
+    }
+    this.resendAgainst(fresh, event, payload, retry, onOutcome, attempt);
+  }
+
+  /** Nothing came back: find out whether the connection is alive first. */
+  private async recoverFromSilence(
+    event: string,
+    payload: Record<string, unknown>,
+    retry: CommandRetryBuilder,
+    onOutcome: (outcome: CommandOutcome) => void,
+    attempt: number,
+  ): Promise<void> {
+    if (attempt >= MAX_COMMAND_ATTEMPTS) {
+      onOutcome({ status: "unknown" });
+      return;
+    }
+    const snapshotsBefore = this.snapshotCount;
+    if (await this.probe()) {
+      // Alive, so the server was slow or the reply was lost. Refresh, then
+      // send the same command again on this connection.
+      this.recoverSnapshot?.();
+      const fresh =
+        (await this.waitForSnapshotAfter(snapshotsBefore, SNAPSHOT_WAIT_MS)) ??
+        this.latest;
+      this.resendAgainst(fresh, event, payload, retry, onOutcome, attempt);
+      return;
+    }
+    // Dead. Replace it, and act only on state the new connection delivers.
+    const connectionsBefore = this.connectionCount;
+    this.replaceConnection?.();
+    const reconnected = await this.waitForConnectionAfter(
+      connectionsBefore,
+      RECONNECT_WAIT_MS,
+    );
+    const fresh = reconnected
+      ? await this.waitForSnapshotAfter(snapshotsBefore, SNAPSHOT_WAIT_MS)
+      : undefined;
+    if (!fresh) {
+      onOutcome({ status: "unknown" });
+      return;
+    }
+    this.resendAgainst(fresh, event, payload, retry, onOutcome, attempt);
+  }
+
+  private resendAgainst(
+    fresh: LiveSessionSnapshot | undefined,
+    event: string,
+    payload: Record<string, unknown>,
+    retry: CommandRetryBuilder,
+    onOutcome: ((outcome: CommandOutcome) => void) | undefined,
+    attempt: number,
+  ): void {
+    const refreshed = retry(fresh);
+    if (!refreshed) {
+      onOutcome?.({ status: "superseded" });
+      return;
+    }
+    this.sendTracked(
+      event,
+      { ...payload, ...refreshed },
+      retry,
+      onOutcome,
+      attempt + 1,
+    );
+  }
+
+  /**
+   * Checks the connection after the phone comes back (a visible tab, a network
+   * restored) and replaces it if it no longer carries anything. A healthy
+   * connection is left exactly as it is.
+   */
+  checkConnection(): void {
+    if (this.checking || !this.socket?.connected) return;
+    this.checking = true;
+    void this.probe().then((alive) => {
+      this.checking = false;
+      if (!alive) this.replaceConnection?.();
+    });
+  }
+
+  /** True when the server answers the existing heartbeat in time. */
+  private probe(): Promise<boolean> {
+    const socket = this.socket;
+    if (!socket?.connected) return Promise.resolve(false);
+    return new Promise((resolve) => {
+      const timer = window.setTimeout(
+        () => resolve(false),
+        LIVENESS_PROBE_TIMEOUT_MS,
+      );
+      // Any answer — even a refusal — proves the connection carries frames.
+      socket.emit(
+        "live-session:participant-heartbeat",
+        { sessionId: this.sessionId },
+        () => {
+          window.clearTimeout(timer);
+          resolve(true);
+        },
+      );
+    });
+  }
+
+  private waitForSnapshot(
+    accept: (snapshot: LiveSessionSnapshot) => boolean,
+    timeoutMs: number,
+  ): Promise<LiveSessionSnapshot | undefined> {
+    if (this.latest && accept(this.latest)) return Promise.resolve(this.latest);
+    return this.waitUntil(
+      this.snapshotWaiters,
+      () => (this.latest && accept(this.latest) ? this.latest : undefined),
+      timeoutMs,
+    );
+  }
+
+  private waitForSnapshotAfter(
+    count: number,
+    timeoutMs: number,
+  ): Promise<LiveSessionSnapshot | undefined> {
+    return this.waitForSnapshot(() => this.snapshotCount > count, timeoutMs);
+  }
+
+  private waitForConnectionAfter(
+    count: number,
+    timeoutMs: number,
+  ): Promise<boolean> {
+    if (this.connectionCount > count) return Promise.resolve(true);
+    return this.waitUntil(
+      this.connectionWaiters,
+      () => (this.connectionCount > count ? true : undefined),
+      timeoutMs,
+    ).then(Boolean);
+  }
+
+  private waitUntil<T>(
+    waiters: Set<() => void>,
+    ready: () => T | undefined,
+    timeoutMs: number,
+  ): Promise<T | undefined> {
+    return new Promise((resolve) => {
+      const check = () => {
+        const value = ready();
+        if (value === undefined) return;
+        window.clearTimeout(timer);
+        waiters.delete(check);
+        resolve(value);
+      };
+      const timer = window.setTimeout(() => {
+        waiters.delete(check);
+        resolve(undefined);
+      }, timeoutMs);
+      waiters.add(check);
+    });
+  }
+
   disconnect(): void {
     this.closeCurrent?.();
     this.closeCurrent = undefined;
@@ -504,5 +765,7 @@ export class LiveSessionSocket {
     this.socket?.disconnect();
     this.socket = undefined;
     this.recoverSnapshot = undefined;
+    this.replaceConnection = undefined;
+    this.latest = undefined;
   }
 }
