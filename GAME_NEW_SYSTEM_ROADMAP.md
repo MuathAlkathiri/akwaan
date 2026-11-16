@@ -40,6 +40,29 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
+### Where things stand — 2026-11-16 (later) · BOMB SUBMISSION RELIABILITY (F1–F3) — ✅ IMPLEMENTED & VERIFIED LOCALLY · 🚧 IN RELEASE PR (`fix/bomb-submission-reliability`) · ⬜ NOT YET DEPLOYED
+
+The Bomb end-to-end audit (2026-11-16) found three ways a player could type an answer and still lose the turn.
+All three are fixed **in the frontend only**; Production (`98ee362`) still has them until this release ships.
+
+| # | Confirmed root cause | Local fix |
+|---|---|---|
+| F1 · P0 | A connection that still reads *connected* but carries nothing (phone slept, Wi-Fi ↔ mobile data). Socket.IO's default heartbeat (25 s + 20 s) takes up to ~45 s to notice — longer than a Bomb team's clock — and every retry went through the same dead connection (three sends, "unknown" after 12.5 s), while the server kept the holder and ran the clock. | Silence is now probed with the existing participant heartbeat (2.5 s). An answered probe means a slow server: the same command is resent on the same connection once fresh state is in hand. An unanswered probe means a dead connection: it is replaced through the existing presence-recovery path, the new connection must deliver authoritative state, and only then — if the turn, question and ownership still apply — is the **same command id** resent (a lost-ack command replays as a duplicate). Returning to the tab, a restored page and a regained network also check the connection. No server or heartbeat change: shortening the global heartbeat was rejected as unnecessary churn for every consumer. |
+| F2 · P0 | The countdown fell back to the phone's own clock when it disagreed with the server by ≥ 60 s — exactly when that clock is wrong. A phone ≥ 60 s fast read the running clock as spent, hid the answer box and showed «انتهى وقتكم» while the server still had time; a slow phone froze. | Server time is always the snapshot's own stamp plus the time elapsed on the phone since it arrived, so any constant device skew cancels. Server authority over deadlines is unchanged. The ~one-way-latency optimism of the display was investigated and **not** changed (it errs towards *more* time, so it can never lock out a valid holder; the server still rules on a late answer). |
+| F3 · P1 | A stale-revision refusal was retried 250 ms later against whatever the phone held (the provider's ref catches up only after React renders), so it could go stale again and end as «ما وصلنا رد» although the server had replied each time. | A stale refusal is retried only against a snapshot newer than the revisions the command carried, delivered by the socket itself; still bounded to three sends; a final stale refusal — or no newer state — is reported as a **refusal**, never "no reply". Ownership, question, phase and deadline are re-checked before any resend. |
+
+**Unchanged by design:** 30 s continuous team clocks, no refund, the 5 s skip penalty, handoff and initial-holder
+rules, READY → host Start → Fair-Start, server-side CAS and authorisation, scoring once, no grace time.
+**Evidence:** new `frontend/src/test/bomb-submission-reliability.test.ts` (19 cases) and a Bomb panel test with
+±61 s / +1 h device skew — 12 of the original 17 and both fast-clock panel cases fail on `98ee362` and pass now; six
+superseded expectations in `match-socket.test.ts` updated to the new contract; two real-Mongo cases prove a
+resent or stale-then-refreshed answer lands exactly once. Frontend 188 files / 2180 tests, backend 4079 tests,
+Bomb real-Mongo 32/32; typecheck, lint and production build clean.
+**Still open:** physical-device confirmation (iPhone sleep/lock, Wi-Fi→LTE, Android keyboards) — not performed;
+a forced reconnect of a live-but-very-slow connection can hand the bomb to a connected teammate through the
+existing disconnect rule (no turn is lost); Bomb content aliases (exact matching) and the paused-session Send
+button remain separate follow-ups.
+
 ### Where things stand — 2026-11-16 · GLOBAL CAPTAIN + TIMER EXPERIENCE (PR #57) DEPLOYED · PHYSICAL QA PENDING · (PR #56 deployed 2026-11-15)
 
 Three pieces of work, at three different stages. Keep them apart.
@@ -3584,6 +3607,8 @@ Not implemented. Not scheduled.
 | 38 | **Global captain + Timer Experience need physical-device QA** | Verification gap | Deployed to Production 2026-11-16 (`98ee362`). Both pass their automated gates, and the release alone passes the full real-Mongo suite; global captain also passed a rendered screenshot pass (360/390 phones, 720p/1080p screens). Neither has been checked on real phones and a real room screen, including countdown sound on a real TV browser. |
 | 39 | **Lobby too wide on phones when the join QR is shown** | UI (pre-existing) | The join-code row (seven `w-11` tiles + gaps + card padding ≈ 392 px) sets the single-column width, so the host lobby overflows by ~50 px at 360 px and ~20 px at 390 px. Unchanged from `HEAD`; found during the captain visual pass. |
 | 40 | **Countdown warning and critical share one icon** | UI (deferred — UI freeze) | Colour, the stage beat and the digits distinguish them, but under reduced motion on the compact chip the two differ by colour alone. Visual change deferred to the Challenge Page redesign. |
+| 41 | **Bomb submission reliability fixes not yet released** | Release gap | F1–F3 (dead connection, device-clock skew, stale-retry reporting) are implemented and verified locally only; Production `98ee362` still has them. Physical-device confirmation also outstanding. |
+| 42 | **Bomb answer aliases** | Content | Bomb matches answers exactly after normalisation (`bomb-gameplay.plugin.ts`): partial names, transliterations and Arabic-Indic digits are judged wrong. Content/alias review, separate from transport; tolerant matching stays off. |
 
 ### 19.1 Permanent mechanic deletion — 🟡 DESIGN APPROVED — IMPLEMENTATION DEFERRED
 
