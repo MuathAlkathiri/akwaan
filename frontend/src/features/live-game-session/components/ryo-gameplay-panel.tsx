@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { HelpCircle, Lock, Swords, Unlock } from "lucide-react";
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
+import type { CountdownThresholds } from "../match/components/countdown-urgency";
 import { AnswerOption } from "../match/components/answer-option";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import { useMobileSurface } from "../match/components/mobile-gameplay-shell";
@@ -126,6 +127,16 @@ function RyoReplayButton({
  * inferred from the URL) — the projection strips storage path/filename/mimetype
  * before it ever reaches this client.
  */
+/**
+ * RYO's blind window is about ten seconds, so the shared defaults would make it
+ * amber from its first frame. It keeps the thresholds tuned against it in the
+ * browser: warning from six, critical from three.
+ */
+const RYO_BLIND_WINDOW_THRESHOLDS: CountdownThresholds = {
+  warningSeconds: 6,
+  criticalSeconds: 3,
+};
+
 interface RyoItem {
   id: string;
   prompt: AuthoredText;
@@ -663,6 +674,9 @@ export function RyoGameplayPanel({
               <ChallengeCountdown
                 remainingMs={remainingMs}
                 variant="prominent"
+                // A ten-second blind window: warn in its second half.
+                thresholds={RYO_BLIND_WINDOW_THRESHOLDS}
+                sound={item.media?.type !== "audio"}
               />
             )}
 

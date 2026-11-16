@@ -140,7 +140,11 @@ export function LaqathaGameplayPanel({
       aside={
         remainingMs !== undefined &&
         (view.phase === "revealing" || view.phase === "claiming") ? (
-          <ChallengeCountdown remainingMs={remainingMs} />
+          <ChallengeCountdown
+            remainingMs={remainingMs}
+            // Countdown cues never talk over an audio clue.
+            sound={!view.clues.some((clue) => clue.modality === "audio")}
+          />
         ) : null
       }
       className={phone ? "flex min-h-0 flex-1 flex-col" : "mx-auto max-w-4xl"}

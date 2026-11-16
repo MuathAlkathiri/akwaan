@@ -51,7 +51,7 @@ export function MarhalaPhonePanel({
 }: {
   runtime: GameplayRuntimeSnapshot;
 }) {
-  const { gameplayCommand, connection } = useLiveSession();
+  const { gameplayCommand, connection, snapshot } = useLiveSession();
   const [answer, setAnswer] = useState("");
   // Presentational only, as in every other controller: `gameplayCommand` is
   // fire-and-forget, so this closes the double-tap window. It is released by the
@@ -84,10 +84,18 @@ export function MarhalaPhonePanel({
   const live = connection === "connected";
   const can = (action: string) =>
     runtime.availableActions.includes(`mode:${action}`);
-  // Two independent gates, both the server's: the action must be offered to this
-  // actor at all, and the server must consider this actor's team the one playing.
-  const mayChoose = can("choose-marhala-difficulty") && view.isActiveTeam;
-  const mayAnswer = can("submit-marhala-answer") && view.isActiveTeam;
+  // Three gates, all the server's: the action must be offered to this actor at
+  // all, the server must consider this actor's team the one playing, and this
+  // phone must be the one holding the turn — the lobby captain, or whoever the
+  // rotation reached. A teammate is not shown dead buttons; they coach.
+  const holdsTurn = view.isActiveTeam && view.isAssignedActor;
+  const mayChoose = can("choose-marhala-difficulty") && holdsTurn;
+  const mayAnswer = can("submit-marhala-answer") && holdsTurn;
+  const coaching = view.isActiveTeam && !view.isAssignedActor;
+  const holderName =
+    snapshot?.participants.find(
+      (participant) => participant.id === view.assignedParticipantId,
+    )?.displayName ?? "زميلكم";
 
   // A typed answer — and a pending guard — must never survive into the next
   // question. Any authoritative move releases both.
@@ -123,7 +131,14 @@ export function MarhalaPhonePanel({
     gameplayCommand("gameplay-command", {
       roundId: round?.id,
       commandType,
-      payload,
+      payload: {
+        ...payload,
+        // Proves this phone still holds the turn it was handed: a phone the
+        // turn moved away from during a disconnect is refused, not obeyed.
+        ...(view.ownAssignmentSequence !== undefined
+          ? { assignmentSequence: view.ownAssignmentSequence }
+          : {}),
+      },
     });
 
   const choose = (difficulty: MarhalaDifficulty) => {
@@ -192,6 +207,11 @@ export function MarhalaPhonePanel({
           view.phase === "difficulty-choice" &&
           (mayChoose ? (
             <BandChoices view={view} onChoose={choose} disabled={!live} />
+          ) : coaching ? (
+            <CoachingCard
+              holderName={holderName}
+              body="تشاوروا في مستوى الخطر — الاختيار من الجوال المحدد."
+            />
           ) : (
             <WaitingCard
               title="دور الفريق الآخر"
@@ -337,6 +357,15 @@ export function MarhalaPhonePanel({
                 </MobileActionArea>
               </form>
             )
+          ) : coaching ? (
+            <CoachingCard
+              holderName={holderName}
+              body="تشاوروا في الإجابة — الإرسال من الجوال المحدد."
+            >
+              <p className="text-center text-base font-black leading-snug text-foreground">
+                <BidiText>{marhalaPromptText(view)}</BidiText>
+              </p>
+            </CoachingCard>
           ) : (
             <WaitingCard
               title="الفريق الآخر يجيب"
@@ -446,6 +475,35 @@ const PHONE_BAND_RISK: Record<MarhalaBandRisk, string> = {
   balanced: "متوازن",
   bold: "مخاطرة عالية",
 };
+
+/**
+ * A teammate of the player holding the turn. Not a waiting room: it is their
+ * team's turn, and they are there to help. Names whose phone it is, so the
+ * room knows who to talk to.
+ */
+function CoachingCard({
+  holderName,
+  body,
+  children,
+}: {
+  holderName: string;
+  body: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div
+      className="surface-card space-y-2 p-5 text-center"
+      data-testid="marhala-phone-coaching"
+      role="status"
+    >
+      <p className="text-base font-black text-foreground">
+        دوركم — الجوال مع <BidiText>{holderName}</BidiText>
+      </p>
+      <p className="text-sm font-bold text-muted-foreground">{body}</p>
+      {children}
+    </div>
+  );
+}
 
 function WaitingCard({ title, body }: { title: string; body: string }) {
   return (

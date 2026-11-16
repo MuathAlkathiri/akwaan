@@ -35,6 +35,14 @@ import {
   StartGameplayRound,
   StartGameplayRuntime,
 } from './gameplay-runtime.lifecycle';
+import { COMBO_ANSWER_ACTION } from '../domain/combo-gameplay.plugin';
+import {
+  assignNextTeamActionOrHold,
+  buildTeamRotations,
+  createTeamActionAssignmentState,
+  serializeTeamActionAssignments,
+} from '../domain/team-action-assignment';
+import { eligibleParticipantsOf, teamCaptainsOf } from './start-top5.use-case';
 
 /**
  * Launch "الكومبو" for one board slot.
@@ -150,6 +158,22 @@ export class StartComboGameplay {
         'Combo requires exactly two active teams',
       );
     }
+    // Every team's whole roster in turn, or its lobby captain; the first
+    // question of the first Run is handed to one phone now, each later one as
+    // it opens.
+    const participants = eligibleParticipantsOf(sessionState);
+    const firstQuestion = assignNextTeamActionOrHold(
+      createTeamActionAssignmentState(
+        buildTeamRotations({
+          teams,
+          participants,
+          randomIndex: () => 0,
+          captains: teamCaptainsOf(sessionState),
+        }),
+      ),
+      { teamId: teams[0], action: COMBO_ANSWER_ACTION, participants },
+    );
+
     const actor = { kind: 'user' as const, actorId: input.actorId };
     const now = new Date();
     await this.createRuntime.execute({
@@ -175,6 +199,7 @@ export class StartComboGameplay {
         phase: 'question',
         forcedQuestion: false,
         armedBreakByTeamId: null,
+        teamActionJson: serializeTeamActionAssignments(firstQuestion.state),
         deadlineAt: new Date(
           now.getTime() + COMBO_QUESTION_SECONDS * 1000,
         ).toISOString(),

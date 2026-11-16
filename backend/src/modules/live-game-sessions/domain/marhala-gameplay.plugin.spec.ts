@@ -1,6 +1,7 @@
 import {
   MARHALA_COMMANDS,
   MARHALA_GAMEPLAY_PLUGIN,
+  MARHALA_TURN_ACTION,
   marhalaActiveTeamId,
   marhalaResult,
   MarhalaRuntimeQuestion,
@@ -12,6 +13,13 @@ import {
   MarhalaDifficulty,
 } from './marhala-board';
 import { GameplayModeState } from './gameplay-mode.plugin';
+import {
+  assignNextTeamActionOrHold,
+  buildTeamRotations,
+  createTeamActionAssignmentState,
+  parseTeamActionAssignments,
+  serializeTeamActionAssignments,
+} from './team-action-assignment';
 import {
   C4_GUARDED_V1,
   fingerprintAnswers,
@@ -1022,6 +1030,340 @@ describe('المرحلة gameplay', () => {
         expect(wire).not.toContain('روكستار');
         expect(wire).not.toContain(guarded().answerGuard!.answersFingerprint);
       }
+    });
+  });
+
+  /**
+   * One phone carries each turn.
+   *
+   * The lobby captain while connected, otherwise the team's whole roster in
+   * turn. The holder elects the band and answers; a teammate is refused, the
+   * other team still hears "not your turn", and the race itself — movement,
+   * deadline, scoring — is untouched.
+   */
+  describe('the turn holder', () => {
+    const TEAMS_ROSTER = [
+      { participantId: 'a1', teamId: TEAM_A, connected: true },
+      { participantId: 'a2', teamId: TEAM_A, connected: true },
+      { participantId: 'b1', teamId: TEAM_B, connected: true },
+      { participantId: 'b2', teamId: TEAM_B, connected: true },
+    ];
+
+    const assigned = (
+      captains: Record<string, string> = {},
+      roster = TEAMS_ROSTER,
+    ) =>
+      runtime({
+        teamActionJson: serializeTeamActionAssignments(
+          assignNextTeamActionOrHold(
+            createTeamActionAssignmentState(
+              buildTeamRotations({
+                teams: [TEAM_A, TEAM_B],
+                participants: roster,
+                randomIndex: () => 0,
+                captains,
+              }),
+            ),
+            {
+              teamId: TEAM_A,
+              action: MARHALA_TURN_ACTION,
+              participants: roster,
+            },
+          ).state,
+        ),
+      });
+
+    const as = (
+      type: string,
+      state: GameplayModeState,
+      submitter: string,
+      payload: GameplayModeState = {},
+      roster = TEAMS_ROSTER,
+    ) =>
+      MARHALA_GAMEPLAY_PLUGIN.handleCommand(
+        {
+          sessionId: 's1',
+          runtimeId: 'runtime-1',
+          now: NOW,
+          eligibleParticipants: roster,
+          ...(submitter ? { submitterParticipantId: submitter } : {}),
+          ...(type === MARHALA_COMMANDS.openQuestion
+            ? { serverOwnedCommand: true }
+            : {}),
+        },
+        {
+          type,
+          payload,
+          runtimeState:
+            type === MARHALA_COMMANDS.expireQuestion && !state.deadlineAt
+              ? { ...state, deadlineAt: '2026-08-20T11:59:00.000Z' }
+              : state,
+          roundState: { phase: state.phase },
+        },
+      ).runtimeState;
+
+    const holderOf = (state: GameplayModeState) =>
+      parseTeamActionAssignments(state.teamActionJson).assignments.find(
+        (assignment) => assignment.action === MARHALA_TURN_ACTION,
+      );
+
+    /** The holder plays a whole turn and gets it wrong. */
+    const playWrong = (state: GameplayModeState, holder: string) => {
+      const chosen = as(MARHALA_COMMANDS.chooseDifficulty, state, holder, {
+        difficulty: 'easy',
+      });
+      const open = as(MARHALA_COMMANDS.openQuestion, chosen, '', {
+        questionJson: JSON.stringify(question('easy')),
+      });
+      return as(MARHALA_COMMANDS.submitAnswer, open, holder, {
+        answer: 'خطأ',
+      });
+    };
+
+    it('refuses a teammate who does not hold the turn', () => {
+      expect(() =>
+        as(MARHALA_COMMANDS.chooseDifficulty, assigned(), 'a2', {
+          difficulty: 'easy',
+        }),
+      ).toThrow(
+        expect.objectContaining({ code: 'TEAM_ACTION_WRONG_PARTICIPANT' }),
+      );
+    });
+
+    it('still tells the other team it is not their turn', () => {
+      expect(() =>
+        as(MARHALA_COMMANDS.chooseDifficulty, assigned(), 'b1', {
+          difficulty: 'easy',
+        }),
+      ).toThrow(expect.objectContaining({ code: 'MARHALA_NOT_YOUR_TURN' }));
+    });
+
+    it('refuses the answer from a teammate after the holder elected', () => {
+      const chosen = as(MARHALA_COMMANDS.chooseDifficulty, assigned(), 'a1', {
+        difficulty: 'easy',
+      });
+      const open = as(MARHALA_COMMANDS.openQuestion, chosen, '', {
+        questionJson: JSON.stringify(question('easy')),
+      });
+      expect(() =>
+        as(MARHALA_COMMANDS.submitAnswer, open, 'a2', { answer: 'روكستار' }),
+      ).toThrow(
+        expect.objectContaining({ code: 'TEAM_ACTION_WRONG_PARTICIPANT' }),
+      );
+      // The holder's answer moves the token exactly as before.
+      const moved = as(MARHALA_COMMANDS.submitAnswer, open, 'a1', {
+        answer: 'روكستار',
+      });
+      expect(turnsOf(moved)).toHaveLength(1);
+      expect(turnsOf(moved)[0]).toMatchObject({
+        correct: true,
+        teamId: TEAM_A,
+      });
+      expect(positionsOf(moved)[TEAM_A]).toBeGreaterThan(
+        MARHALA_START_POSITION,
+      );
+    });
+
+    it('refuses a stale assignment sequence', () => {
+      const state = assigned();
+      const sequence = holderOf(state)!.sequence;
+      expect(() =>
+        as(MARHALA_COMMANDS.chooseDifficulty, state, 'a1', {
+          difficulty: 'easy',
+          assignmentSequence: sequence - 1,
+        }),
+      ).toThrow(
+        expect.objectContaining({ code: 'TEAM_ACTION_STALE_ASSIGNMENT' }),
+      );
+      expect(
+        as(MARHALA_COMMANDS.chooseDifficulty, state, 'a1', {
+          difficulty: 'easy',
+          assignmentSequence: sequence,
+        }).phase,
+      ).toBe('question-pending');
+    });
+
+    it('rotates over the whole roster turn by turn when there is no captain', () => {
+      let state = assigned();
+      const holders: string[] = [];
+      for (let turn = 0; turn < 4; turn += 1) {
+        const holder = holderOf(state)!.participantId;
+        holders.push(holder);
+        state = playWrong(state, holder);
+      }
+      expect(holders).toEqual(['a1', 'b1', 'a2', 'b2']);
+    });
+
+    it('gives the captain every one of the team’s turns', () => {
+      let state = assigned({ [TEAM_A]: 'a2', [TEAM_B]: 'b2' });
+      const holders: string[] = [];
+      for (let turn = 0; turn < 4; turn += 1) {
+        const holder = holderOf(state)!.participantId;
+        holders.push(holder);
+        state = playWrong(state, holder);
+      }
+      expect(holders).toEqual(['a2', 'b2', 'a2', 'b2']);
+    });
+
+    it('hands the next turn to a stand-in while the captain is away', () => {
+      const awayB2 = TEAMS_ROSTER.map((entry) =>
+        entry.participantId === 'b2' ? { ...entry, connected: false } : entry,
+      );
+      const state = assigned({ [TEAM_B]: 'b2' }, awayB2);
+      const chosen = as(
+        MARHALA_COMMANDS.chooseDifficulty,
+        state,
+        'a1',
+        {
+          difficulty: 'easy',
+        },
+        awayB2,
+      );
+      const open = as(
+        MARHALA_COMMANDS.openQuestion,
+        chosen,
+        '',
+        {
+          questionJson: JSON.stringify(question('easy')),
+        },
+        awayB2,
+      );
+      const passed = as(
+        MARHALA_COMMANDS.submitAnswer,
+        open,
+        'a1',
+        {
+          answer: 'خطأ',
+        },
+        awayB2,
+      );
+      expect(holderOf(passed)).toMatchObject({
+        teamId: TEAM_B,
+        participantId: 'b1',
+      });
+    });
+
+    it('opens the next turn on expiry too, without touching the deadline rule', () => {
+      const chosen = as(MARHALA_COMMANDS.chooseDifficulty, assigned(), 'a1', {
+        difficulty: 'easy',
+      });
+      const open = as(MARHALA_COMMANDS.openQuestion, chosen, '', {
+        questionJson: JSON.stringify(question('easy')),
+      });
+      const expired = as(MARHALA_COMMANDS.expireQuestion, open, '');
+      expect(turnsOf(expired)[0]).toMatchObject({ resolvedBy: 'timeout' });
+      expect(holderOf(expired)).toMatchObject({
+        teamId: TEAM_B,
+        participantId: 'b1',
+      });
+    });
+
+    it('holds the turn for a team that is wholly away', () => {
+      const bAway = TEAMS_ROSTER.map((entry) =>
+        entry.teamId === TEAM_B ? { ...entry, connected: false } : entry,
+      );
+      const chosen = as(
+        MARHALA_COMMANDS.chooseDifficulty,
+        assigned(),
+        'a1',
+        {
+          difficulty: 'easy',
+        },
+        bAway,
+      );
+      const open = as(
+        MARHALA_COMMANDS.openQuestion,
+        chosen,
+        '',
+        {
+          questionJson: JSON.stringify(question('easy')),
+        },
+        bAway,
+      );
+      const passed = as(
+        MARHALA_COMMANDS.submitAnswer,
+        open,
+        'a1',
+        {
+          answer: 'خطأ',
+        },
+        bAway,
+      );
+      expect(marhalaActiveTeamId(passed)).toBe(TEAM_B);
+      expect(holderOf(passed)).toMatchObject({
+        teamId: TEAM_B,
+        participantId: 'b1',
+      });
+    });
+
+    it('closes the turn when the race ends', () => {
+      const state = runtime({
+        ...assigned(),
+        positionsJson: JSON.stringify({
+          [TEAM_A]: MARHALA_FINISH_POSITION - 1,
+          [TEAM_B]: MARHALA_START_POSITION,
+        }),
+      });
+      const chosen = as(MARHALA_COMMANDS.chooseDifficulty, state, 'a1', {
+        difficulty: 'easy',
+      });
+      const open = as(MARHALA_COMMANDS.openQuestion, chosen, '', {
+        questionJson: JSON.stringify(question('easy')),
+      });
+      const won = as(MARHALA_COMMANDS.submitAnswer, open, 'a1', {
+        answer: 'روكستار',
+      });
+      expect(won.phase).toBe('completed');
+      expect(holderOf(won)).toBeUndefined();
+    });
+
+    it('shows everyone who holds the turn, and only the holder that it is theirs', () => {
+      const state = assigned({ [TEAM_A]: 'a2' });
+      const shared = MARHALA_GAMEPLAY_PLUGIN.projectRuntimeState!(state);
+      expect(shared.assignedParticipantId).toBe('a2');
+      expect(shared.teamActionJson).toBeUndefined();
+      const project = (participantId: string, teamId: string) =>
+        MARHALA_GAMEPLAY_PLUGIN.projectRuntimeStateForActor!(state, {
+          controller: false,
+          participantId,
+          teamId,
+        });
+      expect(project('a2', TEAM_A)).toMatchObject({
+        isActiveTeam: true,
+        isAssignedActor: true,
+        ownAssignmentSequence: holderOf(state)!.sequence,
+      });
+      expect(project('a1', TEAM_A)).toMatchObject({
+        isActiveTeam: true,
+        isAssignedActor: false,
+      });
+      expect(project('a1', TEAM_A).ownAssignmentSequence).toBeUndefined();
+      expect(project('b1', TEAM_B)).toMatchObject({
+        isActiveTeam: false,
+        isAssignedActor: false,
+      });
+    });
+
+    it('keeps the team-wide rule for a race started before turns were assigned', () => {
+      const legacy = runtime();
+      expect(
+        as(
+          MARHALA_COMMANDS.chooseDifficulty,
+          legacy,
+          'a2',
+          {
+            difficulty: 'easy',
+          },
+          TEAMS_ROSTER,
+        ).phase,
+      ).toBe('question-pending');
+      expect(
+        MARHALA_GAMEPLAY_PLUGIN.projectRuntimeStateForActor!(legacy, {
+          controller: false,
+          participantId: 'a2',
+          teamId: TEAM_A,
+        }).isAssignedActor,
+      ).toBe(true);
     });
   });
 });

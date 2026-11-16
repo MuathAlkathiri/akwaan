@@ -30,6 +30,13 @@ export interface TeamRotation {
   order: string[];
   /** Index into `order` of the participant who takes the team's *next* action. */
   cursor: number;
+  /**
+   * The team's lobby captain, when it chose one. The captain takes every
+   * action while eligible; the rotation only supplies a stand-in while the
+   * captain is away, and the cursor does not move for the captain's turns.
+   * Absent on rotations built before captains existed, which simply rotate.
+   */
+  captainId?: string;
 }
 
 /** Who is authoritative for one team action, right now. */
@@ -86,26 +93,55 @@ export function eligibleFor(
 /**
  * Builds each team's rotation once, at challenge start.
  *
+ * The order is the team's **whole roster**, not whoever happened to be
+ * connected at the instant of launch. A phone still opening its socket when the
+ * host pressed start used to be left out of the order for the entire challenge
+ * — a real four-phone run persisted one side's rotation with a single name in
+ * it. Connectivity decides only who may act *right now*: assignment walks this
+ * order and skips anyone away. (لا تحرقها worked around this in its own start
+ * path; the rule now lives here, for every mechanic.)
+ *
  * `randomIndex` is injected rather than called for: the starting position is
  * randomised exactly once here and then persisted, so a refresh, a reconnect, or
  * a replayed read all see the same rotation. A team of one naturally receives
- * every action.
+ * every action. A team's lobby `captain`, when it has one, is recorded on its
+ * rotation and takes the team's actions while eligible.
  */
 export function buildTeamRotations(input: {
   teams: readonly string[];
   participants: readonly EligibleParticipant[];
   randomIndex: (exclusiveMax: number) => number;
+  captains?: Readonly<Record<string, string | undefined>>;
 }): TeamRotation[] {
   return input.teams.map((teamId) => {
-    const order = eligibleFor(teamId, input.participants);
+    const order = rosterFor(teamId, input.participants);
     if (!order.length) {
       throw new LiveSessionDomainError(
         TEAM_ACTION_ASSIGNMENT_ERRORS.NO_ELIGIBLE_PARTICIPANT,
-        `Team ${teamId} has no connected player to act for it`,
+        `Team ${teamId} has no player to act for it`,
       );
     }
-    return { teamId, order, cursor: input.randomIndex(order.length) };
+    const captainId = input.captains?.[teamId];
+    return {
+      teamId,
+      order,
+      cursor: input.randomIndex(order.length),
+      ...(captainId && order.includes(captainId) ? { captainId } : {}),
+    };
   });
+}
+
+/** Every team-player of a team, connected or not, in roster order. */
+function rosterFor(
+  teamId: string,
+  participants: readonly EligibleParticipant[],
+): string[] {
+  return participants
+    .filter(
+      (participant) =>
+        participant.teamId === teamId && Boolean(participant.participantId),
+    )
+    .map((participant) => participant.participantId);
 }
 
 export function createTeamActionAssignmentState(
@@ -183,8 +219,16 @@ export function assignNextTeamAction(
   const working: TeamActionAssignmentState = { ...state, rotations };
   const rotation = rotationOf(working, input.teamId);
   const eligible = eligibleFor(input.teamId, input.participants);
-  const picked = nextEligible(rotation, eligible);
-  rotation.cursor = (picked.cursor + 1) % rotation.order.length;
+  let picked: { participantId: string };
+  if (rotation.captainId && eligible.includes(rotation.captainId)) {
+    // The captain's turn does not consume the rotation: when the captain is
+    // away the stand-ins still take their turns fairly, in order.
+    picked = { participantId: rotation.captainId };
+  } else {
+    const next = nextEligible(rotation, eligible);
+    rotation.cursor = (next.cursor + 1) % rotation.order.length;
+    picked = next;
+  }
   const assignment: TeamActionAssignment = {
     teamId: input.teamId,
     participantId: picked.participantId,
@@ -204,6 +248,37 @@ export function assignNextTeamAction(
     },
     assignment,
   };
+}
+
+/**
+ * Opens the next action, or holds it with an absent player when nobody on the
+ * team is connected.
+ *
+ * A turn-based mechanic must open the next team's turn even if every phone on
+ * that team is momentarily away. The action is then held — by the captain if
+ * there is one, otherwise by the next player in the rotation — exactly as an
+ * action already open stays with its absent holder, and the first teammate to
+ * connect receives it through the ordinary reassignment.
+ */
+export function assignNextTeamActionOrHold(
+  state: TeamActionAssignmentState,
+  input: {
+    teamId: string;
+    action: string;
+    participants: readonly EligibleParticipant[];
+  },
+): { state: TeamActionAssignmentState; assignment: TeamActionAssignment } {
+  if (eligibleFor(input.teamId, input.participants).length) {
+    return assignNextTeamAction(state, input);
+  }
+  const rotation = rotationOf(state, input.teamId);
+  const holder = rotation.captainId ?? rotation.order[rotation.cursor];
+  return assignNextTeamAction(state, {
+    ...input,
+    participants: [
+      { participantId: holder, teamId: input.teamId, connected: true },
+    ],
+  });
 }
 
 /** Closes an open action without touching the rotation. */
@@ -347,6 +422,11 @@ export function parseTeamActionAssignments(
       teamId: String(rotation.teamId),
       order: [...rotation.order],
       cursor: Number(rotation.cursor),
+      // Carried through every persisted round trip: dropping it here would let
+      // a captain hold only the first action of a challenge.
+      ...(typeof rotation.captainId === 'string' && rotation.captainId
+        ? { captainId: rotation.captainId }
+        : {}),
     })),
     assignments: candidate.assignments.map((assignment) => ({ ...assignment })),
     nextSequence: candidate.nextSequence,

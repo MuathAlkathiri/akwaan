@@ -12,6 +12,11 @@ import { useLiveSession } from "../hooks/live-session-context";
 import { useWaitingForNextQuestion } from "../hooks/use-recurring-question-transition";
 import { AnswerOption } from "../match/components/answer-option";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
+import { countdownThresholdsForWindow } from "../match/components/countdown-urgency";
+
+/** The question window is fifteen seconds and the placement window ten. */
+const MOVING_XO_QUESTION_THRESHOLDS = countdownThresholdsForWindow(15);
+const MOVING_XO_PLACEMENT_THRESHOLDS = countdownThresholdsForWindow(10);
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import {
@@ -53,12 +58,23 @@ export function MovingXoPhonePanel({
   const activeTeam = teams.find((team) => team.id === view.activeTeamId);
   const can = (command: string) =>
     runtime.availableActions.includes(`mode:${command}`);
-  const mayAnswer = phase === "answering" && can(ANSWER_COMMAND);
-  const mayPlace = phase === "placement" && can(PLACE_COMMAND);
+  // The server offers the commands to the whole active team; of those phones,
+  // only the one holding the turn (lobby captain or rotation) acts. The rest
+  // of the team coaches it.
+  const mayAnswer =
+    phase === "answering" && can(ANSWER_COMMAND) && view.isAssignedActor;
+  const mayPlace =
+    phase === "placement" && can(PLACE_COMMAND) && view.isAssignedActor;
+  const coaching =
+    !view.isAssignedActor && (can(ANSWER_COMMAND) || can(PLACE_COMMAND));
+  const holderName =
+    snapshot?.participants.find(
+      (participant) => participant.id === view.assignedParticipantId,
+    )?.displayName ?? "زميلكم";
   const live = connection === "connected";
 
   // Pending feedback is local only. Any authoritative runtime move releases it,
-  // including another teammate winning the placement CAS before this phone.
+  // including the turn being handed to a teammate after a disconnect.
   useEffect(() => {
     setSending(undefined);
     setAnswer("");
@@ -81,7 +97,13 @@ export function MovingXoPhonePanel({
     gameplayCommand("gameplay-command", {
       roundId: runtime.activeRound?.id,
       commandType,
-      payload,
+      payload: {
+        ...payload,
+        // Proves this phone still holds the turn it was handed.
+        ...(view.ownAssignmentSequence !== undefined
+          ? { assignmentSequence: view.ownAssignmentSequence }
+          : {}),
+      },
     });
 
   const submitText = (event: FormEvent) => {
@@ -107,10 +129,21 @@ export function MovingXoPhonePanel({
   return (
     <ChallengeFrame
       compact
-      title={phoneTitle(phase, mayAnswer, mayPlace, activeTeam?.name)}
+      title={
+        coaching && (phase === "answering" || phase === "placement")
+          ? "دوركم — ساعدوا زميلكم"
+          : phoneTitle(phase, mayAnswer, mayPlace, activeTeam?.name)
+      }
       aside={
         remainingMs !== undefined ? (
-          <ChallengeCountdown remainingMs={remainingMs} />
+          <ChallengeCountdown
+            remainingMs={remainingMs}
+            thresholds={
+              phase === "placement"
+                ? MOVING_XO_PLACEMENT_THRESHOLDS
+                : MOVING_XO_QUESTION_THRESHOLDS
+            }
+          />
         ) : null
       }
       className="flex min-h-0 flex-1 flex-col"
@@ -181,8 +214,17 @@ export function MovingXoPhonePanel({
 
         {phase === "answering" && !mayAnswer && (
           <WaitingPhone
-            title={`دور ${activeTeam?.name ?? "الفريق الآخر"}`}
-            body="تابعوا اللغز على الشاشة"
+            testId={coaching ? "moving-xo-phone-coaching" : undefined}
+            title={
+              coaching
+                ? `دوركم — الجوال مع ${holderName}`
+                : `دور ${activeTeam?.name ?? "الفريق الآخر"}`
+            }
+            body={
+              coaching
+                ? "تشاوروا في الإجابة والحركة — الإرسال من الجوال المحدد."
+                : "تابعوا اللغز على الشاشة"
+            }
           >
             {view.question && (
               <MovingXoQuestion
@@ -227,8 +269,17 @@ export function MovingXoPhonePanel({
 
         {phase === "placement" && !mayPlace && (
           <WaitingPhone
-            title={`${activeTeam?.name ?? "الفريق الآخر"} يختار الحركة`}
-            body="ستتحدث اللوحة فور تثبيت أول اختيار"
+            testId={coaching ? "moving-xo-phone-coaching" : undefined}
+            title={
+              coaching
+                ? `الحركة من جوال ${holderName}`
+                : `${activeTeam?.name ?? "الفريق الآخر"} يختار الحركة`
+            }
+            body={
+              coaching
+                ? "تشاوروا وين تنحط الحركة."
+                : "ستتحدث اللوحة فور تثبيت الحركة"
+            }
           >
             <MovingXoBoard compact board={view.board} teams={teams} />
           </WaitingPhone>
@@ -293,14 +344,16 @@ function WaitingPhone({
   title,
   body,
   children,
+  testId = "moving-xo-phone-waiting",
 }: {
   title: string;
   body: string;
   children?: React.ReactNode;
+  testId?: string;
 }) {
   return (
     <div
-      data-testid="moving-xo-phone-waiting"
+      data-testid={testId}
       className="flex min-h-0 flex-1 flex-col justify-center gap-4"
     >
       {children}

@@ -8,8 +8,15 @@ import {
   MOVING_XO_GAMEPLAY_PLUGIN as PLUGIN,
   MOVING_XO_PLACEMENT_SECONDS,
   MOVING_XO_QUESTION_SECONDS,
+  MOVING_XO_TURN_ACTION,
   movingXoResult,
 } from './moving-xo-gameplay.plugin';
+import {
+  buildTeamRotations,
+  createTeamActionAssignmentState,
+  parseTeamActionAssignments,
+  serializeTeamActionAssignments,
+} from './team-action-assignment';
 
 const X = 'team-x';
 const O = 'team-o';
@@ -247,10 +254,13 @@ describe('Moving XO plugin — placement authority', () => {
     );
   });
 
-  it('resolves two teammates racing to different cells to exactly one move', () => {
-    // Both teammates read the same revision and both are authorised. The
-    // runtime's CAS admits one; the loser is replayed against the committed
-    // state, where the earned move is already spent and the turn has passed.
+  /**
+   * Superseded: §23.11 used to let any teammate place, first valid commit
+   * winning. The approved global-captain rule gives the turn to one phone, so a
+   * second placement is refused whether it races or not — see "the turn
+   * holder" below for the teammate case.
+   */
+  it('spends the earned move exactly once', () => {
     const first = run(
       MOVING_XO_COMMANDS.place,
       { cell: 0 },
@@ -884,5 +894,217 @@ describe('Moving XO plugin — commands only the server may send', () => {
     expect(() =>
       run(type, payload, runtime(over), { serverOwnedCommand: false }),
     ).toThrow('Only the server can deal a puzzle or end the deck');
+  });
+});
+
+/**
+ * One phone carries each Moving XO turn (approved global-captain policy).
+ *
+ * The lobby captain while connected, otherwise the team's whole roster in
+ * turn. The holder answers and places the move it earned; a teammate is
+ * refused; deadlines, legality and resolution are untouched.
+ */
+describe('Moving XO plugin — the turn holder', () => {
+  const ROSTER = [
+    { participantId: 'x1', teamId: X, connected: true },
+    { participantId: 'x2', teamId: X, connected: true },
+    { participantId: 'o1', teamId: O, connected: true },
+    { participantId: 'o2', teamId: O, connected: true },
+  ];
+  const rotations = (captains: Record<string, string> = {}) =>
+    serializeTeamActionAssignments(
+      createTeamActionAssignmentState(
+        buildTeamRotations({
+          teams: [X, O],
+          participants: ROSTER,
+          randomIndex: () => 0,
+          captains,
+        }),
+      ),
+    );
+  const pending = (captains: Record<string, string> = {}) =>
+    runtime({
+      phase: 'question-pending',
+      question: null,
+      deadlineAt: null,
+      presentedContentItemIds: [],
+      teamActionJson: rotations(captains),
+    });
+  const as = (
+    type: string,
+    payload: Record<string, unknown>,
+    current: GameplayModeState,
+    submitter?: string,
+    roster = ROSTER,
+  ) => {
+    const active = (current as unknown as { activeTeamId: string })
+      .activeTeamId;
+    return run(type, payload, current, {
+      activeTeamId: active,
+      eligibleParticipants: roster,
+      ...(submitter ? { submitterParticipantId: submitter } : {}),
+    }).runtimeState;
+  };
+  const open = (current: GameplayModeState, id = 'item-1', roster = ROSTER) =>
+    as(
+      MOVING_XO_COMMANDS.openQuestion,
+      { questionJson: JSON.stringify({ ...QUESTION, contentItemId: id }) },
+      current,
+      undefined,
+      roster,
+    );
+  const holder = (current: GameplayModeState) =>
+    parseTeamActionAssignments(
+      (current as unknown as { teamActionJson: string }).teamActionJson,
+    ).assignments.find((a) => a.action === MOVING_XO_TURN_ACTION);
+  const wrong = (current: GameplayModeState, who: string) =>
+    as(MOVING_XO_COMMANDS.answer, { answer: 'خطأ' }, current, who);
+
+  it('keeps the rotation through the initial state', () => {
+    const created = PLUGIN.createInitialRuntimeState({
+      sessionId: 's',
+      runtimeId: 'r',
+      activeTeamId: X,
+      initialState: {
+        teamIds: [X, O],
+        teamActionJson: rotations(),
+      } as unknown as GameplayModeState,
+    } as never);
+    expect(typeof created.teamActionJson).toBe('string');
+    expect(holder(created)).toBeUndefined();
+  });
+
+  it('opens each puzzle for one phone of the active team', () => {
+    const opened = open(pending());
+    expect(holder(opened)).toMatchObject({ teamId: X, participantId: 'x1' });
+  });
+
+  it('lets the holder answer and place the move it earned', () => {
+    const opened = open(pending());
+    const placing = as(
+      MOVING_XO_COMMANDS.answer,
+      { answer: 'جورج قرداحي' },
+      opened,
+      'x1',
+    );
+    expect(placing.phase).toBe('placement');
+    // The same phone still holds the turn for the placement.
+    expect(holder(placing)).toMatchObject({ participantId: 'x1' });
+    const placed = as(MOVING_XO_COMMANDS.place, { cell: 0 }, placing, 'x1');
+    expect(placed.phase).toBe('question-pending');
+    expect(holder(placed)).toBeUndefined();
+  });
+
+  it('refuses a teammate on the answer and on the placement', () => {
+    const opened = open(pending());
+    expect(() =>
+      as(MOVING_XO_COMMANDS.answer, { answer: 'جورج قرداحي' }, opened, 'x2'),
+    ).toThrow(
+      expect.objectContaining({ code: 'TEAM_ACTION_WRONG_PARTICIPANT' }),
+    );
+    const placing = as(
+      MOVING_XO_COMMANDS.answer,
+      { answer: 'جورج قرداحي' },
+      opened,
+      'x1',
+    );
+    expect(() =>
+      as(MOVING_XO_COMMANDS.place, { cell: 0 }, placing, 'x2'),
+    ).toThrow(
+      expect.objectContaining({ code: 'TEAM_ACTION_WRONG_PARTICIPANT' }),
+    );
+  });
+
+  it('refuses a stale assignment sequence', () => {
+    const opened = open(pending());
+    const sequence = holder(opened)!.sequence;
+    expect(() =>
+      as(
+        MOVING_XO_COMMANDS.answer,
+        { answer: 'جورج قرداحي', assignmentSequence: sequence - 1 },
+        opened,
+        'x1',
+      ),
+    ).toThrow(
+      expect.objectContaining({ code: 'TEAM_ACTION_STALE_ASSIGNMENT' }),
+    );
+  });
+
+  it('rotates over the full roster turn by turn without a captain', () => {
+    let current = pending();
+    const holders: string[] = [];
+    for (let turn = 0; turn < 4; turn += 1) {
+      current = open(current, `item-${turn}`);
+      const who = holder(current)!.participantId;
+      holders.push(who);
+      current = wrong(current, who);
+    }
+    expect(holders).toEqual(['x1', 'o1', 'x2', 'o2']);
+  });
+
+  it('gives the captain every one of the team’s turns', () => {
+    let current = pending({ [X]: 'x2', [O]: 'o2' });
+    const holders: string[] = [];
+    for (let turn = 0; turn < 4; turn += 1) {
+      current = open(current, `item-${turn}`);
+      const who = holder(current)!.participantId;
+      holders.push(who);
+      current = wrong(current, who);
+    }
+    expect(holders).toEqual(['x2', 'o2', 'x2', 'o2']);
+  });
+
+  it('opens the turn for a stand-in while the captain is away', () => {
+    const away = ROSTER.map((entry) =>
+      entry.participantId === 'x2' ? { ...entry, connected: false } : entry,
+    );
+    const opened = open(pending({ [X]: 'x2' }), 'item-1', away);
+    expect(holder(opened)).toMatchObject({ participantId: 'x1' });
+  });
+
+  it('closes the turn on a timeout and on a forfeited placement', () => {
+    const opened = open(pending());
+    const timedOut = run(MOVING_XO_COMMANDS.expireQuestion, {}, {
+      ...opened,
+      deadlineAt: '2026-10-06T11:59:00.000Z',
+    } as never).runtimeState;
+    expect(timedOut.phase).toBe('question-pending');
+    expect(holder(timedOut)).toBeUndefined();
+  });
+
+  it('shows the room whose phone it is, and only the holder that it is theirs', () => {
+    const opened = open(pending({ [X]: 'x2' }));
+    expect(PLUGIN.projectRuntimeState!(opened).assignedParticipantId).toBe(
+      'x2',
+    );
+    expect(PLUGIN.projectRuntimeState!(opened).teamActionJson).toBeUndefined();
+    const forActor = (participantId: string, teamId: string) =>
+      PLUGIN.projectRuntimeStateForActor!(opened, {
+        controller: false,
+        participantId,
+        teamId,
+      });
+    expect(forActor('x2', X)).toMatchObject({
+      isAssignedActor: true,
+      ownAssignmentSequence: holder(opened)!.sequence,
+    });
+    expect(forActor('x1', X).isAssignedActor).toBe(false);
+    expect(forActor('x1', X).ownAssignmentSequence).toBeUndefined();
+    expect(forActor('o1', O).isAssignedActor).toBe(false);
+  });
+
+  it('keeps the open-team rule for a challenge started before assignment', () => {
+    const legacy = runtime();
+    expect(
+      PLUGIN.projectRuntimeStateForActor!(legacy, {
+        controller: false,
+        participantId: 'x2',
+        teamId: X,
+      }).isAssignedActor,
+    ).toBe(true);
+    expect(
+      as(MOVING_XO_COMMANDS.answer, { answer: 'جورج قرداحي' }, legacy, 'x2')
+        .phase,
+    ).toBe('placement');
   });
 });

@@ -340,7 +340,16 @@ export class GameplayRuntimeSnapshotMapper {
               : {}),
           }
         : undefined;
-    const preparingModeState = { awaitingPresentation: true as const };
+    // A mechanic holding its activation for a setup (Bomb's holders) may show
+    // that setup — never content — inside the safe shell.
+    const preparation =
+      awaitingPresentation && !state.presentationActivatedAt
+        ? plugin.projectPresentationPreparation?.(state.runtimeState)
+        : undefined;
+    const preparingModeState = {
+      ...(preparation ?? {}),
+      awaitingPresentation: true as const,
+    };
     const currentItem =
       state.modeKey === 'bomb' && projectedRound?.phase === 'presenting'
         ? {

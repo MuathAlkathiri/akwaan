@@ -70,6 +70,18 @@ export interface ComboView {
   actorTeamId?: string;
   /** Server's word on whether this actor's team is the one answering. */
   isActiveTeam: boolean;
+  /**
+   * Whose phone holds the open question — lobby captain or rotation. That
+   * phone answers and then decides تثبيت / كمل.
+   */
+  assignedParticipantId?: string;
+  /**
+   * Whether this phone holds the question. True when the server says nothing,
+   * as an older Run does: there the whole playing team may act.
+   */
+  isAssignedActor: boolean;
+  /** Echoed with the holder's commands, so a handed-over question refuses a stale phone. */
+  ownAssignmentSequence?: number;
   /** Server's word on whether the break button should exist at all. */
   canArmComboBreak: boolean;
   /** Private acknowledgement, sent only to the team that armed. */
@@ -146,6 +158,16 @@ export function readComboView(state: Record<string, unknown>): ComboView {
     breakRevealedByTeamId: text(state.comboBreakRevealedByTeamId),
     actorTeamId: text(state.actorTeamId),
     isActiveTeam: state.isActiveTeam === true,
+    ...(text(state.assignedParticipantId)
+      ? { assignedParticipantId: text(state.assignedParticipantId) }
+      : {}),
+    isAssignedActor:
+      typeof state.isAssignedActor === "boolean"
+        ? state.isAssignedActor
+        : state.isActiveTeam === true,
+    ...(typeof state.ownAssignmentSequence === "number"
+      ? { ownAssignmentSequence: state.ownAssignmentSequence }
+      : {}),
     canArmComboBreak: state.canArmComboBreak === true,
     ownComboBreakArmed: state.ownComboBreakArmed === true,
     lastQuestionReveal: parseJson<ComboQuestionReveal | undefined>(

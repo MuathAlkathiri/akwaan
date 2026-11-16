@@ -59,8 +59,10 @@ import {
   MARHALA_MODE_KEY,
   MARHALA_START_POSITION,
 } from '../../src/modules/live-game-sessions/domain/marhala-board';
+import { parseTeamActionAssignments } from '../../src/modules/live-game-sessions/domain/team-action-assignment';
 import {
   MARHALA_COMMANDS,
+  MARHALA_TURN_ACTION,
   MarhalaResult,
   MarhalaRuntimeQuestion,
   MarhalaTurnResult,
@@ -1318,6 +1320,359 @@ describe('marhala lifecycle integration', () => {
       const rows = await exposures();
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({ contentItemId: shown, state: 'exposed' });
+    });
+  });
+
+  /**
+   * The lobby captain and the turn's single holder, on the real stack.
+   *
+   * Two phones a side. Either the host names a captain in the lobby — who then
+   * carries every turn while connected — or nobody is named and the turn
+   * rotates over the whole roster. Movement, the deadline and scoring are the
+   * race's own; only *which phone* may act is decided here.
+   */
+  describe('lobby captain and the turn holder', () => {
+    type Team = { teamId: string; phones: LiveSessionActor[] };
+    type TeamSession = { sessionId: string; teams: Team[] };
+
+    const connect = (sessionId: string, phone: LiveSessionActor) =>
+      app
+        .get(UpdateParticipantPresence)
+        .connected(
+          sessionId,
+          phone.participantId!,
+          `socket-${phone.participantId}`,
+        );
+    const disconnect = (sessionId: string, phone: LiveSessionActor) =>
+      app
+        .get(UpdateParticipantPresence)
+        .disconnected(
+          sessionId,
+          phone.participantId!,
+          `socket-${phone.participantId}`,
+        );
+
+    const setCaptain = (
+      sessionId: string,
+      teamId: string,
+      participantId: string | null,
+      revision: number,
+    ) =>
+      bearer(
+        http().patch(
+          `/live-game-sessions/${sessionId}/teams/${teamId}/captain`,
+        ),
+      ).send({ participantId, commandId: uuid(), expectedRevision: revision });
+
+    /** Two ready phones a side; `captains[i]` names team i's captain by phone index. */
+    const startTeamSession = async (
+      options: {
+        captains?: Array<number | undefined>;
+        offlineAtLaunch?: Array<[team: number, phone: number]>;
+      } = {},
+    ): Promise<TeamSession> => {
+      const created = unwrap<{ snapshot: LiveGameSessionSnapshot }>(
+        await bearer(http().post('/live-game-sessions'))
+          .send({
+            modeKey: 'core-timed-turns',
+            modeVersion: 1,
+            teamNames: ['ألفا', 'بيتا'],
+          })
+          .expect(201),
+      ).snapshot;
+      const sessionId = created.sessionId;
+      const access = await app.get(CreateSessionJoinAccess).execute({
+        sessionId,
+        actorId: controllerId,
+        assignmentPolicy: 'explicit',
+      });
+      const teams: Team[] = [];
+      for (const [teamIndex, team] of created.teams.entries()) {
+        const phones: LiveSessionActor[] = [];
+        for (let phone = 0; phone < 2; phone += 1) {
+          const joined = await app.get(JoinLiveSession).execute({
+            joinCode: access.joinCode,
+            displayName: `لاعب ${teamIndex}-${phone}`,
+            requestedTeamId: team.id,
+            joinRequestId: uuid(),
+          });
+          const actor: LiveSessionActor = {
+            kind: 'participant',
+            actorId: joined.participantId,
+            sessionId,
+            participantId: joined.participantId,
+            role: 'team-player',
+            credentialVersion: 1,
+          };
+          await connect(sessionId, actor);
+          await app.get(SetParticipantReadiness).execute({
+            actor,
+            ready: true,
+            expectedRevision: await sessionRevision(sessionId),
+            commandId: uuid(),
+          });
+          phones.push(actor);
+        }
+        teams.push({ teamId: team.id, phones });
+      }
+      for (const [teamIndex, phone] of (options.captains ?? []).entries()) {
+        if (phone === undefined) continue;
+        await setCaptain(
+          sessionId,
+          teams[teamIndex].teamId,
+          teams[teamIndex].phones[phone].participantId!,
+          await sessionRevision(sessionId),
+        ).expect(200);
+      }
+      const ready = await app.get(MarkSessionReady).execute({
+        sessionId,
+        actorId: controllerId,
+        commandId: uuid(),
+        expectedRevision: await sessionRevision(sessionId),
+      });
+      await app.get(StartLiveGameSession).execute({
+        sessionId,
+        actorId: controllerId,
+        commandId: uuid(),
+        expectedRevision: ready.revision,
+      });
+      await bearer(http().post(matchRoute(sessionId, '/unified')))
+        .send({
+          occurrences: [0, 1, 2].map((occurrenceIndex) => ({
+            occurrenceIndex,
+            worldId,
+            selectedScopeIds: scopeIds,
+          })),
+        })
+        .expect(201);
+      for (const [team, phone] of options.offlineAtLaunch ?? []) {
+        await disconnect(sessionId, teams[team].phones[phone]);
+      }
+      await launch(sessionId);
+      return { sessionId, teams };
+    };
+
+    const turnHolder = async (sessionId: string) => {
+      const state = await stateOf(sessionId);
+      const assignment = parseTeamActionAssignments(
+        state.teamActionJson,
+      ).assignments.find(
+        (candidate) => candidate.action === MARHALA_TURN_ACTION,
+      );
+      return assignment!;
+    };
+
+    const activeTeam = async (session: TeamSession) =>
+      session.teams[Number((await stateOf(session.sessionId)).activeTeamIndex)];
+
+    /** Play one whole turn as the given phone: elect, show, answer wrong. */
+    const playTurn = async (session: TeamSession, phone: LiveSessionActor) => {
+      await command(
+        session.sessionId,
+        phone,
+        MARHALA_COMMANDS.chooseDifficulty,
+        {
+          difficulty: 'easy',
+        },
+      );
+      await activate(session.sessionId);
+      await command(session.sessionId, phone, MARHALA_COMMANDS.submitAnswer, {
+        answer: 'لا شيء إطلاقًا',
+      });
+    };
+
+    it('locks the captain at start and exposes it on the session', async () => {
+      const session = await startTeamSession({ captains: [1, undefined] });
+      const snapshot = unwrap<LiveGameSessionSnapshot>(
+        await bearer(
+          http().get(`/live-game-sessions/${session.sessionId}`),
+        ).expect(200),
+      );
+      expect(snapshot.teams[0].captainParticipantId).toBe(
+        session.teams[0].phones[1].participantId,
+      );
+      expect(snapshot.teams[1].captainParticipantId).toBeUndefined();
+      // The Match has started: the lobby setting is closed.
+      const late = await setCaptain(
+        session.sessionId,
+        session.teams[1].teamId,
+        session.teams[1].phones[0].participantId!,
+        await sessionRevision(session.sessionId),
+      );
+      expect(late.status).toBeGreaterThanOrEqual(400);
+      expect(late.status).toBeLessThan(500);
+    });
+
+    it('gives the captain every turn and refuses a teammate', async () => {
+      const session = await startTeamSession({ captains: [1, 0] });
+      const [alpha, beta] = session.teams;
+      expect((await turnHolder(session.sessionId)).participantId).toBe(
+        alpha.phones[1].participantId,
+      );
+      await expect(
+        command(
+          session.sessionId,
+          alpha.phones[0],
+          MARHALA_COMMANDS.chooseDifficulty,
+          {
+            difficulty: 'easy',
+          },
+        ),
+      ).rejects.toMatchObject({ code: 'TEAM_ACTION_WRONG_PARTICIPANT' });
+      // The other team still hears the race's own refusal.
+      await expect(
+        command(
+          session.sessionId,
+          beta.phones[0],
+          MARHALA_COMMANDS.chooseDifficulty,
+          {
+            difficulty: 'easy',
+          },
+        ),
+      ).rejects.toMatchObject({ code: 'MARHALA_NOT_YOUR_TURN' });
+
+      await playTurn(session, alpha.phones[1]);
+      expect((await turnHolder(session.sessionId)).participantId).toBe(
+        beta.phones[0].participantId,
+      );
+      await playTurn(session, beta.phones[0]);
+      expect((await turnHolder(session.sessionId)).participantId).toBe(
+        alpha.phones[1].participantId,
+      );
+      expect(await turnsOf(session.sessionId)).toHaveLength(2);
+    });
+
+    it('rotates over the whole roster when no captain is named', async () => {
+      const session = await startTeamSession();
+      const holders: string[] = [];
+      for (let turn = 0; turn < 4; turn += 1) {
+        const holder = await turnHolder(session.sessionId);
+        holders.push(holder.participantId);
+        const team = await activeTeam(session);
+        const phone = team.phones.find(
+          (candidate) => candidate.participantId === holder.participantId,
+        )!;
+        await playTurn(session, phone);
+      }
+      const [alpha, beta] = session.teams;
+      expect(holders).toEqual([
+        alpha.phones[0].participantId,
+        beta.phones[0].participantId,
+        alpha.phones[1].participantId,
+        beta.phones[1].participantId,
+      ]);
+    });
+
+    it('keeps a phone that was offline at launch in the rotation', async () => {
+      const session = await startTeamSession({ offlineAtLaunch: [[0, 1]] });
+      const [alpha, beta] = session.teams;
+      await playTurn(session, alpha.phones[0]);
+      // Back before the turn returns to its team: it is now this phone's turn.
+      await connect(session.sessionId, alpha.phones[1]);
+      await playTurn(session, beta.phones[0]);
+      expect((await turnHolder(session.sessionId)).participantId).toBe(
+        alpha.phones[1].participantId,
+      );
+    });
+
+    it('hands a disconnected captain’s open question to a teammate, deadline unchanged', async () => {
+      const session = await startTeamSession({ captains: [0, 0] });
+      const [alpha] = session.teams;
+      const captain = alpha.phones[0];
+      const teammate = alpha.phones[1];
+      await command(
+        session.sessionId,
+        captain,
+        MARHALA_COMMANDS.chooseDifficulty,
+        {
+          difficulty: 'easy',
+        },
+      );
+      await activate(session.sessionId);
+      const before = await stateOf(session.sessionId);
+      const captainTurn = await turnHolder(session.sessionId);
+
+      await disconnect(session.sessionId, captain);
+      const handed = await turnHolder(session.sessionId);
+      expect(handed.participantId).toBe(teammate.participantId);
+      expect(handed.sequence).toBeGreaterThan(captainTurn.sequence);
+      const after = await stateOf(session.sessionId);
+      expect(after.deadlineAt).toBe(before.deadlineAt);
+      expect(after.phase).toBe('question');
+      expect(after.questionJson).toBe(before.questionJson);
+
+      // The captain comes back: the teammate keeps the question.
+      await connect(session.sessionId, captain);
+      expect(await turnHolder(session.sessionId)).toEqual(handed);
+      await expect(
+        command(session.sessionId, captain, MARHALA_COMMANDS.submitAnswer, {
+          answer: 'x',
+          assignmentSequence: captainTurn.sequence,
+        }),
+      ).rejects.toMatchObject({ code: 'TEAM_ACTION_WRONG_PARTICIPANT' });
+
+      const question = (await questionOf(session.sessionId))!;
+      await command(
+        session.sessionId,
+        teammate,
+        MARHALA_COMMANDS.submitAnswer,
+        {
+          answer: question.acceptedAnswers[0],
+          assignmentSequence: handed.sequence,
+        },
+      );
+      const turns = await turnsOf(session.sessionId);
+      expect(turns).toHaveLength(1);
+      expect(turns[0]).toMatchObject({ correct: true, teamId: alpha.teamId });
+      // Scored once: a replay of the same answer finds no open question.
+      await expect(
+        command(session.sessionId, teammate, MARHALA_COMMANDS.submitAnswer, {
+          answer: question.acceptedAnswers[0],
+        }),
+      ).rejects.toBeDefined();
+      expect(await turnsOf(session.sessionId)).toHaveLength(1);
+      // The captain, back, carries the team's next turn.
+      await playTurn(session, session.teams[1].phones[0]);
+      expect((await turnHolder(session.sessionId)).participantId).toBe(
+        captain.participantId,
+      );
+    });
+
+    it('gives a captain who left before their turn a stand-in, and the turn back after', async () => {
+      const session = await startTeamSession({ captains: [undefined, 1] });
+      const [alpha, beta] = session.teams;
+      await disconnect(session.sessionId, beta.phones[1]);
+      await playTurn(session, alpha.phones[0]);
+      expect((await turnHolder(session.sessionId)).participantId).toBe(
+        beta.phones[0].participantId,
+      );
+      await connect(session.sessionId, beta.phones[1]);
+      // Not stolen back mid-turn.
+      expect((await turnHolder(session.sessionId)).participantId).toBe(
+        beta.phones[0].participantId,
+      );
+      await playTurn(session, beta.phones[0]);
+      await playTurn(session, alpha.phones[1]);
+      expect((await turnHolder(session.sessionId)).participantId).toBe(
+        beta.phones[1].participantId,
+      );
+    });
+
+    it('holds a turn for a team that is wholly away, and gives it to the first back', async () => {
+      const session = await startTeamSession();
+      const [alpha, beta] = session.teams;
+      await disconnect(session.sessionId, beta.phones[0]);
+      await disconnect(session.sessionId, beta.phones[1]);
+      // The other team's answer still resolves: the turn passes and is held.
+      await playTurn(session, alpha.phones[0]);
+      expect((await stateOf(session.sessionId)).activeTeamIndex).toBe(1);
+      const held = await turnHolder(session.sessionId);
+      expect(held.teamId).toBe(beta.teamId);
+      await connect(session.sessionId, beta.phones[1]);
+      const now = await turnHolder(session.sessionId);
+      expect(now.participantId).toBe(beta.phones[1].participantId);
+      await playTurn(session, beta.phones[1]);
+      expect(await turnsOf(session.sessionId)).toHaveLength(2);
     });
   });
 });

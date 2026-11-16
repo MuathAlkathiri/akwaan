@@ -100,8 +100,20 @@ export function ComboGameplayPanel({
     gameplayCommand("gameplay-command", {
       roundId: round?.id,
       commandType,
-      payload,
+      payload: {
+        ...payload,
+        // The question's holder proves it still holds it. Never on the break,
+        // which belongs to the whole opposing team.
+        ...(commandType !== "arm-combo-break" &&
+        view.ownAssignmentSequence !== undefined
+          ? { assignmentSequence: view.ownAssignmentSequence }
+          : {}),
+      },
     });
+  const holderName =
+    snapshot?.participants.find(
+      (participant) => participant.id === view.assignedParticipantId,
+    )?.displayName ?? "زميلكم";
 
   const submit = () => {
     if (!answer.trim() || !live || sending) return;
@@ -137,6 +149,7 @@ export function ComboGameplayPanel({
         submit={submit}
         decide={decide}
         force={force}
+        holderName={holderName}
         {...(reveal ? { reveal } : {})}
       />
     );
@@ -182,6 +195,14 @@ export function ComboGameplayPanel({
             >
               <BidiText>{comboPromptText(view)}</BidiText>
             </h2>
+            {view.assignedParticipantId && (
+              <p
+                className="text-center text-base font-bold text-muted-foreground"
+                data-testid="combo-turn-holder"
+              >
+                الجوال مع <bdi>{holderName}</bdi>
+              </p>
+            )}
 
             {view.isActiveTeam ? (
               <div
@@ -337,6 +358,7 @@ function PhoneComboController({
   submit,
   decide,
   force,
+  holderName,
   reveal,
 }: {
   runtime: GameplayRuntimeSnapshot;
@@ -351,6 +373,8 @@ function PhoneComboController({
   submit: () => void;
   decide: (decision: "cash-out" | "continue") => void;
   force: () => void;
+  /** Who holds the open question, for a teammate's coaching state. */
+  holderName: string;
   /** The question that just resolved, while its beat is still on screen. */
   reveal?: ComboQuestionReveal;
 }) {
@@ -358,6 +382,9 @@ function PhoneComboController({
   const broken =
     latestRun?.endedBy === "combo-break" || latestRun?.endedBy === "timeout";
   const awaitingOpponent = !view.isActiveTeam;
+  // The question's holder answers and decides; the rest of the team coaches.
+  const holds = view.isActiveTeam && view.isAssignedActor;
+  const coaching = view.isActiveTeam && !view.isAssignedActor;
 
   return (
     <ChallengeFrame
@@ -391,7 +418,25 @@ function PhoneComboController({
           </div>
         )}
 
-        {view.phase === "question" && view.isActiveTeam && (
+        {view.phase === "question" && coaching && (
+          <section
+            className="flex min-h-0 flex-1 flex-col justify-center gap-3"
+            data-testid="combo-phone-coaching"
+            role="status"
+          >
+            <p className="text-lg font-black text-foreground">
+              دوركم — الجوال مع <bdi>{holderName}</bdi>
+            </p>
+            <h2 className="text-base font-black leading-relaxed text-foreground">
+              <BidiText>{comboPromptText(view)}</BidiText>
+            </h2>
+            <p className="text-sm font-bold text-muted-foreground">
+              تشاوروا في الإجابة — الإرسال من الجوال المحدد.
+            </p>
+          </section>
+        )}
+
+        {view.phase === "question" && holds && (
           <section
             className="flex min-h-0 flex-1 flex-col"
             data-testid="combo-phone-answer"
@@ -441,7 +486,13 @@ function PhoneComboController({
             className="flex min-h-0 flex-1 flex-col"
             data-testid="combo-phone-decision"
           >
-            {view.isActiveTeam ? (
+            {coaching ? (
+              <PhoneWaiting>
+                <span data-testid="combo-phone-coaching">
+                  القرار من جوال <bdi>{holderName}</bdi>: ثبّت أو كمّل — تشاوروا
+                </span>
+              </PhoneWaiting>
+            ) : holds ? (
               <>
                 <div className="flex flex-1 flex-col items-center justify-center gap-1">
                   <p className="text-2xl font-black text-foreground">
@@ -499,7 +550,7 @@ function PhoneComboController({
                 ما تقدرون تثبّتون الآن
               </p>
             </div>
-            {view.isActiveTeam && can("continue-combo") ? (
+            {holds && can("continue-combo") ? (
               <MobileActionArea>
                 <Button
                   size="lg"

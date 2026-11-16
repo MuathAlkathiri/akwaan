@@ -134,6 +134,23 @@ export async function assignParticipantTeam(
   return response.data;
 }
 
+/**
+ * Name a team's lobby captain, or pass `null` for none (automatic rotation).
+ * Refused once the Match has started.
+ */
+export async function setTeamCaptain(
+  sessionId: string,
+  teamId: string,
+  participantId: string | null,
+  revision: number,
+) {
+  const response = await apiClient.patch<LiveSessionSnapshot>(
+    `/live-game-sessions/${sessionId}/teams/${teamId}/captain`,
+    { participantId, expectedRevision: revision, commandId: crypto.randomUUID() },
+  );
+  return response.data;
+}
+
 export async function removeLiveParticipant(
   sessionId: string,
   participantId: string,

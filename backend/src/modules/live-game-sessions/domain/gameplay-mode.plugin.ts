@@ -331,6 +331,13 @@ export interface GameplayCommandResult {
    * then reads — so the server, and only the server, decides who may act next.
    */
   assignment?: { teamId: string; participantId: string };
+  /**
+   * The command completed a setup that was holding the one-time presentation
+   * activation (see `presentationActivationHeld`). The session layer activates
+   * in the same transaction when every required surface has already
+   * acknowledged — otherwise the next acknowledgement activates as usual.
+   */
+  activatePresentationIfReady?: boolean;
 }
 
 export interface GameplayPresentationActivationResult {
@@ -424,6 +431,23 @@ export interface GameplayModePlugin {
     now: Date,
     context: GameplayPluginContext,
   ): GameplayModeState | GameplayPresentationActivationResult;
+  /**
+   * Optional and additive: the mechanic still owes a setup before play may
+   * start (Bomb's initial holders). While true, the one-time presentation
+   * activation is held — surfaces' acknowledgements are recorded, but nothing
+   * activates and no clock starts, not even on the barrier timeout.
+   */
+  presentationActivationHeld?(state: GameplayModeState): boolean;
+  /**
+   * What surfaces may see while activation is held for that setup. Merged
+   * into the safe `awaitingPresentation` shell; must carry no content.
+   */
+  projectPresentationPreparation?(state: GameplayModeState): GameplayModeState;
+  /**
+   * When the activation barrier began, if not at round start — Bomb counts
+   * its screen wait from the host's Start, not from launch.
+   */
+  presentationBarrierStartedAt?(state: GameplayModeState): string | undefined;
   projectRoundState(state: GameplayModeState): GameplayModeState;
   /**
    * Which content items this runtime has authoritatively **presented** so far.

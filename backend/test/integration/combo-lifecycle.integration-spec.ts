@@ -317,7 +317,16 @@ describe('combo lifecycle integration', () => {
     `answer-${scopeId}-${stage}-${copy}`;
 
   /** A live session with two teams, each holding one ready, connected phone. */
-  const startSession = async () => {
+  /**
+   * `phonesPerTeam` phones a side (default one), in team order; `captains`
+   * names lobby captains as [team, phone] before the Match starts.
+   */
+  const startSession = async (
+    options: {
+      phonesPerTeam?: number;
+      captains?: Array<[team: number, phone: number]>;
+    } = {},
+  ) => {
     const created = unwrap<{ snapshot: LiveGameSessionSnapshot }>(
       await bearer(http().post('/live-game-sessions'))
         .send({
@@ -336,7 +345,10 @@ describe('combo lifecycle integration', () => {
       assignmentPolicy: 'explicit',
     });
     const participants: LiveSessionActor[] = [];
-    for (const [index, teamId] of teamIds.entries()) {
+    const phones = options.phonesPerTeam ?? 1;
+    for (const [index, teamId] of teamIds
+      .flatMap((id) => Array.from({ length: phones }, () => id))
+      .entries()) {
       const joined = await app.get(JoinLiveSession).execute({
         joinCode: access.joinCode,
         displayName: `لاعب ${index}`,
@@ -365,6 +377,19 @@ describe('combo lifecycle integration', () => {
         commandId: uuid(),
       });
       participants.push(actor);
+    }
+    for (const [team, phone] of options.captains ?? []) {
+      await bearer(
+        http().patch(
+          `/live-game-sessions/${sessionId}/teams/${teamIds[team]}/captain`,
+        ),
+      )
+        .send({
+          participantId: participants[team * phones + phone].participantId,
+          commandId: uuid(),
+          expectedRevision: await sessionRevision(sessionId),
+        })
+        .expect(200);
     }
     const ready = await app.get(MarkSessionReady).execute({
       sessionId,
@@ -1411,6 +1436,165 @@ describe('combo lifecycle integration', () => {
           .collection('content_exposures')
           .countDocuments({ state: 'exposed' }),
       ).toBe(0);
+    });
+  });
+
+  /**
+   * The global captain on the real stack (approved 2026-11-15), two phones a
+   * side. One phone holds each question — the lobby captain, or the roster in
+   * turn — and that same phone decides تثبيت / كمل; كسر الكومبو stays open to
+   * any opposing phone.
+   */
+  describe('the question holder', () => {
+    const presence = () => app.get(UpdateParticipantPresence);
+    const holderOf = async (sessionId: string) =>
+      (
+        JSON.parse(
+          String((await runtimeStateOf(sessionId)).teamActionJson),
+        ) as {
+          assignments: Array<{
+            action: string;
+            teamId: string;
+            participantId: string;
+            sequence: number;
+          }>;
+        }
+      ).assignments.find((assignment) => assignment.action === 'combo.answer');
+    const launch2x2 = async (captains?: Array<[number, number]>) => {
+      const session = await startSession({
+        phonesPerTeam: 2,
+        ...(captains ? { captains } : {}),
+      });
+      await createUnified(session.sessionId);
+      await launch(session.sessionId);
+      await presentCombo(session.sessionId);
+      // [A1, A2, B1, B2]
+      return session;
+    };
+
+    it('rotates once per question, and the answerer decides', async () => {
+      const { sessionId, participants } = await launch2x2();
+      const [a1, a2] = participants;
+      expect((await holderOf(sessionId))!.participantId).toBe(a1.participantId);
+      await expect(answerCurrent(sessionId, a2)).rejects.toMatchObject({
+        code: 'TEAM_ACTION_WRONG_PARTICIPANT',
+      });
+      await answerCurrent(sessionId, a1);
+      expect((await runtimeStateOf(sessionId)).phase).toBe('decision');
+      // No rotation between answering and deciding.
+      expect((await holderOf(sessionId))!.participantId).toBe(a1.participantId);
+      await expect(
+        command(sessionId, a2, 'continue-combo'),
+      ).rejects.toMatchObject({ code: 'TEAM_ACTION_WRONG_PARTICIPANT' });
+      await command(sessionId, a1, 'continue-combo');
+      // The next question opened: the rotation moved.
+      expect((await holderOf(sessionId))!.participantId).toBe(a2.participantId);
+      await answerCurrent(sessionId, a2);
+      await command(sessionId, a2, 'cash-out-combo');
+      const state = await runtimeStateOf(sessionId);
+      expect(state.phase).toBe('run-complete');
+      // Scored once, by the existing rules: two correct answers banked.
+      expect(JSON.parse(String(state.runResultsJson))[0]).toMatchObject({
+        bankedPoints: 2,
+        endedBy: 'cash-out',
+      });
+      expect(await holderOf(sessionId)).toBeUndefined();
+    });
+
+    it('gives the captain every question of the team’s Run', async () => {
+      const { sessionId, participants } = await launch2x2([[0, 1]]);
+      const captain = participants[1];
+      for (let question = 0; question < 2; question += 1) {
+        expect((await holderOf(sessionId))!.participantId).toBe(
+          captain.participantId,
+        );
+        await answerCurrent(sessionId, captain);
+        await command(sessionId, captain, 'continue-combo');
+      }
+      expect((await holderOf(sessionId))!.participantId).toBe(
+        captain.participantId,
+      );
+    });
+
+    it('hands a disconnected holder’s decision to a teammate; reconnect does not steal it', async () => {
+      const { sessionId, participants } = await launch2x2([[0, 0]]);
+      const [captain, teammate] = participants;
+      await answerCurrent(sessionId, captain);
+      const before = await runtimeStateOf(sessionId);
+      const held = (await holderOf(sessionId))!;
+      await presence().disconnected(
+        sessionId,
+        captain.participantId!,
+        `socket-${captain.participantId}`,
+      );
+      const handed = (await holderOf(sessionId))!;
+      expect(handed.participantId).toBe(teammate.participantId);
+      expect(handed.sequence).toBeGreaterThan(held.sequence);
+      // The decision itself is unchanged: same phase, same balance.
+      const after = await runtimeStateOf(sessionId);
+      expect(after.phase).toBe('decision');
+      expect(after.unbankedPoints).toBe(before.unbankedPoints);
+      await presence().connected(
+        sessionId,
+        captain.participantId!,
+        `socket-${captain.participantId}`,
+      );
+      expect(await holderOf(sessionId)).toEqual(handed);
+      await expect(
+        command(sessionId, captain, 'cash-out-combo', {
+          assignmentSequence: held.sequence,
+        }),
+      ).rejects.toBeDefined();
+      await command(sessionId, teammate, 'cash-out-combo', {
+        assignmentSequence: handed.sequence,
+      });
+      expect((await runtimeStateOf(sessionId)).phase).toBe('run-complete');
+    });
+
+    it('lets any opposing phone arm كسر الكومبو, captain or not', async () => {
+      const { sessionId, participants } = await launch2x2([[1, 0]]);
+      const notTheCaptain = participants[3];
+      await command(sessionId, notTheCaptain, 'arm-combo-break');
+      const state = await runtimeStateOf(sessionId);
+      expect(state.armedBreakByTeamId).toBeTruthy();
+      // Secret: the target's projection does not know.
+      const targetView = await app
+        .get(GetLiveGameSession)
+        .execute(sessionId, participants[0]);
+      expect(JSON.stringify(targetView.gameplay?.modeState)).not.toContain(
+        'comboBreakRevealedByTeamId',
+      );
+      expect(JSON.stringify(targetView.gameplay?.modeState)).not.toContain(
+        'ownComboBreakArmed',
+      );
+    });
+
+    it('holds the next Run for a team that is wholly away, and hands it to the first back', async () => {
+      const { sessionId, participants } = await launch2x2();
+      const [a1, , b1, b2] = participants;
+      for (const phone of [b1, b2]) {
+        await presence().disconnected(
+          sessionId,
+          phone.participantId!,
+          `socket-${phone.participantId}`,
+        );
+      }
+      await answerCurrent(sessionId, a1);
+      await command(sessionId, a1, 'cash-out-combo');
+      await command(sessionId, controllerActor(), 'advance-combo-run');
+      const held = (await holderOf(sessionId))!;
+      expect((await runtimeStateOf(sessionId)).phase).toBe('question');
+      expect(participants.slice(2).map((p) => p.participantId)).toContain(
+        held.participantId,
+      );
+      await presence().connected(
+        sessionId,
+        b2.participantId!,
+        `socket-${b2.participantId}`,
+      );
+      expect((await holderOf(sessionId))!.participantId).toBe(b2.participantId);
+      await answerCurrent(sessionId, b2);
+      expect((await runtimeStateOf(sessionId)).phase).toBe('decision');
     });
   });
 });

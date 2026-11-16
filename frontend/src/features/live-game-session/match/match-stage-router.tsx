@@ -15,6 +15,10 @@ import { RakkibhaPanel } from "../components/rakkibha-panel";
 import { RakkibhaScreen } from "../components/rakkibha-screen";
 import { ComboGameplayPanel } from "../components/combo-gameplay-panel";
 import { BombGameplayPanel } from "../components/bomb-gameplay-panel";
+import {
+  BombHolderSetup,
+  bombHolderSetupPending,
+} from "../components/bomb-holder-setup";
 import { MarhalaScreen } from "../components/marhala-screen";
 import { MarhalaPhonePanel } from "../components/marhala-phone-panel";
 import { RAKKIBHA_MODE_KEY } from "./rakkibha.presentation";
@@ -47,6 +51,7 @@ import { UnifiedMatchComplete } from "./components/unified-match-complete";
 import { ParticipantWaiting } from "./components/participant-waiting";
 import { UnifiedPreflightStage } from "./components/unified-preflight-stage";
 import type { MatchActor } from "./types";
+import { CountdownSurfaceProvider } from "./components/countdown-presentation";
 import type { GameplayRuntimeSnapshot } from "../model";
 import { isMatchStageKey } from "./types";
 
@@ -452,6 +457,15 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
   ]);
 
   if (!gameplay) return null;
+  // القنبلة holds its start until each team's captain has chosen a holder.
+  // The server projects only that setup while it waits — never a picture.
+  if (
+    awaiting &&
+    gameplay.mode.key === "bomb" &&
+    bombHolderSetupPending(gameplay.modeState)
+  ) {
+    return <BombHolderSetup runtime={gameplay} actor={actor} />;
+  }
   if (awaiting && !transition.keepStageMounted && !deferOddPieceHotspotAck) {
     // Two different waits, and only one of them is a page opening.
     //
@@ -499,7 +513,13 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
     actor === "shared-screen" ? { ...stage, availableActions: [] } : stage;
   return (
     <WaitingForNextQuestionProvider waiting={transition.keepStageMounted}>
-      {renderMechanic(runtime, actor)}
+      {/* The room's screens get the large, audible countdown; phones keep the
+          compact one. Presentation only — every deadline stays the server's. */}
+      <CountdownSurfaceProvider
+        surface={actor === "participant" ? "compact" : "stage"}
+      >
+        {renderMechanic(runtime, actor)}
+      </CountdownSurfaceProvider>
     </WaitingForNextQuestionProvider>
   );
 }

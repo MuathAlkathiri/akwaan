@@ -349,6 +349,19 @@ export interface MarhalaView {
   actorTeamId?: string | null;
   /** The server's word on whether this actor's team is the one playing. */
   isActiveTeam: boolean;
+  /**
+   * Which teammate's phone carries the turn: the lobby captain, or whoever the
+   * rotation reached. Absent on a race started before turns were assigned.
+   */
+  assignedParticipantId?: string;
+  /**
+   * The server's word on whether *this* phone holds the turn. Only the holder
+   * elects and answers; the rest of the team coaches. Falls back to the team
+   * rule when the server says nothing, as an older race does.
+   */
+  isAssignedActor: boolean;
+  /** Echoed with the holder's commands so a handed-over turn refuses a stale phone. */
+  ownAssignmentSequence?: number;
 }
 
 const PHASES: readonly MarhalaPhase[] = [
@@ -447,6 +460,16 @@ export function readMarhalaView(state: Record<string, unknown>): MarhalaView {
       : {}),
     actorTeamId: text(state.actorTeamId) ?? null,
     isActiveTeam: state.isActiveTeam === true,
+    ...(text(state.assignedParticipantId)
+      ? { assignedParticipantId: text(state.assignedParticipantId) }
+      : {}),
+    isAssignedActor:
+      typeof state.isAssignedActor === "boolean"
+        ? state.isAssignedActor
+        : state.isActiveTeam === true,
+    ...(typeof state.ownAssignmentSequence === "number"
+      ? { ownAssignmentSequence: state.ownAssignmentSequence }
+      : {}),
   };
 }
 

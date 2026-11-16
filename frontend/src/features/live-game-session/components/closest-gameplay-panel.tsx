@@ -275,7 +275,11 @@ export function ClosestGameplayPanel({
       compact={phone}
       aside={
         remainingMs !== undefined && !revealed ? (
-          <ChallengeCountdown remainingMs={remainingMs} />
+          <ChallengeCountdown
+            remainingMs={remainingMs}
+            // Countdown cues never talk over an audio question.
+            sound={item?.media?.type !== "audio"}
+          />
         ) : null
       }
       className={phone ? "flex min-h-0 flex-1 flex-col" : "mx-auto max-w-4xl"}

@@ -83,6 +83,116 @@ describe('LiveGameSession', () => {
     expect(30_000 - returned.teams[0].clock.consumedMs - 2_000).toBe(24_000);
   });
 
+  describe('lobby captain', () => {
+    const lobby = () => {
+      const session = create();
+      const [one, two] = session.serialize().teams;
+      const enroll = (
+        id: string,
+        teamId: string,
+        role: 'team-player' | 'observer' = 'team-player',
+      ) =>
+        session.enrollParticipant({
+          id,
+          displayName: id,
+          teamId,
+          role,
+          joinRequestId: `join-${id}`,
+          now,
+        });
+      enroll('a1', one.id);
+      enroll('a2', one.id);
+      enroll('b1', two.id);
+      return { session, one: one.id, two: two.id };
+    };
+    const captainOf = (session: LiveGameSession, teamId: string) =>
+      session.serialize().teams.find((team) => team.id === teamId)
+        ?.captainParticipantId;
+
+    it('has no captain by default: the team rotates', () => {
+      const { session, one } = lobby();
+      expect(captainOf(session, one)).toBeUndefined();
+    });
+
+    it('names a captain from that team, and clears it', () => {
+      const { session, one } = lobby();
+      session.setTeamCaptain(one, 'a2', now);
+      expect(captainOf(session, one)).toBe('a2');
+      session.setTeamCaptain(one, undefined, now);
+      expect(captainOf(session, one)).toBeUndefined();
+    });
+
+    it('refuses a captain from another team, or an unknown team', () => {
+      const { session, one } = lobby();
+      expect(() => session.setTeamCaptain(one, 'b1', now)).toThrow(
+        expect.objectContaining({ code: 'CAPTAIN_NOT_ON_TEAM' }),
+      );
+      expect(() => session.setTeamCaptain('nope', 'a1', now)).toThrow(
+        expect.objectContaining({ code: 'UNKNOWN_TEAM' }),
+      );
+    });
+
+    it('clears the captaincy when the captain changes team', () => {
+      const { session, one, two } = lobby();
+      session.setTeamCaptain(one, 'a1', now);
+      session.assignParticipantTeam('a1', two, now);
+      expect(captainOf(session, one)).toBeUndefined();
+      expect(captainOf(session, two)).toBeUndefined();
+    });
+
+    it('keeps the captaincy when the captain is re-assigned to the same team', () => {
+      const { session, one } = lobby();
+      session.setTeamCaptain(one, 'a1', now);
+      session.assignParticipantTeam('a1', one, now);
+      expect(captainOf(session, one)).toBe('a1');
+    });
+
+    it('clears the captaincy when the captain is removed', () => {
+      const { session, one } = lobby();
+      session.setTeamCaptain(one, 'a1', now);
+      session.removeParticipant('a1', now);
+      expect(captainOf(session, one)).toBeUndefined();
+      expect(() => session.setTeamCaptain(one, 'a1', now)).toThrow();
+    });
+
+    it('is locked once the Match starts', () => {
+      const { session, one } = lobby();
+      session.setTeamCaptain(one, 'a1', now);
+      // Every team needs a ready player before the Match can start.
+      for (const id of ['a1', 'a2', 'b1']) {
+        session.setParticipantReady(id, true, now);
+      }
+      session.enrollParticipant({
+        id: 'c1',
+        displayName: 'c1',
+        teamId: session.serialize().teams[2].id,
+        role: 'team-player',
+        joinRequestId: 'join-c1',
+        now,
+      });
+      session.setParticipantReady('c1', true, now);
+      session.markReady(now);
+      session.start(now);
+      expect(() => session.setTeamCaptain(one, 'a2', now)).toThrow(
+        LiveSessionDomainError,
+      );
+      expect(() => session.setTeamCaptain(one, undefined, now)).toThrow(
+        LiveSessionDomainError,
+      );
+      expect(captainOf(session, one)).toBe('a1');
+    });
+
+    it('survives a restore', () => {
+      const { session, one } = lobby();
+      session.setTeamCaptain(one, 'a2', now);
+      const restored = LiveGameSession.restore(
+        session.serialize(),
+        CORE_TIMED_TURNS_MODE,
+      );
+      expect(captainOf(restored, one)).toBe('a2');
+    });
+  });
+
   /**
    * The two halves of the Bomb sequential-launch defect, pinned together.
    *

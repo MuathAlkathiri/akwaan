@@ -45,6 +45,11 @@ export interface LiveSessionSnapshot {
      * falls back to that position's default.
      */
     colorId?: string;
+    /**
+     * The lobby captain, if the host named one. Locked once the Match starts.
+     * Absent means no captain: the team's turns rotate automatically.
+     */
+    captainParticipantId?: string;
     clock: LiveSessionClockSnapshot;
   }>;
   participants: Array<{

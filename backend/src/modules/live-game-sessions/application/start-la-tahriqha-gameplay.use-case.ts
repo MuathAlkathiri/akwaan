@@ -28,12 +28,12 @@ import {
   laTahriqhaDishAction,
 } from '../domain/la-tahriqha-gameplay.plugin';
 import {
-  assignNextTeamAction,
+  assignNextTeamActionOrHold,
   buildTeamRotations,
   createTeamActionAssignmentState,
   serializeTeamActionAssignments,
 } from '../domain/team-action-assignment';
-import { eligibleParticipantsOf } from './start-top5.use-case';
+import { eligibleParticipantsOf, teamCaptainsOf } from './start-top5.use-case';
 import {
   CreateGameplayRuntime,
   GetGameplayRuntime,
@@ -183,23 +183,11 @@ export class StartLaTahriqhaGameplay {
     }
     const participants = eligibleParticipantsOf(sessionState);
     /**
-     * The rotation is the team's whole roster, in join order.
+     * The rotation is the team's whole roster, in join order — the shared
+     * builder now does this for every mechanic (§16.10; this file used to carry
+     * the only fix). A lobby captain, when the team has one, captains every
+     * dish while connected.
      *
-     * Deliberately built from every team-player rather than from whoever is
-     * connected at this instant: a phone that joined and was still opening its
-     * socket when the host pressed start would otherwise be left out of the
-     * order permanently, and over three dishes that means a player who is
-     * present all evening and never once holds قائد الطبق. A real four-phone
-     * Chromium run produced exactly that — one side's rotation persisted with a
-     * single name in it. Connectivity still decides who may *act*: the
-     * assignment below walks this order and skips anyone currently away, so a
-     * disconnected captain hands over without losing their place.
-     */
-    const roster = participants.map((participant) => ({
-      ...participant,
-      connected: true,
-    }));
-    /**
      * And it starts at the top of that order rather than at a random position.
      *
      * Three dishes is short enough that a random start is visible as unfairness:
@@ -211,12 +199,13 @@ export class StartLaTahriqhaGameplay {
     let assignments = createTeamActionAssignmentState(
       buildTeamRotations({
         teams,
-        participants: roster,
+        participants,
         randomIndex: () => 0,
+        captains: teamCaptainsOf(sessionState),
       }),
     );
     for (const teamId of teams) {
-      assignments = assignNextTeamAction(assignments, {
+      assignments = assignNextTeamActionOrHold(assignments, {
         teamId,
         action: laTahriqhaDishAction(teamId),
         participants,

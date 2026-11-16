@@ -173,6 +173,16 @@ export class AssignParticipantTeamDto extends LiveSessionMutationDto {
   teamId!: string;
 }
 
+/**
+ * The host naming a team's lobby captain. `null` clears it: the team then
+ * rotates its actions automatically.
+ */
+export class SetTeamCaptainDto extends LiveSessionMutationDto {
+  @IsOptional()
+  @IsUUID()
+  participantId!: string | null;
+}
+
 /** A player choosing their own side, as opposed to the host assigning it. */
 export class ChooseOwnTeamDto extends LiveSessionMutationDto {
   @IsUUID()

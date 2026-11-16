@@ -8,6 +8,96 @@ import {
 } from './gameplay-mode.plugin';
 import { InteractionActorProjection } from './gameplay-interaction.plugin';
 import { LiveSessionDomainError } from './live-session.errors';
+import {
+  assertTeamActionAuthorized,
+  assignmentFor,
+  assignNextTeamActionOrHold,
+  clearTeamAction,
+  EligibleParticipant,
+  parseTeamActionAssignments,
+  serializeTeamActionAssignments,
+} from './team-action-assignment';
+
+/**
+ * Who answers the open Combo question — and then owns the تثبيت / كمل decision
+ * that follows it. Held by the team's lobby captain while connected, otherwise
+ * rotated over the team's whole roster, **once per question**: the rotation
+ * moves only when the next question opens, never between answer and decision.
+ * كسر الكومبو is deliberately not part of this: any connected player on the
+ * opposing team may still arm it (approved 2026-11-15).
+ */
+export const COMBO_ANSWER_ACTION = 'combo.answer';
+
+/** Hand the question about to open to one phone of the playing team. */
+export function assignComboQuestion(
+  state: GameplayModeState,
+  participants: readonly EligibleParticipant[],
+): GameplayModeState {
+  if (typeof state.teamActionJson !== 'string') return state;
+  const teamId = comboActiveTeamId(state);
+  if (!teamId) return state;
+  return {
+    ...state,
+    teamActionJson: serializeTeamActionAssignments(
+      assignNextTeamActionOrHold(
+        parseTeamActionAssignments(state.teamActionJson),
+        {
+          teamId,
+          action: COMBO_ANSWER_ACTION,
+          participants,
+        },
+      ).state,
+    ),
+  };
+}
+
+/** A Run is over: nobody holds the playing team's question any more. */
+function closeComboQuestion(state: GameplayModeState): GameplayModeState {
+  if (typeof state.teamActionJson !== 'string') return state;
+  return {
+    ...state,
+    teamActionJson: serializeTeamActionAssignments(
+      clearTeamAction(
+        parseTeamActionAssignments(state.teamActionJson),
+        COMBO_ANSWER_ACTION,
+      ),
+    ),
+  };
+}
+
+/**
+ * Only the phone holding the question may answer it, bank or continue. A
+ * stale `assignmentSequence` — a phone the question moved away from during a
+ * disconnect — is refused. A Run started before assignment keeps the old
+ * team-wide rule.
+ */
+function assertHoldsComboQuestion(
+  context: GameplayPluginContext,
+  state: GameplayModeState,
+  payload: GameplayCommandPayload,
+): void {
+  if (typeof state.teamActionJson !== 'string') return;
+  assertTeamActionAuthorized(parseTeamActionAssignments(state.teamActionJson), {
+    action: COMBO_ANSWER_ACTION,
+    teamId: comboActiveTeamId(state) ?? undefined,
+    participantId: context.submitterParticipantId,
+    ...(typeof payload.assignmentSequence === 'number'
+      ? { sequence: payload.assignmentSequence }
+      : {}),
+  });
+}
+
+/** The open question's holder, if questions are assigned. */
+function comboQuestionHolder(state: GameplayModeState) {
+  if (typeof state.teamActionJson !== 'string') return undefined;
+  const holder = assignmentFor(
+    parseTeamActionAssignments(state.teamActionJson),
+    COMBO_ANSWER_ACTION,
+  );
+  return holder && holder.teamId === comboActiveTeamId(state)
+    ? holder
+    : undefined;
+}
 
 /**
  * "الكومبو" — the Anime Signature mechanic.
@@ -277,6 +367,26 @@ function answerPayload(
   return payload;
 }
 
+/**
+ * Cash Out / Continue carry nothing but, optionally, the holder's assignment
+ * sequence — the proof the deciding phone still holds the question.
+ */
+function decisionPayload(
+  payload: GameplayCommandPayload,
+): GameplayCommandPayload {
+  const keys = Object.keys(payload);
+  if (
+    keys.some((key) => key !== 'assignmentSequence') ||
+    (payload.assignmentSequence !== undefined &&
+      typeof payload.assignmentSequence !== 'number')
+  ) {
+    reject('INVALID_COMBO_COMMAND', 'This command does not accept a payload');
+  }
+  return typeof payload.assignmentSequence === 'number'
+    ? { assignmentSequence: payload.assignmentSequence }
+    : {};
+}
+
 function noPayload(payload: GameplayCommandPayload): GameplayCommandPayload {
   if (Object.keys(payload).length) {
     reject('INVALID_COMBO_COMMAND', 'This command does not accept a payload');
@@ -324,7 +434,7 @@ function endRun(
   const nextRunIndex = runIndex + 1;
   const finished = nextRunIndex >= COMBO_RUNS_PER_CHALLENGE;
   const base: GameplayModeState = {
-    ...state,
+    ...closeComboQuestion(state),
     runResultsJson: JSON.stringify(results),
     unbankedPoints: 0,
     // The armed charge is consumed by the attempt, not by the outcome, so it is
@@ -374,10 +484,16 @@ function endRun(
 /** Open the next question of the active Run with a fresh clock. */
 function openQuestion(
   state: GameplayModeState,
-  input: { questionIndex: number; forced: boolean; now: Date },
+  input: {
+    questionIndex: number;
+    forced: boolean;
+    now: Date;
+    participants: readonly EligibleParticipant[];
+  },
 ): GameplayModeState {
   return validateRuntime({
-    ...state,
+    // The rotation advances here, and only here: one holder per question.
+    ...assignComboQuestion(state, input.participants),
     questionIndex: input.questionIndex,
     phase: 'question',
     forcedQuestion: input.forced,
@@ -517,6 +633,7 @@ function handle(
   const state = validateRuntime(command.runtimeState);
   const activeTeamId = comboActiveTeamId(state);
   const phase = String(state.phase) as ComboPhase;
+  const participants = context.eligibleParticipants ?? [];
 
   const settle = (
     next: GameplayModeState,
@@ -536,6 +653,7 @@ function handle(
 
   if (command.type === 'submit-combo-answer') {
     assertActiveComboTeam(context, state, activeTeamId);
+    assertHoldsComboQuestion(context, state, command.payload);
     if (phase !== 'question') {
       reject('COMBO_NO_ACTIVE_QUESTION', 'No Combo question is open');
     }
@@ -594,6 +712,7 @@ function handle(
         questionIndex: 0,
         forced: false,
         now,
+        participants,
       });
       return settle(opened, 'combo-run-started', {
         teamId: comboActiveTeamId(opened),
@@ -620,6 +739,7 @@ function handle(
 
   if (command.type === 'cash-out-combo') {
     assertActiveComboTeam(context, state, activeTeamId);
+    assertHoldsComboQuestion(context, state, command.payload);
     // Only reachable from the ordinary decision. `break-reveal` deliberately
     // does not accept it — removing the right to stop is the whole ability.
     if (phase !== 'decision') {
@@ -639,6 +759,7 @@ function handle(
 
   if (command.type === 'continue-combo') {
     assertActiveComboTeam(context, state, activeTeamId);
+    assertHoldsComboQuestion(context, state, command.payload);
     if (phase !== 'decision' && phase !== 'break-reveal') {
       reject(
         'COMBO_CONTINUE_NOT_AVAILABLE',
@@ -657,7 +778,12 @@ function handle(
     // forced it. It is already public by this point — the reveal happened.
     const next = openQuestion(
       forced ? state : { ...state, armedBreakByTeamId: null },
-      { questionIndex: Number(state.questionIndex) + 1, forced, now },
+      {
+        questionIndex: Number(state.questionIndex) + 1,
+        forced,
+        now,
+        participants,
+      },
     );
     return settle(next, forced ? 'combo-forced-question' : 'combo-continued', {
       teamId: activeTeamId,
@@ -673,7 +799,12 @@ function handle(
     if (phase !== 'run-complete') {
       reject('COMBO_NO_RUN_TO_ADVANCE', 'No finished Combo run is waiting');
     }
-    const next = openQuestion(state, { questionIndex: 0, forced: false, now });
+    const next = openQuestion(state, {
+      questionIndex: 0,
+      forced: false,
+      now,
+      participants,
+    });
     return settle(next, 'combo-run-started', {
       teamId: comboActiveTeamId(next),
       runIndex: next.runIndex,
@@ -791,16 +922,29 @@ function publicState(
       : {}),
   };
 
+  // Whose phone holds the question. Public: it says nothing about the break.
+  const holder = comboQuestionHolder(valid);
+  if (holder) shared.assignedParticipantId = holder.participantId;
+
   if (!actor) return shared;
 
   const isArmingTeam =
     armedBy !== null &&
     actor.teamId != null &&
     actor.teamId === String(armedBy);
+  const isActiveTeam = actor.teamId != null && actor.teamId === activeTeamId;
   return {
     ...shared,
     actorTeamId: actor.teamId ?? null,
-    isActiveTeam: actor.teamId != null && actor.teamId === activeTeamId,
+    isActiveTeam,
+    // Answering, banking and continuing belong to the question's holder; a
+    // Run started before assignment keeps the whole-team rule.
+    isAssignedActor: holder
+      ? holder.participantId === actor.participantId
+      : isActiveTeam,
+    ...(holder && holder.participantId === actor.participantId
+      ? { ownAssignmentSequence: holder.sequence }
+      : {}),
     canArmComboBreak:
       phase === 'question' &&
       actor.teamId != null &&
@@ -864,7 +1008,7 @@ export const COMBO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
         type,
         authorization: 'connected-player',
         allowedRoundStatuses: ['active'],
-        validatePayload: noPayload,
+        validatePayload: decisionPayload,
       };
     }
     if (type === 'arm-combo-break') {

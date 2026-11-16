@@ -8,6 +8,11 @@ import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
 import { useWaitingForNextQuestion } from "../hooks/use-recurring-question-transition";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
+import { countdownThresholdsForWindow } from "../match/components/countdown-urgency";
+
+/** The question window is fifteen seconds and the placement window ten. */
+const MOVING_XO_QUESTION_THRESHOLDS = countdownThresholdsForWindow(15);
+const MOVING_XO_PLACEMENT_THRESHOLDS = countdownThresholdsForWindow(10);
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import {
   MOVING_XO_CONTENT_EXHAUSTED_COPY,
@@ -40,6 +45,11 @@ export function MovingXoScreen({
   );
   const teams = snapshot?.teams ?? [];
   const activeTeam = teams.find((team) => team.id === view.activeTeamId);
+  const holderName = view.assignedParticipantId
+    ? snapshot?.participants.find(
+        (participant) => participant.id === view.assignedParticipantId,
+      )?.displayName
+    : undefined;
   const activeIdentity = teamIdentityOf(view.activeTeamId, teams);
   const activeSymbol = movingXoSymbol(view.activeTeamId, teams);
   const expiringCell = visibleExpiringCell({ ...view, phase });
@@ -53,7 +63,14 @@ export function MovingXoScreen({
       progressLabel={`${view.successfulMoveCount} حركة ناجحة`}
       aside={
         remainingMs !== undefined ? (
-          <ChallengeCountdown remainingMs={remainingMs} />
+          <ChallengeCountdown
+            remainingMs={remainingMs}
+            thresholds={
+              phase === "placement"
+                ? MOVING_XO_PLACEMENT_THRESHOLDS
+                : MOVING_XO_QUESTION_THRESHOLDS
+            }
+          />
         ) : null
       }
       className="mx-auto w-full max-w-6xl"
@@ -109,6 +126,16 @@ export function MovingXoScreen({
                   {phase === "placement"
                     ? `${activeTeam?.name ?? "الفريق"} كسب الحركة`
                     : `الدور على ${activeTeam?.name ?? "الفريق"}`}
+                  {/* Whose phone carries the turn — captain or rotation. */}
+                  {holderName && (
+                    <span
+                      data-testid="moving-xo-turn-holder"
+                      className="text-base font-bold opacity-80"
+                    >
+                      {" "}
+                      · الجوال مع <bdi>{holderName}</bdi>
+                    </span>
+                  )}
                 </p>
               </div>
             )}

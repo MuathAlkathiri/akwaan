@@ -1,6 +1,7 @@
 import {
   assertTeamActionAuthorized,
   assignNextTeamAction,
+  assignNextTeamActionOrHold,
   assignmentFor,
   buildTeamRotations,
   createTeamActionAssignmentState,
@@ -272,13 +273,257 @@ describe('team action assignment', () => {
     });
   });
 
-  it('refuses to build a rotation for a team with nobody connected', () => {
+  it('refuses to build a rotation for a team with no players at all', () => {
     expect(() =>
       buildTeamRotations({
         teams: ['team-a', 'team-b'],
         participants: roster(player('a1', 'team-a')),
         randomIndex: () => 0,
       }),
-    ).toThrow('no connected player');
+    ).toThrow('no player');
+  });
+
+  describe('full-roster rotation (§16.10)', () => {
+    it('keeps a player who was offline at launch in the order', () => {
+      const rotations = buildTeamRotations({
+        teams: ['team-a', 'team-b'],
+        participants: roster(
+          player('a1', 'team-a'),
+          player('a2', 'team-a', false),
+          player('b1', 'team-b', false),
+        ),
+        randomIndex: () => 0,
+      });
+      expect(rotations[0].order).toEqual(['a1', 'a2']);
+      // A team wholly offline at launch still gets a rotation.
+      expect(rotations[1].order).toEqual(['b1']);
+    });
+
+    it('gives the late phone its turn once it connects', () => {
+      const atLaunch = roster(
+        player('a1', 'team-a'),
+        player('a2', 'team-a', false),
+        player('b1', 'team-b'),
+      );
+      let working = state(atLaunch);
+      const first = assignNextTeamAction(working, {
+        teamId: 'team-a',
+        action: ACTION,
+        participants: atLaunch,
+      });
+      expect(first.assignment.participantId).toBe('a1');
+      working = first.state;
+      const connected = roster(
+        player('a1', 'team-a'),
+        player('a2', 'team-a'),
+        player('b1', 'team-b'),
+      );
+      const second = assignNextTeamAction(working, {
+        teamId: 'team-a',
+        action: ACTION,
+        participants: connected,
+      });
+      expect(second.assignment.participantId).toBe('a2');
+    });
+
+    it('skips an offline player and rotates over everyone after reconnect', () => {
+      const offline = roster(
+        player('a1', 'team-a'),
+        player('a2', 'team-a', false),
+        player('a3', 'team-a'),
+        player('b1', 'team-b'),
+      );
+      let working = state(offline);
+      const picks: string[] = [];
+      for (let turn = 0; turn < 2; turn += 1) {
+        const result = assignNextTeamAction(working, {
+          teamId: 'team-a',
+          action: ACTION,
+          participants: offline,
+        });
+        working = result.state;
+        picks.push(result.assignment.participantId);
+      }
+      const online = offline.map((p) => ({ ...p, connected: true }));
+      for (let turn = 0; turn < 3; turn += 1) {
+        const result = assignNextTeamAction(working, {
+          teamId: 'team-a',
+          action: ACTION,
+          participants: online,
+        });
+        working = result.state;
+        picks.push(result.assignment.participantId);
+      }
+      expect(picks).toEqual(['a1', 'a3', 'a1', 'a2', 'a3']);
+    });
+  });
+
+  describe('lobby captain', () => {
+    const team = roster(
+      player('a1', 'team-a'),
+      player('a2', 'team-a'),
+      player('a3', 'team-a'),
+      player('b1', 'team-b'),
+    );
+    const withCaptain = (captain = 'a2') =>
+      createTeamActionAssignmentState(
+        buildTeamRotations({
+          teams: ['team-a', 'team-b'],
+          participants: team,
+          randomIndex: () => 0,
+          captains: { 'team-a': captain },
+        }),
+      );
+
+    it('keeps the captain through a persisted round trip', () => {
+      let working = withCaptain();
+      for (let turn = 0; turn < 3; turn += 1) {
+        working = parseTeamActionAssignments(
+          serializeTeamActionAssignments(working),
+        );
+        const result = assignNextTeamAction(working, {
+          teamId: 'team-a',
+          action: ACTION,
+          participants: team,
+        });
+        working = result.state;
+        expect(result.assignment.participantId).toBe('a2');
+      }
+      expect(
+        parseTeamActionAssignments(serializeTeamActionAssignments(working))
+          .rotations[0].captainId,
+      ).toBe('a2');
+    });
+
+    it('records a captain only when the captain is on that team', () => {
+      const rotations = buildTeamRotations({
+        teams: ['team-a', 'team-b'],
+        participants: team,
+        randomIndex: () => 0,
+        captains: { 'team-a': 'a2', 'team-b': 'a1' },
+      });
+      expect(rotations[0].captainId).toBe('a2');
+      expect(rotations[1].captainId).toBeUndefined();
+    });
+
+    it('gives the captain every action while connected', () => {
+      let working = withCaptain();
+      for (let turn = 0; turn < 4; turn += 1) {
+        const result = assignNextTeamAction(working, {
+          teamId: 'team-a',
+          action: ACTION,
+          participants: team,
+        });
+        working = result.state;
+        expect(result.assignment.participantId).toBe('a2');
+      }
+    });
+
+    it('rotates stand-ins fairly while the captain is away', () => {
+      const away = team.map((p) =>
+        p.participantId === 'a2' ? { ...p, connected: false } : p,
+      );
+      let working = withCaptain();
+      const picks: string[] = [];
+      for (let turn = 0; turn < 3; turn += 1) {
+        const result = assignNextTeamAction(working, {
+          teamId: 'team-a',
+          action: ACTION,
+          participants: away,
+        });
+        working = result.state;
+        picks.push(result.assignment.participantId);
+      }
+      expect(picks).toEqual(['a1', 'a3', 'a1']);
+      // Back again: the next action is the captain's.
+      const back = assignNextTeamAction(working, {
+        teamId: 'team-a',
+        action: ACTION,
+        participants: team,
+      });
+      expect(back.assignment.participantId).toBe('a2');
+    });
+
+    it('does not take back an action a stand-in already holds', () => {
+      let working = withCaptain();
+      working = assignNextTeamAction(working, {
+        teamId: 'team-a',
+        action: ACTION,
+        participants: team,
+      }).state;
+      const away = team.map((p) =>
+        p.participantId === 'a2' ? { ...p, connected: false } : p,
+      );
+      const moved = reassignUnavailableActions(working, away);
+      const standIn = assignmentFor(moved.state, ACTION);
+      expect(standIn?.participantId).toBe('a1');
+      // The captain reconnects: the open action stays with the stand-in.
+      const again = reassignUnavailableActions(moved.state, team);
+      expect(assignmentFor(again.state, ACTION)).toEqual(standIn);
+      // The captain's stale sequence is refused.
+      const captainSequence = assignmentFor(working, ACTION)!.sequence;
+      expect(() =>
+        assertTeamActionAuthorized(again.state, {
+          teamId: 'team-a',
+          action: ACTION,
+          participantId: 'a2',
+          sequence: captainSequence,
+        }),
+      ).toThrow();
+    });
+  });
+
+  describe('opening an action with the whole team away', () => {
+    it('holds it with the captain, then the next in rotation', () => {
+      const allAway = roster(
+        player('a1', 'team-a', false),
+        player('a2', 'team-a', false),
+        player('b1', 'team-b'),
+      );
+      const captained = createTeamActionAssignmentState(
+        buildTeamRotations({
+          teams: ['team-a', 'team-b'],
+          participants: allAway,
+          randomIndex: () => 1,
+          captains: { 'team-a': 'a1' },
+        }),
+      );
+      expect(
+        assignNextTeamActionOrHold(captained, {
+          teamId: 'team-a',
+          action: ACTION,
+          participants: allAway,
+        }).assignment.participantId,
+      ).toBe('a1');
+      const rotating = state(allAway, ['team-a', 'team-b'], 1);
+      expect(
+        assignNextTeamActionOrHold(rotating, {
+          teamId: 'team-a',
+          action: ACTION,
+          participants: allAway,
+        }).assignment.participantId,
+      ).toBe('a2');
+    });
+
+    it('lets the first teammate back receive the held action', () => {
+      const allAway = roster(
+        player('a1', 'team-a', false),
+        player('a2', 'team-a', false),
+        player('b1', 'team-b'),
+      );
+      const held = assignNextTeamActionOrHold(state(allAway), {
+        teamId: 'team-a',
+        action: ACTION,
+        participants: allAway,
+      });
+      expect(held.assignment.participantId).toBe('a1');
+      const a2Back = allAway.map((p) =>
+        p.participantId === 'a2' ? { ...p, connected: true } : p,
+      );
+      const moved = reassignUnavailableActions(held.state, a2Back);
+      const now = assignmentFor(moved.state, ACTION)!;
+      expect(now.participantId).toBe('a2');
+      expect(now.sequence).toBeGreaterThan(held.assignment.sequence);
+    });
   });
 });

@@ -55,6 +55,15 @@ export interface MovingXoView {
   expiringCell?: number;
   /** Present only in the active-team placement projection. */
   legalCells: number[];
+  /** Whose phone carries the turn (lobby captain or rotation), when assigned. */
+  assignedParticipantId?: string;
+  /**
+   * Whether this phone holds the turn. True when the server says nothing, as
+   * an older challenge does: there the whole active team may act.
+   */
+  isAssignedActor: boolean;
+  /** Echoed with the holder's commands, so a handed-over turn refuses a stale phone. */
+  ownAssignmentSequence?: number;
 }
 
 const EMPTY_BOARD: MovingXoBoardView = {
@@ -186,6 +195,14 @@ export function readMovingXoView(input: Record<string, unknown>): MovingXoView {
     legalCells: Array.isArray(input.legalCells)
       ? input.legalCells.filter(finiteCell)
       : [],
+    ...(typeof input.assignedParticipantId === "string" &&
+    input.assignedParticipantId
+      ? { assignedParticipantId: input.assignedParticipantId }
+      : {}),
+    isAssignedActor: input.isAssignedActor !== false,
+    ...(typeof input.ownAssignmentSequence === "number"
+      ? { ownAssignmentSequence: input.ownAssignmentSequence }
+      : {}),
   };
 }
 

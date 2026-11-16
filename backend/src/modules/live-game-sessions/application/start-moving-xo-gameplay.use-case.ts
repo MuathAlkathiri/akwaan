@@ -23,6 +23,12 @@ import {
   StartGameplayRuntime,
 } from './gameplay-runtime.lifecycle';
 import { StartTeamTurn, SwitchActiveTeam } from './live-session-turn.use-cases';
+import {
+  buildTeamRotations,
+  createTeamActionAssignmentState,
+  serializeTeamActionAssignments,
+} from '../domain/team-action-assignment';
+import { eligibleParticipantsOf, teamCaptainsOf } from './start-top5.use-case';
 
 /**
  * Starts "Moving XO" with an empty board and **no puzzles**.
@@ -141,6 +147,18 @@ export class StartMovingXoGameplay {
     const launchedSession =
       (await this.sessions.findById(input.sessionId)) ?? session;
 
+    // Every team's whole roster in turn, or its lobby captain. No turn is
+    // opened here: each puzzle opens its team's turn for one phone.
+    const launchedState = launchedSession.serialize();
+    const rotations = createTeamActionAssignmentState(
+      buildTeamRotations({
+        teams,
+        participants: eligibleParticipantsOf(launchedState),
+        randomIndex: () => 0,
+        captains: teamCaptainsOf(launchedState),
+      }),
+    );
+
     const actor = { kind: 'user' as const, actorId: input.actorId };
     await this.createRuntime.execute({
       sessionId: input.sessionId,
@@ -158,6 +176,7 @@ export class StartMovingXoGameplay {
         teamIds: teams,
         activeTeamId: startingTeamId,
         board: createMovingXoBoard(teams),
+        teamActionJson: serializeTeamActionAssignments(rotations),
       } as never,
     });
 

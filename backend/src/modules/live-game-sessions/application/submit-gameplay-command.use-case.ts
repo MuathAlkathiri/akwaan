@@ -370,6 +370,7 @@ export class SubmitGameplayCommand {
         now,
       );
       if (sessionChanged) session.completeCommand(command.commandId, now);
+      let activatedSession = false;
       const previousRuntimeRevision = runtime.revision;
       runtime.applyModeState({
         commandId: command.commandId,
@@ -380,7 +381,11 @@ export class SubmitGameplayCommand {
         eventPayload: handled.eventPayload,
         now,
         sessionRevision: session.revision,
-        activeTeamId: session.serialize().activeTeamId,
+        // Before a mechanic's first activation the session has no active team
+        // yet; the team a mechanic's own assignment names is then the one to
+        // record (Bomb's chosen starting holder), so the holder lands too.
+        activeTeamId:
+          session.serialize().activeTeamId ?? handled.assignment?.teamId,
         // A mechanic that names its own next decision-maker wins over the
         // "first connected player on the active team" fallback: the fallback
         // exists for mechanics that have no such concept.
@@ -392,6 +397,24 @@ export class SubmitGameplayCommand {
             round.activeParticipantId,
           ),
       });
+      // A setup that was holding the one-time activation is complete. If the
+      // room's surfaces already acknowledged, play starts now, in this same
+      // transaction — the mechanic's own hook starts its clock.
+      if (
+        handled.activatePresentationIfReady &&
+        !runtime.serialize().presentationActivatedAt &&
+        runtime.areAllRequiredSurfacesReady()
+      ) {
+        const activationEffects = runtime.activatePresentation(
+          `${command.commandId}:activation`,
+          command.actor.actorId,
+          now,
+        );
+        if (applyGameplaySessionEffects(activationEffects, session, now)) {
+          activatedSession = true;
+          if (!sessionChanged) session.completeCommand(command.commandId, now);
+        }
+      }
       if (
         handled.prepareNextPresentation &&
         runtime.serialize().presentationActivatedAt
@@ -447,7 +470,7 @@ export class SubmitGameplayCommand {
         command,
         now,
       );
-      if (sessionChanged) {
+      if (sessionChanged || activatedSession) {
         await context.saveSession(session, previousSessionRevision);
       }
       await context.saveRuntime(runtime, previousRuntimeRevision);

@@ -37,7 +37,7 @@ import {
   createTeamActionAssignmentState,
   serializeTeamActionAssignments,
 } from '../domain/team-action-assignment';
-import { eligibleParticipantsOf } from './start-top5.use-case';
+import { eligibleParticipantsOf, teamCaptainsOf } from './start-top5.use-case';
 import { randomInt } from 'crypto';
 
 /**
@@ -170,6 +170,7 @@ export class StartRyoGameplay {
           teams,
           participants,
           randomIndex: (exclusiveMax) => randomInt(exclusiveMax),
+          captains: teamCaptainsOf(sessionState),
         }),
       ),
       answeringTeamId: startingTeamId,

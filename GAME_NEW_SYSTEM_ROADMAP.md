@@ -40,6 +40,35 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
+### Where things stand — 2026-11-15 · GAMEPLAY INTEGRITY (PR #56) DEPLOYED · TIMER EXPERIENCE + GLOBAL CAPTAIN — LOCAL ONLY
+
+Three pieces of work, at three different stages. Keep them apart.
+
+| Work | Design | Implementation | Git | Deployment |
+|---|---|---|---|---|
+| **P0 gameplay integrity — PR #56** (Bomb answer-submission lockouts, server-owned command hardening, guarded answer matching) | ✅ Approved | ✅ Implemented & verified | ✅ Merged — `f919e0d` | ✅ Vercel frontend `f919e0d` verified (bundle markers); ✅ Render backend `/health` reported `f919e0d` on 2026-11-15 (deployed manually by the PO) |
+| **Timer Experience** (stage-size four-state countdown, opt-in room sound, compact phone chip) | ✅ Approved | ✅ Implemented & verified **locally** — frontend presentation only; functional sound fixes 2026-11-16 (below) · ⚠️ device QA outstanding | 🚧 In release PR (`release/global-captain-timer`) | ⬜ Not yet deployed |
+| **Global Lobby Captain & Team Action Assignment** (§16.11) | ✅ Approved for every eligible mechanic (Combo and Bomb finalised 2026-11-16) | ✅ **Implemented & verified locally** (2026-11-16) · ⚠️ physical-device QA outstanding | 🚧 In release PR (`release/global-captain-timer`) | ⬜ Not yet deployed |
+
+**PR #56 — outstanding.** Tolerant answer matching (`C4_GUARDED_V1`) ships **disabled**; it is activated only by
+`ANSWER_MATCHING_TOLERANT_MECHANICS`, which must stay unset. ⚠️ The PO has not yet confirmed in the Render
+dashboard that the variable is absent. ⬜ The production catalog dry run (answer-collision audit) is blocked on
+read access — no admin token or read-only DB user was available to the agent; credentials must never be pasted
+into a chat. ⬜ A Marhala playtest with tolerance on, and physical-device QA of the Bomb fixes, remain.
+Rollback targets: Vercel deployment of `7147c3d`; Render `17f895e`.
+
+**Timer Experience — functional fixes (2026-11-16, verified locally).** Countdown cues stay silent while the
+question or clue is audio in القنبلة, مين أقرب and القطها (المرحلة, اقرأ خصمك and من أول نغمة already were); the
+sound switch shows *off* after a reload until an explicit press unlocks audio; a storage-blocked browser keeps the
+choice in memory for the page; a second is never announced twice — not across a Bomb handoff between team clocks,
+nor when network latency bounces the display. Server deadlines and Bomb's continuous clock are unchanged.
+Synthesized cues remain provisional. Visual design untouched (Challenge Page UI freeze).
+
+**Global captain — implemented & verified locally (2026-11-16).** Every eligible mechanic follows the approved
+policy (§16.11), Combo and Bomb included; backend, real-Mongo, frontend and visual gates passed. Physical-device QA
+remains. The full integration suite is not green only because of the unrelated `player-catalog` failures (debt
+#37). Committed to the release branch `release/global-captain-timer` for its PR; not yet deployed. No runtime or Production data was changed.
+
 ### Where things stand — 2026-11-10 · CONTENT ENGINE REVIEW UX PHASES 1–3 — ✅ IMPLEMENTED & DEPLOYED
 
 PRs #50–#52 are merged and deployed to Vercel; main at this milestone is `eccba7f`. The Phase 3 public
@@ -2240,6 +2269,11 @@ opening its socket was left out of the order permanently: a real four-phone Chro
 rotation with a single name in it. The rotation is now the team's whole roster, with connectivity deciding only who
 may act right now. Both are covered by real-Mongo regression tests.
 
+> **Reconciled 2026-11-15 (§16.11).** That roster fix was made only in لا تحرقها's own start path; the shared
+> `buildTeamRotations` still used connected-at-launch players, so Top 5, مين أقرب, One Clue and اقرأ خصمك kept
+> the defect. The rule now lives in the shared builder for every mechanic, and لا تحرقها's local workaround is
+> removed. A lobby captain, when set, captains every dish while connected. *(Local only — not deployed.)*
+
 **Local verification ledger.** Backend 197 suites / 2029 tests; frontend 134 files / 1470 tests; six real-Mongo
 lifecycle scenarios including the production deadline scheduler committing an unattended dish; a real Chromium
 product review driving one shared screen and four phones through all three dishes. Two product defects were fixed
@@ -2282,6 +2316,105 @@ milestone. لا تحرقها itself declares `controller` and is covered by a re
 Nothing in this release provisions Food at runtime. The `PRODUCTION_MECHANICS` entry is a definition
 read by the Admin catalog and by the manual `provision:production-mechanics` CLI; no boot path writes it.
 
+### 16.11 Global lobby captain & team action assignment *(approved 2026-11-15; Combo and Bomb rules finalised 2026-11-16)*
+
+**Status:** ✅ **Design approved for every eligible mechanic** · ✅ **IMPLEMENTED & VERIFIED LOCALLY** (2026-11-16 —
+source, automated and visual gates passed; see *Verification*) · ⚠️ physical-device QA outstanding · 🚧 in the release PR
+(`release/global-captain-timer`) · ⬜ not yet deployed.
+
+**The approved rule.** A team may have one **lobby captain**, chosen by the host in the waiting room and locked
+when the Match starts. With a captain, the captain takes the team's eligible single-submitter actions while
+connected. With no captain («بدون قائد = تناوب تلقائي»), those actions rotate fairly over the team's **whole
+roster**, each team independently. A disconnected holder is replaced through the shared assignment subsystem;
+reconnecting never takes back an action already handed on; a stale or unassigned command is refused; every
+decision is the server's. Multi-actor, simultaneous and open-race mechanics keep their own shapes.
+
+**Architecture — no new engine.** The existing `team-action-assignment` subsystem and its presence-driven
+reassignment. The shared rotation is now the **full roster** (the §16.10 fix, previously local to لا تحرقها),
+with an optional captain who takes priority without consuming the rotation and who survives every persisted
+save (a parser that dropped it was found and fixed). An action that opens while its whole team is away is held
+for an absent player and handed to the first teammate back. The captain is `captainParticipantId` on the team,
+set by the host through `PATCH /live-game-sessions/:id/teams/:teamId/captain`, refused once the Match has started
+and cleared if the captain changes team or is removed. Bomb's setup adds one optional, additive plugin hook,
+`presentationActivationHeld`, so a mechanic can hold its one-time Fair-Start activation until a setup is complete.
+
+| Mechanic | Who acts | Status |
+|---|---|---|
+| Top 5 · مين أقرب · One Clue | One holder per team action | ✅ Implemented & verified locally |
+| اقرأ خصمك | Answerer + decider, both teams at once | ✅ Implemented & verified locally — simultaneity and privacy unchanged |
+| لا تحرقها | قائد الطبق per dish | ✅ Implemented & verified locally — moved onto the shared fix |
+| المرحلة | One holder per team turn: chooses the band and answers | ✅ Implemented & verified locally — deadline, movement, scoring, bands unchanged |
+| Moving XO | One holder per team turn: answers and places the earned mark | ✅ Implemented & verified locally — **supersedes §23.11's open-team rule** |
+| الكومبو | One holder per question: answers **and** owns تثبيت / كمل; كسر الكومبو open to any connected opponent | ✅ Implemented & verified locally — see below |
+| القنبلة | Captain chooses each team's **initial** holder; host presses Start; existing ownership after | ✅ Implemented & verified locally — see below |
+| اكشفني · من أول نغمة · القطها · القطعة الدخيلة (V1 + hotspot) | Open team races | Excluded by design — one holder would defeat the race |
+| ركّبها | Needs two or three players at once | Excluded by design — multi-actor |
+
+**الكومبو (approved 2026-11-16).** The question holder — the captain while connected, otherwise the full roster in
+turn, **once per question** — answers, and the same player owns the following تثبيت / كمل decision. The rotation
+does **not** move between answering and deciding; it moves only when the next question opens (Continue, the
+forced question after a break reveal, or the next Run). A holder who disconnects during the decision is replaced
+without changing the decision's rules. كسر الكومبو stays available to **any** eligible connected player of the
+opposing team — not restricted to its captain — with its one-charge policy, atomic acceptance, secrecy and timing
+unchanged. Stages, scoring, forced continuation, automatic Q4 banking and deadlines are unchanged.
+
+**القنبلة (approved; corrected 2026-11-16).** Before play, each team's lobby captain chooses its **initial** bomb
+holder (themselves included); a team with no captain gets one from the full-roster rotation. Both teams having a
+holder makes the setup **READY — it does not start anything**. The shared screen shows both teams' holders and
+readiness, and its **Start Challenge** button is enabled only when both are ready. The **host** starts; the server
+refuses a premature or second start, and activation still waits for the existing Fair-Start requirements, so no
+picture shows and no clock runs before then (the screen-wait timeout counts from Start). A captain may change the
+choice until Start; a captain offline during setup is stood in for by the first connected teammate, without
+changing the lobby captain. The selection is the team's **initial holder only**: the bomb's first arrival at each
+team goes to that holder (if connected); every later handoff follows Bomb's existing ownership rules — never
+forced back to the selected player, and no rotation on any handoff. Continuous clocks, no refund, the skip penalty,
+reconnect ownership, idempotency and scoring are unchanged. If every eligible player of a captain's team is offline
+during setup, the setup simply waits: nobody may choose for that team, the host cannot start or override it, no
+clock runs, and the first teammate back may choose (the existing abort/cancel still works). Covered by unit and
+real-Mongo tests.
+
+> *Superseded within this section:* the 2026-11-15 implementation started Bomb automatically on the last holder
+> choice and returned every handoff to the chosen holder. Both were corrected on 2026-11-16 as above.
+
+**Games started before this rollout** carry no assignment state and keep their previous team-wide rules (Marhala,
+Moving XO, Combo) or start as before (Bomb); this is covered by tests.
+
+**Verification (local, 2026-11-16) — all required gates passed.**
+- ✅ Backend: 294 suites / **4072** tests; typecheck, lint and build clean.
+- ✅ Real-Mongo, two players a side: a focused run of the nine affected suites (Bomb, Combo, Moving XO, المرحلة,
+  La Tahriqha, Top 5, اقرأ خصمك, مين أقرب, presence — 192 tests) passed except one Combo case, fixed below; the
+  Combo suite then passed in full (38 tests). Covered: captain and rotation modes,
+  lock at start, disconnect/reconnect, all-offline recovery, assignment persistence, first and recurring turns,
+  stale-command refusal, one authoritative answer/placement/decision, unchanged deadlines and scores, Combo's
+  secret break, Bomb from setup through explicit start to later handoffs.
+- ⚠️ The Combo run found a real defect the unit tier missed — تثبيت / كمل rejected the holder's assignment proof
+  as an unexpected payload, which would have refused every real decision. Fixed and pinned.
+- ✅ After the dependency restore (below), the nine focused real-Mongo suites passed again in full: 192 / 192.
+- ✅ Full real-Mongo run (taken before the Combo payload fix, which the focused re-runs then covered): 45 suites
+  pass; the only failure is `player-catalog` (9 tests, debt #37). **The full integration suite is therefore not
+  green** while debt #37 stands.
+- ✅ **Frontend:** 185 files / **2140** tests; typecheck, lint and the production build clean. The intermittent
+  `ryo-explainer` test passed in the full run and in three solo runs (52/52 each).
+- ✅ **Dependency restore.** Another workspace's `pnpm install` had rewritten the shared `frontend/node_modules`
+  into a pnpm layout in which `tailwindcss` no longer resolved. Restored with `npm ci` against the root
+  `package-lock.json` (npm workspaces); every manifest and the lockfile were hash-checked unchanged.
+- ✅ **Visual pass:** 36 screenshots — lobby captain (360/390 phone, 720p, 1080p), Bomb holder choice, READY and
+  enabled Start Challenge (720p/1080p screen; captain, teammate and ready phones), Combo answer, Cash Out /
+  Continue, teammate coaching and the opponent's break (360/390), Combo stage (720p/1080p), المرحلة and Moving XO
+  holder and teammate phones (360/390). RTL throughout; no horizontal overflow in any captain surface. The pass
+  produced four fixes: a larger, centred room-screen Bomb layout; an explicit «جاهز / ما بعد اختار» label;
+  gender-neutral coaching copy; and the lobby's captain mark moved under the name (it had squeezed the captain's
+  own name away at 360 px and at 720p).
+- ⚠️ Found, not caused by this work: with the join QR shown, the lobby is ~20–50 px too wide on 360/390 phones —
+  the pre-existing join-code row (seven 44 px tiles) sets the column width. Debt #39.
+- ✅ **Release-only evidence (2026-11-16).** A tree of `HEAD` plus exactly this release's files — the concurrent
+  World Readiness, Odd Piece and authoring work left out, and the concurrent `secondaryPolygon` hunk filtered from
+  `odd-piece-gameplay-panel.tsx` — typechecks clean and passes backend 291 suites / 4050 tests, frontend 186 files /
+  2157 tests, and the **full real-Mongo integration suite: 45 suites, 658 tests, 0 failures** (one suite skipped as
+  always). `player-catalog` passes there, which places its 9 working-tree failures with the concurrent World
+  Readiness changes (debt #37), not with this release.
+- ⚠️ **Physical-device QA is still outstanding** (real phones and a real room screen).
+
 ### 16.3 Approved Signature concepts — one line each
 
 - **من أول نغمة** (Music) — recognise the song or artist from a very short audio segment. Future direction:
@@ -2317,6 +2450,12 @@ read by the Admin catalog and by the manual `provision:production-mechanics` CLI
 
 The rules below are no longer proposals: they are the behaviour the runtime enforces, and this section is their
 canonical statement. Anything downstream that contradicts them is stale.
+
+> **Captain policy — approved 2026-11-16 (§16.11); implemented & verified locally, not deployed.** *Supersedes* "any
+> connected player on the playing team" for answering and for تثبيت / كمل: one holder per question (lobby
+> captain, or the full roster in turn) answers and owns the decision that follows; the rotation moves only when
+> the next question opens. كسر الكومبو is unchanged — any connected opponent may arm it. Everything else here
+> stands.
 
 #### Core loop
 
@@ -3426,6 +3565,11 @@ Not implemented. Not scheduled.
 | 33 | **READY item reports `readiness: not_ready`** | Data / content integrity | Observed 2026-11-08 (read-only): the production READY «من أنا؟» item referenced in #30 has `status: ready` but `readiness.readiness: not_ready` with blocker `RAKKIBHA_STRUCTURE_REQUIRED`. Root cause not investigated; whether other items are affected is unknown. |
 | 34 | **Startup deadline recovery re-drives abandoned runtimes** | Gameplay lifecycle | Every boot rearms deadlines for all non-terminal runtimes (logged “44 of 50” on every boot for ≥7 days to 2026-11-08). Since the boot at 2026-11-07 ~15:35 UTC, each boot also exhausts exactly **10** deadlines (“Team … has no connected player to act for it”, 6 attempts, then “will not be retried”), each logged with `gameplay_transaction_aborted`. The burst lasts ~13 s, with no further errors afterwards. It predates PR #47; the onset deploy (`7cef238`) changed no gameplay code. The rearm query (`findSessionIdsWithLiveRuntimes`) does not exclude expired runtimes, unlike presence reconciliation. Whether the sessions are test matches is **not confirmed**. Related: #2, #28. |
 | 35 | **Permanent mechanic deletion** | 🟡 Design approved — implementation deferred | The approved requirements and the open implementation dependencies are recorded in §19.1. Not implemented. Separate from the narrower challenge-type deletion lifecycle already in main (`bb94504`). |
+| 36 | ~~**Combo captain policy undecided**~~ | Resolved 2026-11-16 | Approved and implemented (§16.11): the question holder answers and owns تثبيت / كمل; كسر الكومبو stays open to any connected opponent. |
+| 37 | **`player-catalog` integration suite fails (9 tests)** | Working-tree debt | World activation returns 400 in `test/integration/player-catalog`. Traced to uncommitted World Readiness work in the working tree, not to committed code or to §16.11. Must be resolved with that work, before it is committed. |
+| 38 | **Global captain + Timer Experience need physical-device QA** | Verification gap | Both pass their automated gates, and the release alone passes the full real-Mongo suite; global captain also passed a rendered screenshot pass (360/390 phones, 720p/1080p screens). Neither has been checked on real phones and a real room screen, including countdown sound on a real TV browser. |
+| 39 | **Lobby too wide on phones when the join QR is shown** | UI (pre-existing) | The join-code row (seven `w-11` tiles + gaps + card padding ≈ 392 px) sets the single-column width, so the host lobby overflows by ~50 px at 360 px and ~20 px at 390 px. Unchanged from `HEAD`; found during the captain visual pass. |
+| 40 | **Countdown warning and critical share one icon** | UI (deferred — UI freeze) | Colour, the stage beat and the digits distinguish them, but under reduced motion on the compact chip the two differ by colour alone. Visual change deferred to the Challenge Page redesign. |
 
 ### 19.1 Permanent mechanic deletion — 🟡 DESIGN APPROVED — IMPLEMENTATION DEFERRED
 
@@ -4218,9 +4362,17 @@ Fair-Start / deadline architecture. **Configurable playtest value, not locked ba
 puzzle. There is no additional timeout penalty.
 
 **Placement surface.** After a correct answer the **active team's phone** is the authoritative input surface
-for choosing the cell; the shared screen stays the public/spectator view of the board. **Any** eligible player
+for choosing the cell; the shared screen stays the public/spectator view of the board. ~~**Any** eligible player
 on the active team may attempt the placement and the **first valid authoritative placement wins for the
-team**. Server-side legality is mandatory — a disabled control is presentation, never authority.
+team**.~~ Server-side legality is mandatory — a disabled control is presentation, never authority.
+
+> **SUPERSEDED 2026-11-15 — PO-approved (Option A), §16.11.** The open-team, first-valid-submission rule is
+> replaced by the global captain/rotation policy: one player holds each team turn — the lobby captain while
+> connected, otherwise the team's full roster in rotation, once per team turn — and that player both answers the
+> puzzle and places the move it earns. Teammates coach. A disconnected holder is replaced through the shared
+> assignment subsystem; reconnection does not take the turn back; a stale or unassigned submission is refused.
+> Deadlines, legality, FIFO marks, resolution and draws are unchanged. *(Implemented & verified locally — not
+> deployed.)*
 
 **Placement window — 10 seconds**, from the correct answer. **Configurable technical/playtest value, not
 locked balance.** If no legal placement is committed before the deadline the **earned move is forfeited**: no
@@ -5072,6 +5224,12 @@ rather than one card growing past the fold.
   previous owner does **not** take ownership back.
 - The shared screen is a required surface for Bomb's initial presentation
   readiness.
+- **Initial holders and explicit start (approved; corrected 2026-11-16; implemented & verified locally, not
+  deployed — §16.11).** Each team's **lobby captain chooses its initial bomb holder** (themselves included); a team with no
+  captain gets one from the full-roster rotation. Both chosen = READY; the **host presses Start Challenge** on the
+  shared screen, and only then — with Fair-Start satisfied — does play begin. No clock runs during setup. The
+  choice decides only the bomb's **first** arrival at each team; every later handoff keeps the existing ownership
+  rule. Continuous clocks, no refund, skip penalty and disconnect guarantees are unchanged.
 
 Surface split — shared: question, image, dramatic timer. Active participant's
 phone: concise question text, exact compact timer, answer, voice, skip. Every

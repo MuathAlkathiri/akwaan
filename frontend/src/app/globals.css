@@ -576,7 +576,51 @@
   animation: akwaan-planet-drift 7s ease-in-out infinite;
 }
 
+/* A countdown's final seconds on the room's screen: one small beat per second,
+   in step with the clock, scaled rather than resized so nothing around it moves.
+   Restrained on purpose — urgency, not alarm — and stilled below. */
+/* The room's countdown box. Large on a 1080p screen; on a short one (a 720p TV)
+   it gives height back, because mechanics such as المرحلة are sized to keep
+   their whole board on a 1280×720 screen and a taller header pushed it down. */
+.akwaan-stage-countdown {
+  height: 4rem;
+}
+.akwaan-stage-countdown-digits {
+  font-size: 2.25rem;
+}
+@media (min-width: 1024px) {
+  .akwaan-stage-countdown {
+    height: 4.5rem;
+  }
+  .akwaan-stage-countdown-digits {
+    font-size: 3rem;
+  }
+}
+@media (max-height: 800px) {
+  .akwaan-stage-countdown {
+    height: 3rem;
+  }
+  .akwaan-stage-countdown-digits {
+    font-size: 2rem;
+  }
+}
+
+@keyframes akwaan-countdown-beat {
+  0%,
+  70%,
+  100% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.08);
+  }
+}
+.akwaan-countdown-beat {
+  animation: akwaan-countdown-beat 1s ease-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .akwaan-countdown-beat,
   .akwaan-rise,
   .akwaan-pop,
   .akwaan-claim,

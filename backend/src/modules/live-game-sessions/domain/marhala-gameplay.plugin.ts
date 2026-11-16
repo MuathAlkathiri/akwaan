@@ -30,6 +30,23 @@ import {
   marhalaTileDestination,
   marhalaTileKind,
 } from './marhala-board';
+import {
+  assertTeamActionAuthorized,
+  assignmentFor,
+  assignNextTeamActionOrHold,
+  clearTeamAction,
+  parseTeamActionAssignments,
+  serializeTeamActionAssignments,
+} from './team-action-assignment';
+
+/**
+ * The one team action a Marhala turn has: whoever holds it elects the
+ * difficulty *and* answers the question it draws. Held by the team's lobby
+ * captain while connected, otherwise rotated over the team's whole roster,
+ * once per team turn. Movement, scoring, the deadline and the difficulty rules
+ * are untouched — this only decides *which* teammate's phone carries the turn.
+ */
+export const MARHALA_TURN_ACTION = 'marhala.turn';
 
 /**
  * "المرحلة" — the Video Games Signature.
@@ -325,6 +342,73 @@ function assertSubmitterIsActiveTeam(
 }
 
 /**
+ * Only the teammate holding the turn may act on it.
+ *
+ * Runs after the team check, so the other team still hears "not your turn".
+ * A runtime started before turns were assigned has no `teamActionJson` and
+ * keeps the team-wide rule it was started with. A stale `assignmentSequence` —
+ * a phone that held the turn before a disconnect handed it on — is refused.
+ */
+function assertSubmitterHoldsTurn(
+  state: GameplayModeState,
+  context: GameplayPluginContext,
+  payload: GameplayCommandPayload,
+): void {
+  if (typeof state.teamActionJson !== 'string') return;
+  assertTeamActionAuthorized(parseTeamActionAssignments(state.teamActionJson), {
+    action: MARHALA_TURN_ACTION,
+    teamId: marhalaActiveTeamId(state),
+    participantId: context.submitterParticipantId,
+    ...(typeof payload.assignmentSequence === 'number'
+      ? { sequence: payload.assignmentSequence }
+      : {}),
+  });
+}
+
+/**
+ * Keep the turn's holder in step with the turn.
+ *
+ * Every reducer passes through here, so no resolution path can move the turn
+ * to the other team without also handing that team's phone the turn: when the
+ * active team changes the next holder is assigned (captain first, then the
+ * rotation, held for an absent player if the whole team is away), and when the
+ * race completes the action closes.
+ */
+function syncTurnAssignment(
+  before: GameplayModeState,
+  after: GameplayModeState,
+  context: GameplayPluginContext,
+): GameplayModeState {
+  if (typeof after.teamActionJson !== 'string') return after;
+  const assignments = parseTeamActionAssignments(after.teamActionJson);
+  if (after.phase === 'completed') {
+    return {
+      ...after,
+      teamActionJson: serializeTeamActionAssignments(
+        clearTeamAction(assignments, MARHALA_TURN_ACTION),
+      ),
+    };
+  }
+  const teamId = marhalaActiveTeamId(after);
+  if (
+    teamId === marhalaActiveTeamId(before) &&
+    assignmentFor(assignments, MARHALA_TURN_ACTION)?.teamId === teamId
+  ) {
+    return after;
+  }
+  return {
+    ...after,
+    teamActionJson: serializeTeamActionAssignments(
+      assignNextTeamActionOrHold(assignments, {
+        teamId,
+        action: MARHALA_TURN_ACTION,
+        participants: context.eligibleParticipants ?? [],
+      }).state,
+    ),
+  };
+}
+
+/**
  * Resolve a correct answer into movement.
  *
  * Order is load-bearing: the base landing is checked against the finish *before*
@@ -481,7 +565,7 @@ function handle(
     eventPayload: GameplayModeState,
     options?: { prepareNextPresentation?: boolean },
   ): GameplayCommandResult => ({
-    runtimeState: next,
+    runtimeState: syncTurnAssignment(state, next, context),
     roundState: validateRound({ phase: next.phase }),
     eventType,
     eventPayload,
@@ -495,6 +579,7 @@ function handle(
 
   if (command.type === MARHALA_COMMANDS.chooseDifficulty) {
     assertSubmitterIsActiveTeam(state, context, 'elect a difficulty');
+    assertSubmitterHoldsTurn(state, context, command.payload);
     if (phase !== 'difficulty-choice') {
       reject(
         'MARHALA_DIFFICULTY_NOT_OPEN',
@@ -574,6 +659,7 @@ function handle(
 
   if (command.type === MARHALA_COMMANDS.submitAnswer) {
     assertSubmitterIsActiveTeam(state, context, 'answer this question');
+    assertSubmitterHoldsTurn(state, context, command.payload);
     if (phase !== 'question') {
       reject('MARHALA_NO_OPEN_QUESTION', 'No المرحلة question is open');
     }
@@ -779,11 +865,33 @@ function publicState(
       : {}),
   };
 
-  if (!actor) return shared;
+  // Who carries the turn. Public: the room should see whose phone it is on.
+  const turn =
+    typeof valid.teamActionJson === 'string'
+      ? assignmentFor(
+          parseTeamActionAssignments(valid.teamActionJson),
+          MARHALA_TURN_ACTION,
+        )
+      : undefined;
+  const assigned = turn && turn.teamId === activeTeamId ? turn : undefined;
+  const withHolder: GameplayModeState = assigned
+    ? { ...shared, assignedParticipantId: assigned.participantId }
+    : shared;
+
+  if (!actor) return withHolder;
+  const isActiveTeam = actor.teamId != null && actor.teamId === activeTeamId;
   return {
-    ...shared,
+    ...withHolder,
     actorTeamId: actor.teamId ?? null,
-    isActiveTeam: actor.teamId != null && actor.teamId === activeTeamId,
+    isActiveTeam,
+    // A runtime without assignment keeps the old team-wide rule: anyone on the
+    // active team may act, so every one of them "holds" the turn.
+    isAssignedActor: assigned
+      ? assigned.participantId === actor.participantId
+      : isActiveTeam,
+    ...(assigned && assigned.participantId === actor.participantId
+      ? { ownAssignmentSequence: assigned.sequence }
+      : {}),
   };
 }
 

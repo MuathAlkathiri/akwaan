@@ -428,6 +428,10 @@ export class GameplayRuntime {
       );
       return [];
     }
+    // A setup the mechanic still owes holds activation outright — whoever
+    // asks, and however long the barrier has waited. The readiness already
+    // recorded stays; completing the setup activates.
+    if (this.isPresentationActivationHeld()) return [];
     const required = this.requiredPresentationSurfaces() ?? [];
     const readyParticipants = required
       .map((surface) => {
@@ -823,6 +827,14 @@ export class GameplayRuntime {
   }
 
   /** Whether every currently required surface has acknowledged. */
+  /** Whether the mechanic is holding its one-time activation for a setup. */
+  isPresentationActivationHeld(): boolean {
+    if (this.state.presentationActivatedAt) return false;
+    return (
+      this.plugin.presentationActivationHeld?.(this.state.runtimeState) === true
+    );
+  }
+
   areAllRequiredSurfacesReady(): boolean {
     const required = this.requiredPresentationSurfaces();
     if (!required || required.length === 0) return false;

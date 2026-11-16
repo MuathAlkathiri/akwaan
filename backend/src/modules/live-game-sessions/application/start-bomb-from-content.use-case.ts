@@ -37,6 +37,56 @@ import {
   CreateGameplayRuntime,
   GetGameplayRuntime,
 } from './gameplay-runtime.queries';
+import type { BombHolderSetup } from '../domain/bomb-holder-setup';
+import {
+  assignNextTeamActionOrHold,
+  buildTeamRotations,
+  createTeamActionAssignmentState,
+} from '../domain/team-action-assignment';
+import { eligibleParticipantsOf, teamCaptainsOf } from './start-top5.use-case';
+
+/**
+ * Each team's initial bomb holder, as the launch can know it.
+ *
+ * A team with a lobby captain waits for that captain's choice (the captain may
+ * choose themselves). A team without one gets its holder from the canonical
+ * full-roster rotation — the first connected player in roster order — so it is
+ * never waiting on anybody.
+ */
+export function initialBombHolderSetup(
+  state: Parameters<typeof eligibleParticipantsOf>[0],
+  teams: readonly string[],
+): BombHolderSetup {
+  const participants = eligibleParticipantsOf(state);
+  const captains = teamCaptainsOf(state);
+  const rotations = createTeamActionAssignmentState(
+    buildTeamRotations({ teams, participants, randomIndex: () => 0 }),
+  );
+  return {
+    teams: teams.map((teamId) => {
+      const captain = captains[teamId];
+      if (captain) {
+        return {
+          teamId,
+          captainParticipantId: captain,
+          holderParticipantId: null,
+          autoAssigned: false,
+        };
+      }
+      const picked = assignNextTeamActionOrHold(rotations, {
+        teamId,
+        action: 'bomb.initial-holder',
+        participants,
+      }).assignment.participantId;
+      return {
+        teamId,
+        captainParticipantId: null,
+        holderParticipantId: picked,
+        autoAssigned: true,
+      };
+    }),
+  };
+}
 import {
   CreateGameplayRound,
   StartGameplayRound,
@@ -157,6 +207,8 @@ export class StartBombGameplayFromContent {
       );
     }
 
+    const holderSetup = initialBombHolderSetup(sessionState, teams);
+
     const actor = { kind: 'user' as const, actorId: input.actorId };
     const clockCommandId = randomUUID();
     const clockNow = this.clock.now();
@@ -185,6 +237,8 @@ export class StartBombGameplayFromContent {
             items: runtimeItems,
           },
         ]),
+        // Held until every team has a holder; see bomb-holder-setup.ts.
+        holderSetupJson: JSON.stringify(holderSetup),
       },
     });
 
@@ -198,10 +252,18 @@ export class StartBombGameplayFromContent {
     });
 
     runtime = (await this.runtimes.findBySessionId(input.sessionId))!;
-    const representative = resolveUnifiedBombRepresentative(
-      sessionState.participants,
-      teams[0],
-    );
+    // The starting team's holder when it is already known (no captain, so the
+    // rotation chose); otherwise the existing representative until the
+    // captain's choice replaces it at activation.
+    const autoHolder = holderSetup.teams[0]?.holderParticipantId;
+    const representative =
+      (autoHolder
+        ? sessionState.participants.find(
+            (participant) =>
+              participant.id === autoHolder && participant.connected,
+          )
+        : undefined) ??
+      resolveUnifiedBombRepresentative(sessionState.participants, teams[0]);
     if (!representative) {
       throw new LiveSessionDomainError(
         'BOMB_REPRESENTATIVE_REQUIRED',

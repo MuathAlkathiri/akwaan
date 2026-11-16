@@ -156,8 +156,10 @@ describe("a persistent status may still be legible", () => {
     const countdown = read(
       "src/features/live-game-session/match/components/challenge-countdown.tsx",
     );
-    expect(countdown).toMatch(/seconds <= 3[\s\S]*text-sem-error/);
-    expect(countdown).toMatch(/seconds <= 6[\s\S]*text-warning/);
+    // Critical takes the error red; warning takes the warning token. The
+    // thresholds themselves live in countdown-urgency.ts.
+    expect(countdown).toMatch(/critical:\s*"[^"]*text-sem-error/);
+    expect(countdown).toMatch(/warning:\s*"[^"]*text-warning/);
     // Brand gold cannot reach legible contrast on the cream room, so the digits
     // never take it; urgency also carries a non-colour cue.
     expect(countdown).not.toMatch(/text-brand-gold/);

@@ -19,6 +19,22 @@ import {
   placementIssue,
   resolveAfterMove,
 } from './moving-xo-board';
+import {
+  assertTeamActionAuthorized,
+  assignmentFor,
+  assignNextTeamActionOrHold,
+  clearTeamAction,
+  parseTeamActionAssignments,
+  serializeTeamActionAssignments,
+} from './team-action-assignment';
+
+/**
+ * The one team action a Moving XO turn has: whoever holds it answers the puzzle
+ * and, if right, places the earned mark. Held by the team's lobby captain while
+ * connected, otherwise rotated over the team's whole roster, once per team
+ * turn. Supersedes the earlier open-team, first-valid-commit rule (§23.11).
+ */
+export const MOVING_XO_TURN_ACTION = 'moving-xo.turn';
 
 /**
  * "Moving XO" — the Puzzles Signature runtime.
@@ -129,6 +145,11 @@ interface MovingXoRuntime {
   winningTeamId: string | null;
   /** Set only at a terminal transition, so a draw is distinguishable from "running". */
   outcome: MovingXoOutcome | null;
+  /**
+   * Who holds each team's turn (team-action assignment). Absent on a challenge
+   * started before turns were assigned, which keeps the open-team rule.
+   */
+  teamActionJson?: string;
 }
 
 const fail = (code: string, message: string): never => {
@@ -233,7 +254,7 @@ function handoff(
   const nextTeamId = opponentOf(runtime);
   return {
     runtime: {
-      ...runtime,
+      ...closeTurn(runtime),
       phase: 'question-pending',
       activeTeamId: nextTeamId,
       pendingMove: false,
@@ -242,6 +263,71 @@ function handoff(
     },
     effects: [{ type: 'switch-active-team', teamId: nextTeamId, reason }],
   };
+}
+
+/** The turn is over: nobody holds it until the next puzzle opens. */
+function closeTurn(runtime: MovingXoRuntime): MovingXoRuntime {
+  if (typeof runtime.teamActionJson !== 'string') return runtime;
+  return {
+    ...runtime,
+    teamActionJson: serializeTeamActionAssignments(
+      clearTeamAction(
+        parseTeamActionAssignments(runtime.teamActionJson),
+        MOVING_XO_TURN_ACTION,
+      ),
+    ),
+  };
+}
+
+/**
+ * Hand the active team's turn to one phone as its puzzle opens: the captain
+ * while connected, otherwise the next player in the full-roster rotation,
+ * held for an absent player if the whole team is away.
+ */
+function openTurn(
+  runtime: MovingXoRuntime,
+  context: GameplayPluginContext,
+): MovingXoRuntime {
+  if (typeof runtime.teamActionJson !== 'string') return runtime;
+  return {
+    ...runtime,
+    teamActionJson: serializeTeamActionAssignments(
+      assignNextTeamActionOrHold(
+        parseTeamActionAssignments(runtime.teamActionJson),
+        {
+          teamId: runtime.activeTeamId,
+          action: MOVING_XO_TURN_ACTION,
+          participants: context.eligibleParticipants ?? [],
+        },
+      ).state,
+    ),
+  };
+}
+
+/**
+ * Only the teammate holding the turn may answer or place.
+ *
+ * A stale `assignmentSequence` — a phone the turn moved away from during a
+ * disconnect — is refused. A challenge without assignment state keeps the
+ * open-team rule it was started with.
+ */
+function assertHoldsTurn(
+  context: GameplayPluginContext,
+  runtime: MovingXoRuntime,
+  payload: GameplayCommandPayload,
+): void {
+  if (typeof runtime.teamActionJson !== 'string') return;
+  assertTeamActionAuthorized(
+    parseTeamActionAssignments(runtime.teamActionJson),
+    {
+      action: MOVING_XO_TURN_ACTION,
+      teamId: runtime.activeTeamId,
+      participantId: context.submitterParticipantId,
+      ...(typeof payload.assignmentSequence === 'number'
+        ? { sequence: payload.assignmentSequence }
+        : {}),
+    },
+  );
 }
 
 function assertActiveTeam(
@@ -389,7 +475,7 @@ function handle(
       ...base,
       runtimeState: validateRuntime(
         asState({
-          ...runtime,
+          ...openTurn(runtime, context),
           phase: 'answering',
           question,
           presentedContentItemIds: [
@@ -417,7 +503,7 @@ function handle(
       ...base,
       runtimeState: validateRuntime(
         asState({
-          ...runtime,
+          ...closeTurn(runtime),
           phase: 'completed',
           pendingMove: false,
           question: null,
@@ -436,6 +522,7 @@ function handle(
   if (command.type === MOVING_XO_COMMANDS.answer) {
     assertRunning(runtime);
     assertActiveTeam(context, runtime);
+    assertHoldsTurn(context, runtime, command.payload);
     if (runtime.phase !== 'answering') {
       fail(
         'MOVING_XO_NOT_ANSWERING',
@@ -525,6 +612,8 @@ function handle(
   if (command.type === MOVING_XO_COMMANDS.place) {
     assertRunning(runtime);
     assertActiveTeam(context, runtime);
+    // The phone that earned the move places it.
+    assertHoldsTurn(context, runtime, command.payload);
     if (runtime.phase !== 'placement' || !runtime.pendingMove) {
       fail(
         'MOVING_XO_NO_EARNED_MOVE',
@@ -570,7 +659,7 @@ function handle(
         ...base,
         runtimeState: validateRuntime(
           asState({
-            ...placed,
+            ...closeTurn(placed),
             phase: 'completed',
             deadlineAt: null,
             outcome: resolution.kind,
@@ -652,7 +741,21 @@ function projectPublic(state: GameplayModeState): GameplayModeState {
     // Prompt, media and the choice list; `acceptedAnswers` and `correctOptionId`
     // are dropped by construction rather than by a deny list.
     question: projectQuestion(runtime.question),
+    // Whose phone carries the turn, for everyone: the room should know.
+    ...(turnOf(runtime)
+      ? { assignedParticipantId: turnOf(runtime)!.participantId }
+      : {}),
   } as unknown as GameplayModeState;
+}
+
+/** The open turn assignment for the active team, if turns are assigned. */
+function turnOf(runtime: MovingXoRuntime) {
+  if (typeof runtime.teamActionJson !== 'string') return undefined;
+  const turn = assignmentFor(
+    parseTeamActionAssignments(runtime.teamActionJson),
+    MOVING_XO_TURN_ACTION,
+  );
+  return turn && turn.teamId === runtime.activeTeamId ? turn : undefined;
 }
 
 /** The verdict the launcher reports to the Match, once there is one. */
@@ -740,6 +843,11 @@ export const MOVING_XO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
         deadlineAt: null,
         winningTeamId: null,
         outcome: null,
+        // Rotations (and lobby captains) built at launch; each puzzle opens
+        // the turn for one phone.
+        ...(typeof seed.teamActionJson === 'string'
+          ? { teamActionJson: seed.teamActionJson }
+          : {}),
       }),
     );
   },
@@ -758,8 +866,9 @@ export const MOVING_XO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     ) {
       return {
         type,
-        // Any connected player on the active team may act; the reducer decides
-        // which attempt wins. §23.11: first valid authoritative commit wins.
+        // A connected player on the active team gets past the session layer;
+        // the reducer then admits only the phone holding the turn (captain or
+        // rotation). This supersedes §23.11's open-team first-commit rule.
         authorization: 'active-team-player',
         allowedRoundStatuses: ['active'],
         validatePayload: (payload) => payload,
@@ -808,9 +917,20 @@ export const MOVING_XO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
    */
   projectRuntimeStateForActor(state, actor: InteractionActorProjection) {
     const runtime = runtimeOf(state);
-    const publicState = projectPublic(state);
+    const turn = turnOf(runtime);
     const isActiveTeam =
       actor.teamId !== undefined && actor.teamId === runtime.activeTeamId;
+    // Without assignment state the whole active team may act, as before.
+    const isAssignedActor = turn
+      ? turn.participantId === actor.participantId
+      : isActiveTeam;
+    const publicState = {
+      ...projectPublic(state),
+      isAssignedActor,
+      ...(turn && isAssignedActor
+        ? { ownAssignmentSequence: turn.sequence }
+        : {}),
+    } as unknown as GameplayModeState;
     if (!isActiveTeam || runtime.phase !== 'placement') return publicState;
     return {
       ...publicState,
