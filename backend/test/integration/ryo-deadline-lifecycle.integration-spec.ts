@@ -736,6 +736,68 @@ describe('RYO deadline lifecycle integration', () => {
     ).toHaveLength(1);
   }, 120_000);
 
+  it('rejects an HTTP controller timeout outcome without changing the runtime', async () => {
+    const { sessionId } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+    const before = (await rawRuntime(sessionId))!;
+    await bearer(
+      http().post(
+        `/live-game-sessions/${sessionId}/runtime/presentation-ready`,
+      ),
+    )
+      .send({
+        commandId: randomUUID(),
+        expectedRuntimeRevision: Number(before.state.revision),
+        expectedSessionRevision: await sessionRevision(sessionId),
+        presentationOutcome: 'readiness-timeout',
+      })
+      .expect(400);
+    expect(await rawRuntime(sessionId)).toEqual(before);
+  }, 120_000);
+
+  it('rejects an authenticated socket controller timeout outcome without changing the runtime', async () => {
+    const { sessionId } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+    const socket = connectClient(
+      `${await app.getUrl()}/live-game-sessions`.replace('[::1]', '127.0.0.1'),
+      {
+        auth: { token },
+        transports: ['websocket'],
+        reconnection: false,
+      },
+    );
+    try {
+      await new Promise<void>((resolve, reject) => {
+        socket.once('connect', () => resolve());
+        socket.once('connect_error', reject);
+      });
+      const before = (await rawRuntime(sessionId))!;
+      const error = new Promise<unknown>((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error('No socket validation rejection')),
+          5_000,
+        );
+        socket.once('exception', (value: unknown) => {
+          clearTimeout(timer);
+          resolve(value);
+        });
+      });
+      socket.emit('live-session:presentation-ready', {
+        sessionId,
+        commandId: randomUUID(),
+        expectedRuntimeRevision: Number(before.state.revision),
+        expectedSessionRevision: await sessionRevision(sessionId),
+        presentationOutcome: 'readiness-timeout',
+      });
+      expect(await error).toBeDefined();
+      expect(await rawRuntime(sessionId)).toEqual(before);
+    } finally {
+      socket.disconnect();
+    }
+  }, 120_000);
+
   it('accepts a real authenticated socket acknowledgement for the shared surface', async () => {
     const { sessionId } = await startSession();
     await createUnified(sessionId);

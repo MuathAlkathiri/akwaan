@@ -326,7 +326,10 @@ export class PresentationReady {
   ) {}
 
   async execute(command: GameplayRuntimeCommand) {
-    if (command.forcePresentationActivation) {
+    if (
+      command.forcePresentationActivation ||
+      command.presentationOutcome === 'readiness-timeout'
+    ) {
       throw new LiveSessionForbiddenError();
     }
     return this.executeWithDeadlineValidation(command);

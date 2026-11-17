@@ -381,6 +381,21 @@ describe('PresentationReady (RYO multi-surface)', () => {
     ).rejects.toBeInstanceOf(LiveSessionForbiddenError);
   });
 
+  it('rejects a controller timeout outcome through the ordinary path', async () => {
+    const h = makeHarness();
+    await expect(
+      h.useCase.execute({
+        sessionId: SESSION_ID,
+        actor: CONTROLLER_ACTOR,
+        commandId: 'forged-timeout',
+        expectedRuntimeRevision: h.runtime.revision,
+        expectedSessionRevision: h.session.revision,
+        presentationOutcome: 'readiness-timeout',
+      }),
+    ).rejects.toBeInstanceOf(LiveSessionForbiddenError);
+    expect(h.runtime.presentationFailure()).toBeUndefined();
+  });
+
   it('rejects a forged forced activation through the public command path', async () => {
     const h = makeHarness();
     await expect(
@@ -825,7 +840,7 @@ describe('PresentationReady (recurring generation)', () => {
     generation?: number,
   ) => {
     h.setNow(T_ACT);
-    return h.useCase.execute({
+    const command = {
       sessionId: SESSION_ID,
       actor,
       commandId,
@@ -836,7 +851,10 @@ describe('PresentationReady (recurring generation)', () => {
         ? { presentationGeneration: generation }
         : {}),
       presentationOutcome: outcome,
-    });
+    };
+    return outcome === 'readiness-timeout'
+      ? h.useCase.executeDeadline(command, 'test-deadline')
+      : h.useCase.execute(command);
   };
 
   it('records a media failure without activating', async () => {
@@ -988,12 +1006,15 @@ describe('PresentationReady (recurring generation)', () => {
       presentationGeneration: generation,
     };
     // The server's timeout lands first and records the failure.
-    await h.useCase.execute({
-      ...stale,
-      commandId: 'cmd-timeout',
-      connectionId: CONN_SHARED,
-      presentationOutcome: 'readiness-timeout',
-    });
+    await h.useCase.executeDeadline(
+      {
+        ...stale,
+        commandId: 'cmd-timeout',
+        connectionId: CONN_SHARED,
+        presentationOutcome: 'readiness-timeout',
+      },
+      'test-deadline',
+    );
     expect(h.runtime.presentationFailure()?.reason).toBe('readiness-timeout');
     // The shared screen's acknowledgement, in flight at the same instant, was
     // built against the revision the timeout has now consumed.
