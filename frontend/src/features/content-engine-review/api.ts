@@ -109,6 +109,9 @@ export const createCanonicalDraft = (
     ),
   );
 
+export const publishCandidateReady = (candidateId: string, expectedRevision: number) =>
+  unwrap<ContentItem>(apiClient.post(`/admin/content-engine/candidates/${candidateId}/publish-ready`, { expectedRevision }));
+
 /** A batch request: the authorable combination plus how many candidates. */
 export type RyoRequestedDifficulty =
   "mixed" | "easy" | "medium" | "relatively_difficult";

@@ -122,6 +122,94 @@ async function openReview() {
 }
 
 describe("Content Engine Review — Phase 1 workspace layout", () => {
+  it("approves and publishes an eligible human review with one click", async () => {
+    const candidate = mockCandidate("cid-1", "السؤال الأول", {
+      humanAssessment: null, factVerification: null,
+      reviewEligibility: { assessmentCurrent: false, assessmentStale: false, evidenceCount: 0, requiresFactualOverride: false, allowedFactualOverrideCodes: [], canApprove: false, canCreateDraft: false, approvalBlockers: [], quickReview: { eligible: true, reasons: [] } },
+    });
+    renderWorkspace([candidate]);
+    const approve = vi.spyOn(api, "approveCandidate").mockResolvedValue({ ...candidate, reviewStatus: "approved", reviewRevision: 2 });
+    const linked = { ...candidate, reviewStatus: "approved" as const, reviewRevision: 3, publishedContentItemId: "draft-1", reviewDecision: { readyPublicationAuthorized: true } };
+    const draft = vi.spyOn(api, "createCanonicalDraft").mockImplementation(async () => { vi.mocked(api.getCandidate).mockResolvedValue(linked); return { contentItemId: "draft-1", status: "draft", alreadyCreated: false }; });
+    const publish = vi.spyOn(api, "publishCandidateReady").mockResolvedValue({ id: "draft-1", status: "ready", readiness: { readiness: "ready", blockers: [], warnings: [] } } as never);
+    await openReview();
+    fireEvent.click(screen.getByTestId("candidate-row-cid-1"));
+    const button = await screen.findByTestId("button-quick-approve-candidate");
+    expect(screen.queryByLabelText("factual state")).toBeNull();
+    expect(screen.getByTestId("automated-assessment-summary")).toHaveTextContent("يتطلب حكمك البشري");
+    fireEvent.click(button);
+    await waitFor(() => expect(draft).toHaveBeenCalledWith("cid-1", 2));
+    await waitFor(() => expect(publish).toHaveBeenCalledWith("cid-1", 3));
+    expect(approve).toHaveBeenCalledWith("cid-1", { expectedRevision: 1, assessmentBasis: "HUMAN_DIRECT_REVIEW", readyPublicationAuthorized: true });
+    expect(api.assessCandidate).not.toHaveBeenCalled();
+  });
+
+  it("keeps approval and exposes draft retry after a known creation failure", async () => {
+    const eligibility = { assessmentCurrent: false, assessmentStale: false, evidenceCount: 0, requiresFactualOverride: false, allowedFactualOverrideCodes: [], canApprove: false, canCreateDraft: false, approvalBlockers: [], quickReview: { eligible: true, reasons: [] } };
+    const pending = mockCandidate("cid-1", "السؤال الأول", { humanAssessment: null, factVerification: null, reviewEligibility: eligibility });
+    const approved = { ...pending, reviewStatus: "approved" as const, reviewRevision: 2, reviewEligibility: { ...eligibility, canCreateDraft: true, quickReview: { eligible: false, reasons: [] } } };
+    let current = pending;
+    renderWorkspace([pending]);
+    vi.mocked(api.getCandidate).mockImplementation(async () => current);
+    vi.spyOn(api, "approveCandidate").mockImplementation(async () => { current = approved; return approved; });
+    const draft = vi.spyOn(api, "createCanonicalDraft").mockRejectedValueOnce({ response: { status: 400 } }).mockResolvedValueOnce({ contentItemId: "draft-1", status: "draft", alreadyCreated: false });
+    await openReview();
+    fireEvent.click(screen.getByTestId("candidate-row-cid-1"));
+    fireEvent.click(await screen.findByTestId("button-quick-approve-candidate"));
+    await waitFor(() => expect(screen.getByText("إعادة محاولة إنشاء المسودة")).toBeEnabled());
+    fireEvent.click(screen.getByText("إعادة محاولة إنشاء المسودة"));
+    await waitFor(() => expect(draft).toHaveBeenCalledTimes(2));
+  });
+
+  it("locks an unknown approval outcome until the candidate is reconciled", async () => {
+    const candidate = mockCandidate("cid-1", "السؤال الأول", {
+      humanAssessment: null, factVerification: null,
+      reviewEligibility: { assessmentCurrent: false, assessmentStale: false, evidenceCount: 0, requiresFactualOverride: false, allowedFactualOverrideCodes: [], canApprove: false, canCreateDraft: false, approvalBlockers: [], quickReview: { eligible: true, reasons: [] } },
+    });
+    renderWorkspace([candidate]);
+    vi.spyOn(api, "approveCandidate").mockRejectedValue(new Error("network timeout"));
+    const draft = vi.spyOn(api, "createCanonicalDraft");
+    await openReview();
+    fireEvent.click(screen.getByTestId("candidate-row-cid-1"));
+    fireEvent.click(await screen.findByTestId("button-quick-approve-candidate"));
+    await screen.findByTestId("approval-outcome-unknown");
+    expect(draft).not.toHaveBeenCalled();
+    expect(screen.getByTestId("button-quick-approve-candidate")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "التحقق من حالة الاعتماد" })).toBeEnabled();
+  });
+
+  it("requires reconciliation after an unknown draft outcome", async () => {
+    const candidate = mockCandidate("cid-1", "السؤال الأول", {
+      humanAssessment: null, factVerification: null,
+      reviewEligibility: { assessmentCurrent: false, assessmentStale: false, evidenceCount: 0, requiresFactualOverride: false, allowedFactualOverrideCodes: [], canApprove: false, canCreateDraft: false, approvalBlockers: [], quickReview: { eligible: true, reasons: [] } },
+    });
+    renderWorkspace([candidate]);
+    vi.spyOn(api, "approveCandidate").mockResolvedValue({ ...candidate, reviewStatus: "approved", reviewRevision: 2 });
+    const draft = vi.spyOn(api, "createCanonicalDraft").mockRejectedValue(new Error("timeout"));
+    await openReview();
+    fireEvent.click(screen.getByTestId("candidate-row-cid-1"));
+    fireEvent.click(await screen.findByTestId("button-quick-approve-candidate"));
+    await screen.findByTestId("approval-outcome-unknown");
+    expect(draft).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "التحقق من حالة الاعتماد" })).toBeEnabled();
+  });
+
+  it("summarizes actual automated evidence and leaves missing quality scores absent", async () => {
+    const candidate = mockCandidate("cid-1", "السؤال الأول", {
+      factVerification: { state: "UNSUPPORTED", claims: [{ claim: "ادعاء", state: "UNSUPPORTED", evidence: [{ url: "https://example.test/source", sourceName: "مصدر" }] }] },
+      qualityEvaluation: null,
+    });
+    renderWorkspace([candidate]);
+    await openReview();
+    fireEvent.click(screen.getByTestId("candidate-row-cid-1"));
+    const summary = await screen.findByTestId("automated-assessment-summary");
+    expect(summary).toHaveTextContent("غير مدعوم");
+    expect(summary).toHaveTextContent("0 من 1");
+    expect(within(summary).getByRole("link", { name: "مصدر" })).toHaveAttribute("href", "https://example.test/source");
+    expect(summary).toHaveTextContent("توصية تقييم الجودة: غير متاح");
+    expect(summary).not.toHaveTextContent("/5");
+  });
+
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(api, "assessCandidate").mockImplementation(async (id) => ({ ...QUEUE.find((c) => c.candidateId === id)!, reviewRevision: 2 }));
@@ -265,7 +353,7 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
     await screen.findByTestId("decision-bar");
 
     pressKey("KeyJ", screen.getByPlaceholderText(/تفسير القرار/));
-    pressKey("KeyJ", screen.getByLabelText("rejection reason"));
+    pressKey("KeyJ", screen.getByTestId("button-reject-candidate"));
     pressKey("KeyJ", screen.getByTestId("button-next-candidate"));
     pressKey("KeyJ", document.body, { ctrlKey: true });
     pressKey("KeyJ", document.body, { metaKey: true });
@@ -329,7 +417,7 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
       expect(within(bar).getByTestId(id)).toBeInTheDocument();
       expect(screen.getAllByTestId(id)).toHaveLength(1);
     }
-    expect(within(bar).getByLabelText("rejection reason")).toBeInTheDocument();
+    expect(within(bar).queryByLabelText("أسباب الرفض")).not.toBeInTheDocument();
 
     const summary = within(bar).getByTestId("decision-bar-summary");
     expect(summary).toHaveTextContent("قبل الاعتماد (2)");
@@ -363,7 +451,7 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
     await waitFor(() => expect(approve).toHaveBeenCalledTimes(1));
     expect(approve.mock.calls[0]).toEqual([
       "cid-1",
-      { expectedRevision: 2, explanation: "سؤال سليم" },
+      { expectedRevision: 2, explanation: "سؤال سليم", readyPublicationAuthorized: true },
     ]);
   });
 
@@ -378,7 +466,6 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
   describe("safety: candidate-scoped state never crosses selections", () => {
     const explanation = () =>
       screen.getByPlaceholderText(/تفسير القرار/) as HTMLTextAreaElement;
-    const reason = () => screen.getByLabelText("rejection reason") as HTMLSelectElement;
     const conflict = (code: string, details: Record<string, unknown> = {}) => ({
       response: { status: 409, data: { code, message: "conflict", details } },
     });
@@ -389,13 +476,14 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
       fireEvent.click(screen.getByTestId("candidate-row-cid-1"));
       await screen.findByTestId("decision-bar");
       fireEvent.change(explanation(), { target: { value: "ملاحظة عن الأول" } });
-      fireEvent.change(reason(), { target: { value: "FACTUAL_ERROR" } });
+      fireEvent.click(screen.getByTestId("button-reject-candidate"));
+      fireEvent.click(screen.getByRole("button", { name: "سبب آخر" }));
 
       pressKey("KeyJ");
       await waitFor(() => expect(heading()).toHaveTextContent("السؤال الثاني"));
       await screen.findByTestId("decision-bar");
       expect(explanation().value).toBe("");
-      expect(reason().value).toBe("");
+      expect(screen.queryByLabelText("أسباب الرفض")).toBeNull();
     });
 
     it("approves the candidate on screen with its own note after navigating", async () => {
@@ -415,7 +503,7 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
       await waitFor(() => expect(approve).toHaveBeenCalledTimes(1));
       expect(approve.mock.calls[0]).toEqual([
         "cid-2",
-        { expectedRevision: 2, explanation: "ملاحظة عن الثاني" },
+        { expectedRevision: 2, explanation: "ملاحظة عن الثاني", readyPublicationAuthorized: true },
       ]);
     });
 
@@ -612,9 +700,9 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
     await screen.findByTestId("decision-bar");
     fireEvent.change(screen.getByPlaceholderText(/تفسير القرار/), { target: { value: "قرار الثاني" } });
     finish({ ...QUEUE[0], reviewRevision: 2 });
-    await waitFor(() => expect(approve).toHaveBeenCalledWith("cid-1", { expectedRevision: 2, explanation: "قرار الأول" }));
+    await waitFor(() => expect(approve).toHaveBeenCalledWith("cid-1", { expectedRevision: 2, explanation: "قرار الأول", readyPublicationAuthorized: true }));
     expect(screen.getByPlaceholderText(/تفسير القرار/)).toHaveValue("قرار الثاني");
-    expect(screen.getByLabelText("rejection reason")).toHaveValue("");
+    expect(screen.queryByLabelText("أسباب الرفض")).toBeNull();
   });
 
   it("distinguishes a failed list from an empty list and permits retry", async () => {
@@ -666,7 +754,7 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
     expect(approve).not.toHaveBeenCalled();
     release({ ...QUEUE[0], reviewRevision: 2 });
     await waitFor(() => expect(approve).toHaveBeenCalledTimes(1));
-    expect(approve).toHaveBeenCalledWith("cid-1", { expectedRevision: 2, explanation: "سليم" });
+    expect(approve).toHaveBeenCalledWith("cid-1", { expectedRevision: 2, explanation: "سليم", readyPublicationAuthorized: true });
   });
 
   it("reports an approval failure after saving the assessment", async () => {
@@ -701,7 +789,7 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
     await waitFor(() => expect(approve).toHaveBeenCalledTimes(2));
     expect(api.assessCandidate).toHaveBeenCalledTimes(edited ? 2 : 1);
     if (edited) expect(vi.mocked(api.assessCandidate).mock.calls[1][1]).toMatchObject({ expectedRevision: 2, factualExplanation: "موثق مجدداً" });
-    expect(approve).toHaveBeenNthCalledWith(2, "cid-1", { expectedRevision: edited ? 3 : 2, explanation: "قرار" });
+    expect(approve).toHaveBeenNthCalledWith(2, "cid-1", { expectedRevision: edited ? 3 : 2, explanation: "قرار", readyPublicationAuthorized: true });
     await waitFor(() => expect(server.reviewStatus).toBe("approved"));
   });
 
@@ -718,7 +806,7 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
     fireEvent.click(screen.getByTestId("button-approve-candidate"));
     await waitFor(() => expect(approve).toHaveBeenCalledTimes(2));
     expect(api.assessCandidate).toHaveBeenCalledTimes(1);
-    expect(approve).toHaveBeenNthCalledWith(2, "cid-1", { expectedRevision: 2, explanation: "قرار" });
+    expect(approve).toHaveBeenNthCalledWith(2, "cid-1", { expectedRevision: 2, explanation: "قرار", readyPublicationAuthorized: true });
     expect(server.reviewStatus).toBe("pending"); expect(server.reviewRevision).toBe(2);
     expect(await screen.findByText(/حُفظ التقييم، لكن لم يكتمل الاعتماد/)).toBeVisible();
   });
@@ -754,8 +842,8 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
     expect(checkbox).toHaveAttribute("aria-checked", "false");
     fireEvent.click(checkbox); fireEvent.click(screen.getByTestId("button-approve-candidate"));
     await waitFor(() => expect(approve).toHaveBeenCalledTimes(2));
-    expect(approve).toHaveBeenNthCalledWith(1, "cid-1", { expectedRevision: 2, explanation: "قرار", overlapAcknowledgments: [{ fingerprint: FP_A }] });
-    expect(approve).toHaveBeenNthCalledWith(2, "cid-1", { expectedRevision: 2, explanation: "قرار", overlapAcknowledgments: [{ fingerprint }] });
+    expect(approve).toHaveBeenNthCalledWith(1, "cid-1", { expectedRevision: 2, explanation: "قرار", readyPublicationAuthorized: true, overlapAcknowledgments: [{ fingerprint: FP_A }] });
+    expect(approve).toHaveBeenNthCalledWith(2, "cid-1", { expectedRevision: 2, explanation: "قرار", readyPublicationAuthorized: true, overlapAcknowledgments: [{ fingerprint }] });
     expect(api.assessCandidate).toHaveBeenCalledTimes(1);
   });
 
@@ -824,7 +912,7 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
     await waitFor(() => expect(approve).toHaveBeenCalledTimes(2));
     expect(vi.mocked(api.assessCandidate)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(api.assessCandidate).mock.calls[0][1].evidence).toEqual(evidence);
-    expect(approve).toHaveBeenNthCalledWith(2, "cid-1", { expectedRevision: 3, explanation: "قرار", overlapAcknowledgments: [{ fingerprint: nextFingerprint }] });
+    expect(approve).toHaveBeenNthCalledWith(2, "cid-1", { expectedRevision: 3, explanation: "قرار", readyPublicationAuthorized: true, overlapAcknowledgments: [{ fingerprint: nextFingerprint }] });
     expect(server.humanAssessment!.evidence).toEqual(evidence); expect(server.reviewStatus).toBe("approved");
   });
 
@@ -960,24 +1048,30 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
     release(QUEUE[0]);
   });
 
-  it("requires a rejection reason and confirmation", async () => {
+  it("rejects on selecting a standard reason without a confirmation", async () => {
     renderWorkspace();
     await openReview();
     fireEvent.click(screen.getByTestId("candidate-row-cid-1"));
     await screen.findByTestId("decision-bar");
     const reject = vi.spyOn(api, "rejectCandidate").mockResolvedValue(QUEUE[0]);
-    fireEvent.change(screen.getByPlaceholderText(/تفسير القرار/), { target: { value: "سبب" } });
-    expect(screen.getByTestId("button-reject-candidate")).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("rejection reason"), { target: { value: "FACTUAL_ERROR" } });
     fireEvent.click(screen.getByTestId("button-reject-candidate"));
-    const dialog = await screen.findByRole("alertdialog");
-    expect(dialog).toHaveTextContent("السؤال الأول");
-    expect(dialog).toHaveTextContent("FACTUAL_ERROR");
-    fireEvent.click(within(dialog).getByText("إلغاء"));
-    expect(reject).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "معلومة أو إجابة خاطئة" }));
+    await waitFor(() => expect(reject).toHaveBeenCalledWith("cid-1", { expectedRevision: 1, reasonCode: "FACTUAL_ERROR" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("requires an explanation for another rejection reason", async () => {
+    renderWorkspace();
+    await openReview();
+    fireEvent.click(screen.getByTestId("candidate-row-cid-1"));
+    await screen.findByTestId("decision-bar");
+    const reject = vi.spyOn(api, "rejectCandidate").mockResolvedValue(QUEUE[0]);
     fireEvent.click(screen.getByTestId("button-reject-candidate"));
-    fireEvent.click(within(await screen.findByRole("alertdialog")).getByText("تأكيد الرفض"));
-    await waitFor(() => expect(reject).toHaveBeenCalledWith("cid-1", { expectedRevision: 1, reasonCode: "FACTUAL_ERROR", explanation: "سبب" }));
+    fireEvent.click(screen.getByRole("button", { name: "سبب آخر" }));
+    expect(screen.getByRole("button", { name: "رفض بسبب آخر" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("شرح سبب الرفض الآخر"), { target: { value: "تفصيل السبب" } });
+    fireEvent.click(screen.getByRole("button", { name: "رفض بسبب آخر" }));
+    await waitFor(() => expect(reject).toHaveBeenCalledWith("cid-1", { expectedRevision: 1, reasonCode: "OTHER", explanation: "تفصيل السبب" }));
   });
 
   it("removes the candidate from the URL when leaving the review surface", async () => {

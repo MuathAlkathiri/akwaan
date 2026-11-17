@@ -127,6 +127,15 @@ export class ContentEngineReviewController {
     );
   }
 
+  @Post('candidates/:candidateId/publish-ready')
+  async publishReady(
+    @Param('candidateId') candidateId: string,
+    @Body() dto: CreateCandidateDraftDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return envelope(await this.review.publishReady(candidateId, dto.expectedRevision, user));
+  }
+
   /**
    * Attach or replace a slot's asset. The upload goes through the same 5 MB,
    * jpeg/png/webp interceptor as every World Content asset, and the bytes are

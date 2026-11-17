@@ -185,6 +185,91 @@ const build = (
 };
 
 describe('ContentEngineReviewService enforcement characterization', () => {
+  it('allows direct human review without automated factual verification', async () => {
+    const { service } = build({ current: candidate({
+      humanAssessment: null, factVerification: null, qualityEvaluation: null,
+    }) });
+    const detail = await service.detail('candidate-1');
+    expect(detail.reviewEligibility.quickReview).toEqual({ eligible: true, reasons: [] });
+  });
+
+  it('records direct human judgment without fabricating an assessment', async () => {
+    const { service, candidates } = build({ current: candidate({ humanAssessment: null, factVerification: null, qualityEvaluation: null }) });
+    jest.spyOn(service as never, 'canonicalDto' as never).mockResolvedValue({} as never);
+    await service.approve('candidate-1', { expectedRevision: 1, assessmentBasis: 'HUMAN_DIRECT_REVIEW' }, actor);
+    expect(candidates.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ reviewRevision: 1, reviewStatus: 'pending' }),
+      expect.objectContaining({ $set: expect.objectContaining({ reviewDecision: expect.objectContaining({ assessmentBasis: 'HUMAN_DIRECT_REVIEW', factualStateAtApproval: null, reviewerId: 'reviewer-1' }) }) }),
+      expect.anything(),
+    );
+    const update = (candidates.findOneAndUpdate.mock.calls as unknown as Array<[unknown, { $set: Record<string, unknown> }]>)[0][1];
+    expect(update.$set.humanAssessment).toBeUndefined();
+  });
+
+  it('records explicit publication intent separately from legacy approvals', async () => {
+    const { service, candidates } = build({ current: candidate({ humanAssessment: null, factVerification: null, qualityEvaluation: null }) });
+    jest.spyOn(service as never, 'canonicalDto' as never).mockResolvedValue({} as never);
+    await service.approve('candidate-1', { expectedRevision: 1, assessmentBasis: 'HUMAN_DIRECT_REVIEW', readyPublicationAuthorized: true }, actor);
+    expect(candidates.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ $set: expect.objectContaining({ reviewDecision: expect.objectContaining({ readyPublicationAuthorized: true, reviewerId: 'reviewer-1' }) }) }),
+      expect.anything(),
+    );
+  });
+
+  it('routes contradictions and overlaps to detailed review', async () => {
+    for (const overrides of [
+      { factVerification: { state: 'CONTRADICTED' } },
+      { findings: [{ code: 'POTENTIAL_OVERLAP_IN_BATCH', severity: 'warning', message: 'overlap' }] },
+    ]) {
+      const { service } = build({ current: candidate(overrides) });
+      expect((await service.detail('candidate-1')).reviewEligibility.quickReview.eligible).toBe(false);
+      await expect(service.approve('candidate-1', { expectedRevision: 1, assessmentBasis: 'HUMAN_DIRECT_REVIEW' }, actor)).rejects.toThrow('Detailed review is required');
+    }
+  });
+
+  it.each([
+    { findings: [{ code: 'DUPLICATE_IN_BATCH', severity: 'blocking', message: 'duplicate' }] },
+    { findings: [{ code: 'FAMILY_COMPLIANCE_UNVERIFIED', severity: 'warning', message: 'family' }] },
+    { factVerification: { state: 'UNSUPPORTED', claims: [{ state: 'UNSUPPORTED', evidence: [{ relation: 'contradicts' }] }] } },
+  ])('blocks direct review for unresolved hard or exceptional findings %#', async (overrides) => {
+    const { service } = build({ current: candidate(overrides) });
+    expect((await service.detail('candidate-1')).reviewEligibility.quickReview.eligible).toBe(false);
+    await expect(service.approve('candidate-1', { expectedRevision: 1, assessmentBasis: 'HUMAN_DIRECT_REVIEW' }, actor)).rejects.toThrow();
+  });
+
+  it('blocks direct review when live canonical compatibility fails', async () => {
+    const { service } = build({ compatibilityBlockers: [{ code: 'BAD', message: 'bad' }] });
+    expect((await service.detail('candidate-1')).reviewEligibility.quickReview.eligible).toBe(false);
+    await expect(service.approve('candidate-1', { expectedRevision: 1, assessmentBasis: 'HUMAN_DIRECT_REVIEW' }, actor)).rejects.toThrow();
+  });
+
+  it('rechecks direct-review eligibility inside the transaction', async () => {
+    const current = candidate({ humanAssessment: null, factVerification: null, qualityEvaluation: null });
+    const { service, candidates } = build({ current });
+    jest.spyOn(service as never, 'canonicalDto' as never).mockResolvedValue({} as never);
+    candidates.findOne.mockImplementationOnce(() => chain(current)).mockImplementationOnce(() => chain(candidate({ factVerification: { state: 'CONTRADICTED' } })));
+    await expect(service.approve('candidate-1', { expectedRevision: 1, assessmentBasis: 'HUMAN_DIRECT_REVIEW' }, actor)).rejects.toThrow('Detailed review is required');
+    expect(candidates.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+  it('records a standard rejection without an explanation and preserves attribution', async () => {
+    const { service, candidates } = build();
+    await service.reject('candidate-1', { expectedRevision: 1, reasonCode: 'DUPLICATE' }, actor);
+    expect(candidates.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ reviewRevision: 1, reviewStatus: { $in: ['pending', 'approved', null] } }),
+      expect.objectContaining({ $set: expect.objectContaining({ reviewDecision: expect.objectContaining({ reasonCode: 'DUPLICATE', explanation: '', reviewerId: 'reviewer-1', revision: 2 }) }) }),
+      expect.anything(),
+    );
+  });
+
+  it('requires an explanation for OTHER and rejects repeated decisions', async () => {
+    const { service, candidates } = build();
+    await expect(service.reject('candidate-1', { expectedRevision: 1, reasonCode: 'OTHER' }, actor)).rejects.toThrow('non-empty explanation');
+    expect(candidates.findOneAndUpdate).not.toHaveBeenCalled();
+    const rejected = build({ current: candidate({ reviewStatus: 'rejected' }) });
+    await expect(rejected.service.reject('candidate-1', { expectedRevision: 1, reasonCode: 'DUPLICATE' }, actor)).rejects.toThrow('already rejected');
+  });
+
   it('fails closed on a saved in-batch overlap with no stable reference', async () => {
     const { service, candidates } = build({
       current: candidate({

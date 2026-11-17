@@ -21,6 +21,7 @@ export interface ReviewEligibility {
   canApprove: boolean;
   canCreateDraft: boolean;
   approvalBlockers: string[];
+  quickReview?: { eligible: boolean; reasons: string[] };
   /** Server-reported reasons a DRAFT cannot be created (stale/untrusted approval). */
   draftBlockers?: string[];
   /** §30.22 media readiness. Absent on servers before Phase 1. */

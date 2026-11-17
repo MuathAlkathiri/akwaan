@@ -52,8 +52,8 @@ export class ContentItemService {
     return Promise.all(documents.map((document) => this.summarize(document)));
   }
 
-  async findOne(id: string): Promise<ContentItemSummary> {
-    return this.summarize(await this.require(id));
+  async findOne(id: string, options?: { session?: ClientSession }): Promise<ContentItemSummary> {
+    return this.summarize(await this.require(id, options?.session));
   }
 
   async readiness(id: string): Promise<ReadinessReport> {
@@ -115,8 +115,9 @@ export class ContentItemService {
   async update(
     id: string,
     dto: UpdateContentItemDto,
+    options?: { session?: ClientSession },
   ): Promise<ContentItemSummary> {
-    const existing = await this.require(id);
+    const existing = await this.require(id, options?.session);
     const existingView = toContentItemView(existing);
     const scopeId = dto.scopeId ?? existingView.scopeId;
     const scope = await this.requireScope(scopeId);
@@ -161,7 +162,7 @@ export class ContentItemService {
       isReusableAcrossSessions: candidate.isReusableAcrossSessions,
       status: candidate.status,
       metadata: candidate.metadata,
-    } as Partial<ContentItem>);
+    } as Partial<ContentItem>, options?.session);
     if (!updated) throw new NotFoundException('Content item not found');
     return this.summarize(updated);
   }
@@ -266,8 +267,8 @@ export class ContentItemService {
     };
   }
 
-  private async require(id: string): Promise<ContentItem> {
-    const item = await this.contentItems.findById(id);
+  private async require(id: string, session?: ClientSession): Promise<ContentItem> {
+    const item = session ? await this.contentItems.findById(id, session) : await this.contentItems.findById(id);
     if (!item) throw new NotFoundException('Content item not found');
     return item;
   }

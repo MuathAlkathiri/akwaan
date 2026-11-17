@@ -28,6 +28,7 @@ export class CandidateReviewEvent {
     | 'approved'
     | 'rejected'
     | 'draft_created'
+    | 'ready_published'
     | 'approval_carried_forward';
 
   @Prop({ type: String, required: true }) actorId!: string;

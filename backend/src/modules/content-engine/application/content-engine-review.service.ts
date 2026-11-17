@@ -994,13 +994,23 @@ export class ContentEngineReviewService {
       await this.throwCas(candidateId, dto.expectedRevision);
     this.assertIdentityMetadata(current.draft ?? {}, current.authoring);
     const explanation = dto.explanation?.trim() ?? '';
-    if (!explanation) {
+    const directReview = dto.assessmentBasis === 'HUMAN_DIRECT_REVIEW';
+    if (directReview && (dto.factualOverrideCode || dto.factualOverrideExplanation || dto.reassignedFamilyKey || dto.overlapAcknowledgments?.length)) {
+      throw new BadRequestException('Exceptional decisions require detailed review');
+    }
+    if (!directReview && !explanation) {
       throw new BadRequestException({
         code: 'APPROVAL_EXPLANATION_REQUIRED',
         message: 'Human approval requires a non-empty explanation',
       });
     }
-    this.assertApprovable(current, dto);
+    if (directReview) {
+      const refs = await this.references(current.jobId, current);
+      this.assertQuickReview(current, refs.job);
+      await this.canonicalDto(current);
+    } else {
+      this.assertApprovable(current, dto);
+    }
     const liveCompatibility =
       await this.assertCanonicalCompatibilityForApproval(current);
     const references = await this.references(current.jobId, current);
@@ -1022,7 +1032,7 @@ export class ContentEngineReviewService {
       if ((error as { code?: number }).code !== 11000) throw error;
     }
 
-    const assessment = current.humanAssessment as {
+    const assessment = (directReview ? {} : current.humanAssessment) as {
       factualState?: string;
       assessedRevision?: number;
       evidence?: Array<{
@@ -1097,10 +1107,12 @@ export class ContentEngineReviewService {
     const decision = {
       decision: 'approved',
       explanation,
+      ...(dto.readyPublicationAuthorized === true ? { readyPublicationAuthorized: true } : {}),
       factualOverrideCode: overrideCode,
       factualOverrideExplanation: overrideExplanation,
       exceptionalOverride: Boolean(overrideCode),
-      factualStateAtApproval: assessment.factualState ?? 'SUPPORTED',
+      factualStateAtApproval: directReview ? null : assessment.factualState ?? 'SUPPORTED',
+      ...(directReview ? { assessmentBasis: 'HUMAN_DIRECT_REVIEW', originalQualityEvaluation: current.qualityEvaluation ?? null } : {}),
       automatedContradictionOverridden: contradictionOverridden,
       familyComplianceResolution,
       originalFactVerification: current.factVerification ?? null,
@@ -1161,7 +1173,6 @@ export class ContentEngineReviewService {
             );
           }
           this.assertIdentityMetadata(fresh.draft ?? {}, fresh.authoring);
-          this.assertApprovable(fresh, dto);
           const job = await this.jobs
             .findById(fresh.jobId)
             .session(mongoSession)
@@ -1176,6 +1187,14 @@ export class ContentEngineReviewService {
             throw new ConflictException(
               'Candidate target changed; reload before reviewing',
             );
+          }
+          if (directReview) {
+            this.assertQuickReview(fresh, job);
+            if (JSON.stringify([fresh.factVerification, fresh.qualityEvaluation]) !== JSON.stringify([current.factVerification, current.qualityEvaluation])) {
+              throw new ConflictException('Automated findings changed; reload before reviewing');
+            }
+          } else {
+            this.assertApprovable(fresh, dto);
           }
           const target = await resolveHistoricalTarget(
             this.connection.model<World>(World.name),
@@ -1218,6 +1237,9 @@ export class ContentEngineReviewService {
             scopeKey: job.scopeKey,
             session: screeningSession,
           });
+          if (directReview && (!screened.passed || screened.findings.some((finding) => finding.severity === 'blocking'))) {
+            throw new ConflictException('Fresh screening has blocking findings');
+          }
           // R4-A: fresh evidence, derived inside this snapshot, decides what the
           // reviewer must have acknowledged; the submission is only compared.
           const gate = this.overlapGate(
@@ -1243,6 +1265,7 @@ export class ContentEngineReviewService {
               {
                 candidateId,
                 reviewRevision: dto.expectedRevision,
+                ...(directReview ? { reviewStatus: 'pending' } : {}),
                 publishedContentItemId: null,
                 ...this.mediaCasFilter(approvalMedia),
               },
@@ -1284,14 +1307,17 @@ export class ContentEngineReviewService {
                 },
                 $inc: { reviewRevision: 1 },
                 $push: {
-                  reviewEvents: this.event('approved', actor, nextRevision, {
+                  reviewEvents: (() => {
+                    const approvedEvent = this.event('approved', actor, nextRevision, {
                     explanation,
                     details: {
+                      ...(dto.readyPublicationAuthorized === true ? { readyPublicationAuthorized: true } : {}),
                       factualOverrideCode: overrideCode,
                       factualOverrideExplanation: overrideExplanation,
                       exceptionalOverride: Boolean(overrideCode),
                       factualStateAtApproval:
-                        assessment.factualState ?? 'SUPPORTED',
+                        directReview ? null : assessment.factualState ?? 'SUPPORTED',
+                      ...(directReview ? { assessmentBasis: 'HUMAN_DIRECT_REVIEW', originalQualityEvaluation: current.qualityEvaluation ?? null, originalFactVerification: current.factVerification ?? null } : {}),
                       automatedContradictionOverridden: contradictionOverridden,
                       originalFactVerificationState: autoFactState,
                       overlapAcknowledgments: overlapAcknowledgments.map(
@@ -1308,7 +1334,9 @@ export class ContentEngineReviewService {
                         url: e.url,
                       })),
                     },
-                  }),
+                    });
+                    return directReview ? { $each: [this.event('assessed', actor, nextRevision, { details: { assessmentBasis: 'HUMAN_DIRECT_REVIEW', assessedRevision: dto.expectedRevision } }), approvedEvent] } : approvedEvent;
+                  })(),
                 },
               },
               {
@@ -1340,8 +1368,11 @@ export class ContentEngineReviewService {
   ) {
     const current = await this.requireCandidate(candidateId);
     this.assertNotPublished(current);
+    if ((current.reviewStatus ?? 'pending') === 'rejected') {
+      throw new ConflictException('Candidate is already rejected');
+    }
     const explanation = dto.explanation?.trim() ?? '';
-    if (!explanation) {
+    if (dto.reasonCode === 'OTHER' && !explanation) {
       throw new BadRequestException({
         code: 'REJECTION_EXPLANATION_REQUIRED',
         message: 'Human rejection requires a non-empty explanation',
@@ -1363,6 +1394,7 @@ export class ContentEngineReviewService {
           candidateId,
           reviewRevision: dto.expectedRevision,
           publishedContentItemId: null,
+          reviewStatus: { $in: ['pending', 'approved', null] },
         },
         {
           $set: { reviewStatus: 'rejected', reviewDecision: decision },
@@ -2072,6 +2104,66 @@ export class ContentEngineReviewService {
     } finally {
       await session.endSession();
     }
+  }
+
+  private hasReadyPublicationAuthorization(candidate: Pick<EngineCandidateDocument, 'reviewDecision' | 'reviewEvents'>): boolean {
+    const decision = candidate.reviewDecision as { readyPublicationAuthorized?: boolean; reviewerId?: string; reviewerEmail?: string; revision?: number } | null;
+    return decision?.readyPublicationAuthorized === true && Boolean(candidate.reviewEvents?.some((event) => event.action === 'approved' && event.actorId === decision.reviewerId && event.actorEmail === decision.reviewerEmail && event.revision === decision.revision && event.details?.readyPublicationAuthorized === true));
+  }
+
+  async publishReady(candidateId: string, expectedRevision: number, actor: AuthenticatedUser) {
+    const current = await this.requireCandidate(candidateId);
+    const publication = await this.publications.findOne({ candidateId }).lean().exec();
+    if (!publication || current.publishedContentItemId !== publication.contentItemId) throw new ConflictException('Candidate has no linked canonical draft');
+    if (!this.hasReadyPublicationAuthorization(current)) throw new ConflictException('Publication was not authorized by the reviewer');
+    if (current.reviewRevision !== expectedRevision) await this.throwCas(candidateId, expectedRevision);
+    const refs = await this.references(current.jobId, current);
+    const media = await this.assertMediaReady(current, refs.job);
+    const corpus = this.screeningCorpus(refs.job);
+    const fences = this.connection.model<EngineInventoryFence>(EngineInventoryFence.name);
+    const session = await this.connection.startSession();
+    try {
+      let contentItemId = publication.contentItemId;
+      await session.withTransaction(async () => {
+        const fresh = await this.candidates.findOne({ candidateId }).session(session).lean().exec();
+        const link = await this.publications.findOne({ candidateId }).session(session).lean().exec();
+        if (!fresh || !link || fresh.reviewRevision !== expectedRevision || fresh.publishedContentItemId !== link.contentItemId || link.contentItemId !== publication.contentItemId || fresh.jobId !== current.jobId) throw new ConflictException('Candidate changed; reload before publication');
+        if (!this.hasReadyPublicationAuthorization(fresh)) throw new ConflictException('Publication was not authorized by the reviewer');
+        const alreadyRecorded = (fresh.reviewEvents ?? []).some((event) => event.action === 'ready_published' && event.revision === expectedRevision);
+        if (expectedRevision !== link.reviewRevision + (alreadyRecorded ? 2 : 1)) throw new ConflictException('Candidate approval or publication revision is stale');
+        this.assertDraftCreationSafety({ ...fresh, reviewRevision: link.reviewRevision } as EngineCandidateDocument);
+        const job = await this.jobs.findById(fresh.jobId).session(session).lean().exec();
+        if (!job || job.worldKey !== refs.job.worldKey || job.scopeKey !== refs.job.scopeKey || job.mechanicKey !== refs.job.mechanicKey) throw new ConflictException('Candidate target changed');
+        await this.assertMediaReady(fresh, job);
+        const target = await resolveHistoricalTarget(this.connection.model<World>(World.name), this.connection.model<Scope>(Scope.name), job.worldKey, job.scopeKey, session);
+        if (!target || String(target.scope._id) !== String(refs.scope._id)) throw new ConflictException('Historical target changed');
+        const fenced = await fences.updateOne({ _id: refs.scope._id }, { $inc: { revision: 1 } }, { session }).exec();
+        if (fenced.matchedCount !== 1) throw new ConflictException('Inventory fence missing');
+        const screeningSession = this.screen.createSession({ worldKey: job.worldKey, scopeKey: job.scopeKey, ...corpus });
+        const inventory = await this.screen.loadHistoricalScope({ worldKey: job.worldKey, scopeKey: job.scopeKey, mongoSession: session }, screeningSession);
+        if (inventory.status !== 'COMPLETE') throw new ConflictException({ code: 'HISTORICAL_VERIFICATION_INCOMPLETE', message: 'Historical inventory is incomplete' });
+        screeningSession.historicalRecords = screeningSession.historicalRecords.filter((record) => record.id !== link.contentItemId);
+        const draft = this.stripTargetFields(fresh.draft ?? {});
+        const screened = this.screen.screen(draft, fresh.authoring, { candidateId, worldKey: job.worldKey, scopeKey: job.scopeKey, session: screeningSession });
+        if (!screened.passed || screened.findings.some((finding) => finding.severity === 'blocking')) throw new ConflictException('Fresh screening has blocking findings');
+        this.assertOverlapGate(this.overlapGate(this.mergeFindings([...screened.findings], await this.revalidateBatchFindings(fresh, draft, fresh.authoring, job, session))), this.acknowledgedFingerprints(fresh), 'draft');
+        const item = await this.contentItems.findOne(link.contentItemId, { session });
+        const approvedHash = (fresh.reviewDecision as { approvedEvidence?: { contentHash?: string } } | null)?.approvedEvidence?.contentHash;
+        const plainItem = JSON.parse(JSON.stringify(item)) as Record<string, unknown>;
+        if (!approvedHash || contentVersionHash(plainItem, candidateIdentityMetadata(plainItem)) !== approvedHash || item.scopeId !== String(target.scope._id) || item.worldId !== String(target.world._id) || item.compatibleChallengeTypeIds.length !== 1 || item.compatibleChallengeTypeIds[0] !== String(refs.challengeType._id)) throw new ConflictException('Canonical content changed since approval');
+        if (item.status !== ContentItemStatus.DRAFT && item.status !== ContentItemStatus.READY) throw new ConflictException('Canonical item is not a draft');
+        if (item.status === ContentItemStatus.READY && item.readiness.blockers.length) throw new ConflictException({ code: 'READY_VERIFICATION_FAILED', message: 'Existing READY item has readiness blockers', issues: item.readiness.blockers });
+        if (item.status !== ContentItemStatus.READY) await this.contentItems.update(link.contentItemId, { status: ContentItemStatus.READY }, { session });
+        if (!alreadyRecorded) {
+          const changed = await this.candidates.updateOne({ candidateId, reviewRevision: expectedRevision, publishedContentItemId: link.contentItemId, ...this.mediaCasFilter(media) }, { $inc: { reviewRevision: 1 }, $push: { reviewEvents: this.event('ready_published', actor, expectedRevision + 1, { details: { contentItemId: link.contentItemId, status: 'ready' } }) } }, { session, runValidators: true });
+          if (changed.modifiedCount !== 1) throw new ConflictException('Candidate or media changed before publication');
+        }
+        contentItemId = link.contentItemId;
+      }, { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } });
+      const item = await this.contentItems.findOne(contentItemId);
+      if (item.status !== ContentItemStatus.READY || item.readiness.blockers.length) throw new ConflictException({ code: 'READY_VERIFICATION_FAILED', message: 'Canonical READY readback failed', issues: item.readiness.blockers });
+      return item;
+    } finally { await session.endSession(); }
   }
 
   private async canonicalDto(candidate: EngineCandidateDocument) {
@@ -2929,6 +3021,13 @@ export class ContentEngineReviewService {
       }
     }
 
+    if ((decision as { assessmentBasis?: string }).assessmentBasis === 'HUMAN_DIRECT_REVIEW') {
+      const fact = candidate.factVerification as { state?: string; claims?: Array<{ state?: string; evidence?: Array<{ relation?: string }> }> } | null;
+      if (candidate.status === 'fact_blocked' || fact?.state === 'CONTRADICTED' || fact?.claims?.some((claim) => claim.state === 'CONTRADICTED' || claim.evidence?.some((e) => e.relation === 'contradicts'))) {
+        throw new ConflictException('Contradictory factual evidence requires detailed review');
+      }
+      return;
+    }
     if (!assessment) {
       throw new ConflictException(
         'Candidate requires human assessment before draft creation',
@@ -3612,6 +3711,39 @@ export class ContentEngineReviewService {
     };
   }
 
+  private quickReviewReasons(candidate: PresentableCandidate, job: PresentableJob | null, targetResolutionError: string | null = null): string[] {
+    const reasons: string[] = [];
+    if ((candidate.reviewStatus ?? 'pending') !== 'pending' || candidate.publishedContentItemId) reasons.push('المرشح ليس بانتظار المراجعة.');
+    if (!job || targetResolutionError) reasons.push('تعذر التحقق من هدف المرشح.');
+    const draft = candidate.draft as { prompt?: { ar?: unknown }; answerPayload?: unknown } | null;
+    if (!draft || typeof draft.prompt?.ar !== 'string' || !draft.prompt.ar.trim() || !draft.answerPayload || typeof draft.answerPayload !== 'object') reasons.push('بيانات السؤال أو الإجابة غير مكتملة.');
+    if (job && !['read-your-opponent', 'closest'].includes(job.mechanicKey)) reasons.push('تتطلب الميكانيكية مراجعة تفصيلية.');
+    const answer = draft?.answerPayload as { mode?: string; options?: Array<{ id?: string; label?: { ar?: string } }>; correctOptionId?: string; correctValue?: number } | undefined;
+    if (job?.mechanicKey === 'read-your-opponent' && (answer?.mode !== 'multiple_choice' || !Array.isArray(answer.options) || answer.options.length < 2 || answer.options.some((option) => !option.id || !option.label?.ar?.trim()) || !answer.options.some((option) => option.id === answer.correctOptionId))) reasons.push('خيارات الإجابة أو الإجابة الصحيحة غير مكتملة.');
+    if (job?.mechanicKey === 'closest') {
+      const slider = (candidate.draft?.mechanicPayload as { closestSlider?: { min?: number; max?: number; step?: number } } | undefined)?.closestSlider;
+      if (answer?.mode !== 'closest' || !Number.isFinite(answer.correctValue) || !slider || !Number.isFinite(slider.min) || !Number.isFinite(slider.max) || !Number.isFinite(slider.step)) reasons.push('الإجابة أو نطاق التقدير غير مكتمل.');
+    }
+    if (!REVIEWABLE_PIPELINE_STATUSES.includes((candidate.status ?? '') as never) || candidate.findings?.some((f) => f.severity === 'blocking')) reasons.push('توجد ملاحظات مانعة.');
+    if (hasIncompleteHistoricalVerification(candidate.findings)) reasons.push('التحقق التاريخي غير مكتمل.');
+    if (candidate.findings?.some((f) => ['FAMILY_COMPLIANCE_MISMATCH', 'FAMILY_COMPLIANCE_UNVERIFIED'].includes(f.code))) reasons.push('تتطلب ملاءمة العائلة مراجعة تفصيلية.');
+    const compatibility = candidate.compatibilityEvaluation as { preDraft?: { blockers?: unknown[] } } | null;
+    if (!compatibility?.preDraft || !Array.isArray(compatibility.preDraft.blockers) || compatibility.preDraft.blockers.length) reasons.push('التوافق غير مكتمل أو يتضمن موانع.');
+    const gate = this.overlapGate((candidate.findings ?? []) as ScreenFinding[]);
+    if (gate.historicalDuplicates.length || gate.batchDuplicates.length || gate.unverifiable.length || gate.required.length) reasons.push('التكرار أو التقاطع يتطلب مراجعة تفصيلية.');
+    const fact = candidate.factVerification as { state?: string; claims?: Array<{ state?: string; evidence?: Array<{ relation?: string }> }> } | null;
+    const human = candidate.humanAssessment as { factualState?: string } | null;
+    if (human?.factualState && human.factualState !== 'SUPPORTED') reasons.push('التقييم البشري السابق يتطلب مراجعة تفصيلية.');
+    if (candidate.status === 'fact_blocked' || fact?.state === 'CONTRADICTED' || human?.factualState === 'CONTRADICTED' || fact?.claims?.some((c) => c.state === 'CONTRADICTED' || c.evidence?.some((e) => e.relation === 'contradicts'))) reasons.push('توجد أدلة متناقضة تتطلب مراجعة تفصيلية.');
+    if (job && !this.mediaReadiness(candidate, job).ready) reasons.push('الوسائط أو حقوقها غير جاهزة.');
+    return reasons;
+  }
+
+  private assertQuickReview(candidate: EngineCandidateDocument, job: PresentableJob) {
+    const reasons = this.quickReviewReasons(candidate, job);
+    if (reasons.length) throw new ConflictException({ code: 'QUICK_REVIEW_INELIGIBLE', message: 'Detailed review is required', reasons });
+  }
+
   private computeReviewEligibility(
     candidate: PresentableCandidate,
     targetResolutionError: string | null = null,
@@ -3825,6 +3957,7 @@ export class ContentEngineReviewService {
       approvalBlockers,
       draftBlockers,
       mediaReadiness,
+      quickReview: (() => { const reasons = this.quickReviewReasons(candidate, job, targetResolutionError); return { eligible: reasons.length === 0, reasons }; })(),
     };
   }
 

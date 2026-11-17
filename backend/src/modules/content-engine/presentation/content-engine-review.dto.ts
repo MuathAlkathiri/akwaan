@@ -2,6 +2,7 @@ import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -113,11 +114,18 @@ export class OverlapAcknowledgmentDto {
 
 export class CandidateApprovalDto {
   @IsInt() @Min(0) expectedRevision!: number;
+  /** Explicit consent to the READY publication workflow, never implied for legacy clients. */
+  @IsOptional()
+  @IsBoolean()
+  readyPublicationAuthorized?: boolean;
+  @IsOptional()
+  @IsIn(['HUMAN_DIRECT_REVIEW'])
+  assessmentBasis?: 'HUMAN_DIRECT_REVIEW';
+  @IsOptional()
   @Transform(trimString)
   @IsString()
-  @IsNotEmpty()
   @MaxLength(2000)
-  explanation!: string;
+  explanation?: string;
   @IsOptional()
   @IsIn([
     'ACCEPTED_WITH_EVIDENCE',
@@ -157,11 +165,11 @@ export class CandidateRejectionDto {
     'OTHER',
   ])
   reasonCode!: string;
+  @IsOptional()
   @Transform(trimString)
   @IsString()
-  @IsNotEmpty()
   @MaxLength(2000)
-  explanation!: string;
+  explanation?: string;
 }
 
 export class CreateCandidateDraftDto {

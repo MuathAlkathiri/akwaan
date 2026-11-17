@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { Noto_Kufi_Arabic, Readex_Pro } from "next/font/google";
+import { Readex_Pro } from "next/font/google";
+import localFont from "next/font/local";
 import { Providers } from "./providers";
 import { Layout } from "@/components/layout";
 import "./globals.css";
 
-const displayFont = Noto_Kufi_Arabic({
-  subsets: ["arabic"],
-  weight: ["600", "700"],
+const displayFont = localFont({
+  src: "./fonts/NotoKufiArabic/NotoKufiArabic-Variable.ttf",
+  weight: "600 700",
   variable: "--font-display",
   display: "swap",
 });

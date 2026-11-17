@@ -112,12 +112,12 @@ widen their use until the roadmap decides.
 
 ## Typography
 
-**Sources:** `src/app/layout.tsx` (`next/font/google`), `tailwind.config.ts` `fontFamily`, and the `globals.css`
+**Sources:** `src/app/layout.tsx` (`next/font/local` and `next/font/google`), `tailwind.config.ts` `fontFamily`, and the `globals.css`
 base layer. Status: Implemented. The roadmap does not name the typefaces.
 
 | Role | Family | Variable / utility | Weights | Use |
 |---|---|---|---|---|
-| Display | Noto Kufi Arabic (Arabic subset) | `--font-display`, `font-display` | 600, 700 | `h1` to `h3` by default; identity at display scale |
+| Display | Noto Kufi Arabic (local variable font) | `--font-display`, `font-display` | 600, 700 | `h1` to `h3` by default; identity at display scale |
 | Body | Readex Pro (Arabic and Latin) | `--font-body`, `font-body`, `font-sans` | 400 to 700 | Everything else: reading and interaction |
 | Numerals | Readex Pro | `.akwaan-numeral` | — | Tabular, LTR-isolated Western digits for scores inside Arabic UI |
 

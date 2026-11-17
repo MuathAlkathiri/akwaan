@@ -76,7 +76,8 @@ describe("Tailwind can see every file that writes utility classes", () => {
 describe("the semantic typography experiment", () => {
   it("loads one display face and one body face through Next font variables", () => {
     const layout = read("src/app/layout.tsx");
-    expect(layout).toContain("Noto_Kufi_Arabic");
+    expect(layout).toContain("NotoKufiArabic-Variable.ttf");
+    expect(layout).toContain('weight: "600 700"');
     expect(layout).toContain("Readex_Pro");
     expect(layout).toContain('variable: "--font-display"');
     expect(layout).toContain('variable: "--font-body"');

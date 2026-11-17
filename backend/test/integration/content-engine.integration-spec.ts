@@ -1675,6 +1675,91 @@ describe('Content Engine foundation (roadmap §30, Phase 1a)', () => {
         actor,
       );
 
+    it('records direct human approval and creates exactly one DRAFT on retry', async () => {
+      await seedReviewCandidate('quick-human-review');
+      await database.collection('engine_candidates').updateOne({ candidateId: 'quick-human-review' }, { $set: { factVerification: null, qualityEvaluation: null } });
+      expect((await review.detail('quick-human-review')).reviewEligibility.quickReview.eligible).toBe(true);
+      const approvals = await Promise.allSettled([review.approve('quick-human-review', { expectedRevision: 0, assessmentBasis: 'HUMAN_DIRECT_REVIEW' }, actor), review.approve('quick-human-review', { expectedRevision: 0, assessmentBasis: 'HUMAN_DIRECT_REVIEW' }, actor)]);
+      expect(approvals.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+      const approved = (approvals.find((result) => result.status === 'fulfilled') as PromiseFulfilledResult<Awaited<ReturnType<typeof review.approve>>>).value;
+      expect(approved.reviewDecision).toMatchObject({ assessmentBasis: 'HUMAN_DIRECT_REVIEW', reviewerId: 'admin-reviewer', factualStateAtApproval: null });
+      expect(approved.humanAssessment).toBeNull();
+      expect(approved.reviewEvents.map((event: { action: string }) => event.action)).toEqual(['assessed', 'approved']);
+      await expect(review.approve('quick-human-review', { expectedRevision: 0, assessmentBasis: 'HUMAN_DIRECT_REVIEW' }, actor)).rejects.toThrow();
+      const drafts = await Promise.all([review.createDraft('quick-human-review', 1, actor), review.createDraft('quick-human-review', 1, actor)]);
+      const draft = drafts[0];
+      expect(drafts[1].contentItemId).toBe(draft.contentItemId);
+      const retry = await review.createDraft('quick-human-review', 1, actor);
+      expect(retry.contentItemId).toBe(draft.contentItemId);
+      expect(retry.alreadyCreated).toBe(true);
+      expect(await database.collection('engine_draft_publications').countDocuments({ candidateId: 'quick-human-review' })).toBe(1);
+      expect(await database.collection('content_items').findOne({ _id: new Types.ObjectId(draft.contentItemId) })).toMatchObject({ status: 'draft' });
+    });
+
+    it('publishes an authorized linked draft through the canonical READY gate', async () => {
+      await seedReviewCandidate('ready-human-review');
+      const approved = await review.approve('ready-human-review', { expectedRevision: 0, assessmentBasis: 'HUMAN_DIRECT_REVIEW', readyPublicationAuthorized: true }, actor);
+      const draft = await review.createDraft('ready-human-review', approved.reviewRevision, actor);
+      const results = await Promise.allSettled([review.publishReady('ready-human-review', approved.reviewRevision + 1, actor), review.publishReady('ready-human-review', approved.reviewRevision + 1, actor)]);
+      const winner = results.find((result) => result.status === 'fulfilled');
+      expect(winner).toBeDefined();
+      const result = (winner as PromiseFulfilledResult<Awaited<ReturnType<typeof review.publishReady>>>).value;
+      expect(result.id).toBe(draft.contentItemId);
+      expect(result.status).toBe('ready');
+      expect(result.readiness.blockers).toHaveLength(0);
+      const saved = await database.collection('engine_candidates').findOne({ candidateId: 'ready-human-review' });
+      expect(saved?.reviewEvents.map((event: { action: string }) => event.action)).toEqual(['assessed', 'approved', 'draft_created', 'ready_published']);
+      expect(await database.collection('engine_draft_publications').countDocuments({ candidateId: 'ready-human-review' })).toBe(1);
+      expect((await review.publishReady('ready-human-review', saved!.reviewRevision, actor)).id).toBe(result.id);
+    });
+
+    it('refuses publication of historical approvals without publication authorization', async () => {
+      await seedReviewCandidate('ready-unauthorized');
+      await assessSupported('ready-unauthorized');
+      const approved = await approve('ready-unauthorized');
+      const draft = await review.createDraft('ready-unauthorized', approved.reviewRevision, actor);
+      await expect(review.publishReady('ready-unauthorized', approved.reviewRevision + 1, actor)).rejects.toThrow('not authorized');
+      await database.collection('engine_candidates').updateOne({ candidateId: 'ready-unauthorized' }, { $set: { 'reviewDecision.readyPublicationAuthorized': true } });
+      await expect(review.publishReady('ready-unauthorized', approved.reviewRevision + 1, actor)).rejects.toThrow('not authorized');
+      expect((await contentItems.findOne(draft.contentItemId)).status).toBe('draft');
+    });
+
+    it('leaves the authorized draft intact when the canonical READY gate refuses and permits retry', async () => {
+      await seedReviewCandidate('ready-retry');
+      const approved = await review.approve('ready-retry', { expectedRevision: 0, assessmentBasis: 'HUMAN_DIRECT_REVIEW', readyPublicationAuthorized: true }, actor);
+      const draft = await review.createDraft('ready-retry', approved.reviewRevision, actor);
+      const gate = jest.spyOn(contentItems, 'update').mockRejectedValueOnce(new Error('simulated readiness blocker'));
+      await expect(review.publishReady('ready-retry', approved.reviewRevision + 1, actor)).rejects.toThrow('simulated readiness blocker');
+      expect((await contentItems.findOne(draft.contentItemId)).status).toBe('draft');
+      expect(gate).toHaveBeenCalledWith(draft.contentItemId, { status: 'ready' }, expect.objectContaining({ session: expect.anything() }));
+      expect((await review.publishReady('ready-retry', approved.reviewRevision + 1, actor)).status).toBe('ready');
+      gate.mockRestore();
+    });
+
+    it('refuses changed canonical content and stale publication revisions', async () => {
+      await seedReviewCandidate('ready-tampered');
+      const approved = await review.approve('ready-tampered', { expectedRevision: 0, assessmentBasis: 'HUMAN_DIRECT_REVIEW', readyPublicationAuthorized: true }, actor);
+      const draft = await review.createDraft('ready-tampered', approved.reviewRevision, actor);
+      await expect(review.publishReady('ready-tampered', approved.reviewRevision, actor)).rejects.toThrow();
+      await database.collection('content_items').updateOne({ _id: new Types.ObjectId(draft.contentItemId) }, { $set: { 'prompt.ar': 'محتوى مختلف بعد الاعتماد' } });
+      await expect(review.publishReady('ready-tampered', approved.reviewRevision + 1, actor)).rejects.toThrow('changed since approval');
+      await database.collection('content_items').updateOne({ _id: new Types.ObjectId(draft.contentItemId) }, { $set: { 'prompt.ar': 'أي بطل يملك قدرة الشفاء الجماعي؟' }, $push: { compatibleChallengeTypeIds: new Types.ObjectId() } });
+      await expect(review.publishReady('ready-tampered', approved.reviewRevision + 1, actor)).rejects.toThrow('changed since approval');
+      expect((await contentItems.findOne(draft.contentItemId)).status).toBe('draft');
+    });
+
+    it('enforces the canonical READY gate when a world is archived after DRAFT creation', async () => {
+      const { worldId } = await seedReviewCandidate('ready-archived-world');
+      const approved = await review.approve('ready-archived-world', { expectedRevision: 0, assessmentBasis: 'HUMAN_DIRECT_REVIEW', readyPublicationAuthorized: true }, actor);
+      const draft = await review.createDraft('ready-archived-world', approved.reviewRevision, actor);
+      await database.collection('worlds').updateOne({ _id: worldId }, { $set: { status: 'archived' } });
+      const gate = jest.spyOn(contentItems, 'update');
+      await expect(review.publishReady('ready-archived-world', approved.reviewRevision + 1, actor)).rejects.toThrow();
+      expect((await contentItems.findOne(draft.contentItemId)).status).toBe('draft');
+      expect(gate).toHaveBeenCalled();
+      gate.mockRestore();
+    });
+
     it('persists a fresh non-blocking historical notice atomically with approval', async () => {
       const { worldId, scopeId } = await seedReviewCandidate(
         'approval-inconclusive',

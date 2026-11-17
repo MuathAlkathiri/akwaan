@@ -28,8 +28,10 @@ export class ContentItemRepository {
       .exec();
   }
 
-  findById(id: string): Promise<ContentItem | null> {
-    return this.model.findById(id).exec();
+  findById(id: string, session?: ClientSession): Promise<ContentItem | null> {
+    const query = this.model.findById(id);
+    if (session) query.session(session);
+    return query.exec();
   }
 
   async create(
@@ -44,9 +46,10 @@ export class ContentItemRepository {
   updateById(
     id: string,
     data: Partial<ContentItem>,
+    session?: ClientSession,
   ): Promise<ContentItem | null> {
     return this.model
-      .findByIdAndUpdate(id, data, { new: true, runValidators: true })
+      .findByIdAndUpdate(id, data, { new: true, runValidators: true, ...(session ? { session } : {}) })
       .exec();
   }
 
