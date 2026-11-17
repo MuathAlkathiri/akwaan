@@ -410,6 +410,21 @@ describe('presence instance ownership (multi-instance integration)', () => {
       '127.0.0.1',
     );
     const sockets: ClientSocket[] = [];
+    const disconnects: Promise<unknown>[] = [];
+    let bothDisconnectsStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      bothDisconnectsStarted = resolve;
+    });
+    const presence = b.app.get(UpdateParticipantPresence);
+    const originalDisconnect = presence.disconnected.bind(presence);
+    const disconnectSpy = jest
+      .spyOn(presence, 'disconnected')
+      .mockImplementation((...args) => {
+        const work = originalDisconnect(...args);
+        disconnects.push(work);
+        if (disconnects.length === 2) bothDisconnectsStarted();
+        return work;
+      });
     const connect = async () => {
       const socket = connectClient(url, {
         auth: { token: credential },
@@ -481,6 +496,9 @@ describe('presence instance ownership (multi-instance integration)', () => {
       expect(await reason).toBe('transport close');
     } finally {
       for (const socket of sockets) socket.disconnect();
+      await started;
+      await Promise.all(disconnects);
+      disconnectSpy.mockRestore();
     }
   }, 120_000);
 
@@ -556,15 +574,45 @@ describe('presence instance ownership (multi-instance integration)', () => {
     expect(playable.find((fp) => fp.sessionId === 'relaunched')?.revision).toBe(
       9,
     );
-    // The shared deadline-scheduler query is unchanged: it still sees the
-    // expired runtime.
+    // Deadline recovery excludes expired runtimes too.
     const shared = await b.app
       .get<GameplayRuntimeRepository>(GAMEPLAY_RUNTIME_REPOSITORY)
       .findSessionIdsWithLiveRuntimes();
-    expect(shared.sort()).toEqual(['expired', 'playable', 'relaunched']);
+    expect(shared.sort()).toEqual(['playable', 'relaunched']);
     // Fingerprints follow the newest runtime whatever its status.
     const [history] = await targets.fingerprints(['history']);
     expect(history.sessionId).toBe('history');
+    await runtimesCollection().deleteMany({});
+  }, 120_000);
+
+  it('leaves a registered RYO runtime with missing team actions unchanged', async () => {
+    const b = await boot();
+    await runtimesCollection().deleteMany({});
+    const broken = rawRuntime({
+      sessionId: 'broken-ryo',
+      modeKey: 'read-your-opponent',
+    });
+    broken.state.runtimeState = {
+      itemsJson: JSON.stringify([{}, {}, {}]),
+      teamIdsJson: JSON.stringify(['team-a', 'team-b']),
+      startingTeamId: 'team-a',
+    };
+    await runtimesCollection().insertOne(broken);
+    const repository = b.app.get<GameplayRuntimeRepository>(
+      GAMEPLAY_RUNTIME_REPOSITORY,
+    );
+    const before = await runtimesCollection().findOne({
+      runtimeId: broken.runtimeId,
+    });
+    await expect(
+      repository.findBySessionId('broken-ryo'),
+    ).rejects.toMatchObject({
+      code: 'INVALID_TEAM_ACTION_STATE',
+    });
+    const after = await runtimesCollection().findOne({
+      runtimeId: broken.runtimeId,
+    });
+    expect(after).toEqual(before);
     await runtimesCollection().deleteMany({});
   }, 120_000);
 
@@ -584,9 +632,15 @@ describe('presence instance ownership (multi-instance integration)', () => {
     // BEFORE: the previous backstop reconciled every non-terminal runtime on
     // every pass, through the shared query, with no quarantine.
     const reconciler = b.app.get(PresenceEffectsReconciler);
-    const legacySelection = await b.app
-      .get<GameplayRuntimeRepository>(GAMEPLAY_RUNTIME_REPOSITORY)
-      .findSessionIdsWithLiveRuntimes();
+    const legacySelection = (
+      await runtimesCollection()
+        .aggregate<{ _id: string }>([
+          { $sort: { sessionId: 1, createdAt: -1 } },
+          { $group: { _id: '$sessionId', status: { $first: '$status' } } },
+          { $match: { status: { $nin: ['completed', 'cancelled'] } } },
+        ])
+        .toArray()
+    ).map((row) => row._id);
     const beforeStarted = Date.now();
     let cursor = 0;
     await Promise.all(

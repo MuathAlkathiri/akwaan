@@ -53,15 +53,21 @@ export class MongooseGameplayRuntimeRepository implements GameplayRuntimeReposit
     // still running. An older non-terminal runtime under a newer terminal one
     // is history, not a live challenge, and must not be rearmed.
     const rows = await this.model
-      .aggregate<{ _id: string; status: string }>([
+      .aggregate<{ _id: string; status: string; expiresAt: Date }>([
         { $sort: { sessionId: 1, createdAt: -1 } },
         {
           $group: {
             _id: '$sessionId',
             status: { $first: '$status' },
+            expiresAt: { $first: '$expiresAt' },
           },
         },
-        { $match: { status: { $nin: ['completed', 'cancelled'] } } },
+        {
+          $match: {
+            status: { $nin: ['completed', 'cancelled'] },
+            expiresAt: { $gt: new Date() },
+          },
+        },
       ])
       .exec();
     return rows.map((row) => row._id);

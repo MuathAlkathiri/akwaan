@@ -10,7 +10,6 @@ import {
 } from 'class-validator';
 import {
   GameplayCommandPayload,
-  PRESENTATION_FAILURE_REASONS,
   type PresentationFailureReason,
 } from '../domain/gameplay-mode.plugin';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsEnum } from 'class-validator';
@@ -69,8 +68,9 @@ export class GameplayRuntimeMutationDto {
    * skips the surface check, and with `forbidNonWhitelisted` the wire rejects it.
    */
   @IsOptional()
-  @IsIn([...PRESENTATION_FAILURE_REASONS, 'ready', 'retry'])
-  presentationOutcome?: PresentationFailureReason | 'ready' | 'retry';
+  @IsIn(['media-unavailable', 'autoplay-blocked', 'ready', 'retry'])
+  presentationOutcome?:
+    Exclude<PresentationFailureReason, 'readiness-timeout'> | 'ready' | 'retry';
 }
 
 export class StartRakkibhaDto {

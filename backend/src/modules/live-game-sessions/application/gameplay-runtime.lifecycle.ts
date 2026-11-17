@@ -326,12 +326,34 @@ export class PresentationReady {
   ) {}
 
   async execute(command: GameplayRuntimeCommand) {
-    const now = this.clock.now();
+    if (
+      command.forcePresentationActivation ||
+      command.presentationOutcome === 'readiness-timeout'
+    ) {
+      throw new LiveSessionForbiddenError();
+    }
+    return this.executeWithDeadlineValidation(command);
+  }
+
+  /** Server-only scheduler entry point; deadline is rechecked within the transaction. */
+  async executeDeadline(command: GameplayRuntimeCommand, deadlineKey: string) {
+    if (typeof deadlineKey !== 'string' || deadlineKey.length === 0) {
+      throw new LiveSessionForbiddenError();
+    }
+    return this.executeWithDeadlineValidation(command, deadlineKey);
+  }
+
+  private async executeWithDeadlineValidation(
+    command: GameplayRuntimeCommand,
+    deadlineKey?: string,
+  ) {
+    let now = this.clock.now();
     const result = await this.unitOfWork.execute(async (context) => {
       const session = await context.findSession(command.sessionId);
       if (!session) throw new LiveSessionNotFoundError(command.sessionId);
       const runtime = await context.findRuntime(command.sessionId);
       if (!runtime) throw new GameplayRuntimeNotFoundError(command.sessionId);
+      now = this.clock.now();
       if (
         command.actor.kind === 'participant' &&
         command.actor.sessionId !== command.sessionId
@@ -347,6 +369,27 @@ export class PresentationReady {
         throw new LiveSessionDomainError(
           'PRESENTATION_SURFACE_INVALID',
           'Only the shared screen or an actionable participant can activate the challenge',
+        );
+      }
+      if (deadlineKey !== undefined) {
+        if (
+          !isController ||
+          (command.forcePresentationActivation
+            ? command.presentationOutcome !== undefined &&
+              command.presentationOutcome !== 'ready'
+            : command.presentationOutcome !== 'readiness-timeout')
+        ) {
+          throw new LiveSessionForbiddenError();
+        }
+        if (!this.deadlines.assertPresentationDeadline)
+          throw new LiveSessionForbiddenError();
+        this.deadlines.assertPresentationDeadline(
+          session,
+          runtime,
+          now,
+          deadlineKey,
+          command.presentationGeneration,
+          command.forcePresentationActivation ? 'activate' : 'fail',
         );
       }
       if (runtime.isDuplicate(command.commandId)) {
@@ -637,7 +680,10 @@ export class PresentationReady {
       // validated against the actor's current binding and recorded against the
       // exact server-observed connection id. The last ack triggers activation,
       // which re-anchors the deadline through the mechanic's own hook.
-      const required = runtime.requiredPresentationSurfaces();
+      const required =
+        command.forcePresentationActivation && deadlineKey !== undefined
+          ? undefined
+          : runtime.requiredPresentationSurfaces();
       if (required && required.length > 0) {
         if (!command.connectionId) {
           throw new LiveSessionDomainError(

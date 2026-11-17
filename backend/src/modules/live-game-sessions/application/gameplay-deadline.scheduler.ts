@@ -727,7 +727,46 @@ export class GameplayDeadlineScheduler
     }
   }
 
+  assertPresentationDeadline(
+    currentSession: import('../domain/live-game-session').LiveGameSession,
+    currentRuntime: import('../domain/gameplay-runtime').GameplayRuntime,
+    now: Date,
+    expectedKey: string,
+    generation: number | undefined,
+    policy: 'activate' | 'fail',
+  ): void {
+    const state = currentRuntime.serialize();
+    const session = currentSession.serialize();
+    const current = pendingDeadline(
+      state,
+      this.declarationFor(state),
+      currentSession as never,
+      {
+        multiSurface: this.isMultiSurface(state),
+        activationHeld: this.isActivationHeld(state),
+        barrierStartedAt: this.barrierStartedAt(state),
+      },
+    );
+    if (
+      state.sessionId !== currentSession.id ||
+      session.status !== 'active' ||
+      new Date(session.expiresAt).getTime() <= now.getTime() ||
+      new Date(state.expiresAt).getTime() <= now.getTime() ||
+      !current ||
+      current.kind !== 'presentation-activation' ||
+      current.key !== expectedKey ||
+      current.generation !== generation ||
+      new Date(current.deadlineAt).getTime() > now.getTime() ||
+      this.timeoutPolicyFor(state) !== policy
+    ) {
+      throw new Error('Presentation deadline is no longer valid or due');
+    }
+  }
+
   private async expire(sessionId: string, expectedKey: string): Promise<void> {
+    // A callback already queued when another transition rearmed this session
+    // must not clear the newer timer's bookkeeping.
+    if (this.armed.get(sessionId) !== expectedKey) return;
     this.timers.delete(sessionId);
     this.armed.delete(sessionId);
     try {
@@ -767,24 +806,27 @@ export class GameplayDeadlineScheduler
           strict: false,
         });
         const policy = this.timeoutPolicyFor(state!);
-        await presentation.execute({
-          sessionId,
-          actor,
-          commandId: randomUUID(),
-          expectedSessionRevision: session.revision,
-          expectedRuntimeRevision: runtime.revision,
-          ...(pending.generation !== undefined
-            ? { presentationGeneration: pending.generation }
-            : {}),
-          // `activate`: the room loses its buffering, not its question — the
-          // mechanic's own hook still re-anchors a full window.
-          // `fail`: the clock stays stopped and the host is told why. Forcing
-          // a ten-second blind window onto a clip nobody can hear would not be
-          // a degraded question, it would be an unanswerable one.
-          ...(policy === 'fail'
-            ? { presentationOutcome: 'readiness-timeout' as const }
-            : { forcePresentationActivation: true }),
-        });
+        await presentation.executeDeadline(
+          {
+            sessionId,
+            actor,
+            commandId: randomUUID(),
+            expectedSessionRevision: session.revision,
+            expectedRuntimeRevision: runtime.revision,
+            ...(pending.generation !== undefined
+              ? { presentationGeneration: pending.generation }
+              : {}),
+            // `activate`: the room loses its buffering, not its question — the
+            // mechanic's own hook still re-anchors a full window.
+            // `fail`: the clock stays stopped and the host is told why. Forcing
+            // a ten-second blind window onto a clip nobody can hear would not be
+            // a degraded question, it would be an unanswerable one.
+            ...(policy === 'fail'
+              ? { presentationOutcome: 'readiness-timeout' as const }
+              : { forcePresentationActivation: true }),
+          },
+          expectedKey,
+        );
         this.logger.warn(
           `Presentation ${pending.generation ?? 'initial'} for ${sessionId} was not acknowledged in time; policy=${policy}`,
         );

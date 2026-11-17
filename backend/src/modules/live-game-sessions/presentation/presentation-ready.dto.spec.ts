@@ -77,6 +77,15 @@ describe('presentation acknowledgement DTOs', () => {
       ).resolves.toMatch(/forcePresentationActivation/);
     });
 
+    it(`refuses a ${name} readiness-timeout outcome`, async () => {
+      await expect(
+        refusalMessages(
+          { ...valid, ...extra, presentationOutcome: 'readiness-timeout' },
+          dto,
+        ),
+      ).resolves.toMatch(/presentationOutcome/);
+    });
+
     it(`accepts a declared ${name} outcome`, async () => {
       await expect(
         pipe.transform(
