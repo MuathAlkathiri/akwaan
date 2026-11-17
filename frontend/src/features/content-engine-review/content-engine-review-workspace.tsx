@@ -18,7 +18,6 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { showToast } from "@/components/ui/toast";
@@ -231,7 +230,9 @@ function DecisionBarSummary({
 }) {
   let settled: string | null = null;
   if (candidate.publishedContentItemId) {
-    settled = "أُنشئت المسودة لهذا المرشح؛ لا قرار متبقٍ.";
+    settled = candidate.reviewDecision?.readyPublicationAuthorized === true
+      ? "أُنشئ المحتوى القانوني؛ راجع حالة النشر أدناه."
+      : "أُنشئت المسودة لهذا المرشح؛ لا قرار متبقٍ.";
   } else if (candidate.reviewStatus === "rejected") {
     settled = "رُفض هذا المرشح.";
   } else if (candidate.reviewStatus === "approved") {
@@ -315,6 +316,7 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   approved: "اعتماد بشري للمرشح (Human approval)",
   rejected: "رفض المرشح",
   draft_created: "إنشاء مسودة قانونية (DRAFT)",
+  ready_published: "نشر المحتوى الجاهز (READY)",
   approval_carried_forward:
     "حفظ الاعتماد آلياً بعد إعادة تحقق دون تغيير (Approval carried forward)",
 };
@@ -457,7 +459,9 @@ export function ContentEngineReviewWorkspace() {
 
   const [decisionExplanation, setDecisionExplanation] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
-  const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
+  const [detailedReview, setDetailedReview] = useState(false);
+  const [publicationStage, setPublicationStage] = useState<"approval" | "draft" | "ready" | null>(null);
+  const [rejectReasonOpen, setRejectReasonOpen] = useState(false);
   const [factualOverrideCode, setFactualOverrideCode] = useState<
     FactualOverrideCode | ""
   >("");
@@ -520,7 +524,8 @@ export function ContentEngineReviewWorkspace() {
     setDecisionStateFor(selectedId);
     setDecisionExplanation("");
     setRejectionReason("");
-    setRejectConfirmOpen(false);
+    setDetailedReview(false);
+    setRejectReasonOpen(false);
     setAssessmentStale(false);
     setAcknowledgedOverlaps(new Set());
     setServerOverlapEvidence(null);
@@ -700,6 +705,12 @@ export function ContentEngineReviewWorkspace() {
       rawCandidate.jobId !== activeFilterJobId,
   );
   const candidate = isCandidateJobMismatch ? undefined : rawCandidate;
+  const quickMode = Boolean(candidate?.reviewEligibility?.quickReview?.eligible && !detailedReview);
+  const canonicalItem = useQuery({
+    queryKey: ["content-engine-canonical-item", candidate?.publishedContentItemId],
+    queryFn: () => api.getOverlapContentItem(candidate!.publishedContentItemId!),
+    enabled: Boolean(candidate?.publishedContentItemId),
+  });
 
   useEffect(() => {
     if (!isCandidateJobMismatch) return;
@@ -879,9 +890,39 @@ export function ContentEngineReviewWorkspace() {
       setActionError(null);
     }
     await client.invalidateQueries({ queryKey: ["content-engine-review"] });
+    await client.invalidateQueries({ queryKey: ["content-engine-canonical-item"] });
     await client.invalidateQueries({
       queryKey: ["content-engine-review-detail", target?.candidateId ?? selectedIdRef.current],
     });
+  };
+
+  const completePublication = async (approved: ReviewCandidate) => {
+    let stage: "draft" | "ready" = "draft";
+    try {
+      setPublicationStage("draft");
+      if (!approved.publishedContentItemId) await api.createCanonicalDraft(approved.candidateId, approved.reviewRevision);
+      const fresh = await api.getCandidate(approved.candidateId);
+      if (fresh.reviewStatus !== "approved" || !fresh.publishedContentItemId || fresh.reviewDecision?.readyPublicationAuthorized !== true) throw new Error("تغيّر المرشح؛ راجع حالته قبل النشر.");
+      stage = "ready";
+      setPublicationStage("ready");
+      const item = await api.publishCandidateReady(fresh.candidateId, fresh.reviewRevision);
+      if (item.id !== fresh.publishedContentItemId || item.status !== "ready" || item.readiness.blockers.length) throw new Error("تعذر تأكيد جاهزية المحتوى القانوني.");
+      return item;
+    } catch (error) {
+      const status = (error as { response?: { status?: number; data?: { issues?: Array<{ message?: string }> } } })?.response?.status;
+      if (typeof status !== "number" || status === 408 || status === 429 || status >= 500) {
+        unknownApprovalsRef.current = new Set(unknownApprovalsRef.current).add(approved.candidateId);
+        rememberUnknownApprovals(client, unknownApprovalsRef.current);
+        setUnknownApprovals(unknownApprovalsRef.current);
+      }
+      const issues = (error as { response?: { data?: { issues?: Array<{ message?: string }> } } })?.response?.data?.issues?.map((issue) => issue.message).filter(Boolean).join('، ');
+      await client.invalidateQueries({ queryKey: ["content-engine-review"] });
+      await client.invalidateQueries({ queryKey: ["content-engine-review-detail", approved.candidateId] });
+      await client.invalidateQueries({ queryKey: ["content-engine-canonical-item"] });
+      const failure = new Error(`${stage === "draft" ? "حُفظ الاعتماد وتعذر إنشاء المسودة" : "حُفظت المسودة وتعذر نشرها"}. ${issues ?? "تحقق من الحالة ثم أعد المحاولة."}`);
+      Object.assign(failure, { publicationStageFailure: true });
+      throw failure;
+    } finally { setPublicationStage(null); }
   };
 
   const action = useMutation({
@@ -889,7 +930,7 @@ export function ContentEngineReviewWorkspace() {
     onMutate: actionTargetFor,
     onSuccess: async (_data, _run, target) => {
       await refresh(target);
-      showToast({ message: `${elsewhere(target)}تم حفظ قرار المراجعة.` });
+      showToast({ message: `${elsewhere(target)}${(_data as { status?: string } | null)?.status === "ready" ? "تم نشر المحتوى وهو جاهز." : "تم حفظ قرار المراجعة."}` });
     },
     onError: (err, _run, target) => {
       const parsed = extractConflictDetails(err);
@@ -1675,7 +1716,7 @@ export function ContentEngineReviewWorkspace() {
         <>
           {isReviewLocked(candidate.candidateId) && (
             <div role="alert" data-testid="approval-outcome-unknown" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-              <p>{unknownApprovals.has(candidate.candidateId) ? "حُفظ التقييم، لكن تعذر التأكد من نتيجة الاعتماد. قد يكون الاعتماد اكتمل؛ تحقق من حالة المرشح قبل اتخاذ قرار آخر." : "تعذر حفظ حالة التحقق محلياً. يجب التحقق من أحدث حالة للمرشح قبل اتخاذ أي قرار."}</p>
+              <p>{unknownApprovals.has(candidate.candidateId) ? "تعذر التأكد من نتيجة العملية. قد يكون الاعتماد أو إنشاء المسودة قد اكتمل؛ تحقق من حالة المرشح قبل اتخاذ قرار آخر." : "تعذر حفظ حالة التحقق محلياً. يجب التحقق من أحدث حالة للمرشح قبل اتخاذ أي قرار."}</p>
               <Button type="button" variant="outline" className="mt-2 h-auto min-h-10 max-w-full whitespace-normal" disabled={verifyingCandidates.has(candidate.candidateId)} onClick={async () => {
                 const id = candidate.candidateId;
                 if (verificationInFlight.current.has(id)) return;
@@ -1740,6 +1781,7 @@ export function ContentEngineReviewWorkspace() {
                 <Button
                   variant="outline"
                   data-testid="button-open-candidate-editor"
+                  className="h-auto min-h-10 max-w-[9rem] whitespace-normal break-words sm:max-w-none"
                   disabled={isReviewLocked(candidate.candidateId)}
                   onClick={openEditDialog}
                 >
@@ -1807,7 +1849,7 @@ export function ContentEngineReviewWorkspace() {
                     className="font-mono font-semibold text-emerald-600"
                     data-testid="published-content-item-id"
                   >
-                    DRAFT ({candidate.publishedContentItemId})
+                    {canonicalItem.data?.status === "ready" && !canonicalItem.data.readiness.blockers.length ? "READY" : canonicalItem.data?.status === "draft" ? "DRAFT" : "قيد التحقق"} ({candidate.publishedContentItemId})
                   </span>
                 ) : (
                   <span>لم تُنشأ مسودة ContentItem بعد</span>
@@ -1844,11 +1886,12 @@ export function ContentEngineReviewWorkspace() {
                   <Check className="size-5 text-emerald-600 shrink-0" />
                   <div>
                     <p className="font-bold text-emerald-900 text-sm">
-                      تم إنشاء مسودة ContentItem بنجاح في قاعدة البيانات القانونية!
+                      {canonicalItem.data?.status === "ready" && !canonicalItem.data.readiness.blockers.length ? "تم نشر المحتوى وهو جاهز!" : "تم إنشاء مسودة ContentItem في قاعدة البيانات القانونية."}
                     </p>
                     <p className="text-[11px] text-emerald-800 mt-0.5">
-                      معرّف المسودة: <span className="font-mono font-bold text-emerald-950">{candidate.publishedContentItemId}</span> · الحالة: <span className="font-semibold">DRAFT</span> (محمية ومفصولة عن أطوار اللعب حتى الاعتماد والترقية الخارجية).
+                      معرّف المحتوى: <span className="font-mono font-bold text-emerald-950">{candidate.publishedContentItemId}</span> · الحالة: <span className="font-semibold">{canonicalItem.data?.status === "ready" ? canonicalItem.data.readiness.blockers.length ? "READY — توجد موانع جاهزية" : "READY" : canonicalItem.data?.status === "draft" ? "DRAFT" : "جارٍ التحقق"}</span>
                     </p>
+                    {Boolean(canonicalItem.data?.readiness.blockers.length) && <ul className="mt-1 list-disc pe-4">{canonicalItem.data!.readiness.blockers.map((issue) => <li key={issue.code}>{issue.message}</li>)}</ul>}
                   </div>
                 </div>
                 <a
@@ -1857,7 +1900,7 @@ export function ContentEngineReviewWorkspace() {
                   rel="noreferrer"
                   className="rounded-lg border border-emerald-400 bg-white px-3.5 py-1.5 font-semibold text-emerald-800 shadow-sm hover:bg-emerald-100/50 transition"
                 >
-                  عرض المسودة في إدارة المحتوى ↗
+                  عرض المحتوى في إدارة المحتوى ↗
                 </a>
               </div>
             )}
@@ -2104,6 +2147,7 @@ export function ContentEngineReviewWorkspace() {
                 </div>
               ))}
             </details>
+            <AutomatedAssessmentSummary candidate={candidate} />
             <EvaluationBlock
               label="التحقق الآلي"
               value={candidate.factVerification}
@@ -2124,7 +2168,8 @@ export function ContentEngineReviewWorkspace() {
             )}
           </SectionCard>
 
-          <SectionCard
+          {candidate.reviewEligibility?.quickReview?.eligible && <Button variant="outline" onClick={() => setDetailedReview((value) => !value)}>{quickMode ? "فتح المراجعة التفصيلية" : "العودة للمراجعة السريعة"}</Button>}
+          {!quickMode && <SectionCard
             title="التقييم البشري"
             description="الروابط والتفسير محفوظة مع هوية المراجع والتوقيت، ويُشترط رابط دليل عند توثيق الادعاءات غير المدعومة آلياً"
           >
@@ -2208,11 +2253,11 @@ export function ContentEngineReviewWorkspace() {
                 }))
               }
             />
-          </SectionCard>
+          </SectionCard>}
 
           <SectionCard
             title="القرار"
-            description="الاعتماد والرفض وإنشاء مسودة ContentItem DRAFT خطوات مستقلة ومحمية برقم المراجعة"
+            description="الاعتماد ينشئ المحتوى وينشره بعد اجتياز فحوص الجاهزية، مع حماية رقم المراجعة"
           >
             {candidate.reviewStatus === "approved" &&
               candidate.reviewEvents?.at(-1)?.action ===
@@ -2252,7 +2297,7 @@ export function ContentEngineReviewWorkspace() {
             )}
 
             {/* Approval Eligibility & Blockers Panel */}
-            {eligibility && (() => {
+            {!quickMode && eligibility && (() => {
               // Undecided: the same list that keeps Approve disabled.
               // Decided: the server's report, as before.
               const panelItems =
@@ -2300,13 +2345,13 @@ export function ContentEngineReviewWorkspace() {
               </div>
             )}
 
-            <Textarea
+            {!quickMode && <Textarea
               placeholder="تفسير القرار (مطلوب للاعتماد أو الرفض)"
               value={decisionExplanation}
               onChange={(event) => setDecisionExplanation(event.target.value)}
-            />
+            />}
 
-            {factualState !== "SUPPORTED" && (
+            {!quickMode && factualState !== "SUPPORTED" && (
                 <div
                   data-testid="factual-override-section"
                   className="space-y-2 rounded-xl border border-amber-300 bg-amber-50/60 p-3 text-slate-900"
@@ -2409,12 +2454,36 @@ export function ContentEngineReviewWorkspace() {
             data-testid="decision-bar"
             className="z-10 space-y-2 rounded-xl border bg-card p-3 shadow-sm lg:sticky lg:bottom-4 lg:shadow-[0_-10px_24px_-14px_hsl(var(--foreground)/0.35)]"
           >
-            <DecisionBarSummary
+            {!quickMode && <DecisionBarSummary
               candidate={candidate}
               requirements={approvalRequirements}
-            />
+            />}
               <div className="flex flex-wrap items-center gap-2">
-                <Button
+                {quickMode ? <Button data-testid="button-quick-approve-candidate" disabled={action.isPending || isReviewLocked(candidate.candidateId) || Boolean(revisionConflict)} onClick={() => {
+                  if (decisionInFlight.current || isReviewLocked(candidate.candidateId)) return;
+                  decisionInFlight.current = true;
+                  lastActionKind.current = "approve";
+                  action.mutate(async () => {
+                    try {
+                      let approved: ReviewCandidate;
+                      try {
+                        setPublicationStage("approval");
+                        approved = await api.approveCandidate(candidate.candidateId, { expectedRevision: candidate.reviewRevision, assessmentBasis: "HUMAN_DIRECT_REVIEW", readyPublicationAuthorized: true });
+                      } catch (error) {
+                        const status = (error as { response?: { status?: number } })?.response?.status;
+                        if (typeof status !== "number" || status === 408 || status === 429 || status >= 500) {
+                          unknownApprovalsRef.current = new Set(unknownApprovalsRef.current).add(candidate.candidateId);
+                          rememberUnknownApprovals(client, unknownApprovalsRef.current);
+                          setUnknownApprovals(unknownApprovalsRef.current);
+                          const unknown = new Error("Approval outcome unknown"); Object.assign(unknown, { approvalOutcomeUnknown: true }); throw unknown;
+                        }
+                        throw error;
+                      }
+                      lastActionKind.current = "draft";
+                      return await completePublication(approved);
+                    } finally { decisionInFlight.current = false; setPublicationStage(null); }
+                  });
+                }}><Check className="me-2 size-4" /> {action.isPending ? publicationStage === "ready" ? "جارٍ النشر…" : publicationStage === "draft" ? "جارٍ إنشاء المسودة…" : "جارٍ الاعتماد…" : "اعتماد ونشر"}</Button> : <Button
                   data-testid="button-approve-candidate"
                   className="h-auto min-h-10 max-w-full whitespace-normal"
                   disabled={
@@ -2481,6 +2550,7 @@ export function ContentEngineReviewWorkspace() {
                       try { const approved = await api.approveCandidate(candidate.candidateId, {
                         expectedRevision: saved.reviewRevision,
                         explanation: decisionExplanation.trim(),
+                        readyPublicationAuthorized: true,
                         ...(overlapAcknowledgments.length
                           ? { overlapAcknowledgments }
                           : {}),
@@ -2492,7 +2562,8 @@ export function ContentEngineReviewWorkspace() {
                               factualOverrideExplanation:
                                 overrideExplanation.trim(),
                             }),
-                      }); savedRetry.current = null; ownAssessmentRevision.current = { candidateId: candidate.candidateId, revision: approved.reviewRevision }; return approved; } catch (error) {
+                      }); savedRetry.current = null; ownAssessmentRevision.current = { candidateId: candidate.candidateId, revision: approved.reviewRevision }; return await completePublication(approved); } catch (error) {
+                        if (error && typeof error === "object" && "publicationStageFailure" in error) throw error;
                         const status = (error as { response?: { status?: number } })?.response?.status;
                         const ambiguous = typeof status !== "number" || status === 408 || status === 429 || status >= 500;
                         if (ambiguous) {
@@ -2513,42 +2584,48 @@ export function ContentEngineReviewWorkspace() {
                     });
                   }}
                 >
-                  <Check className="me-2 size-4" /> {action.isPending ? "جارٍ الحفظ والاعتماد…" : "حفظ التقييم واعتماد السؤال"}
-                </Button>
-                <select
-                  aria-label="rejection reason"
-                  className="h-10 max-w-full rounded-md border bg-background px-3 text-sm"
-                  value={rejectionReason}
-                  onChange={(event) => setRejectionReason(event.target.value)}
-                >
-                  <option value="">اختر سبب الرفض</option>
-                  {[
-                    "FACTUAL_ERROR",
-                    "UNSUPPORTED_CLAIM",
-                    "MECHANIC_MISMATCH",
-                    "SCOPE_MISMATCH",
-                    "DUPLICATE",
-                    "LOW_QUALITY",
-                    "UNSAFE_OR_INAPPROPRIATE",
-                    "OTHER",
-                  ].map((reason) => (
-                    <option key={reason} value={reason}>
-                      {reason}
-                    </option>
-                  ))}
-                </select>
+                  <Check className="me-2 size-4" /> {action.isPending ? publicationStage === "ready" ? "جارٍ النشر…" : publicationStage === "draft" ? "جارٍ إنشاء المسودة…" : "جارٍ الحفظ والاعتماد…" : "اعتماد ونشر"}
+                </Button>}
                 <Button
                   variant="destructive"
                   data-testid="button-reject-candidate"
-                  disabled={
-                    action.isPending || isReviewLocked(candidate.candidateId) ||
-                    Boolean(candidate.publishedContentItemId) ||
-                    !decisionExplanation.trim() || !rejectionReason
-                  }
-                  onClick={() => { if (!isReviewLocked(candidate.candidateId)) setRejectConfirmOpen(true); }}
+                  disabled={action.isPending || isReviewLocked(candidate.candidateId) || Boolean(candidate.publishedContentItemId) || candidate.reviewStatus === "rejected"}
+                  onClick={() => setRejectReasonOpen((open) => !open)}
                 >
                   <X className="me-2 size-4" /> رفض
                 </Button>
+                {rejectReasonOpen && (
+                  <div className="flex w-full flex-wrap gap-2" aria-label="أسباب الرفض">
+                    {[
+                      ["DUPLICATE", "مكرر"],
+                      ["LOW_QUALITY", "جودة السؤال سيئة أو غامض أو صعوبته غير مناسبة"],
+                      ["FACTUAL_ERROR", "معلومة أو إجابة خاطئة"],
+                      ["UNSUPPORTED_CLAIM", "معلومة غير مدعومة"],
+                      ["MECHANIC_MISMATCH", "غير مناسب للميكانيكية"],
+                      ["SCOPE_MISMATCH", "غير مناسب للعالم أو السكوب"],
+                      ["UNSAFE_OR_INAPPROPRIATE", "محتوى غير مناسب"],
+                      ["OTHER", "سبب آخر"],
+                    ].map(([reason, label]) => (
+                      <Button key={reason} variant="outline" disabled={action.isPending || isReviewLocked(candidate.candidateId)} onClick={() => {
+                        setRejectionReason(reason);
+                        if (reason === "OTHER") return;
+                        if (decisionInFlight.current) return;
+                        decisionInFlight.current = true;
+                        lastActionKind.current = "other";
+                        action.mutate(async () => { try { return await api.rejectCandidate(candidate.candidateId, { expectedRevision: candidate.reviewRevision, reasonCode: reason }); } finally { decisionInFlight.current = false; } });
+                      }}>{label}</Button>
+                    ))}
+                    {rejectionReason === "OTHER" && <div className="flex w-full flex-wrap gap-2">
+                      <Input aria-label="شرح سبب الرفض الآخر" placeholder="اشرح سبب الرفض" value={decisionExplanation} onChange={(event) => setDecisionExplanation(event.target.value)} />
+                      <Button variant="destructive" disabled={!decisionExplanation.trim() || action.isPending || isReviewLocked(candidate.candidateId)} onClick={() => {
+                        if (decisionInFlight.current) return;
+                        decisionInFlight.current = true;
+                        lastActionKind.current = "other";
+                        action.mutate(async () => { try { return await api.rejectCandidate(candidate.candidateId, { expectedRevision: candidate.reviewRevision, reasonCode: "OTHER", explanation: decisionExplanation.trim() }); } finally { decisionInFlight.current = false; } });
+                      }}>رفض بسبب آخر</Button>
+                    </div>}
+                  </div>
+                )}
                 <Button
                   variant="outline"
                   data-testid="button-create-canonical-draft"
@@ -2562,29 +2639,16 @@ export function ContentEngineReviewWorkspace() {
                   onClick={() => {
                     if (isReviewLocked(candidate.candidateId)) return;
                     lastActionKind.current = "draft";
-                    action.mutate(() =>
-                      api.createCanonicalDraft(
-                        candidate.candidateId,
-                        candidate.reviewRevision,
-                      ),
-                    );
+                    action.mutate(() => candidate.reviewDecision?.readyPublicationAuthorized === true
+                      ? completePublication(candidate)
+                      : api.createCanonicalDraft(candidate.candidateId, candidate.reviewRevision));
                   }}
                 >
-                  <FilePlus2 className="me-2 size-4" /> إنشاء مسودة Canonical (DRAFT)
+                  <FilePlus2 className="me-2 size-4" /> {candidate.reviewStatus === "approved" ? "إعادة محاولة إنشاء المسودة" : "إنشاء مسودة Canonical (DRAFT)"}
                 </Button>
+                {candidate.reviewStatus === "approved" && candidate.publishedContentItemId && candidate.reviewDecision?.readyPublicationAuthorized === true && (canonicalItem.data?.status !== "ready" || canonicalItem.data.readiness.blockers.length > 0) && <Button variant="outline" data-testid="button-retry-ready" disabled={action.isPending || isReviewLocked(candidate.candidateId) || canonicalItem.isLoading} onClick={() => { if (decisionInFlight.current || isReviewLocked(candidate.candidateId)) return; decisionInFlight.current = true; action.mutate(async () => { try { return await completePublication(candidate); } finally { decisionInFlight.current = false; } }); }}>إعادة محاولة النشر</Button>}
               </div>
           </div>
-
-          <AlertDialog open={rejectConfirmOpen} onOpenChange={setRejectConfirmOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader><AlertDialogTitle>تأكيد رفض المرشح</AlertDialogTitle>
-                <AlertDialogDescription>السؤال: {candidate.draft?.prompt?.ar} — السبب: {rejectionReason}</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter><AlertDialogCancel>إلغاء</AlertDialogCancel>
-                <AlertDialogAction onClick={() => { if (decisionInFlight.current || isReviewLocked(candidate.candidateId)) return; decisionInFlight.current = true; lastActionKind.current = "other"; action.mutate(async () => { try { return await api.rejectCandidate(candidate.candidateId, { expectedRevision: candidate.reviewRevision, reasonCode: rejectionReason, explanation: decisionExplanation.trim() }); } finally { decisionInFlight.current = false; } }); }}>تأكيد الرفض</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
 
           <SectionCard title="سجل التدقيق">
             {!candidate.reviewEvents.length && (
@@ -2798,7 +2862,7 @@ function MechanicAnswerSummary({ candidate }: { candidate: ReviewCandidate }) {
                   {opt.label?.ar ?? "—"}
                 </span>
                 {isCorrect && (
-                  <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[11px] text-emerald-300">
+                  <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[11px] text-emerald-900">
                     الإجابة الصحيحة
                   </span>
                 )}
@@ -3050,6 +3114,50 @@ function EvaluationBlock({ label, value }: { label: string; value: unknown }) {
       </pre>
     </details>
   );
+}
+
+function AutomatedAssessmentSummary({ candidate }: { candidate: ReviewCandidate }) {
+  const fact = candidate.factVerification;
+  const quality = candidate.qualityEvaluation;
+  const claims = Array.isArray(fact?.claims) ? fact.claims : [];
+  const supported = claims.filter((claim) =>
+    claim && typeof claim === "object" && (claim as { state?: unknown }).state === "SUPPORTED",
+  ).length;
+  const stateLabels: Record<string, string> = {
+    SUPPORTED: "مدعوم", UNSUPPORTED: "غير مدعوم", CONTRADICTED: "متناقض", UNRESOLVED: "غير محسوم",
+  };
+  const recommendationLabels: Record<string, string> = { PASS: "اجتاز", REVIEW: "يحتاج مراجعة", REJECT: "رفض" };
+  const state = typeof fact?.state === "string" ? stateLabels[fact.state] ?? fact.state : "لم يتم التحقق آليًا — يتطلب حكمك البشري";
+  const recommendation = typeof quality?.recommendation === "string" ? recommendationLabels[quality.recommendation] ?? quality.recommendation : "غير متاح";
+  const scores = quality?.scores && typeof quality.scores === "object" && !Array.isArray(quality.scores)
+    ? Object.entries(quality.scores).filter(([, value]) => typeof value === "number") : [];
+  const scoreLabels: Record<string, string> = {
+    mechanicNativeGameplay: "ملاءمة الميكانيكية", nonTriviality: "عمق السؤال", unambiguity: "الوضوح",
+    recognizabilityAndFairness: "الإنصاف", teamInteraction: "تفاعل الفريق", difficultyFit: "ملاءمة الصعوبة",
+    answerLeakageSafety: "سلامة الإجابة", overallPlayability: "قابلية اللعب",
+  };
+  return <div data-testid="automated-assessment-summary" className="space-y-2 rounded-lg border p-3 text-sm">
+    <p className="font-semibold">ملخص التقييم الآلي</p>
+    <p>التحقق من المعلومات: {state}{claims.length > 0 ? ` — ${supported} من ${claims.length} معلومات مدعومة` : ""}</p>
+    <p className="text-xs text-muted-foreground">الحالة أعلاه نتيجة آلية مسجلة، ولا تثبت تحققًا مستقلاً؛ راجع المعلومات بحكمك البشري.</p>
+    {claims.map((claim, index) => {
+      if (!claim || typeof claim !== "object") return null;
+      const item = claim as { claim?: unknown; evidence?: unknown };
+      const evidence = Array.isArray(item.evidence) ? item.evidence : [];
+      return <div key={index} className="space-y-1">
+        {typeof item.claim === "string" && <p>{item.claim}</p>}
+        {evidence.map((source, sourceIndex) => {
+          if (!source || typeof source !== "object") return null;
+          const entry = source as { url?: unknown; sourceName?: unknown };
+          if (typeof entry.url !== "string" || !/^https?:\/\//i.test(entry.url)) return null;
+          return <a key={sourceIndex} href={entry.url} target="_blank" rel="noopener noreferrer" className="block break-all underline">{typeof entry.sourceName === "string" ? entry.sourceName : entry.url}</a>;
+        })}
+      </div>;
+    })}
+    <p>توصية تقييم الجودة: {recommendation}</p>
+    {scores.length > 0 && <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs">{scores.map(([key, value]) => <li key={key}>{scoreLabels[key] ?? key}: {String(value)}/5</li>)}</ul>}
+    {candidate.reviewEligibility?.quickReview && !candidate.reviewEligibility.quickReview.eligible && <p className="text-muted-foreground">المراجعة التفصيلية مطلوبة: {candidate.reviewEligibility.quickReview.reasons.join(" ")}</p>}
+  </div>;
 }
 
 export function toEditableContentItem(

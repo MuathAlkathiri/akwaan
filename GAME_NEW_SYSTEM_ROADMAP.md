@@ -6696,6 +6696,31 @@ without the existing authoritative human and lifecycle gates.
 - ⬜ **No automatic READY promotion or publication exists in the Studio workflow.** Output is strictly canonical `ContentItem` in `DRAFT` status; publication to active gameplay requires the existing canonical READY pipeline.
 - ✅ **Existing canonical review policy remains authoritative:** human approval is last and authoritative, and must be renewed after any post-approval candidate edit.
 
+#### Quick Human Review and authorized READY publication — ✅ IMPLEMENTED & VERIFIED LOCALLY · ⬜ UNCOMMITTED · ⬜ NOT DEPLOYED (2026-11-17)
+
+The Product Owner approved direct human review when automated factual evidence is absent or inconclusive, and
+subsequently approved **اعتماد ونشر** to initiate human approval → canonical DRAFT → canonical READY. This
+supersedes the DRAFT-only Studio outcome recorded above for new approvals carrying explicit publication
+authorization; historical approvals and DRAFTs are not automatically promoted. Contradicted claims, duplicates,
+unacknowledged overlaps, incomplete inventory, family/compatibility and required media/rights gates remain
+authoritative. READY is written through `ContentItemService.update`, checked by the canonical readiness policy,
+and read back; publication rechecks the human authorization, linked content, revision and scope inventory.
+Failure preserves the last completed stage for a safe retry. The operator's approval is human judgment, not a
+claim of independent automated fact verification.
+
+**Local evidence:** isolated MongoDB Content Engine suite **146/146**, focused backend **53/53**, frontend
+Review Studio **59/59**, and both typechecks passed. Chromium against isolated fixtures verified one-click RYO,
+Closest and Detailed Review publication to persisted READY; rejection, blocked contradiction, failed READY and
+retry, lost response reconciliation, stale revision, double clicks and desktop/mobile behavior were also checked.
+A clean snapshot of locally known `origin/main` (`c4181e0`) plus the feature patch passed the same focused checks
+and the MongoDB suite; the shared checkout remains at `f919e0d` with unrelated changes. The release patch must
+include only the feature hunks of the concurrently modified ContentItem repository.
+
+**Boundaries and follow-up:** no commit, push, deployment, Production DB mutation or historical DRAFT promotion
+was performed. A READY item still depends on World/Scope activation and the existing Match selection rules to
+appear in live gameplay; this change does not activate either. Claim-associated evidence entry in Detailed
+Review remains a separate known UI issue (§30.23.8). Production and physical-device verification remain open.
+
 ### 30.22 Content Engine Media Architecture & Fallback System — 🚧 IN PROGRESS · Track B Phases 1–2, 3A, 3B-1, 3B-3, 3C-1 ✅ VERIFIED LOCALLY · UNCOMMITTED, NOT DEPLOYED (2026-11-12)
 
 **Operator product decisions and approved design corrections recorded. Architectural and documentation alignment only — no implementation changes, no runtime mutations, no R2 writes, no paid AI/media calls.**
